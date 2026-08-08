@@ -5,6 +5,7 @@
  * readings from the engine.
  */
 
+import './_setup.js';
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Circuit, resetIds } from '../src/model/circuit.js';

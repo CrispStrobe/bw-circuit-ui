@@ -1,21 +1,20 @@
 /**
  * bw-circuit-ui — importable entry point.
  *
- * Exports a single React component for embedding in brickwright-lite.
- * No Vite-only imports, no import.meta.env, no CSS modules.
- *
  * Usage:
- *   import { CircuitDesigner } from 'bw-circuit-ui';
+ *   import { setEngine, CircuitDesigner } from 'bw-circuit-ui';
+ *   import { BoardImpl } from './lib/bw-board/board.js';
+ *   import { inferNetlist, checkWiring } from './lib/bw-board/infer-netlist.js';
+ *
+ *   setEngine({ BoardImpl, inferNetlist, checkWiring });
  *   <CircuitDesigner project={{ pins: [...] }} />
  *
- * The component is self-contained: it creates a BoardImpl internally,
- * infers a default circuit from the project's pin declarations, and
- * drives the simulation. Every electrical value comes from bw-board.
+ * The host decides where the engine comes from. This package never
+ * imports bw-board by path.
  */
 
+export { setEngine } from './engine.js';
 export { CircuitDesigner } from './components/CircuitDesigner.jsx';
-
-// Also export the model for advanced consumers
 export { Circuit } from './model/circuit.js';
 export { inferCircuit, checkWiring } from './model/inference.js';
 export { createMeterState, readMeter } from './model/multimeter.js';

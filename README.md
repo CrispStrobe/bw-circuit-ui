@@ -48,17 +48,19 @@ Full app bundle (Vite production build): **240 KB / 76 KB gzip**.
 
 ### wokwi-elements cost (measured, not guessed)
 
-| Component | Bundled | Purpose |
-|---|---|---|
-| @wokwi/elements (5 elements used) | ~37 KB | LED, resistor, pot, buzzer, pushbutton visuals |
-| lit (runtime for wokwi) | ~28 KB | Web component base class |
-| @lit/react (wrappers) | ~1 KB | React 18 ↔ web component bridge |
-| **Total wokwi+lit** | **~66 KB / ~22 KB gzip** | |
+Vite production build, tree-shaken, minified. React excluded (host provides).
 
-The wokwi+lit dependency adds ~22 KB gzip to the bundle. The alternative
-(hand-drawn SVGs) would remove this at the cost of reimplementing the component
-visuals. **Decision: keep wokwi-elements until measured bundle pressure from
-brickwright-lite integration says otherwise.** Do not replace speculatively.
+| Build | Minified | Gzipped |
+|---|---|---|
+| Circuit designer + wokwi + lit | 102 KB | 38 KB |
+| Circuit designer alone (stub SVGs) | 58 KB | 24 KB |
+| **Delta: wokwi + lit + @lit/react** | **44 KB** | **14.3 KB** |
+
+Tree-shaking works: 5 elements bundled out of 53 in @wokwi/elements.
+
+The 44 KB / 14.3 KB gzip cost buys polished part visuals (LED glow,
+resistor color bands, potentiometer knob). The alternative is hand-drawn
+SVGs for 5 parts, which would remove all three deps.
 
 ## Dependencies
 

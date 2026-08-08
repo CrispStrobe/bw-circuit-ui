@@ -8,7 +8,7 @@
  * This module is the testable core — no React, no DOM, no browser APIs.
  */
 
-import { BoardImpl } from '../../../bw-board/src/board.js';
+import { getEngine } from '../engine.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -42,14 +42,17 @@ export class Circuit {
     /** @type {number} */
     this.vcc = vcc;
 
+    /** @type {Function} — the BoardImpl constructor, from the injected engine */
+    this._BoardImpl = getEngine().BoardImpl;
+
     /** @type {PlacedPart[]} */
     this.parts = [];
 
     /** @type {Wire[]} */
     this.wires = [];
 
-    /** @type {BoardImpl} */
-    this.board = new BoardImpl(vcc);
+    /** @type {object} */
+    this.board = new this._BoardImpl(vcc);
 
     /** @type {boolean} */
     this.powered = true;
@@ -330,7 +333,7 @@ export class Circuit {
       });
     }
 
-    this.board = new BoardImpl(this.vcc);
+    this.board = new this._BoardImpl(this.vcc);
     try {
       this.board.setNetlist(engineParts, engineNets);
     } catch {

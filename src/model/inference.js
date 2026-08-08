@@ -6,10 +6,7 @@
  * Adds layout positions so the inferred parts can be rendered.
  */
 
-import { inferNetlist, checkWiring } from '../../../bw-board/src/infer-netlist.js';
-
-// Re-export for consumers
-export { checkWiring };
+import { getEngine } from '../engine.js';
 
 /**
  * Layout constants for auto-placed parts.
@@ -33,7 +30,15 @@ const LAYOUT = {
  * @param {object} stc — { device?, clock?, pins: StcPin[] }
  * @returns {{ parts: Array, nets: Array, notes: string[] }}
  */
+/**
+ * Re-export checkWiring from the injected engine.
+ */
+export function checkWiring(declaredPins, wiredParts, wiredNets) {
+  return getEngine().checkWiring(declaredPins, wiredParts, wiredNets);
+}
+
 export function inferCircuit(stc) {
+  const { inferNetlist } = getEngine();
   const { parts, nets, notes } = inferNetlist(stc);
 
   // Assign layout positions to each part

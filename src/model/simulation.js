@@ -5,7 +5,7 @@
  * Nothing is fabricated.
  */
 
-import { BoardImpl } from '../../../bw-board/src/board.js';
+import { getEngine } from '../engine.js';
 
 /**
  * Create a board, load a netlist, and return the board instance.
@@ -16,6 +16,7 @@ import { BoardImpl } from '../../../bw-board/src/board.js';
  * @returns {BoardImpl}
  */
 export function createBoard(parts, nets, vcc = 5.0) {
+  const { BoardImpl } = getEngine();
   const board = new BoardImpl(vcc);
   board.setNetlist(parts, nets);
   return board;

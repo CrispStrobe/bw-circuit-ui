@@ -3,9 +3,10 @@
  * These are the same hand-computed expectations from bw-board's own tests.
  */
 
+import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { BoardImpl } from '../../bw-board/src/board.js';
+import { getEngine } from '../src/engine.js';
 
 // Inline the demo netlist (same as demo-netlist.js minus layout fields)
 const parts = [
@@ -24,6 +25,7 @@ const nets = [
 
 describe('simulation driver produces real engine values', () => {
   it('quasi-bidir driving LOW → LED brightness ~0.145', () => {
+    const { BoardImpl } = getEngine();
     const board = new BoardImpl(5.0);
     board.setNetlist(parts, nets);
     board.setPin('P1.0', 'quasi', false);
@@ -35,6 +37,7 @@ describe('simulation driver produces real engine values', () => {
   });
 
   it('quasi-bidir driving HIGH → LED brightness ~0', () => {
+    const { BoardImpl } = getEngine();
     const board = new BoardImpl(5.0);
     board.setNetlist(parts, nets);
     board.setPin('P1.0', 'quasi', true);
@@ -45,6 +48,7 @@ describe('simulation driver produces real engine values', () => {
   });
 
   it('nodeVoltage returns real volts', () => {
+    const { BoardImpl } = getEngine();
     const board = new BoardImpl(5.0);
     board.setNetlist(parts, nets);
     board.setPin('P1.0', 'quasi', false);
