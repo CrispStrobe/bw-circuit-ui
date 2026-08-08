@@ -14,8 +14,11 @@ import React, { useState, useCallback } from 'react';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
 import { routeWire, partBBoxes } from '../model/wire-router.js';
+import { findSnapTarget } from '../model/snap.js';
 import { PartTooltip } from './PartTooltip.jsx';
 
+// Default canvas dimensions — used for viewBox and layout calculations.
+// The actual rendered size fills the container via CSS.
 const CANVAS_W = 700;
 const CANVAS_H = 500;
 
@@ -468,6 +471,7 @@ export function BoardCanvas({
   const [hoveredNet, setHoveredNet] = useState(null);
   const [hoveredPart, setHoveredPart] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+  const [snapTarget, setSnapTarget] = useState(null); // { snapX, snapY, autoWire }
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
@@ -532,8 +536,14 @@ export function BoardCanvas({
     }
     if (dragging) {
       onMovePart(dragging, x, y);
+      // Check for snap-to-connector
+      const draggedPart = parts.find(p => p.id === dragging);
+      if (draggedPart) {
+        const snap = findSnapTarget({ ...draggedPart, x, y }, parts, wires);
+        setSnapTarget(snap.autoWire ? snap : null);
+      }
     }
-  }, [wiringFrom, dragging, onMovePart, screenToCanvas, panning, zoom]);
+  }, [wiringFrom, dragging, onMovePart, screenToCanvas, panning, zoom, parts, wires]);
 
   const handleWheel = useCallback((e) => {
     e.preventDefault();
@@ -567,10 +577,20 @@ export function BoardCanvas({
   }, []);
 
   const handleDragEnd = useCallback(() => {
+    if (dragging && snapTarget) {
+      // Snap to connector position
+      onMovePart(dragging, snapTarget.snapX, snapTarget.snapY);
+      // Auto-wire the snapped terminals
+      if (snapTarget.autoWire) {
+        const { fromPart, fromTerm, toPart, toTerm } = snapTarget.autoWire;
+        onAddWire(fromPart, fromTerm, toPart, toTerm);
+      }
+    }
     setDragging(null);
+    setSnapTarget(null);
     setPanning(false);
     panStart.current = null;
-  }, []);
+  }, [dragging, snapTarget, onMovePart, onAddWire]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -621,12 +641,14 @@ export function BoardCanvas({
         </div>
       )}
 
-      {/* Canvas */}
+      {/* Canvas — fills container, minimum 700×500 */}
       <div
         style={{
           position: 'relative',
-          width: CANVAS_W,
-          height: CANVAS_H,
+          width: '100%',
+          minWidth: CANVAS_W,
+          height: '100%',
+          minHeight: CANVAS_H,
           background: '#16213e',
           borderRadius: '8px',
           border: '1px solid #2c3e50',
@@ -638,9 +660,10 @@ export function BoardCanvas({
         onWheel={handleWheel}
       >
         <svg
-          width={CANVAS_W}
-          height={CANVAS_H}
+          width="100%"
+          height="100%"
           viewBox={`${pan.x} ${pan.y} ${CANVAS_W / zoom} ${CANVAS_H / zoom}`}
+          preserveAspectRatio="xMidYMid meet"
           style={{ position: 'absolute', top: 0, left: 0 }}
           onClick={handleSvgClick}
         >
@@ -679,6 +702,20 @@ export function BoardCanvas({
             nodeVoltages={nodeVoltages} />
           <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
           <WiringPreview wiringFrom={wiringFrom} mousePos={mousePos} parts={parts} />
+
+          {/* Snap-to-connector indicator */}
+          {snapTarget && snapTarget.autoWire && (() => {
+            const targetPart = parts.find(p => p.id === snapTarget.autoWire.toPart);
+            if (!targetPart) return null;
+            const pos = terminalPos(targetPart, snapTarget.autoWire.toTerm);
+            return (
+              <g>
+                <circle cx={pos.x} cy={pos.y} r={10} fill="none"
+                  stroke="#f1c40f" strokeWidth={2} strokeDasharray="3,2" />
+                <circle cx={pos.x} cy={pos.y} r={4} fill="#f1c40f" opacity={0.6} />
+              </g>
+            );
+          })()}
           <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} />
           <TerminalDots parts={parts} wires={wires} wiringFrom={wiringFrom} onTerminalClick={handleTerminalClick} placingProbe={placingProbe} />
         </svg>

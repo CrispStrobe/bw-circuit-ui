@@ -313,9 +313,12 @@ export function CircuitDesigner({ project, board: externalBoard }) {
       style={{
         display: 'flex',
         gap: '12px',
-        padding: '16px',
-        alignItems: 'flex-start',
+        padding: '12px',
+        height: '100%',
+        minHeight: 0, // allow flex shrinking
+        alignItems: 'stretch',
         fontFamily: 'system-ui, -apple-system, sans-serif',
+        overflow: 'hidden',
       }}
       tabIndex={0}
       onKeyDown={handleKeyDown}
@@ -325,7 +328,7 @@ export function CircuitDesigner({ project, board: externalBoard }) {
         <InferPanel onLoadCircuit={handleLoadCircuit} />
       </div>
 
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <BoardCanvas
           parts={parts}
           wires={wires}
