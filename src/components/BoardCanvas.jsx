@@ -1,69 +1,97 @@
 /**
- * BoardCanvas — renders parts and wires on a canvas.
+ * BoardCanvas — renders parts and wires on a canvas with interaction.
  *
- * Phase 2: wired to real BoardImpl from bw-board.
- * LED brightness and node voltages come from the engine.
+ * Phase 3: interactive. Drag parts, click terminals to wire, delete,
+ * turn potentiometer, press buttons.
  *
- * Architecture: SVG layer for wires and simple symbols (VCC, GND, MCU),
- * with wokwi web components positioned absolutely on top via CSS.
+ * LED brightness and node voltages come from the engine — never fabricated.
+ *
+ * Architecture: SVG layer for wires and simple symbols,
+ * wokwi web components positioned absolutely on top via CSS.
  */
 
-import React from 'react';
-import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton } from '../wokwi-wrappers/index.js';
+import React, { useState, useCallback } from 'react';
+import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer } from '../wokwi-wrappers/index.js';
 
 const CANVAS_W = 700;
-const CANVAS_H = 450;
+const CANVAS_H = 500;
 
 /**
- * Get the absolute position of a terminal on the canvas.
+ * Terminal offset defaults per part kind.
+ * Returns {terminalName: {dx, dy}} relative to part anchor.
  */
-function terminalPos(part, terminal, terminalOffsets) {
-  const offsets = terminalOffsets[part.id];
-  const offset = offsets?.[terminal] ?? { dx: 0, dy: 0 };
+function terminalOffsetsForPart(part) {
+  switch (part.kind) {
+    case 'vcc': return { vcc: { dx: 0, dy: 20 } };
+    case 'gnd': return { gnd: { dx: 0, dy: -10 } };
+    case 'resistor': return { a: { dx: -35, dy: 0 }, b: { dx: 35, dy: 0 } };
+    case 'led': return { anode: { dx: -10, dy: 0 }, cathode: { dx: 10, dy: 0 } };
+    case 'potentiometer': return { a: { dx: -25, dy: 20 }, wiper: { dx: 0, dy: -20 }, b: { dx: 25, dy: 20 } };
+    case 'button': return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
+    case 'buzzer': return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
+    case 'capacitor': return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
+    case 'mcu': {
+      const offsets = {};
+      part.terminals.forEach((pin, i) => {
+        offsets[pin] = { dx: -60, dy: -40 + i * 30 };
+      });
+      return offsets;
+    }
+    default: return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
+  }
+}
+
+function terminalPos(part, terminal) {
+  const offsets = terminalOffsetsForPart(part);
+  const offset = offsets[terminal] ?? { dx: 0, dy: 0 };
   return { x: part.x + offset.dx, y: part.y + offset.dy };
 }
 
-/**
- * Format a voltage for display.
- */
 function fmtV(v) {
   if (v == null || typeof v !== 'number') return '';
-  if (Math.abs(v) < 0.001) return '0.000 V';
   return v.toFixed(3) + ' V';
 }
 
-/**
- * Render VCC/GND/MCU as pure SVG.
- */
-function SvgParts({ parts }) {
+// ── SVG part rendering ───────────────────────────────────────────
+
+function SvgParts({ parts, selectedPart, onSelectPart }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
+    const isSelected = selectedPart === id;
+    const selStroke = isSelected ? '#f1c40f' : undefined;
+
     switch (kind) {
       case 'vcc':
         return (
-          <g key={id} transform={`translate(${x}, ${y})`}>
-            <line x1={0} y1={20} x2={0} y2={5} stroke="#e74c3c" strokeWidth={2} />
-            <line x1={-15} y1={5} x2={15} y2={5} stroke="#e74c3c" strokeWidth={2} />
-            <text x={0} y={-2} textAnchor="middle" fill="#e74c3c" fontSize={12}
+          <g key={id} transform={`translate(${x}, ${y})`}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            style={{ cursor: 'pointer' }}>
+            <line x1={0} y1={20} x2={0} y2={5} stroke={selStroke || '#e74c3c'} strokeWidth={2} />
+            <line x1={-15} y1={5} x2={15} y2={5} stroke={selStroke || '#e74c3c'} strokeWidth={2} />
+            <text x={0} y={-2} textAnchor="middle" fill={selStroke || '#e74c3c'} fontSize={12}
               fontFamily="monospace" fontWeight="bold">VCC</text>
           </g>
         );
       case 'gnd':
         return (
-          <g key={id} transform={`translate(${x}, ${y})`}>
-            <line x1={0} y1={-10} x2={0} y2={0} stroke="#3498db" strokeWidth={2} />
-            <line x1={-15} y1={0} x2={15} y2={0} stroke="#3498db" strokeWidth={2} />
-            <line x1={-10} y1={5} x2={10} y2={5} stroke="#3498db" strokeWidth={2} />
-            <line x1={-5} y1={10} x2={5} y2={10} stroke="#3498db" strokeWidth={2} />
-            <text x={0} y={24} textAnchor="middle" fill="#3498db" fontSize={12}
+          <g key={id} transform={`translate(${x}, ${y})`}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            style={{ cursor: 'pointer' }}>
+            <line x1={0} y1={-10} x2={0} y2={0} stroke={selStroke || '#3498db'} strokeWidth={2} />
+            <line x1={-15} y1={0} x2={15} y2={0} stroke={selStroke || '#3498db'} strokeWidth={2} />
+            <line x1={-10} y1={5} x2={10} y2={5} stroke={selStroke || '#3498db'} strokeWidth={2} />
+            <line x1={-5} y1={10} x2={5} y2={10} stroke={selStroke || '#3498db'} strokeWidth={2} />
+            <text x={0} y={24} textAnchor="middle" fill={selStroke || '#3498db'} fontSize={12}
               fontFamily="monospace" fontWeight="bold">GND</text>
           </g>
         );
       case 'mcu':
         return (
-          <g key={id} transform={`translate(${x}, ${y})`}>
+          <g key={id} transform={`translate(${x}, ${y})`}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            style={{ cursor: 'pointer' }}>
             <rect x={-50} y={-60} width={120} height={140} rx={6}
-              fill="#2c3e50" stroke="#7f8c8d" strokeWidth={2} />
+              fill="#2c3e50" stroke={selStroke || '#7f8c8d'} strokeWidth={isSelected ? 3 : 2} />
             <text x={10} y={-40} textAnchor="middle" fill="#ecf0f1" fontSize={14}
               fontFamily="monospace" fontWeight="bold">STC12</text>
             {part.terminals.map((pin, i) => (
@@ -81,26 +109,102 @@ function SvgParts({ parts }) {
   });
 }
 
-/**
- * Render voltage labels on nets.
- */
-function VoltageLabels({ nets, parts, terminalOffsets: offsets, nodeVoltages }) {
-  if (!nodeVoltages) return null;
-  return nets.map(net => {
-    const v = nodeVoltages[net.id];
-    if (v == null) return null;
-    // Place label near the midpoint of the first wire segment
-    const t0 = net.terminals[0];
-    const t1 = net.terminals[1];
-    const p0 = parts.find(p => p.id === t0?.part);
-    const p1 = parts.find(p => p.id === t1?.part);
-    if (!p0 || !p1) return null;
-    const a = terminalPos(p0, t0.terminal, offsets);
-    const b = terminalPos(p1, t1.terminal, offsets);
-    const mx = (a.x + b.x) / 2;
-    const my = (a.y + b.y) / 2;
+// ── Terminal dots (clickable for wiring) ─────────────────────────
+
+function TerminalDots({ parts, wiringFrom, onTerminalClick }) {
+  const dots = [];
+  for (const part of parts) {
+    for (const term of part.terminals) {
+      const pos = terminalPos(part, term);
+      const isWiringSource = wiringFrom &&
+        wiringFrom.part === part.id && wiringFrom.terminal === term;
+      dots.push(
+        <circle
+          key={`${part.id}:${term}`}
+          cx={pos.x}
+          cy={pos.y}
+          r={isWiringSource ? 6 : 4}
+          fill={isWiringSource ? '#f1c40f' : '#e74c3c'}
+          stroke={isWiringSource ? '#f39c12' : '#c0392b'}
+          strokeWidth={1}
+          style={{ cursor: 'pointer' }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onTerminalClick(part.id, term);
+          }}
+        />
+      );
+    }
+  }
+  return <>{dots}</>;
+}
+
+// ── Wires ────────────────────────────────────────────────────────
+
+function Wires({ wires, parts, selectedWire, onSelectWire }) {
+  // Group wires by net to find all terminals in each net
+  const netTerminals = new Map();
+  for (const w of wires) {
+    if (!netTerminals.has(w.netId)) netTerminals.set(w.netId, new Set());
+    const set = netTerminals.get(w.netId);
+    set.add(`${w.from.part}:${w.from.terminal}`);
+    set.add(`${w.to.part}:${w.to.terminal}`);
+  }
+
+  return wires.map(wire => {
+    const fromPart = parts.find(p => p.id === wire.from.part);
+    const toPart = parts.find(p => p.id === wire.to.part);
+    if (!fromPart || !toPart) return null;
+
+    const a = terminalPos(fromPart, wire.from.terminal);
+    const b = terminalPos(toPart, wire.to.terminal);
+    const mid = { x: b.x, y: a.y };
+    const isSelected = selectedWire === wire.id;
+
     return (
-      <text key={`v-${net.id}`} x={mx} y={my - 12}
+      <g key={wire.id}>
+        {/* Invisible wider hit area */}
+        <path
+          d={`M ${a.x} ${a.y} L ${mid.x} ${mid.y} L ${b.x} ${b.y}`}
+          stroke="transparent"
+          strokeWidth={10}
+          fill="none"
+          style={{ cursor: 'pointer' }}
+          onClick={(e) => { e.stopPropagation(); onSelectWire(wire.id); }}
+        />
+        <path
+          d={`M ${a.x} ${a.y} L ${mid.x} ${mid.y} L ${b.x} ${b.y}`}
+          stroke={isSelected ? '#f1c40f' : '#2ecc71'}
+          strokeWidth={isSelected ? 3 : 2}
+          fill="none"
+          strokeLinejoin="round"
+        />
+      </g>
+    );
+  });
+}
+
+// ── Voltage labels ───────────────────────────────────────────────
+
+function VoltageLabels({ wires, parts, nodeVoltages }) {
+  if (!nodeVoltages) return null;
+  // Show voltage per net, positioned near first wire midpoint
+  const shownNets = new Set();
+  return wires.map(wire => {
+    if (shownNets.has(wire.netId)) return null;
+    shownNets.add(wire.netId);
+    const v = nodeVoltages[wire.netId];
+    if (v == null) return null;
+
+    const fromPart = parts.find(p => p.id === wire.from.part);
+    const toPart = parts.find(p => p.id === wire.to.part);
+    if (!fromPart || !toPart) return null;
+    const a = terminalPos(fromPart, wire.from.terminal);
+    const b = terminalPos(toPart, wire.to.terminal);
+
+    return (
+      <text key={`v-${wire.netId}`}
+        x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 - 10}
         textAnchor="middle" fill="#f1c40f" fontSize={10}
         fontFamily="monospace" fontWeight="bold">
         {fmtV(v)}
@@ -109,112 +213,110 @@ function VoltageLabels({ nets, parts, terminalOffsets: offsets, nodeVoltages }) 
   });
 }
 
-/**
- * Render wires as SVG paths.
- */
-function Wires({ nets, parts, terminalOffsets: offsets }) {
-  return nets.map(net => {
-    const { terminals } = net;
-    if (terminals.length < 2) return null;
+// ── Wokwi element layer ─────────────────────────────────────────
 
-    const points = terminals.map(({ part: partId, terminal }) => {
-      const part = parts.find(p => p.id === partId);
-      if (!part) return null;
-      return terminalPos(part, terminal, offsets);
-    }).filter(Boolean);
-
-    if (points.length < 2) return null;
-
-    return (
-      <g key={net.id}>
-        {points.slice(1).map((b, i) => {
-          const a = points[i];
-          const mid = { x: b.x, y: a.y };
-          return (
-            <path
-              key={`${net.id}-${i}`}
-              d={`M ${a.x} ${a.y} L ${mid.x} ${mid.y} L ${b.x} ${b.y}`}
-              stroke="#2ecc71"
-              strokeWidth={2}
-              fill="none"
-              strokeLinejoin="round"
-            />
-          );
-        })}
-        {points.map((p, i) => (
-          <circle key={`d${i}`} cx={p.x} cy={p.y} r={3} fill="#2ecc71" />
-        ))}
-        <text x={points[0].x + 8} y={points[0].y - 8}
-          fill="#7f8c8d" fontSize={9} fontFamily="monospace">{net.id}</text>
-      </g>
-    );
-  });
-}
-
-/**
- * Wokwi elements positioned absolutely over the SVG.
- * LED brightness comes from the engine via props.
- */
-function WokwiParts({ parts, ledBrightness }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedPart, onControlChange, onButtonDown, onButtonUp }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
-    const style = {
+    const isSelected = selectedPart === id;
+    const baseStyle = {
       position: 'absolute',
-      pointerEvents: 'none',
+      outline: isSelected ? '2px solid #f1c40f' : 'none',
+      borderRadius: '4px',
     };
 
     switch (kind) {
       case 'resistor':
         return (
-          <div key={id} style={{ ...style, left: x - 40, top: y - 12 }}>
+          <div key={id}
+            style={{ ...baseStyle, left: x - 40, top: y - 12, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}>
             <WokwiResistor value={String(params.ohms)} />
-            <div style={{
-              textAlign: 'center', color: '#aaa', fontSize: 10,
-              fontFamily: 'monospace', marginTop: 2,
-            }}>{id} ({params.ohms}Ω)</div>
+            <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
+              {id.split('_')[0]} ({params.ohms}Ω)
+            </div>
           </div>
         );
       case 'led': {
-        // Brightness comes from the engine. 0…1 maps to wokwi's brightness.
-        const b = ledBrightness?.[id] ?? 0;
+        const b = ledBrightness?.(id) ?? 0;
         const isOn = b > 0.01;
         return (
-          <div key={id} style={{ ...style, left: x - 15, top: y - 20 }}>
-            <WokwiLed
-              color={params.color || 'red'}
-              brightness={b}
-              value={isOn}
-            />
+          <div key={id}
+            style={{ ...baseStyle, left: x - 15, top: y - 20, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}>
+            <WokwiLed color={params.color || 'red'} brightness={b} value={isOn} />
             <div style={{
               textAlign: 'center',
               color: isOn ? '#2ecc71' : '#aaa',
-              fontSize: 10,
-              fontFamily: 'monospace',
-              marginTop: 2,
+              fontSize: 10, fontFamily: 'monospace',
             }}>
-              {id} {isOn ? `(${(b * 100).toFixed(1)}%)` : '(off)'}
+              {isOn ? `${(b * 100).toFixed(1)}%` : 'off'}
             </div>
           </div>
         );
       }
-      case 'buzzer':
+      case 'potentiometer':
         return (
-          <div key={id} style={{ ...style, left: x - 20, top: y - 20 }}>
-            <WokwiBuzzer hasSignal={false} />
-            <div style={{
-              textAlign: 'center', color: '#aaa', fontSize: 10,
-              fontFamily: 'monospace', marginTop: 2,
-            }}>{id}</div>
+          <div key={id}
+            style={{ ...baseStyle, left: x - 30, top: y - 30, cursor: 'move', pointerEvents: 'auto' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}>
+            <WokwiPotentiometer
+              min={0} max={1} step={0.01} value={0.5}
+              onInput={(e) => {
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val)) onControlChange(id, val);
+              }}
+            />
+            <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
+              pot
+            </div>
           </div>
         );
+      case 'buzzer': {
+        const tone = buzzerTones?.(id);
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 20, top: y - 20, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}>
+            <WokwiBuzzer hasSignal={tone?.on ?? false} />
+            <div style={{
+              textAlign: 'center',
+              color: tone?.on ? '#2ecc71' : '#aaa',
+              fontSize: 10, fontFamily: 'monospace',
+            }}>
+              {tone?.on ? `${tone.hz.toFixed(0)} Hz` : 'off'}
+            </div>
+          </div>
+        );
+      }
       case 'button':
         return (
-          <div key={id} style={{ ...style, left: x - 15, top: y - 15 }}>
+          <div key={id}
+            style={{ ...baseStyle, left: x - 18, top: y - 18, cursor: 'move', pointerEvents: 'auto' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            onMouseDown={(e) => { e.stopPropagation(); onButtonDown(id); }}
+            onMouseUp={() => onButtonUp(id)}
+            onMouseLeave={() => onButtonUp(id)}>
             <WokwiPushbutton color={params.color || 'red'} />
-            <div style={{
-              textAlign: 'center', color: '#aaa', fontSize: 10,
-              fontFamily: 'monospace', marginTop: 2,
-            }}>{id}</div>
+            <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
+              btn
+            </div>
+          </div>
+        );
+      case 'capacitor':
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 15, top: y - 15, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}>
+            <svg width={30} height={30} viewBox="0 0 30 30">
+              <line x1={5} y1={15} x2={12} y2={15} stroke="#7f8c8d" strokeWidth={2} />
+              <line x1={12} y1={5} x2={12} y2={25} stroke="#ecf0f1" strokeWidth={2} />
+              <line x1={18} y1={5} x2={18} y2={25} stroke="#ecf0f1" strokeWidth={2} />
+              <line x1={18} y1={15} x2={25} y2={15} stroke="#7f8c8d" strokeWidth={2} />
+            </svg>
+            <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
+              cap
+            </div>
           </div>
         );
       default:
@@ -223,48 +325,121 @@ function WokwiParts({ parts, ledBrightness }) {
   });
 }
 
-/**
- * The main board canvas.
- *
- * @param {{ parts, nets, terminalOffsets, ledBrightness, nodeVoltages, activeLabel }} props
- * - ledBrightness: { partId: number } — from engine, 0…1
- * - nodeVoltages: { netId: number } — from engine, volts
- * - activeLabel: string — current trace state description
- */
-export function BoardCanvas({ parts, nets, terminalOffsets: offsets, ledBrightness, nodeVoltages, activeLabel }) {
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: '20px',
-    }}>
-      <h2 style={{
-        color: '#ecf0f1',
-        fontFamily: 'monospace',
-        marginBottom: '10px',
-      }}>
-        Active-Low LED Circuit
-      </h2>
-      <p style={{
-        color: activeLabel ? '#3498db' : '#7f8c8d',
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        marginBottom: '4px',
-        textAlign: 'center',
-      }}>
-        VCC → 1kΩ → LED (Vf=2V) → P1.0
-      </p>
-      <p style={{
-        color: '#f1c40f',
-        fontFamily: 'monospace',
-        fontSize: '11px',
-        marginBottom: '20px',
-        textAlign: 'center',
-      }}>
-        {activeLabel || 'No simulation state selected'}
-      </p>
+// ── Wiring preview line ──────────────────────────────────────────
 
+function WiringPreview({ wiringFrom, mousePos, parts }) {
+  if (!wiringFrom || !mousePos) return null;
+  const part = parts.find(p => p.id === wiringFrom.part);
+  if (!part) return null;
+  const from = terminalPos(part, wiringFrom.terminal);
+  return (
+    <line
+      x1={from.x} y1={from.y}
+      x2={mousePos.x} y2={mousePos.y}
+      stroke="#f39c12" strokeWidth={2} strokeDasharray="5,3"
+    />
+  );
+}
+
+// ── Main BoardCanvas ─────────────────────────────────────────────
+
+export function BoardCanvas({
+  parts, wires, ledBrightness, buzzerTones, nodeVoltages,
+  onAddWire, onRemoveWire, onRemovePart, onMovePart,
+  onSelectPart, selectedPart,
+  onSelectWire, selectedWire,
+  onControlChange, onButtonDown, onButtonUp,
+  statusText,
+}) {
+  const [wiringFrom, setWiringFrom] = useState(null);
+  const [mousePos, setMousePos] = useState(null);
+  const [dragging, setDragging] = useState(null);
+
+  const handleTerminalClick = useCallback((partId, terminal) => {
+    if (!wiringFrom) {
+      // Start wiring
+      setWiringFrom({ part: partId, terminal });
+    } else {
+      // Complete wiring
+      if (wiringFrom.part !== partId || wiringFrom.terminal !== terminal) {
+        onAddWire(wiringFrom.part, wiringFrom.terminal, partId, terminal);
+      }
+      setWiringFrom(null);
+      setMousePos(null);
+    }
+  }, [wiringFrom, onAddWire]);
+
+  const handleSvgClick = useCallback(() => {
+    // Cancel wiring if clicking empty space
+    if (wiringFrom) {
+      setWiringFrom(null);
+      setMousePos(null);
+    }
+    onSelectPart(null);
+    onSelectWire(null);
+  }, [wiringFrom, onSelectPart, onSelectWire]);
+
+  const handleSvgMouseMove = useCallback((e) => {
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (wiringFrom) {
+      setMousePos({ x, y });
+    }
+    if (dragging) {
+      onMovePart(dragging, x, y);
+    }
+  }, [wiringFrom, dragging, onMovePart]);
+
+  const handleDragStart = useCallback((e, partId) => {
+    // Only start drag with left button on the SVG layer
+    if (e.button === 0) {
+      setDragging(partId);
+    }
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setDragging(null);
+  }, []);
+
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (selectedWire) {
+        onRemoveWire(selectedWire);
+        onSelectWire(null);
+      } else if (selectedPart) {
+        onRemovePart(selectedPart);
+        onSelectPart(null);
+      }
+    }
+    if (e.key === 'Escape') {
+      setWiringFrom(null);
+      setMousePos(null);
+      onSelectPart(null);
+      onSelectWire(null);
+    }
+  }, [selectedPart, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire]);
+
+  return (
+    <div
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
+      {/* Status bar */}
+      <div style={{
+        color: wiringFrom ? '#f39c12' : '#7f8c8d',
+        fontFamily: 'monospace', fontSize: '11px',
+        marginBottom: '8px', height: '16px',
+      }}>
+        {wiringFrom
+          ? `Wiring from ${wiringFrom.part}:${wiringFrom.terminal} — click another terminal or ESC`
+          : statusText || 'Click a terminal (red dot) to start wiring. Select + Delete to remove.'}
+      </div>
+
+      {/* Canvas */}
       <div style={{
         position: 'relative',
         width: CANVAS_W,
@@ -279,6 +454,9 @@ export function BoardCanvas({ parts, nets, terminalOffsets: offsets, ledBrightne
           height={CANVAS_H}
           viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
           style={{ position: 'absolute', top: 0, left: 0 }}
+          onClick={handleSvgClick}
+          onMouseMove={handleSvgMouseMove}
+          onMouseUp={handleDragEnd}
         >
           <defs>
             <pattern id="grid" width={20} height={20} patternUnits="userSpaceOnUse">
@@ -286,13 +464,25 @@ export function BoardCanvas({ parts, nets, terminalOffsets: offsets, ledBrightne
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
-          <Wires nets={nets} parts={parts} terminalOffsets={offsets} />
-          <VoltageLabels nets={nets} parts={parts} terminalOffsets={offsets}
-            nodeVoltages={nodeVoltages} />
-          <SvgParts parts={parts} />
+
+          <Wires wires={wires} parts={parts}
+            selectedWire={selectedWire} onSelectWire={onSelectWire} />
+          <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
+          <WiringPreview wiringFrom={wiringFrom} mousePos={mousePos} parts={parts} />
+          <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} />
+          <TerminalDots parts={parts} wiringFrom={wiringFrom} onTerminalClick={handleTerminalClick} />
         </svg>
 
-        <WokwiParts parts={parts} ledBrightness={ledBrightness} />
+        <WokwiParts
+          parts={parts}
+          ledBrightness={ledBrightness}
+          buzzerTones={buzzerTones}
+          onSelectPart={onSelectPart}
+          selectedPart={selectedPart}
+          onControlChange={onControlChange}
+          onButtonDown={onButtonDown}
+          onButtonUp={onButtonUp}
+        />
       </div>
     </div>
   );

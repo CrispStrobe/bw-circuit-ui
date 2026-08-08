@@ -5,7 +5,7 @@
  * Nothing is fabricated.
  */
 
-import { BoardImpl } from 'bw-board/board.js';
+import { BoardImpl } from '../../../bw-board/src/board.js';
 
 /**
  * Create a board, load a netlist, and return the board instance.
