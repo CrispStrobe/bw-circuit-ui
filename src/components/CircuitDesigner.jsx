@@ -32,7 +32,7 @@ function snapToGrid(v) {
 export function CircuitDesigner({ project }) {
   const {
     parts, wires, powered, rev,
-    addPart, removePart, movePart,
+    addPart, removePart, movePart, updateParams,
     addWire, removeWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
     loadInferred, undo, redo, canUndo, canRedo,
@@ -297,6 +297,7 @@ export function CircuitDesigner({ project }) {
           onRedo={redo}
           canUndo={canUndo}
           canRedo={canRedo}
+          onUpdateParams={updateParams}
         />
         <Multimeter
           circuit={circuit}

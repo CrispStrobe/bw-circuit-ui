@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test test/engine-injection.test.js test/circuit.test.js test/interaction.test.js test/simulation.test.js test/inference.test.js test/multimeter.test.js test/buzzer-audio.test.js test/probe-placement.test.js test/snap-grid.test.js test/history.test.js",
+    "test": "node --test test/engine-injection.test.js test/circuit.test.js test/interaction.test.js test/simulation.test.js test/inference.test.js test/multimeter.test.js test/buzzer-audio.test.js test/probe-placement.test.js test/snap-grid.test.js test/history.test.js test/params.test.js",
     "test:render": "node --test test/rendering.test.js",
     "test:all": "npm test && npm run test:render"
   },

@@ -151,6 +151,21 @@ export class Circuit {
     return this.parts.find(p => p.id === partId);
   }
 
+  /**
+   * Update a part's parameters (e.g. resistor ohms, LED color).
+   * @param {string} partId
+   * @param {Record<string, number|string>} newParams — merged with existing
+   * @returns {boolean}
+   */
+  updateParams(partId, newParams) {
+    const part = this.getPart(partId);
+    if (!part) return false;
+    Object.assign(part.params, newParams);
+    this._syncNetlist();
+    this._saveHistory();
+    return true;
+  }
+
   // ── Wire operations ─────────────────────────────────────────────
 
   /**

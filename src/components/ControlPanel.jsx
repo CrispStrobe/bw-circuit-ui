@@ -11,6 +11,7 @@ export function ControlPanel({
   parts,
   onRemovePart, onRemoveWire,
   onUndo, onRedo, canUndo, canRedo,
+  onUpdateParams,
 }) {
   const selPart = selectedPart ? parts.find(p => p.id === selectedPart) : null;
 
@@ -113,10 +114,28 @@ export function ControlPanel({
         {selPart ? (
           <>
             <div style={{ color: '#ecf0f1' }}>{selPart.kind}</div>
-            <div style={{ color: '#7f8c8d', fontSize: '10px' }}>{selPart.id}</div>
-            {Object.entries(selPart.params).map(([k, v]) => (
-              <div key={k} style={{ color: '#bdc3c7', fontSize: '10px' }}>
-                {k}: {v}
+            <div style={{ color: '#7f8c8d', fontSize: '10px', marginBottom: '4px' }}>{selPart.id}</div>
+            {Object.entries(selPart.params)
+              .filter(([k]) => k !== 'pins') // don't edit MCU pin list
+              .map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                <span style={{ color: '#7f8c8d', fontSize: '10px', minWidth: '35px' }}>{k}:</span>
+                <input
+                  type={typeof v === 'number' ? 'number' : 'text'}
+                  value={v}
+                  onChange={(e) => {
+                    const newVal = typeof v === 'number'
+                      ? parseFloat(e.target.value) || 0
+                      : e.target.value;
+                    onUpdateParams(selPart.id, { [k]: newVal });
+                  }}
+                  style={{
+                    width: '70px', padding: '2px 4px',
+                    background: '#0a0a1a', border: '1px solid #2c3e50',
+                    borderRadius: '2px', color: '#ecf0f1',
+                    fontFamily: 'monospace', fontSize: '10px',
+                  }}
+                />
               </div>
             ))}
           </>
