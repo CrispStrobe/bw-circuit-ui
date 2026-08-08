@@ -63,8 +63,24 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
   // Subscribe to board changes for automatic re-rendering
   const { renderState, refresh } = useBoard(activeBoard);
 
-  const [selectedPart, setSelectedPart] = useState(null);
+  const [selectedParts, setSelectedParts] = useState(new Set());
   const [selectedWire, setSelectedWire] = useState(null);
+
+  // Convenience: first selected part (for single-selection UI like property editor)
+  const selectedPart = selectedParts.size === 1 ? [...selectedParts][0] : null;
+
+  const handleSelectPart = useCallback((id, additive) => {
+    if (!id) { setSelectedParts(new Set()); return; }
+    setSelectedParts(prev => {
+      if (additive) {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+      }
+      return new Set([id]);
+    });
+    setSelectedWire(null);
+  }, []);
   const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
@@ -268,7 +284,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
 
   const handleLoadCircuit = useCallback((inferredParts, inferredNets) => {
     loadInferred(inferredParts, inferredNets);
-    setSelectedPart(null);
+    setSelectedParts(new Set());
     setSelectedWire(null);
     setMode('build');
   }, [loadInferred]);
@@ -292,7 +308,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
     circuit.wires = data.wires.map(w => ({ ...w }));
     circuit._syncNetlist();
     circuit._saveHistory();
-    setSelectedPart(null);
+    setSelectedParts(new Set());
     setSelectedWire(null);
     setMode('build');
   }, [circuit]);
@@ -309,6 +325,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
       e.preventDefault();
       redo();
     }
+    // Ctrl+A → select all parts
+    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+      e.preventDefault();
+      setSelectedParts(new Set(parts.map(p => p.id)));
+    }
     // R → rotate selected part
     if (e.key === 'r' && !e.ctrlKey && !e.metaKey && selectedPart) {
       rotatePart(selectedPart);
@@ -317,7 +338,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedPart) {
       e.preventDefault();
       const dup = duplicatePart(selectedPart);
-      if (dup) setSelectedPart(dup.id);
+      if (dup) handleSelectPart(dup.id);
     }
   }, [undo, redo, rotatePart, duplicatePart, selectedPart]);
 
@@ -370,8 +391,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
           onRemoveWire={removeWire}
           onRemovePart={removePart}
           onMovePart={handleMovePart}
-          onSelectPart={setSelectedPart}
+          onSelectPart={handleSelectPart}
           selectedPart={selectedPart}
+          selectedParts={selectedParts}
           onSelectWire={setSelectedWire}
           selectedWire={selectedWire}
           onControlChange={handleControlChange}
@@ -380,11 +402,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
           statusText={statusText}
           placingProbe={placingProbe}
           onTerminalClickForProbe={handleTerminalClickForProbe}
-          onDuplicatePart={(id) => { const dup = duplicatePart(id); if (dup) setSelectedPart(dup.id); }}
+          onDuplicatePart={(id) => { const dup = duplicatePart(id); if (dup) handleSelectPart(dup.id); }}
           onRotatePart={rotatePart}
           onDropPart={(kind, params, x, y) => {
             const p = addPart(kind, params, snapToGrid(x), snapToGrid(y));
-            if (p) setSelectedPart(p.id);
+            if (p) handleSelectPart(p.id);
           }}
           circuit={circuit}
           warnings={warnings}
@@ -428,7 +450,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
           selectedPart={selectedPart}
           selectedWire={selectedWire}
           parts={parts}
-          onRemovePart={(id) => { removePart(id); setSelectedPart(null); }}
+          onRemovePart={(id) => { removePart(id); setSelectedParts(new Set()); }}
           onRemoveWire={(id) => { removeWire(id); setSelectedWire(null); }}
           onUndo={undo}
           onRedo={redo}

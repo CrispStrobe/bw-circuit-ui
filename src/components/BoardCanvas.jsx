@@ -83,16 +83,15 @@ function fmtV(v) {
 
 // ── SVG part rendering ───────────────────────────────────────────
 
-function SvgParts({ parts, selectedPart, onSelectPart, onPartBodyClick }) {
+function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
-    const isSelected = selectedPart === id;
+    const isSelected = selectedParts?.has(id);
     const selStroke = isSelected ? '#f1c40f' : undefined;
 
-    // Click handler: select + auto-wire for single-terminal parts
     const handleClick = (e) => {
       e.stopPropagation();
-      onSelectPart(id);
+      onSelectPart(id, e.shiftKey);
       if (onPartBodyClick) onPartBodyClick(id);
     };
 
@@ -379,11 +378,11 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedPart, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
-    const isSelected = selectedPart === id;
+    const isSelected = selectedParts?.has(id);
     const baseStyle = {
       position: 'absolute',
       outline: isSelected ? '2px solid #f1c40f' : 'none',
@@ -408,7 +407,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 40, top: y - 12, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiResistor value={String(params.ohms)} />
             <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
@@ -422,7 +421,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 15, top: y - 20, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiLed color={params.color || 'red'} brightness={b} value={isOn} />
             <div style={{
@@ -439,7 +438,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 30, top: y - 30, cursor: 'move', pointerEvents: 'auto' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}>
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}>
             <WokwiPotentiometer
               min={0} max={1} step={0.01} value={0.5}
               onInput={(e) => {
@@ -457,7 +456,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 20, top: y - 20, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiBuzzer hasSignal={tone?.on ?? false} />
             <div style={{
@@ -474,7 +473,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 18, top: y - 18, cursor: 'move', pointerEvents: 'auto' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             onMouseDown={(e) => { e.stopPropagation(); onButtonDown(id); }}
             onMouseUp={() => onButtonUp(id)}
             onMouseLeave={() => onButtonUp(id)}>
@@ -488,7 +487,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 15, top: y - 15, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <svg width={30} height={30} viewBox="0 0 30 30">
               <line x1={5} y1={15} x2={12} y2={15} stroke="#7f8c8d" strokeWidth={2} />
@@ -528,7 +527,7 @@ function WiringPreview({ wiringFrom, mousePos, parts }) {
 export function BoardCanvas({
   parts, wires, ledBrightness, buzzerTones, nodeVoltages,
   onAddWire, onRemoveWire, onRemovePart, onMovePart,
-  onSelectPart, selectedPart,
+  onSelectPart, selectedPart, selectedParts,
   onSelectWire, selectedWire,
   onControlChange, onButtonDown, onButtonUp,
   statusText,
@@ -722,8 +721,8 @@ export function BoardCanvas({
       if (selectedWire) {
         onRemoveWire(selectedWire);
         onSelectWire(null);
-      } else if (selectedPart) {
-        onRemovePart(selectedPart);
+      } else if (selectedParts && selectedParts.size > 0) {
+        for (const id of selectedParts) onRemovePart(id);
         onSelectPart(null);
       }
     }
@@ -737,18 +736,18 @@ export function BoardCanvas({
       setZoom(1);
       setPan({ x: 0, y: 0 });
     }
-    // Arrow keys nudge selected part by grid size
-    if (selectedPart && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    // Arrow keys nudge all selected parts by grid size
+    if (selectedParts && selectedParts.size > 0 && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
       e.preventDefault();
-      const step = e.shiftKey ? 5 : 20; // shift = fine nudge
-      const part = parts.find(p => p.id === selectedPart);
-      if (part) {
-        const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
-        const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
-        onMovePart(selectedPart, part.x + dx, part.y + dy);
+      const step = e.shiftKey ? 5 : 20;
+      const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
+      const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
+      for (const id of selectedParts) {
+        const part = parts.find(p => p.id === id);
+        if (part) onMovePart(id, part.x + dx, part.y + dy);
       }
     }
-  }, [selectedPart, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart]);
+  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart]);
 
   return (
     <div
@@ -770,7 +769,7 @@ export function BoardCanvas({
             : statusText || 'Drag terminals to wire. Drag parts to move.'}
         </span>
         {/* Visible action buttons for touch/tablet */}
-        {(selectedPart || selectedWire) && (
+        {((selectedParts && selectedParts.size > 0) || selectedWire) && (
           <div style={{ display: 'flex', gap: '4px' }}>
             {selectedPart && onRotatePart && (
               <button onClick={() => onRotatePart(selectedPart)} style={{
@@ -788,7 +787,7 @@ export function BoardCanvas({
             )}
             <button onClick={() => {
               if (selectedWire) { onRemoveWire(selectedWire); onSelectWire(null); }
-              else if (selectedPart) { onRemovePart(selectedPart); onSelectPart(null); }
+              else if (selectedParts && selectedParts.size > 0) { for (const id of selectedParts) onRemovePart(id); onSelectPart(null); }
             }} style={{
               padding: '3px 8px', background: '#2c3e50', border: '1px solid #e74c3c',
               borderRadius: '3px', color: '#e74c3c', fontFamily: 'monospace', fontSize: '10px',
@@ -858,7 +857,7 @@ export function BoardCanvas({
         onContextMenu={(e) => {
           e.preventDefault();
           // Right-click context menu
-          if (selectedPart || selectedWire) {
+          if ((selectedParts && selectedParts.size > 0) || selectedWire) {
             setContextMenu({
               x: e.clientX,
               y: e.clientY,
@@ -940,7 +939,7 @@ export function BoardCanvas({
               </g>
             );
           })()}
-          <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick} />
+          <SvgParts parts={parts} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick} />
 
           {/* Inline warning indicators on parts */}
           {warnings && warnings.map((w, i) => {
@@ -980,7 +979,7 @@ export function BoardCanvas({
             ledBrightness={ledBrightness}
             buzzerTones={buzzerTones}
             onSelectPart={onSelectPart}
-            selectedPart={selectedPart}
+            selectedParts={selectedParts}
             onControlChange={onControlChange}
             onButtonDown={onButtonDown}
             onButtonUp={onButtonUp}
