@@ -660,7 +660,18 @@ export function BoardCanvas({
       setZoom(1);
       setPan({ x: 0, y: 0 });
     }
-  }, [selectedPart, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire]);
+    // Arrow keys nudge selected part by grid size
+    if (selectedPart && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+      const step = e.shiftKey ? 5 : 20; // shift = fine nudge
+      const part = parts.find(p => p.id === selectedPart);
+      if (part) {
+        const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
+        const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
+        onMovePart(selectedPart, part.x + dx, part.y + dy);
+      }
+    }
+  }, [selectedPart, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart]);
 
   return (
     <div
@@ -668,15 +679,46 @@ export function BoardCanvas({
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      {/* Status bar */}
+      {/* Status/action bar */}
       <div style={{
-        color: wiringFrom ? '#f39c12' : '#7f8c8d',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
         fontFamily: 'monospace', fontSize: '11px',
-        marginBottom: '8px', height: '16px',
+        marginBottom: '6px', minHeight: '24px',
       }}>
-        {wiringFrom
-          ? `Wiring from ${wiringFrom.part}:${wiringFrom.terminal} — click another terminal or ESC`
-          : statusText || 'Click terminals to wire. Del to delete. R to rotate selected part.'}
+        <span style={{ color: wiringFrom ? '#f39c12' : '#7f8c8d', flex: 1 }}>
+          {wiringFrom
+            ? `Wiring from ${wiringFrom.part}:${wiringFrom.terminal} — drag to target`
+            : statusText || 'Drag terminals to wire. Drag parts to move.'}
+        </span>
+        {/* Visible action buttons for touch/tablet */}
+        {(selectedPart || selectedWire) && (
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {selectedPart && onRotatePart && (
+              <button onClick={() => onRotatePart(selectedPart)} style={{
+                padding: '3px 8px', background: '#2c3e50', border: '1px solid #3498db',
+                borderRadius: '3px', color: '#3498db', fontFamily: 'monospace', fontSize: '10px',
+                cursor: 'pointer',
+              }}>Rotate</button>
+            )}
+            {selectedPart && onDuplicatePart && (
+              <button onClick={() => onDuplicatePart(selectedPart)} style={{
+                padding: '3px 8px', background: '#2c3e50', border: '1px solid #2ecc71',
+                borderRadius: '3px', color: '#2ecc71', fontFamily: 'monospace', fontSize: '10px',
+                cursor: 'pointer',
+              }}>Copy</button>
+            )}
+            <button onClick={() => {
+              if (selectedWire) { onRemoveWire(selectedWire); onSelectWire(null); }
+              else if (selectedPart) { onRemovePart(selectedPart); onSelectPart(null); }
+            }} style={{
+              padding: '3px 8px', background: '#2c3e50', border: '1px solid #e74c3c',
+              borderRadius: '3px', color: '#e74c3c', fontFamily: 'monospace', fontSize: '10px',
+              cursor: 'pointer',
+            }}>Delete</button>
+          </div>
+        )}
       </div>
 
       {/* Zoom indicator */}
