@@ -322,6 +322,7 @@ export function CircuitDesigner({ project }) {
           statusText={statusText}
           placingProbe={placingProbe}
           onTerminalClickForProbe={handleTerminalClickForProbe}
+          circuit={circuit}
         />
       </div>
 

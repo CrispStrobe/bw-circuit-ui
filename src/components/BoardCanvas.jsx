@@ -14,6 +14,7 @@ import React, { useState, useCallback } from 'react';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
 import { routeWire, partBBoxes } from '../model/wire-router.js';
+import { PartTooltip } from './PartTooltip.jsx';
 
 const CANVAS_W = 700;
 const CANVAS_H = 500;
@@ -197,7 +198,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, placingProbe 
 
 // ── Wires ────────────────────────────────────────────────────────
 
-function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNet }) {
+function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages }) {
   // Group wires by net to find all terminals in each net
   const netTerminals = new Map();
   for (const w of wires) {
@@ -241,6 +242,34 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
           fill="none"
           strokeLinejoin="round"
         />
+        {/* Current flow arrow at wire midpoint */}
+        {nodeVoltages && (() => {
+          // Find the net voltages for both endpoints' nets
+          const fromNet = wire.netId;
+          const v = nodeVoltages[fromNet];
+          if (v == null || Math.abs(v) < 0.001) return null;
+
+          // Draw a small arrow at the midpoint of the wire
+          const mx = (a.x + b.x) / 2;
+          const my = (a.y + b.y) / 2;
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len < 40) return null; // too short for an arrow
+
+          const nx = dx / len;
+          const ny = dy / len;
+          const sz = 5;
+
+          return (
+            <polygon
+              points={`${mx + nx * sz},${my + ny * sz} ${mx - nx * sz - ny * sz * 0.6},${my - ny * sz + nx * sz * 0.6} ${mx - nx * sz + ny * sz * 0.6},${my - ny * sz - nx * sz * 0.6}`}
+              fill={wireColor}
+              opacity={0.6}
+              style={{ pointerEvents: 'none' }}
+            />
+          );
+        })()}
       </g>
     );
   });
@@ -277,7 +306,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedPart, onControlChange, onButtonDown, onButtonUp, onDragStart }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedPart, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -297,6 +326,8 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         if (extraOnDown) extraOnDown(e);
         else onDragStart(id);
       },
+      onMouseEnter: (e) => onHoverPart(id, e.clientX, e.clientY),
+      onMouseLeave: () => onHoverPart(null, 0, 0),
     });
 
     switch (kind) {
@@ -429,11 +460,14 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
+  circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
   const [mousePos, setMousePos] = useState(null);
   const [dragging, setDragging] = useState(null);
   const [hoveredNet, setHoveredNet] = useState(null);
+  const [hoveredPart, setHoveredPart] = useState(null);
+  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
@@ -641,7 +675,8 @@ export function BoardCanvas({
 
           <Wires wires={wires} parts={parts}
             selectedWire={selectedWire} onSelectWire={onSelectWire}
-            hoveredNet={hoveredNet} onHoverNet={setHoveredNet} />
+            hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
+            nodeVoltages={nodeVoltages} />
           <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
           <WiringPreview wiringFrom={wiringFrom} mousePos={mousePos} parts={parts} />
           <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} />
@@ -667,8 +702,23 @@ export function BoardCanvas({
             onButtonDown={onButtonDown}
             onButtonUp={onButtonUp}
             onDragStart={(partId) => setDragging(partId)}
+            onHoverPart={(partId, cx, cy) => {
+              setHoveredPart(partId);
+              if (partId) setHoverPos({ x: cx, y: cy });
+            }}
           />
         </div>
+
+        {/* Part tooltip */}
+        {hoveredPart && (
+          <PartTooltip
+            part={parts.find(p => p.id === hoveredPart)}
+            circuit={circuit}
+            visible={true}
+            x={hoverPos.x}
+            y={hoverPos.y}
+          />
+        )}
       </div>
     </div>
   );
