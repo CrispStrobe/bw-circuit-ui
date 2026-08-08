@@ -165,6 +165,19 @@ export class Circuit {
   }
 
   /**
+   * Duplicate a part at an offset position.
+   * @param {string} partId
+   * @param {number} [offsetX=40]
+   * @param {number} [offsetY=40]
+   * @returns {PlacedPart|null}
+   */
+  duplicatePart(partId, offsetX = 40, offsetY = 40) {
+    const src = this.getPart(partId);
+    if (!src) return null;
+    return this.addPart(src.kind, { ...src.params }, src.x + offsetX, src.y + offsetY);
+  }
+
+  /**
    * Update a part's parameters (e.g. resistor ohms, LED color).
    * @param {string} partId
    * @param {Record<string, number|string>} newParams — merged with existing

@@ -110,3 +110,39 @@ describe('rendering: no page errors on fresh load', () => {
     assert.ok(text.includes('Multimeter'), 'should show Multimeter');
   });
 });
+
+describe('rendering: UI controls work', () => {
+  it('undo/redo buttons exist and help text is present', async () => {
+    pageErrors.length = 0;
+    await page.goto('http://localhost:3100', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(500);
+
+    const text = await page.locator('body').innerText();
+    assert.ok(text.includes('Undo'), 'should show Undo button');
+    assert.ok(text.includes('Redo'), 'should show Redo button');
+    assert.ok(text.includes('Save'), 'should show Save button');
+    assert.ok(text.includes('Load'), 'should show Load button');
+    assert.ok(text.includes('Ctrl+Z'), 'should show Ctrl+Z shortcut hint');
+
+    assert.deepEqual(pageErrors, []);
+  });
+
+  it('screenshot captures the active-low sim state', async () => {
+    pageErrors.length = 0;
+    await page.goto('http://localhost:3100', { waitUntil: 'networkidle' });
+
+    await page.getByText('Correct (active-low)').click();
+    await page.getByText('Sim', { exact: true }).click();
+    await page.waitForTimeout(1500);
+
+    // Capture screenshot for visual regression (saved to /tmp)
+    await page.screenshot({ path: '/tmp/circuit-ui-regression.png' });
+
+    // Verify the screenshot file was created
+    const fs = await import('fs');
+    assert.ok(fs.existsSync('/tmp/circuit-ui-regression.png'),
+      'screenshot should be saved');
+
+    assert.deepEqual(pageErrors, []);
+  });
+});

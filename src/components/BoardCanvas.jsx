@@ -129,28 +129,55 @@ function SvgParts({ parts, selectedPart, onSelectPart }) {
 
 // ── Terminal dots (clickable for wiring) ─────────────────────────
 
-function TerminalDots({ parts, wiringFrom, onTerminalClick, placingProbe }) {
+function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, placingProbe }) {
+  // Build a set of connected terminals for fast lookup
+  const connected = new Set();
+  for (const w of wires) {
+    connected.add(`${w.from.part}:${w.from.terminal}`);
+    connected.add(`${w.to.part}:${w.to.terminal}`);
+  }
+
   const dots = [];
   for (const part of parts) {
     for (const term of part.terminals) {
       const pos = terminalPos(part, term);
       const isWiringSource = wiringFrom &&
         wiringFrom.part === part.id && wiringFrom.terminal === term;
+      const isConnected = connected.has(`${part.id}:${term}`);
+
+      // Colors: wiring source = gold, placing probe = purple,
+      // connected = green (filled), unconnected = red (hollow)
+      let fill, stroke, r;
+      if (isWiringSource) {
+        fill = '#f1c40f'; stroke = '#f39c12'; r = 6;
+      } else if (placingProbe) {
+        fill = '#9b59b6'; stroke = '#8e44ad'; r = 5;
+      } else if (isConnected) {
+        fill = '#2ecc71'; stroke = '#27ae60'; r = 4;
+      } else {
+        fill = 'none'; stroke = '#e74c3c'; r = 4;
+      }
+
       dots.push(
-        <circle
-          key={`${part.id}:${term}`}
-          cx={pos.x}
-          cy={pos.y}
-          r={isWiringSource ? 6 : placingProbe ? 5 : 4}
-          fill={isWiringSource ? '#f1c40f' : placingProbe ? '#9b59b6' : '#e74c3c'}
-          stroke={isWiringSource ? '#f39c12' : placingProbe ? '#8e44ad' : '#c0392b'}
-          strokeWidth={1}
-          style={{ cursor: 'pointer' }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onTerminalClick(part.id, term);
-          }}
-        />
+        <g key={`${part.id}:${term}`}>
+          <circle
+            cx={pos.x} cy={pos.y} r={r}
+            fill={fill} stroke={stroke} strokeWidth={1.5}
+            style={{ cursor: 'pointer' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onTerminalClick(part.id, term);
+            }}
+          />
+          {/* Terminal name tooltip — show on hover for unconnected terminals */}
+          {!isConnected && (
+            <text
+              x={pos.x} y={pos.y - 8}
+              textAnchor="middle" fill="#e74c3c" fontSize={8}
+              fontFamily="monospace" style={{ pointerEvents: 'none' }}
+            >{term}</text>
+          )}
+        </g>
       );
     }
   }
@@ -607,7 +634,7 @@ export function BoardCanvas({
           <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
           <WiringPreview wiringFrom={wiringFrom} mousePos={mousePos} parts={parts} />
           <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} />
-          <TerminalDots parts={parts} wiringFrom={wiringFrom} onTerminalClick={handleTerminalClick} placingProbe={placingProbe} />
+          <TerminalDots parts={parts} wires={wires} wiringFrom={wiringFrom} onTerminalClick={handleTerminalClick} placingProbe={placingProbe} />
         </svg>
 
         {/* Wokwi element layer — transformed to match SVG viewBox */}

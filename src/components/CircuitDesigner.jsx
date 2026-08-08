@@ -41,7 +41,7 @@ function snapToGrid(v) {
 export function CircuitDesigner({ project }) {
   const {
     parts, wires, powered, rev,
-    addPart, removePart, movePart, rotatePart, updateParams,
+    addPart, removePart, movePart, duplicatePart, rotatePart, updateParams,
     addWire, removeWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
     loadInferred, undo, redo, canUndo, canRedo,
@@ -272,7 +272,13 @@ export function CircuitDesigner({ project }) {
     if (e.key === 'r' && !e.ctrlKey && !e.metaKey && selectedPart) {
       rotatePart(selectedPart);
     }
-  }, [undo, redo, rotatePart, selectedPart]);
+    // Ctrl+D → duplicate selected part
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedPart) {
+      e.preventDefault();
+      const dup = duplicatePart(selectedPart);
+      if (dup) setSelectedPart(dup.id);
+    }
+  }, [undo, redo, rotatePart, duplicatePart, selectedPart]);
 
   let statusText = null;
   if (mode === 'simulate') statusText = 'SIMULATING — MCU driving pins';
