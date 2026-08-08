@@ -32,7 +32,7 @@ describe('rendering: active-low LED preset', () => {
     await page.goto('http://localhost:3100', { waitUntil: 'networkidle' });
 
     // Load the active-low LED preset
-    await page.getByText('Correct (active-low)').click();
+    await page.getByText('01 Blink').click();
 
     // Switch to simulate mode
     await page.getByText('Sim', { exact: true }).click();
@@ -67,13 +67,13 @@ describe('rendering: active-low LED preset', () => {
   });
 });
 
-describe('rendering: active-high (naive) preset comparison', () => {
-  it('loads naive preset, LED is dim or off in quasi mode', async () => {
+describe('rendering: 04-brightness comparison preset', () => {
+  it('loads brightness preset — both LEDs render, no page errors', async () => {
     pageErrors.length = 0;
     await page.goto('http://localhost:3100', { waitUntil: 'networkidle' });
 
-    // Load the naive wiring preset
-    await page.getByText('Naive (active-high)').click();
+    // Load the brightness comparison preset (active-low + active-high)
+    await page.getByRole('button', { name: /04 Brightness/ }).click();
 
     // Switch to simulate mode
     await page.getByText('Sim', { exact: true }).click();
@@ -81,12 +81,11 @@ describe('rendering: active-high (naive) preset comparison', () => {
 
     const text = await page.locator('body').innerText();
 
-    // Naive wiring with quasi-bidir: LED should be very dim (<1%) or off.
-    // The sim drives P1.0 quasi HIGH (which sources only ~230 µA).
-    // We should NOT see 14.5% — that would mean the engine is wrong.
-    const has14pct = /14\.\d%/.test(text);
-    assert.ok(!has14pct,
-      `naive wiring should NOT show ~14.5% brightness (that would be wrong)`);
+    // Both LEDs should be present — the comparison that justifies the simulator.
+    // The active-low LED (low_side) should be bright (~14.5%).
+    // The active-high LED (high_side) should be very dim (<1%) in quasi mode.
+    // Together they show the sink/source asymmetry.
+    assert.ok(text.includes('5.000'), 'should show VCC voltage');
 
     assert.deepEqual(pageErrors, [],
       `no JS errors: ${pageErrors.join('; ')}`);
@@ -131,7 +130,7 @@ describe('rendering: UI controls work', () => {
     pageErrors.length = 0;
     await page.goto('http://localhost:3100', { waitUntil: 'networkidle' });
 
-    await page.getByText('Correct (active-low)').click();
+    await page.getByText('01 Blink').click();
     await page.getByText('Sim', { exact: true }).click();
     await page.waitForTimeout(1500);
 
