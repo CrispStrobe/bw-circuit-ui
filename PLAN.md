@@ -44,21 +44,21 @@ No fabricated numbers, no placeholders that survive past the commit they appear 
 
 ## Phases (in order — each committed before the next starts)
 
-### Phase 1: dev harness + static render
+### Phase 1: dev harness + static render ✓
 - `npm init`, install wokwi-elements + @lit/react + react 18 + a dev bundler (vite)
 - Hand-written netlist (the active-low LED circuit from bw-board's tests)
 - Render parts on an SVG canvas with wokwi-elements, draw wires between terminals
 - No interaction, no engine — just a picture
 - **Commit checkpoint**
 
-### Phase 2: wire to real Board
+### Phase 2: wire to real Board ✓
 - Import `BoardImpl` from `../bw-board/src/index.js` (relative path, no npm publish)
 - Drive with the scripted-MCU fixture (same trace as bw-board's led-active-low test)
 - LED brightness on screen comes from `board.ledBrightness()` — not invented
 - Node voltages shown as labels, updated from `board.nodeVoltage()`
 - **Commit checkpoint**
 
-### Phase 3: interaction
+### Phase 3: interaction ✓
 - Drag parts from palette onto canvas
 - Draw wires by clicking terminals
 - Delete parts/wires
@@ -68,14 +68,14 @@ No fabricated numbers, no placeholders that survive past the commit they appear 
 - Buzzer tone → Web Audio oscillator from `board.buzzerTone()`
 - **Commit checkpoint**
 
-### Phase 4: inferNetlist (boundary C)
+### Phase 4: inferNetlist (boundary C) ✓
 - Import `inferNetlist` from bw-board
 - Board starts populated from `project.stc.pins`
 - Reverse warnings shown in UI as teaching ("pin P1.2 is driven but nothing is wired to it")
 - User can redraw/override the inferred circuit
 - **Commit checkpoint**
 
-### Phase 5: multimeter
+### Phase 5: multimeter ✓
 - Two probes, placed on nodes
 - V / A / Ω modes
 - Resistance returns `'requires-power-off'` on a live board → UI prompts user to
