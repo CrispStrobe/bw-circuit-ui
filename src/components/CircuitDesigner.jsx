@@ -358,6 +358,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
             if (p) setSelectedPart(p.id);
           }}
           circuit={circuit}
+          warnings={warnings}
         />
 
         {/* Engine warnings — teaching feedback */}

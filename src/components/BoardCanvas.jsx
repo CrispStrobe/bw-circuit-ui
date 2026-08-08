@@ -487,7 +487,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onDropPart,
+  onDuplicatePart, onRotatePart, onDropPart, warnings,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -822,6 +822,24 @@ export function BoardCanvas({
             );
           })()}
           <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} />
+
+          {/* Inline warning indicators on parts */}
+          {warnings && warnings.map((w, i) => {
+            if (!w.partId) return null;
+            const part = parts.find(p => p.id === w.partId);
+            if (!part) return null;
+            const color = w.severity === 'danger' ? '#e74c3c' : '#f39c12';
+            return (
+              <g key={`warn-${i}`}>
+                <circle cx={part.x + 20} cy={part.y - 25} r={8}
+                  fill={color} fillOpacity={0.9} />
+                <text x={part.x + 20} y={part.y - 21} textAnchor="middle"
+                  fill="#fff" fontSize={12} fontWeight="bold"
+                  fontFamily="monospace" style={{ pointerEvents: 'none' }}>!</text>
+                <title>{w.message}</title>
+              </g>
+            );
+          })}
           <TerminalDots parts={parts} wires={wires} wiringFrom={wiringFrom}
                 onTerminalClick={handleTerminalClick}
                 onTerminalDown={handleTerminalDown}
