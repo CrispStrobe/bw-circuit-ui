@@ -27,7 +27,19 @@ export function checkWiring(declaredPins, wiredParts, wiredNets) {
  */
 export function inferCircuit(stc) {
   const { inferNetlist } = getEngine();
-  const { parts, nets, notes } = inferNetlist(stc);
+
+  // Normalize pin directions: "pwm" is advisory — the netlist is the same
+  // as an output pin (VCC → R → LED → pin for activeLow, pin → R → LED → GND otherwise).
+  const normalizedStc = {
+    ...stc,
+    pins: (stc.pins || []).map(pin =>
+      pin.direction === 'pwm'
+        ? { ...pin, direction: 'output' }
+        : pin
+    ),
+  };
+
+  const { parts, nets, notes } = inferNetlist(normalizedStc);
 
   // Group non-fixed parts by the pin they belong to.
   // Convention from inferNetlist: R_<name>, LED_<name>, POT_<name>, etc.

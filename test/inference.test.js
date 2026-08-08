@@ -174,6 +174,30 @@ describe('inferCircuit', () => {
     assert.ok(parts.length >= 8, `should have 8+ parts, got ${parts.length}`);
     assert.ok(notes.length === 0, `should have no inference notes, got: ${notes.join(', ')}`);
   });
+
+  it('treats pwm direction as output (06-dimmer)', () => {
+    const { parts, nets, notes } = inferCircuit({
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'pot', port: 1, bit: 2, direction: 'analog', activeLow: false },
+        { name: 'lamp', port: 1, bit: 3, direction: 'pwm', activeLow: true },
+      ],
+    });
+
+    // PWM pin should produce the same parts as an active-low output:
+    // VCC → R → LED → pin
+    const ledPart = parts.find(p => p.kind === 'led');
+    assert.ok(ledPart, 'should have an LED for the PWM pin');
+    const resPart = parts.find(p => p.kind === 'resistor');
+    assert.ok(resPart, 'should have a resistor for the PWM pin');
+    const potPart = parts.find(p => p.kind === 'potentiometer');
+    assert.ok(potPart, 'should have a potentiometer for the analog pin');
+
+    // No "Unknown direction" warnings
+    const unknownWarnings = notes.filter(n => n.includes('Unknown direction'));
+    assert.equal(unknownWarnings.length, 0,
+      `should not warn about pwm direction: ${unknownWarnings.join('; ')}`);
+  });
 });
 
 describe('checkWiring — teaching notes', () => {

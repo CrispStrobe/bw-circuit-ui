@@ -58,6 +58,17 @@ const EXAMPLES = [
       ],
     },
   },
+  {
+    name: '06 Dimmer',
+    desc: 'PWM LED + pot',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'pot', port: 1, bit: 2, direction: 'analog', activeLow: false },
+        { name: 'lamp', port: 1, bit: 3, direction: 'pwm', activeLow: true },
+      ],
+    },
+  },
 ];
 
 // The comparison that justifies the whole simulator:
