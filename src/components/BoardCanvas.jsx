@@ -485,6 +485,28 @@ export function BoardCanvas({
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
 
+          {/* Empty canvas hint */}
+          {parts.length === 0 && (
+            <g>
+              <text x={CANVAS_W / 2} y={CANVAS_H / 2 - 30} textAnchor="middle"
+                fill="#3498db" fontSize={16} fontFamily="monospace" fontWeight="bold">
+                Circuit Designer
+              </text>
+              <text x={CANVAS_W / 2} y={CANVAS_H / 2} textAnchor="middle"
+                fill="#7f8c8d" fontSize={12} fontFamily="monospace">
+                Add parts from the palette, or load a preset
+              </text>
+              <text x={CANVAS_W / 2} y={CANVAS_H / 2 + 20} textAnchor="middle"
+                fill="#7f8c8d" fontSize={11} fontFamily="monospace">
+                Try "Correct (active-low)" vs "Naive (active-high)"
+              </text>
+              <text x={CANVAS_W / 2} y={CANVAS_H / 2 + 40} textAnchor="middle"
+                fill="#7f8c8d" fontSize={11} fontFamily="monospace">
+                to see why wiring matters
+              </text>
+            </g>
+          )}
+
           <Wires wires={wires} parts={parts}
             selectedWire={selectedWire} onSelectWire={onSelectWire} />
           <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />

@@ -6,6 +6,15 @@
  *     Pin declarations from the project. The circuit is re-inferred
  *     whenever this prop changes (shallow compare on pins array).
  *
+ * Future props (boundary A × D seam — not yet implemented):
+ *   debugState?: { halted: boolean, skewNs?: bigint }
+ *     When the debugger halts the program, advanceTo stops being called
+ *     and the board freezes coherently. setControl stays live (user intent,
+ *     not physics). On resume, time continues from where it stopped — no
+ *     wall-clock catch-up. skewNs > 0 means a live target whose hardware
+ *     kept moving while the program was halted; the panel must render that
+ *     differently from a genuinely frozen simulation.
+ *
  * This component is self-contained: it manages its own board,
  * simulation, and state. No Vite-specific imports.
  *
