@@ -44,7 +44,9 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, board: externalBoard }) {
+export function CircuitDesigner({ project, stc, board: externalBoard }) {
+  // Accept both `project` and `stc` props (backward compat with lite integration)
+  const projectData = project || stc;
   const {
     parts, wires, powered, rev,
     addPart, removePart, movePart, duplicatePart, rotatePart, updateParams,
@@ -85,22 +87,22 @@ export function CircuitDesigner({ project, board: externalBoard }) {
   // Re-infer when the project's pins change.
   const prevPinsRef = useRef(null);
   useEffect(() => {
-    const pins = project?.pins;
+    const pins = projectData?.pins;
     // Shallow compare: skip if same array reference
     if (pins === prevPinsRef.current) return;
     prevPinsRef.current = pins;
 
-    const stc = pins?.length > 0
-      ? project
+    const inferStc = pins?.length > 0
+      ? projectData
       : {
           device: 'STC12C5A60S2',
           clock: 11059200,
           pins: [{ name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true }],
         };
 
-    const { parts: ip, nets: in_ } = inferCircuit(stc);
+    const { parts: ip, nets: in_ } = inferCircuit(inferStc);
     loadInferred(ip, in_);
-  }, [project, loadInferred]);
+  }, [projectData, loadInferred]);
 
   // ── Buzzer audio ────────────────────────────────────────────────
   // Direct import (no dynamic import — the module guards against
