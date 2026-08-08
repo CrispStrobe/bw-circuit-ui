@@ -12,6 +12,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer } from '../wokwi-wrappers/index.js';
+import { partLabel } from '../model/format.js';
 
 const CANVAS_W = 700;
 const CANVAS_H = 500;
@@ -141,7 +142,7 @@ function TerminalDots({ parts, wiringFrom, onTerminalClick, placingProbe }) {
 
 // ── Wires ────────────────────────────────────────────────────────
 
-function Wires({ wires, parts, selectedWire, onSelectWire }) {
+function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNet }) {
   // Group wires by net to find all terminals in each net
   const netTerminals = new Map();
   for (const w of wires) {
@@ -160,6 +161,9 @@ function Wires({ wires, parts, selectedWire, onSelectWire }) {
     const b = terminalPos(toPart, wire.to.terminal);
     const mid = { x: b.x, y: a.y };
     const isSelected = selectedWire === wire.id;
+    const isHovered = hoveredNet && hoveredNet === wire.netId;
+    const wireColor = isSelected ? '#f1c40f' : isHovered ? '#3498db' : '#2ecc71';
+    const wireWidth = isSelected ? 3 : isHovered ? 2.5 : 2;
 
     return (
       <g key={wire.id}>
@@ -171,11 +175,13 @@ function Wires({ wires, parts, selectedWire, onSelectWire }) {
           fill="none"
           style={{ cursor: 'pointer' }}
           onClick={(e) => { e.stopPropagation(); onSelectWire(wire.id); }}
+          onMouseEnter={() => onHoverNet(wire.netId)}
+          onMouseLeave={() => onHoverNet(null)}
         />
         <path
           d={`M ${a.x} ${a.y} L ${mid.x} ${mid.y} L ${b.x} ${b.y}`}
-          stroke={isSelected ? '#f1c40f' : '#2ecc71'}
-          strokeWidth={isSelected ? 3 : 2}
+          stroke={wireColor}
+          strokeWidth={wireWidth}
           fill="none"
           strokeLinejoin="round"
         />
@@ -243,7 +249,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
             {...dragProps()}>
             <WokwiResistor value={String(params.ohms)} />
             <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
-              {id.split('_')[0]} ({params.ohms}Ω)
+              {partLabel(part)}
             </div>
           </div>
         );
@@ -368,6 +374,7 @@ export function BoardCanvas({
   const [wiringFrom, setWiringFrom] = useState(null);
   const [mousePos, setMousePos] = useState(null);
   const [dragging, setDragging] = useState(null);
+  const [hoveredNet, setHoveredNet] = useState(null);
 
   const handleTerminalClick = useCallback((partId, terminal) => {
     // If placing a multimeter probe, route to probe handler
@@ -508,7 +515,8 @@ export function BoardCanvas({
           )}
 
           <Wires wires={wires} parts={parts}
-            selectedWire={selectedWire} onSelectWire={onSelectWire} />
+            selectedWire={selectedWire} onSelectWire={onSelectWire}
+            hoveredNet={hoveredNet} onHoverNet={setHoveredNet} />
           <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
           <WiringPreview wiringFrom={wiringFrom} mousePos={mousePos} parts={parts} />
           <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} />
