@@ -1,16 +1,18 @@
 /**
  * bw-circuit-ui — importable entry point.
  *
- * Usage:
+ * Standalone (demo mode):
  *   import { setEngine, CircuitDesigner } from 'bw-circuit-ui';
- *   import { BoardImpl } from './lib/bw-board/board.js';
- *   import { inferNetlist, checkWiring } from './lib/bw-board/infer-netlist.js';
- *
  *   setEngine({ BoardImpl, inferNetlist, checkWiring });
  *   <CircuitDesigner project={{ pins: [...] }} />
  *
- * The host decides where the engine comes from. This package never
- * imports bw-board by path.
+ * With live emulator:
+ *   const board = new BoardImpl(5.0);
+ *   const adapter = createEmu8051Adapter(emulator, board);
+ *   board.setNetlist(parts, nets);
+ *   <CircuitDesigner project={{ pins: [...] }} board={board} />
+ *
+ * The host decides where the engine comes from.
  */
 
 export { setEngine } from './engine.js';

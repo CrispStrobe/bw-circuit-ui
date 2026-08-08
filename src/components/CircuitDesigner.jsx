@@ -6,7 +6,15 @@
  *     Pin declarations from the project. The circuit is re-inferred
  *     whenever this prop changes (shallow compare on pins array).
  *
- * Future props (boundary A × D seam — not yet implemented):
+ *   board?: BoardImpl
+ *     Optional external board instance. When provided, the component
+ *     uses it instead of creating its own. The host connects the
+ *     emulator adapter to this board; the component subscribes to
+ *     onChange for re-rendering. The scripted simulation loop is
+ *     skipped — the emulator drives pin events.
+ *     When omitted, the component creates its own board and runs
+ *     a scripted demo simulation.
+ *
  *   debugState?: { halted: boolean, skewNs?: bigint }
  *     When the debugger halts the program, advanceTo stops being called
  *     and the board freezes coherently. setControl stays live (user intent,
@@ -14,9 +22,6 @@
  *     wall-clock catch-up. skewNs > 0 means a live target whose hardware
  *     kept moving while the program was halted; the panel must render that
  *     differently from a genuinely frozen simulation.
- *
- * This component is self-contained: it manages its own board,
- * simulation, and state. No Vite-specific imports.
  *
  * Every electrical value comes from bw-board. Nothing is fabricated.
  */
@@ -28,17 +33,18 @@ import { ControlPanel } from './ControlPanel.jsx';
 import { InferPanel } from './InferPanel.jsx';
 import { Multimeter } from './Multimeter.jsx';
 import { useCircuit } from '../hooks/useCircuit.js';
+import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 
 const MS = 1_000_000n;
-const GRID = 20; // snap-to-grid size
+const GRID = 20;
 
 function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project }) {
+export function CircuitDesigner({ project, board: externalBoard }) {
   const {
     parts, wires, powered, rev,
     addPart, removePart, movePart, duplicatePart, rotatePart, updateParams,
@@ -49,9 +55,15 @@ export function CircuitDesigner({ project }) {
     circuit,
   } = useCircuit(5.0);
 
+  // The active board: external (from host/emulator) or internal (from circuit model)
+  const activeBoard = externalBoard || circuit.board;
+
+  // Subscribe to board changes for automatic re-rendering
+  const { renderState, refresh } = useBoard(activeBoard);
+
   const [selectedPart, setSelectedPart] = useState(null);
   const [selectedWire, setSelectedWire] = useState(null);
-  const [mode, setMode] = useState('build');
+  const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
 
   // Multimeter
   const [placingProbe, setPlacingProbe] = useState(null);
@@ -112,12 +124,16 @@ export function CircuitDesigner({ project }) {
   }, [mode]);
 
   // ── Simulation loop ─────────────────────────────────────────────
-  // Drives ALL output pins found on the MCU, not just P1.0.
-  // Output pins blink at 2 Hz; input/analog pins are left alone.
+  // Only runs when no external board is provided (demo mode).
+  // When an external board is present, the emulator drives pin events
+  // and the UI re-renders via onChange subscription.
   const simInterval = useRef(null);
   const simStep = useRef(0);
 
   useEffect(() => {
+    // Skip scripted sim when external board drives the simulation
+    if (externalBoard) return;
+
     if (mode !== 'simulate') {
       if (simInterval.current) clearInterval(simInterval.current);
       return;
@@ -197,9 +213,16 @@ export function CircuitDesigner({ project }) {
     movePart(partId, snapToGrid(x), snapToGrid(y));
   }, [movePart]);
 
-  // Node voltages
+  // Node voltages and warnings from getRenderState (if available)
   const nodeVoltages = {};
-  if (rev >= 0) {
+  const warnings = [];
+  if (renderState) {
+    for (const { net, voltage } of renderState.nodeVoltages || []) {
+      nodeVoltages[net] = voltage;
+    }
+    warnings.push(...(renderState.warnings || []));
+  } else if (rev >= 0) {
+    // Fallback for boards without getRenderState
     const seenNets = new Set();
     for (const w of wires) {
       if (!seenNets.has(w.netId)) {
@@ -281,7 +304,8 @@ export function CircuitDesigner({ project }) {
   }, [undo, redo, rotatePart, duplicatePart, selectedPart]);
 
   let statusText = null;
-  if (mode === 'simulate') statusText = 'SIMULATING — MCU driving pins';
+  if (externalBoard) statusText = 'LIVE — emulator driving pins';
+  else if (mode === 'simulate') statusText = 'SIMULATING — scripted MCU demo';
   else if (placingProbe) statusText = `Placing probe ${placingProbe} — click a terminal`;
 
   return (
@@ -324,6 +348,28 @@ export function CircuitDesigner({ project }) {
           onTerminalClickForProbe={handleTerminalClickForProbe}
           circuit={circuit}
         />
+
+        {/* Engine warnings — teaching feedback */}
+        {warnings.length > 0 && (
+          <div style={{
+            marginTop: '8px',
+            padding: '8px',
+            background: '#1a1a0e',
+            border: '1px solid #e67e22',
+            borderRadius: '4px',
+            fontFamily: 'monospace',
+            fontSize: '10px',
+          }}>
+            {warnings.map((w, i) => (
+              <div key={i} style={{
+                color: w.severity === 'danger' ? '#e74c3c' : '#f39c12',
+                marginBottom: '2px',
+              }}>
+                {w.severity === 'danger' ? '⚠' : '!'} {w.message}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
