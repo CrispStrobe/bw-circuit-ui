@@ -351,6 +351,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
           statusText={statusText}
           placingProbe={placingProbe}
           onTerminalClickForProbe={handleTerminalClickForProbe}
+          onDuplicatePart={(id) => { const dup = duplicatePart(id); if (dup) setSelectedPart(dup.id); }}
+          onRotatePart={rotatePart}
+          onDropPart={(kind, params, x, y) => {
+            const p = addPart(kind, params, snapToGrid(x), snapToGrid(y));
+            if (p) setSelectedPart(p.id);
+          }}
           circuit={circuit}
         />
 

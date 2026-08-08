@@ -16,6 +16,7 @@ import { partLabel } from '../model/format.js';
 import { routeWire, partBBoxes } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
 import { PartTooltip } from './PartTooltip.jsx';
+import { ContextMenu } from './ContextMenu.jsx';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
@@ -144,7 +145,7 @@ function SvgParts({ parts, selectedPart, onSelectPart }) {
 
 // ── Terminal dots (clickable for wiring) ─────────────────────────
 
-function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, placingProbe }) {
+function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDown, onTerminalUp, placingProbe }) {
   // Build a set of connected terminals for fast lookup
   const connected = new Set();
   for (const w of wires) {
@@ -178,10 +179,20 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, placingProbe 
           <circle
             cx={pos.x} cy={pos.y} r={r}
             fill={fill} stroke={stroke} strokeWidth={1.5}
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: 'crosshair' }}
+            onMouseDown={(e) => onTerminalDown(part.id, term, e)}
+            onMouseUp={() => onTerminalUp(part.id, term)}
             onClick={(e) => {
               e.stopPropagation();
               onTerminalClick(part.id, term);
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              onTerminalDown(part.id, term);
+            }}
+            onTouchEnd={(e) => {
+              e.stopPropagation();
+              onTerminalUp(part.id, term);
             }}
           />
           {/* Terminal name tooltip — show on hover for unconnected terminals */}
@@ -463,6 +474,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
+  onDuplicatePart, onRotatePart, onDropPart,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -471,7 +483,8 @@ export function BoardCanvas({
   const [hoveredNet, setHoveredNet] = useState(null);
   const [hoveredPart, setHoveredPart] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
-  const [snapTarget, setSnapTarget] = useState(null); // { snapX, snapY, autoWire }
+  const [snapTarget, setSnapTarget] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, type }
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
@@ -490,16 +503,38 @@ export function BoardCanvas({
     };
   }, [zoom, pan]);
 
-  const handleTerminalClick = useCallback((partId, terminal) => {
+  // Terminal interaction: drag to wire (TinkerCAD-style).
+  // Mousedown/touchstart on a terminal starts wiring.
+  // Mouseup/touchend on another terminal completes it.
+  // Also supports click-click for accessibility.
+  const handleTerminalDown = useCallback((partId, terminal, e) => {
+    if (e) e.stopPropagation();
+
     // If placing a multimeter probe, route to probe handler
     if (placingProbe && onTerminalClickForProbe) {
       onTerminalClickForProbe(partId, terminal);
       return;
     }
 
-    if (!wiringFrom) {
-      setWiringFrom({ part: partId, terminal });
-    } else {
+    setWiringFrom({ part: partId, terminal });
+  }, [placingProbe, onTerminalClickForProbe]);
+
+  const handleTerminalUp = useCallback((partId, terminal) => {
+    if (!wiringFrom) return;
+    if (wiringFrom.part !== partId || wiringFrom.terminal !== terminal) {
+      onAddWire(wiringFrom.part, wiringFrom.terminal, partId, terminal);
+    }
+    setWiringFrom(null);
+    setMousePos(null);
+  }, [wiringFrom, onAddWire]);
+
+  const handleTerminalClick = useCallback((partId, terminal) => {
+    // Click-click fallback: if already wiring, complete; if not, start
+    if (placingProbe && onTerminalClickForProbe) {
+      onTerminalClickForProbe(partId, terminal);
+      return;
+    }
+    if (wiringFrom) {
       if (wiringFrom.part !== partId || wiringFrom.terminal !== terminal) {
         onAddWire(wiringFrom.part, wiringFrom.terminal, partId, terminal);
       }
@@ -658,6 +693,47 @@ export function BoardCanvas({
         onMouseUp={handleDragEnd}
         onMouseDown={handleMouseDown}
         onWheel={handleWheel}
+        onTouchMove={(e) => {
+          if (e.touches.length === 1 && (dragging || wiringFrom)) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            // Reuse the mouse handler with a synthetic event shape
+            handleSvgMouseMove({
+              clientX: touch.clientX,
+              clientY: touch.clientY,
+              currentTarget: e.currentTarget,
+            });
+          }
+        }}
+        onTouchEnd={(e) => {
+          if (dragging) handleDragEnd();
+          if (wiringFrom && e.changedTouches.length === 1) {
+            // If touch ended not on a terminal, cancel wiring
+            setWiringFrom(null);
+            setMousePos(null);
+          }
+        }}
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const data = e.dataTransfer.getData('application/circuit-part');
+          if (data && onDropPart) {
+            const { kind, params } = JSON.parse(data);
+            const { x, y } = screenToCanvas(e.clientX, e.clientY, e.currentTarget);
+            onDropPart(kind, params, x, y);
+          }
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          // Right-click context menu
+          if (selectedPart || selectedWire) {
+            setContextMenu({
+              x: e.clientX,
+              y: e.clientY,
+              type: selectedPart ? 'part' : 'wire',
+            });
+          }
+        }}
       >
         <svg
           width="100%"
@@ -717,7 +793,11 @@ export function BoardCanvas({
             );
           })()}
           <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} />
-          <TerminalDots parts={parts} wires={wires} wiringFrom={wiringFrom} onTerminalClick={handleTerminalClick} placingProbe={placingProbe} />
+          <TerminalDots parts={parts} wires={wires} wiringFrom={wiringFrom}
+                onTerminalClick={handleTerminalClick}
+                onTerminalDown={handleTerminalDown}
+                onTerminalUp={handleTerminalUp}
+                placingProbe={placingProbe} />
         </svg>
 
         {/* Wokwi element layer — transformed to match SVG viewBox */}
@@ -756,6 +836,27 @@ export function BoardCanvas({
             y={hoverPos.y}
           />
         )}
+
+        {/* Context menu (right-click / long-press) */}
+        <ContextMenu
+          x={contextMenu?.x}
+          y={contextMenu?.y}
+          type={contextMenu?.type}
+          onClose={() => setContextMenu(null)}
+          onDelete={() => {
+            if (selectedWire) { onRemoveWire(selectedWire); onSelectWire(null); }
+            else if (selectedPart) { onRemovePart(selectedPart); onSelectPart(null); }
+            setContextMenu(null);
+          }}
+          onDuplicate={() => {
+            if (selectedPart && onDuplicatePart) onDuplicatePart(selectedPart);
+            setContextMenu(null);
+          }}
+          onRotate={() => {
+            if (selectedPart && onRotatePart) onRotatePart(selectedPart);
+            setContextMenu(null);
+          }}
+        />
       </div>
     </div>
   );
