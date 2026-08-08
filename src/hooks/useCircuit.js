@@ -80,6 +80,36 @@ export function useCircuit(vcc = 5.0) {
     bump();
   }, [circuit, bump]);
 
+  /**
+   * Load an inferred circuit (boundary C).
+   * Replaces all parts and wires with the inferred ones.
+   */
+  const loadInferred = useCallback((parts, nets) => {
+    // Clear existing
+    circuit.parts.length = 0;
+    circuit.wires.length = 0;
+
+    // Add inferred parts (they already have x, y from inference.js)
+    for (const p of parts) {
+      circuit.parts.push({ ...p });
+    }
+
+    // Convert nets to wires
+    for (const net of nets) {
+      for (let i = 1; i < net.terminals.length; i++) {
+        circuit.wires.push({
+          id: `inferred_${net.id}_${i}`,
+          netId: net.id,
+          from: net.terminals[0],
+          to: net.terminals[i],
+        });
+      }
+    }
+
+    circuit._syncNetlist();
+    bump();
+  }, [circuit, bump]);
+
   // Read-only accessors — these read from the engine, never fabricate.
   const ledBrightness = useCallback((partId) => {
     return circuit.ledBrightness(partId);
@@ -111,6 +141,7 @@ export function useCircuit(vcc = 5.0) {
     advanceTo,
     advanceBy,
     setPower,
+    loadInferred,
 
     // Instruments (from engine)
     ledBrightness,

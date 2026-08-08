@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { BoardCanvas } from './components/BoardCanvas.jsx';
 import { PartPalette } from './components/PartPalette.jsx';
 import { ControlPanel } from './components/ControlPanel.jsx';
+import { InferPanel } from './components/InferPanel.jsx';
+import { Multimeter } from './components/Multimeter.jsx';
 import { useCircuit } from './hooks/useCircuit.js';
 
 const MS = 1_000_000n;
@@ -13,6 +15,7 @@ function App() {
     addPart, removePart, movePart,
     addWire, removeWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
+    loadInferred,
     ledBrightness, buzzerTone, nodeVoltage,
     circuit,
   } = useCircuit(5.0);
@@ -21,7 +24,7 @@ function App() {
   const [selectedWire, setSelectedWire] = useState(null);
   const [mode, setMode] = useState('build'); // 'build' or 'simulate'
 
-  // In simulate mode, run a simple scripted MCU loop
+  // Simulation loop
   const simInterval = useRef(null);
   const simStep = useRef(0);
 
@@ -31,29 +34,25 @@ function App() {
       return;
     }
 
-    // Find MCU part
     const mcu = parts.find(p => p.kind === 'mcu');
     if (!mcu) return;
 
-    // Initial pin setup: all quasi HIGH
     for (const pin of mcu.terminals) {
       setPin(pin, 'quasi', true);
     }
     advanceTo(0n);
     simStep.current = 0;
 
-    // Run simulation at 20 Hz (50ms steps)
     simInterval.current = setInterval(() => {
       simStep.current++;
       const step = simStep.current;
 
-      // Blink first pin (P1.0 if it exists) at 2 Hz
       if (mcu.terminals.includes('P1.0')) {
-        const on = (step % 20) < 10; // 500ms on, 500ms off at 20Hz update
-        setPin('P1.0', 'quasi', on); // quasi HIGH = LED off (active-low)
+        const on = (step % 20) < 10;
+        setPin('P1.0', 'quasi', on);
       }
 
-      advanceBy(50n * MS); // advance 50ms per tick
+      advanceBy(50n * MS);
     }, 50);
 
     return () => {
@@ -61,36 +60,29 @@ function App() {
     };
   }, [mode]);
 
-  // Place new part near center with some offset
+  // Place new part near center
   const partCountRef = useRef(0);
   const handleAddPart = useCallback((kind, params) => {
     const offset = partCountRef.current * 30;
     partCountRef.current++;
-    const x = 200 + (offset % 300);
-    const y = 150 + Math.floor(offset / 300) * 80;
-    addPart(kind, params, x, y);
+    addPart(kind, params, 200 + (offset % 300), 150 + Math.floor(offset / 300) * 80);
   }, [addPart]);
 
-  // Collect node voltages for display
+  // Node voltages for display
   const nodeVoltages = {};
-  // rev is referenced to ensure re-render
   if (rev >= 0) {
     const seenNets = new Set();
     for (const w of wires) {
       if (!seenNets.has(w.netId)) {
         seenNets.add(w.netId);
-        try {
-          nodeVoltages[w.netId] = nodeVoltage(w.netId);
-        } catch {
-          // net might not exist in engine yet
-        }
+        try { nodeVoltages[w.netId] = nodeVoltage(w.netId); } catch {}
       }
     }
   }
 
   const handleControlChange = useCallback((partId, value) => {
     setControl(partId, value);
-    advanceBy(1n * MS); // nudge time forward so the engine updates
+    advanceBy(1n * MS);
   }, [setControl, advanceBy]);
 
   const handleButtonDown = useCallback((partId) => {
@@ -103,6 +95,14 @@ function App() {
     advanceBy(1n * MS);
   }, [setControl, advanceBy]);
 
+  const handleLoadCircuit = useCallback((inferredParts, inferredNets) => {
+    loadInferred(inferredParts, inferredNets);
+    setSelectedPart(null);
+    setSelectedWire(null);
+    setMode('build');
+    partCountRef.current = 0;
+  }, [loadInferred]);
+
   return (
     <div style={{
       display: 'flex',
@@ -111,8 +111,13 @@ function App() {
       minHeight: '100vh',
       alignItems: 'flex-start',
     }}>
-      <PartPalette onAddPart={handleAddPart} />
+      {/* Left column: palette + infer */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <PartPalette onAddPart={handleAddPart} />
+        <InferPanel onLoadCircuit={handleLoadCircuit} />
+      </div>
 
+      {/* Center: canvas */}
       <div style={{ flex: 1 }}>
         <BoardCanvas
           parts={parts}
@@ -135,17 +140,25 @@ function App() {
         />
       </div>
 
-      <ControlPanel
-        mode={mode}
-        onModeChange={setMode}
-        powered={powered}
-        onPowerToggle={() => setPower(!powered)}
-        selectedPart={selectedPart}
-        selectedWire={selectedWire}
-        parts={parts}
-        onRemovePart={(id) => { removePart(id); setSelectedPart(null); }}
-        onRemoveWire={(id) => { removeWire(id); setSelectedWire(null); }}
-      />
+      {/* Right column: controls + multimeter */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <ControlPanel
+          mode={mode}
+          onModeChange={setMode}
+          powered={powered}
+          onPowerToggle={() => setPower(!powered)}
+          selectedPart={selectedPart}
+          selectedWire={selectedWire}
+          parts={parts}
+          onRemovePart={(id) => { removePart(id); setSelectedPart(null); }}
+          onRemoveWire={(id) => { removeWire(id); setSelectedWire(null); }}
+        />
+        <Multimeter
+          circuit={circuit}
+          wires={wires}
+          parts={parts}
+        />
+      </div>
     </div>
   );
 }
