@@ -75,7 +75,10 @@ function terminalPos(part, terminal) {
 
 function fmtV(v) {
   if (v == null || typeof v !== 'number') return '';
-  return v.toFixed(3) + ' V';
+  if (Math.abs(v) < 0.01) return '0V';
+  if (Math.abs(v - Math.round(v)) < 0.01) return Math.round(v) + 'V';
+  if (Math.abs(v) < 1) return (v * 1000).toFixed(0) + 'mV';
+  return v.toFixed(1) + 'V';
 }
 
 // ── SVG part rendering ───────────────────────────────────────────
@@ -146,60 +149,75 @@ function SvgParts({ parts, selectedPart, onSelectPart }) {
 // ── Terminal dots (clickable for wiring) ─────────────────────────
 
 function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDown, onTerminalUp, placingProbe }) {
-  // Build a set of connected terminals for fast lookup
   const connected = new Set();
   for (const w of wires) {
     connected.add(`${w.from.part}:${w.from.terminal}`);
     connected.add(`${w.to.part}:${w.to.terminal}`);
   }
 
+  // When wiring, all potential targets should glow
+  const isWiring = !!wiringFrom;
+
   const dots = [];
   for (const part of parts) {
     for (const term of part.terminals) {
       const pos = terminalPos(part, term);
-      const isWiringSource = wiringFrom &&
+      const isSource = wiringFrom &&
         wiringFrom.part === part.id && wiringFrom.terminal === term;
       const isConnected = connected.has(`${part.id}:${term}`);
+      const isSamePart = wiringFrom && wiringFrom.part === part.id;
+      const isValidTarget = isWiring && !isSource && !isSamePart;
 
-      // Colors: wiring source = gold, placing probe = purple,
-      // connected = green (filled), unconnected = red (hollow)
-      let fill, stroke, r;
-      if (isWiringSource) {
-        fill = '#f1c40f'; stroke = '#f39c12'; r = 6;
+      // Sizes: large enough to tap on a tablet (minimum 10px radius)
+      let fill, stroke, r, opacity;
+      if (isSource) {
+        fill = '#f1c40f'; stroke = '#f39c12'; r = 12; opacity = 1;
+      } else if (isValidTarget) {
+        // Pulsing green glow — "you can connect here"
+        fill = '#2ecc71'; stroke = '#27ae60'; r = 10; opacity = 0.8;
       } else if (placingProbe) {
-        fill = '#9b59b6'; stroke = '#8e44ad'; r = 5;
+        fill = '#9b59b6'; stroke = '#8e44ad'; r = 10; opacity = 0.7;
       } else if (isConnected) {
-        fill = '#2ecc71'; stroke = '#27ae60'; r = 4;
+        fill = '#2ecc71'; stroke = '#27ae60'; r = 6; opacity = 0.8;
       } else {
-        fill = 'none'; stroke = '#e74c3c'; r = 4;
+        // Unconnected — hollow, clearly visible
+        fill = '#16213e'; stroke = '#e74c3c'; r = 8; opacity = 1;
       }
 
       dots.push(
         <g key={`${part.id}:${term}`}>
+          {/* Invisible large hit area for touch */}
           <circle
-            cx={pos.x} cy={pos.y} r={r}
-            fill={fill} stroke={stroke} strokeWidth={1.5}
+            cx={pos.x} cy={pos.y} r={Math.max(r, 16)}
+            fill="transparent"
             style={{ cursor: 'crosshair' }}
             onMouseDown={(e) => onTerminalDown(part.id, term, e)}
             onMouseUp={() => onTerminalUp(part.id, term)}
-            onClick={(e) => {
-              e.stopPropagation();
-              onTerminalClick(part.id, term);
-            }}
-            onTouchStart={(e) => {
-              e.stopPropagation();
-              onTerminalDown(part.id, term);
-            }}
-            onTouchEnd={(e) => {
-              e.stopPropagation();
-              onTerminalUp(part.id, term);
-            }}
+            onClick={(e) => { e.stopPropagation(); onTerminalClick(part.id, term); }}
+            onTouchStart={(e) => { e.stopPropagation(); onTerminalDown(part.id, term); }}
+            onTouchEnd={(e) => { e.stopPropagation(); onTerminalUp(part.id, term); }}
           />
-          {/* Terminal name tooltip — show on hover for unconnected terminals */}
+          {/* Visible dot */}
+          <circle
+            cx={pos.x} cy={pos.y} r={r}
+            fill={fill} stroke={stroke} strokeWidth={2}
+            opacity={opacity}
+            style={{ pointerEvents: 'none' }}
+          />
+          {/* Pulsing ring for valid wiring targets */}
+          {isValidTarget && (
+            <circle
+              cx={pos.x} cy={pos.y} r={14}
+              fill="none" stroke="#2ecc71" strokeWidth={1.5}
+              opacity={0.5} strokeDasharray="3,3"
+              style={{ pointerEvents: 'none' }}
+            />
+          )}
+          {/* Terminal label — always show for unconnected, on hover otherwise */}
           {!isConnected && (
             <text
-              x={pos.x} y={pos.y - 8}
-              textAnchor="middle" fill="#e74c3c" fontSize={8}
+              x={pos.x} y={pos.y - r - 4}
+              textAnchor="middle" fill="#bdc3c7" fontSize={9}
               fontFamily="monospace" style={{ pointerEvents: 'none' }}
             >{term}</text>
           )}
@@ -306,7 +324,6 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
 
 function VoltageLabels({ wires, parts, nodeVoltages }) {
   if (!nodeVoltages) return null;
-  // Show voltage per net, positioned near first wire midpoint
   const shownNets = new Set();
   return wires.map(wire => {
     if (shownNets.has(wire.netId)) return null;
@@ -320,13 +337,32 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
     const a = terminalPos(fromPart, wire.from.terminal);
     const b = terminalPos(toPart, wire.to.terminal);
 
+    // Offset label perpendicular to the wire so it doesn't overlap
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    // Perpendicular offset (to the right of the wire direction)
+    const offsetX = (-dy / len) * 14;
+    const offsetY = (dx / len) * 14;
+
     return (
-      <text key={`v-${wire.netId}`}
-        x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 - 10}
-        textAnchor="middle" fill="#f1c40f" fontSize={10}
-        fontFamily="monospace" fontWeight="bold">
-        {fmtV(v)}
-      </text>
+      <g key={`v-${wire.netId}`}>
+        <rect
+          x={mx + offsetX - 18} y={my + offsetY - 8}
+          width={36} height={14} rx={3}
+          fill="#0a0a1a" fillOpacity={0.8}
+          style={{ pointerEvents: 'none' }}
+        />
+        <text
+          x={mx + offsetX} y={my + offsetY + 3}
+          textAnchor="middle" fill="#f1c40f" fontSize={10}
+          fontFamily="monospace" fontWeight="bold"
+          style={{ pointerEvents: 'none' }}>
+          {fmtV(v)}
+        </text>
+      </g>
     );
   });
 }

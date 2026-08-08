@@ -202,15 +202,30 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
     return () => { if (simInterval.current) clearInterval(simInterval.current); };
   }, [mode, parts, wires]);
 
-  // ── Part placement with snap-to-grid ────────────────────────────
-  const partCountRef = useRef(0);
+  // ── Part placement — find empty space ────────────────────────────
   const handleAddPart = useCallback((kind, params) => {
-    const offset = partCountRef.current * 40;
-    partCountRef.current++;
-    const x = snapToGrid(200 + (offset % 300));
-    const y = snapToGrid(150 + Math.floor(offset / 300) * 80);
+    // Find a position that doesn't overlap existing parts
+    const occupied = parts.map(p => ({ x: p.x, y: p.y }));
+    let x = 200, y = 200;
+    const spacing = 80;
+    let found = false;
+    // Spiral outward from center to find empty spot
+    for (let ring = 0; ring < 10 && !found; ring++) {
+      for (let dx = -ring; dx <= ring && !found; dx++) {
+        for (let dy = -ring; dy <= ring && !found; dy++) {
+          if (Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue; // only border
+          const cx = snapToGrid(200 + dx * spacing);
+          const cy = snapToGrid(200 + dy * spacing);
+          if (cx < 40 || cy < 40 || cx > 600 || cy > 440) continue;
+          const tooClose = occupied.some(o =>
+            Math.abs(o.x - cx) < 60 && Math.abs(o.y - cy) < 50
+          );
+          if (!tooClose) { x = cx; y = cy; found = true; }
+        }
+      }
+    }
     addPart(kind, params, x, y);
-  }, [addPart]);
+  }, [addPart, parts]);
 
   // Snap-to-grid on move
   const handleMovePart = useCallback((partId, x, y) => {
@@ -256,7 +271,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
     setSelectedPart(null);
     setSelectedWire(null);
     setMode('build');
-    partCountRef.current = 0;
   }, [loadInferred]);
 
   // Save circuit to JSON file download

@@ -53,13 +53,13 @@ describe('rendering: active-low LED preset', () => {
 
     // Node voltages from engine — three values in the active-low circuit:
     // VCC net = 5.000 V
-    assert.ok(text.includes('5.000'), `should show 5.000 V on VCC net`);
+    assert.ok(text.includes('5V'), `should show 5V on VCC net`);
 
-    // Junction voltage: R1.b / LED1.anode ≈ 2.101 V
+    // Junction voltage: R1.b / LED1.anode ≈ 2.1V
     // (hand-computed: VCC - I*R = 5 - 0.002899*1000 = 2.101)
-    const hasJunction = text.includes('2.10') || text.includes('2.09') || text.includes('2.11');
+    const hasJunction = text.includes('2.1V');
     assert.ok(hasJunction,
-      `should show ~2.101 V junction voltage, text: ${text.substring(0, 500)}`);
+      `should show ~2.1V junction voltage, text: ${text.substring(0, 500)}`);
 
     // No page errors
     assert.deepEqual(pageErrors, [],
@@ -85,7 +85,7 @@ describe('rendering: 04-brightness comparison preset', () => {
     // The active-low LED (low_side) should be bright (~14.5%).
     // The active-high LED (high_side) should be very dim (<1%) in quasi mode.
     // Together they show the sink/source asymmetry.
-    assert.ok(text.includes('5.000'), 'should show VCC voltage');
+    assert.ok(text.includes('5V'), 'should show VCC voltage');
 
     assert.deepEqual(pageErrors, [],
       `no JS errors: ${pageErrors.join('; ')}`);
