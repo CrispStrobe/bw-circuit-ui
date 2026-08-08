@@ -51,9 +51,15 @@ describe('rendering: active-low LED preset', () => {
     assert.ok(hasLedReading,
       `should show LED percentage or "off", got: ${text.substring(0, 500)}`);
 
-    // Node voltages should appear (from engine)
+    // Node voltages from engine — three values in the active-low circuit:
     // VCC net = 5.000 V
     assert.ok(text.includes('5.000'), `should show 5.000 V on VCC net`);
+
+    // Junction voltage: R1.b / LED1.anode ≈ 2.101 V
+    // (hand-computed: VCC - I*R = 5 - 0.002899*1000 = 2.101)
+    const hasJunction = text.includes('2.10') || text.includes('2.09') || text.includes('2.11');
+    assert.ok(hasJunction,
+      `should show ~2.101 V junction voltage, text: ${text.substring(0, 500)}`);
 
     // No page errors
     assert.deepEqual(pageErrors, [],

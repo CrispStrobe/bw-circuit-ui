@@ -215,7 +215,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedPart, onControlChange, onButtonDown, onButtonUp }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedPart, onControlChange, onButtonDown, onButtonUp, onDragStart }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const isSelected = selectedPart === id;
@@ -225,12 +225,22 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
       borderRadius: '4px',
     };
 
+    const dragProps = (extraOnDown) => ({
+      onMouseDown: (e) => {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        if (extraOnDown) extraOnDown(e);
+        else onDragStart(id);
+      },
+    });
+
     switch (kind) {
       case 'resistor':
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 40, top: y - 12, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}>
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            {...dragProps()}>
             <WokwiResistor value={String(params.ohms)} />
             <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
               {id.split('_')[0]} ({params.ohms}Ω)
@@ -243,7 +253,8 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 15, top: y - 20, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}>
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            {...dragProps()}>
             <WokwiLed color={params.color || 'red'} brightness={b} value={isOn} />
             <div style={{
               textAlign: 'center',
@@ -277,7 +288,8 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 20, top: y - 20, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}>
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            {...dragProps()}>
             <WokwiBuzzer hasSignal={tone?.on ?? false} />
             <div style={{
               textAlign: 'center',
@@ -307,7 +319,8 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 15, top: y - 15, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}>
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            {...dragProps()}>
             <svg width={30} height={30} viewBox="0 0 30 30">
               <line x1={5} y1={15} x2={12} y2={15} stroke="#7f8c8d" strokeWidth={2} />
               <line x1={12} y1={5} x2={12} y2={25} stroke="#ecf0f1" strokeWidth={2} />
@@ -445,23 +458,25 @@ export function BoardCanvas({
       </div>
 
       {/* Canvas */}
-      <div style={{
-        position: 'relative',
-        width: CANVAS_W,
-        height: CANVAS_H,
-        background: '#16213e',
-        borderRadius: '8px',
-        border: '1px solid #2c3e50',
-        overflow: 'hidden',
-      }}>
+      <div
+        style={{
+          position: 'relative',
+          width: CANVAS_W,
+          height: CANVAS_H,
+          background: '#16213e',
+          borderRadius: '8px',
+          border: '1px solid #2c3e50',
+          overflow: 'hidden',
+        }}
+        onMouseMove={handleSvgMouseMove}
+        onMouseUp={handleDragEnd}
+      >
         <svg
           width={CANVAS_W}
           height={CANVAS_H}
           viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
           style={{ position: 'absolute', top: 0, left: 0 }}
           onClick={handleSvgClick}
-          onMouseMove={handleSvgMouseMove}
-          onMouseUp={handleDragEnd}
         >
           <defs>
             <pattern id="grid" width={20} height={20} patternUnits="userSpaceOnUse">
@@ -487,6 +502,7 @@ export function BoardCanvas({
           onControlChange={onControlChange}
           onButtonDown={onButtonDown}
           onButtonUp={onButtonUp}
+          onDragStart={(partId) => setDragging(partId)}
         />
       </div>
     </div>
