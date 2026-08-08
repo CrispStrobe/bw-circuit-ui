@@ -13,6 +13,7 @@
 import React, { useState, useCallback } from 'react';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
+import { routeWire, partBBoxes } from '../model/wire-router.js';
 
 const CANVAS_W = 700;
 const CANVAS_H = 500;
@@ -159,7 +160,8 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
 
     const a = terminalPos(fromPart, wire.from.terminal);
     const b = terminalPos(toPart, wire.to.terminal);
-    const mid = { x: b.x, y: a.y };
+    const obstacles = partBBoxes(parts, wire.from.part, wire.to.part);
+    const pathD = routeWire(a, b, obstacles);
     const isSelected = selectedWire === wire.id;
     const isHovered = hoveredNet && hoveredNet === wire.netId;
     const wireColor = isSelected ? '#f1c40f' : isHovered ? '#3498db' : '#2ecc71';
@@ -169,7 +171,7 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
       <g key={wire.id}>
         {/* Invisible wider hit area */}
         <path
-          d={`M ${a.x} ${a.y} L ${mid.x} ${mid.y} L ${b.x} ${b.y}`}
+          d={pathD}
           stroke="transparent"
           strokeWidth={10}
           fill="none"
@@ -179,7 +181,7 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
           onMouseLeave={() => onHoverNet(null)}
         />
         <path
-          d={`M ${a.x} ${a.y} L ${mid.x} ${mid.y} L ${b.x} ${b.y}`}
+          d={pathD}
           stroke={wireColor}
           strokeWidth={wireWidth}
           fill="none"
