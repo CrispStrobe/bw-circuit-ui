@@ -43,6 +43,12 @@ export function useCircuit(vcc = 5.0) {
     return ok;
   }, [circuit, bump]);
 
+  const rotatePart = useCallback((partId) => {
+    const ok = circuit.rotatePart(partId);
+    if (ok) bump();
+    return ok;
+  }, [circuit, bump]);
+
   const updateParams = useCallback((partId, newParams) => {
     const ok = circuit.updateParams(partId, newParams);
     if (ok) bump();
@@ -148,6 +154,7 @@ export function useCircuit(vcc = 5.0) {
     addPart,
     removePart,
     movePart,
+    rotatePart,
     updateParams,
     addWire,
     removeWire,

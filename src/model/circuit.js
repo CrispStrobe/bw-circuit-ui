@@ -102,7 +102,7 @@ export class Circuit {
    */
   addPart(kind, params, x, y) {
     const terminals = terminalsForKind(kind, params);
-    const part = { id: genId(kind), kind, params: { ...params }, terminals, x, y };
+    const part = { id: genId(kind), kind, params: { ...params }, terminals, x, y, rotation: 0 };
     this.parts.push(part);
     this._syncNetlist();
     this._saveHistory();
@@ -149,6 +149,19 @@ export class Circuit {
    */
   getPart(partId) {
     return this.parts.find(p => p.id === partId);
+  }
+
+  /**
+   * Rotate a part by 90 degrees clockwise.
+   * @param {string} partId
+   * @returns {boolean}
+   */
+  rotatePart(partId) {
+    const part = this.getPart(partId);
+    if (!part) return false;
+    part.rotation = ((part.rotation || 0) + 90) % 360;
+    this._saveHistory();
+    return true;
   }
 
   /**

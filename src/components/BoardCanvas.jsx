@@ -19,27 +19,43 @@ const CANVAS_W = 700;
 const CANVAS_H = 500;
 
 /**
- * Terminal offset defaults per part kind.
+ * Rotate a {dx, dy} offset by deg degrees (0, 90, 180, 270).
+ */
+function rotateOffset(dx, dy, deg) {
+  switch (((deg % 360) + 360) % 360) {
+    case 0: return { dx, dy };
+    case 90: return { dx: -dy, dy: dx };
+    case 180: return { dx: -dx, dy: -dy };
+    case 270: return { dx: dy, dy: -dx };
+    default: return { dx, dy };
+  }
+}
+
+/**
+ * Terminal offset defaults per part kind, rotated by part.rotation.
  * Returns {terminalName: {dx, dy}} relative to part anchor.
  */
 function terminalOffsetsForPart(part) {
+  const rot = part.rotation || 0;
+  const r = (dx, dy) => rotateOffset(dx, dy, rot);
+
   switch (part.kind) {
-    case 'vcc': return { vcc: { dx: 0, dy: 20 } };
-    case 'gnd': return { gnd: { dx: 0, dy: -10 } };
-    case 'resistor': return { a: { dx: -35, dy: 0 }, b: { dx: 35, dy: 0 } };
-    case 'led': return { anode: { dx: -10, dy: 0 }, cathode: { dx: 10, dy: 0 } };
-    case 'potentiometer': return { a: { dx: -25, dy: 20 }, wiper: { dx: 0, dy: -20 }, b: { dx: 25, dy: 20 } };
-    case 'button': return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
-    case 'buzzer': return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
-    case 'capacitor': return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
+    case 'vcc': return { vcc: r(0, 20) };
+    case 'gnd': return { gnd: r(0, -10) };
+    case 'resistor': return { a: r(-35, 0), b: r(35, 0) };
+    case 'led': return { anode: r(-10, 0), cathode: r(10, 0) };
+    case 'potentiometer': return { a: r(-25, 20), wiper: r(0, -20), b: r(25, 20) };
+    case 'button': return { a: r(-15, 0), b: r(15, 0) };
+    case 'buzzer': return { a: r(-15, 0), b: r(15, 0) };
+    case 'capacitor': return { a: r(-15, 0), b: r(15, 0) };
     case 'mcu': {
       const offsets = {};
       part.terminals.forEach((pin, i) => {
-        offsets[pin] = { dx: -60, dy: -40 + i * 30 };
+        offsets[pin] = r(-60, -40 + i * 30);
       });
       return offsets;
     }
-    default: return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
+    default: return { a: r(-15, 0), b: r(15, 0) };
   }
 }
 
@@ -226,11 +242,14 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedPart, onControlChange, onButtonDown, onButtonUp, onDragStart }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
+    const rot = part.rotation || 0;
     const isSelected = selectedPart === id;
     const baseStyle = {
       position: 'absolute',
       outline: isSelected ? '2px solid #f1c40f' : 'none',
       borderRadius: '4px',
+      transform: rot ? `rotate(${rot}deg)` : undefined,
+      transformOrigin: 'center',
     };
 
     const dragProps = (extraOnDown) => ({
@@ -517,7 +536,7 @@ export function BoardCanvas({
       }}>
         {wiringFrom
           ? `Wiring from ${wiringFrom.part}:${wiringFrom.terminal} — click another terminal or ESC`
-          : statusText || 'Click a terminal (red dot) to start wiring. Select + Delete to remove.'}
+          : statusText || 'Click terminals to wire. Del to delete. R to rotate selected part.'}
       </div>
 
       {/* Zoom indicator */}
