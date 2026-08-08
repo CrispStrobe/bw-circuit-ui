@@ -17,6 +17,9 @@ const oscillators = new Map(); // partId → { osc, gain }
  */
 function getAudioCtx() {
   if (!audioCtx) {
+    if (typeof window === 'undefined' || (!window.AudioContext && !window.webkitAudioContext)) {
+      return null; // non-browser environment
+    }
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
   return audioCtx;
@@ -35,6 +38,7 @@ export function updateBuzzerAudio(partId, tone) {
   }
 
   const ctx = getAudioCtx();
+  if (!ctx) return; // no audio available
   let entry = oscillators.get(partId);
 
   if (!entry) {
