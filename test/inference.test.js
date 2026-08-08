@@ -198,6 +198,49 @@ describe('inferCircuit', () => {
     assert.equal(unknownWarnings.length, 0,
       `should not warn about pwm direction: ${unknownWarnings.join('; ')}`);
   });
+  it('treats tone direction as buzzer output (07-buzzer)', () => {
+    const { parts, nets, notes } = inferCircuit({
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'button', port: 3, bit: 2, direction: 'input', activeLow: true },
+        { name: 'buzzer', port: 3, bit: 5, direction: 'tone', activeLow: false },
+      ],
+    });
+
+    // Tone pin should produce a buzzer, not an LED
+    const buzzerPart = parts.find(p => p.kind === 'buzzer');
+    assert.ok(buzzerPart, 'should have a buzzer part for the tone pin');
+
+    // Should NOT have an LED for the tone pin (buzzer goes between pin and GND)
+    const ledParts = parts.filter(p => p.kind === 'led');
+    // Only LED should be... actually there shouldn't be any LED for tone
+    // The button pin is input, so no LED either
+    assert.equal(ledParts.length, 0,
+      `tone pin should produce a buzzer, not an LED (got ${ledParts.length} LEDs)`);
+
+    // Should have a button for the input pin
+    const btnPart = parts.find(p => p.kind === 'button');
+    assert.ok(btnPart, 'should have a button for the input pin');
+
+    // No unknown direction warnings
+    const unknownWarnings = notes.filter(n => n.includes('Unknown direction'));
+    assert.equal(unknownWarnings.length, 0,
+      `should not warn about tone direction: ${unknownWarnings.join('; ')}`);
+  });
+
+  it('tone direction works even with non-standard name', () => {
+    const { parts } = inferCircuit({
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'alarm', port: 3, bit: 5, direction: 'tone', activeLow: false },
+      ],
+    });
+
+    // "alarm" doesn't match /buzz|speaker|tone|beep/i, but direction:"tone"
+    // should normalize the name to trigger buzzer detection
+    const buzzerPart = parts.find(p => p.kind === 'buzzer');
+    assert.ok(buzzerPart, 'should have a buzzer even with non-matching name "alarm"');
+  });
 });
 
 describe('checkWiring — teaching notes', () => {

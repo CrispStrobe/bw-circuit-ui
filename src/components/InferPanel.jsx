@@ -69,6 +69,17 @@ const EXAMPLES = [
       ],
     },
   },
+  {
+    name: '07 Buzzer',
+    desc: 'Button + buzzer (tone)',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'button', port: 3, bit: 2, direction: 'input', activeLow: true },
+        { name: 'buzzer', port: 3, bit: 5, direction: 'tone', activeLow: false },
+      ],
+    },
+  },
 ];
 
 // The comparison that justifies the whole simulator:

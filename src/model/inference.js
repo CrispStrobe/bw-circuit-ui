@@ -28,15 +28,25 @@ export function checkWiring(declaredPins, wiredParts, wiredNets) {
 export function inferCircuit(stc) {
   const { inferNetlist } = getEngine();
 
-  // Normalize pin directions: "pwm" is advisory — the netlist is the same
-  // as an output pin (VCC → R → LED → pin for activeLow, pin → R → LED → GND otherwise).
+  // Normalize pin directions before passing to the engine's inferNetlist:
+  // - "pwm" → "output" (same LED netlist, duty cycle is handled by the engine)
+  // - "tone" → "output" with a name that triggers buzzer detection
+  //   (bw-board's inferNetlist detects buzzers by /buzz|speaker|tone|beep/i in the name,
+  //    so we ensure the name matches; direction "tone" means pin → buzzer → GND)
   const normalizedStc = {
     ...stc,
-    pins: (stc.pins || []).map(pin =>
-      pin.direction === 'pwm'
-        ? { ...pin, direction: 'output' }
-        : pin
-    ),
+    pins: (stc.pins || []).map(pin => {
+      if (pin.direction === 'pwm') {
+        return { ...pin, direction: 'output' };
+      }
+      if (pin.direction === 'tone') {
+        // Ensure the name triggers buzzer detection in inferNetlist
+        const buzzerPattern = /buzz|speaker|tone|beep/i;
+        const name = buzzerPattern.test(pin.name) ? pin.name : `${pin.name}_buzzer`;
+        return { ...pin, direction: 'output', activeLow: false, name };
+      }
+      return pin;
+    }),
   };
 
   const { parts, nets, notes } = inferNetlist(normalizedStc);
