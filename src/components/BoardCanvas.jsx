@@ -233,7 +233,20 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
     const pathD = routeWire(a, b, obstacles);
     const isSelected = selectedWire === wire.id;
     const isHovered = hoveredNet && hoveredNet === wire.netId;
-    const wireColor = isSelected ? '#f1c40f' : isHovered ? '#3498db' : '#2ecc71';
+
+    // Wire color by voltage: red at VCC, blue near GND, green/yellow in between
+    let voltageColor = '#2ecc71'; // default green
+    const v = nodeVoltages?.[wire.netId];
+    if (v != null && typeof v === 'number') {
+      const vcc = 5.0;
+      const ratio = Math.max(0, Math.min(1, v / vcc));
+      if (ratio > 0.8) voltageColor = '#e74c3c';      // red: near VCC
+      else if (ratio > 0.4) voltageColor = '#f39c12';  // orange: mid-high
+      else if (ratio > 0.15) voltageColor = '#2ecc71'; // green: mid
+      else voltageColor = '#3498db';                    // blue: near GND
+    }
+
+    const wireColor = isSelected ? '#f1c40f' : isHovered ? '#9b59b6' : voltageColor;
     const wireWidth = isSelected ? 3 : isHovered ? 2.5 : 2;
 
     return (
@@ -745,10 +758,26 @@ export function BoardCanvas({
         >
           <defs>
             <pattern id="grid" width={20} height={20} patternUnits="userSpaceOnUse">
-              <circle cx={10} cy={10} r={0.5} fill="#2c3e50" />
+              <circle cx={10} cy={10} r={1} fill="#243447" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
+
+          {/* Voltage color legend (only when simulating and there are voltages) */}
+          {nodeVoltages && Object.keys(nodeVoltages).length > 0 && (
+            <g transform={`translate(${CANVAS_W - 100}, 10)`}>
+              <rect x={-4} y={-2} width={95} height={58} rx={4}
+                fill="#0a0a1a" fillOpacity={0.7} />
+              <circle cx={6} cy={8} r={4} fill="#e74c3c" />
+              <text x={16} y={12} fill="#7f8c8d" fontSize={8} fontFamily="monospace">~5V (VCC)</text>
+              <circle cx={6} cy={22} r={4} fill="#f39c12" />
+              <text x={16} y={26} fill="#7f8c8d" fontSize={8} fontFamily="monospace">2-4V</text>
+              <circle cx={6} cy={36} r={4} fill="#2ecc71" />
+              <text x={16} y={40} fill="#7f8c8d" fontSize={8} fontFamily="monospace">0.5-2V</text>
+              <circle cx={6} cy={50} r={4} fill="#3498db" />
+              <text x={16} y={54} fill="#7f8c8d" fontSize={8} fontFamily="monospace">~0V (GND)</text>
+            </g>
+          )}
 
           {/* Empty canvas hint */}
           {parts.length === 0 && (
