@@ -66,6 +66,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
   const [selectedPart, setSelectedPart] = useState(null);
   const [selectedWire, setSelectedWire] = useState(null);
   const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
 
   // Multimeter
   const [placingProbe, setPlacingProbe] = useState(null);
@@ -325,10 +327,23 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <PartPalette onAddPart={handleAddPart} />
-        <InferPanel onLoadCircuit={handleLoadCircuit} />
-      </div>
+      {/* Left sidebar — collapsible */}
+      {leftOpen ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto' }}>
+          <button onClick={() => setLeftOpen(false)} style={{
+            background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
+            fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
+          }}>collapse</button>
+          <PartPalette onAddPart={handleAddPart} />
+          <InferPanel onLoadCircuit={handleLoadCircuit} />
+        </div>
+      ) : (
+        <button onClick={() => setLeftOpen(true)} style={{
+          writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
+          borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
+          fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
+        }}>Parts</button>
+      )}
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <BoardCanvas
@@ -384,7 +399,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
         )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {/* Right sidebar — collapsible */}
+      {rightOpen ? (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto' }}>
+        <button onClick={() => setRightOpen(false)} style={{
+          background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
+          fontFamily: 'monospace', fontSize: '10px', textAlign: 'left', padding: 0,
+        }}>collapse</button>
         <ControlPanel
           mode={mode}
           onModeChange={setMode}
@@ -413,6 +434,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
           probePlacement={probePlacement}
         />
       </div>
+      ) : (
+        <button onClick={() => setRightOpen(true)} style={{
+          writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
+          borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
+          fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
+        }}>Controls</button>
+      )}
     </div>
   );
 }
