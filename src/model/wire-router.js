@@ -68,7 +68,11 @@ export function partBBoxes(parts, skipA, skipB) {
     .map(p => {
       // Approximate bounding box per kind
       switch (p.kind) {
-        case 'mcu': return { x: p.x - 50, y: p.y - 60, w: 120, h: 140 };
+        case 'mcu': {
+          const pinCount = p.terminals?.length || 4;
+          const chipH = Math.max(60, pinCount * 30 + 20);
+          return { x: p.x - 50, y: p.y - chipH / 2, w: 120, h: chipH };
+        }
         case 'resistor': return { x: p.x - 40, y: p.y - 15, w: 80, h: 30 };
         case 'led': return { x: p.x - 15, y: p.y - 20, w: 30, h: 45 };
         case 'potentiometer': return { x: p.x - 30, y: p.y - 30, w: 60, h: 65 };

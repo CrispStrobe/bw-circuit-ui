@@ -50,8 +50,11 @@ function terminalOffsetsForPart(part) {
     case 'capacitor': return { a: r(-15, 0), b: r(15, 0) };
     case 'mcu': {
       const offsets = {};
+      const pinCount = part.terminals.length;
+      const chipH = Math.max(60, pinCount * 30 + 20);
+      const chipY = -chipH / 2;
       part.terminals.forEach((pin, i) => {
-        offsets[pin] = r(-60, -40 + i * 30);
+        offsets[pin] = r(-60, chipY + 30 + i * 30);
       });
       return offsets;
     }
@@ -103,24 +106,32 @@ function SvgParts({ parts, selectedPart, onSelectPart }) {
               fontFamily="monospace" fontWeight="bold">GND</text>
           </g>
         );
-      case 'mcu':
+      case 'mcu': {
+        // Scale chip body to match pin count
+        const pinCount = part.terminals.length;
+        const chipH = Math.max(60, pinCount * 30 + 20);
+        const chipY = -chipH / 2;
         return (
           <g key={id} transform={`translate(${x}, ${y})`}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
             style={{ cursor: 'pointer' }}>
-            <rect x={-50} y={-60} width={120} height={140} rx={6}
+            <rect x={-50} y={chipY} width={120} height={chipH} rx={6}
               fill="#2c3e50" stroke={selStroke || '#7f8c8d'} strokeWidth={isSelected ? 3 : 2} />
-            <text x={10} y={-40} textAnchor="middle" fill="#ecf0f1" fontSize={14}
+            <text x={10} y={chipY + 18} textAnchor="middle" fill="#ecf0f1" fontSize={14}
               fontFamily="monospace" fontWeight="bold">STC12</text>
-            {part.terminals.map((pin, i) => (
-              <g key={pin}>
-                <circle cx={-50} cy={-40 + i * 30} r={3} fill="#f39c12" />
-                <text x={-42} y={-36 + i * 30} fill="#f39c12" fontSize={10}
-                  fontFamily="monospace">{pin}</text>
-              </g>
-            ))}
+            {part.terminals.map((pin, i) => {
+              const pinY = chipY + 30 + i * 30;
+              return (
+                <g key={pin}>
+                  <circle cx={-50} cy={pinY} r={3} fill="#f39c12" />
+                  <text x={-42} y={pinY + 4} fill="#f39c12" fontSize={10}
+                    fontFamily="monospace">{pin}</text>
+                </g>
+              );
+            })}
           </g>
         );
+      }
       default:
         return null;
     }
