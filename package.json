@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/circuit.test.js test/interaction.test.js test/simulation.test.js test/inference.test.js test/multimeter.test.js test/buzzer-audio.test.js test/probe-placement.test.js",
+    "test:render": "node --test test/rendering.test.js",
+    "test:all": "npm test && npm run test:render"
   },
   "author": "CrispStrobe <cze+github@mailbox.org>",
   "license": "MIT",
@@ -15,6 +17,7 @@
     "@lit/react": "^1.0.8",
     "@wokwi/elements": "^1.9.2",
     "lit": "^3.3.3",
+    "playwright": "^1.61.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

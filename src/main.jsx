@@ -7,8 +7,18 @@ import { InferPanel } from './components/InferPanel.jsx';
 import { Multimeter } from './components/Multimeter.jsx';
 import { useCircuit } from './hooks/useCircuit.js';
 import { updateBuzzerAudio, stopAllBuzzers } from './audio/buzzer-audio.js';
+import { inferCircuit } from './model/inference.js';
 
 const MS = 1_000_000n;
+
+// Default preset: load this on first render so the canvas isn't empty.
+const DEFAULT_PRESET = {
+  device: 'STC12C5A60S2',
+  clock: 11059200,
+  pins: [
+    { name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true },
+  ],
+};
 
 function App() {
   const {
@@ -24,6 +34,16 @@ function App() {
   const [selectedPart, setSelectedPart] = useState(null);
   const [selectedWire, setSelectedWire] = useState(null);
   const [mode, setMode] = useState('build');
+
+  // Load default preset on first render
+  const defaultLoaded = useRef(false);
+  useEffect(() => {
+    if (!defaultLoaded.current) {
+      defaultLoaded.current = true;
+      const { parts: ip, nets: in_ } = inferCircuit(DEFAULT_PRESET);
+      loadInferred(ip, in_);
+    }
+  }, [loadInferred]);
 
   // Multimeter probe placement state
   const [placingProbe, setPlacingProbe] = useState(null); // 'A'|'B'|null

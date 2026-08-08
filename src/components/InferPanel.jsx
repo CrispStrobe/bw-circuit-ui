@@ -1,20 +1,34 @@
 /**
  * InferPanel — load a circuit from pin declarations (boundary C).
  *
- * Shows the inferred circuit notes as teaching feedback:
- * "pin P1.2 is driven but nothing is wired to it"
+ * The active-low vs active-high comparison is the core lesson:
+ * same LED, same pin, but one is 14.5% bright and the other is <1%.
+ * That single comparison justifies the whole simulator.
  */
 
 import React, { useState, useCallback } from 'react';
 import { inferCircuit, checkWiring } from '../model/inference.js';
 
-const PRESETS = [
+const COMPARISON_PRESETS = [
   {
-    name: 'LED blink (active-low)',
+    name: 'Correct (active-low)',
+    desc: 'VCC → R → LED → pin',
     pins: [
       { name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true },
     ],
+    highlight: true,
   },
+  {
+    name: 'Naive (active-high)',
+    desc: 'pin → R → LED → GND',
+    pins: [
+      { name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: false },
+    ],
+    highlight: true,
+  },
+];
+
+const OTHER_PRESETS = [
   {
     name: 'LED + pot + button',
     pins: [
@@ -28,12 +42,6 @@ const PRESETS = [
     pins: [
       { name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true },
       { name: 'led2', port: 1, bit: 1, direction: 'output', activeLow: true },
-    ],
-  },
-  {
-    name: 'LED (active-high, naive)',
-    pins: [
-      { name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: false },
     ],
   },
 ];
@@ -64,14 +72,51 @@ export function InferPanel({ onLoadCircuit }) {
       fontFamily: 'monospace',
       fontSize: '11px',
     }}>
-      <h3 style={{ color: '#ecf0f1', fontSize: '13px', marginBottom: '10px' }}>
-        Load from Pins
+      <h3 style={{ color: '#ecf0f1', fontSize: '13px', marginBottom: '6px' }}>
+        Why active-low?
       </h3>
-      <p style={{ color: '#7f8c8d', fontSize: '10px', marginBottom: '8px' }}>
-        Infer circuit from project pin declarations (boundary C)
+      <p style={{ color: '#f39c12', fontSize: '9px', marginBottom: '10px', lineHeight: '1.4' }}>
+        Load each, hit Sim, compare the LED. Same pin, same LED — one
+        is bright, one is barely visible. The simulator shows why.
       </p>
 
-      {PRESETS.map(preset => (
+      {/* The comparison pair — visually grouped */}
+      <div style={{
+        border: '1px solid #f39c12',
+        borderRadius: '4px',
+        padding: '4px',
+        marginBottom: '10px',
+      }}>
+        {COMPARISON_PRESETS.map(preset => (
+          <button
+            key={preset.name}
+            onClick={() => handleLoad(preset)}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '6px',
+              marginBottom: '2px',
+              background: lastLoaded === preset.name ? '#2c3e50' : '#16213e',
+              border: lastLoaded === preset.name ? '1px solid #f39c12' : '1px solid #2c3e50',
+              borderRadius: '4px',
+              color: lastLoaded === preset.name ? '#f39c12' : '#e67e22',
+              fontFamily: 'monospace',
+              fontSize: '10px',
+              cursor: 'pointer',
+              textAlign: 'left',
+            }}
+          >
+            {preset.name}
+            <div style={{ color: '#7f8c8d', fontSize: '9px' }}>{preset.desc}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Other presets */}
+      <div style={{ color: '#7f8c8d', fontSize: '9px', marginBottom: '4px' }}>
+        More circuits:
+      </div>
+      {OTHER_PRESETS.map(preset => (
         <button
           key={preset.name}
           onClick={() => handleLoad(preset)}
