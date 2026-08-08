@@ -330,40 +330,49 @@ describe('engine integration — buzzer', () => {
 // ── Netlist sync ────────────────────────────────────────────────────
 
 describe('netlist sync', () => {
+  // Engine validates netlists — needs VCC+GND+MCU for a valid circuit.
   it('adding a wire updates the engine netlist', () => {
     const c = new Circuit(5.0);
     const vcc = c.addPart('vcc', {}, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
     const r = c.addPart('resistor', { ohms: 1000 }, 0, 0);
-
-    // Before wiring — engine has no nets
-    assert.equal(c.board.nets.length, 0);
+    const mcu = c.addPart('mcu', { pins: ['P1.0'] }, 0, 0);
 
     c.addWire(vcc.id, 'vcc', r.id, 'a');
+    c.addWire(r.id, 'b', mcu.id, 'P1.0');
 
-    // After wiring — engine has one net
-    assert.equal(c.board.nets.length, 1);
+    // Should have 2 nets in the engine
+    assert.equal(c.board.nets.length, 2);
   });
 
   it('removing a wire updates the engine netlist', () => {
     const c = new Circuit(5.0);
     const vcc = c.addPart('vcc', {}, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
     const r = c.addPart('resistor', { ohms: 1000 }, 0, 0);
-    const w = c.addWire(vcc.id, 'vcc', r.id, 'a');
+    const mcu = c.addPart('mcu', { pins: ['P1.0'] }, 0, 0);
 
-    assert.equal(c.board.nets.length, 1);
-    c.removeWire(w.id);
-    assert.equal(c.board.nets.length, 0);
+    const w1 = c.addWire(vcc.id, 'vcc', r.id, 'a');
+    c.addWire(r.id, 'b', mcu.id, 'P1.0');
+    assert.equal(c.board.nets.length, 2);
+
+    c.removeWire(w1.id);
+    assert.equal(c.board.nets.length, 1); // only r→mcu remains
   });
 
   it('removing a part updates the engine', () => {
     const c = new Circuit(5.0);
     const vcc = c.addPart('vcc', {}, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
     const r = c.addPart('resistor', { ohms: 1000 }, 0, 0);
+    const mcu = c.addPart('mcu', { pins: ['P1.0'] }, 0, 0);
+
     c.addWire(vcc.id, 'vcc', r.id, 'a');
+    c.addWire(r.id, 'b', mcu.id, 'P1.0');
 
     c.removePart(r.id);
-    assert.equal(c.board.parts.length, 1); // only VCC remains
-    assert.equal(c.board.nets.length, 0);
+    assert.equal(c.board.parts.length, 3); // VCC, GND, MCU remain
+    assert.equal(c.board.nets.length, 0);   // wires to R removed
   });
 });
 
@@ -373,16 +382,20 @@ describe('toJSON / fromJSON', () => {
   it('round-trips the circuit state', () => {
     const c = new Circuit(5.0);
     const vcc = c.addPart('vcc', {}, 100, 50);
+    const gnd = c.addPart('gnd', {}, 100, 300);
     const r = c.addPart('resistor', { ohms: 1000 }, 200, 150);
+    const mcu = c.addPart('mcu', { pins: ['P1.0'] }, 300, 200);
+
     c.addWire(vcc.id, 'vcc', r.id, 'a');
+    c.addWire(r.id, 'b', mcu.id, 'P1.0');
 
     const json = c.toJSON();
     const c2 = Circuit.fromJSON(json);
 
-    assert.equal(c2.parts.length, 2);
-    assert.equal(c2.wires.length, 1);
+    assert.equal(c2.parts.length, 4);
+    assert.equal(c2.wires.length, 2);
     assert.equal(c2.vcc, 5.0);
-    assert.equal(c2.board.nets.length, 1);
+    assert.equal(c2.board.nets.length, 2);
   });
 });
 

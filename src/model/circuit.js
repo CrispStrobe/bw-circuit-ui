@@ -331,7 +331,13 @@ export class Circuit {
     }
 
     this.board = new BoardImpl(this.vcc);
-    this.board.setNetlist(engineParts, engineNets);
+    try {
+      this.board.setNetlist(engineParts, engineNets);
+    } catch {
+      // Partial circuit (e.g. VCC without GND) — engine validation
+      // rejects incomplete netlists. This is fine during construction;
+      // the next addPart/addWire will try again.
+    }
   }
 
   // ── Serialization ───────────────────────────────────────────────

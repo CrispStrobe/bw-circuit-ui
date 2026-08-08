@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "description": "Circuit designer UI for Brickwright",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./components/*": "./src/components/*"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,16 +18,20 @@
   },
   "author": "CrispStrobe <cze+github@mailbox.org>",
   "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
   "dependencies": {
     "@lit/react": "^1.0.8",
     "@wokwi/elements": "^1.9.2",
-    "lit": "^3.3.3",
-    "playwright": "^1.61.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "lit": "^3.3.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.5",
+    "playwright": "^1.61.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "vite": "^8.2.1"
   }
 }
