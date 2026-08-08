@@ -1,11 +1,11 @@
 /**
  * BoardCanvas — renders parts and wires on a canvas.
  *
- * Phase 1: static render only. No interaction, no engine.
+ * Phase 2: wired to real BoardImpl from bw-board.
+ * LED brightness and node voltages come from the engine.
  *
  * Architecture: SVG layer for wires and simple symbols (VCC, GND, MCU),
  * with wokwi web components positioned absolutely on top via CSS.
- * This avoids foreignObject issues with shadow DOM in SVG.
  */
 
 import React from 'react';
@@ -21,6 +21,15 @@ function terminalPos(part, terminal, terminalOffsets) {
   const offsets = terminalOffsets[part.id];
   const offset = offsets?.[terminal] ?? { dx: 0, dy: 0 };
   return { x: part.x + offset.dx, y: part.y + offset.dy };
+}
+
+/**
+ * Format a voltage for display.
+ */
+function fmtV(v) {
+  if (v == null || typeof v !== 'number') return '';
+  if (Math.abs(v) < 0.001) return '0.000 V';
+  return v.toFixed(3) + ' V';
 }
 
 /**
@@ -73,6 +82,34 @@ function SvgParts({ parts }) {
 }
 
 /**
+ * Render voltage labels on nets.
+ */
+function VoltageLabels({ nets, parts, terminalOffsets: offsets, nodeVoltages }) {
+  if (!nodeVoltages) return null;
+  return nets.map(net => {
+    const v = nodeVoltages[net.id];
+    if (v == null) return null;
+    // Place label near the midpoint of the first wire segment
+    const t0 = net.terminals[0];
+    const t1 = net.terminals[1];
+    const p0 = parts.find(p => p.id === t0?.part);
+    const p1 = parts.find(p => p.id === t1?.part);
+    if (!p0 || !p1) return null;
+    const a = terminalPos(p0, t0.terminal, offsets);
+    const b = terminalPos(p1, t1.terminal, offsets);
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    return (
+      <text key={`v-${net.id}`} x={mx} y={my - 12}
+        textAnchor="middle" fill="#f1c40f" fontSize={10}
+        fontFamily="monospace" fontWeight="bold">
+        {fmtV(v)}
+      </text>
+    );
+  });
+}
+
+/**
  * Render wires as SVG paths.
  */
 function Wires({ nets, parts, terminalOffsets: offsets }) {
@@ -90,7 +127,6 @@ function Wires({ nets, parts, terminalOffsets: offsets }) {
 
     return (
       <g key={net.id}>
-        {/* L-shaped wire segments */}
         {points.slice(1).map((b, i) => {
           const a = points[i];
           const mid = { x: b.x, y: a.y };
@@ -105,11 +141,9 @@ function Wires({ nets, parts, terminalOffsets: offsets }) {
             />
           );
         })}
-        {/* Terminal dots */}
         {points.map((p, i) => (
           <circle key={`d${i}`} cx={p.x} cy={p.y} r={3} fill="#2ecc71" />
         ))}
-        {/* Net label */}
         <text x={points[0].x + 8} y={points[0].y - 8}
           fill="#7f8c8d" fontSize={9} fontFamily="monospace">{net.id}</text>
       </g>
@@ -119,8 +153,9 @@ function Wires({ nets, parts, terminalOffsets: offsets }) {
 
 /**
  * Wokwi elements positioned absolutely over the SVG.
+ * LED brightness comes from the engine via props.
  */
-function WokwiParts({ parts }) {
+function WokwiParts({ parts, ledBrightness }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const style = {
@@ -139,20 +174,29 @@ function WokwiParts({ parts }) {
             }}>{id} ({params.ohms}Ω)</div>
           </div>
         );
-      case 'led':
+      case 'led': {
+        // Brightness comes from the engine. 0…1 maps to wokwi's brightness.
+        const b = ledBrightness?.[id] ?? 0;
+        const isOn = b > 0.01;
         return (
           <div key={id} style={{ ...style, left: x - 15, top: y - 20 }}>
             <WokwiLed
               color={params.color || 'red'}
-              brightness={0}
-              value={false}
+              brightness={b}
+              value={isOn}
             />
             <div style={{
-              textAlign: 'center', color: '#aaa', fontSize: 10,
-              fontFamily: 'monospace', marginTop: 2,
-            }}>{id}</div>
+              textAlign: 'center',
+              color: isOn ? '#2ecc71' : '#aaa',
+              fontSize: 10,
+              fontFamily: 'monospace',
+              marginTop: 2,
+            }}>
+              {id} {isOn ? `(${(b * 100).toFixed(1)}%)` : '(off)'}
+            </div>
           </div>
         );
+      }
       case 'buzzer':
         return (
           <div key={id} style={{ ...style, left: x - 20, top: y - 20 }}>
@@ -181,8 +225,13 @@ function WokwiParts({ parts }) {
 
 /**
  * The main board canvas.
+ *
+ * @param {{ parts, nets, terminalOffsets, ledBrightness, nodeVoltages, activeLabel }} props
+ * - ledBrightness: { partId: number } — from engine, 0…1
+ * - nodeVoltages: { netId: number } — from engine, volts
+ * - activeLabel: string — current trace state description
  */
-export function BoardCanvas({ parts, nets, terminalOffsets: offsets }) {
+export function BoardCanvas({ parts, nets, terminalOffsets: offsets, ledBrightness, nodeVoltages, activeLabel }) {
   return (
     <div style={{
       display: 'flex',
@@ -198,17 +247,24 @@ export function BoardCanvas({ parts, nets, terminalOffsets: offsets }) {
         Active-Low LED Circuit
       </h2>
       <p style={{
-        color: '#7f8c8d',
+        color: activeLabel ? '#3498db' : '#7f8c8d',
         fontFamily: 'monospace',
         fontSize: '12px',
+        marginBottom: '4px',
+        textAlign: 'center',
+      }}>
+        VCC → 1kΩ → LED (Vf=2V) → P1.0
+      </p>
+      <p style={{
+        color: '#f1c40f',
+        fontFamily: 'monospace',
+        fontSize: '11px',
         marginBottom: '20px',
         textAlign: 'center',
       }}>
-        VCC → 1kΩ → LED (Vf=2V) → P1.0<br/>
-        Phase 1: static layout — no simulation values on screen
+        {activeLabel || 'No simulation state selected'}
       </p>
 
-      {/* Canvas container — SVG + absolutely positioned wokwi elements */}
       <div style={{
         position: 'relative',
         width: CANVAS_W,
@@ -218,7 +274,6 @@ export function BoardCanvas({ parts, nets, terminalOffsets: offsets }) {
         border: '1px solid #2c3e50',
         overflow: 'hidden',
       }}>
-        {/* SVG layer: wires, VCC/GND symbols, MCU */}
         <svg
           width={CANVAS_W}
           height={CANVAS_H}
@@ -232,11 +287,12 @@ export function BoardCanvas({ parts, nets, terminalOffsets: offsets }) {
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
           <Wires nets={nets} parts={parts} terminalOffsets={offsets} />
+          <VoltageLabels nets={nets} parts={parts} terminalOffsets={offsets}
+            nodeVoltages={nodeVoltages} />
           <SvgParts parts={parts} />
         </svg>
 
-        {/* Wokwi element layer on top */}
-        <WokwiParts parts={parts} />
+        <WokwiParts parts={parts} ledBrightness={ledBrightness} />
       </div>
     </div>
   );
