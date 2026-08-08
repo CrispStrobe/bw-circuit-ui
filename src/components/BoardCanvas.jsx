@@ -111,7 +111,7 @@ function SvgParts({ parts, selectedPart, onSelectPart }) {
 
 // ── Terminal dots (clickable for wiring) ─────────────────────────
 
-function TerminalDots({ parts, wiringFrom, onTerminalClick }) {
+function TerminalDots({ parts, wiringFrom, onTerminalClick, placingProbe }) {
   const dots = [];
   for (const part of parts) {
     for (const term of part.terminals) {
@@ -123,9 +123,9 @@ function TerminalDots({ parts, wiringFrom, onTerminalClick }) {
           key={`${part.id}:${term}`}
           cx={pos.x}
           cy={pos.y}
-          r={isWiringSource ? 6 : 4}
-          fill={isWiringSource ? '#f1c40f' : '#e74c3c'}
-          stroke={isWiringSource ? '#f39c12' : '#c0392b'}
+          r={isWiringSource ? 6 : placingProbe ? 5 : 4}
+          fill={isWiringSource ? '#f1c40f' : placingProbe ? '#9b59b6' : '#e74c3c'}
+          stroke={isWiringSource ? '#f39c12' : placingProbe ? '#8e44ad' : '#c0392b'}
           strokeWidth={1}
           style={{ cursor: 'pointer' }}
           onClick={(e) => {
@@ -350,24 +350,29 @@ export function BoardCanvas({
   onSelectWire, selectedWire,
   onControlChange, onButtonDown, onButtonUp,
   statusText,
+  placingProbe, onTerminalClickForProbe,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
   const [mousePos, setMousePos] = useState(null);
   const [dragging, setDragging] = useState(null);
 
   const handleTerminalClick = useCallback((partId, terminal) => {
+    // If placing a multimeter probe, route to probe handler
+    if (placingProbe && onTerminalClickForProbe) {
+      onTerminalClickForProbe(partId, terminal);
+      return;
+    }
+
     if (!wiringFrom) {
-      // Start wiring
       setWiringFrom({ part: partId, terminal });
     } else {
-      // Complete wiring
       if (wiringFrom.part !== partId || wiringFrom.terminal !== terminal) {
         onAddWire(wiringFrom.part, wiringFrom.terminal, partId, terminal);
       }
       setWiringFrom(null);
       setMousePos(null);
     }
-  }, [wiringFrom, onAddWire]);
+  }, [wiringFrom, onAddWire, placingProbe, onTerminalClickForProbe]);
 
   const handleSvgClick = useCallback(() => {
     // Cancel wiring if clicking empty space
@@ -470,7 +475,7 @@ export function BoardCanvas({
           <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
           <WiringPreview wiringFrom={wiringFrom} mousePos={mousePos} parts={parts} />
           <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} />
-          <TerminalDots parts={parts} wiringFrom={wiringFrom} onTerminalClick={handleTerminalClick} />
+          <TerminalDots parts={parts} wiringFrom={wiringFrom} onTerminalClick={handleTerminalClick} placingProbe={placingProbe} />
         </svg>
 
         <WokwiParts

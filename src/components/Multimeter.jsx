@@ -3,44 +3,38 @@
  *
  * The honesty rule: resistance on a powered board shows
  * "Turn power OFF to measure resistance" — this is the meter
- * behaving correctly, not an error. It teaches the learner that
- * a real DMM works this way.
+ * behaving correctly, not an error.
  *
  * Every value comes from the engine. Nothing is fabricated.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { createMeterState, readMeter } from '../model/multimeter.js';
 
-export function Multimeter({ circuit, wires, parts, onProbePlace }) {
+/**
+ * @param {{ circuit, wires, parts, placingProbe, onStartPlacing, onStopPlacing }} props
+ * - placingProbe: 'A'|'B'|null (from parent)
+ * - onStartPlacing(which): tell parent we want to place a probe
+ * - onStopPlacing(): tell parent we're done
+ */
+export function Multimeter({ circuit, wires, parts, placingProbe, onStartPlacing, onStopPlacing, probePlacement }) {
   const [meter, setMeter] = useState(createMeterState);
-  const [placingProbe, setPlacingProbe] = useState(null); // 'A' or 'B' or null
 
   const setMode = useCallback((mode) => {
     setMeter(m => ({ ...m, mode }));
   }, []);
 
-  const handleProbeClick = useCallback((which) => {
-    setPlacingProbe(which);
-    if (onProbePlace) onProbePlace(which);
-  }, [onProbePlace]);
-
-  // Called from parent when user clicks a terminal/net while placing a probe
-  const placeProbe = useCallback((netId, partId, terminal) => {
-    if (!placingProbe) return;
+  // When parent delivers a probe placement
+  useEffect(() => {
+    if (!probePlacement || !placingProbe) return;
+    const { netId, partId, terminal } = probePlacement;
     const probe = { netId, partId, terminal };
     setMeter(m => ({
       ...m,
       [placingProbe === 'A' ? 'probeA' : 'probeB']: probe,
     }));
-    setPlacingProbe(null);
-    if (onProbePlace) onProbePlace(null);
-  }, [placingProbe, onProbePlace]);
-
-  // Expose placeProbe for parent to call
-  // (attached to the component instance via ref in parent)
-  Multimeter._placeProbe = placeProbe;
-  Multimeter._placingProbe = placingProbe;
+    onStopPlacing();
+  }, [probePlacement, placingProbe, onStopPlacing]);
 
   const reading = readMeter(meter, circuit);
 
@@ -110,12 +104,8 @@ export function Multimeter({ circuit, wires, parts, onProbePlace }) {
       {reading.note && (
         <div style={{
           padding: '8px',
-          background: meter.mode === 'resistance' && reading.note.includes('Turn power OFF')
-            ? '#1a1a0e'  // amber tint for the power-off note
-            : '#16213e',
-          border: `1px solid ${
-            reading.note.includes('Turn power OFF') ? '#f39c12' : '#2c3e50'
-          }`,
+          background: reading.note.includes('Turn power OFF') ? '#1a1a0e' : '#16213e',
+          border: `1px solid ${reading.note.includes('Turn power OFF') ? '#f39c12' : '#2c3e50'}`,
           borderRadius: '4px',
           marginBottom: '10px',
         }}>
@@ -141,7 +131,7 @@ export function Multimeter({ circuit, wires, parts, onProbePlace }) {
           return (
             <button
               key={which}
-              onClick={() => handleProbeClick(which)}
+              onClick={() => isPlacing ? onStopPlacing() : onStartPlacing(which)}
               style={{
                 display: 'block',
                 width: '100%',
@@ -157,9 +147,9 @@ export function Multimeter({ circuit, wires, parts, onProbePlace }) {
                 textAlign: 'left',
               }}
             >
-              {which === 'A' ? '🔴' : '⚫'} Probe {which}:{' '}
+              Probe {which}:{' '}
               {isPlacing
-                ? 'click a terminal…'
+                ? 'click a terminal...'
                 : hasPlacement
                   ? (probe.netId || `${probe.partId}:${probe.terminal}`)
                   : 'not placed'}
@@ -169,8 +159,7 @@ export function Multimeter({ circuit, wires, parts, onProbePlace }) {
       </div>
 
       <div style={{ color: '#7f8c8d', fontSize: '9px', lineHeight: '1.3' }}>
-        All readings from engine.<br/>
-        Nothing fabricated.
+        All readings from engine.
       </div>
     </div>
   );

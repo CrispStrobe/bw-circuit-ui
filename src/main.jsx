@@ -6,6 +6,7 @@ import { ControlPanel } from './components/ControlPanel.jsx';
 import { InferPanel } from './components/InferPanel.jsx';
 import { Multimeter } from './components/Multimeter.jsx';
 import { useCircuit } from './hooks/useCircuit.js';
+import { updateBuzzerAudio, stopAllBuzzers } from './audio/buzzer-audio.js';
 
 const MS = 1_000_000n;
 
@@ -22,7 +23,49 @@ function App() {
 
   const [selectedPart, setSelectedPart] = useState(null);
   const [selectedWire, setSelectedWire] = useState(null);
-  const [mode, setMode] = useState('build'); // 'build' or 'simulate'
+  const [mode, setMode] = useState('build');
+
+  // Multimeter probe placement state
+  const [placingProbe, setPlacingProbe] = useState(null); // 'A'|'B'|null
+  const [probePlacement, setProbePlacement] = useState(null);
+
+  const handleStartPlacing = useCallback((which) => setPlacingProbe(which), []);
+  const handleStopPlacing = useCallback(() => setPlacingProbe(null), []);
+
+  // When a terminal is clicked while placing a probe, deliver the placement
+  const handleTerminalClickForProbe = useCallback((partId, terminal) => {
+    if (!placingProbe) return false; // not placing
+    // Find which net this terminal is on
+    const wire = wires.find(w =>
+      (w.from.part === partId && w.from.terminal === terminal) ||
+      (w.to.part === partId && w.to.terminal === terminal)
+    );
+    setProbePlacement({
+      netId: wire?.netId || null,
+      partId,
+      terminal,
+    });
+    return true; // consumed the click
+  }, [placingProbe, wires]);
+
+  // Buzzer audio: update oscillators whenever simulation ticks
+  useEffect(() => {
+    const buzzers = parts.filter(p => p.kind === 'buzzer');
+    for (const bz of buzzers) {
+      try {
+        const tone = buzzerTone(bz.id);
+        updateBuzzerAudio(bz.id, tone);
+      } catch {
+        // Part might not be wired yet
+      }
+    }
+    return () => {}; // cleanup on unmount handled by stopAllBuzzers
+  }, [rev, parts, buzzerTone]);
+
+  // Stop all buzzers when leaving simulate mode
+  useEffect(() => {
+    if (mode !== 'simulate') stopAllBuzzers();
+  }, [mode]);
 
   // Simulation loop
   const simInterval = useRef(null);
@@ -103,6 +146,14 @@ function App() {
     partCountRef.current = 0;
   }, [loadInferred]);
 
+  // Status text
+  let statusText = null;
+  if (mode === 'simulate') {
+    statusText = 'SIMULATING — MCU driving pins';
+  } else if (placingProbe) {
+    statusText = `Placing probe ${placingProbe} — click a terminal`;
+  }
+
   return (
     <div style={{
       display: 'flex',
@@ -111,13 +162,11 @@ function App() {
       minHeight: '100vh',
       alignItems: 'flex-start',
     }}>
-      {/* Left column: palette + infer */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <PartPalette onAddPart={handleAddPart} />
         <InferPanel onLoadCircuit={handleLoadCircuit} />
       </div>
 
-      {/* Center: canvas */}
       <div style={{ flex: 1 }}>
         <BoardCanvas
           parts={parts}
@@ -136,11 +185,12 @@ function App() {
           onControlChange={handleControlChange}
           onButtonDown={handleButtonDown}
           onButtonUp={handleButtonUp}
-          statusText={mode === 'simulate' ? 'SIMULATING — MCU driving pins' : null}
+          statusText={statusText}
+          placingProbe={placingProbe}
+          onTerminalClickForProbe={handleTerminalClickForProbe}
         />
       </div>
 
-      {/* Right column: controls + multimeter */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <ControlPanel
           mode={mode}
@@ -157,6 +207,10 @@ function App() {
           circuit={circuit}
           wires={wires}
           parts={parts}
+          placingProbe={placingProbe}
+          onStartPlacing={handleStartPlacing}
+          onStopPlacing={handleStopPlacing}
+          probePlacement={probePlacement}
         />
       </div>
     </div>
