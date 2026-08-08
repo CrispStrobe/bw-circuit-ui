@@ -110,6 +110,14 @@ export function useCircuit(vcc = 5.0) {
     bump();
   }, [circuit, bump]);
 
+  const undo = useCallback(() => {
+    if (circuit.undo()) bump();
+  }, [circuit, bump]);
+
+  const redo = useCallback(() => {
+    if (circuit.redo()) bump();
+  }, [circuit, bump]);
+
   // Read-only accessors — these read from the engine, never fabricate.
   const ledBrightness = useCallback((partId) => {
     return circuit.ledBrightness(partId);
@@ -142,6 +150,10 @@ export function useCircuit(vcc = 5.0) {
     advanceBy,
     setPower,
     loadInferred,
+    undo,
+    redo,
+    canUndo: circuit.history.canUndo,
+    canRedo: circuit.history.canRedo,
 
     // Instruments (from engine)
     ledBrightness,

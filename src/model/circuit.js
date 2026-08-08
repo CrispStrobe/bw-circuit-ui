@@ -9,6 +9,7 @@
  */
 
 import { getEngine } from '../engine.js';
+import { History } from './history.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -59,6 +60,34 @@ export class Circuit {
 
     /** @type {bigint} — current simulation time in ns */
     this.timeNs = 0n;
+
+    /** @type {History} */
+    this.history = new History();
+  }
+
+  /** Save current state to history. Called after structural mutations. */
+  _saveHistory() {
+    this.history.save({ parts: this.parts, wires: this.wires });
+  }
+
+  /** Undo the last structural change. Returns true if successful. */
+  undo() {
+    const state = this.history.undo();
+    if (!state) return false;
+    this.parts = state.parts.map(p => ({ ...p }));
+    this.wires = state.wires.map(w => ({ ...w }));
+    this._syncNetlist();
+    return true;
+  }
+
+  /** Redo a previously undone change. Returns true if successful. */
+  redo() {
+    const state = this.history.redo();
+    if (!state) return false;
+    this.parts = state.parts.map(p => ({ ...p }));
+    this.wires = state.wires.map(w => ({ ...w }));
+    this._syncNetlist();
+    return true;
   }
 
   // ── Part operations ─────────────────────────────────────────────
@@ -76,6 +105,7 @@ export class Circuit {
     const part = { id: genId(kind), kind, params: { ...params }, terminals, x, y };
     this.parts.push(part);
     this._syncNetlist();
+    this._saveHistory();
     return part;
   }
 
@@ -93,6 +123,7 @@ export class Circuit {
       w => w.from.part !== partId && w.to.part !== partId
     );
     this._syncNetlist();
+    this._saveHistory();
     return true;
   }
 
@@ -179,6 +210,7 @@ export class Circuit {
     };
     this.wires.push(wire);
     this._syncNetlist();
+    this._saveHistory();
     return wire;
   }
 
@@ -192,6 +224,7 @@ export class Circuit {
     if (idx === -1) return false;
     this.wires.splice(idx, 1);
     this._syncNetlist();
+    this._saveHistory();
     return true;
   }
 

@@ -35,7 +35,7 @@ export function CircuitDesigner({ project }) {
     addPart, removePart, movePart,
     addWire, removeWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
-    loadInferred,
+    loadInferred, undo, redo, canUndo, canRedo,
     ledBrightness, buzzerTone, nodeVoltage,
     circuit,
   } = useCircuit(5.0);
@@ -223,18 +223,36 @@ export function CircuitDesigner({ project }) {
     partCountRef.current = 0;
   }, [loadInferred]);
 
+  // Keyboard shortcuts
+  const handleKeyDown = useCallback((e) => {
+    // Ctrl+Z / Cmd+Z → undo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+    }
+    // Ctrl+Shift+Z / Ctrl+Y → redo
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'Z' || e.key === 'y')) {
+      e.preventDefault();
+      redo();
+    }
+  }, [undo, redo]);
+
   let statusText = null;
   if (mode === 'simulate') statusText = 'SIMULATING — MCU driving pins';
   else if (placingProbe) statusText = `Placing probe ${placingProbe} — click a terminal`;
 
   return (
-    <div style={{
-      display: 'flex',
-      gap: '12px',
-      padding: '16px',
-      alignItems: 'flex-start',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-    }}>
+    <div
+      style={{
+        display: 'flex',
+        gap: '12px',
+        padding: '16px',
+        alignItems: 'flex-start',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+      }}
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <PartPalette onAddPart={handleAddPart} />
         <InferPanel onLoadCircuit={handleLoadCircuit} />
@@ -275,6 +293,10 @@ export function CircuitDesigner({ project }) {
           parts={parts}
           onRemovePart={(id) => { removePart(id); setSelectedPart(null); }}
           onRemoveWire={(id) => { removeWire(id); setSelectedWire(null); }}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={canUndo}
+          canRedo={canRedo}
         />
         <Multimeter
           circuit={circuit}

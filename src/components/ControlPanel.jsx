@@ -10,6 +10,7 @@ export function ControlPanel({
   selectedPart, selectedWire,
   parts,
   onRemovePart, onRemoveWire,
+  onUndo, onRedo, canUndo, canRedo,
 }) {
   const selPart = selectedPart ? parts.find(p => p.id === selectedPart) : null;
 
@@ -66,6 +67,36 @@ export function ControlPanel({
             cursor: 'pointer', fontWeight: 'bold',
           }}
         >{powered ? 'POWER ON' : 'POWER OFF'}</button>
+      </div>
+
+      {/* Undo/Redo */}
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '12px' }}>
+        <button
+          onClick={onUndo}
+          disabled={!canUndo}
+          style={{
+            flex: 1, padding: '6px',
+            background: '#16213e',
+            border: '1px solid #2c3e50',
+            borderRadius: '4px',
+            color: canUndo ? '#bdc3c7' : '#444',
+            fontFamily: 'monospace', fontSize: '11px',
+            cursor: canUndo ? 'pointer' : 'default',
+          }}
+        >Undo</button>
+        <button
+          onClick={onRedo}
+          disabled={!canRedo}
+          style={{
+            flex: 1, padding: '6px',
+            background: '#16213e',
+            border: '1px solid #2c3e50',
+            borderRadius: '4px',
+            color: canRedo ? '#bdc3c7' : '#444',
+            fontFamily: 'monospace', fontSize: '11px',
+            cursor: canRedo ? 'pointer' : 'default',
+          }}
+        >Redo</button>
       </div>
 
       {/* Selection info */}
