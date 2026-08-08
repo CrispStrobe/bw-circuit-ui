@@ -83,18 +83,27 @@ function fmtV(v) {
 
 // ── SVG part rendering ───────────────────────────────────────────
 
-function SvgParts({ parts, selectedPart, onSelectPart }) {
+function SvgParts({ parts, selectedPart, onSelectPart, onPartBodyClick }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const isSelected = selectedPart === id;
     const selStroke = isSelected ? '#f1c40f' : undefined;
 
+    // Click handler: select + auto-wire for single-terminal parts
+    const handleClick = (e) => {
+      e.stopPropagation();
+      onSelectPart(id);
+      if (onPartBodyClick) onPartBodyClick(id);
+    };
+
     switch (kind) {
       case 'vcc':
         return (
           <g key={id} transform={`translate(${x}, ${y})`}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            onClick={handleClick}
             style={{ cursor: 'pointer' }}>
+            {/* Larger hit area */}
+            <rect x={-20} y={-8} width={40} height={32} fill="transparent" />
             <line x1={0} y1={20} x2={0} y2={5} stroke={selStroke || '#e74c3c'} strokeWidth={2} />
             <line x1={-15} y1={5} x2={15} y2={5} stroke={selStroke || '#e74c3c'} strokeWidth={2} />
             <text x={0} y={-2} textAnchor="middle" fill={selStroke || '#e74c3c'} fontSize={12}
@@ -104,8 +113,9 @@ function SvgParts({ parts, selectedPart, onSelectPart }) {
       case 'gnd':
         return (
           <g key={id} transform={`translate(${x}, ${y})`}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            onClick={handleClick}
             style={{ cursor: 'pointer' }}>
+            <rect x={-20} y={-14} width={40} height={42} fill="transparent" />
             <line x1={0} y1={-10} x2={0} y2={0} stroke={selStroke || '#3498db'} strokeWidth={2} />
             <line x1={-15} y1={0} x2={15} y2={0} stroke={selStroke || '#3498db'} strokeWidth={2} />
             <line x1={-10} y1={5} x2={10} y2={5} stroke={selStroke || '#3498db'} strokeWidth={2} />
@@ -121,7 +131,7 @@ function SvgParts({ parts, selectedPart, onSelectPart }) {
         const chipY = -chipH / 2;
         return (
           <g key={id} transform={`translate(${x}, ${y})`}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            onClick={handleClick}
             style={{ cursor: 'pointer' }}>
             <rect x={-50} y={chipY} width={120} height={chipH} rx={6}
               fill="#2c3e50" stroke={selStroke || '#7f8c8d'} strokeWidth={isSelected ? 3 : 2} />
@@ -369,7 +379,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedPart, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedPart, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -398,7 +408,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 40, top: y - 12, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiResistor value={String(params.ohms)} />
             <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
@@ -412,7 +422,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 15, top: y - 20, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiLed color={params.color || 'red'} brightness={b} value={isOn} />
             <div style={{
@@ -429,7 +439,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 30, top: y - 30, cursor: 'move', pointerEvents: 'auto' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}>
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}>
             <WokwiPotentiometer
               min={0} max={1} step={0.01} value={0.5}
               onInput={(e) => {
@@ -447,7 +457,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 20, top: y - 20, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiBuzzer hasSignal={tone?.on ?? false} />
             <div style={{
@@ -464,7 +474,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 18, top: y - 18, cursor: 'move', pointerEvents: 'auto' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}
             onMouseDown={(e) => { e.stopPropagation(); onButtonDown(id); }}
             onMouseUp={() => onButtonUp(id)}
             onMouseLeave={() => onButtonUp(id)}>
@@ -478,7 +488,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 15, top: y - 15, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <svg width={30} height={30} viewBox="0 0 30 30">
               <line x1={5} y1={15} x2={12} y2={15} stroke="#7f8c8d" strokeWidth={2} />
@@ -591,6 +601,37 @@ export function BoardCanvas({
       setMousePos(null);
     }
   }, [wiringFrom, onAddWire, placingProbe, onTerminalClickForProbe]);
+
+  // Click on a part body: auto-wire from/to its first unconnected terminal.
+  // VCC/GND have one terminal — clicking them means "wire from here."
+  // If already wiring, clicking a part completes the wire.
+  const handlePartBodyClick = useCallback((partId) => {
+    const part = parts.find(p => p.id === partId);
+    if (!part) return;
+
+    // Build connected set
+    const connected = new Set();
+    for (const w of wires) {
+      connected.add(`${w.from.part}:${w.from.terminal}`);
+      connected.add(`${w.to.part}:${w.to.terminal}`);
+    }
+
+    // Find first unconnected terminal on this part
+    const freeTerm = part.terminals.find(t => !connected.has(`${partId}:${t}`));
+    if (!freeTerm) return; // all terminals connected
+
+    if (wiringFrom) {
+      // Complete wiring to this part's free terminal
+      if (wiringFrom.part !== partId) {
+        onAddWire(wiringFrom.part, wiringFrom.terminal, partId, freeTerm);
+      }
+      setWiringFrom(null);
+      setMousePos(null);
+    } else {
+      // Start wiring from this part's free terminal
+      setWiringFrom({ part: partId, terminal: freeTerm });
+    }
+  }, [parts, wires, wiringFrom, onAddWire]);
 
   const handleSvgClick = useCallback(() => {
     // Cancel wiring if clicking empty space
@@ -899,7 +940,7 @@ export function BoardCanvas({
               </g>
             );
           })()}
-          <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} />
+          <SvgParts parts={parts} selectedPart={selectedPart} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick} />
 
           {/* Inline warning indicators on parts */}
           {warnings && warnings.map((w, i) => {
@@ -948,6 +989,7 @@ export function BoardCanvas({
               setHoveredPart(partId);
               if (partId) setHoverPos({ x: cx, y: cy });
             }}
+            onPartBodyClick={handlePartBodyClick}
           />
         </div>
 
