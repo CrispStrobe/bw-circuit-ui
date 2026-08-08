@@ -232,6 +232,30 @@ export function CircuitDesigner({ project }) {
     partCountRef.current = 0;
   }, [loadInferred]);
 
+  // Save circuit to JSON file download
+  const handleSave = useCallback(() => {
+    const json = JSON.stringify(circuit.toJSON(), null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'circuit.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [circuit]);
+
+  // Load circuit from JSON file
+  const handleLoad = useCallback((data) => {
+    if (!data || !data.parts || !data.wires) return;
+    circuit.parts = data.parts.map(p => ({ ...p }));
+    circuit.wires = data.wires.map(w => ({ ...w }));
+    circuit._syncNetlist();
+    circuit._saveHistory();
+    setSelectedPart(null);
+    setSelectedWire(null);
+    setMode('build');
+  }, [circuit]);
+
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e) => {
     // Ctrl+Z / Cmd+Z → undo
@@ -307,6 +331,8 @@ export function CircuitDesigner({ project }) {
           canUndo={canUndo}
           canRedo={canRedo}
           onUpdateParams={updateParams}
+          onSave={handleSave}
+          onLoad={handleLoad}
         />
         <Multimeter
           circuit={circuit}

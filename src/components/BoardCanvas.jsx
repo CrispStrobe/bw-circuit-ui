@@ -378,6 +378,23 @@ export function BoardCanvas({
   const [dragging, setDragging] = useState(null);
   const [hoveredNet, setHoveredNet] = useState(null);
 
+  // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [panning, setPanning] = useState(false);
+  const panStart = React.useRef(null);
+
+  // Convert screen coordinates to canvas coordinates (accounting for zoom/pan)
+  const screenToCanvas = useCallback((clientX, clientY, container) => {
+    const rect = container.getBoundingClientRect();
+    const sx = clientX - rect.left;
+    const sy = clientY - rect.top;
+    return {
+      x: sx / zoom + pan.x,
+      y: sy / zoom + pan.y,
+    };
+  }, [zoom, pan]);
+
   const handleTerminalClick = useCallback((partId, terminal) => {
     // If placing a multimeter probe, route to probe handler
     if (placingProbe && onTerminalClickForProbe) {
@@ -407,10 +424,17 @@ export function BoardCanvas({
   }, [wiringFrom, onSelectPart, onSelectWire]);
 
   const handleSvgMouseMove = useCallback((e) => {
-    const svg = e.currentTarget;
-    const rect = svg.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const container = e.currentTarget;
+    const { x, y } = screenToCanvas(e.clientX, e.clientY, container);
+
+    if (panning && panStart.current) {
+      const rect = container.getBoundingClientRect();
+      const dx = (e.clientX - panStart.current.x) / zoom;
+      const dy = (e.clientY - panStart.current.y) / zoom;
+      setPan(p => ({ x: p.x - dx, y: p.y - dy }));
+      panStart.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
 
     if (wiringFrom) {
       setMousePos({ x, y });
@@ -418,10 +442,34 @@ export function BoardCanvas({
     if (dragging) {
       onMovePart(dragging, x, y);
     }
-  }, [wiringFrom, dragging, onMovePart]);
+  }, [wiringFrom, dragging, onMovePart, screenToCanvas, panning, zoom]);
+
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    const container = e.currentTarget;
+    const { x: cx, y: cy } = screenToCanvas(e.clientX, e.clientY, container);
+
+    const factor = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoom = Math.max(0.3, Math.min(3, zoom * factor));
+
+    // Zoom toward cursor position
+    setPan(p => ({
+      x: cx - (cx - p.x) * (zoom / newZoom),
+      y: cy - (cy - p.y) * (zoom / newZoom),
+    }));
+    setZoom(newZoom);
+  }, [zoom, screenToCanvas]);
+
+  const handleMouseDown = useCallback((e) => {
+    // Middle button or space+left → start panning
+    if (e.button === 1) {
+      e.preventDefault();
+      setPanning(true);
+      panStart.current = { x: e.clientX, y: e.clientY };
+    }
+  }, []);
 
   const handleDragStart = useCallback((e, partId) => {
-    // Only start drag with left button on the SVG layer
     if (e.button === 0) {
       setDragging(partId);
     }
@@ -429,6 +477,8 @@ export function BoardCanvas({
 
   const handleDragEnd = useCallback(() => {
     setDragging(null);
+    setPanning(false);
+    panStart.current = null;
   }, []);
 
   const handleKeyDown = useCallback((e) => {
@@ -446,6 +496,10 @@ export function BoardCanvas({
       setMousePos(null);
       onSelectPart(null);
       onSelectWire(null);
+    }
+    if (e.key === '0') {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
     }
   }, [selectedPart, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire]);
 
@@ -466,6 +520,16 @@ export function BoardCanvas({
           : statusText || 'Click a terminal (red dot) to start wiring. Select + Delete to remove.'}
       </div>
 
+      {/* Zoom indicator */}
+      {zoom !== 1 && (
+        <div style={{
+          color: '#7f8c8d', fontFamily: 'monospace', fontSize: '10px',
+          marginBottom: '4px',
+        }}>
+          {(zoom * 100).toFixed(0)}% — scroll to zoom, middle-click to pan
+        </div>
+      )}
+
       {/* Canvas */}
       <div
         style={{
@@ -479,11 +543,13 @@ export function BoardCanvas({
         }}
         onMouseMove={handleSvgMouseMove}
         onMouseUp={handleDragEnd}
+        onMouseDown={handleMouseDown}
+        onWheel={handleWheel}
       >
         <svg
           width={CANVAS_W}
           height={CANVAS_H}
-          viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
+          viewBox={`${pan.x} ${pan.y} ${CANVAS_W / zoom} ${CANVAS_H / zoom}`}
           style={{ position: 'absolute', top: 0, left: 0 }}
           onClick={handleSvgClick}
         >
@@ -525,17 +591,27 @@ export function BoardCanvas({
           <TerminalDots parts={parts} wiringFrom={wiringFrom} onTerminalClick={handleTerminalClick} placingProbe={placingProbe} />
         </svg>
 
-        <WokwiParts
-          parts={parts}
-          ledBrightness={ledBrightness}
-          buzzerTones={buzzerTones}
-          onSelectPart={onSelectPart}
-          selectedPart={selectedPart}
-          onControlChange={onControlChange}
-          onButtonDown={onButtonDown}
-          onButtonUp={onButtonUp}
-          onDragStart={(partId) => setDragging(partId)}
-        />
+        {/* Wokwi element layer — transformed to match SVG viewBox */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          transformOrigin: '0 0',
+          transform: `scale(${zoom}) translate(${-pan.x}px, ${-pan.y}px)`,
+          pointerEvents: 'none', // let SVG handle clicks; children re-enable
+        }}>
+          <WokwiParts
+            parts={parts}
+            ledBrightness={ledBrightness}
+            buzzerTones={buzzerTones}
+            onSelectPart={onSelectPart}
+            selectedPart={selectedPart}
+            onControlChange={onControlChange}
+            onButtonDown={onButtonDown}
+            onButtonUp={onButtonUp}
+            onDragStart={(partId) => setDragging(partId)}
+          />
+        </div>
       </div>
     </div>
   );

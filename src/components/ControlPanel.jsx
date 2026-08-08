@@ -12,6 +12,7 @@ export function ControlPanel({
   onRemovePart, onRemoveWire,
   onUndo, onRedo, canUndo, canRedo,
   onUpdateParams,
+  onSave, onLoad,
 }) {
   const selPart = selectedPart ? parts.find(p => p.id === selectedPart) : null;
 
@@ -162,11 +163,46 @@ export function ControlPanel({
         >Delete Selected</button>
       )}
 
+      {/* Save/Load */}
+      <div style={{ display: 'flex', gap: '4px', marginTop: '12px' }}>
+        <button
+          onClick={onSave}
+          style={{
+            flex: 1, padding: '6px',
+            background: '#16213e', border: '1px solid #2c3e50',
+            borderRadius: '4px', color: '#bdc3c7',
+            fontFamily: 'monospace', fontSize: '11px', cursor: 'pointer',
+          }}
+        >Save</button>
+        <label style={{
+          flex: 1, padding: '6px',
+          background: '#16213e', border: '1px solid #2c3e50',
+          borderRadius: '4px', color: '#bdc3c7',
+          fontFamily: 'monospace', fontSize: '11px', cursor: 'pointer',
+          textAlign: 'center',
+        }}>
+          Load
+          <input type="file" accept=".json" style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                try { onLoad(JSON.parse(reader.result)); } catch {}
+              };
+              reader.readAsText(file);
+              e.target.value = '';
+            }}
+          />
+        </label>
+      </div>
+
       {/* Help */}
-      <div style={{ marginTop: '16px', color: '#7f8c8d', fontSize: '10px', lineHeight: '1.4' }}>
+      <div style={{ marginTop: '12px', color: '#7f8c8d', fontSize: '10px', lineHeight: '1.4' }}>
         Click red dots to wire.<br/>
         Select + Del to remove.<br/>
-        ESC to cancel/deselect.<br/>
+        Scroll to zoom, 0 to reset.<br/>
+        Ctrl+Z undo, Ctrl+Y redo.<br/>
         All values from engine.
       </div>
     </div>
