@@ -109,6 +109,77 @@ const EXAMPLES = [
   },
 ];
 
+// Additional circuits from reidemeister.com/blog/category/8051
+// covering the HC6800-ES board pin assignments.
+const REIDEMEISTER_PRESETS = [
+  {
+    name: 'R: LED bar P2',
+    desc: '8 LEDs on port 2 (active-low)',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [],
+      ports: [
+        { name: 'leds', port: 2, sfr: 'P2', width: 8, direction: 'output', activeLow: true },
+      ],
+    },
+  },
+  {
+    name: 'R: Buttons + LEDs',
+    desc: 'P3.0-3 buttons, P2 LEDs',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'btn0', port: 3, bit: 0, direction: 'input', activeLow: true },
+        { name: 'btn1', port: 3, bit: 1, direction: 'input', activeLow: true },
+        { name: 'btn2', port: 3, bit: 2, direction: 'input', activeLow: true },
+        { name: 'btn3', port: 3, bit: 3, direction: 'input', activeLow: true },
+      ],
+      ports: [
+        { name: 'leds', port: 2, sfr: 'P2', width: 8, direction: 'output', activeLow: true },
+      ],
+    },
+  },
+  {
+    name: 'R: Buzzer P1.5',
+    desc: 'Piezo buzzer on P1.5',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'buzzer', port: 1, bit: 5, direction: 'tone', activeLow: false },
+      ],
+    },
+  },
+  {
+    name: 'R: UART serial',
+    desc: 'TX/RX on P3.0-1',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'rxd', port: 3, bit: 0, direction: 'input', activeLow: false },
+        { name: 'txd', port: 3, bit: 1, direction: 'output', activeLow: false },
+      ],
+    },
+  },
+  {
+    name: 'R: Full board',
+    desc: 'LEDs + buttons + buzzer + pot',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'btn0', port: 3, bit: 0, direction: 'input', activeLow: true },
+        { name: 'btn1', port: 3, bit: 1, direction: 'input', activeLow: true },
+        { name: 'btn2', port: 3, bit: 2, direction: 'input', activeLow: true },
+        { name: 'btn3', port: 3, bit: 3, direction: 'input', activeLow: true },
+        { name: 'buzzer', port: 1, bit: 5, direction: 'tone', activeLow: false },
+        { name: 'pot', port: 1, bit: 2, direction: 'analog', activeLow: false },
+      ],
+      ports: [
+        { name: 'leds', port: 2, sfr: 'P2', width: 8, direction: 'output', activeLow: true },
+      ],
+    },
+  },
+];
+
 // The comparison that justifies the whole simulator:
 // 04-brightness drives both an active-low and active-high LED
 // so the sink/source asymmetry is visible, not just asserted.
@@ -183,6 +254,27 @@ export function InferPanel({ onLoadCircuit }) {
             background: lastLoaded === preset.name ? '#2c3e50' : '#16213e',
             border: '1px solid #2c3e50', borderRadius: '4px',
             color: lastLoaded === preset.name ? '#2ecc71' : '#bdc3c7',
+            fontFamily: 'monospace', fontSize: '9px', cursor: 'pointer', textAlign: 'left',
+          }}
+        >
+          {preset.name}
+          <span style={{ color: '#7f8c8d', fontSize: '8px', marginLeft: '4px' }}>{preset.desc}</span>
+        </button>
+      ))}
+
+      {/* Reidemeister HC6800-ES board circuits */}
+      <div style={{ color: '#7f8c8d', fontSize: '9px', marginTop: '8px', marginBottom: '4px' }}>
+        HC6800-ES board:
+      </div>
+      {REIDEMEISTER_PRESETS.map(preset => (
+        <button
+          key={preset.name}
+          onClick={() => handleLoad(preset)}
+          style={{
+            display: 'block', width: '100%', padding: '5px', marginBottom: '2px',
+            background: lastLoaded === preset.name ? '#2c3e50' : '#16213e',
+            border: '1px solid #2c3e50', borderRadius: '4px',
+            color: lastLoaded === preset.name ? '#2ecc71' : '#95a5a6',
             fontFamily: 'monospace', fontSize: '9px', cursor: 'pointer', textAlign: 'left',
           }}
         >
