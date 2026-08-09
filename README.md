@@ -5,27 +5,22 @@ turn a potentiometer and watch an LED dim, probe nodes with a virtual multimeter
 
 **Every electrical value comes from [bw-board](../bw-board).** Nothing is fabricated.
 
+**Live:** [brickwright-lite.vercel.app](https://brickwright-lite.vercel.app/) → Circuit tab.
+
 ## Importing as a component
 
 ```jsx
-import { CircuitDesigner } from 'bw-circuit-ui';
+import { setEngine, CircuitDesigner } from 'bw-circuit-ui';
+import { BoardImpl, inferNetlist, checkWiring } from './lib/bw-board/index.js';
+
+setEngine({ BoardImpl, inferNetlist, checkWiring });
 
 <CircuitDesigner
-  project={{
-    device: 'STC12C5A60S2',
-    clock: 11059200,
-    pins: [
-      { name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true },
-    ],
-  }}
+  project={{ device: 'STC12C5A60S2', clock: 11059200, pins: [...] }}
+  onDeclarationChange={(decls) => { /* write to project.stc */ }}
+  onBoardReady={(board) => { /* hand to circuit extension */ }}
 />
 ```
-
-The component is self-contained: it creates a `BoardImpl` internally, infers a
-default circuit from the project's pin declarations, and drives the simulation.
-
-**Entry point:** `src/index.js` — exports `CircuitDesigner` and model utilities.
-No Vite-specific imports, no `import.meta.env`, no CSS modules.
 
 ## Dev harness
 
@@ -37,30 +32,44 @@ npm run dev        # Vite on port 3100
 ## Testing
 
 ```bash
-npm test           # 75 unit tests (node --test, no browser needed)
-npm run test:render  # 3 Playwright rendering tests (needs dev server on 3100)
-npm run test:all   # both
+npm test             # 187 unit tests
+npm run test:render  # 5 Playwright rendering tests (needs dev server)
+npm run test:all     # both
+node --test test/e2e.test.js  # 6 end-to-end browser tests
 ```
+
+Verify the deployed site: `node scripts/check-deployed.mjs`
 
 ## Bundle size
 
-Full app bundle (Vite production build): **240 KB / 76 KB gzip**.
+Full app bundle: **318 KB / 95 KB gzip** (with React).
 
-### wokwi-elements cost (measured, not guessed)
+wokwi-elements cost (measured): 8 elements bundled, **+7 KB gzip** for
+7-segment, LCD1602, IR receiver (added to the original LED, resistor,
+pot, buzzer, pushbutton).
 
-Vite production build, tree-shaken, minified. React excluded (host provides).
+## Boundary C — inference rows
 
-| Build | Minified | Gzipped |
-|---|---|---|
-| Circuit designer + wokwi + lit | 102 KB | 38 KB |
-| Circuit designer alone (stub SVGs) | 58 KB | 24 KB |
-| **Delta: wokwi + lit + @lit/react** | **44 KB** | **14.3 KB** |
+| # | Source | Direction | Inferred netlist |
+|---|---|---|---|
+| 1 | PIN | output activeLow | VCC → 1kΩ → LED → pin |
+| 2 | PIN | output | pin → 1kΩ → LED → GND |
+| 3 | PIN | input | VCC → 10kΩ pull-up → pin ← button → GND |
+| 4 | PIN | analog | VCC → pot → GND, wiper → pin |
+| 5 | PIN | tone | pin → buzzer → GND |
+| 6 | PORT | output | 8× (pin → 330Ω → LED) per bit |
+| 7 | PART | 74hc595 | 3 control pins + 8 outputs (note) |
 
-Tree-shaking works: 5 elements bundled out of 53 in @wokwi/elements.
+Plus `pwm` (alias for output) and `tone` (singular — one Timer 1).
 
-The 44 KB / 14.3 KB gzip cost buys polished part visuals (LED glow,
-resistor color bands, potentiometer knob). The alternative is hand-drawn
-SVGs for 5 parts, which would remove all three deps.
+## Declaration constraints
+
+Parts write declarations with three constraints:
+- **Polarity from wiring** — VCC→R→LED→pin = activeLow, pin→R→LED→GND = activeHigh
+- **TONE is singular** — second buzzer becomes OUTPUT (one Timer 1)
+- **ANALOG is P1.x only** — pot on other ports becomes INPUT
+
+Round-trip validated against 7 compiler-produced `pins.json` fixtures.
 
 ## Dependencies
 
@@ -72,5 +81,3 @@ SVGs for 5 parts, which would remove all three deps.
 | @lit/react | BSD-3-Clause | runtime |
 | vite | MIT | dev only |
 | playwright | Apache-2.0 | dev only |
-
-bw-board is imported by relative path — it is dependency-free ESM.
