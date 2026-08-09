@@ -86,6 +86,7 @@ export function partBBoxes(parts, skipA, skipB) {
         case 'temp_sensor': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
         case 'eeprom': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
         case 'meter': return { x: p.x - 35, y: p.y - 25, w: 70, h: 55 };
+        case 'ledcube': return { x: p.x - 50, y: p.y - 50, w: 100, h: 100 };
         default: return { x: p.x - 15, y: p.y - 15, w: 30, h: 30 };
       }
     });

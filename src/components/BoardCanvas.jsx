@@ -19,6 +19,7 @@ import { PartTooltip } from './PartTooltip.jsx';
 import { ContextMenu } from './ContextMenu.jsx';
 import { InlineEditor } from './InlineEditor.jsx';
 import { getMeterReading } from '../model/meter-reading.js';
+import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../model/ledcube.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
@@ -56,6 +57,12 @@ function terminalOffsetsForPart(part) {
     case 'buzzer': return { a: r(-15, 0), b: r(15, 0) };
     case 'capacitor': return { a: r(-15, 0), b: r(15, 0) };
     case 'meter': return { probe_a: r(-25, 20), probe_b: r(25, 20) };
+    case 'ledcube': {
+      const offsets = {};
+      for (let i = 0; i < 8; i++) offsets[`sel_${i}`] = r(-60, -30 + i * 10);
+      for (let i = 0; i < 8; i++) offsets[`data_${i}`] = r(60, -30 + i * 10);
+      return offsets;
+    }
     case 'seven_segment': return { a: r(-30, 30), b: r(30, 30) }; // pins at bottom
     case 'char_lcd': return { rs: r(-50, 25), e: r(-30, 25), d4: r(-10, 25), d5: r(10, 25), d6: r(30, 25), d7: r(50, 25) };
     case 'ir_receiver': return { out: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
@@ -564,6 +571,48 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, onSelect
             </div>
           </div>
         );
+      case 'ledcube': {
+        // 4x4x4 bi-colour LED cube — voxel map unknown until measured
+        const voxels = computeCubeVoxels(testPattern());
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 50, top: y - 50, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            {...dragProps()}>
+            <svg width={100} height={100} viewBox="0 0 100 100">
+              <rect x={0} y={0} width={100} height={100} rx={4}
+                fill="#0a0a1a" stroke="#7f8c8d" strokeWidth={1} />
+              <text x={50} y={10} textAnchor="middle" fill="#7f8c8d"
+                fontSize={6} fontFamily="monospace">4×4×4 CUBE</text>
+              {/* 8x8 grid of voxels — (select, bit) pairs */}
+              {voxels.map((v, i) => {
+                const gx = 8 + (v.bit % 8) * 11;
+                const gy = 15 + v.select * 10;
+                const mapped = VOXEL_MAP[v.select]?.[v.bit];
+                return (
+                  <g key={i}>
+                    <rect x={gx} y={gy} width={9} height={8} rx={1}
+                      fill={v.brightness > 0.01
+                        ? `rgba(46, 204, 113, ${Math.min(1, v.brightness * 8)})`
+                        : '#1a1a2e'}
+                      stroke="#2c3e50" strokeWidth={0.5}
+                    />
+                    <text x={gx + 4.5} y={gy + 6} textAnchor="middle"
+                      fill={v.brightness > 0.01 ? '#fff' : '#333'}
+                      fontSize={mapped ? 4 : 3.5} fontFamily="monospace">
+                      {v.label}
+                    </text>
+                  </g>
+                );
+              })}
+              <text x={50} y={98} textAnchor="middle" fill="#556"
+                fontSize={4} fontFamily="monospace">
+                positions unknown — needs probe.c
+              </text>
+            </svg>
+          </div>
+        );
+      }
       case 'meter': {
         const mode = params.mode || 'voltage';
         const mr = meterReadings?.[id] || { value: '---', unit: mode === 'voltage' ? 'V' : mode === 'current' ? 'mA' : 'Ω', note: null };

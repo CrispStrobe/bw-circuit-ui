@@ -43,6 +43,12 @@ const CATEGORIES = [
       { kind: 'meter', label: 'Multimeter', params: { mode: 'voltage' }, color: '#f1c40f' },
     ],
   },
+  {
+    name: 'Display',
+    parts: [
+      { kind: 'ledcube', label: 'LED Cube 4³', params: {}, color: '#2ecc71' },
+    ],
+  },
 ];
 
 // Flat list for search

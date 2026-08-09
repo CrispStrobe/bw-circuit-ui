@@ -405,7 +405,7 @@ export class Circuit {
    */
   _syncNetlist() {
     // Parts for the engine (strip layout fields, exclude UI-only parts like meters)
-    const engineParts = this.parts.filter(p => p.kind !== 'meter').map(p => ({
+    const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'ledcube').map(p => ({
       id: p.id,
       kind: p.kind,
       params: p.params,
@@ -484,6 +484,10 @@ function terminalsForKind(kind, params) {
     case 'switch': return ['a', 'b'];
     case 'buzzer': return ['a', 'b'];
     case 'meter': return ['probe_a', 'probe_b'];
+    case 'ledcube': return [
+      ...Array.from({length: 8}, (_, i) => `sel_${i}`),
+      ...Array.from({length: 8}, (_, i) => `data_${i}`),
+    ];
     case 'mcu': return params?.pins || ['P1.0'];
     default: return ['a', 'b'];
   }
