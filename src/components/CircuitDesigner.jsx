@@ -39,9 +39,8 @@ import { generatePartName, circuitToDeclarations } from '../model/declarations.j
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
-import { BreadboardView } from './BreadboardView.jsx';
 import { BreadboardModel } from '../model/breadboard.js';
-import { FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
+import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 
 const MS = 1_000_000n;
 const GRID = 20;
@@ -107,18 +106,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setSelectedWire(null);
   }, []);
   const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
-  const [viewMode, setViewMode] = useState('schematic'); // 'schematic' | 'breadboard'
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
   // Breadboard model (persistent across renders)
-  const breadboardRef = useRef(new BreadboardModel());
   const [bbRev, setBbRev] = useState(0);
   const bbBump = useCallback(() => setBbRev(r => r + 1), []);
-  const [bbPendingPart, setBbPendingPart] = useState(null); // { kind, params } waiting for hole click
-  const [bbGhost, setBbGhost] = useState(null); // { kind, leadMap } preview
-  const [bbWiringFrom, setBbWiringFrom] = useState(null); // hole id for wire start
-  const [bbWireColor, setBbWireColor] = useState('#333'); // default jumper color
   const bbWireIdRef = useRef(0);
 
   const [annotations, setAnnotations] = useState([]);
@@ -283,11 +276,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   // ── Part placement — find empty space ────────────────────────────
   const handleAddPart = useCallback((kind, params) => {
-    // In breadboard mode, defer to click-to-place flow
-    if (viewMode === 'breadboard' && FOOTPRINTS[kind]) {
-      setBbPendingPart({ kind, params });
-      return;
-    }
     // Find a position that doesn't overlap existing parts
     const occupied = parts.map(p => ({ x: p.x, y: p.y }));
     let x = 200, y = 200;
@@ -313,7 +301,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const existingNames = parts.filter(p => p.declName).map(p => p.declName);
     const declName = declarable.includes(kind) ? generatePartName(kind, existingNames) : undefined;
     addPart(kind, params, x, y, declName);
-  }, [addPart, parts, viewMode]);
+  }, [addPart, parts]);
 
   // Snap-to-grid on move (drag)
   const handleMovePart = useCallback((partId, x, y) => {
@@ -561,123 +549,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             wiring only — no sim
           </div>
         )}
-        {/* View mode toggle */}
-        <div style={{
-          display: 'flex', gap: '4px', marginBottom: '4px',
-        }}>
-          {['schematic', 'breadboard'].map(vm => (
-            <button key={vm} onClick={() => setViewMode(vm)} style={{
-              background: viewMode === vm ? '#3498db' : '#1a1a2e',
-              color: viewMode === vm ? '#fff' : '#7f8c8d',
-              border: '1px solid #2c3e50', borderRadius: '4px',
-              padding: '4px 10px', cursor: 'pointer',
-              fontFamily: 'monospace', fontSize: '11px',
-            }}>{vm === 'schematic' ? 'Schematic' : 'Breadboard'}</button>
-          ))}
-        </div>
-
-        {viewMode === 'breadboard' ? (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            {/* Breadboard toolbar */}
-            <div style={{ display: 'flex', gap: '4px', marginBottom: '4px', alignItems: 'center' }}>
-              <button onClick={() => {
-                setBbPendingPart(null); setBbGhost(null);
-                setBbWiringFrom(bbWiringFrom ? null : 'WAITING');
-              }} style={{
-                background: bbWiringFrom ? '#e67e22' : '#1a1a2e', border: '1px solid #2c3e50',
-                borderRadius: '4px', padding: '4px 10px', cursor: 'pointer',
-                fontFamily: 'monospace', fontSize: '11px',
-                color: bbWiringFrom ? '#fff' : '#7f8c8d',
-              }}>Jumper wire</button>
-              {bbWiringFrom && bbWiringFrom !== 'WAITING' && (
-                <span style={{ color: '#e67e22', fontFamily: 'monospace', fontSize: '11px' }}>
-                  from {bbWiringFrom} → click destination
-                </span>
-              )}
-              {bbWiringFrom === 'WAITING' && (
-                <span style={{ color: '#e67e22', fontFamily: 'monospace', fontSize: '11px' }}>
-                  click first hole
-                </span>
-              )}
-              {/* Wire color picker */}
-              {bbWiringFrom && (
-                <div style={{ display: 'flex', gap: '2px', marginLeft: '8px' }}>
-                  {[['#e74c3c', '+'], ['#1a1a1a', 'G'], ['#2ecc71', ''], ['#3498db', ''], ['#f1c40f', ''], ['#ecf0f1', '']].map(([c, label]) => (
-                    <button key={c} onClick={() => setBbWireColor(c)} style={{
-                      width: 16, height: 16, borderRadius: 2,
-                      background: c, border: bbWireColor === c ? '2px solid #f1c40f' : '1px solid #555',
-                      cursor: 'pointer',
-                    }} title={label || c} />
-                  ))}
-                </div>
-              )}
-            </div>
-            {bbPendingPart && (
-              <div style={{
-                padding: '6px 12px', background: '#1a1a2e', border: '1px solid #3498db',
-                borderRadius: '4px', fontFamily: 'monospace', fontSize: '11px', color: '#3498db',
-                marginBottom: '4px',
-              }}>
-                Click a hole to place {bbPendingPart.kind} — Esc to cancel
-              </div>
-            )}
-            <BreadboardView
-              model={breadboardRef.current}
-              notes={(() => { try { return breadboardRef.current.deriveNets().notes; } catch { return []; } })()}
-              placingPart={bbGhost}
-              onHoverHole={(holeId) => {
-                if (!bbPendingPart || !holeId) { setBbGhost(null); return; }
-                const fp = FOOTPRINTS[bbPendingPart.kind];
-                if (!fp) { setBbGhost(null); return; }
-                try {
-                  const leadMap = computeLeadMap(fp, holeId);
-                  setBbGhost({ kind: bbPendingPart.kind, leadMap });
-                } catch {
-                  setBbGhost(null);
-                }
-              }}
-              onClickHole={(holeId) => {
-                // Jumper wire mode
-                if (bbWiringFrom === 'WAITING') {
-                  setBbWiringFrom(holeId);
-                  return;
-                }
-                if (bbWiringFrom) {
-                  try {
-                    const wireId = `jmp_${bbWireIdRef.current++}`;
-                    breadboardRef.current.addWire(wireId, bbWiringFrom, holeId, bbWireColor);
-                    bbBump();
-                  } catch (err) {
-                    console.warn('Wire:', err.message);
-                  }
-                  setBbWiringFrom(null);
-                  return;
-                }
-                if (!bbPendingPart) return;
-                const fp = FOOTPRINTS[bbPendingPart.kind];
-                if (!fp) return;
-                try {
-                  const leadMap = computeLeadMap(fp, holeId);
-                  const declarable = ['led', 'buzzer', 'button', 'potentiometer'];
-                  const existingNames = parts.filter(p => p.declName).map(p => p.declName);
-                  const declName = declarable.includes(bbPendingPart.kind)
-                    ? generatePartName(bbPendingPart.kind, existingNames) : undefined;
-                  const p = addPart(bbPendingPart.kind, bbPendingPart.params || {}, 0, 0, declName);
-                  if (p) {
-                    breadboardRef.current.occupy(p.id, leadMap);
-                    bbBump();
-                  }
-                  setBbPendingPart(null);
-                  setBbGhost(null);
-                } catch (err) {
-                  // Surface placement error as teaching
-                  console.warn('Placement:', err.message);
-                }
-              }}
-              onEscape={() => { setBbPendingPart(null); setBbGhost(null); setBbWiringFrom(null); }}
-            />
-          </div>
-        ) : (
         <BoardCanvas
           parts={parts}
           wires={wires}
@@ -705,13 +576,29 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onDuplicatePart={(id) => { const dup = duplicatePart(id); if (dup) handleSelectPart(dup.id); }}
           onRotatePart={rotatePart}
           onFlipPart={flipPart}
-          onDropPart={(kind, params, x, y) => {
+          onDropPart={(kind, params, x, y, seat) => {
             const declarable = ['led', 'buzzer', 'button', 'potentiometer'];
             const existingNames = parts.filter(p => p.declName).map(p => p.declName);
             const declName = declarable.includes(kind) ? generatePartName(kind, existingNames) : undefined;
-            const p = addPart(kind, params, snapToGrid(x), snapToGrid(y), declName);
+            // A snapped drop keeps the exact hole-lattice position; free
+            // drops take the 20 px grid.
+            const p = addPart(kind, params, seat ? x : snapToGrid(x), seat ? y : snapToGrid(y), declName);
+            if (p && seat && BB_FOOTPRINTS[kind]) {
+              try {
+                const leadMap = computeLeadMap(BB_FOOTPRINTS[kind], seat.hole);
+                circuit.seatPart(p.id, seat.boardId, leadMap);
+              } catch { /* rail or edge reference: part stays free, honestly */ }
+            }
             if (p) handleSelectPart(p.id);
           }}
+          onSeatPart={(partId, boardId, hole) => {
+            const part = parts.find(pp => pp.id === partId);
+            if (!part || !BB_FOOTPRINTS[part.kind]) return false;
+            try {
+              return circuit.seatPart(partId, boardId, computeLeadMap(BB_FOOTPRINTS[part.kind], hole));
+            } catch { return false; }
+          }}
+          onUnseatPart={(partId) => { circuit.unseatPart(partId); }}
           circuit={circuit}
           warnings={warnings}
           annotations={annotations}
@@ -725,7 +612,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onRedo={handleRedo}
           onSelectAll={handleSelectAll}
         />
-        )}
 
         {/* Engine warnings — teaching feedback */}
         {warnings.length > 0 && (

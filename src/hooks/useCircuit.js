@@ -157,8 +157,9 @@ export function useCircuit(vcc = 5.0) {
     bump();
   }, [circuit, bump]);
 
-  const setBreadboard = useCallback((bb) => {
-    circuit.setBreadboard(bb);
+  const setBreadboard = useCallback(() => {
+    // Removed: boards are per-part models now (circuit.breadboards). Kept as
+    // a no-op one release so stale callers fail soft; delete next pass.
   }, [circuit]);
 
   // Read-only accessors — these read from the engine, never fabricate.

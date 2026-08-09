@@ -11,6 +11,7 @@
 import { getEngine } from '../engine.js';
 import { History } from './history.js';
 import { mergeNets } from './merge-nets.js';
+import { BreadboardModel } from './breadboard.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -65,17 +66,56 @@ export class Circuit {
     /** @type {History} */
     this.history = new History();
 
-    /** @type {import('./breadboard.js').BreadboardModel | null} */
-    this.breadboard = null;
+    /**
+     * One BreadboardModel PER breadboard part on the canvas — boards are
+     * ordinary parts, as many as the user drops, each with its own hole
+     * occupancy. Keyed by the breadboard part's id.
+     * @type {Map<string, import('./breadboard.js').BreadboardModel>}
+     */
+    this.breadboards = new Map();
   }
 
   /**
-   * Attach a breadboard model. When set, _syncNetlist merges wire nets
-   * with breadboard-derived nets via union-find.
-   * @param {import('./breadboard.js').BreadboardModel | null} bb
+   * Seat a part on a breadboard: its leads occupy holes, the strips make
+   * the connections. Re-seating releases the old holes first (including on
+   * a DIFFERENT board — dragging a part between boards is just a re-seat).
+   * @param {string} partId @param {string} boardId
+   * @param {Record<string, string>} leadMap - terminal → hole id
+   * @returns {boolean} seated (false = holes occupied / invalid, part left free)
    */
-  setBreadboard(bb) {
-    this.breadboard = bb;
+  seatPart(partId, boardId, leadMap) {
+    const bb = this.breadboards.get(boardId);
+    const part = this.parts.find(p => p.id === partId);
+    if (!bb || !part) return false;
+    this.unseatPart(partId);
+    try {
+      bb.occupy(partId, leadMap);
+    } catch {
+      this._syncNetlist();
+      return false;
+    }
+    part.seat = { boardId, leadMap };
+    this._syncNetlist();
+    return true;
+  }
+
+  /** Free a part's holes wherever it sits. Safe when not seated. */
+  unseatPart(partId) {
+    const part = this.parts.find(p => p.id === partId);
+    for (const bb of this.breadboards.values()) bb.release(partId);
+    if (part && part.seat) delete part.seat;
+  }
+
+  /** Can this leadMap be seated on that board right now? */
+  canSeat(boardId, partId, leadMap) {
+    const bb = this.breadboards.get(boardId);
+    if (!bb) return false;
+    for (const hole of Object.values(leadMap)) {
+      if (!bb.isValidHole(hole)) return false;
+      const occ = bb.occupantOf(hole);
+      if (occ && !(occ.kind === 'lead' && occ.partId === partId)) return false;
+    }
+    return true;
   }
 
   /** Save current state to history. Called after structural mutations. */
@@ -127,6 +167,7 @@ export class Circuit {
     const part = { id: genId(kind), kind, params: { ...params }, terminals, x, y, rotation: 0 };
     if (declName) part.declName = declName;
     this.parts.push(part);
+    if (kind === 'breadboard') this.breadboards.set(part.id, new BreadboardModel());
     this._syncNetlist();
     this._saveHistory();
     return part;
@@ -140,6 +181,15 @@ export class Circuit {
   removePart(partId) {
     const idx = this.parts.findIndex(p => p.id === partId);
     if (idx === -1) return false;
+    this.unseatPart(partId);
+    if (this.breadboards.has(partId)) {
+      // Removing a board frees every part seated on it — they stay on the
+      // canvas as free parts, they just lose the strips.
+      this.breadboards.delete(partId);
+      for (const p of this.parts) {
+        if (p.seat && p.seat.boardId === partId) delete p.seat;
+      }
+    }
     this.parts.splice(idx, 1);
     // Remove wires connected to this part
     this.wires = this.wires.filter(
@@ -485,14 +535,15 @@ export class Circuit {
       });
     }
 
-    // Merge breadboard-derived nets with wire nets when a breadboard is attached
+    // Fold every board's strip nets into the wire nets — union-find keeps
+    // a wire that touches a seated terminal electrically ONE node. Boards
+    // are independent occupancy worlds; the merge is what unifies them.
     let engineNets = wireNets;
-    if (this.breadboard) {
+    for (const bb of this.breadboards.values()) {
       try {
-        const bbResult = this.breadboard.deriveNets();
-        engineNets = mergeNets(wireNets, bbResult.nets);
+        engineNets = mergeNets(engineNets, bb.deriveNets().nets);
       } catch {
-        // Breadboard state may be incomplete during construction
+        // A board mid-construction stays out of this sync; next sync catches up.
       }
     }
 

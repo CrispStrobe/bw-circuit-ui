@@ -774,7 +774,7 @@ export function BoardCanvas({
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
-  placing, onPlacingDone,
+  placing, onPlacingDone, onSeatPart, onUnseatPart,
 }) {
   const [placeGhost, setPlaceGhost] = useState(null);
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -840,7 +840,7 @@ export function BoardCanvas({
   const panRef = useRef(pan); panRef.current = pan;
   const apiRef = useRef({});
   apiRef.current = { onMovePart, onAddWire, onSelectPart, onSelectWire, onSaveHistory,
-    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire, onDropPart, onPlacingDone };
+    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire, onDropPart, onPlacingDone, onSeatPart, onUnseatPart };
   const placingProbeRef = useRef(false); placingProbeRef.current = !!placingProbe;
   const pressedButtonRef = useRef(null);
   const draggingWaypointRef = useRef(null); draggingWaypointRef.current = draggingWaypoint;
@@ -887,10 +887,19 @@ export function BoardCanvas({
       },
       endMove: () => {
         const api = apiRef.current;
-        // Live drag is free-moving; the DROP snaps to the 20 px grid.
+        // The DROP decides where a part lives: over a board lattice it seats
+        // (legs into holes, strips conduct); anywhere else it unseats and
+        // takes the 20 px grid. Live drag stays free-moving.
         for (const id of selectedPartsRef.current) {
           const pp = partsRef.current.find(q => q.id === id);
-          if (pp) api.onMovePart(id, Math.round(pp.x / 20) * 20, Math.round(pp.y / 20) * 20);
+          if (!pp) continue;
+          const s = snapGhost({ kind: pp.kind, x: pp.x, y: pp.y }, partsRef.current);
+          if (s.snapped && api.onSeatPart && api.onSeatPart(id, s.boardId, s.hole)) {
+            api.onMovePart(id, s.x, s.y);
+            continue;
+          }
+          if (api.onUnseatPart) api.onUnseatPart(id);
+          api.onMovePart(id, Math.round(pp.x / 20) * 20, Math.round(pp.y / 20) * 20);
         }
         setSnapTarget(st => {
           if (st && st.autoWire) {
@@ -908,7 +917,8 @@ export function BoardCanvas({
       placeGhost: (g) => setPlaceGhost(g ? snapGhost(g, partsRef.current) : null),
       placePart: (kind, params, x, y) => {
         const s = snapGhost({ kind, x, y }, partsRef.current);
-        apiRef.current.onDropPart(kind, params, s.x, s.y);
+        apiRef.current.onDropPart(kind, params, s.x, s.y,
+          s.snapped ? { boardId: s.boardId, hole: s.hole } : null);
       },
       placingDone: () => { if (apiRef.current.onPlacingDone) apiRef.current.onPlacingDone(); },
     };
