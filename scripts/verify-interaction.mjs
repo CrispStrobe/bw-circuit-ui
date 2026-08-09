@@ -129,6 +129,40 @@ const selectionCount = async () =>
     : fail('breadboard did not appear after palette drag');
 }
 
+// 3c. A part placed ON the breadboard seats: its terminal dots must land
+//     exactly on hole centres — the legs visually enter the holes.
+{
+  const bbRect = await page.evaluate(() => {
+    const r = [...document.querySelectorAll('svg rect')].find(el => el.getAttribute('fill') === '#e8e4d8');
+    if (!r) return null;
+    const b = r.getBoundingClientRect();
+    return { x: b.x + b.width / 2, y: b.y + b.height * 0.30 }; // over the a–e block
+  });
+  if (!bbRect) { fail('no breadboard on canvas for the seating scenario'); }
+  else {
+    await page.getByText('Resistor 1kΩ', { exact: false }).first().click();
+    await page.waitForTimeout(120);
+    await page.mouse.move(bbRect.x, bbRect.y, { steps: 4 });
+    await page.mouse.click(bbRect.x, bbRect.y);
+    await page.waitForTimeout(250);
+    const coincident = await page.evaluate(() => {
+      const circles = [...document.querySelectorAll('svg circle')];
+      // Hole dots: r=2.2 dark dots. Terminal dots: r=6|8 colored.
+      const holes = circles.filter(c => c.getAttribute('r') === '2.2')
+        .map(c => ({ x: +c.getAttribute('cx'), y: +c.getAttribute('cy') }));
+      const terms = circles.filter(c => ['6', '8'].includes(c.getAttribute('r')))
+        .map(c => ({ x: +c.getAttribute('cx'), y: +c.getAttribute('cy') }));
+      let n = 0;
+      for (const t of terms) {
+        if (holes.some(h => Math.abs(h.x - t.x) < 0.5 && Math.abs(h.y - t.y) < 0.5)) n++;
+      }
+      return n;
+    });
+    coincident >= 2 ? pass(`seated part: ${coincident} terminal dots sit exactly in holes`)
+      : fail(`seated part terminals not on holes (coincident=${coincident})`);
+  }
+}
+
 // 4. Trackpad two-finger scroll must PAN the canvas (viewBox moves).
 {
   const canvas = await page.locator('[data-canvas] svg').first();

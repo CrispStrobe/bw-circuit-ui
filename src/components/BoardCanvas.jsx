@@ -16,6 +16,8 @@ import { createHitTest } from '../interaction/hittest.js';
 import { classifyWheel } from '../interaction/transform.js';
 import { FOOTPRINTS } from '../interaction/hittest.js';
 import { snapGhost, BB_PITCH, bbHoleOrigin } from '../interaction/breadboard-snap.js';
+import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
+import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
@@ -95,6 +97,11 @@ function terminalOffsetsForPart(part) {
 }
 
 function terminalPos(part, terminal) {
+  // A seated part's terminals ARE its holes: wires, dots, stubs and hit
+  // tests all attach where the leg physically enters the board.
+  if (part._seatTerminals && part._seatTerminals[terminal]) {
+    return part._seatTerminals[terminal];
+  }
   const offsets = terminalOffsetsForPart(part);
   const offset = offsets[terminal] ?? { dx: 0, dy: 0 };
   return { x: part.x + offset.dx, y: part.y + offset.dy };
@@ -776,6 +783,11 @@ export function BoardCanvas({
   circuit,
   placing, onPlacingDone, onSeatPart, onUnseatPart,
 }) {
+  // Seated parts render, hit-test and wire at their HOLES — resolved once,
+  // consumed by everything below (partsRef included, so what you see is
+  // what you hit stays true for seated parts too).
+  parts = resolveSeatedParts(parts);
+  const circuitRef = useRef(null); circuitRef.current = circuit;
   const [placeGhost, setPlaceGhost] = useState(null);
   const [wiringFrom, setWiringFrom] = useState(null);
   const [mousePos, setMousePos] = useState(null);
@@ -875,7 +887,12 @@ export function BoardCanvas({
         const ids = [...selectedPartsRef.current];
         for (const id of ids) {
           const pp = partsRef.current.find(q => q.id === id);
-          if (pp) api.onMovePart(id, pp.x + dx, pp.y + dy);
+          if (!pp) continue;
+          // A seated part leaves its holes the moment a real drag starts —
+          // the body follows the pointer, and the drop decides where it
+          // lives next (endMove re-seats or keeps it free).
+          if (pp.seat && api.onUnseatPart) api.onUnseatPart(id);
+          api.onMovePart(id, pp.x + dx, pp.y + dy);
         }
         if (ids.length === 1) {
           const pp = partsRef.current.find(q => q.id === ids[0]);
@@ -914,9 +931,14 @@ export function BoardCanvas({
       wirePreview: (from, toPos) => { setWiringFrom({ part: from.partId, terminal: from.terminal }); setMousePos(toPos); },
       clearWirePreview: () => { setWiringFrom(null); setMousePos(null); },
       marqueeRect: (r) => setRubberBand(r ? { startX: r.x1, startY: r.y1, endX: r.x2, endY: r.y2 } : null),
-      placeGhost: (g) => setPlaceGhost(g ? snapGhost(g, partsRef.current) : null),
+      placeGhost: (g) => setPlaceGhost(g ? ghostWithLegs(snapGhost(g, partsRef.current)) : null),
       placePart: (kind, params, x, y) => {
-        const s = snapGhost({ kind, x, y }, partsRef.current);
+        const s = ghostWithLegs(snapGhost({ kind, x, y }, partsRef.current));
+        if (s.snapped && s.legs && !s.ok) {
+          // Occupied holes: refuse the commit, keep the ghost armed. The red
+          // legs already say why — never place a part the board cannot take.
+          return;
+        }
         apiRef.current.onDropPart(kind, params, s.x, s.y,
           s.snapped ? { boardId: s.boardId, hole: s.hole } : null);
       },
@@ -946,6 +968,27 @@ export function BoardCanvas({
     if (placing) m.startPlacing(placing.kind, placing.params || {});
     else if (m.state === 'placing') m.cancel();
   }, [placing]);
+
+  // Decorate a snapped ghost with per-leg hole positions and availability.
+  const ghostWithLegs = (s) => {
+    if (!s.snapped || !BB_FOOTPRINTS[s.kind]) return s;
+    const bb = partsRef.current.find(q => q.id === s.boardId);
+    const c = circuitRef.current;
+    if (!bb || !c) return s;
+    let leadMap;
+    try { leadMap = computeLeadMap(BB_FOOTPRINTS[s.kind], s.hole); }
+    catch { return { ...s, legs: [], ok: false }; }
+    const legs = [];
+    let ok = true;
+    for (const [terminal, holeId] of Object.entries(leadMap)) {
+      const pos = holeWorldPos(bb, holeId);
+      if (!pos) { ok = false; continue; }
+      const free = c.canSeat(s.boardId, '__ghost__', { [terminal]: holeId });
+      if (!free) ok = false;
+      legs.push({ ...pos, free });
+    }
+    return { ...s, legs, ok };
+  };
 
   const eventToWorld = useCallback((e) => {
     const r = canvasContainerRef.current.getBoundingClientRect();
@@ -1608,7 +1651,13 @@ export function BoardCanvas({
                   stroke="#3498db" strokeWidth={1.5} strokeDasharray="6,3" />
                 <text x={placeGhost.x} y={placeGhost.y + 4} textAnchor="middle"
                   fill="#3498db" fontSize={11} fontFamily="monospace">{placeGhost.kind}</text>
-                {placeGhost.snapped && (
+                {placeGhost.legs && placeGhost.legs.map((leg, i) => (
+                  <circle key={i} cx={leg.x} cy={leg.y} r={4.5}
+                    fill={leg.free ? '#2ecc71' : '#e74c3c'}
+                    fillOpacity={0.8}
+                    stroke={leg.free ? '#27ae60' : '#c0392b'} strokeWidth={1.5} />
+                ))}
+                {placeGhost.snapped && !placeGhost.legs && (
                   <circle cx={placeGhost.x} cy={placeGhost.y} r={5} fill="none"
                     stroke="#f1c40f" strokeWidth={2} />
                 )}
