@@ -47,6 +47,11 @@ export function createMeterState() {
  * @returns {{ value: string, unit: string, note: string|null }}
  */
 export function readMeter(meter, circuit) {
+  // No board → "needs the simulator", not 0 (which would be a fabricated reading)
+  if (!circuit || !circuit.board) {
+    return { value: '---', unit: '', note: 'Needs the simulator' };
+  }
+
   const { mode, probeA, probeB } = meter;
 
   switch (mode) {

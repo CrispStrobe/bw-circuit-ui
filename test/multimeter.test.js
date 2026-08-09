@@ -175,3 +175,39 @@ describe('multimeter — unit formatting', () => {
     assert.equal(reading.unit, 'kΩ');
   });
 });
+
+describe('multimeter — no-board refusal', () => {
+  it('returns "Needs the simulator" when circuit is null', () => {
+    const meter = createMeterState();
+    meter.mode = 'voltage';
+    const reading = readMeter(meter, null);
+    assert.equal(reading.value, '---');
+    assert.ok(reading.note.includes('simulator'),
+      `should say needs simulator, got: "${reading.note}"`);
+  });
+
+  it('returns "Needs the simulator" when circuit.board is null', () => {
+    const meter = createMeterState();
+    meter.mode = 'resistance';
+    const reading = readMeter(meter, { board: null });
+    assert.equal(reading.value, '---');
+    assert.ok(reading.note.includes('simulator'));
+  });
+
+  it('no-board refusal is distinct from power-off refusal', () => {
+    // No board → "Needs the simulator"
+    const noBoard = readMeter(createMeterState(), null);
+    assert.ok(noBoard.note.includes('simulator'));
+
+    // Board powered → "Turn power OFF" (different reason)
+    const { c, w1, w3 } = buildTestCircuit();
+    const meter = createMeterState();
+    meter.mode = 'resistance';
+    meter.probeA = { netId: w1.netId, partId: null, terminal: null };
+    meter.probeB = { netId: w3.netId, partId: null, terminal: null };
+    const powered = readMeter(meter, c);
+    assert.ok(powered.note.includes('Turn power OFF'));
+    assert.ok(!powered.note.includes('simulator'),
+      'power-off refusal must not mention simulator');
+  });
+});
