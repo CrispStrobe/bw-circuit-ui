@@ -100,6 +100,31 @@ export const FOOTPRINTS = {
       d6: { dRow: 0, dCol: 4 }, d7: { dRow: 0, dCol: 5 },
     },
   },
+  npn: { refTerminal: 'emitter', leads: { emitter: { dRow: 0, dCol: 0 }, base: { dRow: 0, dCol: 1 }, collector: { dRow: 0, dCol: 2 } } },
+  pnp: { refTerminal: 'emitter', leads: { emitter: { dRow: 0, dCol: 0 }, base: { dRow: 0, dCol: 1 }, collector: { dRow: 0, dCol: 2 } } },
+  nmos: { refTerminal: 'source', leads: { source: { dRow: 0, dCol: 0 }, gate: { dRow: 0, dCol: 1 }, drain: { dRow: 0, dCol: 2 } } },
+  pmos: { refTerminal: 'source', leads: { source: { dRow: 0, dCol: 0 }, gate: { dRow: 0, dCol: 1 }, drain: { dRow: 0, dCol: 2 } } },
+  opamp: {
+    refTerminal: 'inn',
+    straddlesGutter: true,
+    leads: { inn: { dRow: 0, dCol: 0 }, inp: { dRow: 0, dCol: 1 }, out: { dRow: 5, dCol: 0 } },
+  },
+  '555': {
+    refTerminal: 'gnd',
+    straddlesGutter: true,
+    leads: {
+      gnd: { dRow: 0, dCol: 0 }, trig: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 2 }, reset: { dRow: 0, dCol: 3 },
+      ctrl: { dRow: 5, dCol: 3 }, thr: { dRow: 5, dCol: 2 }, dis: { dRow: 5, dCol: 1 }, vcc: { dRow: 5, dCol: 0 },
+    },
+  },
+  ldr: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  ntc: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
+  relay: { refTerminal: 'coil_a', leads: { coil_a: { dRow: 0, dCol: 0 }, coil_b: { dRow: 0, dCol: 1 }, no: { dRow: 0, dCol: 3 }, com: { dRow: 0, dCol: 4 }, nc: { dRow: 0, dCol: 5 } } },
+  dc_motor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  servo: { refTerminal: 'signal', leads: { signal: { dRow: 0, dCol: 0 }, vcc: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 } } },
+  rgb_led: { refTerminal: 'r_anode', leads: { r_anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 1 }, g_anode: { dRow: 0, dCol: 2 }, b_anode: { dRow: 0, dCol: 3 } } },
+  zener: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 2 } } },
+  inductor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
 };
 
 /**
