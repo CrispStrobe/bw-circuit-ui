@@ -884,55 +884,68 @@ export function BoardCanvas({
       onKeyDown={handleKeyDown}
     >
       {/* Status/action bar */}
+      {/* Toolbar */}
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        fontFamily: 'monospace', fontSize: '11px',
-        marginBottom: '6px', minHeight: '24px',
+        display: 'flex', alignItems: 'center', gap: '6px',
+        fontFamily: 'monospace', fontSize: '10px',
+        marginBottom: '4px', minHeight: '26px',
+        padding: '2px 4px',
+        background: '#16213e', borderRadius: '4px',
       }}>
-        <span style={{ color: wiringFrom ? '#f39c12' : '#7f8c8d', flex: 1 }}>
-          {wiringFrom
-            ? `Wiring from ${wiringFrom.part}:${wiringFrom.terminal} — drag to target`
-            : statusText || 'Drag terminals to wire. Drag parts to move.'}
+        {/* Mode indicator */}
+        <span style={{
+          padding: '2px 8px', borderRadius: '3px',
+          background: wiringFrom ? '#f39c12' : '#2c3e50',
+          color: wiringFrom ? '#000' : '#7f8c8d',
+          fontWeight: 'bold', fontSize: '9px',
+        }}>
+          {wiringFrom ? 'WIRING' : 'SELECT'}
         </span>
-        {/* Visible action buttons for touch/tablet */}
+
+        {/* Status text */}
+        <span style={{ color: '#7f8c8d', flex: 1, fontSize: '10px' }}>
+          {wiringFrom
+            ? `${wiringFrom.part}:${wiringFrom.terminal} → ?`
+            : statusText || (selectedParts?.size > 0 ? `${selectedParts.size} selected` : '')}
+        </span>
+
+        {/* Selection actions */}
         {((selectedParts && selectedParts.size > 0) || selectedWire) && (
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <>
             {selectedPart && onRotatePart && (
-              <button onClick={() => onRotatePart(selectedPart)} style={{
-                padding: '3px 8px', background: '#2c3e50', border: '1px solid #3498db',
-                borderRadius: '3px', color: '#3498db', fontFamily: 'monospace', fontSize: '10px',
-                cursor: 'pointer',
-              }}>Rotate</button>
+              <button onClick={() => onRotatePart(selectedPart)}
+                title="Rotate (R)"
+                style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #3498db', borderRadius: '3px', color: '#3498db', fontSize: '9px', cursor: 'pointer' }}>
+                R
+              </button>
             )}
             {selectedPart && onDuplicatePart && (
-              <button onClick={() => onDuplicatePart(selectedPart)} style={{
-                padding: '3px 8px', background: '#2c3e50', border: '1px solid #2ecc71',
-                borderRadius: '3px', color: '#2ecc71', fontFamily: 'monospace', fontSize: '10px',
-                cursor: 'pointer',
-              }}>Copy</button>
+              <button onClick={() => onDuplicatePart(selectedPart)}
+                title="Duplicate (Ctrl+D)"
+                style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #2ecc71', borderRadius: '3px', color: '#2ecc71', fontSize: '9px', cursor: 'pointer' }}>
+                D
+              </button>
             )}
             <button onClick={() => {
               if (selectedWire) { onRemoveWire(selectedWire); onSelectWire(null); }
               else if (selectedParts && selectedParts.size > 0) { for (const id of selectedParts) onRemovePart(id); onSelectPart(null); }
-            }} style={{
-              padding: '3px 8px', background: '#2c3e50', border: '1px solid #e74c3c',
-              borderRadius: '3px', color: '#e74c3c', fontFamily: 'monospace', fontSize: '10px',
-              cursor: 'pointer',
-            }}>Delete</button>
-          </div>
+            }}
+              title="Delete (Del)"
+              style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: '3px', color: '#e74c3c', fontSize: '9px', cursor: 'pointer' }}>
+              Del
+            </button>
+          </>
+        )}
+
+        {/* Zoom info */}
+        {zoom !== 1 && (
+          <span style={{ color: '#556', fontSize: '9px' }}>{(zoom * 100).toFixed(0)}%</span>
         )}
       </div>
 
-      {/* Zoom indicator */}
-      {zoom !== 1 && (
-        <div style={{
-          color: '#7f8c8d', fontFamily: 'monospace', fontSize: '10px',
-          marginBottom: '4px',
-        }}>
-          {(zoom * 100).toFixed(0)}% — scroll to zoom, middle-click to pan
-        </div>
+      {/* Zoom indicator removed — now in toolbar */}
+      {false && (
+        <div></div>
       )}
 
       {/* Canvas — fills container, minimum 700×500 */}
