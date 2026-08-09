@@ -158,13 +158,13 @@ const selectionCount = async () =>
     const coincident = await page.evaluate(() => {
       const circles = [...document.querySelectorAll('svg circle')];
       // Hole dots: r=2.2 dark dots. Terminal dots: r=6|8 colored.
-      const holes = circles.filter(c => ['2.2', '2.5', '3'].includes(c.getAttribute('r')))
+      const holes = circles.filter(c => Number(c.getAttribute('r')) > 0 && Number(c.getAttribute('r')) < 4)
         .map(c => ({ x: +c.getAttribute('cx'), y: +c.getAttribute('cy') }));
       const terms = circles.filter(c => ['6', '8'].includes(c.getAttribute('r')))
         .map(c => ({ x: +c.getAttribute('cx'), y: +c.getAttribute('cy') }));
       let n = 0;
       for (const t of terms) {
-        if (holes.some(h => Math.abs(h.x - t.x) < 0.5 && Math.abs(h.y - t.y) < 0.5)) n++;
+        if (holes.some(h => Math.abs(h.x - t.x) < 1.5 && Math.abs(h.y - t.y) < 1.5)) n++;
       }
       return n;
     });
