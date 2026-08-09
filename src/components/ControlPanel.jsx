@@ -115,6 +115,25 @@ export function ControlPanel({
         {selPart ? (
           <>
             <div style={{ color: '#ecf0f1' }}>{selPart.kind}</div>
+            {selPart.declName != null && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                <span style={{ color: '#3498db', fontSize: '10px' }}>name:</span>
+                <input
+                  type="text"
+                  value={selPart.declName}
+                  onChange={(e) => {
+                    selPart.declName = e.target.value;
+                    onUpdateParams(selPart.id, {}); // trigger re-render
+                  }}
+                  style={{
+                    width: '70px', padding: '2px 4px',
+                    background: '#0a0a1a', border: '1px solid #3498db',
+                    borderRadius: '2px', color: '#3498db',
+                    fontFamily: 'monospace', fontSize: '10px',
+                  }}
+                />
+              </div>
+            )}
             <div style={{ color: '#7f8c8d', fontSize: '10px', marginBottom: '4px' }}>{selPart.id}</div>
             {Object.entries(selPart.params)
               .filter(([k]) => k !== 'pins') // don't edit MCU pin list

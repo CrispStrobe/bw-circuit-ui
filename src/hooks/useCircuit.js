@@ -25,8 +25,8 @@ export function useCircuit(vcc = 5.0) {
 
   const circuit = circuitRef.current;
 
-  const addPart = useCallback((kind, params, x, y) => {
-    const p = circuit.addPart(kind, params, x, y);
+  const addPart = useCallback((kind, params, x, y, declName) => {
+    const p = circuit.addPart(kind, params, x, y, declName);
     bump();
     return p;
   }, [circuit, bump]);

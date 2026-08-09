@@ -100,9 +100,10 @@ export class Circuit {
    * @param {number} y
    * @returns {PlacedPart} the added part
    */
-  addPart(kind, params, x, y) {
+  addPart(kind, params, x, y, declName) {
     const terminals = terminalsForKind(kind, params);
     const part = { id: genId(kind), kind, params: { ...params }, terminals, x, y, rotation: 0 };
+    if (declName) part.declName = declName;
     this.parts.push(part);
     this._syncNetlist();
     this._saveHistory();

@@ -31,7 +31,9 @@ export function fmtFarads(farads) {
  * @returns {string}
  */
 export function partLabel(part) {
-  // Extract a short name: "resistor_3" → "R3", "led_1" → "LED1"
+  // If the part has a declaration name (for blocks), show that
+  if (part.declName) return part.declName;
+
   const num = part.id.replace(/\D+/g, '');
   switch (part.kind) {
     case 'resistor': return `R${num} ${fmtOhms(part.params.ohms || 0)}`;

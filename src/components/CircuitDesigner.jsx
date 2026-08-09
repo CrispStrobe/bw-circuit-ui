@@ -35,6 +35,7 @@ import { Multimeter } from './Multimeter.jsx';
 import { useCircuit } from '../hooks/useCircuit.js';
 import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
+import { generatePartName } from '../model/declarations.js';
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 
 const MS = 1_000_000n;
@@ -44,7 +45,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarationChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -240,7 +241,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard }) {
         }
       }
     }
-    addPart(kind, params, x, y);
+    // Generate a declaration name for parts that produce blocks
+    const declarable = ['led', 'buzzer', 'button', 'potentiometer'];
+    const existingNames = parts.filter(p => p.declName).map(p => p.declName);
+    const declName = declarable.includes(kind) ? generatePartName(kind, existingNames) : undefined;
+    addPart(kind, params, x, y, declName);
   }, [addPart, parts]);
 
   // Snap-to-grid on move
