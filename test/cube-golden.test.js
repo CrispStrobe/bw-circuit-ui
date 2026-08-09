@@ -26,7 +26,13 @@ describe('golden cube trace cross-check', () => {
     // Run through our accumulator
     const voxels = computeCubeVoxels(history);
 
+    // Guard: the trace must have actually produced values to compare
+    assert.ok(history.length > 0, `trace is empty — nothing was compared (${history.length} events)`);
+    assert.ok(voxels.length > 0, `accumulator produced no voxels — 0 values compared`);
+    assert.equal(expectedBrightness.length, 64, `expected 64 brightness values, got ${expectedBrightness.length}`);
+
     // Compare: voxel index = select * 8 + bit
+    let compared = 0;
     let mismatches = 0;
     for (let sel = 0; sel < scanLines; sel++) {
       for (let bit = 0; bit < 8; bit++) {
@@ -37,9 +43,11 @@ describe('golden cube trace cross-check', () => {
           mismatches++;
           console.log(`  MISMATCH S${sel}B${bit}: got ${v.brightness.toFixed(3)}, expected ${expected.toFixed(3)}`);
         }
+        compared++;
       }
     }
 
+    assert.equal(compared, 64, `must compare all 64 voxels, compared ${compared}`);
     assert.equal(mismatches, 0,
       `${mismatches} voxels disagree with bw-board golden trace`);
   });
