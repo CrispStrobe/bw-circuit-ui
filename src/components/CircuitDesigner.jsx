@@ -39,6 +39,8 @@ import { generatePartName, circuitToDeclarations } from '../model/declarations.j
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
+import { BreadboardView } from './BreadboardView.jsx';
+import { BreadboardModel } from '../model/breadboard.js';
 
 const MS = 1_000_000n;
 const GRID = 20;
@@ -104,8 +106,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setSelectedWire(null);
   }, []);
   const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
+  const [viewMode, setViewMode] = useState('schematic'); // 'schematic' | 'breadboard'
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+
+  // Breadboard model (persistent across renders)
+  const breadboardRef = useRef(new BreadboardModel());
+  const [bbRev, setBbRev] = useState(0);
+  const bbBump = useCallback(() => setBbRev(r => r + 1), []);
 
   const [annotations, setAnnotations] = useState([]);
 
@@ -541,6 +549,28 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             wiring only — no sim
           </div>
         )}
+        {/* View mode toggle */}
+        <div style={{
+          display: 'flex', gap: '4px', marginBottom: '4px',
+        }}>
+          {['schematic', 'breadboard'].map(vm => (
+            <button key={vm} onClick={() => setViewMode(vm)} style={{
+              background: viewMode === vm ? '#3498db' : '#1a1a2e',
+              color: viewMode === vm ? '#fff' : '#7f8c8d',
+              border: '1px solid #2c3e50', borderRadius: '4px',
+              padding: '4px 10px', cursor: 'pointer',
+              fontFamily: 'monospace', fontSize: '11px',
+            }}>{vm === 'schematic' ? 'Schematic' : 'Breadboard'}</button>
+          ))}
+        </div>
+
+        {viewMode === 'breadboard' ? (
+          <BreadboardView
+            model={breadboardRef.current}
+            notes={(() => { try { return breadboardRef.current.deriveNets().notes; } catch { return []; } })()}
+            onClickHole={(holeId) => { /* TODO: placement flow */ }}
+          />
+        ) : (
         <BoardCanvas
           parts={parts}
           wires={wires}
@@ -586,6 +616,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onRedo={handleRedo}
           onSelectAll={handleSelectAll}
         />
+        )}
 
         {/* Engine warnings — teaching feedback */}
         {warnings.length > 0 && (
