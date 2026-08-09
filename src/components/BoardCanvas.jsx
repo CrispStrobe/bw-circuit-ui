@@ -62,7 +62,7 @@ function terminalOffsetsForPart(part) {
     case 'buzzer': return { a: r(-15, 0), b: r(15, 0) };
     case 'capacitor': return { a: r(-15, 0), b: r(15, 0) };
     case 'meter': return { probe_a: r(-25, 20), probe_b: r(25, 20) };
-    case 'ledcube': {
+    case 'led_cube': {
       const offsets = {};
       for (let i = 0; i < 8; i++) offsets[`sel_${i}`] = r(-60, -30 + i * 10);
       for (let i = 0; i < 8; i++) offsets[`data_${i}`] = r(60, -30 + i * 10);
@@ -632,7 +632,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             </div>
           </div>
         );
-      case 'ledcube': {
+      case 'led_cube': {
         // 4x4x4 bi-colour LED cube — voxel map unknown until measured
         // Use scan history from cubeScans prop if available, otherwise test pattern
         const scanData = cubeScans?.[id] || testPattern();

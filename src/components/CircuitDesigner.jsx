@@ -116,7 +116,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // Sample pin states for cube when renderState updates
   useEffect(() => {
     if (!renderState || !renderState.pins) return;
-    const hasCube = parts.some(p => p.kind === 'ledcube');
+    const hasCube = parts.some(p => p.kind === 'led_cube');
     if (!hasCube) return;
 
     cubeScanRef.current.sample(renderState.timeNs || 0n, renderState.pins);
@@ -124,7 +124,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // Build cubeScans map for all cube parts
     const scans = {};
     for (const p of parts) {
-      if (p.kind === 'ledcube') scans[p.id] = history;
+      if (p.kind === 'led_cube') scans[p.id] = history;
     }
     setCubeScans(scans);
   }, [renderState, parts]);

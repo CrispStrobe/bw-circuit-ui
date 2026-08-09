@@ -47,7 +47,7 @@ const CATEGORIES = [
       { kind: 'seven_segment', label: '7-Segment', params: {}, color: '#e74c3c', tooltip: 'Digit display' },
       { kind: 'char_lcd', label: 'LCD 16×2', params: {}, color: '#2980b9', tooltip: 'drawable — HD44780' },
       { kind: 'led_matrix', label: 'LED Matrix', params: {}, color: '#27ae60', tooltip: 'drawable — 8×8' },
-      { kind: 'ledcube', label: 'LED Cube 4³', params: {}, color: '#2ecc71' },
+      { kind: 'led_cube', label: 'LED Cube 4³', params: {}, color: '#2ecc71' },
     ],
   },
   {
