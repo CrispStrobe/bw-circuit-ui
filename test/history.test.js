@@ -59,6 +59,20 @@ describe('History class', () => {
     assert.equal(h.length, 2); // a, d
   });
 
+  it('preserves engineSnap through undo/redo', () => {
+    const h = new History();
+    const snap1 = { timeNs: 100n, powered: true };
+    const snap2 = { timeNs: 200n, powered: false };
+    h.save({ parts: [{ id: 'a' }], wires: [], engineSnap: snap1 });
+    h.save({ parts: [{ id: 'b' }], wires: [], engineSnap: snap2 });
+
+    const prev = h.undo();
+    assert.equal(prev.engineSnap, snap1);
+
+    const fwd = h.redo();
+    assert.equal(fwd.engineSnap, snap2);
+  });
+
   it('duplicate saves are ignored', () => {
     const h = new History();
     h.save({ parts: [{ id: 'a' }], wires: [] });

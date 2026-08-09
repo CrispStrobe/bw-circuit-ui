@@ -91,6 +91,32 @@ describe('movePart', () => {
   });
 });
 
+describe('duplicatePart', () => {
+  it('preserves rotation', () => {
+    const c = new Circuit();
+    const led = c.addPart('led', { color: 'red', vf: 2.0 }, 100, 100);
+    c.rotatePart(led.id); // rotation → 90
+    const dup = c.duplicatePart(led.id);
+    assert.equal(dup.rotation, 90);
+  });
+
+  it('preserves and uniquifies declName', () => {
+    const c = new Circuit();
+    const led = c.addPart('led', { color: 'red', vf: 2.0 }, 100, 100, 'led1');
+    const dup = c.duplicatePart(led.id);
+    assert.ok(dup.declName, 'duplicate should have a declName');
+    assert.notEqual(dup.declName, 'led1', 'declName must be unique');
+    assert.match(dup.declName, /^led\d+$/);
+  });
+
+  it('preserves params', () => {
+    const c = new Circuit();
+    const r = c.addPart('resistor', { ohms: 4700 }, 100, 100);
+    const dup = c.duplicatePart(r.id);
+    assert.equal(dup.params.ohms, 4700);
+  });
+});
+
 // ── Wire operations ─────────────────────────────────────────────────
 
 describe('addWire', () => {

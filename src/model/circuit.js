@@ -184,7 +184,19 @@ export class Circuit {
   duplicatePart(partId, offsetX = 40, offsetY = 40) {
     const src = this.getPart(partId);
     if (!src) return null;
-    return this.addPart(src.kind, { ...src.params }, src.x + offsetX, src.y + offsetY);
+    // Uniquify declName: led1 → led2, pot1 → pot2, etc.
+    let declName;
+    if (src.declName) {
+      const existing = new Set(this.parts.map(p => p.declName).filter(Boolean));
+      const base = src.declName.replace(/\d+$/, '');
+      for (let i = 1; ; i++) {
+        const candidate = base + i;
+        if (!existing.has(candidate)) { declName = candidate; break; }
+      }
+    }
+    const dup = this.addPart(src.kind, { ...src.params }, src.x + offsetX, src.y + offsetY, declName);
+    if (dup && src.rotation) dup.rotation = src.rotation;
+    return dup;
   }
 
   /**
