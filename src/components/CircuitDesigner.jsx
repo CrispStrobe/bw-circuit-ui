@@ -51,7 +51,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady , onCircuitReady}) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -180,6 +180,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // ── Buzzer audio ────────────────────────────────────────────────
   // Direct import (no dynamic import — the module guards against
   // missing AudioContext in non-browser environments).
+  // Publish the circuit to the host (harness/integration) once on mount.
+  useEffect(() => {
+    if (onCircuitReady) onCircuitReady(circuit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     return () => stopAllBuzzers();
   }, []);

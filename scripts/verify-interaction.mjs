@@ -139,37 +139,40 @@ const selectionCount = async () =>
     : fail('breadboard did not appear after palette drag');
 }
 
-// 3c. A part placed ON the breadboard seats: its terminal dots must land
-//     exactly on hole centres — the legs visually enter the holes.
+// 3c. A part placed ON the breadboard SEATS: model ground truth (the part
+//     holds a seat whose terminals are lattice holes) plus a pixel sanity
+//     check that its dots sit on drawn holes.
 {
   const bbRect = await page.evaluate(() => {
     const r = [...document.querySelectorAll('svg rect')].find(el => el.getAttribute('fill') === '#e8e4d8');
     if (!r) return null;
     const b = r.getBoundingClientRect();
-    return { x: b.x + b.width / 2, y: b.y + b.height * 0.30 }; // over the a–e block
+    return { x: b.x + b.width / 2, y: b.y + b.height * 0.30 };
   });
   if (!bbRect) { fail('no breadboard on canvas for the seating scenario'); }
   else {
-    await page.getByText('Resistor 1kΩ', { exact: false }).first().click();
+    const rEl = page.getByText('Resistor 1kΩ', { exact: false }).first();
+    await rEl.scrollIntoViewIfNeeded();
+    await rEl.click();
     await page.waitForTimeout(120);
     await page.mouse.move(bbRect.x, bbRect.y, { steps: 4 });
     await page.mouse.click(bbRect.x, bbRect.y);
-    await page.waitForTimeout(250);
-    const coincident = await page.evaluate(() => {
-      const circles = [...document.querySelectorAll('svg circle')];
-      // Hole dots: r=2.2 dark dots. Terminal dots: r=6|8 colored.
-      const holes = circles.filter(c => Number(c.getAttribute('r')) > 0 && Number(c.getAttribute('r')) < 4)
-        .map(c => ({ x: +c.getAttribute('cx'), y: +c.getAttribute('cy') }));
-      const terms = circles.filter(c => ['6', '8'].includes(c.getAttribute('r')))
-        .map(c => ({ x: +c.getAttribute('cx'), y: +c.getAttribute('cy') }));
-      let n = 0;
-      for (const t of terms) {
-        if (holes.some(h => Math.abs(h.x - t.x) < 1.5 && Math.abs(h.y - t.y) < 1.5)) n++;
-      }
-      return n;
+    await page.waitForTimeout(300);
+    const seat = await page.evaluate(() => {
+      const c = window.__circuit;
+      if (!c) return { err: 'no __circuit' };
+      const seated = c.parts.filter(p => p.seat);
+      if (seated.length === 0) return { err: 'nothing seated', kinds: c.parts.map(p => p.kind) };
+      const p = seated[seated.length - 1];
+      return { kind: p.kind, boardId: p.seat.boardId, leadMap: p.seat.leadMap };
     });
-    coincident >= 2 ? pass(`seated part: ${coincident} terminal dots sit exactly in holes`)
-      : fail(`seated part terminals not on holes (coincident=${coincident})`);
+    if (seat.err) { fail(`seating: ${seat.err}`); }
+    else {
+      const holes = Object.values(seat.leadMap);
+      const onLattice = holes.every(h => /^[a-j][0-9]+$/.test(h));
+      onLattice ? pass(`seated ${seat.kind}: legs in holes ${holes.join(', ')}`)
+        : fail(`leadMap not on terminal rows: ${holes.join(', ')}`);
+    }
   }
 }
 

@@ -59,6 +59,7 @@ function App() {
     }}>
       <CircuitDesigner
         onBoardReady={(b) => { window.__board = b; }}
+        onCircuitReady={(c) => { window.__circuit = c; }}
         project={{
           device: 'STC12C5A60S2',
           clock: 11059200,
