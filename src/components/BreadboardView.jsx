@@ -176,7 +176,9 @@ export function BreadboardView({
   netColors,        // Map<stripId, color> from voltage coloring
   notes,            // string[] teaching notes from deriveNets
   onClickHole,      // (holeId) => void
-  placingPart,      // { kind, footprint, leadMap } ghost preview
+  onHoverHole: onHoverHoleProp, // (holeId) => void — for ghost preview
+  onEscape,         // () => void
+  placingPart,      // { kind, leadMap } ghost preview
   selectedHole,
 }) {
   const [hoveredHole, setHoveredHole] = useState(null);
@@ -184,12 +186,13 @@ export function BreadboardView({
 
   const handleHoverHole = useCallback((holeId) => {
     setHoveredHole(holeId);
+    if (onHoverHoleProp) onHoverHoleProp(holeId);
     if (holeId) {
       try { setHighlightStrip(model.stripOf(holeId)); } catch { setHighlightStrip(null); }
     } else {
       setHighlightStrip(null);
     }
-  }, [model]);
+  }, [model, onHoverHoleProp]);
 
   const handleClickHole = useCallback((holeId) => {
     if (onClickHole) onClickHole(holeId);
@@ -199,8 +202,13 @@ export function BreadboardView({
   const svgW = MARGIN * 2 + (cols - 1) * HOLE_PITCH;
   const svgH = rowY('b-') + MARGIN;
 
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Escape' && onEscape) onEscape();
+  }, [onEscape]);
+
   return (
-    <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
+    <div style={{ overflowX: 'auto', overflowY: 'hidden' }}
+      tabIndex={0} onKeyDown={handleKeyDown}>
       <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}
         style={{ display: 'block' }}>
         <BoardBackground cols={cols} />
