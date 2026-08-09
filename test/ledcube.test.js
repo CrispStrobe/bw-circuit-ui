@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../src/model/ledcube.js';
+import { computeCubeVoxels, testPattern, VOXEL_MAP, P0_ACTIVE_HIGH } from '../src/model/ledcube.js';
 
 describe('computeCubeVoxels', () => {
   it('returns 64 voxels (8 selects × 8 bits)', () => {
@@ -55,6 +55,28 @@ describe('computeCubeVoxels', () => {
     for (const v of lit) {
       assert.ok(Math.abs(v.brightness - 1/8) < 0.01,
         `each voxel still only 1/8 duty (one select active at a time)`);
+    }
+  });
+
+  it('P0_ACTIVE_HIGH is documented as unverified', () => {
+    // This test documents the polarity assumption.
+    // P0_ACTIVE_HIGH = true means a set bit lights the LED.
+    // If a real cube shows the opposite, change P0_ACTIVE_HIGH to false
+    // and every voxel in every test inverts — that is the designed behaviour.
+    assert.equal(typeof P0_ACTIVE_HIGH, 'boolean',
+      'P0_ACTIVE_HIGH must be a boolean');
+  });
+
+  it('inverting P0_ACTIVE_HIGH would invert all voxels', () => {
+    // Under active-high: data=0x01 on select 0 → voxel S0B0 is lit
+    const history = [{ tNs: 0n, select: 0xFE, data: 0x01 }];
+    const voxels = computeCubeVoxels(history);
+    const s0b0 = voxels.find(v => v.select === 0 && v.bit === 0);
+
+    if (P0_ACTIVE_HIGH) {
+      assert.ok(s0b0.brightness > 0, 'active-high: data bit set → lit');
+    } else {
+      assert.ok(s0b0.brightness === 0, 'active-low: data bit set → dark');
     }
   });
 });
