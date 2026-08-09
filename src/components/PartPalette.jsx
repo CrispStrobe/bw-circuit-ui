@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { PartThumbnail } from './PartThumbnail.jsx';
 
 const LED_COLORS = ['red', 'green', 'yellow', 'blue', 'white', 'orange'];
 
@@ -86,7 +87,7 @@ export function PartPalette({ onAddPart, onDragPart }) {
       border: '1px solid #2c3e50',
       borderRadius: '8px',
       padding: '8px',
-      width: '130px',
+      width: '160px',
       fontFamily: 'monospace',
       flexShrink: 0,
       overflowY: 'auto',
@@ -131,6 +132,7 @@ export function PartPalette({ onAddPart, onDragPart }) {
 
 function PartButton({ part, onAddPart, onDragPart, ledColor, onLedColorChange }) {
   const { kind, label, params, color, tooltip, hasColorPicker } = part;
+  const [hovered, setHovered] = useState(false);
 
   // For LEDs, use the selected color
   const effectiveParams = kind === 'led' ? { ...params, color: ledColor } : params;
@@ -145,32 +147,45 @@ function PartButton({ part, onAddPart, onDragPart, ledColor, onLedColorChange })
           e.dataTransfer.effectAllowed = 'copy';
           if (onDragPart) onDragPart(kind, effectiveParams);
         }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
         title={tooltip || label}
         style={{
-          display: 'block',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
           width: '100%',
-          padding: '5px 6px',
-          marginBottom: '2px',
-          background: '#16213e',
-          border: `1px solid ${color}`,
-          borderRadius: '4px',
-          color,
-          fontFamily: 'monospace',
-          fontSize: '10px',
+          padding: '4px',
+          marginBottom: '3px',
+          background: hovered ? '#1e2d4a' : '#16213e',
+          border: `1px solid ${hovered ? color : '#2c3e50'}`,
+          borderRadius: '6px',
           cursor: 'grab',
-          textAlign: 'left',
           userSelect: 'none',
           touchAction: 'manipulation',
           boxSizing: 'border-box',
+          transition: 'border-color 80ms, background 80ms',
         }}
       >
-        {kind === 'led' ? `LED (${ledColor})` : label}
-        {tooltip && <span style={{ color: '#556', fontSize: '8px', display: 'block' }}>{tooltip}</span>}
+        <PartThumbnail kind={kind} color={color} params={effectiveParams} />
+        <div style={{
+          color: hovered ? '#ecf0f1' : color,
+          fontFamily: 'monospace',
+          fontSize: '9px',
+          textAlign: 'center',
+          lineHeight: '1.2',
+          marginTop: '2px',
+        }}>
+          {kind === 'led' ? `LED (${ledColor})` : label}
+        </div>
+        {tooltip && (
+          <div style={{ color: '#556', fontSize: '7px', textAlign: 'center' }}>{tooltip}</div>
+        )}
       </div>
 
       {/* LED color swatch picker */}
       {hasColorPicker && (
-        <div style={{ display: 'flex', gap: '2px', padding: '2px 4px', marginBottom: '2px' }}>
+        <div style={{ display: 'flex', gap: '2px', padding: '2px 4px', marginBottom: '2px', justifyContent: 'center' }}>
           {LED_COLORS.map(c => (
             <div
               key={c}
