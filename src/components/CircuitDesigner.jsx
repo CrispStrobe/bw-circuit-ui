@@ -295,9 +295,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     addPart(kind, params, x, y, declName);
   }, [addPart, parts]);
 
-  // Snap-to-grid on move
+  // Snap-to-grid on move (drag)
   const handleMovePart = useCallback((partId, x, y) => {
     movePart(partId, snapToGrid(x), snapToGrid(y));
+  }, [movePart]);
+
+  // Raw move without snap (fine nudge with Shift+arrow)
+  const handleNudgePart = useCallback((partId, x, y) => {
+    movePart(partId, x, y);
   }, [movePart]);
 
   // ── Copy/paste ────────────────────────────────────────────────────
@@ -423,34 +428,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setMode('build');
   }, [circuit]);
 
-  // Keyboard shortcuts
-  const handleKeyDown = useCallback((e) => {
-    // Ctrl+Z / Cmd+Z → undo
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-      e.preventDefault();
-      undo();
-    }
-    // Ctrl+Shift+Z / Ctrl+Y → redo
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'Z' || e.key === 'y')) {
-      e.preventDefault();
-      redo();
-    }
-    // Ctrl+A → select all parts
-    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-      e.preventDefault();
-      setSelectedParts(new Set(parts.map(p => p.id)));
-    }
-    // R → rotate selected part
-    if (e.key === 'r' && !e.ctrlKey && !e.metaKey && selectedPart) {
-      rotatePart(selectedPart);
-    }
-    // Ctrl+D → duplicate selected part
-    if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedPart) {
-      e.preventDefault();
-      const dup = duplicatePart(selectedPart);
-      if (dup) handleSelectPart(dup.id);
-    }
-  }, [undo, redo, rotatePart, duplicatePart, selectedPart]);
+  // All keyboard shortcuts are handled by BoardCanvas (single focus scope).
+  const handleUndo = useCallback(() => undo(), [undo]);
+  const handleRedo = useCallback(() => redo(), [redo]);
+  const handleSelectAll = useCallback(() => {
+    setSelectedParts(new Set(parts.map(p => p.id)));
+  }, [parts]);
 
   // What this board IS right now. `LIVE` was shown for any attached board,
   // which is wrong the moment the debugger halts: the pins stop moving and the
@@ -502,8 +485,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         fontFamily: 'system-ui, -apple-system, sans-serif',
         overflow: 'hidden',
       }}
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
     >
       {/* Left sidebar — collapsible */}
       {leftOpen ? (
@@ -570,6 +551,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onRemoveWire={removeWire}
           onRemovePart={removePart}
           onMovePart={handleMovePart}
+          onNudgePart={handleNudgePart}
           onSelectPart={handleSelectPart}
           selectedPart={selectedPart}
           selectedParts={selectedParts}
@@ -600,6 +582,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onCopy={handleCopy}
           onPaste={handlePaste}
           onUpdateWire={updateWire}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onSelectAll={handleSelectAll}
         />
 
         {/* Engine warnings — teaching feedback */}

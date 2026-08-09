@@ -737,7 +737,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, warnings, annotations, cubeScans, activePartIds,
+  onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -1015,6 +1015,29 @@ export function BoardCanvas({
   }, [dragging, snapTarget, onMovePart, onAddWire, onSaveHistory]);
 
   const handleKeyDown = useCallback((e) => {
+    // Undo/redo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      if (onUndo) onUndo();
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'Z' || e.key === 'y')) {
+      e.preventDefault();
+      if (onRedo) onRedo();
+    }
+    // Select all
+    if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+      e.preventDefault();
+      if (onSelectAll) onSelectAll();
+    }
+    // R → rotate selected parts
+    if (e.key === 'r' && !e.ctrlKey && !e.metaKey && selectedParts && selectedParts.size > 0 && onRotatePart) {
+      for (const id of selectedParts) onRotatePart(id);
+    }
+    // Ctrl+D → duplicate selected part
+    if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedParts && selectedParts.size > 0 && onDuplicatePart) {
+      e.preventDefault();
+      for (const id of selectedParts) onDuplicatePart(id);
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (selectedWire) {
         onRemoveWire(selectedWire);
@@ -1060,18 +1083,20 @@ export function BoardCanvas({
     if (e.key === 'h' && !e.ctrlKey && !e.metaKey && selectedParts && selectedParts.size > 0 && onFlipPart) {
       for (const id of selectedParts) onFlipPart(id);
     }
-    // Arrow keys nudge all selected parts by grid size
+    // Arrow keys nudge all selected parts (Shift = fine 5px bypass snap)
     if (selectedParts && selectedParts.size > 0 && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
       e.preventDefault();
-      const step = e.shiftKey ? 5 : 20;
+      const fine = e.shiftKey;
+      const step = fine ? 5 : 20;
+      const mover = fine && onNudgePart ? onNudgePart : onMovePart;
       const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
       const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
       for (const id of selectedParts) {
         const part = parts.find(p => p.id === id);
-        if (part) onMovePart(id, part.x + dx, part.y + dy);
+        if (part) mover(id, part.x + dx, part.y + dy);
       }
     }
-  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onCopy, onPaste, onFlipPart]);
+  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onNudgePart, onCopy, onPaste, onFlipPart, onUndo, onRedo, onSelectAll, onRotatePart, onDuplicatePart]);
 
   // ── Touch support ────────────────────────────────────────────────
   const canvasContainerRef = useRef(null);
