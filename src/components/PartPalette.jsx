@@ -1,11 +1,13 @@
 /**
- * PartPalette — sidebar of parts with search filter.
+ * PartPalette — categorized sidebar with search, drag-to-add.
  *
- * Drag onto the canvas or tap to add. Live search narrows by name.
- * Categorized: Power, Passive, Active, I/O.
+ * Every part kind that BoardCanvas can render should be here.
+ * Parts with minimal electrical models are labeled "(drawable)".
  */
 
 import React, { useState } from 'react';
+
+const LED_COLORS = ['red', 'green', 'yellow', 'blue', 'white', 'orange'];
 
 const CATEGORIES = [
   {
@@ -19,13 +21,15 @@ const CATEGORIES = [
     name: 'Passive',
     parts: [
       { kind: 'resistor', label: 'Resistor 1kΩ', params: { ohms: 1000 }, color: '#e67e22' },
-      { kind: 'capacitor', label: 'Capacitor', params: { farads: 0.0001 }, color: '#34495e' },
+      { kind: 'capacitor', label: 'Capacitor 100µF', params: { farads: 0.0001 }, color: '#34495e' },
+      { kind: 'diode', label: 'Diode', params: { vf: 0.7 }, color: '#95a5a6' },
+      { kind: 'switch', label: 'Switch', params: {}, color: '#bdc3c7' },
     ],
   },
   {
     name: 'Active',
     parts: [
-      { kind: 'led', label: 'LED (red)', params: { vf: 2.0, color: 'red' }, color: '#2ecc71' },
+      { kind: 'led', label: 'LED', params: { vf: 2.0, color: 'red' }, color: '#2ecc71', hasColorPicker: true },
       { kind: 'buzzer', label: 'Buzzer', params: {}, color: '#1abc9c' },
     ],
   },
@@ -38,28 +42,43 @@ const CATEGORIES = [
     ],
   },
   {
+    name: 'Display',
+    parts: [
+      { kind: 'seven_segment', label: '7-Segment', params: {}, color: '#e74c3c', tooltip: 'Digit display' },
+      { kind: 'char_lcd', label: 'LCD 16×2', params: {}, color: '#2980b9', tooltip: 'drawable — HD44780' },
+      { kind: 'led_matrix', label: 'LED Matrix', params: {}, color: '#27ae60', tooltip: 'drawable — 8×8' },
+      { kind: 'ledcube', label: 'LED Cube 4³', params: {}, color: '#2ecc71' },
+    ],
+  },
+  {
+    name: 'ICs',
+    parts: [
+      { kind: 'shift_register', label: '74HC595', params: {}, color: '#8e44ad', tooltip: 'Shift register — 8 outputs' },
+      { kind: 'ir_receiver', label: 'IR Receiver', params: {}, color: '#c0392b', tooltip: 'drawable — IrDA' },
+      { kind: 'temp_sensor', label: 'Temp Sensor', params: {}, color: '#16a085', tooltip: 'drawable — DS18B20' },
+      { kind: 'eeprom', label: 'EEPROM', params: {}, color: '#2c3e50', tooltip: 'drawable — I²C' },
+    ],
+  },
+  {
     name: 'Instruments',
     parts: [
       { kind: 'meter', label: 'Multimeter', params: { mode: 'voltage' }, color: '#f1c40f' },
     ],
   },
-  {
-    name: 'Display',
-    parts: [
-      { kind: 'ledcube', label: 'LED Cube 4³', params: {}, color: '#2ecc71' },
-    ],
-  },
 ];
 
-// Flat list for search
 const ALL_PARTS = CATEGORIES.flatMap(c => c.parts);
 
 export function PartPalette({ onAddPart, onDragPart }) {
   const [filter, setFilter] = useState('');
+  const [ledColor, setLedColor] = useState('red');
 
   const matchingParts = filter
-    ? ALL_PARTS.filter(p => p.label.toLowerCase().includes(filter.toLowerCase()) || p.kind.includes(filter.toLowerCase()))
-    : null; // null = show categories
+    ? ALL_PARTS.filter(p =>
+        p.label.toLowerCase().includes(filter.toLowerCase()) ||
+        p.kind.includes(filter.toLowerCase()) ||
+        (p.tooltip || '').toLowerCase().includes(filter.toLowerCase()))
+    : null;
 
   return (
     <div style={{
@@ -76,7 +95,6 @@ export function PartPalette({ onAddPart, onDragPart }) {
         Parts
       </div>
 
-      {/* Search filter */}
       <input
         type="text"
         value={filter}
@@ -92,20 +110,18 @@ export function PartPalette({ onAddPart, onDragPart }) {
       />
 
       {matchingParts ? (
-        // Search results (flat list)
         matchingParts.length === 0 ? (
           <div style={{ color: '#556', fontSize: '9px', padding: '4px' }}>No matches</div>
         ) : (
-          matchingParts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} />)
+          matchingParts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} ledColor={ledColor} onLedColorChange={setLedColor} />)
         )
       ) : (
-        // Categorized view
         CATEGORIES.map(cat => (
           <div key={cat.name}>
             <div style={{ color: '#556', fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase' }}>
               {cat.name}
             </div>
-            {cat.parts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} />)}
+            {cat.parts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} ledColor={ledColor} onLedColorChange={setLedColor} />)}
           </div>
         ))
       )}
@@ -113,36 +129,62 @@ export function PartPalette({ onAddPart, onDragPart }) {
   );
 }
 
-function PartButton({ part, onAddPart, onDragPart }) {
-  const { kind, label, params, color } = part;
+function PartButton({ part, onAddPart, onDragPart, ledColor, onLedColorChange }) {
+  const { kind, label, params, color, tooltip, hasColorPicker } = part;
+
+  // For LEDs, use the selected color
+  const effectiveParams = kind === 'led' ? { ...params, color: ledColor } : params;
+
   return (
-    <div
-      draggable
-      onClick={() => onAddPart(kind, params)}
-      onDragStart={(e) => {
-        e.dataTransfer.setData('application/circuit-part', JSON.stringify({ kind, params }));
-        e.dataTransfer.effectAllowed = 'copy';
-        if (onDragPart) onDragPart(kind, params);
-      }}
-      style={{
-        display: 'block',
-        width: '100%',
-        padding: '5px 6px',
-        marginBottom: '2px',
-        background: '#16213e',
-        border: `1px solid ${color}`,
-        borderRadius: '4px',
-        color,
-        fontFamily: 'monospace',
-        fontSize: '10px',
-        cursor: 'grab',
-        textAlign: 'left',
-        userSelect: 'none',
-        touchAction: 'manipulation',
-        boxSizing: 'border-box',
-      }}
-    >
-      {label}
+    <div style={{ position: 'relative' }}>
+      <div
+        draggable
+        onClick={() => onAddPart(kind, effectiveParams)}
+        onDragStart={(e) => {
+          e.dataTransfer.setData('application/circuit-part', JSON.stringify({ kind, params: effectiveParams }));
+          e.dataTransfer.effectAllowed = 'copy';
+          if (onDragPart) onDragPart(kind, effectiveParams);
+        }}
+        title={tooltip || label}
+        style={{
+          display: 'block',
+          width: '100%',
+          padding: '5px 6px',
+          marginBottom: '2px',
+          background: '#16213e',
+          border: `1px solid ${color}`,
+          borderRadius: '4px',
+          color,
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          cursor: 'grab',
+          textAlign: 'left',
+          userSelect: 'none',
+          touchAction: 'manipulation',
+          boxSizing: 'border-box',
+        }}
+      >
+        {kind === 'led' ? `LED (${ledColor})` : label}
+        {tooltip && <span style={{ color: '#556', fontSize: '8px', display: 'block' }}>{tooltip}</span>}
+      </div>
+
+      {/* LED color swatch picker */}
+      {hasColorPicker && (
+        <div style={{ display: 'flex', gap: '2px', padding: '2px 4px', marginBottom: '2px' }}>
+          {LED_COLORS.map(c => (
+            <div
+              key={c}
+              onClick={() => onLedColorChange(c)}
+              style={{
+                width: '12px', height: '12px', borderRadius: '50%',
+                background: c === 'white' ? '#eee' : c,
+                border: c === ledColor ? '2px solid #fff' : '1px solid #444',
+                cursor: 'pointer',
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
