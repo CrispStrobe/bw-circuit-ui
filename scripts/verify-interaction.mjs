@@ -163,6 +163,32 @@ const selectionCount = async () =>
   }
 }
 
+// 3d. Hole-to-hole jumper: press a free hole, drag, release on another —
+//     a colored jumper arc appears.
+{
+  const rect = await page.evaluate(() => {
+    const r = [...document.querySelectorAll('svg rect')].find(el => el.getAttribute('fill') === '#e8e4d8');
+    if (!r) return null;
+    const b = r.getBoundingClientRect();
+    return { x: b.x, y: b.y, w: b.width, h: b.height };
+  });
+  if (!rect) { fail('no breadboard for the jumper scenario'); }
+  else {
+    let made = false;
+    for (const fy of [0.62, 0.66, 0.70]) {   // hunt a bottom-block row
+      const y = rect.y + rect.h * fy;
+      await page.mouse.move(rect.x + rect.w * 0.30, y);
+      await page.mouse.down();
+      await page.mouse.move(rect.x + rect.w * 0.60, y, { steps: 6 });
+      await page.mouse.up();
+      await page.waitForTimeout(200);
+      if (await page.locator('[data-jumper]').count() > 0) { made = true; break; }
+    }
+    made ? pass('hole-to-hole drag created a jumper wire')
+      : fail('jumper gesture produced no wire');
+  }
+}
+
 // 4. Trackpad two-finger scroll must PAN the canvas (viewBox moves).
 {
   const canvas = await page.locator('[data-canvas] svg').first();

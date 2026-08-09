@@ -99,6 +99,52 @@ export class Circuit {
     return true;
   }
 
+  /**
+   * A jumper wire between two holes of one board — the classic colored
+   * breadboard wire. Returns its reference id ("bbw:<board>:<wire>") or null
+   * when the holes cannot take it (occupied / invalid / same strip is fine —
+   * the model's teaching notes call out a no-op jumper).
+   * @param {string} boardId @param {string} a @param {string} b
+   * @param {string} [color]
+   * @returns {string | null}
+   */
+  addHoleWire(boardId, a, b, color) {
+    const bb = this.breadboards.get(boardId);
+    if (!bb) return null;
+    const id = genId('bbw');
+    try {
+      bb.addWire(id, a, b, color);
+    } catch {
+      return null;
+    }
+    this._syncNetlist();
+    this._saveHistory();
+    return `bbw:${boardId}:${id}`;
+  }
+
+  /** Remove a jumper by its "bbw:<board>:<wire>" reference. */
+  removeHoleWire(ref) {
+    const m = /^bbw:([^:]+):(.+)$/.exec(ref);
+    if (!m) return false;
+    const bb = this.breadboards.get(m[1]);
+    if (!bb) return false;
+    bb.removeWire(m[2]);
+    this._syncNetlist();
+    this._saveHistory();
+    return true;
+  }
+
+  /** All jumpers across all boards, render-ready. */
+  holeWires() {
+    const out = [];
+    for (const [boardId, bb] of this.breadboards) {
+      for (const [id, w] of bb.wires) {
+        out.push({ ref: `bbw:${boardId}:${id}`, boardId, a: w.a, b: w.b, color: w.color });
+      }
+    }
+    return out;
+  }
+
   /** Free a part's holes wherever it sits. Safe when not seated. */
   unseatPart(partId) {
     const part = this.parts.find(p => p.id === partId);

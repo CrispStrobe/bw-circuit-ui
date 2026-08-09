@@ -73,6 +73,7 @@ export class InteractionMachine {
   /** Abort whatever is in flight (Esc, pointercancel, blur). */
   cancel() {
     if (this.state === 'wiring') this.cb.clearWirePreview();
+    if (this.state === 'holeWiring' && this.cb.holeWirePreview) this.cb.holeWirePreview(null);
     if (this.state === 'marquee') this.cb.marqueeRect(null);
     if (this.state === 'draggingParts') this.cb.endMove();
     if (this.state === 'placing') {
@@ -125,6 +126,19 @@ export class InteractionMachine {
       this._gesture = { from: terminal };
       this.cb.wirePreview(terminal, { x: wx, y: wy }, null);
       return;
+    }
+
+    // A free hole on a board starts a JUMPER — checked before the part
+    // body, because every hole lies inside the breadboard's bounds. Occupied
+    // holes hold legs, and legs are terminals, which won above.
+    if (this.hit.holeAt) {
+      const hole = this.hit.holeAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX / 2));
+      if (hole) {
+        this.state = 'holeWiring';
+        this._gesture = { from: hole };
+        if (this.cb.holeWirePreview) this.cb.holeWirePreview(hole, { x: wx, y: wy }, null);
+        return;
+      }
     }
 
     const partId = this.hit.partAt(wx, wy);
@@ -189,6 +203,18 @@ export class InteractionMachine {
         this.cb.placeGhost({ kind: g.kind, params: g.params, x: wx, y: wy });
         return;
       }
+      case 'holeWiring': {
+        const snap = this.hit.holeAt
+          ? this.hit.holeAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX / 2))
+          : null;
+        const valid = snap && snap.boardId === g.from.boardId && snap.hole !== g.from.hole;
+        if (this.cb.holeWirePreview) {
+          this.cb.holeWirePreview(g.from,
+            valid ? { x: snap.x, y: snap.y } : { x: wx, y: wy },
+            valid ? snap : null);
+        }
+        return;
+      }
       case 'wiring': {
         const snap = this.hit.terminalAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX));
         const snapValid = snap && !(snap.partId === g.from.partId && snap.terminal === g.from.terminal);
@@ -231,6 +257,17 @@ export class InteractionMachine {
         const ids = this.hit.partsInRect(rect);
         this.cb.select(ids, g.shift ? 'add' : 'replace');
         this.cb.marqueeRect(null);
+        break;
+      }
+      case 'holeWiring': {
+        const target = this.hit.holeAt
+          ? this.hit.holeAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX / 2))
+          : null;
+        if (this.cb.holeWirePreview) this.cb.holeWirePreview(null);
+        if (target && target.boardId === g.from.boardId && target.hole !== g.from.hole
+            && this.cb.createHoleWire) {
+          this.cb.createHoleWire(g.from.boardId, g.from.hole, target.hole);
+        }
         break;
       }
       case 'wiring': {

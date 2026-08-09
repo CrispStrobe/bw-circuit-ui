@@ -73,7 +73,19 @@ export function useCircuit(vcc = 5.0) {
     return w;
   }, [circuit, bump]);
 
+  const addHoleWire = useCallback((boardId, a, b, color) => {
+    const ref = circuit.addHoleWire(boardId, a, b, color);
+    if (ref) setRev(r => r + 1);
+    return ref;
+  }, [circuit]);
+
   const removeWire = useCallback((wireId) => {
+    // Jumper refs ("bbw:board:wire") route to the board model.
+    if (typeof wireId === 'string' && wireId.startsWith('bbw:')) {
+      circuit.removeHoleWire(wireId);
+      setRev(r => r + 1);
+      return;
+    }
     const ok = circuit.removeWire(wireId);
     if (ok) bump();
     return ok;
@@ -192,6 +204,7 @@ export function useCircuit(vcc = 5.0) {
     updateParams,
     addWire,
     removeWire,
+    addHoleWire,
     updateWire,
     setControl,
     setPin,

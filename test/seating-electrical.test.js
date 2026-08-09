@@ -79,3 +79,33 @@ test('removing a board frees its parts, which stay as free parts', () => {
   assert.equal(part.seat, undefined, 'but is no longer seated');
   assert.equal(c.breadboards.size, 0);
 });
+
+test('a jumper wire completes a dark circuit — the classic first fix', () => {
+  resetIds();
+  const c = new Circuit(5.0);
+  const bb = c.addPart('breadboard', {}, 500, 300);
+  const vcc = c.addPart('vcc', {}, 0, 0);
+  const r1 = c.addPart('resistor', { ohms: 1000 }, 0, 0);
+  const led = c.addPart('led', { color: 'red' }, 0, 0);
+  const gnd = c.addPart('gnd', {}, 0, 0);
+  // VCC on col 5; the R/LED/GND chain lives on cols 9..14. GAP at 5→9.
+  c.seatPart(vcc.id, bb.id, computeLeadMap(FOOTPRINTS.vcc, 'a5'));
+  c.seatPart(r1.id, bb.id, computeLeadMap(FOOTPRINTS.resistor, 'b9'));
+  c.seatPart(led.id, bb.id, computeLeadMap(FOOTPRINTS.led, 'c13'));
+  c.seatPart(gnd.id, bb.id, computeLeadMap(FOOTPRINTS.gnd, 'd14'));
+  c.board.advanceTo(25_000_000n);
+  assert.ok(c.board.ledBrightness(led.id) < 0.01, 'gap → dark');
+
+  // The fix every learner performs: a jumper from col 5 to col 9.
+  const ref = c.addHoleWire(bb.id, 'e5', 'e9', '#e74c3c');
+  assert.ok(ref && ref.startsWith('bbw:'), `jumper ref: ${ref}`);
+  c.board.advanceTo(50_000_000n);
+  const lit = c.board.ledBrightness(led.id);
+  assert.ok(Math.abs(lit - 0.1485) < 0.005, `jumper closed the loop: ${lit}`);
+
+  // Occupied holes refuse a jumper; removal restores darkness.
+  assert.equal(c.addHoleWire(bb.id, 'a5', 'e9'), null, 'occupied end refused');
+  assert.ok(c.removeHoleWire(ref));
+  c.board.advanceTo(80_000_000n);
+  assert.ok(c.board.ledBrightness(led.id) < 0.01, 'jumper removed → dark again');
+});

@@ -55,7 +55,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const {
     parts, wires, powered, rev,
     addPart, removePart, movePart, duplicatePart, rotatePart, flipPart, updateParams,
-    addWire, removeWire, updateWire,
+    addWire, removeWire, addHoleWire, updateWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
     loadInferred, undo, redo, canUndo, canRedo, saveHistory,
     ledBrightness, buzzerTone, nodeVoltage,
@@ -557,6 +557,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           nodeVoltages={effectiveNodeVoltages}
           onAddWire={addWire}
           onRemoveWire={removeWire}
+          onAddHoleWire={(boardId, a, b) => addHoleWire(boardId, a, b)}
           onRemovePart={removePart}
           onMovePart={handleMovePart}
           onNudgePart={handleNudgePart}

@@ -15,8 +15,9 @@ import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
 import { classifyWheel } from '../interaction/transform.js';
 import { FOOTPRINTS } from '../interaction/hittest.js';
-import { snapGhost, BB_PITCH, bbHoleOrigin } from '../interaction/breadboard-snap.js';
+import { snapGhost, BB_PITCH, bbHoleOrigin, nearestHole } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
+import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
@@ -781,7 +782,7 @@ export function BoardCanvas({
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
-  placing, onPlacingDone, onSeatPart, onUnseatPart,
+  placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire,
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
   // consumed by everything below (partsRef included, so what you see is
@@ -852,10 +853,11 @@ export function BoardCanvas({
   const panRef = useRef(pan); panRef.current = pan;
   const apiRef = useRef({});
   apiRef.current = { onMovePart, onAddWire, onSelectPart, onSelectWire, onSaveHistory,
-    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire, onDropPart, onPlacingDone, onSeatPart, onUnseatPart };
+    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire, onDropPart, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire };
   const placingProbeRef = useRef(false); placingProbeRef.current = !!placingProbe;
   const pressedButtonRef = useRef(null);
   const draggingWaypointRef = useRef(null); draggingWaypointRef.current = draggingWaypoint;
+  const [holeWirePreview, setHoleWirePreview] = useState(null);
   const machineRef = useRef(null);
   if (!machineRef.current) {
     const hit = createHitTest(
@@ -868,6 +870,40 @@ export function BoardCanvas({
       }),
       (part) => part.terminals.map(t => ({ terminal: t, ...terminalPos(part, t) }))
     );
+    // Jumper wires participate in wireAt via their arc endpoints.
+    const baseWireAt = hit.wireAt;
+    hit.wireAt = (wx, wy, radius) => {
+      const c = circuitRef.current;
+      if (c && c.holeWires) {
+        for (const jw of c.holeWires()) {
+          const bb = partsRef.current.find(q => q.id === jw.boardId);
+          if (!bb) continue;
+          const a = holeWorldPos(bb, jw.a), b = holeWorldPos(bb, jw.b);
+          if (!a || !b) continue;
+          // Sample the arc coarsely: chord segments through the raised midpoint.
+          const mid = { x: (a.x + b.x) / 2, y: Math.min(a.y, b.y) - Math.max(18, Math.hypot(b.x - a.x, b.y - a.y) * 0.25) };
+          for (const [p1, p2] of [[a, mid], [mid, b]]) {
+            const d = distToSeg(wx, wy, p1.x, p1.y, p2.x, p2.y);
+            if (d <= radius + 3) return jw.ref;
+          }
+        }
+      }
+      return baseWireAt(wx, wy, radius);
+    };
+    // Free holes are jumper start/end points.
+    hit.holeAt = (wx, wy, radius) => {
+      const c = circuitRef.current;
+      if (!c) return null;
+      for (const q of partsRef.current) {
+        if (q.kind !== 'breadboard') continue;
+        const h = nearestHole(q, wx, wy);
+        if (!h || Math.hypot(h.x - wx, h.y - wy) > Math.max(radius, BB_PITCH / 2 - 1)) continue;
+        const bb = c.breadboards && c.breadboards.get(q.id);
+        if (bb && bb.occupantOf(h.hole)) return null; // occupied: the leg/terminal owns it
+        return { boardId: q.id, hole: h.hole, x: h.x, y: h.y };
+      }
+      return null;
+    };
     const cb = {
       select: (ids, mode) => {
         const api = apiRef.current;
@@ -943,6 +979,12 @@ export function BoardCanvas({
           s.snapped ? { boardId: s.boardId, hole: s.hole } : null);
       },
       placingDone: () => { if (apiRef.current.onPlacingDone) apiRef.current.onPlacingDone(); },
+      holeWirePreview: (from, toPos, snap) => {
+        setHoleWirePreview(from ? { from, to: toPos, snapped: !!snap } : null);
+      },
+      createHoleWire: (boardId, a, b) => {
+        if (apiRef.current.onAddHoleWire) apiRef.current.onAddHoleWire(boardId, a, b);
+      },
     };
     machineRef.current = new InteractionMachine(hit, cb, () => selectedPartsRef.current, (px) => px / zoomRef.current);
   }
@@ -1669,6 +1711,34 @@ export function BoardCanvas({
           {parts.filter(p => p.kind === 'breadboard').map(bb => (
             <BreadboardSubstrate key={bb.id} part={bb} />
           ))}
+
+          {/* Jumper wires: colored arcs hole-to-hole */}
+          {circuit && circuit.holeWires && circuit.holeWires().map(jw => {
+            const bb = parts.find(q => q.id === jw.boardId);
+            if (!bb) return null;
+            const a = holeWorldPos(bb, jw.a), b = holeWorldPos(bb, jw.b);
+            if (!a || !b) return null;
+            const lift = Math.max(18, Math.hypot(b.x - a.x, b.y - a.y) * 0.25);
+            const midY = Math.min(a.y, b.y) - lift;
+            const isSel = selectedWire === jw.ref;
+            return (
+              <g key={jw.ref} data-jumper={jw.ref} style={{ pointerEvents: 'none' }}>
+                <path d={`M ${a.x} ${a.y} Q ${(a.x + b.x) / 2} ${midY} ${b.x} ${b.y}`}
+                  fill="none" stroke={isSel ? '#f1c40f' : (jw.color || '#e67e22')}
+                  strokeWidth={isSel ? 4 : 3} strokeLinecap="round" />
+                <circle cx={a.x} cy={a.y} r={3} fill={jw.color || '#e67e22'} />
+                <circle cx={b.x} cy={b.y} r={3} fill={jw.color || '#e67e22'} />
+              </g>
+            );
+          })}
+
+          {/* Live jumper preview while dragging hole-to-hole */}
+          {holeWirePreview && (
+            <path d={`M ${holeWirePreview.from.x} ${holeWirePreview.from.y} Q ${(holeWirePreview.from.x + holeWirePreview.to.x) / 2} ${Math.min(holeWirePreview.from.y, holeWirePreview.to.y) - 20} ${holeWirePreview.to.x} ${holeWirePreview.to.y}`}
+              fill="none" stroke={holeWirePreview.snapped ? '#2ecc71' : '#e67e22'}
+              strokeWidth={2.5} strokeDasharray="6,4" strokeLinecap="round"
+              style={{ pointerEvents: 'none' }} />
+          )}
 
           {/* Snap-to-connector indicator */}
           {snapTarget && snapTarget.autoWire && (() => {
