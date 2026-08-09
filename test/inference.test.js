@@ -228,6 +228,71 @@ describe('inferCircuit', () => {
       `should not warn about tone direction: ${unknownWarnings.join('; ')}`);
   });
 
+  it('expands PORT OUTPUT into 8 individual LED pins (08-seven-segment)', () => {
+    const { parts, nets, notes } = inferCircuit({
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [],
+      ports: [
+        { name: 'segments', port: 0, sfr: 'P0', width: 8, direction: 'output', activeLow: false },
+      ],
+    });
+
+    // Should have MCU with 8 pins (P0.0 through P0.7)
+    const mcu = parts.find(p => p.kind === 'mcu');
+    assert.ok(mcu, 'should have an MCU');
+    assert.equal(mcu.terminals.length, 8,
+      `MCU should have 8 terminals for port P0, got ${mcu.terminals.length}`);
+    assert.ok(mcu.terminals.includes('P0.0'), 'should include P0.0');
+    assert.ok(mcu.terminals.includes('P0.7'), 'should include P0.7');
+
+    // Should have 8 LEDs (one per bit) — active-high, so pin → R → LED → GND
+    const leds = parts.filter(p => p.kind === 'led');
+    assert.equal(leds.length, 8, `should have 8 LEDs, got ${leds.length}`);
+
+    // Should have 8 resistors
+    const resistors = parts.filter(p => p.kind === 'resistor');
+    assert.equal(resistors.length, 8, `should have 8 resistors, got ${resistors.length}`);
+
+    // No unknown direction warnings
+    const unknownWarnings = notes.filter(n => n.includes('Unknown direction'));
+    assert.equal(unknownWarnings.length, 0);
+  });
+
+  it('PORT expansion works alongside individual pins', () => {
+    const { parts } = inferCircuit({
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'button', port: 3, bit: 2, direction: 'input', activeLow: true },
+      ],
+      ports: [
+        { name: 'seg', port: 0, width: 8, direction: 'output', activeLow: false },
+      ],
+    });
+
+    // MCU should have 9 terminals: P3.2 + P0.0-P0.7
+    const mcu = parts.find(p => p.kind === 'mcu');
+    assert.equal(mcu.terminals.length, 9);
+
+    // Should have button + 8 LEDs + 8 resistors + pull-up
+    const buttons = parts.filter(p => p.kind === 'button');
+    assert.equal(buttons.length, 1);
+    const leds = parts.filter(p => p.kind === 'led');
+    assert.equal(leds.length, 8);
+  });
+
+  it('empty pins + empty ports produces default circuit', () => {
+    const { parts } = inferCircuit({
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [],
+      ports: [],
+    });
+
+    // Should still have VCC, GND, MCU (minimal)
+    assert.ok(parts.find(p => p.kind === 'vcc'));
+    assert.ok(parts.find(p => p.kind === 'gnd'));
+    assert.ok(parts.find(p => p.kind === 'mcu'));
+  });
+
   it('tone direction works even with non-standard name', () => {
     const { parts } = inferCircuit({
       device: 'stc12c5a60s2', clock: 11059200,

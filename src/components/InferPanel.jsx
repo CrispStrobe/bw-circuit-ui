@@ -80,6 +80,17 @@ const EXAMPLES = [
       ],
     },
   },
+  {
+    name: '08 7-Segment',
+    desc: 'Whole port → display',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [],
+      ports: [
+        { name: 'segments', port: 0, sfr: 'P0', width: 8, direction: 'output', activeLow: false },
+      ],
+    },
+  },
 ];
 
 // The comparison that justifies the whole simulator:
