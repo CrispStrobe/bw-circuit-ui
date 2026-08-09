@@ -52,7 +52,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const projectData = project || stc;
   const {
     parts, wires, powered, rev,
-    addPart, removePart, movePart, duplicatePart, rotatePart, updateParams,
+    addPart, removePart, movePart, duplicatePart, rotatePart, flipPart, updateParams,
     addWire, removeWire, updateWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
     loadInferred, undo, redo, canUndo, canRedo, saveHistory,
@@ -583,6 +583,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onTerminalClickForProbe={handleTerminalClickForProbe}
           onDuplicatePart={(id) => { const dup = duplicatePart(id); if (dup) handleSelectPart(dup.id); }}
           onRotatePart={rotatePart}
+          onFlipPart={flipPart}
           onDropPart={(kind, params, x, y) => {
             const declarable = ['led', 'buzzer', 'button', 'potentiometer'];
             const existingNames = parts.filter(p => p.declName).map(p => p.declName);

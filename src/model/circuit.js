@@ -175,6 +175,19 @@ export class Circuit {
   }
 
   /**
+   * Flip a part horizontally (mirror).
+   * @param {string} partId
+   * @returns {boolean}
+   */
+  flipPart(partId) {
+    const part = this.getPart(partId);
+    if (!part) return false;
+    part.flipped = !part.flipped;
+    this._saveHistory();
+    return true;
+  }
+
+  /**
    * Duplicate a part at an offset position.
    * @param {string} partId
    * @param {number} [offsetX=40]
@@ -196,6 +209,7 @@ export class Circuit {
     }
     const dup = this.addPart(src.kind, { ...src.params }, src.x + offsetX, src.y + offsetY, declName);
     if (dup && src.rotation) dup.rotation = src.rotation;
+    if (dup && src.flipped) dup.flipped = src.flipped;
     return dup;
   }
 

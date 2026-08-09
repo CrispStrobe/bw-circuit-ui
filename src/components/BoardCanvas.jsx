@@ -45,7 +45,11 @@ function rotateOffset(dx, dy, deg) {
  */
 function terminalOffsetsForPart(part) {
   const rot = part.rotation || 0;
-  const r = (dx, dy) => rotateOffset(dx, dy, rot);
+  const flip = part.flipped;
+  const r = (dx, dy) => {
+    const rotated = rotateOffset(dx, dy, rot);
+    return flip ? { dx: -rotated.dx, dy: rotated.dy } : rotated;
+  };
 
   switch (part.kind) {
     case 'vcc': return { vcc: r(0, 20) };
@@ -103,8 +107,13 @@ function fmtV(v) {
 function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
+    const rot = part.rotation || 0;
+    const flip = part.flipped;
     const isSelected = selectedParts?.has(id);
     const selStroke = isSelected ? '#f1c40f' : undefined;
+    let xform = `translate(${x}, ${y})`;
+    if (rot) xform += ` rotate(${rot})`;
+    if (flip) xform += ` scale(-1, 1)`;
 
     const handleClick = (e) => {
       e.stopPropagation();
@@ -115,7 +124,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
     switch (kind) {
       case 'vcc':
         return (
-          <g key={id} transform={`translate(${x}, ${y})`}
+          <g key={id} transform={xform}
             onClick={handleClick}
             style={{ cursor: 'pointer' }}>
             {/* Larger hit area */}
@@ -128,7 +137,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
         );
       case 'gnd':
         return (
-          <g key={id} transform={`translate(${x}, ${y})`}
+          <g key={id} transform={xform}
             onClick={handleClick}
             style={{ cursor: 'pointer' }}>
             <rect x={-20} y={-14} width={40} height={42} fill="transparent" />
@@ -146,7 +155,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
         const chipH = Math.max(60, pinCount * 30 + 20);
         const chipY = -chipH / 2;
         return (
-          <g key={id} transform={`translate(${x}, ${y})`}
+          <g key={id} transform={xform}
             onClick={handleClick}
             style={{ cursor: 'pointer' }}>
             <rect x={-50} y={chipY} width={120} height={chipH} rx={6}
@@ -442,12 +451,16 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
+    const flip = part.flipped;
     const isSelected = selectedParts?.has(id);
+    const transforms = [];
+    if (rot) transforms.push(`rotate(${rot}deg)`);
+    if (flip) transforms.push('scaleX(-1)');
     const baseStyle = {
       position: 'absolute',
       outline: isSelected ? '2px solid #f1c40f' : 'none',
       borderRadius: '4px',
-      transform: rot ? `rotate(${rot}deg)` : undefined,
+      transform: transforms.length > 0 ? transforms.join(' ') : undefined,
       transformOrigin: 'center',
     };
 
@@ -723,7 +736,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, warnings, annotations, cubeScans, activePartIds,
+  onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, warnings, annotations, cubeScans, activePartIds,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -1042,6 +1055,10 @@ export function BoardCanvas({
       e.preventDefault();
       if (onPaste) onPaste();
     }
+    // H → flip selected part horizontally
+    if (e.key === 'h' && !e.ctrlKey && !e.metaKey && selectedParts && selectedParts.size > 0 && onFlipPart) {
+      for (const id of selectedParts) onFlipPart(id);
+    }
     // Arrow keys nudge all selected parts by grid size
     if (selectedParts && selectedParts.size > 0 && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
       e.preventDefault();
@@ -1053,7 +1070,7 @@ export function BoardCanvas({
         if (part) onMovePart(id, part.x + dx, part.y + dy);
       }
     }
-  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onCopy, onPaste]);
+  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onCopy, onPaste, onFlipPart]);
 
   return (
     <div
@@ -1429,6 +1446,10 @@ export function BoardCanvas({
           }}
           onRotate={() => {
             if (selectedPart && onRotatePart) onRotatePart(selectedPart);
+            setContextMenu(null);
+          }}
+          onFlip={() => {
+            if (selectedPart && onFlipPart) onFlipPart(selectedPart);
             setContextMenu(null);
           }}
           onSetWireColor={(color) => {

@@ -80,7 +80,7 @@ const swatchStyle = {
   verticalAlign: 'middle',
 };
 
-export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRotate, onSetWireColor }) {
+export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRotate, onFlip, onSetWireColor }) {
   if (!type) return null;
 
   return (
@@ -96,6 +96,7 @@ export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRota
           <>
             <MenuItem label="Duplicate" shortcut="Ctrl+D" onClick={onDuplicate} />
             <MenuItem label="Rotate" shortcut="R" onClick={onRotate} />
+            <MenuItem label="Flip" shortcut="H" onClick={onFlip} />
             <div style={{ height: 1, background: '#2c3e50', margin: '4px 0' }} />
             <MenuItem label="Delete" shortcut="Del" onClick={onDelete} danger />
           </>
