@@ -217,6 +217,23 @@ const REIDEMEISTER_PRESETS = [
     },
   },
   {
+    name: 'R: LED matrix',
+    desc: '8x8 via P0 + 595 (drawable)',
+    note: 'Wiring only — multiplexing needs timed scan loop',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [],
+      ports: [
+        { name: 'cols', port: 0, sfr: 'P0', width: 8, direction: 'output', activeLow: true },
+      ],
+      parts: [
+        { name: 'rows', kind: '74hc595',
+          pins: { data: 'P3.4', clock: 'P3.6', latch: 'P3.5' },
+          outputs: 8, activeLow: false },
+      ],
+    },
+  },
+  {
     name: 'R: IR receiver',
     desc: 'IrDA data (drawable)',
     note: 'Wiring only — driver needs modulation timing (not yet admitted)',
