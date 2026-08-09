@@ -13,7 +13,7 @@
 import React, { useState, useCallback } from 'react';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
-import { routeWire, partBBoxes, getPartBBox } from '../model/wire-router.js';
+import { routeWire, routeWireWithWaypoints, partBBoxes, getPartBBox } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
 import { PartTooltip } from './PartTooltip.jsx';
 import { ContextMenu } from './ContextMenu.jsx';
@@ -256,7 +256,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
 
 // ── Wires ────────────────────────────────────────────────────────
 
-function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages }) {
+function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages, onUpdateWire, screenToCanvas, setDraggingWaypoint }) {
   // Group wires by net to find all terminals in each net
   const netTerminals = new Map();
   for (const w of wires) {
@@ -273,8 +273,9 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
 
     const a = terminalPos(fromPart, wire.from.terminal);
     const b = terminalPos(toPart, wire.to.terminal);
-    const obstacles = partBBoxes(parts, wire.from.part, wire.to.part);
-    const pathD = routeWire(a, b, obstacles);
+    const pathD = wire.waypoints && wire.waypoints.length > 0
+      ? routeWireWithWaypoints(a, b, wire.waypoints)
+      : routeWire(a, b, partBBoxes(parts, wire.from.part, wire.to.part));
     const isSelected = selectedWire === wire.id;
     const isHovered = hoveredNet && hoveredNet === wire.netId;
 
@@ -290,7 +291,9 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
       else voltageColor = '#3498db';                    // blue: near GND
     }
 
-    const wireColor = isSelected ? '#f1c40f' : isHovered ? '#9b59b6' : voltageColor;
+    // Manual color overrides voltage-keyed color (bench discipline: red=+, black=GND)
+    const baseColor = wire.color || voltageColor;
+    const wireColor = isSelected ? '#f1c40f' : isHovered ? '#9b59b6' : baseColor;
     const wireWidth = isSelected ? 3 : isHovered ? 2.5 : 2;
 
     return (
@@ -303,6 +306,29 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
           fill="none"
           style={{ cursor: 'pointer' }}
           onClick={(e) => { e.stopPropagation(); onSelectWire(wire.id); }}
+          onDoubleClick={(e) => {
+            // Add a waypoint at the click position
+            e.stopPropagation();
+            if (onUpdateWire) {
+              const container = e.currentTarget.closest('[data-canvas]');
+              if (container) {
+                const pos = screenToCanvas(e.clientX, e.clientY, container);
+                const wps = [...(wire.waypoints || [])];
+                // Insert at nearest segment position
+                const pts = [a, ...wps, b];
+                let bestIdx = wps.length; // default: append before end
+                let bestDist = Infinity;
+                for (let i = 0; i < pts.length - 1; i++) {
+                  const mx = (pts[i].x + pts[i + 1].x) / 2;
+                  const my = (pts[i].y + pts[i + 1].y) / 2;
+                  const d = (pos.x - mx) ** 2 + (pos.y - my) ** 2;
+                  if (d < bestDist) { bestDist = d; bestIdx = i; }
+                }
+                wps.splice(bestIdx, 0, { x: pos.x, y: pos.y });
+                onUpdateWire(wire.id, { waypoints: wps });
+              }
+            }
+          }}
           onMouseEnter={() => onHoverNet(wire.netId)}
           onMouseLeave={() => onHoverNet(null)}
         />
@@ -313,6 +339,27 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
           fill="none"
           strokeLinejoin="round"
         />
+        {/* Waypoint handles (visible when wire is selected) */}
+        {isSelected && wire.waypoints && wire.waypoints.map((wp, wi) => (
+          <circle
+            key={`wp-${wi}`}
+            cx={wp.x} cy={wp.y} r={5}
+            fill="#f1c40f" stroke="#2c3e50" strokeWidth={1.5}
+            style={{ cursor: 'move' }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              setDraggingWaypoint({ wireId: wire.id, index: wi });
+            }}
+            onDoubleClick={(e) => {
+              // Double-click waypoint to remove it
+              e.stopPropagation();
+              if (onUpdateWire) {
+                const wps = wire.waypoints.filter((_, i) => i !== wi);
+                onUpdateWire(wire.id, { waypoints: wps.length > 0 ? wps : undefined });
+              }
+            }}
+          />
+        ))}
         {/* Animated current-flow dots along the wire */}
         {nodeVoltages && (() => {
           const v = nodeVoltages?.[wire.netId];
@@ -676,7 +723,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, warnings, annotations, cubeScans, activePartIds,
+  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, warnings, annotations, cubeScans, activePartIds,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -690,6 +737,7 @@ export function BoardCanvas({
   const [contextMenu, setContextMenu] = useState(null); // { x, y, type }
   const [rubberBand, setRubberBand] = useState(null);
   const [inlineEdit, setInlineEdit] = useState(null); // { partId, x, y }
+  const [draggingWaypoint, setDraggingWaypoint] = useState(null); // { wireId, index }
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
@@ -858,6 +906,17 @@ export function BoardCanvas({
       return;
     }
 
+    // Waypoint drag
+    if (draggingWaypoint && onUpdateWire) {
+      const wire = wires.find(w => w.id === draggingWaypoint.wireId);
+      if (wire && wire.waypoints) {
+        const wps = wire.waypoints.map((wp, i) =>
+          i === draggingWaypoint.index ? { x, y } : wp
+        );
+        onUpdateWire(wire.id, { waypoints: wps });
+      }
+    }
+
     if (wiringFrom) {
       setMousePos({ x, y });
     }
@@ -889,7 +948,7 @@ export function BoardCanvas({
         }
       }
     }
-  }, [wiringFrom, dragging, onMovePart, screenToCanvas, panning, zoom, parts, wires]);
+  }, [wiringFrom, dragging, onMovePart, screenToCanvas, panning, zoom, parts, wires, draggingWaypoint, onUpdateWire]);
 
   const handleWheel = useCallback((e) => {
     e.preventDefault();
@@ -936,6 +995,7 @@ export function BoardCanvas({
     dragStartPos.current = null;
     setDragging(null);
     setSnapTarget(null);
+    setDraggingWaypoint(null);
     setPanning(false);
     panStart.current = null;
   }, [dragging, snapTarget, onMovePart, onAddWire, onSaveHistory]);
@@ -1068,6 +1128,7 @@ export function BoardCanvas({
 
       {/* Canvas — fills container, minimum 700×500 */}
       <div
+        data-canvas
         style={{
           position: 'relative',
           width: '100%',
@@ -1182,7 +1243,9 @@ export function BoardCanvas({
           <Wires wires={wires} parts={parts}
             selectedWire={selectedWire} onSelectWire={onSelectWire}
             hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
-            nodeVoltages={nodeVoltages} />
+            nodeVoltages={nodeVoltages}
+            onUpdateWire={onUpdateWire} screenToCanvas={screenToCanvas}
+            setDraggingWaypoint={setDraggingWaypoint} />
           <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
 
           {/* Teaching annotations from inference */}
@@ -1366,6 +1429,12 @@ export function BoardCanvas({
           }}
           onRotate={() => {
             if (selectedPart && onRotatePart) onRotatePart(selectedPart);
+            setContextMenu(null);
+          }}
+          onSetWireColor={(color) => {
+            if (selectedWire && onUpdateWire) {
+              onUpdateWire(selectedWire, { color: color || undefined });
+            }
             setContextMenu(null);
           }}
         />

@@ -73,6 +73,12 @@ export function useCircuit(vcc = 5.0) {
     return ok;
   }, [circuit, bump]);
 
+  const updateWire = useCallback((wireId, props) => {
+    const ok = circuit.updateWire(wireId, props);
+    if (ok) bump();
+    return ok;
+  }, [circuit, bump]);
+
   const setControl = useCallback((partId, value) => {
     circuit.setControl(partId, value);
     bump();
@@ -169,6 +175,7 @@ export function useCircuit(vcc = 5.0) {
     updateParams,
     addWire,
     removeWire,
+    updateWire,
     setControl,
     setPin,
     advanceTo,

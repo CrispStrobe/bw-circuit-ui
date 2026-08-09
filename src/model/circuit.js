@@ -292,6 +292,21 @@ export class Circuit {
   }
 
   /**
+   * Update wire properties (e.g. color, waypoints).
+   * Does not trigger netlist rebuild — these are visual-only.
+   * @param {string} wireId
+   * @param {object} props — merged onto the wire
+   * @returns {boolean}
+   */
+  updateWire(wireId, props) {
+    const wire = this.wires.find(w => w.id === wireId);
+    if (!wire) return false;
+    Object.assign(wire, props);
+    this._saveHistory();
+    return true;
+  }
+
+  /**
    * Get the net ID for a terminal, or null if not wired.
    */
   _netForTerminal(partId, terminal) {

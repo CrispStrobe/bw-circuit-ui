@@ -59,7 +59,28 @@ function MenuItem({ label, shortcut, onClick, danger }) {
   );
 }
 
-export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRotate }) {
+const WIRE_COLORS = [
+  { label: 'Auto (voltage)', value: null },
+  { label: 'Red (+)', value: '#e74c3c' },
+  { label: 'Black (GND)', value: '#1a1a1a' },
+  { label: 'Green', value: '#2ecc71' },
+  { label: 'Blue', value: '#3498db' },
+  { label: 'Yellow', value: '#f1c40f' },
+  { label: 'White', value: '#ecf0f1' },
+  { label: 'Orange', value: '#e67e22' },
+];
+
+const swatchStyle = {
+  display: 'inline-block',
+  width: 12,
+  height: 12,
+  borderRadius: 2,
+  border: '1px solid #555',
+  marginRight: 8,
+  verticalAlign: 'middle',
+};
+
+export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRotate, onSetWireColor }) {
   if (!type) return null;
 
   return (
@@ -80,7 +101,23 @@ export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRota
           </>
         )}
         {type === 'wire' && (
-          <MenuItem label="Delete wire" shortcut="Del" onClick={onDelete} danger />
+          <>
+            <div style={{ padding: '4px 14px', color: '#7f8c8d', fontSize: '10px' }}>Wire color</div>
+            {WIRE_COLORS.map(c => (
+              <button
+                key={c.label}
+                style={{ ...itemStyle, display: 'flex', alignItems: 'center' }}
+                onClick={() => { if (onSetWireColor) onSetWireColor(c.value); onClose(); }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = hoverBg; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <span style={{ ...swatchStyle, background: c.value || 'linear-gradient(135deg, #e74c3c, #3498db)' }} />
+                {c.label}
+              </button>
+            ))}
+            <div style={{ height: 1, background: '#2c3e50', margin: '4px 0' }} />
+            <MenuItem label="Delete wire" shortcut="Del" onClick={onDelete} danger />
+          </>
         )}
       </div>
     </>

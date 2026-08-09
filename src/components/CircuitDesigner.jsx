@@ -53,7 +53,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const {
     parts, wires, powered, rev,
     addPart, removePart, movePart, duplicatePart, rotatePart, updateParams,
-    addWire, removeWire,
+    addWire, removeWire, updateWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
     loadInferred, undo, redo, canUndo, canRedo, saveHistory,
     ledBrightness, buzzerTone, nodeVoltage,
@@ -598,6 +598,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onSaveHistory={saveHistory}
           onCopy={handleCopy}
           onPaste={handlePaste}
+          onUpdateWire={updateWire}
         />
 
         {/* Engine warnings — teaching feedback */}

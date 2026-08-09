@@ -106,6 +106,18 @@ export function partBBoxes(parts, skipA, skipB) {
  * @param {BBox[]} obstacles
  * @returns {string} SVG path d attribute
  */
+/**
+ * Route a wire through explicit waypoints (no auto-routing).
+ * @param {{ x: number, y: number }} a — start
+ * @param {{ x: number, y: number }} b — end
+ * @param {{ x: number, y: number }[]} waypoints
+ * @returns {string} SVG path
+ */
+export function routeWireWithWaypoints(a, b, waypoints) {
+  const pts = [a, ...waypoints, b];
+  return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+}
+
 export function routeWire(a, b, obstacles) {
   // L-shape: horizontal first
   const midH = { x: b.x, y: a.y };
