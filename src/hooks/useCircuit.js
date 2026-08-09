@@ -73,6 +73,12 @@ export function useCircuit(vcc = 5.0) {
     return w;
   }, [circuit, bump]);
 
+  const addTapWire = useCallback((partId, terminal, boardId, hole, color) => {
+    const w = circuit.addTapWire(partId, terminal, boardId, hole, color);
+    if (w) setRev(r => r + 1);
+    return w;
+  }, [circuit]);
+
   const addHoleWire = useCallback((boardId, a, b, color) => {
     const ref = circuit.addHoleWire(boardId, a, b, color);
     if (ref) setRev(r => r + 1);
@@ -207,6 +213,7 @@ export function useCircuit(vcc = 5.0) {
     addWire,
     removeWire,
     addHoleWire,
+    addTapWire,
     updateWire,
     setControl,
     setPin,

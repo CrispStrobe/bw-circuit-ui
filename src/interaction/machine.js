@@ -72,8 +72,8 @@ export class InteractionMachine {
 
   /** Abort whatever is in flight (Esc, pointercancel, blur). */
   cancel() {
-    if (this.state === 'wiring') this.cb.clearWirePreview();
-    if (this.state === 'holeWiring' && this.cb.holeWirePreview) this.cb.holeWirePreview(null);
+    if (this.state === 'wiring' || this.state === 'stickyWiring') this.cb.clearWirePreview();
+    if ((this.state === 'holeWiring' || this.state === 'stickyHoleWiring') && this.cb.holeWirePreview) this.cb.holeWirePreview(null);
     if (this.state === 'marquee') this.cb.marqueeRect(null);
     if (this.state === 'draggingParts') this.cb.endMove();
     if (this.state === 'placing') {
@@ -117,13 +117,41 @@ export class InteractionMachine {
       this._commitPlace(wx, wy);
       return;
     }
+
+    // Sticky wiring: a previous CLICK on a connector armed us; this click
+    // commits (terminal or hole) or cancels on empty ground.
+    if (this.state === 'stickyWiring' || this.state === 'stickyHoleWiring') {
+      const g0 = this._gesture;
+      const term = this.hit.terminalAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX));
+      const hole = !term && this.hit.holeAt
+        ? this.hit.holeAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX / 2)) : null;
+      this.cb.clearWirePreview();
+      if (this.cb.holeWirePreview) this.cb.holeWirePreview(null);
+      this.state = 'idle'; this._gesture = null;
+      if (g0.from.partId !== undefined) {
+        if (term && !(term.partId === g0.from.partId && term.terminal === g0.from.terminal)) {
+          this.cb.createWire({ partId: g0.from.partId, terminal: g0.from.terminal },
+            { partId: term.partId, terminal: term.terminal });
+        } else if (hole && this.cb.createTapWire) {
+          this.cb.createTapWire({ partId: g0.from.partId, terminal: g0.from.terminal }, hole);
+        }
+      } else {
+        if (hole && hole.boardId === g0.from.boardId && hole.hole !== g0.from.hole && this.cb.createHoleWire) {
+          this.cb.createHoleWire(g0.from.boardId, g0.from.hole, hole.hole);
+        } else if (term && this.cb.createTapWire) {
+          this.cb.createTapWire({ partId: term.partId, terminal: term.terminal }, g0.from);
+        }
+      }
+      return;
+    }
+
     if (this.state !== 'idle') this.cancel();
 
     // Terminals win over part bodies: they are smaller and on top.
     const terminal = this.hit.terminalAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX));
     if (terminal) {
       this.state = 'wiring';
-      this._gesture = { from: terminal };
+      this._gesture = { from: terminal, startX: wx, startY: wy, moved: false };
       this.cb.wirePreview(terminal, { x: wx, y: wy }, null);
       return;
     }
@@ -135,7 +163,7 @@ export class InteractionMachine {
       const hole = this.hit.holeAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX / 2));
       if (hole) {
         this.state = 'holeWiring';
-        this._gesture = { from: hole };
+        this._gesture = { from: hole, startX: wx, startY: wy, moved: false };
         if (this.cb.holeWirePreview) this.cb.holeWirePreview(hole, { x: wx, y: wy }, null);
         return;
       }
@@ -203,7 +231,9 @@ export class InteractionMachine {
         this.cb.placeGhost({ kind: g.kind, params: g.params, x: wx, y: wy });
         return;
       }
+      case 'stickyHoleWiring':
       case 'holeWiring': {
+        if (g.startX !== undefined && Math.hypot(wx - g.startX, wy - g.startY) > this.worldDistance(DRAG_THRESHOLD_PX)) g.moved = true;
         const snap = this.hit.holeAt
           ? this.hit.holeAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX / 2))
           : null;
@@ -215,11 +245,20 @@ export class InteractionMachine {
         }
         return;
       }
+      case 'stickyWiring':
       case 'wiring': {
+        if (g.startX !== undefined && Math.hypot(wx - g.startX, wy - g.startY) > this.worldDistance(DRAG_THRESHOLD_PX)) g.moved = true;
         const snap = this.hit.terminalAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX));
         const snapValid = snap && !(snap.partId === g.from.partId && snap.terminal === g.from.terminal);
-        this.cb.wirePreview(g.from, snapValid ? { x: snap.x, y: snap.y } : { x: wx, y: wy },
-          snapValid ? snap : null);
+        if (snapValid) {
+          this.cb.wirePreview(g.from, { x: snap.x, y: snap.y }, snap);
+          return;
+        }
+        const hole = this.hit.holeAt
+          ? this.hit.holeAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX / 2))
+          : null;
+        this.cb.wirePreview(g.from, hole ? { x: hole.x, y: hole.y } : { x: wx, y: wy },
+          hole ?? null);
         return;
       }
       default:
@@ -267,6 +306,18 @@ export class InteractionMachine {
         if (target && target.boardId === g.from.boardId && target.hole !== g.from.hole
             && this.cb.createHoleWire) {
           this.cb.createHoleWire(g.from.boardId, g.from.hole, target.hole);
+          break;
+        }
+        // Released on a part terminal instead: same tap wire, other direction.
+        const term = this.hit.terminalAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX));
+        if (term && this.cb.createTapWire) {
+          this.cb.createTapWire({ partId: term.partId, terminal: term.terminal }, g.from);
+          break;
+        }
+        if (!g.moved) {
+          this.state = 'stickyHoleWiring';
+          this._gesture = g;
+          return;
         }
         break;
       }
@@ -276,6 +327,23 @@ export class InteractionMachine {
         if (target && !(target.partId === g.from.partId && target.terminal === g.from.terminal)) {
           this.cb.createWire({ partId: g.from.partId, terminal: g.from.terminal },
             { partId: target.partId, terminal: target.terminal });
+          break;
+        }
+        // No terminal under the release — a free HOLE also completes the
+        // wire: "battery lead into the rail" is a first-class gesture.
+        const hole = this.hit.holeAt
+          ? this.hit.holeAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX / 2))
+          : null;
+        if (hole && this.cb.createTapWire) {
+          this.cb.createTapWire({ partId: g.from.partId, terminal: g.from.terminal }, hole);
+          break;
+        }
+        // A plain CLICK on the connector (no drag): stay armed — the next
+        // click completes the wire. Click-click is how most people wire.
+        if (!g.moved) {
+          this.state = 'stickyWiring';
+          this._gesture = g;
+          return;
         }
         break;
       }

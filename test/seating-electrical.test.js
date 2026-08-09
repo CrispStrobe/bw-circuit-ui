@@ -145,3 +145,32 @@ test('wires and jumpers take a manual color, and auto restores', () => {
   assert.ok(c.updateHoleWire(ref, { color: null }));
   assert.equal(c.holeWires()[0].color, undefined, 'auto = no stored color');
 });
+
+test('tap wires: a source wired INTO the rails powers the seated circuit', () => {
+  resetIds();
+  const c = new Circuit(5.0);
+  const bb = c.addPart('breadboard', {}, 500, 300);
+  // A real bench setup: the supply sits OFF the board, wired into the rails.
+  const bat = c.addPart('vsource', { volts: 5 }, 100, 100);
+  const r1 = c.addPart('resistor', { ohms: 1000 }, 0, 0);
+  const led = c.addPart('led', { color: 'red' }, 0, 0);
+  c.seatPart(r1.id, bb.id, computeLeadMap(FOOTPRINTS.resistor, 'b5'));
+  c.seatPart(led.id, bb.id, computeLeadMap(FOOTPRINTS.led, 'c9'));
+  // Rail taps: battery + → t+ rail, battery − → t- rail.
+  assert.ok(c.addTapWire(bat.id, 'pos', bb.id, 't+3'), 'pos tap lands');
+  assert.ok(c.addTapWire(bat.id, 'neg', bb.id, 't-3'), 'neg tap lands');
+  // Rail jumpers to the columns: t+ → col5, col10 → t-.
+  assert.ok(c.addHoleWire(bb.id, 't+8', 'a5'));
+  assert.ok(c.addHoleWire(bb.id, 'a10', 't-8'));
+  c.board.advanceTo(25_000_000n);
+  const lit = c.board.ledBrightness(led.id);
+  // I = (5 − 2) / (1000 + 10) — the battery drives it through rails+strips.
+  assert.ok(Math.abs(lit - 0.1485) < 0.005, `rail-powered LED: ${lit}`);
+  // An occupied hole refuses a tap.
+  assert.equal(c.addTapWire(bat.id, 'pos', bb.id, 'b5'), null, 'leg hole refused');
+  // Removing a tap breaks the loop.
+  const tap = c.wires.find(w => w.to.board);
+  c.removeWire(tap.id);
+  c.board.advanceTo(50_000_000n);
+  assert.ok(c.board.ledBrightness(led.id) < 0.01, 'tap removed → dark');
+});

@@ -82,9 +82,30 @@ export function ScopePanel({ board, nets = [] }) {
         g.beginPath(); g.moveTo((W / 10) * i, 0); g.lineTo((W / 10) * i, H); g.stroke();
       }
 
+      // Auto-range across all channels' windows: a scope with a fixed
+      // 0..5.5 V scale clamps a floating (negative-voltage) net into a flat
+      // line at the bottom edge — real instruments range to the signal.
+      let vLo = 0, vHi = 5;
+      const chData = channels.map((c) => {
+        try { return board.getScopeData(c.handle); } catch { return null; }
+      });
+      for (const data of chData) {
+        if (!data) continue;
+        for (let i = 0; i < data.samples.length; i += 2) {
+          const mn = data.samples[i], mx = data.samples[i + 1];
+          if (!Number.isNaN(mn) && mn < vLo) vLo = mn;
+          if (!Number.isNaN(mx) && mx > vHi) vHi = mx;
+        }
+      }
+      const pad = (vHi - vLo) * 0.08 || 0.5;
+      vLo -= pad; vHi += pad;
+      g.fillStyle = '#5d6d7e';
+      g.font = '8px monospace';
+      g.fillText(`${vHi.toFixed(1)}V`, 3, 9);
+      g.fillText(`${vLo.toFixed(1)}V`, 3, H - 3);
+
       channels.forEach((c, ci) => {
-        let data;
-        try { data = board.getScopeData(c.handle); } catch { return; }
+        const data = chData[ci];
         if (!data) return;
         const { samples } = data;
         const depth = samples.length / 2;
@@ -94,7 +115,7 @@ export function ScopePanel({ board, nets = [] }) {
         g.fillStyle = CHANNEL_COLORS[ci] + '55';
         g.strokeStyle = CHANNEL_COLORS[ci];
         g.lineWidth = 1;
-        const yOf = (v) => H - (v / V_MAX) * H;
+        const yOf = (v) => Math.min(H - 1.5, Math.max(1.5, H - ((v - vLo) / (vHi - vLo)) * H));
         let started = false;
         g.beginPath();
         for (let px = 0; px < W; px++) {
@@ -189,7 +210,7 @@ export function ScopePanel({ board, nets = [] }) {
         <span style={{ marginLeft: 'auto' }}>{timeLabel}</span>
       </div>
       <div style={{ marginTop: '4px', color: '#556' }}>
-        0–{V_MAX} V full scale · capture resets when the circuit is edited
+        auto-ranging scale · capture resets when the circuit is edited
       </div>
     </div>
   );

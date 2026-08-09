@@ -52,12 +52,13 @@ function getDebugProps() {
 function App() {
   const debugProps = getDebugProps();
   return (
-    <div style={{
+    <div style={{ height: '100%', overflow: 'clip',
       background: '#1a1a2e',
       color: '#e0e0e0',
       minHeight: '100vh',
     }}>
       <CircuitDesigner
+        onBoardReady={(b) => { window.__board = b; }}
         project={{
           device: 'STC12C5A60S2',
           clock: 11059200,

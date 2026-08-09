@@ -14,7 +14,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
 import { classifyWheel } from '../interaction/transform.js';
-import { FOOTPRINTS } from '../interaction/hittest.js';
+import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
 import { snapGhost, BB_PITCH, bbHoleOrigin, nearestHole } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
@@ -72,6 +72,13 @@ function terminalOffsetsForPart(part) {
     case 'buzzer': return { a: r(-15, 0), b: r(15, 0) };
     case 'capacitor': return { a: r(-15, 0), b: r(15, 0) };
     case 'meter': return { probe_a: r(-25, 20), probe_b: r(25, 20) };
+    case 'vsource': {
+      const variant = String(part.params?.variant ?? (part.params?.wave && part.params.wave !== 'dc' ? 'fg' : '9v'));
+      if (variant === '9v') return { pos: r(-9, -38), neg: r(9, -38) };
+      if (variant === 'aa') return { pos: r(30, 0), neg: r(-30, 0) };
+      if (variant === 'coin') return { pos: r(0, -22), neg: r(0, 22) };
+      return { pos: r(-24, 30), neg: r(24, 30) }; // fg: front jacks
+    }
     case 'led_cube': {
       const offsets = {};
       for (let i = 0; i < 8; i++) offsets[`sel_${i}`] = r(-60, -30 + i * 10);
@@ -139,32 +146,24 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
 
     switch (kind) {
       case 'vcc':
+      case 'gnd': {
+        // A bench binding post: metal collar, colored cap, base plate.
+        const capColor = kind === 'vcc' ? '#c0392b' : '#1b2631';
+        const capHi = kind === 'vcc' ? '#e74c3c' : '#2c3e50';
+        const ty = kind === 'vcc' ? 20 : -10; // terminal offset (kept from before)
         return (
-          <g key={id} transform={xform}
-            pointerEvents="none"
-            style={{ cursor: 'pointer' }}>
-            {/* Larger hit area */}
-            <rect x={-20} y={-8} width={40} height={32} fill="transparent" />
-            <line x1={0} y1={20} x2={0} y2={5} stroke={selStroke || '#e74c3c'} strokeWidth={2} />
-            <line x1={-15} y1={5} x2={15} y2={5} stroke={selStroke || '#e74c3c'} strokeWidth={2} />
-            <text x={0} y={-2} textAnchor="middle" fill={selStroke || '#e74c3c'} fontSize={12}
-              fontFamily="monospace" fontWeight="bold">VCC</text>
+          <g key={id} transform={xform} pointerEvents="none">
+            <ellipse cx={0} cy={8} rx={16} ry={5} fill="#7f8c8d" opacity={0.35} />
+            <rect x={-3} y={ty > 0 ? 4 : ty} width={6} height={Math.abs(ty) + 2} rx={2} fill="#95a5a6" />
+            <rect x={-11} y={-14} width={22} height={20} rx={5}
+              fill={capColor} stroke={selStroke || capHi} strokeWidth={2} />
+            <rect x={-11} y={-14} width={22} height={8} rx={5} fill={capHi} opacity={0.5} />
+            <circle cx={0} cy={-4} r={3.5} fill="#ecf0f1" opacity={0.9} />
+            <text x={0} y={26} textAnchor="middle" fill={capHi} fontSize={8}
+              fontFamily="monospace" fontWeight="bold">{kind === 'vcc' ? '+5V' : 'GND'}</text>
           </g>
         );
-      case 'gnd':
-        return (
-          <g key={id} transform={xform}
-            pointerEvents="none"
-            style={{ cursor: 'pointer' }}>
-            <rect x={-20} y={-14} width={40} height={42} fill="transparent" />
-            <line x1={0} y1={-10} x2={0} y2={0} stroke={selStroke || '#3498db'} strokeWidth={2} />
-            <line x1={-15} y1={0} x2={15} y2={0} stroke={selStroke || '#3498db'} strokeWidth={2} />
-            <line x1={-10} y1={5} x2={10} y2={5} stroke={selStroke || '#3498db'} strokeWidth={2} />
-            <line x1={-5} y1={10} x2={5} y2={10} stroke={selStroke || '#3498db'} strokeWidth={2} />
-            <text x={0} y={24} textAnchor="middle" fill={selStroke || '#3498db'} fontSize={12}
-              fontFamily="monospace" fontWeight="bold">GND</text>
-          </g>
-        );
+      }
       case 'mcu': {
         // Scale chip body to match pin count
         const pinCount = part.terminals.length;
@@ -293,9 +292,20 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
 
     const a = terminalPos(fromPart, wire.from.terminal);
     const b = terminalPos(toPart, wire.to.terminal);
-    const pathD = wire.waypoints && wire.waypoints.length > 0
-      ? routeWireWithWaypoints(a, b, wire.waypoints)
-      : routeWire(a, b, partBBoxes(parts, wire.from.part, wire.to.part));
+    // Wires draw as jumper-style arcs; each wire's id hashes to a distinct
+    // curvature so parallel runs SEPARATE instead of overlapping into one
+    // unreadable stroke. User waypoints still win.
+    let pathD;
+    if (wire.waypoints && wire.waypoints.length > 0) {
+      pathD = routeWireWithWaypoints(a, b, wire.waypoints);
+    } else {
+      let h = 0;
+      for (const ch of wire.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+      const dist = Math.hypot(b.x - a.x, b.y - a.y);
+      const lift = Math.min(30, Math.max(10, dist * 0.14)) * (h % 2 ? 1 : -1) * (1 + (h % 3) * 0.35);
+      const nx = -(b.y - a.y) / (dist || 1), ny = (b.x - a.x) / (dist || 1);
+      pathD = `M ${a.x} ${a.y} Q ${(a.x + b.x) / 2 + nx * lift} ${(a.y + b.y) / 2 + ny * lift} ${b.x} ${b.y}`;
+    }
     const isSelected = selectedWire === wire.id;
     const isHovered = hoveredNet && hoveredNet === wire.netId;
 
@@ -568,23 +578,21 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             </div>
           </div>
         );
-      case 'capacitor':
+      case 'capacitor': {
+        const csel = selectedParts?.has(id);
         return (
-          <div key={id}
-            style={{ ...baseStyle, left: x - 15, top: y - 15, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
-            {...dragProps()}>
-            <svg width={30} height={30} viewBox="0 0 30 30">
-              <line x1={5} y1={15} x2={12} y2={15} stroke="#7f8c8d" strokeWidth={2} />
-              <line x1={12} y1={5} x2={12} y2={25} stroke="#ecf0f1" strokeWidth={2} />
-              <line x1={18} y1={5} x2={18} y2={25} stroke="#ecf0f1" strokeWidth={2} />
-              <line x1={18} y1={15} x2={25} y2={15} stroke="#7f8c8d" strokeWidth={2} />
+          <div key={id} style={{ ...baseStyle, left: x - 18, top: y - 16 }}>
+            <svg width={36} height={32} viewBox="-18 -16 36 32">
+              <line x1={-17} y1={0} x2={-9} y2={0} stroke="#95a5a6" strokeWidth={2} />
+              <line x1={9} y1={0} x2={17} y2={0} stroke="#95a5a6" strokeWidth={2} />
+              <rect x={-9} y={-14} width={18} height={28} rx={3}
+                fill="#1a5276" stroke={csel ? '#f1c40f' : '#154360'} strokeWidth={2} />
+              <rect x={3} y={-14} width={5} height={28} fill="#d5d8dc" opacity={0.85} />
+              <line x1={-9} y1={-9} x2={9} y2={-9} stroke="#154360" strokeWidth={1.5} />
             </svg>
-            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
-              {partLabel(part)}
-            </div>
           </div>
         );
+      }
       case 'seven_segment':
         return (
           <div key={id}
@@ -686,6 +694,80 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           </div>
         );
       }
+      case 'vsource': {
+        const vsel = selectedParts?.has(id);
+        const stroke = vsel ? '#f1c40f' : null;
+        const variant = String(part.params?.variant ?? (part.params?.wave && part.params.wave !== 'dc' ? 'fg' : '9v'));
+        let inner;
+        if (variant === '9v') {
+          inner = (
+            <svg width={48} height={84} viewBox="-24 -46 48 84">
+              <rect x={-20} y={-30} width={40} height={60} rx={4}
+                fill="#2c3e50" stroke={stroke || '#1b2631'} strokeWidth={2} />
+              <rect x={-20} y={-8} width={40} height={30} fill="#f4d03f" />
+              <text x={0} y={12} textAnchor="middle" fill="#1b2631" fontSize={12}
+                fontFamily="monospace" fontWeight="bold">{part.params?.volts ?? 9}V</text>
+              <circle cx={-9} cy={-36} r={4.5} fill="#d5d8dc" stroke="#95a5a6" strokeWidth={1.5} />
+              <circle cx={9} cy={-36} r={3.2} fill="#d5d8dc" stroke="#95a5a6" strokeWidth={1.5} />
+              <text x={-9} y={-42} textAnchor="middle" fill="#e74c3c" fontSize={8} fontFamily="monospace">+</text>
+              <text x={9} y={-42} textAnchor="middle" fill="#7f8c8d" fontSize={8} fontFamily="monospace">-</text>
+            </svg>
+          );
+        } else if (variant === 'aa') {
+          inner = (
+            <svg width={64} height={26} viewBox="-32 -13 64 26">
+              <rect x={-27} y={-9} width={50} height={18} rx={7}
+                fill="#b03a2e" stroke={stroke || '#7b241c'} strokeWidth={2} />
+              <rect x={-27} y={-9} width={16} height={18} rx={7} fill="#d5d8dc" />
+              <rect x={23} y={-4} width={5} height={8} rx={2} fill="#d5d8dc" stroke="#95a5a6" />
+              <text x={0} y={4} textAnchor="middle" fill="#fdfefe" fontSize={8}
+                fontFamily="monospace" fontWeight="bold">AA {part.params?.volts ?? 1.5}V</text>
+            </svg>
+          );
+        } else if (variant === 'coin') {
+          inner = (
+            <svg width={40} height={40} viewBox="-20 -20 40 40">
+              <circle cx={0} cy={0} r={18} fill="#d5d8dc" stroke={stroke || '#95a5a6'} strokeWidth={2.5} />
+              <circle cx={0} cy={0} r={13} fill="#e8eaed" />
+              <text x={0} y={3} textAnchor="middle" fill="#5d6d7e" fontSize={7}
+                fontFamily="monospace" fontWeight="bold">CR {part.params?.volts ?? 3}V</text>
+            </svg>
+          );
+        } else {
+          const wave = String(part.params?.wave ?? 'sine');
+          const glyph = wave === 'square' ? 'M -12 3 L -12 -3 L -4 -3 L -4 3 L 4 3 L 4 -3 L 12 -3'
+            : wave === 'triangle' ? 'M -12 3 L -6 -3 L 0 3 L 6 -3 L 12 3'
+            : wave === 'pulse' ? 'M -12 3 L -12 -3 L -7 -3 L -7 3 L 12 3'
+            : 'M -12 0 Q -9 -6 -6 0 T 0 0 T 6 0 T 12 0';
+          inner = (
+            <svg width={52} height={56} viewBox="-26 -26 52 56">
+              <rect x={-24} y={-24} width={48} height={48} rx={5}
+                fill="#34495e" stroke={stroke || '#2c3e50'} strokeWidth={2} />
+              <rect x={-24} y={24} width={10} height={4} rx={2} fill="#2c3e50" />
+              <rect x={14} y={24} width={10} height={4} rx={2} fill="#2c3e50" />
+              <rect x={-18} y={-18} width={36} height={16} rx={2} fill="#0d1420" />
+              <path d={glyph} fill="none" stroke="#2ecc71" strokeWidth={1.6}
+                strokeLinecap="round" transform="translate(0,-10) scale(1.1,0.9)" />
+              <circle cx={-10} cy={10} r={5} fill="#22313f" stroke="#5d6d7e" strokeWidth={1.5} />
+              <line x1={-10} y1={10} x2={-7} y2={6} stroke="#aeb6bf" strokeWidth={1.5} />
+              <circle cx={10} cy={10} r={5} fill="#22313f" stroke="#5d6d7e" strokeWidth={1.5} />
+              <line x1={10} y1={10} x2={13} y2={7} stroke="#aeb6bf" strokeWidth={1.5} />
+              <text x={0} y={22} textAnchor="middle" fill="#7f8c8d" fontSize={6} fontFamily="monospace">
+                {`${part.params?.freq ?? 1000} Hz`}
+              </text>
+            </svg>
+          );
+        }
+        const box = variant === '9v' ? { w: 48, h: 84, dy: 46 }
+          : variant === 'aa' ? { w: 64, h: 26, dy: 13 }
+          : variant === 'coin' ? { w: 40, h: 40, dy: 20 }
+          : { w: 52, h: 56, dy: 26 };
+        return (
+          <div key={id} style={{ ...baseStyle, left: x - box.w / 2, top: y - box.dy }}>
+            {inner}
+          </div>
+        );
+      }
       case 'meter': {
         const mode = params.mode || 'voltage';
         const mr = meterReadings?.[id] || { value: '---', unit: mode === 'voltage' ? 'V' : mode === 'current' ? 'mA' : 'Ω', note: null };
@@ -784,7 +866,7 @@ export function BoardCanvas({
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
-  placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire,
+  placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire,
   drcWarnings,
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
@@ -856,7 +938,7 @@ export function BoardCanvas({
   const panRef = useRef(pan); panRef.current = pan;
   const apiRef = useRef({});
   apiRef.current = { onMovePart, onAddWire, onSelectPart, onSelectWire, onSaveHistory,
-    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire, onDropPart, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire };
+    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire, onDropPart, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire };
   const placingProbeRef = useRef(false); placingProbeRef.current = !!placingProbe;
   const pressedButtonRef = useRef(null);
   const draggingWaypointRef = useRef(null); draggingWaypointRef.current = draggingWaypoint;
@@ -866,10 +948,18 @@ export function BoardCanvas({
     const hit = createHitTest(
       () => partsRef.current,
       () => wiresRef.current.map(w => {
-        const fp = partsRef.current.find(pp => pp.id === w.from.part);
-        const tp = partsRef.current.find(pp => pp.id === w.to.part);
-        if (!fp || !tp) return { id: w.id, points: [] };
-        return { id: w.id, points: [terminalPos(fp, w.from.terminal), ...(w.waypoints || []), terminalPos(tp, w.to.terminal)] };
+        const endPos = (e) => {
+          if (e.board) {
+            const bb = partsRef.current.find(pp => pp.id === e.board);
+            return bb ? holeWorldPos(bb, e.hole) : null;
+          }
+          const pp = partsRef.current.find(q => q.id === e.part);
+          return pp ? terminalPos(pp, e.terminal) : null;
+        };
+        const a = endPos(w.from);
+        const b = endPos(w.to);
+        if (!a || !b) return { id: w.id, points: [] };
+        return { id: w.id, points: [a, ...(w.waypoints || []), b] };
       }),
       (part) => part.terminals.map(t => ({ terminal: t, ...terminalPos(part, t) }))
     );
@@ -987,6 +1077,9 @@ export function BoardCanvas({
       },
       createHoleWire: (boardId, a, b) => {
         if (apiRef.current.onAddHoleWire) apiRef.current.onAddHoleWire(boardId, a, b);
+      },
+      createTapWire: (term, hole) => {
+        if (apiRef.current.onAddTapWire) apiRef.current.onAddTapWire(term.partId, term.terminal, hole.boardId, hole.hole);
       },
     };
     machineRef.current = new InteractionMachine(hit, cb, () => selectedPartsRef.current, (px) => px / zoomRef.current);
@@ -1700,6 +1793,32 @@ export function BoardCanvas({
             />
           )}
 
+          {/* Click-to-adjust: one selected part with params gets an inline
+              chip that opens the editor — the single-click flow users expect */}
+          {(() => {
+            if (!selectedParts || selectedParts.size !== 1 || inlineEdit) return null;
+            const only = parts.find(q => selectedParts.has(q.id));
+            if (!only || !only.params || Object.keys(only.params).length === 0) return null;
+            const b = partBounds(only);
+            return (
+              <g style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  const el = canvasContainerRef.current;
+                  const r = el.getBoundingClientRect();
+                  const sx = (b.minX + (b.maxX - b.minX) / 2 - panRef.current.x) * zoomRef.current + r.left;
+                  const sy = (b.minY - 14 - panRef.current.y) * zoomRef.current + r.top;
+                  setInlineEdit({ partId: only.id, x: sx, y: sy });
+                }}>
+                <rect x={b.minX + (b.maxX - b.minX) / 2 - 24} y={b.minY - 24}
+                  width={48} height={15} rx={7}
+                  fill="#f1c40f" stroke="#b7950b" strokeWidth={1} />
+                <text x={b.minX + (b.maxX - b.minX) / 2} y={b.minY - 13}
+                  textAnchor="middle" fill="#1b2631" fontSize={9}
+                  fontFamily="monospace" fontWeight="bold">adjust</text>
+              </g>
+            );
+          })()}
+
           {/* Ghost of the part being placed from the palette */}
           {placeGhost && (() => {
             const fp = FOOTPRINTS[placeGhost.kind] ?? { w: 48, h: 48 };
@@ -1748,6 +1867,32 @@ export function BoardCanvas({
                   strokeWidth={isSel ? 4 : 3} strokeLinecap="round" />
                 <circle cx={a.x} cy={a.y} r={3} fill={jw.color || '#e67e22'} />
                 <circle cx={b.x} cy={b.y} r={3} fill={jw.color || '#e67e22'} />
+              </g>
+            );
+          })}
+
+          {/* Tap wires: part terminal → board hole, drawn as bench wires */}
+          {wires.filter(w => w.from.board || w.to.board).map(w => {
+            const endPos = (e) => {
+              if (e.board) {
+                const bb = parts.find(q => q.id === e.board);
+                return bb ? holeWorldPos(bb, e.hole) : null;
+              }
+              const pp = parts.find(q => q.id === e.part);
+              return pp ? terminalPos(pp, e.terminal) : null;
+            };
+            const a = endPos(w.from), b = endPos(w.to);
+            if (!a || !b) return null;
+            const isSel = selectedWire === w.id;
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const mx = a.x + dx / 2 - dy * 0.15, my = a.y + dy / 2 + dx * 0.15;
+            return (
+              <g key={w.id} data-wire={w.id} style={{ pointerEvents: 'none' }}>
+                <path d={`M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`}
+                  fill="none" stroke={isSel ? '#f1c40f' : (w.color || '#c0392b')}
+                  strokeWidth={isSel ? 4 : 3} strokeLinecap="round" />
+                <circle cx={a.x} cy={a.y} r={3} fill={w.color || '#c0392b'} />
+                <circle cx={b.x} cy={b.y} r={3} fill={w.color || '#c0392b'} />
               </g>
             );
           })}

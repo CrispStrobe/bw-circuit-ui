@@ -211,3 +211,27 @@ test('placing: click-then-click flow — armed release does not commit, canvas c
   assert.equal(placed.length, 1);
   assert.deepEqual([placed[0].x, placed[0].y], [250, 250]);
 });
+
+test('click-click wiring: click a connector, click another — wire commits', () => {
+  const { machine, log } = makeWorld();
+  machine.down(92, 125, {});         // click D1 anode...
+  machine.up(92, 125, {});           // ...release without moving: ARMED
+  assert.equal(machine.state, 'stickyWiring');
+  machine.move(200, 110);            // preview follows
+  machine.down(268, 100, {});        // click R1.a: commits
+  const wires = log.filter(e => e[0] === 'wire');
+  assert.equal(wires.length, 1);
+  assert.deepEqual(wires[0][2], { partId: 'R1', terminal: 'a' });
+  assert.equal(machine.state, 'idle');
+});
+
+test('sticky wiring cancels on empty-ground click and on Esc', () => {
+  const { machine, log } = makeWorld();
+  machine.down(92, 125, {}); machine.up(92, 125, {});
+  machine.down(500, 400, {});        // empty ground: cancel, no wire
+  assert.equal(log.filter(e => e[0] === 'wire').length, 0);
+  assert.equal(machine.state, 'idle');
+  machine.down(92, 125, {}); machine.up(92, 125, {});
+  machine.cancel();                  // Esc
+  assert.equal(machine.state, 'idle');
+});

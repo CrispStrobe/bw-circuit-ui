@@ -21,8 +21,16 @@ const CATEGORIES = [
   {
     name: 'Power',
     parts: [
-      { kind: 'vcc', label: 'VCC', params: {}, color: '#e74c3c' },
-      { kind: 'gnd', label: 'GND', params: {}, color: '#3498db' },
+      { kind: 'vsource', label: '9V Battery', color: '#f4d03f',
+        params: { variant: '9v', volts: 9 }, tooltip: 'Real battery - click to adjust voltage' },
+      { kind: 'vsource', label: 'AA Battery', color: '#b03a2e',
+        params: { variant: 'aa', volts: 1.5 }, tooltip: '1.5 V cell' },
+      { kind: 'vsource', label: 'Coin Cell', color: '#d5d8dc',
+        params: { variant: 'coin', volts: 3 }, tooltip: '3 V lithium coin cell' },
+      { kind: 'vcc', label: '+5V post', params: {}, color: '#e74c3c',
+        tooltip: 'Bench supply binding post (+5 V)' },
+      { kind: 'gnd', label: 'GND post', params: {}, color: '#3498db',
+        tooltip: 'Bench supply binding post (ground)' },
     ],
   },
   {
@@ -146,6 +154,9 @@ const CATEGORIES = [
     name: 'Instruments',
     parts: [
       { kind: 'meter', label: 'Multimeter', params: { mode: 'voltage' }, color: '#f1c40f' },
+      { kind: 'vsource', label: 'Function Gen', color: '#2ecc71',
+        params: { wave: 'sine', freq: 1000, amplitude: 2, offset: 2.5 },
+        tooltip: 'Waveform source - sine, square, triangle, pulse, dc; edit params after placing' },
     ],
   },
 ];

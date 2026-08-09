@@ -147,6 +147,30 @@ export class Circuit {
     return true;
   }
 
+  /**
+   * A tap wire: one end on a part terminal, the other in a breadboard hole —
+   * "wire the battery to the rail" made literal. Represented as a normal
+   * wire whose `to` end is {board, hole}; _syncNetlist glues it to the
+   * hole's strip via a pseudo-terminal that never reaches the engine.
+   * @returns {object | null} the wire, or null if the hole is invalid/occupied
+   */
+  addTapWire(partId, terminal, boardId, hole, color) {
+    const bb = this.breadboards.get(boardId);
+    if (!bb || !bb.isValidHole(hole)) return null;
+    const occ = bb.occupantOf(hole);
+    if (occ) return null; // a leg or jumper owns that hole
+    const wire = {
+      id: genId('w'), netId: genId('net'),
+      from: { part: partId, terminal },
+      to: { board: boardId, hole },
+      color,
+    };
+    this.wires.push(wire);
+    this._syncNetlist();
+    this._saveHistory();
+    return wire;
+  }
+
   /** All jumpers across all boards, render-ready. */
   holeWires() {
     const out = [];
@@ -609,15 +633,20 @@ export class Circuit {
       terminals: p.terminals,
     }));
 
-    // Build nets from wires
-    const netMap = new Map(); // netId → Set of {part, terminal} as JSON keys
+    // Build nets from wires. A {board, hole} endpoint becomes a pseudo-
+    // terminal "@bb:<board>"/"<hole>" — mergeNets unions through it, and it
+    // is stripped again before the engine ever sees it.
+    const holeEnd = (e) => e.board ? { part: `@bb:${e.board}`, terminal: e.hole } : e;
+    const netMap = new Map(); // netId → Map of key → {part, terminal}
     for (const w of this.wires) {
       if (!netMap.has(w.netId)) netMap.set(w.netId, new Map());
       const net = netMap.get(w.netId);
-      const fk = `${w.from.part}:${w.from.terminal}`;
-      const tk = `${w.to.part}:${w.to.terminal}`;
-      if (!net.has(fk)) net.set(fk, w.from);
-      if (!net.has(tk)) net.set(tk, w.to);
+      const f = holeEnd(w.from);
+      const t = holeEnd(w.to);
+      const fk = `${f.part}:${f.terminal}`;
+      const tk = `${t.part}:${t.terminal}`;
+      if (!net.has(fk)) net.set(fk, f);
+      if (!net.has(tk)) net.set(tk, t);
     }
 
     const wireNets = [];
@@ -632,13 +661,32 @@ export class Circuit {
     // a wire that touches a seated terminal electrically ONE node. Boards
     // are independent occupancy worlds; the merge is what unifies them.
     let engineNets = wireNets;
-    for (const bb of this.breadboards.values()) {
+    for (const [boardId, bb] of this.breadboards) {
       try {
-        engineNets = mergeNets(engineNets, bb.deriveNets().nets);
+        const derived = bb.deriveNets();
+        const stripNets = derived.nets.map(n => ({ ...n, terminals: [...n.terminals] }));
+        // Glue each tap-wire hole into its strip's net (or fabricate the
+        // strip's net if nothing else lives there yet).
+        for (const w of this.wires) {
+          for (const e of [w.from, w.to]) {
+            if (!e.board || e.board !== boardId) continue;
+            const stripId = bb.stripOf(e.hole);
+            const pseudo = { part: `@bb:${boardId}`, terminal: e.hole };
+            const netId = derived.stripToNet.get(stripId);
+            const target = netId ? stripNets.find(n => n.id === netId) : null;
+            if (target) target.terminals.push(pseudo);
+            else stripNets.push({ id: `n-${stripId}`, terminals: [pseudo] });
+          }
+        }
+        engineNets = mergeNets(engineNets, stripNets);
       } catch {
         // A board mid-construction stays out of this sync; next sync catches up.
       }
     }
+    // Pseudo-terminals did their gluing; the engine never meets them.
+    engineNets = engineNets
+      .map(n => ({ ...n, terminals: n.terminals.filter(t => !t.part.startsWith('@bb:')) }))
+      .filter(n => n.terminals.length > 0);
 
     // Snapshot engine state before rebuilding (preserves cap voltages, etc.)
     const prevSnap = this.board.snapshot ? this.board.snapshot() : null;
@@ -760,6 +808,8 @@ function terminalsForKind(kind, params) {
     case 'usb_a': return ['vcc', 'd_minus', 'd_plus', 'gnd'];
     case 'meter': return ['probe_a', 'probe_b'];
     case 'breadboard': return [];
+    case 'vsource': return ['pos', 'neg'];
+    case 'isource': return ['pos', 'neg'];
     case 'led_cube': return [
       ...Array.from({length: 8}, (_, i) => `sel_${i}`),
       ...Array.from({length: 8}, (_, i) => `data_${i}`),
