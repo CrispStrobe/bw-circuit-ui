@@ -109,18 +109,18 @@ const EXAMPLES = [
   },
 ];
 
-// Additional circuits from reidemeister.com/blog/category/8051
-// covering the HC6800-ES board pin assignments.
+// All 16 blog posts from reidemeister.com/blog/category/8051.
+// Board part ≠ driver: a circuit that can be DRAWN on the canvas does not
+// require a driver that can CONTROL it. The HD44780 is drawable long before
+// any block can write to one. Only DRIVERS are gated by PARTS-MODEL.md.
 const REIDEMEISTER_PRESETS = [
+  // ── Drawable AND drivable ──────────────────────────────────────
   {
     name: 'R: LED bar P2',
-    desc: '8 LEDs on port 2 (active-low)',
+    desc: '8 LEDs active-low',
     stc: {
-      device: 'stc12c5a60s2', clock: 11059200,
-      pins: [],
-      ports: [
-        { name: 'leds', port: 2, sfr: 'P2', width: 8, direction: 'output', activeLow: true },
-      ],
+      device: 'stc12c5a60s2', clock: 11059200, pins: [],
+      ports: [{ name: 'leds', port: 2, sfr: 'P2', width: 8, direction: 'output', activeLow: true }],
     },
   },
   {
@@ -129,46 +129,28 @@ const REIDEMEISTER_PRESETS = [
     stc: {
       device: 'stc12c5a60s2', clock: 11059200,
       pins: [
-        // P3.0/P3.1 are ISP/UART — avoid them for buttons
         { name: 'btn0', port: 3, bit: 2, direction: 'input', activeLow: true },
         { name: 'btn1', port: 3, bit: 3, direction: 'input', activeLow: true },
         { name: 'btn2', port: 3, bit: 4, direction: 'input', activeLow: true },
         { name: 'btn3', port: 3, bit: 5, direction: 'input', activeLow: true },
       ],
-      ports: [
-        { name: 'leds', port: 2, sfr: 'P2', width: 8, direction: 'output', activeLow: true },
-      ],
+      ports: [{ name: 'leds', port: 2, sfr: 'P2', width: 8, direction: 'output', activeLow: true }],
     },
   },
   {
     name: 'R: Buzzer P1.5',
-    desc: 'Piezo buzzer on P1.5',
+    desc: 'Piezo buzzer',
     stc: {
       device: 'stc12c5a60s2', clock: 11059200,
-      pins: [
-        { name: 'buzzer', port: 1, bit: 5, direction: 'tone', activeLow: false },
-      ],
-    },
-  },
-  {
-    name: 'R: UART serial',
-    desc: 'TX/RX on P3.0-1 (ISP pins)',
-    note: 'Uses the ISP pins: cannot flash or attach debugger while connected',
-    stc: {
-      device: 'stc12c5a60s2', clock: 11059200,
-      pins: [
-        { name: 'rxd', port: 3, bit: 0, direction: 'input', activeLow: false },
-        { name: 'txd', port: 3, bit: 1, direction: 'output', activeLow: false },
-      ],
+      pins: [{ name: 'buzzer', port: 1, bit: 5, direction: 'tone', activeLow: false }],
     },
   },
   {
     name: 'R: Full board',
-    desc: 'LEDs + buttons + buzzer + pot',
+    desc: 'LEDs + btns + buzzer + pot',
     stc: {
       device: 'stc12c5a60s2', clock: 11059200,
       pins: [
-        // P3.2-5 for buttons (avoids ISP pins P3.0-1)
         { name: 'btn0', port: 3, bit: 2, direction: 'input', activeLow: true },
         { name: 'btn1', port: 3, bit: 3, direction: 'input', activeLow: true },
         { name: 'btn2', port: 3, bit: 4, direction: 'input', activeLow: true },
@@ -176,8 +158,82 @@ const REIDEMEISTER_PRESETS = [
         { name: 'buzzer', port: 1, bit: 5, direction: 'tone', activeLow: false },
         { name: 'pot', port: 1, bit: 2, direction: 'analog', activeLow: false },
       ],
-      ports: [
-        { name: 'leds', port: 2, sfr: 'P2', width: 8, direction: 'output', activeLow: true },
+      ports: [{ name: 'leds', port: 2, sfr: 'P2', width: 8, direction: 'output', activeLow: true }],
+    },
+  },
+  // ── Drawable, not yet drivable ─────────────────────────────────
+  // These show the correct WIRING even though no block can control
+  // the part yet. The timing-dependent driver is the blocker, not
+  // the circuit layout.
+  {
+    name: 'R: Char LCD',
+    desc: 'HD44780 4-bit (drawable)',
+    note: 'Wiring only — driver needs timed E pulse (not yet admitted)',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'lcd_rs', port: 2, bit: 6, direction: 'output', activeLow: false },
+        { name: 'lcd_e', port: 2, bit: 7, direction: 'output', activeLow: false },
+        { name: 'lcd_d4', port: 0, bit: 4, direction: 'output', activeLow: false },
+        { name: 'lcd_d5', port: 0, bit: 5, direction: 'output', activeLow: false },
+        { name: 'lcd_d6', port: 0, bit: 6, direction: 'output', activeLow: false },
+        { name: 'lcd_d7', port: 0, bit: 7, direction: 'output', activeLow: false },
+      ],
+    },
+  },
+  {
+    name: 'R: Dot LCD',
+    desc: 'ST7920 graphic (drawable)',
+    note: 'Wiring only — driver needs timed serial clock (not yet admitted)',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'lcd_rs', port: 2, bit: 6, direction: 'output', activeLow: false },
+        { name: 'lcd_rw', port: 2, bit: 5, direction: 'output', activeLow: false },
+        { name: 'lcd_e', port: 2, bit: 7, direction: 'output', activeLow: false },
+      ],
+      ports: [{ name: 'lcd_data', port: 0, sfr: 'P0', width: 8, direction: 'output', activeLow: false }],
+    },
+  },
+  {
+    name: 'R: 1-Wire',
+    desc: 'DS18B20 temp sensor (drawable)',
+    note: 'Wiring only — driver needs 480µs reset + 15µs read slot (not yet admitted)',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [{ name: 'dq', port: 3, bit: 7, direction: 'input', activeLow: false }],
+    },
+  },
+  {
+    name: 'R: I2C EEPROM',
+    desc: '24C02 via I2C (drawable)',
+    note: 'Wiring only — driver needs clock stretching protocol (not yet admitted)',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'sda', port: 3, bit: 4, direction: 'input', activeLow: false },
+        { name: 'scl', port: 3, bit: 5, direction: 'output', activeLow: false },
+      ],
+    },
+  },
+  {
+    name: 'R: IR receiver',
+    desc: 'IrDA data (drawable)',
+    note: 'Wiring only — driver needs modulation timing (not yet admitted)',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [{ name: 'ir_rx', port: 3, bit: 2, direction: 'input', activeLow: true }],
+    },
+  },
+  {
+    name: 'R: UART',
+    desc: 'TX/RX P3.0-1 (ISP pins)',
+    note: 'Uses ISP pins: cannot flash or attach debugger while connected',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [
+        { name: 'rxd', port: 3, bit: 0, direction: 'input', activeLow: false },
+        { name: 'txd', port: 3, bit: 1, direction: 'output', activeLow: false },
       ],
     },
   },
@@ -268,26 +324,31 @@ export function InferPanel({ onLoadCircuit }) {
         </button>
       ))}
 
-      {/* Reidemeister HC6800-ES board circuits */}
+      {/* Reidemeister blog circuits */}
       <div style={{ color: '#7f8c8d', fontSize: '9px', marginTop: '8px', marginBottom: '4px' }}>
         HC6800-ES board:
       </div>
-      {REIDEMEISTER_PRESETS.map(preset => (
-        <button
-          key={preset.name}
-          onClick={() => handleLoad(preset)}
-          style={{
-            display: 'block', width: '100%', padding: '5px', marginBottom: '2px',
-            background: lastLoaded === preset.name ? '#2c3e50' : '#16213e',
-            border: '1px solid #2c3e50', borderRadius: '4px',
-            color: lastLoaded === preset.name ? '#2ecc71' : '#95a5a6',
-            fontFamily: 'monospace', fontSize: '9px', cursor: 'pointer', textAlign: 'left',
-          }}
-        >
-          {preset.name}
-          <span style={{ color: '#7f8c8d', fontSize: '8px', marginLeft: '4px' }}>{preset.desc}</span>
-        </button>
-      ))}
+      {REIDEMEISTER_PRESETS.map(preset => {
+        const isDrawableOnly = preset.note && preset.note.includes('not yet admitted');
+        return (
+          <button
+            key={preset.name}
+            onClick={() => handleLoad(preset)}
+            style={{
+              display: 'block', width: '100%', padding: '5px', marginBottom: '2px',
+              background: lastLoaded === preset.name ? '#2c3e50' : '#16213e',
+              border: `1px solid ${isDrawableOnly ? '#555' : '#2c3e50'}`,
+              borderRadius: '4px',
+              color: lastLoaded === preset.name ? '#2ecc71' : isDrawableOnly ? '#666' : '#95a5a6',
+              fontFamily: 'monospace', fontSize: '9px', cursor: 'pointer', textAlign: 'left',
+              fontStyle: isDrawableOnly ? 'italic' : 'normal',
+            }}
+          >
+            {preset.name}
+            <span style={{ color: '#7f8c8d', fontSize: '8px', marginLeft: '4px' }}>{preset.desc}</span>
+          </button>
+        );
+      })}
 
       {/* Teaching notes */}
       {notes.length > 0 && (
