@@ -233,6 +233,125 @@ export function PartThumbnail({ kind, color, params, displaySize }) {
           <line x1={32} y1={cy} x2={44} y2={cy} stroke="#999" strokeWidth={1.5} />
         </svg>
       );
+    case 'zener':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <line x1={4} y1={cy} x2={14} y2={cy} stroke="#999" strokeWidth={1.5} />
+          <polygon points={`${14},${cy - 6} ${14},${cy + 6} ${28},${cy}`} fill="none" stroke="#e67e22" strokeWidth={1.5} />
+          <line x1={28} y1={cy - 6} x2={28} y2={cy + 6} stroke="#e67e22" strokeWidth={1.5} />
+          <line x1={26} y1={cy - 8} x2={28} y2={cy - 6} stroke="#e67e22" strokeWidth={1} />
+          <line x1={28} y1={cy} x2={44} y2={cy} stroke="#999" strokeWidth={1.5} />
+        </svg>
+      );
+    case 'rgb_led':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <circle cx={cx} cy={cy - 4} r={10} fill="none" stroke="#999" strokeWidth={1} />
+          <circle cx={cx - 3} cy={cy - 6} r={3} fill="#e74c3c" opacity={0.7} />
+          <circle cx={cx + 3} cy={cy - 6} r={3} fill="#2ecc71" opacity={0.7} />
+          <circle cx={cx} cy={cy - 2} r={3} fill="#3498db" opacity={0.7} />
+          {[0, 1, 2, 3].map(i => <line key={i} x1={cx - 6 + i * 4} y1={cy + 6} x2={cx - 6 + i * 4} y2={cy + 14} stroke="#999" strokeWidth={1} />)}
+        </svg>
+      );
+    case 'npn': case 'pnp':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <circle cx={cx} cy={cy} r={12} fill="none" stroke={color || '#8e44ad'} strokeWidth={1} />
+          <line x1={8} y1={cy} x2={cx - 4} y2={cy} stroke="#999" strokeWidth={1.5} />
+          <line x1={cx - 4} y1={cy - 8} x2={cx - 4} y2={cy + 8} stroke={color || '#8e44ad'} strokeWidth={2} />
+          <line x1={cx - 4} y1={cy - 4} x2={cx + 8} y2={cy - 12} stroke={color || '#8e44ad'} strokeWidth={1.5} />
+          <line x1={cx - 4} y1={cy + 4} x2={cx + 8} y2={cy + 12} stroke={color || '#8e44ad'} strokeWidth={1.5} />
+          <text x={cx} y={cy + 22} textAnchor="middle" fill="#777" fontSize={7} fontFamily="monospace">{kind}</text>
+        </svg>
+      );
+    case 'nmos': case 'pmos':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <circle cx={cx} cy={cy} r={12} fill="none" stroke={color || '#27ae60'} strokeWidth={1} />
+          <line x1={8} y1={cy} x2={cx - 6} y2={cy} stroke="#999" strokeWidth={1.5} />
+          <line x1={cx - 6} y1={cy - 8} x2={cx - 6} y2={cy + 8} stroke={color || '#27ae60'} strokeWidth={2} />
+          <line x1={cx - 3} y1={cy - 8} x2={cx - 3} y2={cy + 8} stroke={color || '#27ae60'} strokeWidth={1} strokeDasharray="2 2" />
+          <line x1={cx - 3} y1={cy - 5} x2={cx + 8} y2={cy - 12} stroke={color || '#27ae60'} strokeWidth={1.5} />
+          <line x1={cx - 3} y1={cy + 5} x2={cx + 8} y2={cy + 12} stroke={color || '#27ae60'} strokeWidth={1.5} />
+          <text x={cx} y={cy + 22} textAnchor="middle" fill="#777" fontSize={7} fontFamily="monospace">{kind}</text>
+        </svg>
+      );
+    case 'opamp':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <polygon points={`8,${cy - 14} 8,${cy + 14} 38,${cy}`} fill="none" stroke={color || '#e67e22'} strokeWidth={1.5} />
+          <text x={14} y={cy - 4} fill="#999" fontSize={8} fontFamily="monospace">+</text>
+          <text x={14} y={cy + 8} fill="#999" fontSize={8} fontFamily="monospace">−</text>
+          <line x1={38} y1={cy} x2={46} y2={cy} stroke="#999" strokeWidth={1.5} />
+        </svg>
+      );
+    case 'inductor':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <line x1={4} y1={cy} x2={10} y2={cy} stroke="#999" strokeWidth={1.5} />
+          <path d={`M 10 ${cy} Q 14 ${cy - 8} 18 ${cy} Q 22 ${cy - 8} 26 ${cy} Q 30 ${cy - 8} 34 ${cy} Q 38 ${cy - 8} 42 ${cy}`}
+            fill="none" stroke={color || '#9b59b6'} strokeWidth={1.5} />
+          <line x1={42} y1={cy} x2={46} y2={cy} stroke="#999" strokeWidth={1.5} />
+        </svg>
+      );
+    case 'relay':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={8} y={8} width={32} height={32} rx={3} fill="#2c3e50" stroke={color || '#e67e22'} strokeWidth={1} />
+          <path d={`M 14 ${cy} Q 18 ${cy - 6} 22 ${cy} Q 26 ${cy - 6} 30 ${cy} Q 34 ${cy - 6} 38 ${cy}`}
+            fill="none" stroke={color || '#e67e22'} strokeWidth={1.5} />
+          <text x={cx} y={14} textAnchor="middle" fill="#999" fontSize={7} fontFamily="monospace">RLY</text>
+        </svg>
+      );
+    case 'servo':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={6} y={12} width={36} height={24} rx={3} fill="#2c3e50" stroke={color || '#f39c12'} strokeWidth={1} />
+          <circle cx={30} cy={cy} r={5} fill="#555" stroke={color || '#f39c12'} strokeWidth={1} />
+          <line x1={30} y1={cy} x2={34} y2={cy - 4} stroke="#bbb" strokeWidth={1.5} />
+          {[0, 1, 2].map(i => <line key={i} x1={12 + i * 6} y1={36} x2={12 + i * 6} y2={42} stroke={['#e67e22', '#e74c3c', '#8B4513'][i]} strokeWidth={1.5} />)}
+        </svg>
+      );
+    case 'dc_motor': case 'hobby_gearmotor':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <circle cx={cx} cy={cy} r={14} fill="#2c3e50" stroke={color || '#3498db'} strokeWidth={1.5} />
+          <text x={cx} y={cy + 3} textAnchor="middle" fill="#ecf0f1" fontSize={10} fontFamily="monospace" fontWeight="bold">M</text>
+          <line x1={cx - 14} y1={cy + 6} x2={cx - 20} y2={cy + 6} stroke="#999" strokeWidth={1.5} />
+          <line x1={cx - 14} y1={cy - 6} x2={cx - 20} y2={cy - 6} stroke="#999" strokeWidth={1.5} />
+        </svg>
+      );
+    case 'ldr':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <circle cx={cx} cy={cy} r={10} fill="#2c3e50" stroke={color || '#e67e22'} strokeWidth={1} />
+          <path d={`M ${cx - 5} ${cy + 3} L ${cx - 3} ${cy - 3} L ${cx + 1} ${cy + 3} L ${cx + 3} ${cy - 3} L ${cx + 5} ${cy + 3}`}
+            fill="none" stroke={color || '#e67e22'} strokeWidth={1.2} />
+          <line x1={cx - 6} y1={cy - 10} x2={cx - 3} y2={cy - 7} stroke="#f39c12" strokeWidth={0.8} />
+          <line x1={cx - 3} y1={cy - 12} x2={cx} y2={cy - 9} stroke="#f39c12" strokeWidth={0.8} />
+          <line x1={4} y1={cy} x2={14} y2={cy} stroke="#999" strokeWidth={1.5} />
+          <line x1={34} y1={cy} x2={44} y2={cy} stroke="#999" strokeWidth={1.5} />
+        </svg>
+      );
+    case 'ntc':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={12} y={cy - 5} width={24} height={10} rx={2} fill="#2c3e50" stroke={color || '#16a085'} strokeWidth={1} />
+          <text x={cx} y={cy + 3} textAnchor="middle" fill={color || '#16a085'} fontSize={7} fontFamily="monospace">NTC</text>
+          <line x1={4} y1={cy} x2={12} y2={cy} stroke="#999" strokeWidth={1.5} />
+          <line x1={36} y1={cy} x2={44} y2={cy} stroke="#999" strokeWidth={1.5} />
+        </svg>
+      );
+    case '555':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={8} y={6} width={32} height={36} rx={2} fill="#2c3e50" stroke={color || '#e74c3c'} strokeWidth={1} />
+          <text x={cx} y={cy + 2} textAnchor="middle" fill="#ecf0f1" fontSize={8} fontFamily="monospace" fontWeight="bold">555</text>
+          <circle cx={12} cy={10} r={2} fill="#444" />
+          {[0, 1, 2, 3].map(i => <rect key={`l${i}`} x={4} y={12 + i * 7} width={4} height={3} fill={color || '#e74c3c'} />)}
+          {[0, 1, 2, 3].map(i => <rect key={`r${i}`} x={40} y={12 + i * 7} width={4} height={3} fill={color || '#e74c3c'} />)}
+        </svg>
+      );
     default:
       return (
         <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>

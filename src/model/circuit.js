@@ -548,12 +548,24 @@ function terminalsForKind(kind, params) {
     case 'gnd': return ['gnd'];
     case 'resistor': return ['a', 'b'];
     case 'capacitor': return ['a', 'b'];
+    case 'inductor': return ['a', 'b'];
     case 'diode': return ['anode', 'cathode'];
+    case 'zener': return ['anode', 'cathode'];
     case 'led': return ['anode', 'cathode'];
+    case 'rgb_led': return ['r_anode', 'g_anode', 'b_anode', 'cathode'];
     case 'potentiometer': return ['a', 'wiper', 'b'];
     case 'button': return ['a', 'b'];
     case 'switch': return ['a', 'b'];
     case 'buzzer': return ['a', 'b'];
+    case 'ldr': return ['a', 'b'];
+    case 'ntc': return ['a', 'b'];
+    case 'npn': case 'pnp': return ['base', 'collector', 'emitter'];
+    case 'nmos': case 'pmos': return ['gate', 'drain', 'source'];
+    case 'opamp': return ['inp', 'inn', 'out'];
+    case '555': return ['gnd', 'trig', 'out', 'reset', 'ctrl', 'thr', 'dis', 'vcc'];
+    case 'relay': return ['coil_a', 'coil_b', 'no', 'com', 'nc'];
+    case 'servo': return ['signal', 'vcc', 'gnd'];
+    case 'dc_motor': case 'hobby_gearmotor': return ['a', 'b'];
     case 'meter': return ['probe_a', 'probe_b'];
     case 'breadboard': return [];
     case 'led_cube': return [
