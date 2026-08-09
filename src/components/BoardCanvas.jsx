@@ -13,7 +13,7 @@
 import React, { useState, useCallback } from 'react';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
-import { routeWire, partBBoxes } from '../model/wire-router.js';
+import { routeWire, partBBoxes, getPartBBox } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
 import { PartTooltip } from './PartTooltip.jsx';
 import { ContextMenu } from './ContextMenu.jsx';
@@ -676,12 +676,13 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, warnings, annotations, cubeScans, activePartIds,
+  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, onSaveHistory, warnings, annotations, cubeScans, activePartIds,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
   const [mousePos, setMousePos] = useState(null);
-  const [dragging, setDragging] = useState(null);
+  const [dragging, setDragging] = useState(null); // partId that initiated the drag
+  const dragStartPos = React.useRef(null); // {x, y} at drag start for offset calc
   const [hoveredNet, setHoveredNet] = useState(null);
   const [hoveredPart, setHoveredPart] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
@@ -799,7 +800,7 @@ export function BoardCanvas({
     }
   }, [parts, wires, wiringFrom, onAddWire]);
 
-  const handleSvgClick = useCallback(() => {
+  const handleSvgClick = useCallback((e) => {
     // Cancel wiring if clicking empty space
     if (wiringFrom) {
       setWiringFrom(null);
@@ -807,14 +808,19 @@ export function BoardCanvas({
     }
     // Complete rubber-band select
     if (rubberBand) {
-      const x1 = Math.min(rubberBand.startX, rubberBand.endX);
-      const y1 = Math.min(rubberBand.startY, rubberBand.endY);
-      const x2 = Math.max(rubberBand.startX, rubberBand.endX);
-      const y2 = Math.max(rubberBand.startY, rubberBand.endY);
-      if (x2 - x1 > 10 && y2 - y1 > 10) {
-        // Select all parts inside the rectangle
-        const inside = parts.filter(p => p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2);
+      const rx1 = Math.min(rubberBand.startX, rubberBand.endX);
+      const ry1 = Math.min(rubberBand.startY, rubberBand.endY);
+      const rx2 = Math.max(rubberBand.startX, rubberBand.endX);
+      const ry2 = Math.max(rubberBand.startY, rubberBand.endY);
+      if (rx2 - rx1 > 10 && ry2 - ry1 > 10) {
+        // Hit-test bounding boxes, not centres
+        const inside = parts.filter(p => {
+          const bb = getPartBBox(p);
+          return bb.x + bb.w >= rx1 && bb.x <= rx2 && bb.y + bb.h >= ry1 && bb.y <= ry2;
+        });
         if (inside.length > 0) {
+          // Shift = additive (toggle into existing selection); default = replace
+          if (!e?.shiftKey) onSelectPart(null);
           for (const p of inside) onSelectPart(p.id, true);
         }
       }
@@ -856,12 +862,31 @@ export function BoardCanvas({
       setMousePos({ x, y });
     }
     if (dragging) {
-      onMovePart(dragging, x, y);
-      // Check for snap-to-connector
-      const draggedPart = parts.find(p => p.id === dragging);
-      if (draggedPart) {
-        const snap = findSnapTarget({ ...draggedPart, x, y }, parts, wires);
-        setSnapTarget(snap.autoWire ? snap : null);
+      // Group drag: move all selected parts together
+      if (dragStartPos.current) {
+        const dx = x - dragStartPos.current.x;
+        const dy = y - dragStartPos.current.y;
+        dragStartPos.current = { x, y };
+
+        const idsToMove = (selectedParts && selectedParts.size > 0 && selectedParts.has(dragging))
+          ? [...selectedParts]
+          : [dragging];
+
+        for (const id of idsToMove) {
+          const p = parts.find(pp => pp.id === id);
+          if (p) onMovePart(id, p.x + dx, p.y + dy);
+        }
+      } else {
+        dragStartPos.current = { x, y };
+      }
+
+      // Snap-to-connector (only for single-part drag)
+      if (!selectedParts || selectedParts.size <= 1) {
+        const draggedPart = parts.find(p => p.id === dragging);
+        if (draggedPart) {
+          const snap = findSnapTarget({ ...draggedPart, x, y }, parts, wires);
+          setSnapTarget(snap.autoWire ? snap : null);
+        }
       }
     }
   }, [wiringFrom, dragging, onMovePart, screenToCanvas, panning, zoom, parts, wires]);
@@ -907,11 +932,13 @@ export function BoardCanvas({
         onAddWire(fromPart, fromTerm, toPart, toTerm);
       }
     }
+    if (dragging && onSaveHistory) onSaveHistory();
+    dragStartPos.current = null;
     setDragging(null);
     setSnapTarget(null);
     setPanning(false);
     panStart.current = null;
-  }, [dragging, snapTarget, onMovePart, onAddWire]);
+  }, [dragging, snapTarget, onMovePart, onAddWire, onSaveHistory]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Delete' || e.key === 'Backspace') {

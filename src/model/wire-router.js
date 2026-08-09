@@ -62,34 +62,40 @@ function lShapeCrosses(a, mid, b, obstacles) {
  * @param {string} skipB — part ID to exclude
  * @returns {BBox[]}
  */
+/**
+ * Approximate bounding box for a single part.
+ * @param {object} p — part with x, y, kind, terminals
+ * @returns {BBox}
+ */
+export function getPartBBox(p) {
+  switch (p.kind) {
+    case 'mcu': {
+      const pinCount = p.terminals?.length || 4;
+      const chipH = Math.max(60, pinCount * 30 + 20);
+      return { x: p.x - 50, y: p.y - chipH / 2, w: 120, h: chipH };
+    }
+    case 'resistor': return { x: p.x - 30, y: p.y - 8, w: 60, h: 20 };
+    case 'led': return { x: p.x - 20, y: p.y - 25, w: 40, h: 55 };
+    case 'potentiometer': return { x: p.x - 30, y: p.y - 30, w: 60, h: 65 };
+    case 'buzzer': return { x: p.x - 20, y: p.y - 20, w: 40, h: 45 };
+    case 'button': return { x: p.x - 18, y: p.y - 18, w: 36, h: 40 };
+    case 'seven_segment': return { x: p.x - 30, y: p.y - 35, w: 60, h: 75 };
+    case 'char_lcd': return { x: p.x - 60, y: p.y - 25, w: 120, h: 55 };
+    case 'ir_receiver': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
+    case 'shift_register': return { x: p.x - 25, y: p.y - 15, w: 50, h: 35 };
+    case 'led_matrix': return { x: p.x - 25, y: p.y - 15, w: 50, h: 35 };
+    case 'temp_sensor': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
+    case 'eeprom': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
+    case 'meter': return { x: p.x - 35, y: p.y - 25, w: 70, h: 55 };
+    case 'ledcube': return { x: p.x - 50, y: p.y - 50, w: 100, h: 100 };
+    default: return { x: p.x - 15, y: p.y - 15, w: 30, h: 30 };
+  }
+}
+
 export function partBBoxes(parts, skipA, skipB) {
   return parts
     .filter(p => p.id !== skipA && p.id !== skipB)
-    .map(p => {
-      // Approximate bounding box per kind
-      switch (p.kind) {
-        case 'mcu': {
-          const pinCount = p.terminals?.length || 4;
-          const chipH = Math.max(60, pinCount * 30 + 20);
-          return { x: p.x - 50, y: p.y - chipH / 2, w: 120, h: chipH };
-        }
-        case 'resistor': return { x: p.x - 30, y: p.y - 8, w: 60, h: 20 };
-        case 'led': return { x: p.x - 20, y: p.y - 25, w: 40, h: 55 };
-        case 'potentiometer': return { x: p.x - 30, y: p.y - 30, w: 60, h: 65 };
-        case 'buzzer': return { x: p.x - 20, y: p.y - 20, w: 40, h: 45 };
-        case 'button': return { x: p.x - 18, y: p.y - 18, w: 36, h: 40 };
-        case 'seven_segment': return { x: p.x - 30, y: p.y - 35, w: 60, h: 75 };
-        case 'char_lcd': return { x: p.x - 60, y: p.y - 25, w: 120, h: 55 };
-        case 'ir_receiver': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
-        case 'shift_register': return { x: p.x - 25, y: p.y - 15, w: 50, h: 35 };
-        case 'led_matrix': return { x: p.x - 25, y: p.y - 15, w: 50, h: 35 };
-        case 'temp_sensor': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
-        case 'eeprom': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
-        case 'meter': return { x: p.x - 35, y: p.y - 25, w: 70, h: 55 };
-        case 'ledcube': return { x: p.x - 50, y: p.y - 50, w: 100, h: 100 };
-        default: return { x: p.x - 15, y: p.y - 15, w: 30, h: 30 };
-      }
-    });
+    .map(getPartBBox);
 }
 
 /**

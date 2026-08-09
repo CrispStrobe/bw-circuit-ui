@@ -55,7 +55,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     addPart, removePart, movePart, duplicatePart, rotatePart, updateParams,
     addWire, removeWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
-    loadInferred, undo, redo, canUndo, canRedo,
+    loadInferred, undo, redo, canUndo, canRedo, saveHistory,
     ledBrightness, buzzerTone, nodeVoltage,
     circuit,
   } = useCircuit(5.0);
@@ -538,6 +538,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           annotations={annotations}
           cubeScans={cubeScans}
           onUpdateParams={updateParams}
+          onSaveHistory={saveHistory}
         />
 
         {/* Engine warnings — teaching feedback */}

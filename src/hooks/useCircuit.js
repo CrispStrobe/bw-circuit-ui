@@ -136,6 +136,10 @@ export function useCircuit(vcc = 5.0) {
     if (circuit.redo()) bump();
   }, [circuit, bump]);
 
+  const saveHistory = useCallback(() => {
+    circuit._saveHistory();
+  }, [circuit]);
+
   // Read-only accessors — these read from the engine, never fabricate.
   const ledBrightness = useCallback((partId) => {
     return circuit.ledBrightness(partId);
@@ -173,6 +177,7 @@ export function useCircuit(vcc = 5.0) {
     loadInferred,
     undo,
     redo,
+    saveHistory,
     canUndo: circuit.history.canUndo,
     canRedo: circuit.history.canRedo,
 
