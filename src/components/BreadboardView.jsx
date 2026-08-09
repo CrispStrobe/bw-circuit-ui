@@ -69,10 +69,14 @@ function BoardBackground({ cols }) {
       {/* Board body */}
       <rect x={0} y={0} width={w} height={h} rx={6}
         fill="#e8dcc8" stroke="#c5b99b" strokeWidth={1.5} />
-      {/* Gutter */}
+      {/* Gutter channel */}
       <rect x={MARGIN - 4} y={rowY('e') + HOLE_PITCH / 2 + 2}
         width={(cols - 1) * HOLE_PITCH + 8} height={GUTTER_GAP - 4}
         rx={3} fill="#d4c8a8" />
+      {/* Center notch (semicircle, like real boards) */}
+      <circle cx={MARGIN + ((cols - 1) * HOLE_PITCH) / 2}
+        cy={rowY('e') + HOLE_PITCH / 2 + GUTTER_GAP / 2}
+        r={8} fill="#c5b99b" />
       {/* Rail color stripes */}
       {[['t+', '#e74c3c'], ['t-', '#3498db'], ['b+', '#e74c3c'], ['b-', '#3498db']].map(([rail, color]) => (
         <rect key={rail}
@@ -85,13 +89,23 @@ function BoardBackground({ cols }) {
       <text x={MARGIN - 18} y={rowY('t-') + 4} fontSize={10} fill="#3498db" fontFamily="monospace" fontWeight="bold">−</text>
       <text x={MARGIN - 18} y={rowY('b+') + 4} fontSize={10} fill="#e74c3c" fontFamily="monospace" fontWeight="bold">+</text>
       <text x={MARGIN - 18} y={rowY('b-') + 4} fontSize={10} fill="#3498db" fontFamily="monospace" fontWeight="bold">−</text>
-      {/* Row labels */}
+      {/* Row labels — left */}
       {ALL_ROWS.map(row => (
-        <text key={row} x={MARGIN - 16} y={rowY(row) + 4} fontSize={9} fill="#7f8c8d" fontFamily="monospace">{row}</text>
+        <text key={`l-${row}`} x={MARGIN - 16} y={rowY(row) + 4} fontSize={9} fill="#7f8c8d" fontFamily="monospace">{row}</text>
       ))}
-      {/* Column numbers (every 5) */}
+      {/* Row labels — right */}
+      {ALL_ROWS.map(row => (
+        <text key={`r-${row}`} x={MARGIN + (cols - 1) * HOLE_PITCH + 12} y={rowY(row) + 4}
+          fontSize={9} fill="#7f8c8d" fontFamily="monospace">{row}</text>
+      ))}
+      {/* Column numbers — top */}
       {Array.from({ length: cols }, (_, i) => i + 1).filter(c => c === 1 || c % 5 === 0).map(c => (
-        <text key={c} x={colX(c)} y={rowY('t+') - RAIL_GAP} fontSize={8} fill="#7f8c8d"
+        <text key={`t-${c}`} x={colX(c)} y={rowY('t+') - RAIL_GAP} fontSize={8} fill="#7f8c8d"
+          fontFamily="monospace" textAnchor="middle">{c}</text>
+      ))}
+      {/* Column numbers — bottom */}
+      {Array.from({ length: cols }, (_, i) => i + 1).filter(c => c === 1 || c % 5 === 0).map(c => (
+        <text key={`b-${c}`} x={colX(c)} y={rowY('b-') + HOLE_PITCH + 4} fontSize={8} fill="#7f8c8d"
           fontFamily="monospace" textAnchor="middle">{c}</text>
       ))}
     </g>
@@ -125,10 +139,19 @@ function Holes({ cols, model, highlightStrip, hoveredHole, onHoverHole, onClickH
     const isHovered = hoveredHole === id;
     const netColor = netColors?.[strip];
 
-    let fill = occ ? '#2c3e50' : '#444';
-    if (isHighlight) fill = '#f39c12';
-    if (netColor && !occ) fill = netColor;
-    if (isHovered) fill = '#f1c40f';
+    // Visual states: empty → dark hole, occupied → silver lead, highlight → amber strip glow
+    let fill, stroke, sw;
+    if (isHovered) {
+      fill = '#f1c40f'; stroke = '#e67e22'; sw = 1.5;
+    } else if (isHighlight && !occ) {
+      fill = '#c8850a'; stroke = '#e67e22'; sw = 1;
+    } else if (occ) {
+      fill = '#b0b8c0'; stroke = '#8090a0'; sw = 1; // metallic lead
+    } else if (netColor) {
+      fill = netColor; stroke = '#666'; sw = 0.5;
+    } else {
+      fill = '#333'; stroke = '#555'; sw = 0.5; // dark hole
+    }
 
     return (
       <g key={id}>
@@ -141,8 +164,8 @@ function Holes({ cols, model, highlightStrip, hoveredHole, onHoverHole, onClickH
         {/* Visible hole */}
         <circle cx={pos.x} cy={pos.y} r={HOLE_RADIUS}
           fill={fill}
-          stroke={occ ? '#f39c12' : isHighlight ? '#e67e22' : '#666'}
-          strokeWidth={occ ? 1.5 : 0.5}
+          stroke={stroke}
+          strokeWidth={sw}
           style={{ pointerEvents: 'none' }} />
       </g>
     );
@@ -167,6 +190,60 @@ function Jumpers({ model }) {
     );
   }
   return <>{wires}</>;
+}
+
+// ── Placed parts visualization ────────────────────────────────────
+
+function PlacedParts({ model }) {
+  // Group occupants by partId
+  const parts = new Map(); // partId → [{holeId, terminal}]
+  for (const [holeId, occ] of model.occupants) {
+    if (occ.kind !== 'lead') continue;
+    if (!parts.has(occ.partId)) parts.set(occ.partId, []);
+    parts.get(occ.partId).push({ holeId, terminal: occ.terminal });
+  }
+
+  return [...parts.entries()].map(([partId, leads]) => {
+    if (leads.length === 0) return null;
+    // Bounding box of all lead positions
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const { holeId } of leads) {
+      const pos = holePos(holeId);
+      minX = Math.min(minX, pos.x);
+      maxX = Math.max(maxX, pos.x);
+      minY = Math.min(minY, pos.y);
+      maxY = Math.max(maxY, pos.y);
+    }
+    const pad = 5;
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    return (
+      <g key={`part-${partId}`} style={{ pointerEvents: 'none' }}>
+        <rect
+          x={minX - pad} y={minY - pad}
+          width={maxX - minX + pad * 2} height={maxY - minY + pad * 2}
+          rx={3}
+          fill="rgba(52, 152, 219, 0.15)"
+          stroke="#3498db" strokeWidth={1} strokeDasharray="3 2"
+        />
+        <text x={cx} y={minY - pad - 3} textAnchor="middle"
+          fontSize={8} fill="#3498db" fontFamily="monospace">
+          {partId}
+        </text>
+        {/* Terminal labels at each lead */}
+        {leads.map(({ holeId, terminal }) => {
+          const pos = holePos(holeId);
+          return (
+            <text key={`${partId}-${terminal}`} x={pos.x} y={pos.y + HOLE_RADIUS + 9}
+              textAnchor="middle" fontSize={6} fill="#7f8c8d" fontFamily="monospace"
+              style={{ pointerEvents: 'none' }}>
+              {terminal}
+            </text>
+          );
+        })}
+      </g>
+    );
+  });
 }
 
 // ── Main component ────────────────────────────────────────────────
@@ -216,6 +293,7 @@ export function BreadboardView({
           hoveredHole={hoveredHole} onHoverHole={handleHoverHole}
           onClickHole={handleClickHole} netColors={netColors} />
         <Jumpers model={model} />
+        <PlacedParts model={model} />
 
         {/* Ghost preview for placing a part */}
         {placingPart && placingPart.leadMap && Object.entries(placingPart.leadMap).map(([term, holeId]) => {
