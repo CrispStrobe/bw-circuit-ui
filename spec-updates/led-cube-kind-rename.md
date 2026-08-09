@@ -1,4 +1,4 @@
-# Part kind rename: `ledcube` → `led_cube` — cross-repo
+# Part kind rename: `ledcube` → `led_cube` — cross-repo (RESOLVED)
 
 Filed 2026-08-09 from bw-circuit-ui. Three repos must change together.
 
@@ -41,3 +41,12 @@ Block opcodes (`ledcube_*`) stay unchanged — different namespace, no churn.
 
 bw-circuit-ui's own model/circuit.js, wire-router.js, BoardCanvas.jsx,
 PartPalette.jsx, CircuitDesigner.jsx are already renamed (commit c45228d).
+
+## Resolution (2026-08-09)
+
+Adopted. All three repos now use `led_cube` as the engine part kind.
+- bw-circuit-ui: c45228d (model) + coordinator 10cb1c0 (hittest)
+- sb3-creator: NO change needed — `ledcube` there is the extension/runtime id
+  namespace (opcodes `ledcube_*`), not a part kind
+- bw-board: already used `led_cube` everywhere
+- bw-blocks: simulator driver already addresses board kind as `led_cube`
