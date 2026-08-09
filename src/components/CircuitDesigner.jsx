@@ -208,6 +208,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
     }
 
     // Initialize pin modes
+    // Reset the board to clear stale state (capacitor voltages, LED history, etc.)
+    if (circuit.board.reset) circuit.board.reset();
+
     for (const pin of outputPins) setPin(pin, 'quasi', true);
     for (const pin of inputPins) setPin(pin, 'quasi', true);
     for (const pin of analogPins) setPin(pin, 'input', false);

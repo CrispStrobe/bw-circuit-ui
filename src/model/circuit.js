@@ -67,7 +67,9 @@ export class Circuit {
 
   /** Save current state to history. Called after structural mutations. */
   _saveHistory() {
-    this.history.save({ parts: this.parts, wires: this.wires });
+    // Save both circuit layout AND engine state (capacitor voltages, etc.)
+    const engineSnap = this.board.snapshot ? this.board.snapshot() : null;
+    this.history.save({ parts: this.parts, wires: this.wires, engineSnap });
   }
 
   /** Undo the last structural change. Returns true if successful. */
@@ -77,6 +79,10 @@ export class Circuit {
     this.parts = state.parts.map(p => ({ ...p }));
     this.wires = state.wires.map(w => ({ ...w }));
     this._syncNetlist();
+    // Restore engine state if available
+    if (state.engineSnap && this.board.restore) {
+      this.board.restore(state.engineSnap);
+    }
     return true;
   }
 
@@ -87,6 +93,9 @@ export class Circuit {
     this.parts = state.parts.map(p => ({ ...p }));
     this.wires = state.wires.map(w => ({ ...w }));
     this._syncNetlist();
+    if (state.engineSnap && this.board.restore) {
+      this.board.restore(state.engineSnap);
+    }
     return true;
   }
 
@@ -373,6 +382,20 @@ export class Circuit {
   resistance(netA, netB) {
     return this.board.resistance(netA, netB);
   }
+
+  // ── Board query methods (for extension menus) ───────────────────
+
+  /** @returns {string[]} net IDs */
+  getNets() { return this.board.getNets ? this.board.getNets().map(n => n.id) : []; }
+
+  /** @returns {string[]} LED part IDs */
+  getLeds() { return this.board.getLeds ? this.board.getLeds() : []; }
+
+  /** @returns {string[]} buzzer part IDs */
+  getBuzzers() { return this.board.getBuzzers ? this.board.getBuzzers() : []; }
+
+  /** @returns {Array<{id, kind, value}>} control states */
+  getControls() { return this.board.getControls ? this.board.getControls() : []; }
 
   // ── Netlist sync ────────────────────────────────────────────────
 
