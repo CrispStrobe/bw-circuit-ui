@@ -472,9 +472,16 @@ export class Circuit {
       });
     }
 
+    // Snapshot engine state before rebuilding (preserves cap voltages, etc.)
+    const prevSnap = this.board.snapshot ? this.board.snapshot() : null;
+
     this.board = new this._BoardImpl(this.vcc);
     try {
       this.board.setNetlist(engineParts, engineNets);
+      // Restore engine state if possible (surviving parts keep their state)
+      if (prevSnap && this.board.restore) {
+        this.board.restore(prevSnap);
+      }
     } catch {
       // Partial circuit (e.g. VCC without GND) — engine validation
       // rejects incomplete netlists. This is fine during construction;
