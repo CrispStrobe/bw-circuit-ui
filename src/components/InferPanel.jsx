@@ -274,6 +274,8 @@ const COMPARISON = {
 export function InferPanel({ onLoadCircuit }) {
   const [notes, setNotes] = useState([]);
   const [lastLoaded, setLastLoaded] = useState(null);
+  const [showBoard, setShowBoard] = useState(false);
+  const [showDrawable, setShowDrawable] = useState(false);
 
   const handleLoad = useCallback((preset) => {
     const result = inferCircuit(preset.stc);
@@ -341,31 +343,49 @@ export function InferPanel({ onLoadCircuit }) {
         </button>
       ))}
 
-      {/* Reidemeister blog circuits */}
-      <div style={{ color: '#7f8c8d', fontSize: '9px', marginTop: '8px', marginBottom: '4px' }}>
-        HC6800-ES board:
-      </div>
-      {REIDEMEISTER_PRESETS.map(preset => {
-        const isDrawableOnly = preset.note && preset.note.includes('not yet admitted');
-        return (
-          <button
-            key={preset.name}
-            onClick={() => handleLoad(preset)}
-            style={{
-              display: 'block', width: '100%', padding: '5px', marginBottom: '2px',
-              background: lastLoaded === preset.name ? '#2c3e50' : '#16213e',
-              border: `1px solid ${isDrawableOnly ? '#555' : '#2c3e50'}`,
-              borderRadius: '4px',
-              color: lastLoaded === preset.name ? '#2ecc71' : isDrawableOnly ? '#666' : '#95a5a6',
-              fontFamily: 'monospace', fontSize: '9px', cursor: 'pointer', textAlign: 'left',
-              fontStyle: isDrawableOnly ? 'italic' : 'normal',
-            }}
-          >
-            {preset.name}
-            <span style={{ color: '#7f8c8d', fontSize: '8px', marginLeft: '4px' }}>{preset.desc}</span>
-          </button>
-        );
-      })}
+      {/* HC6800-ES board — collapsible */}
+      <button onClick={() => setShowBoard(!showBoard)} style={{
+        display: 'block', width: '100%', padding: '4px', marginTop: '8px', marginBottom: '2px',
+        background: 'none', border: '1px solid #2c3e50', borderRadius: '4px',
+        color: '#7f8c8d', fontFamily: 'monospace', fontSize: '9px', cursor: 'pointer', textAlign: 'left',
+      }}>
+        {showBoard ? '▾' : '▸'} HC6800-ES board ({REIDEMEISTER_PRESETS.filter(p => !p.note?.includes('not yet')).length})
+      </button>
+      {showBoard && REIDEMEISTER_PRESETS.filter(p => !p.note?.includes('not yet admitted')).map(preset => (
+        <button key={preset.name} onClick={() => handleLoad(preset)} style={{
+          display: 'block', width: '100%', padding: '5px', marginBottom: '2px',
+          background: lastLoaded === preset.name ? '#2c3e50' : '#16213e',
+          border: '1px solid #2c3e50', borderRadius: '4px',
+          color: lastLoaded === preset.name ? '#2ecc71' : '#95a5a6',
+          fontFamily: 'monospace', fontSize: '9px', cursor: 'pointer', textAlign: 'left',
+        }}>
+          {preset.name}
+          <span style={{ color: '#7f8c8d', fontSize: '8px', marginLeft: '4px' }}>{preset.desc}</span>
+        </button>
+      ))}
+
+      {/* Drawable only — collapsible */}
+      <button onClick={() => setShowDrawable(!showDrawable)} style={{
+        display: 'block', width: '100%', padding: '4px', marginTop: '4px', marginBottom: '2px',
+        background: 'none', border: '1px solid #555', borderRadius: '4px',
+        color: '#666', fontFamily: 'monospace', fontSize: '9px', cursor: 'pointer', textAlign: 'left',
+        fontStyle: 'italic',
+      }}>
+        {showDrawable ? '▾' : '▸'} Drawable only ({REIDEMEISTER_PRESETS.filter(p => p.note?.includes('not yet')).length})
+      </button>
+      {showDrawable && REIDEMEISTER_PRESETS.filter(p => p.note?.includes('not yet admitted')).map(preset => (
+        <button key={preset.name} onClick={() => handleLoad(preset)} style={{
+          display: 'block', width: '100%', padding: '5px', marginBottom: '2px',
+          background: lastLoaded === preset.name ? '#2c3e50' : '#16213e',
+          border: '1px solid #555', borderRadius: '4px',
+          color: lastLoaded === preset.name ? '#2ecc71' : '#666',
+          fontFamily: 'monospace', fontSize: '9px', cursor: 'pointer', textAlign: 'left',
+          fontStyle: 'italic',
+        }}>
+          {preset.name}
+          <span style={{ color: '#555', fontSize: '8px', marginLeft: '4px' }}>{preset.desc}</span>
+        </button>
+      ))}
 
       {/* Teaching notes */}
       {notes.length > 0 && (
