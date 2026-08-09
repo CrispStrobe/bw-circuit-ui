@@ -207,6 +207,25 @@ const selectionCount = async () =>
     : fail(`plain wheel changed zoom: ${w0} → ${w1}`);
 }
 
+// 5. Oscilloscope panel: add a channel on a real net; the canvas appears.
+{
+  const panel = page.locator('[data-scope-panel]');
+  if (await panel.count() === 0) { fail('no scope panel in the sidebar'); }
+  else {
+    const sel = panel.locator('select').last();
+    const opts = await sel.locator('option').allTextContents();
+    if (opts.length < 2) { fail('scope net picker offers no nets'); }
+    else {
+      await sel.selectOption({ index: 1 });
+      await panel.getByText('+ channel').click();
+      await page.waitForTimeout(400);
+      (await panel.locator('canvas').count()) === 1
+        ? pass('scope channel attached; capture canvas live')
+        : fail('scope canvas did not appear');
+    }
+  }
+}
+
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
 else pass('zero page errors');
 

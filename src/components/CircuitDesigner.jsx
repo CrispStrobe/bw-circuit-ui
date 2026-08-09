@@ -32,6 +32,7 @@ import { PartPalette } from './PartPalette.jsx';
 import { ControlPanel } from './ControlPanel.jsx';
 import { InferPanel } from './InferPanel.jsx';
 import { Multimeter } from './Multimeter.jsx';
+import { ScopePanel } from './ScopePanel.jsx';
 import { useCircuit } from '../hooks/useCircuit.js';
 import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
@@ -667,6 +668,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onUpdateParams={updateParams}
           onSave={handleSave}
           onLoad={handleLoad}
+        />
+        <ScopePanel
+          board={circuit.board}
+          nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []}
         />
         <Multimeter
           circuit={circuit}
