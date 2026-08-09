@@ -352,6 +352,228 @@ export function PartThumbnail({ kind, color, params, displaySize }) {
           {[0, 1, 2, 3].map(i => <rect key={`r${i}`} x={40} y={12 + i * 7} width={4} height={3} fill={color || '#e74c3c'} />)}
         </svg>
       );
+    // Parts that reuse existing thumbnails
+    case 'tip120': // darlington = transistor symbol
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <circle cx={cx} cy={cy} r={12} fill="none" stroke="#8e44ad" strokeWidth={1} />
+          <line x1={8} y1={cy} x2={cx - 4} y2={cy} stroke="#999" strokeWidth={1.5} />
+          <line x1={cx - 4} y1={cy - 8} x2={cx - 4} y2={cy + 8} stroke="#8e44ad" strokeWidth={2} />
+          <line x1={cx - 4} y1={cy - 4} x2={cx + 8} y2={cy - 12} stroke="#8e44ad" strokeWidth={1.5} />
+          <line x1={cx - 4} y1={cy + 4} x2={cx + 8} y2={cy + 12} stroke="#8e44ad" strokeWidth={1.5} />
+          <text x={cx} y={cy + 22} textAnchor="middle" fill="#777" fontSize={6} fontFamily="monospace">TIP120</text>
+        </svg>
+      );
+    case 'vsource':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={12} y={8} width={24} height={32} rx={4} fill="#2c3e50" stroke={color || '#f4d03f'} strokeWidth={1.5} />
+          <text x={cx} y={cy - 2} textAnchor="middle" fill={color || '#f4d03f'} fontSize={14} fontFamily="monospace" fontWeight="bold">+</text>
+          <text x={cx} y={cy + 10} textAnchor="middle" fill="#999" fontSize={7} fontFamily="monospace">−</text>
+          <line x1={cx} y1={6} x2={cx} y2={2} stroke={color || '#f4d03f'} strokeWidth={1.5} />
+          <line x1={cx} y1={40} x2={cx} y2={44} stroke="#999" strokeWidth={1.5} />
+        </svg>
+      );
+    case 'photodiode':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <polygon points={`${14},${cy - 6} ${14},${cy + 6} ${28},${cy}`} fill="none" stroke="#f39c12" strokeWidth={1.5} />
+          <line x1={28} y1={cy - 6} x2={28} y2={cy + 6} stroke="#f39c12" strokeWidth={1.5} />
+          <line x1={4} y1={cy} x2={14} y2={cy} stroke="#999" strokeWidth={1.5} />
+          <line x1={28} y1={cy} x2={44} y2={cy} stroke="#999" strokeWidth={1.5} />
+          <line x1={10} y1={cy - 10} x2={16} y2={cy - 6} stroke="#f39c12" strokeWidth={0.8} />
+          <line x1={14} y1={cy - 12} x2={20} y2={cy - 8} stroke="#f39c12" strokeWidth={0.8} />
+        </svg>
+      );
+    case 'solar_cell':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={10} y={10} width={28} height={28} rx={2} fill="#1a2a4a" stroke="#f1c40f" strokeWidth={1} />
+          <line x1={16} y1={14} x2={16} y2={34} stroke="#3498db" strokeWidth={0.5} />
+          <line x1={24} y1={14} x2={24} y2={34} stroke="#3498db" strokeWidth={0.5} />
+          <line x1={32} y1={14} x2={32} y2={34} stroke="#3498db" strokeWidth={0.5} />
+          <line x1={14} y1={24} x2={34} y2={24} stroke="#3498db" strokeWidth={0.5} />
+          <text x={cx} y={44} textAnchor="middle" fill="#f1c40f" fontSize={6} fontFamily="monospace">solar</text>
+        </svg>
+      );
+    case 'light_bulb':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <circle cx={cx} cy={cy - 2} r={10} fill="none" stroke="#f39c12" strokeWidth={1.5} />
+          <line x1={cx - 4} y1={cy - 6} x2={cx + 4} y2={cy + 2} stroke="#f39c12" strokeWidth={1} />
+          <line x1={cx + 4} y1={cy - 6} x2={cx - 4} y2={cy + 2} stroke="#f39c12" strokeWidth={1} />
+          <rect x={cx - 4} y={cy + 8} width={8} height={5} rx={1} fill="#bbb" stroke="#999" strokeWidth={0.5} />
+        </svg>
+      );
+    case 'ultrasonic':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={6} y={12} width={36} height={24} rx={3} fill="#2c3e50" stroke="#3498db" strokeWidth={1} />
+          <circle cx={16} cy={cy} r={6} fill="none" stroke="#3498db" strokeWidth={1.5} />
+          <circle cx={32} cy={cy} r={6} fill="none" stroke="#3498db" strokeWidth={1.5} />
+          {[0,1,2,3].map(i => <line key={i} x1={10+i*8} y1={36} x2={10+i*8} y2={42} stroke="#999" strokeWidth={1} />)}
+        </svg>
+      );
+    case 'pir_sensor':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <circle cx={cx} cy={cy - 4} r={12} fill="#2c3e50" stroke="#27ae60" strokeWidth={1} />
+          <circle cx={cx} cy={cy - 6} r={5} fill="none" stroke="#27ae60" strokeWidth={1.5} />
+          {[0,1,2].map(i => <line key={i} x1={cx - 6+i*6} y1={cy + 8} x2={cx - 6+i*6} y2={cy + 14} stroke="#999" strokeWidth={1} />)}
+        </svg>
+      );
+    case 'soil_moisture':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={18} y={4} width={12} height={30} rx={2} fill="#8B4513" stroke="#6d3a1f" strokeWidth={1} />
+          <rect x={14} y={34} width={20} height={10} rx={2} fill="#2c3e50" stroke="#555" strokeWidth={1} />
+          <line x1={20} y1={8} x2={20} y2={30} stroke="#a0522d" strokeWidth={0.5} />
+          <line x1={28} y1={8} x2={28} y2={30} stroke="#a0522d" strokeWidth={0.5} />
+        </svg>
+      );
+    case 'gas_sensor':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <circle cx={cx} cy={cy} r={12} fill="#2c3e50" stroke="#7f8c8d" strokeWidth={1.5} />
+          <circle cx={cx} cy={cy} r={6} fill="none" stroke="#bbb" strokeWidth={1} />
+          <text x={cx} y={cy + 3} textAnchor="middle" fill="#bbb" fontSize={6} fontFamily="monospace">MQ</text>
+        </svg>
+      );
+    case 'tilt_sensor':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={16} y={10} width={16} height={24} rx={8} fill="none" stroke="#95a5a6" strokeWidth={1.5} />
+          <circle cx={cx} cy={cy + 4} r={4} fill="#95a5a6" />
+          <line x1={cx - 4} y1={34} x2={cx - 4} y2={42} stroke="#999" strokeWidth={1} />
+          <line x1={cx + 4} y1={34} x2={cx + 4} y2={42} stroke="#999" strokeWidth={1} />
+        </svg>
+      );
+    case 'slide_switch':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={10} y={cy - 6} width={28} height={12} rx={3} fill="#2c3e50" stroke="#bdc3c7" strokeWidth={1} />
+          <rect x={18} y={cy - 4} width={8} height={8} rx={2} fill="#bdc3c7" />
+          <line x1={4} y1={cy} x2={10} y2={cy} stroke="#999" strokeWidth={1.5} />
+          <line x1={cx} y1={cy + 6} x2={cx} y2={cy + 14} stroke="#999" strokeWidth={1} />
+          <line x1={38} y1={cy} x2={44} y2={cy} stroke="#999" strokeWidth={1.5} />
+        </svg>
+      );
+    case 'dip_switch':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={8} y={12} width={32} height={24} rx={2} fill="#2c3e50" stroke="#bdc3c7" strokeWidth={1} />
+          {[0,1,2,3].map(i => <rect key={i} x={12+i*7} y={16} width={4} height={8} rx={1} fill={i%2 === 0 ? '#bdc3c7' : '#555'} />)}
+        </svg>
+      );
+    case 'neopixel':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={14} y={14} width={20} height={20} rx={2} fill="#111" stroke="#555" strokeWidth={1} />
+          <circle cx={cx} cy={cy} r={6} fill="none" stroke="#2ecc71" strokeWidth={1} />
+          <circle cx={cx - 2} cy={cy - 1} r={2} fill="#e74c3c" opacity={0.8} />
+          <circle cx={cx + 2} cy={cy - 1} r={2} fill="#2ecc71" opacity={0.8} />
+          <circle cx={cx} cy={cy + 2} r={2} fill="#3498db" opacity={0.8} />
+        </svg>
+      );
+    case 'keypad':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={8} y={6} width={32} height={36} rx={3} fill="#2c3e50" stroke="#7f8c8d" strokeWidth={1} />
+          {[0,1,2,3].map(r => [0,1,2].map(c => (
+            <rect key={`${r}${c}`} x={14+c*8} y={10+r*8} width={5} height={5} rx={1} fill="#555" stroke="#777" strokeWidth={0.5} />
+          )))}
+        </svg>
+      );
+    case 'clock_display':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={4} y={14} width={40} height={20} rx={3} fill="#111" stroke="#e74c3c" strokeWidth={1} />
+          <text x={cx} y={cy + 3} textAnchor="middle" fill="#e74c3c" fontSize={10} fontFamily="monospace">12:30</text>
+        </svg>
+      );
+    case 'char_lcd_i2c':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={2} y={10} width={44} height={28} rx={3} fill="#1a4030" stroke="#2980b9" strokeWidth={1} />
+          <rect x={6} y={14} width={36} height={20} rx={2} fill="#2a6040" />
+          <text x={cx} y={cy + 2} textAnchor="middle" fill="#3c8" fontSize={7} fontFamily="monospace">I²C</text>
+          <rect x={36} y={6} width={8} height={6} rx={1} fill="#2c3e50" stroke="#555" strokeWidth={0.5} />
+        </svg>
+      );
+    case 'l293d':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={8} y={6} width={32} height={36} rx={2} fill="#2c3e50" stroke="#e74c3c" strokeWidth={1} />
+          <text x={cx} y={cy - 2} textAnchor="middle" fill="#ecf0f1" fontSize={6} fontFamily="monospace">L293</text>
+          <text x={cx} y={cy + 6} textAnchor="middle" fill="#ecf0f1" fontSize={6} fontFamily="monospace">D</text>
+          <circle cx={12} cy={10} r={2} fill="#444" />
+          {[0,1,2,3,4,5,6,7].map(i => <rect key={`l${i}`} x={4} y={8+i*4} width={4} height={2} fill="#e74c3c" />)}
+          {[0,1,2,3,4,5,6,7].map(i => <rect key={`r${i}`} x={40} y={8+i*4} width={4} height={2} fill="#e74c3c" />)}
+        </svg>
+      );
+    case 'relay_dpdt':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={6} y={8} width={36} height={32} rx={3} fill="#2c3e50" stroke="#e67e22" strokeWidth={1} />
+          <path d={`M 14 ${cy} Q 18 ${cy-5} 22 ${cy} Q 26 ${cy-5} 30 ${cy} Q 34 ${cy-5} 38 ${cy}`} fill="none" stroke="#e67e22" strokeWidth={1.2} />
+          <text x={cx} y={14} textAnchor="middle" fill="#999" fontSize={6} fontFamily="monospace">DPDT</text>
+        </svg>
+      );
+    case 'pcf8574':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={8} y={6} width={32} height={36} rx={2} fill="#2c3e50" stroke="#8e44ad" strokeWidth={1} />
+          <text x={cx} y={cy - 1} textAnchor="middle" fill="#ecf0f1" fontSize={5} fontFamily="monospace">PCF</text>
+          <text x={cx} y={cy + 6} textAnchor="middle" fill="#ecf0f1" fontSize={5} fontFamily="monospace">8574</text>
+          <circle cx={12} cy={10} r={2} fill="#444" />
+          {[0,1,2,3,4,5,6,7].map(i => <rect key={`l${i}`} x={4} y={8+i*4} width={4} height={2} fill="#8e44ad" />)}
+          {[0,1,2,3,4,5,6,7].map(i => <rect key={`r${i}`} x={40} y={8+i*4} width={4} height={2} fill="#8e44ad" />)}
+        </svg>
+      );
+    case 'header':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          {[0,1,2,3,4,5,6,7].map(i => (
+            <rect key={i} x={6+i*5} y={cy - 4} width={3} height={8} rx={0.5} fill="#f39c12" stroke="#b8860b" strokeWidth={0.5} />
+          ))}
+        </svg>
+      );
+    case 'usb_a':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={10} y={12} width={28} height={24} rx={2} fill="#bdc3c7" stroke="#999" strokeWidth={1} />
+          <rect x={14} y={16} width={20} height={16} rx={1} fill="#fff" stroke="#ddd" strokeWidth={0.5} />
+          <rect x={18} y={20} width={12} height={8} fill="#3498db" />
+        </svg>
+      );
+    case 'ir_remote':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={10} y={8} width={28} height={32} rx={4} fill="#2c3e50" stroke="#c0392b" strokeWidth={1} />
+          <circle cx={cx} cy={14} r={4} fill="#c0392b" opacity={0.6} />
+          {[0,1,2,3,4,5].map(i => (
+            <rect key={i} x={16+(i%3)*5} y={22+Math.floor(i/3)*6} width={4} height={4} rx={1} fill="#555" />
+          ))}
+        </svg>
+      );
+    case 'gearmotor': case 'motor_encoder': case 'vibration_motor':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <circle cx={cx} cy={cy} r={14} fill="#2c3e50" stroke={color || '#3498db'} strokeWidth={1.5} />
+          <text x={cx} y={cy + 3} textAnchor="middle" fill="#ecf0f1" fontSize={10} fontFamily="monospace" fontWeight="bold">M</text>
+          <line x1={cx - 14} y1={cy + 6} x2={cx - 20} y2={cy + 6} stroke="#999" strokeWidth={1.5} />
+          <line x1={cx - 14} y1={cy - 6} x2={cx - 20} y2={cy - 6} stroke="#999" strokeWidth={1.5} />
+        </svg>
+      );
+    case 'tmp36':
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <path d={`M ${cx - 5} ${cy + 8} L ${cx - 5} ${cy - 8} A 5 5 0 0 1 ${cx + 5} ${cy - 8} L ${cx + 5} ${cy + 8} Z`}
+            fill="#1a1a2e" stroke="#16a085" strokeWidth={1.5} />
+          <text x={cx} y={cy + 2} textAnchor="middle" fill="#16a085" fontSize={5} fontFamily="monospace">TMP</text>
+          {[0, 1, 2].map(i => <line key={i} x1={cx - 4 + i * 4} y1={cy + 8} x2={cx - 4 + i * 4} y2={cy + 14} stroke="#999" strokeWidth={1} />)}
+        </svg>
+      );
     // 74HC logic chips — generic DIP package
     case '74hc00': case '74hc02': case '74hc04': case '74hc08':
     case '74hc10': case '74hc11': case '74hc14': case '74hc20':
