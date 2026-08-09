@@ -45,7 +45,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarationChange, onBoardReady }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, onDeclarationChange, onBoardReady }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -373,8 +373,29 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
     }
   }, [undo, redo, rotatePart, duplicatePart, selectedPart]);
 
+  // What this board IS right now. `LIVE` was shown for any attached board,
+  // which is wrong the moment the debugger halts: the pins stop moving and the
+  // label still claims the emulator is driving them.
+  //
+  // The distinction that matters is not running-vs-stopped but WHOSE time
+  // stopped (DEBUG-CONTROL-MODEL §3.1). On an emulator, halting stops program
+  // time and the board with it — everything on screen is exactly true. On a
+  // live chip it stops the program and nothing else: capacitors discharge,
+  // motors coast, someone keeps turning the pot. `skewNs` is precisely that
+  // difference, so a non-zero one turns this from a frozen world into a
+  // SNAPSHOT of one that kept moving, and it has to say so.
+  const halted = !!(debugState && debugState.halted);
+  const skewNs = (debugState && debugState.skewNs) || 0n;
+  const staleBy = Number(skewNs) / 1e6;
+
   let statusText = null;
-  if (externalBoard) statusText = 'LIVE — emulator driving pins';
+  if (externalBoard && halted && staleBy > 0) {
+    statusText = `SNAPSHOT — the board kept running for ${
+      staleBy < 1000 ? `${staleBy.toFixed(0)} ms` : `${(staleBy / 1000).toFixed(1)} s`
+    } while the program was stopped`;
+  } else if (externalBoard && halted) {
+    statusText = 'PAUSED — program and board are frozen together';
+  } else if (externalBoard) statusText = 'LIVE — emulator driving pins';
   else if (mode === 'simulate') statusText = 'SIMULATING — scripted MCU demo';
   else if (placingProbe) statusText = `Placing probe ${placingProbe} — click a terminal`;
 
@@ -411,7 +432,18 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
         }}>Parts</button>
       )}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* A snapshot must not LOOK like a live board. Desaturating it is the
+          cheapest honest signal: the reading is real but it is of a world that
+          has moved on since. A frozen simulation gets no treatment, because
+          nothing about it is stale — that is the whole difference `skewNs`
+          exists to carry, and rendering both the same would throw it away.
+          `setControl` stays live either way: turning the pot is user intent,
+          not physics, so nothing here disables interaction. */}
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0,
+        filter: staleBy > 0 ? 'saturate(0.35)' : 'none',
+        transition: 'filter 120ms ease-out'
+      }}>
         <BoardCanvas
           parts={parts}
           wires={wires}
