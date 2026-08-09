@@ -157,6 +157,10 @@ export function useCircuit(vcc = 5.0) {
     bump();
   }, [circuit, bump]);
 
+  const setBreadboard = useCallback((bb) => {
+    circuit.setBreadboard(bb);
+  }, [circuit]);
+
   // Read-only accessors — these read from the engine, never fabricate.
   const ledBrightness = useCallback((partId) => {
     return circuit.ledBrightness(partId);
@@ -198,6 +202,7 @@ export function useCircuit(vcc = 5.0) {
     redo,
     saveHistory,
     syncWithExternalNets,
+    setBreadboard,
     canUndo: circuit.history.canUndo,
     canRedo: circuit.history.canRedo,
 

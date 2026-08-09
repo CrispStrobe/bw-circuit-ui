@@ -10,6 +10,7 @@
 
 import { getEngine } from '../engine.js';
 import { History } from './history.js';
+import { mergeNets } from './merge-nets.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -63,6 +64,18 @@ export class Circuit {
 
     /** @type {History} */
     this.history = new History();
+
+    /** @type {import('./breadboard.js').BreadboardModel | null} */
+    this.breadboard = null;
+  }
+
+  /**
+   * Attach a breadboard model. When set, _syncNetlist merges wire nets
+   * with breadboard-derived nets via union-find.
+   * @param {import('./breadboard.js').BreadboardModel | null} bb
+   */
+  setBreadboard(bb) {
+    this.breadboard = bb;
   }
 
   /** Save current state to history. Called after structural mutations. */
@@ -464,12 +477,23 @@ export class Circuit {
       if (!net.has(tk)) net.set(tk, w.to);
     }
 
-    const engineNets = [];
+    const wireNets = [];
     for (const [netId, termMap] of netMap) {
-      engineNets.push({
+      wireNets.push({
         id: netId,
         terminals: [...termMap.values()],
       });
+    }
+
+    // Merge breadboard-derived nets with wire nets when a breadboard is attached
+    let engineNets = wireNets;
+    if (this.breadboard) {
+      try {
+        const bbResult = this.breadboard.deriveNets();
+        engineNets = mergeNets(wireNets, bbResult.nets);
+      } catch {
+        // Breadboard state may be incomplete during construction
+      }
     }
 
     // Snapshot engine state before rebuilding (preserves cap voltages, etc.)
