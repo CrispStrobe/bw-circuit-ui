@@ -45,7 +45,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarationChange }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarationChange, onBoardReady }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -75,6 +75,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
       onDeclarationChange(decls);
     }
   }, [parts, wires, onDeclarationChange]);
+
+  // ── Expose the Board to the host (for the circuit extension) ──
+  useEffect(() => {
+    if (onBoardReady && circuit.board) {
+      onBoardReady(circuit.board);
+    }
+  }, [circuit.board, onBoardReady, parts, wires]); // re-fire when netlist changes (board rebuilt)
 
   const [selectedParts, setSelectedParts] = useState(new Set());
   const [selectedWire, setSelectedWire] = useState(null);
