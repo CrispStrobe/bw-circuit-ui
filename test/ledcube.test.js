@@ -58,6 +58,24 @@ describe('computeCubeVoxels', () => {
     }
   });
 
+  it('single voxel on one line in eight = exactly 12.5% duty', () => {
+    // This is the test that would have caught the board's 2x bug.
+    // The accumulator counts raw frames, not modeled scan structure,
+    // so it is immune to layer/column constant errors.
+    const history = [];
+    for (let sel = 0; sel < 8; sel++) {
+      history.push({
+        tNs: BigInt(sel) * 1_235_000n,
+        select: 0xFF ^ (1 << sel),
+        data: sel === 0 ? 0x01 : 0x00, // only select 0 has bit 0
+      });
+    }
+    const voxels = computeCubeVoxels(history);
+    const s0b0 = voxels.find(v => v.select === 0 && v.bit === 0);
+    assert.ok(Math.abs(s0b0.brightness - 0.125) < 0.001,
+      `single voxel duty should be 12.5%, got ${s0b0.brightness * 100}%`);
+  });
+
   it('BW_CUBE_ACTIVE_HIGH matches Finding #14 (active-high)', () => {
     // Finding #14: P0 value histogram, zero exceptions in 3,930+ writes.
     // Measured active-HIGH. Not yet confirmed on silicon (probe.c needed).
