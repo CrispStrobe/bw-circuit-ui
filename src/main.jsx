@@ -1,23 +1,44 @@
 /**
  * Dev harness — renders the CircuitDesigner as a standalone page.
  *
- * This file is only used by the Vite dev server. It injects the engine
- * from the local bw-board copy, then renders the component.
+ * URL params for testing:
+ *   ?debug=live      — external board, running
+ *   ?debug=paused    — external board, halted, skewNs=0 (frozen sim)
+ *   ?debug=snapshot  — external board, halted, skewNs=4.2s (stale)
+ *   ?debug=hardware  — simulationOnly=false (live hardware, no sim values)
+ *   (default)        — standalone demo mode
  */
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
-// Inject engine from local bw-board (dev harness only)
 import { setEngine } from './engine.js';
 import { BoardImpl } from '../../bw-board/src/board.js';
 import { inferNetlist, checkWiring } from '../../bw-board/src/infer-netlist.js';
 setEngine({ BoardImpl, inferNetlist, checkWiring });
 
-// Now safe to import CircuitDesigner (which uses getEngine())
 import { CircuitDesigner } from './components/CircuitDesigner.jsx';
 
+const params = new URLSearchParams(window.location.search);
+const debugMode = params.get('debug');
+
+function getDebugProps() {
+  switch (debugMode) {
+    case 'live':
+      return { board: new BoardImpl(5.0) };
+    case 'paused':
+      return { board: new BoardImpl(5.0), debugState: { halted: true, skewNs: 0n } };
+    case 'snapshot':
+      return { board: new BoardImpl(5.0), debugState: { halted: true, skewNs: 4_200_000_000n } };
+    case 'hardware':
+      return { board: new BoardImpl(5.0), simulationOnly: false };
+    default:
+      return {};
+  }
+}
+
 function App() {
+  const debugProps = getDebugProps();
   return (
     <div style={{
       background: '#1a1a2e',
@@ -32,6 +53,7 @@ function App() {
             { name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true },
           ],
         }}
+        {...debugProps}
       />
     </div>
   );

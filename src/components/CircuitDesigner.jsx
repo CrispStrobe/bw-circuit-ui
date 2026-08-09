@@ -475,8 +475,33 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0,
         filter: !hasSimulation ? 'saturate(0.5) brightness(0.9)' : staleBy > 0 ? 'saturate(0.35)' : 'none',
-        transition: 'filter 120ms ease-out'
+        transition: 'filter 120ms ease-out',
+        position: 'relative',
       }}>
+        {/* Stale-age badge: shows how old the snapshot is */}
+        {staleBy > 0 && (
+          <div style={{
+            position: 'absolute', top: 8, right: 8, zIndex: 50,
+            background: 'rgba(243, 156, 18, 0.9)',
+            color: '#000', padding: '4px 10px', borderRadius: '4px',
+            fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold',
+            pointerEvents: 'none',
+          }}>
+            {staleBy < 1000 ? `${staleBy.toFixed(0)} ms stale` : `${(staleBy / 1000).toFixed(1)} s stale`}
+          </div>
+        )}
+        {/* Hardware-only badge */}
+        {!hasSimulation && (
+          <div style={{
+            position: 'absolute', top: 8, right: 8, zIndex: 50,
+            background: 'rgba(52, 152, 219, 0.9)',
+            color: '#fff', padding: '4px 10px', borderRadius: '4px',
+            fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold',
+            pointerEvents: 'none',
+          }}>
+            wiring only — no sim
+          </div>
+        )}
         <BoardCanvas
           parts={parts}
           wires={wires}
