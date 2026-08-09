@@ -537,13 +537,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           warnings={warnings}
           annotations={annotations}
           cubeScans={cubeScans}
-          activePartIds={debugState?.tasks
-            ?.filter(t => t.blockId && /setpin|toggle|writepin/.test(t.blockId))
-            .map(t => {
-              // Extract the pin name from the block — e.g. "stc12_setpin" with a part named "led1"
-              // The task may carry a partName or we infer from the block + declared pins
-              return t.partName || t.blockId;
-            }) || []}
           onUpdateParams={updateParams}
         />
 
