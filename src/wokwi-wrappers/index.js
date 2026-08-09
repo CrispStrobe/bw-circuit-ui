@@ -14,6 +14,9 @@ import { ResistorElement } from '@wokwi/elements/dist/esm/resistor-element.js';
 import { PotentiometerElement } from '@wokwi/elements/dist/esm/potentiometer-element.js';
 import { BuzzerElement } from '@wokwi/elements/dist/esm/buzzer-element.js';
 import { PushbuttonElement } from '@wokwi/elements/dist/esm/pushbutton-element.js';
+import { SevenSegmentElement } from '@wokwi/elements/dist/esm/7segment-element.js';
+import { LCD1602Element } from '@wokwi/elements/dist/esm/lcd1602-element.js';
+import { IRReceiverElement } from '@wokwi/elements/dist/esm/ir-receiver-element.js';
 
 export const WokwiLed = createComponent({
   tagName: 'wokwi-led',
@@ -50,4 +53,22 @@ export const WokwiPushbutton = createComponent({
     onButtonPress: 'button-press',
     onButtonRelease: 'button-release',
   },
+});
+
+export const WokwiSevenSegment = createComponent({
+  tagName: 'wokwi-7segment',
+  elementClass: SevenSegmentElement,
+  react: React,
+});
+
+export const WokwiLcd1602 = createComponent({
+  tagName: 'wokwi-lcd1602',
+  elementClass: LCD1602Element,
+  react: React,
+});
+
+export const WokwiIrReceiver = createComponent({
+  tagName: 'wokwi-ir-receiver',
+  elementClass: IRReceiverElement,
+  react: React,
 });

@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer } from '../wokwi-wrappers/index.js';
+import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
 import { routeWire, partBBoxes } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
@@ -53,6 +53,13 @@ function terminalOffsetsForPart(part) {
     case 'button': return { a: r(-15, 0), b: r(15, 0) };
     case 'buzzer': return { a: r(-15, 0), b: r(15, 0) };
     case 'capacitor': return { a: r(-15, 0), b: r(15, 0) };
+    case 'seven_segment': return { a: r(-30, 30), b: r(30, 30) }; // pins at bottom
+    case 'char_lcd': return { rs: r(-50, 25), e: r(-30, 25), d4: r(-10, 25), d5: r(10, 25), d6: r(30, 25), d7: r(50, 25) };
+    case 'ir_receiver': return { out: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
+    case 'shift_register': return { data: r(-20, -15), clock: r(0, -15), latch: r(20, -15) };
+    case 'led_matrix': return { a: r(-20, 0), b: r(20, 0) };
+    case 'temp_sensor': return { dq: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
+    case 'eeprom': return { sda: r(-10, 15), scl: r(10, 15) };
     case 'mcu': {
       const offsets = {};
       const pinCount = part.terminals.length;
@@ -494,6 +501,63 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
               <line x1={12} y1={5} x2={12} y2={25} stroke="#ecf0f1" strokeWidth={2} />
               <line x1={18} y1={5} x2={18} y2={25} stroke="#ecf0f1" strokeWidth={2} />
               <line x1={18} y1={15} x2={25} y2={15} stroke="#7f8c8d" strokeWidth={2} />
+            </svg>
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
+            </div>
+          </div>
+        );
+      case 'seven_segment':
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 30, top: y - 35, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            {...dragProps()}>
+            <WokwiSevenSegment digits={1} values={[1,1,1,1,1,1,0,0]} color="#e74c3c" pins="none" />
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
+            </div>
+          </div>
+        );
+      case 'char_lcd':
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 60, top: y - 25, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            {...dragProps()}>
+            <WokwiLcd1602 text="Hello World!" pins="none" screenOnly={true} />
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
+            </div>
+          </div>
+        );
+      case 'ir_receiver':
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 15, top: y - 15, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            {...dragProps()}>
+            <WokwiIrReceiver />
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
+            </div>
+          </div>
+        );
+      case 'shift_register':
+      case 'led_matrix':
+      case 'temp_sensor':
+      case 'eeprom':
+        // Generic IC rendering for parts without wokwi elements
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 25, top: y - 15, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            {...dragProps()}>
+            <svg width={50} height={30} viewBox="0 0 50 30">
+              <rect x={2} y={2} width={46} height={26} rx={3} fill="#2c3e50" stroke="#7f8c8d" strokeWidth={1} />
+              <text x={25} y={18} textAnchor="middle" fill="#ecf0f1" fontSize={8} fontFamily="monospace">
+                {kind === 'shift_register' ? '595' : kind === 'led_matrix' ? '8×8' : kind === 'temp_sensor' ? '18B20' : 'IC'}
+              </text>
             </svg>
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}

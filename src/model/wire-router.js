@@ -78,6 +78,13 @@ export function partBBoxes(parts, skipA, skipB) {
         case 'potentiometer': return { x: p.x - 30, y: p.y - 30, w: 60, h: 65 };
         case 'buzzer': return { x: p.x - 20, y: p.y - 20, w: 40, h: 45 };
         case 'button': return { x: p.x - 18, y: p.y - 18, w: 36, h: 40 };
+        case 'seven_segment': return { x: p.x - 30, y: p.y - 35, w: 60, h: 75 };
+        case 'char_lcd': return { x: p.x - 60, y: p.y - 25, w: 120, h: 55 };
+        case 'ir_receiver': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
+        case 'shift_register': return { x: p.x - 25, y: p.y - 15, w: 50, h: 35 };
+        case 'led_matrix': return { x: p.x - 25, y: p.y - 15, w: 50, h: 35 };
+        case 'temp_sensor': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
+        case 'eeprom': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
         default: return { x: p.x - 15, y: p.y - 15, w: 30, h: 30 };
       }
     });
