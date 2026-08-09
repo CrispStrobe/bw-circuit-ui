@@ -596,7 +596,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onDropPart, warnings,
+  onDuplicatePart, onRotatePart, onDropPart, warnings, annotations,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -1009,6 +1009,17 @@ export function BoardCanvas({
             hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
             nodeVoltages={nodeVoltages} />
           <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
+
+          {/* Teaching annotations from inference */}
+          {annotations && annotations.map((ann, i) => (
+            <text key={`ann-${i}`}
+              x={ann.x} y={ann.y}
+              textAnchor="middle" fill={ann.color || '#7f8c8d'}
+              fontSize={11} fontFamily="monospace" fontWeight="bold"
+              style={{ pointerEvents: 'none' }}>
+              {ann.text}
+            </text>
+          ))}
           <WiringPreview wiringFrom={wiringFrom} mousePos={mousePos} parts={parts} />
 
           {/* Snap-to-connector indicator */}

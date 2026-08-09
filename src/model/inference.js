@@ -156,5 +156,24 @@ export function inferCircuit(stc) {
     return { ...part, x: pos.x, y: pos.y };
   });
 
-  return { parts: positioned, nets, notes: [...notes, ...partNotes] };
+  // Generate annotations for teaching — label each column with its purpose
+  const annotations = [];
+  let annColIdx = 0;
+  for (const [groupName] of groups) {
+    const pin = normalizedStc.pins.find(p =>
+      p.name.replace(/[^a-zA-Z0-9_]/g, '_') === groupName
+    );
+    if (pin && pin.direction === 'output') {
+      const colX = startX + annColIdx * colWidth;
+      const label = pin.activeLow ? 'active-low' : 'active-high';
+      annotations.push({ x: colX, y: gndY - 20, text: label, color: pin.activeLow ? '#2ecc71' : '#e67e22' });
+    }
+    if (!portNames.includes(groupName) || groups.get(groupName).length <= 6) {
+      annColIdx++;
+    } else {
+      annColIdx += Math.min(4, Math.ceil(groups.get(groupName).length / 4));
+    }
+  }
+
+  return { parts: positioned, nets, notes: [...notes, ...partNotes], annotations };
 }
