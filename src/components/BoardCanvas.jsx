@@ -47,8 +47,8 @@ function terminalOffsetsForPart(part) {
   switch (part.kind) {
     case 'vcc': return { vcc: r(0, 20) };
     case 'gnd': return { gnd: r(0, -10) };
-    case 'resistor': return { a: r(-35, 0), b: r(35, 0) };
-    case 'led': return { anode: r(-10, 0), cathode: r(10, 0) };
+    case 'resistor': return { a: r(-30, 0), b: r(30, 0) };
+    case 'led': return { anode: r(-20, 0), cathode: r(20, 0) };
     case 'potentiometer': return { a: r(-25, 20), wiper: r(0, -20), b: r(25, 20) };
     case 'button': return { a: r(-15, 0), b: r(15, 0) };
     case 'buzzer': return { a: r(-15, 0), b: r(15, 0) };
@@ -406,7 +406,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
       case 'resistor':
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 40, top: y - 12, cursor: 'move' }}
+            style={{ ...baseStyle, left: x - 30, top: y - 6, cursor: 'move' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiResistor value={String(params.ohms)} />
@@ -420,7 +420,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
         const isOn = b > 0.01;
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 15, top: y - 20, cursor: 'move' }}
+            style={{ ...baseStyle, left: x - 20, top: y - 25, cursor: 'move' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiLed color={params.color || 'red'} brightness={b} value={isOn} />

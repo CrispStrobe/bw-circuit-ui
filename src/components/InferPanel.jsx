@@ -125,14 +125,15 @@ const REIDEMEISTER_PRESETS = [
   },
   {
     name: 'R: Buttons + LEDs',
-    desc: 'P3.0-3 buttons, P2 LEDs',
+    desc: 'P3.2-5 buttons, P2 LEDs',
     stc: {
       device: 'stc12c5a60s2', clock: 11059200,
       pins: [
-        { name: 'btn0', port: 3, bit: 0, direction: 'input', activeLow: true },
-        { name: 'btn1', port: 3, bit: 1, direction: 'input', activeLow: true },
-        { name: 'btn2', port: 3, bit: 2, direction: 'input', activeLow: true },
-        { name: 'btn3', port: 3, bit: 3, direction: 'input', activeLow: true },
+        // P3.0/P3.1 are ISP/UART — avoid them for buttons
+        { name: 'btn0', port: 3, bit: 2, direction: 'input', activeLow: true },
+        { name: 'btn1', port: 3, bit: 3, direction: 'input', activeLow: true },
+        { name: 'btn2', port: 3, bit: 4, direction: 'input', activeLow: true },
+        { name: 'btn3', port: 3, bit: 5, direction: 'input', activeLow: true },
       ],
       ports: [
         { name: 'leds', port: 2, sfr: 'P2', width: 8, direction: 'output', activeLow: true },
@@ -151,7 +152,8 @@ const REIDEMEISTER_PRESETS = [
   },
   {
     name: 'R: UART serial',
-    desc: 'TX/RX on P3.0-1',
+    desc: 'TX/RX on P3.0-1 (ISP pins)',
+    note: 'Uses the ISP pins: cannot flash or attach debugger while connected',
     stc: {
       device: 'stc12c5a60s2', clock: 11059200,
       pins: [
@@ -166,10 +168,11 @@ const REIDEMEISTER_PRESETS = [
     stc: {
       device: 'stc12c5a60s2', clock: 11059200,
       pins: [
-        { name: 'btn0', port: 3, bit: 0, direction: 'input', activeLow: true },
-        { name: 'btn1', port: 3, bit: 1, direction: 'input', activeLow: true },
-        { name: 'btn2', port: 3, bit: 2, direction: 'input', activeLow: true },
-        { name: 'btn3', port: 3, bit: 3, direction: 'input', activeLow: true },
+        // P3.2-5 for buttons (avoids ISP pins P3.0-1)
+        { name: 'btn0', port: 3, bit: 2, direction: 'input', activeLow: true },
+        { name: 'btn1', port: 3, bit: 3, direction: 'input', activeLow: true },
+        { name: 'btn2', port: 3, bit: 4, direction: 'input', activeLow: true },
+        { name: 'btn3', port: 3, bit: 5, direction: 'input', activeLow: true },
         { name: 'buzzer', port: 1, bit: 5, direction: 'tone', activeLow: false },
         { name: 'pot', port: 1, bit: 2, direction: 'analog', activeLow: false },
       ],
@@ -202,7 +205,10 @@ export function InferPanel({ onLoadCircuit }) {
   const handleLoad = useCallback((preset) => {
     const result = inferCircuit(preset.stc);
     onLoadCircuit(result.parts, result.nets);
-    setNotes(result.notes);
+    // Combine inference notes with preset-level conflict notes
+    const allNotes = [...result.notes];
+    if (preset.note) allNotes.unshift(preset.note);
+    setNotes(allNotes);
     setLastLoaded(preset.name);
   }, [onLoadCircuit]);
 

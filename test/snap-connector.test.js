@@ -62,10 +62,10 @@ describe('findSnapTarget', () => {
   });
 
   it('returns correct snap position offset', () => {
-    // Place R1 at (100, 100). R1.b is at (135, 100).
-    // Place LED at (160, 100). LED.anode is at (150, 100).
+    // Place R1 at (100, 100). R1.b is at dx=+30 → (130, 100).
+    // Place LED at (160, 100). LED.anode is at dx=-20 → (140, 100).
     // Snap should move R1 so R1.b aligns with LED.anode:
-    // R1.b needs to be at (150, 100), so R1.x = 150 - 35 = 115
+    // R1.b needs to be at (140, 100), so R1.x = 140 - 30 = 110
     const dragged = {
       id: 'r1', kind: 'resistor', terminals: ['a', 'b'],
       x: 100, y: 100, rotation: 0,
@@ -78,7 +78,7 @@ describe('findSnapTarget', () => {
     const result = findSnapTarget(dragged, [dragged, other], []);
     assert.ok(result.autoWire);
     // The snap position should offset R1 to align terminals
-    assert.ok(Math.abs(result.snapX - 115) < 2, `snapX should be ~115, got ${result.snapX}`);
+    assert.ok(Math.abs(result.snapX - 110) < 2, `snapX should be ~110, got ${result.snapX}`);
     assert.ok(Math.abs(result.snapY - 100) < 2, `snapY should be ~100, got ${result.snapY}`);
   });
 

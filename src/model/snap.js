@@ -26,8 +26,8 @@ function baseOffsets(kind, terminals) {
   switch (kind) {
     case 'vcc': return { vcc: { dx: 0, dy: 20 } };
     case 'gnd': return { gnd: { dx: 0, dy: -10 } };
-    case 'resistor': return { a: { dx: -35, dy: 0 }, b: { dx: 35, dy: 0 } };
-    case 'led': return { anode: { dx: -10, dy: 0 }, cathode: { dx: 10, dy: 0 } };
+    case 'resistor': return { a: { dx: -30, dy: 0 }, b: { dx: 30, dy: 0 } };
+    case 'led': return { anode: { dx: -20, dy: 0 }, cathode: { dx: 20, dy: 0 } };
     case 'potentiometer': return { a: { dx: -25, dy: 20 }, wiper: { dx: 0, dy: -20 }, b: { dx: 25, dy: 20 } };
     case 'button': return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
     case 'buzzer': return { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
