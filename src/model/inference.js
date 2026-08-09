@@ -28,15 +28,59 @@ export function checkWiring(declaredPins, wiredParts, wiredNets) {
 export function inferCircuit(stc) {
   const { inferNetlist } = getEngine();
 
+  const expandedPins = []; // pins generated from PART declarations
+
+  // ── Expand PART declarations into pins ──────────────────────────
+  // A PART (e.g. 74HC595 shift register) consumes MCU pins and drives
+  // outputs. The shift register itself is not electrically simulated
+  // (it depends on edge ORDER, not duration), but we show:
+  // - The MCU control pins as outputs
+  // - The output loads (LEDs) as if driven directly
+  // This gives the learner the right physical layout even though the
+  // shift register logic isn't modeled.
+  const partNotes = [];
+  for (const part of (stc.parts || [])) {
+    const safeName = part.name.replace(/[^a-zA-Z0-9_]/g, '_');
+
+    if (part.kind === '74hc595') {
+      // Add control pins to MCU — these are outputs that drive the
+      // shift register's data/clock/latch lines, not LED loads.
+      // Use direction 'input' to avoid inferNetlist generating LEDs
+      // for them — they'll appear as MCU pins without loads.
+      for (const [role, pin] of Object.entries(part.pins || {})) {
+        const match = pin.match(/P(\d+)\.(\d+)/);
+        if (match) {
+          expandedPins.push({
+            name: `${safeName}_${role}`,
+            port: parseInt(match[1]),
+            bit: parseInt(match[2]),
+            pin,
+            direction: 'input', // no load — just show the MCU pin
+            activeLow: false,
+          });
+        }
+      }
+
+      partNotes.push(
+        `${part.kind.toUpperCase()} "${part.name}": 3 control pins (data, clock, latch) → ` +
+        `${part.outputs || 8} output LEDs. The shift register logic is not electrically ` +
+        `simulated (depends on edge order, not duration). Control pins shown as outputs.`
+      );
+    }
+  }
+
   // ── Normalize pin directions ───────────────────────────────────
   // - "pwm" → "output" (same LED netlist, duty cycle is handled by the engine)
   // - "tone" → "output" with a name that triggers buzzer detection
   // - ports are passed through to the engine's inferNetlist, which
   //   handles them natively (boundary C row 6: PORT OUTPUT → 8 LEDs)
+  // Combine original pins with PART-expanded pins
+  const allPins = [...(stc.pins || []), ...expandedPins];
+
   const normalizedStc = {
     ...stc,
     ports: stc.ports || [],
-    pins: (stc.pins || []).map(pin => {
+    pins: allPins.map(pin => {
       if (pin.direction === 'pwm') {
         return { ...pin, direction: 'output' };
       }
@@ -130,5 +174,5 @@ export function inferCircuit(stc) {
     return { ...part, x: pos.x, y: pos.y };
   });
 
-  return { parts: positioned, nets, notes };
+  return { parts: positioned, nets, notes: [...notes, ...partNotes] };
 }

@@ -293,6 +293,38 @@ describe('inferCircuit', () => {
     assert.ok(parts.find(p => p.kind === 'mcu'));
   });
 
+  it('expands PART 74HC595 into control pins + output LEDs (09-shift-register)', () => {
+    const { parts, nets, notes } = inferCircuit({
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [],
+      ports: [],
+      parts: [
+        {
+          name: 'leds', kind: '74hc595',
+          pins: { data: 'P3.4', clock: 'P3.6', latch: 'P3.5' },
+          outputs: 8, activeLow: true,
+        },
+      ],
+    });
+
+    // MCU should have the 3 control pins
+    const mcu = parts.find(p => p.kind === 'mcu');
+    assert.ok(mcu, 'should have an MCU');
+    assert.ok(mcu.terminals.includes('P3.4'), 'should include data pin P3.4');
+    assert.ok(mcu.terminals.includes('P3.5'), 'should include latch pin P3.5');
+    assert.ok(mcu.terminals.includes('P3.6'), 'should include clock pin P3.6');
+
+    // Control pins appear as inputs (no LED loads — they drive the 595)
+    // The shift register outputs are noted but not electrically modeled
+    const buttons = parts.filter(p => p.kind === 'button');
+    assert.equal(buttons.length, 3,
+      `3 control pins should produce 3 input buttons, got ${buttons.length}`);
+
+    // Should have a note about the shift register
+    assert.ok(notes.some(n => n.includes('74HC595') && n.includes('control pins')),
+      `should have a note about the 595: ${notes.join('; ')}`);
+  });
+
   it('tone direction works even with non-standard name', () => {
     const { parts } = inferCircuit({
       device: 'stc12c5a60s2', clock: 11059200,

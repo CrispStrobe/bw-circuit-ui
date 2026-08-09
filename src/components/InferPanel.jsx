@@ -91,6 +91,22 @@ const EXAMPLES = [
       ],
     },
   },
+  {
+    name: '09 Shift Reg',
+    desc: '74HC595 → 8 LEDs',
+    stc: {
+      device: 'stc12c5a60s2', clock: 11059200,
+      pins: [],
+      ports: [],
+      parts: [
+        {
+          name: 'leds', kind: '74hc595',
+          pins: { data: 'P3.4', clock: 'P3.6', latch: 'P3.5' },
+          outputs: 8, activeLow: true,
+        },
+      ],
+    },
+  },
 ];
 
 // The comparison that justifies the whole simulator:
