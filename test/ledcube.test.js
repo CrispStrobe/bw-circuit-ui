@@ -58,13 +58,11 @@ describe('computeCubeVoxels', () => {
     }
   });
 
-  it('BW_CUBE_ACTIVE_HIGH is documented as unverified', () => {
-    // This test documents the polarity assumption.
-    // BW_CUBE_ACTIVE_HIGH = true means a set bit lights the LED.
-    // If a real cube shows the opposite, change BW_CUBE_ACTIVE_HIGH to false
-    // and every voxel in every test inverts — that is the designed behaviour.
-    assert.equal(typeof BW_CUBE_ACTIVE_HIGH, 'boolean',
-      'BW_CUBE_ACTIVE_HIGH must be a boolean');
+  it('BW_CUBE_ACTIVE_HIGH matches Finding #14 (active-high)', () => {
+    // Finding #14: P0 value histogram, zero exceptions in 3,930+ writes.
+    // Measured active-HIGH. Not yet confirmed on silicon (probe.c needed).
+    assert.equal(BW_CUBE_ACTIVE_HIGH, true,
+      'BW_CUBE_ACTIVE_HIGH should be true (measured active-high, Finding #14)');
   });
 
   it('inverting BW_CUBE_ACTIVE_HIGH would invert all voxels', () => {

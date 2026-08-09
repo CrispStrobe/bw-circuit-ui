@@ -7,35 +7,28 @@
  *    Until measured with probe.c, each voxel is labeled by its
  *    electrical address, not its spatial position.
  *
- * 2. P0 data polarity: does a set bit (1) mean the LED is ON or OFF?
- *    - Active-high (BW_CUBE_ACTIVE_HIGH = true): bit=1 → LED on.
- *      This matches probe.c's convention (blank = 0x00, probe = 1<<bit).
- *    - Active-low  (BW_CUBE_ACTIVE_HIGH = false): bit=0 → LED on.
- *      This matches main.c's convention (clear = 0xFF, set = clear bit).
- *    Both are internally consistent code; only a real cube can settle it.
- *    Flip this one constant to invert the entire cube's rendering.
+ * 2. P0 data polarity: measured active-HIGH (Finding #14, zero exceptions
+ *    in 3,930+ writes). The firmware's intent is now known; whether the
+ *    hardware matches it awaits probe.c on a real cube.
  *
  * Brightness is integrated over ~20ms, exactly like the LED model.
  * A voxel lit one line in eight looks dimmer by that factor.
  */
 
 /**
- * P0 data polarity — UNVERIFIED. Only a real cube can settle this.
+ * P0 data polarity — measured active-HIGH.
  *
- * Fleet-wide symbol: BW_CUBE_ACTIVE_HIGH. All four consumers use the
- * same name and the same sense so they can be aligned in one pass.
+ * emu8051-stc Finding #14: P0 value histogram over 5 s of vendor firmware,
+ * zero exceptions in 3,930+ writes. 0x00 = blank (always before a select),
+ * 0xFF = all-on data, 0x0F = red columns, 0xF0 = blue columns. Under
+ * active-low 0x0F would mean red-off/blue-on, the opposite of what the
+ * animation visibly performs. Conclusive for the firmware's intent.
  *
- * true  = active-high: a set bit (1) lights the LED.
- *   Evidence (b77b176): probe.c blank = {0,…}, probe = 1<<bit;
- *   vendor firmware P0=0 is called "blanking".
- * false = active-low: a clear bit (0) lights the LED.
- *   main.c fb_clear = 0xFF, set = clear bit.
+ * Not yet confirmed on silicon — probe.c on a real cube is the definitive
+ * check that the hardware matches the firmware's assumption.
  *
- * Defaulted active-high on the weight of evidence. If measurement
- * settles it differently, change this one value — everything follows.
- *
- * See: ucsim-stc spec-008 §2, stc/src/20-ledcube/README.md §"What is
- * still unknown", sb3-creator BW_CUBE_ACTIVE_HIGH.
+ * Fleet-wide symbol: BW_CUBE_ACTIVE_HIGH. All four consumers
+ * (main.c, spec-008, sb3-creator, bw-circuit-ui) use the same name.
  */
 export const BW_CUBE_ACTIVE_HIGH = true;
 
