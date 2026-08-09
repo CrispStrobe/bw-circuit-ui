@@ -1,0 +1,81 @@
+// The feature, end to end: a complete LED circuit SEATED on a breadboard —
+// zero drawn wires — must light, because the strips conduct. This is the
+// test the whole breadboard exists for.
+import './_setup.js';
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { Circuit, resetIds } from '../src/model/circuit.js';
+import { FOOTPRINTS, computeLeadMap } from '../src/model/footprints.js';
+
+test('seated LED circuit lights through strips alone — no drawn wires', () => {
+  resetIds();
+  const c = new Circuit(5.0);
+  const bb = c.addPart('breadboard', {}, 500, 300);
+  const vcc = c.addPart('vcc', {}, 0, 0);
+  const r1 = c.addPart('resistor', { ohms: 1000 }, 0, 0);
+  const led = c.addPart('led', { color: 'red' }, 0, 0);
+  const gnd = c.addPart('gnd', {}, 0, 0);
+
+  // Columns: vcc a5 | R b5..b9 | LED c9,c10 | gnd d10.
+  // Strips col5 {vcc, R.a}, col9 {R.b, LED.anode}, col10 {LED.cathode, gnd}.
+  assert.ok(c.seatPart(vcc.id, bb.id, computeLeadMap(FOOTPRINTS.vcc, 'a5')));
+  assert.ok(c.seatPart(r1.id, bb.id, computeLeadMap(FOOTPRINTS.resistor, 'b5')));
+  assert.ok(c.seatPart(led.id, bb.id, computeLeadMap(FOOTPRINTS.led, 'c9')));
+  assert.ok(c.seatPart(gnd.id, bb.id, computeLeadMap(FOOTPRINTS.gnd, 'd10')));
+  assert.equal(c.wires.length, 0, 'the whole point: no drawn wires');
+
+  // Hand oracle: I = (5 − 2) / (1000 + 10) = 2.9703 mA → brightness 0.1485.
+  c.board.advanceTo(25_000_000n); // one brightness window
+  const brightness = c.board.ledBrightness(led.id);
+  assert.ok(Math.abs(brightness - 0.1485) < 0.005,
+    `brightness ${brightness}, expected ≈0.1485 — the strips must conduct`);
+
+  // Unseat the resistor: the loop breaks, the LED must go dark. Refusing to
+  // keep stale conduction is as important as conducting.
+  c.unseatPart(r1.id);
+  c._syncNetlist();
+  c.board.advanceTo(50_000_000n);
+  assert.ok(c.board.ledBrightness(led.id) < 0.01, 'open circuit → dark');
+
+  // Re-seat on a DIFFERENT column pair plus a drawn wire bridging back:
+  // mergeNets must fuse the wire net with the strip nets.
+  assert.ok(c.seatPart(r1.id, bb.id, computeLeadMap(FOOTPRINTS.resistor, 'b20')));
+  c.addWire(vcc.id, 'vcc', r1.id, 'a');      // wire: vcc → R.a (b20 strip)
+  c.addWire(r1.id, 'b', led.id, 'anode');    // wire: R.b (b24 strip) → LED
+  c.board.advanceTo(80_000_000n);
+  const b2 = c.board.ledBrightness(led.id);
+  assert.ok(Math.abs(b2 - 0.1485) < 0.005, `mixed wires+strips: ${b2}`);
+});
+
+test('two boards are independent occupancy worlds', () => {
+  resetIds();
+  const c = new Circuit(5.0);
+  const bbA = c.addPart('breadboard', {}, 300, 200);
+  const bbB = c.addPart('breadboard', {}, 300, 600);
+  const r1 = c.addPart('resistor', { ohms: 1000 }, 0, 0);
+  const r2 = c.addPart('resistor', { ohms: 220 }, 0, 0);
+  // Same holes, different boards: both must seat.
+  assert.ok(c.seatPart(r1.id, bbA.id, computeLeadMap(FOOTPRINTS.resistor, 'a1')));
+  assert.ok(c.seatPart(r2.id, bbB.id, computeLeadMap(FOOTPRINTS.resistor, 'a1')));
+  // And the same hole on the SAME board must refuse.
+  const r3 = c.addPart('resistor', { ohms: 470 }, 0, 0);
+  assert.equal(c.seatPart(r3.id, bbA.id, computeLeadMap(FOOTPRINTS.resistor, 'a1')), false);
+  // Dragging r1 across to board B's free columns is just a re-seat.
+  assert.ok(c.seatPart(r1.id, bbB.id, computeLeadMap(FOOTPRINTS.resistor, 'f10')));
+  assert.equal(r1.seat.boardId, bbB.id);
+  // Its old holes on board A are free again.
+  assert.ok(c.seatPart(r3.id, bbA.id, computeLeadMap(FOOTPRINTS.resistor, 'a1')));
+});
+
+test('removing a board frees its parts, which stay as free parts', () => {
+  resetIds();
+  const c = new Circuit(5.0);
+  const bb = c.addPart('breadboard', {}, 300, 200);
+  const r1 = c.addPart('resistor', { ohms: 1000 }, 0, 0);
+  c.seatPart(r1.id, bb.id, computeLeadMap(FOOTPRINTS.resistor, 'a1'));
+  c.removePart(bb.id);
+  const part = c.parts.find(p => p.id === r1.id);
+  assert.ok(part, 'the resistor survives the board');
+  assert.equal(part.seat, undefined, 'but is no longer seated');
+  assert.equal(c.breadboards.size, 0);
+});

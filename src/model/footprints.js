@@ -21,6 +21,16 @@ const BOTTOM_ROWS = ['f', 'g', 'h', 'i', 'j'];
 
 /** @type {Record<string, Footprint>} */
 export const FOOTPRINTS = {
+  // Single-lead power taps: one leg into a strip (or rail) is how a real
+  // supply wire lands on a board.
+  vcc: {
+    refTerminal: 'vcc',
+    leads: { vcc: { dRow: 0, dCol: 0 } },
+  },
+  gnd: {
+    refTerminal: 'gnd',
+    leads: { gnd: { dRow: 0, dCol: 0 } },
+  },
   resistor: {
     refTerminal: 'a',
     leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 4 } },
