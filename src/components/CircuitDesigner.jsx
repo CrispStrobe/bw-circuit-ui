@@ -445,6 +445,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
           circuit={circuit}
           warnings={warnings}
           annotations={annotations}
+          onUpdateParams={updateParams}
         />
 
         {/* Engine warnings — teaching feedback */}

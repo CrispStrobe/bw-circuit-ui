@@ -17,6 +17,7 @@ import { routeWire, partBBoxes } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
 import { PartTooltip } from './PartTooltip.jsx';
 import { ContextMenu } from './ContextMenu.jsx';
+import { InlineEditor } from './InlineEditor.jsx';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
@@ -381,7 +382,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -403,6 +404,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
       },
       onMouseEnter: (e) => onHoverPart(id, e.clientX, e.clientY),
       onMouseLeave: () => onHoverPart(null, 0, 0),
+      onDoubleClick: (e) => { e.stopPropagation(); if (onDoubleClick) onDoubleClick(id, e.clientX, e.clientY); },
     });
 
     switch (kind) {
@@ -592,7 +594,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onDropPart, warnings, annotations,
+  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, warnings, annotations,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -603,7 +605,8 @@ export function BoardCanvas({
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
   const [snapTarget, setSnapTarget] = useState(null);
   const [contextMenu, setContextMenu] = useState(null); // { x, y, type }
-  const [rubberBand, setRubberBand] = useState(null); // { startX, startY, endX, endY }
+  const [rubberBand, setRubberBand] = useState(null);
+  const [inlineEdit, setInlineEdit] = useState(null); // { partId, x, y }
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
@@ -1162,8 +1165,20 @@ export function BoardCanvas({
               if (partId) setHoverPos({ x: cx, y: cy });
             }}
             onPartBodyClick={handlePartBodyClick}
+            onDoubleClick={(partId, cx, cy) => setInlineEdit({ partId, x: cx, y: cy })}
           />
         </div>
+
+        {/* Inline property editor (double-click) */}
+        {inlineEdit && onUpdateParams && (
+          <InlineEditor
+            part={parts.find(p => p.id === inlineEdit.partId)}
+            x={inlineEdit.x}
+            y={inlineEdit.y}
+            onUpdateParams={onUpdateParams}
+            onClose={() => setInlineEdit(null)}
+          />
+        )}
 
         {/* Part tooltip */}
         {hoveredPart && (
