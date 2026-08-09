@@ -267,6 +267,48 @@ describe('DRC: no false positives', () => {
   });
 });
 
+// ── Rule 7: I2C pull-ups ────────────────────────────────────────
+
+describe('DRC: missing-pullup', () => {
+  it('warns: PCF8574 without pull-ups on SDA/SCL', () => {
+    const c = setup();
+    c.addPart('vcc', {}, 0, 0);
+    c.addPart('gnd', {}, 0, 0);
+    const mcu = c.addPart('mcu', { pins: ['P3.4', 'P3.5'] }, 0, 0);
+    const pcf = c.addPart('pcf8574', {}, 0, 0);
+
+    c.addWire(mcu.id, 'P3.4', pcf.id, 'sda');
+    c.addWire(mcu.id, 'P3.5', pcf.id, 'scl');
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'missing-pullup');
+    assert.ok(hits.length >= 2, 'should warn about both SDA and SCL');
+    assert.ok(hits[0].explanation.includes('pull-up'));
+    assert.ok(hits[0].explanation.includes('4.7'));
+  });
+
+  it('no warning: I2C LCD with pull-ups', () => {
+    const c = setup();
+    const vcc = c.addPart('vcc', {}, 0, 0);
+    c.addPart('gnd', {}, 0, 0);
+    const mcu = c.addPart('mcu', { pins: ['P3.4', 'P3.5'] }, 0, 0);
+    const lcd = c.addPart('char_lcd_i2c', {}, 0, 0);
+    const rSda = c.addPart('resistor', { ohms: 4700 }, 0, 0);
+    const rScl = c.addPart('resistor', { ohms: 4700 }, 0, 0);
+
+    c.addWire(mcu.id, 'P3.4', lcd.id, 'sda');
+    c.addWire(mcu.id, 'P3.5', lcd.id, 'scl');
+    c.addWire(rSda.id, 'a', lcd.id, 'sda');
+    c.addWire(rSda.id, 'b', vcc.id, 'vcc');
+    c.addWire(rScl.id, 'a', lcd.id, 'scl');
+    c.addWire(rScl.id, 'b', vcc.id, 'vcc');
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'missing-pullup');
+    assert.equal(hits.length, 0, 'I2C with pull-ups should not trigger');
+  });
+});
+
 // ── Rule 6: Polarity ────────────────────────────────────────────
 
 describe('DRC: polarity', () => {

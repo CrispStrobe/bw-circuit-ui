@@ -104,6 +104,30 @@ export function getPartBBox(p) {
     case 'dc_motor': case 'hobby_gearmotor': return { x: p.x - 22, y: p.y - 22, w: 44, h: 44 };
     case 'rgb_led': return { x: p.x - 20, y: p.y - 25, w: 40, h: 55 };
     case 'breadboard': return { x: p.x - 460, y: p.y - 120, w: 920, h: 240 };
+    case 'photodiode': return { x: p.x - 15, y: p.y - 20, w: 30, h: 40 };
+    case 'solar_cell': return { x: p.x - 25, y: p.y - 20, w: 50, h: 40 };
+    case 'light_bulb': return { x: p.x - 15, y: p.y - 20, w: 30, h: 40 };
+    case 'vibration_motor': return { x: p.x - 15, y: p.y - 15, w: 30, h: 30 };
+    case 'gearmotor': return { x: p.x - 25, y: p.y - 20, w: 50, h: 40 };
+    case 'motor_encoder': return { x: p.x - 25, y: p.y - 20, w: 50, h: 40 };
+    case 'tilt_sensor': return { x: p.x - 12, y: p.y - 15, w: 24, h: 30 };
+    case 'slide_switch': return { x: p.x - 20, y: p.y - 10, w: 40, h: 20 };
+    case 'tip120': return { x: p.x - 15, y: p.y - 20, w: 30, h: 40 };
+    case 'soil_moisture': case 'pir_sensor': return { x: p.x - 18, y: p.y - 18, w: 36, h: 36 };
+    case 'tmp36': return { x: p.x - 12, y: p.y - 18, w: 24, h: 36 };
+    case 'gas_sensor': return { x: p.x - 20, y: p.y - 20, w: 40, h: 40 };
+    case 'ultrasonic': return { x: p.x - 22, y: p.y - 15, w: 44, h: 30 };
+    case 'ir_remote': return { x: p.x - 20, y: p.y - 12, w: 40, h: 24 };
+    case 'clock_display': return { x: p.x - 25, y: p.y - 12, w: 50, h: 24 };
+    case 'neopixel': return { x: p.x - 12, y: p.y - 12, w: 24, h: 24 };
+    case 'l293d': return { x: p.x - 30, y: p.y - 22, w: 60, h: 44 };
+    case 'relay_dpdt': return { x: p.x - 40, y: p.y - 25, w: 80, h: 50 };
+    case 'pcf8574': return { x: p.x - 30, y: p.y - 22, w: 60, h: 44 };
+    case 'char_lcd_i2c': return { x: p.x - 60, y: p.y - 25, w: 120, h: 55 };
+    case 'keypad': return { x: p.x - 30, y: p.y - 35, w: 60, h: 70 };
+    case 'dip_switch': return { x: p.x - 15, y: p.y - 10, w: 30, h: 20 };
+    case 'header': return { x: p.x - 30, y: p.y - 8, w: 60, h: 16 };
+    case 'usb_a': return { x: p.x - 18, y: p.y - 12, w: 36, h: 24 };
     default: return { x: p.x - 15, y: p.y - 15, w: 30, h: 30 };
   }
 }

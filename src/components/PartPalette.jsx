@@ -34,6 +34,10 @@ const CATEGORIES = [
       { kind: 'diode', label: 'Diode', params: { vf: 0.7 }, color: '#95a5a6' },
       { kind: 'zener', label: 'Zener Diode', params: { vf: 0.7, vz: 5.1 }, color: '#e67e22', tooltip: 'Voltage regulator diode' },
       { kind: 'switch', label: 'Switch', params: {}, color: '#bdc3c7' },
+      { kind: 'slide_switch', label: 'Slide Switch', params: {}, color: '#bdc3c7', tooltip: 'SPDT' },
+      { kind: 'photodiode', label: 'Photodiode', params: { vf: 0.7 }, color: '#f39c12' },
+      { kind: 'solar_cell', label: 'Solar Cell', params: {}, color: '#f1c40f' },
+      { kind: 'light_bulb', label: 'Light Bulb', params: {}, color: '#f39c12', tooltip: 'Resistive' },
     ],
   },
   {
@@ -41,6 +45,7 @@ const CATEGORIES = [
     parts: [
       { kind: 'led', label: 'LED', params: { vf: 2.0, color: 'red' }, color: '#2ecc71', hasColorPicker: true },
       { kind: 'rgb_led', label: 'RGB LED', params: { vf_r: 2.0, vf_g: 2.2, vf_b: 3.0 }, color: '#e74c3c', tooltip: 'Common cathode' },
+      { kind: 'neopixel', label: 'NeoPixel', params: {}, color: '#2ecc71', tooltip: 'WS2812B addressable LED' },
       { kind: 'buzzer', label: 'Buzzer', params: {}, color: '#1abc9c' },
     ],
   },
@@ -51,6 +56,7 @@ const CATEGORIES = [
       { kind: 'pnp', label: 'PNP', params: { beta: 100, vbe: 0.7 }, color: '#8e44ad', tooltip: '2N2907 type' },
       { kind: 'nmos', label: 'N-MOSFET', params: { vth: 2.0 }, color: '#27ae60' },
       { kind: 'pmos', label: 'P-MOSFET', params: { vth: 2.0 }, color: '#27ae60' },
+      { kind: 'tip120', label: 'TIP120', params: { beta: 1000 }, color: '#8e44ad', tooltip: 'Darlington — high beta, 2× Vbe' },
     ],
   },
   {
@@ -58,7 +64,25 @@ const CATEGORIES = [
     parts: [
       { kind: 'potentiometer', label: 'Pot 10kΩ', params: { ohms: 10000 }, color: '#9b59b6' },
       { kind: 'button', label: 'Button', params: {}, color: '#f39c12' },
+      { kind: 'dip_switch', label: 'DIP Switch', params: { switches: 4 }, color: '#bdc3c7', tooltip: '4-position SPST' },
+      { kind: 'keypad', label: '4×4 Keypad', params: {}, color: '#7f8c8d' },
+      { kind: 'ir_remote', label: 'IR Remote', params: {}, color: '#c0392b', tooltip: 'Transmitter' },
       { kind: 'mcu', label: 'MCU (STC12)', params: { pins: ['P1.0', 'P1.3', 'P1.5', 'P3.2'] }, color: '#7f8c8d' },
+    ],
+  },
+  {
+    name: 'Power Control',
+    parts: [
+      { kind: 'relay', label: 'Relay SPDT', params: {}, color: '#e67e22' },
+      { kind: 'relay_dpdt', label: 'Relay DPDT', params: {}, color: '#e67e22' },
+      { kind: 'l293d', label: 'L293D', params: {}, color: '#e74c3c', tooltip: 'H-bridge motor driver — built-in flyback' },
+    ],
+  },
+  {
+    name: 'Connectors',
+    parts: [
+      { kind: 'header', label: '8-Pin Header', params: { pins: 8 }, color: '#7f8c8d' },
+      { kind: 'usb_a', label: 'USB-A', params: {}, color: '#bdc3c7', tooltip: 'Connector — drawable' },
     ],
   },
   {
@@ -66,13 +90,31 @@ const CATEGORIES = [
     parts: [
       { kind: 'ldr', label: 'LDR', params: { rDark: 200000, rLight: 500 }, color: '#e67e22', tooltip: 'Light-dependent resistor' },
       { kind: 'ntc', label: 'NTC Thermistor', params: { rCold: 10000, rHot: 1000 }, color: '#16a085', tooltip: 'Temperature sensor' },
+      { kind: 'tmp36', label: 'TMP36', params: {}, color: '#16a085', tooltip: 'Analog temp — 10 mV/°C' },
+      { kind: 'pir_sensor', label: 'PIR Sensor', params: {}, color: '#27ae60', tooltip: 'Motion detector' },
+      { kind: 'ultrasonic', label: 'Ultrasonic', params: {}, color: '#3498db', tooltip: 'HC-SR04 distance sensor' },
+      { kind: 'soil_moisture', label: 'Soil Moisture', params: {}, color: '#8B4513' },
+      { kind: 'gas_sensor', label: 'Gas Sensor', params: {}, color: '#7f8c8d', tooltip: 'MQ series' },
+      { kind: 'tilt_sensor', label: 'Tilt Sensor', params: {}, color: '#95a5a6' },
+    ],
+  },
+  {
+    name: 'Motors',
+    parts: [
+      { kind: 'dc_motor', label: 'DC Motor', params: {}, color: '#3498db' },
+      { kind: 'gearmotor', label: 'Gearmotor', params: {}, color: '#3498db' },
+      { kind: 'motor_encoder', label: 'Motor + Encoder', params: {}, color: '#3498db', tooltip: 'Quadrature output' },
+      { kind: 'servo', label: 'Micro Servo', params: {}, color: '#f39c12' },
+      { kind: 'vibration_motor', label: 'Vibration Motor', params: {}, color: '#e67e22' },
     ],
   },
   {
     name: 'Display',
     parts: [
       { kind: 'seven_segment', label: '7-Segment', params: {}, color: '#e74c3c', tooltip: 'Digit display' },
-      { kind: 'char_lcd', label: 'LCD 16×2', params: {}, color: '#2980b9', tooltip: 'drawable — HD44780' },
+      { kind: 'char_lcd', label: 'LCD 16×2', params: {}, color: '#2980b9', tooltip: 'HD44780 parallel' },
+      { kind: 'char_lcd_i2c', label: 'LCD I²C', params: {}, color: '#2980b9', tooltip: 'PCF8574 backpack' },
+      { kind: 'clock_display', label: 'Clock Display', params: {}, color: '#e74c3c', tooltip: 'TM1637 4-digit' },
       { kind: 'led_matrix', label: 'LED Matrix', params: {}, color: '#27ae60', tooltip: 'drawable — 8×8' },
       { kind: 'led_cube', label: 'LED Cube 4³', params: {}, color: '#2ecc71' },
     ],
@@ -96,6 +138,7 @@ const CATEGORIES = [
       { kind: 'shift_register', label: '74HC595', params: {}, color: '#8e44ad', tooltip: 'Shift register — 8 outputs' },
       { kind: 'ir_receiver', label: 'IR Receiver', params: {}, color: '#c0392b', tooltip: 'drawable — IrDA' },
       { kind: 'temp_sensor', label: 'Temp Sensor', params: {}, color: '#16a085', tooltip: 'drawable — DS18B20' },
+      { kind: 'pcf8574', label: 'PCF8574', params: {}, color: '#8e44ad', tooltip: 'I²C 8-bit I/O expander' },
       { kind: 'eeprom', label: 'EEPROM', params: {}, color: '#2c3e50', tooltip: 'drawable — I²C' },
     ],
   },

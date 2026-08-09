@@ -125,6 +125,47 @@ export const FOOTPRINTS = {
   rgb_led: { refTerminal: 'r_anode', leads: { r_anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 1 }, g_anode: { dRow: 0, dCol: 2 }, b_anode: { dRow: 0, dCol: 3 } } },
   zener: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 2 } } },
   inductor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
+  // New tier-1 parts
+  photodiode: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 1 } } },
+  solar_cell: { refTerminal: 'pos', leads: { pos: { dRow: 0, dCol: 0 }, neg: { dRow: 0, dCol: 3 } } },
+  light_bulb: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  vibration_motor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
+  gearmotor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  motor_encoder: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 }, enc_a: { dRow: 0, dCol: 3 }, enc_b: { dRow: 0, dCol: 4 } } },
+  tilt_sensor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
+  slide_switch: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, common: { dRow: 0, dCol: 1 }, b: { dRow: 0, dCol: 2 } } },
+  tip120: { refTerminal: 'emitter', leads: { emitter: { dRow: 0, dCol: 0 }, base: { dRow: 0, dCol: 1 }, collector: { dRow: 0, dCol: 2 } } },
+  // 3-pin sensors (TO-92 or module)
+  soil_moisture: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, sig: { dRow: 0, dCol: 2 } } },
+  pir_sensor: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, out: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 } } },
+  tmp36: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, vout: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 } } },
+  ir_remote: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, signal: { dRow: 0, dCol: 2 } } },
+  clock_display: { refTerminal: 'clk', leads: { clk: { dRow: 0, dCol: 0 }, dio: { dRow: 0, dCol: 1 }, vcc: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
+  neopixel: { refTerminal: 'din', leads: { din: { dRow: 0, dCol: 0 }, vcc: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 }, dout: { dRow: 0, dCol: 3 } } },
+  char_lcd_i2c: { refTerminal: 'gnd', leads: { gnd: { dRow: 0, dCol: 0 }, vcc: { dRow: 0, dCol: 1 }, sda: { dRow: 0, dCol: 2 }, scl: { dRow: 0, dCol: 3 } } },
+  // 4-pin sensors/modules
+  ultrasonic: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, trig: { dRow: 0, dCol: 1 }, echo: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
+  gas_sensor: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, dout: { dRow: 0, dCol: 2 }, aout: { dRow: 0, dCol: 3 } } },
+  // DIP ICs (straddle gutter)
+  l293d: {
+    refTerminal: 'en1', straddlesGutter: true,
+    leads: { en1: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out1: { dRow: 0, dCol: 2 }, gnd1: { dRow: 0, dCol: 3 }, gnd2: { dRow: 0, dCol: 4 }, out2: { dRow: 0, dCol: 5 }, in2: { dRow: 0, dCol: 6 }, en2: { dRow: 0, dCol: 7 },
+      vs: { dRow: 5, dCol: 7 }, vcc: { dRow: 5, dCol: 0 } },
+  },
+  relay_dpdt: { refTerminal: 'coil_a', leads: { coil_a: { dRow: 0, dCol: 0 }, coil_b: { dRow: 0, dCol: 1 }, no1: { dRow: 0, dCol: 3 }, com1: { dRow: 0, dCol: 4 }, nc1: { dRow: 0, dCol: 5 }, no2: { dRow: 0, dCol: 7 }, com2: { dRow: 0, dCol: 8 }, nc2: { dRow: 0, dCol: 9 } } },
+  pcf8574: {
+    refTerminal: 'p0', straddlesGutter: true,
+    leads: { p0: { dRow: 0, dCol: 0 }, p1: { dRow: 0, dCol: 1 }, p2: { dRow: 0, dCol: 2 }, p3: { dRow: 0, dCol: 3 }, gnd: { dRow: 0, dCol: 4 }, vcc: { dRow: 0, dCol: 5 }, sda: { dRow: 0, dCol: 6 }, scl: { dRow: 0, dCol: 7 },
+      p4: { dRow: 5, dCol: 7 }, p5: { dRow: 5, dCol: 6 }, p6: { dRow: 5, dCol: 5 }, p7: { dRow: 5, dCol: 4 } },
+  },
+  header: { refTerminal: 'p1', leads: { p1: { dRow: 0, dCol: 0 }, p2: { dRow: 0, dCol: 1 }, p3: { dRow: 0, dCol: 2 }, p4: { dRow: 0, dCol: 3 }, p5: { dRow: 0, dCol: 4 }, p6: { dRow: 0, dCol: 5 }, p7: { dRow: 0, dCol: 6 }, p8: { dRow: 0, dCol: 7 } } },
+  usb_a: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, d_minus: { dRow: 0, dCol: 1 }, d_plus: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
+  keypad: {
+    refTerminal: 'r1', straddlesGutter: true,
+    leads: { r1: { dRow: 0, dCol: 0 }, r2: { dRow: 0, dCol: 1 }, r3: { dRow: 0, dCol: 2 }, r4: { dRow: 0, dCol: 3 },
+      c1: { dRow: 5, dCol: 0 }, c2: { dRow: 5, dCol: 1 }, c3: { dRow: 5, dCol: 2 }, c4: { dRow: 5, dCol: 3 } },
+  },
+  dip_switch: { refTerminal: 's1_a', leads: { s1_a: { dRow: 0, dCol: 0 }, s1_b: { dRow: 0, dCol: 1 } } },
 };
 
 /**

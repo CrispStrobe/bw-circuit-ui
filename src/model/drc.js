@@ -190,7 +190,8 @@ export function runDrc(circuit, board) {
   }
 
   // ── Rule 3: Missing flyback diode ─────────────────────────────────
-  const INDUCTIVE_KINDS = new Set(['relay', 'dc_motor', 'hobby_gearmotor', 'inductor']);
+  // Note: l293d has built-in flyback diodes (the D suffix), so it's excluded
+  const INDUCTIVE_KINDS = new Set(['relay', 'relay_dpdt', 'dc_motor', 'hobby_gearmotor', 'gearmotor', 'vibration_motor', 'inductor']);
   for (const part of parts) {
     if (!INDUCTIVE_KINDS.has(part.kind)) continue;
 
@@ -326,6 +327,33 @@ export function runDrc(circuit, board) {
         });
       }
     } catch { /* voltage not available yet */ }
+  }
+
+  // ── Rule 7: I2C pull-up resistors ──────────────────────────────
+  const I2C_KINDS = new Set(['pcf8574', 'char_lcd_i2c', 'eeprom']);
+  for (const part of parts) {
+    if (!I2C_KINDS.has(part.kind)) continue;
+    for (const line of ['sda', 'scl']) {
+      const net = netOf(part.id, line);
+      if (!net) continue;
+      const members = partsOnNet(net);
+      const hasPullup = members.some(m => {
+        const p = partById(m.part);
+        return p && (p.kind === 'resistor' || p.kind === 'potentiometer');
+      });
+      if (!hasPullup) {
+        warnings.push({
+          severity: 'warning',
+          rule: 'missing-pullup',
+          partId: part.id,
+          explanation: `${part.kind}'s ${line.toUpperCase()} line has no pull-up resistor. ` +
+            `I²C is an open-drain bus — without pull-ups (typically 4.7 kΩ to VCC), ` +
+            `the signal cannot go high and communication will fail.`,
+          fix: `Add a 4.7 kΩ resistor from ${line.toUpperCase()} to VCC.`,
+          fixPart: 'resistor',
+        });
+      }
+    }
   }
 
   return warnings;
