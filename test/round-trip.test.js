@@ -57,6 +57,8 @@ const PIN_EXAMPLES = [
   { name: '03-potentiometer', expectedPins: 2 },
   { name: '04-brightness', expectedPins: 2 },
   { name: '05-scheduler', expectedPins: 2 },
+  { name: '06-dimmer', expectedPins: 2 },
+  { name: '07-buzzer', expectedPins: 2 },
 ];
 
 describe('round-trip: pins.json → inferCircuit → circuitToDeclarations', () => {
