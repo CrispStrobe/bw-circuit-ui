@@ -12,6 +12,7 @@ import { getEngine } from '../engine.js';
 import { History } from './history.js';
 import { mergeNets } from './merge-nets.js';
 import { BreadboardModel } from './breadboard.js';
+import { logicChipTerminals } from './dip-chips.js';
 import { computeLeadMap, rotateFootprint, FOOTPRINTS as BB_FOOTPRINTS_FOR_ROTATE } from './footprints.js';
 
 let _nextId = 1;
@@ -740,6 +741,11 @@ function terminalsForKind(kind, params) {
       ...Array.from({length: 8}, (_, i) => `data_${i}`),
     ];
     case 'mcu': return params?.pins || ['P1.0'];
-    default: return ['a', 'b'];
+    default: {
+      // Check logic chip definitions (74HC family)
+      const chipTerms = logicChipTerminals(kind);
+      if (chipTerms) return chipTerms;
+      return ['a', 'b'];
+    }
   }
 }

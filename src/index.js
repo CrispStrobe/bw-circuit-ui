@@ -31,3 +31,12 @@ export { Circuit } from './model/circuit.js';
 export { inferCircuit, checkWiring } from './model/inference.js';
 export { createMeterState, readMeter } from './model/multimeter.js';
 export { generatePartName, partToDeclaration, circuitToDeclarations } from './model/declarations.js';
+
+// Panels — for host integration (lite's circuit tab)
+export { DrcPanel } from './components/DrcPanel.jsx';
+export { BomPanel } from './components/BomPanel.jsx';
+export { ExamplesBrowser } from './components/ExamplesBrowser.jsx';
+
+// Panel data functions
+export { runDrc } from './model/drc.js';
+export { generateBom, bomToCsv } from './model/bom.js';

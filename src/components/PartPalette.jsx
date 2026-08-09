@@ -78,6 +78,17 @@ const CATEGORIES = [
     ],
   },
   {
+    name: 'Logic',
+    parts: [
+      { kind: '74hc00', label: '74HC00 NAND', params: {}, color: '#9b59b6', tooltip: 'Quad 2-input NAND — DIP-14' },
+      { kind: '74hc02', label: '74HC02 NOR', params: {}, color: '#9b59b6', tooltip: 'Quad 2-input NOR — DIP-14' },
+      { kind: '74hc04', label: '74HC04 NOT', params: {}, color: '#9b59b6', tooltip: 'Hex inverter — DIP-14' },
+      { kind: '74hc08', label: '74HC08 AND', params: {}, color: '#9b59b6', tooltip: 'Quad 2-input AND — DIP-14' },
+      { kind: '74hc32', label: '74HC32 OR', params: {}, color: '#9b59b6', tooltip: 'Quad 2-input OR — DIP-14' },
+      { kind: '74hc86', label: '74HC86 XOR', params: {}, color: '#9b59b6', tooltip: 'Quad 2-input XOR — DIP-14' },
+    ],
+  },
+  {
     name: 'ICs',
     parts: [
       { kind: 'opamp', label: 'Op-Amp', params: { gain: 100000 }, color: '#e67e22', tooltip: 'LM741 type' },
