@@ -676,7 +676,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, onSaveHistory, warnings, annotations, cubeScans, activePartIds,
+  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, warnings, annotations, cubeScans, activePartIds,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -973,6 +973,15 @@ export function BoardCanvas({
       setZoom(fz);
       setPan({ x: minX - 20, y: minY - 20 });
     }
+    // Copy/paste
+    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedParts && selectedParts.size > 0) {
+      e.preventDefault();
+      if (onCopy) onCopy(selectedParts);
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+      e.preventDefault();
+      if (onPaste) onPaste();
+    }
     // Arrow keys nudge all selected parts by grid size
     if (selectedParts && selectedParts.size > 0 && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
       e.preventDefault();
@@ -984,7 +993,7 @@ export function BoardCanvas({
         if (part) onMovePart(id, part.x + dx, part.y + dy);
       }
     }
-  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart]);
+  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onCopy, onPaste]);
 
   return (
     <div

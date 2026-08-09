@@ -300,6 +300,63 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     movePart(partId, snapToGrid(x), snapToGrid(y));
   }, [movePart]);
 
+  // ── Copy/paste ────────────────────────────────────────────────────
+  const clipboardRef = useRef(null);
+
+  const handleCopy = useCallback((partIds) => {
+    if (!partIds || partIds.size === 0) return;
+    const idSet = partIds instanceof Set ? partIds : new Set(partIds);
+    const copiedParts = parts.filter(p => idSet.has(p.id)).map(p => ({ ...p, params: { ...p.params } }));
+    // Wires where both ends are in the copied set
+    const copiedWires = wires.filter(w => idSet.has(w.from.part) && idSet.has(w.to.part))
+      .map(w => ({ ...w, from: { ...w.from }, to: { ...w.to } }));
+    clipboardRef.current = { parts: copiedParts, wires: copiedWires };
+  }, [parts, wires]);
+
+  const handlePaste = useCallback(() => {
+    if (!clipboardRef.current) return;
+    const { parts: srcParts, wires: srcWires } = clipboardRef.current;
+    if (srcParts.length === 0) return;
+
+    const OFFSET = 40;
+    const idMap = new Map(); // old id → new id
+    const newIds = [];
+
+    for (const src of srcParts) {
+      const existingNames = parts.map(p => p.declName).filter(Boolean);
+      let declName;
+      if (src.declName) {
+        const base = src.declName.replace(/\d+$/, '');
+        for (let i = 1; ; i++) {
+          const candidate = base + i;
+          if (!existingNames.includes(candidate) && ![...idMap.values()].some((_, idx) => srcParts[idx]?.declName === candidate)) {
+            declName = candidate;
+            existingNames.push(candidate);
+            break;
+          }
+        }
+      }
+      const p = addPart(src.kind, { ...src.params }, snapToGrid(src.x + OFFSET), snapToGrid(src.y + OFFSET), declName);
+      if (p) {
+        if (src.rotation) p.rotation = src.rotation;
+        idMap.set(src.id, p.id);
+        newIds.push(p.id);
+      }
+    }
+
+    // Re-create internal wires with new IDs
+    for (const w of srcWires) {
+      const fromId = idMap.get(w.from.part);
+      const toId = idMap.get(w.to.part);
+      if (fromId && toId) {
+        addWire(fromId, w.from.terminal, toId, w.to.terminal);
+      }
+    }
+
+    // Select the pasted parts
+    setSelectedParts(new Set(newIds));
+  }, [parts, addPart, addWire, setSelectedParts]);
+
   // Node voltages and warnings from getRenderState (if available)
   const nodeVoltages = {};
   const warnings = [];
@@ -539,6 +596,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           cubeScans={cubeScans}
           onUpdateParams={updateParams}
           onSaveHistory={saveHistory}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
         />
 
         {/* Engine warnings — teaching feedback */}
