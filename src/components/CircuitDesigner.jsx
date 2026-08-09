@@ -38,6 +38,7 @@ import { inferCircuit } from '../model/inference.js';
 import { generatePartName, circuitToDeclarations } from '../model/declarations.js';
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
+import { DebugStatus } from './DebugStatus.jsx';
 
 const MS = 1_000_000n;
 const GRID = 20;
@@ -569,6 +570,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
           fontFamily: 'monospace', fontSize: '10px', textAlign: 'left', padding: 0,
         }}>collapse</button>
+        {debugState && (
+          <DebugStatus
+            debugState={debugState}
+            capabilities={debugState.capabilities || null}
+          />
+        )}
         <ControlPanel
           mode={mode}
           onModeChange={setMode}

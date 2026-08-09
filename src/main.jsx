@@ -27,9 +27,21 @@ function getDebugProps() {
     case 'live':
       return { board: new BoardImpl(5.0) };
     case 'paused':
-      return { board: new BoardImpl(5.0), debugState: { halted: true, skewNs: 0n } };
+      return { board: new BoardImpl(5.0), debugState: {
+        halted: true, skewNs: 0n, haltReason: 'breakpoint', bwMs: 82.3,
+        tasks: [
+          { name: 'bw_task0', state: 3, blockId: 'control_repeat' },
+          { name: 'bw_task1', state: 1, blockId: 'stc12_setpin' },
+        ],
+      }};
     case 'snapshot':
-      return { board: new BoardImpl(5.0), debugState: { halted: true, skewNs: 4_200_000_000n } };
+      return { board: new BoardImpl(5.0), debugState: {
+        halted: true, skewNs: 4_200_000_000n, haltReason: 'user', bwMs: 1250.7,
+        tasks: [
+          { name: 'bw_task0', state: 5, blockId: 'control_wait' },
+        ],
+        capabilities: { step: false, breakpoint: false, skewNs: 'non-zero' },
+      }};
     case 'hardware':
       return { board: new BoardImpl(5.0), simulationOnly: false };
     default:
