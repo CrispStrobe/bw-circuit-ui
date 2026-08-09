@@ -37,6 +37,12 @@ const CATEGORIES = [
       { kind: 'mcu', label: 'MCU (STC12)', params: { pins: ['P1.0', 'P1.3', 'P1.5', 'P3.2'] }, color: '#7f8c8d' },
     ],
   },
+  {
+    name: 'Instruments',
+    parts: [
+      { kind: 'meter', label: 'Multimeter', params: { mode: 'voltage' }, color: '#f1c40f' },
+    ],
+  },
 ];
 
 // Flat list for search

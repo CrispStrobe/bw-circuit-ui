@@ -404,8 +404,8 @@ export class Circuit {
    * then call board.setNetlist(). This is called after every mutation.
    */
   _syncNetlist() {
-    // Parts for the engine (strip layout fields)
-    const engineParts = this.parts.map(p => ({
+    // Parts for the engine (strip layout fields, exclude UI-only parts like meters)
+    const engineParts = this.parts.filter(p => p.kind !== 'meter').map(p => ({
       id: p.id,
       kind: p.kind,
       params: p.params,
@@ -483,6 +483,7 @@ function terminalsForKind(kind, params) {
     case 'button': return ['a', 'b'];
     case 'switch': return ['a', 'b'];
     case 'buzzer': return ['a', 'b'];
+    case 'meter': return ['probe_a', 'probe_b'];
     case 'mcu': return params?.pins || ['P1.0'];
     default: return ['a', 'b'];
   }

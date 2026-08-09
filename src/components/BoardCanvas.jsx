@@ -18,6 +18,7 @@ import { findSnapTarget } from '../model/snap.js';
 import { PartTooltip } from './PartTooltip.jsx';
 import { ContextMenu } from './ContextMenu.jsx';
 import { InlineEditor } from './InlineEditor.jsx';
+import { getMeterReading } from '../model/meter-reading.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
@@ -54,6 +55,7 @@ function terminalOffsetsForPart(part) {
     case 'button': return { a: r(-15, 0), b: r(15, 0) };
     case 'buzzer': return { a: r(-15, 0), b: r(15, 0) };
     case 'capacitor': return { a: r(-15, 0), b: r(15, 0) };
+    case 'meter': return { probe_a: r(-25, 20), probe_b: r(25, 20) };
     case 'seven_segment': return { a: r(-30, 30), b: r(30, 30) }; // pins at bottom
     case 'char_lcd': return { rs: r(-50, 25), e: r(-30, 25), d4: r(-10, 25), d5: r(10, 25), d6: r(30, 25), d7: r(50, 25) };
     case 'ir_receiver': return { out: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
@@ -382,7 +384,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -562,6 +564,35 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
             </div>
           </div>
         );
+      case 'meter': {
+        const mode = params.mode || 'voltage';
+        const mr = meterReadings?.[id] || { value: '---', unit: mode === 'voltage' ? 'V' : mode === 'current' ? 'mA' : 'Ω', note: null };
+        const displayColor = mr.value === '---' ? '#556' : mr.note ? '#f39c12' : '#2ecc71';
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: x - 35, top: y - 25, cursor: 'move' }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            {...dragProps()}>
+            <svg width={70} height={55} viewBox="0 0 70 55">
+              <rect x={2} y={2} width={66} height={38} rx={4}
+                fill="#1a1a0e" stroke="#f1c40f" strokeWidth={1.5} />
+              <rect x={6} y={6} width={58} height={18} rx={2} fill="#0a0a0a" />
+              <text x={35} y={19} textAnchor="middle" fill={displayColor}
+                fontSize={11} fontFamily="monospace" fontWeight="bold">
+                {mr.note || `${mr.value} ${mr.unit}`}
+              </text>
+              <text x={35} y={34} textAnchor="middle" fill="#f1c40f"
+                fontSize={8} fontFamily="monospace">
+                {mode === 'voltage' ? 'V' : mode === 'current' ? 'A' : 'Ω'}
+              </text>
+              <circle cx={20} cy={49} r={3} fill="#e74c3c" stroke="#c0392b" strokeWidth={1} />
+              <text x={20} y={53} textAnchor="middle" fill="#e74c3c" fontSize={5}>A</text>
+              <circle cx={50} cy={49} r={3} fill="#2c3e50" stroke="#7f8c8d" strokeWidth={1} />
+              <text x={50} y={53} textAnchor="middle" fill="#7f8c8d" fontSize={5}>B</text>
+            </svg>
+          </div>
+        );
+      }
       default:
         return null;
     }
@@ -1167,6 +1198,15 @@ export function BoardCanvas({
             parts={parts}
             ledBrightness={ledBrightness}
             buzzerTones={buzzerTones}
+            meterReadings={(() => {
+              const readings = {};
+              for (const p of parts) {
+                if (p.kind === 'meter' && circuit) {
+                  readings[p.id] = getMeterReading(p, wires, circuit);
+                }
+              }
+              return readings;
+            })()}
             onSelectPart={onSelectPart}
             selectedParts={selectedParts}
             onControlChange={onControlChange}
