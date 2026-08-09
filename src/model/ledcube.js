@@ -8,9 +8,9 @@
  *    electrical address, not its spatial position.
  *
  * 2. P0 data polarity: does a set bit (1) mean the LED is ON or OFF?
- *    - Active-high (P0_ACTIVE_HIGH = true): bit=1 → LED on.
+ *    - Active-high (BW_CUBE_ACTIVE_HIGH = true): bit=1 → LED on.
  *      This matches probe.c's convention (blank = 0x00, probe = 1<<bit).
- *    - Active-low  (P0_ACTIVE_HIGH = false): bit=0 → LED on.
+ *    - Active-low  (BW_CUBE_ACTIVE_HIGH = false): bit=0 → LED on.
  *      This matches main.c's convention (clear = 0xFF, set = clear bit).
  *    Both are internally consistent code; only a real cube can settle it.
  *    Flip this one constant to invert the entire cube's rendering.
@@ -22,13 +22,22 @@
 /**
  * P0 data polarity — UNVERIFIED. Only a real cube can settle this.
  *
- * true  = active-high: a set bit (1) lights the LED. (probe.c convention)
- * false = active-low:  a clear bit (0) lights the LED. (main.c convention)
+ * Fleet-wide symbol: BW_CUBE_ACTIVE_HIGH. All four consumers use the
+ * same name and the same sense so they can be aligned in one pass.
  *
- * Changing this one value inverts every voxel in the cube.
- * See README.md §"What is still unknown" and the polarity disagreement.
+ * true  = active-high: a set bit (1) lights the LED.
+ *   Evidence (b77b176): probe.c blank = {0,…}, probe = 1<<bit;
+ *   vendor firmware P0=0 is called "blanking".
+ * false = active-low: a clear bit (0) lights the LED.
+ *   main.c fb_clear = 0xFF, set = clear bit.
+ *
+ * Defaulted active-high on the weight of evidence. If measurement
+ * settles it differently, change this one value — everything follows.
+ *
+ * See: ucsim-stc spec-008 §2, stc/src/20-ledcube/README.md §"What is
+ * still unknown", sb3-creator BW_CUBE_ACTIVE_HIGH.
  */
-export const P0_ACTIVE_HIGH = true;
+export const BW_CUBE_ACTIVE_HIGH = true;
 
 /**
  * The voxel map. null = unknown (not yet measured).
@@ -66,9 +75,9 @@ export function computeCubeVoxels(scanHistory) {
         const activeLine = frame.select ^ 0xFF;
         if (activeLine === (1 << sel)) {
           // This select line is active — check the data bit
-          // P0_ACTIVE_HIGH determines whether a set bit means ON or OFF.
+          // BW_CUBE_ACTIVE_HIGH determines whether a set bit means ON or OFF.
           const bitSet = !!(frame.data & (1 << bit));
-          if (P0_ACTIVE_HIGH ? bitSet : !bitSet) {
+          if (BW_CUBE_ACTIVE_HIGH ? bitSet : !bitSet) {
             litCount++;
           }
         }
@@ -102,8 +111,8 @@ export function testPattern() {
       tNs: BigInt(sel) * 1_235_000n, // 1.235ms per line
       select: 0xFF ^ (1 << sel), // active-low
       // Diagonal pattern: light one voxel per select.
-      // Respects P0_ACTIVE_HIGH: set bit = on (active-high) or clear bit = on (active-low).
-      data: P0_ACTIVE_HIGH ? (1 << sel) : (0xFF ^ (1 << sel)),
+      // Respects BW_CUBE_ACTIVE_HIGH: set bit = on (active-high) or clear bit = on (active-low).
+      data: BW_CUBE_ACTIVE_HIGH ? (1 << sel) : (0xFF ^ (1 << sel)),
     });
   }
   return history;
