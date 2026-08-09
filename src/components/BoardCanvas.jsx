@@ -10,7 +10,8 @@
  * wokwi web components positioned absolutely on top via CSS.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
 import { routeWire, routeWireWithWaypoints, partBBoxes, getPartBBox } from '../model/wire-router.js';
@@ -1072,6 +1073,41 @@ export function BoardCanvas({
     }
   }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onCopy, onPaste, onFlipPart]);
 
+  // ── Touch support ────────────────────────────────────────────────
+  const canvasContainerRef = useRef(null);
+  const touchHandlers = useTouch({
+    onDrag: useCallback((clientX, clientY) => {
+      const container = canvasContainerRef.current;
+      if (!container) return;
+      if (dragging) {
+        handleSvgMouseMove({ clientX, clientY, currentTarget: container });
+      }
+    }, [dragging, handleSvgMouseMove]),
+    onDragEnd: useCallback(() => {
+      if (dragging) handleDragEnd();
+      if (wiringFrom) { setWiringFrom(null); setMousePos(null); }
+    }, [dragging, wiringFrom, handleDragEnd]),
+    onTap: useCallback((clientX, clientY) => {
+      // Tap on empty space deselects
+      onSelectPart(null);
+      onSelectWire(null);
+    }, [onSelectPart, onSelectWire]),
+    onLongPress: useCallback((clientX, clientY) => {
+      if ((selectedParts && selectedParts.size > 0) || selectedWire) {
+        setContextMenu({
+          x: clientX, y: clientY,
+          type: (selectedParts && selectedParts.size === 1) ? 'part' : selectedWire ? 'wire' : 'part',
+        });
+      }
+    }, [selectedParts, selectedWire]),
+    onPinch: useCallback((scale) => {
+      setZoom(z => Math.max(0.3, Math.min(3, z * scale)));
+    }, []),
+    onPan: useCallback((dx, dy) => {
+      setPan(p => ({ x: p.x - dx / zoom, y: p.y - dy / zoom }));
+    }, [zoom]),
+  });
+
   return (
     <div
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
@@ -1145,6 +1181,7 @@ export function BoardCanvas({
 
       {/* Canvas — fills container, minimum 700×500 */}
       <div
+        ref={canvasContainerRef}
         data-canvas
         style={{
           position: 'relative',
@@ -1156,31 +1193,13 @@ export function BoardCanvas({
           borderRadius: '8px',
           border: '1px solid #2c3e50',
           overflow: 'hidden',
+          touchAction: 'none',
         }}
         onMouseMove={handleSvgMouseMove}
         onMouseUp={handleDragEnd}
         onMouseDown={handleMouseDown}
         onWheel={handleWheel}
-        onTouchMove={(e) => {
-          if (e.touches.length === 1 && (dragging || wiringFrom)) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            // Reuse the mouse handler with a synthetic event shape
-            handleSvgMouseMove({
-              clientX: touch.clientX,
-              clientY: touch.clientY,
-              currentTarget: e.currentTarget,
-            });
-          }
-        }}
-        onTouchEnd={(e) => {
-          if (dragging) handleDragEnd();
-          if (wiringFrom && e.changedTouches.length === 1) {
-            // If touch ended not on a terminal, cancel wiring
-            setWiringFrom(null);
-            setMousePos(null);
-          }
-        }}
+        {...touchHandlers}
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
         onDrop={(e) => {
           e.preventDefault();
