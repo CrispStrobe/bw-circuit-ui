@@ -37,6 +37,7 @@ import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
 import { generatePartName, circuitToDeclarations } from '../model/declarations.js';
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
+import { CubeScanAccumulator } from '../model/cube-scan.js';
 
 const MS = 1_000_000n;
 const GRID = 20;
@@ -106,6 +107,26 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [rightOpen, setRightOpen] = useState(true);
 
   const [annotations, setAnnotations] = useState([]);
+
+  // LED cube scan accumulator
+  const cubeScanRef = useRef(new CubeScanAccumulator());
+  const [cubeScans, setCubeScans] = useState({});
+
+  // Sample pin states for cube when renderState updates
+  useEffect(() => {
+    if (!renderState || !renderState.pins) return;
+    const hasCube = parts.some(p => p.kind === 'ledcube');
+    if (!hasCube) return;
+
+    cubeScanRef.current.sample(renderState.timeNs || 0n, renderState.pins);
+    const history = cubeScanRef.current.getHistory();
+    // Build cubeScans map for all cube parts
+    const scans = {};
+    for (const p of parts) {
+      if (p.kind === 'ledcube') scans[p.id] = history;
+    }
+    setCubeScans(scans);
+  }, [renderState, parts]);
 
   // Multimeter
   const [placingProbe, setPlacingProbe] = useState(null);
@@ -477,6 +498,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           circuit={circuit}
           warnings={warnings}
           annotations={annotations}
+          cubeScans={cubeScans}
           onUpdateParams={updateParams}
         />
 

@@ -391,7 +391,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -573,7 +573,9 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, onSelect
         );
       case 'ledcube': {
         // 4x4x4 bi-colour LED cube — voxel map unknown until measured
-        const voxels = computeCubeVoxels(testPattern());
+        // Use scan history from cubeScans prop if available, otherwise test pattern
+        const scanData = cubeScans?.[id] || testPattern();
+        const voxels = computeCubeVoxels(scanData);
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 50, top: y - 50, cursor: 'move' }}
@@ -674,7 +676,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, warnings, annotations,
+  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, warnings, annotations, cubeScans,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -1256,6 +1258,7 @@ export function BoardCanvas({
               }
               return readings;
             })()}
+            cubeScans={cubeScans}
             onSelectPart={onSelectPart}
             selectedParts={selectedParts}
             onControlChange={onControlChange}
