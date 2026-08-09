@@ -11,6 +11,9 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
+import { InteractionMachine } from '../interaction/machine.js';
+import { createHitTest } from '../interaction/hittest.js';
+import { classifyWheel } from '../interaction/transform.js';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
@@ -126,7 +129,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
       case 'vcc':
         return (
           <g key={id} transform={xform}
-            onClick={handleClick}
+            pointerEvents="none"
             style={{ cursor: 'pointer' }}>
             {/* Larger hit area */}
             <rect x={-20} y={-8} width={40} height={32} fill="transparent" />
@@ -139,7 +142,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
       case 'gnd':
         return (
           <g key={id} transform={xform}
-            onClick={handleClick}
+            pointerEvents="none"
             style={{ cursor: 'pointer' }}>
             <rect x={-20} y={-14} width={40} height={42} fill="transparent" />
             <line x1={0} y1={-10} x2={0} y2={0} stroke={selStroke || '#3498db'} strokeWidth={2} />
@@ -157,7 +160,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
         const chipY = -chipH / 2;
         return (
           <g key={id} transform={xform}
-            onClick={handleClick}
+            pointerEvents="none"
             style={{ cursor: 'pointer' }}>
             <rect x={-50} y={chipY} width={120} height={chipH} rx={6}
               fill="#2c3e50" stroke={selStroke || '#7f8c8d'} strokeWidth={isSelected ? 3 : 2} />
@@ -226,12 +229,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
           <circle
             cx={pos.x} cy={pos.y} r={Math.max(r, 16)}
             fill="transparent"
-            style={{ cursor: 'crosshair' }}
-            onMouseDown={(e) => onTerminalDown(part.id, term, e)}
-            onMouseUp={() => onTerminalUp(part.id, term)}
-            onClick={(e) => { e.stopPropagation(); onTerminalClick(part.id, term); }}
-            onTouchStart={(e) => { e.stopPropagation(); onTerminalDown(part.id, term); }}
-            onTouchEnd={(e) => { e.stopPropagation(); onTerminalUp(part.id, term); }}
+            style={{ pointerEvents: 'none' }}
           />
           {/* Visible dot */}
           <circle
@@ -307,7 +305,7 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
     const wireWidth = isSelected ? 3 : isHovered ? 2.5 : 2;
 
     return (
-      <g key={wire.id}>
+      <g key={wire.id} data-wire={wire.id}>
         {/* Invisible wider hit area */}
         <path
           d={pathD}
@@ -315,7 +313,7 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
           strokeWidth={10}
           fill="none"
           style={{ cursor: 'pointer' }}
-          onClick={(e) => { e.stopPropagation(); onSelectWire(wire.id); }}
+          pointerEvents="none"
           onDoubleClick={(e) => {
             // Add a waypoint at the click position
             e.stopPropagation();
@@ -512,7 +510,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
       case 'potentiometer':
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 30, top: y - 30, cursor: 'move', pointerEvents: 'auto' }}
+            style={{ ...baseStyle, left: x - 30, top: y - 30, cursor: 'move', pointerEvents: 'none' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}>
             <WokwiPotentiometer
               min={0} max={1} step={0.01} value={0.5}
@@ -547,7 +545,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
       case 'button':
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 18, top: y - 18, cursor: 'move', pointerEvents: 'auto' }}
+            style={{ ...baseStyle, left: x - 18, top: y - 18, cursor: 'move', pointerEvents: 'none' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             onMouseDown={(e) => { e.stopPropagation(); onButtonDown(id); }}
             onMouseUp={() => onButtonUp(id)}
@@ -790,6 +788,204 @@ export function BoardCanvas({
       y: sy / zoom + pan.y,
     };
   }, [zoom, pan]);
+
+  // ── Interaction v2: one state machine, container-level pointer events ──
+  // The old plumbing attached handlers to child DOM nodes and the wokwi
+  // layer swallowed them: a click on the LED deselected, a 200 px drag moved
+  // nothing. Now the container captures every pointer, hits are pure math on
+  // model data (src/interaction/), and the visual layers are inert.
+  const partsRef = useRef(parts); partsRef.current = parts;
+  const wiresRef = useRef(wires); wiresRef.current = wires;
+  const selectedPartsRef = useRef(null); selectedPartsRef.current = selectedParts || new Set();
+  const zoomRef = useRef(zoom); zoomRef.current = zoom;
+  const panRef = useRef(pan); panRef.current = pan;
+  const apiRef = useRef({});
+  apiRef.current = { onMovePart, onAddWire, onSelectPart, onSelectWire, onSaveHistory,
+    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire };
+  const placingProbeRef = useRef(false); placingProbeRef.current = !!placingProbe;
+  const pressedButtonRef = useRef(null);
+  const draggingWaypointRef = useRef(null); draggingWaypointRef.current = draggingWaypoint;
+  const machineRef = useRef(null);
+  if (!machineRef.current) {
+    const hit = createHitTest(
+      () => partsRef.current,
+      () => wiresRef.current.map(w => {
+        const fp = partsRef.current.find(pp => pp.id === w.from.part);
+        const tp = partsRef.current.find(pp => pp.id === w.to.part);
+        if (!fp || !tp) return { id: w.id, points: [] };
+        return { id: w.id, points: [terminalPos(fp, w.from.terminal), ...(w.waypoints || []), terminalPos(tp, w.to.terminal)] };
+      }),
+      (part) => part.terminals.map(t => ({ terminal: t, ...terminalPos(part, t) }))
+    );
+    const cb = {
+      select: (ids, mode) => {
+        const api = apiRef.current;
+        if (mode === 'replace') {
+          api.onSelectPart(null);
+          for (const id of ids) api.onSelectPart(id, true);
+        } else if (mode === 'add') {
+          for (const id of ids) if (!selectedPartsRef.current.has(id)) api.onSelectPart(id, true);
+        } else {
+          for (const id of ids) api.onSelectPart(id, true);
+        }
+      },
+      selectWire: (id) => { apiRef.current.onSelectWire(id); },
+      clearSelection: () => { apiRef.current.onSelectPart(null); apiRef.current.onSelectWire(null); },
+      moveSelection: (dx, dy) => {
+        const api = apiRef.current;
+        const ids = [...selectedPartsRef.current];
+        for (const id of ids) {
+          const pp = partsRef.current.find(q => q.id === id);
+          if (pp) api.onMovePart(id, pp.x + dx, pp.y + dy);
+        }
+        if (ids.length === 1) {
+          const pp = partsRef.current.find(q => q.id === ids[0]);
+          if (pp) {
+            const snap = findSnapTarget(pp, partsRef.current, wiresRef.current);
+            setSnapTarget(snap && snap.autoWire ? snap : null);
+          }
+        }
+      },
+      endMove: () => {
+        const api = apiRef.current;
+        // Live drag is free-moving; the DROP snaps to the 20 px grid.
+        for (const id of selectedPartsRef.current) {
+          const pp = partsRef.current.find(q => q.id === id);
+          if (pp) api.onMovePart(id, Math.round(pp.x / 20) * 20, Math.round(pp.y / 20) * 20);
+        }
+        setSnapTarget(st => {
+          if (st && st.autoWire) {
+            api.onMovePart(st.autoWire.fromPart, st.snapX, st.snapY);
+            api.onAddWire(st.autoWire.fromPart, st.autoWire.fromTerm, st.autoWire.toPart, st.autoWire.toTerm);
+          }
+          return null;
+        });
+        if (api.onSaveHistory) api.onSaveHistory();
+      },
+      createWire: (from, to) => { apiRef.current.onAddWire(from.partId, from.terminal, to.partId, to.terminal); },
+      wirePreview: (from, toPos) => { setWiringFrom({ part: from.partId, terminal: from.terminal }); setMousePos(toPos); },
+      clearWirePreview: () => { setWiringFrom(null); setMousePos(null); },
+      marqueeRect: (r) => setRubberBand(r ? { startX: r.x1, startY: r.y1, endX: r.x2, endY: r.y2 } : null),
+    };
+    machineRef.current = new InteractionMachine(hit, cb, () => selectedPartsRef.current, (px) => px / zoomRef.current);
+  }
+
+  // The SVG viewBox must span the container's REAL size: with a fixed
+  // 700×500 viewBox and preserveAspectRatio, the SVG letterboxed whenever the
+  // container had any other aspect — every dot, wire and grid line drew
+  // offset from the wokwi parts, and hit positions missed by the same margin.
+  const [containerSize, setContainerSize] = useState({ w: CANVAS_W, h: CANVAS_H });
+  React.useEffect(() => {
+    const el = canvasContainerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      setContainerSize({ w: el.clientWidth || CANVAS_W, h: el.clientHeight || CANVAS_H });
+    });
+    ro.observe(el);
+    setContainerSize({ w: el.clientWidth || CANVAS_W, h: el.clientHeight || CANVAS_H });
+    return () => ro.disconnect();
+  }, []);
+
+  const eventToWorld = useCallback((e) => {
+    const r = canvasContainerRef.current.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / zoomRef.current + panRef.current.x,
+             y: (e.clientY - r.top) / zoomRef.current + panRef.current.y };
+  }, []);
+
+  const handlePointerDown = useCallback((e) => {
+    if (e.button === 1) { e.preventDefault(); setPanning(true); panStart.current = { x: e.clientX, y: e.clientY }; return; }
+    if (e.button !== 0) return;
+    if (draggingWaypointRef.current) return;
+    const { x, y } = eventToWorld(e);
+    const m = machineRef.current;
+    if (placingProbeRef.current && apiRef.current.onTerminalClickForProbe) {
+      const t = m.hit.terminalAt(x, y, 14 / zoomRef.current);
+      if (t) apiRef.current.onTerminalClickForProbe(t.partId, t.terminal);
+      return;
+    }
+    const pid = m.hit.partAt(x, y);
+    const pressedPart = pid && partsRef.current.find(pp => pp.id === pid);
+    if (pressedPart && pressedPart.kind === 'button' && apiRef.current.onButtonDown) {
+      pressedButtonRef.current = pid;
+      apiRef.current.onButtonDown(pid);
+    }
+    try { canvasContainerRef.current.setPointerCapture(e.pointerId); } catch { /* non-browser env */ }
+    m.down(x, y, { shiftKey: e.shiftKey });
+  }, [eventToWorld]);
+
+  const handlePointerMove = useCallback((e) => {
+    if (panning && panStart.current) {
+      const dx = (e.clientX - panStart.current.x) / zoomRef.current;
+      const dy = (e.clientY - panStart.current.y) / zoomRef.current;
+      setPan(pp => ({ x: pp.x - dx, y: pp.y - dy }));
+      panStart.current = { x: e.clientX, y: e.clientY };
+      return;
+    }
+    const { x, y } = eventToWorld(e);
+    if (draggingWaypointRef.current && apiRef.current.onUpdateWire) {
+      const dw = draggingWaypointRef.current;
+      const wire = wiresRef.current.find(w => w.id === dw.wireId);
+      if (wire && wire.waypoints) {
+        apiRef.current.onUpdateWire(wire.id, { waypoints: wire.waypoints.map((wp, i) => (i === dw.index ? { x, y } : wp)) });
+      }
+      return;
+    }
+    const m = machineRef.current;
+    if (pressedButtonRef.current && m.state === 'draggingParts') {
+      if (apiRef.current.onButtonUp) apiRef.current.onButtonUp(pressedButtonRef.current);
+      pressedButtonRef.current = null;
+    }
+    m.move(x, y);
+    const wid = m.hit.wireAt(x, y, 8 / zoomRef.current);
+    const hoverWire = wid ? wiresRef.current.find(w => w.id === wid) : null;
+    setHoveredNet(hoverWire ? hoverWire.netId : null);
+  }, [panning, eventToWorld]);
+
+  const handlePointerUp = useCallback((e) => {
+    if (panning) { setPanning(false); panStart.current = null; return; }
+    if (pressedButtonRef.current) {
+      if (apiRef.current.onButtonUp) apiRef.current.onButtonUp(pressedButtonRef.current);
+      pressedButtonRef.current = null;
+    }
+    if (draggingWaypointRef.current) {
+      setDraggingWaypoint(null);
+      if (apiRef.current.onSaveHistory) apiRef.current.onSaveHistory();
+      return;
+    }
+    const { x, y } = eventToWorld(e);
+    machineRef.current.up(x, y, { shiftKey: e.shiftKey });
+  }, [panning, eventToWorld]);
+
+  const handlePointerCancel = useCallback(() => {
+    machineRef.current.cancel();
+    setPanning(false); panStart.current = null; pressedButtonRef.current = null;
+  }, []);
+
+  // Wheel must be a native non-passive listener: trackpad two-finger scroll
+  // PANS, pinch / ctrl+wheel zooms at the cursor. The old canvas zoomed on
+  // every wheel — trackpad users could never pan at all.
+  React.useEffect(() => {
+    const el = canvasContainerRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      e.preventDefault();
+      const g = classifyWheel(e);
+      if (g.kind === 'pan') {
+        setPan(pp => ({ x: pp.x - g.dx / zoomRef.current, y: pp.y - g.dy / zoomRef.current }));
+      } else {
+        const r = el.getBoundingClientRect();
+        const sx = e.clientX - r.left, sy = e.clientY - r.top;
+        setZoom(z => {
+          const nz = Math.max(0.3, Math.min(3, z * g.factor));
+          const wx = sx / z + panRef.current.x, wy = sy / z + panRef.current.y;
+          setPan({ x: wx - sx / nz, y: wy - sy / nz });
+          return nz;
+        });
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   // Terminal interaction: drag to wire (TinkerCAD-style).
   // Mousedown/touchstart on a terminal starts wiring.
@@ -1048,6 +1244,7 @@ export function BoardCanvas({
       }
     }
     if (e.key === 'Escape') {
+      if (machineRef.current) machineRef.current.cancel();
       setWiringFrom(null);
       setMousePos(null);
       onSelectPart(null);
@@ -1172,14 +1369,14 @@ export function BoardCanvas({
               <button onClick={() => onRotatePart(selectedPart)}
                 title="Rotate (R)"
                 style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #3498db', borderRadius: '3px', color: '#3498db', fontSize: '9px', cursor: 'pointer' }}>
-                R
+                ↻ Rotate
               </button>
             )}
             {selectedPart && onDuplicatePart && (
               <button onClick={() => onDuplicatePart(selectedPart)}
                 title="Duplicate (Ctrl+D)"
                 style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #2ecc71', borderRadius: '3px', color: '#2ecc71', fontSize: '9px', cursor: 'pointer' }}>
-                D
+                ⧉ Duplicate
               </button>
             )}
             <button onClick={() => {
@@ -1188,7 +1385,7 @@ export function BoardCanvas({
             }}
               title="Delete (Del)"
               style={{ padding: '2px 6px', background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: '3px', color: '#e74c3c', fontSize: '9px', cursor: 'pointer' }}>
-              Del
+              ✕ Delete
             </button>
           </>
         )}
@@ -1220,11 +1417,15 @@ export function BoardCanvas({
           overflow: 'hidden',
           touchAction: 'none',
         }}
-        onMouseMove={handleSvgMouseMove}
-        onMouseUp={handleDragEnd}
-        onMouseDown={handleMouseDown}
-        onWheel={handleWheel}
-        {...touchHandlers}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onDoubleClick={(e) => {
+          const { x, y } = eventToWorld(e);
+          const pid = machineRef.current.hit.partAt(x, y);
+          if (pid) setInlineEdit({ partId: pid, x: e.clientX, y: e.clientY });
+        }}
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
         onDrop={(e) => {
           e.preventDefault();
@@ -1237,24 +1438,25 @@ export function BoardCanvas({
         }}
         onContextMenu={(e) => {
           e.preventDefault();
-          // Right-click context menu
-          if ((selectedParts && selectedParts.size > 0) || selectedWire) {
-            setContextMenu({
-              x: e.clientX,
-              y: e.clientY,
-              type: selectedPart ? 'part' : 'wire',
-            });
+          // Right-click selects what is under the cursor, then opens the menu.
+          const { x, y } = eventToWorld(e);
+          const pid = machineRef.current.hit.partAt(x, y);
+          if (pid && !(selectedParts && selectedParts.has(pid))) {
+            onSelectPart(null); onSelectPart(pid, true);
+          }
+          const wid = !pid ? machineRef.current.hit.wireAt(x, y, 8 / zoomRef.current) : null;
+          if (wid) onSelectWire(wid);
+          if (pid || wid || (selectedParts && selectedParts.size > 0) || selectedWire) {
+            setContextMenu({ x: e.clientX, y: e.clientY, type: (pid || selectedPart) ? 'part' : 'wire' });
           }
         }}
       >
         <svg
           width="100%"
           height="100%"
-          viewBox={`${pan.x} ${pan.y} ${CANVAS_W / zoom} ${CANVAS_H / zoom}`}
-          preserveAspectRatio="xMidYMid meet"
+          viewBox={`${pan.x} ${pan.y} ${containerSize.w / zoom} ${containerSize.h / zoom}`}
+          preserveAspectRatio="none"
           style={{ position: 'absolute', top: 0, left: 0 }}
-          onClick={handleSvgClick}
-          onMouseDown={handleSvgMouseDown}
         >
           <defs>
             <pattern id="grid" width={20} height={20} patternUnits="userSpaceOnUse">
