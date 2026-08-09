@@ -88,6 +88,22 @@ export function getPartBBox(p) {
     case 'eeprom': return { x: p.x - 15, y: p.y - 15, w: 30, h: 35 };
     case 'meter': return { x: p.x - 35, y: p.y - 25, w: 70, h: 55 };
     case 'led_cube': return { x: p.x - 50, y: p.y - 50, w: 100, h: 100 };
+    case 'capacitor': return { x: p.x - 14, y: p.y - 18, w: 28, h: 36 };
+    case 'inductor': return { x: p.x - 25, y: p.y - 8, w: 50, h: 20 };
+    case 'diode': return { x: p.x - 26, y: p.y - 10, w: 52, h: 20 };
+    case 'zener': return { x: p.x - 26, y: p.y - 10, w: 52, h: 20 };
+    case 'switch': return { x: p.x - 24, y: p.y - 14, w: 48, h: 28 };
+    case 'npn': case 'pnp': return { x: p.x - 22, y: p.y - 22, w: 44, h: 44 };
+    case 'nmos': case 'pmos': return { x: p.x - 22, y: p.y - 22, w: 44, h: 44 };
+    case 'opamp': return { x: p.x - 20, y: p.y - 18, w: 40, h: 36 };
+    case '555': return { x: p.x - 25, y: p.y - 22, w: 50, h: 44 };
+    case 'ldr': return { x: p.x - 20, y: p.y - 14, w: 40, h: 28 };
+    case 'ntc': return { x: p.x - 20, y: p.y - 14, w: 40, h: 28 };
+    case 'relay': return { x: p.x - 35, y: p.y - 25, w: 70, h: 50 };
+    case 'servo': return { x: p.x - 22, y: p.y - 18, w: 44, h: 36 };
+    case 'dc_motor': case 'hobby_gearmotor': return { x: p.x - 22, y: p.y - 22, w: 44, h: 44 };
+    case 'rgb_led': return { x: p.x - 20, y: p.y - 25, w: 40, h: 55 };
+    case 'breadboard': return { x: p.x - 460, y: p.y - 120, w: 920, h: 240 };
     default: return { x: p.x - 15, y: p.y - 15, w: 30, h: 30 };
   }
 }
