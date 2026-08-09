@@ -287,6 +287,35 @@ describe('DRC: polarity', () => {
     assert.ok(hits.length > 0, 'should warn about backward cap');
   });
 
+  it('gallery relay circuit (09-relay-clicker shape) is clean', () => {
+    // Matches the fixed gallery circuit: relay through darlington + flyback + base R
+    const c = setup();
+    const vcc = c.addPart('vcc', {}, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
+    const mcu = c.addPart('mcu', { pins: ['P1.0'] }, 0, 0);
+    const npn = c.addPart('npn', { beta: 1000 }, 0, 0); // darlington-like
+    const relay = c.addPart('relay', {}, 0, 0);
+    const diode = c.addPart('diode', { vf: 0.7 }, 0, 0);
+    const rb = c.addPart('resistor', { ohms: 1000 }, 0, 0);
+
+    c.addWire(vcc.id, 'vcc', relay.id, 'coil_a');
+    c.addWire(relay.id, 'coil_b', npn.id, 'collector');
+    c.addWire(npn.id, 'emitter', gnd.id, 'gnd');
+    c.addWire(mcu.id, 'P1.0', rb.id, 'a');
+    c.addWire(rb.id, 'b', npn.id, 'base');
+    c.addWire(diode.id, 'cathode', vcc.id, 'vcc');
+    c.addWire(diode.id, 'anode', relay.id, 'coil_b');
+
+    c.setPin('P1.0', 'quasi', true);
+    c.advanceTo(25n * MS);
+
+    const w = runDrc(c, c.board);
+    // Should have zero warnings: transistor driver, flyback present, base resistor
+    const problems = w.filter(ww => ww.severity === 'danger');
+    assert.equal(problems.length, 0,
+      `gallery relay circuit should be clean, got: ${problems.map(p => p.rule).join(', ')}`);
+  });
+
   it('no warning: polarized cap wired correctly', () => {
     const c = setup();
     const vcc = c.addPart('vcc', {}, 0, 0);
