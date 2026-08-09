@@ -676,7 +676,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, warnings, annotations, cubeScans,
+  onDuplicatePart, onRotatePart, onDropPart, onUpdateParams, warnings, annotations, cubeScans, activePartIds,
   circuit,
 }) {
   const [wiringFrom, setWiringFrom] = useState(null);
@@ -1229,6 +1229,23 @@ export function BoardCanvas({
               </g>
             );
           })}
+
+          {/* Active-block part highlights (debugger shows which part the halted block controls) */}
+          {activePartIds && activePartIds.map(partId => {
+            const part = parts.find(p => p.id === partId || p.declName === partId);
+            if (!part) return null;
+            return (
+              <g key={`active-${partId}`}>
+                <circle cx={part.x} cy={part.y} r={30}
+                  fill="none" stroke="#3498db" strokeWidth={2}
+                  strokeDasharray="4,3" opacity={0.8}>
+                  <animate attributeName="stroke-dashoffset"
+                    from="0" to="14" dur="1s" repeatCount="indefinite" />
+                </circle>
+              </g>
+            );
+          })}
+
           <TerminalDots parts={parts} wires={wires} wiringFrom={wiringFrom}
                 onTerminalClick={handleTerminalClick}
                 onTerminalDown={handleTerminalDown}
