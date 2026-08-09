@@ -19,6 +19,8 @@ import { snapGhost, BB_PITCH, bbHoleOrigin, nearestHole } from '../interaction/b
 import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
+import { BreadboardView } from './BreadboardView.jsx';
+import { DrcOverlay } from './DrcOverlay.jsx';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
@@ -783,6 +785,7 @@ export function BoardCanvas({
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire,
+  drcWarnings,
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
   // consumed by everything below (partsRef included, so what you see is
@@ -1724,7 +1727,9 @@ export function BoardCanvas({
 
           {/* Breadboard substrates render under everything else */}
           {parts.filter(p => p.kind === 'breadboard').map(bb => (
-            <BreadboardSubstrate key={bb.id} part={bb} />
+            <BreadboardView key={bb.id} part={bb}
+              model={circuit?.breadboards?.get(bb.id)}
+              footprint={FOOTPRINTS.breadboard} />
           ))}
 
           {/* Jumper wires: colored arcs hole-to-hole */}
@@ -1832,6 +1837,11 @@ export function BoardCanvas({
                 onTerminalDown={handleTerminalDown}
                 onTerminalUp={handleTerminalUp}
                 placingProbe={placingProbe} />
+
+          {/* DRC warning badges on parts */}
+          {drcWarnings && drcWarnings.length > 0 && (
+            <DrcOverlay warnings={drcWarnings} parts={parts} />
+          )}
         </svg>
 
         {/* Wokwi element layer — transformed to match SVG viewBox */}

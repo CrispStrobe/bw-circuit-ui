@@ -42,6 +42,7 @@ import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
 import { BreadboardModel } from '../model/breadboard.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
+import { runDrc } from '../model/drc.js';
 
 const MS = 1_000_000n;
 const GRID = 20;
@@ -613,6 +614,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onUndo={handleUndo}
           onRedo={handleRedo}
           onSelectAll={handleSelectAll}
+          drcWarnings={(() => { try { return runDrc(circuit, circuit.board); } catch { return []; } })()}
         />
 
         {/* Engine warnings — teaching feedback */}
