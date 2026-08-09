@@ -219,6 +219,54 @@ describe('DRC: supply-short', () => {
   });
 });
 
+// ── Edge cases: must NOT over-warn ──────────────────────────────
+
+describe('DRC: no false positives', () => {
+  it('push-pull pin driving LED active-high does not trigger source-current', () => {
+    const c = setup();
+    const vcc = c.addPart('vcc', {}, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
+    const mcu = c.addPart('mcu', { pins: ['P1.0'] }, 0, 0);
+    const r = c.addPart('resistor', { ohms: 220 }, 0, 0);
+    const led = c.addPart('led', { vf: 2.0 }, 0, 0);
+
+    c.addWire(mcu.id, 'P1.0', r.id, 'a');
+    c.addWire(r.id, 'b', led.id, 'anode');
+    c.addWire(led.id, 'cathode', gnd.id, 'gnd');
+
+    c.setPin('P1.0', 'pushpull', true); // strong source: 20 mA
+    c.advanceTo(25n * MS);
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'source-current');
+    assert.equal(hits.length, 0, 'push-pull can source 20 mA — no warning');
+  });
+
+  it('motor driven through MOSFET does not trigger missing-flyback for the FET', () => {
+    const c = setup();
+    const vcc = c.addPart('vcc', {}, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
+    const nmos = c.addPart('nmos', { vth: 2.0 }, 0, 0);
+    const motor = c.addPart('dc_motor', {}, 0, 0);
+
+    c.addWire(nmos.id, 'drain', motor.id, 'a');
+    c.addWire(motor.id, 'b', vcc.id, 'vcc');
+    c.addWire(nmos.id, 'source', gnd.id, 'gnd');
+
+    const w = runDrc(c, c.board);
+    // Should warn about missing flyback on the MOTOR, not on the MOSFET
+    const hits = findRule(w, 'missing-flyback');
+    assert.ok(hits.length > 0, 'motor without flyback should warn');
+    assert.equal(hits[0].partId, motor.id, 'warning should be on the motor');
+  });
+
+  it('empty circuit produces no warnings', () => {
+    const c = setup();
+    const w = runDrc(c, c.board);
+    assert.equal(w.length, 0);
+  });
+});
+
 // ── Rule 6: Polarity ────────────────────────────────────────────
 
 describe('DRC: polarity', () => {
