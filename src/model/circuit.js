@@ -489,6 +489,29 @@ export class Circuit {
     }
   }
 
+  /**
+   * Sync the engine with externally-provided nets (e.g. from the breadboard model).
+   * Uses the same parts filtering as _syncNetlist but replaces wire-derived nets.
+   * @param {Array<{id: string, terminals: Array<{part: string, terminal: string}>}>} nets
+   */
+  syncWithExternalNets(nets) {
+    const engineParts = this.parts.filter(p => p.kind !== 'meter').map(p => ({
+      id: p.id,
+      kind: p.kind,
+      params: p.params,
+      terminals: p.terminals,
+    }));
+
+    const prevSnap = this.board.snapshot ? this.board.snapshot() : null;
+    this.board = new this._BoardImpl(this.vcc);
+    try {
+      this.board.setNetlist(engineParts, nets);
+      if (prevSnap && this.board.restore) this.board.restore(prevSnap);
+    } catch {
+      // Incomplete breadboard wiring — expected during construction
+    }
+  }
+
   // ── Serialization ───────────────────────────────────────────────
 
   /**

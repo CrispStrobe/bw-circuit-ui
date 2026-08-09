@@ -152,6 +152,11 @@ export function useCircuit(vcc = 5.0) {
     circuit._saveHistory();
   }, [circuit]);
 
+  const syncWithExternalNets = useCallback((nets) => {
+    circuit.syncWithExternalNets(nets);
+    bump();
+  }, [circuit, bump]);
+
   // Read-only accessors — these read from the engine, never fabricate.
   const ledBrightness = useCallback((partId) => {
     return circuit.ledBrightness(partId);
@@ -192,6 +197,7 @@ export function useCircuit(vcc = 5.0) {
     undo,
     redo,
     saveHistory,
+    syncWithExternalNets,
     canUndo: circuit.history.canUndo,
     canRedo: circuit.history.canRedo,
 
