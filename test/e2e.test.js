@@ -59,7 +59,7 @@ describe('e2e: full user flow', () => {
     // Add two parts to build up history
     await page.locator('[draggable="true"]').filter({ hasText: 'Resistor' }).click();
     await page.waitForTimeout(300);
-    await page.locator('[draggable="true"]').filter({ hasText: 'LED' }).click();
+    await page.locator('[draggable="true"]').filter({ hasText: 'LED (red)' }).click();
     await page.waitForTimeout(300);
 
     // Undo via keyboard
