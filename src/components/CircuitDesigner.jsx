@@ -46,7 +46,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, onDeclarationChange, onBoardReady }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -409,8 +409,20 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const skewNs = (debugState && debugState.skewNs) || 0n;
   const staleBy = Number(skewNs) / 1e6;
 
+  // simulationOnly: true = simulator target (values available),
+  // false = live hardware (no nodeVoltage, no branchCurrent, no ledBrightness).
+  // undefined = not specified, assume simulator if board exists.
+  const hasSimulation = simulationOnly !== false;
+
+  // When simulation is unavailable, don't show voltage labels or meter readings.
+  // The wiring is still correct — you can see parts and connections — but
+  // the numbers would be fabricated, which is worse than absent.
+  const effectiveNodeVoltages = hasSimulation ? nodeVoltages : {};
+
   let statusText = null;
-  if (externalBoard && halted && staleBy > 0) {
+  if (!hasSimulation && externalBoard) {
+    statusText = 'HARDWARE — voltage/current readings need the simulator';
+  } else if (externalBoard && halted && staleBy > 0) {
     statusText = `SNAPSHOT — the board kept running for ${
       staleBy < 1000 ? `${staleBy.toFixed(0)} ms` : `${(staleBy / 1000).toFixed(1)} s`
     } while the program was stopped`;
@@ -462,7 +474,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           not physics, so nothing here disables interaction. */}
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0,
-        filter: staleBy > 0 ? 'saturate(0.35)' : 'none',
+        filter: !hasSimulation ? 'saturate(0.5) brightness(0.9)' : staleBy > 0 ? 'saturate(0.35)' : 'none',
         transition: 'filter 120ms ease-out'
       }}>
         <BoardCanvas
@@ -470,7 +482,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           wires={wires}
           ledBrightness={ledBrightness}
           buzzerTones={buzzerTone}
-          nodeVoltages={nodeVoltages}
+          nodeVoltages={effectiveNodeVoltages}
           onAddWire={addWire}
           onRemoveWire={removeWire}
           onRemovePart={removePart}

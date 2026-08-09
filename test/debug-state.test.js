@@ -72,7 +72,7 @@ describe('debugState: what the status line says', () => {
 
 describe('debugState: the visual treatment follows the same rule', () => {
   it('desaturates a snapshot and leaves a frozen simulation alone', () => {
-    assert.match(source, /filter: staleBy > 0 \? 'saturate\(/,
+    assert.match(source, /staleBy > 0 \? 'saturate\(/,
       'a stale board must not look like a live one');
   });
 
