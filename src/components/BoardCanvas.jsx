@@ -939,6 +939,29 @@ export function BoardCanvas({
               </g>
             );
           })()}
+          {/* Lead stubs: short wire segments from terminal dots to part body */}
+          {parts.map(part => {
+            if (['vcc', 'gnd', 'mcu'].includes(part.kind)) return null;
+            return part.terminals.map(term => {
+              const pos = terminalPos(part, term);
+              const dx = part.x - pos.x;
+              const dy = part.y - pos.y;
+              const len = Math.sqrt(dx * dx + dy * dy);
+              if (len < 5) return null;
+              // Draw a short stub from the terminal toward the part center
+              const stubLen = Math.min(8, len * 0.4);
+              const nx = dx / len;
+              const ny = dy / len;
+              return (
+                <line key={`stub-${part.id}-${term}`}
+                  x1={pos.x} y1={pos.y}
+                  x2={pos.x + nx * stubLen} y2={pos.y + ny * stubLen}
+                  stroke="#7f8c8d" strokeWidth={2}
+                  style={{ pointerEvents: 'none' }}
+                />
+              );
+            });
+          })}
           <SvgParts parts={parts} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick} />
 
           {/* Inline warning indicators on parts */}

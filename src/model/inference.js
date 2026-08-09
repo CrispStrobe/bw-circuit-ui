@@ -108,9 +108,11 @@ export function inferCircuit(stc) {
   const mcuX = startX + totalCols * colWidth + 80;
   const mcuY = (vccY + gndY) / 2;
 
+  // Center VCC above all columns, GND below, MCU to the right
+  const centerX = startX + (totalCols - 1) * colWidth / 2;
   const positions = new Map();
-  positions.set('VCC', { x: startX, y: vccY });
-  positions.set('GND', { x: startX, y: gndY });
+  positions.set('VCC', { x: centerX, y: vccY });
+  positions.set('GND', { x: centerX, y: gndY });
   positions.set('MCU', { x: mcuX, y: mcuY });
 
   // Place each group in a vertical chain
