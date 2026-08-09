@@ -410,7 +410,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiResistor value={String(params.ohms)} />
-            <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
             </div>
           </div>
@@ -426,10 +426,10 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
             <WokwiLed color={params.color || 'red'} brightness={b} value={isOn} />
             <div style={{
               textAlign: 'center',
-              color: isOn ? '#2ecc71' : '#aaa',
-              fontSize: 10, fontFamily: 'monospace',
+              color: isOn ? '#2ecc71' : '#556',
+              fontSize: 9, fontFamily: 'monospace', opacity: 0.8,
             }}>
-              {isOn ? `${(b * 100).toFixed(1)}%` : 'off'}
+              {isOn ? `${(b * 100).toFixed(0)}%` : ''}
             </div>
           </div>
         );
@@ -446,8 +446,8 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
                 if (!isNaN(val)) onControlChange(id, val);
               }}
             />
-            <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
-              pot
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
             </div>
           </div>
         );
@@ -461,10 +461,10 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
             <WokwiBuzzer hasSignal={tone?.on ?? false} />
             <div style={{
               textAlign: 'center',
-              color: tone?.on ? '#2ecc71' : '#aaa',
-              fontSize: 10, fontFamily: 'monospace',
+              color: tone?.on ? '#2ecc71' : '#556',
+              fontSize: 9, fontFamily: 'monospace', opacity: 0.8,
             }}>
-              {tone?.on ? `${tone.hz.toFixed(0)} Hz` : 'off'}
+              {tone?.on ? `${tone.hz.toFixed(0)} Hz` : ''}
             </div>
           </div>
         );
@@ -478,8 +478,8 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
             onMouseUp={() => onButtonUp(id)}
             onMouseLeave={() => onButtonUp(id)}>
             <WokwiPushbutton color={params.color || 'red'} />
-            <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
-              btn
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
             </div>
           </div>
         );
@@ -495,8 +495,8 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, onSelectPart, selectedP
               <line x1={18} y1={5} x2={18} y2={25} stroke="#ecf0f1" strokeWidth={2} />
               <line x1={18} y1={15} x2={25} y2={15} stroke="#7f8c8d" strokeWidth={2} />
             </svg>
-            <div style={{ textAlign: 'center', color: '#aaa', fontSize: 10, fontFamily: 'monospace' }}>
-              cap
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
             </div>
           </div>
         );

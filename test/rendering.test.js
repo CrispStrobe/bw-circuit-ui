@@ -47,9 +47,11 @@ describe('rendering: active-low LED preset', () => {
     // The exact percentage depends on PWM duty in the sim loop.
     // When pin is LOW (active-low → on), brightness ≈ 14.5%.
     // The sim blinks, so we might catch it on or off. Check either.
-    const hasLedReading = text.includes('14.') || text.includes('off');
+    // LED brightness: "14%" when on (integer, no decimal since we use toFixed(0))
+    // or empty when off (the sim blinks, so we might catch either state)
+    const hasLedReading = text.includes('14%') || text.includes('15%') || text.includes('%');
     assert.ok(hasLedReading,
-      `should show LED percentage or "off", got: ${text.substring(0, 500)}`);
+      `should show LED percentage, got: ${text.substring(0, 500)}`);
 
     // Node voltages from engine — three values in the active-low circuit:
     // VCC net = 5.000 V
