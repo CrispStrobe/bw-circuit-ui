@@ -35,7 +35,7 @@ import { Multimeter } from './Multimeter.jsx';
 import { useCircuit } from '../hooks/useCircuit.js';
 import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
-import { generatePartName } from '../model/declarations.js';
+import { generatePartName, circuitToDeclarations } from '../model/declarations.js';
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 
 const MS = 1_000_000n;
@@ -63,6 +63,18 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
 
   // Subscribe to board changes for automatic re-rendering
   const { renderState, refresh } = useBoard(activeBoard);
+
+  // ── Emit declaration changes to host ──────────────────────────
+  const lastDeclRef = useRef(null);
+  useEffect(() => {
+    if (!onDeclarationChange) return;
+    const decls = circuitToDeclarations(parts, wires);
+    const json = JSON.stringify(decls);
+    if (json !== lastDeclRef.current) {
+      lastDeclRef.current = json;
+      onDeclarationChange(decls);
+    }
+  }, [parts, wires, onDeclarationChange]);
 
   const [selectedParts, setSelectedParts] = useState(new Set());
   const [selectedWire, setSelectedWire] = useState(null);
@@ -410,7 +422,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, onDeclarat
           onDuplicatePart={(id) => { const dup = duplicatePart(id); if (dup) handleSelectPart(dup.id); }}
           onRotatePart={rotatePart}
           onDropPart={(kind, params, x, y) => {
-            const p = addPart(kind, params, snapToGrid(x), snapToGrid(y));
+            const declarable = ['led', 'buzzer', 'button', 'potentiometer'];
+            const existingNames = parts.filter(p => p.declName).map(p => p.declName);
+            const declName = declarable.includes(kind) ? generatePartName(kind, existingNames) : undefined;
+            const p = addPart(kind, params, snapToGrid(x), snapToGrid(y), declName);
             if (p) handleSelectPart(p.id);
           }}
           circuit={circuit}

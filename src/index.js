@@ -12,6 +12,16 @@
  *   board.setNetlist(parts, nets);
  *   <CircuitDesigner project={{ pins: [...] }} board={board} />
  *
+ * With declaration sync (parts → blocks):
+ *   <CircuitDesigner
+ *     project={{ pins: [...] }}
+ *     onDeclarationChange={(decls) => {
+ *       // decls = { pins: [...], ports: [...], parts: [...] }
+ *       // Write decls to project.stc — the block palette reads from there.
+ *       // Polarity derived from wiring, TONE singular, ANALOG P1.x only.
+ *     }}
+ *   />
+ *
  * The host decides where the engine comes from.
  */
 
