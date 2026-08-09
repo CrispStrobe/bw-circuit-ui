@@ -547,6 +547,27 @@ export function BoardCanvas({
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+
+  // Auto-fit: when parts change significantly, zoom to fit all content
+  const prevPartCount = React.useRef(0);
+  React.useEffect(() => {
+    if (parts.length === 0 || parts.length === prevPartCount.current) return;
+    prevPartCount.current = parts.length;
+    // Calculate bounding box of all parts
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of parts) {
+      minX = Math.min(minX, p.x - 80);
+      maxX = Math.max(maxX, p.x + 80);
+      minY = Math.min(minY, p.y - 60);
+      maxY = Math.max(maxY, p.y + 60);
+    }
+    const contentW = maxX - minX + 40;
+    const contentH = maxY - minY + 40;
+    if (contentW <= 0 || contentH <= 0) return;
+    const fitZoom = Math.min(1.5, Math.min(CANVAS_W / contentW, CANVAS_H / contentH));
+    setZoom(Math.max(0.3, Math.min(1, fitZoom)));
+    setPan({ x: minX - 20, y: minY - 20 });
+  }, [parts.length]);
   const [panning, setPanning] = useState(false);
   const panStart = React.useRef(null);
 
