@@ -69,6 +69,27 @@ export const FOOTPRINTS = {
     straddlesGutter: true,
     leads: { data: { dRow: 0, dCol: 0 }, clock: { dRow: 0, dCol: 1 }, latch: { dRow: 5, dCol: 0 } },
   },
+  diode: {
+    refTerminal: 'anode',
+    leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 2 } },
+  },
+  switch: {
+    refTerminal: 'a',
+    leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } },
+  },
+  led_matrix: {
+    refTerminal: 'a',
+    straddlesGutter: true,
+    leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 5, dCol: 0 } },
+  },
+  char_lcd: {
+    refTerminal: 'rs',
+    leads: {
+      rs: { dRow: 0, dCol: 0 }, e: { dRow: 0, dCol: 1 },
+      d4: { dRow: 0, dCol: 2 }, d5: { dRow: 0, dCol: 3 },
+      d6: { dRow: 0, dCol: 4 }, d7: { dRow: 0, dCol: 5 },
+    },
+  },
 };
 
 /**
