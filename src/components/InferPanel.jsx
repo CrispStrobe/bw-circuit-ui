@@ -9,6 +9,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { inferCircuit, checkWiring } from '../model/inference.js';
+import { PartThumbnail } from './PartThumbnail.jsx';
 
 // Real example programs from stc/examples/ — these are the actual
 // pin declarations from committed, tested programs.
@@ -271,6 +272,38 @@ const COMPARISON = {
   },
 };
 
+/**
+ * Extract the part kinds a preset will produce, for thumbnail preview.
+ */
+function presetPartKinds(stc) {
+  const kinds = new Set();
+  for (const p of stc.pins || []) {
+    if (p.direction === 'output' || p.direction === 'pwm') kinds.add('led');
+    if (p.direction === 'input') kinds.add('button');
+    if (p.direction === 'analog') kinds.add('potentiometer');
+    if (p.direction === 'tone') kinds.add('buzzer');
+  }
+  for (const port of stc.ports || []) {
+    if (port.direction === 'output') kinds.add('led');
+  }
+  for (const part of stc.parts || []) {
+    if (part.kind === '74hc595') kinds.add('shift_register');
+  }
+  return [...kinds];
+}
+
+function PresetThumbnails({ stc }) {
+  const kinds = presetPartKinds(stc);
+  if (kinds.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', gap: '1px', marginTop: '3px' }}>
+      {kinds.slice(0, 4).map(k => (
+        <PartThumbnail key={k} kind={k} color="#7f8c8d" params={{}} displaySize={20} />
+      ))}
+    </div>
+  );
+}
+
 export function InferPanel({ onLoadCircuit }) {
   const [notes, setNotes] = useState([]);
   const [lastLoaded, setLastLoaded] = useState(null);
@@ -293,7 +326,7 @@ export function InferPanel({ onLoadCircuit }) {
       border: '1px solid #2c3e50',
       borderRadius: '8px',
       padding: '10px',
-      width: '130px',
+      width: '160px',
       fontFamily: 'monospace',
       fontSize: '11px',
       flexShrink: 0,
@@ -312,14 +345,15 @@ export function InferPanel({ onLoadCircuit }) {
         style={{
           display: 'block', width: '100%', padding: '6px', marginBottom: '8px',
           background: lastLoaded === COMPARISON.name ? '#2c3e50' : '#16213e',
-          border: lastLoaded === COMPARISON.name ? '1px solid #f39c12' : '1px solid #f39c12',
-          borderRadius: '4px',
+          border: '1px solid #f39c12',
+          borderRadius: '6px',
           color: lastLoaded === COMPARISON.name ? '#f39c12' : '#e67e22',
           fontFamily: 'monospace', fontSize: '10px', cursor: 'pointer', textAlign: 'left',
         }}
       >
-        {COMPARISON.name}
+        <div style={{ fontWeight: 'bold' }}>{COMPARISON.name}</div>
         <div style={{ color: '#7f8c8d', fontSize: '8px' }}>{COMPARISON.desc}</div>
+        <PresetThumbnails stc={COMPARISON.stc} />
       </button>
 
       {/* Example programs */}
@@ -331,15 +365,17 @@ export function InferPanel({ onLoadCircuit }) {
           key={preset.name}
           onClick={() => handleLoad(preset)}
           style={{
-            display: 'block', width: '100%', padding: '5px', marginBottom: '2px',
+            display: 'block', width: '100%', padding: '5px', marginBottom: '3px',
             background: lastLoaded === preset.name ? '#2c3e50' : '#16213e',
-            border: '1px solid #2c3e50', borderRadius: '4px',
+            border: lastLoaded === preset.name ? '1px solid #2ecc71' : '1px solid #2c3e50',
+            borderRadius: '6px',
             color: lastLoaded === preset.name ? '#2ecc71' : '#bdc3c7',
             fontFamily: 'monospace', fontSize: '9px', cursor: 'pointer', textAlign: 'left',
           }}
         >
-          {preset.name}
-          <span style={{ color: '#7f8c8d', fontSize: '8px', marginLeft: '4px' }}>{preset.desc}</span>
+          <div style={{ fontWeight: 'bold' }}>{preset.name}</div>
+          <div style={{ color: '#7f8c8d', fontSize: '8px' }}>{preset.desc}</div>
+          <PresetThumbnails stc={preset.stc} />
         </button>
       ))}
 

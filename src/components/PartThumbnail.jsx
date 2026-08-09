@@ -7,15 +7,17 @@
 
 import React from 'react';
 
-const S = 48; // thumbnail size
+const S = 48; // internal coordinate space
 
-export function PartThumbnail({ kind, color, params }) {
+export function PartThumbnail({ kind, color, params, displaySize }) {
+  const w = displaySize || S;
+  const h = displaySize || S;
   const cx = S / 2, cy = S / 2;
 
   switch (kind) {
     case 'vcc':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <line x1={cx} y1={cy + 12} x2={cx} y2={cy} stroke="#e74c3c" strokeWidth={2} />
           <line x1={cx - 10} y1={cy} x2={cx + 10} y2={cy} stroke="#e74c3c" strokeWidth={2} />
           <text x={cx} y={cy - 4} textAnchor="middle" fill="#e74c3c" fontSize={8} fontFamily="monospace" fontWeight="bold">VCC</text>
@@ -23,7 +25,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'gnd':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <line x1={cx} y1={cy - 8} x2={cx} y2={cy} stroke="#3498db" strokeWidth={2} />
           <line x1={cx - 10} y1={cy} x2={cx + 10} y2={cy} stroke="#3498db" strokeWidth={2} />
           <line x1={cx - 7} y1={cy + 4} x2={cx + 7} y2={cy + 4} stroke="#3498db" strokeWidth={2} />
@@ -32,7 +34,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'resistor':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <line x1={4} y1={cy} x2={12} y2={cy} stroke="#999" strokeWidth={1.5} />
           <rect x={12} y={cy - 5} width={24} height={10} rx={2} fill="#e0c890" stroke="#b8a060" strokeWidth={1} />
           {/* Color bands */}
@@ -47,7 +49,7 @@ export function PartThumbnail({ kind, color, params }) {
       const ledColor = params?.color || color || 'red';
       const fill = ledColor === 'white' ? '#eee' : ledColor;
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <line x1={4} y1={cy} x2={14} y2={cy} stroke="#999" strokeWidth={1.5} />
           {/* LED body — triangle + flat */}
           <polygon points={`${14},${cy - 8} ${14},${cy + 8} ${30},${cy}`} fill={fill} opacity={0.8} stroke={fill} strokeWidth={1} />
@@ -61,7 +63,7 @@ export function PartThumbnail({ kind, color, params }) {
     }
     case 'capacitor':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <line x1={4} y1={cy} x2={20} y2={cy} stroke="#999" strokeWidth={1.5} />
           <line x1={20} y1={cy - 8} x2={20} y2={cy + 8} stroke="#34495e" strokeWidth={2.5} />
           <path d={`M 26 ${cy - 8} Q 24 ${cy} 26 ${cy + 8}`} fill="none" stroke="#34495e" strokeWidth={2.5} />
@@ -70,7 +72,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'potentiometer':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <rect x={10} y={cy - 8} width={28} height={16} rx={3} fill="#2c3e50" stroke="#9b59b6" strokeWidth={1} />
           {/* Shaft */}
           <circle cx={cx} cy={cy} r={5} fill="#555" stroke="#9b59b6" strokeWidth={1} />
@@ -83,7 +85,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'button':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <rect x={12} y={cy - 8} width={24} height={16} rx={3} fill="#2c3e50" stroke="#f39c12" strokeWidth={1} />
           <circle cx={cx} cy={cy} r={4} fill="#f39c12" />
           <line x1={4} y1={cy} x2={12} y2={cy} stroke="#999" strokeWidth={1.5} />
@@ -92,7 +94,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'buzzer':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <circle cx={cx} cy={cy} r={10} fill="#1a1a2e" stroke="#1abc9c" strokeWidth={1.5} />
           <circle cx={cx} cy={cy} r={3} fill="#1abc9c" />
           <line x1={4} y1={cy} x2={14} y2={cy} stroke="#999" strokeWidth={1.5} />
@@ -104,7 +106,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'mcu':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <rect x={8} y={6} width={32} height={36} rx={3} fill="#2c3e50" stroke="#7f8c8d" strokeWidth={1} />
           <text x={cx} y={cy} textAnchor="middle" fill="#ecf0f1" fontSize={6} fontFamily="monospace">STC12</text>
           {/* Pins */}
@@ -118,7 +120,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'seven_segment':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <rect x={10} y={4} width={28} height={40} rx={3} fill="#111" stroke="#333" strokeWidth={1} />
           {/* 7-segment digit "8" */}
           <line x1={16} y1={8} x2={30} y2={8} stroke="#e74c3c" strokeWidth={2} />
@@ -132,7 +134,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'char_lcd':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <rect x={2} y={10} width={44} height={28} rx={3} fill="#1a4030" stroke="#2980b9" strokeWidth={1} />
           <rect x={6} y={14} width={36} height={20} rx={2} fill="#2a6040" />
           <text x={cx} y={cy + 2} textAnchor="middle" fill="#3c8" fontSize={7} fontFamily="monospace">Hello</text>
@@ -140,7 +142,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'led_matrix':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <rect x={8} y={8} width={32} height={32} rx={2} fill="#111" stroke="#27ae60" strokeWidth={1} />
           {/* 4x4 dot grid */}
           {[0, 1, 2, 3].map(r => [0, 1, 2, 3].map(c => (
@@ -151,7 +153,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'led_cube':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           {/* Simple 3D cube */}
           <polygon points="12,16 24,10 36,16 24,22" fill="none" stroke="#2ecc71" strokeWidth={1} />
           <polygon points="12,16 12,32 24,38 24,22" fill="none" stroke="#2ecc71" strokeWidth={1} />
@@ -164,7 +166,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'shift_register':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <rect x={8} y={10} width={32} height={28} rx={2} fill="#2c3e50" stroke="#8e44ad" strokeWidth={1} />
           <text x={cx} y={cy - 1} textAnchor="middle" fill="#ddd" fontSize={5} fontFamily="monospace">74HC</text>
           <text x={cx} y={cy + 6} textAnchor="middle" fill="#ddd" fontSize={5} fontFamily="monospace">595</text>
@@ -175,7 +177,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'ir_receiver':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <path d={`M ${cx - 8} ${cy + 8} L ${cx - 8} ${cy - 4} A 8 8 0 0 1 ${cx + 8} ${cy - 4} L ${cx + 8} ${cy + 8} Z`}
             fill="#1a1a2e" stroke="#c0392b" strokeWidth={1.5} />
           <circle cx={cx} cy={cy - 2} r={3} fill="#c0392b" opacity={0.6} />
@@ -184,7 +186,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'temp_sensor':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <path d={`M ${cx - 5} ${cy + 8} L ${cx - 5} ${cy - 8} A 5 5 0 0 1 ${cx + 5} ${cy - 8} L ${cx + 5} ${cy + 8} Z`}
             fill="#1a1a2e" stroke="#16a085" strokeWidth={1.5} />
           <text x={cx} y={cy + 2} textAnchor="middle" fill="#16a085" fontSize={6} fontFamily="monospace">T</text>
@@ -193,7 +195,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'eeprom':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <rect x={12} y={10} width={24} height={28} rx={2} fill="#2c3e50" stroke="#7f8c8d" strokeWidth={1} />
           <text x={cx} y={cy + 2} textAnchor="middle" fill="#bbb" fontSize={5} fontFamily="monospace">ROM</text>
           <circle cx={16} cy={14} r={1.5} fill="#444" />
@@ -203,7 +205,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'meter':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <rect x={6} y={6} width={36} height={36} rx={4} fill="#1a1a2e" stroke="#f1c40f" strokeWidth={1.5} />
           <text x={cx} y={cy - 4} textAnchor="middle" fill="#f1c40f" fontSize={12} fontFamily="monospace" fontWeight="bold">V</text>
           <text x={cx} y={cy + 8} textAnchor="middle" fill="#ecf0f1" fontSize={7} fontFamily="monospace">5.00</text>
@@ -214,7 +216,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'diode':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <line x1={4} y1={cy} x2={14} y2={cy} stroke="#999" strokeWidth={1.5} />
           <polygon points={`${14},${cy - 6} ${14},${cy + 6} ${28},${cy}`} fill="none" stroke="#95a5a6" strokeWidth={1.5} />
           <line x1={28} y1={cy - 6} x2={28} y2={cy + 6} stroke="#95a5a6" strokeWidth={1.5} />
@@ -223,7 +225,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     case 'switch':
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <line x1={4} y1={cy} x2={16} y2={cy} stroke="#999" strokeWidth={1.5} />
           <circle cx={16} cy={cy} r={2} fill="#bdc3c7" />
           <line x1={16} y1={cy} x2={32} y2={cy - 8} stroke="#bdc3c7" strokeWidth={1.5} />
@@ -233,7 +235,7 @@ export function PartThumbnail({ kind, color, params }) {
       );
     default:
       return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <rect x={8} y={8} width={32} height={32} rx={4} fill="none" stroke={color || '#555'} strokeWidth={1} strokeDasharray="4 2" />
           <text x={cx} y={cy + 3} textAnchor="middle" fill={color || '#777'} fontSize={8} fontFamily="monospace">{kind}</text>
         </svg>
