@@ -6,6 +6,7 @@ import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { FOOTPRINTS, computeLeadMap } from '../src/model/footprints.js';
+import { BreadboardModel } from '../src/model/breadboard.js';
 
 describe('computeLeadMap', () => {
   it('resistor at e5 spans 4 columns', () => {
@@ -38,6 +39,54 @@ describe('computeLeadMap', () => {
       () => computeLeadMap(FOOTPRINTS.resistor, 't+5'),
       /rail/
     );
+  });
+
+  it('shift register straddles gutter', () => {
+    const map = computeLeadMap(FOOTPRINTS.shift_register, 'e10');
+    assert.equal(map.data, 'e10');
+    assert.equal(map.clock, 'e11');
+    assert.equal(map.latch, 'j10'); // dRow=5 across gutter
+  });
+
+  it('from bottom block, offset stays in bottom rows', () => {
+    const map = computeLeadMap(FOOTPRINTS.resistor, 'f5');
+    assert.equal(map.a, 'f5');
+    assert.equal(map.b, 'f9');
+  });
+
+  it('buzzer spans 3 columns', () => {
+    const map = computeLeadMap(FOOTPRINTS.buzzer, 'b4');
+    assert.equal(map.a, 'b4');
+    assert.equal(map.b, 'b6');
+  });
+});
+
+describe('breadboard + footprint integration', () => {
+  it('place a resistor and derive nets', () => {
+    const bb = new BreadboardModel();
+    const leadMap = computeLeadMap(FOOTPRINTS.resistor, 'a5');
+    bb.occupy('r1', leadMap);
+    const { nets } = bb.deriveNets();
+    // resistor terminal 'a' is in strip col-t5, terminal 'b' in col-t9
+    // Each should appear in a net with one terminal (floating)
+    assert.ok(nets.length >= 2, 'should produce at least 2 nets');
+    const terms = nets.flatMap(n => n.terminals);
+    assert.ok(terms.some(t => t.part === 'r1' && t.terminal === 'a'));
+    assert.ok(terms.some(t => t.part === 'r1' && t.terminal === 'b'));
+  });
+
+  it('two parts wired via same strip share a net', () => {
+    const bb = new BreadboardModel();
+    // Resistor a-terminal at a5 (strip col-t5), LED anode at c5 (same strip)
+    bb.occupy('r1', { a: 'a5', b: 'a9' });
+    bb.occupy('led1', { anode: 'c5', cathode: 'c6' });
+    const { nets } = bb.deriveNets();
+    // r1.a and led1.anode are in the same strip (col-t5)
+    const shared = nets.find(n =>
+      n.terminals.some(t => t.part === 'r1' && t.terminal === 'a') &&
+      n.terminals.some(t => t.part === 'led1' && t.terminal === 'anode')
+    );
+    assert.ok(shared, 'r1.a and led1.anode should share a net via strip col-t5');
   });
 });
 
