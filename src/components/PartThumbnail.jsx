@@ -352,6 +352,24 @@ export function PartThumbnail({ kind, color, params, displaySize }) {
           {[0, 1, 2, 3].map(i => <rect key={`r${i}`} x={40} y={12 + i * 7} width={4} height={3} fill={color || '#e74c3c'} />)}
         </svg>
       );
+    // 74HC logic chips — generic DIP package
+    case '74hc00': case '74hc02': case '74hc04': case '74hc08':
+    case '74hc10': case '74hc11': case '74hc14': case '74hc20':
+    case '74hc21': case '74hc27': case '74hc32': case '74hc86':
+    case '74hc74': case '74hc73': case '74hc93': case '74hc95':
+    case '74hc132': case 'cd4017': case 'cd4511': {
+      const label = kind.toUpperCase().replace('74HC', '74HC\u200B');
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <rect x={8} y={6} width={32} height={36} rx={2} fill="#2c3e50" stroke={color || '#9b59b6'} strokeWidth={1} />
+          <circle cx={12} cy={10} r={2} fill="#444" />
+          <text x={cx} y={cy - 1} textAnchor="middle" fill="#ecf0f1" fontSize={6} fontFamily="monospace">{kind.slice(0, 4).toUpperCase()}</text>
+          <text x={cx} y={cy + 7} textAnchor="middle" fill="#ecf0f1" fontSize={6} fontFamily="monospace">{kind.slice(4)}</text>
+          {[0, 1, 2, 3, 4, 5, 6].map(i => <rect key={`l${i}`} x={4} y={8 + i * 5} width={4} height={2.5} fill={color || '#9b59b6'} />)}
+          {[0, 1, 2, 3, 4, 5, 6].map(i => <rect key={`r${i}`} x={40} y={8 + i * 5} width={4} height={2.5} fill={color || '#9b59b6'} />)}
+        </svg>
+      );
+    }
     default:
       return (
         <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
