@@ -1,0 +1,24 @@
+{
+  "device": "stc12c5a60s2",
+  "clock": 11059200,
+  "pins": [
+    {
+      "name": "button",
+      "port": 3,
+      "bit": 2,
+      "pin": "P3.2",
+      "direction": "input",
+      "activeLow": true
+    },
+    {
+      "name": "buzzer",
+      "port": 3,
+      "bit": 5,
+      "pin": "P3.5",
+      "direction": "tone",
+      "activeLow": false
+    }
+  ],
+  "ports": [],
+  "parts": []
+}

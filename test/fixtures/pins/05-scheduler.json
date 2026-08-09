@@ -1,0 +1,24 @@
+{
+  "device": "stc12c5a60s2",
+  "clock": 11059200,
+  "pins": [
+    {
+      "name": "slow",
+      "port": 1,
+      "bit": 0,
+      "pin": "P1.0",
+      "direction": "output",
+      "activeLow": true
+    },
+    {
+      "name": "fast",
+      "port": 1,
+      "bit": 1,
+      "pin": "P1.1",
+      "direction": "output",
+      "activeLow": true
+    }
+  ],
+  "ports": [],
+  "parts": []
+}

@@ -1,0 +1,24 @@
+{
+  "device": "stc12c5a60s2",
+  "clock": 11059200,
+  "pins": [
+    {
+      "name": "led1",
+      "port": 1,
+      "bit": 0,
+      "pin": "P1.0",
+      "direction": "output",
+      "activeLow": true
+    },
+    {
+      "name": "led2",
+      "port": 1,
+      "bit": 1,
+      "pin": "P1.1",
+      "direction": "output",
+      "activeLow": true
+    }
+  ],
+  "ports": [],
+  "parts": []
+}

@@ -1,0 +1,24 @@
+{
+  "device": "stc12c5a60s2",
+  "clock": 11059200,
+  "pins": [
+    {
+      "name": "pot",
+      "port": 1,
+      "bit": 2,
+      "pin": "P1.2",
+      "direction": "analog",
+      "activeLow": false
+    },
+    {
+      "name": "lamp",
+      "port": 1,
+      "bit": 3,
+      "pin": "P1.3",
+      "direction": "pwm",
+      "activeLow": true
+    }
+  ],
+  "ports": [],
+  "parts": []
+}

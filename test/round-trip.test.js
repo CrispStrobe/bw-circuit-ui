@@ -8,19 +8,34 @@ import './_setup.js';
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { inferCircuit } from '../src/model/inference.js';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { circuitToDeclarations } from '../src/model/declarations.js';
 
 beforeEach(() => resetIds());
 
+// Resolve fixtures relative to THIS FILE, never the process CWD — a
+// CWD-relative path made the suite pass or fail depending on which checkout
+// ran it, which read as "the agent ignored the red tests" when it was really
+// "the tests only exist from one directory". Vendored copies win; a live
+// sibling stc checkout (or $BW_STC_DIR) is consulted after them.
+const HERE = dirname(fileURLToPath(import.meta.url));
+const FIXTURE_BASES = [
+  (name) => join(HERE, 'fixtures', 'pins', `${name}.json`),
+  (name) => join(HERE, '..', '..', 'stc', 'examples', name, 'pins.json'),
+  (name) => join(HERE, '..', '..', '..', 'stc', 'examples', name, 'pins.json'),
+  ...(process.env.BW_STC_DIR ? [(name) => join(process.env.BW_STC_DIR, 'examples', name, 'pins.json')] : []),
+];
+
 function loadFixture(name) {
-  const path = `../stc/examples/${name}/pins.json`;
-  try {
-    return JSON.parse(readFileSync(path, 'utf-8'));
-  } catch {
-    return null;
+  for (const base of FIXTURE_BASES) {
+    try {
+      return JSON.parse(readFileSync(base(name), 'utf-8'));
+    } catch { /* next candidate */ }
   }
+  return null;
 }
 
 function buildCircuit(stc) {
