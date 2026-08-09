@@ -179,3 +179,35 @@ test('rotation-aware bounds: a rotated resistor swaps its box', () => {
   assert.equal(b90.maxX - b90.minX, 20);
   assert.equal(b90.maxY - b90.minY, 64);
 });
+
+test('placing: press-drag-release from the palette commits at the release point', () => {
+  const { machine, log } = makeWorld();
+  const placed = [];
+  machine.cb.placeGhost = (g) => log.push(['ghost', g]);
+  machine.cb.placePart = (kind, params, x, y) => placed.push({ kind, x, y });
+  machine.cb.placingDone = () => log.push(['done']);
+  machine.startPlacing('resistor', { ohms: 1000 });
+  machine.move(400, 300);
+  machine.up(420, 300, {});
+  assert.equal(placed.length, 1);
+  assert.equal(placed[0].kind, 'resistor');
+  assert.equal(placed[0].x, 420);
+  assert.equal(machine.state, 'idle');
+});
+
+test('placing: click-then-click flow — armed release does not commit, canvas click does', () => {
+  const { machine } = makeWorld();
+  const placed = [];
+  machine.cb.placeGhost = () => {};
+  machine.cb.placePart = (kind, params, x, y) => placed.push({ x, y });
+  machine.cb.placingDone = () => {};
+  machine.startPlacing('led', {});
+  // The palette click's own release arrives with no movement: stays armed.
+  machine.up(0, 0, {});
+  assert.equal(placed.length, 0);
+  assert.equal(machine.state, 'placing');
+  machine.move(250, 250);
+  machine.down(250, 250, {});
+  assert.equal(placed.length, 1);
+  assert.deepEqual([placed[0].x, placed[0].y], [250, 250]);
+});

@@ -12,6 +12,13 @@ const LED_COLORS = ['red', 'green', 'yellow', 'blue', 'white', 'orange'];
 
 const CATEGORIES = [
   {
+    name: 'Boards',
+    parts: [
+      { kind: 'breadboard', label: 'Breadboard', params: {}, color: '#e8e4d8',
+        tooltip: 'Full-size breadboard - legs snap into holes, rows and rails conduct' },
+    ],
+  },
+  {
     name: 'Power',
     parts: [
       { kind: 'vcc', label: 'VCC', params: {}, color: '#e74c3c' },
@@ -70,7 +77,7 @@ const CATEGORIES = [
 
 const ALL_PARTS = CATEGORIES.flatMap(c => c.parts);
 
-export function PartPalette({ onAddPart, onDragPart }) {
+export function PartPalette({ onAddPart, onDragPart, onStartPlace }) {
   const [filter, setFilter] = useState('');
   const [ledColor, setLedColor] = useState('red');
 
@@ -114,7 +121,7 @@ export function PartPalette({ onAddPart, onDragPart }) {
         matchingParts.length === 0 ? (
           <div style={{ color: '#556', fontSize: '9px', padding: '4px' }}>No matches</div>
         ) : (
-          matchingParts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} ledColor={ledColor} onLedColorChange={setLedColor} />)
+          matchingParts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)
         )
       ) : (
         CATEGORIES.map(cat => (
@@ -122,7 +129,7 @@ export function PartPalette({ onAddPart, onDragPart }) {
             <div style={{ color: '#556', fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase' }}>
               {cat.name}
             </div>
-            {cat.parts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} ledColor={ledColor} onLedColorChange={setLedColor} />)}
+            {cat.parts.map(p => <PartButton key={p.kind} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)}
           </div>
         ))
       )}
@@ -130,7 +137,7 @@ export function PartPalette({ onAddPart, onDragPart }) {
   );
 }
 
-function PartButton({ part, onAddPart, onDragPart, ledColor, onLedColorChange }) {
+function PartButton({ part, onAddPart, onDragPart, onStartPlace, ledColor, onLedColorChange }) {
   const { kind, label, params, color, tooltip, hasColorPicker } = part;
   const [hovered, setHovered] = useState(false);
 
@@ -140,12 +147,11 @@ function PartButton({ part, onAddPart, onDragPart, ledColor, onLedColorChange })
   return (
     <div style={{ position: 'relative' }}>
       <div
-        draggable
-        onClick={() => onAddPart(kind, effectiveParams)}
-        onDragStart={(e) => {
-          e.dataTransfer.setData('application/circuit-part', JSON.stringify({ kind, params: effectiveParams }));
-          e.dataTransfer.effectAllowed = 'copy';
-          if (onDragPart) onDragPart(kind, effectiveParams);
+        onPointerDown={() => {
+          // Arm ghost placement: press-drag-release onto the canvas, or
+          // click here and click the canvas — both commit at the cursor.
+          if (onStartPlace) onStartPlace(kind, effectiveParams);
+          else onAddPart(kind, effectiveParams);
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}

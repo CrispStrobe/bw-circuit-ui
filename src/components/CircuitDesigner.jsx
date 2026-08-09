@@ -145,6 +145,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   // Multimeter
   const [placingProbe, setPlacingProbe] = useState(null);
+  const [placingPart, setPlacingPart] = useState(null); // {kind, params} riding the cursor
   const [probePlacement, setProbePlacement] = useState(null);
   const handleStartPlacing = useCallback((which) => setPlacingProbe(which), []);
   const handleStopPlacing = useCallback(() => setPlacingProbe(null), []);
@@ -512,7 +513,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
             fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
           }}>collapse</button>
-          <PartPalette onAddPart={handleAddPart} />
+          <PartPalette onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
           <InferPanel onLoadCircuit={handleLoadCircuit} />
         </div>
       ) : (
@@ -698,6 +699,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onButtonUp={handleButtonUp}
           statusText={statusText}
           placingProbe={placingProbe}
+          placing={placingPart}
+          onPlacingDone={() => setPlacingPart(null)}
           onTerminalClickForProbe={handleTerminalClickForProbe}
           onDuplicatePart={(id) => { const dup = duplicatePart(id); if (dup) handleSelectPart(dup.id); }}
           onRotatePart={rotatePart}

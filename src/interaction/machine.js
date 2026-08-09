@@ -75,6 +75,33 @@ export class InteractionMachine {
     if (this.state === 'wiring') this.cb.clearWirePreview();
     if (this.state === 'marquee') this.cb.marqueeRect(null);
     if (this.state === 'draggingParts') this.cb.endMove();
+    if (this.state === 'placing') {
+      this.cb.placeGhost(null);
+      if (this.cb.placingDone) this.cb.placingDone(false);
+    }
+    this.state = 'idle';
+    this._gesture = null;
+  }
+
+  /**
+   * Arm ghost placement of a new part (from the palette). Two flows share
+   * this state: press-drag-release (palette pointerdown → drag onto the
+   * canvas → release commits at the release point) and click-then-click
+   * (palette click arms; the part rides the cursor as a ghost; a canvas
+   * click commits). Esc cancels either.
+   * @param {string} kind @param {object} params
+   */
+  startPlacing(kind, params) {
+    this.cancel();
+    this.state = 'placing';
+    this._gesture = { kind, params, x: null, y: null };
+  }
+
+  _commitPlace(wx, wy) {
+    const g = this._gesture;
+    this.cb.placePart(g.kind, g.params, wx, wy);
+    this.cb.placeGhost(null);
+    if (this.cb.placingDone) this.cb.placingDone(true);
     this.state = 'idle';
     this._gesture = null;
   }
@@ -85,6 +112,10 @@ export class InteractionMachine {
    * @param {{shiftKey?: boolean}} mods
    */
   down(wx, wy, mods = {}) {
+    if (this.state === 'placing') {
+      this._commitPlace(wx, wy);
+      return;
+    }
     if (this.state !== 'idle') this.cancel();
 
     // Terminals win over part bodies: they are smaller and on top.
@@ -153,6 +184,11 @@ export class InteractionMachine {
         this.cb.marqueeRect({ x1: g.startX, y1: g.startY, x2: wx, y2: wy });
         return;
       }
+      case 'placing': {
+        g.x = wx; g.y = wy;
+        this.cb.placeGhost({ kind: g.kind, params: g.params, x: wx, y: wy });
+        return;
+      }
       case 'wiring': {
         const snap = this.hit.terminalAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX));
         const snapValid = snap && !(snap.partId === g.from.partId && snap.terminal === g.from.terminal);
@@ -167,6 +203,13 @@ export class InteractionMachine {
   /** @param {number} wx @param {number} wy @param {{shiftKey?: boolean}} mods */
   up(wx, wy, mods = {}) {
     const g = this._gesture;
+    // Placing: a release over the canvas after dragging from the palette
+    // commits; a release that never travelled (the palette click that armed
+    // us) keeps the ghost armed for the click-then-click flow.
+    if (this.state === 'placing') {
+      if (g.x !== null) this._commitPlace(wx, wy);
+      return;
+    }
     switch (this.state) {
       case 'pressedPart': {
         // A true click. Already-selected part without shift: collapse the

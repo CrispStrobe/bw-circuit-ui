@@ -46,6 +46,7 @@ export const FOOTPRINTS = {
   vsource: { w: 48, h: 56 },
   isource: { w: 48, h: 56 },
   relay: { w: 70, h: 50 },
+  breadboard: { w: 930, h: 310 },
   dc_motor: { w: 70, h: 70 },
   servo: { w: 70, h: 60 },
 };

@@ -74,10 +74,17 @@ const selectionCount = async () =>
 
 // 3. Add two fresh parts from the palette, then wire them terminal-to-terminal.
 {
-  await page.getByText('Resistor 1kΩ', { exact: false }).first().click();
-  await page.waitForTimeout(200);
-  await page.getByText('Diode', { exact: true }).first().click();
-  await page.waitForTimeout(300);
+  // New placement flow: a palette click arms a ghost; a canvas click commits.
+  const canvasBox = await page.locator('[data-canvas]').boundingBox();
+  const drop = async (label, dx, dy) => {
+    await page.getByText(label, { exact: label === 'Diode' }).first().click();
+    await page.waitForTimeout(120);
+    await page.mouse.move(canvasBox.x + canvasBox.width / 2 + dx, canvasBox.y + 60 + dy, { steps: 4 });
+    await page.mouse.click(canvasBox.x + canvasBox.width / 2 + dx, canvasBox.y + 60 + dy);
+    await page.waitForTimeout(150);
+  };
+  await drop('Resistor 1kΩ', -120, 0);
+  await drop('Diode', 120, 0);
   const wiresBefore = await page.locator('[data-wire]').count();
   // Free terminals render as hollow red dots (r=8, stroke #e74c3c).
   const freeDots = await page.evaluate(() => {
@@ -103,6 +110,23 @@ const selectionCount = async () =>
     (wiresAfter > wiresBefore) ? pass('terminal-to-terminal drag created a wire')
       : fail(`wiring drag created nothing (paths ${wiresBefore} → ${wiresAfter})`);
   }
+}
+
+// 3b. Palette press → drag onto canvas → release places a breadboard, then
+//     a resistor placed over it snaps onto the hole lattice.
+{
+  const bb = await page.getByText('Breadboard', { exact: true }).first().boundingBox();
+  const canvas = await page.locator('[data-canvas]').boundingBox();
+  const cx = canvas.x + canvas.width / 2, cy = canvas.y + canvas.height / 2;
+  await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cx, cy, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  const boards = await page.evaluate(() =>
+    [...document.querySelectorAll('svg rect')].filter(r => r.getAttribute('fill') === '#e8e4d8').length);
+  boards >= 1 ? pass('palette drag placed a breadboard substrate')
+    : fail('breadboard did not appear after palette drag');
 }
 
 // 4. Trackpad two-finger scroll must PAN the canvas (viewBox moves).

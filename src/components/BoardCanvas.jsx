@@ -14,6 +14,8 @@ import React, { useState, useCallback, useRef } from 'react';
 import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
 import { classifyWheel } from '../interaction/transform.js';
+import { FOOTPRINTS } from '../interaction/hittest.js';
+import { snapGhost, BB_PITCH, bbHoleOrigin } from '../interaction/breadboard-snap.js';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
@@ -725,6 +727,41 @@ function WiringPreview({ wiringFrom, mousePos, parts }) {
   );
 }
 
+// ── Breadboard substrate: hole grid drawn from the same lattice the
+//    snapper uses, so what snaps is what you see ───────────────────
+function BreadboardSubstrate({ part }) {
+  const origin = bbHoleOrigin(part);
+  const cols = 63;
+  const rows = [];
+  // Rails (2 top, 2 bottom) and the 2×5 terminal rows.
+  for (const r of [0, 1]) rows.push({ y: origin.railTopY + r * BB_PITCH, rail: true });
+  for (let r = 0; r < 5; r++) rows.push({ y: origin.topRowsY + r * BB_PITCH });
+  for (let r = 0; r < 5; r++) rows.push({ y: origin.bottomRowsY + r * BB_PITCH });
+  for (const r of [0, 1]) rows.push({ y: origin.railBottomY + r * BB_PITCH, rail: true });
+  const fp = FOOTPRINTS.breadboard;
+  return (
+    <g style={{ pointerEvents: 'none' }}>
+      <rect x={part.x - fp.w / 2} y={part.y - fp.h / 2} width={fp.w} height={fp.h}
+        rx={10} fill="#e8e4d8" stroke="#b8b4a8" strokeWidth={2} />
+      {/* rail stripes */}
+      <line x1={part.x - fp.w / 2 + 12} y1={origin.railTopY - 8} x2={part.x + fp.w / 2 - 12} y2={origin.railTopY - 8} stroke="#e74c3c" strokeWidth={2} />
+      <line x1={part.x - fp.w / 2 + 12} y1={origin.railTopY + BB_PITCH + 8} x2={part.x + fp.w / 2 - 12} y2={origin.railTopY + BB_PITCH + 8} stroke="#3498db" strokeWidth={2} />
+      <line x1={part.x - fp.w / 2 + 12} y1={origin.railBottomY - 8} x2={part.x + fp.w / 2 - 12} y2={origin.railBottomY - 8} stroke="#e74c3c" strokeWidth={2} />
+      <line x1={part.x - fp.w / 2 + 12} y1={origin.railBottomY + BB_PITCH + 8} x2={part.x + fp.w / 2 - 12} y2={origin.railBottomY + BB_PITCH + 8} stroke="#3498db" strokeWidth={2} />
+      {rows.map((row, ri) => (
+        <g key={ri}>
+          {Array.from({ length: cols }, (_, c) => (
+            (!row.rail || (c % 6 !== 5)) && (
+              <circle key={c} cx={origin.x + c * BB_PITCH} cy={row.y} r={2.2}
+                fill="#2c3e50" opacity={0.75} />
+            )
+          ))}
+        </g>
+      ))}
+    </g>
+  );
+}
+
 // ── Main BoardCanvas ─────────────────────────────────────────────
 
 export function BoardCanvas({
@@ -737,7 +774,9 @@ export function BoardCanvas({
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
+  placing, onPlacingDone,
 }) {
+  const [placeGhost, setPlaceGhost] = useState(null);
   const [wiringFrom, setWiringFrom] = useState(null);
   const [mousePos, setMousePos] = useState(null);
   const [dragging, setDragging] = useState(null); // partId that initiated the drag
@@ -801,7 +840,7 @@ export function BoardCanvas({
   const panRef = useRef(pan); panRef.current = pan;
   const apiRef = useRef({});
   apiRef.current = { onMovePart, onAddWire, onSelectPart, onSelectWire, onSaveHistory,
-    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire };
+    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire, onDropPart, onPlacingDone };
   const placingProbeRef = useRef(false); placingProbeRef.current = !!placingProbe;
   const pressedButtonRef = useRef(null);
   const draggingWaypointRef = useRef(null); draggingWaypointRef.current = draggingWaypoint;
@@ -866,6 +905,12 @@ export function BoardCanvas({
       wirePreview: (from, toPos) => { setWiringFrom({ part: from.partId, terminal: from.terminal }); setMousePos(toPos); },
       clearWirePreview: () => { setWiringFrom(null); setMousePos(null); },
       marqueeRect: (r) => setRubberBand(r ? { startX: r.x1, startY: r.y1, endX: r.x2, endY: r.y2 } : null),
+      placeGhost: (g) => setPlaceGhost(g ? snapGhost(g, partsRef.current) : null),
+      placePart: (kind, params, x, y) => {
+        const s = snapGhost({ kind, x, y }, partsRef.current);
+        apiRef.current.onDropPart(kind, params, s.x, s.y);
+      },
+      placingDone: () => { if (apiRef.current.onPlacingDone) apiRef.current.onPlacingDone(); },
     };
     machineRef.current = new InteractionMachine(hit, cb, () => selectedPartsRef.current, (px) => px / zoomRef.current);
   }
@@ -885,6 +930,12 @@ export function BoardCanvas({
     setContainerSize({ w: el.clientWidth || CANVAS_W, h: el.clientHeight || CANVAS_H });
     return () => ro.disconnect();
   }, []);
+
+  React.useEffect(() => {
+    const m = machineRef.current;
+    if (placing) m.startPlacing(placing.kind, placing.params || {});
+    else if (m.state === 'placing') m.cancel();
+  }, [placing]);
 
   const eventToWorld = useCallback((e) => {
     const r = canvasContainerRef.current.getBoundingClientRect();
@@ -1535,6 +1586,30 @@ export function BoardCanvas({
               style={{ pointerEvents: 'none' }}
             />
           )}
+
+          {/* Ghost of the part being placed from the palette */}
+          {placeGhost && (() => {
+            const fp = FOOTPRINTS[placeGhost.kind] ?? { w: 48, h: 48 };
+            return (
+              <g style={{ pointerEvents: 'none' }} opacity={0.55}>
+                <rect x={placeGhost.x - fp.w / 2} y={placeGhost.y - fp.h / 2}
+                  width={fp.w} height={fp.h} rx={6}
+                  fill="#3498db" fillOpacity={0.15}
+                  stroke="#3498db" strokeWidth={1.5} strokeDasharray="6,3" />
+                <text x={placeGhost.x} y={placeGhost.y + 4} textAnchor="middle"
+                  fill="#3498db" fontSize={11} fontFamily="monospace">{placeGhost.kind}</text>
+                {placeGhost.snapped && (
+                  <circle cx={placeGhost.x} cy={placeGhost.y} r={5} fill="none"
+                    stroke="#f1c40f" strokeWidth={2} />
+                )}
+              </g>
+            );
+          })()}
+
+          {/* Breadboard substrates render under everything else */}
+          {parts.filter(p => p.kind === 'breadboard').map(bb => (
+            <BreadboardSubstrate key={bb.id} part={bb} />
+          ))}
 
           {/* Snap-to-connector indicator */}
           {snapTarget && snapTarget.autoWire && (() => {
