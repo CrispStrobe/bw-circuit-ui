@@ -12,6 +12,7 @@ import { getEngine } from '../engine.js';
 import { History } from './history.js';
 import { mergeNets } from './merge-nets.js';
 import { BreadboardModel } from './breadboard.js';
+import { computeLeadMap, rotateFootprint, FOOTPRINTS as BB_FOOTPRINTS_FOR_ROTATE } from './footprints.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -122,6 +123,17 @@ export class Circuit {
     return `bbw:${boardId}:${id}`;
   }
 
+  /** Recolor a jumper by its reference. */
+  updateHoleWire(ref, props) {
+    const m = /^bbw:([^:]+):(.+)$/.exec(ref);
+    if (!m) return false;
+    const bb = this.breadboards.get(m[1]);
+    const w = bb && bb.wires.get(m[2]);
+    if (!w) return false;
+    if ('color' in props) w.color = props.color ?? undefined;
+    return true;
+  }
+
   /** Remove a jumper by its "bbw:<board>:<wire>" reference. */
   removeHoleWire(ref) {
     const m = /^bbw:([^:]+):(.+)$/.exec(ref);
@@ -143,6 +155,34 @@ export class Circuit {
       }
     }
     return out;
+  }
+
+  /**
+   * Rotate a SEATED part 90° about its reference hole: the leadMap is
+   * re-derived from the rotated footprint. Returns false (and changes
+   * nothing) when the rotated holes are off-board or occupied — refusal is
+   * visible as nothing happening at the same spot, never a corrupted seat.
+   * @param {string} partId
+   * @param {object} footprint - the part's breadboard footprint
+   * @returns {boolean}
+   */
+  rotateSeated(partId, footprint) {
+    const part = this.parts.find(p => p.id === partId);
+    if (!part || !part.seat || !footprint) return false;
+    const refHole = part.seat.leadMap[footprint.refTerminal];
+    if (!refHole) return false;
+    const rot = ((part.seat.rot ?? 0) + 1) % 4;
+    let leadMap;
+    try {
+      leadMap = computeLeadMap(rotateFootprint(footprint, rot), refHole);
+    } catch {
+      return false;
+    }
+    const boardId = part.seat.boardId;
+    if (!this.canSeat(boardId, partId, leadMap)) return false;
+    const ok = this.seatPart(partId, boardId, leadMap);
+    if (ok) part.seat.rot = rot;
+    return ok;
   }
 
   /** Free a part's holes wherever it sits. Safe when not seated. */
@@ -276,6 +316,12 @@ export class Circuit {
    * @returns {boolean}
    */
   rotatePart(partId) {
+    const seated = this.parts.find(p => p.id === partId);
+    if (seated && seated.seat) {
+      // On a board, rotation means re-seating the rotated leadMap — the
+      // lattice decides, not free angles.
+      return this.rotateSeated(partId, BB_FOOTPRINTS_FOR_ROTATE[seated.kind]);
+    }
     const part = this.getPart(partId);
     if (!part) return false;
     part.rotation = ((part.rotation || 0) + 90) % 360;

@@ -134,6 +134,26 @@ export const FOOTPRINTS = {
  * @param {string} refHole — the hole the reference terminal sits on (e.g. "e5")
  * @returns {Record<string, string>} terminal → hole id
  */
+/**
+ * Rotate a footprint's lead offsets by quarter turns on the hole lattice.
+ * 90° clockwise maps (dRow, dCol) → (dCol, −dRow) — a horizontal resistor
+ * stands up along its column. Pure; computeLeadMap decides whether the
+ * rotated holes actually exist from a given reference.
+ * @param {object} footprint @param {number} quarterTurns 0..3
+ */
+export function rotateFootprint(footprint, quarterTurns) {
+  const q = ((quarterTurns % 4) + 4) % 4;
+  const rot = (r, c) => {
+    for (let i = 0; i < q; i++) { const t = r; r = c; c = -t; }
+    return { dRow: r, dCol: c };
+  };
+  const leads = {};
+  for (const [terminal, o] of Object.entries(footprint.leads)) {
+    leads[terminal] = rot(o.dRow, o.dCol);
+  }
+  return { ...footprint, leads };
+}
+
 export function computeLeadMap(footprint, refHole) {
   const refRow = refHole[0];
   const refCol = Number(refHole.slice(1));

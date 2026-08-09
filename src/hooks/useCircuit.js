@@ -92,7 +92,9 @@ export function useCircuit(vcc = 5.0) {
   }, [circuit, bump]);
 
   const updateWire = useCallback((wireId, props) => {
-    const ok = circuit.updateWire(wireId, props);
+    const ok = (typeof wireId === 'string' && wireId.startsWith('bbw:'))
+      ? circuit.updateHoleWire(wireId, props)
+      : circuit.updateWire(wireId, props);
     if (ok) bump();
     return ok;
   }, [circuit, bump]);

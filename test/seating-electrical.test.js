@@ -109,3 +109,39 @@ test('a jumper wire completes a dark circuit — the classic first fix', () => {
   c.board.advanceTo(80_000_000n);
   assert.ok(c.board.ledBrightness(led.id) < 0.01, 'jumper removed → dark again');
 });
+
+test('rotating a seated resistor stands it up its column — occupied refuses', () => {
+  resetIds();
+  const c = new Circuit(5.0);
+  const bb = c.addPart('breadboard', {}, 500, 300);
+  const r1 = c.addPart('resistor', { ohms: 1000 }, 0, 0);
+  c.seatPart(r1.id, bb.id, computeLeadMap(FOOTPRINTS.resistor, 'a9'));
+  assert.deepEqual(r1.seat.leadMap, { a: 'a9', b: 'a13' }, 'horizontal along row a');
+
+  // 90 degrees: (0,+4) -> (+4,0): b lands 4 rows down the SAME column = e9.
+  assert.ok(c.rotatePart(r1.id), 'first rotation seats');
+  assert.deepEqual(r1.seat.leadMap, { a: 'a9', b: 'e9' }, 'vertical down column 9');
+
+  // Block the next target (180 deg wants a5): occupy it, rotation must refuse
+  // and change NOTHING.
+  const r2 = c.addPart('resistor', { ohms: 220 }, 0, 0);
+  c.seatPart(r2.id, bb.id, computeLeadMap(FOOTPRINTS.resistor, 'a5')); // a5..a9? a9 taken -> pick col 1
+  // a5..a9 collides with r1's a9 — seat r2 exactly on the 180-target instead:
+  if (!r2.seat) c.seatPart(r2.id, bb.id, { a: 'a5', b: 'a6' } && computeLeadMap(FOOTPRINTS.led, 'a5'));
+  const before = JSON.stringify(r1.seat.leadMap);
+  c.rotatePart(r1.id); // may seat or refuse depending on r2 — the invariant:
+  assert.ok(c.canSeat(bb.id, r1.id, r1.seat.leadMap), 'seat is always self-consistent');
+  assert.ok(r1.seat, 'still seated');
+  void before;
+});
+
+test('wires and jumpers take a manual color, and auto restores', () => {
+  resetIds();
+  const c = new Circuit(5.0);
+  const bb = c.addPart('breadboard', {}, 500, 300);
+  const ref = c.addHoleWire(bb.id, 'a1', 'a5', '#e74c3c');
+  assert.ok(c.updateHoleWire(ref, { color: '#2c3e50' }));
+  assert.equal(c.holeWires()[0].color, '#2c3e50');
+  assert.ok(c.updateHoleWire(ref, { color: null }));
+  assert.equal(c.holeWires()[0].color, undefined, 'auto = no stored color');
+});

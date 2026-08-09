@@ -1525,6 +1525,21 @@ export function BoardCanvas({
                 ⧉ Duplicate
               </button>
             )}
+            {selectedWire && onUpdateWire && (
+              <span style={{ display: 'inline-flex', gap: '3px', alignItems: 'center' }}
+                title="Wire color (auto = colored by voltage)">
+                {['#e74c3c', '#2c3e50', '#3498db', '#2ecc71', '#f1c40f', '#e67e22', null].map((c, i) => (
+                  <button key={i}
+                    onClick={() => onUpdateWire(selectedWire, { color: c })}
+                    title={c ?? 'auto (voltage)'}
+                    style={{
+                      width: 14, height: 14, borderRadius: '50%', cursor: 'pointer',
+                      border: '1px solid #7f8c8d', padding: 0,
+                      background: c ?? 'conic-gradient(#e74c3c, #f1c40f, #2ecc71, #3498db, #e74c3c)',
+                    }} />
+                ))}
+              </span>
+            )}
             <button onClick={() => {
               if (selectedWire) { onRemoveWire(selectedWire); onSelectWire(null); }
               else if (selectedParts && selectedParts.size > 0) { for (const id of selectedParts) onRemovePart(id); onSelectPart(null); }
