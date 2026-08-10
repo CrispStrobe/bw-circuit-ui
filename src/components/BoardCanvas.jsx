@@ -2032,10 +2032,14 @@ export function BoardCanvas({
           {/* Ghost of the part being placed from the palette */}
           {placeGhost && (() => {
             const fp = FOOTPRINTS[placeGhost.kind] ?? { w: 48, h: 48 };
+            // When snapped to a breadboard, seated parts scale to 0.78 —
+            // the ghost must match so the part does not change size on drop.
+            const scale = placeGhost.snapped ? 0.78 : 1;
+            const gw = fp.w * scale, gh = fp.h * scale;
             return (
               <g style={{ pointerEvents: 'none' }} opacity={0.55}>
-                <rect x={placeGhost.x - fp.w / 2} y={placeGhost.y - fp.h / 2}
-                  width={fp.w} height={fp.h} rx={6}
+                <rect x={placeGhost.x - gw / 2} y={placeGhost.y - gh / 2}
+                  width={gw} height={gh} rx={6}
                   fill="#3498db" fillOpacity={0.15}
                   stroke="#3498db" strokeWidth={1.5} strokeDasharray="6,3" />
                 <text x={placeGhost.x} y={placeGhost.y + 4} textAnchor="middle"
@@ -2079,7 +2083,8 @@ export function BoardCanvas({
           {parts.filter(p => p.kind === 'breadboard').map(bb => (
             <BreadboardView key={bb.id} part={bb}
               model={circuit?.breadboards?.get(bb.id)}
-              footprint={FOOTPRINTS.breadboard} />
+              footprint={FOOTPRINTS.breadboard}
+              selectedPartId={selectedParts?.size === 1 ? [...selectedParts][0] : null} />
           ))}
 
           {/* Jumper wires: colored arcs hole-to-hole */}

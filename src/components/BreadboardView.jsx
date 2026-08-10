@@ -132,7 +132,7 @@ function BoardBg({ part, footprint }) {
 
 // ── Holes ──────────────────────────────────────────────────────────
 
-function HoleGrid({ part, model, highlightStrip }) {
+function HoleGrid({ part, model, highlightStrip, highlightFn }) {
   const origin = bbHoleOrigin(part);
   const rows = bbRows(part);
   const holes = [];
@@ -151,11 +151,13 @@ function HoleGrid({ part, model, highlightStrip }) {
       const occ = model?.occupantOf(holeId);
       let strip = null;
       try { strip = model?.stripOf(holeId); } catch { /* invalid */ }
-      const isHighlight = highlightStrip && strip === highlightStrip;
+      const isHighlight = highlightFn ? highlightFn(strip) : (highlightStrip && strip === highlightStrip);
 
       let fill, stroke, sw;
       if (isHighlight && !occ) {
         fill = '#c8850a'; stroke = '#e67e22'; sw = 1;
+      } else if (isHighlight && occ) {
+        fill = '#f39c12'; stroke = '#e67e22'; sw = 1.5; // selected part's occupied holes glow
       } else if (occ) {
         fill = '#b0b8c0'; stroke = '#8090a0'; sw = 1;
       } else {
@@ -243,11 +245,25 @@ function PlacedParts({ part: bbPart, model }) {
  *
  * @param {{ part: object, model?: BreadboardModel, highlightStrip?: string, footprint?: object }} props
  */
-export function BreadboardView({ part, model, highlightStrip, footprint }) {
+export function BreadboardView({ part, model, highlightStrip, footprint, selectedPartId }) {
+  // When a seated part is selected, highlight its occupied holes and strips
+  const selectedStrips = new Set();
+  if (selectedPartId && model) {
+    for (const [holeId, occ] of model.occupants) {
+      if (occ.kind === 'lead' && occ.partId === selectedPartId) {
+        try { selectedStrips.add(model.stripOf(holeId)); } catch { /* invalid */ }
+      }
+    }
+  }
+  const effectiveHighlight = selectedStrips.size > 0
+    ? (strip) => selectedStrips.has(strip)
+    : (strip) => strip === highlightStrip;
+
   return (
     <g style={{ pointerEvents: 'none' }}>
       <BoardBg part={part} footprint={footprint} />
-      <HoleGrid part={part} model={model} highlightStrip={highlightStrip} />
+      <HoleGrid part={part} model={model} highlightStrip={highlightStrip}
+        highlightFn={selectedStrips.size > 0 ? effectiveHighlight : null} />
       {model && <Jumpers part={part} model={model} />}
       {model && <PlacedParts part={part} model={model} />}
     </g>
