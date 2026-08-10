@@ -48,7 +48,7 @@ import { generatePartName, circuitToDeclarations } from '../model/declarations.j
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
-import { BreadboardModel } from '../model/breadboard.js';
+import { Circuit } from '../model/circuit.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { buildSeatedFromDeclarations } from '../model/infer-seated.js';
 import { runDrc } from '../model/drc.js';
@@ -526,24 +526,23 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   // Load circuit from JSON file
   const handleLoad = useCallback((data) => {
-    if (!data || !data.parts || !data.wires) return;
+    if (!data || !Array.isArray(data.parts)) return;
+    // fromJSON owns the parsing: it normalizes the gallery's legacy flat
+    // wire format, drops malformed wires instead of crashing, and restores
+    // breadboard occupancy AND hole wires (this inline copy used to lose
+    // the hole wires, so loaded saves stopped conducting through the rails).
+    let parsed;
+    try {
+      parsed = Circuit.fromJSON(data);
+    } catch (e) {
+      console.error('circuit load rejected:', e);
+      return; // a bad file must never take the designer down
+    }
     // Save current state first so Ctrl+Z recovers the previous circuit
     circuit._saveHistory();
-    circuit.parts = data.parts.map(p => ({ ...p }));
-    circuit.wires = data.wires.map(w => ({ ...w }));
-    // Re-create breadboard models for any breadboard parts in the loaded data
-    circuit.breadboards.clear();
-    for (const p of circuit.parts) {
-      if (p.kind === 'breadboard') {
-        circuit.breadboards.set(p.id, new BreadboardModel());
-      }
-      // Re-seat parts that were seated
-      if (p.seat && circuit.breadboards.has(p.seat.boardId)) {
-        try {
-          circuit.breadboards.get(p.seat.boardId).occupy(p.id, p.seat.leadMap);
-        } catch { /* seat conflict — leave free */ }
-      }
-    }
+    circuit.parts = parsed.parts;
+    circuit.wires = parsed.wires;
+    circuit.breadboards = parsed.breadboards;
     circuit._syncNetlist();
     circuit._saveHistory();
     setSelectedParts(new Set());
@@ -561,8 +560,33 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   useEffect(() => {
     if (!circuitData || circuitData === prevCircuitDataRef.current) return;
     prevCircuitDataRef.current = circuitData;
+    // The example gallery's circuit files predate the breadboard world:
+    // flat wire records, abstract vcc/gnd symbols, an mcu with no pin list.
+    // When such a file arrives WITH declared pins, the declarations carry
+    // strictly more truth — build the seated bench from them and let the
+    // legacy file inform nothing. Modern files (endpoint objects) load
+    // verbatim.
+    const legacy = Array.isArray(circuitData.wires) &&
+      circuitData.wires.some(w => typeof w.from === 'string');
+    const pins = projectData?.pins;
+    if (legacy && pins?.length > 0) {
+      try {
+        circuit._saveHistory();
+        circuit.parts.length = 0;
+        circuit.wires.length = 0;
+        circuit.breadboards = new Map();
+        const { notes } = buildSeatedFromDeclarations(circuit, projectData);
+        circuit._syncNetlist();
+        circuit._saveHistory();
+        setSelectedParts(new Set());
+        setSelectedWire(null);
+        setMode('build');
+        setAnnotations(notes.map((text, i) => ({ x: 470, y: 585 + i * 14, text, color: '#7f8c8d' })));
+        return;
+      } catch { /* fall through: load the file as-is */ }
+    }
     handleLoad(circuitData);
-  }, [circuitData, handleLoad]);
+  }, [circuitData, handleLoad, projectData, circuit]);
 
   // All keyboard shortcuts are handled by BoardCanvas (single focus scope).
   const handleUndo = useCallback(() => undo(), [undo]);

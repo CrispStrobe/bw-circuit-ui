@@ -687,7 +687,12 @@ export class Circuit {
     }
     // Pseudo-terminals did their gluing; the engine never meets them.
     engineNets = engineNets
-      .map(n => ({ ...n, terminals: n.terminals.filter(t => !t.part.startsWith('@bb:')) }))
+      .map(n => ({
+        ...n,
+        // Also sheds any terminal without a string part — malformed data
+        // must degrade to a missing connection, never to a render crash.
+        terminals: n.terminals.filter(t => typeof t.part === 'string' && !t.part.startsWith('@bb:')),
+      }))
       .filter(n => n.terminals.length > 0);
 
     // Snapshot engine state before rebuilding (preserves cap voltages, etc.)
@@ -755,7 +760,33 @@ export class Circuit {
   static fromJSON(data) {
     const c = new Circuit(data.vcc);
     c.parts = data.parts.map(p => ({ ...p }));
-    c.wires = data.wires.map(w => ({ ...w }));
+    // Wires arrive in two dialects. Current saves carry endpoint objects
+    // ({from: {part, terminal}}); the example gallery's circuit files were
+    // written against the ORIGINAL flat format ({from: 'id', fromTerminal:
+    // 't'}). Loading one of those used to build endpoints with undefined
+    // parts, which crashed _syncNetlist mid-render and took the whole GUI
+    // down to the crash page (2026-08-10, "Blink an LED"). Normalize both;
+    // drop anything that resolves to no part/terminal — a lost wire renders
+    // as a gap the user can see and re-draw, a throw renders as nothing at
+    // all.
+    const endpoint = (w, side) => {
+      const v = w[side];
+      if (v && typeof v === 'object') return { ...v };
+      if (typeof v === 'string') {
+        const t = w[`${side}Terminal`];
+        if (typeof t === 'string') return { part: v, terminal: t };
+      }
+      return null;
+    };
+    c.wires = (data.wires || []).flatMap(w => {
+      const from = endpoint(w, 'from');
+      const to = endpoint(w, 'to');
+      if (!from || !to) return [];
+      const ok = e => e.board ? typeof e.hole === 'string'
+        : typeof e.part === 'string' && typeof e.terminal === 'string';
+      if (!ok(from) || !ok(to)) return [];
+      return [{ ...w, from, to }];
+    });
     // Rebuild what serialization flattens: every breadboard part gets its
     // occupancy model back, and every seated part re-occupies its holes.
     // Without this, a loaded save LOOKED right but the strips no longer
