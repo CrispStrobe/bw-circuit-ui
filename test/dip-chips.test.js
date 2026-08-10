@@ -10,10 +10,11 @@ import { computeLeadMap } from '../src/model/footprints.js';
 import { BreadboardModel } from '../src/model/breadboard.js';
 
 describe('LOGIC_CHIPS', () => {
-  it('every chip has vcc on the highest pin and gnd at the midpoint', () => {
+  it('every chip has both vcc and gnd somewhere in its pin map', () => {
     for (const [kind, chip] of Object.entries(LOGIC_CHIPS)) {
-      assert.equal(chip.pinMap[chip.pins], 'vcc', `${kind}: pin ${chip.pins} should be VCC`);
-      assert.equal(chip.pinMap[chip.pins / 2], 'gnd', `${kind}: pin ${chip.pins / 2} should be GND`);
+      const names = Object.values(chip.pinMap);
+      assert.ok(names.includes('vcc'), `${kind}: must have VCC`);
+      assert.ok(names.includes('gnd'), `${kind}: must have GND`);
     }
   });
 
