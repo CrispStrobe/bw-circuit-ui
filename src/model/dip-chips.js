@@ -9,6 +9,8 @@
  * @module
  */
 
+import { sidecarTerminals } from './parts-registry.js';
+
 /**
  * @typedef {object} DipChipDef
  * @property {string} kind — part kind slug
@@ -238,7 +240,28 @@ export const LOGIC_CHIPS = {
  * @param {string} kind
  * @returns {string[] | null}
  */
+/**
+ * Get terminal names for a logic chip.
+ *
+ * Prefers bw-parts sidecar data (via parts-registry) over the local
+ * LOGIC_CHIPS table. The local table is a FALLBACK for kinds bw-parts
+ * has not yet defined; it should shrink as sidecars grow.
+ *
+ * bw-parts owns pin maps — they have audited 29 DIP chips against
+ * datasheets (DIP-AUDIT.md). This table is the same split as the
+ * current-ratings table was before 27cb14f fixed it.
+ *
+ * @param {string} kind
+ * @returns {string[] | null}
+ */
 export function logicChipTerminals(kind) {
+  // Try bw-parts sidecar first (one owner for pin maps)
+  const sc = sidecarTerminals(kind);
+  if (sc && sc.length > 2) {
+    // Filter power pins — terminalsForKind returns signal pins only
+    return sc.filter(n => n !== 'vcc' && n !== 'gnd');
+  }
+  // Fallback to local table
   const chip = LOGIC_CHIPS[kind];
   if (!chip) return null;
   return terminalsFromPinMap(chip.pinMap);
