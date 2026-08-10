@@ -85,20 +85,30 @@ describe('gallery circuit.json: every wire terminal resolves', () => {
 
       const unresolved = [];
       for (const w of circuit.wires || []) {
-        // Check from endpoint
-        const fromInfo = idMap.get(w.from);
-        if (fromInfo) {
-          const resolved = resolveTerminal(fromInfo.kind, w.fromTerminal, fromInfo.terminals);
+        // Handle both wire formats:
+        //   flat:   { from: "led1", fromTerminal: "a", to: "r1", toTerminal: "b" }
+        //   object: { from: {part: "led1", terminal: "a"}, to: {part: "r1", terminal: "b"} }
+        // Skip tap wires (endpoints with board/hole instead of part/terminal)
+        if (w.from?.board || w.to?.board) continue;
+        const fromId = typeof w.from === 'object' ? w.from?.part : w.from;
+        const fromTerm = typeof w.from === 'object' ? w.from?.terminal : w.fromTerminal;
+        const toId = typeof w.to === 'object' ? w.to?.part : w.to;
+        const toTerm = typeof w.to === 'object' ? w.to?.terminal : w.toTerminal;
+
+        // Check from endpoint (skip breadboard parts — holes are not terminals)
+        const fromInfo = idMap.get(fromId);
+        if (fromInfo && fromInfo.kind !== 'breadboard' && fromTerm) {
+          const resolved = resolveTerminal(fromInfo.kind, fromTerm, fromInfo.terminals);
           if (!fromInfo.terminals.includes(resolved)) {
-            unresolved.push(`${w.from}.${w.fromTerminal} (kind=${fromInfo.kind})`);
+            unresolved.push(`${fromId}.${fromTerm} (kind=${fromInfo.kind})`);
           }
         }
-        // Check to endpoint
-        const toInfo = idMap.get(w.to);
-        if (toInfo && !w.toTerminal?.startsWith?.('@')) { // skip pseudo-terminals
-          const resolved = resolveTerminal(toInfo.kind, w.toTerminal, toInfo.terminals);
+        // Check to endpoint (skip breadboard targets and pseudo-terminals)
+        const toInfo = idMap.get(toId);
+        if (toInfo && toInfo.kind !== 'breadboard' && toTerm && !toTerm.startsWith?.('@')) {
+          const resolved = resolveTerminal(toInfo.kind, toTerm, toInfo.terminals);
           if (!toInfo.terminals.includes(resolved)) {
-            unresolved.push(`${w.to}.${w.toTerminal} (kind=${toInfo.kind})`);
+            unresolved.push(`${toId}.${toTerm} (kind=${toInfo.kind})`);
           }
         }
       }

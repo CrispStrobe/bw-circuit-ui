@@ -114,6 +114,39 @@ describe('legacy circuit round-trip', () => {
     }
   });
 
+  it('battery→vsource alias: the file is silently upgraded on save', () => {
+    // af726c0: legacy kind 'battery' aliases to vsource on load.
+    // Question: does serialising write back 'vsource' (silent upgrade)
+    // or 'battery' (stable legacy)?
+    resetIds();
+    const legacy = {
+      vcc: 9.0,
+      parts: [
+        { id: 'bat1', kind: 'battery', params: { volts: 9 }, x: 100, y: 100 },
+        { id: 'r1', kind: 'resistor', params: { ohms: 1000 }, x: 200, y: 100 },
+      ],
+      wires: [
+        { from: 'bat1', fromTerminal: 'pos', to: 'r1', toTerminal: 'a' },
+      ],
+    };
+
+    const c = Circuit.fromJSON(legacy);
+    const saved = c.toJSON();
+
+    // The kind is 'vsource' after load — the alias resolved
+    const bat = saved.parts.find(p => p.params?.volts === 9);
+    assert.ok(bat, 'battery part must survive');
+    assert.equal(bat.kind, 'vsource',
+      'battery is silently upgraded to vsource — stated behaviour, not a loss');
+
+    // Round-trip is stable: vsource stays vsource
+    resetIds();
+    const c2 = Circuit.fromJSON(saved);
+    const saved2 = c2.toJSON();
+    const bat2 = saved2.parts.find(p => p.params?.volts === 9);
+    assert.equal(bat2.kind, 'vsource', 'vsource stays vsource on second load');
+  });
+
   it('negative control: mutated legacy file is detected by the comparator', () => {
     resetIds();
     const c = Circuit.fromJSON(LEGACY_BARE);
