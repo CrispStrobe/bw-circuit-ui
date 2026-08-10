@@ -306,40 +306,42 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const inputPins = [];  // pins with buttons connected
     const analogPins = []; // pins with pots connected
 
-    for (const pin of mcu.terminals) {
-      // Find what's wired to this pin
-      const connectedKinds = new Set();
-      for (const w of wires) {
-        let otherPart = null;
-        if (w.from.part === mcu.id && w.from.terminal === pin) {
-          otherPart = w.to.part;
-        } else if (w.to.part === mcu.id && w.to.terminal === pin) {
-          otherPart = w.from.part;
-        }
-        if (otherPart) {
-          const p = parts.find(pp => pp.id === otherPart);
-          if (p) connectedKinds.add(p.kind);
-        }
-      }
-
-      if (connectedKinds.has('led') || connectedKinds.has('buzzer') || connectedKinds.has('resistor')) {
-        outputPins.push(pin);
-      } else if (connectedKinds.has('button')) {
-        inputPins.push(pin);
-      } else if (connectedKinds.has('potentiometer')) {
-        analogPins.push(pin);
-      } else {
-        outputPins.push(pin); // default: treat as output
-      }
-    }
-
-    // Initialize pin modes
-    // Reset the board to clear stale state (capacitor voltages, LED history, etc.)
+    // Reset stale board state (cap voltages, LED history) for EVERY circuit.
     if (circuit.board.reset) circuit.board.reset();
 
-    for (const pin of outputPins) setPin(pin, 'quasi', true);
-    for (const pin of inputPins) setPin(pin, 'quasi', true);
-    for (const pin of analogPins) setPin(pin, 'input', false);
+    if (mcu) {
+      for (const pin of mcu.terminals) {
+        // Find what's wired to this pin
+        const connectedKinds = new Set();
+        for (const w of wires) {
+          let otherPart = null;
+          if (w.from.part === mcu.id && w.from.terminal === pin) {
+            otherPart = w.to.part;
+          } else if (w.to.part === mcu.id && w.to.terminal === pin) {
+            otherPart = w.from.part;
+          }
+          if (otherPart) {
+            const p = parts.find(pp => pp.id === otherPart);
+            if (p) connectedKinds.add(p.kind);
+          }
+        }
+
+        if (connectedKinds.has('led') || connectedKinds.has('buzzer') || connectedKinds.has('resistor')) {
+          outputPins.push(pin);
+        } else if (connectedKinds.has('button')) {
+          inputPins.push(pin);
+        } else if (connectedKinds.has('potentiometer')) {
+          analogPins.push(pin);
+        } else {
+          outputPins.push(pin); // default: treat as output
+        }
+      }
+
+
+      for (const pin of outputPins) setPin(pin, 'quasi', true);
+      for (const pin of inputPins) setPin(pin, 'quasi', true);
+      for (const pin of analogPins) setPin(pin, 'input', false);
+    }
 
     simStep.current = 0;
 

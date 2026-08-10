@@ -59,6 +59,7 @@ function App() {
       minHeight: '100vh',
     }}>
       <CircuitDesigner
+        {...(new URLSearchParams(location.search).has('nopins') ? { project: { pins: [] } } : {})}
         onBoardReady={(b) => { window.__board = b; }}
         onCircuitReady={(c) => { window.__circuit = c; }}
         project={{

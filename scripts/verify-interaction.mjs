@@ -365,6 +365,24 @@ const selectionCount = async () =>
     : fail(`schematic did not render (symbols=${symCount})`);
 }
 
+// 8. Pure-circuit Sim: the no-declarations starter must SIMULATE without
+//    crashing (the tap-wire/no-MCU landing is production's first screen).
+{
+  await page.goto(`http://localhost:${PORT}/?nopins=1`, { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0, { timeout: 20000 });
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Sim', exact: true }).first().click();
+  await page.waitForTimeout(700);
+  const mode = await page.evaluate(() => document.querySelector('[data-sim-mode]')?.getAttribute('data-sim-mode'));
+  mode === 'simulate' ? pass('no-MCU starter enters Sim without crashing')
+    : fail(`Sim on the pure starter: mode=${mode ?? 'DESIGNER UNMOUNTED'}`);
+  const t1 = await page.evaluate(() => String(window.__board.getTime()));
+  await page.waitForTimeout(500);
+  const t2 = await page.evaluate(() => String(window.__board.getTime()));
+  BigInt(t2) > BigInt(t1) ? pass('pure-circuit clock flows')
+    : fail('pure-circuit clock frozen');
+}
+
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
 else pass('zero page errors');
 
