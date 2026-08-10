@@ -12,9 +12,35 @@
  *   4. Floating input (input pin with nothing driving it)
  *   5. Supply short (VCC→GND through negligible impedance)
  *   6. Polarity (polarised component wired backward)
+ *   7. I2C pull-up (pcf8574/char_lcd_i2c/eeprom need pull-ups)
+ *   8. Aggregate current (total chip current exceeds ~120 mA)
  *
  * @module
  */
+
+import { getEngine } from '../engine.js';
+
+/**
+ * Read current-rating data from the injected engine if available.
+ * Falls back to conservative defaults if the host did not inject them.
+ */
+function getCurrentRatings() {
+  try {
+    const engine = getEngine();
+    if (engine.getMaxCurrent && engine.PORT_LIMITS) {
+      return { getMaxCurrent: engine.getMaxCurrent, PORT_LIMITS: engine.PORT_LIMITS };
+    }
+  } catch { /* engine not injected yet */ }
+  // Fallback — conservative defaults from STC12 datasheet §4.1
+  return {
+    getMaxCurrent: () => null, // unknown = cannot sum
+    PORT_LIMITS: {
+      perPin: { sink: 0.020, source: 0.000230 },
+      perPort: { sink: 0.080 },
+      perChip: { sink: 0.120 },
+    },
+  };
+}
 
 /**
  * @typedef {object} DrcWarning
@@ -27,13 +53,8 @@
  * @property {string} [fixPart] — part kind that would fix it (for one-click add)
  */
 
-// ── Thresholds from bw-board/src/pin-model.js ─────────────────────
-// These are the SAME constants; we cite them, not duplicate them.
-// If pin-model.js changes, this must be updated to match.
-const QUASI_SOURCE_CURRENT_A = 0.000230;  // ~230 µA at 5V
-const STRONG_SINK_CURRENT_A = 0.020;       // ~20 mA (R_STRONG = 25Ω at 5V)
-const LED_MAX_CURRENT_A = 0.020;           // typical LED absolute max
-const MIN_SERIES_R_FOR_LED = 50;           // Ω — below this, it's basically direct
+// Thresholds are read at call time from the engine, not at import time,
+// so the engine can be injected after this module loads.
 
 /**
  * Run all design-rule checks against a circuit.
@@ -45,6 +66,10 @@ const MIN_SERIES_R_FOR_LED = 50;           // Ω — below this, it's basically 
 export function runDrc(circuit, board) {
   const warnings = [];
   if (!board || !board.powered) return warnings;
+
+  const { getMaxCurrent, PORT_LIMITS } = getCurrentRatings();
+  const QUASI_SOURCE_CURRENT_A = PORT_LIMITS.perPin.source;
+  const CHIP_CURRENT_LIMIT_A = PORT_LIMITS.perChip.sink;
 
   const parts = circuit.parts;
   const wires = circuit.wires;
@@ -353,6 +378,63 @@ export function runDrc(circuit, board) {
           fixPart: 'resistor',
         });
       }
+    }
+  }
+
+  // ── Rule 8: Aggregate chip current ─────────────────────────────
+  // Sum the max current of every part on the circuit. If it exceeds
+  // the chip's total rating (~120 mA for STC12), warn. If any part
+  // has a null rating (current depends on the circuit, not the kind),
+  // the sum is a lower bound — say so honestly.
+  {
+    let totalA = 0;
+    let hasUnrated = false;
+    const unratedKinds = [];
+    const contributors = [];
+
+    for (const part of parts) {
+      if (part.kind === 'mcu' || part.kind === 'breadboard') continue;
+      const rating = getMaxCurrent(part.kind);
+      if (rating === null) {
+        hasUnrated = true;
+        if (!unratedKinds.includes(part.kind)) unratedKinds.push(part.kind);
+      } else {
+        totalA += rating;
+        if (rating > 0.005) { // only list significant contributors
+          contributors.push({ id: part.id, kind: part.kind, mA: (rating * 1000).toFixed(0) });
+        }
+      }
+    }
+
+    if (totalA > CHIP_CURRENT_LIMIT_A) {
+      const totalMa = (totalA * 1000).toFixed(0);
+      const limitMa = (CHIP_CURRENT_LIMIT_A * 1000).toFixed(0);
+      const top = contributors.sort((a, b) => b.mA - a.mA).slice(0, 3);
+      const topStr = top.map(c => `${c.kind} (${c.mA} mA)`).join(', ');
+      warnings.push({
+        severity: 'danger',
+        rule: 'aggregate-current',
+        partId: parts.find(p => p.kind === 'mcu')?.id || parts[0]?.id,
+        explanation: `Total circuit current is ${hasUnrated ? 'at least ' : ''}${totalMa} mA, ` +
+          `exceeding the chip's ~${limitMa} mA limit. ` +
+          `Largest consumers: ${topStr}.` +
+          (hasUnrated ? ` Some parts (${unratedKinds.join(', ')}) cannot be rated — the real total may be higher.` : ''),
+        fix: 'Reduce the number of simultaneously active loads, or use external drivers ' +
+          '(transistors, shift registers) to power them from VCC rather than from MCU pins.',
+      });
+    } else if (hasUnrated && totalA > CHIP_CURRENT_LIMIT_A * 0.7) {
+      // Close to the limit with unrated parts — warn conservatively
+      const totalMa = (totalA * 1000).toFixed(0);
+      const limitMa = (CHIP_CURRENT_LIMIT_A * 1000).toFixed(0);
+      warnings.push({
+        severity: 'warning',
+        rule: 'aggregate-current',
+        partId: parts.find(p => p.kind === 'mcu')?.id || parts[0]?.id,
+        explanation: `Rated parts draw ${totalMa} mA (limit ~${limitMa} mA), ` +
+          `but ${unratedKinds.join(', ')} cannot be rated — ` +
+          `the total is a lower bound, not a sum. The actual current may exceed the limit.`,
+        fix: 'Check the current through unrated parts with the multimeter.',
+      });
     }
   }
 

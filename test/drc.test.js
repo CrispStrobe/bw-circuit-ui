@@ -309,6 +309,66 @@ describe('DRC: missing-pullup', () => {
   });
 });
 
+// ── Rule 8: Aggregate chip current ──────────────────────────────
+
+describe('DRC: aggregate-current', () => {
+  it('warns: 8 LEDs on one port exceed ~120 mA', () => {
+    const c = setup();
+    const vcc = c.addPart('vcc', {}, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
+    const mcu = c.addPart('mcu', { pins: ['P2.0','P2.1','P2.2','P2.3','P2.4','P2.5','P2.6','P2.7'] }, 0, 0);
+    // 8 LEDs at 20 mA each = 160 mA > 120 mA limit
+    for (let i = 0; i < 8; i++) {
+      const r = c.addPart('resistor', { ohms: 220 }, 0, 0);
+      const led = c.addPart('led', { vf: 2.0 }, 0, 0);
+      c.addWire(mcu.id, `P2.${i}`, r.id, 'a');
+      c.addWire(r.id, 'b', led.id, 'anode');
+      c.addWire(led.id, 'cathode', gnd.id, 'gnd');
+    }
+    c.advanceTo(25_000_000n);
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'aggregate-current');
+    assert.ok(hits.length > 0, '8 LEDs (160 mA) must trigger aggregate warning');
+    assert.ok(hits[0].explanation.includes('120'), 'must cite the 120 mA limit');
+  });
+
+  it('no warning: 3 LEDs under the limit', () => {
+    const c = setup();
+    const vcc = c.addPart('vcc', {}, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
+    const mcu = c.addPart('mcu', { pins: ['P1.0','P1.1','P1.2'] }, 0, 0);
+    for (let i = 0; i < 3; i++) {
+      const r = c.addPart('resistor', { ohms: 220 }, 0, 0);
+      const led = c.addPart('led', { vf: 2.0 }, 0, 0);
+      c.addWire(mcu.id, `P1.${i}`, r.id, 'a');
+      c.addWire(r.id, 'b', led.id, 'anode');
+      c.addWire(led.id, 'cathode', gnd.id, 'gnd');
+    }
+    c.advanceTo(25_000_000n);
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'aggregate-current');
+    assert.equal(hits.length, 0, '3 LEDs (60 mA) should not trigger');
+  });
+
+  it('warns conservatively with unrated parts near the limit', () => {
+    const c = setup();
+    c.addPart('vcc', {}, 0, 0);
+    c.addPart('gnd', {}, 0, 0);
+    const mcu = c.addPart('mcu', { pins: ['P1.0','P1.1','P1.2','P1.3','P1.4'] }, 0, 0);
+    // 5 LEDs = 100 mA (83% of limit), plus a potentiometer (null-rated)
+    for (let i = 0; i < 5; i++) c.addPart('led', { vf: 2.0 }, 0, 0);
+    c.addPart('potentiometer', { ohms: 10000 }, 0, 0); // null-rated
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'aggregate-current');
+    assert.ok(hits.length > 0, 'near limit with unrated parts must warn');
+    assert.ok(hits[0].explanation.includes('lower bound') || hits[0].explanation.includes('cannot be rated'),
+      'must explain the sum is a lower bound');
+  });
+});
+
 // ── Rule 6: Polarity ────────────────────────────────────────────
 
 describe('DRC: polarity', () => {
