@@ -23,6 +23,13 @@
  *     kept moving while the program was halted; the panel must render that
  *     differently from a genuinely frozen simulation.
  *
+ *   circuitData?: { vcc, parts, wires }
+ *     When set to a non-null value, loads the circuit (replacing the
+ *     current one). Previous state is pushed to history, so Ctrl+Z
+ *     recovers unsaved work. The designer tolerates a circuit without
+ *     matching pin declarations — standalone circuits have no MCU.
+ *     Set to null/undefined after loading to allow the next load.
+ *
  * Every electrical value comes from bw-board. Nothing is fabricated.
  */
 
@@ -52,7 +59,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady , onCircuitReady}) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -436,14 +443,42 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // Load circuit from JSON file
   const handleLoad = useCallback((data) => {
     if (!data || !data.parts || !data.wires) return;
+    // Save current state first so Ctrl+Z recovers the previous circuit
+    circuit._saveHistory();
     circuit.parts = data.parts.map(p => ({ ...p }));
     circuit.wires = data.wires.map(w => ({ ...w }));
+    // Re-create breadboard models for any breadboard parts in the loaded data
+    circuit.breadboards.clear();
+    for (const p of circuit.parts) {
+      if (p.kind === 'breadboard') {
+        circuit.breadboards.set(p.id, new BreadboardModel());
+      }
+      // Re-seat parts that were seated
+      if (p.seat && circuit.breadboards.has(p.seat.boardId)) {
+        try {
+          circuit.breadboards.get(p.seat.boardId).occupy(p.id, p.seat.leadMap);
+        } catch { /* seat conflict — leave free */ }
+      }
+    }
     circuit._syncNetlist();
     circuit._saveHistory();
     setSelectedParts(new Set());
     setSelectedWire(null);
     setMode('build');
   }, [circuit]);
+
+  // ── circuitData prop: load an example or saved circuit declaratively ──
+  // When circuitData changes to a non-null value, load it. The previous
+  // state is pushed to history first, so Ctrl+Z recovers unsaved work.
+  // The designer tolerates a circuit without matching pin declarations —
+  // standalone circuits have no MCU; the host loads program.bw separately
+  // if needed.
+  const prevCircuitDataRef = useRef(null);
+  useEffect(() => {
+    if (!circuitData || circuitData === prevCircuitDataRef.current) return;
+    prevCircuitDataRef.current = circuitData;
+    handleLoad(circuitData);
+  }, [circuitData, handleLoad]);
 
   // All keyboard shortcuts are handled by BoardCanvas (single focus scope).
   const handleUndo = useCallback(() => undo(), [undo]);
