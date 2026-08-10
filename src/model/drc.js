@@ -382,6 +382,30 @@ export function runDrc(circuit, board) {
   }
 
   // ── Rule 8: Aggregate chip current ─────────────────────────────
+  // MCU power pins: the simulator powers the chip implicitly, a real bench
+  // does not. When the full pin map is present (VCC/GND terminals exist) and
+  // nothing is wired to them, say so - as teaching, not as an error.
+  {
+    const mcu = parts.find(p => p.kind === 'mcu');
+    if (mcu && mcu.terminals.includes('VCC')) {
+      const touched = (term) => wires.some(w =>
+        (w.from.part === mcu.id && w.from.terminal === term) ||
+        (w.to.part === mcu.id && w.to.terminal === term));
+      const missing = ['VCC', 'GND'].filter(t => !touched(t));
+      if (missing.length > 0) {
+        warnings.push({
+          severity: 'info',
+          rule: 'mcu-power-pins',
+          partId: mcu.id,
+          explanation: `The chip's ${missing.join(' and ')} pin${missing.length > 1 ? 's are' : ' is'} not wired. ` +
+            'The simulator powers the MCU implicitly so everything still runs - ' +
+            'on a real bench, an unpowered chip does nothing.',
+          fix: 'Wire VCC (pin 40) to the +5 V rail and GND (pin 20) to ground, the way the real board needs.',
+        });
+      }
+    }
+  }
+
   // Sum the max current of every part on the circuit. If it exceeds
   // the chip's total rating (~120 mA for STC12), warn. If any part
   // has a null rating (current depends on the circuit, not the kind),
