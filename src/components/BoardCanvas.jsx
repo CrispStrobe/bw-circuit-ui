@@ -2389,6 +2389,12 @@ export function BoardCanvas({
           };
           return (
             <div style={{ position: 'absolute', inset: 0, zIndex: 40, background: 'rgba(10,14,26,0.55)' }}
+              /* The canvas container's pointer machine captures pointerdown
+                 before any child click can fire — the dialog must stop the
+                 POINTER events, or its buttons are dead (found live: the
+                 chooser opened, every click fell through to the canvas). */
+              onPointerDown={e => e.stopPropagation()}
+              onPointerUp={e => e.stopPropagation()}
               onClick={() => setPinChooser(null)}>
               <div onClick={e => e.stopPropagation()} style={{
                 position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
