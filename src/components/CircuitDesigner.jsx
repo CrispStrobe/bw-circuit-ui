@@ -677,8 +677,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         overflow: 'clip',
       }}
     >
-      {/* Left sidebar — collapsible */}
-      {leftOpen ? (
+      {/* Left sidebar — collapsible. Hidden entirely in schematic view:
+          a parts palette next to a read-only projection is dead width,
+          and the projection needs every pixel this column can spare. */}
+      {showSchematic ? null : leftOpen ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto', minHeight: 0, maxHeight: 'calc(100dvh - 130px)', overscrollBehavior: 'contain' }}>
           <button onClick={() => setLeftOpen(false)} style={{
             background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',

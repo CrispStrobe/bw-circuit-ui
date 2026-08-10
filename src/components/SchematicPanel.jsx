@@ -144,10 +144,18 @@ export function SchematicPanel({ parts, nets }) {
     );
   }
   return (
-    <svg data-schematic width="100%" height="auto"
+    <svg data-schematic width="100%"
       viewBox={`0 0 ${proj.width} ${proj.height}`}
       preserveAspectRatio="xMidYMid meet"
-      style={{ background: '#111a26', borderRadius: 6, display: 'block' }}>
+      style={{
+        // Sized by the drawing's own aspect ratio. height="auto" is not a
+        // valid SVG height and fell back to filling the column, letterboxing
+        // a 590x330 drawing into a 204x728 slot: thumbnail symbols in a sea
+        // of empty panel (owner: "schematics view almost totally broken").
+        aspectRatio: `${proj.width} / ${proj.height}`,
+        maxHeight: '100%',
+        background: '#111a26', borderRadius: 6, display: 'block',
+      }}>
       {proj.wires.map(w => (
         <g key={w.netId} stroke="#3d5a75" strokeWidth={1.3} fill="none">
           <line x1={w.trunk.x} y1={w.trunk.y1} x2={w.trunk.x} y2={w.trunk.y2} />
