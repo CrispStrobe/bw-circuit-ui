@@ -3,6 +3,24 @@
 Audited 2026-08-10 against `stc/docs/VERIFICATION-LEDGER.md` (`7270576`).
 I did not write the ledger; this is the first independent check.
 
+## Denominator
+
+The ledger has three tables:
+- **Cross-model measurements**: 15 rows (enumerated by manual read of the
+  Markdown table, counting `|` rows between the header and the next `##`)
+- **Defects found and fixed**: 11 rows (same method)
+- **Bench questions**: 4 rows (same method)
+
+Rows checked: **15** measurement rows (all), **11** defect rows (all),
+**4** bench rows (read, not independently verified — they are plans, not claims).
+
+Sections not treated as claims: the introductory paragraph and the closing
+"The principle" section are prose, not tabular claims. No rows exist outside
+the three tables.
+
+Enumeration method: manual read of the rendered Markdown. A claim phrased
+as a sentence outside a table would be invisible to this method.
+
 ## Methodology
 
 For each row: checked the cited commit exists in the named repo, checked
@@ -90,10 +108,16 @@ absent row and a category-3 row say different things.
 
 ## Summary
 
-The numbers are right. The categories have one disagreement between two
-documents. Four findings are missing from the defects table. One
-measurement (NeoPixel) is missing entirely. The motor duty conflates
-register counts with pin measurements.
+15 measurement rows checked, 11 defect rows checked, 4 bench rows read.
+All 15 numerical claims match their cited commits. The categories have
+one disagreement between two documents. Four findings are missing from
+the defects table (11 recorded, ≥15 produced). One measurement (NeoPixel)
+is missing entirely. The motor duty conflates register counts with pin
+measurements.
 
 The auditor was right: nobody re-checks the auditor, and the check found
 real gaps — not in the numbers, but in the completeness of what is recorded.
+
+A control only proves the method works on the population you actually
+looked at. This audit's population is the three Markdown tables;
+a claim phrased outside them would not have been found.
