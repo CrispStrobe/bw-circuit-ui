@@ -1,16 +1,19 @@
 /**
  * Terminal cross-check: bw-parts sidecars vs bw-circuit-ui terminals.
  *
- * EVIDENCE CLASS: same-source agreement (category 2). Both bw-parts
- * and bw-circuit-ui were written by agents in the same campaign reading
- * the same datasheets. This catches transcription slips, arithmetic
- * errors and drift between two codebases — genuinely useful — but it
- * CANNOT catch a shared misreading of the source document. Agreement
- * here means we transcribed consistently, not necessarily correctly.
+ * EVIDENCE CLASS: 2b — same-source agreement.
+ * (Numbering per stc/docs/ canonical taxonomy; see bw-board VERIFICATION.md)
  *
- * What would move this to category 1 (independent-source): terminal
- * positions verified against a physical measurement, a photograph, or
- * a third-party parts library written by strangers.
+ * Both bw-parts and bw-circuit-ui were written by agents in the same
+ * campaign reading the same datasheets. This catches transcription slips,
+ * arithmetic errors and drift between two codebases — genuinely useful —
+ * but it CANNOT catch a shared misreading of the source document.
+ * Agreement here means we transcribed consistently, not necessarily
+ * correctly.
+ *
+ * What would move this to 2a (independent-source): terminal positions
+ * verified against a physical measurement, a photograph, or a third-party
+ * parts library written by strangers.
  *
  * Resolves sidecar JSON from ../../bw-parts/parts/ (sibling checkout).
  * If bw-parts is not available, the test skips with a named reason.
