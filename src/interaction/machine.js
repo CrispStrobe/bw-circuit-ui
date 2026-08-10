@@ -73,6 +73,7 @@ export class InteractionMachine {
   /** Abort whatever is in flight (Esc, pointercancel, blur). */
   cancel() {
     if (this.state === 'wiring' || this.state === 'stickyWiring') this.cb.clearWirePreview();
+    if (this.state === 'rewiring' && this.cb.rewirePreview) this.cb.rewirePreview(null);
     if ((this.state === 'holeWiring' || this.state === 'stickyHoleWiring') && this.cb.holeWirePreview) this.cb.holeWirePreview(null);
     if (this.state === 'marquee') this.cb.marqueeRect(null);
     if (this.state === 'draggingParts') this.cb.endMove();
@@ -146,6 +147,19 @@ export class InteractionMachine {
     }
 
     if (this.state !== 'idle') this.cancel();
+
+    // A SELECTED wire's endpoint handle wins over everything: grabbing it
+    // re-routes that end (drop on a terminal or hole commits; anywhere
+    // else cancels and the wire stays as it was).
+    if (this.hit.wireEndpointAt) {
+      const ep = this.hit.wireEndpointAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX));
+      if (ep) {
+        this.state = 'rewiring';
+        this._gesture = { wireId: ep.wireId, fixed: ep.fixedEnd, fixedPos: ep.fixedPos };
+        if (this.cb.rewirePreview) this.cb.rewirePreview(ep.fixedPos, { x: wx, y: wy }, false);
+        return;
+      }
+    }
 
     // Terminals win over part bodies: they are smaller and on top.
     const terminal = this.hit.terminalAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX));
@@ -245,6 +259,14 @@ export class InteractionMachine {
         }
         return;
       }
+      case 'rewiring': {
+        const t = this.hit.terminalAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX));
+        const hole = !t && this.hit.holeAt
+          ? this.hit.holeAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX / 2)) : null;
+        const snap = t ? { x: t.x, y: t.y } : hole ? { x: hole.x, y: hole.y } : { x: wx, y: wy };
+        if (this.cb.rewirePreview) this.cb.rewirePreview(g.fixedPos, snap, !!(t || hole));
+        return;
+      }
       case 'stickyWiring':
       case 'wiring': {
         if (g.startX !== undefined && Math.hypot(wx - g.startX, wy - g.startY) > this.worldDistance(DRAG_THRESHOLD_PX)) g.moved = true;
@@ -296,6 +318,17 @@ export class InteractionMachine {
         const ids = this.hit.partsInRect(rect);
         this.cb.select(ids, g.shift ? 'add' : 'replace');
         this.cb.marqueeRect(null);
+        break;
+      }
+      case 'rewiring': {
+        if (this.cb.rewirePreview) this.cb.rewirePreview(null);
+        const t = this.hit.terminalAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX));
+        const hole = !t && this.hit.holeAt
+          ? this.hit.holeAt(wx, wy, this.worldDistance(TERMINAL_RADIUS_PX / 2)) : null;
+        if ((t || hole) && this.cb.rewire) {
+          this.cb.rewire(g.wireId, g.fixed,
+            t ? { partId: t.partId, terminal: t.terminal } : { boardId: hole.boardId, hole: hole.hole });
+        }
         break;
       }
       case 'holeWiring': {

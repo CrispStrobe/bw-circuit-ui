@@ -235,3 +235,36 @@ test('sticky wiring cancels on empty-ground click and on Esc', () => {
   machine.cancel();                  // Esc
   assert.equal(machine.state, 'idle');
 });
+
+test('rewiring: grab a selected wire endpoint, drop on a new terminal', () => {
+  const { machine, log } = makeWorld();
+  // Simulate a selected wire D1.anode—R1.a with endpoint handles.
+  const endpoints = {
+    a: { x: 92, y: 125, end: { part: 'D1', terminal: 'anode' } },
+    b: { x: 268, y: 100, end: { part: 'R1', terminal: 'a' } },
+  };
+  machine.hit.wireEndpointAt = (wx, wy, r) => {
+    for (const k of ['a', 'b']) {
+      const e = endpoints[k];
+      if (Math.hypot(wx - e.x, wy - e.y) <= r) {
+        const other = k === 'a' ? endpoints.b : endpoints.a;
+        return { wireId: 'w1', grabbed: k, fixedEnd: other.end, fixedPos: { x: other.x, y: other.y } };
+      }
+    }
+    return null;
+  };
+  const rewires = [];
+  machine.cb.rewirePreview = () => {};
+  machine.cb.rewire = (id, fixed, to) => rewires.push({ id, fixed, to });
+  // Grab the R1.a end, drop it on R1.b (at 332,100).
+  machine.down(268, 100, {});
+  machine.move(300, 100);
+  machine.up(332, 100, {});
+  assert.equal(rewires.length, 1);
+  assert.deepEqual(rewires[0].fixed, { part: 'D1', terminal: 'anode' });
+  assert.deepEqual(rewires[0].to, { partId: 'R1', terminal: 'b' });
+  // Dropping on empty ground changes nothing.
+  machine.down(268, 100, {});
+  machine.up(500, 400, {});
+  assert.equal(rewires.length, 1, 'empty drop = no rewire');
+});

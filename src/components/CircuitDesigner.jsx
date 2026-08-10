@@ -645,6 +645,20 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onRemoveWire={removeWire}
           onAddHoleWire={(boardId, a, b) => addHoleWire(boardId, a, b)}
           onAddTapWire={(partId, terminal, boardId, hole) => addTapWire(partId, terminal, boardId, hole)}
+          onRewire={(wireId, fixedEnd, newEnd) => {
+            // Re-route one end: drop the old wire, land the new one between
+            // the untouched end and the drop target (terminal or hole).
+            removeWire(wireId);
+            if (newEnd.boardId) {
+              if (fixedEnd.board) return; // hole-to-hole re-route: jumper land, not here
+              addTapWire(fixedEnd.part, fixedEnd.terminal, newEnd.boardId, newEnd.hole);
+            } else if (fixedEnd.board) {
+              addTapWire(newEnd.partId, newEnd.terminal, fixedEnd.board, fixedEnd.hole);
+            } else {
+              addWire(fixedEnd.part, fixedEnd.terminal, newEnd.partId, newEnd.terminal);
+            }
+            setSelectedWire(null);
+          }}
           onRemovePart={removePart}
           onMovePart={handleMovePart}
           onNudgePart={handleNudgePart}

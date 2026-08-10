@@ -991,7 +991,7 @@ export function BoardCanvas({
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire,
-  onSaveCircuit, onLoadCircuit,
+  onSaveCircuit, onLoadCircuit, onRewire,
   drcWarnings,
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
@@ -1063,11 +1063,13 @@ export function BoardCanvas({
   const panRef = useRef(pan); panRef.current = pan;
   const apiRef = useRef({});
   apiRef.current = { onMovePart, onAddWire, onSelectPart, onSelectWire, onSaveHistory,
-    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire, onDropPart, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire };
+    onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire, onDropPart, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, onRewire };
   const placingProbeRef = useRef(false); placingProbeRef.current = !!placingProbe;
+  const selectedWireRef = useRef(null); selectedWireRef.current = selectedWire;
   const pressedButtonRef = useRef(null);
   const draggingWaypointRef = useRef(null); draggingWaypointRef.current = draggingWaypoint;
   const [holeWirePreview, setHoleWirePreview] = useState(null);
+  const [rewirePreview, setRewirePreview] = useState(null);
   const machineRef = useRef(null);
   if (!machineRef.current) {
     const hit = createHitTest(
@@ -1108,6 +1110,32 @@ export function BoardCanvas({
       }
       return baseWireAt(wx, wy, radius);
     };
+    // A selected wire's endpoints are grab handles for re-routing.
+    hit.wireEndpointAt = (wx, wy, radius) => {
+      const sel = selectedWireRef.current;
+      if (!sel || typeof sel !== 'string' || sel.startsWith('bbw:')) return null;
+      const w = wiresRef.current.find(q => q.id === sel);
+      if (!w) return null;
+      const endPos = (e) => {
+        if (e.board) {
+          const bb = partsRef.current.find(pp => pp.id === e.board);
+          return bb ? holeWorldPos(bb, e.hole) : null;
+        }
+        const pp = partsRef.current.find(q => q.id === e.part);
+        return pp ? terminalPos(pp, e.terminal) : null;
+      };
+      const a = endPos(w.from);
+      const b = endPos(w.to);
+      if (!a || !b) return null;
+      if (Math.hypot(wx - a.x, wy - a.y) <= radius) {
+        return { wireId: w.id, grabbed: 'from', fixedEnd: w.to, fixedPos: b };
+      }
+      if (Math.hypot(wx - b.x, wy - b.y) <= radius) {
+        return { wireId: w.id, grabbed: 'to', fixedEnd: w.from, fixedPos: a };
+      }
+      return null;
+    };
+
     // Free holes are jumper start/end points.
     hit.holeAt = (wx, wy, radius) => {
       const c = circuitRef.current;
@@ -1205,6 +1233,12 @@ export function BoardCanvas({
       },
       createTapWire: (term, hole) => {
         if (apiRef.current.onAddTapWire) apiRef.current.onAddTapWire(term.partId, term.terminal, hole.boardId, hole.hole);
+      },
+      rewirePreview: (fixedPos, toPos, snapped) => {
+        setRewirePreview(fixedPos ? { from: fixedPos, to: toPos, snapped } : null);
+      },
+      rewire: (wireId, fixedEnd, newEnd) => {
+        if (apiRef.current.onRewire) apiRef.current.onRewire(wireId, fixedEnd, newEnd);
       },
     };
     machineRef.current = new InteractionMachine(hit, cb, () => selectedPartsRef.current, (px) => px / zoomRef.current);
@@ -2035,6 +2069,40 @@ export function BoardCanvas({
               </g>
             );
           })}
+
+          {/* Selected wire: endpoint grab handles for re-routing */}
+          {(() => {
+            if (!selectedWire || typeof selectedWire !== 'string' || selectedWire.startsWith('bbw:')) return null;
+            const w = wires.find(q => q.id === selectedWire);
+            if (!w) return null;
+            const endPos = (e) => {
+              if (e.board) {
+                const bb = parts.find(q => q.id === e.board);
+                return bb ? holeWorldPos(bb, e.hole) : null;
+              }
+              const pp = parts.find(q => q.id === e.part);
+              return pp ? terminalPos(pp, e.terminal) : null;
+            };
+            const a = endPos(w.from), b = endPos(w.to);
+            if (!a || !b) return null;
+            return (
+              <g style={{ pointerEvents: 'none' }}>
+                {[a, b].map((pt, i) => (
+                  <circle key={i} cx={pt.x} cy={pt.y} r={7} fill="none"
+                    stroke="#f1c40f" strokeWidth={2.5} strokeDasharray="3,2" />
+                ))}
+              </g>
+            );
+          })()}
+
+          {/* Re-routing preview: fixed end to cursor, green when snapped */}
+          {rewirePreview && (
+            <line x1={rewirePreview.from.x} y1={rewirePreview.from.y}
+              x2={rewirePreview.to.x} y2={rewirePreview.to.y}
+              stroke={rewirePreview.snapped ? '#2ecc71' : '#f1c40f'}
+              strokeWidth={2.5} strokeDasharray="6,4" strokeLinecap="round"
+              style={{ pointerEvents: 'none' }} />
+          )}
 
           {/* Live jumper preview while dragging hole-to-hole */}
           {holeWirePreview && (
