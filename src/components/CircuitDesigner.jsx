@@ -714,7 +714,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             }}>{vm === 'realistic' ? 'Realistic' : 'Schematic'}</button>
           ))}
         </div>
-        <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'clip', display: 'flex', flexDirection: 'column' }}>
         {!showSchematic ? (<>
         {mode === 'simulate' && (
           <span style={{ display: 'inline-flex', gap: 4, alignSelf: 'flex-end', marginBottom: 4, marginRight: 6 }}>

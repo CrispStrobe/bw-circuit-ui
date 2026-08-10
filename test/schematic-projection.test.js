@@ -72,3 +72,17 @@ test('many-pin parts split pins across both sides', () => {
   assert.ok(left >= 1 && right >= 1);
   assert.equal(left + right, sr.pins.length);
 });
+
+test('projection produces non-zero width and height', () => {
+  // The SVG was height="100%" with no definite parent → zero pixels.
+  // This test asserts the property that would have caught it: the
+  // projection dimensions are positive, so an SVG with viewBox set
+  // to them has intrinsic aspect ratio and renders at non-zero size.
+  const c = buildSeated();
+  const proj = projectSchematic(c.parts, c.board.getNets());
+  assert.ok(proj.width > 0, `projection width must be > 0, got ${proj.width}`);
+  assert.ok(proj.height > 0, `projection height must be > 0, got ${proj.height}`);
+  // A two-part circuit should not be absurdly small
+  assert.ok(proj.width >= 100, `width ${proj.width} too small for a real schematic`);
+  assert.ok(proj.height >= 50, `height ${proj.height} too small for a real schematic`);
+});

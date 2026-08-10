@@ -144,7 +144,7 @@ export function SchematicPanel({ parts, nets }) {
     );
   }
   return (
-    <svg data-schematic width="100%" height="100%"
+    <svg data-schematic width="100%" height="auto"
       viewBox={`0 0 ${proj.width} ${proj.height}`}
       preserveAspectRatio="xMidYMid meet"
       style={{ background: '#111a26', borderRadius: 6, display: 'block' }}>
