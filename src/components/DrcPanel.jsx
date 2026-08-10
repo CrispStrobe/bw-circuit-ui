@@ -29,6 +29,7 @@ const RULE_ICONS = {
   'polarity': '±',
   'missing-pullup': 'R↑',
   'aggregate-current': '⚡',
+  'supply-current': '🔌',
   'engine': '⚠',
 };
 

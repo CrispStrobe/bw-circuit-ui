@@ -22,7 +22,8 @@ const RULE_SHORT = {
   'supply-short': 'SHORT',
   'polarity': '± wrong',
   'missing-pullup': 'no pull-up',
-  'aggregate-current': '⚡ over limit',
+  'aggregate-current': '⚡ chip limit',
+  'supply-current': '⚡ USB limit',
   'engine': '⚠',
 };
 
