@@ -752,6 +752,19 @@ export class Circuit {
     const c = new Circuit(data.vcc);
     c.parts = data.parts.map(p => ({ ...p }));
     c.wires = data.wires.map(w => ({ ...w }));
+    // Rebuild what serialization flattens: every breadboard part gets its
+    // occupancy model back, and every seated part re-occupies its holes.
+    // Without this, a loaded save LOOKED right but the strips no longer
+    // conducted - the LED that was lit when saved came back dark.
+    for (const p of c.parts) {
+      if (p.kind === 'breadboard') c.breadboards.set(p.id, new BreadboardModel());
+    }
+    for (const p of c.parts) {
+      if (!p.seat) continue;
+      const bb = c.breadboards.get(p.seat.boardId);
+      if (!bb) { delete p.seat; continue; }
+      try { bb.occupy(p.id, p.seat.leadMap); } catch { delete p.seat; }
+    }
     c._syncNetlist();
     return c;
   }

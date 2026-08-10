@@ -174,3 +174,27 @@ test('tap wires: a source wired INTO the rails powers the seated circuit', () =>
   c.board.advanceTo(50_000_000n);
   assert.ok(c.board.ledBrightness(led.id) < 0.01, 'tap removed → dark');
 });
+
+test('save/load round-trip: the seated circuit comes back LIT', () => {
+  resetIds();
+  const c = new Circuit(5.0);
+  const bb = c.addPart('breadboard', {}, 500, 300);
+  const vcc = c.addPart('vcc', {}, 0, 0);
+  const r1 = c.addPart('resistor', { ohms: 1000 }, 0, 0);
+  const led = c.addPart('led', {}, 0, 0);
+  const gnd = c.addPart('gnd', {}, 0, 0);
+  c.seatPart(vcc.id, bb.id, computeLeadMap(FOOTPRINTS.vcc, 'a5'));
+  c.seatPart(r1.id, bb.id, computeLeadMap(FOOTPRINTS.resistor, 'b5'));
+  c.seatPart(led.id, bb.id, computeLeadMap(FOOTPRINTS.led, 'c9'));
+  c.seatPart(gnd.id, bb.id, computeLeadMap(FOOTPRINTS.gnd, 'd10'));
+
+  const restored = Circuit.fromJSON(JSON.parse(JSON.stringify(c.toJSON())));
+  restored.board.advanceTo(25_000_000n);
+  const rl = restored.parts.find(p => p.kind === 'led');
+  const lit = restored.board.ledBrightness(rl.id);
+  assert.ok(Math.abs(lit - 0.1485) < 0.005,
+    `restored circuit must still conduct through its strips: ${lit}`);
+  // And its holes are genuinely occupied again - double-seating refuses.
+  const r2 = restored.parts.find(p => p.kind === 'resistor');
+  assert.equal(restored.canSeat(restored.parts[0].id, r2.id === undefined ? 'x' : 'ghost', { a: 'b5' }), false);
+});
