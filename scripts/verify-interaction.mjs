@@ -417,6 +417,45 @@ const selectionCount = async () =>
   }
 }
 
+// 10. Pin chooser: a wire released on the chip BODY opens the named pin
+// dialog, and choosing completes the wire — buttons must receive their
+// clicks through the canvas pointer machine (they once silently did not).
+{
+  await page.goto(`http://localhost:${PORT}`, { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => window.__circuit && window.__circuit.parts.some(q => q.kind === 'mcu'), { timeout: 20000 });
+  await page.waitForTimeout(400);
+  const pts = await page.evaluate(() => {
+    const c = window.__circuit;
+    const bb = c.parts.find(q => q.kind === 'breadboard');
+    const mcu = c.parts.find(q => q.kind === 'mcu');
+    return { bb: { x: bb.x, y: bb.y }, mcu: { x: mcu.x, y: mcu.y } };
+  });
+  const toScreen = async (wx, wy) => page.evaluate(({ wx, wy }) => {
+    const el = [...document.querySelectorAll('div')].find(d => /scale\(/.test(d.style.transform || ''));
+    const m2 = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+    const r = el.parentElement.getBoundingClientRect();
+    return { x: r.x + wx * m2.a + m2.e, y: r.y + wy * m2.d + m2.f };
+  }, { wx, wy });
+  const from = await toScreen(pts.bb.x - (62 * 14) / 2 + 19 * 14, pts.bb.y - 128);
+  const to = await toScreen(pts.mcu.x, pts.mcu.y);
+  await page.mouse.move(from.x, from.y); await page.mouse.down();
+  await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 4 });
+  await page.mouse.move(to.x, to.y, { steps: 4 }); await page.mouse.up();
+  await page.waitForTimeout(600);
+  const open = await page.getByText('Which pin of', { exact: false }).count();
+  open ? pass('pin chooser opens on chip-body release') : fail('pin chooser did not open');
+  if (open) {
+    await page.locator('button', { hasText: 'P1.5' }).first().click({ timeout: 5000 });
+    await page.waitForTimeout(400);
+    const wired = await page.evaluate(() => {
+      const m = window.__circuit.parts.find(q => q.kind === 'mcu');
+      return window.__circuit.wires.some(w =>
+        (w.from.part === m.id && w.from.terminal === 'P1.5') || (w.to.part === m.id && w.to.terminal === 'P1.5'));
+    });
+    wired ? pass('chosen pin completes the tap wire') : fail('chooser click produced no wire');
+  }
+}
+
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
 else pass('zero page errors');
 
