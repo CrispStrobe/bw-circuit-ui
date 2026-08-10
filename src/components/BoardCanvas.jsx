@@ -647,16 +647,21 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         const b = ledBrightness?.(id) ?? 0;
         const isOn = b > 0.01;
         const seated = !!part.seat;
+        // The wokwi element's anode PIN is on the RIGHT (x=25 of 40); a bench
+        // seat usually puts the anode in the LEFT hole. Unflipped, the bulb
+        // graphic reads as mirrored/shifted against its own holes and the
+        // owner read it as "LED not connected to the resistor". Flip to match
+        // the seat, and anchor the PIN ROW (y=42 in the element) to the hole
+        // row rather than centering the box.
+        const st = part._seatTerminals;
+        const flip = !!(seated && st && st.anode && st.cathode && st.anode.x < st.cathode.x);
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 20, top: y - 25, cursor: 'move' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
-            {/* Seated: shrink IN PLACE — the visual body must stay inside
-                partBounds or click/drag hit-testing dies (gate caught the
-                raised-bulb variant of this). */}
             <div style={seated ? { transform: 'scale(0.78)', transformOrigin: '50% 50%' } : undefined}>
-            <WokwiLed color={params.color || 'red'} brightness={b} value={isOn} />
+            <WokwiLed color={params.color || 'red'} brightness={b} value={isOn} flip={flip || undefined} />
             </div>
             <div style={{
               textAlign: 'center',
