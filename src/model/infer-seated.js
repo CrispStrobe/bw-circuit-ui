@@ -49,6 +49,12 @@ export function buildSeatedFromDeclarations(circuit, stc) {
   const bat = circuit.addPart('vsource', { variant: '9v', volts: 5 }, 120, 150);
   circuit.addTapWire(bat.id, 'pos', bb.id, 't+2', '#e74c3c');
   circuit.addTapWire(bat.id, 'neg', bb.id, 't-2', '#2c3e50');
+  // The chip itself is powered from the rails — VCC is pin 40, GND pin 20
+  // on this package. A bench where the MCU floats unpowered is the first
+  // mistake a lab manual warns about; the derived build must not model it.
+  circuit.addTapWire(mcu.id, 'VCC', bb.id, 't+1', '#e74c3c');
+  circuit.addTapWire(mcu.id, 'GND', bb.id, 't-1', '#2c3e50');
+  notes.push('VCC (pin 40) and GND (pin 20) feed the chip from the rails.');
 
   let col = 5;
   for (const pin of pins) {

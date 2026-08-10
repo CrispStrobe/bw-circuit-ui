@@ -46,7 +46,7 @@ export const FOOTPRINTS = {
   vsource: { w: 48, h: 56 },
   isource: { w: 48, h: 56 },
   relay: { w: 70, h: 50 },
-  breadboard: { w: 930, h: 310 },
+  breadboard: { w: 930, h: 310 }, // full size; half/mini computed in partBounds
   dc_motor: { w: 70, h: 70 },
   servo: { w: 70, h: 60 },
 };
@@ -64,6 +64,12 @@ export function footprintOf(part) {
  * @param {{x: number, y: number, kind: string, rotation?: number}} part
  */
 export function partBounds(part) {
+  if (part.kind === 'breadboard' && part.params && (part.params.size === 'half' || part.params.size === 'mini')) {
+    const cols = part.params.size === 'half' ? 30 : 17;
+    const w = (cols - 1) * 14 + 54;
+    const h = part.params.size === 'mini' ? 310 - 2 * (2 * 14 + 18) : 310;
+    return { x: part.x - w / 2, y: part.y - h / 2, w, h };
+  }
   const { w, h } = footprintOf(part);
   const rot = ((part.rotation ?? 0) % 360 + 360) % 360;
   let bw = w, bh = h;

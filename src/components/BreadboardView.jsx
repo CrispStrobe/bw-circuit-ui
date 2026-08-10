@@ -14,7 +14,6 @@ import React from 'react';
 import { bbHoleOrigin, bbRows, BB_PITCH } from '../interaction/breadboard-snap.js';
 
 const HOLE_RADIUS = 2.5;
-const COLS = 63;
 const TOP_ROWS = ['a', 'b', 'c', 'd', 'e'];
 const BOTTOM_ROWS = ['f', 'g', 'h', 'i', 'j'];
 const RAILS = ['t+', 't-', 'b+', 'b-'];
@@ -65,20 +64,20 @@ function BoardBg({ part, footprint }) {
       {railTopRow && (
         <>
           <line x1={origin.x - 8} y1={railTopRow.y - 8}
-            x2={origin.x + (COLS - 1) * BB_PITCH + 8} y2={railTopRow.y - 8}
+            x2={origin.x + (origin.cols - 1) * BB_PITCH + 8} y2={railTopRow.y - 8}
             stroke="#e74c3c" strokeWidth={2} opacity={0.6} />
           <line x1={origin.x - 8} y1={railTopRow.y + BB_PITCH + 8}
-            x2={origin.x + (COLS - 1) * BB_PITCH + 8} y2={railTopRow.y + BB_PITCH + 8}
+            x2={origin.x + (origin.cols - 1) * BB_PITCH + 8} y2={railTopRow.y + BB_PITCH + 8}
             stroke="#3498db" strokeWidth={2} opacity={0.6} />
         </>
       )}
       {railBotRow && (
         <>
           <line x1={origin.x - 8} y1={railBotRow.y - BB_PITCH - 8}
-            x2={origin.x + (COLS - 1) * BB_PITCH + 8} y2={railBotRow.y - BB_PITCH - 8}
+            x2={origin.x + (origin.cols - 1) * BB_PITCH + 8} y2={railBotRow.y - BB_PITCH - 8}
             stroke="#e74c3c" strokeWidth={2} opacity={0.6} />
           <line x1={origin.x - 8} y1={railBotRow.y + 8}
-            x2={origin.x + (COLS - 1) * BB_PITCH + 8} y2={railBotRow.y + 8}
+            x2={origin.x + (origin.cols - 1) * BB_PITCH + 8} y2={railBotRow.y + 8}
             stroke="#3498db" strokeWidth={2} opacity={0.6} />
         </>
       )}
@@ -88,7 +87,7 @@ function BoardBg({ part, footprint }) {
         const fRow = rows.find(r => r.name === 'f');
         if (!eRow || !fRow) return null;
         const cy = (eRow.y + fRow.y) / 2;
-        return <circle cx={origin.x + ((COLS - 1) * BB_PITCH) / 2} cy={cy} r={8} fill="#c5b99b" />;
+        return <circle cx={origin.x + ((origin.cols - 1) * BB_PITCH) / 2} cy={cy} r={8} fill="#c5b99b" />;
       })()}
       {/* Row labels — left */}
       {[...TOP_ROWS, ...BOTTOM_ROWS].map(name => {
@@ -101,11 +100,11 @@ function BoardBg({ part, footprint }) {
       {[...TOP_ROWS, ...BOTTOM_ROWS].map(name => {
         const row = rows.find(r => r.name === name);
         if (!row) return null;
-        return <text key={`r-${name}`} x={origin.x + (COLS - 1) * BB_PITCH + 10} y={row.y + 4}
+        return <text key={`r-${name}`} x={origin.x + (origin.cols - 1) * BB_PITCH + 10} y={row.y + 4}
           fontSize={8} fill="#7f8c8d" fontFamily="monospace">{name}</text>;
       })}
       {/* Column numbers — every 5 */}
-      {Array.from({ length: COLS }, (_, i) => i + 1).filter(c => c === 1 || c % 5 === 0).map(c => {
+      {Array.from({ length: origin.cols }, (_, i) => i + 1).filter(c => c === 1 || c % 5 === 0).map(c => {
         const x = origin.x + (c - 1) * BB_PITCH;
         return (
           <React.Fragment key={c}>
@@ -116,7 +115,8 @@ function BoardBg({ part, footprint }) {
           </React.Fragment>
         );
       })}
-      {/* Rail labels */}
+      {/* Rail labels — a mini board has no rails to label */}
+      {origin.hasRails && <>
       <text x={origin.x - 14} y={(rows.find(r => r.name === 't+')?.y || 0) + 4}
         fontSize={9} fill="#e74c3c" fontFamily="monospace" fontWeight="bold">+</text>
       <text x={origin.x - 14} y={(rows.find(r => r.name === 't-')?.y || 0) + 4}
@@ -125,6 +125,7 @@ function BoardBg({ part, footprint }) {
         fontSize={9} fill="#e74c3c" fontFamily="monospace" fontWeight="bold">+</text>
       <text x={origin.x - 14} y={(rows.find(r => r.name === 'b-')?.y || 0) + 4}
         fontSize={9} fill="#3498db" fontFamily="monospace" fontWeight="bold">−</text>
+      </>}
     </g>
   );
 }
@@ -138,7 +139,7 @@ function HoleGrid({ part, model, highlightStrip }) {
 
   for (const row of rows) {
     const isRail = row.name.startsWith('t') || row.name.startsWith('b');
-    for (let c = 0; c < COLS; c++) {
+    for (let c = 0; c < origin.cols; c++) {
       // Real boards break rail contacts at column groups of 5–6
       if (isRail && (c % 6 === 5)) continue;
 

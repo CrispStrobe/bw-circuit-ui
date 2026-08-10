@@ -104,6 +104,47 @@ export class Circuit {
   }
 
   /**
+   * Move a seated part by whole holes — the arrow-key move on a breadboard.
+   * Every lead shifts together; the move happens only if EVERY target hole
+   * exists and is free, else the part stays exactly where it was.
+   * @param {string} partId @param {number} dcol @param {number} drow
+   * @returns {boolean} moved
+   */
+  nudgeSeated(partId, dcol, drow) {
+    const part = this.parts.find(p => p.id === partId);
+    if (!part || !part.seat) return false;
+    const { boardId, leadMap } = part.seat;
+    const bb = this.breadboards.get(boardId);
+    if (!bb) return false;
+    const ROWS = 'abcdefghij';
+    const shifted = {};
+    for (const [term, hole] of Object.entries(leadMap)) {
+      const rail = /^([tb][+-])(\d+)$/.exec(hole);
+      if (rail) {
+        if (drow !== 0) return false; // rails move sideways only
+        shifted[term] = `${rail[1]}${Number(rail[2]) + dcol}`;
+        continue;
+      }
+      const m = /^([a-j])(\d+)$/.exec(hole);
+      if (!m) return false;
+      const ri = ROWS.indexOf(m[1]) + drow;
+      // Rows shift within the board only — crossing the gutter is a
+      // different circuit, not a nudge.
+      if (ri < 0 || ri > 9) return false;
+      if ((ROWS.indexOf(m[1]) <= 4) !== (ri <= 4)) return false;
+      shifted[term] = `${ROWS[ri]}${Number(m[2]) + dcol}`;
+    }
+    for (const h of Object.values(shifted)) {
+      if (!bb.isValidHole(h)) return false;
+    }
+    const prev = { ...leadMap };
+    this.unseatPart(partId);
+    if (this.seatPart(partId, boardId, shifted)) return true;
+    this.seatPart(partId, boardId, prev); // occupied: restore, unmoved
+    return false;
+  }
+
+  /**
    * A jumper wire between two holes of one board — the classic colored
    * breadboard wire. Returns its reference id ("bbw:<board>:<wire>") or null
    * when the holes cannot take it (occupied / invalid / same strip is fine —
@@ -280,7 +321,7 @@ export class Circuit {
     const part = { id: genId(kind), kind, params: { ...params }, terminals, x, y, rotation: 0 };
     if (declName) part.declName = declName;
     this.parts.push(part);
-    if (kind === 'breadboard') this.breadboards.set(part.id, new BreadboardModel());
+    if (kind === 'breadboard') this.breadboards.set(part.id, new BreadboardModel(part.params));
     this._syncNetlist();
     this._saveHistory();
     return part;
@@ -832,7 +873,7 @@ export class Circuit {
     // Without this, a loaded save LOOKED right but the strips no longer
     // conducted - the LED that was lit when saved came back dark.
     for (const p of c.parts) {
-      if (p.kind === 'breadboard') c.breadboards.set(p.id, new BreadboardModel());
+      if (p.kind === 'breadboard') c.breadboards.set(p.id, new BreadboardModel(p.params));
     }
     for (const p of c.parts) {
       if (!p.seat) continue;

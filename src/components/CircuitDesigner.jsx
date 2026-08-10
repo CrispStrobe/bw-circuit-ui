@@ -65,7 +65,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const projectData = project || stc;
   const {
     parts, wires, powered, rev,
-    addPart, removePart, movePart, duplicatePart, rotatePart, flipPart, updateParams,
+    addPart, removePart, nudgeSeated, movePart, duplicatePart, rotatePart, flipPart, updateParams,
     addWire, removeWire, addHoleWire, addTapWire, updateWire,
     setControl, setPin, advanceTo, advanceBy, setPower,
     loadInferred, undo, redo, canUndo, canRedo, saveHistory,
@@ -767,6 +767,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onRemovePart={removePart}
           onMovePart={handleMovePart}
           onNudgePart={handleNudgePart}
+          onNudgeSeated={nudgeSeated}
           onSelectPart={handleSelectPart}
           selectedPart={selectedPart}
           selectedParts={selectedParts}

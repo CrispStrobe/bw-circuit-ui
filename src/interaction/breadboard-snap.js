@@ -12,29 +12,50 @@
  */
 
 export const BB_PITCH = 14;
-const COLS = 63;
 const RAIL_GAP = 18;   // rails ↔ terminal rows
 const GUTTER = 24;     // row e ↔ row f
 const MARGIN_X = 27;   // board edge → first hole column
+
+/**
+ * Physical spec of a breadboard part by its size param. The mini (170-point)
+ * board has NO power rails — that is what makes it mini.
+ * @param {{params?: {size?: string}}} [part]
+ */
+export function bbSpec(part) {
+  const size = part && part.params && part.params.size;
+  if (size === 'half') return { cols: 30, hasRails: true };
+  if (size === 'mini') return { cols: 17, hasRails: false };
+  return { cols: 63, hasRails: true };
+}
+
+/** Rendered outline of a breadboard part, derived from its spec. */
+export function bbFootprint(part) {
+  const { cols, hasRails } = bbSpec(part);
+  const railBlock = 2 * BB_PITCH + RAIL_GAP;
+  const totalH = (hasRails ? 2 * railBlock : 0) + 10 * BB_PITCH + GUTTER;
+  return { w: (cols - 1) * BB_PITCH + 2 * MARGIN_X, h: totalH + 2 * MARGIN_X };
+}
 
 /**
  * World-space anchors of a breadboard part's hole lattice.
  * @param {{x: number, y: number}} part - breadboard part (centre coords)
  */
 export function bbHoleOrigin(part) {
-  // Vertical layout, centred on part.y:
+  // Vertical layout, centred on part.y. With rails:
   //   2 rail rows · RAIL_GAP · 5 rows · GUTTER · 5 rows · RAIL_GAP · 2 rail rows
-  const totalH = 2 * BB_PITCH + RAIL_GAP + 4 * BB_PITCH + BB_PITCH + GUTTER
-    + 4 * BB_PITCH + BB_PITCH + RAIL_GAP + 2 * BB_PITCH;
+  // The mini board drops the rail blocks entirely.
+  const { cols, hasRails } = bbSpec(part);
+  const railBlock = 2 * BB_PITCH + RAIL_GAP;
+  const totalH = (hasRails ? 2 * railBlock : 0) + 10 * BB_PITCH + GUTTER;
   const top = part.y - totalH / 2 + BB_PITCH / 2;
-  const railTopY = top;
-  const topRowsY = railTopY + 2 * BB_PITCH + RAIL_GAP;
+  const railTopY = hasRails ? top : NaN;
+  const topRowsY = hasRails ? railTopY + railBlock : top;
   const bottomRowsY = topRowsY + 5 * BB_PITCH + GUTTER;
-  const railBottomY = bottomRowsY + 5 * BB_PITCH + RAIL_GAP;
+  const railBottomY = hasRails ? bottomRowsY + 5 * BB_PITCH + RAIL_GAP : NaN;
   return {
-    x: part.x - ((COLS - 1) * BB_PITCH) / 2,
+    x: part.x - ((cols - 1) * BB_PITCH) / 2,
     railTopY, topRowsY, bottomRowsY, railBottomY,
-    cols: COLS,
+    cols, hasRails,
   };
 }
 
@@ -42,10 +63,14 @@ export function bbHoleOrigin(part) {
 export function bbRows(part) {
   const o = bbHoleOrigin(part);
   const rows = [];
-  rows.push({ name: 't+', y: o.railTopY }, { name: 't-', y: o.railTopY + BB_PITCH });
+  if (o.hasRails) {
+    rows.push({ name: 't+', y: o.railTopY }, { name: 't-', y: o.railTopY + BB_PITCH });
+  }
   ['a', 'b', 'c', 'd', 'e'].forEach((n, i) => rows.push({ name: n, y: o.topRowsY + i * BB_PITCH }));
   ['f', 'g', 'h', 'i', 'j'].forEach((n, i) => rows.push({ name: n, y: o.bottomRowsY + i * BB_PITCH }));
-  rows.push({ name: 'b+', y: o.railBottomY }, { name: 'b-', y: o.railBottomY + BB_PITCH });
+  if (o.hasRails) {
+    rows.push({ name: 'b+', y: o.railBottomY }, { name: 'b-', y: o.railBottomY + BB_PITCH });
+  }
   return rows;
 }
 

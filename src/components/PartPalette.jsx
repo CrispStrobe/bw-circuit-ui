@@ -15,7 +15,11 @@ const CATEGORIES = [
     name: 'Boards',
     parts: [
       { kind: 'breadboard', label: 'Breadboard', params: {}, color: '#e8e4d8',
-        tooltip: 'Full-size breadboard - legs snap into holes, rows and rails conduct' },
+        tooltip: 'Full-size breadboard (63 columns) - legs snap into holes, rows and rails conduct' },
+      { kind: 'breadboard', label: 'Breadboard ½', params: { size: 'half' }, color: '#e8e4d8',
+        tooltip: 'Half-size breadboard (30 columns) with power rails' },
+      { kind: 'breadboard', label: 'Breadboard mini', params: { size: 'mini' }, color: '#e8e4d8',
+        tooltip: 'Mini 170-point breadboard (17 columns) - no power rails, like the real one' },
     ],
   },
   {

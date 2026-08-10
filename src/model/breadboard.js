@@ -50,7 +50,9 @@ const RAILS = ['t+', 't-', 'b+', 'b-'];
 export class BreadboardModel {
   /** @param {BreadboardSpec} [spec] */
   constructor(spec = {}) {
-    this.cols = spec.size === 'half' ? 30 : 63;
+    this.cols = spec.size === 'half' ? 30 : spec.size === 'mini' ? 17 : 63;
+    // The 170-point mini board has no power rails at all.
+    this.hasRails = spec.size !== 'mini';
     this.splitRails = spec.splitRails ?? false;
     /** Column where the left rail half ends when splitRails is on. */
     this.railSplitAt = Math.floor(this.cols / 2);
@@ -68,6 +70,7 @@ export class BreadboardModel {
   isValidHole(holeId) {
     const rail = RAILS.find(r => holeId.startsWith(r));
     if (rail) {
+      if (!this.hasRails) return false;
       const n = Number(holeId.slice(rail.length));
       return Number.isInteger(n) && n >= 1 && n <= this.cols;
     }

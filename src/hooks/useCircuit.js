@@ -43,6 +43,11 @@ export function useCircuit(vcc = 5.0) {
     return ok;
   }, [circuit, bump]);
 
+  /** Arrow-key move for a seated part: whole holes, atomically or not at all. */
+  const nudgeSeated = useCallback((partId, dcol, drow) => {
+    if (circuit.nudgeSeated(partId, dcol, drow)) bump();
+  }, [circuit, bump]);
+
   const duplicatePart = useCallback((partId) => {
     const p = circuit.duplicatePart(partId);
     if (p) bump();
@@ -206,6 +211,7 @@ export function useCircuit(vcc = 5.0) {
     addPart,
     removePart,
     movePart,
+    nudgeSeated,
     duplicatePart,
     rotatePart,
     flipPart,

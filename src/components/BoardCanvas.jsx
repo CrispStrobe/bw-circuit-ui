@@ -988,7 +988,7 @@ export function BoardCanvas({
   onControlChange, onButtonDown, onButtonUp,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
+  onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire,
   onSaveCircuit, onLoadCircuit, onRewire,
@@ -1000,6 +1000,7 @@ export function BoardCanvas({
   parts = resolveSeatedParts(parts);
   const circuitRef = useRef(null); circuitRef.current = circuit;
   const [placeGhost, setPlaceGhost] = useState(null);
+  const [dragLegs, setDragLegs] = useState(null); // hole highlights while dragging an existing part
   const [wiringFrom, setWiringFrom] = useState(null);
   const [mousePos, setMousePos] = useState(null);
   const [dragging, setDragging] = useState(null); // partId that initiated the drag
@@ -1181,6 +1182,13 @@ export function BoardCanvas({
           if (pp) {
             const snap = findSnapTarget(pp, partsRef.current, wiresRef.current);
             setSnapTarget(snap && snap.autoWire ? snap : null);
+            // The holes this part's legs would take, live under the finger —
+            // green free / red taken — BEFORE release commits anything.
+            if (pp.kind !== 'breadboard') {
+              const sg = snapGhost({ kind: pp.kind, x: pp.x, y: pp.y }, partsRef.current);
+              const g = sg.snapped ? ghostWithLegs(sg) : null;
+              setDragLegs(g && g.legs ? g.legs : null);
+            }
           }
         }
       },
@@ -1207,6 +1215,7 @@ export function BoardCanvas({
           }
           return null;
         });
+        setDragLegs(null);
         if (api.onSaveHistory) api.onSaveHistory();
       },
       createWire: (from, to) => { apiRef.current.onAddWire(from.partId, from.terminal, to.partId, to.terminal); },
@@ -1691,10 +1700,18 @@ export function BoardCanvas({
       const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
       for (const id of selectedParts) {
         const part = parts.find(p => p.id === id);
-        if (part) mover(id, part.x + dx, part.y + dy);
+        if (!part) continue;
+        // A seated part moves in HOLES, not pixels: one per press, five with
+        // Shift. It re-seats atomically or stays put (occupied/edge).
+        if (part.seat && onNudgeSeated) {
+          const holes = e.shiftKey ? 5 : 1;
+          onNudgeSeated(id, Math.sign(dx) * holes, Math.sign(dy) * holes);
+          continue;
+        }
+        mover(id, part.x + dx, part.y + dy);
       }
     }
-  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onNudgePart, onCopy, onPaste, onFlipPart, onUndo, onRedo, onSelectAll, onRotatePart, onDuplicatePart]);
+  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onNudgePart, onNudgeSeated, onCopy, onPaste, onFlipPart, onUndo, onRedo, onSelectAll, onRotatePart, onDuplicatePart]);
 
   // ── Touch support ────────────────────────────────────────────────
   const canvasContainerRef = useRef(null);
@@ -2016,6 +2033,16 @@ export function BoardCanvas({
               </g>
             );
           })()}
+
+          {dragLegs && (
+            <g style={{ pointerEvents: 'none' }} opacity={0.9}>
+              {dragLegs.map((leg, i) => (
+                <circle key={i} cx={leg.x} cy={leg.y} r={5}
+                  fill={leg.free ? '#2ecc71' : '#e74c3c'} fillOpacity={0.55}
+                  stroke={leg.free ? '#27ae60' : '#c0392b'} strokeWidth={2} />
+              ))}
+            </g>
+          )}
 
           {/* Breadboard substrates render under everything else */}
           {parts.filter(p => p.kind === 'breadboard').map(bb => (
