@@ -67,7 +67,11 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
     assert.ok(sidecars.length > 50, `expected >50 sidecars, got ${sidecars.length}`);
   });
 
-  const mismatches = [];
+  // Two populations:
+  // 1. namingDiffs — both sides model the kind, names disagree
+  // 2. coverageGaps — bw-parts has it, circuit model does not model it at all
+  const namingDiffs = [];
+  const coverageGaps = [];
   let checked = 0;
   let skipped = 0;
 
@@ -80,26 +84,31 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
       try {
         circuitTerminals = terminalsForKind(sc.kind);
       } catch {
-        // Kind not in terminalsForKind — that's a gap, not a mismatch
+        coverageGaps.push(sc.kind);
+        return;
+      }
+
+      // Default ['a', 'b'] means terminalsForKind doesn't really model this kind
+      if (circuitTerminals.length === 2 &&
+          circuitTerminals[0] === 'a' && circuitTerminals[1] === 'b' &&
+          sc.terminals.length > 2) {
+        coverageGaps.push(sc.kind);
         return;
       }
 
       const sidecarNames = new Set(sc.terminals.map(t => t.name));
       const circuitNames = new Set(circuitTerminals);
 
-      // Check: every sidecar terminal should exist in the circuit model
       for (const name of sidecarNames) {
-        if (name === 'vcc' || name === 'gnd') continue; // power pins may differ
+        if (name === 'vcc' || name === 'gnd') continue;
         if (!circuitNames.has(name)) {
-          mismatches.push(`${sc.kind}: sidecar has terminal "${name}" missing from circuit model`);
+          namingDiffs.push(`${sc.kind}: sidecar "${name}" not in circuit model`);
         }
       }
-
-      // Check: every circuit terminal should exist in the sidecar
       for (const name of circuitNames) {
         if (name === 'vcc' || name === 'gnd') continue;
         if (!sidecarNames.has(name)) {
-          mismatches.push(`${sc.kind}: circuit model has terminal "${name}" missing from sidecar`);
+          namingDiffs.push(`${sc.kind}: circuit "${name}" not in sidecar`);
         }
       }
 
@@ -107,14 +116,15 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
     });
   }
 
-  it('summary: report mismatches', () => {
-    console.log(`  Terminal cross-check: ${checked} kinds checked, ${skipped} skipped, ${mismatches.length} mismatches`);
-    if (mismatches.length > 0) {
-      console.log('  Mismatches:');
-      for (const m of mismatches) console.log(`    - ${m}`);
+  it('summary: two populations counted separately', () => {
+    const gapKinds = [...new Set(coverageGaps)];
+    console.log(`  Cross-check: ${checked} kinds checked, ${skipped} skipped`);
+    console.log(`  Naming diffs (convention): ${namingDiffs.length}`);
+    console.log(`  Coverage gaps (product): ${gapKinds.length} kinds not modelled`);
+    if (gapKinds.length > 0) console.log(`    Gaps: ${gapKinds.join(', ')}`);
+    if (namingDiffs.length > 0) {
+      console.log(`  Naming diffs:`);
+      for (const m of namingDiffs) console.log(`    - ${m}`);
     }
-    // Don't fail on mismatches yet — report them. When the count is zero,
-    // change this to assert.equal(mismatches.length, 0).
-    // For now, the interesting number is how many disagree.
   });
 });
