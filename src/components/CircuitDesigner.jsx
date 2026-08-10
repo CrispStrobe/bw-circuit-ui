@@ -867,7 +867,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
       {/* Right sidebar — collapsible */}
       {rightOpen ? (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto', maxHeight: 'calc(100dvh - 130px)', overscrollBehavior: 'contain' }}>
         <button onClick={() => setRightOpen(false)} style={{
           background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
           fontFamily: 'monospace', fontSize: '10px', textAlign: 'left', padding: 0,
