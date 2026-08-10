@@ -165,25 +165,55 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
         );
       }
       case 'mcu': {
-        // Scale chip body to match pin count
+        // DIP chip body — real IC package appearance
         const pinCount = part.terminals.length;
-        const chipH = Math.max(60, pinCount * 30 + 20);
+        const pinsPerSide = Math.ceil(pinCount / 2);
+        const pinSpacing = 14;
+        const chipW = 80;
+        const chipH = Math.max(50, pinsPerSide * pinSpacing + 16);
         const chipY = -chipH / 2;
+        const legLen = 12;
+        const legW = 3;
         return (
           <g key={id} transform={xform}
             pointerEvents="none"
             style={{ cursor: 'pointer' }}>
-            <rect x={-50} y={chipY} width={120} height={chipH} rx={6}
-              fill="#2c3e50" stroke={selStroke || '#7f8c8d'} strokeWidth={isSelected ? 3 : 2} />
-            <text x={10} y={chipY + 18} textAnchor="middle" fill="#ecf0f1" fontSize={14}
+            {/* Chip body — black DIP package */}
+            <rect x={-chipW / 2} y={chipY} width={chipW} height={chipH} rx={3}
+              fill="#1a1a1a" stroke={selStroke || '#444'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Notch at pin 1 (top center) */}
+            <path d={`M ${-6} ${chipY} A 6 6 0 0 1 ${6} ${chipY}`}
+              fill="#2c3e50" stroke={selStroke || '#555'} strokeWidth={1} />
+            {/* Pin 1 dot */}
+            <circle cx={-chipW / 2 + 8} cy={chipY + 10} r={2.5} fill="#555" />
+            {/* Label */}
+            <text x={0} y={chipY + chipH / 2 - 4} textAnchor="middle" fill="#bbb" fontSize={9}
               fontFamily="monospace" fontWeight="bold">STC12</text>
-            {part.terminals.map((pin, i) => {
-              const pinY = chipY + 30 + i * 30;
+            <text x={0} y={chipY + chipH / 2 + 6} textAnchor="middle" fill="#777" fontSize={7}
+              fontFamily="monospace">C5A60S2</text>
+            {/* Left-side pins (1 to N/2) */}
+            {part.terminals.slice(0, pinsPerSide).map((pin, i) => {
+              const py = chipY + 12 + i * pinSpacing;
               return (
                 <g key={pin}>
-                  <circle cx={-50} cy={pinY} r={3} fill="#f39c12" />
-                  <text x={-42} y={pinY + 4} fill="#f39c12" fontSize={10}
-                    fontFamily="monospace">{pin}</text>
+                  {/* Leg */}
+                  <rect x={-chipW / 2 - legLen} y={py - legW / 2} width={legLen} height={legW}
+                    fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
+                  {/* Label */}
+                  <text x={-chipW / 2 - legLen - 3} y={py + 3} textAnchor="end"
+                    fill="#f39c12" fontSize={7} fontFamily="monospace">{pin}</text>
+                </g>
+              );
+            })}
+            {/* Right-side pins (N/2+1 to N, bottom to top) */}
+            {part.terminals.slice(pinsPerSide).map((pin, i) => {
+              const py = chipY + 12 + (pinsPerSide - 1 - i) * pinSpacing;
+              return (
+                <g key={pin}>
+                  <rect x={chipW / 2} y={py - legW / 2} width={legLen} height={legW}
+                    fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
+                  <text x={chipW / 2 + legLen + 3} y={py + 3} textAnchor="start"
+                    fill="#f39c12" fontSize={7} fontFamily="monospace">{pin}</text>
                 </g>
               );
             })}
