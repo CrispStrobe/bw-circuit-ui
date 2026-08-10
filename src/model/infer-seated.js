@@ -44,10 +44,11 @@ export function buildSeatedFromDeclarations(circuit, stc) {
 
   const bb = circuit.addPart('breadboard', {}, 470, 330);
   const mcu = circuit.addPart('mcu', { pins: pins.map(p => `P${p.port}.${p.bit}`) }, 470, 40);
-  const vcc = circuit.addPart('vcc', {}, 120, 120);
-  const gnd = circuit.addPart('gnd', {}, 120, 200);
-  circuit.addTapWire(vcc.id, 'vcc', bb.id, 't+2', '#e74c3c');
-  circuit.addTapWire(gnd.id, 'gnd', bb.id, 't-2', '#2c3e50');
+  // A real battery feeding the rails — the bench has power OBJECTS, never
+  // abstract supply symbols (those belong to the schematic projection).
+  const bat = circuit.addPart('vsource', { variant: '9v', volts: 5 }, 120, 150);
+  circuit.addTapWire(bat.id, 'pos', bb.id, 't+2', '#e74c3c');
+  circuit.addTapWire(bat.id, 'neg', bb.id, 't-2', '#2c3e50');
 
   let col = 5;
   for (const pin of pins) {
