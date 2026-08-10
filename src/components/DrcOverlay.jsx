@@ -21,6 +21,9 @@ const RULE_SHORT = {
   'floating-input': 'floating',
   'supply-short': 'SHORT',
   'polarity': '± wrong',
+  'missing-pullup': 'no pull-up',
+  'aggregate-current': '⚡ over limit',
+  'engine': '⚠',
 };
 
 /**

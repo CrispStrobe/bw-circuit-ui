@@ -620,7 +620,22 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onUndo={handleUndo}
           onRedo={handleRedo}
           onSelectAll={handleSelectAll}
-          drcWarnings={(() => { try { return runDrc(circuit, circuit.board); } catch { return []; } })()}
+          drcWarnings={(() => {
+            try {
+              const drc = runDrc(circuit, circuit.board);
+              // Merge bw-board engine warnings (from getWarnings/renderState)
+              // so aggregate current-budget warnings reach DrcOverlay too.
+              for (const w of warnings) {
+                drc.push({
+                  severity: w.severity || 'warning',
+                  rule: 'engine',
+                  partId: w.partId || parts.find(p => p.kind === 'mcu')?.id || parts[0]?.id,
+                  explanation: w.message,
+                });
+              }
+              return drc;
+            } catch { return []; }
+          })()}
         />
 
         {/* Engine warnings — teaching feedback */}

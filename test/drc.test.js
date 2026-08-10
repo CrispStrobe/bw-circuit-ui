@@ -357,9 +357,10 @@ describe('DRC: aggregate-current', () => {
     c.addPart('vcc', {}, 0, 0);
     c.addPart('gnd', {}, 0, 0);
     const mcu = c.addPart('mcu', { pins: ['P1.0','P1.1','P1.2','P1.3','P1.4'] }, 0, 0);
-    // 5 LEDs = 100 mA (83% of limit), plus a potentiometer (null-rated)
+    // 5 LEDs = 100 mA (83% of limit), plus an NPN transistor (null-rated —
+    // current depends on the circuit, not the kind alone)
     for (let i = 0; i < 5; i++) c.addPart('led', { vf: 2.0 }, 0, 0);
-    c.addPart('potentiometer', { ohms: 10000 }, 0, 0); // null-rated
+    c.addPart('npn', { beta: 100 }, 0, 0); // null-rated per current-ratings.js
 
     const w = runDrc(c, c.board);
     const hits = findRule(w, 'aggregate-current');

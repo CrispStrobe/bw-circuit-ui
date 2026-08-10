@@ -27,6 +27,9 @@ const RULE_ICONS = {
   'floating-input': '?',
   'supply-short': '⚠',
   'polarity': '±',
+  'missing-pullup': 'R↑',
+  'aggregate-current': '⚡',
+  'engine': '⚠',
 };
 
 export function DrcPanel({ warnings, onSelectPart, onAddFixPart }) {
