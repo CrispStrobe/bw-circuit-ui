@@ -111,14 +111,32 @@ function Symbol({ s }) {
         <path d="M -14 -14 L -14 14 L 16 0 Z" />
         <path d="M -30 -7 L -14 -7 M -30 7 L -14 7 M 16 0 L 30 0" />
       </>);
-    default:
-      // Generic IC/part box with the kind name — honest, identifiable.
+    default: {
+      // Generic IC/part box, sized to its CONNECTED pins, one stub and one
+      // pin-name label per connection — so an MCU visibly meets its wires
+      // instead of floating beside them (the projection only lays out pins
+      // that carry a net).
+      const pins = s.pins || [];
+      const perSide = Math.max(1, s.pinsPerSide || Math.ceil(pins.length / 2));
+      const halfH = Math.max(16, ((perSide - 1) * 18) / 2 + 12);
       return g(<>
-        <rect x={-24} y={-16} width={48} height={32} rx={2} />
-        <path d="M -30 0 L -24 0 M 24 0 L 30 0" strokeWidth={1.2} />
+        <rect x={-24} y={-halfH} width={48} height={halfH * 2} rx={2} />
+        {pins.map(pin => {
+          const edgeX = pin.side === 'left' ? -24 : 24;
+          const py = pin.y - s.y;
+          return (
+            <g key={pin.name}>
+              <path d={`M ${edgeX} ${py} L ${pin.x - s.x} ${py}`} strokeWidth={1.2} />
+              <text x={pin.side === 'left' ? -21 : 21} y={py + 2}
+                textAnchor={pin.side === 'left' ? 'start' : 'end'}
+                fill={LABEL} fontSize={5.5} fontFamily="monospace" stroke="none">{pin.name}</text>
+            </g>
+          );
+        })}
         <text x={0} y={3} textAnchor="middle" fill={STROKE} fontSize={7}
           fontFamily="monospace" stroke="none">{kind.slice(0, 9)}</text>
       </>);
+    }
   }
 }
 

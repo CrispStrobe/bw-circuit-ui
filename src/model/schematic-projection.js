@@ -91,20 +91,31 @@ export function projectSchematic(parts, nets) {
 
   // Symbols with pin geometry: 2-pin parts run left→right; more pins split
   // across the two sides in terminal order.
+  //
+  // ONLY CONNECTED terminals get pins. A DIP-40 MCU on a bench uses three
+  // of its forty terminals; laying out all forty spread its connection
+  // points ±170px beyond the little box — wires attached to invisible
+  // spots far outside the symbol (and above the canvas), which read as
+  // "the chip is connected to nothing" (owner screenshots, 2026-08-10).
   const symbols = [];
   for (const p of electrical) {
     const col = rank.get(p.id);
     const row = rowOf.get(p.id);
     const x = MARGIN_X + col * COL_W;
     const y = MARGIN_Y + row * ROW_H;
-    const terms = p.terminals ?? [];
+    const allTerms = p.terminals ?? [];
+    let terms = allTerms.filter(name => {
+      const netId = findPinNet(nets, p.id, name);
+      return netId && (netPins.get(netId) ?? []).length >= 2;
+    });
+    if (terms.length === 0) terms = allTerms.slice(0, 2); // disconnected part: keep its shape
+    const perSide = Math.ceil(terms.length / 2);
     const pins = terms.map((name, i) => {
       let side, offset;
       if (terms.length <= 2) {
         side = i === 0 ? 'left' : 'right';
         offset = 0;
       } else {
-        const perSide = Math.ceil(terms.length / 2);
         side = i < perSide ? 'left' : 'right';
         offset = (i % perSide) - (perSide - 1) / 2;
       }
@@ -120,6 +131,7 @@ export function projectSchematic(parts, nets) {
     symbols.push({
       id: p.id, kind: p.kind, label: p.declName || p.id,
       params: p.params ?? {}, col, row, x, y, pins,
+      pinsPerSide: perSide,
     });
   }
 
@@ -156,10 +168,35 @@ export function projectSchematic(parts, nets) {
     });
   }
 
-  const width = MARGIN_X * 2 + (maxRank + 2) * COL_W;
-  let maxRow = 0;
-  for (const s of symbols) maxRow = Math.max(maxRow, s.row);
-  const height = MARGIN_Y * 2 + (maxRow + 1) * ROW_H;
+  // Canvas bounds from the GEOMETRY, not the grid: multi-pin symbols and
+  // fanned-out trunks extend past the nominal rows/columns, and anything
+  // outside the viewBox was silently clipped — the wire running off the top
+  // edge in the owner's screenshot.
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const touch = (x, y) => {
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+  };
+  for (const sym of symbols) {
+    touch(sym.x - PIN_HALF - 20, sym.y - Math.max(28, ((sym.pinsPerSide || 1) - 1) * 9 + 24));
+    touch(sym.x + PIN_HALF + 20, sym.y + Math.max(28, ((sym.pinsPerSide || 1) - 1) * 9 + 24));
+    for (const pin of sym.pins) touch(pin.x, pin.y);
+  }
+  for (const w of wires) { touch(w.trunk.x, w.trunk.y1); touch(w.trunk.x, w.trunk.y2); }
+  if (!symbols.length) { minX = 0; minY = 0; maxX = 100; maxY = 60; }
+  const shiftX = MARGIN_X - minX;
+  const shiftY = MARGIN_Y - minY;
+  for (const sym of symbols) {
+    sym.x += shiftX; sym.y += shiftY;
+    for (const pin of sym.pins) { pin.x += shiftX; pin.y += shiftY; }
+  }
+  for (const w of wires) {
+    w.trunk.x += shiftX; w.trunk.y1 += shiftY; w.trunk.y2 += shiftY;
+    for (const seg of w.stubs) for (const pt of seg) { pt.x += shiftX; pt.y += shiftY; }
+  }
+  for (const j of junctions) { j.x += shiftX; j.y += shiftY; }
+  const width = (maxX - minX) + MARGIN_X * 2;
+  const height = (maxY - minY) + MARGIN_Y * 2;
 
   return { symbols, wires, junctions, width, height };
 }
