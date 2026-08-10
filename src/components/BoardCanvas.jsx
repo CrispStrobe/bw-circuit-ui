@@ -601,7 +601,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -676,7 +676,13 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
       case 'potentiometer':
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 30, top: y - 30, cursor: 'move', pointerEvents: 'none' }}
+            style={{ ...baseStyle, left: x - 30, top: y - 30,
+              // Build: transparent to events so body drags reach the canvas.
+              // Sim: the knob IS the interface — rolling it must change the
+              // resistance (it was pointerEvents:'none' in both modes, so
+              // the pot could never be used at all).
+              cursor: simulate ? 'pointer' : 'move',
+              pointerEvents: simulate ? 'auto' : 'none' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}>
             <WokwiPotentiometer
               min={0} max={1} step={0.01} value={0.5}
@@ -1010,7 +1016,7 @@ export function BoardCanvas({
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
-  placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire,
+  placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onRewire,
   drcWarnings,
 }) {
@@ -1161,6 +1167,15 @@ export function BoardCanvas({
     hit.holeAt = (wx, wy, radius) => {
       const c = circuitRef.current;
       if (!c) return null;
+      // BODY BEATS HOLE. A seated part's body covers free holes; without
+      // this, pressing the body of a selected potentiometer started a
+      // jumper wire instead of a drag most of the time (owner report,
+      // 2026-08-10) — the same contract terminals already honour.
+      for (const q of partsRef.current) {
+        if (q.kind === 'breadboard' || q.kind === 'meter') continue;
+        const b = partBounds(q);
+        if (wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h) return null;
+      }
       for (const q of partsRef.current) {
         if (q.kind !== 'breadboard') continue;
         const h = nearestHole(q, wx, wy);
@@ -2058,13 +2073,17 @@ export function BoardCanvas({
             );
           })()}
 
-          {/* A seated LED stands ABOVE its row like the real part: two legs
-              drop from the bulb base into the holes. */}
-          {parts.filter(q => q.kind === 'led' && q.seat && q._seatTerminals).map(q => (
+          {/* Seated parts whose body floats off the hole row show LEGS
+              dropping into their holes — the answer to "where are the
+              poti's connectors?" is drawn, not guessed. */}
+          {parts.filter(q => ['led', 'potentiometer', 'button'].includes(q.kind) && q.seat && q._seatTerminals).map(q => (
             <g key={`ledlegs-${q.id}`} style={{ pointerEvents: 'none' }}>
               {Object.values(q._seatTerminals).map((pos, i) => (
-                <line key={i} x1={pos.x} y1={q.y - 4} x2={pos.x} y2={pos.y}
-                  stroke="#95a5a6" strokeWidth={1.6} />
+                <g key={i}>
+                  <line x1={pos.x} y1={q.y - 4} x2={pos.x} y2={pos.y}
+                    stroke="#95a5a6" strokeWidth={1.6} />
+                  <circle cx={pos.x} cy={pos.y} r={2.2} fill="#95a5a6" />
+                </g>
               ))}
             </g>
           ))}
@@ -2296,6 +2315,7 @@ export function BoardCanvas({
             cubeScans={cubeScans}
             onSelectPart={onSelectPart}
             selectedParts={selectedParts}
+            simulate={!!simulate}
             onControlChange={onControlChange}
             onButtonDown={onButtonDown}
             onButtonUp={onButtonUp}

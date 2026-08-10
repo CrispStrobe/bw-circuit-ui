@@ -516,8 +516,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   const handleControlChange = useCallback((partId, value) => {
     setControl(partId, value);
+    // One board, one truth — for WRITES too: while the debugger drives an
+    // external board, the pot the user rolls must reach THAT board or the
+    // emulator's ADC keeps reading the untouched internal one.
+    if (externalBoard && externalBoard.setControl) {
+      try { externalBoard.setControl(partId, value); } catch { /* board mid-rebuild */ }
+    }
     advanceBy(1n * MS);
-  }, [setControl, advanceBy]);
+  }, [setControl, advanceBy, externalBoard]);
 
   const handleButtonDown = useCallback((partId) => {
     setControl(partId, 1);
@@ -775,6 +781,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         <BoardCanvas
           parts={parts}
           wires={wires}
+          simulate={mode === 'simulate'}
           ledBrightness={readLedBrightness}
           buzzerTones={readBuzzerTone}
           nodeVoltages={effectiveNodeVoltages}
@@ -799,7 +806,23 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onRemovePart={removePart}
           onMovePart={handleMovePart}
           onNudgePart={handleNudgePart}
-          onNudgeSeated={nudgeSeated}
+          onNudgeSeated={(id, dcol, drow) => {
+            const before = circuit.parts.find(q => q.id === id)?.seat?.leadMap;
+            nudgeSeated(id, dcol, drow);
+            const after = circuit.parts.find(q => q.id === id)?.seat?.leadMap;
+            if (before && after && JSON.stringify(before) === JSON.stringify(after)) {
+              // Refused for a reason the user cannot see: the target holes are
+              // occupied (often by wire ends), the row hits the gutter, or the
+              // board edge. Silence read as "arrow keys are broken".
+              const part = circuit.parts.find(q => q.id === id);
+              setAnnotations(a => [...a.filter(n => !n.transient), {
+                x: (part?.x ?? 400), y: (part?.y ?? 300) - 46,
+                text: 'move blocked — target holes occupied, gutter, or board edge',
+                color: '#e67e22', transient: true,
+              }]);
+              setTimeout(() => setAnnotations(a => a.filter(n => !n.transient)), 1600);
+            }
+          }}
           onSelectPart={handleSelectPart}
           selectedPart={selectedPart}
           selectedParts={selectedParts}

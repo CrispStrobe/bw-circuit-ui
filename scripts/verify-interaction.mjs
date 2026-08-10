@@ -383,6 +383,40 @@ const selectionCount = async () =>
     : fail('pure-circuit clock frozen');
 }
 
+// 9. Body beats hole: dragging a SEATED part's body must MOVE the part —
+// never start a jumper wire from a free hole hiding under the body. This
+// was the potentiometer complaint: selected, dragged, and wires appeared.
+{
+  await page.goto(`http://localhost:${PORT}`, { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0 && document.querySelector('wokwi-led'), { timeout: 20000 });
+  await page.waitForTimeout(400);
+  const before = await page.evaluate(() => {
+    const led = window.__circuit.parts.find(q => q.kind === 'led' && q.seat);
+    return led ? { id: led.id, x: led.x, y: led.y, wires: window.__circuit.wires.length,
+      jumpers: window.__circuit.holeWires().length } : null;
+  });
+  if (!before) fail('no seated part to drag in scenario 9');
+  else {
+    const ledBox = await page.locator('wokwi-led').first().boundingBox();
+    const toScreen = { x: ledBox.x + ledBox.width / 2, y: ledBox.y + ledBox.height / 2 };
+    await page.mouse.move(toScreen.x, toScreen.y);
+    await page.mouse.down();
+    for (let i = 1; i <= 8; i++) { await page.mouse.move(toScreen.x + i * 15, toScreen.y + 40); await page.waitForTimeout(15); }
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    const after = await page.evaluate(() => ({
+      wires: window.__circuit.wires.length,
+      jumpers: window.__circuit.holeWires().length,
+      x: window.__circuit.parts.find(q => q.kind === 'led')?.x,
+    }));
+    (after.wires === before.wires && after.jumpers === before.jumpers)
+      ? pass('seated body drag draws no wires')
+      : fail(`seated body drag created wires: ${before.wires}->${after.wires} jumpers ${before.jumpers}->${after.jumpers}`);
+    Math.abs(after.x - before.x) > 40 ? pass('seated body drag MOVES the part')
+      : fail(`seated part did not move (dx=${Math.abs(after.x - before.x)})`);
+  }
+}
+
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
 else pass('zero page errors');
 
