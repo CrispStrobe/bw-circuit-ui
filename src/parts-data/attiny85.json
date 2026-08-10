@@ -44,5 +44,44 @@
       "y": 8
     }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "pb5",
+    "leads": {
+      "pb5": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "pb3": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "pb4": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "pb0": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "pb1": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "pb2": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 4
+  }
 }

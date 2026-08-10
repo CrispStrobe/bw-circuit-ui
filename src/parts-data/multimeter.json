@@ -3,8 +3,17 @@
   "w": 70,
   "h": 90,
   "terminals": [
-    { "name": "probe_a", "x": 22, "y": 90 },
-    { "name": "probe_b", "x": 48, "y": 90 }
+    {
+      "name": "probe_a",
+      "x": 22,
+      "y": 90
+    },
+    {
+      "name": "probe_b",
+      "x": 48,
+      "y": 90
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": null
 }

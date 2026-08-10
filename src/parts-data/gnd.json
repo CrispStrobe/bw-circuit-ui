@@ -3,7 +3,12 @@
   "w": 36,
   "h": 40,
   "terminals": [
-    { "name": "gnd", "x": 18, "y": 10 }
+    {
+      "name": "gnd",
+      "x": 18,
+      "y": 10
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": null
 }

@@ -3,9 +3,38 @@
   "w": 44,
   "h": 48,
   "terminals": [
-    { "name": "vin", "x": 12, "y": 48 },
-    { "name": "gnd", "x": 22, "y": 48 },
-    { "name": "vout", "x": 32, "y": 48 }
+    {
+      "name": "vin",
+      "x": 12,
+      "y": 48
+    },
+    {
+      "name": "gnd",
+      "x": 22,
+      "y": 48
+    },
+    {
+      "name": "vout",
+      "x": 32,
+      "y": 48
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "vin",
+    "leads": {
+      "vin": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "vout": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
 }

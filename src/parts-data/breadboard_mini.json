@@ -4,5 +4,6 @@
   "h": 56,
   "terminals": [],
   "variants": null,
-  "_note": "Mini breadboard. No power rails. Terminals are holes; circuit model manages hole-to-node mapping."
+  "_note": "Mini breadboard. No power rails. Terminals are holes; circuit model manages hole-to-node mapping.",
+  "footprint": null
 }

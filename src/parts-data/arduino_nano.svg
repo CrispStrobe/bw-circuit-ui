@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 160" width="60" height="160">
+  <!-- Arduino Nano — bench-style top view, breadboard orientation -->
+  <!-- ATmega328P board, Mini-USB, CH340G/FTDI serial bridge -->
+
+  <!-- PCB -->
+  <rect x="8" y="4" width="44" height="152" rx="2" fill="#006699" stroke="#004466" stroke-width="0.8"/>
+
+  <!-- Mini-USB connector (top) -->
+  <rect x="18" y="0" width="24" height="8" rx="1.5" fill="#c0c0c0" stroke="#999" stroke-width="0.4"/>
+
+  <!-- MCU (ATmega328P TQFP) -->
+  <rect x="16" y="50" width="28" height="28" rx="1" fill="#222" stroke="#333" stroke-width="0.5"/>
+  <circle cx="20" cy="54" r="1.2" fill="#555"/>
+
+  <!-- Crystal -->
+  <rect x="22" y="82" width="16" height="6" rx="1" fill="#c0c0c0" stroke="#999" stroke-width="0.3"/>
+
+  <!-- Reset button -->
+  <rect x="22" y="34" width="10" height="6" rx="1" fill="#c0a040" stroke="#a08020" stroke-width="0.3"/>
+
+  <!-- Status LEDs -->
+  <circle cx="40" cy="40" r="1.5" fill="#00ff00" opacity="0.5"/>
+  <circle cx="40" cy="46" r="1.5" fill="#ff0000" opacity="0.3"/>
+  <text x="44" y="41" font-family="monospace" font-size="2.5" fill="#aaa">PWR</text>
+  <text x="44" y="47" font-family="monospace" font-size="2.5" fill="#aaa">L</text>
+
+  <!-- Board label -->
+  <text x="30" y="100" text-anchor="middle" font-family="monospace" font-size="4" fill="#aaddff" font-weight="bold">NANO</text>
+
+  <!-- Left-side pins (top to bottom): D1/TX, D0/RX, RST, GND, D2-D12 -->
+  <g font-family="monospace" font-size="2.5" fill="#ccc" text-anchor="end">
+    <text x="14" y="18">D1</text>
+    <text x="14" y="26">D0</text>
+    <text x="14" y="34">RST</text>
+    <text x="14" y="42">GND</text>
+    <text x="14" y="50">D2</text>
+    <text x="14" y="58">D3</text>
+    <text x="14" y="66">D4</text>
+    <text x="14" y="74">D5</text>
+    <text x="14" y="82">D6</text>
+    <text x="14" y="90">D7</text>
+    <text x="14" y="98">D8</text>
+    <text x="14" y="106">D9</text>
+    <text x="14" y="114">D10</text>
+    <text x="14" y="122">D11</text>
+    <text x="14" y="130">D12</text>
+  </g>
+  <!-- Left terminal pads -->
+  <g fill="#c0c0c0">
+    <circle cx="4" cy="16" r="1.8"/>
+    <circle cx="4" cy="24" r="1.8"/>
+    <circle cx="4" cy="32" r="1.8"/>
+    <circle cx="4" cy="40" r="1.8"/>
+    <circle cx="4" cy="48" r="1.8"/>
+    <circle cx="4" cy="56" r="1.8"/>
+    <circle cx="4" cy="64" r="1.8"/>
+    <circle cx="4" cy="72" r="1.8"/>
+    <circle cx="4" cy="80" r="1.8"/>
+    <circle cx="4" cy="88" r="1.8"/>
+    <circle cx="4" cy="96" r="1.8"/>
+    <circle cx="4" cy="104" r="1.8"/>
+    <circle cx="4" cy="112" r="1.8"/>
+    <circle cx="4" cy="120" r="1.8"/>
+    <circle cx="4" cy="128" r="1.8"/>
+  </g>
+
+  <!-- Right-side pins (top to bottom): VIN, GND, RST, 5V, A7, A6, A5-A0, AREF, 3V3, D13 -->
+  <g font-family="monospace" font-size="2.5" fill="#ccc" text-anchor="start">
+    <text x="46" y="18">VIN</text>
+    <text x="46" y="26">GND</text>
+    <text x="46" y="34">RST</text>
+    <text x="46" y="42">5V</text>
+    <text x="46" y="50">A7</text>
+    <text x="46" y="58">A6</text>
+    <text x="46" y="66">A5</text>
+    <text x="46" y="74">A4</text>
+    <text x="46" y="82">A3</text>
+    <text x="46" y="90">A2</text>
+    <text x="46" y="98">A1</text>
+    <text x="46" y="106">A0</text>
+    <text x="46" y="114">AREF</text>
+    <text x="46" y="122">3V3</text>
+    <text x="46" y="130">D13</text>
+  </g>
+  <!-- Right terminal pads -->
+  <g fill="#c0c0c0">
+    <circle cx="56" cy="16" r="1.8"/>
+    <circle cx="56" cy="24" r="1.8"/>
+    <circle cx="56" cy="32" r="1.8"/>
+    <circle cx="56" cy="40" r="1.8"/>
+    <circle cx="56" cy="48" r="1.8"/>
+    <circle cx="56" cy="56" r="1.8"/>
+    <circle cx="56" cy="64" r="1.8"/>
+    <circle cx="56" cy="72" r="1.8"/>
+    <circle cx="56" cy="80" r="1.8"/>
+    <circle cx="56" cy="88" r="1.8"/>
+    <circle cx="56" cy="96" r="1.8"/>
+    <circle cx="56" cy="104" r="1.8"/>
+    <circle cx="56" cy="112" r="1.8"/>
+    <circle cx="56" cy="120" r="1.8"/>
+    <circle cx="56" cy="128" r="1.8"/>
+  </g>
+
+  <!-- Power pin color coding -->
+  <circle cx="56" cy="40" r="1.8" fill="#ff4400"/>
+  <circle cx="56" cy="122" r="1.8" fill="#ff8800"/>
+  <circle cx="4" cy="40" r="1.8" fill="#666"/>
+  <circle cx="56" cy="24" r="1.8" fill="#666"/>
+</svg>

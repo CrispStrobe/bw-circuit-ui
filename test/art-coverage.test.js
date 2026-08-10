@@ -55,20 +55,16 @@ describe('art coverage', () => {
     // Update this list as sidecars are added — each removal is progress
     const knownFallbacks = new Set([
       // Slug mismatches: palette name ≠ sidecar slug
-      'pir_sensor',    // sidecar: pir
-      'char_lcd_i2c',  // sidecar: lcd_i2c
-      'dip_switch',    // sidecar: dip_switch_spst / dip_switch_dpst
-      'keypad',        // sidecar: keypad_4x4
-      'tilt_sensor',   // sidecar: tilt_switch
-      'gearmotor',     // sidecar: hobby_gearmotor
-      'clock_display', // sidecar: seven_segment_clock
-      'shift_register',// sidecar: 74hc595
-      'l293d',         // sidecar: motor_driver_l293d
+      'pir_sensor',     // sidecar: pir
+      'dip_switch',     // sidecar: dip_switch_spst / dip_switch_dpst
+      'keypad',         // sidecar: keypad_4x4
+      'tilt_sensor',    // sidecar: tilt_switch
+      'shift_register', // sidecar: 74hc595
       // Kinds that are UI infrastructure, not components
-      'breadboard',    // sidecar: breadboard_full
-      'meter',         // sidecar: multimeter
+      'breadboard',     // sidecar: breadboard_full
+      'meter',          // sidecar: multimeter
       // Kinds without sidecars yet
-      'motor_encoder', // sidecar: dc_motor_encoder
+      'motor_encoder',  // sidecar: dc_motor_encoder
     ]);
     const unexpected = fallback.filter(k => !knownFallbacks.has(k));
     if (unexpected.length > 0) {

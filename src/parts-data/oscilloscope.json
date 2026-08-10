@@ -3,9 +3,22 @@
   "w": 90,
   "h": 64,
   "terminals": [
-    { "name": "ch1", "x": 20, "y": 64 },
-    { "name": "ch2", "x": 36, "y": 64 },
-    { "name": "gnd", "x": 52, "y": 64 }
+    {
+      "name": "ch1",
+      "x": 20,
+      "y": 64
+    },
+    {
+      "name": "ch2",
+      "x": 36,
+      "y": 64
+    },
+    {
+      "name": "gnd",
+      "x": 52,
+      "y": 64
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": null
 }

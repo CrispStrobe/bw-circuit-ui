@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 56" width="120" height="56">
   <!-- micro:bit board — bench-style top view -->
-  <!-- Note: v1 vs v2 is unverified (the reference catalogue does
-       not confirm which). This art is generic micro:bit shape. -->
+  <!-- Note: v1 vs v2 is unverified (Tinkercad does not confirm
+       which). This art is generic micro:bit shape. -->
   <!-- PCB (characteristic shape with notched edge connector) -->
   <path d="M10 2 L110 2 L116 8 L116 36 L110 42 L10 42 L4 36 L4 8 Z" fill="#222" stroke="#333" stroke-width="0.8"/>
   <!-- 5x5 LED matrix -->

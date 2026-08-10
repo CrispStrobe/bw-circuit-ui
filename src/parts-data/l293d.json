@@ -1,0 +1,159 @@
+{
+  "kind": "l293d",
+  "w": 70,
+  "h": 51,
+  "terminals": [
+    {
+      "name": "en1",
+      "x": 0,
+      "y": 8
+    },
+    {
+      "name": "in1",
+      "x": 0,
+      "y": 13
+    },
+    {
+      "name": "out1",
+      "x": 0,
+      "y": 18
+    },
+    {
+      "name": "gnd1",
+      "x": 0,
+      "y": 23
+    },
+    {
+      "name": "gnd2",
+      "x": 0,
+      "y": 28
+    },
+    {
+      "name": "out2",
+      "x": 0,
+      "y": 33
+    },
+    {
+      "name": "in2",
+      "x": 0,
+      "y": 38
+    },
+    {
+      "name": "vcc2",
+      "x": 0,
+      "y": 43
+    },
+    {
+      "name": "en2",
+      "x": 70,
+      "y": 43
+    },
+    {
+      "name": "in3",
+      "x": 70,
+      "y": 38
+    },
+    {
+      "name": "out3",
+      "x": 70,
+      "y": 33
+    },
+    {
+      "name": "gnd3",
+      "x": 70,
+      "y": 28
+    },
+    {
+      "name": "gnd4",
+      "x": 70,
+      "y": 23
+    },
+    {
+      "name": "out4",
+      "x": 70,
+      "y": 18
+    },
+    {
+      "name": "in4",
+      "x": 70,
+      "y": 13
+    },
+    {
+      "name": "vcc1",
+      "x": 70,
+      "y": 8
+    }
+  ],
+  "variants": null,
+  "footprint": {
+    "refTerminal": "en1",
+    "leads": {
+      "en1": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "in1": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "out1": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "gnd1": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "gnd2": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "out2": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "in2": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "vcc2": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "en2": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "in3": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "out3": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "gnd3": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "gnd4": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "out4": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "in4": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "vcc1": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 8
+  }
+}

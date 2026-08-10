@@ -3,5 +3,6 @@
   "w": 32,
   "h": 56,
   "terminals": [],
-  "variants": null
+  "variants": null,
+  "footprint": null
 }

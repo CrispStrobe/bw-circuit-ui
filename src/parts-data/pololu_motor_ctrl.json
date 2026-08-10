@@ -1,0 +1,40 @@
+{
+  "kind": "pololu_motor_ctrl",
+  "w": 100,
+  "h": 60,
+  "terminals": [
+    {
+      "name": "vin",
+      "x": 24,
+      "y": 60
+    },
+    {
+      "name": "gnd",
+      "x": 40,
+      "y": 60
+    },
+    {
+      "name": "motor_p",
+      "x": 96,
+      "y": 18
+    },
+    {
+      "name": "motor_n",
+      "x": 96,
+      "y": 32
+    },
+    {
+      "name": "tx",
+      "x": 4,
+      "y": 10
+    },
+    {
+      "name": "rx",
+      "x": 4,
+      "y": 44
+    }
+  ],
+  "variants": null,
+  "_note": "Help-page-only in the Tinkercad library. A board, not a chip. Takes USB/serial/RC/analog input. No engine model planned.",
+  "footprint": null
+}

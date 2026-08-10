@@ -5,7 +5,7 @@
 // production bundles need no external fetch.
 //
 //   node scripts/sync-parts-data.mjs [--dir ../bw-parts] [--check]
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,6 +21,19 @@ if (!existsSync(src)) {
   process.exit(1);
 }
 mkdirSync(dst, { recursive: true });
+// Delete files that no longer exist upstream (handles renames).
+// A sync that only copies forward leaves both old and new names in place.
+const upstreamJsons = new Set(readdirSync(src).filter(f => f.endsWith('.json')));
+const upstreamSvgs = new Set(readdirSync(src).filter(f => f.endsWith('.svg')));
+let deleted = 0;
+if (!check) {
+  for (const f of readdirSync(dst).filter(f => f.endsWith('.json'))) {
+    if (!upstreamJsons.has(f)) { unlinkSync(join(dst, f)); deleted++; }
+  }
+  for (const f of readdirSync(dst).filter(f => f.endsWith('.svg'))) {
+    if (!upstreamSvgs.has(f)) { unlinkSync(join(dst, f)); deleted++; }
+  }
+}
 let changed = 0, total = 0;
 for (const f of readdirSync(src).filter(f => f.endsWith('.json'))) {
   total++;
@@ -74,4 +87,4 @@ if (check && changed > 0) {
   console.error(`sync-parts-data --check: ${changed}/${total} sidecars drifted — re-run the sync`);
   process.exit(1);
 }
-console.log(`sync-parts-data: ${total} sidecars (${changed} ${check ? 'drifted' : 'updated'}), ${svgTotal} SVGs (${svgChanged} ${check ? 'drifted' : 'updated'})`);
+console.log(`sync-parts-data: ${total} sidecars (${changed} ${check ? 'drifted' : 'updated'}), ${svgTotal} SVGs (${svgChanged} ${check ? 'drifted' : 'updated'}), ${deleted} stale files removed`);

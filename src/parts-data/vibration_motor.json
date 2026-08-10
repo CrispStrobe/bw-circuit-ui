@@ -3,8 +3,17 @@
   "w": 28,
   "h": 28,
   "terminals": [
-    { "name": "a", "x": 8, "y": 28 },
-    { "name": "b", "x": 20, "y": 28 }
+    {
+      "name": "a",
+      "x": 8,
+      "y": 28
+    },
+    {
+      "name": "b",
+      "x": 20,
+      "y": 28
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": null
 }

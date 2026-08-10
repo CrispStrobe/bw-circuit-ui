@@ -3,9 +3,22 @@
   "w": 70,
   "h": 60,
   "terminals": [
-    { "name": "gnd", "x": 28, "y": 60 },
-    { "name": "vcc", "x": 35, "y": 60 },
-    { "name": "signal", "x": 42, "y": 60 }
+    {
+      "name": "gnd",
+      "x": 28,
+      "y": 60
+    },
+    {
+      "name": "vcc",
+      "x": 35,
+      "y": 60
+    },
+    {
+      "name": "signal",
+      "x": 42,
+      "y": 60
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": null
 }

@@ -74,5 +74,68 @@
       "y": 8
     }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "1clk",
+    "leads": {
+      "1clk": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "1clr": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "1k": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "vcc": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "2clk": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "2clr": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "2k": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "2q": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "2qn": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "2j": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "gnd": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "1q": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "1qn": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "1j": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 7
+  }
 }

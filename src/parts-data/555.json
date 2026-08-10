@@ -3,14 +3,85 @@
   "w": 60,
   "h": 48,
   "terminals": [
-    { "name": "gnd", "x": 0, "y": 8 },
-    { "name": "trigger", "x": 0, "y": 18 },
-    { "name": "output", "x": 0, "y": 28 },
-    { "name": "reset", "x": 0, "y": 38 },
-    { "name": "vcc", "x": 60, "y": 8 },
-    { "name": "discharge", "x": 60, "y": 18 },
-    { "name": "threshold", "x": 60, "y": 28 },
-    { "name": "control", "x": 60, "y": 38 }
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 8
+    },
+    {
+      "name": "trigger",
+      "x": 0,
+      "y": 18
+    },
+    {
+      "name": "output",
+      "x": 0,
+      "y": 28
+    },
+    {
+      "name": "reset",
+      "x": 0,
+      "y": 38
+    },
+    {
+      "name": "vcc",
+      "x": 60,
+      "y": 8
+    },
+    {
+      "name": "discharge",
+      "x": 60,
+      "y": 18
+    },
+    {
+      "name": "threshold",
+      "x": 60,
+      "y": 28
+    },
+    {
+      "name": "control",
+      "x": 60,
+      "y": 38
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "gnd",
+    "leads": {
+      "gnd": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "trigger": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "output": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "reset": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "discharge": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "threshold": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "control": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 4
+  }
 }

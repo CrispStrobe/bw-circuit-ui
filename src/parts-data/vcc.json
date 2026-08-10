@@ -3,7 +3,12 @@
   "w": 36,
   "h": 40,
   "terminals": [
-    { "name": "vcc", "x": 18, "y": 40 }
+    {
+      "name": "vcc",
+      "x": 18,
+      "y": 40
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": null
 }

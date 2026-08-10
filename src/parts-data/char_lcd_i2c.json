@@ -1,0 +1,49 @@
+{
+  "kind": "char_lcd_i2c",
+  "w": 140,
+  "h": 56,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 56,
+      "y": 56
+    },
+    {
+      "name": "gnd",
+      "x": 64,
+      "y": 56
+    },
+    {
+      "name": "sda",
+      "x": 72,
+      "y": 56
+    },
+    {
+      "name": "scl",
+      "x": 80,
+      "y": 56
+    }
+  ],
+  "variants": null,
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "sda": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "scl": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
+}

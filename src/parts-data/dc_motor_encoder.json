@@ -3,10 +3,27 @@
   "w": 80,
   "h": 70,
   "terminals": [
-    { "name": "a", "x": 20, "y": 62 },
-    { "name": "b", "x": 40, "y": 62 },
-    { "name": "enc_a", "x": 55, "y": 62 },
-    { "name": "enc_b", "x": 63, "y": 62 }
+    {
+      "name": "a",
+      "x": 20,
+      "y": 62
+    },
+    {
+      "name": "b",
+      "x": 40,
+      "y": 62
+    },
+    {
+      "name": "enc_a",
+      "x": 55,
+      "y": 62
+    },
+    {
+      "name": "enc_b",
+      "x": 63,
+      "y": 62
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": null
 }

@@ -4,5 +4,6 @@
   "h": 120,
   "terminals": [],
   "variants": null,
-  "_note": "Half-size breadboard. Terminals are holes; circuit model manages hole-to-node mapping."
+  "_note": "Half-size breadboard. Terminals are holes; circuit model manages hole-to-node mapping.",
+  "footprint": null
 }

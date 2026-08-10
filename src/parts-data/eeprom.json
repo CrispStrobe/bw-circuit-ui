@@ -3,10 +3,27 @@
   "w": 70,
   "h": 36,
   "terminals": [
-    { "name": "sda", "x": 25, "y": 33 },
-    { "name": "scl", "x": 45, "y": 33 },
-    { "name": "vcc", "x": 70, "y": 8 },
-    { "name": "gnd", "x": 0, "y": 8 }
+    {
+      "name": "sda",
+      "x": 25,
+      "y": 33
+    },
+    {
+      "name": "scl",
+      "x": 45,
+      "y": 33
+    },
+    {
+      "name": "vcc",
+      "x": 70,
+      "y": 8
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 8
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": null
 }

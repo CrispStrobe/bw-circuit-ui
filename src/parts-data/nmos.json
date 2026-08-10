@@ -3,9 +3,38 @@
   "w": 44,
   "h": 44,
   "terminals": [
-    { "name": "gate", "x": 0, "y": 22 },
-    { "name": "drain", "x": 22, "y": 0 },
-    { "name": "source", "x": 22, "y": 44 }
+    {
+      "name": "gate",
+      "x": 0,
+      "y": 22
+    },
+    {
+      "name": "drain",
+      "x": 22,
+      "y": 0
+    },
+    {
+      "name": "source",
+      "x": 22,
+      "y": 44
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "gate",
+    "leads": {
+      "gate": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "drain": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "source": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
 }

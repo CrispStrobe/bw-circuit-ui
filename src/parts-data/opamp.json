@@ -3,9 +3,22 @@
   "w": 60,
   "h": 50,
   "terminals": [
-    { "name": "inp", "x": 0, "y": 15 },
-    { "name": "inn", "x": 0, "y": 35 },
-    { "name": "out", "x": 60, "y": 25 }
+    {
+      "name": "inp",
+      "x": 0,
+      "y": 15
+    },
+    {
+      "name": "inn",
+      "x": 0,
+      "y": 35
+    },
+    {
+      "name": "out",
+      "x": 60,
+      "y": 25
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": null
 }

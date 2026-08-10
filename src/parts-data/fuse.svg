@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 20" width="60" height="20">
+  <!-- Fuse — bench-style front view -->
+  <!-- Glass-body cartridge fuse (typical 5x20mm or 6x30mm) -->
+  <!-- Leads -->
+  <line x1="2" y1="10" x2="12" y2="10" stroke="#c0c0c0" stroke-width="1.5"/>
+  <line x1="48" y1="10" x2="58" y2="10" stroke="#c0c0c0" stroke-width="1.5"/>
+  <!-- End caps (metal) -->
+  <rect x="12" y="4" width="6" height="12" rx="1" fill="#c0c0c0" stroke="#999" stroke-width="0.3"/>
+  <rect x="42" y="4" width="6" height="12" rx="1" fill="#c0c0c0" stroke="#999" stroke-width="0.3"/>
+  <!-- Glass body -->
+  <rect x="18" y="5" width="24" height="10" rx="3" fill="none" stroke="#aaccee" stroke-width="0.8" opacity="0.6"/>
+  <rect x="18" y="5" width="24" height="10" rx="3" fill="#ddeeff" opacity="0.15"/>
+  <!-- Fuse wire inside -->
+  <line x1="18" y1="10" x2="42" y2="10" stroke="#c0a040" stroke-width="0.5"/>
+  <!-- Terminal pads -->
+  <circle cx="2" cy="10" r="2" fill="#c0c0c0"/>
+  <circle cx="58" cy="10" r="2" fill="#c0c0c0"/>
+</svg>

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 36" width="72" height="36">
   <!-- 7-Segment Clock Display — 4-digit I2C module, bench-style -->
-  <!-- Note: controller IC unverified (the reference catalogue does
-       not name it). Could be HT16K33 or TM1637 — NOT interchangeable.
+  <!-- Note: controller IC unverified (Tinkercad does not name it).
+       Could be HT16K33 or TM1637 — NOT interchangeable.
        This art is generic; the sidecar assumes I2C (HT16K33-style). -->
   <!-- PCB -->
   <rect x="2" y="2" width="68" height="24" rx="2" fill="#cc0000" stroke="#aa0000" stroke-width="0.8"/>

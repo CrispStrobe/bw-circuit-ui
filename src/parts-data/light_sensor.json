@@ -3,9 +3,38 @@
   "w": 32,
   "h": 36,
   "terminals": [
-    { "name": "vcc", "x": 8, "y": 36 },
-    { "name": "gnd", "x": 16, "y": 36 },
-    { "name": "out", "x": 24, "y": 36 }
+    {
+      "name": "vcc",
+      "x": 8,
+      "y": 36
+    },
+    {
+      "name": "gnd",
+      "x": 16,
+      "y": 36
+    },
+    {
+      "name": "out",
+      "x": 24,
+      "y": 36
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "out": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
 }

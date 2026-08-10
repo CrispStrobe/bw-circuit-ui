@@ -3,9 +3,38 @@
   "w": 36,
   "h": 20,
   "terminals": [
-    { "name": "a", "x": 10, "y": 20 },
-    { "name": "com", "x": 18, "y": 20 },
-    { "name": "b", "x": 26, "y": 20 }
+    {
+      "name": "a",
+      "x": 10,
+      "y": 20
+    },
+    {
+      "name": "com",
+      "x": 18,
+      "y": 20
+    },
+    {
+      "name": "b",
+      "x": 26,
+      "y": 20
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "com": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
 }

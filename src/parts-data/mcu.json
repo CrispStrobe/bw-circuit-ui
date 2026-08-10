@@ -4,46 +4,413 @@
   "w": 200,
   "h": 260,
   "terminals": [
-    { "name": "P1.0", "pin": 1,  "x": 0,   "y": 14 },
-    { "name": "P1.1", "pin": 2,  "x": 0,   "y": 26 },
-    { "name": "P1.2", "pin": 3,  "x": 0,   "y": 38 },
-    { "name": "P1.3", "pin": 4,  "x": 0,   "y": 50 },
-    { "name": "P1.4", "pin": 5,  "x": 0,   "y": 62 },
-    { "name": "P1.5", "pin": 6,  "x": 0,   "y": 74 },
-    { "name": "P1.6", "pin": 7,  "x": 0,   "y": 86 },
-    { "name": "P1.7", "pin": 8,  "x": 0,   "y": 98 },
-    { "name": "RST",  "pin": 9,  "x": 0,   "y": 110 },
-    { "name": "P3.0", "pin": 10, "x": 0,   "y": 122 },
-    { "name": "P3.1", "pin": 11, "x": 0,   "y": 134 },
-    { "name": "P3.2", "pin": 12, "x": 0,   "y": 146 },
-    { "name": "P3.3", "pin": 13, "x": 0,   "y": 158 },
-    { "name": "P3.4", "pin": 14, "x": 0,   "y": 170 },
-    { "name": "P3.5", "pin": 15, "x": 0,   "y": 182 },
-    { "name": "P3.6", "pin": 16, "x": 0,   "y": 194 },
-    { "name": "P3.7", "pin": 17, "x": 0,   "y": 206 },
-    { "name": "XTAL2","pin": 18, "x": 0,   "y": 218 },
-    { "name": "XTAL1","pin": 19, "x": 0,   "y": 230 },
-    { "name": "GND",  "pin": 20, "x": 0,   "y": 242 },
-    { "name": "P2.0", "pin": 21, "x": 200, "y": 242 },
-    { "name": "P2.1", "pin": 22, "x": 200, "y": 230 },
-    { "name": "P2.2", "pin": 23, "x": 200, "y": 218 },
-    { "name": "P2.3", "pin": 24, "x": 200, "y": 206 },
-    { "name": "P2.4", "pin": 25, "x": 200, "y": 194 },
-    { "name": "P2.5", "pin": 26, "x": 200, "y": 182 },
-    { "name": "P2.6", "pin": 27, "x": 200, "y": 170 },
-    { "name": "P2.7", "pin": 28, "x": 200, "y": 158 },
-    { "name": "P4.4", "pin": 29, "x": 200, "y": 146 },
-    { "name": "P4.5", "pin": 30, "x": 200, "y": 134 },
-    { "name": "P4.6", "pin": 31, "x": 200, "y": 122 },
-    { "name": "P0.7", "pin": 32, "x": 200, "y": 110 },
-    { "name": "P0.6", "pin": 33, "x": 200, "y": 98 },
-    { "name": "P0.5", "pin": 34, "x": 200, "y": 86 },
-    { "name": "P0.4", "pin": 35, "x": 200, "y": 74 },
-    { "name": "P0.3", "pin": 36, "x": 200, "y": 62 },
-    { "name": "P0.2", "pin": 37, "x": 200, "y": 50 },
-    { "name": "P0.1", "pin": 38, "x": 200, "y": 38 },
-    { "name": "P0.0", "pin": 39, "x": 200, "y": 26 },
-    { "name": "VCC",  "pin": 40, "x": 200, "y": 14 }
+    {
+      "name": "P1.0",
+      "pin": 1,
+      "x": 0,
+      "y": 14
+    },
+    {
+      "name": "P1.1",
+      "pin": 2,
+      "x": 0,
+      "y": 26
+    },
+    {
+      "name": "P1.2",
+      "pin": 3,
+      "x": 0,
+      "y": 38
+    },
+    {
+      "name": "P1.3",
+      "pin": 4,
+      "x": 0,
+      "y": 50
+    },
+    {
+      "name": "P1.4",
+      "pin": 5,
+      "x": 0,
+      "y": 62
+    },
+    {
+      "name": "P1.5",
+      "pin": 6,
+      "x": 0,
+      "y": 74
+    },
+    {
+      "name": "P1.6",
+      "pin": 7,
+      "x": 0,
+      "y": 86
+    },
+    {
+      "name": "P1.7",
+      "pin": 8,
+      "x": 0,
+      "y": 98
+    },
+    {
+      "name": "RST",
+      "pin": 9,
+      "x": 0,
+      "y": 110
+    },
+    {
+      "name": "P3.0",
+      "pin": 10,
+      "x": 0,
+      "y": 122
+    },
+    {
+      "name": "P3.1",
+      "pin": 11,
+      "x": 0,
+      "y": 134
+    },
+    {
+      "name": "P3.2",
+      "pin": 12,
+      "x": 0,
+      "y": 146
+    },
+    {
+      "name": "P3.3",
+      "pin": 13,
+      "x": 0,
+      "y": 158
+    },
+    {
+      "name": "P3.4",
+      "pin": 14,
+      "x": 0,
+      "y": 170
+    },
+    {
+      "name": "P3.5",
+      "pin": 15,
+      "x": 0,
+      "y": 182
+    },
+    {
+      "name": "P3.6",
+      "pin": 16,
+      "x": 0,
+      "y": 194
+    },
+    {
+      "name": "P3.7",
+      "pin": 17,
+      "x": 0,
+      "y": 206
+    },
+    {
+      "name": "XTAL2",
+      "pin": 18,
+      "x": 0,
+      "y": 218
+    },
+    {
+      "name": "XTAL1",
+      "pin": 19,
+      "x": 0,
+      "y": 230
+    },
+    {
+      "name": "GND",
+      "pin": 20,
+      "x": 0,
+      "y": 242
+    },
+    {
+      "name": "P2.0",
+      "pin": 21,
+      "x": 200,
+      "y": 242
+    },
+    {
+      "name": "P2.1",
+      "pin": 22,
+      "x": 200,
+      "y": 230
+    },
+    {
+      "name": "P2.2",
+      "pin": 23,
+      "x": 200,
+      "y": 218
+    },
+    {
+      "name": "P2.3",
+      "pin": 24,
+      "x": 200,
+      "y": 206
+    },
+    {
+      "name": "P2.4",
+      "pin": 25,
+      "x": 200,
+      "y": 194
+    },
+    {
+      "name": "P2.5",
+      "pin": 26,
+      "x": 200,
+      "y": 182
+    },
+    {
+      "name": "P2.6",
+      "pin": 27,
+      "x": 200,
+      "y": 170
+    },
+    {
+      "name": "P2.7",
+      "pin": 28,
+      "x": 200,
+      "y": 158
+    },
+    {
+      "name": "P4.4",
+      "pin": 29,
+      "x": 200,
+      "y": 146
+    },
+    {
+      "name": "P4.5",
+      "pin": 30,
+      "x": 200,
+      "y": 134
+    },
+    {
+      "name": "P4.6",
+      "pin": 31,
+      "x": 200,
+      "y": 122
+    },
+    {
+      "name": "P0.7",
+      "pin": 32,
+      "x": 200,
+      "y": 110
+    },
+    {
+      "name": "P0.6",
+      "pin": 33,
+      "x": 200,
+      "y": 98
+    },
+    {
+      "name": "P0.5",
+      "pin": 34,
+      "x": 200,
+      "y": 86
+    },
+    {
+      "name": "P0.4",
+      "pin": 35,
+      "x": 200,
+      "y": 74
+    },
+    {
+      "name": "P0.3",
+      "pin": 36,
+      "x": 200,
+      "y": 62
+    },
+    {
+      "name": "P0.2",
+      "pin": 37,
+      "x": 200,
+      "y": 50
+    },
+    {
+      "name": "P0.1",
+      "pin": 38,
+      "x": 200,
+      "y": 38
+    },
+    {
+      "name": "P0.0",
+      "pin": 39,
+      "x": 200,
+      "y": 26
+    },
+    {
+      "name": "VCC",
+      "pin": 40,
+      "x": 200,
+      "y": 14
+    }
   ],
-  "_pinmap_source": "stc/docs/PINOUT.md — STC12C5A60S2 PDIP-40 pin map, official datasheet (STC MCU Limited, rev 2011-07-15). P0 runs DESCENDING: pin 32=P0.7 down to pin 39=P0.0. Pin names are port designators, not generic 8051 functional aliases — that exact substitution trap is documented in the lab notes."
+  "_pinmap_source": "stc/docs/PINOUT.md \u2014 STC12C5A60S2 PDIP-40 pin map, official datasheet (STC MCU Limited, rev 2011-07-15). P0 runs DESCENDING: pin 32=P0.7 down to pin 39=P0.0. Pin names are port designators, not generic 8051 functional aliases \u2014 that exact substitution trap is documented in the lab notes.",
+  "footprint": {
+    "refTerminal": "P1.0",
+    "leads": {
+      "P1.0": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "P1.1": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "P1.2": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "P1.3": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "P1.4": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "P1.5": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "P1.6": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "P1.7": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "RST": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "P3.0": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "P3.1": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "P3.2": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "P3.3": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "P3.4": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "P3.5": {
+        "dRow": 0,
+        "dCol": 14
+      },
+      "P3.6": {
+        "dRow": 0,
+        "dCol": 15
+      },
+      "P3.7": {
+        "dRow": 0,
+        "dCol": 16
+      },
+      "XTAL2": {
+        "dRow": 0,
+        "dCol": 17
+      },
+      "XTAL1": {
+        "dRow": 0,
+        "dCol": 18
+      },
+      "GND": {
+        "dRow": 0,
+        "dCol": 19
+      },
+      "P2.0": {
+        "dRow": 5,
+        "dCol": 19
+      },
+      "P2.1": {
+        "dRow": 5,
+        "dCol": 18
+      },
+      "P2.2": {
+        "dRow": 5,
+        "dCol": 17
+      },
+      "P2.3": {
+        "dRow": 5,
+        "dCol": 16
+      },
+      "P2.4": {
+        "dRow": 5,
+        "dCol": 15
+      },
+      "P2.5": {
+        "dRow": 5,
+        "dCol": 14
+      },
+      "P2.6": {
+        "dRow": 5,
+        "dCol": 13
+      },
+      "P2.7": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "P4.4": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "P4.5": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "P4.6": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "P0.7": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "P0.6": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "P0.5": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "P0.4": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "P0.3": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "P0.2": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "P0.1": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "P0.0": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "VCC": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 20
+  }
 }

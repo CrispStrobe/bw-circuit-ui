@@ -3,10 +3,47 @@
   "w": 48,
   "h": 28,
   "terminals": [
-    { "name": "anode", "x": 0, "y": 8 },
-    { "name": "cathode", "x": 0, "y": 14 },
-    { "name": "emitter", "x": 48, "y": 20 },
-    { "name": "collector", "x": 48, "y": 14 }
+    {
+      "name": "anode",
+      "x": 0,
+      "y": 8
+    },
+    {
+      "name": "cathode",
+      "x": 0,
+      "y": 14
+    },
+    {
+      "name": "emitter",
+      "x": 48,
+      "y": 20
+    },
+    {
+      "name": "collector",
+      "x": 48,
+      "y": 14
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "anode",
+    "leads": {
+      "anode": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "cathode": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "emitter": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "collector": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
 }

@@ -3,10 +3,47 @@
   "w": 24,
   "h": 16,
   "terminals": [
-    { "name": "vcc", "x": 7, "y": 16 },
-    { "name": "d_minus", "x": 11, "y": 16 },
-    { "name": "d_plus", "x": 15, "y": 16 },
-    { "name": "gnd", "x": 19, "y": 16 }
+    {
+      "name": "vcc",
+      "x": 7,
+      "y": 16
+    },
+    {
+      "name": "d_minus",
+      "x": 11,
+      "y": 16
+    },
+    {
+      "name": "d_plus",
+      "x": 15,
+      "y": 16
+    },
+    {
+      "name": "gnd",
+      "x": 19,
+      "y": 16
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "d_minus": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "d_plus": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
 }

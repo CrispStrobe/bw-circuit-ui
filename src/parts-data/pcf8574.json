@@ -84,5 +84,76 @@
       "y": 8
     }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "a0",
+    "leads": {
+      "a0": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "a1": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "a2": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "p0": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "p1": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "p2": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "p3": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "vss": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "p4": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "p5": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "p6": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "p7": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "int": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "scl": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "sda": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "vdd": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 8
+  }
 }

@@ -3,10 +3,47 @@
   "w": 60,
   "h": 40,
   "terminals": [
-    { "name": "vcc", "x": 12, "y": 40 },
-    { "name": "trig", "x": 22, "y": 40 },
-    { "name": "echo", "x": 32, "y": 40 },
-    { "name": "gnd", "x": 42, "y": 40 }
+    {
+      "name": "vcc",
+      "x": 12,
+      "y": 40
+    },
+    {
+      "name": "trig",
+      "x": 22,
+      "y": 40
+    },
+    {
+      "name": "echo",
+      "x": 32,
+      "y": 40
+    },
+    {
+      "name": "gnd",
+      "x": 42,
+      "y": 40
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "trig": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "echo": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
 }

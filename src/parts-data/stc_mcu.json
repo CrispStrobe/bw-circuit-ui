@@ -204,5 +204,172 @@
       "y": 8
     }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "P1.0",
+    "leads": {
+      "P1.0": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "P1.1": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "P1.2": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "P1.3": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "P1.4": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "P1.5": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "P1.6": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "P1.7": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "RST": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "P3.0": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "P3.1": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "P3.2": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "P3.3": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "P3.4": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "P3.5": {
+        "dRow": 0,
+        "dCol": 14
+      },
+      "P3.6": {
+        "dRow": 0,
+        "dCol": 15
+      },
+      "P3.7": {
+        "dRow": 0,
+        "dCol": 16
+      },
+      "XTAL2": {
+        "dRow": 0,
+        "dCol": 17
+      },
+      "XTAL1": {
+        "dRow": 0,
+        "dCol": 18
+      },
+      "GND": {
+        "dRow": 0,
+        "dCol": 19
+      },
+      "P2.0": {
+        "dRow": 5,
+        "dCol": 19
+      },
+      "P2.1": {
+        "dRow": 5,
+        "dCol": 18
+      },
+      "P2.2": {
+        "dRow": 5,
+        "dCol": 17
+      },
+      "P2.3": {
+        "dRow": 5,
+        "dCol": 16
+      },
+      "P2.4": {
+        "dRow": 5,
+        "dCol": 15
+      },
+      "P2.5": {
+        "dRow": 5,
+        "dCol": 14
+      },
+      "P2.6": {
+        "dRow": 5,
+        "dCol": 13
+      },
+      "P2.7": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "P4.4": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "P4.5": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "P4.6": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "P0.7": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "P0.6": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "P0.5": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "P0.4": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "P0.3": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "P0.2": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "P0.1": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "P0.0": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "VCC": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 20
+  }
 }

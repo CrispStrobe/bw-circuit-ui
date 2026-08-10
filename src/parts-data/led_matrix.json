@@ -3,10 +3,25 @@
   "w": 80,
   "h": 80,
   "terminals": [
-    { "name": "a", "x": 20, "y": 40 },
-    { "name": "b", "x": 60, "y": 40 }
+    {
+      "name": "a",
+      "x": 20,
+      "y": 40
+    },
+    {
+      "name": "b",
+      "x": 60,
+      "y": 40
+    }
   ],
   "variants": [
-    { "param": "size", "values": ["8x8", "16x16"] }
-  ]
+    {
+      "param": "size",
+      "values": [
+        "8x8",
+        "16x16"
+      ]
+    }
+  ],
+  "footprint": null
 }

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60" width="100" height="60">
+  <!-- Pololu Simple Motor Controller — bench-style top view -->
+  <!-- A board-level motor controller. Takes USB/serial/RC/analog input. -->
+  <!-- Help-page-only in Tinkercad's library. -->
+
+  <!-- PCB -->
+  <rect x="4" y="4" width="92" height="52" rx="2" fill="#1a3d6b" stroke="#0f2847" stroke-width="0.8"/>
+
+  <!-- Main IC (motor driver chip, center of board) -->
+  <rect x="32" y="16" width="20" height="14" rx="1" fill="#222" stroke="#333" stroke-width="0.5"/>
+  <circle cx="36" cy="19" r="1" fill="#555"/>
+
+  <!-- USB mini connector (left edge) -->
+  <rect x="2" y="20" width="8" height="10" rx="1" fill="#c0c0c0" stroke="#999" stroke-width="0.3"/>
+
+  <!-- Status LEDs -->
+  <circle cx="56" cy="12" r="1.5" fill="#00ff00" opacity="0.6"/>
+  <circle cx="62" cy="12" r="1.5" fill="#ff0000" opacity="0.3"/>
+
+  <!-- Board label -->
+  <text x="50" y="40" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#8ab4f8" font-weight="bold">MOTOR CTRL</text>
+
+  <!-- Capacitor -->
+  <rect x="68" y="18" width="6" height="10" rx="1" fill="#444" stroke="#555" stroke-width="0.3"/>
+
+  <!-- Screw terminals (motor output, right side) -->
+  <g fill="#40a040" stroke="#2d7d2d" stroke-width="0.5">
+    <rect x="80" y="14" width="12" height="8" rx="1"/>
+    <rect x="80" y="28" width="12" height="8" rx="1"/>
+  </g>
+  <g font-family="monospace" font-size="2.5" fill="#ccc" text-anchor="middle">
+    <text x="86" y="20">M+</text>
+    <text x="86" y="34">M-</text>
+  </g>
+
+  <!-- Power input terminals (bottom) -->
+  <g fill="#40a040" stroke="#2d7d2d" stroke-width="0.5">
+    <rect x="20" y="48" width="8" height="8" rx="1"/>
+    <rect x="36" y="48" width="8" height="8" rx="1"/>
+  </g>
+  <g font-family="monospace" font-size="2.5" fill="#ccc" text-anchor="middle">
+    <text x="24" y="54">V+</text>
+    <text x="40" y="54">GND</text>
+  </g>
+
+  <!-- Signal input pins (left side headers) -->
+  <g font-family="monospace" font-size="2.5" fill="#ccc" text-anchor="end">
+    <text x="18" y="12">TX</text>
+    <text x="18" y="46">RX</text>
+  </g>
+  <circle cx="10" cy="10" r="1.5" fill="#c0c0c0"/>
+  <circle cx="10" cy="44" r="1.5" fill="#c0c0c0"/>
+
+  <!-- Terminal pads at connectable positions -->
+  <circle cx="24" cy="60" r="2" fill="#ff8800"/>
+  <circle cx="40" cy="60" r="2" fill="#666"/>
+  <circle cx="96" cy="18" r="2" fill="#c0c0c0"/>
+  <circle cx="96" cy="32" r="2" fill="#c0c0c0"/>
+  <circle cx="4" cy="10" r="2" fill="#c0c0c0"/>
+  <circle cx="4" cy="44" r="2" fill="#c0c0c0"/>
+</svg>

@@ -1,0 +1,30 @@
+{
+  "kind": "stepper",
+  "w": 70,
+  "h": 70,
+  "terminals": [
+    {
+      "name": "coil_a1",
+      "x": 24,
+      "y": 0
+    },
+    {
+      "name": "coil_b1",
+      "x": 32,
+      "y": 0
+    },
+    {
+      "name": "coil_a2",
+      "x": 38,
+      "y": 0
+    },
+    {
+      "name": "coil_b2",
+      "x": 46,
+      "y": 0
+    }
+  ],
+  "variants": null,
+  "_note": "4-wire bipolar stepper. For unipolar (5/6-wire), center taps would need additional terminals. bw-board models 4-wire bipolar.",
+  "footprint": null
+}

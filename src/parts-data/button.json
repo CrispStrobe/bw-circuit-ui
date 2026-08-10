@@ -3,8 +3,30 @@
   "w": 44,
   "h": 44,
   "terminals": [
-    { "name": "a", "x": 7, "y": 22 },
-    { "name": "b", "x": 37, "y": 22 }
+    {
+      "name": "a",
+      "x": 7,
+      "y": 22
+    },
+    {
+      "name": "b",
+      "x": 37,
+      "y": 22
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true
+  }
 }

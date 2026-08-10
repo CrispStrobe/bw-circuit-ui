@@ -3,8 +3,29 @@
   "w": 24,
   "h": 36,
   "terminals": [
-    { "name": "anode", "x": 8, "y": 36 },
-    { "name": "cathode", "x": 16, "y": 36 }
+    {
+      "name": "anode",
+      "x": 8,
+      "y": 36
+    },
+    {
+      "name": "cathode",
+      "x": 16,
+      "y": 36
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "anode",
+    "leads": {
+      "anode": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "cathode": {
+        "dRow": 0,
+        "dCol": 1
+      }
+    }
+  }
 }

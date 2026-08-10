@@ -3,9 +3,38 @@
   "w": 44,
   "h": 48,
   "terminals": [
-    { "name": "base", "x": 12, "y": 48 },
-    { "name": "collector", "x": 22, "y": 48 },
-    { "name": "emitter", "x": 32, "y": 48 }
+    {
+      "name": "base",
+      "x": 12,
+      "y": 48
+    },
+    {
+      "name": "collector",
+      "x": 22,
+      "y": 48
+    },
+    {
+      "name": "emitter",
+      "x": 32,
+      "y": 48
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "base",
+    "leads": {
+      "base": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "collector": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "emitter": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
 }

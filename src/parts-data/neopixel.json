@@ -3,10 +3,47 @@
   "w": 20,
   "h": 20,
   "terminals": [
-    { "name": "din", "x": 0, "y": 4 },
-    { "name": "vcc", "x": 20, "y": 4 },
-    { "name": "gnd", "x": 0, "y": 16 },
-    { "name": "dout", "x": 20, "y": 16 }
+    {
+      "name": "din",
+      "x": 0,
+      "y": 4
+    },
+    {
+      "name": "vcc",
+      "x": 20,
+      "y": 4
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 16
+    },
+    {
+      "name": "dout",
+      "x": 20,
+      "y": 16
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "din",
+    "leads": {
+      "din": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "vcc": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "dout": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
 }

@@ -4,5 +4,6 @@
   "h": 120,
   "terminals": [],
   "variants": null,
-  "_note": "Breadboard terminals are holes, not fixed pins. The circuit model manages hole-to-node mapping. No terminals in the sidecar; wiring targets are computed from the hole grid."
+  "_note": "Breadboard terminals are holes, not fixed pins. The circuit model manages hole-to-node mapping. No terminals in the sidecar; wiring targets are computed from the hole grid.",
+  "footprint": null
 }

@@ -3,8 +3,29 @@
   "w": 28,
   "h": 36,
   "terminals": [
-    { "name": "a", "x": 0, "y": 18 },
-    { "name": "b", "x": 28, "y": 18 }
+    {
+      "name": "a",
+      "x": 0,
+      "y": 18
+    },
+    {
+      "name": "b",
+      "x": 28,
+      "y": 18
+    }
   ],
-  "variants": null
+  "variants": null,
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
 }

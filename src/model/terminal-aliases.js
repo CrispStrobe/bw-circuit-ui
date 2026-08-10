@@ -34,6 +34,10 @@ export const TERMINAL_ALIASES = {
     Q4: 'q4', Q5: 'q5', Q6: 'q6', Q7: 'q7',
   },
   // battery → vsource: terminals are already pos/neg, no rename needed.
+  // h_bridge/l293d: gallery uses simplified names, sidecar has DIP-16 pins
+  l293d: {
+    vcc: 'vcc1', gnd: 'gnd1', vs: 'vcc2',
+  },
   // Future renames go here. Never remove an entry — old files may exist.
 };
 
