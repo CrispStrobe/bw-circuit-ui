@@ -15,13 +15,18 @@ import path from 'node:path';
 
 setEngine({ BoardImpl, inferNetlist, checkWiring, getMaxCurrent, PORT_LIMITS });
 
-// Load bw-parts sidecars into the parts registry (if available)
+// Load sidecars into the parts registry.
+// Prefer vendored copies (src/parts-data/) — same data, no sibling dependency.
+// Fall back to bw-parts checkout if vendored dir is empty/missing.
 const here = path.dirname(fileURLToPath(import.meta.url));
+const vendoredDir = path.join(here, '../src/parts-data');
 const bwPartsDir = path.join(here, '../../bw-parts/parts');
-if (existsSync(bwPartsDir)) {
-  for (const f of readdirSync(bwPartsDir).filter(f => f.endsWith('.json'))) {
+const dataDir = existsSync(vendoredDir) && readdirSync(vendoredDir).some(f => f.endsWith('.json'))
+  ? vendoredDir : bwPartsDir;
+if (existsSync(dataDir)) {
+  for (const f of readdirSync(dataDir).filter(f => f.endsWith('.json'))) {
     try {
-      const sc = JSON.parse(readFileSync(path.join(bwPartsDir, f), 'utf-8'));
+      const sc = JSON.parse(readFileSync(path.join(dataDir, f), 'utf-8'));
       if (sc.kind && sc.terminals) registerSidecar(sc);
     } catch { /* skip malformed */ }
   }
