@@ -9,7 +9,7 @@ bw-board       'led_cube'   — types.js:65, board.js:225, board.js:1010,
                               devices.js:114, validate.js:46
 bw-board       'ledcube'    — NOWHERE
 
-bw-circuit-ui  'led_cube'   — already renamed (commit c45228d)
+bw-circuit-ui  'led_cube'   — already renamed (commit ff306ff)
 bw-circuit-ui  'ledcube'    — only in src/interaction/hittest.js:32 (coordinator's file)
 
 sb3-creator    'ledcube'    — part kind in emitted data, MUST change
@@ -40,12 +40,12 @@ Block opcodes (`ledcube_*`) stay unchanged — different namespace, no churn.
 | bw-board | nothing — already uses `led_cube` everywhere |
 
 bw-circuit-ui's own model/circuit.js, wire-router.js, BoardCanvas.jsx,
-PartPalette.jsx, CircuitDesigner.jsx are already renamed (commit c45228d).
+PartPalette.jsx, CircuitDesigner.jsx are already renamed (commit ff306ff).
 
 ## Resolution (2026-08-09)
 
 Adopted. All three repos now use `led_cube` as the engine part kind.
-- bw-circuit-ui: c45228d (model) + coordinator 10cb1c0 (hittest)
+- bw-circuit-ui: ff306ff (model) + coordinator d168795 (hittest)
 - sb3-creator: NO change needed — `ledcube` there is the extension/runtime id
   namespace (opcodes `ledcube_*`), not a part kind
 - bw-board: already used `led_cube` everywhere

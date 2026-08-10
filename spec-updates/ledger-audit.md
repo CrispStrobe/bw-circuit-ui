@@ -1,6 +1,6 @@
 # Verification ledger audit — independent check by bw-circuit-ui
 
-Audited 2026-08-10 against `stc/docs/VERIFICATION-LEDGER.md` (`7270576`).
+Audited 2026-08-10 against `stc/docs/VERIFICATION-LEDGER.md` (`c081d52`).
 I did not write the ledger; this is the first independent check.
 
 ## Denominator
@@ -31,13 +31,13 @@ and checked for findings this campaign produced that the ledger omits.
 
 | Claim | Ledger says | Commit says | Match? |
 |-------|-------------|-------------|--------|
-| Servo 90° | emu: 1500.0 µs, ucsim: 1499.6 µs | `c02fa9f`: "1500.0 µs … ucsim independently measured 1499.6" | ✓ |
-| Servo 0°/180° | 499.2 / 2500.6 µs | `c02fa9f`: same numbers | ✓ |
-| Servo period | 20003.5 µs = 50.0 Hz | `c02fa9f`: same | ✓ |
-| LED brightness | 0.07248 vs 0.07246 (0.03%) | `76943ba`: "0.07248 measured vs 0.07246 predicted = 0.03%" | ✓ |
-| 555 astable | 214 ms vs 207.9 ms (3%) | `49435b9`: "214ms vs 207.9ms = ratio 1.03" | ✓ |
-| PCA ISR defect | `4f14c35` | "add servo end-to-end test: real compiled hex through emu8051" | ✓ |
-| ECCF contract | `e9a3f02` in stc | "PERIPHERAL-MODEL: there is no IE.EC on this part" | ✓ |
+| Servo 90° | emu: 1500.0 µs, ucsim: 1499.6 µs | `cce2192`: "1500.0 µs … ucsim independently measured 1499.6" | ✓ |
+| Servo 0°/180° | 499.2 / 2500.6 µs | `cce2192`: same numbers | ✓ |
+| Servo period | 20003.5 µs = 50.0 Hz | `cce2192`: same | ✓ |
+| LED brightness | 0.07248 vs 0.07246 (0.03%) | `2759e17`: "0.07248 measured vs 0.07246 predicted = 0.03%" | ✓ |
+| 555 astable | 214 ms vs 207.9 ms (3%) | `eab6e7f`: "214ms vs 207.9ms = ratio 1.03" | ✓ |
+| PCA ISR defect | `74671d5` | "add servo end-to-end test: real compiled hex through emu8051" | ✓ |
+| ECCF contract | `02dd84e` in stc | "PERIPHERAL-MODEL: there is no IE.EC on this part" | ✓ |
 
 ## Discrepancy 1: LED brightness category
 
@@ -58,7 +58,7 @@ should promote the row — either way, they should match.
 ## Discrepancy 2: Motor duty — counts vs pin measurement
 
 The ledger says "84/128/192 of 256 counts. Period 277561 ns unchanged."
-ucsim's measurement (`dafbaf9`) says "33% -> 32.83%, 50% -> 50.05%,
+ucsim's measurement (`1d3c932`) says "33% -> 32.83%, 50% -> 50.05%,
 75% -> 75.07%". The count ratios (84/256 = 32.8%) and pin measurements
 (32.83%) differ slightly because pin measurement includes edge timing.
 The ledger records the register value, not the pin measurement.
@@ -83,7 +83,7 @@ defects table:
 | **CL-wrap bug** | **✗** | — |
 | **4.7 µs trigger** | **✗** | — |
 | **NeoPixel driver sent all zeros** | **✗** | — |
-| **ADC ROADMAP "proven on hardware"** | **✗** | `b4f4bb1` in stc |
+| **ADC ROADMAP "proven on hardware"** | **✗** | `4eaa84f` in stc |
 
 The ledger records 11 defects. At least 4 more were found this campaign
 and not recorded. The ledger's own principle says: "A ledger of successes

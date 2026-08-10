@@ -106,7 +106,7 @@ Exported panels (for host integration):
 
 ~480 KB / ~138 KB gzip (with React, 115 sidecar JSONs, 115 SVGs).
 
-Measured by `vite build` at commit `5d7d79a`.
+Measured by `vite build` at commit `2d6f617`.
 
 ## Dependencies
 

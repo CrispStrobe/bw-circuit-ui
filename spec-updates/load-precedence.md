@@ -4,9 +4,9 @@ Filed 2026-08-10 from bw-circuit-ui.
 
 ## The three mechanisms
 
-1. **circuitData prop** — gallery example loaded by the host (84b4dda)
-2. **Autosave restore** — last session's wiring from localStorage (dd44d9c)
-3. **Starter circuit** — the teaching circuit built on first open (9752b8c)
+1. **circuitData prop** — gallery example loaded by the host (3e96d76)
+2. **Autosave restore** — last session's wiring from localStorage (bdb3d53)
+3. **Starter circuit** — the teaching circuit built on first open (949df0c)
 4. **Pin inference** — infer from project.stc.pins when declared
 
 ## Stated precedence (highest wins)
@@ -18,7 +18,7 @@ circuitData prop  >  pin inference  >  autosave  >  starter circuit
 - An explicitly opened example always wins — the user clicked it.
 - Pin declarations win over autosave — the project defines the circuit.
 - Autosave wins over the starter — losing an evening's work to a reload
-  was the bug dd44d9c fixed.
+  was the bug bdb3d53 fixed.
 - The starter appears only on a genuinely first visit (no autosave, no
   pins, no circuitData).
 

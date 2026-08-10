@@ -1,6 +1,6 @@
 # bw-circuit-ui — campaign close-out
 
-621 tests green. Gate 12/12. Deploy current at `sb3-creator` `203b2a3`.
+621 tests green. Gate 12/12. Deploy current at `sb3-creator` `ea02299`.
 Nothing here has run on real silicon.
 
 ## What was verified (numbers, categories)

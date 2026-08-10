@@ -19,7 +19,7 @@ own comments (circuit/index.js:139-142) say:
 
 The palette layer in sb3-creator needs to read `runtime.stc12liveCapabilities`
 and suppress the 5 reporter blocks on hardware targets. PARTS-TO-BLOCKS.md
-now marks this as "specified, not yet implemented" (stc 22ef3a7).
+now marks this as "specified, not yet implemented" (stc a4586c8).
 
 ## Status
 
