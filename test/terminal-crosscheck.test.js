@@ -165,4 +165,10 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
       for (const m of namingDiffs) console.log(`    - ${m}`);
     }
   });
+
+  it('every sidecar kind is accounted for (checked, gap, or excluded)', () => {
+    const total = checked + skipped + [...new Set(coverageGaps)].length;
+    assert.equal(total, sidecars.length,
+      `${total} accounted ≠ ${sidecars.length} sidecars — a kind slipped through without being classified`);
+  });
 });
