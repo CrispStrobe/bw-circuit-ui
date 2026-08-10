@@ -609,6 +609,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   return (
     <div
+      data-sim-mode={mode}
       style={{
         display: 'flex',
         gap: '12px',
