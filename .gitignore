@@ -2,3 +2,6 @@ node_modules/
 dist/
 .vite/
 *.local
+
+# Agent working notes: local context, not documentation.
+CLAUDE.md
