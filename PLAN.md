@@ -104,6 +104,6 @@ bw-board is imported by path, not installed — it is dependency-free ESM.
 ## What I will NOT do
 
 - Fabricate any electrical value
-- Edit anything outside `/mnt/volume1/code/bw-circuit-ui`
+- Edit anything outside this repo's working directory
 - Create a GitHub repo (will ask)
 - Add AI attribution to commits
