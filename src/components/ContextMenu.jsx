@@ -81,6 +81,12 @@ const swatchStyle = {
 };
 
 export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRotate, onFlip, onSetWireColor }) {
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   if (!type) return null;
 
   return (
@@ -88,6 +94,7 @@ export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRota
       {/* Backdrop to close menu on click-away */}
       <div
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 199 }}
+        onPointerDown={onClose}
         onClick={onClose}
         onContextMenu={(e) => { e.preventDefault(); onClose(); }}
       />

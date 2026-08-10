@@ -50,7 +50,7 @@
  */
 
 const TERMINAL_RADIUS_PX = 14;   // generous: terminals are small targets
-const WIRE_RADIUS_PX = 8;
+const WIRE_RADIUS_PX = 12;
 const DRAG_THRESHOLD_PX = 4;
 
 export class InteractionMachine {

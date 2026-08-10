@@ -17,6 +17,7 @@ import { classifyWheel } from '../interaction/transform.js';
 import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
 import { snapGhost, BB_PITCH, bbHoleOrigin, nearestHole } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
+import { getSidecar } from '../model/parts-registry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { BreadboardView } from './BreadboardView.jsx';
@@ -93,6 +94,18 @@ function terminalOffsetsForPart(part) {
     case 'temp_sensor': return { dq: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
     case 'eeprom': return { sda: r(-10, 15), scl: r(10, 15) };
     case 'mcu': {
+      // Sidecar geometry (datasheet DIP-40) scaled to the canvas: every
+      // physical pin sits where the package puts it. Fallback: the old
+      // declared-pins-only single-column layout.
+      const sc = typeof getSidecar === 'function' ? getSidecar('mcu') : null;
+      if (sc && sc.terminals && sc.terminals.length > 2) {
+        const S = 0.62;
+        const offsets = {};
+        for (const t of sc.terminals) {
+          offsets[t.name] = r((t.x - sc.w / 2) * S, (t.y - sc.h / 2) * S);
+        }
+        return offsets;
+      }
       const offsets = {};
       const pinCount = part.terminals.length;
       const chipH = Math.max(60, pinCount * 30 + 20);
@@ -165,6 +178,48 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
         );
       }
       case 'mcu': {
+        // DIP body drawn from the SAME sidecar transform the terminal
+        // offsets use - one geometry, so every leg meets its connector.
+        const sc = typeof getSidecar === 'function' ? getSidecar('mcu') : null;
+        if (sc && sc.terminals && sc.terminals.length > 2) {
+          const S = 0.62;
+          const W = sc.w * S, Hh = sc.h * S;
+          const left = sc.terminals.filter(t => t.x <= sc.w / 2);
+          const right = sc.terminals.filter(t => t.x > sc.w / 2);
+          const px = (t) => (t.x - sc.w / 2) * S;
+          const py = (t) => (t.y - sc.h / 2) * S;
+          const legLen = 10;
+          return (
+            <g key={id} transform={xform} pointerEvents="none">
+              <rect x={-W / 2 + legLen} y={-Hh / 2} width={W - 2 * legLen} height={Hh} rx={4}
+                fill="#1a1a1a" stroke={selStroke || '#444'} strokeWidth={isSelected ? 3 : 1.5} />
+              <path d={`M ${-7} ${-Hh / 2} A 7 7 0 0 1 ${7} ${-Hh / 2}`}
+                fill="#2c3e50" stroke={selStroke || '#555'} strokeWidth={1} />
+              <circle cx={-W / 2 + legLen + 8} cy={-Hh / 2 + 10} r={2.5} fill="#555" />
+              <text x={0} y={-6} textAnchor="middle" fill="#bbb" fontSize={11}
+                fontFamily="monospace" fontWeight="bold"
+                transform="rotate(0)">STC12C5A60S2</text>
+              <text x={0} y={8} textAnchor="middle" fill="#777" fontSize={8}
+                fontFamily="monospace">DIP-40</text>
+              {left.map(t => (
+                <g key={t.name}>
+                  <rect x={px(t) - 1} y={py(t) - 1.6} width={legLen + 1} height={3.2}
+                    fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
+                  <text x={px(t) + legLen + 3} y={py(t) + 2.6} textAnchor="start"
+                    fill="#7f8c8d" fontSize={5.6} fontFamily="monospace">{t.name}</text>
+                </g>
+              ))}
+              {right.map(t => (
+                <g key={t.name}>
+                  <rect x={px(t) - legLen} y={py(t) - 1.6} width={legLen + 1} height={3.2}
+                    fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
+                  <text x={px(t) - legLen - 3} y={py(t) + 2.6} textAnchor="end"
+                    fill="#7f8c8d" fontSize={5.6} fontFamily="monospace">{t.name}</text>
+                </g>
+              ))}
+            </g>
+          );
+        }
         // DIP chip body — real IC package appearance
         const pinCount = part.terminals.length;
         const pinsPerSide = Math.ceil(pinCount / 2);
@@ -897,6 +952,7 @@ export function BoardCanvas({
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire,
+  onSaveCircuit, onLoadCircuit,
   drcWarnings,
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
@@ -1675,6 +1731,20 @@ export function BoardCanvas({
               ✕ Delete
             </button>
           </>
+        )}
+
+        {/* Always-visible history + persistence controls */}
+        <button onClick={() => onUndo && onUndo()} title="Undo (Ctrl+Z)"
+          style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '11px', cursor: 'pointer' }}>↶</button>
+        <button onClick={() => onRedo && onRedo()} title="Redo (Ctrl+Y)"
+          style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '11px', cursor: 'pointer' }}>↷</button>
+        {onSaveCircuit && (
+          <button onClick={onSaveCircuit} title="Save wiring as file"
+            style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #27ae60', borderRadius: '3px', color: '#2ecc71', fontSize: '10px', cursor: 'pointer' }}>💾</button>
+        )}
+        {onLoadCircuit && (
+          <button onClick={onLoadCircuit} title="Load wiring from file"
+            style={{ padding: '2px 7px', background: '#2c3e50', border: '1px solid #2980b9', borderRadius: '3px', color: '#3498db', fontSize: '10px', cursor: 'pointer' }}>📂</button>
         )}
 
         {/* Zoom info */}

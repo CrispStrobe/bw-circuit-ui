@@ -15,6 +15,7 @@ import { BreadboardModel } from './breadboard.js';
 import { logicChipTerminals } from './dip-chips.js';
 import { sidecarTerminals } from './parts-registry.js';
 import { computeLeadMap, rotateFootprint, FOOTPRINTS as BB_FOOTPRINTS_FOR_ROTATE } from './footprints.js';
+import { getSidecar } from './parts-registry.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -834,7 +835,20 @@ function terminalsForKind(kind, params) {
       ...Array.from({length: 8}, (_, i) => `sel_${i}`),
       ...Array.from({length: 8}, (_, i) => `data_${i}`),
     ];
-    case 'mcu': return params?.pins || ['P1.0'];
+    case 'mcu': {
+      // The chip shows ALL physical pins (sidecar pin map, datasheet-true),
+      // not only the declared ones - you wire to a real DIP-40, and the
+      // declarations light up the pins the program drives. Falls back to
+      // the declared list when no sidecar is registered (node tools).
+      const sc = getSidecar('mcu');
+      const declared = Array.isArray(params?.pins) ? params.pins : ['P1.0'];
+      if (sc && sc.terminals && sc.terminals.length > 2) {
+        const names = sc.terminals.map(t => t.name);
+        for (const d of declared) if (!names.includes(d)) names.push(d);
+        return names;
+      }
+      return declared;
+    }
     default: {
       // Check logic chip definitions (74HC family)
       const chipTerms = logicChipTerminals(kind);

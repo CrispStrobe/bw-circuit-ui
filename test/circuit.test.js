@@ -45,10 +45,17 @@ describe('addPart', () => {
     assert.deepEqual(c.addPart('capacitor', { farads: 0.0001 }, 0, 0).terminals, ['a', 'b']);
   });
 
-  it('creates MCU with specified pins', () => {
+  it('creates MCU whose terminals INCLUDE the declared pins', () => {
+    // Design change 2026-08-10: with a DIP-40 sidecar registered, the MCU
+    // exposes ALL physical pins (you wire to a real chip); declared pins are
+    // guaranteed present. Without a sidecar (bare node), it falls back to
+    // exactly the declared list.
     const c = new Circuit();
     const mcu = c.addPart('mcu', { pins: ['P1.0', 'P1.3'] }, 0, 0);
-    assert.deepEqual(mcu.terminals, ['P1.0', 'P1.3']);
+    assert.ok(mcu.terminals.includes('P1.0'));
+    assert.ok(mcu.terminals.includes('P1.3'));
+    assert.ok(mcu.terminals.length === 2 || mcu.terminals.length >= 40,
+      `either bare fallback or the full DIP map, got ${mcu.terminals.length}`);
   });
 });
 
