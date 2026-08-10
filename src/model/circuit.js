@@ -793,7 +793,9 @@ export class Circuit {
       const ok = e => e.board ? typeof e.hole === 'string'
         : typeof e.part === 'string' && typeof e.terminal === 'string';
       if (!ok(from) || !ok(to)) return [];
-      return [{ ...w, from, to }];
+      // Legacy wires have no id either; the canvas hashes wire.id for
+      // stable rendering offsets, so a missing one is a render crash.
+      return [{ ...w, from, to, id: typeof w.id === 'string' ? w.id : genId('wire') }];
     });
     // Legacy wires also carry no netId — and _syncNetlist groups BY netId,
     // so they all landed in one `undefined` group: the entire circuit became

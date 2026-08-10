@@ -56,6 +56,8 @@ test('legacy parts get their terminal lists derived — renderers map over them'
 test('legacy wires are normalized to endpoint objects', () => {
   const c = Circuit.fromJSON(LEGACY_BLINK);
   for (const w of c.wires) {
+    assert.equal(typeof w.id, 'string', 'canvas hashes wire.id — must exist');
+    assert.equal(typeof w.netId, 'string', 'netlist groups by netId — must exist');
     assert.equal(typeof w.from, 'object');
     assert.equal(typeof w.from.part, 'string');
     assert.equal(typeof w.from.terminal, 'string');
