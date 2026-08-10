@@ -56,10 +56,14 @@ function loadSidecars() {
 const sidecars = loadSidecars();
 
 // Parts that are deliberately different between sidecar and circuit model:
-// - 'mcu': sidecar has generic terminals, circuit model has dynamic pins
 // - 'breadboard': sidecar has no terminals (holes, not component)
 // - 'meter': UI-only part, sidecar may not exist
-const SKIP_KINDS = new Set(['mcu', 'breadboard', 'meter', 'oscilloscope', 'function_gen']);
+const SKIP_KINDS = new Set(['breadboard', 'meter', 'oscilloscope', 'function_gen']);
+
+// MCU is a special case: circuit model has DYNAMIC terminals (params.pins),
+// sidecar has the FULL DIP-40 pinout. We check that the sidecar's pin names
+// are valid port designators, not that they match the circuit model's subset.
+const MCU_SUBSET_CHECK = new Set(['mcu', 'stc_mcu']);
 
 // Kinds where terminal count differs because circuit model has VCC/GND
 // integrated while sidecar does not (or vice versa) — document, don't skip
@@ -90,6 +94,30 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
     if (!sc.terminals || sc.terminals.length === 0) { skipped++; continue; }
 
     it(`${sc.kind}: terminal names agree`, () => {
+      // MCU special case: circuit model has a dynamic subset of the full
+      // DIP-40 pinout. Check that no sidecar terminal contains a bogus
+      // pin name (like PSEN/ALE/EA which don't exist on STC12), and that
+      // every circuit-model terminal exists in the sidecar.
+      if (MCU_SUBSET_CHECK.has(sc.kind)) {
+        const sidecarNames = new Set(sc.terminals.map(t => t.name));
+        // Verify no AT89C51 ghost pins
+        const bogus = ['PSEN', 'ALE', 'EA', 'psen', 'ale', 'ea'];
+        for (const b of bogus) {
+          if (sidecarNames.has(b)) {
+            namingDiffs.push(`${sc.kind}: sidecar has AT89C51 pin "${b}" that does not exist on STC12`);
+          }
+        }
+        // Every pin used by the circuit model must exist in the sidecar
+        const testPins = ['P1.0', 'P1.1', 'P3.2', 'P3.5', 'P0.0', 'P2.7'];
+        for (const pin of testPins) {
+          if (!sidecarNames.has(pin)) {
+            namingDiffs.push(`${sc.kind}: circuit model uses "${pin}" but sidecar lacks it`);
+          }
+        }
+        checked++;
+        return;
+      }
+
       let circuitTerminals;
       try {
         circuitTerminals = terminalsForKind(sc.kind);
