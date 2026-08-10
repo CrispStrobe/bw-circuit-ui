@@ -1,30 +1,25 @@
 /**
- * Sidecar loader (vite build/dev entry) — the missing consumer.
+ * Sidecar loader — the missing consumer, bundler-agnostic edition.
  *
- * import.meta.glob is a vite-ism: node's runtime cannot even PARSE it, so
- * this module must only ever be imported from bundler-served entries
- * (src/main.jsx here; lite's circuit tab there). Tests and node tools load
- * the same vendored directory through the fs path in
- * test/sidecar-loading.test.js — same data, same assertions.
- *
- * History: parts-registry offered registerSidecar and nothing called it —
- * the third producer-with-no-consumer in this stack. The first fix then
- * repeated the mistake's mirror image by putting a vite-only construct in
- * engine.js, which every node test imports: 37 red tests. Runtime-agnostic
- * modules stay runtime-agnostic.
+ * v1 used import.meta.glob: a vite-ism. It worked in the dev harness and
+ * quietly depended on downstream vendoring to survive webpack (lite's
+ * bundler). The sync script now GENERATES src/parts-data/index.js with
+ * plain static imports, and this module consumes it — vite, webpack,
+ * esbuild and every future bundler resolve static imports identically.
+ * Node tests keep reading the same directory via fs (JSON import
+ * attributes differ across node versions; the data is identical).
  *
  * @module
  */
 
 import { registerSidecar } from './parts-registry.js';
-
-const modules = import.meta.glob('../parts-data/*.json', { eager: true });
+import { SIDECARS } from '../parts-data/index.js';
 
 let count = 0;
-for (const mod of Object.values(modules)) {
-  const sidecar = mod.default ?? mod;
-  if (sidecar && sidecar.kind) {
-    registerSidecar(sidecar);
+for (const sidecar of SIDECARS) {
+  const sc = sidecar && sidecar.default ? sidecar.default : sidecar;
+  if (sc && sc.kind) {
+    registerSidecar(sc);
     count++;
   }
 }
