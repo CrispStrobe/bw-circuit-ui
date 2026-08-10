@@ -13,6 +13,7 @@ import { History } from './history.js';
 import { mergeNets } from './merge-nets.js';
 import { BreadboardModel } from './breadboard.js';
 import { logicChipTerminals } from './dip-chips.js';
+import { sidecarTerminals } from './parts-registry.js';
 import { computeLeadMap, rotateFootprint, FOOTPRINTS as BB_FOOTPRINTS_FOR_ROTATE } from './footprints.js';
 
 let _nextId = 1;
@@ -757,8 +758,19 @@ export class Circuit {
 
 /**
  * Return the terminal names for a given part kind.
+ *
+ * Sidecar-first: checks bw-parts sidecar data before the local switch.
+ * Special kinds (mcu, breadboard, led_cube) need params-dependent or
+ * dynamic terminals and bypass the sidecar.
  */
 function terminalsForKind(kind, params) {
+  // Special kinds with dynamic or param-dependent terminals
+  const DYNAMIC_KINDS = new Set(['mcu', 'breadboard', 'led_cube', 'dip_switch', 'header']);
+  if (!DYNAMIC_KINDS.has(kind)) {
+    const sc = sidecarTerminals(kind);
+    if (sc && sc.length > 0) return sc;
+  }
+  // Fallback to local definitions (for kinds without sidecars or dynamic kinds)
   switch (kind) {
     case 'vcc': return ['vcc'];
     case 'gnd': return ['gnd'];
