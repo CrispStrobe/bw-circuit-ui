@@ -326,6 +326,17 @@ const selectionCount = async () =>
   }
 }
 
+// 7. Schematic projection: toggle it on — standard symbols render beside
+//    the canvas, one per electrical part, and the canvas stays interactive.
+{
+  await page.getByText('Schematic', { exact: true }).first().click();
+  await page.waitForTimeout(400);
+  const symCount = await page.evaluate(() =>
+    document.querySelectorAll('[data-schematic] g > text').length);
+  symCount >= 3 ? pass(`schematic beside the canvas (${symCount} symbols)`)
+    : fail(`schematic did not render (symbols=${symCount})`);
+}
+
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
 else pass('zero page errors');
 
