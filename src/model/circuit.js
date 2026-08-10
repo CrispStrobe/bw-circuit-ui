@@ -808,8 +808,16 @@ function terminalsForKind(kind, params) {
     case 'usb_a': return ['vcc', 'd_minus', 'd_plus', 'gnd'];
     case 'meter': return ['probe_a', 'probe_b'];
     case 'breadboard': return [];
-    case 'vsource': return ['pos', 'neg'];
+    case 'vsource': case 'battery': return ['pos', 'neg'];
     case 'isource': return ['pos', 'neg'];
+    case 'timer_555': return ['gnd', 'trigger', 'output', 'reset', 'control', 'threshold', 'discharge', 'vcc'];
+    case 'seven_segment': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com'];
+    case 'char_lcd': return ['rs', 'rw', 'e', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'vcc', 'gnd', 'vo', 'bl_a', 'bl_k'];
+    case 'shift_register': return ['data', 'clock', 'latch', 'oe', 'q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'];
+    case 'ir_receiver': return ['vcc', 'gnd', 'out'];
+    case 'temp_sensor': return ['vcc', 'gnd', 'dq'];
+    case 'eeprom': return ['sda', 'scl', 'vcc', 'gnd'];
+    case 'led_matrix': return ['a', 'b'];
     case 'led_cube': return [
       ...Array.from({length: 8}, (_, i) => `sel_${i}`),
       ...Array.from({length: 8}, (_, i) => `data_${i}`),
