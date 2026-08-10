@@ -778,7 +778,7 @@ function terminalsForKind(kind, params) {
     case 'npn': case 'pnp': return ['base', 'collector', 'emitter'];
     case 'nmos': case 'pmos': return ['gate', 'drain', 'source'];
     case 'opamp': return ['inp', 'inn', 'out'];
-    case '555': return ['gnd', 'trig', 'out', 'reset', 'ctrl', 'thr', 'dis', 'vcc'];
+    case '555': return ['gnd', 'trigger', 'output', 'reset', 'control', 'threshold', 'discharge', 'vcc'];
     case 'relay': return ['coil_a', 'coil_b', 'no', 'com', 'nc'];
     case 'servo': return ['signal', 'vcc', 'gnd'];
     case 'dc_motor': case 'hobby_gearmotor': case 'gearmotor': return ['a', 'b'];

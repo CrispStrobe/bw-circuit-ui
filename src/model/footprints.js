@@ -113,8 +113,8 @@ export const FOOTPRINTS = {
     refTerminal: 'gnd',
     straddlesGutter: true,
     leads: {
-      gnd: { dRow: 0, dCol: 0 }, trig: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 2 }, reset: { dRow: 0, dCol: 3 },
-      ctrl: { dRow: 5, dCol: 3 }, thr: { dRow: 5, dCol: 2 }, dis: { dRow: 5, dCol: 1 }, vcc: { dRow: 5, dCol: 0 },
+      gnd: { dRow: 0, dCol: 0 }, trigger: { dRow: 0, dCol: 1 }, output: { dRow: 0, dCol: 2 }, reset: { dRow: 0, dCol: 3 },
+      control: { dRow: 5, dCol: 3 }, threshold: { dRow: 5, dCol: 2 }, discharge: { dRow: 5, dCol: 1 }, vcc: { dRow: 5, dCol: 0 },
     },
   },
   ldr: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
