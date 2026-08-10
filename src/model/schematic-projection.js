@@ -135,34 +135,47 @@ export function projectSchematic(parts, nets) {
     });
   }
 
-  // Net routing: vertical trunk in the channel right of the leftmost pin
-  // column, horizontal stubs to every pin. Distinct trunks in one channel
-  // fan out by net index so they never overlap.
+  // Net routing: every trunk lives in a GAP between symbol columns, never
+  // inside one — a trunk snapped to a pin midpoint used to run straight
+  // through neighbouring symbols, and two nets in the same band drew as
+  // near-parallel lines 8px apart that read as one blurred wire (owner
+  // screenshots, 2026-08-10). Nets sharing a gap fan out on an even grid.
   const wires = [];
   const junctions = [];
-  const channelUse = new Map(); // channel x-band → count
   const netIds = [...netPins.keys()].sort();
+  // First pass: pick each net's gap (between column g-1 and g).
+  const routed = [];
+  const gapUse = new Map(); // gap index → nets in it
   for (const netId of netIds) {
     const pins = [];
     for (const s of symbols) {
       for (const pin of s.pins) if (pin.netId === netId) pins.push(pin);
     }
     if (pins.length < 2) continue;
-    const minX = Math.min(...pins.map(p => p.x));
-    const maxX = Math.max(...pins.map(p => p.x));
-    const channel = Math.round((minX + maxX) / 2 / 10);
-    const used = channelUse.get(channel) ?? 0;
-    channelUse.set(channel, used + 1);
-    const trunkX = (minX + maxX) / 2 + used * 8;
-    const minY = Math.min(...pins.map(p => p.y));
-    const maxY = Math.max(...pins.map(p => p.y));
+    const midX = (Math.min(...pins.map(p => p.x)) + Math.max(...pins.map(p => p.x))) / 2;
+    // Gap g sits at MARGIN_X + g*COL_W - COL_W/2; choose the nearest.
+    const gap = Math.max(0, Math.round((midX - MARGIN_X + COL_W / 2) / COL_W));
+    if (!gapUse.has(gap)) gapUse.set(gap, []);
+    gapUse.get(gap).push(netId);
+    routed.push({ netId, pins, gap });
+  }
+  // Second pass: spread the nets of each gap across its usable band.
+  const BAND = COL_W - 2 * PIN_HALF - 24; // free space between column pin tips
+  for (const r of routed) {
+    const mates = gapUse.get(r.gap);
+    const slot = mates.indexOf(r.netId);
+    const gapCenter = MARGIN_X + r.gap * COL_W - COL_W / 2;
+    const spread = mates.length > 1 ? (slot - (mates.length - 1) / 2) * Math.min(18, BAND / mates.length) : 0;
+    const trunkX = gapCenter + spread;
+    const minY = Math.min(...r.pins.map(p => p.y));
+    const maxY = Math.max(...r.pins.map(p => p.y));
     const points = [];
-    for (const pin of pins.sort((a, b) => a.y - b.y || a.x - b.x)) {
+    for (const pin of r.pins.sort((a, b) => a.y - b.y || a.x - b.x)) {
       points.push([{ x: pin.x, y: pin.y }, { x: trunkX, y: pin.y }]);
-      if (pins.length > 2) junctions.push({ x: trunkX, y: pin.y, netId });
+      if (r.pins.length > 2) junctions.push({ x: trunkX, y: pin.y, netId: r.netId });
     }
     wires.push({
-      netId,
+      netId: r.netId,
       trunk: { x: trunkX, y1: minY, y2: maxY },
       stubs: points,
     });

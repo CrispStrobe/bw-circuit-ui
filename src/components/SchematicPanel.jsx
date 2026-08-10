@@ -118,22 +118,25 @@ function Symbol({ s }) {
       // that carry a net).
       const pins = s.pins || [];
       const perSide = Math.max(1, s.pinsPerSide || Math.ceil(pins.length / 2));
-      const halfH = Math.max(16, ((perSide - 1) * 18) / 2 + 12);
+      // Classic IC drawing: pin names INSIDE at the edges, the part kind
+      // along the top inside the outline — never colliding with pin text.
+      const halfH = Math.max(20, ((perSide - 1) * 18) / 2 + 16);
       return g(<>
-        <rect x={-24} y={-halfH} width={48} height={halfH * 2} rx={2} />
+        <rect x={-26} y={-halfH} width={52} height={halfH * 2} rx={2} />
         {pins.map(pin => {
-          const edgeX = pin.side === 'left' ? -24 : 24;
+          const edgeX = pin.side === 'left' ? -26 : 26;
           const py = pin.y - s.y;
           return (
             <g key={pin.name}>
               <path d={`M ${edgeX} ${py} L ${pin.x - s.x} ${py}`} strokeWidth={1.2} />
-              <text x={pin.side === 'left' ? -21 : 21} y={py + 2}
+              <circle cx={pin.x - s.x} cy={py} r={1.6} fill={STROKE} stroke="none" />
+              <text x={pin.side === 'left' ? -22 : 22} y={py + 2.5}
                 textAnchor={pin.side === 'left' ? 'start' : 'end'}
-                fill={LABEL} fontSize={5.5} fontFamily="monospace" stroke="none">{pin.name}</text>
+                fill={LABEL} fontSize={6.5} fontFamily="monospace" stroke="none">{pin.name}</text>
             </g>
           );
         })}
-        <text x={0} y={3} textAnchor="middle" fill={STROKE} fontSize={7}
+        <text x={0} y={-halfH + 9} textAnchor="middle" fill={STROKE} fontSize={7}
           fontFamily="monospace" stroke="none">{kind.slice(0, 9)}</text>
       </>);
     }

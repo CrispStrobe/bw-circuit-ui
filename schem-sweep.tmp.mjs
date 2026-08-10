@@ -53,6 +53,16 @@ for (const ex of list) {
       }
       if (w.stubs.length < 2) errs.push(`net ${w.netId} drawn with ${w.stubs.length} stub(s) — dangling`);
     }
+    // D. no trunk runs through a symbol's column band at a row it crosses
+    for (const w of proj.wires) {
+      for (const sym of proj.symbols) {
+        const half = 30;
+        if (Math.abs(w.trunk.x - sym.x) < half &&
+            w.trunk.y1 < sym.y + 20 && w.trunk.y2 > sym.y - 20) {
+          errs.push(`trunk ${w.netId} passes through symbol ${sym.id}`);
+        }
+      }
+    }
     if (errs.length) bad.push(`${ex.id}: ${errs.slice(0, 3).join(' | ')}`);
     else ok++;
   } catch (e) { bad.push(`${ex.id}: THREW ${String(e).split('\n')[0].slice(0, 70)}`); }

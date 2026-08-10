@@ -25,6 +25,11 @@ function checkInvariants(parts, nets, label) {
   for (const w of proj.wires) {
     assert.ok(inside(w.trunk.x, w.trunk.y1) && inside(w.trunk.x, w.trunk.y2),
       `${label}: trunk ${w.netId} outside canvas`);
+    for (const sym of proj.symbols) {
+      const collides = Math.abs(w.trunk.x - sym.x) < 30 &&
+        w.trunk.y1 < sym.y + 20 && w.trunk.y2 > sym.y - 20;
+      assert.ok(!collides, `${label}: trunk ${w.netId} runs through symbol ${sym.id}`);
+    }
     assert.ok(w.stubs.length >= 2, `${label}: net ${w.netId} dangles (${w.stubs.length} stub)`);
     for (const seg of w.stubs) {
       const [a, b] = seg;
