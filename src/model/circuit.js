@@ -804,11 +804,18 @@ export class Circuit {
     // renderer maps over part.terminals, so a missing list was the SECOND
     // way a gallery file crashed the GUI (pure-circuit examples, same day
     // as the wire-format crash). Derive it exactly as addPart does.
-    c.parts = data.parts.map(p => ({
-      ...p,
-      rotation: p.rotation ?? 0,
-      terminals: Array.isArray(p.terminals) ? p.terminals : terminalsForKind(p.kind, p.params || {}),
-    }));
+    // Legacy kind names the engine never had: 'battery' is a vsource with
+    // pos/neg terminals and a volts param — same physics, older word.
+    const KIND_ALIASES = { battery: 'vsource' };
+    c.parts = data.parts.map(p => {
+      const kind = KIND_ALIASES[p.kind] || p.kind;
+      return {
+        ...p,
+        kind,
+        rotation: p.rotation ?? 0,
+        terminals: Array.isArray(p.terminals) ? p.terminals : terminalsForKind(kind, p.params || {}),
+      };
+    });
     // Wires arrive in two dialects. Current saves carry endpoint objects
     // ({from: {part, terminal}}); the example gallery's circuit files were
     // written against the ORIGINAL flat format ({from: 'id', fromTerminal:

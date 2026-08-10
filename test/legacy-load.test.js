@@ -117,6 +117,26 @@ test('malformed wires are dropped, not fatal', () => {
   assert.equal(c.wires.length, 1);
 });
 
+test('legacy kind battery aliases to vsource and conducts', () => {
+  const c = Circuit.fromJSON({
+    parts: [
+      { id: 'bat1', kind: 'battery', params: { volts: 9, rInternal: 0.5 }, x: 0, y: 0 },
+      { id: 'r1', kind: 'resistor', params: { ohms: 1000 }, x: 0, y: 0 },
+      { id: 'led1', kind: 'led', params: { vf: 2, color: 'red' }, x: 0, y: 0 },
+    ],
+    wires: [
+      { from: 'bat1', fromTerminal: 'pos', to: 'r1', toTerminal: 'a' },
+      { from: 'r1', fromTerminal: 'b', to: 'led1', toTerminal: 'anode' },
+      { from: 'led1', fromTerminal: 'cathode', to: 'bat1', toTerminal: 'neg' },
+    ],
+  });
+  assert.equal(c.parts.find(p => p.id === 'bat1').kind, 'vsource');
+  c.board.setPower(true);
+  c.board.advanceTo(1n * 1000000n);
+  // (9 - 2) / 1000 = 7 mA -> capped brightness scale; must be clearly lit
+  assert.ok(c.board.ledBrightness('led1') > 0.2, `dark: ${c.board.ledBrightness('led1')}`);
+});
+
 test('modern endpoint-object format is untouched', () => {
   const modern = {
     vcc: 5,
