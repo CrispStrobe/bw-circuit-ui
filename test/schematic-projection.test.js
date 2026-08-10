@@ -86,3 +86,39 @@ test('projection produces non-zero width and height', () => {
   assert.ok(proj.width >= 100, `width ${proj.width} too small for a real schematic`);
   assert.ok(proj.height >= 50, `height ${proj.height} too small for a real schematic`);
 });
+
+test('connected circuit must project at least one net (the LED chaser defect)', () => {
+  // A 20-symbol LED chaser rendered every part and drew ZERO wire nets.
+  // The parts floated disconnected. Root cause: wire terminals referenced
+  // friendly names (data/clock/latch/Q0) but sidecar-derived terminals
+  // used DIP datasheet names (ser/srclk/rclk/qa). _syncNetlist silently
+  // produced 0 nets and the schematic faithfully rendered nothing wrong.
+  //
+  // This test pins the property: a circuit with connected parts must
+  // produce at least one net, and a projection with symbols but zero
+  // wires is a failure regardless of how it looks.
+  resetIds();
+  const c = new Circuit(5.0);
+  const vcc = c.addPart('vcc', {}, 0, 0);
+  const gnd = c.addPart('gnd', {}, 0, 0);
+  const sr = c.addPart('shift_register', {}, 0, 0);
+  const r1 = c.addPart('resistor', { ohms: 220 }, 0, 0);
+  const led1 = c.addPart('led', { vf: 2.0 }, 0, 0);
+  const mcu = c.addPart('mcu', { pins: ['P1.0', 'P1.1', 'P1.2'] }, 0, 0);
+
+  c.addWire(vcc.id, 'vcc', r1.id, 'a');
+  c.addWire(r1.id, 'b', led1.id, 'anode');
+  c.addWire(led1.id, 'cathode', gnd.id, 'gnd');
+  c.addWire(mcu.id, 'P1.0', sr.id, 'data');
+  c.addWire(mcu.id, 'P1.1', sr.id, 'clock');
+  c.addWire(mcu.id, 'P1.2', sr.id, 'latch');
+
+  const nets = c.board.getNets();
+  assert.ok(nets.length >= 3, `connected circuit must have nets, got ${nets.length}`);
+
+  const proj = projectSchematic(c.parts, nets);
+  assert.ok(proj.symbols.length >= 4, `expected >=4 symbols, got ${proj.symbols.length}`);
+  assert.ok(proj.wires.length >= 3,
+    `a projection with ${proj.symbols.length} symbols must have wires, got ${proj.wires.length} — ` +
+    'parts floating disconnected is the LED chaser defect');
+});

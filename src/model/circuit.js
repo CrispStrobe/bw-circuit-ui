@@ -13,6 +13,7 @@ import { History } from './history.js';
 import { mergeNets } from './merge-nets.js';
 import { BreadboardModel } from './breadboard.js';
 import { logicChipTerminals } from './dip-chips.js';
+import { resolveKind, resolveTerminal } from './terminal-aliases.js';
 import { sidecarTerminals } from './parts-registry.js';
 import { computeLeadMap, rotateFootprint, FOOTPRINTS as BB_FOOTPRINTS_FOR_ROTATE } from './footprints.js';
 import { getSidecar } from './parts-registry.js';
@@ -806,9 +807,8 @@ export class Circuit {
     // as the wire-format crash). Derive it exactly as addPart does.
     // Legacy kind names the engine never had: 'battery' is a vsource with
     // pos/neg terminals and a volts param — same physics, older word.
-    const KIND_ALIASES = { battery: 'vsource' };
     c.parts = data.parts.map(p => {
-      const kind = KIND_ALIASES[p.kind] || p.kind;
+      const kind = resolveKind(p.kind);
       return {
         ...p,
         kind,
@@ -845,6 +845,19 @@ export class Circuit {
       // stable rendering offsets, so a missing one is a render crash.
       return [{ ...w, from, to, id: typeof w.id === 'string' ? w.id : genId('wire') }];
     });
+    // Resolve wire terminal aliases: a wire referencing "data" on a part
+    // whose sidecar-derived terminals say "ser" must resolve, or _syncNetlist
+    // silently produces 0 nets and the schematic draws 0 wires.
+    const partMap = new Map(c.parts.map(p => [p.id, p]));
+    for (const w of c.wires) {
+      for (const e of [w.from, w.to]) {
+        if (!e || e.board) continue;
+        const p = partMap.get(e.part);
+        if (p && !p.terminals.includes(e.terminal)) {
+          e.terminal = resolveTerminal(p.kind, e.terminal, p.terminals);
+        }
+      }
+    }
     // Legacy wires also carry no netId — and _syncNetlist groups BY netId,
     // so they all landed in one `undefined` group: the entire circuit became
     // a single net, a silent short. Union wires that share an endpoint (the
