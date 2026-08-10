@@ -1259,7 +1259,7 @@ export function BoardCanvas({
     return () => el.removeEventListener('wheel', onWheel);
   }, []);
 
-  // Terminal interaction: drag to wire (TinkerCAD-style).
+  // Terminal interaction: drag to wire (terminal-to-terminal).
   // Mousedown/touchstart on a terminal starts wiring.
   // Mouseup/touchend on another terminal completes it.
   // Also supports click-click for accessibility.
