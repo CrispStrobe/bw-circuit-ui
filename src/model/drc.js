@@ -394,6 +394,19 @@ export function runDrc(circuit, board) {
 
     for (const part of parts) {
       if (part.kind === 'mcu' || part.kind === 'breadboard') continue;
+      // Circuit-dependent parts are summed from the ENGINE'S MEASURED
+      // current when the board can report one - an LED through 220 ohm
+      // draws ~12 mA, not the folklore 20; the DRC must not invent loads
+      // the solver already computed. Only parts that are BOTH kind-unrated
+      // and unmeasured remain honest unknowns.
+      const measured = board && board.ledCurrents ? board.ledCurrents.get(part.id) : undefined;
+      if (measured !== undefined && measured > 0) {
+        totalA += measured;
+        if (measured > 0.005) {
+          contributors.push({ id: part.id, kind: part.kind, mA: (measured * 1000).toFixed(0) });
+        }
+        continue;
+      }
       const rating = getMaxCurrent(part.kind);
       if (rating === null) {
         hasUnrated = true;

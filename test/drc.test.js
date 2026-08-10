@@ -317,19 +317,21 @@ describe('DRC: aggregate-current', () => {
     const vcc = c.addPart('vcc', {}, 0, 0);
     const gnd = c.addPart('gnd', {}, 0, 0);
     const mcu = c.addPart('mcu', { pins: ['P2.0','P2.1','P2.2','P2.3','P2.4','P2.5','P2.6','P2.7'] }, 0, 0);
-    // 8 LEDs at 20 mA each = 160 mA > 120 mA limit
+    // MEASURED currents: (5-2)/(25+100+10) = 22.2 mA each, x8 = 178 mA > 120
     for (let i = 0; i < 8; i++) {
-      const r = c.addPart('resistor', { ohms: 220 }, 0, 0);
+      const r = c.addPart('resistor', { ohms: 100 }, 0, 0);
       const led = c.addPart('led', { vf: 2.0 }, 0, 0);
       c.addWire(mcu.id, `P2.${i}`, r.id, 'a');
       c.addWire(r.id, 'b', led.id, 'anode');
       c.addWire(led.id, 'cathode', gnd.id, 'gnd');
     }
+    // Drive every pin: measured currents exist only for conducting LEDs.
+    for (let i = 0; i < 8; i++) c.board.setPin(`P2.${i}`, 'pushpull', true);
     c.advanceTo(25_000_000n);
 
     const w = runDrc(c, c.board);
     const hits = findRule(w, 'aggregate-current');
-    assert.ok(hits.length > 0, '8 LEDs (160 mA) must trigger aggregate warning');
+    assert.ok(hits.length > 0, '8 LEDs (~178 mA measured) must trigger aggregate warning');
     assert.ok(hits[0].explanation.includes('120'), 'must cite the 120 mA limit');
   });
 
@@ -357,10 +359,18 @@ describe('DRC: aggregate-current', () => {
     c.addPart('vcc', {}, 0, 0);
     c.addPart('gnd', {}, 0, 0);
     const mcu = c.addPart('mcu', { pins: ['P1.0','P1.1','P1.2','P1.3','P1.4'] }, 0, 0);
-    // 5 LEDs = 100 mA (83% of limit), plus an NPN transistor (null-rated —
-    // current depends on the circuit, not the kind alone)
-    for (let i = 0; i < 5; i++) c.addPart('led', { vf: 2.0 }, 0, 0);
-    c.addPart('npn', { beta: 100 }, 0, 0); // null-rated per current-ratings.js
+    // 5 DRIVEN LEDs at ~22 mA measured = 111 mA (93% of the 120 limit),
+    // plus an NPN (null-rated AND unmeasured: current depends on circuit).
+    const gnd5 = c.parts.find(p => p.kind === 'gnd');
+    for (let i = 0; i < 5; i++) {
+      const r = c.addPart('resistor', { ohms: 100 }, 0, 0);
+      const led = c.addPart('led', { vf: 2.0 }, 0, 0);
+      c.addWire(mcu.id, `P1.${i}`, r.id, 'a');
+      c.addWire(r.id, 'b', led.id, 'anode');
+      c.addWire(led.id, 'cathode', gnd5.id, 'gnd');
+      c.board.setPin(`P1.${i}`, 'pushpull', true);
+    }
+    c.addPart('npn', { beta: 100 }, 0, 0); // null-rated per current-ratings
 
     const w = runDrc(c, c.board);
     const hits = findRule(w, 'aggregate-current');
