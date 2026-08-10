@@ -151,6 +151,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [placingProbe, setPlacingProbe] = useState(null);
   const [placingPart, setPlacingPart] = useState(null); // {kind, params} riding the cursor
   const [showSchematic, setShowSchematic] = useState(false);
+  const [simPaused, setSimPaused] = useState(false);
+  const [simSpeed, setSimSpeed] = useState(1); // 0.25 | 1 | 4 x real time
   const [probePlacement, setProbePlacement] = useState(null);
   const handleStartPlacing = useCallback((which) => setPlacingProbe(which), []);
   const handleStopPlacing = useCallback(() => setPlacingProbe(null), []);
@@ -295,7 +297,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     }
 
     const mcu = parts.find(p => p.kind === 'mcu');
-    if (!mcu) return;
+    // No MCU is NOT "no simulation": pure circuits (battery+LED, FG+scope,
+    // RC charge) need the clock just as much. Only the demo pin script
+    // below is MCU-conditional.
 
     // Classify pins by what's connected to them
     const outputPins = []; // pins with LEDs or buzzers connected
@@ -340,20 +344,33 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     simStep.current = 0;
 
     simInterval.current = setInterval(() => {
+      if (simPausedRef.current) return; // frozen coherently; controls stay live
       simStep.current++;
       const step = simStep.current;
 
-      // Blink all output pins at 2 Hz (500ms period at 20 Hz tick)
-      for (const pin of outputPins) {
-        const on = (step % 20) < 10;
-        setPin(pin, 'quasi', on); // HIGH = LED off (active-low)
+      if (mcu) {
+        // Blink all output pins at 2 Hz of SIM time (500 ms period)
+        for (const pin of outputPins) {
+          const on = (step % Math.max(1, Math.round(20 / simSpeedRef.current))) <
+            Math.max(1, Math.round(10 / simSpeedRef.current));
+          setPin(pin, 'quasi', on); // HIGH = LED off (active-low)
+        }
       }
 
-      advanceBy(50n * MS);
+      advanceBy(BigInt(Math.round(50 * simSpeedRef.current)) * MS);
     }, 50);
 
     return () => { if (simInterval.current) clearInterval(simInterval.current); };
   }, [mode, parts, wires]);
+
+  // Refs so pause/speed act immediately without restarting the interval.
+  const simPausedRef = useRef(false); simPausedRef.current = simPaused;
+  const simSpeedRef = useRef(1); simSpeedRef.current = simSpeed;
+
+  const handleSimStep = useCallback(() => {
+    // One 50 ms tick while paused — the circuits half of single-stepping.
+    advanceBy(50n * MS);
+  }, [advanceBy]);
 
   // ── Part placement — find empty space ────────────────────────────
   const handleAddPart = useCallback((kind, params) => {
@@ -668,6 +685,30 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           borderRadius: 4, padding: '3px 10px', cursor: 'pointer',
           fontFamily: 'monospace', fontSize: 10,
         }}>{showSchematic ? 'Schematic ✓' : 'Schematic'}</button>
+        {mode === 'simulate' && (
+          <span style={{ display: 'inline-flex', gap: 4, alignSelf: 'flex-end', marginBottom: 4, marginRight: 6 }}>
+            <button onClick={() => setSimPaused(v => !v)}
+              title={simPaused ? 'Resume simulation' : 'Pause simulation (board time freezes; knobs stay live)'}
+              style={{ background: simPaused ? '#e67e22' : '#16213e', border: '1px solid #2c3e50',
+                color: simPaused ? '#000' : '#7f8c8d', borderRadius: 4, padding: '3px 10px',
+                cursor: 'pointer', fontFamily: 'monospace', fontSize: 10 }}>
+              {simPaused ? '▶ resume' : '⏸ pause'}</button>
+            <button onClick={handleSimStep} disabled={!simPaused}
+              title="Advance one 50 ms tick"
+              style={{ background: '#16213e', border: '1px solid #2c3e50',
+                color: simPaused ? '#3498db' : '#3a4a5a', borderRadius: 4, padding: '3px 10px',
+                cursor: simPaused ? 'pointer' : 'default', fontFamily: 'monospace', fontSize: 10 }}>
+              ⏭ step</button>
+            <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))}
+              title="Simulation speed"
+              style={{ background: '#16213e', color: '#7f8c8d', border: '1px solid #2c3e50',
+                borderRadius: 4, fontSize: 10, fontFamily: 'monospace' }}>
+              <option value={0.25}>0.25x</option>
+              <option value={1}>1x</option>
+              <option value={4}>4x</option>
+            </select>
+          </span>
+        )}
         <BoardCanvas
           parts={parts}
           wires={wires}

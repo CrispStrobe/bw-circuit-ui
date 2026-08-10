@@ -331,6 +331,29 @@ const selectionCount = async () =>
   }
 }
 
+// 6b. Sim transport: pause freezes board time coherently; step advances
+//     exactly one 50 ms tick; resume flows again.
+{
+  const t = async () => await page.evaluate(() => String(window.__board?.getTime?.() ?? 'none'));
+  await page.getByRole('button', { name: /pause/ }).first().click();
+  await page.waitForTimeout(300);
+  const t1 = await t();
+  await page.waitForTimeout(400);
+  const t2 = await t();
+  (t1 === t2 && t1 !== 'none') ? pass('pause freezes board time')
+    : fail(`pause leaked time: ${t1} -> ${t2}`);
+  await page.getByRole('button', { name: /step/ }).first().click();
+  await page.waitForTimeout(200);
+  const t3 = await t();
+  (BigInt(t3) - BigInt(t2) === 50000000n) ? pass('step advances exactly one 50 ms tick')
+    : fail(`step advanced ${BigInt(t3) - BigInt(t2)} ns`);
+  await page.getByRole('button', { name: /resume/ }).first().click();
+  await page.waitForTimeout(400);
+  const t4 = await t();
+  (BigInt(t4) > BigInt(t3)) ? pass('resume: time flows again')
+    : fail('resume did not restart the clock');
+}
+
 // 7. Schematic projection: toggle it on — standard symbols render beside
 //    the canvas, one per electrical part, and the canvas stays interactive.
 {
