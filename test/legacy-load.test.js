@@ -41,6 +41,18 @@ test('legacy flat-format wires load without throwing', () => {
   assert.equal(c.wires.length, 3);
 });
 
+test('legacy parts get their terminal lists derived — renderers map over them', () => {
+  // The gallery files carry no `terminals` field; every renderer does
+  // part.terminals.map(...), which was the pure-circuit crash (21-resistor-led).
+  const c = Circuit.fromJSON(LEGACY_BLINK);
+  for (const p of c.parts) {
+    assert.ok(Array.isArray(p.terminals), `${p.kind} has no terminals array`);
+    assert.equal(typeof p.rotation, 'number', `${p.kind} has no rotation`);
+  }
+  const led = c.parts.find(p => p.kind === 'led');
+  assert.deepEqual(led.terminals, ['anode', 'cathode']);
+});
+
 test('legacy wires are normalized to endpoint objects', () => {
   const c = Circuit.fromJSON(LEGACY_BLINK);
   for (const w of c.wires) {
@@ -64,6 +76,29 @@ test('nets from a legacy load carry no undefined parts', () => {
   }
   // The vcc→r→led→mcu chain must actually connect: 3 wires, distinct nets.
   assert.ok(nets.length >= 3, `expected ≥3 nets, got ${nets.length}`);
+});
+
+test('legacy wires sharing a terminal union into one net; others stay apart', () => {
+  // No legacy wire carries a netId, and _syncNetlist groups by netId — before
+  // the union-find they ALL collapsed into one net: a silent full-circuit short.
+  const c = Circuit.fromJSON({
+    vcc: 5,
+    parts: [
+      { id: 'v1', kind: 'vcc', params: {}, x: 0, y: 0 },
+      { id: 'r1', kind: 'resistor', params: { ohms: 100 }, x: 0, y: 0 },
+      { id: 'r2', kind: 'resistor', params: { ohms: 100 }, x: 0, y: 0 },
+      { id: 'g1', kind: 'gnd', params: {}, x: 0, y: 0 },
+    ],
+    wires: [
+      { from: 'v1', fromTerminal: 'vcc', to: 'r1', toTerminal: 'a' },
+      { from: 'r1', fromTerminal: 'a', to: 'r2', toTerminal: 'a' }, // shares r1.a
+      { from: 'r2', fromTerminal: 'b', to: 'g1', toTerminal: 'gnd' }, // disjoint
+    ],
+  });
+  const ids = c.wires.map(w => w.netId);
+  assert.equal(ids[0], ids[1], 'wires sharing r1.a must be one net');
+  assert.notEqual(ids[0], ids[2], 'disjoint wires must stay separate nets');
+  assert.equal(c.board.getNets().length, 2);
 });
 
 test('malformed wires are dropped, not fatal', () => {

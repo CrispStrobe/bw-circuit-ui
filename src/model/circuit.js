@@ -759,7 +759,15 @@ export class Circuit {
    */
   static fromJSON(data) {
     const c = new Circuit(data.vcc);
-    c.parts = data.parts.map(p => ({ ...p }));
+    // Legacy files also predate parts carrying their terminal list — every
+    // renderer maps over part.terminals, so a missing list was the SECOND
+    // way a gallery file crashed the GUI (pure-circuit examples, same day
+    // as the wire-format crash). Derive it exactly as addPart does.
+    c.parts = data.parts.map(p => ({
+      ...p,
+      rotation: p.rotation ?? 0,
+      terminals: Array.isArray(p.terminals) ? p.terminals : terminalsForKind(p.kind, p.params || {}),
+    }));
     // Wires arrive in two dialects. Current saves carry endpoint objects
     // ({from: {part, terminal}}); the example gallery's circuit files were
     // written against the ORIGINAL flat format ({from: 'id', fromTerminal:
@@ -787,6 +795,36 @@ export class Circuit {
       if (!ok(from) || !ok(to)) return [];
       return [{ ...w, from, to }];
     });
+    // Legacy wires also carry no netId — and _syncNetlist groups BY netId,
+    // so they all landed in one `undefined` group: the entire circuit became
+    // a single net, a silent short. Union wires that share an endpoint (the
+    // grouping addWire computes incrementally) and stamp group ids.
+    {
+      const parent = new Map();
+      const find = k => {
+        let r = k;
+        while (parent.get(r) !== r) r = parent.get(r);
+        parent.set(k, r);
+        return r;
+      };
+      const key = e => e.board ? `@bb:${e.board}:${e.hole}` : `${e.part}:${e.terminal}`;
+      const wireKey = (w, i) => `w${i}`;
+      const need = c.wires.filter(w => typeof w.netId !== 'string');
+      for (const [i, w] of need.entries()) {
+        for (const k of [wireKey(w, i), key(w.from), key(w.to)]) {
+          if (!parent.has(k)) parent.set(k, k);
+        }
+        const wr = find(wireKey(w, i));
+        parent.set(find(key(w.from)), wr);
+        parent.set(find(key(w.to)), wr);
+      }
+      const groups = new Map();
+      for (const [i, w] of need.entries()) {
+        const root = find(wireKey(w, i));
+        if (!groups.has(root)) groups.set(root, `net-lgc-${groups.size + 1}`);
+        w.netId = groups.get(root);
+      }
+    }
     // Rebuild what serialization flattens: every breadboard part gets its
     // occupancy model back, and every seated part re-occupies its holes.
     // Without this, a loaded save LOOKED right but the strips no longer
