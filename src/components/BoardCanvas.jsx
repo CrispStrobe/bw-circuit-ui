@@ -342,6 +342,13 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
       const isSamePart = wiringFrom && wiringFrom.part === part.id;
       const isValidTarget = isWiring && !isSource && !isSamePart;
 
+      // A SEATED terminal IS a breadboard hole. The hole is already visible;
+      // a permanent ring + name label on every leg is what buried the first
+      // example under chrome (owner screenshot, 2026-08-10). Seated legs
+      // surface only while they are live wiring/probe targets.
+      const isSeated = !!(part._seatTerminals && part._seatTerminals[term]);
+      if (isSeated && !isWiring && !placingProbe && !isSource) continue;
+
       // Sizes: large enough to tap on a tablet (minimum 10px radius)
       let fill, stroke, r, opacity;
       if (isSource) {
@@ -357,6 +364,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
         // Unconnected — hollow, clearly visible
         fill = '#16213e'; stroke = '#e74c3c'; r = 8; opacity = 1;
       }
+      if (isSeated) r = Math.min(r, 6);
 
       dots.push(
         <g key={`${part.id}:${term}`}>
@@ -382,8 +390,9 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
               style={{ pointerEvents: 'none' }}
             />
           )}
-          {/* Terminal label — always show for unconnected, on hover otherwise */}
-          {!isConnected && (
+          {/* Terminal label — free parts only; a seated leg's name would
+              stamp itself over the board art */}
+          {!isConnected && !isSeated && (
             <text
               x={pos.x} y={pos.y - r - 4}
               textAnchor="middle" fill="#bdc3c7" fontSize={9}
@@ -637,12 +646,18 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
       case 'led': {
         const b = ledBrightness?.(id) ?? 0;
         const isOn = b > 0.01;
+        const seated = !!part.seat;
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 20, top: y - 25, cursor: 'move' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
+            {/* Seated: shrink IN PLACE — the visual body must stay inside
+                partBounds or click/drag hit-testing dies (gate caught the
+                raised-bulb variant of this). */}
+            <div style={seated ? { transform: 'scale(0.78)', transformOrigin: '50% 50%' } : undefined}>
             <WokwiLed color={params.color || 'red'} brightness={b} value={isOn} />
+            </div>
             <div style={{
               textAlign: 'center',
               color: isOn ? '#2ecc71' : '#556',
@@ -2034,6 +2049,17 @@ export function BoardCanvas({
             );
           })()}
 
+          {/* A seated LED stands ABOVE its row like the real part: two legs
+              drop from the bulb base into the holes. */}
+          {parts.filter(q => q.kind === 'led' && q.seat && q._seatTerminals).map(q => (
+            <g key={`ledlegs-${q.id}`} style={{ pointerEvents: 'none' }}>
+              {Object.values(q._seatTerminals).map((pos, i) => (
+                <line key={i} x1={pos.x} y1={q.y - 4} x2={pos.x} y2={pos.y}
+                  stroke="#95a5a6" strokeWidth={1.6} />
+              ))}
+            </g>
+          ))}
+
           {dragLegs && (
             <g style={{ pointerEvents: 'none' }} opacity={0.9}>
               {dragLegs.map((leg, i) => (
@@ -2155,6 +2181,7 @@ export function BoardCanvas({
           {/* Lead stubs: short wire segments from terminal dots to part body */}
           {parts.map(part => {
             if (['vcc', 'gnd', 'mcu'].includes(part.kind)) return null;
+            if (part.seat) return null; // seated legs go INTO holes; stubs toward the centroid are noise
             return part.terminals.map(term => {
               const pos = terminalPos(part, term);
               const dx = part.x - pos.x;

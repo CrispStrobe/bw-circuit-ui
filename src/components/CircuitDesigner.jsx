@@ -594,7 +594,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const legacy = Array.isArray(circuitData.wires) &&
       circuitData.wires.some(w => typeof w.from === 'string');
     const pins = projectData?.pins;
-    if (legacy && pins?.length > 0) {
+    // fileOnly: the host says this circuit arrived WITHOUT a program — a
+    // pure-circuit example. Pins still in the project then belong to
+    // whatever was loaded before, and inferring from them would rebuild
+    // the PREVIOUS bench over this file (that is exactly what happened:
+    // examples 47-53 all showed example 46's 19-part board).
+    if (legacy && pins?.length > 0 && !circuitData.fileOnly) {
       try {
         circuit._saveHistory();
         circuit.parts.length = 0;
