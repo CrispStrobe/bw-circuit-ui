@@ -119,6 +119,21 @@ export function createHitTest(getParts, getWirePaths, getTerminals) {
           }
         }
       }
+      // A seated part's terminals sit ON its body (hole pitch is small), so
+      // a generous radius would swallow every body click and turn selection
+      // into accidental wiring. Rule: inside the owning part's own bounds,
+      // only a PRECISE hit (the dot itself) counts as a terminal; the body
+      // keeps its click. From outside the body, the full radius applies.
+      if (best && bestD > 6) {
+        const parts = getParts();
+        for (let i = parts.length - 1; i >= 0; i--) {
+          const b = partBounds(parts[i]);
+          if (wx >= b.minX && wx <= b.maxX && wy >= b.minY && wy <= b.maxY) {
+            if (parts[i].id === best.partId) return null; // body wins
+            break; // a different part's body is on top: terminal still valid
+          }
+        }
+      }
       return best;
     },
 
