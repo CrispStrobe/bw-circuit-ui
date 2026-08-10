@@ -173,6 +173,20 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     if (pins === prevPinsRef.current) return;
     prevPinsRef.current = pins;
 
+    // No declared pins: the last session's autosaved wiring beats the
+    // canned demo - losing an evening's circuit to a reload was the bug.
+    if (!(pins?.length > 0) && typeof localStorage !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('bw-circuit-autosave');
+        if (saved) {
+          const data = JSON.parse(saved);
+          if (data && Array.isArray(data.parts) && data.parts.length > 0) {
+            handleLoad(data);
+            return;
+          }
+        }
+      } catch { /* corrupt autosave: fall through to the demo */ }
+    }
     const inferStc = pins?.length > 0
       ? projectData
       : {
