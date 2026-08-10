@@ -831,7 +831,7 @@ function terminalsForKind(kind, params) {
     case 'gas_sensor': return ['vcc', 'gnd', 'aout', 'dout'];
     case 'slide_switch': return ['a', 'common', 'b'];
     case 'dip_switch': return params?.switches ? Array.from({length: params.switches * 2}, (_, i) => `s${Math.floor(i/2)+1}_${i%2 === 0 ? 'a' : 'b'}`) : ['s1_a', 's1_b'];
-    case 'l293d': return ['en1', 'in1', 'out1', 'gnd1', 'gnd2', 'out2', 'in2', 'en2', 'vcc', 'vs'];
+    case 'l293d': case 'h_bridge': return ['vcc', 'gnd', 'en1', 'in1', 'out1', 'in2', 'out2', 'en2', 'vs'];
     case 'relay_dpdt': return ['coil_a', 'coil_b', 'no1', 'com1', 'nc1', 'no2', 'com2', 'nc2'];
     case 'tip120': return ['base', 'collector', 'emitter'];
     case 'pcf8574': return ['sda', 'scl', 'vcc', 'gnd', 'p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'];

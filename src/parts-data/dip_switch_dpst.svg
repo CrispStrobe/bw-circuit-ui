@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 28" width="40" height="28">
+  <!-- DIP Switch DPST — double-pole, bench-style -->
+  <rect x="4" y="4" width="32" height="16" rx="1" fill="#2020cc" stroke="#1818a0" stroke-width="0.8"/>
+  <!-- Toggle channels -->
+  <rect x="10" y="6" width="8" height="12" rx="0.5" fill="#101088"/>
+  <rect x="22" y="6" width="8" height="12" rx="0.5" fill="#101088"/>
+  <!-- Levers -->
+  <rect x="11.5" y="7" width="5" height="4" rx="0.5" fill="#e8e0d8"/>
+  <rect x="23.5" y="13" width="5" height="4" rx="0.5" fill="#e8e0d8"/>
+  <!-- ON label -->
+  <text x="20" y="3" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#999">ON</text>
+  <!-- Pins (4 per side for DPST x2) -->
+  <line x1="11" y1="20" x2="11" y2="28" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <line x1="17" y1="20" x2="17" y2="28" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <line x1="23" y1="20" x2="23" y2="28" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <line x1="29" y1="20" x2="29" y2="28" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <line x1="11" y1="4" x2="11" y2="0" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <line x1="17" y1="4" x2="17" y2="0" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <line x1="23" y1="4" x2="23" y2="0" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <line x1="29" y1="4" x2="29" y2="0" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="11" cy="28" r="1" fill="#c0c0c0"/>
+  <circle cx="17" cy="28" r="1" fill="#c0c0c0"/>
+  <circle cx="23" cy="28" r="1" fill="#c0c0c0"/>
+  <circle cx="29" cy="28" r="1" fill="#c0c0c0"/>
+  <circle cx="11" cy="0" r="1" fill="#c0c0c0"/>
+  <circle cx="17" cy="0" r="1" fill="#c0c0c0"/>
+  <circle cx="23" cy="0" r="1" fill="#c0c0c0"/>
+  <circle cx="29" cy="0" r="1" fill="#c0c0c0"/>
+</svg>

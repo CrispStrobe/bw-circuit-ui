@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44">
+  <!-- Push Button — 4-pin tactile switch, bench-style top view -->
+  <!-- Body (black plastic) -->
+  <rect x="6" y="6" width="32" height="32" rx="2" fill="#1a1a1a" stroke="#333" stroke-width="0.8"/>
+  <!-- Button cap (circular, raised) -->
+  <circle cx="22" cy="22" r="8" fill="#444" stroke="#555" stroke-width="0.8"/>
+  <circle cx="22" cy="22" r="6" fill="#555" stroke="#666" stroke-width="0.5"/>
+  <!-- Highlight -->
+  <ellipse cx="20" cy="20" rx="3" ry="2" fill="#777" opacity="0.4"/>
+  <!-- Leads (left and right) -->
+  <line x1="7" y1="22" x2="0" y2="22" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="37" y1="22" x2="44" y2="22" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="7" cy="22" r="2" fill="#c0c0c0"/>
+  <circle cx="37" cy="22" r="2" fill="#c0c0c0"/>
+</svg>

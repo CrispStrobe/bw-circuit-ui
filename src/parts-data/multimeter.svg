@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 90" width="70" height="90">
+  <!-- Multimeter — bench-style front view -->
+  <!-- Body -->
+  <rect x="4" y="4" width="62" height="82" rx="6" fill="#333" stroke="#222" stroke-width="1"/>
+  <!-- Display -->
+  <rect x="10" y="10" width="50" height="20" rx="2" fill="#c8d8c0" stroke="#999" stroke-width="0.5"/>
+  <text x="35" y="24" text-anchor="middle" font-family="monospace" font-size="10" fill="#222">5.00</text>
+  <text x="56" y="16" font-family="monospace" font-size="4" fill="#444">V</text>
+  <!-- Rotary selector -->
+  <circle cx="35" cy="48" r="12" fill="#444" stroke="#555" stroke-width="0.5"/>
+  <circle cx="35" cy="48" r="2" fill="#888"/>
+  <line x1="35" y1="48" x2="35" y2="38" stroke="#ccc" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Mode labels around dial -->
+  <g font-family="monospace" font-size="2.5" fill="#888" text-anchor="middle">
+    <text x="35" y="34">DCV</text>
+    <text x="50" y="44">ACV</text>
+    <text x="50" y="54">A</text>
+    <text x="35" y="64">ohm</text>
+    <text x="20" y="54">diode</text>
+    <text x="20" y="44">OFF</text>
+  </g>
+  <!-- Probe jacks -->
+  <circle cx="22" cy="78" r="4" fill="#222" stroke="#444" stroke-width="0.5"/>
+  <circle cx="22" cy="78" r="2" fill="#cc3030"/>
+  <circle cx="48" cy="78" r="4" fill="#222" stroke="#444" stroke-width="0.5"/>
+  <circle cx="48" cy="78" r="2" fill="#333"/>
+  <!-- Terminal pads (bottom edge) -->
+  <circle cx="22" cy="90" r="2" fill="#cc3030"/>
+  <circle cx="48" cy="90" r="2" fill="#333"/>
+  <line x1="22" y1="82" x2="22" y2="90" stroke="#cc3030" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="48" y1="82" x2="48" y2="90" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

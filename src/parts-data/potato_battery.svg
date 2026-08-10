@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 40" width="56" height="40">
+  <!-- Potato Battery — pedagogical, bench-style -->
+  <!-- Potato body -->
+  <ellipse cx="28" cy="22" rx="22" ry="14" fill="#c8a060" stroke="#a08040" stroke-width="0.8"/>
+  <!-- Spots/eyes -->
+  <circle cx="18" cy="18" r="1.5" fill="#b09050" opacity="0.6"/>
+  <circle cx="34" cy="16" r="1" fill="#b09050" opacity="0.6"/>
+  <!-- Copper electrode (penny) -->
+  <rect x="12" y="10" width="3" height="16" rx="0.5" fill="#c07030" stroke="#a06020" stroke-width="0.3"/>
+  <!-- Zinc electrode (nail) -->
+  <rect x="40" y="8" width="2" height="20" rx="0.3" fill="#a0a0a0" stroke="#808080" stroke-width="0.3"/>
+  <rect x="38" y="6" width="6" height="4" rx="1" fill="#888" stroke="#777" stroke-width="0.3"/>
+  <!-- Wire leads -->
+  <line x1="13.5" y1="10" x2="13.5" y2="0" stroke="#c07030" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="41" y1="8" x2="41" y2="0" stroke="#a0a0a0" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="13.5" cy="0" r="2" fill="#c07030"/>
+  <circle cx="41" cy="0" r="2" fill="#a0a0a0"/>
+  <text x="13.5" y="40" text-anchor="middle" font-family="monospace" font-size="3" fill="#888">Cu+</text>
+  <text x="41" y="40" text-anchor="middle" font-family="monospace" font-size="3" fill="#888">Zn-</text>
+</svg>

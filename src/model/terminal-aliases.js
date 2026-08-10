@@ -16,6 +16,7 @@ export const KIND_ALIASES = {
   battery: 'vsource',
   timer_555: '555',
   '74hc595': 'shift_register',
+  h_bridge: 'l293d',
 };
 
 /** @type {Record<string, Record<string, string>>} */

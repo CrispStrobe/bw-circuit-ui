@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 44" width="32" height="44">
+  <!-- Temperature Sensor (DS18B20) — TO-92 3-pin, bench-style -->
+  <!-- Body -->
+  <path d="M4 8 Q16 2 28 8 L28 30 Q16 34 4 30 Z" fill="#1a1a1a" stroke="#333" stroke-width="0.8"/>
+  <rect x="6" y="10" width="20" height="18" rx="1" fill="#222" stroke="#333" stroke-width="0.3"/>
+  <!-- Label -->
+  <text x="16" y="19" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#aaa">DS18B20</text>
+  <text x="16" y="25" text-anchor="middle" font-family="monospace" font-size="3" fill="#666">TEMP</text>
+  <!-- Leads -->
+  <line x1="6" y1="30" x2="6" y2="44" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="16" y1="30" x2="16" y2="44" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="26" y1="30" x2="26" y2="44" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- Terminal pads at spec positions -->
+  <circle cx="6" cy="12" r="1.5" fill="#c0c0c0"/>
+  <circle cx="26" cy="12" r="1.5" fill="#c0c0c0"/>
+  <circle cx="16" cy="37" r="1.5" fill="#c0c0c0"/>
+</svg>

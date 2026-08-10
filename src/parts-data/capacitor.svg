@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 36" width="28" height="36">
+  <!-- Capacitor — ceramic disc type, bench-style -->
+  <!-- Lead wires (horizontal, from sides) -->
+  <line x1="0" y1="18" x2="8" y2="18" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="20" y1="18" x2="28" y2="18" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Disc body (orange/brown ceramic) -->
+  <ellipse cx="14" cy="18" rx="7" ry="12" fill="#d08030" stroke="#a06020" stroke-width="0.8"/>
+  <!-- Marking -->
+  <text x="14" y="17" text-anchor="middle" font-family="monospace" font-size="4" fill="#fff">104</text>
+  <text x="14" y="22" text-anchor="middle" font-family="monospace" font-size="3" fill="#e0c0a0">100nF</text>
+  <!-- Terminal pads -->
+  <circle cx="0" cy="18" r="1.5" fill="#c0c0c0"/>
+  <circle cx="28" cy="18" r="1.5" fill="#c0c0c0"/>
+</svg>

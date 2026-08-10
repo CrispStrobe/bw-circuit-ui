@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 48" width="60" height="48">
+  <!-- 555 Timer IC — 8-pin DIP package, bench-style -->
+  <!-- Package body -->
+  <rect x="8" y="2" width="44" height="44" rx="2" fill="#303030" stroke="#1a1a1a" stroke-width="1"/>
+  <!-- Notch -->
+  <path d="M27 2 Q30 6 33 2" fill="#303030" stroke="#555" stroke-width="0.8"/>
+  <!-- Pin 1 dot -->
+  <circle cx="14" cy="8" r="1.5" fill="#b0b0b0"/>
+  <!-- IC label -->
+  <text x="30" y="22" text-anchor="middle" font-family="monospace" font-size="7" fill="#c0c0c0">555</text>
+  <text x="30" y="30" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#888">TIMER</text>
+
+  <!-- Left pins (1-4, top to bottom) -->
+  <!-- Pin 1: GND -->
+  <line x1="0" y1="8" x2="8" y2="8" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="8" r="1.5" fill="#c0c0c0"/>
+  <!-- Pin 2: TRIGGER -->
+  <line x1="0" y1="18" x2="8" y2="18" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="18" r="1.5" fill="#c0c0c0"/>
+  <!-- Pin 3: OUTPUT -->
+  <line x1="0" y1="28" x2="8" y2="28" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="28" r="1.5" fill="#c0c0c0"/>
+  <!-- Pin 4: RESET -->
+  <line x1="0" y1="38" x2="8" y2="38" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="38" r="1.5" fill="#c0c0c0"/>
+
+  <!-- Right pins (8-5, top to bottom) -->
+  <!-- Pin 8: VCC -->
+  <line x1="52" y1="8" x2="60" y2="8" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="60" cy="8" r="1.5" fill="#c0c0c0"/>
+  <!-- Pin 7: DISCHARGE -->
+  <line x1="52" y1="18" x2="60" y2="18" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="60" cy="18" r="1.5" fill="#c0c0c0"/>
+  <!-- Pin 6: THRESHOLD -->
+  <line x1="52" y1="28" x2="60" y2="28" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="60" cy="28" r="1.5" fill="#c0c0c0"/>
+  <!-- Pin 5: CONTROL -->
+  <line x1="52" y1="38" x2="60" y2="38" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="60" cy="38" r="1.5" fill="#c0c0c0"/>
+</svg>

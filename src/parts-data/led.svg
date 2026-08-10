@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 50" width="40" height="50">
+  <!-- LED — 5mm through-hole, bench-style front view -->
+  <!-- Leads -->
+  <line x1="14" y1="35" x2="14" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="26" y1="35" x2="26" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- Lens dome (red LED default) -->
+  <ellipse cx="20" cy="20" rx="12" ry="16" fill="#ff3030" opacity="0.7" stroke="#cc2020" stroke-width="0.8"/>
+  <!-- Highlight -->
+  <ellipse cx="16" cy="14" rx="4" ry="6" fill="#ff8080" opacity="0.4"/>
+  <!-- Flat at bottom (cathode side) -->
+  <rect x="8" y="33" width="24" height="4" rx="1" fill="#e8e0d8" stroke="#ccc" stroke-width="0.5"/>
+  <!-- Anode longer lead indicator -->
+  <text x="14" y="46" text-anchor="middle" font-family="monospace" font-size="4" fill="#888">+</text>
+  <!-- Terminal pads (at left/right edges for horizontal wiring) -->
+  <circle cx="0" cy="25" r="2" fill="#c0c0c0"/>
+  <circle cx="40" cy="25" r="2" fill="#c0c0c0"/>
+  <!-- Connection lines to pads -->
+  <line x1="0" y1="25" x2="8" y2="25" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <line x1="32" y1="25" x2="40" y2="25" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+</svg>

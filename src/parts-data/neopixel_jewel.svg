@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36" height="36">
+  <!-- NeoPixel Jewel — 7 LEDs (1 center + 6 ring), bench-style -->
+  <!-- PCB circle -->
+  <circle cx="18" cy="18" r="16" fill="#1a1a1a" stroke="#333" stroke-width="0.5"/>
+  <!-- 6 outer LEDs in hexagonal arrangement -->
+  <circle cx="18" cy="4" r="2.5" fill="#ff2020" opacity="0.7"/>
+  <circle cx="30" cy="11" r="2.5" fill="#ff8800" opacity="0.7"/>
+  <circle cx="30" cy="25" r="2.5" fill="#ffff00" opacity="0.7"/>
+  <circle cx="18" cy="32" r="2.5" fill="#00ff00" opacity="0.7"/>
+  <circle cx="6" cy="25" r="2.5" fill="#0088ff" opacity="0.7"/>
+  <circle cx="6" cy="11" r="2.5" fill="#cc00ff" opacity="0.7"/>
+  <!-- Center LED -->
+  <circle cx="18" cy="18" r="3" fill="#ffffff" opacity="0.6"/>
+  <!-- Pads (bottom) -->
+  <circle cx="10" cy="36" r="1.5" fill="#cc3030"/>
+  <circle cx="18" cy="36" r="1.5" fill="#30cc30"/>
+  <circle cx="26" cy="36" r="1.5" fill="#333"/>
+</svg>

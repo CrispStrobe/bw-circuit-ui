@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 64" width="16" height="64">
+  <!-- Flex Sensor — long strip, bench-style -->
+  <!-- Strip body -->
+  <rect x="2" y="2" width="12" height="52" rx="3" fill="#333" stroke="#222" stroke-width="0.8"/>
+  <!-- Resistive element (visible pattern) -->
+  <path d="M5 8 L11 8 L5 14 L11 14 L5 20 L11 20 L5 26 L11 26 L5 32 L11 32 L5 38 L11 38 L5 44 L11 44" fill="none" stroke="#555" stroke-width="0.8"/>
+  <!-- Connector tabs at bottom -->
+  <rect x="4" y="54" width="3" height="10" rx="0.5" fill="#c0a040" stroke="#a08020" stroke-width="0.3"/>
+  <rect x="9" y="54" width="3" height="10" rx="0.5" fill="#c0a040" stroke="#a08020" stroke-width="0.3"/>
+  <circle cx="5.5" cy="64" r="1.5" fill="#c0c0c0"/>
+  <circle cx="10.5" cy="64" r="1.5" fill="#c0c0c0"/>
+</svg>

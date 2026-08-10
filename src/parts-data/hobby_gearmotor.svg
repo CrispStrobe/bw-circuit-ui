@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70" width="70" height="70">
+  <!-- Hobby Gearmotor — yellow TT motor style, bench-style front view -->
+  <!-- Gearbox housing (yellow plastic) -->
+  <rect x="5" y="10" width="40" height="40" rx="3" fill="#e8c520" stroke="#c8a510" stroke-width="1"/>
+  <!-- Motor can (silver cylinder, attached to right of gearbox) -->
+  <rect x="45" y="15" width="20" height="30" rx="4" fill="#a0a0a0" stroke="#808080" stroke-width="0.8"/>
+  <!-- Motor endcap -->
+  <rect x="60" y="18" width="5" height="24" rx="2" fill="#888" stroke="#707070" stroke-width="0.5"/>
+  <!-- Output shaft (left side) -->
+  <rect x="0" y="27" width="7" height="6" rx="1" fill="#e0e0e0" stroke="#bbb" stroke-width="0.5"/>
+  <!-- Flat on shaft -->
+  <rect x="0" y="28" width="5" height="4" fill="#d0d0d0"/>
+  <!-- Gear visible through housing -->
+  <circle cx="25" cy="30" r="10" fill="#d4b020" stroke="#b09010" stroke-width="0.5"/>
+  <circle cx="25" cy="30" r="3" fill="#c8a510"/>
+  <!-- Terminal tabs -->
+  <rect x="55" y="46" width="4" height="10" rx="0.5" fill="#c0a040" stroke="#a08020" stroke-width="0.3"/>
+  <rect x="62" y="46" width="4" height="10" rx="0.5" fill="#c0a040" stroke="#a08020" stroke-width="0.3"/>
+  <!-- Connection points -->
+  <line x1="57" y1="56" x2="57" y2="70" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="57" cy="70" r="1.5" fill="#c0c0c0"/>
+  <line x1="64" y1="56" x2="64" y2="70" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="64" cy="70" r="1.5" fill="#c0c0c0"/>
+  <!-- Label -->
+  <text x="25" y="55" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#806000">GEARMOTOR</text>
+</svg>

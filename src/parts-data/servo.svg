@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 60" width="70" height="60">
+  <!-- Micro Servo — bench-style, blue rectangular body with horn -->
+  <!-- Main body -->
+  <rect x="5" y="12" width="60" height="38" rx="2" fill="#2266aa" stroke="#1a5090" stroke-width="1"/>
+  <!-- Mounting tabs -->
+  <rect x="0" y="38" width="70" height="5" rx="1" fill="#2266aa" stroke="#1a5090" stroke-width="0.5"/>
+  <!-- Mounting holes -->
+  <circle cx="5" cy="40.5" r="1.5" fill="#1a5090"/>
+  <circle cx="65" cy="40.5" r="1.5" fill="#1a5090"/>
+  <!-- Gear housing bump (top right) -->
+  <circle cx="52" cy="12" r="8" fill="#2a70b8" stroke="#1a5090" stroke-width="0.8"/>
+  <circle cx="52" cy="12" r="4" fill="#e0e0e0" stroke="#bbb" stroke-width="0.5"/>
+  <!-- Shaft -->
+  <rect x="50.5" y="0" width="3" height="6" rx="1" fill="#e0e0e0" stroke="#bbb" stroke-width="0.3"/>
+  <!-- Label -->
+  <text x="30" y="30" text-anchor="middle" font-family="monospace" font-size="5" fill="#c0d8f0">SERVO</text>
+  <!-- Cable (3 wires coming from bottom) -->
+  <line x1="28" y1="50" x2="28" y2="60" stroke="#d05020" stroke-width="2" stroke-linecap="round"/>
+  <line x1="35" y1="50" x2="35" y2="60" stroke="#cc3300" stroke-width="2" stroke-linecap="round"/>
+  <line x1="42" y1="50" x2="42" y2="60" stroke="#dd8800" stroke-width="2" stroke-linecap="round"/>
+  <!-- Wire connection points -->
+  <circle cx="28" cy="60" r="1.5" fill="#d05020"/>
+  <circle cx="35" cy="60" r="1.5" fill="#cc3300"/>
+  <circle cx="42" cy="60" r="1.5" fill="#dd8800"/>
+</svg>

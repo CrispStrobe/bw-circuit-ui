@@ -33,6 +33,18 @@ for (const f of readdirSync(src).filter(f => f.endsWith('.json'))) {
     if (!check) writeFileSync(target, body);
   }
 }
+// Also vendor SVG art files — same sync, same check
+let svgChanged = 0, svgTotal = 0;
+for (const f of readdirSync(src).filter(f => f.endsWith('.svg'))) {
+  svgTotal++;
+  const body = readFileSync(join(src, f), 'utf8');
+  const target = join(dst, f);
+  const prev = existsSync(target) ? readFileSync(target, 'utf8') : null;
+  if (prev !== body) {
+    svgChanged++;
+    if (!check) writeFileSync(target, body);
+  }
+}
 // Emit a static import index: works under ANY bundler (vite, webpack, esbuild)
 // - import.meta.glob is a vite-ism and lite builds with webpack.
 if (!check) {
@@ -52,4 +64,4 @@ if (check && changed > 0) {
   console.error(`sync-parts-data --check: ${changed}/${total} sidecars drifted — re-run the sync`);
   process.exit(1);
 }
-console.log(`sync-parts-data: ${total} sidecars, ${changed} ${check ? 'drifted' : 'updated'}`);
+console.log(`sync-parts-data: ${total} sidecars (${changed} ${check ? 'drifted' : 'updated'}), ${svgTotal} SVGs (${svgChanged} ${check ? 'drifted' : 'updated'})`);

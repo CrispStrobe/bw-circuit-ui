@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44">
+  <!-- NPN Transistor — TO-92 package, bench-style front view -->
+  <!-- Body (black plastic half-round) -->
+  <path d="M12 8 Q22 4 32 8 L32 36 Q22 40 12 36 Z" fill="#1a1a1a" stroke="#333" stroke-width="0.8"/>
+  <!-- Flat face -->
+  <rect x="14" y="10" width="16" height="24" rx="1" fill="#222" stroke="#333" stroke-width="0.3"/>
+  <!-- Type marking -->
+  <text x="22" y="22" text-anchor="middle" font-family="monospace" font-size="5" fill="#aaa">NPN</text>
+  <text x="22" y="29" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#666">2N2222</text>
+  <!-- Leads: Base (left), Collector (top), Emitter (bottom) -->
+  <line x1="0" y1="22" x2="12" y2="22" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="0" x2="22" y2="8" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="36" x2="22" y2="44" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Terminal pads -->
+  <circle cx="0" cy="22" r="2" fill="#c0c0c0"/>
+  <circle cx="22" cy="0" r="2" fill="#c0c0c0"/>
+  <circle cx="22" cy="44" r="2" fill="#c0c0c0"/>
+  <!-- Pin labels -->
+  <text x="5" y="19" font-family="monospace" font-size="3" fill="#888">B</text>
+  <text x="26" y="6" font-family="monospace" font-size="3" fill="#888">C</text>
+  <text x="26" y="42" font-family="monospace" font-size="3" fill="#888">E</text>
+</svg>

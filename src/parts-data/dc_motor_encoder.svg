@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 70" width="80" height="70">
+  <!-- DC Motor with Encoder — can motor + encoder disc, bench-style -->
+  <!-- Motor body -->
+  <rect x="10" y="8" width="40" height="44" rx="8" fill="#6a6a6a" stroke="#444" stroke-width="1"/>
+  <rect x="14" y="10" width="32" height="40" rx="6" fill="#808080" stroke="#5a5a5a" stroke-width="0.5"/>
+  <circle cx="30" cy="30" r="8" fill="#555" stroke="#444" stroke-width="0.8"/>
+  <circle cx="30" cy="30" r="3" fill="#b0b0b0"/>
+  <!-- Shaft -->
+  <rect x="28.5" y="0" width="3" height="10" rx="1" fill="#b0b0b0"/>
+  <!-- Encoder disc (attached to rear) -->
+  <rect x="50" y="14" width="18" height="32" rx="2" fill="#0a5a0a" stroke="#084a08" stroke-width="0.5"/>
+  <circle cx="59" cy="30" r="6" fill="#333" stroke="#444" stroke-width="0.3"/>
+  <!-- Encoder slots -->
+  <g stroke="#555" stroke-width="0.5">
+    <line x1="55" y1="26" x2="55" y2="34"/>
+    <line x1="59" y1="24" x2="59" y2="36"/>
+    <line x1="63" y1="26" x2="63" y2="34"/>
+  </g>
+  <text x="59" y="42" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#90c090">ENC</text>
+  <!-- Motor terminals -->
+  <line x1="20" y1="52" x2="20" y2="62" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="40" y1="52" x2="40" y2="62" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="20" cy="62" r="1.5" fill="#c0c0c0"/>
+  <circle cx="40" cy="62" r="1.5" fill="#c0c0c0"/>
+  <!-- Encoder terminals -->
+  <line x1="55" y1="46" x2="55" y2="62" stroke="#4488ff" stroke-width="1" stroke-linecap="round"/>
+  <line x1="63" y1="46" x2="63" y2="62" stroke="#44ff88" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="55" cy="62" r="1.5" fill="#4488ff"/>
+  <circle cx="63" cy="62" r="1.5" fill="#44ff88"/>
+  <!-- Label -->
+  <text x="30" y="67" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#888">M+ENC</text>
+</svg>

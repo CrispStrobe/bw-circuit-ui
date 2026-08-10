@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 40" width="36" height="40">
+  <!-- VCC Supply — power rail symbol, bench-style -->
+  <!-- Arrow pointing up -->
+  <polygon points="18,2 10,14 14,14 14,28 22,28 22,14 26,14" fill="#cc3030" stroke="#a02020" stroke-width="0.8"/>
+  <!-- Label -->
+  <text x="18" y="24" text-anchor="middle" font-family="monospace" font-size="6" fill="#fff" font-weight="bold">V+</text>
+  <!-- Lead wire going down -->
+  <line x1="18" y1="28" x2="18" y2="40" stroke="#cc3030" stroke-width="2" stroke-linecap="round"/>
+  <!-- Terminal pad -->
+  <circle cx="18" cy="40" r="2.5" fill="#cc3030"/>
+</svg>

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 56" width="120" height="56">
+  <!-- micro:bit board — bench-style top view -->
+  <!-- Note: v1 vs v2 is unverified (the reference catalogue does
+       not confirm which). This art is generic micro:bit shape. -->
+  <!-- PCB (characteristic shape with notched edge connector) -->
+  <path d="M10 2 L110 2 L116 8 L116 36 L110 42 L10 42 L4 36 L4 8 Z" fill="#222" stroke="#333" stroke-width="0.8"/>
+  <!-- 5x5 LED matrix -->
+  <g fill="#ff2020" opacity="0.3">
+    <circle cx="42" cy="14" r="1.5"/><circle cx="48" cy="14" r="1.5"/><circle cx="54" cy="14" r="1.5"/><circle cx="60" cy="14" r="1.5"/><circle cx="66" cy="14" r="1.5"/>
+    <circle cx="42" cy="20" r="1.5"/><circle cx="48" cy="20" r="1.5"/><circle cx="54" cy="20" r="1.5"/><circle cx="60" cy="20" r="1.5"/><circle cx="66" cy="20" r="1.5"/>
+    <circle cx="42" cy="26" r="1.5"/><circle cx="48" cy="26" r="1.5"/><circle cx="54" cy="26" r="1.5"/><circle cx="60" cy="26" r="1.5"/><circle cx="66" cy="26" r="1.5"/>
+    <circle cx="42" cy="32" r="1.5"/><circle cx="48" cy="32" r="1.5"/><circle cx="54" cy="32" r="1.5"/><circle cx="60" cy="32" r="1.5"/><circle cx="66" cy="32" r="1.5"/>
+    <circle cx="42" cy="38" r="1.5"/><circle cx="48" cy="38" r="1.5"/><circle cx="54" cy="38" r="1.5"/><circle cx="60" cy="38" r="1.5"/><circle cx="66" cy="38" r="1.5"/>
+  </g>
+  <!-- Some LEDs lit (heart pattern) -->
+  <g fill="#ff2020" opacity="0.8">
+    <circle cx="48" cy="14" r="1.5"/><circle cx="60" cy="14" r="1.5"/>
+    <circle cx="42" cy="20" r="1.5"/><circle cx="54" cy="20" r="1.5"/><circle cx="66" cy="20" r="1.5"/>
+    <circle cx="42" cy="26" r="1.5"/><circle cx="66" cy="26" r="1.5"/>
+    <circle cx="48" cy="32" r="1.5"/><circle cx="60" cy="32" r="1.5"/>
+    <circle cx="54" cy="38" r="1.5"/>
+  </g>
+  <!-- Button A (left) -->
+  <circle cx="18" cy="22" r="4" fill="#333" stroke="#555" stroke-width="0.5"/>
+  <circle cx="18" cy="22" r="2.5" fill="#444"/>
+  <text x="18" y="32" text-anchor="middle" font-family="monospace" font-size="3" fill="#888">A</text>
+  <!-- Button B (right) -->
+  <circle cx="90" cy="22" r="4" fill="#333" stroke="#555" stroke-width="0.5"/>
+  <circle cx="90" cy="22" r="2.5" fill="#444"/>
+  <text x="90" y="32" text-anchor="middle" font-family="monospace" font-size="3" fill="#888">B</text>
+  <!-- USB connector (top center) -->
+  <rect x="48" y="0" width="12" height="4" rx="1" fill="#c0c0c0" stroke="#999" stroke-width="0.3"/>
+  <!-- Edge connector pads at bottom (5 large + gaps) -->
+  <g fill="#c0a040" stroke="#a08020" stroke-width="0.3">
+    <rect x="14" y="42" width="10" height="14" rx="1"/>
+    <rect x="30" y="42" width="10" height="14" rx="1"/>
+    <rect x="46" y="42" width="10" height="14" rx="1"/>
+    <rect x="62" y="42" width="10" height="14" rx="1"/>
+    <rect x="78" y="42" width="10" height="14" rx="1"/>
+  </g>
+  <!-- Edge connector labels -->
+  <g font-family="monospace" font-size="3" fill="#888" text-anchor="middle">
+    <text x="19" y="52">0</text>
+    <text x="35" y="52">1</text>
+    <text x="51" y="52">2</text>
+    <text x="67" y="52">3V</text>
+    <text x="83" y="52">GND</text>
+  </g>
+  <!-- Terminal pads -->
+  <circle cx="19" cy="56" r="2" fill="#c0c0c0"/>
+  <circle cx="35" cy="56" r="2" fill="#c0c0c0"/>
+  <circle cx="51" cy="56" r="2" fill="#c0c0c0"/>
+  <circle cx="67" cy="56" r="2" fill="#ff8800"/>
+  <circle cx="83" cy="56" r="2" fill="#666"/>
+</svg>

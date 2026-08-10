@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 44" width="32" height="44">
+  <!-- Light Bulb — miniature incandescent, bench-style -->
+  <!-- Glass envelope -->
+  <ellipse cx="16" cy="16" rx="11" ry="14" fill="#f8f0d0" opacity="0.3" stroke="#ddd" stroke-width="0.5"/>
+  <!-- Filament -->
+  <path d="M12 16 Q14 10 16 16 Q18 22 20 16" fill="none" stroke="#e8a020" stroke-width="1" opacity="0.8"/>
+  <!-- Base (screw type) -->
+  <rect x="10" y="28" width="12" height="10" rx="2" fill="#c0c0c0" stroke="#999" stroke-width="0.5"/>
+  <!-- Thread lines -->
+  <line x1="10" y1="31" x2="22" y2="31" stroke="#aaa" stroke-width="0.5"/>
+  <line x1="10" y1="34" x2="22" y2="34" stroke="#aaa" stroke-width="0.5"/>
+  <!-- Leads -->
+  <line x1="12" y1="38" x2="12" y2="44" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="20" y1="38" x2="20" y2="44" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="12" cy="44" r="1.5" fill="#c0c0c0"/>
+  <circle cx="20" cy="44" r="1.5" fill="#c0c0c0"/>
+</svg>

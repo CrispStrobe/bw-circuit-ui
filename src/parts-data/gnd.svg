@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 40" width="36" height="40">
+  <!-- GND — ground rail symbol, bench-style -->
+  <!-- Lead wire coming from top -->
+  <line x1="18" y1="0" x2="18" y2="18" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+  <!-- Ground bars (3 decreasing width) -->
+  <line x1="6" y1="18" x2="30" y2="18" stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="10" y1="24" x2="26" y2="24" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+  <line x1="14" y1="30" x2="22" y2="30" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Terminal pad at connection point (top) -->
+  <circle cx="18" cy="10" r="2.5" fill="#333"/>
+</svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 48" width="56" height="48">
+  <!-- Solar Cell — flat panel, bench-style front view -->
+  <!-- Cell body (dark blue/black silicon) -->
+  <rect x="4" y="4" width="48" height="32" rx="2" fill="#1a2a4a" stroke="#0e1a30" stroke-width="0.8"/>
+  <!-- Grid lines (silver bus bars) -->
+  <line x1="16" y1="6" x2="16" y2="34" stroke="#8090a0" stroke-width="0.5"/>
+  <line x1="28" y1="6" x2="28" y2="34" stroke="#8090a0" stroke-width="0.5"/>
+  <line x1="40" y1="6" x2="40" y2="34" stroke="#8090a0" stroke-width="0.5"/>
+  <!-- Horizontal bus bars -->
+  <line x1="6" y1="12" x2="50" y2="12" stroke="#8090a0" stroke-width="0.3"/>
+  <line x1="6" y1="20" x2="50" y2="20" stroke="#8090a0" stroke-width="0.3"/>
+  <line x1="6" y1="28" x2="50" y2="28" stroke="#8090a0" stroke-width="0.3"/>
+  <!-- Anti-reflective coating shimmer -->
+  <rect x="6" y="6" width="44" height="28" rx="1" fill="#3366cc" opacity="0.15"/>
+  <!-- Wire leads -->
+  <line x1="18" y1="36" x2="18" y2="48" stroke="#cc3030" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="38" y1="36" x2="38" y2="48" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="18" cy="48" r="2" fill="#cc3030"/>
+  <circle cx="38" cy="48" r="2" fill="#333"/>
+  <!-- Polarity -->
+  <text x="18" y="44" text-anchor="middle" font-family="monospace" font-size="4" fill="#cc3030">+</text>
+  <text x="38" y="44" text-anchor="middle" font-family="monospace" font-size="5" fill="#666">-</text>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 28" width="40" height="28">
+  <!-- LDR / Photoresistor — disc type, bench-style -->
+  <!-- Leads -->
+  <line x1="5" y1="14" x2="12" y2="14" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="28" y1="14" x2="35" y2="14" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Disc body (brown/amber with squiggly pattern) -->
+  <circle cx="20" cy="14" r="9" fill="#c87830" stroke="#a06020" stroke-width="0.8"/>
+  <!-- Photoresistive pattern (zigzag track) -->
+  <path d="M14 11 L16 11 L16 17 L18 17 L18 11 L20 11 L20 17 L22 17 L22 11 L24 11 L24 17 L26 17" fill="none" stroke="#804020" stroke-width="0.8"/>
+  <!-- Clear window overlay -->
+  <circle cx="20" cy="14" r="9" fill="#e8c060" opacity="0.15"/>
+  <!-- Terminal pads -->
+  <circle cx="5" cy="14" r="2" fill="#c0c0c0"/>
+  <circle cx="35" cy="14" r="2" fill="#c0c0c0"/>
+</svg>

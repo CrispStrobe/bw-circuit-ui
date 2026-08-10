@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 36" width="48" height="36">
+  <!-- Ultrasonic Distance Sensor 3-pin (Parallax PING style) — bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="4" width="44" height="24" rx="2" fill="#0a5a0a" stroke="#084a08" stroke-width="0.8"/>
+  <!-- Single transducer (PING has one shared TX/RX) -->
+  <circle cx="24" cy="16" r="9" fill="#c0c0c0" stroke="#999" stroke-width="0.8"/>
+  <circle cx="24" cy="16" r="6" fill="#aaa" stroke="#888" stroke-width="0.3"/>
+  <!-- Label -->
+  <text x="24" y="30" text-anchor="middle" font-family="monospace" font-size="3" fill="#90c090">PING)))</text>
+  <!-- 3 pins: 5V, SIG, GND -->
+  <line x1="14" y1="28" x2="14" y2="36" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="24" y1="28" x2="24" y2="36" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="34" y1="28" x2="34" y2="36" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="14" cy="36" r="1.5" fill="#c0c0c0"/>
+  <circle cx="24" cy="36" r="1.5" fill="#c0c0c0"/>
+  <circle cx="34" cy="36" r="1.5" fill="#c0c0c0"/>
+</svg>

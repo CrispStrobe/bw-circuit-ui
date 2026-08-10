@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 28" width="40" height="28">
+  <!-- NTC Thermistor — disc/bead type, bench-style -->
+  <!-- Leads -->
+  <line x1="5" y1="14" x2="13" y2="14" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="27" y1="14" x2="35" y2="14" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Disc body (dark blue/black ceramic) -->
+  <ellipse cx="20" cy="14" rx="8" ry="8" fill="#1a2a4a" stroke="#0e1a30" stroke-width="0.8"/>
+  <!-- Marking -->
+  <text x="20" y="13" text-anchor="middle" font-family="monospace" font-size="4" fill="#6080b0">NTC</text>
+  <text x="20" y="18" text-anchor="middle" font-family="monospace" font-size="3" fill="#4060a0">10K</text>
+  <!-- Terminal pads -->
+  <circle cx="5" cy="14" r="2" fill="#c0c0c0"/>
+  <circle cx="35" cy="14" r="2" fill="#c0c0c0"/>
+</svg>

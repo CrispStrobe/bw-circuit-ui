@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+  <!-- Coin Cell CR2032 — top view, bench-style -->
+  <!-- Cell body -->
+  <circle cx="20" cy="20" r="16" fill="#c0c0c0" stroke="#999" stroke-width="0.8"/>
+  <!-- Inner ring -->
+  <circle cx="20" cy="20" r="12" fill="#d0d0d0" stroke="#bbb" stroke-width="0.3"/>
+  <!-- Label -->
+  <text x="20" y="18" text-anchor="middle" font-family="monospace" font-size="4" fill="#555">CR2032</text>
+  <text x="20" y="24" text-anchor="middle" font-family="monospace" font-size="5" fill="#444" font-weight="bold">3V</text>
+  <!-- Polarity -->
+  <text x="20" y="10" text-anchor="middle" font-family="monospace" font-size="5" fill="#cc3030">+</text>
+  <!-- Terminal pads (top = +, bottom = -) -->
+  <circle cx="20" cy="4" r="2" fill="#cc3030"/>
+  <circle cx="20" cy="36" r="2" fill="#666"/>
+</svg>

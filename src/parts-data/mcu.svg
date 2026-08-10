@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 160" width="120" height="160">
+  <!-- MCU Board — Arduino-style development board, bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="2" width="116" height="156" rx="4" fill="#0066aa" stroke="#004080" stroke-width="1"/>
+  <!-- USB connector -->
+  <rect x="40" y="0" width="40" height="12" rx="2" fill="#c0c0c0" stroke="#999" stroke-width="0.5"/>
+  <rect x="44" y="2" width="32" height="8" rx="1" fill="#666"/>
+  <!-- Main IC chip -->
+  <rect x="35" y="50" width="50" height="50" rx="2" fill="#1a1a1a" stroke="#333" stroke-width="0.8"/>
+  <path d="M55 50 Q60 54 65 50" fill="#1a1a1a" stroke="#555" stroke-width="0.5"/>
+  <circle cx="40" cy="56" r="1.5" fill="#666"/>
+  <text x="60" y="75" text-anchor="middle" font-family="monospace" font-size="5" fill="#888">ATmega</text>
+  <text x="60" y="83" text-anchor="middle" font-family="monospace" font-size="4" fill="#666">328P</text>
+  <!-- Crystal -->
+  <rect x="88" y="60" width="8" height="14" rx="1" fill="#c0c0c0" stroke="#999" stroke-width="0.3"/>
+  <!-- Power LED -->
+  <circle cx="15" cy="140" r="2" fill="#00ff00" opacity="0.8"/>
+  <text x="15" y="148" text-anchor="middle" font-family="monospace" font-size="3" fill="#00aa00">PWR</text>
+  <!-- TX/RX LEDs -->
+  <circle cx="25" cy="140" r="1.5" fill="#ff4040" opacity="0.5"/>
+  <circle cx="33" cy="140" r="1.5" fill="#ffff40" opacity="0.5"/>
+  <!-- Reset button -->
+  <rect x="90" y="30" width="10" height="8" rx="1" fill="#ddd" stroke="#999" stroke-width="0.3"/>
+  <text x="95" y="45" text-anchor="middle" font-family="monospace" font-size="3" fill="#90b0d0">RST</text>
+  <!-- Pin headers — left side (digital pins) -->
+  <g fill="#333" stroke="#555" stroke-width="0.3">
+    <rect x="0" y="18" width="8" height="120" rx="1"/>
+  </g>
+  <!-- Pin headers — right side (analog + power) -->
+  <g fill="#333" stroke="#555" stroke-width="0.3">
+    <rect x="112" y="18" width="8" height="120" rx="1"/>
+  </g>
+  <!-- Label -->
+  <text x="60" y="128" text-anchor="middle" font-family="monospace" font-size="6" fill="#c0d8f0">MCU</text>
+</svg>

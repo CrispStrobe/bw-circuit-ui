@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 36" width="72" height="36">
+  <!-- 7-Segment Clock Display — 4-digit I2C module, bench-style -->
+  <!-- Note: controller IC unverified (the reference catalogue does
+       not name it). Could be HT16K33 or TM1637 — NOT interchangeable.
+       This art is generic; the sidecar assumes I2C (HT16K33-style). -->
+  <!-- PCB -->
+  <rect x="2" y="2" width="68" height="24" rx="2" fill="#cc0000" stroke="#aa0000" stroke-width="0.8"/>
+  <!-- Display housing -->
+  <rect x="6" y="4" width="60" height="18" rx="1" fill="#1a1a1a" stroke="#333" stroke-width="0.5"/>
+  <!-- 4 digits + colon (simplified) -->
+  <g fill="#ff2020" opacity="0.7" font-family="monospace" font-size="12" text-anchor="middle">
+    <text x="16" y="18">1</text>
+    <text x="28" y="18">2</text>
+    <text x="44" y="18">3</text>
+    <text x="56" y="18">4</text>
+  </g>
+  <!-- Colon -->
+  <circle cx="36" cy="10" r="1.2" fill="#ff2020" opacity="0.6"/>
+  <circle cx="36" cy="16" r="1.2" fill="#ff2020" opacity="0.6"/>
+  <!-- 4-pin header (I2C) -->
+  <line x1="18" y1="26" x2="18" y2="36" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="28" y1="26" x2="28" y2="36" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="38" y1="26" x2="38" y2="36" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="48" y1="26" x2="48" y2="36" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="18" cy="36" r="1.5" fill="#c0c0c0"/>
+  <circle cx="28" cy="36" r="1.5" fill="#c0c0c0"/>
+  <circle cx="38" cy="36" r="1.5" fill="#c0c0c0"/>
+  <circle cx="48" cy="36" r="1.5" fill="#c0c0c0"/>
+</svg>

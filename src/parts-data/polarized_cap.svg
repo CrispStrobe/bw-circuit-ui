@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 40" width="28" height="40">
+  <!-- Polarized (Electrolytic) Capacitor — cylindrical, bench-style -->
+  <!-- Body cylinder (top view) -->
+  <rect x="4" y="4" width="20" height="28" rx="5" fill="#1a3060" stroke="#0e2040" stroke-width="0.8"/>
+  <!-- Sleeve markings -->
+  <rect x="6" y="6" width="16" height="4" rx="1" fill="#2050a0" opacity="0.5"/>
+  <!-- Negative stripe -->
+  <rect x="4" y="6" width="3" height="24" fill="#c0c0c0" opacity="0.3"/>
+  <!-- Polarity marking -->
+  <text x="18" y="15" text-anchor="middle" font-family="monospace" font-size="5" fill="#6090c0" font-weight="bold">+</text>
+  <!-- Value -->
+  <text x="14" y="24" text-anchor="middle" font-family="monospace" font-size="4" fill="#8ab0d0">100u</text>
+  <text x="14" y="30" text-anchor="middle" font-family="monospace" font-size="3" fill="#6090b0">25V</text>
+  <!-- Leads -->
+  <line x1="10" y1="32" x2="10" y2="40" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="18" y1="32" x2="18" y2="40" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="10" cy="40" r="1.5" fill="#cc3030"/>
+  <circle cx="18" cy="40" r="1.5" fill="#666"/>
+</svg>

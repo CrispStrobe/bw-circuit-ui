@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="24" height="36">
+  <!-- Photodiode — clear-window TO-18 style, bench-style -->
+  <!-- Body (metal can) -->
+  <circle cx="12" cy="14" r="8" fill="#888" stroke="#666" stroke-width="0.8"/>
+  <!-- Window (clear lens for light) -->
+  <circle cx="12" cy="14" r="5" fill="#ccd8e8" opacity="0.5" stroke="#aab0c0" stroke-width="0.3"/>
+  <!-- Sensing element visible -->
+  <rect x="10" y="12" width="4" height="4" rx="0.5" fill="#333"/>
+  <!-- Light arrows -->
+  <line x1="4" y1="4" x2="9" y2="9" stroke="#ff8800" stroke-width="0.5" stroke-dasharray="1,1"/>
+  <line x1="8" y1="2" x2="11" y2="7" stroke="#ff8800" stroke-width="0.5" stroke-dasharray="1,1"/>
+  <!-- Leads -->
+  <line x1="8" y1="22" x2="8" y2="36" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="16" y1="22" x2="16" y2="36" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="36" r="1.5" fill="#c0c0c0"/>
+  <circle cx="16" cy="36" r="1.5" fill="#c0c0c0"/>
+</svg>

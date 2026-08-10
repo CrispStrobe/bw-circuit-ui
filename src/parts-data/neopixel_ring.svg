@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="56" height="56">
+  <!-- NeoPixel Ring (16 LEDs) — circular PCB, bench-style -->
+  <!-- PCB ring -->
+  <circle cx="28" cy="28" r="24" fill="#1a1a1a" stroke="#333" stroke-width="0.5"/>
+  <circle cx="28" cy="28" r="12" fill="#111" stroke="#333" stroke-width="0.3"/>
+  <!-- 16 LEDs around the ring -->
+  <g opacity="0.7">
+    <circle cx="28" cy="6" r="2.5" fill="#ff2020"/>
+    <circle cx="37" cy="7.5" r="2.5" fill="#ff4400"/>
+    <circle cx="44" cy="13" r="2.5" fill="#ff8800"/>
+    <circle cx="48.5" cy="21" r="2.5" fill="#ffcc00"/>
+    <circle cx="48.5" cy="35" r="2.5" fill="#88ff00"/>
+    <circle cx="44" cy="43" r="2.5" fill="#00ff00"/>
+    <circle cx="37" cy="48.5" r="2.5" fill="#00ff88"/>
+    <circle cx="28" cy="50" r="2.5" fill="#00ffff"/>
+    <circle cx="19" cy="48.5" r="2.5" fill="#0088ff"/>
+    <circle cx="12" cy="43" r="2.5" fill="#0044ff"/>
+    <circle cx="7.5" cy="35" r="2.5" fill="#4400ff"/>
+    <circle cx="7.5" cy="21" r="2.5" fill="#8800ff"/>
+    <circle cx="12" cy="13" r="2.5" fill="#cc00ff"/>
+    <circle cx="19" cy="7.5" r="2.5" fill="#ff00cc"/>
+    <circle cx="24" cy="16" r="2" fill="#ff0088"/>
+    <circle cx="32" cy="16" r="2" fill="#ff0044"/>
+  </g>
+  <!-- Pads -->
+  <circle cx="20" cy="28" r="1.5" fill="#cc3030"/>
+  <circle cx="28" cy="28" r="1.5" fill="#30cc30"/>
+  <circle cx="36" cy="28" r="1.5" fill="#333"/>
+</svg>

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 56" width="140" height="56">
+  <!-- I2C LCD 16x2 — LCD with I2C backpack, bench-style -->
+  <!-- PCB -->
+  <rect x="0" y="0" width="140" height="56" rx="3" fill="#1a6a2a" stroke="#0e4a1a" stroke-width="1"/>
+  <!-- LCD glass -->
+  <rect x="10" y="6" width="120" height="30" rx="2" fill="#3a5a2a" stroke="#2a4a1a" stroke-width="0.5"/>
+  <!-- Character grid (simplified) -->
+  <g fill="#4a7a3a" opacity="0.8">
+    <rect x="14" y="10" width="5" height="8" rx="0.5"/><rect x="21" y="10" width="5" height="8" rx="0.5"/>
+    <rect x="28" y="10" width="5" height="8" rx="0.5"/><rect x="35" y="10" width="5" height="8" rx="0.5"/>
+    <rect x="42" y="10" width="5" height="8" rx="0.5"/><rect x="49" y="10" width="5" height="8" rx="0.5"/>
+    <rect x="56" y="10" width="5" height="8" rx="0.5"/><rect x="63" y="10" width="5" height="8" rx="0.5"/>
+    <rect x="70" y="10" width="5" height="8" rx="0.5"/><rect x="77" y="10" width="5" height="8" rx="0.5"/>
+    <rect x="84" y="10" width="5" height="8" rx="0.5"/><rect x="91" y="10" width="5" height="8" rx="0.5"/>
+    <rect x="98" y="10" width="5" height="8" rx="0.5"/><rect x="105" y="10" width="5" height="8" rx="0.5"/>
+    <rect x="112" y="10" width="5" height="8" rx="0.5"/><rect x="119" y="10" width="5" height="8" rx="0.5"/>
+    <rect x="14" y="22" width="5" height="8" rx="0.5"/><rect x="21" y="22" width="5" height="8" rx="0.5"/>
+    <rect x="28" y="22" width="5" height="8" rx="0.5"/><rect x="35" y="22" width="5" height="8" rx="0.5"/>
+    <rect x="42" y="22" width="5" height="8" rx="0.5"/><rect x="49" y="22" width="5" height="8" rx="0.5"/>
+    <rect x="56" y="22" width="5" height="8" rx="0.5"/><rect x="63" y="22" width="5" height="8" rx="0.5"/>
+    <rect x="70" y="22" width="5" height="8" rx="0.5"/><rect x="77" y="22" width="5" height="8" rx="0.5"/>
+    <rect x="84" y="22" width="5" height="8" rx="0.5"/><rect x="91" y="22" width="5" height="8" rx="0.5"/>
+    <rect x="98" y="22" width="5" height="8" rx="0.5"/><rect x="105" y="22" width="5" height="8" rx="0.5"/>
+    <rect x="112" y="22" width="5" height="8" rx="0.5"/><rect x="119" y="22" width="5" height="8" rx="0.5"/>
+  </g>
+  <!-- I2C backpack (blue PCB on back, visible at bottom) -->
+  <rect x="50" y="40" width="40" height="10" rx="1" fill="#0066aa" stroke="#004080" stroke-width="0.5"/>
+  <text x="70" y="47" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#c0d8f0">I2C</text>
+  <!-- Trim pot on backpack -->
+  <circle cx="94" cy="46" r="3" fill="#4488ff" stroke="#336" stroke-width="0.3"/>
+  <!-- 4 pins (I2C) -->
+  <line x1="56" y1="50" x2="56" y2="56" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="64" y1="50" x2="64" y2="56" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="72" y1="50" x2="72" y2="56" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="80" y1="50" x2="80" y2="56" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="56" cy="56" r="1.5" fill="#c0c0c0"/>
+  <circle cx="64" cy="56" r="1.5" fill="#c0c0c0"/>
+  <circle cx="72" cy="56" r="1.5" fill="#c0c0c0"/>
+  <circle cx="80" cy="56" r="1.5" fill="#c0c0c0"/>
+</svg>

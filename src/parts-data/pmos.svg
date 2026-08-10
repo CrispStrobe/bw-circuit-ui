@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44">
+  <!-- P-MOSFET — TO-220 style package, bench-style -->
+  <rect x="8" y="4" width="28" height="32" rx="2" fill="#2a2a2a" stroke="#444" stroke-width="0.8"/>
+  <rect x="10" y="4" width="24" height="8" rx="1" fill="#808080" stroke="#666" stroke-width="0.5"/>
+  <circle cx="22" cy="8" r="2" fill="#555" stroke="#444" stroke-width="0.5"/>
+  <text x="22" y="24" text-anchor="middle" font-family="monospace" font-size="5" fill="#aaa">PMOS</text>
+  <text x="22" y="31" text-anchor="middle" font-family="monospace" font-size="3" fill="#666">IRF9540</text>
+  <line x1="0" y1="22" x2="8" y2="22" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="0" x2="22" y2="4" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="36" x2="22" y2="44" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="22" r="2" fill="#c0c0c0"/>
+  <circle cx="22" cy="0" r="2" fill="#c0c0c0"/>
+  <circle cx="22" cy="44" r="2" fill="#c0c0c0"/>
+  <text x="5" y="19" font-family="monospace" font-size="3" fill="#888">G</text>
+  <text x="26" y="4" font-family="monospace" font-size="3" fill="#888">D</text>
+  <text x="26" y="42" font-family="monospace" font-size="3" fill="#888">S</text>
+</svg>

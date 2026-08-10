@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 120" width="330" height="120">
+  <!-- Breadboard Standard (full size) — bench-style top view -->
+  <!-- Base plate (cream/white plastic) -->
+  <rect x="0" y="0" width="330" height="120" rx="3" fill="#e8e0d0" stroke="#ccc" stroke-width="1"/>
+
+  <!-- Top power rail -->
+  <rect x="4" y="4" width="322" height="16" rx="1" fill="#f0ece4" stroke="#ddd" stroke-width="0.5"/>
+  <!-- Red strip (+ rail) -->
+  <line x1="8" y1="8" x2="326" y2="8" stroke="#cc3030" stroke-width="1" opacity="0.6"/>
+  <!-- Blue strip (- rail) -->
+  <line x1="8" y1="16" x2="326" y2="16" stroke="#3030cc" stroke-width="1" opacity="0.6"/>
+  <!-- Power rail holes (top) -->
+  <g fill="#444" opacity="0.5">
+    <!-- + row -->
+    <line x1="0" y1="0" x2="0" y2="0" stroke="none"/>
+  </g>
+  <!-- Simplified: dots for holes at regular intervals -->
+  <g fill="#555" opacity="0.4">
+    <!-- Top + rail holes, every 6px -->
+    <circle cx="14" cy="8" r="1"/><circle cx="20" cy="8" r="1"/><circle cx="26" cy="8" r="1"/><circle cx="32" cy="8" r="1"/><circle cx="38" cy="8" r="1"/>
+    <circle cx="48" cy="8" r="1"/><circle cx="54" cy="8" r="1"/><circle cx="60" cy="8" r="1"/><circle cx="66" cy="8" r="1"/><circle cx="72" cy="8" r="1"/>
+    <circle cx="82" cy="8" r="1"/><circle cx="88" cy="8" r="1"/><circle cx="94" cy="8" r="1"/><circle cx="100" cy="8" r="1"/><circle cx="106" cy="8" r="1"/>
+    <circle cx="116" cy="8" r="1"/><circle cx="122" cy="8" r="1"/><circle cx="128" cy="8" r="1"/><circle cx="134" cy="8" r="1"/><circle cx="140" cy="8" r="1"/>
+    <circle cx="150" cy="8" r="1"/><circle cx="156" cy="8" r="1"/><circle cx="162" cy="8" r="1"/><circle cx="168" cy="8" r="1"/><circle cx="174" cy="8" r="1"/>
+    <circle cx="184" cy="8" r="1"/><circle cx="190" cy="8" r="1"/><circle cx="196" cy="8" r="1"/><circle cx="202" cy="8" r="1"/><circle cx="208" cy="8" r="1"/>
+    <circle cx="218" cy="8" r="1"/><circle cx="224" cy="8" r="1"/><circle cx="230" cy="8" r="1"/><circle cx="236" cy="8" r="1"/><circle cx="242" cy="8" r="1"/>
+    <circle cx="252" cy="8" r="1"/><circle cx="258" cy="8" r="1"/><circle cx="264" cy="8" r="1"/><circle cx="270" cy="8" r="1"/><circle cx="276" cy="8" r="1"/>
+    <circle cx="286" cy="8" r="1"/><circle cx="292" cy="8" r="1"/><circle cx="298" cy="8" r="1"/><circle cx="304" cy="8" r="1"/><circle cx="310" cy="8" r="1"/>
+    <!-- Top - rail holes -->
+    <circle cx="14" cy="16" r="1"/><circle cx="20" cy="16" r="1"/><circle cx="26" cy="16" r="1"/><circle cx="32" cy="16" r="1"/><circle cx="38" cy="16" r="1"/>
+    <circle cx="48" cy="16" r="1"/><circle cx="54" cy="16" r="1"/><circle cx="60" cy="16" r="1"/><circle cx="66" cy="16" r="1"/><circle cx="72" cy="16" r="1"/>
+    <circle cx="82" cy="16" r="1"/><circle cx="88" cy="16" r="1"/><circle cx="94" cy="16" r="1"/><circle cx="100" cy="16" r="1"/><circle cx="106" cy="16" r="1"/>
+    <circle cx="116" cy="16" r="1"/><circle cx="122" cy="16" r="1"/><circle cx="128" cy="16" r="1"/><circle cx="134" cy="16" r="1"/><circle cx="140" cy="16" r="1"/>
+    <circle cx="150" cy="16" r="1"/><circle cx="156" cy="16" r="1"/><circle cx="162" cy="16" r="1"/><circle cx="168" cy="16" r="1"/><circle cx="174" cy="16" r="1"/>
+    <circle cx="184" cy="16" r="1"/><circle cx="190" cy="16" r="1"/><circle cx="196" cy="16" r="1"/><circle cx="202" cy="16" r="1"/><circle cx="208" cy="16" r="1"/>
+    <circle cx="218" cy="16" r="1"/><circle cx="224" cy="16" r="1"/><circle cx="230" cy="16" r="1"/><circle cx="236" cy="16" r="1"/><circle cx="242" cy="16" r="1"/>
+    <circle cx="252" cy="16" r="1"/><circle cx="258" cy="16" r="1"/><circle cx="264" cy="16" r="1"/><circle cx="270" cy="16" r="1"/><circle cx="276" cy="16" r="1"/>
+    <circle cx="286" cy="16" r="1"/><circle cx="292" cy="16" r="1"/><circle cx="298" cy="16" r="1"/><circle cx="304" cy="16" r="1"/><circle cx="310" cy="16" r="1"/>
+  </g>
+
+  <!-- Top terminal area (rows a-e) -->
+  <rect x="4" y="22" width="322" height="34" rx="1" fill="#f0ece4" stroke="#ddd" stroke-width="0.5"/>
+  <!-- 5 rows of holes, 30 columns -->
+  <g fill="#555" opacity="0.4">
+    <!-- Row a (y=26), row b (y=32), row c (y=38), row d (y=44), row e (y=50) -->
+    <!-- Sample columns at 6px spacing, 30 groups of 5 + gaps every 5 -->
+    <!-- Representing with fewer dots for SVG size; pattern is regular -->
+    <!-- First 10 columns -->
+    <circle cx="14" cy="26" r="1"/><circle cx="20" cy="26" r="1"/><circle cx="26" cy="26" r="1"/><circle cx="32" cy="26" r="1"/><circle cx="38" cy="26" r="1"/>
+    <circle cx="48" cy="26" r="1"/><circle cx="54" cy="26" r="1"/><circle cx="60" cy="26" r="1"/><circle cx="66" cy="26" r="1"/><circle cx="72" cy="26" r="1"/>
+    <circle cx="14" cy="32" r="1"/><circle cx="20" cy="32" r="1"/><circle cx="26" cy="32" r="1"/><circle cx="32" cy="32" r="1"/><circle cx="38" cy="32" r="1"/>
+    <circle cx="48" cy="32" r="1"/><circle cx="54" cy="32" r="1"/><circle cx="60" cy="32" r="1"/><circle cx="66" cy="32" r="1"/><circle cx="72" cy="32" r="1"/>
+    <circle cx="14" cy="38" r="1"/><circle cx="20" cy="38" r="1"/><circle cx="26" cy="38" r="1"/><circle cx="32" cy="38" r="1"/><circle cx="38" cy="38" r="1"/>
+    <circle cx="48" cy="38" r="1"/><circle cx="54" cy="38" r="1"/><circle cx="60" cy="38" r="1"/><circle cx="66" cy="38" r="1"/><circle cx="72" cy="38" r="1"/>
+    <circle cx="14" cy="44" r="1"/><circle cx="20" cy="44" r="1"/><circle cx="26" cy="44" r="1"/><circle cx="32" cy="44" r="1"/><circle cx="38" cy="44" r="1"/>
+    <circle cx="48" cy="44" r="1"/><circle cx="54" cy="44" r="1"/><circle cx="60" cy="44" r="1"/><circle cx="66" cy="44" r="1"/><circle cx="72" cy="44" r="1"/>
+    <circle cx="14" cy="50" r="1"/><circle cx="20" cy="50" r="1"/><circle cx="26" cy="50" r="1"/><circle cx="32" cy="50" r="1"/><circle cx="38" cy="50" r="1"/>
+    <circle cx="48" cy="50" r="1"/><circle cx="54" cy="50" r="1"/><circle cx="60" cy="50" r="1"/><circle cx="66" cy="50" r="1"/><circle cx="72" cy="50" r="1"/>
+    <!-- Continue pattern across board... middle columns -->
+    <circle cx="162" cy="26" r="1"/><circle cx="168" cy="26" r="1"/><circle cx="174" cy="26" r="1"/>
+    <circle cx="162" cy="32" r="1"/><circle cx="168" cy="32" r="1"/><circle cx="174" cy="32" r="1"/>
+    <circle cx="162" cy="38" r="1"/><circle cx="168" cy="38" r="1"/><circle cx="174" cy="38" r="1"/>
+    <circle cx="162" cy="44" r="1"/><circle cx="168" cy="44" r="1"/><circle cx="174" cy="44" r="1"/>
+    <circle cx="162" cy="50" r="1"/><circle cx="168" cy="50" r="1"/><circle cx="174" cy="50" r="1"/>
+    <!-- Right columns -->
+    <circle cx="286" cy="26" r="1"/><circle cx="292" cy="26" r="1"/><circle cx="298" cy="26" r="1"/><circle cx="304" cy="26" r="1"/><circle cx="310" cy="26" r="1"/>
+    <circle cx="286" cy="32" r="1"/><circle cx="292" cy="32" r="1"/><circle cx="298" cy="32" r="1"/><circle cx="304" cy="32" r="1"/><circle cx="310" cy="32" r="1"/>
+    <circle cx="286" cy="38" r="1"/><circle cx="292" cy="38" r="1"/><circle cx="298" cy="38" r="1"/><circle cx="304" cy="38" r="1"/><circle cx="310" cy="38" r="1"/>
+    <circle cx="286" cy="44" r="1"/><circle cx="292" cy="44" r="1"/><circle cx="298" cy="44" r="1"/><circle cx="304" cy="44" r="1"/><circle cx="310" cy="44" r="1"/>
+    <circle cx="286" cy="50" r="1"/><circle cx="292" cy="50" r="1"/><circle cx="298" cy="50" r="1"/><circle cx="304" cy="50" r="1"/><circle cx="310" cy="50" r="1"/>
+  </g>
+
+  <!-- Center gap -->
+  <rect x="4" y="56" width="322" height="8" rx="0" fill="#d8d0c0" stroke="#ccc" stroke-width="0.3"/>
+  <!-- Row/column labels in the gap -->
+  <g font-family="monospace" font-size="3" fill="#999" text-anchor="middle">
+    <text x="14" y="62">1</text><text x="48" y="62">5</text><text x="82" y="62">10</text>
+    <text x="150" y="62">15</text><text x="218" y="62">20</text><text x="286" y="62">25</text>
+    <text x="310" y="62">30</text>
+  </g>
+
+  <!-- Bottom terminal area (rows f-j) -->
+  <rect x="4" y="64" width="322" height="34" rx="1" fill="#f0ece4" stroke="#ddd" stroke-width="0.5"/>
+  <g fill="#555" opacity="0.4">
+    <!-- Same pattern as top, rows f(70) g(76) h(82) i(88) j(94) -->
+    <circle cx="14" cy="70" r="1"/><circle cx="20" cy="70" r="1"/><circle cx="26" cy="70" r="1"/><circle cx="32" cy="70" r="1"/><circle cx="38" cy="70" r="1"/>
+    <circle cx="48" cy="70" r="1"/><circle cx="54" cy="70" r="1"/><circle cx="60" cy="70" r="1"/><circle cx="66" cy="70" r="1"/><circle cx="72" cy="70" r="1"/>
+    <circle cx="14" cy="76" r="1"/><circle cx="20" cy="76" r="1"/><circle cx="26" cy="76" r="1"/><circle cx="32" cy="76" r="1"/><circle cx="38" cy="76" r="1"/>
+    <circle cx="48" cy="76" r="1"/><circle cx="54" cy="76" r="1"/><circle cx="60" cy="76" r="1"/><circle cx="66" cy="76" r="1"/><circle cx="72" cy="76" r="1"/>
+    <circle cx="14" cy="82" r="1"/><circle cx="20" cy="82" r="1"/><circle cx="26" cy="82" r="1"/><circle cx="32" cy="82" r="1"/><circle cx="38" cy="82" r="1"/>
+    <circle cx="48" cy="82" r="1"/><circle cx="54" cy="82" r="1"/><circle cx="60" cy="82" r="1"/><circle cx="66" cy="82" r="1"/><circle cx="72" cy="82" r="1"/>
+    <circle cx="14" cy="88" r="1"/><circle cx="20" cy="88" r="1"/><circle cx="26" cy="88" r="1"/><circle cx="32" cy="88" r="1"/><circle cx="38" cy="88" r="1"/>
+    <circle cx="48" cy="88" r="1"/><circle cx="54" cy="88" r="1"/><circle cx="60" cy="88" r="1"/><circle cx="66" cy="88" r="1"/><circle cx="72" cy="88" r="1"/>
+    <circle cx="14" cy="94" r="1"/><circle cx="20" cy="94" r="1"/><circle cx="26" cy="94" r="1"/><circle cx="32" cy="94" r="1"/><circle cx="38" cy="94" r="1"/>
+    <circle cx="48" cy="94" r="1"/><circle cx="54" cy="94" r="1"/><circle cx="60" cy="94" r="1"/><circle cx="66" cy="94" r="1"/><circle cx="72" cy="94" r="1"/>
+    <!-- Middle -->
+    <circle cx="162" cy="70" r="1"/><circle cx="168" cy="70" r="1"/><circle cx="174" cy="70" r="1"/>
+    <circle cx="162" cy="76" r="1"/><circle cx="168" cy="76" r="1"/><circle cx="174" cy="76" r="1"/>
+    <circle cx="162" cy="82" r="1"/><circle cx="168" cy="82" r="1"/><circle cx="174" cy="82" r="1"/>
+    <circle cx="162" cy="88" r="1"/><circle cx="168" cy="88" r="1"/><circle cx="174" cy="88" r="1"/>
+    <circle cx="162" cy="94" r="1"/><circle cx="168" cy="94" r="1"/><circle cx="174" cy="94" r="1"/>
+    <!-- Right -->
+    <circle cx="286" cy="70" r="1"/><circle cx="292" cy="70" r="1"/><circle cx="298" cy="70" r="1"/><circle cx="304" cy="70" r="1"/><circle cx="310" cy="70" r="1"/>
+    <circle cx="286" cy="76" r="1"/><circle cx="292" cy="76" r="1"/><circle cx="298" cy="76" r="1"/><circle cx="304" cy="76" r="1"/><circle cx="310" cy="76" r="1"/>
+    <circle cx="286" cy="82" r="1"/><circle cx="292" cy="82" r="1"/><circle cx="298" cy="82" r="1"/><circle cx="304" cy="82" r="1"/><circle cx="310" cy="82" r="1"/>
+    <circle cx="286" cy="88" r="1"/><circle cx="292" cy="88" r="1"/><circle cx="298" cy="88" r="1"/><circle cx="304" cy="88" r="1"/><circle cx="310" cy="88" r="1"/>
+    <circle cx="286" cy="94" r="1"/><circle cx="292" cy="94" r="1"/><circle cx="298" cy="94" r="1"/><circle cx="304" cy="94" r="1"/><circle cx="310" cy="94" r="1"/>
+  </g>
+
+  <!-- Bottom power rail -->
+  <rect x="4" y="100" width="322" height="16" rx="1" fill="#f0ece4" stroke="#ddd" stroke-width="0.5"/>
+  <line x1="8" y1="104" x2="326" y2="104" stroke="#cc3030" stroke-width="1" opacity="0.6"/>
+  <line x1="8" y1="112" x2="326" y2="112" stroke="#3030cc" stroke-width="1" opacity="0.6"/>
+  <g fill="#555" opacity="0.4">
+    <circle cx="14" cy="104" r="1"/><circle cx="20" cy="104" r="1"/><circle cx="26" cy="104" r="1"/><circle cx="32" cy="104" r="1"/><circle cx="38" cy="104" r="1"/>
+    <circle cx="48" cy="104" r="1"/><circle cx="54" cy="104" r="1"/><circle cx="60" cy="104" r="1"/><circle cx="66" cy="104" r="1"/><circle cx="72" cy="104" r="1"/>
+    <circle cx="14" cy="112" r="1"/><circle cx="20" cy="112" r="1"/><circle cx="26" cy="112" r="1"/><circle cx="32" cy="112" r="1"/><circle cx="38" cy="112" r="1"/>
+    <circle cx="48" cy="112" r="1"/><circle cx="54" cy="112" r="1"/><circle cx="60" cy="112" r="1"/><circle cx="66" cy="112" r="1"/><circle cx="72" cy="112" r="1"/>
+  </g>
+
+  <!-- Row labels (left edge) -->
+  <g font-family="monospace" font-size="3" fill="#999">
+    <text x="7" y="28">a</text><text x="7" y="34">b</text><text x="7" y="40">c</text><text x="7" y="46">d</text><text x="7" y="52">e</text>
+    <text x="7" y="72">f</text><text x="7" y="78">g</text><text x="7" y="84">h</text><text x="7" y="90">i</text><text x="7" y="96">j</text>
+  </g>
+</svg>

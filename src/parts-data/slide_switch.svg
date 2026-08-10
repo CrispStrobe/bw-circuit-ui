@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 20" width="36" height="20">
+  <!-- Slide Switch — SPDT, 3-pin, bench-style -->
+  <!-- Body -->
+  <rect x="4" y="2" width="28" height="12" rx="2" fill="#1a1a1a" stroke="#333" stroke-width="0.8"/>
+  <!-- Slider channel -->
+  <rect x="8" y="4" width="20" height="8" rx="1.5" fill="#333" stroke="#444" stroke-width="0.3"/>
+  <!-- Slider knob -->
+  <rect x="18" y="5" width="8" height="6" rx="1" fill="#888" stroke="#666" stroke-width="0.3"/>
+  <!-- 3 pins: a, com, b -->
+  <line x1="10" y1="14" x2="10" y2="20" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="18" y1="14" x2="18" y2="20" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="26" y1="14" x2="26" y2="20" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="10" cy="20" r="1.5" fill="#c0c0c0"/>
+  <circle cx="18" cy="20" r="1.5" fill="#c0c0c0"/>
+  <circle cx="26" cy="20" r="1.5" fill="#c0c0c0"/>
+</svg>

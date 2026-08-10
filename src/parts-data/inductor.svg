@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- Inductor — toroidal/axial coil, bench-style -->
+  <!-- Lead wires -->
+  <line x1="9" y1="24" x2="14" y2="24" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="34" y1="24" x2="39" y2="24" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Coil body (green toroid) -->
+  <ellipse cx="24" cy="24" rx="12" ry="10" fill="#2a6a2a" stroke="#1a4a1a" stroke-width="0.8"/>
+  <!-- Windings -->
+  <path d="M16 19 Q18 14 20 19 Q22 24 24 19 Q26 14 28 19 Q30 24 32 19" fill="none" stroke="#c87020" stroke-width="1.2"/>
+  <path d="M16 29 Q18 24 20 29 Q22 34 24 29 Q26 24 28 29 Q30 34 32 29" fill="none" stroke="#c87020" stroke-width="1.2"/>
+  <!-- Label -->
+  <text x="24" y="26" text-anchor="middle" font-family="monospace" font-size="4" fill="#90c090">L</text>
+  <!-- Terminal pads -->
+  <circle cx="9" cy="24" r="2" fill="#c0c0c0"/>
+  <circle cx="39" cy="24" r="2" fill="#c0c0c0"/>
+</svg>

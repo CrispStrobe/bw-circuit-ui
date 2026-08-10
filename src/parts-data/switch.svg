@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 28" width="48" height="28">
+  <!-- Toggle Switch — SPST slide/toggle, bench-style -->
+  <!-- Body -->
+  <rect x="6" y="4" width="36" height="20" rx="3" fill="#2a2a2a" stroke="#444" stroke-width="0.8"/>
+  <!-- Toggle lever -->
+  <rect x="26" y="7" width="12" height="14" rx="2" fill="#666" stroke="#555" stroke-width="0.5"/>
+  <!-- Lever nub -->
+  <rect x="30" y="9" width="4" height="10" rx="1" fill="#888"/>
+  <!-- Leads -->
+  <line x1="9" y1="14" x2="0" y2="14" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="39" y1="14" x2="48" y2="14" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="9" cy="14" r="2" fill="#c0c0c0"/>
+  <circle cx="39" cy="14" r="2" fill="#c0c0c0"/>
+</svg>

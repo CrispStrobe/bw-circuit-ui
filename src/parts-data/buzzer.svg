@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <!-- Piezo Buzzer — cylindrical, bench-style top view -->
+  <!-- Body (black cylinder, top view) -->
+  <circle cx="24" cy="22" r="16" fill="#1a1a1a" stroke="#333" stroke-width="0.8"/>
+  <!-- Sound port hole -->
+  <circle cx="24" cy="22" r="3" fill="#333" stroke="#444" stroke-width="0.5"/>
+  <!-- Concentric rings -->
+  <circle cx="24" cy="22" r="8" fill="none" stroke="#2a2a2a" stroke-width="0.5"/>
+  <circle cx="24" cy="22" r="12" fill="none" stroke="#2a2a2a" stroke-width="0.5"/>
+  <!-- Polarity marking -->
+  <text x="18" y="16" font-family="monospace" font-size="5" fill="#888">+</text>
+  <!-- Leads -->
+  <line x1="9" y1="24" x2="0" y2="24" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="39" y1="24" x2="48" y2="24" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="9" cy="24" r="2" fill="#c0c0c0"/>
+  <circle cx="39" cy="24" r="2" fill="#c0c0c0"/>
+</svg>

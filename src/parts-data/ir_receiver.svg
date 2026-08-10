@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 44" width="36" height="44">
+  <!-- IR Receiver — 3-pin dome package (TSOP style), bench-style -->
+  <!-- Dome body (dark, IR-transparent) -->
+  <path d="M4 24 Q4 4 18 4 Q32 4 32 24 L32 30 Q32 32 30 32 L6 32 Q4 32 4 30 Z" fill="#1a1a2a" stroke="#333" stroke-width="0.8"/>
+  <!-- IR window (slight sheen) -->
+  <ellipse cx="18" cy="14" rx="8" ry="6" fill="#222240" opacity="0.5"/>
+  <!-- Leads (3 pins down) -->
+  <line x1="8" y1="32" x2="8" y2="12" stroke="transparent" stroke-width="0"/>
+  <line x1="8" y1="12" x2="8" y2="12" stroke="transparent"/>
+  <!-- VCC pin -->
+  <line x1="8" y1="32" x2="8" y2="44" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="12" r="1.5" fill="#c0c0c0"/>
+  <!-- GND pin -->
+  <line x1="28" y1="32" x2="28" y2="44" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="28" cy="12" r="1.5" fill="#c0c0c0"/>
+  <!-- OUT pin (center, goes down) -->
+  <line x1="18" y1="32" x2="18" y2="44" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="18" cy="37" r="1.5" fill="#c0c0c0"/>
+  <!-- Terminal pads at spec positions -->
+  <circle cx="8" cy="12" r="1.5" fill="#c0c0c0"/>
+  <circle cx="28" cy="12" r="1.5" fill="#c0c0c0"/>
+  <circle cx="18" cy="37" r="1.5" fill="#c0c0c0"/>
+  <!-- Labels -->
+  <text x="18" y="28" text-anchor="middle" font-family="monospace" font-size="4" fill="#666">IR</text>
+</svg>
