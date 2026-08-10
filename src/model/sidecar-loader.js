@@ -1,16 +1,17 @@
 /**
- * Sidecar loader — the missing consumer.
+ * Sidecar loader (vite build/dev entry) — the missing consumer.
  *
- * parts-registry offered registerSidecar and NOTHING ever called it, so the
- * "bw-parts owns pin maps" ownership existed on paper while every runtime
- * quietly used the local fallback tables — the third
- * producer-with-no-consumer in this stack's history, and the reason the
- * standing rule says the producing side must assert its reader exists.
+ * import.meta.glob is a vite-ism: node's runtime cannot even PARSE it, so
+ * this module must only ever be imported from bundler-served entries
+ * (src/main.jsx here; lite's circuit tab there). Tests and node tools load
+ * the same vendored directory through the fs path in
+ * test/sidecar-loading.test.js — same data, same assertions.
  *
- * All vendored sidecars (src/parts-data/, synced from bw-parts by
- * scripts/sync-parts-data.mjs) load eagerly at import time; the assertion
- * lives in the test suite: the STC12 DIP-40 map with pin 32 = P0.7 MUST be
- * present, or the suite goes red.
+ * History: parts-registry offered registerSidecar and nothing called it —
+ * the third producer-with-no-consumer in this stack. The first fix then
+ * repeated the mistake's mirror image by putting a vite-only construct in
+ * engine.js, which every node test imports: 37 red tests. Runtime-agnostic
+ * modules stay runtime-agnostic.
  *
  * @module
  */

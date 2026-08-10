@@ -11,6 +11,7 @@
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import './model/sidecar-loader.js';
 
 import { setEngine } from './engine.js';
 import { BoardImpl } from '../../bw-board/src/board.js';
