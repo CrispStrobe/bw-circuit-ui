@@ -140,7 +140,7 @@ function fmtV(v) {
 
 // ── SVG part rendering ───────────────────────────────────────────
 
-function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
+function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const rot = part.rotation || 0;
@@ -272,6 +272,45 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick }) {
                 </g>
               );
             })}
+          </g>
+        );
+      }
+      case 'servo': {
+        // Servo: body + horn that rotates to the decoded angle from the board model.
+        // Read from deviceStates (board.getDeviceState), NOT from block arguments.
+        // Undriven = no valid pulse train → show "?" instead of a default angle.
+        const ds = deviceStates?.get(id);
+        const angle = ds?.actualAngle;
+        const hasSignal = ds && ds._riseNs > 0n;
+        const hornAngle = hasSignal && angle != null ? angle - 90 : null; // center = 0°
+        return (
+          <g key={id} transform={xform}
+            pointerEvents="none"
+            style={{ cursor: 'pointer' }}>
+            {/* Body */}
+            <rect x={-22} y={-14} width={44} height={28} rx={4}
+              fill="#2c3e50" stroke={selStroke || '#3498db'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Shaft circle */}
+            <circle cx={-8} cy={0} r={8} fill="#444" stroke="#666" strokeWidth={1} />
+            {/* Horn — rotates with decoded angle */}
+            {hornAngle != null ? (
+              <g transform={`rotate(${hornAngle}, -8, 0)`}>
+                <rect x={-10} y={-2} width={22} height={4} rx={2} fill="#ecf0f1" stroke="#bbb" strokeWidth={0.5} />
+                <circle cx={10} cy={0} r={2} fill="#bbb" />
+              </g>
+            ) : (
+              /* Undriven: show ? */
+              <text x={-8} y={4} textAnchor="middle" fill="#f39c12" fontSize={12}
+                fontFamily="monospace" fontWeight="bold">?</text>
+            )}
+            {/* Angle readout */}
+            <text x={14} y={-6} fill={hasSignal ? '#2ecc71' : '#f39c12'} fontSize={8}
+              fontFamily="monospace">
+              {hasSignal && angle != null ? `${angle.toFixed(0)}°` : 'no signal'}
+            </text>
+            {/* Label */}
+            <text x={0} y={22} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
       }
@@ -2041,7 +2080,18 @@ export function BoardCanvas({
               );
             });
           })}
-          <SvgParts parts={parts} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick} />
+          <SvgParts parts={parts} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick}
+            deviceStates={(() => {
+              if (!circuit?.board?.getDeviceState) return null;
+              const m = new Map();
+              for (const p of parts) {
+                if (p.kind === 'servo') {
+                  const ds = circuit.board.getDeviceState(p.id);
+                  if (ds) m.set(p.id, ds);
+                }
+              }
+              return m.size > 0 ? m : null;
+            })()} />
 
           {/* Inline warning indicators on parts */}
           {warnings && warnings.map((w, i) => {
