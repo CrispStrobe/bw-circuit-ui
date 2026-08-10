@@ -79,3 +79,35 @@ any wrong pin in that position.
 
 And: a control only proves the method works on the population you actually
 looked at. State the denominator.
+
+## Schematic rendering: verified in a browser, and one finding that is NOT a defect
+
+The open item in this file said the schematic projection was unverified because
+nobody had seen the SVG drawn at full width, and asked for three checks. They
+were run by bw-bundle using playwright on 2026-08-10. Recorded here because that
+session hit the weekly quota limit before it could write anything down, and a
+negative result is the kind that vanishes.
+
+**Cases 1 and 2 pass.** Two-part circuit and a breadboard gallery example:
+symbols distinguishable, labels legible, no overlaps.
+
+**Case 3 was a real defect** — the 20-symbol LED chaser rendered every part and
+zero wire nets. Fixed in 92c6450 (terminal aliases unresolved in fromJSON, so
+_syncNetlist matched no endpoints and silently produced 0 nets).
+
+**Wires crossing an IC symbol boundary is CORRECT and must not be "fixed".**
+Quoting the observation directly:
+
+> These are the MCU own pin stubs — wires connecting to P1.0/VCC/GND enter the
+> IC bounding box to reach the pin endpoints. This is correct schematic drawing
+> for an IC with internal pin labels, not a routing defect.
+
+This is written down because it is the failure mode of the next person who looks:
+a wire visibly crossing a symbol outline reads as a routing bug, and "fixing" it
+would route pin stubs around the body they belong to. If a future change makes
+these wires stop entering the bounding box, that is the regression.
+
+**Status of the open item:** the three checks are answered, so "rendering
+unverified" is closed for these three cases. It is not a general claim — it says
+nothing about circuits larger than 20 symbols, or about parts not present in the
+examples that were opened.
