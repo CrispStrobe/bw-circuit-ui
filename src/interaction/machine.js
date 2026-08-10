@@ -347,6 +347,12 @@ export class InteractionMachine {
           this.cb.createTapWire({ partId: term.partId, terminal: term.terminal }, g.from);
           break;
         }
+        const bodyP = this.hit.partAt(wx, wy);
+        if (bodyP && this.cb.choosePin && this.hit.partTerminalCount
+            && this.hit.partTerminalCount(bodyP) > 12) {
+          this.cb.choosePin(g.from, bodyP, { x: wx, y: wy });
+          break;
+        }
         if (!g.moved) {
           this.state = 'stickyHoleWiring';
           this._gesture = g;
@@ -369,6 +375,17 @@ export class InteractionMachine {
           : null;
         if (hole && this.cb.createTapWire) {
           this.cb.createTapWire({ partId: g.from.partId, terminal: g.from.terminal }, hole);
+          break;
+        }
+        // Released on the BODY of a many-pin chip with no precise terminal:
+        // the intent is clear ("wire this to the chip") but the pin is not —
+        // ask, instead of dropping the wire on the floor. The host opens a
+        // named pin chooser (with what each pin supports) and completes.
+        const bodyPart = this.hit.partAt(wx, wy);
+        if (bodyPart && this.cb.choosePin && this.hit.partTerminalCount
+            && this.hit.partTerminalCount(bodyPart) > 12
+            && bodyPart !== g.from.partId) {
+          this.cb.choosePin({ partId: g.from.partId, terminal: g.from.terminal }, bodyPart, { x: wx, y: wy });
           break;
         }
         // A plain CLICK on the connector (no drag): stay armed — the next

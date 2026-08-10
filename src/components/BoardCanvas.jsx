@@ -322,6 +322,31 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
 
 // ── Terminal dots (clickable for wiring) ─────────────────────────
 
+/**
+ * What each STC12C5A60S2 pin supports — shown in the pin chooser so the
+ * choice is informed, not guessed. Datasheet-grounded: P1 is the ADC (P1.3/
+ * P1.4 double as PCA/PWM), P3 carries UART/interrupts/timers, P3.0/P3.1 are
+ * also the ISP bootloader pins, P0/P2 are the external bus, reset is ACTIVE
+ * HIGH, and the chip runs from its internal RC when no crystal is fitted.
+ */
+const STC12_PIN_INFO = {
+  'P1.0': 'ADC0 — analog in', 'P1.1': 'ADC1 — analog in',
+  'P1.2': 'ADC2 · ECI (PCA clock in)', 'P1.3': 'ADC3 · CCP0 (PCA/PWM)',
+  'P1.4': 'ADC4 · CCP1 (PCA/PWM)', 'P1.5': 'ADC5', 'P1.6': 'ADC6', 'P1.7': 'ADC7',
+  'P3.0': 'RxD — serial in (also ISP; avoid if flashing)',
+  'P3.1': 'TxD — serial out (also ISP; avoid if flashing)',
+  'P3.2': 'INT0 — external interrupt', 'P3.3': 'INT1 — external interrupt',
+  'P3.4': 'T0 — timer 0 input', 'P3.5': 'T1 — timer 1 input',
+  'P3.6': 'WR — ext. bus write', 'P3.7': 'RD — ext. bus read',
+  'P0.0': 'AD0 — bus / I/O', 'P0.1': 'AD1', 'P0.2': 'AD2', 'P0.3': 'AD3',
+  'P0.4': 'AD4', 'P0.5': 'AD5', 'P0.6': 'AD6', 'P0.7': 'AD7 — bus / I/O',
+  'P2.0': 'A8 — bus / I/O', 'P2.1': 'A9', 'P2.2': 'A10', 'P2.3': 'A11',
+  'P2.4': 'A12', 'P2.5': 'A13', 'P2.6': 'A14', 'P2.7': 'A15 — bus / I/O',
+  'P4.4': 'plain I/O', 'P4.5': 'plain I/O', 'P4.6': 'EX_LVD/RST2', 'P4.7': 'plain I/O',
+  RST: 'reset — ACTIVE HIGH', VCC: '+5 V supply (pin 40)', GND: 'ground (pin 20)',
+  XTAL1: 'crystal in (internal RC works without one)', XTAL2: 'crystal out',
+};
+
 function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDown, onTerminalUp, placingProbe }) {
   const connected = new Set();
   for (const w of wires) {
@@ -348,6 +373,11 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
       // surface only while they are live wiring/probe targets.
       const isSeated = !!(part._seatTerminals && part._seatTerminals[term]);
       if (isSeated && !isWiring && !placingProbe && !isSource) continue;
+      // A DIP chip labels its own pins on the body; forty 8px rings at a
+      // ~15px pitch drew as an unreadable red chain down both sides (owner
+      // screenshot). Many-pin parts surface terminals only while wiring.
+      const manyPins = part.terminals.length > 12;
+      if (manyPins && !isWiring && !placingProbe && !isSource && !isConnected) continue;
 
       // Sizes: large enough to tap on a tablet (minimum 10px radius)
       let fill, stroke, r, opacity;
@@ -365,6 +395,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
         fill = '#16213e'; stroke = '#e74c3c'; r = 8; opacity = 1;
       }
       if (isSeated) r = Math.min(r, 6);
+      if (manyPins) r = Math.min(r, 5);
 
       dots.push(
         <g key={`${part.id}:${term}`}>
@@ -392,7 +423,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
           )}
           {/* Terminal label — free parts only; a seated leg's name would
               stamp itself over the board art */}
-          {!isConnected && !isSeated && (
+          {!isConnected && !isSeated && !manyPins && (
             <text
               x={pos.x} y={pos.y - r - 4}
               textAnchor="middle" fill="#bdc3c7" fontSize={9}
@@ -1027,6 +1058,7 @@ export function BoardCanvas({
   const circuitRef = useRef(null); circuitRef.current = circuit;
   const [placeGhost, setPlaceGhost] = useState(null);
   const [dragLegs, setDragLegs] = useState(null); // hole highlights while dragging an existing part
+  const [pinChooser, setPinChooser] = useState(null); // {from, partId, x, y} — wire released on a chip body
   const [wiringFrom, setWiringFrom] = useState(null);
   const [mousePos, setMousePos] = useState(null);
   const [dragging, setDragging] = useState(null); // partId that initiated the drag
@@ -1186,7 +1218,12 @@ export function BoardCanvas({
       }
       return null;
     };
+    hit.partTerminalCount = (partId) => {
+      const q = partsRef.current.find(x => x.id === partId);
+      return q ? (q.terminals || []).length : 0;
+    };
     const cb = {
+      choosePin: (from, partId, pos) => setPinChooser({ from, partId, x: pos.x, y: pos.y }),
       select: (ids, mode) => {
         const api = apiRef.current;
         if (mode === 'replace') {
@@ -2341,6 +2378,45 @@ export function BoardCanvas({
         )}
 
         {/* Part tooltip */}
+        {pinChooser && (() => {
+          const chip = parts.find(q => q.id === pinChooser.partId);
+          if (!chip) { return null; }
+          const done = (pin) => {
+            const f = pinChooser.from;
+            if (f.partId) onAddWire && onAddWire(f.partId, f.terminal, chip.id, pin);
+            else if (f.boardId && onAddTapWire) onAddTapWire(chip.id, pin, f.boardId, f.hole);
+            setPinChooser(null);
+          };
+          return (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 40, background: 'rgba(10,14,26,0.55)' }}
+              onClick={() => setPinChooser(null)}>
+              <div onClick={e => e.stopPropagation()} style={{
+                position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+                background: '#16213e', border: '1px solid #2c3e50', borderRadius: 8,
+                padding: 12, width: 460, maxHeight: '75%', overflowY: 'auto',
+                fontFamily: 'monospace', color: '#dfe6ee', boxShadow: '0 12px 40px rgba(0,0,0,.5)',
+              }}>
+                <div style={{ fontSize: 12, marginBottom: 8, color: '#9ab0c4' }}>
+                  Which pin of {chip.declName || chip.id}? The wire will connect to it.
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+                  {(chip.terminals || []).map(pin => (
+                    <button key={pin} onClick={() => done(pin)} style={{
+                      display: 'flex', gap: 8, alignItems: 'baseline', textAlign: 'left',
+                      background: '#1a2540', color: '#dfe6ee', border: '1px solid #2c3e50',
+                      borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontFamily: 'monospace',
+                    }}>
+                      <span style={{ fontSize: 11, minWidth: 46 }}>{pin}</span>
+                      <span style={{ fontSize: 9, color: '#7f8c8d' }}>{STC12_PIN_INFO[pin] || ''}</span>
+                    </button>
+                  ))}
+                </div>
+                <div style={{ marginTop: 8, fontSize: 9, color: '#556' }}>Esc or click outside to cancel</div>
+              </div>
+            </div>
+          );
+        })()}
+
         {hoveredPart && (
           <PartTooltip
             part={parts.find(p => p.id === hoveredPart)}

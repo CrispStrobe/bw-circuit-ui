@@ -35,8 +35,14 @@ import { FOOTPRINTS, computeLeadMap } from './footprints.js';
  * @param {{device?: string, pins?: Array<object>}} stc
  * @returns {{notes: string[]}}
  */
-export function buildSeatedFromDeclarations(circuit, stc) {
+export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
   const notes = [];
+  // 'bench' realism (default): the rails carry the decoupling every real
+  // build needs — 100 nF close to the chip, 10 µF bulk at the battery.
+  // Cheap to show, real in the engine, and the habit worth teaching.
+  // No crystal by default: the STC12 genuinely runs from its internal RC
+  // (11–17 MHz at 5 V); fitting one is a choice, not a requirement.
+  const realism = opts.realism ?? 'bench';
   const pins = (stc.pins || []).slice(0, 8); // a full board: cap honestly
   if ((stc.pins || []).length > 8) {
     notes.push(`Showing the first 8 of ${stc.pins.length} declared pins — the board is full.`);
@@ -55,6 +61,15 @@ export function buildSeatedFromDeclarations(circuit, stc) {
   circuit.addTapWire(mcu.id, 'VCC', bb.id, 't+1', '#e74c3c');
   circuit.addTapWire(mcu.id, 'GND', bb.id, 't-1', '#2c3e50');
   notes.push('VCC (pin 40) and GND (pin 20) feed the chip from the rails.');
+  if (realism === 'bench') {
+    const c100n = circuit.addPart('capacitor', { farads: 100e-9 }, 250, 90);
+    circuit.addTapWire(c100n.id, 'a', bb.id, 't+4', '#e74c3c');
+    circuit.addTapWire(c100n.id, 'b', bb.id, 't-4', '#2c3e50');
+    const c10u = circuit.addPart('capacitor', { farads: 10e-6 }, 120, 250);
+    circuit.addTapWire(c10u.id, 'a', bb.id, 't+3', '#e74c3c');
+    circuit.addTapWire(c10u.id, 'b', bb.id, 't-3', '#2c3e50');
+    notes.push('100 nF beside the chip + 10 µF at the battery decouple the rails — every real bench has them.');
+  }
 
   let col = 5;
   for (const pin of pins) {
