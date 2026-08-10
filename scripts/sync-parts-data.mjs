@@ -45,6 +45,16 @@ for (const f of readdirSync(src).filter(f => f.endsWith('.svg'))) {
     if (!check) writeFileSync(target, body);
   }
 }
+// Copy provenance files so licensing travels with the art
+for (const prov of ['ART-PROVENANCE.md', 'THIRD-PARTY.md']) {
+  const provSrc = join(src, '..', prov);
+  if (existsSync(provSrc)) {
+    const body = readFileSync(provSrc, 'utf8');
+    const target = join(dst, prov);
+    const prev = existsSync(target) ? readFileSync(target, 'utf8') : null;
+    if (prev !== body) { if (!check) writeFileSync(target, body); }
+  }
+}
 // Emit a static import index: works under ANY bundler (vite, webpack, esbuild)
 // - import.meta.glob is a vite-ism and lite builds with webpack.
 if (!check) {
