@@ -702,16 +702,20 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             wiring only — no sim
           </div>
         )}
-        <div style={{ display: 'flex', gap: 8, flex: 1, minHeight: 0, minWidth: 0 }}>
-        <div style={{ flex: showSchematic ? '1 1 55%' : '1 1 100%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <button onClick={() => setShowSchematic(v => !v)} style={{
-          alignSelf: 'flex-end', marginBottom: 4,
-          background: showSchematic ? '#2c3e50' : '#16213e',
-          border: '1px solid ' + (showSchematic ? '#9ab0c4' : '#2c3e50'),
-          color: showSchematic ? '#9ab0c4' : '#7f8c8d',
-          borderRadius: 4, padding: '3px 10px', cursor: 'pointer',
-          fontFamily: 'monospace', fontSize: 10,
-        }}>{showSchematic ? 'Schematic ✓' : 'Schematic'}</button>
+        {/* View mode switch: one view at a time, full width */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+          {['realistic', 'schematic'].map(vm => (
+            <button key={vm} onClick={() => setShowSchematic(vm === 'schematic')} style={{
+              background: (vm === 'schematic') === showSchematic ? '#3498db' : '#16213e',
+              color: (vm === 'schematic') === showSchematic ? '#fff' : '#7f8c8d',
+              border: '1px solid #2c3e50', borderRadius: 4,
+              padding: '3px 10px', cursor: 'pointer',
+              fontFamily: 'monospace', fontSize: 10,
+            }}>{vm === 'realistic' ? 'Realistic' : 'Schematic'}</button>
+          ))}
+        </div>
+        <div style={{ flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {!showSchematic ? (<>
         {mode === 'simulate' && (
           <span style={{ display: 'inline-flex', gap: 4, alignSelf: 'flex-end', marginBottom: 4, marginRight: 6 }}>
             <button onClick={() => setSimPaused(v => !v)}
@@ -860,9 +864,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             } catch { return []; }
           })()}
         />
-        </div>
-        {showSchematic && (
-          <div style={{ flex: '1 1 45%', minWidth: 0, overflow: 'auto', overscrollBehavior: 'contain' }}>
+        </>) : (
+          <div style={{ flex: 1, minWidth: 0, overflow: 'auto', overscrollBehavior: 'contain',
+            background: '#16213e', borderRadius: 8, border: '1px solid #2c3e50', padding: 8 }}>
+            <div style={{ color: '#7f8c8d', fontFamily: 'monospace', fontSize: 10, marginBottom: 4 }}>
+              Schematic — read-only projection of the circuit above. Edit in Realistic view.
+            </div>
             <SchematicPanel parts={parts}
               nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets() : []} />
           </div>
