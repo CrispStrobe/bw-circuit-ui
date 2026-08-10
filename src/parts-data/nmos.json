@@ -1,0 +1,11 @@
+{
+  "kind": "nmos",
+  "w": 44,
+  "h": 44,
+  "terminals": [
+    { "name": "gate", "x": 0, "y": 22 },
+    { "name": "drain", "x": 22, "y": 0 },
+    { "name": "source", "x": 22, "y": 44 }
+  ],
+  "variants": null
+}

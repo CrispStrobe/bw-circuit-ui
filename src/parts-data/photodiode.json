@@ -1,0 +1,10 @@
+{
+  "kind": "photodiode",
+  "w": 24,
+  "h": 36,
+  "terminals": [
+    { "name": "anode", "x": 8, "y": 36 },
+    { "name": "cathode", "x": 16, "y": 36 }
+  ],
+  "variants": null
+}

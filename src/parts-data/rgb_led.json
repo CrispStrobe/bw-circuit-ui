@@ -1,0 +1,12 @@
+{
+  "kind": "rgb_led",
+  "w": 48,
+  "h": 48,
+  "terminals": [
+    { "name": "r_anode", "x": 8, "y": 48 },
+    { "name": "g_anode", "x": 18, "y": 48 },
+    { "name": "b_anode", "x": 28, "y": 48 },
+    { "name": "cathode", "x": 38, "y": 48 }
+  ],
+  "variants": null
+}

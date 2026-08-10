@@ -1,0 +1,10 @@
+{
+  "kind": "potato_battery",
+  "w": 56,
+  "h": 40,
+  "terminals": [
+    { "name": "pos", "x": 13.5, "y": 0 },
+    { "name": "neg", "x": 41, "y": 0 }
+  ],
+  "variants": null
+}

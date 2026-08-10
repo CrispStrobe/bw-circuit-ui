@@ -1,0 +1,16 @@
+{
+  "kind": "relay_dpdt",
+  "w": 80,
+  "h": 50,
+  "terminals": [
+    { "name": "coil_a", "x": 10, "y": 50 },
+    { "name": "coil_b", "x": 20, "y": 50 },
+    { "name": "no1", "x": 30, "y": 50 },
+    { "name": "com1", "x": 40, "y": 50 },
+    { "name": "nc1", "x": 50, "y": 50 },
+    { "name": "no2", "x": 60, "y": 50 },
+    { "name": "com2", "x": 70, "y": 50 },
+    { "name": "nc2", "x": 75, "y": 50 }
+  ],
+  "variants": null
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "dip_switch_spst",
+  "w": 40,
+  "h": 28,
+  "terminals": [
+    { "name": "1a", "x": 9.5, "y": 0 },
+    { "name": "2a", "x": 16.5, "y": 0 },
+    { "name": "3a", "x": 23.5, "y": 0 },
+    { "name": "4a", "x": 30.5, "y": 0 },
+    { "name": "1b", "x": 9.5, "y": 28 },
+    { "name": "2b", "x": 16.5, "y": 28 },
+    { "name": "3b", "x": 23.5, "y": 28 },
+    { "name": "4b", "x": 30.5, "y": 28 }
+  ],
+  "variants": [
+    { "param": "positions", "values": [4, 6] }
+  ]
+}

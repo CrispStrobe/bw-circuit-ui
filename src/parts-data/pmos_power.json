@@ -1,0 +1,11 @@
+{
+  "kind": "pmos_power",
+  "w": 44,
+  "h": 48,
+  "terminals": [
+    { "name": "gate", "x": 12, "y": 48 },
+    { "name": "source", "x": 22, "y": 48 },
+    { "name": "drain", "x": 32, "y": 48 }
+  ],
+  "variants": null
+}

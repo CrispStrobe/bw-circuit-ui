@@ -1,0 +1,14 @@
+{
+  "kind": "neopixel_strip",
+  "w": 96,
+  "h": 24,
+  "terminals": [
+    { "name": "vcc", "x": 0, "y": 8 },
+    { "name": "din", "x": 0, "y": 12 },
+    { "name": "gnd", "x": 0, "y": 16 },
+    { "name": "dout", "x": 96, "y": 12 }
+  ],
+  "variants": [
+    { "param": "leds", "values": [8, 16, 30, 60] }
+  ]
+}

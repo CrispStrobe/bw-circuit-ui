@@ -1,0 +1,16 @@
+{
+  "kind": "dip_switch_dpst",
+  "w": 40,
+  "h": 28,
+  "terminals": [
+    { "name": "1a", "x": 11, "y": 0 },
+    { "name": "1b", "x": 17, "y": 0 },
+    { "name": "2a", "x": 23, "y": 0 },
+    { "name": "2b", "x": 29, "y": 0 },
+    { "name": "1a_out", "x": 11, "y": 28 },
+    { "name": "1b_out", "x": 17, "y": 28 },
+    { "name": "2a_out", "x": 23, "y": 28 },
+    { "name": "2b_out", "x": 29, "y": 28 }
+  ],
+  "variants": null
+}

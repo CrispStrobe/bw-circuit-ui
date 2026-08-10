@@ -1,0 +1,13 @@
+{
+  "kind": "relay",
+  "w": 70,
+  "h": 50,
+  "terminals": [
+    { "name": "coil_a", "x": 15, "y": 50 },
+    { "name": "coil_b", "x": 28, "y": 50 },
+    { "name": "no", "x": 42, "y": 50 },
+    { "name": "com", "x": 52, "y": 50 },
+    { "name": "nc", "x": 62, "y": 50 }
+  ],
+  "variants": null
+}

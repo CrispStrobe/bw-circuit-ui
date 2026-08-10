@@ -1,0 +1,10 @@
+{
+  "kind": "flex_sensor",
+  "w": 16,
+  "h": 64,
+  "terminals": [
+    { "name": "a", "x": 5.5, "y": 64 },
+    { "name": "b", "x": 10.5, "y": 64 }
+  ],
+  "variants": null
+}

@@ -1,0 +1,11 @@
+{
+  "kind": "lm7805",
+  "w": 44,
+  "h": 48,
+  "terminals": [
+    { "name": "vin", "x": 12, "y": 48 },
+    { "name": "gnd", "x": 22, "y": 48 },
+    { "name": "vout", "x": 32, "y": 48 }
+  ],
+  "variants": null
+}

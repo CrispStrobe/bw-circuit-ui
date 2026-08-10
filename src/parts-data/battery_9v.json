@@ -1,0 +1,10 @@
+{
+  "kind": "battery_9v",
+  "w": 48,
+  "h": 56,
+  "terminals": [
+    { "name": "pos", "x": 18, "y": 4 },
+    { "name": "neg", "x": 30, "y": 6 }
+  ],
+  "variants": null
+}

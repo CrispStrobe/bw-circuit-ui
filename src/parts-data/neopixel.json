@@ -1,0 +1,12 @@
+{
+  "kind": "neopixel",
+  "w": 20,
+  "h": 20,
+  "terminals": [
+    { "name": "din", "x": 0, "y": 4 },
+    { "name": "vcc", "x": 20, "y": 4 },
+    { "name": "gnd", "x": 0, "y": 16 },
+    { "name": "dout", "x": 20, "y": 16 }
+  ],
+  "variants": null
+}

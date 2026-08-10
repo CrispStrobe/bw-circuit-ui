@@ -1,0 +1,10 @@
+{
+  "kind": "force_sensor",
+  "w": 32,
+  "h": 56,
+  "terminals": [
+    { "name": "a", "x": 13, "y": 56 },
+    { "name": "b", "x": 19, "y": 56 }
+  ],
+  "variants": null
+}

@@ -1,0 +1,10 @@
+{
+  "kind": "lemon_battery",
+  "w": 56,
+  "h": 36,
+  "terminals": [
+    { "name": "pos", "x": 17.5, "y": 0 },
+    { "name": "neg", "x": 37, "y": 0 }
+  ],
+  "variants": null
+}

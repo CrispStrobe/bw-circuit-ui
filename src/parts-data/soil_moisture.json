@@ -1,0 +1,11 @@
+{
+  "kind": "soil_moisture",
+  "w": 20,
+  "h": 60,
+  "terminals": [
+    { "name": "vcc", "x": 4, "y": 60 },
+    { "name": "gnd", "x": 10, "y": 60 },
+    { "name": "sig", "x": 16, "y": 60 }
+  ],
+  "variants": null
+}

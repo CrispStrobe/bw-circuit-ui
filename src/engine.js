@@ -1,3 +1,4 @@
+import './model/sidecar-loader.js';
 /**
  * Engine injection point.
  *

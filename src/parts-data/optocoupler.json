@@ -1,0 +1,12 @@
+{
+  "kind": "optocoupler",
+  "w": 48,
+  "h": 28,
+  "terminals": [
+    { "name": "anode", "x": 0, "y": 8 },
+    { "name": "cathode", "x": 0, "y": 14 },
+    { "name": "emitter", "x": 48, "y": 20 },
+    { "name": "collector", "x": 48, "y": 14 }
+  ],
+  "variants": null
+}

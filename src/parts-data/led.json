@@ -1,0 +1,12 @@
+{
+  "kind": "led",
+  "w": 40,
+  "h": 50,
+  "terminals": [
+    { "name": "anode", "x": 0, "y": 25 },
+    { "name": "cathode", "x": 40, "y": 25 }
+  ],
+  "variants": [
+    { "param": "color", "values": ["red", "green", "yellow", "blue", "white"] }
+  ]
+}

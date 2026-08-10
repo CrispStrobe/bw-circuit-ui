@@ -1,0 +1,16 @@
+{
+  "kind": "555",
+  "w": 60,
+  "h": 48,
+  "terminals": [
+    { "name": "gnd", "x": 0, "y": 8 },
+    { "name": "trigger", "x": 0, "y": 18 },
+    { "name": "output", "x": 0, "y": 28 },
+    { "name": "reset", "x": 0, "y": 38 },
+    { "name": "vcc", "x": 60, "y": 8 },
+    { "name": "discharge", "x": 60, "y": 18 },
+    { "name": "threshold", "x": 60, "y": 28 },
+    { "name": "control", "x": 60, "y": 38 }
+  ],
+  "variants": null
+}

@@ -1,0 +1,11 @@
+{
+  "kind": "breadboard_psu",
+  "w": 60,
+  "h": 48,
+  "terminals": [
+    { "name": "5v", "x": 12, "y": 48 },
+    { "name": "3v3", "x": 30, "y": 48 },
+    { "name": "gnd", "x": 48, "y": 48 }
+  ],
+  "variants": null
+}

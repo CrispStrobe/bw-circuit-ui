@@ -1,0 +1,11 @@
+{
+  "kind": "pir",
+  "w": 48,
+  "h": 48,
+  "terminals": [
+    { "name": "vcc", "x": 16, "y": 48 },
+    { "name": "out", "x": 24, "y": 48 },
+    { "name": "gnd", "x": 32, "y": 48 }
+  ],
+  "variants": null
+}

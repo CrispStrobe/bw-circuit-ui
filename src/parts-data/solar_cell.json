@@ -1,0 +1,10 @@
+{
+  "kind": "solar_cell",
+  "w": 56,
+  "h": 48,
+  "terminals": [
+    { "name": "pos", "x": 18, "y": 48 },
+    { "name": "neg", "x": 38, "y": 48 }
+  ],
+  "variants": null
+}

@@ -1,0 +1,10 @@
+{
+  "kind": "switch",
+  "w": 48,
+  "h": 28,
+  "terminals": [
+    { "name": "a", "x": 9, "y": 14 },
+    { "name": "b", "x": 39, "y": 14 }
+  ],
+  "variants": null
+}

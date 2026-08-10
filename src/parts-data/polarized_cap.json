@@ -1,0 +1,10 @@
+{
+  "kind": "polarized_cap",
+  "w": 28,
+  "h": 40,
+  "terminals": [
+    { "name": "pos", "x": 10, "y": 40 },
+    { "name": "neg", "x": 18, "y": 40 }
+  ],
+  "variants": null
+}

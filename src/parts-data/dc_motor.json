@@ -1,0 +1,10 @@
+{
+  "kind": "dc_motor",
+  "w": 70,
+  "h": 70,
+  "terminals": [
+    { "name": "a", "x": 25, "y": 70 },
+    { "name": "b", "x": 45, "y": 70 }
+  ],
+  "variants": null
+}

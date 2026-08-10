@@ -1,0 +1,11 @@
+{
+  "kind": "temp_sensor",
+  "w": 32,
+  "h": 44,
+  "terminals": [
+    { "name": "vcc", "x": 6, "y": 12 },
+    { "name": "gnd", "x": 26, "y": 12 },
+    { "name": "dq", "x": 16, "y": 37 }
+  ],
+  "variants": null
+}

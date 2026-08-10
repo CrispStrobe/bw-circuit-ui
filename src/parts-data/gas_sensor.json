@@ -1,0 +1,12 @@
+{
+  "kind": "gas_sensor",
+  "w": 44,
+  "h": 48,
+  "terminals": [
+    { "name": "vcc", "x": 10, "y": 48 },
+    { "name": "gnd", "x": 18, "y": 48 },
+    { "name": "aout", "x": 26, "y": 48 },
+    { "name": "dout", "x": 34, "y": 48 }
+  ],
+  "variants": null
+}

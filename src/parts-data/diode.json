@@ -1,0 +1,10 @@
+{
+  "kind": "diode",
+  "w": 52,
+  "h": 20,
+  "terminals": [
+    { "name": "anode", "x": 2, "y": 10 },
+    { "name": "cathode", "x": 50, "y": 10 }
+  ],
+  "variants": null
+}

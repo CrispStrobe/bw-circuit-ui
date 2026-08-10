@@ -1,0 +1,11 @@
+{
+  "kind": "tmp36",
+  "w": 24,
+  "h": 40,
+  "terminals": [
+    { "name": "vcc", "x": 6, "y": 40 },
+    { "name": "vout", "x": 12, "y": 40 },
+    { "name": "gnd", "x": 18, "y": 40 }
+  ],
+  "variants": null
+}

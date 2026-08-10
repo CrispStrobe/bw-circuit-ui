@@ -1,0 +1,12 @@
+{
+  "kind": "neopixel_jewel",
+  "w": 36,
+  "h": 36,
+  "terminals": [
+    { "name": "vcc", "x": 10, "y": 36 },
+    { "name": "din", "x": 18, "y": 36 },
+    { "name": "gnd", "x": 26, "y": 36 },
+    { "name": "dout", "x": 18, "y": 0 }
+  ],
+  "variants": null
+}

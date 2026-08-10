@@ -1,0 +1,24 @@
+{
+  "kind": "led_cube",
+  "w": 90,
+  "h": 90,
+  "terminals": [
+    { "name": "sel_0", "x": 0, "y": 15 },
+    { "name": "sel_1", "x": 0, "y": 25 },
+    { "name": "sel_2", "x": 0, "y": 35 },
+    { "name": "sel_3", "x": 0, "y": 45 },
+    { "name": "sel_4", "x": 0, "y": 55 },
+    { "name": "sel_5", "x": 0, "y": 65 },
+    { "name": "sel_6", "x": 0, "y": 75 },
+    { "name": "sel_7", "x": 0, "y": 85 },
+    { "name": "data_0", "x": 90, "y": 15 },
+    { "name": "data_1", "x": 90, "y": 25 },
+    { "name": "data_2", "x": 90, "y": 35 },
+    { "name": "data_3", "x": 90, "y": 45 },
+    { "name": "data_4", "x": 90, "y": 55 },
+    { "name": "data_5", "x": 90, "y": 65 },
+    { "name": "data_6", "x": 90, "y": 75 },
+    { "name": "data_7", "x": 90, "y": 85 }
+  ],
+  "variants": null
+}

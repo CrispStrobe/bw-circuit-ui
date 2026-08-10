@@ -1,0 +1,10 @@
+{
+  "kind": "isource",
+  "w": 48,
+  "h": 56,
+  "terminals": [
+    { "name": "pos", "x": 24, "y": 4 },
+    { "name": "neg", "x": 24, "y": 52 }
+  ],
+  "variants": null
+}

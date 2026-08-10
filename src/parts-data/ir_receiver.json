@@ -1,0 +1,11 @@
+{
+  "kind": "ir_receiver",
+  "w": 36,
+  "h": 44,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 12 },
+    { "name": "gnd", "x": 28, "y": 12 },
+    { "name": "out", "x": 18, "y": 37 }
+  ],
+  "variants": null
+}

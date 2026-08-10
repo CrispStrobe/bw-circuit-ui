@@ -1,0 +1,14 @@
+{
+  "kind": "neopixel_ring",
+  "w": 56,
+  "h": 56,
+  "terminals": [
+    { "name": "vcc", "x": 20, "y": 28 },
+    { "name": "din", "x": 28, "y": 28 },
+    { "name": "gnd", "x": 36, "y": 28 },
+    { "name": "dout", "x": 28, "y": 56 }
+  ],
+  "variants": [
+    { "param": "leds", "values": [12, 16, 24] }
+  ]
+}

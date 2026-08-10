@@ -1,0 +1,10 @@
+{
+  "kind": "tilt_switch",
+  "w": 20,
+  "h": 36,
+  "terminals": [
+    { "name": "a", "x": 7, "y": 36 },
+    { "name": "b", "x": 13, "y": 36 }
+  ],
+  "variants": null
+}

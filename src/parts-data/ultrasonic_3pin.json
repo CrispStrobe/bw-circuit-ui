@@ -1,0 +1,11 @@
+{
+  "kind": "ultrasonic_3pin",
+  "w": 48,
+  "h": 36,
+  "terminals": [
+    { "name": "vcc", "x": 14, "y": 36 },
+    { "name": "sig", "x": 24, "y": 36 },
+    { "name": "gnd", "x": 34, "y": 36 }
+  ],
+  "variants": null
+}

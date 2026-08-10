@@ -1,0 +1,14 @@
+{
+  "kind": "microbit",
+  "w": 120,
+  "h": 56,
+  "terminals": [
+    { "name": "p0", "x": 19, "y": 56 },
+    { "name": "p1", "x": 35, "y": 56 },
+    { "name": "p2", "x": 51, "y": 56 },
+    { "name": "3v", "x": 67, "y": 56 },
+    { "name": "gnd", "x": 83, "y": 56 }
+  ],
+  "variants": null,
+  "_note": "The reference catalogue does not confirm micro:bit v1 (nRF51822) vs v2 (nRF52833). This art is generic. Edge connector shows only the 5 large pads accessible without a breakout board."
+}

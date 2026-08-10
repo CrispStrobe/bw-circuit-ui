@@ -1,0 +1,10 @@
+{
+  "kind": "button",
+  "w": 44,
+  "h": 44,
+  "terminals": [
+    { "name": "a", "x": 7, "y": 22 },
+    { "name": "b", "x": 37, "y": 22 }
+  ],
+  "variants": null
+}

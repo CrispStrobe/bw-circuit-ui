@@ -1,0 +1,12 @@
+{
+  "kind": "usb_a",
+  "w": 24,
+  "h": 16,
+  "terminals": [
+    { "name": "vcc", "x": 7, "y": 16 },
+    { "name": "d_minus", "x": 11, "y": 16 },
+    { "name": "d_plus", "x": 15, "y": 16 },
+    { "name": "gnd", "x": 19, "y": 16 }
+  ],
+  "variants": null
+}

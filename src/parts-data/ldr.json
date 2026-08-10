@@ -1,0 +1,10 @@
+{
+  "kind": "ldr",
+  "w": 40,
+  "h": 28,
+  "terminals": [
+    { "name": "a", "x": 5, "y": 14 },
+    { "name": "b", "x": 35, "y": 14 }
+  ],
+  "variants": null
+}

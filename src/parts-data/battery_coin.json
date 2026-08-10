@@ -1,0 +1,10 @@
+{
+  "kind": "battery_coin",
+  "w": 40,
+  "h": 40,
+  "terminals": [
+    { "name": "pos", "x": 20, "y": 4 },
+    { "name": "neg", "x": 20, "y": 36 }
+  ],
+  "variants": null
+}

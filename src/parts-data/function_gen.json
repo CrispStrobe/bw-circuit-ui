@@ -1,0 +1,10 @@
+{
+  "kind": "function_gen",
+  "w": 80,
+  "h": 56,
+  "terminals": [
+    { "name": "out", "x": 24, "y": 56 },
+    { "name": "gnd", "x": 40, "y": 56 }
+  ],
+  "variants": null
+}

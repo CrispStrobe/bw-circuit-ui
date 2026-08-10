@@ -1,0 +1,10 @@
+{
+  "kind": "battery_aa",
+  "w": 56,
+  "h": 20,
+  "terminals": [
+    { "name": "pos", "x": 52, "y": 10 },
+    { "name": "neg", "x": 2, "y": 10 }
+  ],
+  "variants": null
+}

@@ -1,0 +1,10 @@
+{
+  "kind": "buzzer",
+  "w": 48,
+  "h": 48,
+  "terminals": [
+    { "name": "a", "x": 9, "y": 24 },
+    { "name": "b", "x": 39, "y": 24 }
+  ],
+  "variants": null
+}

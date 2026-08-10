@@ -1,0 +1,11 @@
+{
+  "kind": "pnp",
+  "w": 44,
+  "h": 44,
+  "terminals": [
+    { "name": "base", "x": 0, "y": 22 },
+    { "name": "collector", "x": 22, "y": 0 },
+    { "name": "emitter", "x": 22, "y": 44 }
+  ],
+  "variants": null
+}
