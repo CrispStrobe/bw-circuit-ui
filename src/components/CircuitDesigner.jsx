@@ -626,12 +626,27 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
               // Merge bw-board engine warnings (from getWarnings/renderState)
               // so aggregate current-budget warnings reach DrcOverlay too.
               for (const w of warnings) {
-                drc.push({
-                  severity: w.severity || 'warning',
-                  rule: 'engine',
-                  partId: w.partId || parts.find(p => p.kind === 'mcu')?.id || parts[0]?.id,
-                  explanation: w.message,
-                });
+                if (w.partIds && w.partIds.length > 0) {
+                  // Multi-part warning (e.g. aggregate current): one entry
+                  // per contributing part so the overlay highlights each one
+                  for (const pid of w.partIds) {
+                    drc.push({
+                      severity: w.severity || 'warning',
+                      rule: w.type || 'engine',
+                      partId: pid,
+                      explanation: w.message,
+                      unratedIds: w.unratedIds,
+                    });
+                  }
+                } else {
+                  // Single-part or no-part warning: fall back to MCU or first part
+                  drc.push({
+                    severity: w.severity || 'warning',
+                    rule: w.type || 'engine',
+                    partId: w.partId || parts.find(p => p.kind === 'mcu')?.id || parts[0]?.id,
+                    explanation: w.message,
+                  });
+                }
               }
               return drc;
             } catch { return []; }

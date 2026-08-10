@@ -368,6 +368,30 @@ describe('DRC: aggregate-current', () => {
     assert.ok(hits[0].explanation.includes('lower bound') || hits[0].explanation.includes('cannot be rated'),
       'must explain the sum is a lower bound');
   });
+
+  it('safe circuit: 3 LEDs through 1kΩ shows NO aggregate warning', () => {
+    const c = setup();
+    const vcc = c.addPart('vcc', {}, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
+    const mcu = c.addPart('mcu', { pins: ['P1.0','P1.1','P1.2'] }, 0, 0);
+    for (let i = 0; i < 3; i++) {
+      const r = c.addPart('resistor', { ohms: 1000 }, 0, 0);
+      const led = c.addPart('led', { vf: 2.0 }, 0, 0);
+      c.addWire(mcu.id, `P1.${i}`, r.id, 'a');
+      c.addWire(r.id, 'b', led.id, 'anode');
+      c.addWire(led.id, 'cathode', gnd.id, 'gnd');
+    }
+    c.setPin('P1.0', 'quasi', false);
+    c.setPin('P1.1', 'quasi', false);
+    c.setPin('P1.2', 'quasi', false);
+    c.advanceTo(25_000_000n);
+
+    const w = runDrc(c, c.board);
+    const aggregate = findRule(w, 'aggregate-current');
+    assert.equal(aggregate.length, 0,
+      'safe 1kΩ circuit must show NO aggregate warning — ' +
+      'an overlay on a safe circuit teaches dismissal');
+  });
 });
 
 // ── Rule 6: Polarity ────────────────────────────────────────────
