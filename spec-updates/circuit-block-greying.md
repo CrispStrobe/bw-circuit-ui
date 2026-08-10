@@ -15,8 +15,14 @@ own comments (circuit/index.js:139-142) say:
 > "NO READER EXISTS YET; the palette layer in brickwright-lite needs to
 > consult [stc12liveCapabilities] and suppress these five reporters."
 
+## Owner: bw-blocks (sb3-creator)
+
+The palette layer in sb3-creator needs to read `runtime.stc12liveCapabilities`
+and suppress the 5 reporter blocks on hardware targets. PARTS-TO-BLOCKS.md
+now marks this as "specified, not yet implemented" (stc 22ef3a7).
+
 ## Status
 
 - `runtime.stc12liveCapabilities` — written by stc12live, read by nobody
 - `simulationOnly` prop — zeroes out voltage labels, no effect on blocks
-- Fix belongs in brickwright-lite's palette layer
+- PARTS-TO-BLOCKS.md updated to stop claiming this exists
