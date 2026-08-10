@@ -79,6 +79,31 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // Subscribe to board changes for automatic re-rendering
   const { renderState, refresh } = useBoard(activeBoard);
 
+  // Instrument reads follow the ACTIVE board. useCircuit's readers are bound
+  // to circuit.board — the designer's own instance — and that is the LAST
+  // link that kept "Blink does not blink" alive (2026-08-10): the emulator
+  // drove its (correctly netlisted, correctly grounded) board while every
+  // rendered LED still asked the idle internal board and read 0. One board,
+  // one truth applies to READS as much as writes.
+  const readLedBrightness = useCallback((id) => {
+    if (externalBoard && externalBoard.ledBrightness) {
+      try { return externalBoard.ledBrightness(id); } catch { return 0; }
+    }
+    return ledBrightness(id);
+  }, [externalBoard, ledBrightness]);
+  const readBuzzerTone = useCallback((id) => {
+    if (externalBoard && externalBoard.buzzerTone) {
+      try { return externalBoard.buzzerTone(id); } catch { return null; }
+    }
+    return buzzerTone(id);
+  }, [externalBoard, buzzerTone]);
+  const readNodeVoltage = useCallback((netId) => {
+    if (externalBoard && externalBoard.nodeVoltage) {
+      try { return externalBoard.nodeVoltage(netId); } catch { return null; }
+    }
+    return nodeVoltage(netId);
+  }, [externalBoard, nodeVoltage]);
+
   // ── Emit declaration changes to host ──────────────────────────
   const lastDeclRef = useRef(null);
   useEffect(() => {
@@ -270,11 +295,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const buzzers = parts.filter(p => p.kind === 'buzzer');
     for (const bz of buzzers) {
       try {
-        const tone = buzzerTone(bz.id);
+        const tone = readBuzzerTone(bz.id);
         updateBuzzerAudio(bz.id, tone);
       } catch {}
     }
-  }, [rev, parts, buzzerTone]);
+  }, [rev, parts, readBuzzerTone, renderState]);
 
   useEffect(() => {
     if (mode !== 'simulate') stopAllBuzzers();
@@ -484,7 +509,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     for (const w of wires) {
       if (!seenNets.has(w.netId)) {
         seenNets.add(w.netId);
-        try { nodeVoltages[w.netId] = nodeVoltage(w.netId); } catch {}
+        try { nodeVoltages[w.netId] = readNodeVoltage(w.netId); } catch {}
       }
     }
   }
@@ -743,8 +768,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         <BoardCanvas
           parts={parts}
           wires={wires}
-          ledBrightness={ledBrightness}
-          buzzerTones={buzzerTone}
+          ledBrightness={readLedBrightness}
+          buzzerTones={readBuzzerTone}
           nodeVoltages={effectiveNodeVoltages}
           onAddWire={addWire}
           onRemoveWire={removeWire}
