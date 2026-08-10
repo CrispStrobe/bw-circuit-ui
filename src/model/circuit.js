@@ -740,6 +740,10 @@ export class Circuit {
       vcc: this.vcc,
       parts: this.parts.map(p => ({ ...p })),
       wires: this.wires.map(w => ({ ...w })),
+      // Jumpers live in the per-board occupancy models — without this they
+      // silently vanished from saves and the restored board stopped
+      // conducting through its rails.
+      holeWires: this.holeWires(),
     };
   }
 
@@ -764,6 +768,12 @@ export class Circuit {
       const bb = c.breadboards.get(p.seat.boardId);
       if (!bb) { delete p.seat; continue; }
       try { bb.occupy(p.id, p.seat.leadMap); } catch { delete p.seat; }
+    }
+    for (const jw of data.holeWires || []) {
+      const bb = c.breadboards.get(jw.boardId);
+      if (!bb) continue;
+      const id = jw.ref ? jw.ref.split(':').pop() : genId('bbw');
+      try { bb.addWire(id, jw.a, jw.b, jw.color); } catch { /* occupied: drop honestly */ }
     }
     c._syncNetlist();
     return c;

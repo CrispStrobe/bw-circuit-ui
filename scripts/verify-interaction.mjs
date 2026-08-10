@@ -35,7 +35,12 @@ const page = await browser.newPage({ viewport: { width: 1400, height: 800 } });
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 await page.goto(`http://localhost:${PORT}`, { waitUntil: 'networkidle' });
-await page.waitForTimeout(800);
+// Readiness is a condition, not a sleep: the circuit is populated and the
+// first solve has landed when parts exist and a wokwi element is attached.
+await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0
+  && document.querySelector('wokwi-led'), { timeout: 20000 });
+await page.waitForTimeout(400); // one settle frame for the wokwi layer
+
 
 const box = async () => await page.locator('wokwi-led').first().boundingBox();
 const selectionCount = async () =>

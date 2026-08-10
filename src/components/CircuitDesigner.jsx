@@ -50,6 +50,7 @@ import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
 import { BreadboardModel } from '../model/breadboard.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
+import { buildSeatedFromDeclarations } from '../model/infer-seated.js';
 import { runDrc } from '../model/drc.js';
 
 const MS = 1_000_000n;
@@ -205,6 +206,19 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         setAnnotations([{ x: 470, y: 130, text: 'a complete circuit — the battery feeds the rails, the strips do the wiring', color: '#7f8c8d' }]);
         return;
       } catch { /* fall through to the inferred demo */ }
+    }
+    if (pins?.length > 0) {
+      // The code PREFILLS the bench: declared pins arrive as a seated
+      // breadboard build - chip above the board, parts in the strips,
+      // taps from the pins, rails powered. Derivable is derived.
+      try {
+        circuit.parts.length = 0;
+        circuit.wires.length = 0;
+        circuit.breadboards = new Map();
+        const { notes } = buildSeatedFromDeclarations(circuit, projectData);
+        setAnnotations(notes.map((text, i) => ({ x: 470, y: 585 + i * 14, text, color: '#7f8c8d' })));
+        return;
+      } catch { /* fall through to abstract inference */ }
     }
     const inferStc = pins?.length > 0
       ? projectData
