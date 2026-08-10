@@ -14,6 +14,10 @@
  * - Wire shape: gallery uses flat {from, fromTerminal, to, toTerminal},
  *   model uses nested {from: {part, terminal}, to: {part, terminal}}
  * - terminals: addPart computes terminals from kind; gallery may omit them
+ *
+ * Scope: the serialiser is lossless FOR THESE 52 circuits. A user's
+ * circuit can contain kinds, parameter combinations and terminal names
+ * none of these files contain.
  */
 
 import './_setup.js';
@@ -198,5 +202,170 @@ describe('serialiser round-trip over gallery corpus', () => {
     // The interesting number:
     const totalLosses = allLosses.reduce((s, f) => s + f.losses.length, 0);
     console.log(`  Total losses: ${totalLosses} across ${allLosses.length} files`);
+  });
+});
+
+// ── Negative controls ──────────────────────────────────────────────
+// Prove the comparator can detect each class of mutation. Without these,
+// "0 losses" could mean "the comparator is broken" as easily as "the
+// serialiser is correct".
+
+/**
+ * Reusable comparator: returns losses between original raw JSON and a
+ * circuit that was loaded from it then serialised back.
+ */
+function compareRoundTrip(raw, circuit, idMap) {
+  const saved = circuit.toJSON();
+  const losses = [];
+
+  if (raw.vcc !== undefined && saved.vcc !== raw.vcc)
+    losses.push(`vcc: ${raw.vcc} → ${saved.vcc}`);
+  if (saved.parts.length !== (raw.parts || []).length)
+    losses.push(`part count: ${(raw.parts || []).length} → ${saved.parts.length}`);
+
+  for (const orig of raw.parts || []) {
+    const modelId = idMap.get(orig.id);
+    const savedPart = saved.parts.find(p => p.id === modelId);
+    if (!savedPart) { losses.push(`part ${orig.id}: MISSING`); continue; }
+    const rk = resolveKind(orig.kind);
+    if (savedPart.kind !== rk) losses.push(`part ${orig.id}: kind ${orig.kind} → ${savedPart.kind}`);
+    if (savedPart.x !== (orig.x || 0)) losses.push(`part ${orig.id}: x changed`);
+    if (savedPart.y !== (orig.y || 0)) losses.push(`part ${orig.id}: y changed`);
+    for (const [key, val] of Object.entries(orig.params || {})) {
+      if (JSON.stringify(savedPart.params?.[key]) !== JSON.stringify(val))
+        losses.push(`part ${orig.id}: params.${key} changed`);
+    }
+  }
+
+  if (saved.wires.length !== (raw.wires || []).length)
+    losses.push(`wire count: ${(raw.wires || []).length} → ${saved.wires.length}`);
+
+  return losses;
+}
+
+describe('negative controls: comparator detects mutations', () => {
+  // Use a simple known circuit rather than depending on the gallery
+  function makeTestCircuit() {
+    return {
+      vcc: 5.0,
+      parts: [
+        { id: 'v1', kind: 'vcc', params: {}, x: 100, y: 50 },
+        { id: 'g1', kind: 'gnd', params: {}, x: 100, y: 350 },
+        { id: 'r1', kind: 'resistor', params: { ohms: 1000 }, x: 200, y: 150 },
+        { id: 'l1', kind: 'led', params: { vf: 2.0, color: 'red' }, x: 200, y: 250 },
+      ],
+      wires: [
+        { from: 'v1', fromTerminal: 'vcc', to: 'r1', toTerminal: 'a' },
+        { from: 'r1', fromTerminal: 'b', to: 'l1', toTerminal: 'anode' },
+        { from: 'l1', fromTerminal: 'cathode', to: 'g1', toTerminal: 'gnd' },
+      ],
+    };
+  }
+
+  function loadAndCompare(raw) {
+    resetIds();
+    const c = new Circuit(raw.vcc || 5.0);
+    const idMap = new Map();
+    for (const p of raw.parts) {
+      const part = c.addPart(resolveKind(p.kind), p.params || {}, p.x || 0, p.y || 0);
+      idMap.set(p.id, part.id);
+    }
+    for (const w of raw.wires) {
+      const fromId = idMap.get(w.from);
+      const toId = idMap.get(w.to);
+      if (fromId && toId) {
+        const fp = c.parts.find(pp => pp.id === fromId);
+        const tp = c.parts.find(pp => pp.id === toId);
+        c.addWire(fromId,
+          fp ? resolveTerminal(fp.kind, w.fromTerminal, fp.terminals) : w.fromTerminal,
+          toId,
+          tp ? resolveTerminal(tp.kind, w.toTerminal, tp.terminals) : w.toTerminal);
+      }
+    }
+    return compareRoundTrip(raw, c, idMap);
+  }
+
+  it('baseline: unmodified circuit has zero losses', () => {
+    const losses = loadAndCompare(makeTestCircuit());
+    assert.equal(losses.length, 0, 'baseline must be clean');
+  });
+
+  it('detects a dropped parameter', () => {
+    // Load the full circuit normally
+    const raw = makeTestCircuit();
+    resetIds();
+    const c = new Circuit(raw.vcc);
+    const idMap = new Map();
+    for (const p of raw.parts) {
+      const part = c.addPart(resolveKind(p.kind), p.params || {}, p.x, p.y);
+      idMap.set(p.id, part.id);
+    }
+    // Tamper: pretend the original had ohms=2200 — the saved circuit has 1000
+    const tampered = JSON.parse(JSON.stringify(raw));
+    tampered.parts[2].params.ohms = 2200;
+    const losses = compareRoundTrip(tampered, c, idMap);
+    assert.ok(losses.some(l => l.includes('params.ohms')),
+      `comparator must detect param change, got: ${losses.join('; ')}`);
+  });
+
+  it('detects a shifted coordinate', () => {
+    const raw = makeTestCircuit();
+    const original = JSON.parse(JSON.stringify(raw));
+    // Load normally, then tamper with the original's x to simulate a mismatch
+    resetIds();
+    const c = new Circuit(raw.vcc);
+    const idMap = new Map();
+    for (const p of raw.parts) {
+      const part = c.addPart(resolveKind(p.kind), p.params || {}, p.x, p.y);
+      idMap.set(p.id, part.id);
+    }
+    // Tamper: shift original's recorded x by 1 after loading
+    original.parts[2].x = 201;
+    const losses = compareRoundTrip(original, c, idMap);
+    assert.ok(losses.some(l => l.includes('x changed')),
+      `comparator must detect x shift, got: ${losses.join('; ')}`);
+  });
+
+  it('detects a removed wire', () => {
+    const raw = makeTestCircuit();
+    raw.wires.pop(); // remove the last wire
+    const losses = loadAndCompare(raw);
+    // Wire count will differ: original had 3 wires, model only added 2
+    // but the raw we compare against has 2 wires, so count matches.
+    // The real detection: load the full circuit, then compare against
+    // a raw with one wire removed.
+    const fullRaw = makeTestCircuit();
+    resetIds();
+    const c = new Circuit(fullRaw.vcc);
+    const idMap = new Map();
+    for (const p of fullRaw.parts) {
+      const part = c.addPart(resolveKind(p.kind), p.params || {}, p.x, p.y);
+      idMap.set(p.id, part.id);
+    }
+    for (const w of fullRaw.wires) {
+      c.addWire(idMap.get(w.from), w.fromTerminal, idMap.get(w.to), w.toTerminal);
+    }
+    // Compare the full circuit against the truncated raw
+    const truncatedRaw = makeTestCircuit();
+    truncatedRaw.wires.pop();
+    const losses2 = compareRoundTrip(truncatedRaw, c, idMap);
+    assert.ok(losses2.some(l => l.includes('wire count')),
+      `comparator must detect wire count mismatch, got: ${losses2.join('; ')}`);
+  });
+
+  it('detects a changed VCC voltage', () => {
+    const raw = makeTestCircuit();
+    resetIds();
+    const c = new Circuit(raw.vcc);
+    const idMap = new Map();
+    for (const p of raw.parts) {
+      const part = c.addPart(resolveKind(p.kind), p.params || {}, p.x, p.y);
+      idMap.set(p.id, part.id);
+    }
+    // Tamper: pretend original was 3.3V
+    raw.vcc = 3.3;
+    const losses = compareRoundTrip(raw, c, idMap);
+    assert.ok(losses.some(l => l.includes('vcc')),
+      `comparator must detect VCC change, got: ${losses.join('; ')}`);
   });
 });
