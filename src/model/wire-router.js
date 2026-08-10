@@ -10,6 +10,8 @@
  * 3. Fall back to Z-shape: go halfway horizontally, then vertical, then the rest.
  */
 
+import { getSidecar } from './parts-registry.js';
+
 /**
  * @typedef {{ x: number, y: number, w: number, h: number }} BBox
  */
@@ -68,6 +70,12 @@ function lShapeCrosses(a, mid, b, obstacles) {
  * @returns {BBox}
  */
 export function getPartBBox(p) {
+  // Prefer sidecar dimensions (bw-parts owns the geometry)
+  const sc = getSidecar(p.kind);
+  if (sc && sc.w && sc.h) {
+    return { x: p.x - sc.w / 2, y: p.y - sc.h / 2, w: sc.w, h: sc.h };
+  }
+  // Fallback to hardcoded sizes for kinds without sidecars
   switch (p.kind) {
     case 'mcu': {
       const pinCount = p.terminals?.length || 4;

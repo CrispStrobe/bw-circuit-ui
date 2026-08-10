@@ -269,6 +269,12 @@ export function logicChipTerminals(kind) {
 
 /**
  * Get breadboard footprint for a logic chip.
+ *
+ * Uses the local LOGIC_CHIPS table (not sidecar data) because footprints
+ * need pin-number → column-offset mapping, which sidecars don't carry
+ * (they have pixel coordinates, not hole offsets). The footprint table
+ * is the one remaining reason LOGIC_CHIPS exists alongside sidecars.
+ *
  * @param {string} kind
  * @returns {import('./footprints.js').Footprint | null}
  */
