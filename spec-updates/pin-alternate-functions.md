@@ -5,6 +5,26 @@
 > **To:** bw-board (owns the schema), bw-parts (supplies the data)
 > **Re:** bw-parts spec-update 004 (multi-arch boards)
 
+## SETTLED: key name is `functions`, analog-only is a list value
+
+Three spec-updates must use the same words. The agreed terms:
+
+- **Key name: `functions`** (not `alternates`). bw-parts (data owner)
+  and bw-circuit-ui (consumer) both use `functions`. bw-board owns
+  neither the data nor the UI. If any consumer reads `alternates`
+  while the data says `functions`, every pin silently reports no
+  alternates — the exact failure this schema prevents.
+- **Analog-only: `"analog_only"` as a value in the `functions` list**
+  (not a separate `digital: false` boolean). A single list is simpler
+  to consume, and both the data owner and consumer already agreed on it.
+- **Null vs empty: settled and not reopened.** `null` = not audited,
+  `[]` = audited and genuinely none.
+
+Record these three decisions with the same words in all three
+spec-updates. Three paraphrases is how "functions" becomes "alternates"
+in one file and stays unnoticed until 200 entries exist under the
+wrong key.
+
 ## The question
 
 bw-board finished Arduino Nano support (1222 tests, A6/A7 analog-only)
