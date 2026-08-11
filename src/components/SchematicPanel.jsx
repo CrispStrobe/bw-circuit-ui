@@ -7,8 +7,9 @@
  * view exists so a learner can read the same circuit both ways at once.
  */
 
-import React from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { projectSchematic } from '../model/schematic-projection.js';
+import { classifyWheel } from '../interaction/transform.js';
 
 const STROKE = '#9ab0c4';
 const LABEL = '#6b8299';
@@ -157,6 +158,45 @@ function fmtFarads(v) {
 
 export function SchematicPanel({ parts, nets }) {
   const proj = projectSchematic(parts, nets);
+  // A read-only view still needs a CAMERA: wheel/two-finger pans, pinch or
+  // ctrl+wheel zooms at the cursor, drag pans, double-click resets to fit.
+  // cam = null means "fit the drawing", recomputed whenever the projection
+  // grows beyond the current view.
+  const [cam, setCam] = useState(null); // {x, y, k} in drawing units
+  const hostRef = useRef(null);
+  const dragRef = useRef(null);
+  const view = cam ?? { x: 0, y: 0, k: 1 };
+  const vw = proj.width / view.k;
+  const vh = proj.height / view.k;
+
+  const onWheel = useCallback((e) => {
+    e.preventDefault();
+    const g = classifyWheel(e);
+    setCam(c => {
+      const cur = c ?? { x: 0, y: 0, k: 1 };
+      if (g.kind === 'pan') {
+        return { ...cur, x: cur.x + g.dx / cur.k, y: cur.y + g.dy / cur.k };
+      }
+      const nk = Math.max(0.4, Math.min(6, cur.k * g.factor));
+      // Zoom about the cursor: keep the drawing point under it fixed.
+      const host = hostRef.current;
+      const r = host.getBoundingClientRect();
+      const fx = (e.clientX - r.left) / r.width;
+      const fy = (e.clientY - r.top) / r.height;
+      const wx = cur.x + fx * (proj.width / cur.k);
+      const wy = cur.y + fy * (proj.height / cur.k);
+      return { x: wx - fx * (proj.width / nk), y: wy - fy * (proj.height / nk), k: nk };
+    });
+  }, [proj.width, proj.height]);
+
+  // React makes wheel listeners passive; preventDefault needs a real one.
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [onWheel]);
+
   if (proj.symbols.length === 0) {
     return (
       <div style={{ padding: 16, color: '#556', fontFamily: 'monospace', fontSize: 11 }}>
@@ -165,17 +205,30 @@ export function SchematicPanel({ parts, nets }) {
     );
   }
   return (
-    <svg data-schematic width="100%"
-      viewBox={`0 0 ${proj.width} ${proj.height}`}
+    <svg data-schematic width="100%" height="100%" ref={hostRef}
+      viewBox={`${view.x} ${view.y} ${vw} ${vh}`}
       preserveAspectRatio="xMidYMid meet"
+      onPointerDown={(e) => {
+        dragRef.current = { x: e.clientX, y: e.clientY };
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        if (!dragRef.current) return;
+        const r = e.currentTarget.getBoundingClientRect();
+        const scale = vw / r.width;
+        setCam(c => {
+          const cur = c ?? { x: 0, y: 0, k: 1 };
+          return { ...cur,
+            x: cur.x - (e.clientX - dragRef.current.x) * scale,
+            y: cur.y - (e.clientY - dragRef.current.y) * scale };
+        });
+        dragRef.current = { x: e.clientX, y: e.clientY };
+      }}
+      onPointerUp={() => { dragRef.current = null; }}
+      onDoubleClick={() => setCam(null)}
       style={{
-        // Sized by the drawing's own aspect ratio. height="auto" is not a
-        // valid SVG height and fell back to filling the column, letterboxing
-        // a 590x330 drawing into a 204x728 slot: thumbnail symbols in a sea
-        // of empty panel (owner: "schematics view almost totally broken").
-        aspectRatio: `${proj.width} / ${proj.height}`,
-        maxHeight: '100%',
         background: '#111a26', borderRadius: 6, display: 'block',
+        cursor: 'grab', touchAction: 'none',
       }}>
       {proj.wires.map(w => (
         <g key={w.netId} stroke="#3d5a75" strokeWidth={1.3} fill="none">
