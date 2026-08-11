@@ -2140,7 +2140,8 @@ export function BoardCanvas({
             <BreadboardView key={bb.id} part={bb}
               model={circuit?.breadboards?.get(bb.id)}
               footprint={FOOTPRINTS.breadboard}
-              selectedPartId={selectedParts?.size === 1 ? [...selectedParts][0] : null} />
+              selectedPartId={selectedParts?.size === 1 ? [...selectedParts][0] : null}
+              hoveredPartId={hoveredPart} />
           ))}
 
           {/* Jumper wires: colored arcs hole-to-hole */}

@@ -151,13 +151,17 @@ function HoleGrid({ part, model, highlightStrip, highlightFn }) {
       const occ = model?.occupantOf(holeId);
       let strip = null;
       try { strip = model?.stripOf(holeId); } catch { /* invalid */ }
-      const isHighlight = highlightFn ? highlightFn(strip) : (highlightStrip && strip === highlightStrip);
+      const hlResult = highlightFn ? highlightFn(strip) : (highlightStrip && strip === highlightStrip ? 'selected' : false);
 
       let fill, stroke, sw;
-      if (isHighlight && !occ) {
+      if (hlResult === 'selected' && !occ) {
         fill = '#c8850a'; stroke = '#e67e22'; sw = 1;
-      } else if (isHighlight && occ) {
+      } else if (hlResult === 'selected' && occ) {
         fill = '#f39c12'; stroke = '#e67e22'; sw = 1.5; // selected part's occupied holes glow
+      } else if (hlResult === 'hovered' && !occ) {
+        fill = '#5a7a9a'; stroke = '#6a9aba'; sw = 0.8; // subtle cool tint for strip context
+      } else if (hlResult === 'hovered' && occ) {
+        fill = '#7aafcf'; stroke = '#6a9aba'; sw = 1; // hovered part's leads — gentle glow
       } else if (occ) {
         fill = '#b0b8c0'; stroke = '#8090a0'; sw = 1;
       } else {
@@ -245,25 +249,31 @@ function PlacedParts({ part: bbPart, model }) {
  *
  * @param {{ part: object, model?: BreadboardModel, highlightStrip?: string, footprint?: object }} props
  */
-export function BreadboardView({ part, model, highlightStrip, footprint, selectedPartId }) {
-  // When a seated part is selected, highlight its occupied holes and strips
+export function BreadboardView({ part, model, highlightStrip, footprint, selectedPartId, hoveredPartId }) {
+  // Collect strips for selected and hovered seated parts
   const selectedStrips = new Set();
-  if (selectedPartId && model) {
+  const hoveredStrips = new Set();
+  if (model) {
     for (const [holeId, occ] of model.occupants) {
-      if (occ.kind === 'lead' && occ.partId === selectedPartId) {
+      if (occ.kind !== 'lead') continue;
+      if (selectedPartId && occ.partId === selectedPartId) {
         try { selectedStrips.add(model.stripOf(holeId)); } catch { /* invalid */ }
+      }
+      if (hoveredPartId && hoveredPartId !== selectedPartId && occ.partId === hoveredPartId) {
+        try { hoveredStrips.add(model.stripOf(holeId)); } catch { /* invalid */ }
       }
     }
   }
-  const effectiveHighlight = selectedStrips.size > 0
-    ? (strip) => selectedStrips.has(strip)
-    : (strip) => strip === highlightStrip;
+  const hasHighlight = selectedStrips.size > 0 || hoveredStrips.size > 0;
+  const effectiveHighlight = hasHighlight
+    ? (strip) => selectedStrips.has(strip) ? 'selected' : hoveredStrips.has(strip) ? 'hovered' : false
+    : (strip) => strip === highlightStrip ? 'selected' : false;
 
   return (
     <g style={{ pointerEvents: 'none' }}>
       <BoardBg part={part} footprint={footprint} />
       <HoleGrid part={part} model={model} highlightStrip={highlightStrip}
-        highlightFn={selectedStrips.size > 0 ? effectiveHighlight : null} />
+        highlightFn={hasHighlight ? effectiveHighlight : null} />
       {model && <Jumpers part={part} model={model} />}
       {model && <PlacedParts part={part} model={model} />}
     </g>
