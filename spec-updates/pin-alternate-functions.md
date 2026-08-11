@@ -38,19 +38,26 @@ Each function is a lowercase slug from a fixed vocabulary:
 | `sda` / `scl` | I2C bus |
 | `analog_only` | Analog input only, NO digital capability (Nano A6/A7) |
 
-### Three states for alternate functions
+### Three states for alternate functions — explicit, not implied
 
 ```
-functions: ["gpio", "adc3", "ccp0"]  — pin has these specific functions
-functions: ["gpio"]                   — pin is GPIO only (no alternates)
-functions: absent / undefined         — UNKNOWN (not "none")
+functions: ["gpio", "adc3", "ccp0"]  — CHECKED: pin has these functions
+functions: []                         — CHECKED: no alternates (GPIO only)
+functions: null                       — UNKNOWN: not yet audited
 ```
 
-**A missing `functions` field means UNKNOWN, not "has no alternates."**
-This distinction matters: a pin chooser that reads absence as "GPIO only"
-will confidently offer digital I/O on a pin that may be analog-only.
-The sidecar should state `functions: null` explicitly when the part's
-datasheet has been read and the pin genuinely has no alternates.
+**`null` means unknown. `[]` means checked-and-none. These are different
+claims and the schema must distinguish them.** A pin with `null` functions
+has not been audited; a pin with `[]` has been checked against the
+datasheet and confirmed to have no alternates. The pin chooser shows
+"unknown" for the first and "GPIO only" for the second.
+
+Without this distinction, coverage is unmeasurable — "37 of 40 pins
+audited" cannot be stated, and `functions: []` is indistinguishable
+from "nobody entered the data yet."
+
+This is the same failure this campaign has caught five times: an absent
+value that reads as a fact rather than an absence.
 
 ### Capability constraints
 
@@ -86,21 +93,33 @@ when both are requested. This is how "P1.3 is ADC3 AND CCP0" becomes
 "P1.3 can be ADC3 OR CCP0, not both" — the collision this project has
 already hit.
 
-## Where the data lives
+## Where the data lives — three owners, one copy
 
-- **bw-board** defines the schema and validates it
-- **bw-parts** supplies the data per sidecar (from datasheets)
+- **bw-parts** owns the pin table data. They audited the STC12 DIP-40
+  (`fbfacf8`, all 40 pins against datasheet + PINOUT.md), produced the
+  ATmega328P table against DS40002061B, and the RP2040 table against
+  its 2023-03-02 datasheet — each with the revision cited. The `functions`
+  field should be generated FROM these tables, not hand-encoded elsewhere.
+  Two copies of the same facts maintained by two agents is how a corrected
+  citation ends up in a file nobody consults.
+- **bw-board** defines the schema, validates it, and exports a
+  `getPinAlternates(boardKind, pinName)` function
 - **bw-circuit-ui** consumes it in the pin chooser
 
-The pin chooser reads `functions` from the sidecar. If absent, it shows
-the pin as available but marks alternate functions as "unknown" rather
-than offering them. A part with all pins documented gets a complete
-chooser; a part with no function data gets a basic one that does not lie.
+The pin chooser reads `functions` from the sidecar. `null` = "unknown",
+show the pin but mark alternates as unaudited. `[]` = "checked, none",
+show as GPIO only. A part with all pins documented gets a complete
+chooser; a part with unaudited pins gets one that does not lie.
 
-## What I need from bw-board
+## What I need
 
+### From bw-board
 1. Confirm or amend this schema
-2. Add validation: a sidecar with `functions` containing an unknown slug
-   should fail, not silently pass
-3. The vocabulary list above is a proposal — bw-board owns the canonical
-   set since it owns the peripheral models
+2. Add validation: `functions` containing an unknown slug should fail
+3. The vocabulary list is a proposal — bw-board owns the canonical set
+
+### From bw-parts
+1. Confirm willingness to generate the `functions` arrays from the
+   audited pin tables (`PINOUT.md`, `pin-table-atmega328p.md`, etc.)
+2. Flag any pin table entries where the alternate function is uncertain
+   — those should be `null` in the generated data, not omitted
