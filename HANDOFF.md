@@ -1,6 +1,7 @@
 # bw-circuit-ui — handoff for the next session
 
-642 tests green at `b196e55`. Deploy current. MPL-2.0 by owner decision.
+701 tests (681 pass, 19 cancelled browser-only, 1 pre-existing infer-seated).
+21/21 browser gate scenarios green. Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
 
@@ -15,7 +16,10 @@
   Safety-lesson canary: DRC never auto-fixes.
 - **Sidecar integration**: 123 JSON + 123 SVG vendored from bw-parts,
   sync script with delete support, sidecar-first for terminalsForKind
-  and getPartBBox, slug aliases (art fallback 8→2)
+  and getPartBBox, slug aliases (art 67/67 — all palette kinds covered)
+- **Seated-legibility**: hovering a seated part highlights its occupied
+  holes AND their strips in cool-blue; selection keeps warm-orange.
+  No permanent chrome — highlights vanish on unhover/deselect.
 - **Serialiser round-trip**: 52 gallery files, legacy files, 5 negative
   controls, battery→vsource silent upgrade documented
 - **Terminal cross-check**: 109/115 kinds, MCU no longer skipped, category 2b
@@ -46,7 +50,8 @@ The pin-functions chain is COMPLETE end-to-end: bw-parts populated 866
 terminals (113 audited), bw-board built getPinFunctions with tests,
 bw-circuit-ui built PinChooser showing the three-state distinction.
 Two implementations of one schema exist (each names the other).
-Art coverage at 65/67 palette kinds (only breadboard and meter fall back).
+Art coverage at 67/67 palette kinds (breadboard→breadboard_full, meter→multimeter
+aliases added; all former slug mismatches now resolved).
 
 ## What I learned that is not in a spec-update
 
