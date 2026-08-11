@@ -43,7 +43,19 @@ const SLUG_ALIASES = {
   tilt_sensor: 'tilt_switch',
   dip_switch: 'dip_switch_spst',
   keypad: 'keypad_4x4',
+  breadboard: 'breadboard_full',
+  meter: 'multimeter',
 };
+
+/**
+ * Resolve a palette slug to its sidecar/art slug (for art lookups).
+ * Returns the alias target if one exists, otherwise the original kind.
+ * @param {string} kind
+ * @returns {string}
+ */
+export function resolveArtSlug(kind) {
+  return SLUG_ALIASES[kind] || kind;
+}
 
 /**
  * Get the sidecar for a kind, or null if not registered.

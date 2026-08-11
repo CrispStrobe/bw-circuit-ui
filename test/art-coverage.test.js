@@ -54,17 +54,11 @@ describe('art coverage', () => {
     // These are the kinds we KNOW fall back (no sidecar in bw-parts)
     // Update this list as sidecars are added — each removal is progress
     const knownFallbacks = new Set([
-      // Slug mismatches: palette name ≠ sidecar slug
-      'pir_sensor',     // sidecar: pir
-      'dip_switch',     // sidecar: dip_switch_spst / dip_switch_dpst
-      'keypad',         // sidecar: keypad_4x4
-      'tilt_sensor',    // sidecar: tilt_switch
-      'shift_register', // sidecar: 74hc595
-      // Kinds that are UI infrastructure, not components
-      'breadboard',     // sidecar: breadboard_full
-      'meter',          // sidecar: multimeter
-      // Kinds without sidecars yet
-      'motor_encoder',  // sidecar: dc_motor_encoder
+      // All former slug mismatches are now resolved via SLUG_ALIASES:
+      // pir_sensor→pir, dip_switch→dip_switch_spst, keypad→keypad_4x4,
+      // tilt_sensor→tilt_switch, shift_register→74hc595,
+      // motor_encoder→dc_motor_encoder, breadboard→breadboard_full,
+      // meter→multimeter
     ]);
     const unexpected = fallback.filter(k => !knownFallbacks.has(k));
     if (unexpected.length > 0) {

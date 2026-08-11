@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { getSidecar } from '../model/parts-registry.js';
+import { getSidecar, resolveArtSlug } from '../model/parts-registry.js';
 
 const S = 48; // internal coordinate space
 
@@ -30,8 +30,8 @@ export function PartThumbnail({ kind, color, params, displaySize }) {
   const h = displaySize || S;
   const cx = S / 2, cy = S / 2;
 
-  // Prefer bw-parts SVG art when available
-  const svgUrl = getSvgUrl(kind);
+  // Prefer bw-parts SVG art when available (resolve slug aliases for art)
+  const svgUrl = getSvgUrl(kind) || getSvgUrl(resolveArtSlug(kind));
   if (svgUrl) {
     return (
       <img src={svgUrl} width={w} height={h} alt={kind}
