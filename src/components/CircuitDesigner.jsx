@@ -48,6 +48,8 @@ import { generatePartName, circuitToDeclarations } from '../model/declarations.j
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
+import { PinChooser } from './PinChooser.jsx';
+import { getPinFunctionsForPart } from '../model/pin-functions.js';
 import { Circuit } from '../model/circuit.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { buildSeatedFromDeclarations } from '../model/infer-seated.js';
@@ -999,6 +1001,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onStopPlacing={handleStopPlacing}
           probePlacement={probePlacement}
         />
+        {/* Pin functions: show when an MCU is selected */}
+        {selectedPart && (() => {
+          const p = parts.find(pp => pp.id === selectedPart);
+          if (!p || p.kind !== 'mcu') return null;
+          const pinData = getPinFunctionsForPart(p.kind);
+          if (pinData.length === 0) return null;
+          return <PinChooser pins={pinData} />;
+        })()}
       </div>
       ) : (
         <button onClick={() => setRightOpen(true)} style={{
