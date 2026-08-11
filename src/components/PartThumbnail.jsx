@@ -338,7 +338,7 @@ export function PartThumbnail({ kind, color, params, displaySize }) {
           {[0, 1, 2].map(i => <line key={i} x1={12 + i * 6} y1={36} x2={12 + i * 6} y2={42} stroke={['#e67e22', '#e74c3c', '#8B4513'][i]} strokeWidth={1.5} />)}
         </svg>
       );
-    case 'dc_motor': case 'hobby_gearmotor':
+    case 'dc_motor': case 'gearmotor':
       return (
         <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
           <circle cx={cx} cy={cy} r={14} fill="#2c3e50" stroke={color || '#3498db'} strokeWidth={1.5} />

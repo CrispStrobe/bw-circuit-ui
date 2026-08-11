@@ -109,7 +109,7 @@ export function getPartBBox(p) {
     case 'ntc': return { x: p.x - 20, y: p.y - 14, w: 40, h: 28 };
     case 'relay': return { x: p.x - 35, y: p.y - 25, w: 70, h: 50 };
     case 'servo': return { x: p.x - 22, y: p.y - 18, w: 44, h: 36 };
-    case 'dc_motor': case 'hobby_gearmotor': return { x: p.x - 22, y: p.y - 22, w: 44, h: 44 };
+    case 'dc_motor': case 'gearmotor': return { x: p.x - 22, y: p.y - 22, w: 44, h: 44 };
     case 'rgb_led': return { x: p.x - 20, y: p.y - 25, w: 40, h: 55 };
     case 'breadboard': return { x: p.x - 460, y: p.y - 120, w: 920, h: 240 };
     case 'photodiode': return { x: p.x - 15, y: p.y - 20, w: 30, h: 40 };

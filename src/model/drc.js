@@ -123,7 +123,7 @@ export function runDrc(circuit, board) {
           const loadPart = partById(m.part);
           if (!loadPart) continue;
 
-          const isHighCurrentLoad = ['relay', 'dc_motor', 'hobby_gearmotor', 'servo', 'buzzer'].includes(loadPart.kind);
+          const isHighCurrentLoad = ['relay', 'dc_motor', 'gearmotor', 'servo', 'buzzer'].includes(loadPart.kind);
           const isLed = loadPart.kind === 'led' || loadPart.kind === 'rgb_led';
 
           if (isHighCurrentLoad) {
@@ -216,7 +216,7 @@ export function runDrc(circuit, board) {
 
   // ── Rule 3: Missing flyback diode ─────────────────────────────────
   // Note: l293d has built-in flyback diodes (the D suffix), so it's excluded
-  const INDUCTIVE_KINDS = new Set(['relay', 'relay_dpdt', 'dc_motor', 'hobby_gearmotor', 'gearmotor', 'vibration_motor', 'inductor']);
+  const INDUCTIVE_KINDS = new Set(['relay', 'relay_dpdt', 'dc_motor', 'gearmotor', 'vibration_motor', 'inductor']);
   for (const part of parts) {
     if (!INDUCTIVE_KINDS.has(part.kind)) continue;
 
