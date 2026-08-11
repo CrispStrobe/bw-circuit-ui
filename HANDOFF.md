@@ -1,6 +1,6 @@
 # bw-circuit-ui — handoff for the next session
 
-638 tests green at `e46d4d7`. Deploy current. MPL-2.0 by owner decision.
+642 tests green at `b196e55`. Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
 
@@ -40,8 +40,13 @@ Nothing uncommitted. No branches.
 ## Blocked
 
 Nothing blocked. The schematic visual check at full width needs a browser
-(routed to coordinator/owner). The pin chooser needs bw-board to confirm
-the alternates schema and bw-parts to generate the `functions` data.
+(routed to coordinator/owner).
+
+The pin-functions chain is COMPLETE end-to-end: bw-parts populated 866
+terminals (113 audited), bw-board built getPinFunctions with tests,
+bw-circuit-ui built PinChooser showing the three-state distinction.
+Two implementations of one schema exist (each names the other).
+Art coverage at 65/67 palette kinds (only breadboard and meter fall back).
 
 ## What I learned that is not in a spec-update
 
