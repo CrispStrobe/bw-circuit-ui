@@ -113,18 +113,22 @@ when both are requested. This is how "P1.3 is ADC3 AND CCP0" becomes
 "P1.3 can be ADC3 OR CCP0, not both" — the collision this project has
 already hit.
 
-## Where the data lives — three owners, one copy
+## Where the data lives — three owners, TWO implementations
 
 - **bw-parts** owns the pin table data. They audited the STC12 DIP-40
   (`fbfacf8`, all 40 pins against datasheet + PINOUT.md), produced the
   ATmega328P table against DS40002061B, and the RP2040 table against
   its 2023-03-02 datasheet — each with the revision cited. The `functions`
   field should be generated FROM these tables, not hand-encoded elsewhere.
-  Two copies of the same facts maintained by two agents is how a corrected
-  citation ends up in a file nobody consults.
-- **bw-board** defines the schema, validates it, and exports a
-  `getPinAlternates(boardKind, pinName)` function
-- **bw-circuit-ui** consumes it in the pin chooser
+- **bw-board** `src/pin-functions.js`: `getPinFunctions(boardKind, pinName)`,
+  reads sidecars via sibling path, 1231 tests
+- **bw-circuit-ui** `src/model/pin-functions.js`: `getPinFunctionsForPart(kind)`,
+  reads vendored sidecars via parts-registry
+
+**Both interpret the same four states.** A schema change (fifth state,
+redefined `analog_only`) must update both files — each names the other
+in its header comment. A divergence renders one thing while the engine
+believes another, and the symptom is a pin that behaves unlike its label.
 
 The pin chooser reads `functions` from the sidecar. `null` = "unknown",
 show the pin but mark alternates as unaudited. `[]` = "checked, none",
