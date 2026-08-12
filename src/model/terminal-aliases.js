@@ -17,6 +17,7 @@ export const KIND_ALIASES = {
   timer_555: '555',
   '74hc595': 'shift_register',
   h_bridge: 'l293d',
+  pot: 'potentiometer',
 };
 
 /** @type {Record<string, Record<string, string>>} */
@@ -37,6 +38,16 @@ export const TERMINAL_ALIASES = {
   // h_bridge/l293d: gallery uses simplified names, sidecar has DIP-16 pins
   l293d: {
     vcc: 'vcc1', gnd: 'gnd1', vs: 'vcc2',
+  },
+  // pot / potentiometer: gallery uses cw/ccw for the outer legs
+  potentiometer: {
+    cw: 'a',
+    ccw: 'b',
+  },
+  // resistor: gallery uses lead1/lead2 for the terminals
+  resistor: {
+    lead1: 'a',
+    lead2: 'b',
   },
   // Future renames go here. Never remove an entry — old files may exist.
 };

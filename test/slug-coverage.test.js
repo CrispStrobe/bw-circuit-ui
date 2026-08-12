@@ -66,6 +66,13 @@ const EXCEPTIONS = new Set([
   'tilt_sensor',    // sidecar: tilt_switch
   'dip_switch',     // sidecar: dip_switch_spst
   'keypad',         // sidecar: keypad_4x4
+  // Abstract logic gates (schematic-level; gallery uses these)
+  'gate_and',       // abstract 2-input AND
+  'gate_or',        // abstract 2-input OR
+  'gate_nand',      // abstract 2-input NAND
+  'gate_nor',       // abstract 2-input NOR
+  'gate_xor',       // abstract 2-input XOR
+  'gate_not',       // abstract inverter
   // Internal model terms (not part kinds)
   'lead',           // occupancy type in breadboard model
 ]);
