@@ -37,21 +37,50 @@
 - **supply-current warning** labels + safe-circuit test
 - **Slug coverage guard**: every code-referenced kind must have a sidecar
 
+## Completed this session
+
+- **Art tail 67/67**: Added slug aliases `breadboard→breadboard_full` and
+  `meter→multimeter` in `src/model/parts-registry.js`. Exported
+  `resolveArtSlug()` and wired it into `PartThumbnail.jsx`. All 8 former
+  slug mismatches now resolve via SLUG_ALIASES. Art coverage test updated:
+  `knownFallbacks` emptied.
+- **Seated-legibility hover highlight**: `BreadboardView` now accepts
+  `hoveredPartId` alongside `selectedPartId`. `BoardCanvas` passes
+  `hoveredPart` through. The highlight function returns `'selected'`
+  (warm orange) or `'hovered'` (cool blue `#5a7a9a`/`#7aafcf`). No
+  permanent chrome.
+- **Browser gate verified**: 21/21 scenarios pass. Counted by output
+  lines, not grep exit codes.
+
 ## In flight
 
 Nothing uncommitted. No branches.
+
+## Known issue: infer-seated test failure
+
+`test/infer-seated.test.js:28` — "ANALOG: pot wiper reaches the pin" fails:
+`readAnalog('P1.3')` returns 0 instead of ~2.5V.
+
+**Root cause identified**: The test calls `setControl(pot.id, 0.5)` but never
+calls `advanceTo()`. However, `setControl` DOES call `_solve()` internally.
+The deeper issue is that `_solve()` routes through `_solveViaMNA()` because
+the circuit contains a `vsource` (which is in `MNA_ONLY_KINDS`). The MNA
+solver may not be handling the potentiometer correctly, OR the netlist wiring
+for the analog path (pot seated at a5, wiper at column 7, tapped to MCU P1.3)
+may not be creating the right net topology.
+
+**Next step**: Add a diagnostic before the assertion — dump `c.board.nets`,
+`c.board.nodeVoltages`, and check whether the pot's wiper terminal actually
+connects to the MCU pin's net. If the nets are correct, the issue is in the
+MNA solver (bw-board territory — file a spec-update, don't fix here).
+
+This failure is **pre-existing** — reproduces on the commit before this
+session's changes (`0586694`).
 
 ## Blocked
 
 Nothing blocked. The schematic visual check at full width needs a browser
 (routed to coordinator/owner).
-
-The pin-functions chain is COMPLETE end-to-end: bw-parts populated 866
-terminals (113 audited), bw-board built getPinFunctions with tests,
-bw-circuit-ui built PinChooser showing the three-state distinction.
-Two implementations of one schema exist (each names the other).
-Art coverage at 67/67 palette kinds (breadboard→breadboard_full, meter→multimeter
-aliases added; all former slug mismatches now resolved).
 
 ## What I learned that is not in a spec-update
 
@@ -66,6 +95,9 @@ aliases added; all former slug mismatches now resolved).
   one that corrupts it.** DRC fixes are user-initiated only.
 - **`null` means unknown, `[]` means checked-and-none.** This distinction
   was settled across three repos and must not be reopened.
+- **`readAnalog` needs the solver to have run** — it reads from
+  `nodeVoltages`, which is only populated by `_solve()` (triggered by
+  `setPin`, `setControl`, `setPower`, `advanceTo`).
 
 ## Spec-updates last acted on
 
