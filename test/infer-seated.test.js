@@ -37,13 +37,16 @@ test('ANALOG: pot wiper reaches the pin; INPUT: button pulls the pin low', () =>
   const pot = c.parts.find(p => p.kind === 'potentiometer');
   c.board.setPin('P1.3', 'input', false);
   c.board.setControl(pot.id, 0.5);
+  c.board.advanceTo(25_000_000n);
   const v = c.board.readAnalog('P1.3');
   assert.ok(Math.abs(v - 2.5) < 0.3, `wiper at midpoint reads ~2.5 V: ${v}`);
 
   const btn = c.parts.find(p => p.kind === 'button');
   c.board.setPin('P3.2', 'quasi', true); // quasi high = weak pull-up
+  c.board.advanceTo(50_000_000n);
   assert.equal(c.board.readPin('P3.2'), 1, 'released: pull-up holds HIGH');
   c.board.setControl(btn.id, 1);
+  c.board.advanceTo(75_000_000n);
   assert.equal(c.board.readPin('P3.2'), 0, 'pressed: pulled LOW');
 });
 
