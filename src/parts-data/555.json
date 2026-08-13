@@ -74,19 +74,19 @@
       },
       "vcc": {
         "dRow": 5,
-        "dCol": 3
+        "dCol": 0
       },
       "discharge": {
         "dRow": 5,
-        "dCol": 2
+        "dCol": 1
       },
       "threshold": {
         "dRow": 5,
-        "dCol": 1
+        "dCol": 2
       },
       "control": {
         "dRow": 5,
-        "dCol": 0
+        "dCol": 3
       }
     },
     "straddlesGutter": true,

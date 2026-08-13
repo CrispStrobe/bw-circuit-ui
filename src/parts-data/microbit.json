@@ -9,7 +9,8 @@
       "y": 56,
       "functions": [
         "gpio",
-        "adc0"
+        "adc0",
+        "pwm"
       ]
     },
     {
@@ -18,7 +19,8 @@
       "y": 56,
       "functions": [
         "gpio",
-        "adc1"
+        "adc1",
+        "pwm"
       ]
     },
     {
@@ -27,7 +29,8 @@
       "y": 56,
       "functions": [
         "gpio",
-        "adc2"
+        "adc2",
+        "pwm"
       ]
     },
     {
@@ -44,6 +47,6 @@
     }
   ],
   "variants": null,
-  "_note": "Tinkercad does not confirm micro:bit v1 (nRF51822) vs v2 (nRF52833). This art is generic. Edge connector shows only the 5 large pads accessible without a breakout board.",
+  "_note": "micro:bit V2 (nRF52833). Confirmed as V2 for the simulator: V2 adds touch logo, speaker, microphone. Edge connector shows the 5 large pads accessible without a breakout board. P0/P1/P2 support GPIO, ADC, and PWM (nRF52833 PWM is software-routable to any pin). P0 and P2 also support capacitive touch on V2. Small edge-connector pins require a breakout board (see microbit_breakout).",
   "footprint": null
 }

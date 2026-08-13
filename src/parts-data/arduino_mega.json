@@ -1,0 +1,674 @@
+{
+  "kind": "arduino_mega",
+  "w": 340,
+  "h": 140,
+  "terminals": [
+    {
+      "name": "d0",
+      "x": 36,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "rxd0"
+      ]
+    },
+    {
+      "name": "d1",
+      "x": 44,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "txd0"
+      ]
+    },
+    {
+      "name": "d2",
+      "x": 52,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t3b",
+        "int4"
+      ]
+    },
+    {
+      "name": "d3",
+      "x": 60,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t3c",
+        "int5"
+      ]
+    },
+    {
+      "name": "d4",
+      "x": 68,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t0b"
+      ]
+    },
+    {
+      "name": "d5",
+      "x": 76,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t3a",
+        "ain1"
+      ]
+    },
+    {
+      "name": "d6",
+      "x": 84,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t4a"
+      ]
+    },
+    {
+      "name": "d7",
+      "x": 92,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t4b"
+      ]
+    },
+    {
+      "name": "d8",
+      "x": 104,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t4c"
+      ]
+    },
+    {
+      "name": "d9",
+      "x": 112,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t2b"
+      ]
+    },
+    {
+      "name": "d10",
+      "x": 120,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t2a"
+      ]
+    },
+    {
+      "name": "d11",
+      "x": 128,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t1a"
+      ]
+    },
+    {
+      "name": "d12",
+      "x": 136,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t1b"
+      ]
+    },
+    {
+      "name": "d13",
+      "x": 144,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "pwm_t0a"
+      ]
+    },
+    {
+      "name": "gnd",
+      "x": 156,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "aref",
+      "x": 164,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "d14",
+      "x": 178,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "txd3"
+      ]
+    },
+    {
+      "name": "d15",
+      "x": 186,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "rxd3"
+      ]
+    },
+    {
+      "name": "d16",
+      "x": 194,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "txd2"
+      ]
+    },
+    {
+      "name": "d17",
+      "x": 202,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "rxd2"
+      ]
+    },
+    {
+      "name": "d18",
+      "x": 210,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "txd1",
+        "int3"
+      ]
+    },
+    {
+      "name": "d19",
+      "x": 218,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "rxd1",
+        "int2"
+      ]
+    },
+    {
+      "name": "d20",
+      "x": 226,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "sda",
+        "int1"
+      ]
+    },
+    {
+      "name": "d21",
+      "x": 234,
+      "y": 0,
+      "functions": [
+        "gpio",
+        "scl",
+        "int0"
+      ]
+    },
+    {
+      "name": "reset",
+      "x": 30,
+      "y": 140,
+      "functions": []
+    },
+    {
+      "name": "3v3",
+      "x": 38,
+      "y": 140,
+      "functions": []
+    },
+    {
+      "name": "5v",
+      "x": 46,
+      "y": 140,
+      "functions": []
+    },
+    {
+      "name": "gnd2",
+      "x": 54,
+      "y": 140,
+      "functions": []
+    },
+    {
+      "name": "gnd3",
+      "x": 62,
+      "y": 140,
+      "functions": []
+    },
+    {
+      "name": "vin",
+      "x": 70,
+      "y": 140,
+      "functions": []
+    },
+    {
+      "name": "a0",
+      "x": 86,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc0"
+      ]
+    },
+    {
+      "name": "a1",
+      "x": 94,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc1"
+      ]
+    },
+    {
+      "name": "a2",
+      "x": 102,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc2"
+      ]
+    },
+    {
+      "name": "a3",
+      "x": 110,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc3"
+      ]
+    },
+    {
+      "name": "a4",
+      "x": 118,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc4"
+      ]
+    },
+    {
+      "name": "a5",
+      "x": 126,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc5"
+      ]
+    },
+    {
+      "name": "a6",
+      "x": 134,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc6"
+      ]
+    },
+    {
+      "name": "a7",
+      "x": 142,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc7"
+      ]
+    },
+    {
+      "name": "a8",
+      "x": 156,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc8"
+      ]
+    },
+    {
+      "name": "a9",
+      "x": 164,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc9"
+      ]
+    },
+    {
+      "name": "a10",
+      "x": 172,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc10"
+      ]
+    },
+    {
+      "name": "a11",
+      "x": 180,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc11"
+      ]
+    },
+    {
+      "name": "a12",
+      "x": 188,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc12"
+      ]
+    },
+    {
+      "name": "a13",
+      "x": 196,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc13"
+      ]
+    },
+    {
+      "name": "a14",
+      "x": 204,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc14"
+      ]
+    },
+    {
+      "name": "a15",
+      "x": 212,
+      "y": 140,
+      "functions": [
+        "gpio",
+        "adc15"
+      ]
+    },
+    {
+      "name": "d22",
+      "x": 340,
+      "y": 6,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d23",
+      "x": 340,
+      "y": 10,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d24",
+      "x": 340,
+      "y": 14,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d25",
+      "x": 340,
+      "y": 18,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d26",
+      "x": 340,
+      "y": 22,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d27",
+      "x": 340,
+      "y": 26,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d28",
+      "x": 340,
+      "y": 30,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d29",
+      "x": 340,
+      "y": 34,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d30",
+      "x": 340,
+      "y": 38,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d31",
+      "x": 340,
+      "y": 42,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d32",
+      "x": 340,
+      "y": 46,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d33",
+      "x": 340,
+      "y": 50,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d34",
+      "x": 340,
+      "y": 54,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d35",
+      "x": 340,
+      "y": 58,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d36",
+      "x": 340,
+      "y": 62,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d37",
+      "x": 340,
+      "y": 66,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d38",
+      "x": 340,
+      "y": 70,
+      "functions": [
+        "gpio",
+        "t0"
+      ]
+    },
+    {
+      "name": "d39",
+      "x": 340,
+      "y": 74,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d40",
+      "x": 340,
+      "y": 78,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d41",
+      "x": 340,
+      "y": 82,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d42",
+      "x": 340,
+      "y": 86,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d43",
+      "x": 340,
+      "y": 90,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "d44",
+      "x": 340,
+      "y": 94,
+      "functions": [
+        "gpio",
+        "pwm_t5c"
+      ]
+    },
+    {
+      "name": "d45",
+      "x": 340,
+      "y": 98,
+      "functions": [
+        "gpio",
+        "pwm_t5b"
+      ]
+    },
+    {
+      "name": "d46",
+      "x": 340,
+      "y": 102,
+      "functions": [
+        "gpio",
+        "pwm_t5a"
+      ]
+    },
+    {
+      "name": "d47",
+      "x": 340,
+      "y": 106,
+      "functions": [
+        "gpio",
+        "t5"
+      ]
+    },
+    {
+      "name": "d48",
+      "x": 340,
+      "y": 110,
+      "functions": [
+        "gpio",
+        "icp5"
+      ]
+    },
+    {
+      "name": "d49",
+      "x": 340,
+      "y": 114,
+      "functions": [
+        "gpio",
+        "icp4"
+      ]
+    },
+    {
+      "name": "d50",
+      "x": 340,
+      "y": 118,
+      "functions": [
+        "gpio",
+        "miso"
+      ]
+    },
+    {
+      "name": "d51",
+      "x": 340,
+      "y": 122,
+      "functions": [
+        "gpio",
+        "mosi"
+      ]
+    },
+    {
+      "name": "d52",
+      "x": 340,
+      "y": 126,
+      "functions": [
+        "gpio",
+        "sclk"
+      ]
+    },
+    {
+      "name": "d53",
+      "x": 340,
+      "y": 130,
+      "functions": [
+        "gpio",
+        "ss"
+      ]
+    }
+  ],
+  "variants": null,
+  "_note": "ATmega2560. Pin table audited against Microchip DS40002211A. D13 drives the onboard LED (active high). 15 PWM outputs: D2-D13 (Timers 0-4), D44-D46 (Timer 5). 4 UARTs: D0/D1 (UART0), D18/D19 (UART1), D16/D17 (UART2), D14/D15 (UART3). 6 external interrupts: D2(INT4), D3(INT5), D18(INT3), D19(INT2), D20(INT1), D21(INT0). D52=SCK, D51=MOSI, D50=MISO, D53=SS (SPI header not modeled). 16 ADC channels on A0-A15. Too large for breadboard; canvas board part.",
+  "footprint": null
+}

@@ -494,83 +494,83 @@
       },
       "vbus": {
         "dRow": 5,
-        "dCol": 19
+        "dCol": 0
       },
       "vsys": {
         "dRow": 5,
-        "dCol": 18
+        "dCol": 1
       },
       "gnd_5": {
         "dRow": 5,
-        "dCol": 17
+        "dCol": 2
       },
       "3v3_en": {
         "dRow": 5,
-        "dCol": 16
+        "dCol": 3
       },
       "3v3": {
         "dRow": 5,
-        "dCol": 15
+        "dCol": 4
       },
       "adc_vref": {
         "dRow": 5,
-        "dCol": 14
+        "dCol": 5
       },
       "gp28": {
         "dRow": 5,
-        "dCol": 13
+        "dCol": 6
       },
       "agnd": {
         "dRow": 5,
-        "dCol": 12
+        "dCol": 7
       },
       "gp27": {
         "dRow": 5,
-        "dCol": 11
+        "dCol": 8
       },
       "gp26": {
         "dRow": 5,
-        "dCol": 10
+        "dCol": 9
       },
       "run": {
         "dRow": 5,
-        "dCol": 9
+        "dCol": 10
       },
       "gp22": {
         "dRow": 5,
-        "dCol": 8
+        "dCol": 11
       },
       "gnd_6": {
         "dRow": 5,
-        "dCol": 7
+        "dCol": 12
       },
       "gp21": {
         "dRow": 5,
-        "dCol": 6
+        "dCol": 13
       },
       "gp20": {
         "dRow": 5,
-        "dCol": 5
+        "dCol": 14
       },
       "gp19": {
         "dRow": 5,
-        "dCol": 4
+        "dCol": 15
       },
       "gp18": {
         "dRow": 5,
-        "dCol": 3
+        "dCol": 16
       },
       "gnd_7": {
         "dRow": 5,
-        "dCol": 2
+        "dCol": 17
       },
       "gp17": {
         "dRow": 5,
-        "dCol": 1
+        "dCol": 18
       },
       "gp16": {
         "dRow": 5,
-        "dCol": 0
+        "dCol": 19
       }
     },
     "straddlesGutter": true,

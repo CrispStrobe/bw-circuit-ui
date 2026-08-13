@@ -322,31 +322,31 @@
       },
       "vin": {
         "dRow": 5,
-        "dCol": 14
+        "dCol": 0
       },
       "gnd2": {
         "dRow": 5,
-        "dCol": 13
+        "dCol": 1
       },
       "reset2": {
         "dRow": 5,
-        "dCol": 12
+        "dCol": 2
       },
       "5v": {
         "dRow": 5,
-        "dCol": 11
+        "dCol": 3
       },
       "a7": {
         "dRow": 5,
-        "dCol": 10
+        "dCol": 4
       },
       "a6": {
         "dRow": 5,
-        "dCol": 9
+        "dCol": 5
       },
       "a5": {
         "dRow": 5,
-        "dCol": 8
+        "dCol": 6
       },
       "a4": {
         "dRow": 5,
@@ -354,31 +354,31 @@
       },
       "a3": {
         "dRow": 5,
-        "dCol": 6
+        "dCol": 8
       },
       "a2": {
         "dRow": 5,
-        "dCol": 5
+        "dCol": 9
       },
       "a1": {
         "dRow": 5,
-        "dCol": 4
+        "dCol": 10
       },
       "a0": {
         "dRow": 5,
-        "dCol": 3
+        "dCol": 11
       },
       "aref": {
         "dRow": 5,
-        "dCol": 2
+        "dCol": 12
       },
       "3v3": {
         "dRow": 5,
-        "dCol": 1
+        "dCol": 13
       },
       "d13": {
         "dRow": 5,
-        "dCol": 0
+        "dCol": 14
       }
     },
     "straddlesGutter": true,

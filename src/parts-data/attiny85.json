@@ -1,20 +1,21 @@
 {
   "kind": "attiny85",
-  "w": 70,
-  "h": 31,
+  "w": 60,
+  "h": 48,
   "terminals": [
     {
       "name": "pb5",
       "x": 0,
       "y": 8,
       "functions": [
-        "gpio"
+        "gpio",
+        "adc0"
       ]
     },
     {
       "name": "pb3",
       "x": 0,
-      "y": 13,
+      "y": 18,
       "functions": [
         "gpio",
         "adc3"
@@ -23,7 +24,7 @@
     {
       "name": "pb4",
       "x": 0,
-      "y": 18,
+      "y": 28,
       "functions": [
         "gpio",
         "adc2",
@@ -33,48 +34,53 @@
     {
       "name": "gnd",
       "x": 0,
-      "y": 23,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pb0",
-      "x": 70,
-      "y": 23,
+      "x": 60,
+      "y": 38,
       "functions": [
         "gpio",
         "mosi",
-        "adc0",
-        "sda"
+        "sda",
+        "pwm_t0a"
       ]
     },
     {
       "name": "pb1",
-      "x": 70,
-      "y": 18,
+      "x": 60,
+      "y": 28,
       "functions": [
         "gpio",
         "miso",
-        "pwm_t0b"
+        "pwm_t0b",
+        "pwm_t1a"
       ]
     },
     {
       "name": "pb2",
-      "x": 70,
-      "y": 13,
+      "x": 60,
+      "y": 18,
       "functions": [
         "gpio",
         "sclk",
-        "adc1"
+        "adc1",
+        "scl",
+        "int0",
+        "t0"
       ]
     },
     {
       "name": "vcc",
-      "x": 70,
+      "x": 60,
       "y": 8,
       "functions": []
     }
   ],
   "variants": null,
+  "_note": "ATtiny85 (8-pin DIP). Pin table audited against Microchip DS40001941C. PB5 is RESET (active low, fuse-selectable) — polarity handled by bw-board engine, not sidecar. PB0/AIN0 is analog comparator input, NOT ADC channel 0 (ADC0 is on PB5). PB0 has OC0A (PWM Timer0 ch A). PB1 has both OC0B and OC1A. PB2 has SCL (USI-based TWI), INT0, T0.",
   "footprint": {
     "refTerminal": "pb5",
     "leads": {

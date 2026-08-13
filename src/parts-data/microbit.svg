@@ -1,7 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 56" width="120" height="56">
-  <!-- micro:bit board — bench-style top view -->
-  <!-- Note: v1 vs v2 is unverified (Tinkercad does not confirm
-       which). This art is generic micro:bit shape. -->
+  <!-- micro:bit V2 board — bench-style top view -->
   <!-- PCB (characteristic shape with notched edge connector) -->
   <path d="M10 2 L110 2 L116 8 L116 36 L110 42 L10 42 L4 36 L4 8 Z" fill="#222" stroke="#333" stroke-width="0.8"/>
   <!-- 5x5 LED matrix -->
@@ -28,8 +26,13 @@
   <circle cx="90" cy="22" r="4" fill="#333" stroke="#555" stroke-width="0.5"/>
   <circle cx="90" cy="22" r="2.5" fill="#444"/>
   <text x="90" y="32" text-anchor="middle" font-family="monospace" font-size="3" fill="#888">B</text>
+  <!-- Touch logo (V2 feature, between buttons) -->
+  <circle cx="54" cy="8" r="3" fill="#c0a040" stroke="#a08020" stroke-width="0.4"/>
   <!-- USB connector (top center) -->
   <rect x="48" y="0" width="12" height="4" rx="1" fill="#c0c0c0" stroke="#999" stroke-width="0.3"/>
+  <!-- Speaker grille (V2 feature, back side visible) -->
+  <circle cx="100" cy="36" r="2.5" fill="none" stroke="#444" stroke-width="0.4"/>
+  <circle cx="100" cy="36" r="1.5" fill="none" stroke="#444" stroke-width="0.3"/>
   <!-- Edge connector pads at bottom (5 large + gaps) -->
   <g fill="#c0a040" stroke="#a08020" stroke-width="0.3">
     <rect x="14" y="42" width="10" height="14" rx="1"/>

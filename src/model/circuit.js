@@ -27,7 +27,8 @@ function genId(prefix) { return `${prefix}_${_nextId++}`; }
  * lists and footprints, but the engine treats them all as MCU passthrough.
  */
 const MCU_BOARD_KINDS = new Set([
-  'stc_mcu', 'arduino_nano', 'arduino_uno', 'pi_pico', 'attiny85',
+  'stc_mcu', 'arduino_nano', 'arduino_uno', 'arduino_mega',
+  'pi_pico', 'attiny85', 'microbit',
 ]);
 function engineKindFor(kind) {
   return MCU_BOARD_KINDS.has(kind) ? 'mcu' : kind;
