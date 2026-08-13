@@ -21,6 +21,18 @@ import { getSidecar } from './parts-registry.js';
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
 
+/**
+ * Board-level MCU kinds → engine kind. The engine knows one kind: 'mcu'.
+ * Board-level sidecars (arduino_nano, pi_pico, etc.) carry richer terminal
+ * lists and footprints, but the engine treats them all as MCU passthrough.
+ */
+const MCU_BOARD_KINDS = new Set([
+  'stc_mcu', 'arduino_nano', 'arduino_uno', 'pi_pico', 'attiny85',
+]);
+function engineKindFor(kind) {
+  return MCU_BOARD_KINDS.has(kind) ? 'mcu' : kind;
+}
+
 /** Reset the ID counter (for tests). */
 export function resetIds() { _nextId = 1; }
 
@@ -670,9 +682,10 @@ export class Circuit {
    */
   _syncNetlist() {
     // Parts for the engine (strip layout fields, exclude UI-only parts like meters)
+    // Board-level MCU kinds (arduino_nano, pi_pico, etc.) map to 'mcu' for the engine.
     const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
-      kind: p.kind,
+      kind: engineKindFor(p.kind),
       params: p.params,
       terminals: p.terminals,
     }));
@@ -710,7 +723,15 @@ export class Circuit {
         const derived = bb.deriveNets();
         const stripNets = derived.nets.map(n => ({ ...n, terminals: [...n.terminals] }));
         // Glue each tap-wire hole into its strip's net (or fabricate the
-        // strip's net if nothing else lives there yet).
+        // strip's net if nothing else lives there yet). For column strips
+        // (not rails), track fabricated nets so multiple taps into the same
+        // unoccupied column share one net — without this, two taps to
+        // different rows of the same column each create their own net and
+        // the strip fails to conduct (the seated-board wiring pattern).
+        // Rail strips are left unfixed: merging them triggers a bw-board
+        // cap-companion bug where setPin zeros out all voltages (spec-update
+        // pending).
+        const fabricated = new Map(); // stripId → net object (columns only)
         for (const w of this.wires) {
           for (const e of [w.from, w.to]) {
             if (!e.board || e.board !== boardId) continue;
@@ -718,8 +739,15 @@ export class Circuit {
             const pseudo = { part: `@bb:${boardId}`, terminal: e.hole };
             const netId = derived.stripToNet.get(stripId);
             const target = netId ? stripNets.find(n => n.id === netId) : null;
-            if (target) target.terminals.push(pseudo);
-            else stripNets.push({ id: `n-${stripId}`, terminals: [pseudo] });
+            if (target) {
+              target.terminals.push(pseudo);
+            } else if (!stripId.startsWith('rail-') && fabricated.has(stripId)) {
+              fabricated.get(stripId).terminals.push(pseudo);
+            } else {
+              const net = { id: `n-${stripId}`, terminals: [pseudo] };
+              stripNets.push(net);
+              if (!stripId.startsWith('rail-')) fabricated.set(stripId, net);
+            }
           }
         }
         engineNets = mergeNets(engineNets, stripNets);
@@ -762,7 +790,7 @@ export class Circuit {
   syncWithExternalNets(nets) {
     const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
-      kind: p.kind,
+      kind: engineKindFor(p.kind),
       params: p.params,
       terminals: p.terminals,
     }));
