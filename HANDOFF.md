@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-747 tests (741 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
+767 tests (761 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
 21/21 browser gate scenarios green. Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -14,7 +14,7 @@
   floating-input, supply-short, polarity, I2C pull-up, aggregate current
   (deferred to engine's solved currents). DrcPanel + DrcOverlay wired.
   Safety-lesson canary: DRC never auto-fixes.
-- **Sidecar integration**: 124 JSON + 124 SVG vendored from bw-parts,
+- **Sidecar integration**: 129 JSON + 129 SVG vendored from bw-parts,
   sync script with delete support, sidecar-first for terminalsForKind
   and getPartBBox, slug aliases (art 67/67 -- all palette kinds covered)
 - **Seated-legibility**: hovering a seated part highlights its occupied
@@ -36,9 +36,10 @@
 - **Load precedence**: circuitData > pins > autosave > starter, tested
 - **supply-current warning** labels + safe-circuit test
 - **Slug coverage guard**: every code-referenced kind must have a sidecar
-- **Board seating verification**: Arduino Nano (DIP-30, 15 cols), Pi Pico
-  (DIP-40, 20 cols), ATtiny85 (DIP-8, 4 cols) -- all three verified:
-  legs snap, strips visualize, solver conducts through shared strips
+- **Board seating verification**: 8 boards, 24 tests, all pass:
+  MCU: Nano (DIP-30), Pico (DIP-40), ATtiny85 (DIP-8)
+  Retro DIP: W65C02 (DIP-40), W65C22 (DIP-40), W65C51 (DIP-28),
+  28C256 EEPROM (DIP-28), 62256 SRAM (DIP-28)
 
 ## Completed this session
 
@@ -56,11 +57,18 @@
   this, a resistor at a5 and an LED at b5 produce separate nets. Rail
   strips excluded to avoid the bw-board cap-companion bug (spec-update
   filed: `spec-updates/cap-companion-setpin.md`).
-- **Parts-data sync**: 124 sidecars (was 123). Footprint column fixes
-  for 555, arduino_nano, pi_pico, attiny85 (U-shape pin numbering).
-  New sidecars: arduino_mega (78 terminals), microbit (5 edge pins).
-- **Board seating test** (`test/board-seating.test.js`): 3 checks x 3
-  boards (Nano, Pico, ATtiny85). All 9 pass.
+- **Parts-data sync**: 129 sidecars. Footprint column fixes for 555,
+  arduino_nano, pi_pico, attiny85 (U-shape pin numbering). New sidecars:
+  arduino_mega (78 terminals, no footprint yet), microbit (5 edge pins),
+  W65C02 (DIP-40), W65C22 (DIP-40), W65C51 (DIP-28), 28C256 (DIP-28),
+  62256 (DIP-28).
+- **Board seating test** (`test/board-seating.test.js`): 3 checks x 8
+  boards (24 tests). MCU boards get full solver conduction (setPin -> LED
+  -> brightness). Retro DIPs get net-topology conduction (tap shares net
+  with chip pin). All pass.
+- **PASSTHROUGH_KINDS**: Retro DIPs and memory ICs map to 'mcu' for the
+  engine validator. Without this, the engine rejects unknown kinds and
+  the seated circuit produces zero nets.
 
 ## In flight
 
