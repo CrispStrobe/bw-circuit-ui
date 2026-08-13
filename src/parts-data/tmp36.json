@@ -6,17 +6,20 @@
     {
       "name": "vcc",
       "x": 6,
-      "y": 40
+      "y": 40,
+      "functions": []
     },
     {
       "name": "vout",
       "x": 12,
-      "y": 40
+      "y": 40,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 18,
-      "y": 40
+      "y": 40,
+      "functions": []
     }
   ],
   "variants": null,

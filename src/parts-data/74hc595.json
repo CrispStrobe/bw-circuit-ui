@@ -6,82 +6,98 @@
     {
       "name": "qb",
       "x": 0,
-      "y": 8
+      "y": 8,
+      "functions": []
     },
     {
       "name": "qc",
       "x": 0,
-      "y": 13
+      "y": 13,
+      "functions": []
     },
     {
       "name": "qd",
       "x": 0,
-      "y": 18
+      "y": 18,
+      "functions": []
     },
     {
       "name": "qe",
       "x": 0,
-      "y": 23
+      "y": 23,
+      "functions": []
     },
     {
       "name": "qf",
       "x": 0,
-      "y": 28
+      "y": 28,
+      "functions": []
     },
     {
       "name": "qg",
       "x": 0,
-      "y": 33
+      "y": 33,
+      "functions": []
     },
     {
       "name": "qh",
       "x": 0,
-      "y": 38
+      "y": 38,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 0,
-      "y": 43
+      "y": 43,
+      "functions": []
     },
     {
       "name": "qh_s",
       "x": 70,
-      "y": 43
+      "y": 43,
+      "functions": []
     },
     {
       "name": "srclr",
       "x": 70,
-      "y": 38
+      "y": 38,
+      "functions": []
     },
     {
       "name": "srclk",
       "x": 70,
-      "y": 33
+      "y": 33,
+      "functions": []
     },
     {
       "name": "rclk",
       "x": 70,
-      "y": 28
+      "y": 28,
+      "functions": []
     },
     {
       "name": "oe",
       "x": 70,
-      "y": 23
+      "y": 23,
+      "functions": []
     },
     {
       "name": "ser",
       "x": 70,
-      "y": 18
+      "y": 18,
+      "functions": []
     },
     {
       "name": "qa",
       "x": 70,
-      "y": 13
+      "y": 13,
+      "functions": []
     },
     {
       "name": "vcc",
       "x": 70,
-      "y": 8
+      "y": 8,
+      "functions": []
     }
   ],
   "variants": null,

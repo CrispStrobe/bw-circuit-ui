@@ -6,22 +6,26 @@
     {
       "name": "vcc",
       "x": 0,
-      "y": 8
+      "y": 8,
+      "functions": []
     },
     {
       "name": "din",
       "x": 0,
-      "y": 12
+      "y": 12,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 0,
-      "y": 16
+      "y": 16,
+      "functions": []
     },
     {
       "name": "dout",
       "x": 96,
-      "y": 12
+      "y": 12,
+      "functions": []
     }
   ],
   "variants": [

@@ -6,7 +6,8 @@
     {
       "name": "vcc",
       "x": 18,
-      "y": 40
+      "y": 40,
+      "functions": []
     }
   ],
   "variants": null,

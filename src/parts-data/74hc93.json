@@ -6,72 +6,86 @@
     {
       "name": "cka",
       "x": 0,
-      "y": 8
+      "y": 8,
+      "functions": []
     },
     {
       "name": "nc1",
       "x": 0,
-      "y": 13
+      "y": 13,
+      "functions": []
     },
     {
       "name": "nc2",
       "x": 0,
-      "y": 18
+      "y": 18,
+      "functions": []
     },
     {
       "name": "nc3",
       "x": 0,
-      "y": 23
+      "y": 23,
+      "functions": []
     },
     {
       "name": "vcc",
       "x": 0,
-      "y": 28
+      "y": 28,
+      "functions": []
     },
     {
       "name": "r0a",
       "x": 0,
-      "y": 33
+      "y": 33,
+      "functions": []
     },
     {
       "name": "r0b",
       "x": 0,
-      "y": 38
+      "y": 38,
+      "functions": []
     },
     {
       "name": "qd",
       "x": 70,
-      "y": 38
+      "y": 38,
+      "functions": []
     },
     {
       "name": "qc",
       "x": 70,
-      "y": 33
+      "y": 33,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 70,
-      "y": 28
+      "y": 28,
+      "functions": []
     },
     {
       "name": "qb",
       "x": 70,
-      "y": 23
+      "y": 23,
+      "functions": []
     },
     {
       "name": "qa",
       "x": 70,
-      "y": 18
+      "y": 18,
+      "functions": []
     },
     {
       "name": "nc4",
       "x": 70,
-      "y": 13
+      "y": 13,
+      "functions": []
     },
     {
       "name": "ckb",
       "x": 70,
-      "y": 8
+      "y": 8,
+      "functions": []
     }
   ],
   "variants": null,

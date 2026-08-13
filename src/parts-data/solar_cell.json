@@ -6,12 +6,14 @@
     {
       "name": "pos",
       "x": 18,
-      "y": 48
+      "y": 48,
+      "functions": []
     },
     {
       "name": "neg",
       "x": 38,
-      "y": 48
+      "y": 48,
+      "functions": []
     }
   ],
   "variants": null,

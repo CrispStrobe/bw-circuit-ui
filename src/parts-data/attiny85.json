@@ -6,42 +6,72 @@
     {
       "name": "pb5",
       "x": 0,
-      "y": 8
+      "y": 8,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "pb3",
       "x": 0,
-      "y": 13
+      "y": 13,
+      "functions": [
+        "gpio",
+        "adc3"
+      ]
     },
     {
       "name": "pb4",
       "x": 0,
-      "y": 18
+      "y": 18,
+      "functions": [
+        "gpio",
+        "adc2",
+        "pwm_t1b"
+      ]
     },
     {
       "name": "gnd",
       "x": 0,
-      "y": 23
+      "y": 23,
+      "functions": []
     },
     {
       "name": "pb0",
       "x": 70,
-      "y": 23
+      "y": 23,
+      "functions": [
+        "gpio",
+        "mosi",
+        "adc0",
+        "sda"
+      ]
     },
     {
       "name": "pb1",
       "x": 70,
-      "y": 18
+      "y": 18,
+      "functions": [
+        "gpio",
+        "miso",
+        "pwm_t0b"
+      ]
     },
     {
       "name": "pb2",
       "x": 70,
-      "y": 13
+      "y": 13,
+      "functions": [
+        "gpio",
+        "sclk",
+        "adc1"
+      ]
     },
     {
       "name": "vcc",
       "x": 70,
-      "y": 8
+      "y": 8,
+      "functions": []
     }
   ],
   "variants": null,

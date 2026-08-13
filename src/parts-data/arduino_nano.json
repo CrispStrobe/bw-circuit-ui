@@ -6,156 +6,257 @@
     {
       "name": "d1",
       "x": 4,
-      "y": 16
+      "y": 16,
+      "functions": [
+        "gpio",
+        "txd0"
+      ]
     },
     {
       "name": "d0",
       "x": 4,
-      "y": 24
+      "y": 24,
+      "functions": [
+        "gpio",
+        "rxd0"
+      ]
     },
     {
       "name": "reset",
       "x": 4,
-      "y": 32
+      "y": 32,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 4,
-      "y": 40
+      "y": 40,
+      "functions": []
     },
     {
       "name": "d2",
       "x": 4,
-      "y": 48
+      "y": 48,
+      "functions": [
+        "gpio",
+        "int0"
+      ]
     },
     {
       "name": "d3",
       "x": 4,
-      "y": 56
+      "y": 56,
+      "functions": [
+        "gpio",
+        "int1",
+        "pwm_t2b"
+      ]
     },
     {
       "name": "d4",
       "x": 4,
-      "y": 64
+      "y": 64,
+      "functions": [
+        "gpio",
+        "t0"
+      ]
     },
     {
       "name": "d5",
       "x": 4,
-      "y": 72
+      "y": 72,
+      "functions": [
+        "gpio",
+        "pwm_t0b",
+        "t1"
+      ]
     },
     {
       "name": "d6",
       "x": 4,
-      "y": 80
+      "y": 80,
+      "functions": [
+        "gpio",
+        "pwm_t0a",
+        "ain0"
+      ]
     },
     {
       "name": "d7",
       "x": 4,
-      "y": 88
+      "y": 88,
+      "functions": [
+        "gpio",
+        "ain1"
+      ]
     },
     {
       "name": "d8",
       "x": 4,
-      "y": 96
+      "y": 96,
+      "functions": [
+        "gpio",
+        "icp1"
+      ]
     },
     {
       "name": "d9",
       "x": 4,
-      "y": 104
+      "y": 104,
+      "functions": [
+        "gpio",
+        "pwm_t1a"
+      ]
     },
     {
       "name": "d10",
       "x": 4,
-      "y": 112
+      "y": 112,
+      "functions": [
+        "gpio",
+        "pwm_t1b",
+        "ss"
+      ]
     },
     {
       "name": "d11",
       "x": 4,
-      "y": 120
+      "y": 120,
+      "functions": [
+        "gpio",
+        "pwm_t2a",
+        "mosi"
+      ]
     },
     {
       "name": "d12",
       "x": 4,
-      "y": 128
+      "y": 128,
+      "functions": [
+        "gpio",
+        "miso"
+      ]
     },
     {
       "name": "vin",
       "x": 56,
-      "y": 16
+      "y": 16,
+      "functions": []
     },
     {
       "name": "gnd2",
       "x": 56,
-      "y": 24
+      "y": 24,
+      "functions": []
     },
     {
       "name": "reset2",
       "x": 56,
-      "y": 32
+      "y": 32,
+      "functions": []
     },
     {
       "name": "5v",
       "x": 56,
-      "y": 40
+      "y": 40,
+      "functions": []
     },
     {
       "name": "a7",
       "x": 56,
-      "y": 48
+      "y": 48,
+      "functions": [
+        "analog_only"
+      ]
     },
     {
       "name": "a6",
       "x": 56,
-      "y": 56
+      "y": 56,
+      "functions": [
+        "analog_only"
+      ]
     },
     {
       "name": "a5",
       "x": 56,
-      "y": 64
+      "y": 64,
+      "functions": [
+        "gpio",
+        "adc5",
+        "scl"
+      ]
     },
     {
       "name": "a4",
       "x": 56,
-      "y": 72
+      "y": 72,
+      "functions": [
+        "gpio",
+        "adc4",
+        "sda"
+      ]
     },
     {
       "name": "a3",
       "x": 56,
-      "y": 80
+      "y": 80,
+      "functions": [
+        "gpio",
+        "adc3"
+      ]
     },
     {
       "name": "a2",
       "x": 56,
-      "y": 88
+      "y": 88,
+      "functions": [
+        "gpio",
+        "adc2"
+      ]
     },
     {
       "name": "a1",
       "x": 56,
-      "y": 96
+      "y": 96,
+      "functions": [
+        "gpio",
+        "adc1"
+      ]
     },
     {
       "name": "a0",
       "x": 56,
-      "y": 104
+      "y": 104,
+      "functions": [
+        "gpio",
+        "adc0"
+      ]
     },
     {
       "name": "aref",
       "x": 56,
-      "y": 112
+      "y": 112,
+      "functions": []
     },
     {
       "name": "3v3",
       "x": 56,
-      "y": 120
+      "y": 120,
+      "functions": []
     },
     {
       "name": "d13",
       "x": 56,
-      "y": 128
+      "y": 128,
+      "functions": [
+        "gpio",
+        "sclk"
+      ]
     }
   ],
   "variants": null,
-  "_note": "ATmega328P, same MCU as Uno R3. A6/A7 are analog-only (no digital I/O, no port bit). Pin table in docs/pin-table-atmega328p.md.",
+  "_note": "ATmega328P, same MCU as Uno R3. A6/A7 are analog-only (no digital I/O, no port bit). D13 (SCK) drives the onboard LED (active high). Pin table in docs/pin-table-atmega328p.md.",
   "footprint": {
     "refTerminal": "d1",
     "leads": {

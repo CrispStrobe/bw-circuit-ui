@@ -6,22 +6,26 @@
     {
       "name": "clk",
       "x": 18,
-      "y": 36
+      "y": 36,
+      "functions": []
     },
     {
       "name": "dio",
       "x": 28,
-      "y": 36
+      "y": 36,
+      "functions": []
     },
     {
       "name": "vcc",
       "x": 38,
-      "y": 36
+      "y": 36,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 48,
-      "y": 36
+      "y": 36,
+      "functions": []
     }
   ],
   "variants": null,

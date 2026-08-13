@@ -6,17 +6,20 @@
     {
       "name": "base",
       "x": 0,
-      "y": 22
+      "y": 22,
+      "functions": []
     },
     {
       "name": "collector",
       "x": 22,
-      "y": 0
+      "y": 0,
+      "functions": []
     },
     {
       "name": "emitter",
       "x": 22,
-      "y": 44
+      "y": 44,
+      "functions": []
     }
   ],
   "variants": null,

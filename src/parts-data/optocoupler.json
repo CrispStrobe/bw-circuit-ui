@@ -6,22 +6,26 @@
     {
       "name": "anode",
       "x": 0,
-      "y": 8
+      "y": 8,
+      "functions": []
     },
     {
       "name": "cathode",
       "x": 0,
-      "y": 14
+      "y": 14,
+      "functions": []
     },
     {
       "name": "emitter",
       "x": 48,
-      "y": 20
+      "y": 20,
+      "functions": []
     },
     {
       "name": "collector",
       "x": 48,
-      "y": 14
+      "y": 14,
+      "functions": []
     }
   ],
   "variants": null,

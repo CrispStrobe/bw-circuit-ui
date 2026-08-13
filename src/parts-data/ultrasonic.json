@@ -6,22 +6,26 @@
     {
       "name": "vcc",
       "x": 12,
-      "y": 40
+      "y": 40,
+      "functions": []
     },
     {
       "name": "trig",
       "x": 22,
-      "y": 40
+      "y": 40,
+      "functions": []
     },
     {
       "name": "echo",
       "x": 32,
-      "y": 40
+      "y": 40,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 42,
-      "y": 40
+      "y": 40,
+      "functions": []
     }
   ],
   "variants": null,

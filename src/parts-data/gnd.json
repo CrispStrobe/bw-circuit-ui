@@ -6,7 +6,8 @@
     {
       "name": "gnd",
       "x": 18,
-      "y": 10
+      "y": 10,
+      "functions": []
     }
   ],
   "variants": null,

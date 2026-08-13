@@ -6,17 +6,20 @@
     {
       "name": "gnd",
       "x": 28,
-      "y": 60
+      "y": 60,
+      "functions": []
     },
     {
       "name": "vcc",
       "x": 35,
-      "y": 60
+      "y": 60,
+      "functions": []
     },
     {
       "name": "signal",
       "x": 42,
-      "y": 60
+      "y": 60,
+      "functions": []
     }
   ],
   "variants": null,

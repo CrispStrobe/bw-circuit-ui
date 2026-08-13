@@ -6,22 +6,26 @@
     {
       "name": "a",
       "x": 20,
-      "y": 62
+      "y": 62,
+      "functions": []
     },
     {
       "name": "b",
       "x": 40,
-      "y": 62
+      "y": 62,
+      "functions": []
     },
     {
       "name": "enc_a",
       "x": 55,
-      "y": 62
+      "y": 62,
+      "functions": []
     },
     {
       "name": "enc_b",
       "x": 63,
-      "y": 62
+      "y": 62,
+      "functions": []
     }
   ],
   "variants": null,

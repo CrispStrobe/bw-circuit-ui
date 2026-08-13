@@ -6,82 +6,98 @@
     {
       "name": "sel_0",
       "x": 0,
-      "y": 15
+      "y": 15,
+      "functions": []
     },
     {
       "name": "sel_1",
       "x": 0,
-      "y": 25
+      "y": 25,
+      "functions": []
     },
     {
       "name": "sel_2",
       "x": 0,
-      "y": 35
+      "y": 35,
+      "functions": []
     },
     {
       "name": "sel_3",
       "x": 0,
-      "y": 45
+      "y": 45,
+      "functions": []
     },
     {
       "name": "sel_4",
       "x": 0,
-      "y": 55
+      "y": 55,
+      "functions": []
     },
     {
       "name": "sel_5",
       "x": 0,
-      "y": 65
+      "y": 65,
+      "functions": []
     },
     {
       "name": "sel_6",
       "x": 0,
-      "y": 75
+      "y": 75,
+      "functions": []
     },
     {
       "name": "sel_7",
       "x": 0,
-      "y": 85
+      "y": 85,
+      "functions": []
     },
     {
       "name": "data_0",
       "x": 90,
-      "y": 15
+      "y": 15,
+      "functions": []
     },
     {
       "name": "data_1",
       "x": 90,
-      "y": 25
+      "y": 25,
+      "functions": []
     },
     {
       "name": "data_2",
       "x": 90,
-      "y": 35
+      "y": 35,
+      "functions": []
     },
     {
       "name": "data_3",
       "x": 90,
-      "y": 45
+      "y": 45,
+      "functions": []
     },
     {
       "name": "data_4",
       "x": 90,
-      "y": 55
+      "y": 55,
+      "functions": []
     },
     {
       "name": "data_5",
       "x": 90,
-      "y": 65
+      "y": 65,
+      "functions": []
     },
     {
       "name": "data_6",
       "x": 90,
-      "y": 75
+      "y": 75,
+      "functions": []
     },
     {
       "name": "data_7",
       "x": 90,
-      "y": 85
+      "y": 85,
+      "functions": []
     }
   ],
   "variants": null,

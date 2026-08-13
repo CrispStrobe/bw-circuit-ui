@@ -6,22 +6,26 @@
     {
       "name": "coil_a1",
       "x": 24,
-      "y": 0
+      "y": 0,
+      "functions": []
     },
     {
       "name": "coil_b1",
       "x": 32,
-      "y": 0
+      "y": 0,
+      "functions": []
     },
     {
       "name": "coil_a2",
       "x": 38,
-      "y": 0
+      "y": 0,
+      "functions": []
     },
     {
       "name": "coil_b2",
       "x": 46,
-      "y": 0
+      "y": 0,
+      "functions": []
     }
   ],
   "variants": null,

@@ -6,72 +6,86 @@
     {
       "name": "2out",
       "x": 0,
-      "y": 8
+      "y": 8,
+      "functions": []
     },
     {
       "name": "3out",
       "x": 0,
-      "y": 13
+      "y": 13,
+      "functions": []
     },
     {
       "name": "vcc",
       "x": 0,
-      "y": 18
+      "y": 18,
+      "functions": []
     },
     {
       "name": "4inn",
       "x": 0,
-      "y": 23
+      "y": 23,
+      "functions": []
     },
     {
       "name": "4inp",
       "x": 0,
-      "y": 28
+      "y": 28,
+      "functions": []
     },
     {
       "name": "4out",
       "x": 0,
-      "y": 33
+      "y": 33,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 0,
-      "y": 38
+      "y": 38,
+      "functions": []
     },
     {
       "name": "1out",
       "x": 70,
-      "y": 38
+      "y": 38,
+      "functions": []
     },
     {
       "name": "1inp",
       "x": 70,
-      "y": 33
+      "y": 33,
+      "functions": []
     },
     {
       "name": "1inn",
       "x": 70,
-      "y": 28
+      "y": 28,
+      "functions": []
     },
     {
       "name": "2inn",
       "x": 70,
-      "y": 23
+      "y": 23,
+      "functions": []
     },
     {
       "name": "2inp",
       "x": 70,
-      "y": 18
+      "y": 18,
+      "functions": []
     },
     {
       "name": "3inn",
       "x": 70,
-      "y": 13
+      "y": 13,
+      "functions": []
     },
     {
       "name": "3inp",
       "x": 70,
-      "y": 8
+      "y": 8,
+      "functions": []
     }
   ],
   "variants": null,

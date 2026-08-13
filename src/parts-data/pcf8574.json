@@ -6,82 +6,118 @@
     {
       "name": "a0",
       "x": 0,
-      "y": 8
+      "y": 8,
+      "functions": []
     },
     {
       "name": "a1",
       "x": 0,
-      "y": 13
+      "y": 13,
+      "functions": []
     },
     {
       "name": "a2",
       "x": 0,
-      "y": 18
+      "y": 18,
+      "functions": []
     },
     {
       "name": "p0",
       "x": 0,
-      "y": 23
+      "y": 23,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "p1",
       "x": 0,
-      "y": 28
+      "y": 28,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "p2",
       "x": 0,
-      "y": 33
+      "y": 33,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "p3",
       "x": 0,
-      "y": 38
+      "y": 38,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "vss",
       "x": 0,
-      "y": 43
+      "y": 43,
+      "functions": []
     },
     {
       "name": "p4",
       "x": 70,
-      "y": 43
+      "y": 43,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "p5",
       "x": 70,
-      "y": 38
+      "y": 38,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "p6",
       "x": 70,
-      "y": 33
+      "y": 33,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "p7",
       "x": 70,
-      "y": 28
+      "y": 28,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "int",
       "x": 70,
-      "y": 23
+      "y": 23,
+      "functions": []
     },
     {
       "name": "scl",
       "x": 70,
-      "y": 18
+      "y": 18,
+      "functions": [
+        "scl"
+      ]
     },
     {
       "name": "sda",
       "x": 70,
-      "y": 13
+      "y": 13,
+      "functions": [
+        "sda"
+      ]
     },
     {
       "name": "vdd",
       "x": 70,
-      "y": 8
+      "y": 8,
+      "functions": []
     }
   ],
   "variants": null,

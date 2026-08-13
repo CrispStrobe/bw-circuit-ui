@@ -6,17 +6,20 @@
     {
       "name": "vcc",
       "x": 6,
-      "y": 12
+      "y": 12,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 26,
-      "y": 12
+      "y": 12,
+      "functions": []
     },
     {
       "name": "dq",
       "x": 16,
-      "y": 37
+      "y": 37,
+      "functions": []
     }
   ],
   "variants": null,

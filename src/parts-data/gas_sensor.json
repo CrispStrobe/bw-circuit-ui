@@ -6,22 +6,26 @@
     {
       "name": "vcc",
       "x": 10,
-      "y": 48
+      "y": 48,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 18,
-      "y": 48
+      "y": 48,
+      "functions": []
     },
     {
       "name": "aout",
       "x": 26,
-      "y": 48
+      "y": 48,
+      "functions": []
     },
     {
       "name": "dout",
       "x": 34,
-      "y": 48
+      "y": 48,
+      "functions": []
     }
   ],
   "variants": null,

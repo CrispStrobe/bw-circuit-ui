@@ -6,37 +6,44 @@
     {
       "name": "r0",
       "x": 11,
-      "y": 72
+      "y": 72,
+      "functions": []
     },
     {
       "name": "r1",
       "x": 16.5,
-      "y": 72
+      "y": 72,
+      "functions": []
     },
     {
       "name": "r2",
       "x": 22,
-      "y": 72
+      "y": 72,
+      "functions": []
     },
     {
       "name": "r3",
       "x": 27.5,
-      "y": 72
+      "y": 72,
+      "functions": []
     },
     {
       "name": "c0",
       "x": 33,
-      "y": 72
+      "y": 72,
+      "functions": []
     },
     {
       "name": "c1",
       "x": 38.5,
-      "y": 72
+      "y": 72,
+      "functions": []
     },
     {
       "name": "c2",
       "x": 44,
-      "y": 72
+      "y": 72,
+      "functions": []
     }
   ],
   "variants": null,

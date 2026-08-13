@@ -6,82 +6,98 @@
     {
       "name": "q5",
       "x": 0,
-      "y": 8
+      "y": 8,
+      "functions": []
     },
     {
       "name": "q1",
       "x": 0,
-      "y": 13
+      "y": 13,
+      "functions": []
     },
     {
       "name": "q0",
       "x": 0,
-      "y": 18
+      "y": 18,
+      "functions": []
     },
     {
       "name": "q2",
       "x": 0,
-      "y": 23
+      "y": 23,
+      "functions": []
     },
     {
       "name": "q6",
       "x": 0,
-      "y": 28
+      "y": 28,
+      "functions": []
     },
     {
       "name": "q7",
       "x": 0,
-      "y": 33
+      "y": 33,
+      "functions": []
     },
     {
       "name": "q3",
       "x": 0,
-      "y": 38
+      "y": 38,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 0,
-      "y": 43
+      "y": 43,
+      "functions": []
     },
     {
       "name": "q8",
       "x": 70,
-      "y": 43
+      "y": 43,
+      "functions": []
     },
     {
       "name": "q4",
       "x": 70,
-      "y": 38
+      "y": 38,
+      "functions": []
     },
     {
       "name": "q9",
       "x": 70,
-      "y": 33
+      "y": 33,
+      "functions": []
     },
     {
       "name": "co",
       "x": 70,
-      "y": 28
+      "y": 28,
+      "functions": []
     },
     {
       "name": "en",
       "x": 70,
-      "y": 23
+      "y": 23,
+      "functions": []
     },
     {
       "name": "clk",
       "x": 70,
-      "y": 18
+      "y": 18,
+      "functions": []
     },
     {
       "name": "rst",
       "x": 70,
-      "y": 13
+      "y": 13,
+      "functions": []
     },
     {
       "name": "vcc",
       "x": 70,
-      "y": 8
+      "y": 8,
+      "functions": []
     }
   ],
   "variants": null,

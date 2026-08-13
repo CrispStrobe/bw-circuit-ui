@@ -6,17 +6,20 @@
     {
       "name": "a",
       "x": 10,
-      "y": 20
+      "y": 20,
+      "functions": []
     },
     {
       "name": "com",
       "x": 18,
-      "y": 20
+      "y": 20,
+      "functions": []
     },
     {
       "name": "b",
       "x": 26,
-      "y": 20
+      "y": 20,
+      "functions": []
     }
   ],
   "variants": null,

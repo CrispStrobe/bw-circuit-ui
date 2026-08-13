@@ -6,42 +6,50 @@
     {
       "name": "p1",
       "x": 5,
-      "y": 0
+      "y": 0,
+      "functions": []
     },
     {
       "name": "p2",
       "x": 11,
-      "y": 0
+      "y": 0,
+      "functions": []
     },
     {
       "name": "p3",
       "x": 17,
-      "y": 0
+      "y": 0,
+      "functions": []
     },
     {
       "name": "p4",
       "x": 23,
-      "y": 0
+      "y": 0,
+      "functions": []
     },
     {
       "name": "p5",
       "x": 29,
-      "y": 0
+      "y": 0,
+      "functions": []
     },
     {
       "name": "p6",
       "x": 35,
-      "y": 0
+      "y": 0,
+      "functions": []
     },
     {
       "name": "p7",
       "x": 41,
-      "y": 0
+      "y": 0,
+      "functions": []
     },
     {
       "name": "p8",
       "x": 47,
-      "y": 0
+      "y": 0,
+      "functions": []
     }
   ],
   "variants": null,

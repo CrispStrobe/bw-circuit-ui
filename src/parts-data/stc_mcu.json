@@ -6,202 +6,337 @@
     {
       "name": "P1.0",
       "x": 0,
-      "y": 8
+      "y": 8,
+      "functions": [
+        "gpio",
+        "adc0",
+        "clkout2"
+      ]
     },
     {
       "name": "P1.1",
       "x": 0,
-      "y": 13
+      "y": 13,
+      "functions": [
+        "gpio",
+        "adc1"
+      ]
     },
     {
       "name": "P1.2",
       "x": 0,
-      "y": 18
+      "y": 18,
+      "functions": [
+        "gpio",
+        "adc2",
+        "rxd2"
+      ]
     },
     {
       "name": "P1.3",
       "x": 0,
-      "y": 23
+      "y": 23,
+      "functions": [
+        "gpio",
+        "adc3",
+        "ccp0",
+        "txd2"
+      ]
     },
     {
       "name": "P1.4",
       "x": 0,
-      "y": 28
+      "y": 28,
+      "functions": [
+        "gpio",
+        "adc4",
+        "ccp1",
+        "ss"
+      ]
     },
     {
       "name": "P1.5",
       "x": 0,
-      "y": 33
+      "y": 33,
+      "functions": [
+        "gpio",
+        "adc5",
+        "mosi"
+      ]
     },
     {
       "name": "P1.6",
       "x": 0,
-      "y": 38
+      "y": 38,
+      "functions": [
+        "gpio",
+        "adc6",
+        "miso"
+      ]
     },
     {
       "name": "P1.7",
       "x": 0,
-      "y": 43
+      "y": 43,
+      "functions": [
+        "gpio",
+        "adc7",
+        "sclk"
+      ]
     },
     {
       "name": "RST",
       "x": 0,
-      "y": 48
+      "y": 48,
+      "functions": []
     },
     {
       "name": "P3.0",
       "x": 0,
-      "y": 53
+      "y": 53,
+      "functions": [
+        "gpio",
+        "rxd0"
+      ]
     },
     {
       "name": "P3.1",
       "x": 0,
-      "y": 58
+      "y": 58,
+      "functions": [
+        "gpio",
+        "txd0"
+      ]
     },
     {
       "name": "P3.2",
       "x": 0,
-      "y": 63
+      "y": 63,
+      "functions": [
+        "gpio",
+        "int0"
+      ]
     },
     {
       "name": "P3.3",
       "x": 0,
-      "y": 68
+      "y": 68,
+      "functions": [
+        "gpio",
+        "int1"
+      ]
     },
     {
       "name": "P3.4",
       "x": 0,
-      "y": 73
+      "y": 73,
+      "functions": [
+        "gpio",
+        "t0",
+        "clkout0"
+      ]
     },
     {
       "name": "P3.5",
       "x": 0,
-      "y": 78
+      "y": 78,
+      "functions": [
+        "gpio",
+        "t1",
+        "clkout1"
+      ]
     },
     {
       "name": "P3.6",
       "x": 0,
-      "y": 83
+      "y": 83,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P3.7",
       "x": 0,
-      "y": 88
+      "y": 88,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "XTAL2",
       "x": 0,
-      "y": 93
+      "y": 93,
+      "functions": []
     },
     {
       "name": "XTAL1",
       "x": 0,
-      "y": 98
+      "y": 98,
+      "functions": []
     },
     {
       "name": "GND",
       "x": 0,
-      "y": 103
+      "y": 103,
+      "functions": []
     },
     {
       "name": "P2.0",
       "x": 80,
-      "y": 103
+      "y": 103,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.1",
       "x": 80,
-      "y": 98
+      "y": 98,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.2",
       "x": 80,
-      "y": 93
+      "y": 93,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.3",
       "x": 80,
-      "y": 88
+      "y": 88,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.4",
       "x": 80,
-      "y": 83
+      "y": 83,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.5",
       "x": 80,
-      "y": 78
+      "y": 78,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.6",
       "x": 80,
-      "y": 73
+      "y": 73,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.7",
       "x": 80,
-      "y": 68
+      "y": 68,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P4.4",
       "x": 80,
-      "y": 63
+      "y": 63,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P4.5",
       "x": 80,
-      "y": 58
+      "y": 58,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P4.6",
       "x": 80,
-      "y": 53
+      "y": 53,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.7",
       "x": 80,
-      "y": 48
+      "y": 48,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.6",
       "x": 80,
-      "y": 43
+      "y": 43,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.5",
       "x": 80,
-      "y": 38
+      "y": 38,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.4",
       "x": 80,
-      "y": 33
+      "y": 33,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.3",
       "x": 80,
-      "y": 28
+      "y": 28,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.2",
       "x": 80,
-      "y": 23
+      "y": 23,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.1",
       "x": 80,
-      "y": 18
+      "y": 18,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.0",
       "x": 80,
-      "y": 13
+      "y": 13,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "VCC",
       "x": 80,
-      "y": 8
+      "y": 8,
+      "functions": []
     }
   ],
   "variants": null,

@@ -6,12 +6,14 @@
     {
       "name": "a",
       "x": 2,
-      "y": 10
+      "y": 10,
+      "functions": []
     },
     {
       "name": "b",
       "x": 58,
-      "y": 10
+      "y": 10,
+      "functions": []
     }
   ],
   "variants": null,

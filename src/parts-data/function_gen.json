@@ -6,12 +6,14 @@
     {
       "name": "out",
       "x": 24,
-      "y": 56
+      "y": 56,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 40,
-      "y": 56
+      "y": 56,
+      "functions": []
     }
   ],
   "variants": null,

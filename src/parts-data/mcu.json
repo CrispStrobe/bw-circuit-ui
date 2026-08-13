@@ -8,244 +8,379 @@
       "name": "P1.0",
       "pin": 1,
       "x": 0,
-      "y": 14
+      "y": 14,
+      "functions": [
+        "gpio",
+        "adc0",
+        "clkout2"
+      ]
     },
     {
       "name": "P1.1",
       "pin": 2,
       "x": 0,
-      "y": 26
+      "y": 26,
+      "functions": [
+        "gpio",
+        "adc1"
+      ]
     },
     {
       "name": "P1.2",
       "pin": 3,
       "x": 0,
-      "y": 38
+      "y": 38,
+      "functions": [
+        "gpio",
+        "adc2",
+        "rxd2"
+      ]
     },
     {
       "name": "P1.3",
       "pin": 4,
       "x": 0,
-      "y": 50
+      "y": 50,
+      "functions": [
+        "gpio",
+        "adc3",
+        "ccp0",
+        "txd2"
+      ]
     },
     {
       "name": "P1.4",
       "pin": 5,
       "x": 0,
-      "y": 62
+      "y": 62,
+      "functions": [
+        "gpio",
+        "adc4",
+        "ccp1",
+        "ss"
+      ]
     },
     {
       "name": "P1.5",
       "pin": 6,
       "x": 0,
-      "y": 74
+      "y": 74,
+      "functions": [
+        "gpio",
+        "adc5",
+        "mosi"
+      ]
     },
     {
       "name": "P1.6",
       "pin": 7,
       "x": 0,
-      "y": 86
+      "y": 86,
+      "functions": [
+        "gpio",
+        "adc6",
+        "miso"
+      ]
     },
     {
       "name": "P1.7",
       "pin": 8,
       "x": 0,
-      "y": 98
+      "y": 98,
+      "functions": [
+        "gpio",
+        "adc7",
+        "sclk"
+      ]
     },
     {
       "name": "RST",
       "pin": 9,
       "x": 0,
-      "y": 110
+      "y": 110,
+      "functions": []
     },
     {
       "name": "P3.0",
       "pin": 10,
       "x": 0,
-      "y": 122
+      "y": 122,
+      "functions": [
+        "gpio",
+        "rxd0"
+      ]
     },
     {
       "name": "P3.1",
       "pin": 11,
       "x": 0,
-      "y": 134
+      "y": 134,
+      "functions": [
+        "gpio",
+        "txd0"
+      ]
     },
     {
       "name": "P3.2",
       "pin": 12,
       "x": 0,
-      "y": 146
+      "y": 146,
+      "functions": [
+        "gpio",
+        "int0"
+      ]
     },
     {
       "name": "P3.3",
       "pin": 13,
       "x": 0,
-      "y": 158
+      "y": 158,
+      "functions": [
+        "gpio",
+        "int1"
+      ]
     },
     {
       "name": "P3.4",
       "pin": 14,
       "x": 0,
-      "y": 170
+      "y": 170,
+      "functions": [
+        "gpio",
+        "t0",
+        "clkout0"
+      ]
     },
     {
       "name": "P3.5",
       "pin": 15,
       "x": 0,
-      "y": 182
+      "y": 182,
+      "functions": [
+        "gpio",
+        "t1",
+        "clkout1"
+      ]
     },
     {
       "name": "P3.6",
       "pin": 16,
       "x": 0,
-      "y": 194
+      "y": 194,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P3.7",
       "pin": 17,
       "x": 0,
-      "y": 206
+      "y": 206,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "XTAL2",
       "pin": 18,
       "x": 0,
-      "y": 218
+      "y": 218,
+      "functions": []
     },
     {
       "name": "XTAL1",
       "pin": 19,
       "x": 0,
-      "y": 230
+      "y": 230,
+      "functions": []
     },
     {
       "name": "GND",
       "pin": 20,
       "x": 0,
-      "y": 242
+      "y": 242,
+      "functions": []
     },
     {
       "name": "P2.0",
       "pin": 21,
       "x": 200,
-      "y": 242
+      "y": 242,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.1",
       "pin": 22,
       "x": 200,
-      "y": 230
+      "y": 230,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.2",
       "pin": 23,
       "x": 200,
-      "y": 218
+      "y": 218,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.3",
       "pin": 24,
       "x": 200,
-      "y": 206
+      "y": 206,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.4",
       "pin": 25,
       "x": 200,
-      "y": 194
+      "y": 194,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.5",
       "pin": 26,
       "x": 200,
-      "y": 182
+      "y": 182,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.6",
       "pin": 27,
       "x": 200,
-      "y": 170
+      "y": 170,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P2.7",
       "pin": 28,
       "x": 200,
-      "y": 158
+      "y": 158,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P4.4",
       "pin": 29,
       "x": 200,
-      "y": 146
+      "y": 146,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P4.5",
       "pin": 30,
       "x": 200,
-      "y": 134
+      "y": 134,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P4.6",
       "pin": 31,
       "x": 200,
-      "y": 122
+      "y": 122,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.7",
       "pin": 32,
       "x": 200,
-      "y": 110
+      "y": 110,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.6",
       "pin": 33,
       "x": 200,
-      "y": 98
+      "y": 98,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.5",
       "pin": 34,
       "x": 200,
-      "y": 86
+      "y": 86,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.4",
       "pin": 35,
       "x": 200,
-      "y": 74
+      "y": 74,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.3",
       "pin": 36,
       "x": 200,
-      "y": 62
+      "y": 62,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.2",
       "pin": 37,
       "x": 200,
-      "y": 50
+      "y": 50,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.1",
       "pin": 38,
       "x": 200,
-      "y": 38
+      "y": 38,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "P0.0",
       "pin": 39,
       "x": 200,
-      "y": 26
+      "y": 26,
+      "functions": [
+        "gpio"
+      ]
     },
     {
       "name": "VCC",
       "pin": 40,
       "x": 200,
-      "y": 14
+      "y": 14,
+      "functions": []
     }
   ],
-  "_pinmap_source": "stc/docs/PINOUT.md \u2014 STC12C5A60S2 PDIP-40 pin map, official datasheet (STC MCU Limited, rev 2011-07-15). P0 runs DESCENDING: pin 32=P0.7 down to pin 39=P0.0. Pin names are port designators, not generic 8051 functional aliases \u2014 that exact substitution trap is documented in the lab notes.",
+  "_pinmap_source": "stc/docs/PINOUT.md — STC12C5A60S2 PDIP-40 pin map, official datasheet (STC MCU Limited, rev 2011-07-15). P0 runs DESCENDING: pin 32=P0.7 down to pin 39=P0.0. Pin names are port designators, not generic 8051 functional aliases — that exact substitution trap is documented in the lab notes.",
   "footprint": {
     "refTerminal": "P1.0",
     "leads": {

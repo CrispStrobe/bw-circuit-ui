@@ -6,17 +6,20 @@
     {
       "name": "vin",
       "x": 12,
-      "y": 48
+      "y": 48,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 22,
-      "y": 48
+      "y": 48,
+      "functions": []
     },
     {
       "name": "vout",
       "x": 32,
-      "y": 48
+      "y": 48,
+      "functions": []
     }
   ],
   "variants": null,

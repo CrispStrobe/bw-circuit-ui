@@ -6,32 +6,38 @@
     {
       "name": "vin",
       "x": 24,
-      "y": 60
+      "y": 60,
+      "functions": []
     },
     {
       "name": "gnd",
       "x": 40,
-      "y": 60
+      "y": 60,
+      "functions": []
     },
     {
       "name": "motor_p",
       "x": 96,
-      "y": 18
+      "y": 18,
+      "functions": []
     },
     {
       "name": "motor_n",
       "x": 96,
-      "y": 32
+      "y": 32,
+      "functions": []
     },
     {
       "name": "tx",
       "x": 4,
-      "y": 10
+      "y": 10,
+      "functions": []
     },
     {
       "name": "rx",
       "x": 4,
-      "y": 44
+      "y": 44,
+      "functions": []
     }
   ],
   "variants": null,
