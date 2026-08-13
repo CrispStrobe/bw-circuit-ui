@@ -1,0 +1,448 @@
+{
+  "kind": "w65c22",
+  "w": 80,
+  "h": 111,
+  "terminals": [
+    {
+      "name": "vss",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "pa0",
+      "x": 0,
+      "y": 13,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pa1",
+      "x": 0,
+      "y": 18,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pa2",
+      "x": 0,
+      "y": 23,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pa3",
+      "x": 0,
+      "y": 28,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pa4",
+      "x": 0,
+      "y": 33,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pa5",
+      "x": 0,
+      "y": 38,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pa6",
+      "x": 0,
+      "y": 43,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pa7",
+      "x": 0,
+      "y": 48,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pb0",
+      "x": 0,
+      "y": 53,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pb1",
+      "x": 0,
+      "y": 58,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pb2",
+      "x": 0,
+      "y": 63,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pb3",
+      "x": 0,
+      "y": 68,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pb4",
+      "x": 0,
+      "y": 73,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pb5",
+      "x": 0,
+      "y": 78,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pb6",
+      "x": 0,
+      "y": 83,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pb7",
+      "x": 0,
+      "y": 88,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "cb1",
+      "x": 0,
+      "y": 93,
+      "functions": []
+    },
+    {
+      "name": "cb2",
+      "x": 0,
+      "y": 98,
+      "functions": []
+    },
+    {
+      "name": "vdd",
+      "x": 0,
+      "y": 103,
+      "functions": []
+    },
+    {
+      "name": "ca1",
+      "x": 80,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "ca2",
+      "x": 80,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "rs0",
+      "x": 80,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "rs1",
+      "x": 80,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "rs2",
+      "x": 80,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "rs3",
+      "x": 80,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "resb",
+      "x": 80,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 80,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 80,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 80,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 80,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "d4",
+      "x": 80,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "d5",
+      "x": 80,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "d6",
+      "x": 80,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "d7",
+      "x": 80,
+      "y": 78,
+      "functions": []
+    },
+    {
+      "name": "phi2",
+      "x": 80,
+      "y": 83,
+      "functions": []
+    },
+    {
+      "name": "cs1",
+      "x": 80,
+      "y": 88,
+      "functions": []
+    },
+    {
+      "name": "cs2b",
+      "x": 80,
+      "y": 93,
+      "functions": []
+    },
+    {
+      "name": "rwb",
+      "x": 80,
+      "y": 98,
+      "functions": []
+    },
+    {
+      "name": "irqb",
+      "x": 80,
+      "y": 103,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "W65C22S Versatile Interface Adapter. Pin table audited against WDC W65C22S datasheet (rev 2018-10-08). DIP-40 package. Two 8-bit GPIO ports (PA0-PA7, PB0-PB7), two 16-bit timers, 8-bit shift register. 4-bit register select (RS0-RS3, pins 38-35). Bus interface: D0-D7 (pins 33-26), PHI2 (pin 25), RWB (pin 22), CS1/CS2B (pins 24/23). IRQB (pin 21, open drain). VSS=pin 1, VDD=pin 20.",
+  "footprint": {
+    "refTerminal": "vss",
+    "leads": {
+      "vss": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "pa0": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "pa1": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "pa2": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "pa3": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "pa4": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "pa5": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "pa6": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "pa7": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "pb0": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "pb1": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "pb2": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "pb3": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "pb4": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "pb5": {
+        "dRow": 0,
+        "dCol": 14
+      },
+      "pb6": {
+        "dRow": 0,
+        "dCol": 15
+      },
+      "pb7": {
+        "dRow": 0,
+        "dCol": 16
+      },
+      "cb1": {
+        "dRow": 0,
+        "dCol": 17
+      },
+      "cb2": {
+        "dRow": 0,
+        "dCol": 18
+      },
+      "vdd": {
+        "dRow": 0,
+        "dCol": 19
+      },
+      "ca1": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "ca2": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "rs0": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "rs1": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "rs2": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "rs3": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "resb": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "d0": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "d1": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "d2": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "d3": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "d4": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "d5": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "d6": {
+        "dRow": 5,
+        "dCol": 13
+      },
+      "d7": {
+        "dRow": 5,
+        "dCol": 14
+      },
+      "phi2": {
+        "dRow": 5,
+        "dCol": 15
+      },
+      "cs1": {
+        "dRow": 5,
+        "dCol": 16
+      },
+      "cs2b": {
+        "dRow": 5,
+        "dCol": 17
+      },
+      "rwb": {
+        "dRow": 5,
+        "dCol": 18
+      },
+      "irqb": {
+        "dRow": 5,
+        "dCol": 19
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 20
+  }
+}

@@ -256,7 +256,7 @@
     }
   ],
   "variants": null,
-  "_note": "ATmega328P, same MCU as Uno R3. A6/A7 are analog-only (no digital I/O, no port bit). D13 (SCK) drives the onboard LED (active high). Pin table in docs/pin-table-atmega328p.md.",
+  "_note": "ATmega328P (or ATmega168P — pin-compatible, same package and Arduino pin mapping; only flash/RAM differ), same MCU as Uno R3. A6/A7 are analog-only (no digital I/O, no port bit). D13 (SCK) drives the onboard LED (active high). Pin table in docs/pin-table-atmega328p.md.",
   "footprint": {
     "refTerminal": "d1",
     "leads": {

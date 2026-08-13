@@ -22,16 +22,24 @@ let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
 
 /**
- * Board-level MCU kinds → engine kind. The engine knows one kind: 'mcu'.
- * Board-level sidecars (arduino_nano, pi_pico, etc.) carry richer terminal
- * lists and footprints, but the engine treats them all as MCU passthrough.
+ * Board/IC kinds → engine kind. The engine knows a fixed set of kinds
+ * (resistor, led, mcu, etc.). Board-level sidecars (arduino_nano,
+ * pi_pico, retro DIPs) carry richer terminal lists and footprints but
+ * the engine treats them all as 'mcu' passthrough (null terminal
+ * validation, pin-state driven). Any kind with a sidecar that the
+ * engine doesn't know gets mapped here.
  */
-const MCU_BOARD_KINDS = new Set([
+const PASSTHROUGH_KINDS = new Set([
+  // MCU boards
   'stc_mcu', 'arduino_nano', 'arduino_uno', 'arduino_mega',
   'pi_pico', 'attiny85', 'microbit',
+  // Retro DIPs (6502 family)
+  'w65c02', 'w65c22', 'w65c51',
+  // Memory ICs
+  '28c256', '62256',
 ]);
 function engineKindFor(kind) {
-  return MCU_BOARD_KINDS.has(kind) ? 'mcu' : kind;
+  return PASSTHROUGH_KINDS.has(kind) ? 'mcu' : kind;
 }
 
 /** Reset the ID counter (for tests). */

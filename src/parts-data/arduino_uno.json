@@ -240,6 +240,6 @@
     }
   ],
   "variants": null,
-  "_note": "ATmega328P. D13 (SCK) drives the onboard LED (active high). Uno does not expose A6/A7 on headers (Nano only). Pin table in docs/pin-table-atmega328p.md.",
+  "_note": "ATmega328P (or ATmega168P — pin-compatible, same DIP-28 package and Arduino pin mapping; only flash/RAM differ). D13 (SCK) drives the onboard LED (active high). Uno does not expose A6/A7 on headers (Nano only). Pin table in docs/pin-table-atmega328p.md.",
   "footprint": null
 }

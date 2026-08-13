@@ -89,6 +89,7 @@
     }
   ],
   "variants": null,
+  "_note": "74HC00 Quad 2-input NAND gate. Pin table per TI SN74HC00N datasheet (SCLS024I). DIP-14 package. Four independent NAND gates: 1A/1B/1Y, 2A/2B/2Y, 3A/3B/3Y, 4A/4B/4Y. GND=pin 7, VCC=pin 14.",
   "footprint": {
     "refTerminal": "1a",
     "leads": {

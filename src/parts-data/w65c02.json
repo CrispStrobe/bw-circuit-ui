@@ -1,0 +1,416 @@
+{
+  "kind": "w65c02",
+  "w": 80,
+  "h": 111,
+  "terminals": [
+    {
+      "name": "vpb",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "rdy",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "phi1o",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "irqb",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "mlb",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "nmib",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "sync",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "vdd",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "a0",
+      "x": 0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "a1",
+      "x": 0,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "a2",
+      "x": 0,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "a3",
+      "x": 0,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "a4",
+      "x": 0,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "a5",
+      "x": 0,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "a6",
+      "x": 0,
+      "y": 78,
+      "functions": []
+    },
+    {
+      "name": "a7",
+      "x": 0,
+      "y": 83,
+      "functions": []
+    },
+    {
+      "name": "a8",
+      "x": 0,
+      "y": 88,
+      "functions": []
+    },
+    {
+      "name": "a9",
+      "x": 0,
+      "y": 93,
+      "functions": []
+    },
+    {
+      "name": "a10",
+      "x": 0,
+      "y": 98,
+      "functions": []
+    },
+    {
+      "name": "a11",
+      "x": 0,
+      "y": 103,
+      "functions": []
+    },
+    {
+      "name": "resb",
+      "x": 80,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "phi2o",
+      "x": 80,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "sob",
+      "x": 80,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "phi2",
+      "x": 80,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "be",
+      "x": 80,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "nc",
+      "x": 80,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "rwb",
+      "x": 80,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 80,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 80,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 80,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 80,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "d4",
+      "x": 80,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "d5",
+      "x": 80,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "d6",
+      "x": 80,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "d7",
+      "x": 80,
+      "y": 78,
+      "functions": []
+    },
+    {
+      "name": "a15",
+      "x": 80,
+      "y": 83,
+      "functions": []
+    },
+    {
+      "name": "a14",
+      "x": 80,
+      "y": 88,
+      "functions": []
+    },
+    {
+      "name": "a13",
+      "x": 80,
+      "y": 93,
+      "functions": []
+    },
+    {
+      "name": "a12",
+      "x": 80,
+      "y": 98,
+      "functions": []
+    },
+    {
+      "name": "vss",
+      "x": 80,
+      "y": 103,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "W65C02S 8-bit CPU. Pin table audited against WDC W65C02S datasheet (rev 2018-10-08). DIP-40 package. 16-bit address bus (A0-A15), 8-bit data bus (D0-D7), active-low control: RESB (pin 40), IRQB (pin 4), NMIB (pin 6). PHI2 (pin 37) is clock input. RWB (pin 34) high=read. Pin 35 is No Connect. VDD=pin 8, VSS=pin 21.",
+  "footprint": {
+    "refTerminal": "vpb",
+    "leads": {
+      "vpb": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "rdy": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "phi1o": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "irqb": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "mlb": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "nmib": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "sync": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "vdd": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "a0": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "a1": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "a2": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "a3": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "a4": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "a5": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "a6": {
+        "dRow": 0,
+        "dCol": 14
+      },
+      "a7": {
+        "dRow": 0,
+        "dCol": 15
+      },
+      "a8": {
+        "dRow": 0,
+        "dCol": 16
+      },
+      "a9": {
+        "dRow": 0,
+        "dCol": 17
+      },
+      "a10": {
+        "dRow": 0,
+        "dCol": 18
+      },
+      "a11": {
+        "dRow": 0,
+        "dCol": 19
+      },
+      "resb": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "phi2o": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "sob": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "phi2": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "be": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "nc": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "rwb": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "d0": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "d1": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "d2": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "d3": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "d4": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "d5": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "d6": {
+        "dRow": 5,
+        "dCol": 13
+      },
+      "d7": {
+        "dRow": 5,
+        "dCol": 14
+      },
+      "a15": {
+        "dRow": 5,
+        "dCol": 15
+      },
+      "a14": {
+        "dRow": 5,
+        "dCol": 16
+      },
+      "a13": {
+        "dRow": 5,
+        "dCol": 17
+      },
+      "a12": {
+        "dRow": 5,
+        "dCol": 18
+      },
+      "vss": {
+        "dRow": 5,
+        "dCol": 19
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 20
+  }
+}

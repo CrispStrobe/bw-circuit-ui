@@ -1,0 +1,296 @@
+{
+  "kind": "28c256",
+  "w": 70,
+  "h": 81,
+  "terminals": [
+    {
+      "name": "a14",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "a12",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "a7",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "a6",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "a5",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "a4",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "a3",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "a2",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "a1",
+      "x": 0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "a0",
+      "x": 0,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 0,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 0,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 0,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "web",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "a13",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "a8",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "a9",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "a11",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "oeb",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "a10",
+      "x": 70,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "ceb",
+      "x": 70,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "d7",
+      "x": 70,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "d6",
+      "x": 70,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "d5",
+      "x": 70,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "d4",
+      "x": 70,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 70,
+      "y": 73,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "AT28C256 32K x 8 EEPROM. Pin table audited against Microchip/Atmel AT28C256 datasheet (doc 0006). DIP-28 package. 15-bit address bus (A0-A14), 8-bit data bus (D0-D7). Control: CEB (pin 20, chip enable active low), OEB (pin 22, output enable active low), WEB (pin 27, write enable active low). Pin-compatible with 62256 SRAM. GND=pin 14, VCC=pin 28.",
+  "footprint": {
+    "refTerminal": "a14",
+    "leads": {
+      "a14": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "a12": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "a7": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "a6": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "a5": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "a4": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "a3": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "a2": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "a1": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "a0": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "d0": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "d1": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "d2": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "web": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "a13": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "a8": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "a9": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "a11": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "oeb": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "a10": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "ceb": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "d7": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "d6": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "d5": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "d4": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "d3": {
+        "dRow": 5,
+        "dCol": 13
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 14
+  }
+}

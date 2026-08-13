@@ -1,0 +1,296 @@
+{
+  "kind": "w65c51",
+  "w": 70,
+  "h": 81,
+  "terminals": [
+    {
+      "name": "vss",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "cs0",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "cs1b",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "resb",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "rwb",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "irqb",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "phi2",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 0,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 0,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "d4",
+      "x": 0,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "d5",
+      "x": 0,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "d6",
+      "x": 0,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "vdd",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "xtli",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "xtlo",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "dcdb",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "dsrb",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "rxd",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "dtrb",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "ctsb",
+      "x": 70,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "rtsb",
+      "x": 70,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "nc",
+      "x": 70,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "txd",
+      "x": 70,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "rs1",
+      "x": 70,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "rs0",
+      "x": 70,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "d7",
+      "x": 70,
+      "y": 73,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "W65C51N Asynchronous Communications Interface Adapter. Pin table audited against WDC W65C51N datasheet (rev 2018-10-08). DIP-28 package. Full-duplex serial: TxD (pin 18), RxD (pin 23). Modem control: RTSB/CTSB/DTRB/DSRB/DCDB. Bus interface: D0-D7 (pins 8-15), RS0/RS1 (pins 16-17), PHI2 (pin 7), RWB (pin 5), CS0/CS1B (pins 2-3). Pin 19 is No Connect on W65C51N (was TxCLK on older R65C51). IRQB (pin 6, open drain). VSS=pin 1, VDD=pin 28.",
+  "footprint": {
+    "refTerminal": "vss",
+    "leads": {
+      "vss": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "cs0": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "cs1b": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "resb": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "rwb": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "irqb": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "phi2": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "d0": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "d1": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "d2": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "d3": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "d4": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "d5": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "d6": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "vdd": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "xtli": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "xtlo": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "dcdb": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "dsrb": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "rxd": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "dtrb": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "ctsb": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "rtsb": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "nc": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "txd": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "rs1": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "rs0": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "d7": {
+        "dRow": 5,
+        "dCol": 13
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 14
+  }
+}
