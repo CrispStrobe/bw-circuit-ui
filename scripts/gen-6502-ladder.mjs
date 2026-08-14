@@ -199,10 +199,11 @@ function genE1() {
 }
 
 // ── E2: ROM-only + data-bus LEDs ─────────────────────────────────────
-// 28C256 ROM wired to the CPU with CSB tied low (full address space).
+// 28C256 ROM at $8000-$FFFF via a single NAND inverter on A15.
 // Data-bus LEDs added — in single-step mode, you can see each byte
 // the CPU reads. The teachable moment: a store to unmapped RAM shows
 // the written value on the bus, then it vanishes on the next cycle.
+// This is the single-step verify rung — first appearance of address decode.
 
 function genE2() {
   const parts = [
@@ -210,6 +211,7 @@ function genE2() {
     part('gnd1', 'gnd'),
     part('cpu', 'w65c02'),
     part('rom', '28c256'),
+    part('nand1', '74hc00'),
     // Address LEDs A0-A7
     ...Array.from({ length: 8 }, (_, i) =>
       part(`ra${i}`, 'resistor', { ohms: 220 })),
@@ -236,14 +238,23 @@ function genE2() {
   const wires = [
     ...powerChip('vcc1', 'gnd1', 'cpu'),
     ...powerChipStd('vcc1', 'gnd1', 'rom'),
+    ...powerChipStd('vcc1', 'gnd1', 'nand1'),
     tieHigh('vcc1', 'cpu', 'resb'),
     tieHigh('vcc1', 'cpu', 'irqb'),
     tieHigh('vcc1', 'cpu', 'nmib'),
     tieHigh('vcc1', 'cpu', 'be'),
     tieHigh('vcc1', 'cpu', 'rdy'),
     tieHigh('vcc1', 'cpu', 'sob'),
-    // ROM: always selected, read-only
-    tieLow('gnd1', 'rom', 'csb'),
+    // Address decode: NOT(A15) via NAND gate → ROM CSB
+    // ROM at $8000-$FFFF (CSB low when A15=1)
+    wire('cpu', 'a15', 'nand1', '1a'),
+    wire('cpu', 'a15', 'nand1', '1b'),
+    wire('nand1', '1y', 'rom', 'csb'),
+    // Unused NAND gates — tie inputs high
+    tieHigh('vcc1', 'nand1', '2a'), tieHigh('vcc1', 'nand1', '2b'),
+    tieHigh('vcc1', 'nand1', '3a'), tieHigh('vcc1', 'nand1', '3b'),
+    tieHigh('vcc1', 'nand1', '4a'), tieHigh('vcc1', 'nand1', '4b'),
+    // ROM: read-only
     tieLow('gnd1', 'rom', 'oeb'),
     tieHigh('vcc1', 'rom', 'web'),
     ...busA('cpu', 'rom', Array.from({ length: 15 }, (_, i) => i)),
@@ -271,7 +282,96 @@ function genE2() {
   return {
     vcc: 5, parts, wires,
     _stage: 'E2', _title: 'ROM only',
-    _description: 'A 28C256 EEPROM covers the full address space. Data-bus LEDs show each byte. In single-step: a write to unmapped RAM shows the value on the bus, then it vanishes — the first lesson in memory mapping.',
+    _description: 'A 28C256 EEPROM at $8000-$FFFF via a single NAND inverter on A15. Data-bus LEDs show each byte. Write to the unmapped lower half: the value appears on the bus for one cycle, then vanishes — the first lesson in address decode.',
+  };
+}
+
+// ── E2.5: 6507SBC — four-chip machine ────────────────────────────────
+// R6507 + MOS6532 RIOT + 28C256 ROM + one 74HC04 inverter gate.
+// The simplest complete computer: CPU, memory, and I/O in four chips.
+// Decode = A12: ROM at $1000-$1FFF, RIOT at $0000-$0FFF.
+// 8 LEDs on RIOT port A show output. This is an Atari-2600-era design.
+
+function genE2_5() {
+  const parts = [
+    part('vcc1', 'vcc'),
+    part('gnd1', 'gnd'),
+    part('cpu', 'r6507'),
+    part('riot', 'mos6532'),
+    part('rom', '28c256'),
+    part('inv1', '74hc04'),
+    // 8 LEDs on RIOT port A
+    ...Array.from({ length: 8 }, (_, i) =>
+      part(`rl${i}`, 'resistor', { ohms: 220 })),
+    ...Array.from({ length: 8 }, (_, i) =>
+      part(`led${i}`, 'led', { color: 'red' })),
+  ];
+
+  const wires = [
+    // Power: R6507 uses vcc/vss, RIOT uses vcc/vss, ROM and 74HC04 use vcc/gnd
+    wire('vcc1', 'vcc', 'cpu', 'vcc'),
+    wire('gnd1', 'gnd', 'cpu', 'vss'),
+    wire('vcc1', 'vcc', 'riot', 'vcc'),
+    wire('gnd1', 'gnd', 'riot', 'vss'),
+    ...powerChipStd('vcc1', 'gnd1', 'rom'),
+    ...powerChipStd('vcc1', 'gnd1', 'inv1'),
+
+    // R6507 straps (fewer than W65C02 — no IRQ, NMI, BE, SOB, SYNC, VPB)
+    tieHigh('vcc1', 'cpu', 'resb'),
+    tieHigh('vcc1', 'cpu', 'rdy'),
+
+    // ── Address decode: single 74HC04 inverter on A12 ─────────────
+    // Gate 1: NOT(A12) → drives both ROM CSB (active low) and RIOT CS1 (active high)
+    // A12=1 ($1000-$1FFF): NOT(A12)=0 → ROM CSB=0 (selected), RIOT CS1=0 (deselected)
+    // A12=0 ($0000-$0FFF): NOT(A12)=1 → ROM CSB=1 (deselected), RIOT CS1=1 (selected)
+    wire('cpu', 'a12', 'inv1', '1a'),
+    wire('inv1', '1y', 'rom', 'csb'),
+    wire('inv1', '1y', 'riot', 'cs1'),
+    // RIOT CS2B tied low (always enabled from that line)
+    tieLow('gnd1', 'riot', 'cs2b'),
+    // Unused inverter gates — tie inputs to GND
+    tieLow('gnd1', 'inv1', '2a'),
+    tieLow('gnd1', 'inv1', '3a'),
+    tieLow('gnd1', 'inv1', '4a'),
+    tieLow('gnd1', 'inv1', '5a'),
+    tieLow('gnd1', 'inv1', '6a'),
+
+    // ── ROM ─────────────────────────────────────────────────────────
+    tieLow('gnd1', 'rom', 'oeb'),
+    tieHigh('vcc1', 'rom', 'web'),
+    // A0-A11 from R6507 (4KB window), tie ROM A12-A14 low
+    ...busA('cpu', 'rom', Array.from({ length: 12 }, (_, i) => i)),
+    tieLow('gnd1', 'rom', 'a12'),
+    tieLow('gnd1', 'rom', 'a13'),
+    tieLow('gnd1', 'rom', 'a14'),
+    ...busD('cpu', 'rom'),
+
+    // ── RIOT (MOS6532) ──────────────────────────────────────────────
+    // Address lines: A0-A6 from R6507
+    ...busA('cpu', 'riot', Array.from({ length: 7 }, (_, i) => i)),
+    // RS (RAM/I/O select) = A9 — low selects RAM ($0000-$007F),
+    // high selects I/O/timer registers
+    wire('cpu', 'a9', 'riot', 'rs'),
+    // Data bus
+    ...busD('cpu', 'riot'),
+    // Control: R/W and clock
+    wire('cpu', 'rwb', 'riot', 'rw'),
+    wire('cpu', 'phi2', 'riot', 'phi2'),
+    // Reset: tie high (not in reset)
+    tieHigh('vcc1', 'riot', 'rsb'),
+
+    // ── RIOT port A → LEDs ──────────────────────────────────────────
+    ...Array.from({ length: 8 }, (_, i) => [
+      wire('riot', `pa${i}`, `rl${i}`, 'a'),
+      wire(`rl${i}`, 'b', `led${i}`, 'anode'),
+      wire(`led${i}`, 'cathode', 'gnd1', 'gnd'),
+    ]).flat(),
+  ];
+
+  return {
+    vcc: 5, parts, wires,
+    _stage: 'E2.5', _title: '6507 SBC',
+    _description: 'Four-chip computer: R6507 + MOS6532 RIOT + 28C256 ROM + one 74HC04 inverter. A12 decodes ROM ($1000-$1FFF) vs RIOT ($0000-$0FFF). 8 LEDs on RIOT port A — the Atari-era minimal machine.',
   };
 }
 
@@ -587,7 +687,7 @@ function genE6() {
 
 // ── Write all stages ─────────────────────────────────────────────────
 
-const stages = [genE0, genE1, genE2, genE3, genE4, genE5, genE6];
+const stages = [genE0, genE1, genE2, genE2_5, genE3, genE4, genE5, genE6];
 for (const gen of stages) {
   const circuit = gen();
   const name = circuit._stage.toLowerCase();

@@ -56,6 +56,15 @@ describe('6502 pedagogy ladder — extractor verification', () => {
     assert.ok(result.regions.some(r => r.kind === 'rom'), 'has ROM region');
   });
 
+  it('E2.5 6507SBC: refused — no W65C02 (R6507 is a different CPU)', () => {
+    const circuit = loadStage('e2.5');
+    assert.ok(circuit, 'E2.5 circuit exists');
+    const result = extract6502Machine(circuit);
+    assert.equal(result.ok, false);
+    assert.ok(result.reasons.some(r => r.includes('no W65C02')),
+      'refuses because the CPU is an R6507, not a W65C02');
+  });
+
   it('E3 74HC374 latch: accepted — ROM at $8000-$FFFF, latch is bus peripheral', () => {
     const circuit = loadStage('e3');
     assert.ok(circuit, 'E3 circuit exists');
@@ -98,6 +107,14 @@ describe('Z80 pedagogy ladder — extractor verification', () => {
     assert.equal(result.ok, false);
     assert.ok(result.reasons.some(r => r.includes('no RAM, ROM or ACIA')),
       'refuses because there are no addressable chips');
+  });
+
+  it('Z1.5 ROM only: accepted — ROM at $0000-$7FFF', () => {
+    const circuit = loadStage('z1.5');
+    assert.ok(circuit, 'Z1.5 circuit exists');
+    const result = extractZ80Machine(circuit);
+    assert.equal(result.ok, true, `refused: ${result.reasons.join('; ')}`);
+    assert.ok(result.regions.some(r => r.kind === 'rom'), 'has ROM region');
   });
 
   it('Z4 ROM+RAM: accepted — simple decode with 74HC00', () => {

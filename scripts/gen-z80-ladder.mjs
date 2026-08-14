@@ -84,6 +84,66 @@ function genZ1() {
   };
 }
 
+// ── Z1.5: ROM-only + data-bus LEDs ──────────────────────────────────
+// 28C256 ROM at $0000-$7FFF (CSB = A15, selected when A15=0).
+// Data-bus LEDs show each byte fetched. Address LEDs on A0-A7.
+// Mirrors 6502 E2: the first ROM stage, before RAM is introduced.
+// No gate IC needed — A15 drives CSB directly.
+function genZ1_5() {
+  const parts = [
+    part('vcc1', 'vcc'),
+    part('gnd1', 'gnd'),
+    part('cpu', 'z80'),
+    part('rom', '28c256'),
+    // Address LEDs A0-A7
+    ...Array.from({ length: 8 }, (_, i) =>
+      part(`ra${i}`, 'resistor', { ohms: 220 })),
+    ...Array.from({ length: 8 }, (_, i) =>
+      part(`la${i}`, 'led', { color: 'green' })),
+    // Data-bus LEDs D0-D7
+    ...Array.from({ length: 8 }, (_, i) =>
+      part(`rd${i}`, 'resistor', { ohms: 220 })),
+    ...Array.from({ length: 8 }, (_, i) =>
+      part(`ld${i}`, 'led', { color: 'yellow' })),
+  ];
+
+  const wires = [
+    ...powerChipStd('vcc1', 'gnd1', 'cpu'),
+    ...powerChipStd('vcc1', 'gnd1', 'rom'),
+    tieHigh('vcc1', 'cpu', 'resetb'),
+    tieHigh('vcc1', 'cpu', 'intb'),
+    tieHigh('vcc1', 'cpu', 'nmib'),
+    tieHigh('vcc1', 'cpu', 'waitb'),
+    tieHigh('vcc1', 'cpu', 'busrqb'),
+
+    // ROM: CSB = A15 (selected when A15=0 → $0000-$7FFF)
+    wire('cpu', 'a15', 'rom', 'csb'),
+    tieLow('gnd1', 'rom', 'oeb'),
+    tieHigh('vcc1', 'rom', 'web'),
+    ...busA('cpu', 'rom', Array.from({ length: 15 }, (_, i) => i)),
+    ...busD('cpu', 'rom'),
+
+    // Address LEDs A0-A7
+    ...Array.from({ length: 8 }, (_, i) => [
+      wire('cpu', `a${i}`, `ra${i}`, 'a'),
+      wire(`ra${i}`, 'b', `la${i}`, 'anode'),
+      wire(`la${i}`, 'cathode', 'gnd1', 'gnd'),
+    ]).flat(),
+    // Data-bus LEDs D0-D7
+    ...Array.from({ length: 8 }, (_, i) => [
+      wire('cpu', `d${i}`, `rd${i}`, 'a'),
+      wire(`rd${i}`, 'b', `ld${i}`, 'anode'),
+      wire(`ld${i}`, 'cathode', 'gnd1', 'gnd'),
+    ]).flat(),
+  ];
+
+  return {
+    vcc: 5, parts, wires,
+    _stage: 'Z1.5', _title: 'ROM only',
+    _description: 'Z80 with 28C256 ROM at $0000-$7FFF (A15 decode). Data-bus LEDs show each byte. Address LEDs count up. The first ROM stage — before RAM.',
+  };
+}
+
 // ── Z2: Pico-as-memory (display-only) ────────────────────────────────
 function genZ2() {
   const parts = [
@@ -441,7 +501,7 @@ function genZ6() {
 }
 
 // ── Write all stages ─────────────────────────────────────────────────
-const stages = [genZ1, genZ2, genZ3, genZ4, genZ5, genZ6];
+const stages = [genZ1, genZ1_5, genZ2, genZ3, genZ4, genZ5, genZ6];
 for (const gen of stages) {
   const circuit = gen();
   const name = circuit._stage.toLowerCase();

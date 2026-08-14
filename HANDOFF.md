@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-812 tests (806 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
+819 tests (813 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
 21/21 browser gate scenarios green. Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -20,16 +20,17 @@
   MCU: Nano (DIP-30), Pico (DIP-40), ATtiny85 (DIP-8)
   Retro DIP: W65C02 (DIP-40), W65C22 (DIP-40), W65C51 (DIP-28),
   28C256 EEPROM (DIP-28), 62256 SRAM (DIP-28)
-- **6502 pedagogy ladder** (E0-E6, renumbered): staged circuits from the
-  16-source breadboard survey:
+- **6502 pedagogy ladder** (E0-E6 + E2.5, renumbered): staged circuits from
+  the 16-source breadboard survey:
   E0 clock module (555 astable + single-step), E1 CPU-alive (status LEDs:
-  PHI2O/RWB/SYNC/VPB + address LEDs, NOP free-run), E2 ROM-only + data-bus
-  LEDs (write-to-unmapped teachable moment), E3 74HC374 latch LED port
-  (simplest output, write strobe via NAND), E4 VIA blink, E5 LCD hello,
-  E6 full EATER6502 (extractor-verified = preset exactly).
-  E1.5/E2.5 reserved for future rungs.
-- **Z80 pedagogy ladder** (Z1-Z6): staged circuits teaching Searle minimal Z80.
-  Z2/Z3 marked display-only. Z5 extractor verification blocked on z80-extract.js.
+  PHI2O/RWB/SYNC/VPB + address LEDs, NOP free-run), E2 ROM-only + NAND
+  decode on A15 + data-bus LEDs, E2.5 6507SBC (R6507+RIOT+ROM+74HC04,
+  decode=A12), E3 74HC374 latch LED port (simplest output, write strobe
+  via NAND), E4 VIA blink, E5 LCD hello, E6 full EATER6502
+  (extractor-verified = preset exactly). E1.5 reserved.
+- **Z80 pedagogy ladder** (Z1-Z6 + Z1.5): staged circuits teaching Searle
+  minimal Z80. Z1.5 ROM-only (28C256, A15 decode). Z2/Z3 display-only.
+  Z5 extractor-verified = SEARLE preset.
 - **Terminal aliases**: pot->potentiometer, lead1/lead2, cw/ccw, gate_and,
   28c256.csb->ceb
 - **PASSTHROUGH_KINDS**: MCU boards + retro DIPs + Z80/MC6850 all map to 'mcu'
@@ -53,18 +54,27 @@
   74HC138 (decoder), 74HC245 (transceiver), 74C922 (keypad encoder),
   AT24C02, DS1302, DS18B20, KY-040, R6507, MOS6532, NS16C550, ST7920.
 - **Board seating test**: 8 boards, 24 tests
-- **6502 ladder**: E0-E6 (renumbered from 16-source survey).
-  E0 clock module, E1 CPU-alive + status LEDs, E2 ROM-only + data LEDs,
-  E3 74HC374 latch LED port (simplest output, write strobe via 3 NAND gates),
-  E4 VIA blink, E5 LCD, E6 full EATER6502. E1.5/E2.5 reserved.
-  Extractor test: 8 tests (5 for 6502, 3 for Z80), all pass.
+- **6502 ladder**: E0-E6 + E2.5 (renumbered from 16-source survey).
+  E0 clock module, E1 CPU-alive + status LEDs, E2 ROM-only + NAND decode
+  on A15 + data LEDs, E2.5 6507SBC (R6507+MOS6532 RIOT+28C256+74HC04,
+  decode=A12), E3 74HC374 latch LED port (simplest output, write strobe
+  via 3 NAND gates), E4 VIA blink, E5 LCD, E6 full EATER6502. E1.5 reserved.
+  Extractor test: 11 tests (7 for 6502, 4 for Z80), all pass.
   E6 = EATER6502 preset, Z5 = SEARLE preset.
+- **E2 updated**: ROM at $8000-$FFFF via single NAND inverter on A15
+  (was: CSB tied low). First appearance of address decode. 43 parts, 103 wires.
+- **E2.5 6507SBC**: four-chip machine — R6507 + MOS6532 RIOT + 28C256 ROM +
+  74HC04 hex inverter. Decode = A12: ROM $1000-$1FFF, RIOT $0000-$0FFF.
+  One inverter gate drives both ROM CSB and RIOT CS1. 8 LEDs on RIOT port A.
+  22 parts, 87 wires. Extractor refuses (no W65C02).
 - **E3 74HC374 latch LED port**: simplest output peripheral. ROM at $8000-$FFFF,
   74HC374 with write strobe CLK = !A15 AND PHI2 (3 NAND gates from one 74HC00).
-  OEB tied low, 8 red LEDs on Q0-Q7. Extractor-accepted (ROM decode valid,
-  latch invisible to extractor). 44 parts, 115 wires.
-- **Z80 ladder**: Z1-Z6 (scripts/gen-z80-ladder.mjs).
+  OEB tied low, 8 red LEDs on Q0-Q7. Extractor-accepted. 44 parts, 115 wires.
+- **Z1.5 ROM only**: Z80 + 28C256 at $0000-$7FFF (CSB = A15 direct).
+  Data-bus + address LEDs. No gate IC needed. 36 parts, 83 wires.
+- **Z80 ladder**: Z1-Z6 + Z1.5 (scripts/gen-z80-ladder.mjs).
   Z2/Z3 display-only. Z5 extractor-verified = SEARLE preset.
+- **PASSTHROUGH_KINDS**: added r6507, mos6532 (engine maps to 'mcu').
 
 ## In flight
 
@@ -74,10 +84,8 @@ Nothing uncommitted. No branches.
 
 - **Arduino Mega footprint**: arduino_mega.json has 78 terminals but
   footprint is null. bw-parts needs header-style footprint definition.
-- **z80-extract.js**: Does not exist yet. Z5 SEARLE extractor verification
-  blocked. The Z5 circuit is wired for: ROM $0000-$1FFF, RAM $2000-$FFFF,
-  MC6850 at I/O port $80 (CS2B=IORQB, CS0=A7). When the extractor lands,
-  run it over Z5 and assert config equals SEARLE preset.
+- **z80-extract.js**: Landed in bw-board. Z5 SEARLE extractor verification
+  now passes (11 extractor tests, all green).
 - **28c256 terminal name**: Extractor uses 'csb', sidecar names pin 'ceb'.
   Terminal alias added in bw-circuit-ui. The extractor in bw-board should
   also be updated to use 'ceb' (or the sidecar renamed). This is a latent

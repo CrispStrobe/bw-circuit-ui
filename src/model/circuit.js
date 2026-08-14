@@ -37,6 +37,8 @@ const PASSTHROUGH_KINDS = new Set([
   'w65c02', 'w65c22', 'w65c51',
   // Memory ICs
   '28c256', '62256',
+  // 6507 family
+  'r6507', 'mos6532',
   // Z80 family
   'z80', 'mc6850',
 ]);

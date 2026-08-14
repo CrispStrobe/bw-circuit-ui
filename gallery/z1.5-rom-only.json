@@ -17,7 +17,7 @@
     },
     {
       "id": "cpu",
-      "kind": "w65c02",
+      "kind": "z80",
       "params": {},
       "x": 0,
       "y": 0
@@ -25,13 +25,6 @@
     {
       "id": "rom",
       "kind": "28c256",
-      "params": {},
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "nand1",
-      "kind": "74hc00",
       "params": {},
       "x": 0,
       "y": 0
@@ -323,60 +316,6 @@
       },
       "x": 0,
       "y": 0
-    },
-    {
-      "id": "rs_clk",
-      "kind": "resistor",
-      "params": {
-        "ohms": 220
-      },
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "ls_clk",
-      "kind": "led",
-      "params": {
-        "color": "yellow"
-      },
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "rs_rw",
-      "kind": "resistor",
-      "params": {
-        "ohms": 220
-      },
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "ls_rw",
-      "kind": "led",
-      "params": {
-        "color": "red"
-      },
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "rs_syn",
-      "kind": "resistor",
-      "params": {
-        "ohms": 220
-      },
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "ls_syn",
-      "kind": "led",
-      "params": {
-        "color": "blue"
-      },
-      "x": 0,
-      "y": 0
     }
   ],
   "wires": [
@@ -384,13 +323,13 @@
       "from": "vcc1",
       "fromTerminal": "vcc",
       "to": "cpu",
-      "toTerminal": "vdd"
+      "toTerminal": "vcc"
     },
     {
       "from": "gnd1",
       "fromTerminal": "gnd",
       "to": "cpu",
-      "toTerminal": "vss"
+      "toTerminal": "gnd"
     },
     {
       "from": "vcc1",
@@ -407,26 +346,14 @@
     {
       "from": "vcc1",
       "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "vcc"
-    },
-    {
-      "from": "gnd1",
-      "fromTerminal": "gnd",
-      "to": "nand1",
-      "toTerminal": "gnd"
+      "to": "cpu",
+      "toTerminal": "resetb"
     },
     {
       "from": "vcc1",
       "fromTerminal": "vcc",
       "to": "cpu",
-      "toTerminal": "resb"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "cpu",
-      "toTerminal": "irqb"
+      "toTerminal": "intb"
     },
     {
       "from": "vcc1",
@@ -438,73 +365,19 @@
       "from": "vcc1",
       "fromTerminal": "vcc",
       "to": "cpu",
-      "toTerminal": "be"
+      "toTerminal": "waitb"
     },
     {
       "from": "vcc1",
       "fromTerminal": "vcc",
       "to": "cpu",
-      "toTerminal": "rdy"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "cpu",
-      "toTerminal": "sob"
+      "toTerminal": "busrqb"
     },
     {
       "from": "cpu",
       "fromTerminal": "a15",
-      "to": "nand1",
-      "toTerminal": "1a"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "a15",
-      "to": "nand1",
-      "toTerminal": "1b"
-    },
-    {
-      "from": "nand1",
-      "fromTerminal": "1y",
       "to": "rom",
       "toTerminal": "csb"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "2a"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "2b"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "3a"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "3b"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "4a"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "4b"
     },
     {
       "from": "gnd1",
@@ -943,63 +816,9 @@
       "fromTerminal": "cathode",
       "to": "gnd1",
       "toTerminal": "gnd"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "phi2o",
-      "to": "rs_clk",
-      "toTerminal": "a"
-    },
-    {
-      "from": "rs_clk",
-      "fromTerminal": "b",
-      "to": "ls_clk",
-      "toTerminal": "anode"
-    },
-    {
-      "from": "ls_clk",
-      "fromTerminal": "cathode",
-      "to": "gnd1",
-      "toTerminal": "gnd"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "rwb",
-      "to": "rs_rw",
-      "toTerminal": "a"
-    },
-    {
-      "from": "rs_rw",
-      "fromTerminal": "b",
-      "to": "ls_rw",
-      "toTerminal": "anode"
-    },
-    {
-      "from": "ls_rw",
-      "fromTerminal": "cathode",
-      "to": "gnd1",
-      "toTerminal": "gnd"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "sync",
-      "to": "rs_syn",
-      "toTerminal": "a"
-    },
-    {
-      "from": "rs_syn",
-      "fromTerminal": "b",
-      "to": "ls_syn",
-      "toTerminal": "anode"
-    },
-    {
-      "from": "ls_syn",
-      "fromTerminal": "cathode",
-      "to": "gnd1",
-      "toTerminal": "gnd"
     }
   ],
-  "_stage": "E2",
+  "_stage": "Z1.5",
   "_title": "ROM only",
-  "_description": "A 28C256 EEPROM at $8000-$FFFF via a single NAND inverter on A15. Data-bus LEDs show each byte. Write to the unmapped lower half: the value appears on the bus for one cycle, then vanishes — the first lesson in address decode."
+  "_description": "Z80 with 28C256 ROM at $0000-$7FFF (A15 decode). Data-bus LEDs show each byte. Address LEDs count up. The first ROM stage — before RAM."
 }

@@ -1,0 +1,718 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "cpu",
+      "kind": "r6507",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "riot",
+      "kind": "mos6532",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rom",
+      "kind": "28c256",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "inv1",
+      "kind": "74hc04",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl4",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl5",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl6",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl7",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led0",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led1",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led2",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led3",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led4",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led5",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led6",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led7",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "cpu",
+      "toTerminal": "vss"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "riot",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "riot",
+      "toTerminal": "vss"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rom",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "inv1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "inv1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "resb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "rdy"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a12",
+      "to": "inv1",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "inv1",
+      "fromTerminal": "1y",
+      "to": "rom",
+      "toTerminal": "csb"
+    },
+    {
+      "from": "inv1",
+      "fromTerminal": "1y",
+      "to": "riot",
+      "toTerminal": "cs1"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "riot",
+      "toTerminal": "cs2b"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "inv1",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "inv1",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "inv1",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "inv1",
+      "toTerminal": "5a"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "inv1",
+      "toTerminal": "6a"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom",
+      "toTerminal": "oeb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rom",
+      "toTerminal": "web"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a0",
+      "to": "rom",
+      "toTerminal": "a0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a1",
+      "to": "rom",
+      "toTerminal": "a1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a2",
+      "to": "rom",
+      "toTerminal": "a2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a3",
+      "to": "rom",
+      "toTerminal": "a3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a4",
+      "to": "rom",
+      "toTerminal": "a4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a5",
+      "to": "rom",
+      "toTerminal": "a5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a6",
+      "to": "rom",
+      "toTerminal": "a6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a7",
+      "to": "rom",
+      "toTerminal": "a7"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a8",
+      "to": "rom",
+      "toTerminal": "a8"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a9",
+      "to": "rom",
+      "toTerminal": "a9"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a10",
+      "to": "rom",
+      "toTerminal": "a10"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a11",
+      "to": "rom",
+      "toTerminal": "a11"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom",
+      "toTerminal": "a12"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom",
+      "toTerminal": "a13"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom",
+      "toTerminal": "a14"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d0",
+      "to": "rom",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d1",
+      "to": "rom",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d2",
+      "to": "rom",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d3",
+      "to": "rom",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d4",
+      "to": "rom",
+      "toTerminal": "d4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d5",
+      "to": "rom",
+      "toTerminal": "d5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d6",
+      "to": "rom",
+      "toTerminal": "d6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d7",
+      "to": "rom",
+      "toTerminal": "d7"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a0",
+      "to": "riot",
+      "toTerminal": "a0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a1",
+      "to": "riot",
+      "toTerminal": "a1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a2",
+      "to": "riot",
+      "toTerminal": "a2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a3",
+      "to": "riot",
+      "toTerminal": "a3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a4",
+      "to": "riot",
+      "toTerminal": "a4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a5",
+      "to": "riot",
+      "toTerminal": "a5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a6",
+      "to": "riot",
+      "toTerminal": "a6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a9",
+      "to": "riot",
+      "toTerminal": "rs"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d0",
+      "to": "riot",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d1",
+      "to": "riot",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d2",
+      "to": "riot",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d3",
+      "to": "riot",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d4",
+      "to": "riot",
+      "toTerminal": "d4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d5",
+      "to": "riot",
+      "toTerminal": "d5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d6",
+      "to": "riot",
+      "toTerminal": "d6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d7",
+      "to": "riot",
+      "toTerminal": "d7"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "rwb",
+      "to": "riot",
+      "toTerminal": "rw"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "phi2",
+      "to": "riot",
+      "toTerminal": "phi2"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "riot",
+      "toTerminal": "rsb"
+    },
+    {
+      "from": "riot",
+      "fromTerminal": "pa0",
+      "to": "rl0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl0",
+      "fromTerminal": "b",
+      "to": "led0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led0",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "riot",
+      "fromTerminal": "pa1",
+      "to": "rl1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl1",
+      "fromTerminal": "b",
+      "to": "led1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led1",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "riot",
+      "fromTerminal": "pa2",
+      "to": "rl2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl2",
+      "fromTerminal": "b",
+      "to": "led2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led2",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "riot",
+      "fromTerminal": "pa3",
+      "to": "rl3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl3",
+      "fromTerminal": "b",
+      "to": "led3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led3",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "riot",
+      "fromTerminal": "pa4",
+      "to": "rl4",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl4",
+      "fromTerminal": "b",
+      "to": "led4",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led4",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "riot",
+      "fromTerminal": "pa5",
+      "to": "rl5",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl5",
+      "fromTerminal": "b",
+      "to": "led5",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led5",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "riot",
+      "fromTerminal": "pa6",
+      "to": "rl6",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl6",
+      "fromTerminal": "b",
+      "to": "led6",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led6",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "riot",
+      "fromTerminal": "pa7",
+      "to": "rl7",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl7",
+      "fromTerminal": "b",
+      "to": "led7",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led7",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    }
+  ],
+  "_stage": "E2.5",
+  "_title": "6507 SBC",
+  "_description": "Four-chip computer: R6507 + MOS6532 RIOT + 28C256 ROM + one 74HC04 inverter. A12 decodes ROM ($1000-$1FFF) vs RIOT ($0000-$0FFF). 8 LEDs on RIOT port A — the Atari-era minimal machine."
+}
