@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-767 tests (761 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
+774 tests (768 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
 21/21 browser gate scenarios green. Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -11,105 +11,92 @@
 - **Phase 2 breadboard**: model, footprints (30+ kinds), seating/occupancy,
   electrical continuity via mergeNets, BreadboardView on shared lattice
 - **DRC** (8 rules): source-current, missing-resistor, missing-flyback,
-  floating-input, supply-short, polarity, I2C pull-up, aggregate current
-  (deferred to engine's solved currents). DrcPanel + DrcOverlay wired.
-  Safety-lesson canary: DRC never auto-fixes.
+  floating-input, supply-short, polarity, I2C pull-up, aggregate current.
+  DrcPanel + DrcOverlay wired. Safety-lesson canary: DRC never auto-fixes.
 - **Sidecar integration**: 129 JSON + 129 SVG vendored from bw-parts,
   sync script with delete support, sidecar-first for terminalsForKind
   and getPartBBox, slug aliases (art 67/67 -- all palette kinds covered)
-- **Seated-legibility**: hovering a seated part highlights its occupied
-  holes AND their strips in cool-blue; selection keeps warm-orange.
-  No permanent chrome -- highlights vanish on unhover/deselect.
-- **Serialiser round-trip**: 92 gallery files, legacy files, 5 negative
-  controls, battery->vsource silent upgrade documented
-- **Terminal cross-check**: 117/123 kinds, MCU no longer skipped, category 2b
-- **Wire resolution**: both flat and endpoint-object formats, tap wires,
-  kind + terminal aliases (pot, lead1/lead2, cw/ccw, gate_and)
-- **Schematic**: mode toggle (was split pane), SVG height fix (was 0px),
-  zero-wires defect fixed (terminal alias resolution in fromJSON),
-  camera property tests (5/5 pass)
-- **Servo angle rendering** from board model, not block arguments
-- **60+ palette kinds**, SVG thumbnails, DIP chip pin maps (22 chips)
-- **BOM export** with CSV, examples browser, circuitData prop
-- **Cube oracle** wired from bw-board (category 3)
-- **Ledger audit**: 4 discrepancies found, denominator stated
-- **Load precedence**: circuitData > pins > autosave > starter, tested
-- **supply-current warning** labels + safe-circuit test
-- **Slug coverage guard**: every code-referenced kind must have a sidecar
-- **Board seating verification**: 8 boards, 24 tests, all pass:
+- **Board seating verification**: 8 boards (24 tests), all pass:
   MCU: Nano (DIP-30), Pico (DIP-40), ATtiny85 (DIP-8)
   Retro DIP: W65C02 (DIP-40), W65C22 (DIP-40), W65C51 (DIP-28),
   28C256 EEPROM (DIP-28), 62256 SRAM (DIP-28)
+- **6502 pedagogy ladder** (E1-E6): staged circuits teaching Eater/Couch-To-64k.
+  E6 extractor-verified against EATER6502 preset (regions + chips match exactly).
+  Address decode uses 2x 74HC00 (8 NAND gates), no contention at any address.
+- **Z80 pedagogy ladder** (Z1-Z6): staged circuits teaching Searle minimal Z80.
+  Z2/Z3 marked display-only. Z5 extractor verification blocked on z80-extract.js.
+- **Terminal aliases**: pot->potentiometer, lead1/lead2, cw/ccw, gate_and,
+  28c256.csb->ceb
+- **PASSTHROUGH_KINDS**: MCU boards + retro DIPs + Z80/MC6850 all map to 'mcu'
+  for the engine validator
+- **Column-strip conduction**: fabricated-net merge for unoccupied columns
+  (rail strips excluded to avoid bw-board cap-companion bug)
+- All prior work: serialiser, schematic, wire resolution, slug coverage,
+  seated-legibility, BOM, cube oracle, load precedence, etc.
 
 ## Completed this session
 
-- **infer-seated test fixed**: Missing `advanceTo()` calls -- readAnalog
-  and readPin need the MNA solver to run, which happens during advanceTo.
-- **Wire resolution aliases**: `pot -> potentiometer`, `lead1/lead2 -> a/b`,
-  `cw/ccw -> a/b`. Abstract gate terminals (gate_and, etc.) added.
-  All 92 gallery circuit.json files resolve cleanly.
-- **Board-kind engine mapping** (`engineKindFor`): arduino_nano, pi_pico,
-  arduino_uno, arduino_mega, attiny85, microbit all map to 'mcu' for
-  the engine's setNetlist. Without this, the engine validator rejects
-  board-level kind names it doesn't know.
-- **Column-strip conduction fix**: Two tap wires into different rows of
-  the same unoccupied column now share one fabricated strip net. Without
-  this, a resistor at a5 and an LED at b5 produce separate nets. Rail
-  strips excluded to avoid the bw-board cap-companion bug (spec-update
-  filed: `spec-updates/cap-companion-setpin.md`).
-- **Parts-data sync**: 129 sidecars. Footprint column fixes for 555,
-  arduino_nano, pi_pico, attiny85 (U-shape pin numbering). New sidecars:
-  arduino_mega (78 terminals, no footprint yet), microbit (5 edge pins),
-  W65C02 (DIP-40), W65C22 (DIP-40), W65C51 (DIP-28), 28C256 (DIP-28),
-  62256 (DIP-28).
-- **Board seating test** (`test/board-seating.test.js`): 3 checks x 8
-  boards (24 tests). MCU boards get full solver conduction (setPin -> LED
-  -> brightness). Retro DIPs get net-topology conduction (tap shares net
-  with chip pin). All pass.
-- **PASSTHROUGH_KINDS**: Retro DIPs and memory ICs map to 'mcu' for the
-  engine validator. Without this, the engine rejects unknown kinds and
-  the seated circuit produces zero nets.
+- **infer-seated test fixed**: Missing advanceTo() calls
+- **Wire resolution aliases**: pot, lead1/lead2, cw/ccw, abstract gates
+- **Board-kind engine mapping** (engineKindFor/PASSTHROUGH_KINDS):
+  arduino_nano, pi_pico, attiny85, arduino_mega, microbit, w65c02,
+  w65c22, w65c51, 28c256, 62256, z80, mc6850 all map to 'mcu' for engine
+- **Column-strip conduction fix**: Two taps in same unoccupied column
+  share one net. Rail strips excluded (spec-update filed for bw-board
+  cap-companion bug: spec-updates/cap-companion-setpin.md)
+- **Parts-data sync**: 129 sidecars. New: W65C02, W65C22, W65C51, 28C256,
+  62256, arduino_mega, microbit, Z80, MC6850. Footprint column fixes.
+- **Board seating test**: 8 boards, 24 tests
+- **6502 ladder**: E1-E6 generated (scripts/gen-6502-ladder.mjs),
+  gallery/e1-*.json through gallery/e6-*.json.
+  Extractor test: test/extractor-ladder.test.js (5 tests, all pass).
+  E1 refused (no chips), E2-E4 accepted (coarse), E5 refused (contention
+  teaches why decode matters), E6 accepted = EATER6502 preset.
+- **Z80 ladder**: Z1-Z6 generated (scripts/gen-z80-ladder.mjs),
+  gallery/z1-*.json through gallery/z6-*.json.
+  Z2/Z3 display-only. Z5/Z6 extractor verification pending z80-extract.js.
 
 ## In flight
 
 Nothing uncommitted. No branches.
 
+## Blocked / waiting
+
+- **Arduino Mega footprint**: arduino_mega.json has 78 terminals but
+  footprint is null. bw-parts needs header-style footprint definition.
+- **z80-extract.js**: Does not exist yet. Z5 SEARLE extractor verification
+  blocked. The Z5 circuit is wired for: ROM $0000-$1FFF, RAM $2000-$FFFF,
+  MC6850 at I/O port $80 (CS2B=IORQB, CS0=A7). When the extractor lands,
+  run it over Z5 and assert config equals SEARLE preset.
+- **28c256 terminal name**: Extractor uses 'csb', sidecar names pin 'ceb'.
+  Terminal alias added in bw-circuit-ui. The extractor in bw-board should
+  also be updated to use 'ceb' (or the sidecar renamed). This is a latent
+  mismatch — the circuits work because they wire using 'csb' and the alias
+  resolves it in the circuit model, but the extractor reads wires directly.
+
 ## Pre-existing failures (not from this session)
 
-- **DRC relay tests** (3): source-current and floating-input rules don't
-  fire for relay-driven-from-quasi-pin. Likely a bw-board device registry
-  issue -- relay may not be registering as a device model. Needs diagnosis.
-- **Browser-only** (2): e2e and rendering tests require Playwright/Chromium.
+- **DRC relay tests** (3): source-current and floating-input don't fire
+  for relay-driven-from-quasi-pin. Device registry issue in bw-board.
+- **Browser-only** (2): e2e + rendering need Playwright/Chromium.
 
 ## Spec-updates filed
 
 - `spec-updates/cap-companion-setpin.md`: bw-board bug where setPin after
-  advanceTo zeros all voltages due to cap companion G = C/0.
+  advanceTo zeros all voltages due to cap companion G=C/0.
 
-## Blocked
+## Key learnings
 
-Nothing blocked. The schematic visual check at full width needs a browser
-(routed to coordinator/owner).
-
-## What I learned that is not in a spec-update
-
-- **`readAnalog` needs the solver to have run** -- it reads from
-  `nodeVoltages`, which is only populated after `advanceTo`. `setControl`
-  alone is NOT sufficient.
-- **Board-level MCU kinds must map to 'mcu' for the engine.** The engine
-  validator only knows 'mcu', not 'arduino_nano' or 'pi_pico'. The
-  circuit model preserves the original kind for UI/serialization but
-  sends 'mcu' to setNetlist.
-- **Unoccupied column strips don't auto-merge.** deriveNets only produces
-  nets for strips with seated parts. Tap wires into empty strips need
-  explicit tracking so multiple taps share one net.
-- **Top and bottom rails are separate.** A real breadboard needs a jumper
-  wire to connect them. Tests must include cross-rail jumpers for boards
-  with pins on both sides (ATtiny85's VCC is on the bottom rail side).
-- **bw-board cap companion bug:** calling setPin after advanceTo at the
-  same timeNs zeros all node voltages. Workaround: exclude rail strips
-  from the fabricated-net merge so caps stay floating.
+- **readAnalog needs advanceTo** to populate nodeVoltages
+- **Board-level kinds must map to 'mcu'** for the engine validator
+- **Unoccupied column strips need fabricated-net tracking**
+- **Top/bottom rails are separate** — need cross-rail jumpers
+- **bw-board cap companion bug**: setPin at same timeNs zeros voltages.
+  Workaround: exclude rail strips from fabricated merge.
+- **Address decode with 2-input NAND gates** is a tree: NOT(A), OR(A,B) =
+  NAND(!A,!B), 3-input AND needs NAND cascade. 8 gates (2x 74HC00) is
+  tight but sufficient for both Eater and Searle decodes.
 
 ## Convention
 
-Scan sibling `spec-updates/` at session start per bw-parts CONVENTION.md.
+Scan sibling spec-updates/ at session start per bw-parts CONVENTION.md.
