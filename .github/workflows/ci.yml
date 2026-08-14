@@ -19,5 +19,13 @@ jobs:
       - name: Clone bw-board (sibling dependency)
         run: git clone --depth 1 https://github.com/CrispStrobe/bw-board.git ../bw-board
 
+      # Fabric gate needs sb3-creator examples
+      - name: Clone sb3-creator (examples source)
+        run: git clone --depth 1 https://github.com/CrispStrobe/sb3-creator.git ../sb3-creator
+
       - run: npm install
       - run: npm test
+
+      # Designer-side examples gate: breadboard-fabric circuits
+      - name: Fabric examples gate
+        run: node --test test/examples-fabric-gate.test.js
