@@ -1,0 +1,48 @@
+{
+  "kind": "74hc138",
+  "w": 70,
+  "h": 51,
+  "terminals": [
+    { "name": "a", "x": 0, "y": 8, "functions": [] },
+    { "name": "b", "x": 0, "y": 13, "functions": [] },
+    { "name": "c", "x": 0, "y": 18, "functions": [] },
+    { "name": "g2ab", "x": 0, "y": 23, "functions": [] },
+    { "name": "g2bb", "x": 0, "y": 28, "functions": [] },
+    { "name": "g1", "x": 0, "y": 33, "functions": [] },
+    { "name": "y7b", "x": 0, "y": 38, "functions": [] },
+    { "name": "gnd", "x": 0, "y": 43, "functions": [] },
+    { "name": "y6b", "x": 70, "y": 43, "functions": [] },
+    { "name": "y5b", "x": 70, "y": 38, "functions": [] },
+    { "name": "y4b", "x": 70, "y": 33, "functions": [] },
+    { "name": "y3b", "x": 70, "y": 28, "functions": [] },
+    { "name": "y2b", "x": 70, "y": 23, "functions": [] },
+    { "name": "y1b", "x": 70, "y": 18, "functions": [] },
+    { "name": "y0b", "x": 70, "y": 13, "functions": [] },
+    { "name": "vcc", "x": 70, "y": 8, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "74HC138 3-to-8 line decoder/demultiplexer. Pin table from TI SN74HC138 datasheet (SCLS093). DIP-16 package. A/B/C (pins 1-3, select inputs), G2A#/G2B# (pins 4-5, active-low enables), G1 (pin 6, active-high enable), Y7# (pin 7), GND (pin 8), Y6#-Y0# (pins 9-15, active-low outputs), VCC (pin 16).",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a":    { "dRow": 0, "dCol": 0 },
+      "b":    { "dRow": 0, "dCol": 1 },
+      "c":    { "dRow": 0, "dCol": 2 },
+      "g2ab": { "dRow": 0, "dCol": 3 },
+      "g2bb": { "dRow": 0, "dCol": 4 },
+      "g1":   { "dRow": 0, "dCol": 5 },
+      "y7b":  { "dRow": 0, "dCol": 6 },
+      "gnd":  { "dRow": 0, "dCol": 7 },
+      "y6b":  { "dRow": 5, "dCol": 7 },
+      "y5b":  { "dRow": 5, "dCol": 6 },
+      "y4b":  { "dRow": 5, "dCol": 5 },
+      "y3b":  { "dRow": 5, "dCol": 4 },
+      "y2b":  { "dRow": 5, "dCol": 3 },
+      "y1b":  { "dRow": 5, "dCol": 2 },
+      "y0b":  { "dRow": 5, "dCol": 1 },
+      "vcc":  { "dRow": 5, "dCol": 0 }
+    },
+    "straddlesGutter": true,
+    "minCols": 8
+  }
+}

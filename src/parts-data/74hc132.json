@@ -89,6 +89,7 @@
     }
   ],
   "variants": null,
+  "_note": "74HC132 Quad 2-input Schmitt-trigger NAND gate. Pin table per TI SN74HC132N datasheet (SCLS099). DIP-14 package. Same pinout as 74HC00 (1A/1B/1Y, 2A/2B/2Y, 3A/3B/3Y, 4A/4B/4Y) — extractors alias to NAND logic. GND=pin 7, VCC=pin 14. Used in Wilson-primer SBC builds for address decode with hysteresis.",
   "footprint": {
     "refTerminal": "1a",
     "leads": {

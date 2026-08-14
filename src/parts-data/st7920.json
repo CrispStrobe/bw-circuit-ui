@@ -1,0 +1,28 @@
+{
+  "kind": "st7920",
+  "w": 120,
+  "h": 70,
+  "terminals": [
+    { "name": "gnd", "x": 24, "y": 70, "functions": [] },
+    { "name": "vcc", "x": 32, "y": 70, "functions": [] },
+    { "name": "cs", "x": 40, "y": 70, "functions": [] },
+    { "name": "sclk", "x": 48, "y": 70, "functions": [] },
+    { "name": "sid", "x": 56, "y": 70, "functions": [] },
+    { "name": "rstb", "x": 64, "y": 70, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "ST7920 128x64 graphic LCD module (serial SPI mode). Pin table from Sitronix ST7920 datasheet (v3.3). 6-pin serial interface header: GND, VCC, CS (chip select, active high), SCLK (serial clock), SID (serial data in), RST# (reset, active low). PSB pin strapped low on module PCB for serial mode (shown on artwork, not electrically modeled). Supports both text (Chinese/ASCII) and graphic framebuffer modes.",
+  "footprint": {
+    "refTerminal": "gnd",
+    "leads": {
+      "gnd":  { "dRow": 0, "dCol": 0 },
+      "vcc":  { "dRow": 0, "dCol": 1 },
+      "cs":   { "dRow": 0, "dCol": 2 },
+      "sclk": { "dRow": 0, "dCol": 3 },
+      "sid":  { "dRow": 0, "dCol": 4 },
+      "rstb": { "dRow": 0, "dCol": 5 }
+    },
+    "straddlesGutter": false,
+    "minCols": 6
+  }
+}

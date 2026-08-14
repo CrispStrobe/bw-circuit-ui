@@ -1,0 +1,32 @@
+{
+  "kind": "ds1302",
+  "w": 60,
+  "h": 48,
+  "terminals": [
+    { "name": "vcc", "x": 0, "y": 8, "functions": [] },
+    { "name": "x1", "x": 0, "y": 18, "functions": [] },
+    { "name": "x2", "x": 0, "y": 28, "functions": [] },
+    { "name": "gnd", "x": 0, "y": 38, "functions": [] },
+    { "name": "ce", "x": 60, "y": 38, "functions": [] },
+    { "name": "io", "x": 60, "y": 28, "functions": [] },
+    { "name": "sclk", "x": 60, "y": 18, "functions": [] },
+    { "name": "vcc1", "x": 60, "y": 8, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "DS1302 trickle-charge timekeeping chip. Pin table from Maxim DS1302 datasheet (19-5207 rev 4). DIP-8 package. VCC (pin 1, main power), X1/X2 (pins 2-3, 32.768 kHz crystal — artwork only, not electrically modeled), GND (pin 4), CE (pin 5, chip enable), I/O (pin 6, data), SCLK (pin 7, serial clock), VCC1 (pin 8, backup battery — artwork only).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc":  { "dRow": 0, "dCol": 0 },
+      "x1":   { "dRow": 0, "dCol": 1 },
+      "x2":   { "dRow": 0, "dCol": 2 },
+      "gnd":  { "dRow": 0, "dCol": 3 },
+      "ce":   { "dRow": 5, "dCol": 3 },
+      "io":   { "dRow": 5, "dCol": 2 },
+      "sclk": { "dRow": 5, "dCol": 1 },
+      "vcc1": { "dRow": 5, "dCol": 0 }
+    },
+    "straddlesGutter": true,
+    "minCols": 4
+  }
+}

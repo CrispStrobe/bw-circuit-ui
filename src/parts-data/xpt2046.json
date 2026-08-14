@@ -1,0 +1,36 @@
+{
+  "kind": "xpt2046",
+  "w": 88,
+  "h": 50,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 50, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 50, "functions": [] },
+    { "name": "csb", "x": 24, "y": 50, "functions": [] },
+    { "name": "dclk", "x": 32, "y": 50, "functions": [] },
+    { "name": "din", "x": 40, "y": 50, "functions": [] },
+    { "name": "dout", "x": 48, "y": 50, "functions": [] },
+    { "name": "xp", "x": 56, "y": 50, "functions": [] },
+    { "name": "yp", "x": 64, "y": 50, "functions": [] },
+    { "name": "vbat", "x": 72, "y": 50, "functions": [] },
+    { "name": "aux", "x": 80, "y": 50, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "XPT2046 touch screen controller breakout module. Pin table from Shenzhen Xptek XPT2046 datasheet. 10-pin header module. VCC, GND, CS# (chip select active low), DCLK (serial clock), DIN (serial data in), DOUT (serial data out), XP/YP (touch panel excitation), VBAT (battery monitor), AUX (auxiliary analog input).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc":  { "dRow": 0, "dCol": 0 },
+      "gnd":  { "dRow": 0, "dCol": 1 },
+      "csb":  { "dRow": 0, "dCol": 2 },
+      "dclk": { "dRow": 0, "dCol": 3 },
+      "din":  { "dRow": 0, "dCol": 4 },
+      "dout": { "dRow": 0, "dCol": 5 },
+      "xp":   { "dRow": 0, "dCol": 6 },
+      "yp":   { "dRow": 0, "dCol": 7 },
+      "vbat": { "dRow": 0, "dCol": 8 },
+      "aux":  { "dRow": 0, "dCol": 9 }
+    },
+    "straddlesGutter": false,
+    "minCols": 10
+  }
+}

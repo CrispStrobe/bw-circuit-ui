@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 55" width="48" height="55">
+  <!-- KY-040 Rotary Encoder Module — bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="10" width="44" height="35" rx="2" fill="#1a1a6b" stroke="#0d0d4d" stroke-width="0.8"/>
+  <!-- Encoder body -->
+  <rect x="10" y="14" width="28" height="20" rx="2" fill="#606060" stroke="#444" stroke-width="0.6"/>
+  <!-- Shaft -->
+  <circle cx="24" cy="24" r="6" fill="#888" stroke="#666" stroke-width="0.8"/>
+  <circle cx="24" cy="24" r="3" fill="#aaa" stroke="#888" stroke-width="0.4"/>
+  <!-- Knurled top indicator -->
+  <line x1="24" y1="20" x2="24" y2="22" stroke="#666" stroke-width="0.8"/>
+  <!-- KY-040 label -->
+  <text x="24" y="41" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#aaa">KY-040</text>
+  <!-- 5 header pins at bottom: CLK, DT, SW, +, GND -->
+  <line x1="8" y1="45" x2="8" y2="55" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="55" r="1.5" fill="#c0c0c0"/>
+  <line x1="16" y1="45" x2="16" y2="55" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="16" cy="55" r="1.5" fill="#c0c0c0"/>
+  <line x1="24" y1="45" x2="24" y2="55" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="24" cy="55" r="1.5" fill="#c0c0c0"/>
+  <line x1="32" y1="45" x2="32" y2="55" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="32" cy="55" r="1.5" fill="#c0c0c0"/>
+  <line x1="40" y1="45" x2="40" y2="55" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="40" cy="55" r="1.5" fill="#c0c0c0"/>
+</svg>

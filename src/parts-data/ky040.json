@@ -1,0 +1,24 @@
+{
+  "kind": "ky040",
+  "w": 48,
+  "h": 55,
+  "terminals": [
+    { "name": "clk", "x": 8, "y": 55, "functions": [] },
+    { "name": "dt", "x": 16, "y": 55, "functions": [] },
+    { "name": "sw", "x": 24, "y": 55, "functions": [] },
+    { "name": "vcc", "x": 32, "y": 55, "functions": [] },
+    { "name": "gnd", "x": 40, "y": 55, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "KY-040 rotary encoder module. 5-pin header: CLK (output A, quadrature), DT (output B, quadrature), SW (push-button switch, active low), VCC (+5V), GND. Mechanical encoder with 20 detents/revolution, built-in pull-up resistors on CLK/DT/SW.",
+  "footprint": {
+    "refTerminal": "clk",
+    "leads": {
+      "clk": { "dRow": 0, "dCol": 0 },
+      "dt":  { "dRow": 0, "dCol": 1 },
+      "sw":  { "dRow": 0, "dCol": 2 },
+      "vcc": { "dRow": 0, "dCol": 3 },
+      "gnd": { "dRow": 0, "dCol": 4 }
+    }
+  }
+}

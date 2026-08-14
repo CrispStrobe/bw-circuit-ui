@@ -1,0 +1,52 @@
+{
+  "kind": "74c922",
+  "w": 70,
+  "h": 56,
+  "terminals": [
+    { "name": "y1", "x": 0, "y": 8, "functions": [] },
+    { "name": "y2", "x": 0, "y": 13, "functions": [] },
+    { "name": "y3", "x": 0, "y": 18, "functions": [] },
+    { "name": "y4", "x": 0, "y": 23, "functions": [] },
+    { "name": "osc", "x": 0, "y": 28, "functions": [] },
+    { "name": "kbm", "x": 0, "y": 33, "functions": [] },
+    { "name": "x4", "x": 0, "y": 38, "functions": [] },
+    { "name": "x3", "x": 0, "y": 43, "functions": [] },
+    { "name": "vss", "x": 0, "y": 48, "functions": [] },
+    { "name": "x2", "x": 70, "y": 48, "functions": [] },
+    { "name": "x1", "x": 70, "y": 43, "functions": [] },
+    { "name": "da", "x": 70, "y": 38, "functions": [] },
+    { "name": "oeb", "x": 70, "y": 33, "functions": [] },
+    { "name": "d", "x": 70, "y": 28, "functions": [] },
+    { "name": "c", "x": 70, "y": 23, "functions": [] },
+    { "name": "b", "x": 70, "y": 18, "functions": [] },
+    { "name": "a", "x": 70, "y": 13, "functions": [] },
+    { "name": "vcc", "x": 70, "y": 8, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "74C922 16-key (4x4) keypad encoder (National Semiconductor / TI). Pin table from 74C922 datasheet. DIP-18 package. 4 row inputs (Y1-Y4), 4 column scan outputs (X1-X4), 4-bit encoded data output using datasheet letter names: a=D0 (LSB, pin 17), b=D1 (pin 16), c=D2 (pin 15), d=D3 (MSB, pin 14). DA (pin 12, data available active high), OEB (pin 13, output enable active low). OSC (pin 5, oscillator cap), KBM (pin 6, keybounce mask cap). VSS=pin 9 (GND), VCC=pin 18. Emulation mapping: a/b/c/d correspond to keypadOnVia d0-d3 in bit order.",
+  "footprint": {
+    "refTerminal": "y1",
+    "leads": {
+      "y1": { "dRow": 0, "dCol": 0 },
+      "y2": { "dRow": 0, "dCol": 1 },
+      "y3": { "dRow": 0, "dCol": 2 },
+      "y4": { "dRow": 0, "dCol": 3 },
+      "osc": { "dRow": 0, "dCol": 4 },
+      "kbm": { "dRow": 0, "dCol": 5 },
+      "x4": { "dRow": 0, "dCol": 6 },
+      "x3": { "dRow": 0, "dCol": 7 },
+      "vss": { "dRow": 0, "dCol": 8 },
+      "x2": { "dRow": 5, "dCol": 8 },
+      "x1": { "dRow": 5, "dCol": 7 },
+      "da": { "dRow": 5, "dCol": 6 },
+      "oeb": { "dRow": 5, "dCol": 5 },
+      "d": { "dRow": 5, "dCol": 4 },
+      "c": { "dRow": 5, "dCol": 3 },
+      "b": { "dRow": 5, "dCol": 2 },
+      "a": { "dRow": 5, "dCol": 1 },
+      "vcc": { "dRow": 5, "dCol": 0 }
+    },
+    "straddlesGutter": true,
+    "minCols": 9
+  }
+}

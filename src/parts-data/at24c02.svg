@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 48" width="60" height="48">
+  <!-- AT24C02 I2C EEPROM — 8-pin DIP package, bench-style -->
+  <rect x="8" y="2" width="44" height="44" rx="2" fill="#303030" stroke="#1a1a1a" stroke-width="1"/>
+  <path d="M27 2 Q30 6 33 2" fill="#303030" stroke="#555" stroke-width="0.8"/>
+  <circle cx="14" cy="8" r="1.5" fill="#b0b0b0"/>
+  <text x="30" y="19" text-anchor="middle" font-family="monospace" font-size="5" fill="#c0c0c0">AT24C02</text>
+  <text x="30" y="27" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#888">I2C EEPROM</text>
+  <!-- Left pins (1-4) -->
+  <line x1="0" y1="8" x2="8" y2="8" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="8" r="1.5" fill="#c0c0c0"/>
+  <text x="11" y="9" font-family="monospace" font-size="3" fill="#888">a0</text>
+  <line x1="0" y1="18" x2="8" y2="18" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="18" r="1.5" fill="#c0c0c0"/>
+  <text x="11" y="19" font-family="monospace" font-size="3" fill="#888">a1</text>
+  <line x1="0" y1="28" x2="8" y2="28" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="28" r="1.5" fill="#c0c0c0"/>
+  <text x="11" y="29" font-family="monospace" font-size="3" fill="#888">a2</text>
+  <line x1="0" y1="38" x2="8" y2="38" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="38" r="1.5" fill="#c0c0c0"/>
+  <text x="11" y="39" font-family="monospace" font-size="3" fill="#888">gnd</text>
+  <!-- Right pins (8-5) -->
+  <line x1="52" y1="8" x2="60" y2="8" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="60" cy="8" r="1.5" fill="#c0c0c0"/>
+  <text x="49" y="9" text-anchor="end" font-family="monospace" font-size="3" fill="#888">vcc</text>
+  <line x1="52" y1="18" x2="60" y2="18" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="60" cy="18" r="1.5" fill="#c0c0c0"/>
+  <text x="49" y="19" text-anchor="end" font-family="monospace" font-size="3" fill="#888">wp</text>
+  <line x1="52" y1="28" x2="60" y2="28" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="60" cy="28" r="1.5" fill="#c0c0c0"/>
+  <text x="49" y="29" text-anchor="end" font-family="monospace" font-size="3" fill="#888">scl</text>
+  <line x1="52" y1="38" x2="60" y2="38" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="60" cy="38" r="1.5" fill="#c0c0c0"/>
+  <text x="49" y="39" text-anchor="end" font-family="monospace" font-size="3" fill="#888">sda</text>
+</svg>

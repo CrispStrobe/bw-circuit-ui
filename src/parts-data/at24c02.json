@@ -1,0 +1,32 @@
+{
+  "kind": "at24c02",
+  "w": 60,
+  "h": 48,
+  "terminals": [
+    { "name": "a0", "x": 0, "y": 8, "functions": [] },
+    { "name": "a1", "x": 0, "y": 18, "functions": [] },
+    { "name": "a2", "x": 0, "y": 28, "functions": [] },
+    { "name": "gnd", "x": 0, "y": 38, "functions": [] },
+    { "name": "sda", "x": 60, "y": 38, "functions": ["sda"] },
+    { "name": "scl", "x": 60, "y": 28, "functions": ["scl"] },
+    { "name": "wp", "x": 60, "y": 18, "functions": [] },
+    { "name": "vcc", "x": 60, "y": 8, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "AT24C02 2-Kbit (256 x 8) serial I2C EEPROM. Pin table from Microchip AT24C02 datasheet (DS20005202). DIP-8 package. A0/A1/A2 (pins 1-3, address straps — artwork only, model reads params.address), GND (pin 4), SDA (pin 5), SCL (pin 6), WP (pin 7, write protect — artwork only), VCC (pin 8).",
+  "footprint": {
+    "refTerminal": "a0",
+    "leads": {
+      "a0":  { "dRow": 0, "dCol": 0 },
+      "a1":  { "dRow": 0, "dCol": 1 },
+      "a2":  { "dRow": 0, "dCol": 2 },
+      "gnd": { "dRow": 0, "dCol": 3 },
+      "sda": { "dRow": 5, "dCol": 3 },
+      "scl": { "dRow": 5, "dCol": 2 },
+      "wp":  { "dRow": 5, "dCol": 1 },
+      "vcc": { "dRow": 5, "dCol": 0 }
+    },
+    "straddlesGutter": true,
+    "minCols": 4
+  }
+}

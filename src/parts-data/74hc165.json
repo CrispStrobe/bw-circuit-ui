@@ -1,0 +1,48 @@
+{
+  "kind": "74hc165",
+  "w": 70,
+  "h": 51,
+  "terminals": [
+    { "name": "shldb", "x": 0, "y": 8, "functions": [] },
+    { "name": "clk", "x": 0, "y": 13, "functions": [] },
+    { "name": "e", "x": 0, "y": 18, "functions": [] },
+    { "name": "f", "x": 0, "y": 23, "functions": [] },
+    { "name": "g", "x": 0, "y": 28, "functions": [] },
+    { "name": "h", "x": 0, "y": 33, "functions": [] },
+    { "name": "qhb", "x": 0, "y": 38, "functions": [] },
+    { "name": "gnd", "x": 0, "y": 43, "functions": [] },
+    { "name": "qh", "x": 70, "y": 43, "functions": [] },
+    { "name": "ser", "x": 70, "y": 38, "functions": [] },
+    { "name": "a", "x": 70, "y": 33, "functions": [] },
+    { "name": "b", "x": 70, "y": 28, "functions": [] },
+    { "name": "c", "x": 70, "y": 23, "functions": [] },
+    { "name": "d", "x": 70, "y": 18, "functions": [] },
+    { "name": "clkinh", "x": 70, "y": 13, "functions": [] },
+    { "name": "vcc", "x": 70, "y": 8, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "74HC165 8-bit parallel-in/serial-out shift register. Pin table from TI SN74HC165 datasheet (SCLS195). DIP-16 package. SH/LD# (pin 1, shift/load active low), CLK (pin 2), E-H (pins 3-6, parallel inputs D4-D7), QH# (pin 7, complementary serial out), GND (pin 8), QH (pin 9, serial out), SER (pin 10, serial in), A-D (pins 11-14, parallel inputs D0-D3), CLK INH (pin 15, clock inhibit), VCC (pin 16).",
+  "footprint": {
+    "refTerminal": "shldb",
+    "leads": {
+      "shldb":  { "dRow": 0, "dCol": 0 },
+      "clk":    { "dRow": 0, "dCol": 1 },
+      "e":      { "dRow": 0, "dCol": 2 },
+      "f":      { "dRow": 0, "dCol": 3 },
+      "g":      { "dRow": 0, "dCol": 4 },
+      "h":      { "dRow": 0, "dCol": 5 },
+      "qhb":    { "dRow": 0, "dCol": 6 },
+      "gnd":    { "dRow": 0, "dCol": 7 },
+      "qh":     { "dRow": 5, "dCol": 7 },
+      "ser":    { "dRow": 5, "dCol": 6 },
+      "a":      { "dRow": 5, "dCol": 5 },
+      "b":      { "dRow": 5, "dCol": 4 },
+      "c":      { "dRow": 5, "dCol": 3 },
+      "d":      { "dRow": 5, "dCol": 2 },
+      "clkinh": { "dRow": 5, "dCol": 1 },
+      "vcc":    { "dRow": 5, "dCol": 0 }
+    },
+    "straddlesGutter": true,
+    "minCols": 8
+  }
+}

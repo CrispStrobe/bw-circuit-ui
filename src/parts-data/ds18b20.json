@@ -1,0 +1,20 @@
+{
+  "kind": "ds18b20",
+  "w": 24,
+  "h": 40,
+  "terminals": [
+    { "name": "gnd", "x": 6, "y": 40, "functions": [] },
+    { "name": "dq", "x": 12, "y": 40, "functions": [] },
+    { "name": "vcc", "x": 18, "y": 40, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "DS18B20 programmable-resolution 1-Wire digital thermometer. Pin table from Maxim DS18B20 datasheet (19-7487 rev 6). TO-92 package, flat side facing: GND (pin 1), DQ (pin 2, 1-Wire data), VDD (pin 3). Supports parasite power mode (VDD tied to GND, power drawn from DQ).",
+  "footprint": {
+    "refTerminal": "gnd",
+    "leads": {
+      "gnd": { "dRow": 0, "dCol": 0 },
+      "dq":  { "dRow": 0, "dCol": 1 },
+      "vcc": { "dRow": 0, "dCol": 2 }
+    }
+  }
+}

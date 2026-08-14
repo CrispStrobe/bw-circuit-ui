@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 70" width="120" height="70">
+  <!-- ST7920 128x64 Graphic LCD Module — bench-style -->
+  <!-- Module PCB -->
+  <rect x="2" y="2" width="116" height="58" rx="2" fill="#2a5a2a" stroke="#1a3a1a" stroke-width="0.8"/>
+  <!-- LCD bezel -->
+  <rect x="10" y="6" width="100" height="42" rx="1" fill="#444" stroke="#333" stroke-width="0.6"/>
+  <!-- LCD glass -->
+  <rect x="14" y="9" width="92" height="36" rx="1" fill="#8ab87a" stroke="#6a9a5a" stroke-width="0.4"/>
+  <!-- Simulated pixel grid hint -->
+  <line x1="14" y1="27" x2="106" y2="27" stroke="#7aa86a" stroke-width="0.2" opacity="0.5"/>
+  <!-- Display label text -->
+  <text x="60" y="24" text-anchor="middle" font-family="monospace" font-size="5" fill="#3a5a2a">128x64</text>
+  <text x="60" y="32" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#3a5a2a">ST7920</text>
+  <!-- PSB strap indicator (artwork only, not modeled) -->
+  <rect x="92" y="52" width="8" height="4" rx="0.5" fill="#555" stroke="#444" stroke-width="0.3"/>
+  <text x="96" y="55" text-anchor="middle" font-family="monospace" font-size="2" fill="#aaa">PSB</text>
+  <text x="96" y="59" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#666">GND</text>
+  <!-- Contrast pot -->
+  <circle cx="14" cy="54" r="3" fill="#4488ff" stroke="#336" stroke-width="0.3"/>
+  <!-- 6 serial header pins at bottom -->
+  <line x1="24" y1="60" x2="24" y2="70" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="24" cy="70" r="1.5" fill="#c0c0c0"/>
+  <line x1="32" y1="60" x2="32" y2="70" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="32" cy="70" r="1.5" fill="#c0c0c0"/>
+  <line x1="40" y1="60" x2="40" y2="70" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="40" cy="70" r="1.5" fill="#c0c0c0"/>
+  <line x1="48" y1="60" x2="48" y2="70" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="48" cy="70" r="1.5" fill="#c0c0c0"/>
+  <line x1="56" y1="60" x2="56" y2="70" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="56" cy="70" r="1.5" fill="#c0c0c0"/>
+  <line x1="64" y1="60" x2="64" y2="70" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="64" cy="70" r="1.5" fill="#c0c0c0"/>
+</svg>
