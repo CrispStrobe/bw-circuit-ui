@@ -960,13 +960,8 @@ export class Circuit {
  * Special kinds (mcu, breadboard, led_cube) need params-dependent or
  * dynamic terminals and bypass the sidecar.
  */
-function terminalsForKind(kind, params) {
-  // Special kinds with dynamic or param-dependent terminals
-  const DYNAMIC_KINDS = new Set(['mcu', 'breadboard', 'led_cube', 'dip_switch', 'header']);
-  if (!DYNAMIC_KINDS.has(kind)) {
-    const sc = sidecarTerminals(kind);
-    if (sc && sc.length > 0) return sc;
-  }
+/** @internal Exported for the contract test only. */
+export function terminalsForKind(kind, params) {
   // Fallback to local definitions (for kinds without sidecars or dynamic kinds)
   switch (kind) {
     case 'vcc': return ['vcc'];
@@ -978,7 +973,7 @@ function terminalsForKind(kind, params) {
     case 'zener': return ['anode', 'cathode'];
     case 'led': return ['anode', 'cathode'];
     case 'rgb_led': return ['r_anode', 'g_anode', 'b_anode', 'cathode'];
-    case 'potentiometer': return ['a', 'wiper', 'b'];
+    case 'potentiometer': return ['a', 'b', 'wiper'];
     case 'button': return ['a', 'b'];
     case 'switch': return ['a', 'b'];
     case 'buzzer': return ['a', 'b'];
@@ -991,8 +986,8 @@ function terminalsForKind(kind, params) {
     // Engine name (bw-board kind table): in0, not in — gallery wires
     // reference in0 and a mismatch renders as ghost terminals.
     case 'gate_not': return ['in0', 'out'];
-    case '555': return ['gnd', 'trigger', 'output', 'reset', 'control', 'threshold', 'discharge', 'vcc'];
-    case 'relay': return ['coil_a', 'coil_b', 'no', 'com', 'nc'];
+    case '555': return ['vcc', 'gnd', 'trigger', 'threshold', 'control', 'discharge', 'output', 'reset'];
+    case 'relay': return ['coil_a', 'coil_b', 'com', 'nc', 'no'];
     case 'servo': return ['signal', 'vcc', 'gnd'];
     case 'dc_motor': case 'gearmotor': return ['a', 'b'];
     case 'vibration_motor': return ['a', 'b'];
@@ -1023,7 +1018,7 @@ function terminalsForKind(kind, params) {
     case 'breadboard': return [];
     case 'vsource': case 'battery': return ['pos', 'neg'];
     case 'isource': return ['pos', 'neg'];
-    case 'timer_555': return ['gnd', 'trigger', 'output', 'reset', 'control', 'threshold', 'discharge', 'vcc'];
+    case 'timer_555': return ['vcc', 'gnd', 'trigger', 'threshold', 'control', 'discharge', 'output', 'reset'];
     case 'seven_segment': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com'];
     case 'char_lcd': return ['rs', 'rw', 'e', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'vcc', 'gnd', 'vo', 'bl_a', 'bl_k'];
     case 'shift_register': return ['data', 'clock', 'latch', 'oe', 'q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'];
@@ -1053,6 +1048,9 @@ function terminalsForKind(kind, params) {
       // Check logic chip definitions (74HC family)
       const chipTerms = logicChipTerminals(kind);
       if (chipTerms) return chipTerms;
+      // Sidecar fallback — for kinds without explicit switch-case entries
+      const sc = sidecarTerminals(kind);
+      if (sc && sc.length > 0) return sc;
       return ['a', 'b'];
     }
   }
