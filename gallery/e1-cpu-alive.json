@@ -206,7 +206,7 @@
       "id": "la4",
       "kind": "led",
       "params": {
-        "color": "yellow"
+        "color": "green"
       },
       "x": 0,
       "y": 0
@@ -215,7 +215,7 @@
       "id": "la5",
       "kind": "led",
       "params": {
-        "color": "yellow"
+        "color": "green"
       },
       "x": 0,
       "y": 0
@@ -224,7 +224,7 @@
       "id": "la6",
       "kind": "led",
       "params": {
-        "color": "yellow"
+        "color": "green"
       },
       "x": 0,
       "y": 0
@@ -233,7 +233,79 @@
       "id": "la7",
       "kind": "led",
       "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_clk",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_clk",
+      "kind": "led",
+      "params": {
         "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_rw",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_rw",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_syn",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_syn",
+      "kind": "led",
+      "params": {
+        "color": "blue"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_vpb",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_vpb",
+      "kind": "led",
+      "params": {
+        "color": "white"
       },
       "x": 0,
       "y": 0
@@ -281,6 +353,12 @@
       "fromTerminal": "vcc",
       "to": "cpu",
       "toTerminal": "rdy"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "sob"
     },
     {
       "from": "gnd1",
@@ -521,9 +599,81 @@
       "fromTerminal": "cathode",
       "to": "gnd1",
       "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "phi2o",
+      "to": "r_clk",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_clk",
+      "fromTerminal": "b",
+      "to": "led_clk",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_clk",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "rwb",
+      "to": "r_rw",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_rw",
+      "fromTerminal": "b",
+      "to": "led_rw",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_rw",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "sync",
+      "to": "r_syn",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_syn",
+      "fromTerminal": "b",
+      "to": "led_syn",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_syn",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "vpb",
+      "to": "r_vpb",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_vpb",
+      "fromTerminal": "b",
+      "to": "led_vpb",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_vpb",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     }
   ],
   "_stage": "E1",
-  "_title": "Free-run: NOP counter",
-  "_description": "The CPU has no ROM — every address reads NOP ($EA) from tied resistors. Watch the address LEDs count up."
+  "_title": "CPU alive",
+  "_description": "The W65C02 free-runs NOP ($EA). Address LEDs count up. Status LEDs show clock (PHI2O), read/write (RWB), opcode fetch (SYNC), and vector pull (VPB)."
 }

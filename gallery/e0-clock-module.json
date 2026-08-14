@@ -1,0 +1,209 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "timer",
+      "kind": "555",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 470000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "c1",
+      "kind": "capacitor",
+      "params": {
+        "farads": 0.000001
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "c2",
+      "kind": "capacitor",
+      "params": {
+        "farads": 1e-8
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "btn",
+      "kind": "button",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_debounce",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_clk",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_clk",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "timer",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "timer",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "timer",
+      "toTerminal": "reset"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "r1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r1",
+      "fromTerminal": "b",
+      "to": "timer",
+      "toTerminal": "discharge"
+    },
+    {
+      "from": "r1",
+      "fromTerminal": "b",
+      "to": "r2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r2",
+      "fromTerminal": "b",
+      "to": "timer",
+      "toTerminal": "threshold"
+    },
+    {
+      "from": "r2",
+      "fromTerminal": "b",
+      "to": "timer",
+      "toTerminal": "trigger"
+    },
+    {
+      "from": "r2",
+      "fromTerminal": "b",
+      "to": "c1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "c1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "timer",
+      "fromTerminal": "control",
+      "to": "c2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "c2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "timer",
+      "fromTerminal": "output",
+      "to": "r_clk",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_clk",
+      "fromTerminal": "b",
+      "to": "led_clk",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_clk",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "r_debounce",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_debounce",
+      "fromTerminal": "b",
+      "to": "btn",
+      "toTerminal": "a"
+    },
+    {
+      "from": "btn",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    }
+  ],
+  "_stage": "E0",
+  "_title": "Clock module",
+  "_description": "A 555 timer in astable mode generates the system clock (~1 Hz). The green LED blinks with each tick. A button provides single-step capability."
+}

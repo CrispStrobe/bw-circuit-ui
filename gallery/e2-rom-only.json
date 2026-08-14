@@ -30,21 +30,7 @@
       "y": 0
     },
     {
-      "id": "via1",
-      "kind": "w65c22",
-      "params": {},
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "nand1",
-      "kind": "74hc00",
-      "params": {},
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "rl0",
+      "id": "ra0",
       "kind": "resistor",
       "params": {
         "ohms": 220
@@ -53,7 +39,7 @@
       "y": 0
     },
     {
-      "id": "rl1",
+      "id": "ra1",
       "kind": "resistor",
       "params": {
         "ohms": 220
@@ -62,7 +48,7 @@
       "y": 0
     },
     {
-      "id": "rl2",
+      "id": "ra2",
       "kind": "resistor",
       "params": {
         "ohms": 220
@@ -71,7 +57,7 @@
       "y": 0
     },
     {
-      "id": "rl3",
+      "id": "ra3",
       "kind": "resistor",
       "params": {
         "ohms": 220
@@ -80,7 +66,7 @@
       "y": 0
     },
     {
-      "id": "rl4",
+      "id": "ra4",
       "kind": "resistor",
       "params": {
         "ohms": 220
@@ -89,7 +75,7 @@
       "y": 0
     },
     {
-      "id": "rl5",
+      "id": "ra5",
       "kind": "resistor",
       "params": {
         "ohms": 220
@@ -98,7 +84,7 @@
       "y": 0
     },
     {
-      "id": "rl6",
+      "id": "ra6",
       "kind": "resistor",
       "params": {
         "ohms": 220
@@ -107,7 +93,7 @@
       "y": 0
     },
     {
-      "id": "rl7",
+      "id": "ra7",
       "kind": "resistor",
       "params": {
         "ohms": 220
@@ -116,7 +102,250 @@
       "y": 0
     },
     {
-      "id": "led0",
+      "id": "la0",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la1",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la2",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la3",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la4",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la5",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la6",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la7",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd4",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd5",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd6",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd7",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ld0",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ld1",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ld2",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ld3",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ld4",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ld5",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ld6",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ld7",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rs_clk",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ls_clk",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rs_rw",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ls_rw",
       "kind": "led",
       "params": {
         "color": "red"
@@ -125,79 +354,20 @@
       "y": 0
     },
     {
-      "id": "led1",
-      "kind": "led",
+      "id": "rs_syn",
+      "kind": "resistor",
       "params": {
-        "color": "red"
+        "ohms": 220
       },
       "x": 0,
       "y": 0
     },
     {
-      "id": "led2",
+      "id": "ls_syn",
       "kind": "led",
       "params": {
-        "color": "red"
+        "color": "blue"
       },
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "led3",
-      "kind": "led",
-      "params": {
-        "color": "red"
-      },
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "led4",
-      "kind": "led",
-      "params": {
-        "color": "red"
-      },
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "led5",
-      "kind": "led",
-      "params": {
-        "color": "red"
-      },
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "led6",
-      "kind": "led",
-      "params": {
-        "color": "red"
-      },
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "led7",
-      "kind": "led",
-      "params": {
-        "color": "red"
-      },
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "lcd1",
-      "kind": "char_lcd",
-      "params": {},
-      "x": 0,
-      "y": 0
-    },
-    {
-      "id": "acia1",
-      "kind": "w65c51",
-      "params": {},
       "x": 0,
       "y": 0
     }
@@ -225,30 +395,6 @@
       "from": "gnd1",
       "fromTerminal": "gnd",
       "to": "rom",
-      "toTerminal": "gnd"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "via1",
-      "toTerminal": "vdd"
-    },
-    {
-      "from": "gnd1",
-      "fromTerminal": "gnd",
-      "to": "via1",
-      "toTerminal": "vss"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "vcc"
-    },
-    {
-      "from": "gnd1",
-      "fromTerminal": "gnd",
-      "to": "nand1",
       "toTerminal": "gnd"
     },
     {
@@ -284,24 +430,12 @@
     {
       "from": "vcc1",
       "fromTerminal": "vcc",
-      "to": "via1",
-      "toTerminal": "resb"
+      "to": "cpu",
+      "toTerminal": "sob"
     },
     {
-      "from": "cpu",
-      "fromTerminal": "a15",
-      "to": "nand1",
-      "toTerminal": "1a"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "a15",
-      "to": "nand1",
-      "toTerminal": "1b"
-    },
-    {
-      "from": "nand1",
-      "fromTerminal": "1y",
+      "from": "gnd1",
+      "fromTerminal": "gnd",
       "to": "rom",
       "toTerminal": "csb"
     },
@@ -457,480 +591,348 @@
     },
     {
       "from": "cpu",
-      "fromTerminal": "a15",
-      "to": "via1",
-      "toTerminal": "cs2b"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "via1",
-      "toTerminal": "cs1"
-    },
-    {
-      "from": "cpu",
       "fromTerminal": "a0",
-      "to": "via1",
-      "toTerminal": "rs0"
+      "to": "ra0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra0",
+      "fromTerminal": "b",
+      "to": "la0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la0",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "a1",
-      "to": "via1",
-      "toTerminal": "rs1"
+      "to": "ra1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra1",
+      "fromTerminal": "b",
+      "to": "la1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la1",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "a2",
-      "to": "via1",
-      "toTerminal": "rs2"
+      "to": "ra2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra2",
+      "fromTerminal": "b",
+      "to": "la2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la2",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "a3",
-      "to": "via1",
-      "toTerminal": "rs3"
+      "to": "ra3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra3",
+      "fromTerminal": "b",
+      "to": "la3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la3",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a4",
+      "to": "ra4",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra4",
+      "fromTerminal": "b",
+      "to": "la4",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la4",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a5",
+      "to": "ra5",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra5",
+      "fromTerminal": "b",
+      "to": "la5",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la5",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a6",
+      "to": "ra6",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra6",
+      "fromTerminal": "b",
+      "to": "la6",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la6",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a7",
+      "to": "ra7",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra7",
+      "fromTerminal": "b",
+      "to": "la7",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la7",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "d0",
-      "to": "via1",
-      "toTerminal": "d0"
+      "to": "rd0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd0",
+      "fromTerminal": "b",
+      "to": "ld0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "ld0",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "d1",
-      "to": "via1",
-      "toTerminal": "d1"
+      "to": "rd1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd1",
+      "fromTerminal": "b",
+      "to": "ld1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "ld1",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "d2",
-      "to": "via1",
-      "toTerminal": "d2"
+      "to": "rd2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd2",
+      "fromTerminal": "b",
+      "to": "ld2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "ld2",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "d3",
-      "to": "via1",
-      "toTerminal": "d3"
+      "to": "rd3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd3",
+      "fromTerminal": "b",
+      "to": "ld3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "ld3",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "d4",
-      "to": "via1",
-      "toTerminal": "d4"
+      "to": "rd4",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd4",
+      "fromTerminal": "b",
+      "to": "ld4",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "ld4",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "d5",
-      "to": "via1",
-      "toTerminal": "d5"
+      "to": "rd5",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd5",
+      "fromTerminal": "b",
+      "to": "ld5",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "ld5",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "d6",
-      "to": "via1",
-      "toTerminal": "d6"
+      "to": "rd6",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd6",
+      "fromTerminal": "b",
+      "to": "ld6",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "ld6",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "d7",
-      "to": "via1",
-      "toTerminal": "d7"
+      "to": "rd7",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd7",
+      "fromTerminal": "b",
+      "to": "ld7",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "ld7",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "phi2o",
+      "to": "rs_clk",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rs_clk",
+      "fromTerminal": "b",
+      "to": "ls_clk",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "ls_clk",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
     },
     {
       "from": "cpu",
       "fromTerminal": "rwb",
-      "to": "via1",
-      "toTerminal": "rwb"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "phi2",
-      "to": "via1",
-      "toTerminal": "phi2"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pb0",
-      "to": "rl0",
+      "to": "rs_rw",
       "toTerminal": "a"
     },
     {
-      "from": "rl0",
+      "from": "rs_rw",
       "fromTerminal": "b",
-      "to": "led0",
+      "to": "ls_rw",
       "toTerminal": "anode"
     },
     {
-      "from": "led0",
+      "from": "ls_rw",
       "fromTerminal": "cathode",
       "to": "gnd1",
       "toTerminal": "gnd"
     },
     {
-      "from": "via1",
-      "fromTerminal": "pb1",
-      "to": "rl1",
+      "from": "cpu",
+      "fromTerminal": "sync",
+      "to": "rs_syn",
       "toTerminal": "a"
     },
     {
-      "from": "rl1",
+      "from": "rs_syn",
       "fromTerminal": "b",
-      "to": "led1",
+      "to": "ls_syn",
       "toTerminal": "anode"
     },
     {
-      "from": "led1",
+      "from": "ls_syn",
       "fromTerminal": "cathode",
       "to": "gnd1",
       "toTerminal": "gnd"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pb2",
-      "to": "rl2",
-      "toTerminal": "a"
-    },
-    {
-      "from": "rl2",
-      "fromTerminal": "b",
-      "to": "led2",
-      "toTerminal": "anode"
-    },
-    {
-      "from": "led2",
-      "fromTerminal": "cathode",
-      "to": "gnd1",
-      "toTerminal": "gnd"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pb3",
-      "to": "rl3",
-      "toTerminal": "a"
-    },
-    {
-      "from": "rl3",
-      "fromTerminal": "b",
-      "to": "led3",
-      "toTerminal": "anode"
-    },
-    {
-      "from": "led3",
-      "fromTerminal": "cathode",
-      "to": "gnd1",
-      "toTerminal": "gnd"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pb4",
-      "to": "rl4",
-      "toTerminal": "a"
-    },
-    {
-      "from": "rl4",
-      "fromTerminal": "b",
-      "to": "led4",
-      "toTerminal": "anode"
-    },
-    {
-      "from": "led4",
-      "fromTerminal": "cathode",
-      "to": "gnd1",
-      "toTerminal": "gnd"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pb5",
-      "to": "rl5",
-      "toTerminal": "a"
-    },
-    {
-      "from": "rl5",
-      "fromTerminal": "b",
-      "to": "led5",
-      "toTerminal": "anode"
-    },
-    {
-      "from": "led5",
-      "fromTerminal": "cathode",
-      "to": "gnd1",
-      "toTerminal": "gnd"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pb6",
-      "to": "rl6",
-      "toTerminal": "a"
-    },
-    {
-      "from": "rl6",
-      "fromTerminal": "b",
-      "to": "led6",
-      "toTerminal": "anode"
-    },
-    {
-      "from": "led6",
-      "fromTerminal": "cathode",
-      "to": "gnd1",
-      "toTerminal": "gnd"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pb7",
-      "to": "rl7",
-      "toTerminal": "a"
-    },
-    {
-      "from": "rl7",
-      "fromTerminal": "b",
-      "to": "led7",
-      "toTerminal": "anode"
-    },
-    {
-      "from": "led7",
-      "fromTerminal": "cathode",
-      "to": "gnd1",
-      "toTerminal": "gnd"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "2a"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "2b"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "3a"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "3b"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "4a"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "nand1",
-      "toTerminal": "4b"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pa0",
-      "to": "lcd1",
-      "toTerminal": "d0"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pa1",
-      "to": "lcd1",
-      "toTerminal": "d1"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pa2",
-      "to": "lcd1",
-      "toTerminal": "d2"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pa3",
-      "to": "lcd1",
-      "toTerminal": "d3"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pa4",
-      "to": "lcd1",
-      "toTerminal": "d4"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pa5",
-      "to": "lcd1",
-      "toTerminal": "d5"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pa6",
-      "to": "lcd1",
-      "toTerminal": "d6"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "pa7",
-      "to": "lcd1",
-      "toTerminal": "d7"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "cb1",
-      "to": "lcd1",
-      "toTerminal": "e"
-    },
-    {
-      "from": "via1",
-      "fromTerminal": "cb2",
-      "to": "lcd1",
-      "toTerminal": "rs"
-    },
-    {
-      "from": "gnd1",
-      "fromTerminal": "gnd",
-      "to": "lcd1",
-      "toTerminal": "rw"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "lcd1",
-      "toTerminal": "vcc"
-    },
-    {
-      "from": "gnd1",
-      "fromTerminal": "gnd",
-      "to": "lcd1",
-      "toTerminal": "gnd"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "acia1",
-      "toTerminal": "vdd"
-    },
-    {
-      "from": "gnd1",
-      "fromTerminal": "gnd",
-      "to": "acia1",
-      "toTerminal": "vss"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "acia1",
-      "toTerminal": "resb"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "a12",
-      "to": "acia1",
-      "toTerminal": "cs0"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "a15",
-      "to": "acia1",
-      "toTerminal": "cs1b"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "a0",
-      "to": "acia1",
-      "toTerminal": "rs0"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "a1",
-      "to": "acia1",
-      "toTerminal": "rs1"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "d0",
-      "to": "acia1",
-      "toTerminal": "d0"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "d1",
-      "to": "acia1",
-      "toTerminal": "d1"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "d2",
-      "to": "acia1",
-      "toTerminal": "d2"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "d3",
-      "to": "acia1",
-      "toTerminal": "d3"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "d4",
-      "to": "acia1",
-      "toTerminal": "d4"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "d5",
-      "to": "acia1",
-      "toTerminal": "d5"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "d6",
-      "to": "acia1",
-      "toTerminal": "d6"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "d7",
-      "to": "acia1",
-      "toTerminal": "d7"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "rwb",
-      "to": "acia1",
-      "toTerminal": "rwb"
-    },
-    {
-      "from": "cpu",
-      "fromTerminal": "phi2",
-      "to": "acia1",
-      "toTerminal": "phi2"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "acia1",
-      "toTerminal": "ctsb"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "acia1",
-      "toTerminal": "dcdb"
-    },
-    {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
-      "to": "acia1",
-      "toTerminal": "dsrb"
     }
   ],
-  "_stage": "E5",
-  "_title": "Serial output",
-  "_description": "W65C51 ACIA at $5000. The CPU can send bytes over serial."
+  "_stage": "E2",
+  "_title": "ROM only",
+  "_description": "A 28C256 EEPROM covers the full address space. Data-bus LEDs show each byte. In single-step: a write to unmapped RAM shows the value on the bus, then it vanishes — the first lesson in memory mapping."
 }

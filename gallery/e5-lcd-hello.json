@@ -186,6 +186,13 @@
       },
       "x": 0,
       "y": 0
+    },
+    {
+      "id": "lcd1",
+      "kind": "char_lcd",
+      "params": {},
+      "x": 0,
+      "y": 0
     }
   ],
   "wires": [
@@ -266,6 +273,12 @@
       "fromTerminal": "vcc",
       "to": "cpu",
       "toTerminal": "rdy"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "sob"
     },
     {
       "from": "vcc1",
@@ -448,8 +461,8 @@
       "toTerminal": "cs2b"
     },
     {
-      "from": "vcc1",
-      "fromTerminal": "vcc",
+      "from": "cpu",
+      "fromTerminal": "a14",
       "to": "via1",
       "toTerminal": "cs1"
     },
@@ -716,9 +729,87 @@
       "fromTerminal": "vcc",
       "to": "nand1",
       "toTerminal": "4b"
+    },
+    {
+      "from": "via1",
+      "fromTerminal": "pa0",
+      "to": "lcd1",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "via1",
+      "fromTerminal": "pa1",
+      "to": "lcd1",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "via1",
+      "fromTerminal": "pa2",
+      "to": "lcd1",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "via1",
+      "fromTerminal": "pa3",
+      "to": "lcd1",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "via1",
+      "fromTerminal": "pa4",
+      "to": "lcd1",
+      "toTerminal": "d4"
+    },
+    {
+      "from": "via1",
+      "fromTerminal": "pa5",
+      "to": "lcd1",
+      "toTerminal": "d5"
+    },
+    {
+      "from": "via1",
+      "fromTerminal": "pa6",
+      "to": "lcd1",
+      "toTerminal": "d6"
+    },
+    {
+      "from": "via1",
+      "fromTerminal": "pa7",
+      "to": "lcd1",
+      "toTerminal": "d7"
+    },
+    {
+      "from": "via1",
+      "fromTerminal": "cb1",
+      "to": "lcd1",
+      "toTerminal": "e"
+    },
+    {
+      "from": "via1",
+      "fromTerminal": "cb2",
+      "to": "lcd1",
+      "toTerminal": "rs"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "lcd1",
+      "toTerminal": "rw"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "lcd1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "lcd1",
+      "toTerminal": "gnd"
     }
   ],
-  "_stage": "E3",
-  "_title": "VIA blink",
-  "_description": "W65C22 VIA added. Port B drives 8 LEDs. Coarse decode: A15 splits ROM/VIA."
+  "_stage": "E5",
+  "_title": "LCD hello",
+  "_description": "HD44780 LCD on VIA port A. The classic \"Hello, world!\" of retro computing."
 }

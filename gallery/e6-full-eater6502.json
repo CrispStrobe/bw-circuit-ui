@@ -346,6 +346,12 @@
     {
       "from": "vcc1",
       "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "sob"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
       "to": "via1",
       "toTerminal": "resb"
     },

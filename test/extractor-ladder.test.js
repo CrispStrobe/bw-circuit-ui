@@ -30,7 +30,16 @@ function loadStage(prefix) {
 }
 
 describe('6502 pedagogy ladder — extractor verification', () => {
-  it('E1 free-run: refused — no memory or I/O on the board', () => {
+  it('E0 clock module: refused — no CPU on the board', () => {
+    const circuit = loadStage('e0');
+    assert.ok(circuit, 'E0 circuit exists');
+    const result = extract6502Machine(circuit);
+    assert.equal(result.ok, false);
+    assert.ok(result.reasons.some(r => r.includes('no W65C02')),
+      'refuses because there is no CPU');
+  });
+
+  it('E1 CPU-alive: refused — no memory or I/O chips', () => {
     const circuit = loadStage('e1');
     assert.ok(circuit, 'E1 circuit exists');
     const result = extract6502Machine(circuit);
@@ -39,7 +48,7 @@ describe('6502 pedagogy ladder — extractor verification', () => {
       'refuses because there are no addressable chips');
   });
 
-  it('E2 ROM blink: accepted — ROM covers the full address space', () => {
+  it('E2 ROM only: accepted — ROM covers the full address space', () => {
     const circuit = loadStage('e2');
     assert.ok(circuit, 'E2 circuit exists');
     const result = extract6502Machine(circuit);
@@ -47,21 +56,12 @@ describe('6502 pedagogy ladder — extractor verification', () => {
     assert.ok(result.regions.some(r => r.kind === 'rom'), 'has ROM region');
   });
 
-  it('E3 VIA blink: accepted — coarse decode, VIA mirrors to $0000', () => {
-    const circuit = loadStage('e3');
-    assert.ok(circuit, 'E3 circuit exists');
+  it('E4 VIA blink: accepted — coarse decode, VIA in $4000-$7FFF', () => {
+    const circuit = loadStage('e4');
+    assert.ok(circuit, 'E4 circuit exists');
     const result = extract6502Machine(circuit);
     assert.equal(result.ok, true, `refused: ${result.reasons.join('; ')}`);
     assert.ok(result.chips.some(c => c.kind === 'via'), 'has VIA chip');
-  });
-
-  it('E5 serial: refused — coarse decode causes VIA/ACIA contention', () => {
-    const circuit = loadStage('e5');
-    assert.ok(circuit, 'E5 circuit exists');
-    const result = extract6502Machine(circuit);
-    assert.equal(result.ok, false);
-    assert.ok(result.reasons.some(r => r.includes('bus contention')),
-      'teaches: coarse decode causes bus contention when adding a second I/O chip');
   });
 
   it('E6 full EATER6502: accepted, config matches the machine preset', () => {
@@ -70,13 +70,11 @@ describe('6502 pedagogy ladder — extractor verification', () => {
     const result = extract6502Machine(circuit);
     assert.equal(result.ok, true, `refused: ${result.reasons.join('; ')}`);
 
-    // Compare regions (sorted by start address)
     const extractedRegions = result.regions.sort((a, b) => a.start - b.start);
     const presetRegions = EATER6502.regions.sort((a, b) => a.start - b.start);
     assert.deepEqual(extractedRegions, presetRegions,
       'extracted memory map equals EATER6502 preset');
 
-    // Compare chips (sorted by base address)
     const extractedChips = result.chips.sort((a, b) => a.at - b.at);
     const presetChips = EATER6502.chips.sort((a, b) => a.at - b.at);
     assert.deepEqual(extractedChips, presetChips,
@@ -109,13 +107,11 @@ describe('Z80 pedagogy ladder — extractor verification', () => {
     const result = extractZ80Machine(circuit);
     assert.equal(result.ok, true, `refused: ${result.reasons.join('; ')}`);
 
-    // Compare regions
     const extractedRegions = result.regions.sort((a, b) => a.start - b.start);
     const presetRegions = SEARLE.regions.sort((a, b) => a.start - b.start);
     assert.deepEqual(extractedRegions, presetRegions,
       'extracted memory map equals SEARLE preset');
 
-    // Compare ports
     const extractedPorts = result.ports.sort((a, b) => a.at - b.at);
     const presetPorts = SEARLE.ports.sort((a, b) => a.at - b.at);
     assert.deepEqual(extractedPorts, presetPorts,
