@@ -112,6 +112,36 @@ function Symbol({ s }) {
         <path d="M -14 -14 L -14 14 L 16 0 Z" />
         <path d="M -30 -7 L -14 -7 M -30 7 L -14 7 M 16 0 L 30 0" />
       </>);
+    case 'gate_and':
+    case 'gate_nand':
+      return g(<>
+        {/* AND D-shape: flat left, semicircular right */}
+        <path d="M -12 -16 L -12 16 L 0 16 A 16 16 0 0 0 0 -16 Z" />
+        <path d="M -30 -8 L -12 -8 M -30 8 L -12 8 M 16 0 L 30 0" />
+        {kind === 'gate_nand' && <circle cx={19} cy={0} r={3} />}
+      </>);
+    case 'gate_or':
+    case 'gate_nor':
+      return g(<>
+        {/* OR shield shape */}
+        <path d="M -12 -16 Q -4 0 -12 16 Q 6 16 16 0 Q 6 -16 -12 -16 Z" />
+        <path d="M -30 -8 L -8 -8 M -30 8 L -8 8 M 16 0 L 30 0" />
+        {kind === 'gate_nor' && <circle cx={19} cy={0} r={3} />}
+      </>);
+    case 'gate_xor':
+      return g(<>
+        {/* XOR: OR body + extra input curve */}
+        <path d="M -16 -16 Q -8 0 -16 16" />
+        <path d="M -12 -16 Q -4 0 -12 16 Q 6 16 16 0 Q 6 -16 -12 -16 Z" />
+        <path d="M -30 -8 L -8 -8 M -30 8 L -8 8 M 16 0 L 30 0" />
+      </>);
+    case 'gate_not':
+      return g(<>
+        {/* NOT: triangle + bubble */}
+        <path d="M -14 -14 L -14 14 L 12 0 Z" />
+        <path d="M -30 0 L -14 0 M 18 0 L 30 0" />
+        <circle cx={15} cy={0} r={3} />
+      </>);
     default: {
       // Generic IC/part box, sized to its CONNECTED pins, one stub and one
       // pin-name label per connection — so an MCU visibly meets its wires

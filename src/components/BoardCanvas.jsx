@@ -115,6 +115,10 @@ function terminalOffsetsForPart(part) {
       });
       return offsets;
     }
+    case 'gate_and': case 'gate_or': case 'gate_nand': case 'gate_nor': case 'gate_xor':
+      return { in0: r(-22, -10), in1: r(-22, 10), out: r(22, 0) };
+    case 'gate_not':
+      return { in0: r(-20, 0), out: r(20, 0) };
     default: return { a: r(-15, 0), b: r(15, 0) };
   }
 }
@@ -314,6 +318,54 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
       }
+      // ── Logic gates ────────────────────────────────────────────────
+      case 'gate_and':
+      case 'gate_nand':
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* AND body: flat left, D-shaped right */}
+            <path d="M -10 -14 L -10 14 L 0 14 A 14 14 0 0 0 0 -14 Z"
+              fill="#1a1a2e" stroke={selStroke || '#3498db'} strokeWidth={1.5} />
+            {kind === 'gate_nand' && <circle cx={16} cy={0} r={3} fill="#1a1a2e" stroke={selStroke || '#3498db'} strokeWidth={1.5} />}
+            <text x={0} y={22} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      case 'gate_or':
+      case 'gate_nor':
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* OR body: curved input, pointed output */}
+            <path d="M -12 -14 Q -4 0 -12 14 Q 4 14 14 0 Q 4 -14 -12 -14 Z"
+              fill="#1a1a2e" stroke={selStroke || '#2ecc71'} strokeWidth={1.5} />
+            {kind === 'gate_nor' && <circle cx={16} cy={0} r={3} fill="#1a1a2e" stroke={selStroke || '#2ecc71'} strokeWidth={1.5} />}
+            <text x={0} y={22} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      case 'gate_xor':
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* XOR: OR body + extra input curve */}
+            <path d="M -14 -14 Q -6 0 -14 14" fill="none" stroke={selStroke || '#9b59b6'} strokeWidth={1.5} />
+            <path d="M -12 -14 Q -4 0 -12 14 Q 4 14 14 0 Q 4 -14 -12 -14 Z"
+              fill="#1a1a2e" stroke={selStroke || '#9b59b6'} strokeWidth={1.5} />
+            <text x={0} y={22} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      case 'gate_not':
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* NOT: triangle + output bubble */}
+            <path d="M -12 -12 L -12 12 L 10 0 Z"
+              fill="#1a1a2e" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
+            <circle cx={14} cy={0} r={3} fill="#1a1a2e" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
+            <text x={0} y={22} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+
       default:
         return null;
     }
