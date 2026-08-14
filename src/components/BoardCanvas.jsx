@@ -684,7 +684,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, lcdStates, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -838,18 +838,32 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             </div>
           </div>
         );
-      case 'char_lcd':
+      case 'char_lcd': {
+        // Live device state, never a placeholder: the HD44780 model's
+        // public text array (blank until firmware turns the display on —
+        // which is also what a real module shows).
+        const lcd = lcdStates && lcdStates.get(id);
+        const rows = (lcd && lcd.displayOn && Array.isArray(lcd.text))
+          ? lcd.text : ['', ''];
+        const flat = `${String(rows[0] ?? '').padEnd(16).slice(0, 16)}${String(rows[1] ?? '').padEnd(16).slice(0, 16)}`;
+        // Address counter → cursor cell (2-line DDRAM map: line 2 at 0x40)
+        const ac = lcd ? lcd.ac & 0x7f : 0;
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 60, top: y - 25, cursor: 'move' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
-            <WokwiLcd1602 text="Hello World!" pins="none" screenOnly={true} />
+            <WokwiLcd1602 text={flat} pins="none" screenOnly={true}
+              cursor={!!(lcd && lcd.displayOn && lcd.cursorOn)}
+              blink={!!(lcd && lcd.displayOn && lcd.blinkOn)}
+              cursorX={ac >= 0x40 ? Math.min(ac - 0x40, 15) : Math.min(ac, 15)}
+              cursorY={ac >= 0x40 ? 1 : 0} />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
             </div>
           </div>
         );
+      }
       case 'ir_receiver':
         return (
           <div key={id}
@@ -2393,6 +2407,19 @@ export function BoardCanvas({
             parts={parts}
             ledBrightness={ledBrightness}
             buzzerTones={buzzerTones}
+            lcdStates={(() => {
+              // Live HD44780 state (char_lcd registry model). circuit.board
+              // follows the active board, so debug runs show their own text.
+              if (!circuit?.board?.getDeviceState) return null;
+              const m = new Map();
+              for (const p of parts) {
+                if (p.kind === 'char_lcd') {
+                  const ds = circuit.board.getDeviceState(p.id);
+                  if (ds) m.set(p.id, ds);
+                }
+              }
+              return m.size > 0 ? m : null;
+            })()}
             meterReadings={(() => {
               const readings = {};
               for (const p of parts) {
