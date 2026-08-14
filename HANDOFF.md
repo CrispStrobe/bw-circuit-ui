@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-792 tests (786 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
+812 tests (806 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
 21/21 browser gate scenarios green. Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -24,9 +24,10 @@
   16-source breadboard survey:
   E0 clock module (555 astable + single-step), E1 CPU-alive (status LEDs:
   PHI2O/RWB/SYNC/VPB + address LEDs, NOP free-run), E2 ROM-only + data-bus
-  LEDs (write-to-unmapped teachable moment), E4 VIA blink, E5 LCD hello,
+  LEDs (write-to-unmapped teachable moment), E3 74HC374 latch LED port
+  (simplest output, write strobe via NAND), E4 VIA blink, E5 LCD hello,
   E6 full EATER6502 (extractor-verified = preset exactly).
-  E1.5/E2.5/E3 reserved for future rungs.
+  E1.5/E2.5 reserved for future rungs.
 - **Z80 pedagogy ladder** (Z1-Z6): staged circuits teaching Searle minimal Z80.
   Z2/Z3 marked display-only. Z5 extractor verification blocked on z80-extract.js.
 - **Terminal aliases**: pot->potentiometer, lead1/lead2, cw/ccw, gate_and,
@@ -54,9 +55,14 @@
 - **Board seating test**: 8 boards, 24 tests
 - **6502 ladder**: E0-E6 (renumbered from 16-source survey).
   E0 clock module, E1 CPU-alive + status LEDs, E2 ROM-only + data LEDs,
-  E4 VIA blink, E5 LCD, E6 full EATER6502. E1.5/E2.5/E3 reserved.
+  E3 74HC374 latch LED port (simplest output, write strobe via 3 NAND gates),
+  E4 VIA blink, E5 LCD, E6 full EATER6502. E1.5/E2.5 reserved.
   Extractor test: 8 tests (5 for 6502, 3 for Z80), all pass.
   E6 = EATER6502 preset, Z5 = SEARLE preset.
+- **E3 74HC374 latch LED port**: simplest output peripheral. ROM at $8000-$FFFF,
+  74HC374 with write strobe CLK = !A15 AND PHI2 (3 NAND gates from one 74HC00).
+  OEB tied low, 8 red LEDs on Q0-Q7. Extractor-accepted (ROM decode valid,
+  latch invisible to extractor). 44 parts, 115 wires.
 - **Z80 ladder**: Z1-Z6 (scripts/gen-z80-ladder.mjs).
   Z2/Z3 display-only. Z5 extractor-verified = SEARLE preset.
 

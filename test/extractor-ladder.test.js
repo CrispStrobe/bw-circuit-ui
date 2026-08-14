@@ -56,6 +56,14 @@ describe('6502 pedagogy ladder — extractor verification', () => {
     assert.ok(result.regions.some(r => r.kind === 'rom'), 'has ROM region');
   });
 
+  it('E3 74HC374 latch: accepted — ROM at $8000-$FFFF, latch is bus peripheral', () => {
+    const circuit = loadStage('e3');
+    assert.ok(circuit, 'E3 circuit exists');
+    const result = extract6502Machine(circuit);
+    assert.equal(result.ok, true, `refused: ${result.reasons.join('; ')}`);
+    assert.ok(result.regions.some(r => r.kind === 'rom'), 'has ROM region');
+  });
+
   it('E4 VIA blink: accepted — coarse decode, VIA in $4000-$7FFF', () => {
     const circuit = loadStage('e4');
     assert.ok(circuit, 'E4 circuit exists');

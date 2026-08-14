@@ -11,7 +11,8 @@
  *   E5   +HD44780 LCD hello
  *   E6   full EATER6502: RAM + ACIA + complete decode (extractor-verified)
  *
- * E1.5 (static-clock), E2.5 (6507SBC), E3 (74HC374 latch) are future rungs.
+ * E3   74HC374 latch LED port — simplest output, write strobe via NAND
+ * E1.5 (static-clock), E2.5 (6507SBC) are future rungs.
  *
  * Clean-room: wiring facts and addresses only; no text or code from source blogs.
  */
@@ -274,6 +275,111 @@ function genE2() {
   };
 }
 
+// ── E3: 74HC374 latch LED port ───────────────────────────────────────
+// The simplest possible output device: an octal latch on the data bus.
+// ROM at $8000-$FFFF (NOT(A15) via NAND). The 374's CLK gets a write
+// strobe (!A15 AND PHI2) — three NAND gates. OEB tied low (outputs
+// always enabled). 8 LEDs on Q0-Q7 show the latched value.
+// Teaching moment: this is the absolute minimum I/O — before a VIA,
+// before registers or interrupts, just "write a byte, see the LEDs."
+
+function genE3() {
+  const parts = [
+    part('vcc1', 'vcc'),
+    part('gnd1', 'gnd'),
+    part('cpu', 'w65c02'),
+    part('rom', '28c256'),
+    part('latch1', '74hc374'),
+    part('nand1', '74hc00'),
+    // Address LEDs A0-A7
+    ...Array.from({ length: 8 }, (_, i) =>
+      part(`ra${i}`, 'resistor', { ohms: 220 })),
+    ...Array.from({ length: 8 }, (_, i) =>
+      part(`la${i}`, 'led', { color: 'green' })),
+    // Latch output LEDs
+    ...Array.from({ length: 8 }, (_, i) =>
+      part(`rl${i}`, 'resistor', { ohms: 220 })),
+    ...Array.from({ length: 8 }, (_, i) =>
+      part(`led${i}`, 'led', { color: 'red' })),
+  ];
+
+  // Status LEDs
+  const statusSignals = [
+    { part: 'cpu', terminal: 'phi2o', prefix: 'clk', color: 'yellow' },
+    { part: 'cpu', terminal: 'rwb',   prefix: 'rw',  color: 'red' },
+    { part: 'cpu', terminal: 'sync',  prefix: 'syn', color: 'blue' },
+  ];
+  for (const s of statusSignals) {
+    const sl = statusLed(s.part, s.terminal, `rs_${s.prefix}`, `ls_${s.prefix}`, 'gnd1', s.color);
+    parts.push(...sl.parts);
+  }
+
+  const wires = [
+    ...powerChip('vcc1', 'gnd1', 'cpu'),
+    ...powerChipStd('vcc1', 'gnd1', 'rom'),
+    ...powerChipStd('vcc1', 'gnd1', 'latch1'),
+    ...powerChipStd('vcc1', 'gnd1', 'nand1'),
+    tieHigh('vcc1', 'cpu', 'resb'),
+    tieHigh('vcc1', 'cpu', 'irqb'),
+    tieHigh('vcc1', 'cpu', 'nmib'),
+    tieHigh('vcc1', 'cpu', 'be'),
+    tieHigh('vcc1', 'cpu', 'rdy'),
+    tieHigh('vcc1', 'cpu', 'sob'),
+
+    // Address decode (3 of 4 NAND gates):
+    // Gate 1: NOT(A15) → ROM CSB (ROM at $8000-$FFFF)
+    wire('cpu', 'a15', 'nand1', '1a'),
+    wire('cpu', 'a15', 'nand1', '1b'),
+    wire('nand1', '1y', 'rom', 'csb'),
+    // Gate 2: NAND(!A15, PHI2) → intermediate
+    wire('nand1', '1y', 'nand1', '2a'),
+    wire('cpu', 'phi2', 'nand1', '2b'),
+    // Gate 3: NOT(gate2) = !A15 AND PHI2 → latch CLK
+    wire('nand1', '2y', 'nand1', '3a'),
+    wire('nand1', '2y', 'nand1', '3b'),
+    wire('nand1', '3y', 'latch1', 'clk'),
+    // Gate 4: unused — tie inputs high
+    tieHigh('vcc1', 'nand1', '4a'),
+    tieHigh('vcc1', 'nand1', '4b'),
+
+    // ROM: active, read-only
+    tieLow('gnd1', 'rom', 'oeb'),
+    tieHigh('vcc1', 'rom', 'web'),
+    ...busA('cpu', 'rom', Array.from({ length: 15 }, (_, i) => i)),
+    ...busD('cpu', 'rom'),
+
+    // 374 latch: data from CPU, outputs always enabled
+    ...busD('cpu', 'latch1'),
+    tieLow('gnd1', 'latch1', 'oeb'),
+
+    // Latch Q outputs → LEDs
+    ...Array.from({ length: 8 }, (_, i) => [
+      wire('latch1', `q${i}`, `rl${i}`, 'a'),
+      wire(`rl${i}`, 'b', `led${i}`, 'anode'),
+      wire(`led${i}`, 'cathode', 'gnd1', 'gnd'),
+    ]).flat(),
+
+    // Address LEDs A0-A7
+    ...Array.from({ length: 8 }, (_, i) => [
+      wire('cpu', `a${i}`, `ra${i}`, 'a'),
+      wire(`ra${i}`, 'b', `la${i}`, 'anode'),
+      wire(`la${i}`, 'cathode', 'gnd1', 'gnd'),
+    ]).flat(),
+  ];
+
+  // Wire status LED wires
+  for (const s of statusSignals) {
+    const sl = statusLed(s.part, s.terminal, `rs_${s.prefix}`, `ls_${s.prefix}`, 'gnd1', s.color);
+    wires.push(...sl.wires);
+  }
+
+  return {
+    vcc: 5, parts, wires,
+    _stage: 'E3', _title: '74HC374 latch LED port',
+    _description: 'The simplest output port: a 74HC374 octal latch captures the data bus when the CPU writes to $0000-$7FFF. 8 red LEDs show the latched value — the first step toward programmable I/O, before introducing a full VIA.',
+  };
+}
+
 // ── E4: VIA blink ────────────────────────────────────────────────────
 // W65C22 VIA at $6000 (coarse decode: CS2B=A15, CS1=A14).
 // Port B drives 8 LEDs. ROM decode: NOT(A15) via NAND.
@@ -481,7 +587,7 @@ function genE6() {
 
 // ── Write all stages ─────────────────────────────────────────────────
 
-const stages = [genE0, genE1, genE2, genE4, genE5, genE6];
+const stages = [genE0, genE1, genE2, genE3, genE4, genE5, genE6];
 for (const gen of stages) {
   const circuit = gen();
   const name = circuit._stage.toLowerCase();
