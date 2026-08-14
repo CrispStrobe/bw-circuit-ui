@@ -1,45 +1,128 @@
 {
   "kind": "char_lcd",
-  "w": 140,
-  "h": 56,
+  "w": 160,
+  "h": 70,
   "terminals": [
     {
-      "name": "rs",
+      "name": "vss",
+      "x": 12,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "vdd",
       "x": 20,
-      "y": 53,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "v0",
+      "x": 28,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "rs",
+      "x": 36,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "rw",
+      "x": 44,
+      "y": 70,
       "functions": []
     },
     {
       "name": "e",
-      "x": 40,
-      "y": 53,
+      "x": 52,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 60,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 68,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 76,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 84,
+      "y": 70,
       "functions": []
     },
     {
       "name": "d4",
-      "x": 60,
-      "y": 53,
+      "x": 92,
+      "y": 70,
       "functions": []
     },
     {
       "name": "d5",
-      "x": 80,
-      "y": 53,
+      "x": 100,
+      "y": 70,
       "functions": []
     },
     {
       "name": "d6",
-      "x": 100,
-      "y": 53,
+      "x": 108,
+      "y": 70,
       "functions": []
     },
     {
       "name": "d7",
-      "x": 120,
-      "y": 53,
+      "x": 116,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "a",
+      "x": 124,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "k",
+      "x": 132,
+      "y": 70,
       "functions": []
     }
   ],
   "variants": null,
-  "footprint": null
+  "_note": "HD44780U-compatible 16x2 character LCD module. Pin table audited against Hitachi HD44780U datasheet (ADE-207-272(Z) rev 0.0, 1998-09). 16-pin single-row header: VSS (pin 1), VDD (pin 2), V0 (pin 3, contrast), RS (pin 4, register select: 0=cmd 1=data), RW (pin 5, read/write: 0=write 1=read), E (pin 6, enable), D0-D7 (pins 7-14, data bus), A (pin 15, backlight LED anode), K (pin 16, backlight LED cathode). Supports 4-bit mode (D4-D7 only) and 8-bit mode (D0-D7). Canonical 6502 breadboard wiring: RS/RW/E to VIA PA5-PA7, D0-D7 to VIA PB0-PB7.",
+  "footprint": {
+    "refTerminal": "vss",
+    "leads": {
+      "vss": { "dRow": 0, "dCol": 0 },
+      "vdd": { "dRow": 0, "dCol": 1 },
+      "v0":  { "dRow": 0, "dCol": 2 },
+      "rs":  { "dRow": 0, "dCol": 3 },
+      "rw":  { "dRow": 0, "dCol": 4 },
+      "e":   { "dRow": 0, "dCol": 5 },
+      "d0":  { "dRow": 0, "dCol": 6 },
+      "d1":  { "dRow": 0, "dCol": 7 },
+      "d2":  { "dRow": 0, "dCol": 8 },
+      "d3":  { "dRow": 0, "dCol": 9 },
+      "d4":  { "dRow": 0, "dCol": 10 },
+      "d5":  { "dRow": 0, "dCol": 11 },
+      "d6":  { "dRow": 0, "dCol": 12 },
+      "d7":  { "dRow": 0, "dCol": 13 },
+      "a":   { "dRow": 0, "dCol": 14 },
+      "k":   { "dRow": 0, "dCol": 15 }
+    },
+    "straddlesGutter": false,
+    "minCols": 16
+  }
 }

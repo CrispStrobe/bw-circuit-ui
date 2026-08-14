@@ -1,0 +1,416 @@
+{
+  "kind": "z80",
+  "w": 80,
+  "h": 111,
+  "terminals": [
+    {
+      "name": "a11",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "a12",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "a13",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "a14",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "a15",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "clk",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "d4",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "d5",
+      "x": 0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "d6",
+      "x": 0,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 0,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 0,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "d7",
+      "x": 0,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 0,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 0,
+      "y": 78,
+      "functions": []
+    },
+    {
+      "name": "intb",
+      "x": 0,
+      "y": 83,
+      "functions": []
+    },
+    {
+      "name": "nmib",
+      "x": 0,
+      "y": 88,
+      "functions": []
+    },
+    {
+      "name": "haltb",
+      "x": 0,
+      "y": 93,
+      "functions": []
+    },
+    {
+      "name": "mreqb",
+      "x": 0,
+      "y": 98,
+      "functions": []
+    },
+    {
+      "name": "iorqb",
+      "x": 0,
+      "y": 103,
+      "functions": []
+    },
+    {
+      "name": "a10",
+      "x": 80,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "a9",
+      "x": 80,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "a8",
+      "x": 80,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "a7",
+      "x": 80,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "a6",
+      "x": 80,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "a5",
+      "x": 80,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "a4",
+      "x": 80,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "a3",
+      "x": 80,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "a2",
+      "x": 80,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "a1",
+      "x": 80,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "a0",
+      "x": 80,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 80,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "rfshb",
+      "x": 80,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "m1b",
+      "x": 80,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "resetb",
+      "x": 80,
+      "y": 78,
+      "functions": []
+    },
+    {
+      "name": "busrqb",
+      "x": 80,
+      "y": 83,
+      "functions": []
+    },
+    {
+      "name": "waitb",
+      "x": 80,
+      "y": 88,
+      "functions": []
+    },
+    {
+      "name": "busakb",
+      "x": 80,
+      "y": 93,
+      "functions": []
+    },
+    {
+      "name": "wrb",
+      "x": 80,
+      "y": 98,
+      "functions": []
+    },
+    {
+      "name": "rdb",
+      "x": 80,
+      "y": 103,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Zilog Z80 CPU. Pin table audited against Zilog Z80 CPU Product Specification (PS0178, rev 06). DIP-40 package. 16-bit address bus (A0-A15, pins 30-31 and 1-5 and 33-40), 8-bit data bus (D0-D7, pins 14-15 and 7-10 and 12-13 \u2014 non-sequential per datasheet). Active-low control: RESETB (pin 26), INTB (pin 16), NMIB (pin 17, edge-triggered), MREQB (pin 19), IORQB (pin 20), RDB (pin 21), WRB (pin 22), RFSHB (pin 28), M1B (pin 27), HALTB (pin 18), BUSRQB (pin 25), BUSAKB (pin 23), WAITB (pin 24). CLK (pin 6) is single-phase clock input. VCC=pin 11, GND=pin 29. Note: address and data pins are NOT in sequential pin order on the DIP-40 \u2014 this matches the physical chip.",
+  "footprint": {
+    "refTerminal": "a11",
+    "leads": {
+      "a11": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "a12": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "a13": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "a14": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "a15": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "clk": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "d4": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "d3": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "d5": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "d6": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "vcc": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "d2": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "d7": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "d0": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "d1": {
+        "dRow": 0,
+        "dCol": 14
+      },
+      "intb": {
+        "dRow": 0,
+        "dCol": 15
+      },
+      "nmib": {
+        "dRow": 0,
+        "dCol": 16
+      },
+      "haltb": {
+        "dRow": 0,
+        "dCol": 17
+      },
+      "mreqb": {
+        "dRow": 0,
+        "dCol": 18
+      },
+      "iorqb": {
+        "dRow": 0,
+        "dCol": 19
+      },
+      "a10": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "a9": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "a8": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "a7": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "a6": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "a5": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "a4": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "a3": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "a2": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "a1": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "a0": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "gnd": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "rfshb": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "m1b": {
+        "dRow": 5,
+        "dCol": 13
+      },
+      "resetb": {
+        "dRow": 5,
+        "dCol": 14
+      },
+      "busrqb": {
+        "dRow": 5,
+        "dCol": 15
+      },
+      "waitb": {
+        "dRow": 5,
+        "dCol": 16
+      },
+      "busakb": {
+        "dRow": 5,
+        "dCol": 17
+      },
+      "wrb": {
+        "dRow": 5,
+        "dCol": 18
+      },
+      "rdb": {
+        "dRow": 5,
+        "dCol": 19
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 20
+  }
+}

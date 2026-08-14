@@ -1,0 +1,256 @@
+{
+  "kind": "mc6850",
+  "w": 70,
+  "h": 71,
+  "terminals": [
+    {
+      "name": "vss",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "rxd",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "rxclk",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "txclk",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "rtsb",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "txd",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "irqb",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "cs0",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "cs2b",
+      "x": 0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "cs1",
+      "x": 0,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "rs",
+      "x": 0,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 0,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "ctsb",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "dcdb",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "d4",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "d5",
+      "x": 70,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "d6",
+      "x": 70,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "d7",
+      "x": 70,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "e",
+      "x": 70,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "rw",
+      "x": 70,
+      "y": 63,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Motorola MC6850 Asynchronous Communications Interface Adapter. Pin table audited against Motorola MC6850 datasheet (DS9493, rev 4). DIP-24 package. Full-duplex serial: TxD (pin 6), RxD (pin 2). Separate Tx/Rx clocks: TxCLK (pin 4), RxCLK (pin 3). Modem control: RTSB (pin 5, active low output), CTSB (pin 24, active low input), DCDB (pin 23, active low input). Bus interface: D0-D7 (pins 22-15), RS (pin 11, register select), E (pin 14, enable/clock), RW (pin 13, high=read). Three chip selects: CS0 (pin 8, active high), CS1 (pin 10, active high), CS2B (pin 9, active low). IRQB (pin 7, open drain). VSS=pin 1, VCC=pin 12. Searle Z80 preset: directly wired to Z80 bus, no VIA needed.",
+  "footprint": {
+    "refTerminal": "vss",
+    "leads": {
+      "vss": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "rxd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "rxclk": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "txclk": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "rtsb": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "txd": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "irqb": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "cs0": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "cs2b": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "cs1": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "rs": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "vcc": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "ctsb": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "dcdb": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "d0": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "d1": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "d2": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "d3": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "d4": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "d5": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "d6": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "d7": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "e": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "rw": {
+        "dRow": 5,
+        "dCol": 11
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 12
+  }
+}

@@ -1,7 +1,8 @@
 /**
- * Extractor verification for the 6502 pedagogy ladder.
+ * Extractor verification for the 6502 and Z80 pedagogy ladders.
  *
  * E6 must produce a config identical to the EATER6502 machine preset.
+ * Z5 must produce a config identical to the SEARLE machine preset.
  * Earlier stages must refuse with specific, pedagogically useful reasons
  * (or accept with the coarse decode that stage uses).
  */
@@ -16,9 +17,11 @@ import path from 'node:path';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const galleryDir = path.join(here, '..', 'gallery');
 
-// Import the extractor and machine preset from bw-board (read-only sibling)
+// Import extractors and machine presets from bw-board (read-only sibling)
 const { extract6502Machine } = await import('/mnt/volume1/code/bw-board/src/m6502-extract.js');
 const { EATER6502 } = await import('/mnt/volume1/code/bw-board/src/m6502-machine.js');
+const { extractZ80Machine } = await import('/mnt/volume1/code/bw-board/src/z80-extract.js');
+const { SEARLE } = await import('/mnt/volume1/code/bw-board/src/z80-machine.js');
 
 function loadStage(prefix) {
   const files = readdirSync(galleryDir).filter(f => f.startsWith(prefix) && f.endsWith('.json'));
@@ -78,5 +81,44 @@ describe('6502 pedagogy ladder — extractor verification', () => {
     const presetChips = EATER6502.chips.sort((a, b) => a.at - b.at);
     assert.deepEqual(extractedChips, presetChips,
       'extracted chip map equals EATER6502 preset');
+  });
+});
+
+describe('Z80 pedagogy ladder — extractor verification', () => {
+  it('Z1 free-run: refused — no memory or I/O on the board', () => {
+    const circuit = loadStage('z1');
+    assert.ok(circuit, 'Z1 circuit exists');
+    const result = extractZ80Machine(circuit);
+    assert.equal(result.ok, false);
+    assert.ok(result.reasons.some(r => r.includes('no RAM, ROM or ACIA')),
+      'refuses because there are no addressable chips');
+  });
+
+  it('Z4 ROM+RAM: accepted — simple decode with 74HC00', () => {
+    const circuit = loadStage('z4');
+    assert.ok(circuit, 'Z4 circuit exists');
+    const result = extractZ80Machine(circuit);
+    assert.equal(result.ok, true, `refused: ${result.reasons.join('; ')}`);
+    assert.ok(result.regions.some(r => r.kind === 'rom'), 'has ROM region');
+    assert.ok(result.regions.some(r => r.kind === 'ram'), 'has RAM region');
+  });
+
+  it('Z5 Searle serial: accepted, config matches the SEARLE preset', () => {
+    const circuit = loadStage('z5');
+    assert.ok(circuit, 'Z5 circuit exists');
+    const result = extractZ80Machine(circuit);
+    assert.equal(result.ok, true, `refused: ${result.reasons.join('; ')}`);
+
+    // Compare regions
+    const extractedRegions = result.regions.sort((a, b) => a.start - b.start);
+    const presetRegions = SEARLE.regions.sort((a, b) => a.start - b.start);
+    assert.deepEqual(extractedRegions, presetRegions,
+      'extracted memory map equals SEARLE preset');
+
+    // Compare ports
+    const extractedPorts = result.ports.sort((a, b) => a.at - b.at);
+    const presetPorts = SEARLE.ports.sort((a, b) => a.at - b.at);
+    assert.deepEqual(extractedPorts, presetPorts,
+      'extracted port map equals SEARLE preset');
   });
 });
