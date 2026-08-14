@@ -162,9 +162,184 @@ function genYL39() {
   };
 }
 
+// ── PRECHIN A2 learning board ────────────────────────────────────────
+//
+// Full learning board: every peripheral a student encounters in a
+// typical 8051 curriculum. STC89C52RC DIP-40 with:
+//
+//   8×8 LED matrix:   2× 74HC595 daisy-chained (SER=P3.4, SRCLK=P3.6,
+//                     RCLK=P3.5). SR1 drives rows, SR2 columns.
+//   4×4 keypad:       via 74C922 encoder (rows Y1-Y4, columns X1-X4).
+//                     Encoded output A-D → P1.0-P1.3, DA → P3.2 (INT0).
+//   DS1302 RTC:       3-wire: CE=P1.4, IO=P1.5, SCLK=P1.6
+//   DS18B20 temp:     1-wire: DQ=P1.7 (4.7kΩ pull-up)
+//   AT24C02 EEPROM:   I2C: SDA=P2.0, SCL=P2.1 (4.7kΩ pull-ups)
+//   LCD1602:          8-bit data on P0, RS=P2.6, RW=P2.5, E=P2.7
+//   IR receiver:      OUT=P3.3 (INT1)
+//   Buzzer:           P2.2 (active low)
+//
+// XPT2046 touch controller is an optional header-connected module on
+// these boards — omitted here to avoid pin conflicts on a 40-pin MCU.
+
+function genPrechinA2() {
+  const parts = [
+    part('vcc1', 'vcc'),
+    part('gnd1', 'gnd'),
+    part('mcu', 'stc_mcu'),
+
+    // 8×8 LED matrix: 2× 74HC595 daisy-chained
+    part('sr1', '74hc595'),   // row driver
+    part('sr2', '74hc595'),   // column driver (cascaded)
+    part('matrix', 'led_matrix', { size: '8x8' }),
+
+    // 4×4 keypad + 74C922 encoder
+    part('keypad', 'keypad_4x4'),
+    part('kpenc', '74c922'),
+
+    // Peripherals
+    part('rtc', 'ds1302'),
+    part('temp', 'ds18b20'),
+    part('eeprom', 'at24c02'),
+    part('lcd', 'char_lcd'),
+    part('ir', 'ir_receiver'),
+    part('buz', 'buzzer'),
+
+    // Pull-up resistors
+    part('r_dq', 'resistor', { ohms: 4700 }),    // DS18B20 pull-up
+    part('r_sda', 'resistor', { ohms: 4700 }),   // I2C SDA pull-up
+    part('r_scl', 'resistor', { ohms: 4700 }),   // I2C SCL pull-up
+    part('r_bl', 'resistor', { ohms: 100 }),      // LCD backlight
+  ];
+
+  const wires = [
+    // ── Power ───────────────────────────────────────────────────────
+    ...powerMcu('vcc1', 'gnd1', 'mcu'),
+    ...powerChipStd('vcc1', 'gnd1', 'sr1'),
+    ...powerChipStd('vcc1', 'gnd1', 'sr2'),
+    // 74C922: vcc/vss
+    wire('vcc1', 'vcc', 'kpenc', 'vcc'),
+    wire('gnd1', 'gnd', 'kpenc', 'vss'),
+    // DS1302: vcc/gnd + battery backup
+    wire('vcc1', 'vcc', 'rtc', 'vcc'),
+    wire('gnd1', 'gnd', 'rtc', 'gnd'),
+    wire('vcc1', 'vcc', 'rtc', 'vcc1'),  // backup battery (tied to VCC)
+    // DS18B20
+    wire('vcc1', 'vcc', 'temp', 'vcc'),
+    wire('gnd1', 'gnd', 'temp', 'gnd'),
+    // AT24C02
+    wire('vcc1', 'vcc', 'eeprom', 'vcc'),
+    wire('gnd1', 'gnd', 'eeprom', 'gnd'),
+    // LCD1602
+    wire('vcc1', 'vcc', 'lcd', 'vdd'),
+    wire('gnd1', 'gnd', 'lcd', 'vss'),
+    // IR receiver
+    wire('vcc1', 'vcc', 'ir', 'vcc'),
+    wire('gnd1', 'gnd', 'ir', 'gnd'),
+
+    // ── 8×8 LED matrix (2× 74HC595 daisy-chain) ────────────────────
+    // SR1 (rows): SER=P3.4, SRCLK=P3.6, RCLK=P3.5
+    wire('mcu', 'P3.4', 'sr1', 'ser'),
+    wire('mcu', 'P3.6', 'sr1', 'srclk'),
+    wire('mcu', 'P3.5', 'sr1', 'rclk'),
+    tieLow('gnd1', 'sr1', 'oe'),
+    tieHigh('vcc1', 'sr1', 'srclr'),
+    // SR2 (columns): cascaded from SR1's serial out, shared clocks
+    wire('sr1', 'qh_s', 'sr2', 'ser'),
+    wire('mcu', 'P3.6', 'sr2', 'srclk'),
+    wire('mcu', 'P3.5', 'sr2', 'rclk'),
+    tieLow('gnd1', 'sr2', 'oe'),
+    tieHigh('vcc1', 'sr2', 'srclr'),
+    // SR1/SR2 outputs → LED matrix (abstract: 2-terminal display)
+    wire('sr1', 'qa', 'matrix', 'a'),
+    wire('gnd1', 'gnd', 'matrix', 'b'),
+
+    // ── 4×4 keypad → 74C922 encoder ────────────────────────────────
+    // Keypad rows → 74C922 row inputs
+    wire('keypad', 'r0', 'kpenc', 'y1'),
+    wire('keypad', 'r1', 'kpenc', 'y2'),
+    wire('keypad', 'r2', 'kpenc', 'y3'),
+    wire('keypad', 'r3', 'kpenc', 'y4'),
+    // Keypad columns → 74C922 column inputs
+    wire('keypad', 'c0', 'kpenc', 'x1'),
+    wire('keypad', 'c1', 'kpenc', 'x2'),
+    wire('keypad', 'c2', 'kpenc', 'x3'),
+    // X4 unused (keypad_4x4 has only 3 columns); tie to VCC
+    tieHigh('vcc1', 'kpenc', 'x4'),
+    // 74C922 encoded output → MCU P1.0-P1.3
+    wire('kpenc', 'a', 'mcu', 'P1.0'),
+    wire('kpenc', 'b', 'mcu', 'P1.1'),
+    wire('kpenc', 'c', 'mcu', 'P1.2'),
+    wire('kpenc', 'd', 'mcu', 'P1.3'),
+    // DA (data available) → P3.2 (INT0)
+    wire('kpenc', 'da', 'mcu', 'P3.2'),
+    // OEB tied low (outputs always enabled)
+    tieLow('gnd1', 'kpenc', 'oeb'),
+    // OSC and KBM: timing caps (simplified: tie to GND)
+    tieLow('gnd1', 'kpenc', 'osc'),
+    tieLow('gnd1', 'kpenc', 'kbm'),
+
+    // ── DS1302 RTC (3-wire) ─────────────────────────────────────────
+    wire('mcu', 'P1.4', 'rtc', 'ce'),
+    wire('mcu', 'P1.5', 'rtc', 'io'),
+    wire('mcu', 'P1.6', 'rtc', 'sclk'),
+    // X1, X2: crystal oscillator (artwork-only, no wire needed)
+
+    // ── DS18B20 temperature sensor (1-wire) ─────────────────────────
+    wire('mcu', 'P1.7', 'temp', 'dq'),
+    // 4.7kΩ pull-up on DQ line
+    wire('temp', 'dq', 'r_dq', 'a'),
+    wire('r_dq', 'b', 'vcc1', 'vcc'),
+
+    // ── AT24C02 I2C EEPROM ──────────────────────────────────────────
+    wire('mcu', 'P2.0', 'eeprom', 'sda'),
+    wire('mcu', 'P2.1', 'eeprom', 'scl'),
+    // Address lines tied low (device address 0x50)
+    tieLow('gnd1', 'eeprom', 'a0'),
+    tieLow('gnd1', 'eeprom', 'a1'),
+    tieLow('gnd1', 'eeprom', 'a2'),
+    // WP tied low (write enabled)
+    tieLow('gnd1', 'eeprom', 'wp'),
+    // I2C pull-ups (4.7kΩ each)
+    wire('mcu', 'P2.0', 'r_sda', 'a'),
+    wire('r_sda', 'b', 'vcc1', 'vcc'),
+    wire('mcu', 'P2.1', 'r_scl', 'a'),
+    wire('r_scl', 'b', 'vcc1', 'vcc'),
+
+    // ── LCD1602 (8-bit mode) ────────────────────────────────────────
+    // Data bus: P0.0-P0.7 → D0-D7
+    ...Array.from({ length: 8 }, (_, i) =>
+      wire('mcu', `P0.${i}`, 'lcd', `d${i}`)),
+    // Control: RS=P2.6, RW=P2.5, E=P2.7
+    wire('mcu', 'P2.6', 'lcd', 'rs'),
+    wire('mcu', 'P2.5', 'lcd', 'rw'),
+    wire('mcu', 'P2.7', 'lcd', 'e'),
+    // V0 (contrast) tied to GND (max contrast)
+    wire('gnd1', 'gnd', 'lcd', 'v0'),
+    // Backlight: A → resistor → VCC; K → GND
+    wire('lcd', 'a', 'r_bl', 'a'),
+    wire('r_bl', 'b', 'vcc1', 'vcc'),
+    wire('gnd1', 'gnd', 'lcd', 'k'),
+
+    // ── IR receiver ─────────────────────────────────────────────────
+    wire('ir', 'out', 'mcu', 'P3.3'),
+
+    // ── Buzzer on P2.2 (active low) ─────────────────────────────────
+    wire('mcu', 'P2.2', 'buz', 'a'),
+    wire('gnd1', 'gnd', 'buz', 'b'),
+  ];
+
+  return {
+    vcc: 5, parts, wires,
+    _board: 'PRECHIN-A2',
+    _title: 'PRECHIN A2 learning board',
+    _device: 'stc89c52rc',
+    _description: 'PRECHIN A2 full learning board: STC89C52RC with 8×8 LED matrix (2× 74HC595), 4×4 keypad (74C922 encoder), DS1302 RTC, DS18B20 temp sensor, AT24C02 I2C EEPROM, LCD1602, IR receiver, and buzzer. Every peripheral a student encounters in a typical 8051 curriculum.',
+  };
+}
+
 // ── Write all boards ────────────────────────────────────────────────
 
-const boards = [genYL39];
+const boards = [genYL39, genPrechinA2];
 for (const gen of boards) {
   const circuit = gen();
   const slug = circuit._board.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-$/, '');

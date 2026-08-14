@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-819 tests (813 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
+829 tests (823 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
 21/21 browser gate scenarios green. Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -75,6 +75,20 @@
 - **Z80 ladder**: Z1-Z6 + Z1.5 (scripts/gen-z80-ladder.mjs).
   Z2/Z3 display-only. Z5 extractor-verified = SEARLE preset.
 - **PASSTHROUGH_KINDS**: added r6507, mos6532 (engine maps to 'mcu').
+- **Board presets** (scripts/gen-board-presets.mjs):
+  - **YL-39 minimum system**: STC89C52 + 74HC595→4-digit 7-seg, 8 LEDs (P1),
+    4 buttons (P3.2-P3.5), buzzer (P2.3), pot (P1.0). 27 parts, 48 wires.
+  - **PRECHIN A2 learning board**: STC89C52 + 2× 74HC595→8×8 LED matrix,
+    4×4 keypad (74C922 encoder, DA→INT0), DS1302 RTC (3-wire P1.4-P1.6),
+    DS18B20 temp (1-wire P1.7, 4.7kΩ pull-up), AT24C02 I2C EEPROM (P2.0-P2.1,
+    pull-ups), LCD1602 (8-bit on P0, ctrl P2.5-P2.7), IR receiver (P3.3),
+    buzzer (P2.2). 18 parts, 81 wires.
+  Board preset test: validates structure, registered kinds, unique IDs,
+  wire targets, terminal name validity. 10 tests, all pass.
+- **Face groundwork note**: face-descriptor contract (bw-board src/face.js)
+  not yet landed. stc docs/ROADMAP.md describes the "hardware interaction panel"
+  (S4A-style board picture + live element bindings). Board preset circuits are
+  the natural first consumers when the face contract arrives.
 
 ## In flight
 

@@ -1,0 +1,633 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "mcu",
+      "kind": "stc_mcu",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "sr1",
+      "kind": "74hc595",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "sr2",
+      "kind": "74hc595",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "matrix",
+      "kind": "led_matrix",
+      "params": {
+        "size": "8x8"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "keypad",
+      "kind": "keypad_4x4",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "kpenc",
+      "kind": "74c922",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rtc",
+      "kind": "ds1302",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "temp",
+      "kind": "ds18b20",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "eeprom",
+      "kind": "at24c02",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "lcd",
+      "kind": "char_lcd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ir",
+      "kind": "ir_receiver",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "buz",
+      "kind": "buzzer",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_dq",
+      "kind": "resistor",
+      "params": {
+        "ohms": 4700
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_sda",
+      "kind": "resistor",
+      "params": {
+        "ohms": 4700
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_scl",
+      "kind": "resistor",
+      "params": {
+        "ohms": 4700
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_bl",
+      "kind": "resistor",
+      "params": {
+        "ohms": 100
+      },
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "mcu",
+      "toTerminal": "VCC"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "mcu",
+      "toTerminal": "GND"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "sr1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sr1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "sr2",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sr2",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "kpenc",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "kpenc",
+      "toTerminal": "vss"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rtc",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rtc",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rtc",
+      "toTerminal": "vcc1"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "temp",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "temp",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "eeprom",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "eeprom",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "lcd",
+      "toTerminal": "vdd"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "lcd",
+      "toTerminal": "vss"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "ir",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "ir",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P3.4",
+      "to": "sr1",
+      "toTerminal": "ser"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P3.6",
+      "to": "sr1",
+      "toTerminal": "srclk"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P3.5",
+      "to": "sr1",
+      "toTerminal": "rclk"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sr1",
+      "toTerminal": "oe"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "sr1",
+      "toTerminal": "srclr"
+    },
+    {
+      "from": "sr1",
+      "fromTerminal": "qh_s",
+      "to": "sr2",
+      "toTerminal": "ser"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P3.6",
+      "to": "sr2",
+      "toTerminal": "srclk"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P3.5",
+      "to": "sr2",
+      "toTerminal": "rclk"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sr2",
+      "toTerminal": "oe"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "sr2",
+      "toTerminal": "srclr"
+    },
+    {
+      "from": "sr1",
+      "fromTerminal": "qa",
+      "to": "matrix",
+      "toTerminal": "a"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "matrix",
+      "toTerminal": "b"
+    },
+    {
+      "from": "keypad",
+      "fromTerminal": "r0",
+      "to": "kpenc",
+      "toTerminal": "y1"
+    },
+    {
+      "from": "keypad",
+      "fromTerminal": "r1",
+      "to": "kpenc",
+      "toTerminal": "y2"
+    },
+    {
+      "from": "keypad",
+      "fromTerminal": "r2",
+      "to": "kpenc",
+      "toTerminal": "y3"
+    },
+    {
+      "from": "keypad",
+      "fromTerminal": "r3",
+      "to": "kpenc",
+      "toTerminal": "y4"
+    },
+    {
+      "from": "keypad",
+      "fromTerminal": "c0",
+      "to": "kpenc",
+      "toTerminal": "x1"
+    },
+    {
+      "from": "keypad",
+      "fromTerminal": "c1",
+      "to": "kpenc",
+      "toTerminal": "x2"
+    },
+    {
+      "from": "keypad",
+      "fromTerminal": "c2",
+      "to": "kpenc",
+      "toTerminal": "x3"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "kpenc",
+      "toTerminal": "x4"
+    },
+    {
+      "from": "kpenc",
+      "fromTerminal": "a",
+      "to": "mcu",
+      "toTerminal": "P1.0"
+    },
+    {
+      "from": "kpenc",
+      "fromTerminal": "b",
+      "to": "mcu",
+      "toTerminal": "P1.1"
+    },
+    {
+      "from": "kpenc",
+      "fromTerminal": "c",
+      "to": "mcu",
+      "toTerminal": "P1.2"
+    },
+    {
+      "from": "kpenc",
+      "fromTerminal": "d",
+      "to": "mcu",
+      "toTerminal": "P1.3"
+    },
+    {
+      "from": "kpenc",
+      "fromTerminal": "da",
+      "to": "mcu",
+      "toTerminal": "P3.2"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "kpenc",
+      "toTerminal": "oeb"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "kpenc",
+      "toTerminal": "osc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "kpenc",
+      "toTerminal": "kbm"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P1.4",
+      "to": "rtc",
+      "toTerminal": "ce"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P1.5",
+      "to": "rtc",
+      "toTerminal": "io"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P1.6",
+      "to": "rtc",
+      "toTerminal": "sclk"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P1.7",
+      "to": "temp",
+      "toTerminal": "dq"
+    },
+    {
+      "from": "temp",
+      "fromTerminal": "dq",
+      "to": "r_dq",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_dq",
+      "fromTerminal": "b",
+      "to": "vcc1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P2.0",
+      "to": "eeprom",
+      "toTerminal": "sda"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P2.1",
+      "to": "eeprom",
+      "toTerminal": "scl"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "eeprom",
+      "toTerminal": "a0"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "eeprom",
+      "toTerminal": "a1"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "eeprom",
+      "toTerminal": "a2"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "eeprom",
+      "toTerminal": "wp"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P2.0",
+      "to": "r_sda",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_sda",
+      "fromTerminal": "b",
+      "to": "vcc1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P2.1",
+      "to": "r_scl",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_scl",
+      "fromTerminal": "b",
+      "to": "vcc1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P0.0",
+      "to": "lcd",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P0.1",
+      "to": "lcd",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P0.2",
+      "to": "lcd",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P0.3",
+      "to": "lcd",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P0.4",
+      "to": "lcd",
+      "toTerminal": "d4"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P0.5",
+      "to": "lcd",
+      "toTerminal": "d5"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P0.6",
+      "to": "lcd",
+      "toTerminal": "d6"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P0.7",
+      "to": "lcd",
+      "toTerminal": "d7"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P2.6",
+      "to": "lcd",
+      "toTerminal": "rs"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P2.5",
+      "to": "lcd",
+      "toTerminal": "rw"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P2.7",
+      "to": "lcd",
+      "toTerminal": "e"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "lcd",
+      "toTerminal": "v0"
+    },
+    {
+      "from": "lcd",
+      "fromTerminal": "a",
+      "to": "r_bl",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_bl",
+      "fromTerminal": "b",
+      "to": "vcc1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "lcd",
+      "toTerminal": "k"
+    },
+    {
+      "from": "ir",
+      "fromTerminal": "out",
+      "to": "mcu",
+      "toTerminal": "P3.3"
+    },
+    {
+      "from": "mcu",
+      "fromTerminal": "P2.2",
+      "to": "buz",
+      "toTerminal": "a"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "buz",
+      "toTerminal": "b"
+    }
+  ],
+  "_board": "PRECHIN-A2",
+  "_title": "PRECHIN A2 learning board",
+  "_device": "stc89c52rc",
+  "_description": "PRECHIN A2 full learning board: STC89C52RC with 8×8 LED matrix (2× 74HC595), 4×4 keypad (74C922 encoder), DS1302 RTC, DS18B20 temp sensor, AT24C02 I2C EEPROM, LCD1602, IR receiver, and buzzer. Every peripheral a student encounters in a typical 8051 curriculum."
+}
