@@ -38,6 +38,7 @@ import { BoardCanvas } from './BoardCanvas.jsx';
 import { PartPalette } from './PartPalette.jsx';
 import { ControlPanel } from './ControlPanel.jsx';
 import { InferPanel } from './InferPanel.jsx';
+import { ExamplesBrowser } from './ExamplesBrowser.jsx';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
 import { SchematicPanel } from './SchematicPanel.jsx';
@@ -62,7 +63,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, examples, onLoadExample }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -145,6 +146,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   }, []);
   const [mode, setMode] = useState(externalBoard ? 'simulate' : 'build');
   const [leftOpen, setLeftOpen] = useState(true);
+  // Examples panel collapse + vertical split between parts palette and examples
+  const hasExamples = !!(examples && examples.length && onLoadExample);
+  const [examplesOpen, setExamplesOpen] = useState(true);
+  const [selectorSplit, setSelectorSplit] = useState(0.65);
+  const savedSplitRef = useRef(0.65);
   const [rightOpen, setRightOpen] = useState(true);
 
   // Breadboard model (persistent across renders)
@@ -689,13 +695,78 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           a parts palette next to a read-only projection is dead width,
           and the projection needs every pixel this column can spare. */}
       {showSchematic ? null : leftOpen ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0, overflowY: 'auto', minHeight: 0, maxHeight: 'calc(100dvh - 130px)', overscrollBehavior: 'contain' }}>
+        <div data-selectors-panel style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, minHeight: 0, maxHeight: 'calc(100dvh - 130px)', width: 190, minWidth: 190 }}>
           <button onClick={() => setLeftOpen(false)} style={{
             background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
             fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
           }}>collapse</button>
-          <PartPalette onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
-          <InferPanel onLoadCircuit={handleLoadCircuit} />
+          {/* Parts palette — takes selectorSplit fraction (or all if no examples) */}
+          <div data-parts-selector style={{
+            flex: hasExamples ? `${selectorSplit} 1 0` : '1 1 0',
+            minHeight: 80, overflowY: 'auto', overscrollBehavior: 'contain',
+          }}>
+            <PartPalette onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
+            <InferPanel onLoadCircuit={handleLoadCircuit} />
+          </div>
+          {/* Examples section — only shown when examples prop is provided */}
+          {hasExamples && (<>
+            {/* Drag divider */}
+            <div data-selector-divider role="separator" style={{
+              flex: '0 0 10px', cursor: 'row-resize', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              borderTop: '1px solid #2c3e50', borderBottom: '1px solid #2c3e50',
+              background: '#1a1a2e', userSelect: 'none',
+            }} onPointerDown={e => {
+              if (!examplesOpen) return;
+              e.preventDefault();
+              const startY = e.clientY;
+              const panel = e.currentTarget.closest('[data-selectors-panel]');
+              const total = panel ? panel.offsetHeight : 400;
+              const start = selectorSplit;
+              const move = ev => {
+                const next = Math.max(0.2, Math.min(0.85, start + (ev.clientY - startY) / total));
+                setSelectorSplit(next);
+                savedSplitRef.current = next;
+              };
+              const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+              window.addEventListener('pointermove', move);
+              window.addEventListener('pointerup', up);
+            }}>
+              <div style={{ width: 24, height: 3, borderRadius: 1.5, background: '#34495e' }} />
+            </div>
+            {/* Examples panel — collapsible to just a handle rail */}
+            <div data-examples-selector style={{
+              flex: examplesOpen ? `${1 - selectorSplit} 1 0` : '0 0 28px',
+              minHeight: 28, overflowY: examplesOpen ? 'auto' : 'hidden',
+              overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column',
+            }}>
+              {/* Collapse/expand handle */}
+              <button data-examples-toggle onClick={() => {
+                if (examplesOpen) {
+                  savedSplitRef.current = selectorSplit;
+                  setSelectorSplit(0.97);
+                  setExamplesOpen(false);
+                } else {
+                  setSelectorSplit(savedSplitRef.current);
+                  setExamplesOpen(true);
+                }
+              }} style={{
+                flex: '0 0 24px', background: '#1a1a2e', border: 'none',
+                borderBottom: examplesOpen ? '1px solid #2c3e50' : 'none',
+                color: '#7f8c8d', cursor: 'pointer', fontFamily: 'monospace',
+                fontSize: '10px', textAlign: 'left', padding: '4px 8px',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <span style={{ fontSize: '8px' }}>{examplesOpen ? '▼' : '▶'}</span>
+                Examples
+              </button>
+              {examplesOpen && (
+                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                  <ExamplesBrowser examples={examples} onLoadExample={onLoadExample} />
+                </div>
+              )}
+            </div>
+          </>)}
         </div>
       ) : (
         <button onClick={() => setLeftOpen(true)} style={{

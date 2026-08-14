@@ -69,6 +69,12 @@ function App() {
             { name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true },
           ],
         }}
+        examples={[
+          { id: 'ex-blink', title: { en: 'Blink LED' }, category: 'basics', difficulty: 1 },
+          { id: 'ex-button', title: { en: 'Button' }, category: 'basics', difficulty: 1 },
+          { id: 'ex-pot', title: { en: 'Potentiometer' }, category: 'analog', difficulty: 2 },
+        ]}
+        onLoadExample={(ex) => { console.log('load example', ex.id); }}
         {...debugProps}
       />
     </div>

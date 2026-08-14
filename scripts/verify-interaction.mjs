@@ -456,6 +456,45 @@ const selectionCount = async () =>
   }
 }
 
+// 11. Examples panel collapse/expand
+{
+  const exPanel = await page.locator('[data-examples-selector]');
+  const exToggle = await page.locator('[data-examples-toggle]');
+  if (await exPanel.count() && await exToggle.count()) {
+    // Measure expanded height
+    const expandedBox = await exPanel.boundingBox();
+    const expandedH = expandedBox?.height ?? 0;
+    // Click collapse
+    await exToggle.click();
+    await page.waitForTimeout(200);
+    const collapsedBox = await exPanel.boundingBox();
+    const collapsedH = collapsedBox?.height ?? 999;
+    collapsedH < 32
+      ? pass(`examples collapse: ${Math.round(collapsedH)}px < 32px`)
+      : fail(`examples collapsed to ${Math.round(collapsedH)}px, expected < 32px`);
+
+    // Parts palette should have grown
+    const partsPanel = await page.locator('[data-parts-selector]');
+    const partsBox = await partsPanel.boundingBox();
+    const partsH = partsBox?.height ?? 0;
+    partsH > expandedH
+      ? pass(`parts palette widened to ${Math.round(partsH)}px (was sharing space)`)
+      : fail(`parts palette height ${Math.round(partsH)}px did not grow after examples collapse`);
+
+    // Click expand — should restore previous split
+    await exToggle.click();
+    await page.waitForTimeout(200);
+    const restoredBox = await exPanel.boundingBox();
+    const restoredH = restoredBox?.height ?? 0;
+    const drift = Math.abs(restoredH - expandedH);
+    drift < 15
+      ? pass(`examples expand restores height (drift ${Math.round(drift)}px)`)
+      : fail(`examples restore drifted ${Math.round(drift)}px from original ${Math.round(expandedH)}px`);
+  } else {
+    fail('examples panel or toggle not found in DOM');
+  }
+}
+
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
 else pass('zero page errors');
 
