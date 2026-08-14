@@ -103,8 +103,12 @@ export function DebugStatus({ debugState, capabilities }) {
             }}>
               <span style={{ color: '#3498db', minWidth: '50px' }}>{task.name}</span>
               <span>state {task.state}</span>
-              {task.blockId && (
-                <span style={{ color: '#7f8c8d' }}>→ {task.blockId}</span>
+              {/* label is the HOST's resolution of the position to human
+                  words (only the host owns the block store). The raw
+                  blockId ("FWr0@1h…") is never rendered — an opaque id on
+                  screen is worse than nothing. */}
+              {task.label && (
+                <span style={{ color: '#7f8c8d' }}>→ {task.label}</span>
               )}
             </div>
           ))}
