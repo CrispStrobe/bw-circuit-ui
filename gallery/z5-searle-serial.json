@@ -1,0 +1,672 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "cpu",
+      "kind": "z80",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rom",
+      "kind": "28c256",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ram",
+      "kind": "62256",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "acia1",
+      "kind": "mc6850",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "nand1",
+      "kind": "74hc00",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "nand2",
+      "kind": "74hc00",
+      "params": {},
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "cpu",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rom",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "ram",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "ram",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "acia1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "acia1",
+      "toTerminal": "vss"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "nand1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "nand1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "nand2",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "nand2",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "resetb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "intb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "nmib"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "waitb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "busrqb"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a15",
+      "to": "nand1",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a15",
+      "to": "nand1",
+      "toTerminal": "1b"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a14",
+      "to": "nand1",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a14",
+      "to": "nand1",
+      "toTerminal": "2b"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a13",
+      "to": "nand1",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a13",
+      "to": "nand1",
+      "toTerminal": "3b"
+    },
+    {
+      "from": "nand1",
+      "fromTerminal": "1y",
+      "to": "nand1",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "nand1",
+      "fromTerminal": "2y",
+      "to": "nand1",
+      "toTerminal": "4b"
+    },
+    {
+      "from": "nand1",
+      "fromTerminal": "4y",
+      "to": "nand2",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "nand1",
+      "fromTerminal": "4y",
+      "to": "nand2",
+      "toTerminal": "1b"
+    },
+    {
+      "from": "nand2",
+      "fromTerminal": "1y",
+      "to": "nand2",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "nand1",
+      "fromTerminal": "3y",
+      "to": "nand2",
+      "toTerminal": "2b"
+    },
+    {
+      "from": "nand2",
+      "fromTerminal": "2y",
+      "to": "rom",
+      "toTerminal": "csb"
+    },
+    {
+      "from": "nand2",
+      "fromTerminal": "2y",
+      "to": "nand2",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "nand2",
+      "fromTerminal": "2y",
+      "to": "nand2",
+      "toTerminal": "3b"
+    },
+    {
+      "from": "nand2",
+      "fromTerminal": "3y",
+      "to": "ram",
+      "toTerminal": "csb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "nand2",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "nand2",
+      "toTerminal": "4b"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom",
+      "toTerminal": "oeb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rom",
+      "toTerminal": "web"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a0",
+      "to": "rom",
+      "toTerminal": "a0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a1",
+      "to": "rom",
+      "toTerminal": "a1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a2",
+      "to": "rom",
+      "toTerminal": "a2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a3",
+      "to": "rom",
+      "toTerminal": "a3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a4",
+      "to": "rom",
+      "toTerminal": "a4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a5",
+      "to": "rom",
+      "toTerminal": "a5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a6",
+      "to": "rom",
+      "toTerminal": "a6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a7",
+      "to": "rom",
+      "toTerminal": "a7"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a8",
+      "to": "rom",
+      "toTerminal": "a8"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a9",
+      "to": "rom",
+      "toTerminal": "a9"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a10",
+      "to": "rom",
+      "toTerminal": "a10"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a11",
+      "to": "rom",
+      "toTerminal": "a11"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a12",
+      "to": "rom",
+      "toTerminal": "a12"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a13",
+      "to": "rom",
+      "toTerminal": "a13"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a14",
+      "to": "rom",
+      "toTerminal": "a14"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d0",
+      "to": "rom",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d1",
+      "to": "rom",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d2",
+      "to": "rom",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d3",
+      "to": "rom",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d4",
+      "to": "rom",
+      "toTerminal": "d4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d5",
+      "to": "rom",
+      "toTerminal": "d5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d6",
+      "to": "rom",
+      "toTerminal": "d6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d7",
+      "to": "rom",
+      "toTerminal": "d7"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "ram",
+      "toTerminal": "oeb"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "wrb",
+      "to": "ram",
+      "toTerminal": "web"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a0",
+      "to": "ram",
+      "toTerminal": "a0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a1",
+      "to": "ram",
+      "toTerminal": "a1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a2",
+      "to": "ram",
+      "toTerminal": "a2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a3",
+      "to": "ram",
+      "toTerminal": "a3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a4",
+      "to": "ram",
+      "toTerminal": "a4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a5",
+      "to": "ram",
+      "toTerminal": "a5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a6",
+      "to": "ram",
+      "toTerminal": "a6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a7",
+      "to": "ram",
+      "toTerminal": "a7"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a8",
+      "to": "ram",
+      "toTerminal": "a8"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a9",
+      "to": "ram",
+      "toTerminal": "a9"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a10",
+      "to": "ram",
+      "toTerminal": "a10"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a11",
+      "to": "ram",
+      "toTerminal": "a11"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a12",
+      "to": "ram",
+      "toTerminal": "a12"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a13",
+      "to": "ram",
+      "toTerminal": "a13"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a14",
+      "to": "ram",
+      "toTerminal": "a14"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d0",
+      "to": "ram",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d1",
+      "to": "ram",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d2",
+      "to": "ram",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d3",
+      "to": "ram",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d4",
+      "to": "ram",
+      "toTerminal": "d4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d5",
+      "to": "ram",
+      "toTerminal": "d5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d6",
+      "to": "ram",
+      "toTerminal": "d6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d7",
+      "to": "ram",
+      "toTerminal": "d7"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "iorqb",
+      "to": "acia1",
+      "toTerminal": "cs2b"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a7",
+      "to": "acia1",
+      "toTerminal": "cs0"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "acia1",
+      "toTerminal": "cs1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a0",
+      "to": "acia1",
+      "toTerminal": "rs"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d0",
+      "to": "acia1",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d1",
+      "to": "acia1",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d2",
+      "to": "acia1",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d3",
+      "to": "acia1",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d4",
+      "to": "acia1",
+      "toTerminal": "d4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d5",
+      "to": "acia1",
+      "toTerminal": "d5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d6",
+      "to": "acia1",
+      "toTerminal": "d6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d7",
+      "to": "acia1",
+      "toTerminal": "d7"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "clk",
+      "to": "acia1",
+      "toTerminal": "e"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "wrb",
+      "to": "acia1",
+      "toTerminal": "rw"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "acia1",
+      "toTerminal": "ctsb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "acia1",
+      "toTerminal": "dcdb"
+    }
+  ],
+  "_stage": "Z5",
+  "_title": "Searle serial",
+  "_description": "Grant Searle minimal Z80: ROM $0000-$1FFF, RAM $2000-$FFFF, MC6850 ACIA at I/O port $80. Extractor verification pending z80-extract.js."
+}

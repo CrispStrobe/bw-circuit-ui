@@ -37,6 +37,8 @@ const PASSTHROUGH_KINDS = new Set([
   'w65c02', 'w65c22', 'w65c51',
   // Memory ICs
   '28c256', '62256',
+  // Z80 family
+  'z80', 'mc6850',
 ]);
 function engineKindFor(kind) {
   return PASSTHROUGH_KINDS.has(kind) ? 'mcu' : kind;

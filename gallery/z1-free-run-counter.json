@@ -1,0 +1,529 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "cpu",
+      "kind": "z80",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd4",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd5",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd6",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rd7",
+      "kind": "resistor",
+      "params": {
+        "ohms": 1000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra4",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra5",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra6",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra7",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la0",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la1",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la2",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la3",
+      "kind": "led",
+      "params": {
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la4",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la5",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la6",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "la7",
+      "kind": "led",
+      "params": {
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "cpu",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "resetb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "intb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "nmib"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "waitb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "busrqb"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rd0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd0",
+      "fromTerminal": "b",
+      "to": "cpu",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rd1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd1",
+      "fromTerminal": "b",
+      "to": "cpu",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rd2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd2",
+      "fromTerminal": "b",
+      "to": "cpu",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rd3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd3",
+      "fromTerminal": "b",
+      "to": "cpu",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rd4",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd4",
+      "fromTerminal": "b",
+      "to": "cpu",
+      "toTerminal": "d4"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rd5",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd5",
+      "fromTerminal": "b",
+      "to": "cpu",
+      "toTerminal": "d5"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rd6",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd6",
+      "fromTerminal": "b",
+      "to": "cpu",
+      "toTerminal": "d6"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rd7",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rd7",
+      "fromTerminal": "b",
+      "to": "cpu",
+      "toTerminal": "d7"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a0",
+      "to": "ra0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra0",
+      "fromTerminal": "b",
+      "to": "la0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la0",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a1",
+      "to": "ra1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra1",
+      "fromTerminal": "b",
+      "to": "la1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la1",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a2",
+      "to": "ra2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra2",
+      "fromTerminal": "b",
+      "to": "la2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la2",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a3",
+      "to": "ra3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra3",
+      "fromTerminal": "b",
+      "to": "la3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la3",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a4",
+      "to": "ra4",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra4",
+      "fromTerminal": "b",
+      "to": "la4",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la4",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a5",
+      "to": "ra5",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra5",
+      "fromTerminal": "b",
+      "to": "la5",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la5",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a6",
+      "to": "ra6",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra6",
+      "fromTerminal": "b",
+      "to": "la6",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la6",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a7",
+      "to": "ra7",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra7",
+      "fromTerminal": "b",
+      "to": "la7",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "la7",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    }
+  ],
+  "_stage": "Z1",
+  "_title": "Free-run counter",
+  "_description": "Z80 free-runs NOP ($00). Address LEDs count up as the PC increments."
+}

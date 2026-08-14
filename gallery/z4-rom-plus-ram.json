@@ -1,0 +1,778 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "cpu",
+      "kind": "z80",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rom",
+      "kind": "28c256",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ram",
+      "kind": "62256",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "nand1",
+      "kind": "74hc00",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl4",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl5",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl6",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl7",
+      "kind": "resistor",
+      "params": {
+        "ohms": 220
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led0",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led1",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led2",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led3",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led4",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led5",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led6",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led7",
+      "kind": "led",
+      "params": {
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "cpu",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rom",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "ram",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "ram",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "nand1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "nand1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "resetb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "intb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "nmib"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "waitb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "cpu",
+      "toTerminal": "busrqb"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a15",
+      "to": "rom",
+      "toTerminal": "csb"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom",
+      "toTerminal": "oeb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rom",
+      "toTerminal": "web"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a0",
+      "to": "rom",
+      "toTerminal": "a0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a1",
+      "to": "rom",
+      "toTerminal": "a1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a2",
+      "to": "rom",
+      "toTerminal": "a2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a3",
+      "to": "rom",
+      "toTerminal": "a3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a4",
+      "to": "rom",
+      "toTerminal": "a4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a5",
+      "to": "rom",
+      "toTerminal": "a5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a6",
+      "to": "rom",
+      "toTerminal": "a6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a7",
+      "to": "rom",
+      "toTerminal": "a7"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a8",
+      "to": "rom",
+      "toTerminal": "a8"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a9",
+      "to": "rom",
+      "toTerminal": "a9"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a10",
+      "to": "rom",
+      "toTerminal": "a10"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a11",
+      "to": "rom",
+      "toTerminal": "a11"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a12",
+      "to": "rom",
+      "toTerminal": "a12"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a13",
+      "to": "rom",
+      "toTerminal": "a13"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a14",
+      "to": "rom",
+      "toTerminal": "a14"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d0",
+      "to": "rom",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d1",
+      "to": "rom",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d2",
+      "to": "rom",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d3",
+      "to": "rom",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d4",
+      "to": "rom",
+      "toTerminal": "d4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d5",
+      "to": "rom",
+      "toTerminal": "d5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d6",
+      "to": "rom",
+      "toTerminal": "d6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d7",
+      "to": "rom",
+      "toTerminal": "d7"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a15",
+      "to": "nand1",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a15",
+      "to": "nand1",
+      "toTerminal": "1b"
+    },
+    {
+      "from": "nand1",
+      "fromTerminal": "1y",
+      "to": "ram",
+      "toTerminal": "csb"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "wrb",
+      "to": "ram",
+      "toTerminal": "web"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "ram",
+      "toTerminal": "oeb"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a0",
+      "to": "ram",
+      "toTerminal": "a0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a1",
+      "to": "ram",
+      "toTerminal": "a1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a2",
+      "to": "ram",
+      "toTerminal": "a2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a3",
+      "to": "ram",
+      "toTerminal": "a3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a4",
+      "to": "ram",
+      "toTerminal": "a4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a5",
+      "to": "ram",
+      "toTerminal": "a5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a6",
+      "to": "ram",
+      "toTerminal": "a6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a7",
+      "to": "ram",
+      "toTerminal": "a7"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a8",
+      "to": "ram",
+      "toTerminal": "a8"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a9",
+      "to": "ram",
+      "toTerminal": "a9"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a10",
+      "to": "ram",
+      "toTerminal": "a10"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a11",
+      "to": "ram",
+      "toTerminal": "a11"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a12",
+      "to": "ram",
+      "toTerminal": "a12"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a13",
+      "to": "ram",
+      "toTerminal": "a13"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "a14",
+      "to": "ram",
+      "toTerminal": "a14"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d0",
+      "to": "ram",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d1",
+      "to": "ram",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d2",
+      "to": "ram",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d3",
+      "to": "ram",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d4",
+      "to": "ram",
+      "toTerminal": "d4"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d5",
+      "to": "ram",
+      "toTerminal": "d5"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d6",
+      "to": "ram",
+      "toTerminal": "d6"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d7",
+      "to": "ram",
+      "toTerminal": "d7"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "nand1",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "nand1",
+      "toTerminal": "2b"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "nand1",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "nand1",
+      "toTerminal": "3b"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "nand1",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "nand1",
+      "toTerminal": "4b"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d0",
+      "to": "rl0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl0",
+      "fromTerminal": "b",
+      "to": "led0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led0",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d1",
+      "to": "rl1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl1",
+      "fromTerminal": "b",
+      "to": "led1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led1",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d2",
+      "to": "rl2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl2",
+      "fromTerminal": "b",
+      "to": "led2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led2",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d3",
+      "to": "rl3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl3",
+      "fromTerminal": "b",
+      "to": "led3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led3",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d4",
+      "to": "rl4",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl4",
+      "fromTerminal": "b",
+      "to": "led4",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led4",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d5",
+      "to": "rl5",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl5",
+      "fromTerminal": "b",
+      "to": "led5",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led5",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d6",
+      "to": "rl6",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl6",
+      "fromTerminal": "b",
+      "to": "led6",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led6",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "cpu",
+      "fromTerminal": "d7",
+      "to": "rl7",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl7",
+      "fromTerminal": "b",
+      "to": "led7",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led7",
+      "fromTerminal": "cathode",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    }
+  ],
+  "_stage": "Z4",
+  "_title": "ROM plus RAM",
+  "_description": "ROM $0000-$7FFF, RAM $8000-$FFFF. The Z80 runs code from ROM with working RAM."
+}
