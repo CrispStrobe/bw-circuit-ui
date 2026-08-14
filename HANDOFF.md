@@ -1,7 +1,7 @@
 # bw-circuit-ui -- handoff for the next session
 
-829 tests (823 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
-21/21 browser gate scenarios green. Deploy current. MPL-2.0 by owner decision.
+867 tests (861 pass, 3 browser-only, 3 DRC relay skipped).
+24/24 browser gate scenarios green. CI green. Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
 
@@ -89,6 +89,23 @@
   not yet landed. stc docs/ROADMAP.md describes the "hardware interaction panel"
   (S4A-style board picture + live element bindings). Board preset circuits are
   the natural first consumers when the face contract arrives.
+- **Catalog↔engine contract test**: 37 tests verifying terminalsForKind
+  matches BoardImpl.getTerminalsForKind for every shared kind (order matters).
+  Fixed 5 divergences: potentiometer, relay, char_lcd, servo, timer_555.
+  Root cause: sidecar lookup ran before switch-case, silently overriding.
+  Moved sidecar to default-case fallback.
+- **Gate artwork**: all 6 gate kinds (AND, OR, NOT, NAND, NOR, XOR) now
+  render with proper distinctive bodies in bench view (SVG, color-coded),
+  standard schematic symbols in SchematicPanel, and breadboard footprints.
+  Terminal offsets: in0/in1/out for 2-input gates, in0/out for NOT.
+- **Examples fabric gate**: 11 breadboard-containing examples from
+  sb3-creator validated through Circuit.fromJSON (real loader: holes→strips
+  →nets). Complements bw-board's engine gate (which skips breadboard
+  examples). Wired into CI as a separate step.
+- **Examples panel collapse**: collapsed examples section = 28px handle
+  rail, parts palette auto-fills, expand restores previous split. 24/24 gate.
+- **CI workflow**: npm test + fabric gate, clones bw-board + sb3-creator.
+  3 DRC relay tests marked skip (bw-board device registry issue).
 
 ## In flight
 
