@@ -49,6 +49,10 @@ export const TERMINAL_ALIASES = {
     lead1: 'a',
     lead2: 'b',
   },
+  // 28C256 EEPROM: extractor uses csb, sidecar names the pin ceb
+  '28c256': {
+    csb: 'ceb',
+  },
   // Future renames go here. Never remove an entry — old files may exist.
 };
 
