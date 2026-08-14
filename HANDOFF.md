@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-774 tests (768 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
+792 tests (786 pass, 6 pre-existing: 3 DRC relay + 2 browser-only + 1 DRC gallery relay).
 21/21 browser gate scenarios green. Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -13,16 +13,20 @@
 - **DRC** (8 rules): source-current, missing-resistor, missing-flyback,
   floating-input, supply-short, polarity, I2C pull-up, aggregate current.
   DrcPanel + DrcOverlay wired. Safety-lesson canary: DRC never auto-fixes.
-- **Sidecar integration**: 129 JSON + 129 SVG vendored from bw-parts,
+- **Sidecar integration**: 146 JSON + 146 SVG vendored from bw-parts,
   sync script with delete support, sidecar-first for terminalsForKind
   and getPartBBox, slug aliases (art 67/67 -- all palette kinds covered)
 - **Board seating verification**: 8 boards (24 tests), all pass:
   MCU: Nano (DIP-30), Pico (DIP-40), ATtiny85 (DIP-8)
   Retro DIP: W65C02 (DIP-40), W65C22 (DIP-40), W65C51 (DIP-28),
   28C256 EEPROM (DIP-28), 62256 SRAM (DIP-28)
-- **6502 pedagogy ladder** (E1-E6): staged circuits teaching Eater/Couch-To-64k.
-  E6 extractor-verified against EATER6502 preset (regions + chips match exactly).
-  Address decode uses 2x 74HC00 (8 NAND gates), no contention at any address.
+- **6502 pedagogy ladder** (E0-E6, renumbered): staged circuits from the
+  16-source breadboard survey:
+  E0 clock module (555 astable + single-step), E1 CPU-alive (status LEDs:
+  PHI2O/RWB/SYNC/VPB + address LEDs, NOP free-run), E2 ROM-only + data-bus
+  LEDs (write-to-unmapped teachable moment), E4 VIA blink, E5 LCD hello,
+  E6 full EATER6502 (extractor-verified = preset exactly).
+  E1.5/E2.5/E3 reserved for future rungs.
 - **Z80 pedagogy ladder** (Z1-Z6): staged circuits teaching Searle minimal Z80.
   Z2/Z3 marked display-only. Z5 extractor verification blocked on z80-extract.js.
 - **Terminal aliases**: pot->potentiometer, lead1/lead2, cw/ccw, gate_and,
@@ -44,17 +48,17 @@
 - **Column-strip conduction fix**: Two taps in same unoccupied column
   share one net. Rail strips excluded (spec-update filed for bw-board
   cap-companion bug: spec-updates/cap-companion-setpin.md)
-- **Parts-data sync**: 129 sidecars. New: W65C02, W65C22, W65C51, 28C256,
-  62256, arduino_mega, microbit, Z80, MC6850. Footprint column fixes.
+- **Parts-data sync**: 146 sidecars. Tier-2 DIPs: 74HC374 (latch),
+  74HC138 (decoder), 74HC245 (transceiver), 74C922 (keypad encoder),
+  AT24C02, DS1302, DS18B20, KY-040, R6507, MOS6532, NS16C550, ST7920.
 - **Board seating test**: 8 boards, 24 tests
-- **6502 ladder**: E1-E6 generated (scripts/gen-6502-ladder.mjs),
-  gallery/e1-*.json through gallery/e6-*.json.
-  Extractor test: test/extractor-ladder.test.js (5 tests, all pass).
-  E1 refused (no chips), E2-E4 accepted (coarse), E5 refused (contention
-  teaches why decode matters), E6 accepted = EATER6502 preset.
-- **Z80 ladder**: Z1-Z6 generated (scripts/gen-z80-ladder.mjs),
-  gallery/z1-*.json through gallery/z6-*.json.
-  Z2/Z3 display-only. Z5/Z6 extractor verification pending z80-extract.js.
+- **6502 ladder**: E0-E6 (renumbered from 16-source survey).
+  E0 clock module, E1 CPU-alive + status LEDs, E2 ROM-only + data LEDs,
+  E4 VIA blink, E5 LCD, E6 full EATER6502. E1.5/E2.5/E3 reserved.
+  Extractor test: 8 tests (5 for 6502, 3 for Z80), all pass.
+  E6 = EATER6502 preset, Z5 = SEARLE preset.
+- **Z80 ladder**: Z1-Z6 (scripts/gen-z80-ladder.mjs).
+  Z2/Z3 display-only. Z5 extractor-verified = SEARLE preset.
 
 ## In flight
 
