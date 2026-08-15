@@ -260,15 +260,17 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         );
       }
       case 'mcu': {
-        // DIP body drawn from the SAME sidecar transform the terminal
-        // offsets use - one geometry, so every leg meets its connector.
+        // DIP body drawn from the device-specific sidecar when available,
+        // falling back to the generic 'mcu' (STC12) sidecar.
         const chipInfo = mcuChipInfo(part.params?.device);
-        const sc = typeof getSidecar === 'function' ? getSidecar('mcu') : null;
+        const deviceKey = (part.params?.device || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const sc = (deviceKey && getSidecar(deviceKey)) || (typeof getSidecar === 'function' ? getSidecar('mcu') : null);
         if (sc && sc.terminals && sc.terminals.length > 2) {
           const positions = dipTerminalPositions(sc);
           const px = (t) => positions[t.name]?.dx || 0;
           const py = (t) => positions[t.name]?.dy || 0;
-          const bodyW = 286, bodyH = 52;
+          const pinsPerSide = Math.ceil(sc.terminals.length / 2);
+          const bodyW = (pinsPerSide - 1) * DIP_PIN_PITCH + 20, bodyH = 52;
           return (
             <g key={id} transform={xform} pointerEvents="none">
               <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={5}
