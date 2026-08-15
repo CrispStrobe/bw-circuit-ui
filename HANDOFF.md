@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 721/0/3 (CI clean). 23/23 browser gate green. CI green.
+npm test 724/0/3 (CI clean). 23/23 browser gate green. CI green.
 Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -118,6 +118,15 @@ Deploy current. MPL-2.0 by owner decision.
   inline conversion, foreignObject canvas, dark when sleeping/display-off).
   Terminal offsets for 9-pin SPI module. Catalog + slug exception.
 - **ROM terminal**: csb → ceb in all ladder generators (28C256 sidecar match).
+- **VCC voltage editable**: params.volts=5 default, InlineEditor field,
+  canvas label shows actual voltage (+3.3V, +5V etc.).
+- **Debugger gated on MCU**: DebugStatus, VdpScreen, debuggerPanel hidden
+  for pure-circuit examples (no MCU/pins). No senseless debugger UI.
+- **onProgramChange**: example loader carries program.bw to the host via
+  callback (spec-update filed for bw-bundle to wire the host side).
+- **i18n sweep**: ~130 EN+DE string pairs in src/i18n/strings.js.
+  Components swept: CircuitDesigner, ExamplesBrowser, BoardCanvas toolbar,
+  instrument panel sections. lang prop threaded through component tree.
 
 ## In flight
 
