@@ -1,0 +1,20 @@
+{
+  "kind": "tilevga",
+  "w": 130,
+  "h": 80,
+  "terminals": [
+    { "name": "vcc", "x": 44, "y": 80, "functions": [] },
+    { "name": "gnd", "x": 60, "y": 80, "functions": [] },
+    { "name": "bus", "x": 76, "y": 80, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "TileVGA card — rene6502/6502-vga-prop (public domain). Parallax P8X32A Propeller driving 320x240 VGA, 40x30 tiles of 8x8 pixels, 16-of-64 colors via R-2R DAC. 16K dual-port VRAM window (reads AND writes). VRAM map: ctrl_cmd $0200 (vblank copy bits), tilemap $0210-$0B6F (40x30x2), palettes $0B70-$0C6F (16x16 color bytes %RRGGBB00), frame counter $0C70 (16-bit LE, card-written every vblank), user charset $0C80-$2C7F (256 chars, 4bpp). System font: funscii (public domain, by Wuerfel21). Machine-level chip; bus terminal is a placeholder for machine-level wiring. Provenance: rene6502 6502-vga-prop (public domain), funscii font (public domain, Wuerfel21).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 2 },
+      "bus": { "dRow": 0, "dCol": 4 }
+    }
+  }
+}
