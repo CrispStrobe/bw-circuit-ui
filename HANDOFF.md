@@ -182,13 +182,6 @@ Nothing currently blocked.
 
 - **Arduino Mega footprint**: arduino_mega.json has 78 terminals but
   footprint is null. bw-parts needs header-style footprint definition.
-- **z80-extract.js**: Landed in bw-board. Z5 SEARLE extractor verification
-  now passes (11 extractor tests, all green).
-- **28c256 terminal name**: Extractor uses 'csb', sidecar names pin 'ceb'.
-  Terminal alias added in bw-circuit-ui. The extractor in bw-board should
-  also be updated to use 'ceb' (or the sidecar renamed). This is a latent
-  mismatch — the circuits work because they wire using 'csb' and the alias
-  resolves it in the circuit model, but the extractor reads wires directly.
 
 ## Pre-existing failures (not from this session)
 
