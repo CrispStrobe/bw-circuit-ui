@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 917/0/3 (CI clean). 23/23 browser gate green. CI green.
+npm test 985/0/3 (CI clean). 23/23 browser gate green. CI green.
 VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
 Snapshot drop: 3/3. Sensor faces: 3/3. Contract: 37/37.
 Deploy current. MPL-2.0 by owner decision.
@@ -154,6 +154,13 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **Click-through fix** (e75b0be): two-pass partAt() — non-breadboard first,
+  breadboards only if nothing else hit. Seated parts selectable again.
+- **Auto-seat MCU** (e75b0be): on example load, unseated MCU-class parts
+  auto-seat onto breadboard at e1. Leveraged fix for ~200 legacy examples.
+- **SerialConsole** (b76d227): terminal emulator for serial-bearing machines.
+  Wired to debugState.onSerial/sendSerial. Serves z80 BBC BASIC, eater6502
+  Tali Forth, and any ACIA-bearing machine automatically.
 - **matrix8x8 face + attiny88** (4e2eaaf): 8x8 LED matrix SVG with
   brightness-driven dot grid from deviceStates. catalog terminals,
   terminal offsets, deviceStates collection. attiny88 target in factory.
