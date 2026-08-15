@@ -63,7 +63,7 @@ function App() {
         onBoardReady={(b) => { window.__board = b; }}
         onCircuitReady={(c) => { window.__circuit = c; }}
         project={{
-          device: 'STC12C5A60S2',
+          device: new URLSearchParams(location.search).get('device') || 'STC12C5A60S2',
           clock: 11059200,
           pins: [
             { name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true },

@@ -57,6 +57,23 @@ function rotateOffset(dx, dy, deg) {
 }
 
 /**
+ * Derive chip display label and package from the device param.
+ * Falls back to STC12 for the STC family or unknown devices.
+ */
+function mcuChipInfo(device) {
+  const d = String(device || '').toLowerCase();
+  if (/attiny88/.test(d)) return { label: 'ATtiny88', pkg: 'DIP-28' };
+  if (/attiny85/.test(d)) return { label: 'ATtiny85', pkg: 'DIP-8' };
+  if (/atmega2560/.test(d)) return { label: 'ATmega2560', pkg: 'TQFP-100' };
+  if (/atmega328/.test(d)) return { label: 'ATmega328P', pkg: 'DIP-28' };
+  if (/w65c02/.test(d)) return { label: 'W65C02S', pkg: 'DIP-40' };
+  if (/z80/.test(d)) return { label: 'Z80 CPU', pkg: 'DIP-40' };
+  if (/stc89/.test(d)) return { label: 'STC89C52', pkg: 'DIP-40' };
+  if (/stc15/.test(d)) return { label: 'STC15', pkg: 'DIP-40' };
+  return { label: 'STC12C5A60S2', pkg: 'DIP-40' }; // default for STC family
+}
+
+/**
  * Terminal offset defaults per part kind, rotated by part.rotation.
  * Returns {terminalName: {dx, dy}} relative to part anchor.
  */
@@ -214,6 +231,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       case 'mcu': {
         // DIP body drawn from the SAME sidecar transform the terminal
         // offsets use - one geometry, so every leg meets its connector.
+        const chipInfo = mcuChipInfo(part.params?.device);
         const sc = typeof getSidecar === 'function' ? getSidecar('mcu') : null;
         if (sc && sc.terminals && sc.terminals.length > 2) {
           const positions = dipTerminalPositions(sc);
@@ -229,9 +247,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               <circle cx={-bodyW / 2 + 12} cy={-bodyH / 2 + 10} r={2.5} fill="#555" />
               <text x={0} y={-5} textAnchor="middle" fill="#bbb" fontSize={10}
                 fontFamily="monospace" fontWeight="bold"
-                transform="rotate(0)">STC12C5A60S2</text>
+                transform="rotate(0)">{chipInfo.label}</text>
               <text x={0} y={9} textAnchor="middle" fill="#777" fontSize={7}
-                fontFamily="monospace">DIP-40</text>
+                fontFamily="monospace">{chipInfo.pkg}</text>
               {sc.terminals.map(t => (
                 <g key={t.name}>
                   <line x1={px(t)} y1={py(t) < 0 ? -bodyH / 2 : bodyH / 2} x2={px(t)} y2={py(t)}
@@ -268,9 +286,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             <circle cx={-chipW / 2 + 8} cy={chipY + 10} r={2.5} fill="#555" />
             {/* Label */}
             <text x={0} y={chipY + chipH / 2 - 4} textAnchor="middle" fill="#bbb" fontSize={9}
-              fontFamily="monospace" fontWeight="bold">STC12</text>
+              fontFamily="monospace" fontWeight="bold">{chipInfo.label}</text>
             <text x={0} y={chipY + chipH / 2 + 6} textAnchor="middle" fill="#777" fontSize={7}
-              fontFamily="monospace">C5A60S2</text>
+              fontFamily="monospace">{chipInfo.pkg}</text>
             {/* Left-side pins (1 to N/2) */}
             {part.terminals.slice(0, pinsPerSide).map((pin, i) => {
               const py = chipY + 12 + i * pinSpacing;
