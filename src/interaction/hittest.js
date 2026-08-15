@@ -102,9 +102,21 @@ export function distToSegment(px, py, ax, ay, bx, by) {
 export function createHitTest(getParts, getWirePaths, getTerminals) {
   return {
     partAt(wx, wy) {
-      // Topmost = last in array (render order); iterate backwards.
+      // Two-pass: non-breadboard parts first (they render on top),
+      // breadboards only if nothing else was hit (they render as the
+      // bottom substrate layer in BoardCanvas). Without this, a
+      // breadboard late in the array swallows clicks on seated parts.
       const parts = getParts();
       for (let i = parts.length - 1; i >= 0; i--) {
+        if (parts[i].kind === 'breadboard') continue;
+        const b = partBounds(parts[i]);
+        if (wx >= b.minX && wx <= b.maxX && wy >= b.minY && wy <= b.maxY) {
+          return parts[i].id;
+        }
+      }
+      // Second pass: breadboards (bottom layer)
+      for (let i = parts.length - 1; i >= 0; i--) {
+        if (parts[i].kind !== 'breadboard') continue;
         const b = partBounds(parts[i]);
         if (wx >= b.minX && wx <= b.maxX && wy >= b.minY && wy <= b.maxY) {
           return parts[i].id;

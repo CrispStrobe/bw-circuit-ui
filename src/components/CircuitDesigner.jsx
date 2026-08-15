@@ -760,6 +760,18 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       } catch { /* fall through: load the file as-is */ }
     }
     handleLoad(circuitData);
+    // Auto-seat: if a breadboard and an unseated MCU-class part both exist,
+    // seat the MCU onto the breadboard. Many legacy examples ship the MCU
+    // floating off the breadboard; this is the leveraged fix rather than
+    // re-authoring 200 circuits.
+    try {
+      const mcuKinds = new Set(['mcu', 'stc_mcu', 'arduino_nano', 'arduino_uno', 'pi_pico', 'attiny85', 'attiny88']);
+      const bb = circuit.parts.find(p => p.kind === 'breadboard');
+      const unseatMcu = circuit.parts.find(p => mcuKinds.has(p.kind) && !p.seat);
+      if (bb && unseatMcu && BB_FOOTPRINTS[unseatMcu.kind]) {
+        circuit.seatPart(unseatMcu.id, bb.id, computeLeadMap(BB_FOOTPRINTS[unseatMcu.kind], 'e1'));
+      }
+    } catch { /* seating failed — leave as-is */ }
   }, [circuitData, handleLoad, projectData, circuit]);
 
   // All keyboard shortcuts are handled by BoardCanvas (single focus scope).

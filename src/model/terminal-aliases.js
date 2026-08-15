@@ -61,6 +61,10 @@ export const TERMINAL_ALIASES = {
     lead1: 'a',
     lead2: 'b',
   },
+  piezo: {
+    pos: 'a',
+    neg: 'b',
+  },
   rgb_led: {
     r: 'r_anode',
     g: 'g_anode',
