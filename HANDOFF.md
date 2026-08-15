@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 724/0/3 (CI clean). 23/23 browser gate green. CI green.
+npm test 726/0/3 (CI clean). 23/23 browser gate green. CI green.
 Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -127,6 +127,15 @@ Deploy current. MPL-2.0 by owner decision.
 - **i18n sweep**: ~130 EN+DE string pairs in src/i18n/strings.js.
   Components swept: CircuitDesigner, ExamplesBrowser, BoardCanvas toolbar,
   instrument panel sections. lang prop threaded through component tree.
+  Remaining: Multimeter, ScopePanel (small, need lang prop threading).
+- **VCC voltage editable**: params.volts=5 default, InlineEditor field,
+  canvas label shows actual voltage.
+- **Debugger gated on MCU**: hidden for pure-circuit examples (no MCU/pins).
+- **onProgramChange**: example loader carries program.bw to host (spec-update
+  filed for bw-bundle to wire the host side).
+- **VdpScreen keyboard input**: arrow/WASD → setButtons(mask), focus ring,
+  "click to play" hint (i18n EN+DE). Signal===false → NO SIGNAL display.
+  Snake smoke passes on bw-board. setButtonsFn wired from debugState.
 
 ## In flight
 
