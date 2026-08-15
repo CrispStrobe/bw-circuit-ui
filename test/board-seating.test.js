@@ -22,8 +22,11 @@ import { getSidecar } from '../src/model/parts-registry.js';
 // ── Shared checks (a) and (b) ───────────────────────────────────────
 
 function checkLegsSnap(kind, vcc, leadMap, sc) {
+  // DIP straddles the gutter: top pin row is 'e', bottom is 'f' (directly
+  // across the gutter), not 'j' (five rows down). The old mapping used
+  // e/j; the corrected mapping uses e/f — matching how physical DIPs sit.
   const topLeads = Object.entries(leadMap).filter(([, h]) => h.startsWith('e'));
-  const botLeads = Object.entries(leadMap).filter(([, h]) => h.startsWith('j'));
+  const botLeads = Object.entries(leadMap).filter(([, h]) => h.startsWith('f'));
 
   it('(a) legs snap: contiguous columns, correct gutter split', () => {
     resetIds();
@@ -125,8 +128,11 @@ function verifyBoard(kind, vcc, gpioPin, enginePinName) {
       const gpioHole = leadMap[gpioPin];
       const gpioCol = parseInt(gpioHole.slice(1));
       const gpioRow = gpioHole[0];
-      const freeRow = gpioRow <= 'e' ? 'a' : 'f';
-      const freeRow2 = gpioRow <= 'e' ? 'b' : 'g';
+      // The pin is on gpioRow; pick free rows in the same block that
+      // are NOT the occupied row. For gutter-straddled DIPs the pin is
+      // on 'e' (top) or 'f' (bottom), so pick 'a'/'b' or 'g'/'h'.
+      const freeRow = gpioRow <= 'e' ? 'a' : 'g';
+      const freeRow2 = gpioRow <= 'e' ? 'b' : 'h';
       const railPrefix = gpioRow <= 'e' ? 't' : 'b';
 
       const r = c.addPart('resistor', { ohms: 220 }, 0, 0);
