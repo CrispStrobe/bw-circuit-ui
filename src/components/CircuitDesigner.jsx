@@ -57,6 +57,8 @@ import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
 import { VdpScreen } from './VdpScreen.jsx';
 import { Circuit } from '../model/circuit.js';
+import { extractMachine } from '../model/machine-extract.js';
+import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { buildSeatedFromDeclarations } from '../model/infer-seated.js';
 import { runDrc } from '../model/drc.js';
@@ -181,6 +183,42 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const toggleMeter = () => setShowMeter(v => { const n = !v; try { localStorage.setItem('bw-instr-meter', n ? '1' : '0'); } catch {} return n; });
   const [warningsOpen, setWarningsOpen] = useState(false);
   const hasMcuPins = !!(projectData?.pins?.length > 0);
+  const [machineResult, setMachineResult] = useState(null); // extractMachine result
+
+  // Detect retro CPU on the board for the Build Machine action
+  const hasRetroCpu = parts.some(p => p.kind === 'w65c02' || p.kind === 'z80');
+
+  // Build Machine action: run the extractor, show result, boot on success.
+  // Extractors come from the engine (injected via setEngine) or via the
+  // onBuildMachine prop. The host wires the bw-board extractors at boot.
+  const handleBuildMachine = useCallback(() => {
+    const flatCircuit = {
+      parts: parts.map(p => ({ id: p.id, kind: p.kind, params: p.params })),
+      wires: wires.map(w => ({
+        from: w.from?.part || w.from,
+        fromTerminal: w.from?.terminal || w.fromTerminal,
+        to: w.to?.part || w.to,
+        toTerminal: w.to?.terminal || w.toTerminal,
+      })),
+    };
+
+    // Try extractors from the engine injection
+    const eng = typeof getEngine === 'function' ? getEngine() : {};
+    const extractors = {
+      extract6502Machine: eng.extract6502Machine,
+      extractZ80Machine: eng.extractZ80Machine,
+    };
+
+    const result = extractMachine(flatCircuit, extractors);
+    setMachineResult(result);
+
+    // On success, notify the host so it can boot the machine
+    if (result.ok && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bw-machine-extracted', {
+        detail: { kind: result.kind, config: { regions: result.regions, chips: result.chips } },
+      }));
+    }
+  }, [parts, wires]);
 
   // Breadboard model (persistent across renders)
   const [bbRev, setBbRev] = useState(0);
@@ -1117,6 +1155,43 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
               ? 'Noch keine Programm-Pins deklariert. Füge eine PIN-Deklaration in den Blöcken hinzu, um Ausführen und Einzelschritt zu aktivieren.'
               : 'No program pins declared yet. Add a PIN declaration in Blocks to enable run and step.'}</div>
           </div>
+        )}
+        {/* Build Machine — for retro breadboard computers */}
+        {hasRetroCpu && (
+          <section data-build-machine style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
+            <button onClick={handleBuildMachine} title={t('buildMachineTitle', lang)}
+              style={{width: '100%', minHeight: 32, padding: '5px 8px', cursor: 'pointer',
+                background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: 4,
+                color: '#93c5fd', fontFamily: 'monospace', fontSize: 11, fontWeight: 600}}>
+              🔧 {t('buildMachine', lang)}
+            </button>
+            {machineResult && (
+              <div style={{marginTop: 6, fontSize: 10, fontFamily: 'monospace', lineHeight: 1.4}}>
+                {machineResult.ok ? (
+                  <div style={{color: '#22c55e'}}>
+                    ✓ {t('machineBooted', lang)}
+                    {machineResult.lines && machineResult.lines.map((l, i) =>
+                      <div key={i} style={{color: '#94a3b8', marginLeft: 8}}>{l}</div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{color: '#f87171'}}>
+                    ✗ {t('extractFailed', lang)}
+                    {machineResult.reasons.map((r, i) =>
+                      <div key={i} style={{color: '#fbbf24', marginLeft: 8, marginTop: 2}}>{r}</div>
+                    )}
+                  </div>
+                )}
+                {machineResult.notes && machineResult.notes.length > 0 && (
+                  <div style={{color: '#94a3b8', marginTop: 4}}>
+                    {machineResult.notes.map((n, i) =>
+                      <div key={i} style={{marginLeft: 8}}>💡 {n}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
         )}
         {mode === 'simulate' && (
           <section data-simulation-controls style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>

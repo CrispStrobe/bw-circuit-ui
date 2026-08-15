@@ -42,5 +42,8 @@ export { VdpScreen } from './components/VdpScreen.jsx';
 export { runDrc, setExtractors } from './model/drc.js';
 export { generateBom, bomToCsv } from './model/bom.js';
 
+// Machine extraction (wired-bus → bootable config)
+export { extractMachine } from './model/machine-extract.js';
+
 // i18n
 export { t } from './i18n/strings.js';

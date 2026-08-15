@@ -123,6 +123,14 @@ const STRINGS = {
   addWatchpoint:       { en: 'Watch address…', de: 'Adresse beobachten…' },
   watchpointPlaceholder: { en: 'hex addr', de: 'Hex-Adresse' },
 
+  // ── Build Machine ─────────────────────────────────────────────────
+  buildMachine:        { en: 'Build Machine', de: 'Maschine bauen' },
+  buildMachineTitle:   { en: 'Analyze bus wiring and boot a computer from this circuit', de: 'Busverdrahtung analysieren und einen Computer aus dieser Schaltung starten' },
+  machineBooted:       { en: 'Machine booted', de: 'Maschine gestartet' },
+  extractFailed:       { en: 'Cannot build machine:', de: 'Maschine kann nicht gebaut werden:' },
+  extractNote:         { en: 'Note:', de: 'Hinweis:' },
+  noRetroChips:        { en: 'No retro CPU found — place a W65C02 or Z80 with address-decoded memory and I/O chips.', de: 'Keine Retro-CPU gefunden — W65C02 oder Z80 mit adressdekodiertem Speicher und E/A-Chips platzieren.' },
+
   // ── Instruments panel sections ─────────────────────────────────────
   debugger:            { en: 'Debugger', de: 'Debugger' },
   debuggerInactive:    { en: 'Debugger inactive', de: 'Debugger inaktiv' },
