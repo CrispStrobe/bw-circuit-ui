@@ -174,6 +174,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const toggleScope = () => setShowScope(v => { const n = !v; try { localStorage.setItem('bw-instr-scope', n ? '1' : '0'); } catch {} return n; });
   const toggleMeter = () => setShowMeter(v => { const n = !v; try { localStorage.setItem('bw-instr-meter', n ? '1' : '0'); } catch {} return n; });
   const [warningsOpen, setWarningsOpen] = useState(false);
+  const hasMcuPins = !!(projectData?.pins?.length > 0);
 
   // Breadboard model (persistent across renders)
   const [bbRev, setBbRev] = useState(0);
@@ -1053,19 +1054,17 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
         }}>›</button>
         <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 34, boxSizing: 'border-box'}}>
-        {debugState && (
+        {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins). */}
+        {hasMcuPins && debugState && (
           <DebugStatus
             debugState={debugState}
             capabilities={debugState.capabilities || null}
           />
         )}
-        {debugState && typeof debugState.video === 'function' && (
+        {hasMcuPins && debugState && typeof debugState.video === 'function' && (
           <VdpScreen videoFn={debugState.video} lang={lang} />
         )}
-        {/* Debugger section — hidden entirely for pure circuits (no MCU/pins).
-            When pins ARE declared, the full panel renders; when the dock is set
-            to debugger mode but no pins exist yet, a hint explains why. */}
-        {debuggerPanel && (
+        {hasMcuPins && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
             borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>

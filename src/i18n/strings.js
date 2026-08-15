@@ -117,6 +117,20 @@ const STRINGS = {
   noSingleStep:        { en: 'Single-step not available on this target', de: 'Einzelschritt auf diesem Ziel nicht verfügbar' },
   noBreakpoints:       { en: 'Code breakpoints not available on this target', de: 'Code-Haltepunkte auf diesem Ziel nicht verfügbar' },
 
+  // ── Instruments panel sections ─────────────────────────────────────
+  debugger:            { en: 'Debugger', de: 'Debugger' },
+  debuggerInactive:    { en: 'Debugger inactive', de: 'Debugger inaktiv' },
+  noPinsYet:           { en: 'No program pins declared yet. Add a PIN declaration in Blocks to enable run and step.', de: 'Noch keine Programm-Pins deklariert. Eine PIN-Deklaration in Blöcken hinzufügen.' },
+  simControls:         { en: 'Simulation controls', de: 'Simulationssteuerung' },
+  resumeSim:           { en: 'Resume simulation', de: 'Simulation fortsetzen' },
+  pauseSim:            { en: 'Pause simulation', de: 'Simulation anhalten' },
+  stepOneTick:         { en: 'Step one tick', de: 'Einen Takt weiter' },
+  speed:               { en: 'Speed', de: 'Geschwindigkeit' },
+  scope:               { en: 'Scope', de: 'Oszilloskop' },
+  hideScope:           { en: 'Hide scope', de: 'Oszilloskop ausblenden' },
+  meter:               { en: 'Meter', de: 'Messgerät' },
+  hideMeter:           { en: 'Hide meter', de: 'Messgerät ausblenden' },
+
   // ── BoardCanvas toolbar ───────────────────────────────────────────
   modeWiring:          { en: 'WIRING', de: 'VERDRAHTUNG' },
   modeSelect:          { en: 'SELECT', de: 'AUSWAHL' },
