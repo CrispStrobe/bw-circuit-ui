@@ -117,7 +117,7 @@ function genZ1_5() {
     tieHigh('vcc1', 'cpu', 'busrqb'),
 
     // ROM: CSB = A15 (selected when A15=0 → $0000-$7FFF)
-    wire('cpu', 'a15', 'rom', 'csb'),
+    wire('cpu', 'a15', 'rom', 'ceb'),
     tieLow('gnd1', 'rom', 'oeb'),
     tieHigh('vcc1', 'rom', 'web'),
     ...busA('cpu', 'rom', Array.from({ length: 15 }, (_, i) => i)),
@@ -241,7 +241,7 @@ function genZ4() {
     tieHigh('vcc1', 'cpu', 'busrqb'),
 
     // ROM decode: CSB = A15 (selected when A15=0 → $0000-$7FFF)
-    wire('cpu', 'a15', 'rom', 'csb'),
+    wire('cpu', 'a15', 'rom', 'ceb'),
     tieLow('gnd1', 'rom', 'oeb'),
     tieHigh('vcc1', 'rom', 'web'),
     ...busA('cpu', 'rom', Array.from({ length: 15 }, (_, i) => i)),
@@ -421,7 +421,7 @@ function genZ5() {
     // n2.2: ROM_CSB = NAND(n2.1, !A13) = A15 OR A14 OR A13
     wire('nand2', '1y', 'nand2', '2a'),
     wire('nand1', '3y', 'nand2', '2b'),
-    wire('nand2', '2y', 'rom', 'csb'),
+    wire('nand2', '2y', 'rom', 'ceb'),
     // n2.3: RAM_CSB = NOT(ROM_CSB) = NOT(A15 OR A14 OR A13)
     wire('nand2', '2y', 'nand2', '3a'),
     wire('nand2', '2y', 'nand2', '3b'),

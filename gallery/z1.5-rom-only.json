@@ -377,7 +377,7 @@
       "from": "cpu",
       "fromTerminal": "a15",
       "to": "rom",
-      "toTerminal": "csb"
+      "toTerminal": "ceb"
     },
     {
       "from": "gnd1",

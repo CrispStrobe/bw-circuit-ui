@@ -487,7 +487,7 @@
       "from": "nand1",
       "fromTerminal": "1y",
       "to": "rom",
-      "toTerminal": "csb"
+      "toTerminal": "ceb"
     },
     {
       "from": "nand1",

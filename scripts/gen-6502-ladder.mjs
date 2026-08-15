@@ -249,7 +249,7 @@ function genE2() {
     // ROM at $8000-$FFFF (CSB low when A15=1)
     wire('cpu', 'a15', 'nand1', '1a'),
     wire('cpu', 'a15', 'nand1', '1b'),
-    wire('nand1', '1y', 'rom', 'csb'),
+    wire('nand1', '1y', 'rom', 'ceb'),
     // Unused NAND gates — tie inputs high
     tieHigh('vcc1', 'nand1', '2a'), tieHigh('vcc1', 'nand1', '2b'),
     tieHigh('vcc1', 'nand1', '3a'), tieHigh('vcc1', 'nand1', '3b'),
@@ -325,7 +325,7 @@ function genE2_5() {
     // A12=1 ($1000-$1FFF): NOT(A12)=0 → ROM CSB=0 (selected), RIOT CS1=0 (deselected)
     // A12=0 ($0000-$0FFF): NOT(A12)=1 → ROM CSB=1 (deselected), RIOT CS1=1 (selected)
     wire('cpu', 'a12', 'inv1', '1a'),
-    wire('inv1', '1y', 'rom', 'csb'),
+    wire('inv1', '1y', 'rom', 'ceb'),
     wire('inv1', '1y', 'riot', 'cs1'),
     // RIOT CS2B tied low (always enabled from that line)
     tieLow('gnd1', 'riot', 'cs2b'),
@@ -430,7 +430,7 @@ function genE3() {
     // Gate 1: NOT(A15) → ROM CSB (ROM at $8000-$FFFF)
     wire('cpu', 'a15', 'nand1', '1a'),
     wire('cpu', 'a15', 'nand1', '1b'),
-    wire('nand1', '1y', 'rom', 'csb'),
+    wire('nand1', '1y', 'rom', 'ceb'),
     // Gate 2: NAND(!A15, PHI2) → intermediate
     wire('nand1', '1y', 'nand1', '2a'),
     wire('cpu', 'phi2', 'nand1', '2b'),
@@ -514,7 +514,7 @@ function genE4() {
     // ROM: NOT(A15) → CSB via NAND gate
     wire('cpu', 'a15', 'nand1', '1a'),
     wire('cpu', 'a15', 'nand1', '1b'),
-    wire('nand1', '1y', 'rom', 'csb'),
+    wire('nand1', '1y', 'rom', 'ceb'),
     tieLow('gnd1', 'rom', 'oeb'),
     tieHigh('vcc1', 'rom', 'web'),
     ...busA('cpu', 'rom', Array.from({ length: 15 }, (_, i) => i)),
@@ -611,7 +611,7 @@ function genE6() {
     // n1.1: NOT(A15) → ROM CSB
     wire('cpu', 'a15', 'nand1', '1a'),
     wire('cpu', 'a15', 'nand1', '1b'),
-    wire('nand1', '1y', 'rom', 'csb'),
+    wire('nand1', '1y', 'rom', 'ceb'),
     // n1.2: NOT(A14)
     wire('cpu', 'a14', 'nand1', '2a'),
     wire('cpu', 'a14', 'nand1', '2b'),

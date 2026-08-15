@@ -237,7 +237,7 @@
       "from": "nand2",
       "fromTerminal": "2y",
       "to": "rom",
-      "toTerminal": "csb"
+      "toTerminal": "ceb"
     },
     {
       "from": "nand2",

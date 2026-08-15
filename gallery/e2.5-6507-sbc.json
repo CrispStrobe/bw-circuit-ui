@@ -259,7 +259,7 @@
       "from": "inv1",
       "fromTerminal": "1y",
       "to": "rom",
-      "toTerminal": "csb"
+      "toTerminal": "ceb"
     },
     {
       "from": "inv1",
