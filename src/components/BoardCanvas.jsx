@@ -64,8 +64,14 @@ function mcuChipInfo(device) {
   const d = String(device || '').toLowerCase();
   if (/attiny88/.test(d)) return { label: 'ATtiny88', pkg: 'DIP-28' };
   if (/attiny85/.test(d)) return { label: 'ATtiny85', pkg: 'DIP-8' };
+  if (/atmega168/.test(d)) return { label: 'ATmega168P', pkg: 'DIP-28' };
   if (/atmega2560/.test(d)) return { label: 'ATmega2560', pkg: 'TQFP-100' };
   if (/atmega328/.test(d)) return { label: 'ATmega328P', pkg: 'DIP-28' };
+  if (/arduino.?mega/.test(d)) return { label: 'Arduino Mega', pkg: 'Board' };
+  if (/arduino.?nano/.test(d)) return { label: 'Arduino Nano', pkg: 'Board' };
+  if (/arduino.?uno/.test(d)) return { label: 'Arduino Uno', pkg: 'Board' };
+  if (/eater.?6502/.test(d)) return { label: 'Eater 6502', pkg: 'Breadboard' };
+  if (/micro.?bit/.test(d)) return { label: 'micro:bit', pkg: 'Board' };
   if (/w65c02/.test(d)) return { label: 'W65C02S', pkg: 'DIP-40' };
   if (/z80/.test(d)) return { label: 'Z80 CPU', pkg: 'DIP-40' };
   if (/stc89/.test(d)) return { label: 'STC89C52', pkg: 'DIP-40' };
