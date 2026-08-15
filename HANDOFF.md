@@ -1,6 +1,7 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 726/0/3 (CI clean). 23/23 browser gate green. CI green.
+npm test 727/0/3 (CI clean). 23/23 browser gate green. CI green.
+VDP keyboard Playwright test: 4/4. Fabric gate: 11/11.
 Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -136,6 +137,15 @@ Deploy current. MPL-2.0 by owner decision.
 - **VdpScreen keyboard input**: arrow/WASD → setButtons(mask), focus ring,
   "click to play" hint (i18n EN+DE). Signal===false → NO SIGNAL display.
   Snake smoke passes on bw-board. setButtonsFn wired from debugState.
+  Playwright test: 4 checks (arrow mask, WASD parity, blur release, hint).
+- **i18n complete**: all designer components swept (Multimeter, ScopePanel,
+  BoardCanvas, CircuitDesigner, ExamplesBrowser, VdpScreen, instruments).
+  ~130 EN+DE string pairs. lang prop threaded through full component tree.
+
+## DONE — standing work contract items all green
+1. Multimeter + ScopePanel i18n: no hardcoded English, key parity verified.
+2. Keyboard-focus routing: Playwright test 4/4, all mask bits, blur, hint.
+3. CI green: npm test 727/0/3, fabric gate 11/11, contract 37/37.
 
 ## In flight
 
