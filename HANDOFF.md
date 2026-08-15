@@ -149,7 +149,12 @@ Deploy current. MPL-2.0 by owner decision.
 
 ## In flight
 
-Nothing uncommitted. No branches.
+- **Debugger UI capabilities-driven** (queued): step-over/step-out buttons
+  gated on target.capabilities().steps containing 'over'/'out'. Watchpoint
+  add-field when breakpoints includes 'write'. target.audio() for Spectrum
+  beeper. target.setKeys for ULA keyboard focus routing.
+- **DIP chip power pins fix** (f0ab371): logicChipTerminals no longer strips
+  vcc/gnd. lead1/lead2 aliases for pot/button. 5 gallery regressions fixed.
 
 ## Blocked / waiting
 
