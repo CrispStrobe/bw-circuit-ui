@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><title>VdpScreen keyboard test</title></head>
+<body>
+<div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { VdpScreen } from '../src/components/VdpScreen.jsx';
+
+// Mock video: solid green frame
+const rgba = new Uint8ClampedArray(256 * 192 * 4);
+for (let i = 0; i < rgba.length; i += 4) { rgba[i] = 0; rgba[i+1] = 200; rgba[i+2] = 0; rgba[i+3] = 255; }
+let frame = 0;
+const videoFn = () => ({ width: 256, height: 192, rgba, frame: frame++, signal: true });
+
+// Track setButtons calls
+window.__buttonCalls = [];
+const setButtonsFn = (mask) => { window.__buttonCalls.push(mask); };
+
+const root = createRoot(document.getElementById('root'));
+root.render(React.createElement(VdpScreen, { videoFn, setButtonsFn }));
+window.__vdpReady = true;
+</script>
+</body>
+</html>
