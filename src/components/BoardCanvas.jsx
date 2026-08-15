@@ -139,6 +139,12 @@ function terminalOffsetsForPart(part) {
     case 'ili9341':
       return { vcc: r(-30, -50), gnd: r(-30, -40), cs: r(-30, -30), rst: r(-30, -20),
         dc: r(-30, -10), mosi: r(-30, 0), sck: r(-30, 10), miso: r(-30, 20), led: r(-30, 30) };
+    case 'matrix8x8': {
+      const offsets = {};
+      for (let i = 0; i < 8; i++) offsets[`col${i}`] = r(-40, -28 + i * 8);
+      for (let i = 0; i < 8; i++) offsets[`row${i}`] = r(40, -28 + i * 8);
+      return offsets;
+    }
     case 'gate_and': case 'gate_or': case 'gate_nand': case 'gate_nor': case 'gate_xor':
       return { in0: r(-22, -10), in1: r(-22, 10), out: r(22, 0) };
     case 'gate_not':
@@ -380,6 +386,31 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
       }
+      // ── 8x8 LED matrix display ──────────────────────────────────
+      case 'matrix8x8': {
+        const ds = deviceStates?.get(id);
+        const br = ds?.brightness; // Float64Array(64), row-major
+        const S = 4; // dot size
+        const G = 6; // grid spacing
+        const W = 8 * G;
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            <rect x={-W/2 - 3} y={-W/2 - 3} width={W + 6} height={W + 6} rx={3}
+              fill="#111" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
+            {Array.from({ length: 64 }, (_, i) => {
+              const row = Math.floor(i / 8), col = i % 8;
+              const b = br ? br[i] : 0;
+              const color = b > 0.01 ? `rgba(255,${Math.round(40 + 40 * b)},${Math.round(20 * b)},${Math.min(1, b + 0.15)})` : '#1a0000';
+              return <circle key={i}
+                cx={-W/2 + col * G + G/2} cy={-W/2 + row * G + G/2} r={S/2}
+                fill={color} />;
+            })}
+            <text x={0} y={W/2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
       // ── ILI9341 TFT display ──────────────────────────────────────
       case 'ili9341': {
         const ds = deviceStates?.get(id);
@@ -2468,7 +2499,7 @@ export function BoardCanvas({
               if (!circuit?.board?.getDeviceState) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'matrix8x8') {
                   const ds = circuit.board.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }

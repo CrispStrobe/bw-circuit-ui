@@ -77,6 +77,7 @@ const EXCEPTIONS = new Set([
   'ili9341',        // SPI TFT display (bw-board device registry)
   'adxl335',        // analog 3-axis accelerometer
   'memsic2125',     // thermal 2-axis accelerometer (PWM output)
+  'matrix8x8',      // 8x8 LED matrix display (bw-board device registry)
   // Internal model terms (not part kinds)
   'lead',           // occupancy type in breadboard model
 ]);

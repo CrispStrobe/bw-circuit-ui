@@ -992,6 +992,7 @@ export function terminalsForKind(kind, params) {
     case 'ili9341': return ['vcc', 'gnd', 'cs', 'rst', 'dc', 'mosi', 'sck', 'miso', 'led'];
     case 'adxl335': return ['vcc', 'gnd', 'xout', 'yout', 'zout', 'st'];
     case 'memsic2125': return ['vcc', 'gnd', 'xout', 'yout'];
+    case 'matrix8x8': return ['col0', 'col1', 'col2', 'col3', 'col4', 'col5', 'col6', 'col7', 'row0', 'row1', 'row2', 'row3', 'row4', 'row5', 'row6', 'row7'];
     case 'dc_motor': case 'gearmotor': return ['a', 'b'];
     case 'vibration_motor': return ['a', 'b'];
     case 'motor_encoder': return ['a', 'b', 'enc_a', 'enc_b'];

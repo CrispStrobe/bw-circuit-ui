@@ -61,6 +61,11 @@ export const TERMINAL_ALIASES = {
     lead1: 'a',
     lead2: 'b',
   },
+  rgb_led: {
+    r: 'r_anode',
+    g: 'g_anode',
+    b: 'b_anode',
+  },
   // 28C256 EEPROM: extractor uses csb, sidecar names the pin ceb
   '28c256': {
     csb: 'ceb',
