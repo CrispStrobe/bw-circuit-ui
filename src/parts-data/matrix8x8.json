@@ -100,8 +100,17 @@
       "functions": []
     }
   ],
-  "variants": null,
-  "_note": "8x8 LED matrix (bare, no driver). DIP-16. 8 column cathodes + 8 row anodes.",
+  "variants": [
+    {
+      "param": "polarity",
+      "values": [
+        { "label": "788AS (col LOW, row HIGH)", "colActiveHigh": false, "rowActiveHigh": true },
+        { "label": "788BS (col HIGH, row LOW)", "colActiveHigh": true, "rowActiveHigh": false },
+        { "label": "default (col HIGH, row HIGH)", "colActiveHigh": true, "rowActiveHigh": true }
+      ]
+    }
+  ],
+  "_note": "8x8 LED matrix (bare, no driver). DIP-16. 8 column cathodes + 8 row anodes. Params: colActiveHigh (default true), rowActiveHigh (default true). 788AS preset: colActiveHigh=false, rowActiveHigh=true (col LOW selects column, row HIGH lights LED). Polarity verified in sim against real blinkenrocket firmware. Wrong variant = uniform dim glow (the AS/BS polarity lesson).",
   "footprint": {
     "refTerminal": "col0",
     "leads": {
