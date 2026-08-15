@@ -1,7 +1,7 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 727/0/3 (CI clean). 23/23 browser gate green. CI green.
-VDP keyboard Playwright test: 4/4. Fabric gate: 11/11.
+npm test 803/0/3 (CI clean). 23/23 browser gate green. CI green.
+VDP keyboard Playwright test: 4/4. Fabric gate: 11/11. Capability test: 6/6.
 Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -149,12 +149,27 @@ Deploy current. MPL-2.0 by owner decision.
 
 ## In flight
 
-- **Debugger UI capabilities-driven** (queued): step-over/step-out buttons
-  gated on target.capabilities().steps containing 'over'/'out'. Watchpoint
-  add-field when breakpoints includes 'write'. target.audio() for Spectrum
-  beeper. target.setKeys for ULA keyboard focus routing.
+Nothing uncommitted. No branches.
+
+## Recently completed
+
+- **Debugger UI capabilities-driven** (9564380): step-over/step-out buttons
+  gated on capabilities().steps. Watchpoint add-field gated on breakpoints
+  includes 'write'. onStep/onStepOver/onStepOut/onAddWatchpoint wired from
+  debugState. Capability combo tests (6 checks). i18n EN+DE (6 new pairs).
 - **DIP chip power pins fix** (f0ab371): logicChipTerminals no longer strips
   vcc/gnd. lead1/lead2 aliases for pot/button. 5 gallery regressions fixed.
+
+## Blocked on bw-board
+
+- **target.audio()**: Spectrum beeper face. The API ({hz, on}) is described
+  in the zx-ula.js comment ("buzzerEdges pattern") but not yet implemented
+  on any debug target. When it lands, wire it through CircuitDesigner to
+  the existing buzzer WebAudio path (updateBuzzerAudio).
+- **target.setKeys**: ULA keyboard focus routing. The API is not yet on the
+  debug target. When it lands, extend VdpScreen's keyboard handler to call
+  setKeys alongside setButtons (the face should detect which input method
+  the machine supports and use the right one).
 
 ## Blocked / waiting
 
