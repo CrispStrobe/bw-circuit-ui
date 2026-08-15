@@ -1,8 +1,8 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 852/0/3 (CI clean). 23/23 browser gate green. CI green.
+npm test 882/0/3 (CI clean). 23/23 browser gate green. CI green.
 VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
-Snapshot drop: 3/3. Sensor faces: 3/3.
+Snapshot drop: 3/3. Sensor faces: 3/3. Contract: 37/37.
 Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -154,10 +154,15 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
-- **Sensor faces** (62fc91c): OrientationInput (drag/sliders → {x,y,z} g
-  for adxl335/memsic2125/mpu6050), MidiMonitor (note-on/off from 31250
-  baud TX), StimulusControls (knock-tap impulse, distance slider for
-  ultrasonic). All wired in instruments column. Playwright 3/3.
+- **Sensor faces** (62fc91c, cf9e8df): OrientationInput (drag/sliders →
+  {x,y,z} g for adxl335/memsic2125/mpu6050 — kind-aware param names
+  gx/gy/gz vs accelX/Y/Z), MidiMonitor (note-on/off from 31250 baud TX),
+  StimulusControls (knock-tap impulse, distance slider for ultrasonic).
+  Catalog: adxl335 + memsic2125 terminals. Buzzer pos/neg aliases.
+  Playwright 3/3. Second serial monitor blocked on bw-board (no Serial1).
+  AY audio: z80 debug target currently returns ULA beeper only; AY
+  channels expose audioTone-shaped summaries but need debug-target
+  wiring (coordinator owns z80-debug.js).
 - **Snapshot drop-zone** (2ce27e1): drag .SNA or .Z80 onto VdpScreen to
   load into running Spectrum machine. Extension filter, visual feedback.
   Kempston joystick (bw-board 39a10cb) makes arrows/WASD drive archive
