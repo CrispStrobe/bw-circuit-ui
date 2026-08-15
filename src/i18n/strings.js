@@ -154,6 +154,7 @@ const STRINGS = {
   pinChooserPrompt:    { en: 'Which pin of {chip}? The wire will connect to it.', de: 'Welcher Pin von {chip}? Das Kabel wird dort angeschlossen.' },
   pinChooserCancel:    { en: 'Esc or click outside to cancel', de: 'Esc oder außerhalb klicken zum Abbrechen' },
   noSignal:            { en: 'no signal', de: 'kein Signal' },
+  clickToPlay:         { en: 'Click to play — arrow keys or WASD to steer', de: 'Klicken zum Spielen — Pfeiltasten oder WASD zum Steuern' },
   breadboardAnnotation:{ en: 'a complete circuit — the battery feeds the rails, the strips do the wiring', de: 'ein vollständiger Stromkreis — die Batterie speist die Schienen, die Streifen verbinden' },
 };
 

@@ -1076,7 +1076,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           />
         )}
         {hasMcuPins && debugState && typeof debugState.video === 'function' && (
-          <VdpScreen videoFn={debugState.video} lang={lang} />
+          <VdpScreen videoFn={debugState.video} setButtonsFn={debugState.setButtons} lang={lang} />
         )}
         {hasMcuPins && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
