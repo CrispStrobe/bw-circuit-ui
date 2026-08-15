@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 882/0/3 (CI clean). 23/23 browser gate green. CI green.
+npm test 917/0/3 (CI clean). 23/23 browser gate green. CI green.
 VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
 Snapshot drop: 3/3. Sensor faces: 3/3. Contract: 37/37.
 Deploy current. MPL-2.0 by owner decision.
@@ -154,6 +154,10 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **matrix8x8 face + attiny88** (4e2eaaf): 8x8 LED matrix SVG with
+  brightness-driven dot grid from deviceStates. catalog terminals,
+  terminal offsets, deviceStates collection. attiny88 target in factory.
+  rgb_led r/g/b aliases for Arduino examples.
 - **Sensor faces** (62fc91c, cf9e8df): OrientationInput (drag/sliders →
   {x,y,z} g for adxl335/memsic2125/mpu6050 — kind-aware param names
   gx/gy/gz vs accelX/Y/Z), MidiMonitor (note-on/off from 31250 baud TX),
