@@ -200,7 +200,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             <rect x={-11} y={-14} width={22} height={8} rx={5} fill={capHi} opacity={0.5} />
             <circle cx={0} cy={-4} r={3.5} fill="#ecf0f1" opacity={0.9} />
             <text x={0} y={26} textAnchor="middle" fill={capHi} fontSize={8}
-              fontFamily="monospace" fontWeight="bold">{kind === 'vcc' ? '+5V' : 'GND'}</text>
+              fontFamily="monospace" fontWeight="bold">{kind === 'vcc' ? `+${part.params?.volts ?? 5}V` : 'GND'}</text>
           </g>
         );
       }

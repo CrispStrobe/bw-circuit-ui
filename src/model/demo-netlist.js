@@ -18,7 +18,7 @@
  */
 export const demoParts = [
   {
-    id: 'VCC', kind: 'vcc', params: {},
+    id: 'VCC', kind: 'vcc', params: { volts: 5 },
     terminals: ['vcc'],
     x: 200, y: 60,
   },
