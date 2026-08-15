@@ -1,0 +1,34 @@
+{
+  "kind": "battery",
+  "w": 48,
+  "h": 56,
+  "terminals": [
+    {
+      "name": "pos",
+      "x": 18,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "neg",
+      "x": 30,
+      "y": 0,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Generic battery. 2-terminal: pos, neg. Base kind for battery_9v/aa/coin variants.",
+  "footprint": {
+    "refTerminal": "pos",
+    "leads": {
+      "pos": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "neg": {
+        "dRow": 0,
+        "dCol": 1
+      }
+    }
+  }
+}

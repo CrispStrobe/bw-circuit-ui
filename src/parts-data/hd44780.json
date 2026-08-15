@@ -1,0 +1,175 @@
+{
+  "kind": "hd44780",
+  "w": 160,
+  "h": 70,
+  "terminals": [
+    {
+      "name": "vss",
+      "x": 8,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "vdd",
+      "x": 16,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "v0",
+      "x": 24,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "rs",
+      "x": 32,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "rw",
+      "x": 40,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "e",
+      "x": 48,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 56,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 64,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 72,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 80,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d4",
+      "x": 88,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d5",
+      "x": 96,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d6",
+      "x": 104,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "d7",
+      "x": 112,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "a",
+      "x": 120,
+      "y": 70,
+      "functions": []
+    },
+    {
+      "name": "k",
+      "x": 128,
+      "y": 70,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "HD44780 character LCD (datasheet terminal names). 16-pin: VSS, VDD, V0 (contrast), RS, RW, E, D0-D7, A/K (backlight). Same silicon as char_lcd but with original Hitachi naming (vss/vdd/v0/a/k vs house vcc/gnd/vo/bl_a/bl_k).",
+  "footprint": {
+    "refTerminal": "vss",
+    "leads": {
+      "vss": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "vdd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "v0": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "rs": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "rw": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "e": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "d0": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "d1": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "d2": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "d3": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "d4": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "d5": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "d6": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "d7": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "a": {
+        "dRow": 0,
+        "dCol": 14
+      },
+      "k": {
+        "dRow": 0,
+        "dCol": 15
+      }
+    },
+    "minCols": 16
+  }
+}

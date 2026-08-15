@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 56" width="48" height="56">
+  <!-- 9V Battery — rectangular PP3 style, bench-style front view -->
+  <!-- Body -->
+  <rect x="6" y="10" width="36" height="44" rx="3" fill="#2a2a2a" stroke="#1a1a1a" stroke-width="0.8"/>
+  <!-- Label area -->
+  <rect x="9" y="18" width="30" height="28" rx="1" fill="#cc3030" opacity="0.8"/>
+  <text x="24" y="30" text-anchor="middle" font-family="monospace" font-size="8" fill="#fff" font-weight="bold">9V</text>
+  <text x="24" y="40" text-anchor="middle" font-family="monospace" font-size="4" fill="#ffcccc">ALKALINE</text>
+  <!-- Snap connector on top -->
+  <rect x="14" y="4" width="8" height="8" rx="1" fill="#c0c0c0" stroke="#999" stroke-width="0.5"/>
+  <rect x="26" y="6" width="8" height="6" rx="1" fill="#c0c0c0" stroke="#999" stroke-width="0.5"/>
+  <!-- Terminal pads -->
+  <circle cx="18" cy="4" r="2" fill="#cc3030"/>
+  <text x="18" y="2" text-anchor="middle" font-family="monospace" font-size="4" fill="#cc3030">+</text>
+  <circle cx="30" cy="6" r="2" fill="#333"/>
+  <text x="30" y="4" text-anchor="middle" font-family="monospace" font-size="5" fill="#666">-</text>
+</svg>
