@@ -388,6 +388,20 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     if (mode !== 'simulate') stopAllBuzzers();
   }, [mode]);
 
+  // Spectrum beeper: poll debugState.audio() and pipe to updateBuzzerAudio
+  useEffect(() => {
+    if (!debugState || typeof debugState.audio !== 'function') return;
+    const BEEPER_ID = '__spectrum_beeper';
+    let raf;
+    const poll = () => {
+      const tone = debugState.audio();
+      updateBuzzerAudio(BEEPER_ID, tone);
+      raf = requestAnimationFrame(poll);
+    };
+    raf = requestAnimationFrame(poll);
+    return () => { cancelAnimationFrame(raf); stopBuzzer(BEEPER_ID); };
+  }, [debugState]);
+
   // ── Simulation loop ─────────────────────────────────────────────
   // Only runs when no external board is provided (demo mode).
   // When an external board is present, the emulator drives pin events
@@ -1081,7 +1095,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           />
         )}
         {hasMcuPins && debugState && typeof debugState.video === 'function' && (
-          <VdpScreen videoFn={debugState.video} setButtonsFn={debugState.setButtons} lang={lang} />
+          <VdpScreen videoFn={debugState.video} setButtonsFn={debugState.setButtons} setKeysFn={debugState.setKeys} lang={lang} />
         )}
         {hasMcuPins && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,

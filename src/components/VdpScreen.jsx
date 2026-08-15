@@ -20,7 +20,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { t } from '../i18n/strings.js';
 
-// Key → button bit mapping (active semantics handled machine-side)
+// Key → button bit mapping for setButtons (4-direction pad)
 const KEY_MAP = {
   ArrowDown: 0, s: 0, S: 0,
   ArrowUp: 1, w: 1, W: 1,
@@ -28,35 +28,73 @@ const KEY_MAP = {
   ArrowLeft: 3, a: 3, A: 3,
 };
 
-export function VdpScreen({ videoFn, setButtonsFn, lang = 'en' }) {
+// Browser key → Spectrum key name for setKeys (ULA keyboard matrix)
+const BROWSER_TO_SPECTRUM = {
+  '0': '0', '1': '1', '2': '2', '3': '3', '4': '4',
+  '5': '5', '6': '6', '7': '7', '8': '8', '9': '9',
+  'a': 'a', 'b': 'b', 'c': 'c', 'd': 'd', 'e': 'e',
+  'f': 'f', 'g': 'g', 'h': 'h', 'i': 'i', 'j': 'j',
+  'k': 'k', 'l': 'l', 'm': 'm', 'n': 'n', 'o': 'o',
+  'p': 'p', 'q': 'q', 'r': 'r', 's': 's', 't': 't',
+  'u': 'u', 'v': 'v', 'w': 'w', 'x': 'x', 'y': 'y', 'z': 'z',
+  'Enter': 'enter', ' ': 'space', 'Shift': 'caps shift',
+  'Control': 'symbol shift',
+};
+
+export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, lang = 'en' }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const lastFrameRef = useRef(-1);
   const rafRef = useRef(0);
   const maskRef = useRef(0);
+  const heldKeysRef = useRef(new Set());
   const [focused, setFocused] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [nativeSize, setNativeSize] = useState({ w: 256, h: 192 });
 
-  // Button input via keyboard
+  // Input routing: prefer setKeys (full keyboard) over setButtons (4-dir pad)
+  const useUlaKeys = typeof setKeysFn === 'function';
+
   const updateButtons = useCallback((mask) => {
     maskRef.current = mask;
     if (typeof setButtonsFn === 'function') setButtonsFn(mask);
   }, [setButtonsFn]);
 
+  const updateKeys = useCallback(() => {
+    if (typeof setKeysFn === 'function') setKeysFn([...heldKeysRef.current]);
+  }, [setKeysFn]);
+
   const handleKeyDown = useCallback((e) => {
+    if (useUlaKeys) {
+      const specKey = BROWSER_TO_SPECTRUM[e.key] || BROWSER_TO_SPECTRUM[e.key.toLowerCase()];
+      if (specKey) {
+        e.preventDefault();
+        heldKeysRef.current.add(specKey);
+        updateKeys();
+      }
+      return;
+    }
     const bit = KEY_MAP[e.key];
     if (bit === undefined) return;
     e.preventDefault();
     updateButtons(maskRef.current | (1 << bit));
-  }, [updateButtons]);
+  }, [useUlaKeys, updateButtons, updateKeys]);
 
   const handleKeyUp = useCallback((e) => {
+    if (useUlaKeys) {
+      const specKey = BROWSER_TO_SPECTRUM[e.key] || BROWSER_TO_SPECTRUM[e.key.toLowerCase()];
+      if (specKey) {
+        e.preventDefault();
+        heldKeysRef.current.delete(specKey);
+        updateKeys();
+      }
+      return;
+    }
     const bit = KEY_MAP[e.key];
     if (bit === undefined) return;
     e.preventDefault();
     updateButtons(maskRef.current & ~(1 << bit));
-  }, [updateButtons]);
+  }, [useUlaKeys, updateButtons, updateKeys]);
 
   const handleFocus = useCallback(() => {
     setFocused(true);
@@ -65,8 +103,10 @@ export function VdpScreen({ videoFn, setButtonsFn, lang = 'en' }) {
 
   const handleBlur = useCallback(() => {
     setFocused(false);
-    updateButtons(0); // release all on blur
-  }, [updateButtons]);
+    // Release all on blur
+    if (useUlaKeys) { heldKeysRef.current.clear(); updateKeys(); }
+    else updateButtons(0);
+  }, [useUlaKeys, updateButtons, updateKeys]);
 
   const handleClick = useCallback(() => {
     wrapRef.current?.focus();
@@ -143,7 +183,7 @@ export function VdpScreen({ videoFn, setButtonsFn, lang = 'en' }) {
         }}
       />
       {/* "Click to play" hint — shown until first interaction */}
-      {!hasInteracted && typeof setButtonsFn === 'function' && (
+      {!hasInteracted && (typeof setButtonsFn === 'function' || typeof setKeysFn === 'function') && (
         <div style={{
           position: 'absolute', bottom: 8, left: 0, right: 0,
           textAlign: 'center', pointerEvents: 'none',

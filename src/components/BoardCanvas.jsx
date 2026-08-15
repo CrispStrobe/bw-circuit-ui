@@ -817,7 +817,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -977,7 +977,11 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             style={{ ...baseStyle, left: x - 60, top: y - 25, cursor: 'move' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
-            <WokwiLcd1602 text="Hello World!" pins="none" screenOnly={true} />
+            <WokwiLcd1602 text={(() => {
+              const ds = deviceStates?.get(id);
+              if (ds && ds.text) return ds.text.join('\n');
+              return '';
+            })()} pins="none" screenOnly={true} />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
             </div>
@@ -2464,7 +2468,7 @@ export function BoardCanvas({
               if (!circuit?.board?.getDeviceState) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd') {
                   const ds = circuit.board.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
@@ -2554,6 +2558,17 @@ export function BoardCanvas({
             }}
             onPartBodyClick={handlePartBodyClick}
             onDoubleClick={(partId, cx, cy) => setInlineEdit({ partId, x: cx, y: cy })}
+            deviceStates={(() => {
+              if (!circuit?.board?.getDeviceState) return null;
+              const m = new Map();
+              for (const p of parts) {
+                if (p.kind === 'char_lcd') {
+                  const ds = circuit.board.getDeviceState(p.id);
+                  if (ds) m.set(p.id, ds);
+                }
+              }
+              return m.size > 0 ? m : null;
+            })()}
           />
         </div>
 
