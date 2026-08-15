@@ -395,7 +395,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
           {filtered.map(ex => {
             const compat = deviceCompat(ex, currentDevice);
             const reason = !compat.ok
-              ? deviceCompatReason(ex, currentDevice)
+              ? deviceCompatReason(ex, currentDevice, lang)
               : '';
             return (
               <ExampleCard
@@ -450,22 +450,21 @@ function deviceCompat(example, device) {
 }
 
 /** Build a human-readable reason why this example is not available. */
-function deviceCompatReason(example, device) {
+function deviceCompatReason(example, device, lang = 'en') {
   if (!device || !Array.isArray(example.devices)) return '';
-  // The reason cache is populated asynchronously by the parent via
-  // retargetReasons; when present, use the specific reasons from the
-  // retargeter ("no ADC on this chip" teaches more than "not available").
   if (example._retargetReasons && example._retargetReasons[device]) {
     return example._retargetReasons[device].join('; ');
   }
-  // Fallback: say which devices ARE supported so the user can switch.
   const supported = example.devices.map(d => DEVICE_LABELS[d] || d).join(', ');
-  return `Needs: ${supported}`;
+  return `${/^de/i.test(lang) ? 'Benötigt' : 'Needs'}: ${supported}`;
 }
 
 const DEVICE_LABELS = {
   stc12c5a60s2: 'STC12', stc89c52rc: 'STC89', stc15f2k60s2: 'STC15',
-  'arduino-uno': 'Uno', 'arduino-nano': 'Nano', pico: 'Pico',
+  'arduino-uno': 'Uno', 'arduino-nano': 'Nano', 'arduino-mega': 'Mega',
+  pico: 'Pico', attiny85: 'ATtiny85', attiny88: 'ATtiny88',
+  atmega168p: 'ATmega168P', atmega328p: 'ATmega328P', atmega2560: 'ATmega2560',
+  eater6502: '6502 Breadboard', z80: 'Z80',
 };
 
 function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason }) {
@@ -511,12 +510,12 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
         border: `1px solid ${hovered && !disabled ? catColor : palette.cardBorder}`,
         borderRadius: '6px',
         transition: 'border-color 80ms, background 80ms',
-        opacity: disabled ? 0.5 : 1,
+        opacity: disabled ? 0.7 : 1,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ color: palette.heading, fontSize: '13px', fontWeight: 650, cursor: disabled ? 'default' : 'pointer', flex: 1 }}
-          onClick={disabled ? undefined : onClick}>{title}</div>
+        <div style={{ color: palette.heading, fontSize: '13px', fontWeight: 650, cursor: 'pointer', flex: 1 }}
+          onClick={onClick}>{title}</div>
         <span style={{
           fontSize: '10px', color: palette.text,
           background: `${catColor}22`, padding: '1px 4px',
@@ -535,13 +534,15 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
           data-testid="bw-example-intro-toggle">i</button>
       </div>
       {diff && (
-        <div style={{ color: palette.muted, fontSize: '11px', marginTop: '4px', cursor: disabled ? 'default' : 'pointer' }}
-          onClick={disabled ? undefined : onClick}>
+        <div style={{ color: palette.muted, fontSize: '11px', marginTop: '4px', cursor: 'pointer' }}
+          onClick={onClick}>
           {'★'.repeat(example.difficulty)}{'☆'.repeat(3 - example.difficulty)} {diff}
         </div>
       )}
       {disabled && disabledReason && (
-        <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '4px', fontStyle: 'italic' }}>
+        <div style={{ color: '#f59e0b', fontSize: '11px', marginTop: '4px', fontStyle: 'italic',
+          cursor: 'pointer' }} onClick={onClick}
+          title={/^de/i.test(lang) ? 'Klicken zum Laden — Gerät wird automatisch gewechselt' : 'Click to load — device will switch automatically'}>
           {disabledReason}
         </div>
       )}

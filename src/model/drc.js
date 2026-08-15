@@ -524,7 +524,15 @@ export function runDrc(circuit, board) {
   const hasZ80 = parts.some(p => p.kind === 'z80');
   if (hasW65c02 || hasZ80) {
     try {
-      const circuitData = { parts, wires };
+      // Shape-adapt wires: the designer's wire objects are {from: {part, terminal}, to: ...}
+      // but the extractors expect the flat {from, fromTerminal, to, toTerminal} format.
+      const flatWires = wires.map(w => ({
+        from: w.from?.part || w.from,
+        fromTerminal: w.from?.terminal || w.fromTerminal,
+        to: w.to?.part || w.to,
+        toTerminal: w.to?.terminal || w.toTerminal,
+      }));
+      const circuitData = { parts, wires: flatWires };
       if (hasW65c02 && _extract6502) {
         const result = _extract6502(circuitData);
         for (const reason of result.reasons || []) {

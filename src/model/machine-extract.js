@@ -20,17 +20,27 @@
 export function extractMachine(circuit, extractors = {}) {
   const parts = circuit.parts || [];
 
+  // Shape-adapt wires: the designer uses {from: {part, terminal}} objects
+  // but the extractors expect flat {from, fromTerminal, to, toTerminal}.
+  const wires = (circuit.wires || []).map(w => ({
+    from: w.from?.part || w.from,
+    fromTerminal: w.from?.terminal || w.fromTerminal,
+    to: w.to?.part || w.to,
+    toTerminal: w.to?.terminal || w.toTerminal,
+  }));
+  const flatCircuit = { parts, wires };
+
   // Detect which CPU family is on the board
   const has6502 = parts.some(p => p.kind === 'w65c02');
   const hasZ80 = parts.some(p => p.kind === 'z80');
 
   if (has6502 && extractors.extract6502Machine) {
-    const result = extractors.extract6502Machine(circuit);
+    const result = extractors.extract6502Machine(flatCircuit);
     return { ...result, kind: 'eater6502' };
   }
 
   if (hasZ80 && extractors.extractZ80Machine) {
-    const result = extractors.extractZ80Machine(circuit);
+    const result = extractors.extractZ80Machine(flatCircuit);
     return { ...result, kind: 'z80' };
   }
 
