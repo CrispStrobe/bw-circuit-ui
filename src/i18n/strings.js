@@ -148,6 +148,10 @@ const STRINGS = {
   stimDistance:        { en: 'Distance', de: 'Entfernung' },
   stimDistanceTitle:   { en: 'Set ultrasonic target distance (cm)', de: 'Ultraschall-Zielentfernung einstellen (cm)' },
 
+  // ── Serial console ────────────────────────────────────────────────
+  serialConsole:       { en: 'Serial Console', de: 'Serielle Konsole' },
+  serialEmpty:         { en: 'Waiting for serial output… (click to type)', de: 'Warte auf serielle Ausgabe… (klicken zum Tippen)' },
+
   // ── Instruments panel sections ─────────────────────────────────────
   debugger:            { en: 'Debugger', de: 'Debugger' },
   debuggerInactive:    { en: 'Debugger inactive', de: 'Debugger inaktiv' },

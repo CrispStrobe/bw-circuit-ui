@@ -59,6 +59,7 @@ import { VdpScreen } from './VdpScreen.jsx';
 import { Circuit } from '../model/circuit.js';
 import { extractMachine } from '../model/machine-extract.js';
 import { OrientationInput } from './OrientationInput.jsx';
+import { SerialConsole } from './SerialConsole.jsx';
 import { StimulusControls } from './StimulusControls.jsx';
 import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
@@ -1136,6 +1137,15 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         )}
         {hasMcuPins && debugState && typeof debugState.video === 'function' && (
           <VdpScreen videoFn={debugState.video} setButtonsFn={debugState.setButtons} setKeysFn={debugState.setKeys} loadSnapshotFn={debugState.loadSnapshot} lang={lang} />
+        )}
+        {/* Serial console — for machines with ACIA serial (z80-bench, eater6502) */}
+        {hasMcuPins && debugState && typeof debugState.onSerial === 'function' && (
+          <section style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box'}}>
+            <div style={{fontSize: 11, fontWeight: 600, color: '#e2e8f0', marginBottom: 4, fontFamily: 'monospace'}}>
+              {t('serialConsole', lang)}
+            </div>
+            <SerialConsole onSerialFn={debugState.onSerial} sendSerialFn={debugState.sendSerial} lang={lang} />
+          </section>
         )}
         {hasMcuPins && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,

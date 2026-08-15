@@ -1,0 +1,26 @@
+<!doctype html>
+<html><head><title>Serial console test</title></head>
+<body>
+<div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { SerialConsole } from '../src/components/SerialConsole.jsx';
+
+let listener = null;
+const onSerialFn = (cb) => { listener = cb; };
+
+window.__sendTx = (bytes) => {
+  if (!listener) return;
+  for (const b of bytes) listener(b);
+};
+
+window.__rxCalls = [];
+const sendSerialFn = (byte) => { window.__rxCalls.push(byte); return true; };
+
+const root = createRoot(document.getElementById('root'));
+root.render(React.createElement(SerialConsole, { onSerialFn, sendSerialFn }));
+window.__serialReady = true;
+</script>
+</body>
+</html>
