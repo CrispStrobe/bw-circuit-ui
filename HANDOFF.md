@@ -153,6 +153,11 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **Build Machine flow** (00ab540): extractor-driven wired-computer builder.
+  Runs extract6502Machine/extractZ80Machine on the designer's circuit,
+  evaluating NAND decode at all 65536 addresses. Refusals render verbatim
+  (the named-address errors ARE the lesson). Success dispatches
+  bw-machine-extracted event for the host to boot. 5 tests, i18n EN+DE.
 - **Spectrum beeper** (91ca8df): polls debugState.audio() per rAF, pipes
   {hz,on} to updateBuzzerAudio (existing WebAudio). Stops on unmount.
 - **ULA keyboard** (91ca8df): VdpScreen detects setKeysFn and routes full
