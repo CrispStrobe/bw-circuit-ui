@@ -1,7 +1,7 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 803/0/3 (CI clean). 23/23 browser gate green. CI green.
-VDP keyboard Playwright test: 4/4. Fabric gate: 11/11. Capability test: 6/6.
+npm test 816/0/3 (CI clean). 23/23 browser gate green. CI green.
+VDP keyboard: 4/4. Fabric gate: 11/11. Capability: 6/6. TileVGA face: 3/3.
 Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -153,6 +153,9 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **TileVGA 320x240 face** (ed03b6d): VdpScreen now adapts to any video
+  frame resolution (was hardcoded 256x192). Canvas scales 2x crisp (max
+  640px). Playwright test: 3 checks (native dims, CSS scale, hello-world).
 - **Debugger UI capabilities-driven** (9564380): step-over/step-out buttons
   gated on capabilities().steps. Watchpoint add-field gated on breakpoints
   includes 'write'. onStep/onStepOver/onStepOut/onAddWatchpoint wired from
