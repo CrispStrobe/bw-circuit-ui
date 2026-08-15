@@ -1224,7 +1224,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {showMeter && <div data-meter-module style={{width: 280, flex: '0 0 auto'}}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} lang={lang} /></div>}
         {/* Orientation input — for accelerometer parts (mpu6050, adxl335, memsic2125) */}
         {parts.filter(p => ['mpu6050', 'adxl335', 'memsic2125'].includes(p.kind)).map(p => (
-          <OrientationInput key={p.id} partId={p.id} lang={lang}
+          <OrientationInput key={p.id} partId={p.id} kind={p.kind} lang={lang}
             onSetParam={(id, key, val) => { if (circuit?.board?.setDeviceParam) circuit.board.setDeviceParam(id, key, val); }} />
         ))}
         {/* Stimulus controls — knock/tap and distance for sensors without fabric controls */}

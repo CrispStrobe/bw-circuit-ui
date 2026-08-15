@@ -75,6 +75,8 @@ const EXCEPTIONS = new Set([
   'gate_not',       // abstract inverter
   // Device-registry parts (registered at runtime, no static sidecar)
   'ili9341',        // SPI TFT display (bw-board device registry)
+  'adxl335',        // analog 3-axis accelerometer
+  'memsic2125',     // thermal 2-axis accelerometer (PWM output)
   // Internal model terms (not part kinds)
   'lead',           // occupancy type in breadboard model
 ]);

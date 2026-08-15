@@ -21,21 +21,31 @@ const RADIUS = 50;
 /**
  * @param {{ partId: string, onSetParam: (partId, key, value) => void, lang?: string }} props
  */
-export function OrientationInput({ partId, onSetParam, lang = 'en', initialX = 0, initialY = 0, initialZ = 1 }) {
+// Param-name mapping per device kind:
+// adxl335/memsic2125 use gx/gy/gz; mpu6050 uses accelX/accelY/accelZ.
+const PARAM_MAP = {
+  adxl335:    { x: 'gx', y: 'gy', z: 'gz' },
+  memsic2125: { x: 'gx', y: 'gy', z: 'gz' },
+  mpu6050:    { x: 'accelX', y: 'accelY', z: 'accelZ' },
+};
+
+export function OrientationInput({ partId, kind = 'mpu6050', onSetParam, lang = 'en', initialX = 0, initialY = 0, initialZ = 1 }) {
   const [gx, setGx] = useState(initialX);
   const [gy, setGy] = useState(initialY);
   const [gz, setGz] = useState(initialZ);
   const [mode, setMode] = useState('drag'); // 'drag' | 'sliders'
   const circleRef = useRef(null);
 
+  const pm = PARAM_MAP[kind] || PARAM_MAP.mpu6050;
+
   const applyOrientation = useCallback((x, y, z) => {
     setGx(x); setGy(y); setGz(z);
     if (onSetParam) {
-      onSetParam(partId, 'accelX', x);
-      onSetParam(partId, 'accelY', y);
-      onSetParam(partId, 'accelZ', z);
+      onSetParam(partId, pm.x, x);
+      onSetParam(partId, pm.y, y);
+      if (pm.z) onSetParam(partId, pm.z, z);
     }
-  }, [partId, onSetParam]);
+  }, [partId, onSetParam, pm]);
 
   const handleCircleDrag = useCallback((e) => {
     const rect = circleRef.current?.getBoundingClientRect();
