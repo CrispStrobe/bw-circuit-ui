@@ -1,0 +1,34 @@
+{
+  "kind": "tilt_sensor",
+  "w": 20,
+  "h": 36,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 10,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 10,
+      "y": 36,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Tilt sensor (ball switch). 2-terminal: A, B. Closes when tilted. Param: tilt (boolean).",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
+}

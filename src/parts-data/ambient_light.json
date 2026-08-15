@@ -1,0 +1,44 @@
+{
+  "kind": "ambient_light",
+  "w": 32,
+  "h": 45,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 8,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "out",
+      "x": 16,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 24,
+      "y": 45,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Ambient light sensor module. 3-terminal: VCC, OUT, GND. Phototransistor-based.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "out": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "kind": "vreg",
+  "w": 24,
+  "h": 40,
+  "terminals": [
+    {
+      "name": "in",
+      "x": 6,
+      "y": 40,
+      "functions": []
+    },
+    {
+      "name": "out",
+      "x": 12,
+      "y": 40,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 18,
+      "y": 40,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Generic voltage regulator (TO-220). 3-terminal: in, out, gnd.",
+  "footprint": {
+    "refTerminal": "in",
+    "leads": {
+      "in": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "out": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
+}

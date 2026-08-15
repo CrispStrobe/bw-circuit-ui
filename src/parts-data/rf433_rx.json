@@ -1,0 +1,44 @@
+{
+  "kind": "rf433_rx",
+  "w": 32,
+  "h": 45,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 8,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 16,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "data",
+      "x": 24,
+      "y": 45,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "RF 433MHz receiver module. 3-terminal: VCC, GND, DATA.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "data": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
+}

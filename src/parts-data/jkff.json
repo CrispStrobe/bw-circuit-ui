@@ -1,0 +1,85 @@
+{
+  "kind": "jkff",
+  "w": 30,
+  "h": 24,
+  "terminals": [
+    {
+      "name": "j",
+      "x": 0,
+      "y": 6,
+      "functions": []
+    },
+    {
+      "name": "k",
+      "x": 0,
+      "y": 12,
+      "functions": []
+    },
+    {
+      "name": "clk",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "set",
+      "x": 30,
+      "y": 6,
+      "functions": []
+    },
+    {
+      "name": "rst",
+      "x": 30,
+      "y": 12,
+      "functions": []
+    },
+    {
+      "name": "q",
+      "x": 30,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "q_bar",
+      "x": 30,
+      "y": 24,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "JK flip-flop (single). 7-terminal: J, K, CLK, SET, RST, Q, Q_BAR. Edge-triggered, toggle when J=K=1.",
+  "footprint": {
+    "refTerminal": "j",
+    "leads": {
+      "j": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "k": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "clk": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "set": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "rst": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "q": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "q_bar": {
+        "dRow": 5,
+        "dCol": 3
+      }
+    },
+    "straddlesGutter": true
+  }
+}

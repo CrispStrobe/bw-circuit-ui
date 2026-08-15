@@ -1,151 +1,151 @@
 {
-  "kind": "lm339",
+  "kind": "lm3915",
   "w": 60,
   "h": 48,
   "terminals": [
     {
-      "name": "1_pos",
+      "name": "vcc",
       "x": 0,
       "y": 8,
       "functions": []
     },
     {
-      "name": "1_neg",
+      "name": "gnd",
       "x": 0,
       "y": 13,
       "functions": []
     },
     {
-      "name": "1_out",
+      "name": "sig",
       "x": 0,
       "y": 18,
       "functions": []
     },
     {
-      "name": "2_pos",
+      "name": "mode",
       "x": 0,
       "y": 23,
       "functions": []
     },
     {
-      "name": "2_neg",
+      "name": "l1",
       "x": 0,
       "y": 28,
       "functions": []
     },
     {
-      "name": "2_out",
+      "name": "l2",
       "x": 0,
       "y": 33,
       "functions": []
     },
     {
-      "name": "3_pos",
+      "name": "l3",
       "x": 0,
       "y": 38,
       "functions": []
     },
     {
-      "name": "3_neg",
+      "name": "l4",
       "x": 60,
       "y": 8,
       "functions": []
     },
     {
-      "name": "3_out",
+      "name": "l5",
       "x": 60,
       "y": 13,
       "functions": []
     },
     {
-      "name": "4_pos",
+      "name": "l6",
       "x": 60,
       "y": 18,
       "functions": []
     },
     {
-      "name": "4_neg",
+      "name": "l7",
       "x": 60,
       "y": 23,
       "functions": []
     },
     {
-      "name": "4_out",
+      "name": "l8",
       "x": 60,
       "y": 28,
       "functions": []
     },
     {
-      "name": "vcc",
+      "name": "l9",
       "x": 60,
       "y": 33,
       "functions": []
     },
     {
-      "name": "gnd",
+      "name": "l10",
       "x": 60,
       "y": 38,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "LM339 quad comparator. DIP-14. Four independent comparators with open-collector outputs.",
+  "_note": "LM3915 logarithmic dot/bar display driver. DIP-18. 10 LED outputs L1-L10, SIG analog input, MODE (dot/bar select).",
   "footprint": {
-    "refTerminal": "1_pos",
+    "refTerminal": "vcc",
     "leads": {
-      "1_pos": {
+      "vcc": {
         "dRow": 0,
         "dCol": 0
       },
-      "1_neg": {
+      "gnd": {
         "dRow": 0,
         "dCol": 1
       },
-      "1_out": {
+      "sig": {
         "dRow": 0,
         "dCol": 2
       },
-      "2_pos": {
+      "mode": {
         "dRow": 0,
         "dCol": 3
       },
-      "2_neg": {
+      "l1": {
         "dRow": 0,
         "dCol": 4
       },
-      "2_out": {
+      "l2": {
         "dRow": 0,
         "dCol": 5
       },
-      "3_pos": {
+      "l3": {
         "dRow": 0,
         "dCol": 6
       },
-      "3_neg": {
+      "l4": {
         "dRow": 5,
         "dCol": 0
       },
-      "3_out": {
+      "l5": {
         "dRow": 5,
         "dCol": 1
       },
-      "4_pos": {
+      "l6": {
         "dRow": 5,
         "dCol": 2
       },
-      "4_neg": {
+      "l7": {
         "dRow": 5,
         "dCol": 3
       },
-      "4_out": {
+      "l8": {
         "dRow": 5,
         "dCol": 4
       },
-      "vcc": {
+      "l9": {
         "dRow": 5,
         "dCol": 5
       },
-      "gnd": {
+      "l10": {
         "dRow": 5,
         "dCol": 6
       }

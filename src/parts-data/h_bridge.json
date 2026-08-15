@@ -1,156 +1,136 @@
 {
-  "kind": "lm339",
+  "kind": "h_bridge",
   "w": 60,
   "h": 48,
   "terminals": [
     {
-      "name": "1_pos",
-      "x": 0,
-      "y": 8,
-      "functions": []
-    },
-    {
-      "name": "1_neg",
-      "x": 0,
-      "y": 13,
-      "functions": []
-    },
-    {
-      "name": "1_out",
-      "x": 0,
-      "y": 18,
-      "functions": []
-    },
-    {
-      "name": "2_pos",
-      "x": 0,
-      "y": 23,
-      "functions": []
-    },
-    {
-      "name": "2_neg",
-      "x": 0,
-      "y": 28,
-      "functions": []
-    },
-    {
-      "name": "2_out",
-      "x": 0,
-      "y": 33,
-      "functions": []
-    },
-    {
-      "name": "3_pos",
-      "x": 0,
-      "y": 38,
-      "functions": []
-    },
-    {
-      "name": "3_neg",
-      "x": 60,
-      "y": 8,
-      "functions": []
-    },
-    {
-      "name": "3_out",
-      "x": 60,
-      "y": 13,
-      "functions": []
-    },
-    {
-      "name": "4_pos",
-      "x": 60,
-      "y": 18,
-      "functions": []
-    },
-    {
-      "name": "4_neg",
-      "x": 60,
-      "y": 23,
-      "functions": []
-    },
-    {
-      "name": "4_out",
-      "x": 60,
-      "y": 28,
-      "functions": []
-    },
-    {
       "name": "vcc",
-      "x": 60,
-      "y": 33,
+      "x": 0,
+      "y": 8,
       "functions": []
     },
     {
       "name": "gnd",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "en1",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "in1",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "in2",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "out1",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "out2",
       "x": 60,
-      "y": 38,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "en2",
+      "x": 60,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "in3",
+      "x": 60,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "in4",
+      "x": 60,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "out3",
+      "x": 60,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "out4",
+      "x": 60,
+      "y": 33,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "LM339 quad comparator. DIP-14. Four independent comparators with open-collector outputs.",
+  "_note": "L293D H-bridge motor driver. DIP-16. Dual full-bridge: EN1/IN1/IN2/OUT1/OUT2 + EN2/IN3/IN4/OUT3/OUT4.",
   "footprint": {
-    "refTerminal": "1_pos",
+    "refTerminal": "vcc",
     "leads": {
-      "1_pos": {
-        "dRow": 0,
-        "dCol": 0
-      },
-      "1_neg": {
-        "dRow": 0,
-        "dCol": 1
-      },
-      "1_out": {
-        "dRow": 0,
-        "dCol": 2
-      },
-      "2_pos": {
-        "dRow": 0,
-        "dCol": 3
-      },
-      "2_neg": {
-        "dRow": 0,
-        "dCol": 4
-      },
-      "2_out": {
-        "dRow": 0,
-        "dCol": 5
-      },
-      "3_pos": {
-        "dRow": 0,
-        "dCol": 6
-      },
-      "3_neg": {
-        "dRow": 5,
-        "dCol": 0
-      },
-      "3_out": {
-        "dRow": 5,
-        "dCol": 1
-      },
-      "4_pos": {
-        "dRow": 5,
-        "dCol": 2
-      },
-      "4_neg": {
-        "dRow": 5,
-        "dCol": 3
-      },
-      "4_out": {
-        "dRow": 5,
-        "dCol": 4
-      },
       "vcc": {
-        "dRow": 5,
-        "dCol": 5
+        "dRow": 0,
+        "dCol": 0
       },
       "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "en1": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "in1": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "in2": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "out1": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "out2": {
         "dRow": 5,
-        "dCol": 6
+        "dCol": 0
+      },
+      "en2": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "in3": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "in4": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "out3": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "out4": {
+        "dRow": 5,
+        "dCol": 5
       }
     },
     "straddlesGutter": true,
-    "minCols": 7
+    "minCols": 6
   }
 }

@@ -1,0 +1,34 @@
+{
+  "kind": "phototransistor",
+  "w": 20,
+  "h": 36,
+  "terminals": [
+    {
+      "name": "collector",
+      "x": 10,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "emitter",
+      "x": 10,
+      "y": 36,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Phototransistor. 2-terminal: collector, emitter. NPN, light-controlled base current.",
+  "footprint": {
+    "refTerminal": "collector",
+    "leads": {
+      "collector": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "emitter": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
+}

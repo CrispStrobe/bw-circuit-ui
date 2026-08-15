@@ -1,0 +1,34 @@
+{
+  "kind": "piezo",
+  "w": 30,
+  "h": 30,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 8,
+      "y": 30,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 22,
+      "y": 30,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Piezoelectric buzzer/speaker. 2-terminal: A, B. Passive element, requires AC drive for sound.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "kind": "dff",
+  "w": 30,
+  "h": 24,
+  "terminals": [
+    {
+      "name": "d",
+      "x": 0,
+      "y": 6,
+      "functions": []
+    },
+    {
+      "name": "clk",
+      "x": 0,
+      "y": 12,
+      "functions": []
+    },
+    {
+      "name": "set",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "rst",
+      "x": 30,
+      "y": 6,
+      "functions": []
+    },
+    {
+      "name": "q",
+      "x": 30,
+      "y": 12,
+      "functions": []
+    },
+    {
+      "name": "q_bar",
+      "x": 30,
+      "y": 18,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "D flip-flop (single). 6-terminal: D, CLK, SET, RST, Q, Q_BAR. Edge-triggered on rising CLK.",
+  "footprint": {
+    "refTerminal": "d",
+    "leads": {
+      "d": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "clk": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "set": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "rst": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "q": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "q_bar": {
+        "dRow": 5,
+        "dCol": 2
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 3
+  }
+}

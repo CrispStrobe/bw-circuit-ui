@@ -1,0 +1,64 @@
+{
+  "kind": "dfplayer_mini",
+  "w": 48,
+  "h": 45,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 8,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 16,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "rx",
+      "x": 24,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "tx",
+      "x": 32,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "busy",
+      "x": 40,
+      "y": 45,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "DFPlayer Mini MP3 module. 5-terminal: VCC, GND, RX, TX, BUSY. UART control, built-in DAC + amplifier.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "rx": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "tx": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "busy": {
+        "dRow": 0,
+        "dCol": 4
+      }
+    }
+  }
+}

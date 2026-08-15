@@ -1,0 +1,74 @@
+{
+  "kind": "hc05",
+  "w": 56,
+  "h": 45,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 8,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 16,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "rxd",
+      "x": 24,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "txd",
+      "x": 32,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "key",
+      "x": 40,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "state",
+      "x": 48,
+      "y": 45,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "HC-05 Bluetooth module. 6-terminal: VCC, GND, RXD, TXD, KEY, STATE. UART serial, SPP profile.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "rxd": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "txd": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "key": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "state": {
+        "dRow": 0,
+        "dCol": 5
+      }
+    }
+  }
+}

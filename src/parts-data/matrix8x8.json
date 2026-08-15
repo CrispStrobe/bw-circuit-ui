@@ -1,156 +1,176 @@
 {
-  "kind": "lm339",
+  "kind": "matrix8x8",
   "w": 60,
   "h": 48,
   "terminals": [
     {
-      "name": "1_pos",
+      "name": "col0",
       "x": 0,
       "y": 8,
       "functions": []
     },
     {
-      "name": "1_neg",
+      "name": "col1",
       "x": 0,
       "y": 13,
       "functions": []
     },
     {
-      "name": "1_out",
+      "name": "col2",
       "x": 0,
       "y": 18,
       "functions": []
     },
     {
-      "name": "2_pos",
+      "name": "col3",
       "x": 0,
       "y": 23,
       "functions": []
     },
     {
-      "name": "2_neg",
+      "name": "col4",
       "x": 0,
       "y": 28,
       "functions": []
     },
     {
-      "name": "2_out",
+      "name": "col5",
       "x": 0,
       "y": 33,
       "functions": []
     },
     {
-      "name": "3_pos",
+      "name": "col6",
       "x": 0,
       "y": 38,
       "functions": []
     },
     {
-      "name": "3_neg",
+      "name": "col7",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "row0",
       "x": 60,
       "y": 8,
       "functions": []
     },
     {
-      "name": "3_out",
+      "name": "row1",
       "x": 60,
       "y": 13,
       "functions": []
     },
     {
-      "name": "4_pos",
+      "name": "row2",
       "x": 60,
       "y": 18,
       "functions": []
     },
     {
-      "name": "4_neg",
+      "name": "row3",
       "x": 60,
       "y": 23,
       "functions": []
     },
     {
-      "name": "4_out",
+      "name": "row4",
       "x": 60,
       "y": 28,
       "functions": []
     },
     {
-      "name": "vcc",
+      "name": "row5",
       "x": 60,
       "y": 33,
       "functions": []
     },
     {
-      "name": "gnd",
+      "name": "row6",
       "x": 60,
       "y": 38,
+      "functions": []
+    },
+    {
+      "name": "row7",
+      "x": 60,
+      "y": 43,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "LM339 quad comparator. DIP-14. Four independent comparators with open-collector outputs.",
+  "_note": "8x8 LED matrix (bare, no driver). DIP-16. 8 column cathodes + 8 row anodes.",
   "footprint": {
-    "refTerminal": "1_pos",
+    "refTerminal": "col0",
     "leads": {
-      "1_pos": {
+      "col0": {
         "dRow": 0,
         "dCol": 0
       },
-      "1_neg": {
+      "col1": {
         "dRow": 0,
         "dCol": 1
       },
-      "1_out": {
+      "col2": {
         "dRow": 0,
         "dCol": 2
       },
-      "2_pos": {
+      "col3": {
         "dRow": 0,
         "dCol": 3
       },
-      "2_neg": {
+      "col4": {
         "dRow": 0,
         "dCol": 4
       },
-      "2_out": {
+      "col5": {
         "dRow": 0,
         "dCol": 5
       },
-      "3_pos": {
+      "col6": {
         "dRow": 0,
         "dCol": 6
       },
-      "3_neg": {
+      "col7": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "row0": {
         "dRow": 5,
         "dCol": 0
       },
-      "3_out": {
+      "row1": {
         "dRow": 5,
         "dCol": 1
       },
-      "4_pos": {
+      "row2": {
         "dRow": 5,
         "dCol": 2
       },
-      "4_neg": {
+      "row3": {
         "dRow": 5,
         "dCol": 3
       },
-      "4_out": {
+      "row4": {
         "dRow": 5,
         "dCol": 4
       },
-      "vcc": {
+      "row5": {
         "dRow": 5,
         "dCol": 5
       },
-      "gnd": {
+      "row6": {
         "dRow": 5,
         "dCol": 6
+      },
+      "row7": {
+        "dRow": 5,
+        "dCol": 7
       }
     },
     "straddlesGutter": true,
-    "minCols": 7
+    "minCols": 8
   }
 }

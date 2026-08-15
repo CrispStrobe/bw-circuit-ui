@@ -1,0 +1,194 @@
+{
+  "kind": "eater6502",
+  "w": 80,
+  "h": 111,
+  "terminals": [
+    {
+      "name": "via1.pa0",
+      "x": 8,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pa1",
+      "x": 16,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pa2",
+      "x": 24,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pa3",
+      "x": 32,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pa4",
+      "x": 40,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pa5",
+      "x": 48,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pa6",
+      "x": 56,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pa7",
+      "x": 64,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pb0",
+      "x": 72,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pb1",
+      "x": 80,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pb2",
+      "x": 80,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pb3",
+      "x": 80,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pb4",
+      "x": 80,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pb5",
+      "x": 80,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pb6",
+      "x": 80,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "via1.pb7",
+      "x": 80,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "5v",
+      "x": 80,
+      "y": 111,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 80,
+      "y": 111,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Ben Eater 6502 breadboard computer preset. Board-level part: W65C02+W65C22+28C256+62256 as a single composite. VIA1 ports PA0-PA7 and PB0-PB7 exposed, plus 5V/GND.",
+  "footprint": {
+    "refTerminal": "via1.pa0",
+    "leads": {
+      "via1.pa0": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "via1.pa1": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "via1.pa2": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "via1.pa3": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "via1.pa4": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "via1.pa5": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "via1.pa6": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "via1.pa7": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "via1.pb0": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "via1.pb1": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "via1.pb2": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "via1.pb3": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "via1.pb4": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "via1.pb5": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "via1.pb6": {
+        "dRow": 0,
+        "dCol": 14
+      },
+      "via1.pb7": {
+        "dRow": 0,
+        "dCol": 15
+      },
+      "5v": {
+        "dRow": 0,
+        "dCol": 16
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 17
+      }
+    }
+  }
+}

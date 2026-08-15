@@ -1,0 +1,94 @@
+{
+  "kind": "tcs3200",
+  "w": 56,
+  "h": 45,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 8,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 16,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "s0",
+      "x": 24,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "s1",
+      "x": 32,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "s2",
+      "x": 40,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "s3",
+      "x": 48,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "oe",
+      "x": 56,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "out",
+      "x": 56,
+      "y": 45,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "TCS3200 color sensor module. 8-terminal: VCC, GND, S0-S3 (frequency scaling/filter), OE, OUT.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "s0": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "s1": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "s2": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "s3": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "oe": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "out": {
+        "dRow": 0,
+        "dCol": 7
+      }
+    }
+  }
+}

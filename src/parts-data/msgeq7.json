@@ -1,0 +1,64 @@
+{
+  "kind": "msgeq7",
+  "w": 48,
+  "h": 45,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 8,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 16,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "strobe",
+      "x": 24,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "reset",
+      "x": 32,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "out",
+      "x": 40,
+      "y": 45,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "MSGEQ7 graphic equalizer display filter IC. 5-terminal: VCC, GND, STROBE, RESET, OUT (analog).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "strobe": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "reset": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "out": {
+        "dRow": 0,
+        "dCol": 4
+      }
+    }
+  }
+}

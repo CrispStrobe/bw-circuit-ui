@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 36" width="20" height="36">
+  <!-- PHOTOTRANSISTOR — bench-style -->
+  <rect x="4" y="8" width="12" height="20" rx="3" fill="#1a1a1a" stroke="#333" stroke-width="0.6"/>
+  <text x="10" y="18" text-anchor="middle" font-family="monospace" font-size="3" fill="#aaa">PHOTOTRANSIS</text>
+  <line x1="10" y1="0" x2="10" y2="8" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="10" cy="0" r="1.5" fill="#c0c0c0"/>
+  <line x1="10" y1="28" x2="10" y2="36" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="10" cy="36" r="1.5" fill="#c0c0c0"/>
+</svg>

@@ -1,76 +1,76 @@
 {
-  "kind": "lm339",
+  "kind": "timer_556",
   "w": 60,
   "h": 48,
   "terminals": [
     {
-      "name": "1_pos",
+      "name": "1_trigger",
       "x": 0,
       "y": 8,
       "functions": []
     },
     {
-      "name": "1_neg",
+      "name": "1_threshold",
       "x": 0,
       "y": 13,
       "functions": []
     },
     {
-      "name": "1_out",
+      "name": "1_control",
       "x": 0,
       "y": 18,
       "functions": []
     },
     {
-      "name": "2_pos",
+      "name": "1_discharge",
       "x": 0,
       "y": 23,
       "functions": []
     },
     {
-      "name": "2_neg",
+      "name": "1_output",
       "x": 0,
       "y": 28,
       "functions": []
     },
     {
-      "name": "2_out",
+      "name": "1_reset",
       "x": 0,
       "y": 33,
       "functions": []
     },
     {
-      "name": "3_pos",
+      "name": "2_trigger",
       "x": 0,
       "y": 38,
       "functions": []
     },
     {
-      "name": "3_neg",
+      "name": "2_threshold",
       "x": 60,
       "y": 8,
       "functions": []
     },
     {
-      "name": "3_out",
+      "name": "2_control",
       "x": 60,
       "y": 13,
       "functions": []
     },
     {
-      "name": "4_pos",
+      "name": "2_discharge",
       "x": 60,
       "y": 18,
       "functions": []
     },
     {
-      "name": "4_neg",
+      "name": "2_output",
       "x": 60,
       "y": 23,
       "functions": []
     },
     {
-      "name": "4_out",
+      "name": "2_reset",
       "x": 60,
       "y": 28,
       "functions": []
@@ -89,55 +89,55 @@
     }
   ],
   "variants": null,
-  "_note": "LM339 quad comparator. DIP-14. Four independent comparators with open-collector outputs.",
+  "_note": "Dual 555 timer (556). DIP-14. Two independent timer sections with shared VCC/GND.",
   "footprint": {
-    "refTerminal": "1_pos",
+    "refTerminal": "1_trigger",
     "leads": {
-      "1_pos": {
+      "1_trigger": {
         "dRow": 0,
         "dCol": 0
       },
-      "1_neg": {
+      "1_threshold": {
         "dRow": 0,
         "dCol": 1
       },
-      "1_out": {
+      "1_control": {
         "dRow": 0,
         "dCol": 2
       },
-      "2_pos": {
+      "1_discharge": {
         "dRow": 0,
         "dCol": 3
       },
-      "2_neg": {
+      "1_output": {
         "dRow": 0,
         "dCol": 4
       },
-      "2_out": {
+      "1_reset": {
         "dRow": 0,
         "dCol": 5
       },
-      "3_pos": {
+      "2_trigger": {
         "dRow": 0,
         "dCol": 6
       },
-      "3_neg": {
+      "2_threshold": {
         "dRow": 5,
         "dCol": 0
       },
-      "3_out": {
+      "2_control": {
         "dRow": 5,
         "dCol": 1
       },
-      "4_pos": {
+      "2_discharge": {
         "dRow": 5,
         "dCol": 2
       },
-      "4_neg": {
+      "2_output": {
         "dRow": 5,
         "dCol": 3
       },
-      "4_out": {
+      "2_reset": {
         "dRow": 5,
         "dCol": 4
       },

@@ -1,156 +1,196 @@
 {
-  "kind": "lm339",
+  "kind": "darlington_driver",
   "w": 60,
   "h": 48,
   "terminals": [
     {
-      "name": "1_pos",
+      "name": "in0",
       "x": 0,
       "y": 8,
       "functions": []
     },
     {
-      "name": "1_neg",
+      "name": "in1",
       "x": 0,
       "y": 13,
       "functions": []
     },
     {
-      "name": "1_out",
+      "name": "in2",
       "x": 0,
       "y": 18,
       "functions": []
     },
     {
-      "name": "2_pos",
+      "name": "in3",
       "x": 0,
       "y": 23,
       "functions": []
     },
     {
-      "name": "2_neg",
+      "name": "in4",
       "x": 0,
       "y": 28,
       "functions": []
     },
     {
-      "name": "2_out",
+      "name": "in5",
       "x": 0,
       "y": 33,
       "functions": []
     },
     {
-      "name": "3_pos",
+      "name": "in6",
       "x": 0,
       "y": 38,
       "functions": []
     },
     {
-      "name": "3_neg",
+      "name": "in7",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "out0",
+      "x": 0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "out1",
       "x": 60,
       "y": 8,
       "functions": []
     },
     {
-      "name": "3_out",
+      "name": "out2",
       "x": 60,
       "y": 13,
       "functions": []
     },
     {
-      "name": "4_pos",
+      "name": "out3",
       "x": 60,
       "y": 18,
       "functions": []
     },
     {
-      "name": "4_neg",
+      "name": "out4",
       "x": 60,
       "y": 23,
       "functions": []
     },
     {
-      "name": "4_out",
+      "name": "out5",
       "x": 60,
       "y": 28,
       "functions": []
     },
     {
-      "name": "vcc",
+      "name": "out6",
       "x": 60,
       "y": 33,
+      "functions": []
+    },
+    {
+      "name": "out7",
+      "x": 60,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "com",
+      "x": 60,
+      "y": 43,
       "functions": []
     },
     {
       "name": "gnd",
       "x": 60,
-      "y": 38,
+      "y": 48,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "LM339 quad comparator. DIP-14. Four independent comparators with open-collector outputs.",
+  "_note": "ULN2003/2803 Darlington driver array. DIP-18. 8 channels: IN0-IN7 inputs, OUT0-OUT7 open-collector outputs, COM (flyback diode common).",
   "footprint": {
-    "refTerminal": "1_pos",
+    "refTerminal": "in0",
     "leads": {
-      "1_pos": {
+      "in0": {
         "dRow": 0,
         "dCol": 0
       },
-      "1_neg": {
+      "in1": {
         "dRow": 0,
         "dCol": 1
       },
-      "1_out": {
+      "in2": {
         "dRow": 0,
         "dCol": 2
       },
-      "2_pos": {
+      "in3": {
         "dRow": 0,
         "dCol": 3
       },
-      "2_neg": {
+      "in4": {
         "dRow": 0,
         "dCol": 4
       },
-      "2_out": {
+      "in5": {
         "dRow": 0,
         "dCol": 5
       },
-      "3_pos": {
+      "in6": {
         "dRow": 0,
         "dCol": 6
       },
-      "3_neg": {
+      "in7": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "out0": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "out1": {
         "dRow": 5,
         "dCol": 0
       },
-      "3_out": {
+      "out2": {
         "dRow": 5,
         "dCol": 1
       },
-      "4_pos": {
+      "out3": {
         "dRow": 5,
         "dCol": 2
       },
-      "4_neg": {
+      "out4": {
         "dRow": 5,
         "dCol": 3
       },
-      "4_out": {
+      "out5": {
         "dRow": 5,
         "dCol": 4
       },
-      "vcc": {
+      "out6": {
         "dRow": 5,
         "dCol": 5
+      },
+      "out7": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "com": {
+        "dRow": 5,
+        "dCol": 7
       },
       "gnd": {
         "dRow": 5,
-        "dCol": 6
+        "dCol": 8
       }
     },
     "straddlesGutter": true,
-    "minCols": 7
+    "minCols": 9
   }
 }

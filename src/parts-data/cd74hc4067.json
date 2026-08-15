@@ -1,0 +1,256 @@
+{
+  "kind": "cd74hc4067",
+  "w": 70,
+  "h": 71,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "s0",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "s1",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "s2",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "s3",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "eb",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "z",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "c0",
+      "x": 0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "c1",
+      "x": 0,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "c2",
+      "x": 0,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "c3",
+      "x": 0,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "c4",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "c5",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "c6",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "c7",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "c8",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "c9",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "c10",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "c11",
+      "x": 70,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "c12",
+      "x": 70,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "c13",
+      "x": 70,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "c14",
+      "x": 70,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "c15",
+      "x": 70,
+      "y": 63,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "CD74HC4067 16-channel analog multiplexer. DIP-24. 4-bit select S0-S3, enable EB (active low), common Z, 16 channels C0-C15.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "s0": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "s1": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "s2": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "s3": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "eb": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "z": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "c0": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "c1": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "c2": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "c3": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "c4": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "c5": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "c6": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "c7": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "c8": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "c9": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "c10": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "c11": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "c12": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "c13": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "c14": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "c15": {
+        "dRow": 5,
+        "dCol": 11
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 12
+  }
+}

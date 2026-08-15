@@ -1,0 +1,94 @@
+{
+  "kind": "nrf24l01",
+  "w": 64,
+  "h": 45,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 8,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 16,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "ce",
+      "x": 24,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "csn",
+      "x": 32,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "sck",
+      "x": 40,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "mosi",
+      "x": 48,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "miso",
+      "x": 56,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "irq",
+      "x": 64,
+      "y": 45,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "nRF24L01 2.4GHz wireless transceiver module. 8-terminal: VCC, GND, CE, CSN, SCK, MOSI, MISO, IRQ. SPI interface.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "ce": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "csn": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "sck": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "mosi": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "miso": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "irq": {
+        "dRow": 0,
+        "dCol": 7
+      }
+    }
+  }
+}

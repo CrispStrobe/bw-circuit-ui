@@ -1,91 +1,91 @@
 {
-  "kind": "lm393",
-  "w": 60,
-  "h": 48,
+  "kind": "dip_switch",
+  "w": 40,
+  "h": 30,
   "terminals": [
     {
-      "name": "1_pos",
+      "name": "s0_a",
       "x": 0,
       "y": 8,
       "functions": []
     },
     {
-      "name": "1_neg",
+      "name": "s1_a",
       "x": 0,
       "y": 13,
       "functions": []
     },
     {
-      "name": "1_out",
+      "name": "s2_a",
       "x": 0,
       "y": 18,
       "functions": []
     },
     {
-      "name": "2_pos",
+      "name": "s3_a",
       "x": 0,
       "y": 23,
       "functions": []
     },
     {
-      "name": "2_neg",
-      "x": 60,
+      "name": "s0_b",
+      "x": 40,
       "y": 8,
       "functions": []
     },
     {
-      "name": "2_out",
-      "x": 60,
+      "name": "s1_b",
+      "x": 40,
       "y": 13,
       "functions": []
     },
     {
-      "name": "vcc",
-      "x": 60,
+      "name": "s2_b",
+      "x": 40,
       "y": 18,
       "functions": []
     },
     {
-      "name": "gnd",
-      "x": 60,
+      "name": "s3_b",
+      "x": 40,
       "y": 23,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "LM393 dual comparator. DIP-8. Two independent comparators with open-collector outputs.",
+  "_note": "DIP switch 4-position. 8-terminal: S0_A/B, S1_A/B, S2_A/B, S3_A/B.",
   "footprint": {
-    "refTerminal": "1_pos",
+    "refTerminal": "s0_a",
     "leads": {
-      "1_pos": {
+      "s0_a": {
         "dRow": 0,
         "dCol": 0
       },
-      "1_neg": {
+      "s1_a": {
         "dRow": 0,
         "dCol": 1
       },
-      "1_out": {
+      "s2_a": {
         "dRow": 0,
         "dCol": 2
       },
-      "2_pos": {
+      "s3_a": {
         "dRow": 0,
         "dCol": 3
       },
-      "2_neg": {
+      "s0_b": {
         "dRow": 5,
         "dCol": 0
       },
-      "2_out": {
+      "s1_b": {
         "dRow": 5,
         "dCol": 1
       },
-      "vcc": {
+      "s2_b": {
         "dRow": 5,
         "dCol": 2
       },
-      "gnd": {
+      "s3_b": {
         "dRow": 5,
         "dCol": 3
       }

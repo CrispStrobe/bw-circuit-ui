@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 48" width="60" height="48">
+  <!-- MCP3008 — bench-style -->
+  <rect x="4" y="4" width="52" height="40" rx="2" fill="#303030" stroke="#1a1a1a" stroke-width="0.8"/>
+  <text x="30" y="24" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#aaa">MCP3008</text>
+  <line x1="0" y1="8" x2="4" y2="8" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="0" cy="8" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="13" x2="4" y2="13" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="0" cy="13" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="18" x2="4" y2="18" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="0" cy="18" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="23" x2="4" y2="23" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="0" cy="23" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="28" x2="4" y2="28" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="0" cy="28" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="33" x2="4" y2="33" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="0" cy="33" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="38" x2="4" y2="38" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="0" cy="38" r="1.5" fill="#c0c0c0"/>
+  <line x1="56" y1="8" x2="60" y2="8" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="60" cy="8" r="1.5" fill="#c0c0c0"/>
+  <line x1="56" y1="13" x2="60" y2="13" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="60" cy="13" r="1.5" fill="#c0c0c0"/>
+  <line x1="56" y1="18" x2="60" y2="18" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="60" cy="18" r="1.5" fill="#c0c0c0"/>
+  <line x1="56" y1="23" x2="60" y2="23" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="60" cy="23" r="1.5" fill="#c0c0c0"/>
+  <line x1="56" y1="28" x2="60" y2="28" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="60" cy="28" r="1.5" fill="#c0c0c0"/>
+  <line x1="56" y1="33" x2="60" y2="33" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="60" cy="33" r="1.5" fill="#c0c0c0"/>
+  <line x1="56" y1="38" x2="60" y2="38" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="60" cy="38" r="1.5" fill="#c0c0c0"/>
+  <line x1="56" y1="43" x2="60" y2="43" stroke="#aaa" stroke-width="1.2"/>
+  <circle cx="60" cy="43" r="1.5" fill="#c0c0c0"/>
+</svg>

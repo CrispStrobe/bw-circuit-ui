@@ -1,0 +1,126 @@
+{
+  "kind": "level_shifter4",
+  "w": 56,
+  "h": 35,
+  "terminals": [
+    {
+      "name": "lv",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "lv1",
+      "x": 0,
+      "y": 14,
+      "functions": []
+    },
+    {
+      "name": "lv2",
+      "x": 0,
+      "y": 20,
+      "functions": []
+    },
+    {
+      "name": "lv3",
+      "x": 0,
+      "y": 26,
+      "functions": []
+    },
+    {
+      "name": "lv4",
+      "x": 0,
+      "y": 32,
+      "functions": []
+    },
+    {
+      "name": "hv",
+      "x": 56,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "hv1",
+      "x": 56,
+      "y": 14,
+      "functions": []
+    },
+    {
+      "name": "hv2",
+      "x": 56,
+      "y": 20,
+      "functions": []
+    },
+    {
+      "name": "hv3",
+      "x": 56,
+      "y": 26,
+      "functions": []
+    },
+    {
+      "name": "hv4",
+      "x": 56,
+      "y": 32,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 28,
+      "y": 35,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Bi-directional 4-channel logic level shifter module. 11-terminal: LV (low-voltage ref), HV (high-voltage ref), GND, LV1-LV4, HV1-HV4.",
+  "footprint": {
+    "refTerminal": "lv",
+    "leads": {
+      "lv": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "lv1": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "lv2": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "lv3": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "lv4": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "hv": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "hv1": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "hv2": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "hv3": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "hv4": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "gnd": {
+        "dRow": 3,
+        "dCol": 2
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 5
+  }
+}

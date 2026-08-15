@@ -1,51 +1,51 @@
 {
-  "kind": "usb_a",
+  "kind": "hx711",
   "w": 40,
-  "h": 30,
+  "h": 45,
   "terminals": [
     {
-      "name": "vbus",
+      "name": "vcc",
       "x": 8,
-      "y": 30,
-      "functions": []
-    },
-    {
-      "name": "dm",
-      "x": 16,
-      "y": 30,
-      "functions": []
-    },
-    {
-      "name": "dp",
-      "x": 24,
-      "y": 30,
+      "y": 45,
       "functions": []
     },
     {
       "name": "gnd",
+      "x": 16,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "dout",
+      "x": 24,
+      "y": 45,
+      "functions": []
+    },
+    {
+      "name": "sck",
       "x": 32,
-      "y": 30,
+      "y": 45,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "USB Type-A connector. 4-terminal: VBUS (+5V), D-, D+, GND.",
+  "_note": "HX711 24-bit ADC load cell amplifier module. 4-terminal: VCC, GND, DOUT, SCK.",
   "footprint": {
-    "refTerminal": "vbus",
+    "refTerminal": "vcc",
     "leads": {
-      "vbus": {
+      "vcc": {
         "dRow": 0,
         "dCol": 0
       },
-      "dm": {
+      "gnd": {
         "dRow": 0,
         "dCol": 1
       },
-      "dp": {
+      "dout": {
         "dRow": 0,
         "dCol": 2
       },
-      "gnd": {
+      "sck": {
         "dRow": 0,
         "dCol": 3
       }

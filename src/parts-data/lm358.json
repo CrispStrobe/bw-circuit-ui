@@ -1,91 +1,91 @@
 {
-  "kind": "lm393",
+  "kind": "lm358",
   "w": 60,
   "h": 48,
   "terminals": [
     {
-      "name": "1_pos",
+      "name": "vcc",
       "x": 0,
       "y": 8,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "1_pos",
+      "x": 0,
+      "y": 18,
       "functions": []
     },
     {
       "name": "1_neg",
       "x": 0,
-      "y": 13,
-      "functions": []
-    },
-    {
-      "name": "1_out",
-      "x": 0,
-      "y": 18,
-      "functions": []
-    },
-    {
-      "name": "2_pos",
-      "x": 0,
       "y": 23,
       "functions": []
     },
     {
-      "name": "2_neg",
+      "name": "1_out",
       "x": 60,
       "y": 8,
       "functions": []
     },
     {
-      "name": "2_out",
+      "name": "2_pos",
       "x": 60,
       "y": 13,
       "functions": []
     },
     {
-      "name": "vcc",
+      "name": "2_neg",
       "x": 60,
       "y": 18,
       "functions": []
     },
     {
-      "name": "gnd",
+      "name": "2_out",
       "x": 60,
       "y": 23,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "LM393 dual comparator. DIP-8. Two independent comparators with open-collector outputs.",
+  "_note": "LM358 dual operational amplifier. DIP-8. Two independent op-amps.",
   "footprint": {
-    "refTerminal": "1_pos",
+    "refTerminal": "vcc",
     "leads": {
-      "1_pos": {
+      "vcc": {
         "dRow": 0,
         "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "1_pos": {
+        "dRow": 0,
+        "dCol": 2
       },
       "1_neg": {
         "dRow": 0,
-        "dCol": 1
-      },
-      "1_out": {
-        "dRow": 0,
-        "dCol": 2
-      },
-      "2_pos": {
-        "dRow": 0,
         "dCol": 3
       },
-      "2_neg": {
+      "1_out": {
         "dRow": 5,
         "dCol": 0
       },
-      "2_out": {
+      "2_pos": {
         "dRow": 5,
         "dCol": 1
       },
-      "vcc": {
+      "2_neg": {
         "dRow": 5,
         "dCol": 2
       },
-      "gnd": {
+      "2_out": {
         "dRow": 5,
         "dCol": 3
       }

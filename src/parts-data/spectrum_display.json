@@ -1,31 +1,31 @@
 {
-  "kind": "solar_cell",
+  "kind": "spectrum_display",
   "w": 50,
   "h": 40,
   "terminals": [
     {
-      "name": "pos",
-      "x": 10,
+      "name": "vcc",
+      "x": 15,
       "y": 40,
       "functions": []
     },
     {
-      "name": "neg",
-      "x": 40,
+      "name": "gnd",
+      "x": 35,
       "y": 40,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "Solar cell / photovoltaic panel. 2-terminal: pos, neg.",
+  "_note": "Spectrum analyzer display. 2-terminal: VCC, GND. Rendering driven by params.levels, not physical data pins.",
   "footprint": {
-    "refTerminal": "pos",
+    "refTerminal": "vcc",
     "leads": {
-      "pos": {
+      "vcc": {
         "dRow": 0,
         "dCol": 0
       },
-      "neg": {
+      "gnd": {
         "dRow": 0,
         "dCol": 1
       }

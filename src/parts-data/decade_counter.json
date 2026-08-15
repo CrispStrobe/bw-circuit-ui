@@ -1,151 +1,151 @@
 {
-  "kind": "lm339",
+  "kind": "decade_counter",
   "w": 60,
   "h": 48,
   "terminals": [
     {
-      "name": "1_pos",
+      "name": "clk",
       "x": 0,
       "y": 8,
       "functions": []
     },
     {
-      "name": "1_neg",
+      "name": "rst",
       "x": 0,
       "y": 13,
       "functions": []
     },
     {
-      "name": "1_out",
+      "name": "en",
       "x": 0,
       "y": 18,
       "functions": []
     },
     {
-      "name": "2_pos",
+      "name": "q0",
       "x": 0,
       "y": 23,
       "functions": []
     },
     {
-      "name": "2_neg",
+      "name": "q1",
       "x": 0,
       "y": 28,
       "functions": []
     },
     {
-      "name": "2_out",
+      "name": "q2",
       "x": 0,
       "y": 33,
       "functions": []
     },
     {
-      "name": "3_pos",
+      "name": "q3",
       "x": 0,
       "y": 38,
       "functions": []
     },
     {
-      "name": "3_neg",
+      "name": "q4",
       "x": 60,
       "y": 8,
       "functions": []
     },
     {
-      "name": "3_out",
+      "name": "q5",
       "x": 60,
       "y": 13,
       "functions": []
     },
     {
-      "name": "4_pos",
+      "name": "q6",
       "x": 60,
       "y": 18,
       "functions": []
     },
     {
-      "name": "4_neg",
+      "name": "q7",
       "x": 60,
       "y": 23,
       "functions": []
     },
     {
-      "name": "4_out",
+      "name": "q8",
       "x": 60,
       "y": 28,
       "functions": []
     },
     {
-      "name": "vcc",
+      "name": "q9",
       "x": 60,
       "y": 33,
       "functions": []
     },
     {
-      "name": "gnd",
+      "name": "co",
       "x": 60,
       "y": 38,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "LM339 quad comparator. DIP-14. Four independent comparators with open-collector outputs.",
+  "_note": "CD4017 decade counter / divider. DIP-16. 10 decoded outputs Q0-Q9, carry out CO.",
   "footprint": {
-    "refTerminal": "1_pos",
+    "refTerminal": "clk",
     "leads": {
-      "1_pos": {
+      "clk": {
         "dRow": 0,
         "dCol": 0
       },
-      "1_neg": {
+      "rst": {
         "dRow": 0,
         "dCol": 1
       },
-      "1_out": {
+      "en": {
         "dRow": 0,
         "dCol": 2
       },
-      "2_pos": {
+      "q0": {
         "dRow": 0,
         "dCol": 3
       },
-      "2_neg": {
+      "q1": {
         "dRow": 0,
         "dCol": 4
       },
-      "2_out": {
+      "q2": {
         "dRow": 0,
         "dCol": 5
       },
-      "3_pos": {
+      "q3": {
         "dRow": 0,
         "dCol": 6
       },
-      "3_neg": {
+      "q4": {
         "dRow": 5,
         "dCol": 0
       },
-      "3_out": {
+      "q5": {
         "dRow": 5,
         "dCol": 1
       },
-      "4_pos": {
+      "q6": {
         "dRow": 5,
         "dCol": 2
       },
-      "4_neg": {
+      "q7": {
         "dRow": 5,
         "dCol": 3
       },
-      "4_out": {
+      "q8": {
         "dRow": 5,
         "dCol": 4
       },
-      "vcc": {
+      "q9": {
         "dRow": 5,
         "dCol": 5
       },
-      "gnd": {
+      "co": {
         "dRow": 5,
         "dCol": 6
       }
