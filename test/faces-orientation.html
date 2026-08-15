@@ -1,0 +1,20 @@
+<!doctype html>
+<html><head><title>Orientation input test</title></head>
+<body>
+<div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { OrientationInput } from '../src/components/OrientationInput.jsx';
+
+window.__paramCalls = [];
+const onSetParam = (partId, key, value) => {
+  window.__paramCalls.push({ partId, key, value });
+};
+
+const root = createRoot(document.getElementById('root'));
+root.render(React.createElement(OrientationInput, { partId: 'accel1', onSetParam }));
+window.__orientReady = true;
+</script>
+</body>
+</html>

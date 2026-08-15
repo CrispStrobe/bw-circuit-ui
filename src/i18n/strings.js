@@ -131,6 +131,23 @@ const STRINGS = {
   extractNote:         { en: 'Note:', de: 'Hinweis:' },
   noRetroChips:        { en: 'No retro CPU found — place a W65C02 or Z80 with address-decoded memory and I/O chips.', de: 'Keine Retro-CPU gefunden — W65C02 oder Z80 mit adressdekodiertem Speicher und E/A-Chips platzieren.' },
 
+  // ── Orientation input face ────────────────────────────────────────
+  orientation:         { en: 'Orientation', de: 'Orientierung' },
+  orientDrag:          { en: 'Drag', de: 'Ziehen' },
+  orientSliders:       { en: 'Sliders', de: 'Regler' },
+
+  // ── MIDI monitor ──────────────────────────────────────────────────
+  midiMonitor:         { en: 'MIDI Monitor', de: 'MIDI-Monitor' },
+  midiNoteOn:          { en: 'Note ON', de: 'Note EIN' },
+  midiNoteOff:         { en: 'Note OFF', de: 'Note AUS' },
+  midiNoData:          { en: 'No MIDI data — connect TX at 31250 baud', de: 'Keine MIDI-Daten — TX mit 31250 Baud verbinden' },
+
+  // ── Stimulus controls ─────────────────────────────────────────────
+  stimKnockTap:        { en: 'Tap', de: 'Klopfen' },
+  stimKnockTitle:      { en: 'Simulate a knock/tap on the piezo sensor', de: 'Klopfen/Antippen am Piezosensor simulieren' },
+  stimDistance:        { en: 'Distance', de: 'Entfernung' },
+  stimDistanceTitle:   { en: 'Set ultrasonic target distance (cm)', de: 'Ultraschall-Zielentfernung einstellen (cm)' },
+
   // ── Instruments panel sections ─────────────────────────────────────
   debugger:            { en: 'Debugger', de: 'Debugger' },
   debuggerInactive:    { en: 'Debugger inactive', de: 'Debugger inaktiv' },

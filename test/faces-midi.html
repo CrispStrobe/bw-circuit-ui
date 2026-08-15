@@ -1,0 +1,26 @@
+<!doctype html>
+<html><head><title>MIDI monitor test</title></head>
+<body>
+<div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { MidiMonitor } from '../src/components/MidiMonitor.jsx';
+
+// Simulate MIDI data arriving: Note On C4 (channel 0, note 60, velocity 100)
+// then Note Off C4.
+const queue = [];
+window.__pushMidi = (bytes) => queue.push(...bytes);
+
+const serialDataFn = () => {
+  if (queue.length === 0) return [];
+  const out = queue.splice(0, queue.length);
+  return out;
+};
+
+const root = createRoot(document.getElementById('root'));
+root.render(React.createElement(MidiMonitor, { serialDataFn }));
+window.__midiReady = true;
+</script>
+</body>
+</html>

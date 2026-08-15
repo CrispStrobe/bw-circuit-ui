@@ -58,6 +58,8 @@ import { DebugStatus } from './DebugStatus.jsx';
 import { VdpScreen } from './VdpScreen.jsx';
 import { Circuit } from '../model/circuit.js';
 import { extractMachine } from '../model/machine-extract.js';
+import { OrientationInput } from './OrientationInput.jsx';
+import { StimulusControls } from './StimulusControls.jsx';
 import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { buildSeatedFromDeclarations } from '../model/infer-seated.js';
@@ -1220,6 +1222,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         </div>
         {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} lang={lang} /></div>}
         {showMeter && <div data-meter-module style={{width: 280, flex: '0 0 auto'}}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} lang={lang} /></div>}
+        {/* Orientation input — for accelerometer parts (mpu6050, adxl335, memsic2125) */}
+        {parts.filter(p => ['mpu6050', 'adxl335', 'memsic2125'].includes(p.kind)).map(p => (
+          <OrientationInput key={p.id} partId={p.id} lang={lang}
+            onSetParam={(id, key, val) => { if (circuit?.board?.setDeviceParam) circuit.board.setDeviceParam(id, key, val); }} />
+        ))}
+        {/* Stimulus controls — knock/tap and distance for sensors without fabric controls */}
+        <StimulusControls parts={parts} lang={lang}
+          onSetParam={(id, key, val) => { if (circuit?.board?.setDeviceParam) circuit.board.setDeviceParam(id, key, val); }} />
         </div>
       </div>
       ) : (

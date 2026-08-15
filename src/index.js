@@ -37,6 +37,9 @@ export { DrcPanel } from './components/DrcPanel.jsx';
 export { BomPanel } from './components/BomPanel.jsx';
 export { ExamplesBrowser } from './components/ExamplesBrowser.jsx';
 export { VdpScreen } from './components/VdpScreen.jsx';
+export { OrientationInput } from './components/OrientationInput.jsx';
+export { MidiMonitor } from './components/MidiMonitor.jsx';
+export { StimulusControls } from './components/StimulusControls.jsx';
 
 // Panel data functions
 export { runDrc, setExtractors } from './model/drc.js';
