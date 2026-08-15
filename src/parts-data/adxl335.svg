@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 45" width="56" height="45">
+  <!-- ADXL335 3-Axis Accelerometer Module — bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="2" width="52" height="31" rx="2" fill="#1a1a6b" stroke="#0d0d4d" stroke-width="0.8"/>
+  <!-- ADXL335 LFCSP package -->
+  <rect x="14" y="6" width="16" height="16" rx="1" fill="#303030" stroke="#1a1a1a" stroke-width="0.6"/>
+  <circle cx="18" cy="10" r="0.8" fill="#555"/>
+  <text x="22" y="15" text-anchor="middle" font-family="monospace" font-size="3" fill="#aaa">ADXL</text>
+  <text x="22" y="19" text-anchor="middle" font-family="monospace" font-size="3" fill="#aaa">335</text>
+  <!-- Decoupling caps -->
+  <rect x="34" y="8" width="4" height="2" rx="0.5" fill="#c89632" stroke="#8a6a20" stroke-width="0.3"/>
+  <rect x="34" y="14" width="4" height="2" rx="0.5" fill="#c89632" stroke="#8a6a20" stroke-width="0.3"/>
+  <rect x="34" y="20" width="4" height="2" rx="0.5" fill="#c89632" stroke="#8a6a20" stroke-width="0.3"/>
+  <!-- Axis markers -->
+  <line x1="44" y1="26" x2="44" y2="20" stroke="#44aa44" stroke-width="0.6"/>
+  <text x="44" y="19" text-anchor="middle" font-family="monospace" font-size="2" fill="#44aa44">Y</text>
+  <line x1="44" y1="26" x2="49" y2="26" stroke="#aa4444" stroke-width="0.6"/>
+  <text x="50" y="27" font-family="monospace" font-size="2" fill="#aa4444">X</text>
+  <circle cx="44" cy="26" r="0.6" fill="#4444aa"/>
+  <text x="46" y="24" font-family="monospace" font-size="2" fill="#4444aa">Z</text>
+  <!-- Label -->
+  <text x="28" y="31" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#aaa">3-AXIS ACCEL</text>
+  <!-- 6 header pins: VCC GND XOUT YOUT ZOUT ST -->
+  <line x1="8" y1="33" x2="8" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="16" y1="33" x2="16" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="16" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="24" y1="33" x2="24" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="24" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="32" y1="33" x2="32" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="32" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="40" y1="33" x2="40" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="40" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="48" y1="33" x2="48" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="48" cy="45" r="1.5" fill="#c0c0c0"/>
+</svg>

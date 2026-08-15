@@ -1,0 +1,22 @@
+{
+  "kind": "memsic2125",
+  "w": 40,
+  "h": 45,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 45, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 45, "functions": [] },
+    { "name": "xout", "x": 24, "y": 45, "functions": [] },
+    { "name": "yout", "x": 32, "y": 45, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "Memsic MX2125 thermal 2-axis accelerometer. 4-pin: VCC, GND, XOUT, YOUT (PWM output: 100 Hz, 50% duty = 0g, 12.5%/g). The Arduino sketch's ((pulse/10)-500)*8 → mg formula inverts this exactly. Params: gx/gy in g (default 0/0 = flat). Terminal names match engine kind 'memsic2125' in bw-board src/devices/accelerometers.js.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc":  { "dRow": 0, "dCol": 0 },
+      "gnd":  { "dRow": 0, "dCol": 1 },
+      "xout": { "dRow": 0, "dCol": 2 },
+      "yout": { "dRow": 0, "dCol": 3 }
+    }
+  }
+}

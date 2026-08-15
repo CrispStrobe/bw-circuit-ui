@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 45" width="40" height="45">
+  <!-- Memsic 2125 2-Axis Accelerometer — bench-style module -->
+  <!-- PCB -->
+  <rect x="2" y="2" width="36" height="31" rx="2" fill="#1a6b1a" stroke="#0d4d0d" stroke-width="0.8"/>
+  <!-- MX2125 chip (small LCC package) -->
+  <rect x="10" y="6" width="20" height="16" rx="1" fill="#303030" stroke="#1a1a1a" stroke-width="0.6"/>
+  <circle cx="14" cy="10" r="0.8" fill="#555"/>
+  <text x="20" y="14" text-anchor="middle" font-family="monospace" font-size="3" fill="#aaa">MX</text>
+  <text x="20" y="18" text-anchor="middle" font-family="monospace" font-size="3" fill="#aaa">2125</text>
+  <!-- Thermal sensor icon (heat element) -->
+  <path d="M14 24 Q17 22 20 24 Q23 26 26 24" fill="none" stroke="#cc6600" stroke-width="0.6" opacity="0.6"/>
+  <!-- Axis markers -->
+  <line x1="32" y1="28" x2="32" y2="23" stroke="#44aa44" stroke-width="0.5"/>
+  <text x="32" y="22" text-anchor="middle" font-family="monospace" font-size="2" fill="#44aa44">Y</text>
+  <line x1="32" y1="28" x2="36" y2="28" stroke="#aa4444" stroke-width="0.5"/>
+  <text x="37" y="29" font-family="monospace" font-size="2" fill="#aa4444">X</text>
+  <!-- Label -->
+  <text x="20" y="31" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#aaa">2-AXIS PWM</text>
+  <!-- 4 header pins: VCC GND XOUT YOUT -->
+  <line x1="8" y1="33" x2="8" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="16" y1="33" x2="16" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="16" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="24" y1="33" x2="24" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="24" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="32" y1="33" x2="32" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="32" cy="45" r="1.5" fill="#c0c0c0"/>
+</svg>

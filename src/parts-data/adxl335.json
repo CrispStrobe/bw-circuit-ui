@@ -1,0 +1,26 @@
+{
+  "kind": "adxl335",
+  "w": 56,
+  "h": 45,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 45, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 45, "functions": [] },
+    { "name": "xout", "x": 24, "y": 45, "functions": [] },
+    { "name": "yout", "x": 32, "y": 45, "functions": [] },
+    { "name": "zout", "x": 40, "y": 45, "functions": [] },
+    { "name": "st", "x": 48, "y": 45, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "ADXL335 analog 3-axis accelerometer module (ADI ADXL335/3xx family). 6-pin: VCC, GND, XOUT, YOUT, ZOUT (ratiometric analog: 0g bias at Vs/2, sensitivity Vs/10 per g — 300 mV/g at 3V), ST (self-test, high adds -1.08g X / +1.08g Y / +1.83g Z). Params: gx/gy/gz in g (default 0/0/1 = flat on bench). ~32k output impedance. Terminal names match engine kind 'adxl335' in bw-board src/devices/accelerometers.js.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc":  { "dRow": 0, "dCol": 0 },
+      "gnd":  { "dRow": 0, "dCol": 1 },
+      "xout": { "dRow": 0, "dCol": 2 },
+      "yout": { "dRow": 0, "dCol": 3 },
+      "zout": { "dRow": 0, "dCol": 4 },
+      "st":   { "dRow": 0, "dCol": 5 }
+    }
+  }
+}
