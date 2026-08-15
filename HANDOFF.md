@@ -1,7 +1,8 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 819/0/3 (CI clean). 23/23 browser gate green. CI green.
-VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3. Snapshot drop: 3/3.
+npm test 852/0/3 (CI clean). 23/23 browser gate green. CI green.
+VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
+Snapshot drop: 3/3. Sensor faces: 3/3.
 Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -153,6 +154,10 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **Sensor faces** (62fc91c): OrientationInput (drag/sliders → {x,y,z} g
+  for adxl335/memsic2125/mpu6050), MidiMonitor (note-on/off from 31250
+  baud TX), StimulusControls (knock-tap impulse, distance slider for
+  ultrasonic). All wired in instruments column. Playwright 3/3.
 - **Snapshot drop-zone** (2ce27e1): drag .SNA or .Z80 onto VdpScreen to
   load into running Spectrum machine. Extension filter, visual feedback.
   Kempston joystick (bw-board 39a10cb) makes arrows/WASD drive archive
