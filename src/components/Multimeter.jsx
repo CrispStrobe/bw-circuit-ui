@@ -10,14 +10,12 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { createMeterState, readMeter } from '../model/multimeter.js';
+import { t } from '../i18n/strings.js';
 
 /**
- * @param {{ circuit, wires, parts, placingProbe, onStartPlacing, onStopPlacing }} props
- * - placingProbe: 'A'|'B'|null (from parent)
- * - onStartPlacing(which): tell parent we want to place a probe
- * - onStopPlacing(): tell parent we're done
+ * @param {{ circuit, wires, parts, placingProbe, onStartPlacing, onStopPlacing, lang?: string }} props
  */
-export function Multimeter({ circuit, wires, parts, placingProbe, onStartPlacing, onStopPlacing, probePlacement }) {
+export function Multimeter({ circuit, wires, parts, placingProbe, onStartPlacing, onStopPlacing, probePlacement, lang = 'en' }) {
   const [meter, setMeter] = useState(createMeterState);
 
   const setMode = useCallback((mode) => {
@@ -57,7 +55,7 @@ export function Multimeter({ circuit, wires, parts, placingProbe, onStartPlacing
       fontFamily: 'monospace',
     }}>
       <h3 style={{ color: '#ecf0f1', fontSize: '13px', marginBottom: '10px' }}>
-        Multimeter
+        {t('multimeter', lang)}
       </h3>
 
       {/* Mode selector */}
@@ -107,13 +105,13 @@ export function Multimeter({ circuit, wires, parts, placingProbe, onStartPlacing
       {reading.note && (
         <div style={{
           padding: '8px',
-          background: reading.note.includes('Turn power OFF') ? '#1a1a0e' : '#16213e',
-          border: `1px solid ${reading.note.includes('Turn power OFF') ? '#f39c12' : '#2c3e50'}`,
+          background: reading.note.includes('Turn power OFF') || reading.note.includes('Strom AUS') ? '#1a1a0e' : '#16213e',
+          border: `1px solid ${reading.note.includes('Turn power OFF') || reading.note.includes('Strom AUS') ? '#f39c12' : '#2c3e50'}`,
           borderRadius: '4px',
           marginBottom: '10px',
         }}>
           <div style={{
-            color: reading.note.includes('Turn power OFF') ? '#f39c12' : '#7f8c8d',
+            color: reading.note.includes('Turn power OFF') || reading.note.includes('Strom AUS') ? '#f39c12' : '#7f8c8d',
             fontSize: '10px',
             lineHeight: '1.4',
           }}>
@@ -125,7 +123,7 @@ export function Multimeter({ circuit, wires, parts, placingProbe, onStartPlacing
       {/* Probe placement */}
       <div style={{ marginBottom: '6px' }}>
         <div style={{ color: '#bdc3c7', fontSize: '10px', marginBottom: '4px' }}>
-          Probes:
+          {t('probes', lang)}
         </div>
         {['A', 'B'].map(which => {
           const probe = which === 'A' ? meter.probeA : meter.probeB;
@@ -150,19 +148,20 @@ export function Multimeter({ circuit, wires, parts, placingProbe, onStartPlacing
                 textAlign: 'left',
               }}
             >
-              Probe {which}:{' '}
+              {t('probeLabel', lang, { which })}
+              {' '}
               {isPlacing
-                ? 'click a terminal...'
+                ? t('clickTerminal', lang)
                 : hasPlacement
                   ? (probe.netId || `${probe.partId}:${probe.terminal}`)
-                  : 'not placed'}
+                  : t('notPlaced', lang)}
             </button>
           );
         })}
       </div>
 
       <div style={{ color: '#7f8c8d', fontSize: '9px', lineHeight: '1.3' }}>
-        All readings from engine.
+        {t('readingsFromEngine', lang)}
       </div>
     </div>
   );

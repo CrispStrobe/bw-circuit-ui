@@ -17,13 +17,13 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { t } from '../i18n/strings.js';
 
 const CHANNEL_COLORS = ['#2ecc71', '#3498db'];
 const W = 260;
 const H = 120;
-const V_MAX = 5.5; // volts full scale, a hair above VCC
 
-export function ScopePanel({ board, nets = [] }) {
+export function ScopePanel({ board, nets = [], lang = 'en' }) {
   const canvasRef = useRef(null);
   const [channels, setChannels] = useState([]); // [{netId, handle}]
   const [running, setRunning] = useState(true);
@@ -82,9 +82,7 @@ export function ScopePanel({ board, nets = [] }) {
         g.beginPath(); g.moveTo((W / 10) * i, 0); g.lineTo((W / 10) * i, H); g.stroke();
       }
 
-      // Auto-range across all channels' windows: a scope with a fixed
-      // 0..5.5 V scale clamps a floating (negative-voltage) net into a flat
-      // line at the bottom edge — real instruments range to the signal.
+      // Auto-range across all channels' windows
       let vLo = 0, vHi = 5;
       const chData = channels.map((c) => {
         try { return board.getScopeData(c.handle); } catch { return null; }
@@ -110,7 +108,6 @@ export function ScopePanel({ board, nets = [] }) {
         const { samples } = data;
         const depth = samples.length / 2;
         const win = Math.max(16, Math.floor(depth * windowFrac));
-        // Newest sample sits just before writeIndex; window ends there.
         const end = data.writeIndex;
         g.fillStyle = CHANNEL_COLORS[ci] + '55';
         g.strokeStyle = CHANNEL_COLORS[ci];
@@ -143,7 +140,7 @@ export function ScopePanel({ board, nets = [] }) {
       const d = board.getScopeData(channels[0].handle);
       const winNs = Number(d.sampleIntervalNs) * (d.samples.length / 2) * windowFrac;
       const ms = winNs / 1e6;
-      return ms >= 1 ? `${ms.toFixed(0)} ms window` : `${(winNs / 1e3).toFixed(0)} µs window`;
+      return ms >= 1 ? `${ms.toFixed(0)} ms` : `${(winNs / 1e3).toFixed(0)} µs`;
     } catch { return ''; }
   })();
 
@@ -154,18 +151,18 @@ export function ScopePanel({ board, nets = [] }) {
       width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflow: 'auto',
     }} data-scope-panel>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-        <strong style={{ color: '#ecf0f1', fontSize: '11px' }}>Oscilloscope</strong>
+        <strong style={{ color: '#ecf0f1', fontSize: '11px' }}>{t('oscilloscope', lang)}</strong>
         <span style={{ flex: 1 }} />
         <button onClick={() => setRunning(r => !r)} style={{
           background: running ? '#2c3e50' : '#e67e22', color: running ? '#2ecc71' : '#000',
           border: '1px solid #2c3e50', borderRadius: '3px', padding: '1px 8px',
           cursor: 'pointer', fontSize: '9px', fontFamily: 'monospace',
-        }}>{running ? 'RUN' : 'HOLD'}</button>
+        }}>{running ? t('scopeRun', lang) : t('scopeHold', lang)}</button>
         <select value={windowFrac} onChange={e => setWindowFrac(Number(e.target.value))}
           style={{ background: '#1a1a2e', color: '#7f8c8d', border: '1px solid #2c3e50', fontSize: '9px' }}>
-          <option value={1}>slow</option>
-          <option value={0.25}>medium</option>
-          <option value={0.05}>fast</option>
+          <option value={1}>{t('scopeSlow', lang)}</option>
+          <option value={0.25}>{t('scopeMedium', lang)}</option>
+          <option value={0.05}>{t('scopeFast', lang)}</option>
         </select>
       </div>
 
@@ -174,7 +171,7 @@ export function ScopePanel({ board, nets = [] }) {
           width: W, height: H, background: '#0d1420', borderRadius: '4px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          add a channel to capture — nothing is drawn that was not measured
+          {t('scopeEmpty', lang)}
         </div>
       ) : (
         <canvas ref={canvasRef} width={W} height={H} style={{ borderRadius: '4px', width: '100%', height: 'auto', display: 'block' }} />
@@ -197,7 +194,7 @@ export function ScopePanel({ board, nets = [] }) {
           <>
             <select value={pickNet} onChange={e => setPickNet(e.target.value)}
               style={{ background: '#1a1a2e', color: '#7f8c8d', border: '1px solid #2c3e50', fontSize: '9px', maxWidth: 110 }}>
-              <option value="">net…</option>
+              <option value="">{t('scopeNet', lang)}</option>
               {nets.filter(n => !channels.some(c => c.netId === n)).map(n => (
                 <option key={n} value={n}>{n}</option>
               ))}
@@ -205,13 +202,13 @@ export function ScopePanel({ board, nets = [] }) {
             <button onClick={addChannel} disabled={!pickNet} style={{
               background: '#2c3e50', color: '#3498db', border: '1px solid #3498db',
               borderRadius: '3px', padding: '1px 6px', cursor: 'pointer', fontSize: '9px',
-            }}>+ channel</button>
+            }}>{t('scopeAddChannel', lang)}</button>
           </>
         )}
         <span style={{ marginLeft: 'auto' }}>{timeLabel}</span>
       </div>
       <div style={{ marginTop: '4px', color: '#556' }}>
-        auto-ranging scale · capture resets when the circuit is edited
+        {t('scopeFooter', lang)}
       </div>
     </div>
   );
