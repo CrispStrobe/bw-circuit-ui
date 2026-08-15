@@ -1,7 +1,8 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 985/0/3 (CI clean). 23/23 browser gate green. CI green.
+npm test 983/2/3 (2 failures are upstream footprints.js 62256 refTerminal from coordinator's retro DIP push).
 Pendant Playwright test added (test:render suite).
+Parts-data index regenerated: 146 → 213 sidecar entries.
 VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
 Snapshot drop: 3/3. Sensor faces: 3/3. Contract: 37/37.
 Deploy current. MPL-2.0 by owner decision.
@@ -155,6 +156,15 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **UX polish** (15af19d): DrcPanel INFO-severity notes get italic 'i' icon
+  + neutral slate (#64748b) instead of '!' affordance. ExamplesBrowser: denser
+  cards (single-row layout), prominent search with magnifier + clear button,
+  result count in placeholder. Better discoverability at 202 entries.
+- **MCU device-specific sidecar** (de008eb): MCU body renderer looks up
+  device-specific sidecar (attiny88, z80, w65c02, eater6502) first, falls
+  back to generic 'mcu'. Body width computed from actual pin count. Parts-data
+  index.js regenerated: 146 → 213 entries (68 sidecars were on disk but not
+  registered: attiny88, eater6502, matrix8x8, adxl335, ili9341, etc.).
 - **Device picker + MCU label completeness** (12db6f6): DEVICE_LABELS adds
   micro:bit. Needs badge neutral slate (#94a3b8) not orange. mcuChipInfo
   covers atmega168p, arduino-uno/nano/mega, eater6502, micro:bit. Pendant
