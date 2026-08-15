@@ -1025,6 +1025,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           })()}
           panelNav={panelNav}
           rightOpen={rightOpen}
+          lang={lang}
           viewNav={(
             <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', width: 70, height: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
               <button data-circuit-toggle-state={!showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={!showSchematic} onClick={() => setShowSchematic(false)} aria-label="Realistic view" title="Realistic view"

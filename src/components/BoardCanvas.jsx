@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
+import { t } from '../i18n/strings.js';
 import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
 import { classifyWheel } from '../interaction/transform.js';
@@ -1234,7 +1235,7 @@ export function BoardCanvas({
   circuit,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onRewire,
-  drcWarnings, panelNav, viewNav, rightOpen, theme = 'light',
+  drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
   // consumed by everything below (partsRef included, so what you see is
@@ -2054,7 +2055,7 @@ export function BoardCanvas({
           color: wiringFrom ? '#000' : '#7f8c8d',
           fontWeight: 'bold', fontSize: '9px',
         }}>
-          {wiringFrom ? 'WIRING' : 'SELECT'}
+          {wiringFrom ? t('modeWiring', lang) : t('modeSelect', lang)}
         </span>
 
         {/* Compact status warning; click the triangle to reveal the full explanation. */}
@@ -2072,9 +2073,9 @@ export function BoardCanvas({
 
         {/* Always-visible history controls. Persistence and zoom live under one
             overflow button so the toolbar keeps a usable footprint on narrow panes. */}
-        <button onClick={() => onUndo && onUndo()} title="Undo (Ctrl+Z)" aria-label="Undo"
+        <button onClick={() => onUndo && onUndo()} title={t('undoTitle', lang)} aria-label={t('undo', lang)}
           style={{ width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↶</button>
-        <button onClick={() => onRedo && onRedo()} title="Redo (Ctrl+Y)" aria-label="Redo"
+        <button onClick={() => onRedo && onRedo()} title={t('redoTitle', lang)} aria-label={t('redo', lang)}
           style={{ width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↷</button>
         <div data-toolbar-more style={{position: 'relative', flex: '0 0 auto'}}>
           <button onClick={() => setToolbarMoreOpen(v => !v)} title="More circuit controls: Save, Load, Zoom" aria-label="More circuit controls" aria-expanded={toolbarMoreOpen}
@@ -2185,11 +2186,11 @@ export function BoardCanvas({
             <g>
               <text x={CANVAS_W / 2} y={CANVAS_H / 2 - 30} textAnchor="middle"
                 fill="#3498db" fontSize={16} fontFamily="monospace" fontWeight="bold">
-                Circuit Designer
+                {t('circuitDesigner', lang)}
               </text>
               <text x={CANVAS_W / 2} y={CANVAS_H / 2} textAnchor="middle"
                 fill="#7f8c8d" fontSize={12} fontFamily="monospace">
-                Add parts from the palette, or load a preset
+                {t('addPartsHint', lang)}
               </text>
               <text x={CANVAS_W / 2} y={CANVAS_H / 2 + 20} textAnchor="middle"
                 fill="#7f8c8d" fontSize={11} fontFamily="monospace">
@@ -2593,7 +2594,7 @@ export function BoardCanvas({
                 fontFamily: 'monospace', color: '#dfe6ee', boxShadow: '0 12px 40px rgba(0,0,0,.5)',
               }}>
                 <div style={{ fontSize: 12, marginBottom: 8, color: '#9ab0c4' }}>
-                  Which pin of {chip.declName || chip.id}? The wire will connect to it.
+                  {t('pinChooserPrompt', lang, { chip: chip.declName || chip.id })}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
                   {(chip.terminals || []).map(pin => (
@@ -2607,7 +2608,7 @@ export function BoardCanvas({
                     </button>
                   ))}
                 </div>
-                <div style={{ marginTop: 8, fontSize: 9, color: '#556' }}>Esc or click outside to cancel</div>
+                <div style={{ marginTop: 8, fontSize: 9, color: '#556' }}>{t('pinChooserCancel', lang)}</div>
               </div>
             </div>
           );
