@@ -1,7 +1,7 @@
 # bw-circuit-ui -- handoff for the next session
 
-867 tests (861 pass, 3 browser-only, 3 DRC relay skipped).
-24/24 browser gate scenarios green. CI green. Deploy current. MPL-2.0 by owner decision.
+npm test 721/0/3 (CI clean). 23/23 browser gate green. CI green.
+Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
 
@@ -106,6 +106,18 @@
   rail, parts palette auto-fills, expand restores previous split. 24/24 gate.
 - **CI workflow**: npm test + fabric gate, clones bw-board + sb3-creator.
   3 DRC relay tests marked skip (bw-board device registry issue).
+- **Lite reconciliation** (930000d incident): lite's designer patches
+  carried upstream as new base. dip-geometry dipTerminalPositions,
+  footprints gutter-straddle fix (e/f not e/j), MCU/dev-board footprints,
+  starter-migration, board-geometry, wire-endpoints, breadboard-snap.
+  Gate adapted to lite's radio-button UI. 23/23 gate.
+- **VdpScreen**: TMS9918A video face. Canvas painting RGBA frames from
+  debug target video(), rAF polling, frame-counter skip, 2x crisp pixels,
+  "no signal" placeholder. Wired into debugger surface.
+- **ILI9341 TFT face**: device state rendering in BoardCanvas (RGB565→RGBA
+  inline conversion, foreignObject canvas, dark when sleeping/display-off).
+  Terminal offsets for 9-pin SPI module. Catalog + slug exception.
+- **ROM terminal**: csb → ceb in all ladder generators (28C256 sidecar match).
 
 ## In flight
 
