@@ -116,6 +116,12 @@ const STRINGS = {
   state:               { en: 'state ', de: 'Zustand ' },
   noSingleStep:        { en: 'Single-step not available on this target', de: 'Einzelschritt auf diesem Ziel nicht verfügbar' },
   noBreakpoints:       { en: 'Code breakpoints not available on this target', de: 'Code-Haltepunkte auf diesem Ziel nicht verfügbar' },
+  stepOver:            { en: 'Step over', de: 'Überspringen' },
+  stepOut:             { en: 'Step out', de: 'Herausspringen' },
+  stepOverTitle:       { en: 'Step over current block (runs to next sibling)', de: 'Aktuellen Block überspringen (zum nächsten Geschwister)' },
+  stepOutTitle:        { en: 'Step out of current block (returns to parent)', de: 'Aus aktuellem Block herausspringen (zum Elternteil)' },
+  addWatchpoint:       { en: 'Watch address…', de: 'Adresse beobachten…' },
+  watchpointPlaceholder: { en: 'hex addr', de: 'Hex-Adresse' },
 
   // ── Instruments panel sections ─────────────────────────────────────
   debugger:            { en: 'Debugger', de: 'Debugger' },

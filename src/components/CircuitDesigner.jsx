@@ -1073,6 +1073,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           <DebugStatus
             debugState={debugState}
             capabilities={debugState.capabilities || null}
+            onStep={debugState.step}
+            onStepOver={debugState.stepOver}
+            onStepOut={debugState.stepOut}
+            onAddWatchpoint={debugState.addWatchpoint}
+            lang={lang}
           />
         )}
         {hasMcuPins && debugState && typeof debugState.video === 'function' && (
