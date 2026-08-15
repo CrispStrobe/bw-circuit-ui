@@ -135,6 +135,9 @@ function terminalOffsetsForPart(part) {
       }
       return { a: r(-15, 0), b: r(15, 0) };
     }
+    case 'ili9341':
+      return { vcc: r(-30, -50), gnd: r(-30, -40), cs: r(-30, -30), rst: r(-30, -20),
+        dc: r(-30, -10), mosi: r(-30, 0), sck: r(-30, 10), miso: r(-30, 20), led: r(-30, 30) };
     case 'gate_and': case 'gate_or': case 'gate_nand': case 'gate_nor': case 'gate_xor':
       return { in0: r(-22, -10), in1: r(-22, 10), out: r(22, 0) };
     case 'gate_not':
@@ -376,6 +379,55 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
       }
+      // ── ILI9341 TFT display ──────────────────────────────────────
+      case 'ili9341': {
+        const ds = deviceStates?.get(id);
+        const dark = ds && (ds.sleeping || !ds.displayOn);
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* PCB body */}
+            <rect x={-24} y={-54} width={68} height={112} rx={3}
+              fill="#1a472a" stroke={selStroke || '#2ecc71'} strokeWidth={1.5} />
+            {/* Screen area — 240x320 scaled to ~48x64 */}
+            <rect x={-10} y={-48} width={48} height={64} rx={1}
+              fill={dark ? '#111' : '#000'} stroke="#333" strokeWidth={0.5} />
+            {ds && ds.gram && !dark && (
+              <foreignObject x={-10} y={-48} width={48} height={64}>
+                <canvas
+                  ref={el => {
+                    if (!el) return;
+                    // Convert RGB565 GRAM to RGBA inline (no sibling import)
+                    const W = 240, H = 320;
+                    const rgba = new Uint8ClampedArray(W * H * 4);
+                    for (let i = 0; i < ds.gram.length; i++) {
+                      const px = ds.gram[i];
+                      rgba[i * 4] = ((px >> 11) & 0x1f) << 3;
+                      rgba[i * 4 + 1] = ((px >> 5) & 0x3f) << 2;
+                      rgba[i * 4 + 2] = (px & 0x1f) << 3;
+                      rgba[i * 4 + 3] = 255;
+                    }
+                    if (el.width !== W) el.width = W;
+                    if (el.height !== H) el.height = H;
+                    el.style.width = '48px';
+                    el.style.height = '64px';
+                    el.style.imageRendering = 'pixelated';
+                    const ctx = el.getContext('2d');
+                    ctx.putImageData(new ImageData(rgba, W, H), 0, 0);
+                  }}
+                  style={{ width: 48, height: 64, imageRendering: 'pixelated' }}
+                />
+              </foreignObject>
+            )}
+            {dark && (
+              <text x={14} y={-12} textAnchor="middle" fill="#333" fontSize={6}
+                fontFamily="monospace">OFF</text>
+            )}
+            <text x={14} y={66} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
       // ── Logic gates ────────────────────────────────────────────────
       case 'gate_and':
       case 'gate_nand':
@@ -2411,7 +2463,7 @@ export function BoardCanvas({
               if (!circuit?.board?.getDeviceState) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo') {
+                if (p.kind === 'servo' || p.kind === 'ili9341') {
                   const ds = circuit.board.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }

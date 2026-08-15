@@ -49,6 +49,7 @@ import { generatePartName, circuitToDeclarations } from '../model/declarations.j
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
+import { VdpScreen } from './VdpScreen.jsx';
 import { Circuit } from '../model/circuit.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { buildSeatedFromDeclarations } from '../model/infer-seated.js';
@@ -1051,6 +1052,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             debugState={debugState}
             capabilities={debugState.capabilities || null}
           />
+        )}
+        {debugState && typeof debugState.video === 'function' && (
+          <VdpScreen videoFn={debugState.video} lang={lang} />
         )}
         {debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,

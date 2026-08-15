@@ -989,6 +989,7 @@ export function terminalsForKind(kind, params) {
     case '555': return ['vcc', 'gnd', 'trigger', 'threshold', 'control', 'discharge', 'output', 'reset'];
     case 'relay': return ['coil_a', 'coil_b', 'com', 'nc', 'no'];
     case 'servo': return ['signal', 'vcc', 'gnd'];
+    case 'ili9341': return ['vcc', 'gnd', 'cs', 'rst', 'dc', 'mosi', 'sck', 'miso', 'led'];
     case 'dc_motor': case 'gearmotor': return ['a', 'b'];
     case 'vibration_motor': return ['a', 'b'];
     case 'motor_encoder': return ['a', 'b', 'enc_a', 'enc_b'];

@@ -36,6 +36,7 @@ export { generatePartName, partToDeclaration, circuitToDeclarations } from './mo
 export { DrcPanel } from './components/DrcPanel.jsx';
 export { BomPanel } from './components/BomPanel.jsx';
 export { ExamplesBrowser } from './components/ExamplesBrowser.jsx';
+export { VdpScreen } from './components/VdpScreen.jsx';
 
 // Panel data functions
 export { runDrc, setExtractors } from './model/drc.js';

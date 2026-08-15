@@ -73,6 +73,8 @@ const EXCEPTIONS = new Set([
   'gate_nor',       // abstract 2-input NOR
   'gate_xor',       // abstract 2-input XOR
   'gate_not',       // abstract inverter
+  // Device-registry parts (registered at runtime, no static sidecar)
+  'ili9341',        // SPI TFT display (bw-board device registry)
   // Internal model terms (not part kinds)
   'lead',           // occupancy type in breadboard model
 ]);
