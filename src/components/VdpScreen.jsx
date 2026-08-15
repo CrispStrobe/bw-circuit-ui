@@ -36,6 +36,7 @@ export function VdpScreen({ videoFn, setButtonsFn, lang = 'en' }) {
   const maskRef = useRef(0);
   const [focused, setFocused] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [nativeSize, setNativeSize] = useState({ w: 256, h: 192 });
 
   // Button input via keyboard
   const updateButtons = useCallback((mask) => {
@@ -101,8 +102,8 @@ export function VdpScreen({ videoFn, setButtonsFn, lang = 'en' }) {
     }
     lastFrameRef.current = v.frame;
 
-    if (canvas.width !== v.width) canvas.width = v.width;
-    if (canvas.height !== v.height) canvas.height = v.height;
+    if (canvas.width !== v.width) { canvas.width = v.width; setNativeSize(s => s.w !== v.width || s.h !== v.height ? { w: v.width, h: v.height } : s); }
+    if (canvas.height !== v.height) { canvas.height = v.height; setNativeSize(s => s.w !== v.width || s.h !== v.height ? { w: v.width, h: v.height } : s); }
 
     const img = new ImageData(v.rgba, v.width, v.height);
     ctx.putImageData(img, 0, 0);
@@ -132,10 +133,11 @@ export function VdpScreen({ videoFn, setButtonsFn, lang = 'en' }) {
     >
       <canvas
         ref={canvasRef}
-        width={256}
-        height={192}
+        width={nativeSize.w}
+        height={nativeSize.h}
         style={{
-          width: 512, height: 384,
+          width: Math.min(nativeSize.w * 2, 640),
+          height: Math.min(nativeSize.w * 2, 640) * (nativeSize.h / nativeSize.w),
           imageRendering: 'pixelated',
           display: 'block',
         }}

@@ -1,0 +1,43 @@
+<!doctype html>
+<html><head><title>TileVGA face test (320x240)</title></head>
+<body>
+<div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { VdpScreen } from '../src/components/VdpScreen.jsx';
+
+// tilevga hello-world idiom: fill tilemap with "HELLO TILEVGA" chars
+// using the system font palette (white on black). The RGBA is a
+// 320x240 frame with non-zero pixels where text is drawn.
+const W = 320, H = 240;
+const rgba = new Uint8ClampedArray(W * H * 4);
+// Paint a visible pattern: green band in the top rows (hello-world idiom)
+for (let y = 0; y < 8; y++) {
+  for (let x = 0; x < W; x++) {
+    const i = (y * W + x) * 4;
+    rgba[i] = 0; rgba[i+1] = 200; rgba[i+2] = 0; rgba[i+3] = 255;
+  }
+}
+// Fill rest with dark background
+for (let y = 8; y < H; y++) {
+  for (let x = 0; x < W; x++) {
+    const i = (y * W + x) * 4;
+    rgba[i] = 16; rgba[i+1] = 16; rgba[i+2] = 32; rgba[i+3] = 255;
+  }
+}
+
+let frame = 0;
+const videoFn = () => ({ width: W, height: H, rgba, frame: frame++, signal: true });
+
+window.__buttonCalls = [];
+const setButtonsFn = (mask) => { window.__buttonCalls.push(mask); };
+
+const root = createRoot(document.getElementById('root'));
+root.render(React.createElement(VdpScreen, { videoFn, setButtonsFn }));
+window.__tilevgaReady = true;
+window.__nativeW = W;
+window.__nativeH = H;
+</script>
+</body>
+</html>
