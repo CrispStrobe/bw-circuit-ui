@@ -165,8 +165,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   useEffect(() => {
     if (debuggerOn) setRightOpen(true);
   }, [debuggerOn]);
-  const [showScope, setShowScope] = useState(false);
-  const [showMeter, setShowMeter] = useState(false);
+  const [showScope, setShowScope] = useState(() => {
+    try { return localStorage.getItem('bw-instr-scope') === '1'; } catch { return false; }
+  });
+  const [showMeter, setShowMeter] = useState(() => {
+    try { return localStorage.getItem('bw-instr-meter') === '1'; } catch { return false; }
+  });
+  const toggleScope = () => setShowScope(v => { const n = !v; try { localStorage.setItem('bw-instr-scope', n ? '1' : '0'); } catch {} return n; });
+  const toggleMeter = () => setShowMeter(v => { const n = !v; try { localStorage.setItem('bw-instr-meter', n ? '1' : '0'); } catch {} return n; });
   const [warningsOpen, setWarningsOpen] = useState(false);
 
   // Breadboard model (persistent across renders)
@@ -1041,7 +1047,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       {/* Right sidebar — collapsible */}
       {rightOpen ? (
       <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', flex: '0 1 280px', width: 280, minWidth: 280, minHeight: 0, maxHeight: '100%', height: '100%', overflow: 'hidden', alignSelf: 'stretch', boxSizing: 'border-box' }}>
-        <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(false)} aria-label="Collapse instruments panel" aria-expanded="true" title="Collapse instruments panel" style={{
+        <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(false)} aria-label={/^de/i.test(lang) ? 'Instrumentenpanel einklappen' : 'Collapse instruments panel'} aria-expanded="true" title={/^de/i.test(lang) ? 'Instrumentenpanel einklappen' : 'Collapse instruments panel'} style={{
           position: 'absolute', zIndex: 3, top: 4, left: 4, background: '#ffffff', border: '1px solid #cbd5e1',
           boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
@@ -1056,29 +1062,38 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {debugState && typeof debugState.video === 'function' && (
           <VdpScreen videoFn={debugState.video} lang={lang} />
         )}
+        {/* Debugger section — hidden entirely for pure circuits (no MCU/pins).
+            When pins ARE declared, the full panel renders; when the dock is set
+            to debugger mode but no pins exist yet, a hint explains why. */}
         {debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
             borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
-            <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>Debugger</div>
+            <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>
+              {/^de/i.test(lang) ? 'Debugger' : 'Debugger'}
+            </div>
             {debuggerPanel}
           </section>
         )}
-        {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && (
+        {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && parts.some(p =>
+            p.kind === 'mcu' || p.kind === 'arduino_uno' || p.kind === 'arduino_nano' || p.kind === 'pi_pico' || p.kind === 'w65c02' || p.kind === 'z80'
+        ) && (
           <div data-no-code-indicator style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
             background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
             fontSize: 12, lineHeight: 1.35}}>
-            <strong>Debugger inactive</strong>
-            <div>{'No program pins declared yet. Add a PIN declaration in Blocks to enable run and step.'}</div>
+            <strong>{/^de/i.test(lang) ? 'Debugger inaktiv' : 'Debugger inactive'}</strong>
+            <div>{/^de/i.test(lang)
+              ? 'Noch keine Programm-Pins deklariert. Füge eine PIN-Deklaration in den Blöcken hinzu, um Ausführen und Einzelschritt zu aktivieren.'
+              : 'No program pins declared yet. Add a PIN declaration in Blocks to enable run and step.'}</div>
           </div>
         )}
         {mode === 'simulate' && (
           <section data-simulation-controls style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
-            <div style={{fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6}}>Simulation controls</div>
+            <div style={{fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6}}>{/^de/i.test(lang) ? 'Simulationssteuerung' : 'Simulation controls'}</div>
             <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: 5}}>
-              <button onClick={() => setSimPaused(v => !v)} title={simPaused ? 'Resume simulation' : 'Pause simulation'}
-                style={{minHeight: 32, padding: '5px 8px', cursor: 'pointer'}}>{simPaused ? '▶ Resume simulation' : '⏸ Pause simulation'}</button>
-              <button onClick={handleSimStep} disabled={!simPaused} title="Advance one 50 ms tick"
-                style={{minHeight: 32, padding: '5px 8px', cursor: simPaused ? 'pointer' : 'default'}}>⏭ Step one tick</button>
+              <button onClick={() => setSimPaused(v => !v)} title={simPaused ? (/^de/i.test(lang) ? 'Simulation fortsetzen' : 'Resume simulation') : (/^de/i.test(lang) ? 'Simulation pausieren' : 'Pause simulation')}
+                style={{minHeight: 32, padding: '5px 8px', cursor: 'pointer'}}>{simPaused ? (/^de/i.test(lang) ? '▶ Fortsetzen' : '▶ Resume simulation') : (/^de/i.test(lang) ? '⏸ Pausieren' : '⏸ Pause simulation')}</button>
+              <button onClick={handleSimStep} disabled={!simPaused} title={/^de/i.test(lang) ? 'Einen 50-ms-Takt vorspulen' : 'Advance one 50 ms tick'}
+                style={{minHeight: 32, padding: '5px 8px', cursor: simPaused ? 'pointer' : 'default'}}>{/^de/i.test(lang) ? '⏭ Ein Takt' : '⏭ Step one tick'}</button>
             </div>
             <label style={{display: 'grid', gridTemplateColumns: '1fr', gap: 3, marginTop: 7, fontSize: 11, color: '#475569'}}>
               <span>Speed</span>
@@ -1089,8 +1104,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           </section>
         )}
         <div style={{ display: 'flex', flex: '0 0 auto', gap: 4, width: 280 }}>
-          <button onClick={() => setShowScope(v => !v)} style={{ flex: 1, padding: '4px 6px', background: showScope ? '#2c3e50' : '#16213e', border: '1px solid #3498db', borderRadius: 4, color: '#3498db', fontFamily: 'monospace', fontSize: 10 }}>{showScope ? '▣ Hide scope' : '▣ Scope'}</button>
-          <button onClick={() => setShowMeter(v => !v)} style={{ flex: 1, padding: '4px 6px', background: showMeter ? '#2c3e50' : '#16213e', border: '1px solid #f1c40f', borderRadius: 4, color: '#f1c40f', fontFamily: 'monospace', fontSize: 10 }}>{showMeter ? '⌁ Hide meter' : '⌁ Meter'}</button>
+          <button onClick={toggleScope} style={{ flex: 1, padding: '4px 6px', background: showScope ? '#2c3e50' : '#16213e', border: '1px solid #3498db', borderRadius: 4, color: '#3498db', fontFamily: 'monospace', fontSize: 10 }}>
+            {showScope ? (/^de/i.test(lang) ? '▣ Oszilloskop verbergen' : '▣ Hide scope') : (/^de/i.test(lang) ? '▣ Oszilloskop' : '▣ Scope')}
+          </button>
+          <button onClick={toggleMeter} style={{ flex: 1, padding: '4px 6px', background: showMeter ? '#2c3e50' : '#16213e', border: '1px solid #f1c40f', borderRadius: 4, color: '#f1c40f', fontFamily: 'monospace', fontSize: 10 }}>
+            {showMeter ? (/^de/i.test(lang) ? '⌁ Multimeter verbergen' : '⌁ Hide meter') : (/^de/i.test(lang) ? '⌁ Multimeter' : '⌁ Meter')}
+          </button>
         </div>
         {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} /></div>}
         {showMeter && <div data-meter-module style={{width: 280, flex: '0 0 auto'}}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} /></div>}
@@ -1103,7 +1122,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           background: 'rgba(255,255,255,.96)', border: '1px solid #94a3b8',
           boxShadow: '0 2px 8px rgba(15,23,42,.24)', borderRadius: '999px',
           color: '#334155', cursor: 'pointer', fontFamily: 'system-ui, sans-serif', fontSize: 20, lineHeight: 1,
-        }} aria-label="Expand instruments panel" aria-expanded="false" title="Expand instruments panel">‹</button>
+        }} aria-label={/^de/i.test(lang) ? 'Instrumentenpanel ausklappen' : 'Expand instruments panel'} aria-expanded="false" title={/^de/i.test(lang) ? 'Instrumentenpanel ausklappen' : 'Expand instruments panel'}>‹</button>
       )}
     </div>
   );
