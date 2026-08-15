@@ -1,0 +1,81 @@
+:global(.bw-circuit-designer) {
+    color: #334155;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+:global(.bw-circuit-designer),
+:global(.bw-circuit-designer *) {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] input),
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] select),
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] textarea) {
+    font-family: inherit !important;
+    color: #334155 !important;
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* Buttons own their active/inactive colors inline. A broad `button` rule here
+ * used !important and silently painted every selected toggle white, making
+ * Build/Sim, power, view and panel navigation indistinguishable. */
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] button) {
+    font-family: inherit !important;
+}
+
+/* The toolbar is a single control row. Keep every button and group on the
+ * same border-box baseline; otherwise upstream button defaults make the
+ * panel-nav cells visibly drift from Build/Power/Undo on Safari. */
+:global(.bw-circuit-designer [data-circuit-toolbar] button) {
+    box-sizing: border-box !important;
+    height: 34px !important;
+    min-height: 34px !important;
+}
+:global(.bw-circuit-designer [data-circuit-toolbar] > [data-circuit-control-group]) {
+    box-sizing: border-box !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    align-self: center !important;
+}
+
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] button[data-circuit-toggle-state="selected"]) {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #1d4ed8 !important;
+}
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] button[data-circuit-toggle-state="unselected"]) {
+    background: #475569 !important;
+    color: #ffffff !important;
+    border-color: #64748b !important;
+}
+
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] svg[data-schematic]) {
+    background: #f8fafc !important;
+}
+
+/* SchematicPanel uses SVG presentation attributes so it also works outside
+ * the themed designer. In the light designer those defaults must be replaced
+ * together; otherwise labels and wires stay pale on a pale canvas. */
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] svg[data-schematic] text) {
+    fill: #334155 !important;
+}
+
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] svg[data-schematic] path),
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] svg[data-schematic] rect),
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] svg[data-schematic] line) {
+    stroke: #64748b !important;
+}
+
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] svg[data-schematic] circle) {
+    fill: #475569 !important;
+}
+
+:global(.bw-circuit-designer[data-bw-circuit-theme="light"] [style*="monospace"]) {
+    font-family: inherit !important;
+}
+
+:global(.bw-circuit-designer[data-bw-circuit-theme="dark"]) {
+    color: #dbeafe;
+    background: #111827;
+}

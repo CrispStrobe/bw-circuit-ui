@@ -129,11 +129,16 @@ function deriveButtonActiveLow(partId, parts, wires) {
 export function partToDeclaration(part, pin, context) {
   if (!pin || !part.declName) return null;
   const match = pin.match(/P(\d+)\.(\d+)/);
-  if (!match) return null;
+  // Board terminal names: d13 → D13, gp0 → GP0
+  const boardMatch = !match && /^([a-zA-Z]+)(\d+)$/i.test(pin);
+  if (!match && !boardMatch) return null;
 
-  const port = parseInt(match[1]);
-  const bit = parseInt(match[2]);
-  const base = { name: part.declName, port, bit, pin };
+  const port = match ? parseInt(match[1]) : undefined;
+  const bit = match ? parseInt(match[2]) : undefined;
+  const where = boardMatch ? pin.toUpperCase() : undefined;
+  const base = match
+    ? { name: part.declName, port, bit, pin }
+    : { name: part.declName, where, pin: where };
   const { parts, wires, toneAlreadyClaimed } = context || {};
 
   switch (part.kind) {
@@ -175,10 +180,18 @@ export function partToDeclaration(part, pin, context) {
 /**
  * Build project.stc declarations from the circuit.
  */
+const BOARD_TO_DEVICE = {
+  arduino_uno: 'arduino-uno', arduino_nano: 'arduino-nano',
+  arduino_mega: 'arduino-mega', pi_pico: 'pico',
+};
+const MCU_KINDS = new Set(['mcu', ...Object.keys(BOARD_TO_DEVICE)]);
+
 export function circuitToDeclarations(parts, wires) {
   const pins = [];
-  const mcu = parts.find(p => p.kind === 'mcu');
+  const mcu = parts.find(p => MCU_KINDS.has(p.kind));
   if (!mcu) return { pins, ports: [], parts: [] };
+  const device = BOARD_TO_DEVICE[mcu.kind] || undefined;
+  const isBoard = !!device;
 
   let toneAlreadyClaimed = false;
   const context = { parts, wires, toneAlreadyClaimed: false };
@@ -215,5 +228,5 @@ export function circuitToDeclarations(parts, wires) {
     }
   }
 
-  return { pins, ports: [], parts: [] };
+  return { device, pins, ports: [], parts: [] };
 }

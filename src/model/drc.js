@@ -56,6 +56,18 @@ function getCurrentRatings() {
 // Thresholds are read at call time from the engine, not at import time,
 // so the engine can be injected after this module loads.
 
+// Retro-bench bus extractors — optional. In lite these resolve against
+// the sibling bw-board vendor tree; in standalone bw-circuit-ui they are
+// absent and the extractor DRC rules simply do not run. Injected via
+// setExtractors() rather than a static import so the same source works
+// in both environments.
+let _extract6502 = null;
+let _extractZ80 = null;
+export function setExtractors({ extract6502Machine, extractZ80Machine } = {}) {
+    if (extract6502Machine) _extract6502 = extract6502Machine;
+    if (extractZ80Machine) _extractZ80 = extractZ80Machine;
+}
+
 /**
  * Run all design-rule checks against a circuit.
  *
@@ -103,6 +115,35 @@ export function runDrc(circuit, board) {
   const partsOnNet = (netId) => netMembers.get(netId) || [];
   const partById = (id) => parts.find(p => p.id === id);
   const netOf = (partId, terminal) => terminalToNet.get(`${partId}:${terminal}`);
+
+  // ── Rule 0: Pico GPIO voltage domain ──────────────────────────────
+  // RP2040 GPIO is 3.3 V only. VBUS is deliberately excluded: it is the
+  // board's 5 V USB input, not a GPIO signal.
+  for (const pico of parts.filter(p => p.kind === 'pi_pico')) {
+    for (const pin of pico.terminals || []) {
+      if (!/^gp\d+$/i.test(pin)) continue;
+      const netId = netOf(pico.id, pin);
+      if (!netId) continue;
+      const members = partsOnNet(netId);
+      const fiveVoltSource = members.some(member => {
+        const source = partById(member.part);
+        if (!source) return false;
+        if (source.kind === 'vcc' || /^(5v|vin)$/i.test(member.terminal)) return true;
+        return source.kind === 'vsource' && Number(source.params?.volts) > 3.6;
+      });
+      if (fiveVoltSource) {
+        warnings.push({
+          severity: 'danger',
+          rule: 'pico-voltage',
+          partId: pico.id,
+          pinId: pin,
+          explanation: `${pin.toUpperCase()} is an RP2040 GPIO at 3.3 V. ` +
+            'This connection reaches a 5 V-or-higher source and can damage the Pico.',
+          fix: 'Use the Pico 3V3 rail or a proper logic-level shifter; reserve VBUS for board power.',
+        });
+      }
+    }
+  }
 
   // ── Rule 1: Source-current violation ──────────────────────────────
   for (const part of parts) {
@@ -471,6 +512,59 @@ export function runDrc(circuit, board) {
           `but ${unratedKinds.join(', ')} cannot be rated — ` +
           `the total is a lower bound, not a sum. The actual current may exceed the limit.`,
         fix: 'Check the current through unrated parts with the multimeter.',
+      });
+    }
+  }
+
+  // ── Retro-bench extractors ────────────────────────────────────────
+  // If the circuit contains a W65C02 or Z80 CPU, run the bus extractor
+  // to check for contention, open vectors, and wiring errors. Refusals
+  // surface as DRC warnings so the user sees them in the Warnings panel.
+  const hasW65c02 = parts.some(p => p.kind === 'w65c02');
+  const hasZ80 = parts.some(p => p.kind === 'z80');
+  if (hasW65c02 || hasZ80) {
+    try {
+      const circuitData = { parts, wires };
+      if (hasW65c02 && _extract6502) {
+        const result = _extract6502(circuitData);
+        for (const reason of result.reasons || []) {
+          warnings.push({
+            severity: 'danger', rule: 'bus-extract-6502',
+            partId: parts.find(p => p.kind === 'w65c02')?.id,
+            explanation: reason,
+            fix: 'Check the address decode wiring on the breadboard.',
+          });
+        }
+        for (const note of result.notes || []) {
+          warnings.push({
+            severity: 'info', rule: 'bus-extract-6502-note',
+            partId: parts.find(p => p.kind === 'w65c02')?.id,
+            explanation: note,
+          });
+        }
+      }
+      if (hasZ80 && _extractZ80) {
+        const result = _extractZ80(circuitData);
+        for (const reason of result.reasons || []) {
+          warnings.push({
+            severity: 'danger', rule: 'bus-extract-z80',
+            partId: parts.find(p => p.kind === 'z80')?.id,
+            explanation: reason,
+            fix: 'Check the address decode wiring on the breadboard.',
+          });
+        }
+        for (const note of result.notes || []) {
+          warnings.push({
+            severity: 'info', rule: 'bus-extract-z80-note',
+            partId: parts.find(p => p.kind === 'z80')?.id,
+            explanation: note,
+          });
+        }
+      }
+    } catch (e) {
+      warnings.push({
+        severity: 'warning', rule: 'bus-extract-error',
+        explanation: `Bus extractor failed: ${e.message}`,
       });
     }
   }

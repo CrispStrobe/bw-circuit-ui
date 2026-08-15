@@ -309,6 +309,8 @@ export function InferPanel({ onLoadCircuit }) {
   const [lastLoaded, setLastLoaded] = useState(null);
   const [showBoard, setShowBoard] = useState(false);
   const [showDrawable, setShowDrawable] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [open, setOpen] = useState(true);
 
   const handleLoad = useCallback((preset) => {
     const result = inferCircuit(preset.stc);
@@ -318,10 +320,11 @@ export function InferPanel({ onLoadCircuit }) {
     if (preset.note) allNotes.unshift(preset.note);
     setNotes(allNotes);
     setLastLoaded(preset.name);
+    setShowInfo(false);
   }, [onLoadCircuit]);
 
   return (
-    <div style={{
+    <div data-examples-selector style={{
       background: '#1a1a2e',
       border: '1px solid #2c3e50',
       borderRadius: '8px',
@@ -330,14 +333,29 @@ export function InferPanel({ onLoadCircuit }) {
       fontFamily: 'monospace',
       fontSize: '11px',
       flexShrink: 0,
+      position: 'relative',
     }}>
-      <div style={{ color: '#ecf0f1', fontSize: '12px', marginBottom: '6px', fontWeight: 'bold' }}>
-        Why active-low?
+      <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
+        aria-label={open ? 'Collapse example presets' : 'Expand example presets'}
+        title={open ? 'Collapse example presets' : 'Expand example presets'}
+        style={{position: 'absolute', left: -13, top: 4, width: 24, height: 24, padding: 0, zIndex: 2,
+          border: '1px solid #94a3b8', borderRadius: '999px', background: '#16213e', color: '#e2e8f0', cursor: 'pointer'}}> {open ? '‹' : '›'} </button>
+      {!open ? null : <>
+      <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6}}>
+        <div style={{ color: '#ecf0f1', fontSize: '12px', fontWeight: 'bold' }}>Examples</div>
+        <button type="button" onClick={() => setShowInfo(v => !v)} disabled={!lastLoaded}
+          aria-label={lastLoaded ? `Info for ${lastLoaded}` : 'Example info'}
+          title={lastLoaded ? `Show information for ${lastLoaded}` : 'Load an example to see information'}
+          style={{width: 24, height: 24, padding: 0, borderRadius: '50%', border: '1px solid #94a3b8',
+            background: lastLoaded ? '#2563eb' : '#334155', color: '#fff', cursor: lastLoaded ? 'pointer' : 'default', fontWeight: 'bold'}}>i</button>
       </div>
-      <p style={{ color: '#f39c12', fontSize: '9px', marginBottom: '8px', lineHeight: '1.4' }}>
-        Load "04 Brightness", hit Sim. Two LEDs on the same chip — one bright,
-        one barely visible. The simulator shows why.
-      </p>
+      {showInfo && lastLoaded && (
+        <div data-example-info style={{marginBottom: 8, padding: 6, borderRadius: 4,
+          background: '#1a1a0e', border: '1px solid #f39c12', color: '#fbbf24', fontSize: 9, lineHeight: 1.35}}>
+          <strong>{lastLoaded}</strong>
+          {notes.map((note, i) => <div key={i}>{note}</div>)}
+        </div>
+      )}
 
       {/* The comparison preset — visually grouped */}
       <button
@@ -423,19 +441,7 @@ export function InferPanel({ onLoadCircuit }) {
         </button>
       ))}
 
-      {/* Teaching notes */}
-      {notes.length > 0 && (
-        <div style={{
-          marginTop: '8px', padding: '6px',
-          background: '#1a1a0e', border: '1px solid #f39c12', borderRadius: '4px',
-        }}>
-          {notes.map((note, i) => (
-            <div key={i} style={{ color: '#e67e22', fontSize: '9px', marginBottom: '2px' }}>
-              {note}
-            </div>
-          ))}
-        </div>
-      )}
+      </>}
     </div>
   );
 }

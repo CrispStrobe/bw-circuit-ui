@@ -166,6 +166,23 @@ export const FOOTPRINTS = {
       c1: { dRow: 5, dCol: 0 }, c2: { dRow: 5, dCol: 1 }, c3: { dRow: 5, dCol: 2 }, c4: { dRow: 5, dCol: 3 } },
   },
   dip_switch: { refTerminal: 's1_a', leads: { s1_a: { dRow: 0, dCol: 0 }, s1_b: { dRow: 0, dCol: 1 } } },
+  // MERGED after the 930000d vendor sync: upstream's gate footprints
+  // arrived, but the sync also deleted lite's mcu/dev-board entries and
+  // the gutter-straddle mapping — both restored below. Upstream owes
+  // itself these entries; until then this file intentionally diverges.
+  mcu: {
+    refTerminal: 'P1.0', straddlesGutter: true,
+    leads: {
+      ...Object.fromEntries(['P1.0','P1.1','P1.2','P1.3','P1.4','P1.5','P1.6','P1.7','RST','P3.0','P3.1','P3.2','P3.3','P3.4','P3.5','P3.6','P3.7','XTAL2','XTAL1','GND'].map((name, i) => [name, { dRow: 0, dCol: i }])),
+      ...Object.fromEntries(['P2.0','P2.1','P2.2','P2.3','P2.4','P2.5','P2.6','P2.7','P4.4','P4.5','P4.6','P0.7','P0.6','P0.5','P0.4','P0.3','P0.2','P0.1','P0.0','VCC'].map((name, i) => [name, { dRow: 5, dCol: 19 - i }])),
+    },
+  },
+  // Development boards expose headers on a fixed 2.54 mm raster. Their
+  // bodies are not DIP footprints, but seating still uses real breadboard
+  // holes so a cable on the same strip is electrically connected.
+  arduino_uno: {refTerminal: 'D0', leads: Object.fromEntries(Array.from({length: 14}, (_, i) => [`D${i}`, {dRow: 0, dCol: i}]))},
+  arduino_nano: {refTerminal: 'D0', leads: Object.fromEntries(Array.from({length: 14}, (_, i) => [`D${i}`, {dRow: 0, dCol: i}]))},
+  pi_pico: {refTerminal: 'GP0', leads: Object.fromEntries(Array.from({length: 20}, (_, i) => [`GP${i}`, {dRow: 0, dCol: i}]))},
   // Logic gates: 3-pin inline (2-input gates) or 2-pin inline (NOT)
   gate_and:  { refTerminal: 'in0', leads: { in0: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 3 } } },
   gate_or:   { refTerminal: 'in0', leads: { in0: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 3 } } },
@@ -217,7 +234,16 @@ export function computeLeadMap(footprint, refHole) {
   for (const [terminal, offset] of Object.entries(footprint.leads)) {
     let rowIdx, col;
     if (topIdx >= 0) {
-      rowIdx = topIdx + offset.dRow;
+      // A DIP straddles the breadboard gutter. Its second pin row is the
+      // first row below the gutter (f), not five rows farther down. The old
+      // generic mapping put the MCU legs in e and j, so the art could never
+      // line up with the holes and a cable on the adjacent strip was not the
+      // pin's electrical neighbour.
+      if (footprint.straddlesGutter && offset.dRow >= 5) {
+        rowIdx = 5 + (offset.dRow - 5);
+      } else {
+        rowIdx = topIdx + offset.dRow;
+      }
     } else {
       rowIdx = botIdx + 5 + offset.dRow; // 5 = gutter offset in unified index
     }

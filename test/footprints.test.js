@@ -24,7 +24,7 @@ describe('computeLeadMap', () => {
   it('button straddles gutter from e to f', () => {
     const map = computeLeadMap(FOOTPRINTS.button, 'e3');
     assert.equal(map.a, 'e3');
-    assert.equal(map.b, 'j3'); // dRow=5 from e(idx=4) = idx 9 = j
+    assert.equal(map.b, 'f3'); // gutter straddle: e(4) → f(5)
   });
 
   it('potentiometer spans 5 holes', () => {
@@ -45,7 +45,7 @@ describe('computeLeadMap', () => {
     const map = computeLeadMap(FOOTPRINTS.shift_register, 'e10');
     assert.equal(map.data, 'e10');
     assert.equal(map.clock, 'e11');
-    assert.equal(map.latch, 'j10'); // dRow=5 across gutter
+    assert.equal(map.latch, 'f10'); // gutter straddle: e(4) → f(5)
   });
 
   it('from bottom block, offset stays in bottom rows', () => {

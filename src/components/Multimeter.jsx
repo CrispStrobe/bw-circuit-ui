@@ -50,7 +50,10 @@ export function Multimeter({ circuit, wires, parts, placingProbe, onStartPlacing
       border: '1px solid #2c3e50',
       borderRadius: '8px',
       padding: '12px',
-      width: '180px',
+      width: '100%',
+      maxWidth: '100%',
+      boxSizing: 'border-box',
+      overflow: 'auto',
       fontFamily: 'monospace',
     }}>
       <h3 style={{ color: '#ecf0f1', fontSize: '13px', marginBottom: '10px' }}>

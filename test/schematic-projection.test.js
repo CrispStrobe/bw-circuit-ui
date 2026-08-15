@@ -25,7 +25,8 @@ test('projection: symbols for electrical parts, breadboard excluded', () => {
   const c = buildSeated();
   const proj = projectSchematic(c.parts, c.board.getNets());
   const kinds = proj.symbols.map(s => s.kind).sort();
-  assert.deepEqual(kinds, ['led', 'resistor', 'vsource']);
+  // Implicit GND symbol is projected when no explicit GND part exists.
+  assert.deepEqual(kinds, ['gnd', 'led', 'resistor', 'vsource']);
   assert.ok(!proj.symbols.some(s => s.kind === 'breadboard'));
   // The source anchors the left.
   const src = proj.symbols.find(s => s.kind === 'vsource');

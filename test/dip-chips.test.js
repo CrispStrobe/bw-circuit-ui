@@ -60,10 +60,10 @@ describe('logicChipFootprint', () => {
     const fp = logicChipFootprint('74hc08');
     const leadMap = computeLeadMap(fp, 'e5');
 
-    // Pin 1 at e5, pin 7 (gnd) at e11, pin 8 at j11, pin 14 (vcc) at j5
+    // Pin 1 at e5, pin 7 (gnd) at e11, pin 8 at f11 (gutter straddle), pin 14 (vcc) at f5
     assert.equal(leadMap['1a'], 'e5');
     assert.equal(leadMap['gnd'], 'e11');
-    assert.equal(leadMap['vcc'], 'j5');
+    assert.equal(leadMap['vcc'], 'f5');
 
     // Should seat on a breadboard
     const bb = new BreadboardModel();

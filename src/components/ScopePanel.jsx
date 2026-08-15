@@ -151,6 +151,7 @@ export function ScopePanel({ board, nets = [] }) {
     <div style={{
       background: '#16213e', borderRadius: '6px', padding: '8px',
       fontFamily: 'monospace', fontSize: '10px', color: '#7f8c8d',
+      width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflow: 'auto',
     }} data-scope-panel>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
         <strong style={{ color: '#ecf0f1', fontSize: '11px' }}>Oscilloscope</strong>
@@ -176,7 +177,7 @@ export function ScopePanel({ board, nets = [] }) {
           add a channel to capture — nothing is drawn that was not measured
         </div>
       ) : (
-        <canvas ref={canvasRef} width={W} height={H} style={{ borderRadius: '4px' }} />
+        <canvas ref={canvasRef} width={W} height={H} style={{ borderRadius: '4px', width: '100%', height: 'auto', display: 'block' }} />
       )}
 
       <div style={{ display: 'flex', gap: '4px', marginTop: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -215,4 +216,3 @@ export function ScopePanel({ board, nets = [] }) {
     </div>
   );
 }
-

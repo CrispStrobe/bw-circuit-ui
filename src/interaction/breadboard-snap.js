@@ -106,11 +106,13 @@ export function nearestHole(part, wx, wy) {
  * @returns {{kind: string, x: number, y: number, snapped: boolean, hole?: string, boardId?: string}}
  */
 export function snapGhost(g, parts) {
+  const anchorDx = Number(g.anchorDx) || 0;
+  const anchorDy = Number(g.anchorDy) || 0;
   if (g.kind !== 'breadboard') {
     for (const p of parts) {
       if (p.kind !== 'breadboard') continue;
-      const hole = nearestHole(p, g.x, g.y);
-      if (hole) return { ...g, x: hole.x, y: hole.y, snapped: true, hole: hole.hole, boardId: p.id };
+      const hole = nearestHole(p, g.x + anchorDx, g.y + anchorDy);
+      if (hole) return { ...g, x: hole.x - anchorDx, y: hole.y - anchorDy, snapped: true, hole: hole.hole, boardId: p.id };
     }
   }
   return { ...g, x: Math.round(g.x / 20) * 20, y: Math.round(g.y / 20) * 20, snapped: false };

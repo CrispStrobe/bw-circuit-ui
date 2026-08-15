@@ -17,15 +17,15 @@ test('555 DIP-8 straddles gutter correctly', () => {
   // Place with GND (pin 1) at e10 — pins 1-4 on top, 5-8 on bottom
   const leadMap = computeLeadMap(FOOTPRINTS['555'], 'e10');
 
-  // Verify the lead map straddles: top rows (e) and bottom rows (j)
+  // Verify the lead map straddles: top rows (e) and bottom rows (f)
   assert.equal(leadMap.gnd, 'e10');       // pin 1
   assert.equal(leadMap.trigger, 'e11');  // pin 2
   assert.equal(leadMap.output, 'e12');   // pin 3
   assert.equal(leadMap.reset, 'e13');    // pin 4
-  assert.equal(leadMap.vcc, 'j10');      // pin 8
-  assert.equal(leadMap.discharge, 'j11');// pin 7
-  assert.equal(leadMap.threshold, 'j12');// pin 6
-  assert.equal(leadMap.control, 'j13'); // pin 5
+  assert.equal(leadMap.vcc, 'f10');      // pin 8 (gutter straddle: e→f)
+  assert.equal(leadMap.discharge, 'f11');// pin 7
+  assert.equal(leadMap.threshold, 'f12');// pin 6
+  assert.equal(leadMap.control, 'f13'); // pin 5
 
   assert.ok(c.seatPart(timer.id, bb.id, leadMap), 'should seat successfully');
   assert.equal(timer.seat.boardId, bb.id);

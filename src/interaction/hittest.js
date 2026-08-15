@@ -68,7 +68,7 @@ export function partBounds(part) {
     const cols = part.params.size === 'half' ? 30 : 17;
     const w = (cols - 1) * 14 + 54;
     const h = part.params.size === 'mini' ? 310 - 2 * (2 * 14 + 18) : 310;
-    return { x: part.x - w / 2, y: part.y - h / 2, w, h };
+    return { minX: part.x - w / 2, minY: part.y - h / 2, maxX: part.x + w / 2, maxY: part.y + h / 2 };
   }
   const { w, h } = footprintOf(part);
   const rot = ((part.rotation ?? 0) % 360 + 360) % 360;

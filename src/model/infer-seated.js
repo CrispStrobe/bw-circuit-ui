@@ -48,19 +48,33 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
     notes.push(`Showing the first 8 of ${stc.pins.length} declared pins — the board is full.`);
   }
 
+  // Device-specific board support: Arduino/Pico use their real board part
+  // and header pin names; everything else gets a generic MCU DIP.
+  const device = String(stc.device || '').toLowerCase();
+  const controllerKind = device === 'arduino-uno' ? 'arduino_uno'
+    : device === 'arduino-nano' ? 'arduino_nano'
+      : device === 'pico' ? 'pi_pico' : 'mcu';
+  const isBoard = controllerKind !== 'mcu';
+  const controllerPin = pin => isBoard
+    ? String(pin.where || pin.pin || pin.name || '').toLowerCase()
+    : `P${pin.port}.${pin.bit}`;
+  const powerPin = controllerKind === 'pi_pico' ? 'vbus' : isBoard ? '5v' : 'VCC';
+  const groundPin = isBoard ? 'gnd' : 'GND';
+
   const bb = circuit.addPart('breadboard', {}, 470, 330);
-  const mcu = circuit.addPart('mcu', { pins: pins.map(p => `P${p.port}.${p.bit}`) }, 470, 40);
+  const mcu = circuit.addPart(controllerKind,
+    isBoard ? {} : { pins: pins.map(p => controllerPin(p)) }, 470, 40);
   // A real battery feeding the rails — the bench has power OBJECTS, never
   // abstract supply symbols (those belong to the schematic projection).
   const bat = circuit.addPart('vsource', { variant: '9v', volts: 5 }, 120, 150);
   circuit.addTapWire(bat.id, 'pos', bb.id, 't+2', '#e74c3c');
   circuit.addTapWire(bat.id, 'neg', bb.id, 't-2', '#2c3e50');
-  // The chip itself is powered from the rails — VCC is pin 40, GND pin 20
-  // on this package. A bench where the MCU floats unpowered is the first
-  // mistake a lab manual warns about; the derived build must not model it.
-  circuit.addTapWire(mcu.id, 'VCC', bb.id, 't+1', '#e74c3c');
-  circuit.addTapWire(mcu.id, 'GND', bb.id, 't-1', '#2c3e50');
-  notes.push('VCC (pin 40) and GND (pin 20) feed the chip from the rails.');
+  // The controller is powered from the rails.
+  circuit.addTapWire(mcu.id, powerPin, bb.id, 't+1', '#e74c3c');
+  circuit.addTapWire(mcu.id, groundPin, bb.id, 't-1', '#2c3e50');
+  notes.push(isBoard
+    ? `${stc.device}: ${powerPin.toUpperCase()} and GND feed the controller from the rails.`
+    : 'VCC (pin 40) and GND (pin 20) feed the chip from the rails.');
   if (realism === 'bench') {
     const c100n = circuit.addPart('capacitor', { farads: 100e-9 }, 250, 90);
     circuit.addTapWire(c100n.id, 'a', bb.id, 't+4', '#e74c3c');
@@ -73,7 +87,7 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
 
   let col = 5;
   for (const pin of pins) {
-    const pinName = `P${pin.port}.${pin.bit}`;
+    const pinName = controllerPin(pin);
     const dir = String(pin.direction || 'output').toLowerCase();
     const activeLow = !!pin.activeLow;
 

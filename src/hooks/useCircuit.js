@@ -133,6 +133,11 @@ export function useCircuit(vcc = 5.0) {
   const setPower = useCallback((on) => {
     circuit.setPower(on);
     bump();
+    // Power off while a debug session is attached = MCU loses power.
+    // The circuit-tab listener stops the runner and clears the status panel.
+    if (!on && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('bw-power-off'));
+    }
   }, [circuit, bump]);
 
   /**

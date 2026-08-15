@@ -38,7 +38,7 @@ export { BomPanel } from './components/BomPanel.jsx';
 export { ExamplesBrowser } from './components/ExamplesBrowser.jsx';
 
 // Panel data functions
-export { runDrc } from './model/drc.js';
+export { runDrc, setExtractors } from './model/drc.js';
 export { generateBom, bomToCsv } from './model/bom.js';
 
 // i18n

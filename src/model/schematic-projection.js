@@ -135,6 +135,32 @@ export function projectSchematic(parts, nets) {
     });
   }
 
+  // Implicit ground: if there is no explicit GND post, the negative terminal
+  // of the first voltage source is the reference node. The schematic must show
+  // that fact instead of silently dropping the ground symbol.
+  const hasExplicitGround = electrical.some(p => p.kind === 'gnd');
+  if (!hasExplicitGround) {
+    let groundNetId = null;
+    for (const net of nets) {
+      if (net.terminals.some(t => t.terminal === 'neg' &&
+          electrical.some(p => p.id === t.part && p.kind === 'vsource'))) {
+        groundNetId = net.id;
+        break;
+      }
+    }
+    if (groundNetId) {
+      const col = symbols.length ? Math.max(...symbols.map(s => s.col)) + 1 : 1;
+      const x = MARGIN_X + col * COL_W;
+      const y = MARGIN_Y;
+      symbols.push({
+        id: '__implicit_gnd__', kind: 'gnd', label: 'GND', params: {}, col, row: 0,
+        x, y,
+        pins: [{name: 'gnd', netId: groundNetId, side: 'left', x: x - PIN_HALF, y}],
+        pinsPerSide: 1,
+      });
+    }
+  }
+
   // Net routing: every trunk lives in a GAP between symbol columns, never
   // inside one — a trunk snapped to a pin midpoint used to run straight
   // through neighbouring symbols, and two nets in the same band drew as
@@ -217,7 +243,12 @@ export function projectSchematic(parts, nets) {
 function findPinNet(nets, partId, terminal) {
   for (const net of nets) {
     for (const t of net.terminals) {
-      if (t.part === partId && t.terminal === terminal) return net.id;
+      // Board sidecars use lowercase terminal names (d13/gp0),
+      // while engine nets use canonical uppercase (D13/GP0).
+      if (t.part === partId && (t.terminal === terminal ||
+          String(t.terminal).toLowerCase() === String(terminal).toLowerCase())) {
+        return net.id;
+      }
     }
   }
   return null;
