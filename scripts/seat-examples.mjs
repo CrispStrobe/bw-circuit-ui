@@ -5,14 +5,21 @@
  * are wired (owner photo, 2026-08-15). Uses the app's OWN footprint
  * and occupancy model, so what this writes is exactly what the
  * designer would have produced by hand:
- *   - adds a full-size breadboard when none exists
+ *   - adds full-size breadboards when none exist — up to four,
+ *     stacked like the real multi-board machines: when a chip no
+ *     longer fits the current board, the next board opens instead of
+ *     the chip floating off into the air (v1 floated the Z80 bench's
+ *     ACIA and glue for exactly this reason)
  *   - seats every part that has a FOOTPRINT, left to right, DIPs
  *     straddling the gutter (computeLeadMap's own convention)
- *   - converts part-to-part wires between seated parts into colored
- *     hole jumpers in the pins' own column groups
- *   - vcc/gnd wires become rail jumpers (t+ / b-), red/black
- *   - anything unseatable (retro DIPs without footprints yet) stays a
- *     floating part with logical wires — degraded, not broken
+ *   - converts part-to-part wires between seated parts ON THE SAME
+ *     BOARD into colored hole jumpers in the pins' own column groups;
+ *     cross-board connections stay logical wires (they render anchored
+ *     at the seated holes, arcing board to board like real hookup wire)
+ *   - vcc/gnd wires become rail jumpers (t+ / b-) on the pin's own
+ *     board, red/black
+ *   - anything unseatable (no footprint, or wider than a board) stays
+ *     a floating part with logical wires — degraded, not broken
  *
  * Usage: node scripts/seat-examples.mjs --examples <dir> [--only id]
  */
@@ -52,18 +59,34 @@ function seatExample(id) {
     }
     if (!seatable.length) return { id, skip: 'nothing-seatable' };
 
-    // The board.
-    const bb = { id: 'bb1', kind: 'breadboard', params: {}, terminals: [], x: 470, y: 330, rotation: 0 };
-    const model = new BreadboardModel(bb.id, {});
+    // Boards open on demand, stacked vertically like the real machines
+    // (a full-size board is ~310 world units tall; 360 leaves an air gap
+    // for the arcing cross-board wires).
+    const MAX_BOARDS = 4;
+    const boards = [];
+    const openBoard = () => {
+        const n = boards.length + 1;
+        const bb = { id: `bb${n}`, kind: 'breadboard', params: {}, terminals: [], x: 470, y: 330 + (n - 1) * 360, rotation: 0 };
+        const board = { bb, model: new BreadboardModel(bb.id, {}), col: 3 };
+        boards.push(board);
+        return board;
+    };
 
-    // Pack left → right; MCU-ish first so it sits like the photo.
-    seatable.sort((a, b) => (b.kind === 'mcu') - (a.kind === 'mcu'));
-    let col = 3;
-    const seats = new Map();
+    // Pack left → right; MCU-ish first, then widest-first so the big
+    // DIPs claim whole boards before the small parts fill the gaps.
+    seatable.sort((a, b) =>
+        ((b.kind === 'mcu') - (a.kind === 'mcu')) ||
+        (widthOf(FOOTPRINTS[b.kind]) - widthOf(FOOTPRINTS[a.kind])));
+    const seats = new Map();        // part id → leadMap
+    const seatBoard = new Map();    // part id → board
+    let board = openBoard();
     for (const part of seatable) {
         const fp = FOOTPRINTS[part.kind];
         const w = widthOf(fp);
-        if (col + w > 62) { floating.push(part); continue; }   // v1: one board; overflow floats
+        if (board.col + w > 62) {
+            if (w + 3 > 62 || boards.length >= MAX_BOARDS) { floating.push(part); continue; }
+            board = openBoard();
+        }
         // A gutter-straddling DIP seats at row e: its top pin row lands in e
         // and the bottom row in f — the tight straddle a real chip makes.
         // Seating it at row a stretched the legs across the whole top block
@@ -71,26 +94,28 @@ function seatExample(id) {
         // row a/b territory.
         const refRow = fp.straddlesGutter ? 'e' : 'a';
         let leadMap;
-        try { leadMap = computeLeadMap(fp, `${refRow}${col}`); } catch { floating.push(part); continue; }
-        try { model.occupy(part.id, leadMap); }
+        try { leadMap = computeLeadMap(fp, `${refRow}${board.col}`); } catch { floating.push(part); continue; }
+        try { board.model.occupy(part.id, leadMap); }
         catch { floating.push(part); continue; }   // occupy throws on conflict
-        part.seat = { boardId: bb.id, leadMap };
+        part.seat = { boardId: board.bb.id, leadMap };
         delete part.x; delete part.y;
         seats.set(part.id, leadMap);
-        col += w + 2;
+        seatBoard.set(part.id, board);
+        board.col += w + 2;
     }
     if (!seats.size) return { id, skip: 'no-seats-fit' };
 
     // Column-group jumper endpoints: same column, a free row in the block.
+    // Occupancy is per board — the same hole name exists once per board.
     const used = new Set();
-    for (const lm of seats.values()) for (const h of Object.values(lm)) used.add(h);
+    for (const [pid, lm] of seats) for (const h of Object.values(lm)) used.add(`${seatBoard.get(pid).bb.id}:${h}`);
     const groupRows = { top: ['a', 'b', 'c', 'd', 'e'], bottom: ['f', 'g', 'h', 'i', 'j'] };
-    const freeHole = (hole) => {
+    const freeHole = (bbId, hole) => {
         const row = hole[0]; const colN = hole.slice(1);
         const rows = groupRows.top.includes(row) ? groupRows.top : groupRows.bottom;
         for (const r of rows) {
             const h = `${r}${colN}`;
-            if (!used.has(h)) { used.add(h); return h; }
+            if (!used.has(`${bbId}:${h}`)) { used.add(`${bbId}:${h}`); return h; }
         }
         return null;
     };
@@ -102,22 +127,29 @@ function seatExample(id) {
     for (const w of c.wires) {
         const A = seats.get(w.from); const B = seats.get(w.to);
         const aHole = A && A[w.fromTerminal]; const bHole = B && B[w.toTerminal];
+        const aBoard = seatBoard.get(w.from); const bBoard = seatBoard.get(w.to);
         const pk = powerKind(w.from) || powerKind(w.to);
-        if (aHole && bHole) {
-            const a = freeHole(aHole); const b = freeHole(bHole);
+        if (aHole && bHole && aBoard === bBoard) {
+            const bbId = aBoard.bb.id;
+            const a = freeHole(bbId, aHole); const b = freeHole(bbId, bHole);
             if (a && b) {
-                holeWires.push({ ref: `bbw:${bb.id}:gen_${wireN++}`, boardId: bb.id, a, b, color: COLORS[ci++ % COLORS.length] });
+                holeWires.push({ ref: `bbw:${bbId}:gen_${wireN++}`, boardId: bbId, a, b, color: COLORS[ci++ % COLORS.length] });
             }
         } else if (pk && (aHole || bHole)) {
-            // Power to a seated pin: jumper to the matching rail.
+            // Power to a seated pin: jumper to the matching rail on the
+            // pin's own board.
             const pinHole = aHole || bHole;
-            const a = freeHole(pinHole);
+            const pinBoard = aBoard || bBoard;
+            const bbId = pinBoard.bb.id;
+            const a = freeHole(bbId, pinHole);
             const railRow = pk === 'vcc' ? 't+' : 'b-';
             const rail = `${railRow}${pinHole.slice(1)}`;
             if (a) {
-                holeWires.push({ ref: `bbw:${bb.id}:gen_${wireN++}`, boardId: bb.id, a, b: rail, color: pk === 'vcc' ? 'red' : 'black' });
+                holeWires.push({ ref: `bbw:${bbId}:gen_${wireN++}`, boardId: bbId, a, b: rail, color: pk === 'vcc' ? 'red' : 'black' });
             }
         }
+        // Cross-board seated pairs land here with no jumper: the kept
+        // logical wire IS the hookup wire between boards.
         keptWires.push(w);   // ALWAYS kept: wires are the electrical
     }                        // truth; jumpers are the visual layer.
 
@@ -127,11 +159,11 @@ function seatExample(id) {
         if (part.x == null || (part.x === 120 && part.y === 120)) { part.x = fx; part.y = 60; fx += 140; }
     }
 
-    c.parts.push(bb);
+    for (const b of boards) c.parts.push(b.bb);
     c.wires = keptWires;
     c.holeWires = holeWires;
     writeFileSync(p, JSON.stringify(c, null, 1));
-    return { id, seated: seats.size, jumpers: wireN, kept: keptWires.length, floating: floating.length };
+    return { id, seated: seats.size, boards: boards.length, jumpers: wireN, kept: keptWires.length, floating: floating.length };
 }
 
 const ids = only ? [only] : readdirSync(dir).filter(d => existsSync(join(dir, d, 'circuit.json')));
@@ -141,6 +173,6 @@ for (const id of ids) {
     if (!r) continue;
     if (r.skip) { stats.skipped++; continue; }
     stats.done++;
-    console.log(`${r.id}: seated ${r.seated}, jumpers ${r.jumpers}, kept-logical ${r.kept}, floating ${r.floating}`);
+    console.log(`${r.id}: seated ${r.seated} on ${r.boards} board(s), jumpers ${r.jumpers}, kept-logical ${r.kept}, floating ${r.floating}`);
 }
 console.log(`\n${stats.done} examples re-authored as seated builds, ${stats.skipped} skipped (already seated / pure / unseatable)`);
