@@ -39,6 +39,7 @@ import { PartPalette } from './PartPalette.jsx';
 import { ControlPanel } from './ControlPanel.jsx';
 import { InferPanel } from './InferPanel.jsx';
 import { ExamplesBrowser } from './ExamplesBrowser.jsx';
+import { t } from '../i18n/strings.js';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
 import { SchematicPanel } from './SchematicPanel.jsx';
@@ -63,7 +64,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, examples, onLoadExample }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, examples, onLoadExample, lang = 'en' }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -699,7 +700,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           <button onClick={() => setLeftOpen(false)} style={{
             background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
             fontFamily: 'monospace', fontSize: '10px', textAlign: 'right', padding: 0,
-          }}>collapse</button>
+          }}>{t('collapse', lang)}</button>
           {/* Parts palette — takes selectorSplit fraction (or all if no examples) */}
           <div data-parts-selector style={{
             flex: hasExamples ? `${selectorSplit} 1 0` : '1 1 0',
@@ -758,11 +759,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                 display: 'flex', alignItems: 'center', gap: 6,
               }}>
                 <span style={{ fontSize: '8px' }}>{examplesOpen ? '▼' : '▶'}</span>
-                Examples
+                {t('examples', lang)}
               </button>
               {examplesOpen && (
                 <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                  <ExamplesBrowser examples={examples} onLoadExample={onLoadExample} />
+                  <ExamplesBrowser examples={examples} onLoadExample={onLoadExample} lang={lang} />
                 </div>
               )}
             </div>
@@ -773,7 +774,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
           borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
           fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
-        }}>Parts</button>
+        }}>{t('parts', lang)}</button>
       )}
 
       {/* A snapshot must not LOOK like a live board. Desaturating it is the
@@ -810,7 +811,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold',
             pointerEvents: 'none',
           }}>
-            wiring only — no sim
+            {t('wiringOnly', lang)}
           </div>
         )}
         {/* View mode switch: one view at a time, full width */}
@@ -822,7 +823,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
               border: '1px solid #2c3e50', borderRadius: 4,
               padding: '3px 10px', cursor: 'pointer',
               fontFamily: 'monospace', fontSize: 10,
-            }}>{vm === 'realistic' ? 'Realistic' : 'Schematic'}</button>
+            }}>{vm === 'realistic' ? t('viewRealistic', lang) : t('viewSchematic', lang)}</button>
           ))}
         </div>
         <div style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'clip', display: 'flex', flexDirection: 'column' }}>
@@ -830,19 +831,19 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {mode === 'simulate' && (
           <span style={{ display: 'inline-flex', gap: 4, alignSelf: 'flex-end', marginBottom: 4, marginRight: 6 }}>
             <button onClick={() => setSimPaused(v => !v)}
-              title={simPaused ? 'Resume simulation' : 'Pause simulation (board time freezes; knobs stay live)'}
+              title={simPaused ? t('resumeTitle', lang) : t('pauseTitle', lang)}
               style={{ background: simPaused ? '#e67e22' : '#16213e', border: '1px solid #2c3e50',
                 color: simPaused ? '#000' : '#7f8c8d', borderRadius: 4, padding: '3px 10px',
                 cursor: 'pointer', fontFamily: 'monospace', fontSize: 10 }}>
-              {simPaused ? '▶ resume' : '⏸ pause'}</button>
+              {simPaused ? `▶ ${t('resume', lang)}` : `⏸ ${t('pause', lang)}`}</button>
             <button onClick={handleSimStep} disabled={!simPaused}
-              title="Advance one 50 ms tick"
+              title={t('stepTitle', lang)}
               style={{ background: '#16213e', border: '1px solid #2c3e50',
                 color: simPaused ? '#3498db' : '#3a4a5a', borderRadius: 4, padding: '3px 10px',
                 cursor: simPaused ? 'pointer' : 'default', fontFamily: 'monospace', fontSize: 10 }}>
-              ⏭ step</button>
+              ⏭ {t('step', lang)}</button>
             <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))}
-              title="Simulation speed"
+              title={t('simSpeed', lang)}
               style={{ background: '#16213e', color: '#7f8c8d', border: '1px solid #2c3e50',
                 borderRadius: 4, fontSize: 10, fontFamily: 'monospace' }}>
               <option value={0.25}>0.25x</option>
@@ -997,7 +998,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           <div style={{ flex: 1, minWidth: 0, overflow: 'auto', overscrollBehavior: 'contain',
             background: '#16213e', borderRadius: 8, border: '1px solid #2c3e50', padding: 8 }}>
             <div style={{ color: '#7f8c8d', fontFamily: 'monospace', fontSize: 10, marginBottom: 4 }}>
-              Schematic — read-only projection of the circuit above. Edit in Realistic view.
+              {t('schematicCaption', lang)}
             </div>
             <SchematicPanel parts={parts}
               nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets() : []} />
@@ -1034,7 +1035,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         <button onClick={() => setRightOpen(false)} style={{
           background: 'none', border: 'none', color: '#7f8c8d', cursor: 'pointer',
           fontFamily: 'monospace', fontSize: '10px', textAlign: 'left', padding: 0,
-        }}>collapse</button>
+        }}>{t('collapse', lang)}</button>
         {debugState && (
           <DebugStatus
             debugState={debugState}
@@ -1086,7 +1087,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           writingMode: 'vertical-rl', background: '#1a1a2e', border: '1px solid #2c3e50',
           borderRadius: '4px', color: '#7f8c8d', cursor: 'pointer', padding: '8px 4px',
           fontFamily: 'monospace', fontSize: '10px', flexShrink: 0,
-        }}>Controls</button>
+        }}>{t('controls', lang)}</button>
       )}
     </div>
   );

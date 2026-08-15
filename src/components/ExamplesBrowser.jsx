@@ -6,14 +6,8 @@
  * Presentation-only: no canvas interaction.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-
-const CATEGORY_LABELS = {
-  basics: 'Basics',
-  analog: 'Analog',
-  digital: 'Digital',
-  motors: 'Motors & Actuators',
-};
+import React, { useState, useMemo } from 'react';
+import { t, categoryLabels, difficultyLabels } from '../i18n/strings.js';
 
 const CATEGORY_COLORS = {
   basics: '#2ecc71',
@@ -22,14 +16,14 @@ const CATEGORY_COLORS = {
   motors: '#e74c3c',
 };
 
-const DIFFICULTY_LABELS = ['', 'Beginner', 'Intermediate', 'Advanced'];
-
 /**
  * @param {{ examples: Array, lang?: string, onLoadExample?: function }} props
  */
 export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
   const [filter, setFilter] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const catLabels = categoryLabels(lang);
+  const diffLabels = difficultyLabels(lang);
 
   const categories = useMemo(() => {
     if (!examples) return [];
@@ -58,7 +52,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
         background: '#1a1a2e', border: '1px solid #2c3e50', borderRadius: '8px',
         padding: '12px', fontFamily: 'monospace', fontSize: '11px', color: '#556',
       }}>
-        No examples available
+        {t('noExamples', lang)}
       </div>
     );
   }
@@ -73,7 +67,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
       overflowY: 'auto',
     }}>
       <div style={{ color: '#ecf0f1', fontSize: '11px', marginBottom: '6px', fontWeight: 'bold' }}>
-        Examples
+        {t('examples', lang)}
       </div>
 
       {/* Search */}
@@ -81,7 +75,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
         type="text"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
-        placeholder="search examples..."
+        placeholder={t('searchExamples', lang)}
         style={{
           width: '100%', padding: '4px 6px', marginBottom: '6px',
           background: '#0a0a1a', border: '1px solid #2c3e50',
@@ -102,7 +96,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
             color: !selectedCategory ? '#fff' : '#7f8c8d',
             border: '1px solid #2c3e50',
           }}
-        >All</button>
+        >{t('all', lang)}</button>
         {categories.map(cat => (
           <button
             key={cat}
@@ -114,13 +108,13 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
               color: selectedCategory === cat ? '#fff' : (CATEGORY_COLORS[cat] || '#7f8c8d'),
               border: `1px solid ${CATEGORY_COLORS[cat] || '#2c3e50'}`,
             }}
-          >{CATEGORY_LABELS[cat] || cat}</button>
+          >{catLabels[cat] || cat}</button>
         ))}
       </div>
 
       {/* Example cards */}
       {filtered.length === 0 ? (
-        <div style={{ color: '#556', fontSize: '9px', padding: '4px' }}>No matches</div>
+        <div style={{ color: '#556', fontSize: '9px', padding: '4px' }}>{t('noMatches', lang)}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {filtered.map(ex => (
@@ -128,6 +122,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
               key={ex.id}
               example={ex}
               lang={lang}
+              diffLabels={diffLabels}
               onClick={() => onLoadExample && onLoadExample(ex)}
             />
           ))}
@@ -137,11 +132,11 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample }) {
   );
 }
 
-function ExampleCard({ example, lang, onClick }) {
+function ExampleCard({ example, lang, diffLabels, onClick }) {
   const [hovered, setHovered] = useState(false);
   const title = example.title?.[lang] || example.title?.en || example.id;
   const catColor = CATEGORY_COLORS[example.category] || '#555';
-  const diff = DIFFICULTY_LABELS[example.difficulty] || '';
+  const diff = diffLabels[example.difficulty] || '';
 
   return (
     <div
