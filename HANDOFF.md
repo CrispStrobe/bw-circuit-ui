@@ -1,7 +1,7 @@
 # bw-circuit-ui -- handoff for the next session
 
 npm test 816/0/3 (CI clean). 23/23 browser gate green. CI green.
-VDP keyboard: 4/4. Fabric gate: 11/11. Capability: 6/6. TileVGA face: 3/3.
+VDP keyboard: 4/4. Fabric gate: 11/11. Capability: 6/6. TileVGA: 3/3.
 Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -153,6 +153,12 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **Spectrum beeper** (91ca8df): polls debugState.audio() per rAF, pipes
+  {hz,on} to updateBuzzerAudio (existing WebAudio). Stops on unmount.
+- **ULA keyboard** (91ca8df): VdpScreen detects setKeysFn and routes full
+  keyboard (browser→Spectrum matrix mapping) instead of 4-dir setButtons.
+- **char_lcd live text** (91ca8df): device state text replaces hardcoded
+  "Hello World!". Both SvgParts and WokwiParts get deviceStates for LCD.
 - **TileVGA 320x240 face** (ed03b6d): VdpScreen now adapts to any video
   frame resolution (was hardcoded 256x192). Canvas scales 2x crisp (max
   640px). Playwright test: 3 checks (native dims, CSS scale, hello-world).
@@ -165,14 +171,7 @@ Nothing uncommitted. No branches.
 
 ## Blocked on bw-board
 
-- **target.audio()**: Spectrum beeper face. The API ({hz, on}) is described
-  in the zx-ula.js comment ("buzzerEdges pattern") but not yet implemented
-  on any debug target. When it lands, wire it through CircuitDesigner to
-  the existing buzzer WebAudio path (updateBuzzerAudio).
-- **target.setKeys**: ULA keyboard focus routing. The API is not yet on the
-  debug target. When it lands, extend VdpScreen's keyboard handler to call
-  setKeys alongside setButtons (the face should detect which input method
-  the machine supports and use the right one).
+Nothing currently blocked.
 
 ## Blocked / waiting
 
