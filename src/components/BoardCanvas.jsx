@@ -26,6 +26,19 @@ import { DrcOverlay } from './DrcOverlay.jsx';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
+
+// DIP chip kinds that get a generic IC body renderer (not a custom SVG).
+// These are discrete retro/logic ICs placed on breadboards — without a
+// body they render as invisible dots, making bench circuits unreadable.
+const DIP_CHIP_LABELS = {
+  w65c02: 'W65C02S', w65c22: 'W65C22', w65c51: 'W65C51',
+  '62256': '62256', '28c256': '28C256',
+  z80: 'Z80 CPU', mc6850: 'MC6850',
+  '74hc00': '74HC00', '74hc04': '74HC04', '74hc08': '74HC08',
+  '74hc32': '74HC32', '74hc74': '74HC74', '74hc138': '74HC138',
+  '74hc245': '74HC245', '74hc374': '74HC374', '74hc595': '74HC595',
+  '74c922': '74C922', r6507: 'R6507', mos6532: 'MOS6532',
+};
 import { routeWire, routeWireWithWaypoints, partBBoxes, getPartBBox } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
 import { PartTooltip } from './PartTooltip.jsx';
@@ -172,7 +185,19 @@ function terminalOffsetsForPart(part) {
       return { in0: r(-22, -10), in1: r(-22, 10), out: r(22, 0) };
     case 'gate_not':
       return { in0: r(-20, 0), out: r(20, 0) };
-    default: return { a: r(-15, 0), b: r(15, 0) };
+    default: {
+      // Generic DIP chip terminal offsets from sidecar geometry
+      if (DIP_CHIP_LABELS[part.kind]) {
+        const sc = typeof getSidecar === 'function' ? getSidecar(part.kind) : null;
+        if (sc && sc.terminals && sc.terminals.length > 2) {
+          const positions = dipTerminalPositions(sc);
+          const offsets = {};
+          for (const [name, pos] of Object.entries(positions)) offsets[name] = r(pos.dx, pos.dy);
+          return offsets;
+        }
+      }
+      return { a: r(-15, 0), b: r(15, 0) };
+    }
   }
 }
 
@@ -528,8 +553,56 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
 
-      default:
+      default: {
+        // Generic DIP body for retro/logic ICs that have sidecars
+        const dipLabel = DIP_CHIP_LABELS[kind];
+        if (dipLabel) {
+          const sc = typeof getSidecar === 'function' ? getSidecar(kind) : null;
+          if (sc && sc.terminals && sc.terminals.length > 2) {
+            const pinCount = sc.terminals.length;
+            const positions = dipTerminalPositions(sc);
+            const pinsPerSide = Math.ceil(pinCount / 2);
+            const bodyW = Math.max(80, pinsPerSide * DIP_PIN_PITCH + 20);
+            const bodyH = DIP_ROW_OFFSET * 2 + 10;
+            return (
+              <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
+                data-dip-body={kind} data-dip-label={dipLabel}>
+                {/* DIP package body */}
+                <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={3}
+                  fill="#1a1a1a" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.5} />
+                {/* Notch */}
+                <path d={`M -6 ${-bodyH / 2} A 6 6 0 0 1 6 ${-bodyH / 2}`}
+                  fill="#2c3e50" stroke={selStroke || '#666'} strokeWidth={0.8} />
+                {/* Pin 1 dot */}
+                <circle cx={-bodyW / 2 + 8} cy={-bodyH / 2 + 7} r={2} fill="#666" />
+                {/* Label */}
+                <text x={0} y={-2} textAnchor="middle" fill="#ccc" fontSize={8}
+                  fontFamily="monospace" fontWeight="bold">{dipLabel}</text>
+                <text x={0} y={9} textAnchor="middle" fill="#777" fontSize={6}
+                  fontFamily="monospace">DIP-{pinCount}</text>
+                {/* Pin legs */}
+                {sc.terminals.map(t => {
+                  const pos = positions[t.name];
+                  if (!pos) return null;
+                  return (
+                    <g key={t.name}>
+                      <line x1={pos.dx} y1={pos.dy < 0 ? -bodyH / 2 : bodyH / 2}
+                        x2={pos.dx} y2={pos.dy}
+                        stroke="#b0b8c0" strokeWidth={2} />
+                      <rect x={pos.dx - 3} y={pos.dy - 1.5} width={6} height={3}
+                        fill="#d8dee4" stroke="#8090a0" strokeWidth={0.3} />
+                    </g>
+                  );
+                })}
+                {/* Part name below */}
+                <text x={0} y={bodyH / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+                  fontFamily="monospace">{part.declName || id}</text>
+              </g>
+            );
+          }
+        }
         return null;
+      }
     }
   });
 }
