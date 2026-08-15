@@ -737,13 +737,21 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // verbatim.
     const legacy = Array.isArray(circuitData.wires) &&
       circuitData.wires.some(w => typeof w.from === 'string');
+    // A file carrying seats or hole wires was deliberately RE-AUTHORED as a
+    // breadboard build — the seated-catalog generator keeps the original
+    // flat wires as electrical truth, so the wire dialect alone no longer
+    // means "predates the breadboard world". Discarding such a file for the
+    // declaration-built bench threw away every shipped MCU seat (the owner
+    // saw 187 re-authored examples all render the chip floating).
+    const reauthored = (Array.isArray(circuitData.holeWires) && circuitData.holeWires.length > 0) ||
+      (Array.isArray(circuitData.parts) && circuitData.parts.some(p => p && p.seat));
     const pins = projectData?.pins;
     // fileOnly: the host says this circuit arrived WITHOUT a program — a
     // pure-circuit example. Pins still in the project then belong to
     // whatever was loaded before, and inferring from them would rebuild
     // the PREVIOUS bench over this file (that is exactly what happened:
     // examples 47-53 all showed example 46's 19-part board).
-    if (legacy && pins?.length > 0 && !circuitData.fileOnly) {
+    if (legacy && !reauthored && pins?.length > 0 && !circuitData.fileOnly) {
       try {
         circuit._saveHistory();
         circuit.parts.length = 0;
@@ -1028,9 +1036,28 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onSeatPart={(partId, boardId, hole) => {
             const part = parts.find(pp => pp.id === partId);
             if (!part || !BB_FOOTPRINTS[part.kind]) return false;
-            try {
-              return circuit.seatPart(partId, boardId, computeLeadMap(BB_FOOTPRINTS[part.kind], hole));
-            } catch { return false; }
+            const fp = BB_FOOTPRINTS[part.kind];
+            const tryAt = (h) => {
+              try { return circuit.seatPart(partId, boardId, computeLeadMap(fp, h)); }
+              catch { return false; }
+            };
+            if (tryAt(hole)) return true;
+            // The exact hole is taken or runs off an edge — walk the
+            // neighbourhood before giving up. Without this, a drop one
+            // column into another part's legs silently fell back to the
+            // free grid, which read as "seating never works" for anything
+            // bigger than a resistor.
+            const rows = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+            const row = hole[0];
+            const col = Number(hole.slice(1));
+            const ri = rows.indexOf(row);
+            for (let radius = 1; radius <= 4; radius++) {
+              if (tryAt(`${row}${col + radius}`) || tryAt(`${row}${col - radius}`)) return true;
+              for (const rr of [rows[ri + radius], rows[ri - radius]]) {
+                if (rr && tryAt(`${rr}${col}`)) return true;
+              }
+            }
+            return false;
           }}
           onUnseatPart={(partId) => { circuit.unseatPart(partId); }}
           circuit={circuit}

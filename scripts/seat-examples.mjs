@@ -64,8 +64,14 @@ function seatExample(id) {
         const fp = FOOTPRINTS[part.kind];
         const w = widthOf(fp);
         if (col + w > 62) { floating.push(part); continue; }   // v1: one board; overflow floats
+        // A gutter-straddling DIP seats at row e: its top pin row lands in e
+        // and the bottom row in f — the tight straddle a real chip makes.
+        // Seating it at row a stretched the legs across the whole top block
+        // (a..f), which is not how any physical DIP sits. Flat parts keep
+        // row a/b territory.
+        const refRow = fp.straddlesGutter ? 'e' : 'a';
         let leadMap;
-        try { leadMap = computeLeadMap(fp, `a${col}`); } catch { floating.push(part); continue; }
+        try { leadMap = computeLeadMap(fp, `${refRow}${col}`); } catch { floating.push(part); continue; }
         try { model.occupy(part.id, leadMap); }
         catch { floating.push(part); continue; }   // occupy throws on conflict
         part.seat = { boardId: bb.id, leadMap };

@@ -117,3 +117,42 @@ export function snapGhost(g, parts) {
   }
   return { ...g, x: Math.round(g.x / 20) * 20, y: Math.round(g.y / 20) * 20, snapped: false };
 }
+
+/**
+ * LOOSE seat snap: the nearest ref hole where a footprint fits, for a part
+ * dropped ANYWHERE over (or within one pitch of) a breadboard's outline.
+ *
+ * nearestHole demands the ref pin land within half a pitch of a hole — the
+ * right contract for a wire end, and an impossible one for seating a 40-pin
+ * DIP by its body: the user drags the chip, not its pin 1, and a miss falls
+ * silently back to the free grid, which reads as "there is no snapping"
+ * (owner report, 2026-08-15). Here the column clamps so the whole footprint
+ * stays on the board, and rows are tried nearest-first through `tryHole`
+ * (validity/occupancy is the caller's knowledge) so a drop near the edge
+ * still finds the legal seat beside it.
+ *
+ * @param {{x: number, y: number}} bbPart - the breadboard part
+ * @param {{leads: Record<string, {dRow: number, dCol: number}>}} fp
+ * @param {number} wx @param {number} wy - desired ref-pin world position
+ * @param {(hole: string) => boolean} [tryHole] - accept/reject a candidate
+ * @returns {string | null} ref hole id, or null when not over this board
+ */
+export function seatSnapHole(bbPart, fp, wx, wy, tryHole) {
+  const outline = bbFootprint(bbPart);
+  if (Math.abs(wx - bbPart.x) > outline.w / 2 + BB_PITCH ||
+      Math.abs(wy - bbPart.y) > outline.h / 2 + BB_PITCH) return null;
+  const o = bbHoleOrigin(bbPart);
+  const dCols = Object.values(fp.leads).map(l => l.dCol);
+  const minD = Math.min(...dCols);
+  const maxD = Math.max(...dCols);
+  let col = Math.round((wx - o.x) / BB_PITCH) + 1; // 1-based hole column
+  col = Math.max(1 - minD, Math.min(o.cols - maxD, col));
+  if (col < 1 || col > o.cols) return null; // footprint wider than the board
+  const rows = bbRows(bbPart).filter(r => r.name.length === 1); // terminal rows only
+  const byDist = rows.map(r => ({ r, d: Math.abs(wy - r.y) })).sort((a, b) => a.d - b.d);
+  for (const { r } of byDist) {
+    const hole = `${r.name}${col}`;
+    if (!tryHole || tryHole(hole)) return hole;
+  }
+  return null;
+}

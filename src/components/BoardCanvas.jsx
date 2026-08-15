@@ -16,7 +16,7 @@ import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
 import { classifyWheel } from '../interaction/transform.js';
 import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
-import { snapGhost, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
+import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
 import { getSidecar } from '../model/parts-registry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
@@ -1605,6 +1605,24 @@ export function BoardCanvas({
             api.onMovePart(id, s.x, s.y);
             continue;
           }
+          // Loose fallback: nearestHole demands the REF PIN within half a
+          // pitch of a hole, but the user drags the chip body, not pin 1 —
+          // any drop over the board's outline should seat. seatSnapHole
+          // clamps the footprint onto the lattice; onSeatPart's own retry
+          // walks the neighbourhood if those exact holes are taken.
+          if (fp && api.onSeatPart) {
+            const ax = pp.x + (anchor?.dx || 0);
+            const ay = pp.y + (anchor?.dy || 0);
+            let seated = false;
+            for (const bb of partsRef.current) {
+              if (bb.kind !== 'breadboard') continue;
+              const hole = seatSnapHole(bb, fp, ax, ay, (h) => {
+                try { computeLeadMap(fp, h); return true; } catch { return false; }
+              });
+              if (hole && api.onSeatPart(id, bb.id, hole)) { seated = true; break; }
+            }
+            if (seated) continue;
+          }
           if (api.onUnseatPart) api.onUnseatPart(id);
           api.onMovePart(id, Math.round(pp.x / 20) * 20, Math.round(pp.y / 20) * 20);
         }
@@ -2109,10 +2127,30 @@ export function BoardCanvas({
           onNudgeSeated(id, Math.sign(dx) * holes, Math.sign(dy) * holes);
           continue;
         }
+        // A FREE footprint part arrow-keyed over a board seats right there:
+        // pixel steps (20 px) can never align with the 14 px hole pitch, so
+        // arrows alone could walk a chip across the lattice forever without
+        // it ever snapping in (owner report, 2026-08-15). Seat first; from
+        // then on the same keys nudge hole-by-hole.
+        if (!e.shiftKey && !part.seat && BB_FOOTPRINTS[part.kind] && onSeatPart) {
+          const fp = BB_FOOTPRINTS[part.kind];
+          const anchor = terminalOffsetsForPart(part)[fp.refTerminal];
+          const ax = part.x + dx + (anchor?.dx || 0);
+          const ay = part.y + dy + (anchor?.dy || 0);
+          let seated = false;
+          for (const bb of parts) {
+            if (bb.kind !== 'breadboard') continue;
+            const hole = seatSnapHole(bb, fp, ax, ay, (h) => {
+              try { computeLeadMap(fp, h); return true; } catch { return false; }
+            });
+            if (hole && onSeatPart(id, bb.id, hole)) { seated = true; break; }
+          }
+          if (seated) continue;
+        }
         mover(id, part.x + dx, part.y + dy);
       }
     }
-  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onNudgePart, onNudgeSeated, onCopy, onPaste, onFlipPart, onUndo, onRedo, onSelectAll, onRotatePart, onDuplicatePart]);
+  }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onNudgePart, onNudgeSeated, onSeatPart, onCopy, onPaste, onFlipPart, onUndo, onRedo, onSelectAll, onRotatePart, onDuplicatePart]);
 
   // ── Touch support ────────────────────────────────────────────────
   const canvasContainerRef = useRef(null);
