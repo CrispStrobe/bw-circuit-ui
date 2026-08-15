@@ -169,6 +169,9 @@ const STRINGS = {
   pinChooserCancel:    { en: 'Esc or click outside to cancel', de: 'Esc oder außerhalb klicken zum Abbrechen' },
   noSignal:            { en: 'no signal', de: 'kein Signal' },
   clickToPlay:         { en: 'Click to play — arrow keys or WASD to steer', de: 'Klicken zum Spielen — Pfeiltasten oder WASD zum Steuern' },
+  dropSnapshot:        { en: 'Drop .SNA or .Z80 snapshot', de: '.SNA- oder .Z80-Snapshot ablegen' },
+  snapshotLoaded:      { en: 'Snapshot loaded', de: 'Snapshot geladen' },
+  snapshotFailed:      { en: 'Snapshot failed', de: 'Snapshot fehlgeschlagen' },
   breadboardAnnotation:{ en: 'a complete circuit — the battery feeds the rails, the strips do the wiring', de: 'ein vollständiger Stromkreis — die Batterie speist die Schienen, die Streifen verbinden' },
 };
 

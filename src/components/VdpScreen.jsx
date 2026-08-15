@@ -41,7 +41,7 @@ const BROWSER_TO_SPECTRUM = {
   'Control': 'symbol shift',
 };
 
-export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, lang = 'en' }) {
+export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, loadSnapshotFn, lang = 'en' }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const lastFrameRef = useRef(-1);
@@ -112,6 +112,34 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, lang = 'en' }) {
     wrapRef.current?.focus();
   }, []);
 
+  // Snapshot drop-zone: accept .sna and .z80 files
+  const [dragOver, setDragOver] = useState(false);
+  const [snapStatus, setSnapStatus] = useState(null); // null | 'ok' | 'fail'
+
+  const handleDragOver = useCallback((e) => {
+    if (typeof loadSnapshotFn !== 'function') return;
+    e.preventDefault();
+    setDragOver(true);
+  }, [loadSnapshotFn]);
+
+  const handleDragLeave = useCallback(() => setDragOver(false), []);
+
+  const handleDrop = useCallback(async (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (typeof loadSnapshotFn !== 'function') return;
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    const ext = file.name.toLowerCase().split('.').pop();
+    if (ext !== 'sna' && ext !== 'z80') { setSnapStatus('fail'); return; }
+    try {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      const ok = loadSnapshotFn(buf);
+      setSnapStatus(ok ? 'ok' : 'fail');
+    } catch { setSnapStatus('fail'); }
+    setTimeout(() => setSnapStatus(null), 2000);
+  }, [loadSnapshotFn]);
+
   // Paint loop
   const paint = useCallback(() => {
     const canvas = canvasRef.current;
@@ -164,9 +192,13 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, lang = 'en' }) {
       onFocus={handleFocus}
       onBlur={handleBlur}
       onClick={handleClick}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      data-vdp-screen
       style={{
         background: '#000', borderRadius: 4, overflow: 'hidden',
-        border: focused ? '2px solid #3b82f6' : '1px solid #333',
+        border: dragOver ? '2px solid #f59e0b' : focused ? '2px solid #3b82f6' : '1px solid #333',
         display: 'inline-block', position: 'relative',
         outline: 'none', cursor: focused ? 'default' : 'pointer',
       }}
@@ -194,6 +226,36 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, lang = 'en' }) {
             fontFamily: 'system-ui, sans-serif', fontSize: 11,
           }}>
             {t('clickToPlay', lang)}
+          </span>
+        </div>
+      )}
+      {/* Drag-over overlay for snapshot drop */}
+      {dragOver && (
+        <div style={{
+          position: 'absolute', inset: 0, background: 'rgba(245,158,11,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          pointerEvents: 'none',
+        }}>
+          <span style={{
+            background: 'rgba(0,0,0,0.8)', color: '#f59e0b',
+            padding: '6px 14px', borderRadius: 6,
+            fontFamily: 'system-ui, sans-serif', fontSize: 13, fontWeight: 600,
+          }}>
+            {t('dropSnapshot', lang)}
+          </span>
+        </div>
+      )}
+      {/* Snapshot load status */}
+      {snapStatus && (
+        <div style={{
+          position: 'absolute', top: 8, right: 8, pointerEvents: 'none',
+        }}>
+          <span style={{
+            background: snapStatus === 'ok' ? 'rgba(34,197,94,0.9)' : 'rgba(239,68,68,0.9)',
+            color: '#fff', padding: '3px 8px', borderRadius: 4,
+            fontFamily: 'system-ui, sans-serif', fontSize: 10,
+          }}>
+            {snapStatus === 'ok' ? t('snapshotLoaded', lang) : t('snapshotFailed', lang)}
           </span>
         </div>
       )}

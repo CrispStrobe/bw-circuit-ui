@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><title>Snapshot drop-zone test</title></head>
+<body>
+<div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { VdpScreen } from '../src/components/VdpScreen.jsx';
+
+const W = 256, H = 192;
+const rgba = new Uint8ClampedArray(W * H * 4);
+for (let i = 3; i < rgba.length; i += 4) rgba[i] = 255;
+let frame = 0;
+const videoFn = () => ({ width: W, height: H, rgba, frame: frame++, signal: true });
+
+window.__snapshotCalls = [];
+const loadSnapshotFn = (buf) => {
+  window.__snapshotCalls.push({ size: buf.length, ext: 'detected' });
+  return buf.length > 10; // accept anything > 10 bytes
+};
+
+window.__buttonCalls = [];
+const setButtonsFn = (mask) => { window.__buttonCalls.push(mask); };
+
+const root = createRoot(document.getElementById('root'));
+root.render(React.createElement(VdpScreen, { videoFn, setButtonsFn, loadSnapshotFn }));
+window.__dropReady = true;
+</script>
+</body>
+</html>
