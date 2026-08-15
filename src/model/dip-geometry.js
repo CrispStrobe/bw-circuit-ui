@@ -11,7 +11,12 @@ export function dipTerminalPositions(sidecar) {
   const put = (items, y) => items.forEach((t, i) => {
     positions[t.name] = {dx: (i - (items.length - 1) / 2) * DIP_PIN_PITCH, dy: y};
   });
-  put(left, -DIP_ROW_OFFSET);
-  put(right, DIP_ROW_OFFSET);
+  // Horizontal DIP, notch LEFT: pin 1 sits BOTTOM-left — pins 1..N/2
+  // (the sidecar's left column) run along the BOTTOM row, pins N..N/2+1
+  // along the top. The first version had the rows swapped, drawing
+  // every chip rotated 180° ("as if one turned the chip upside down" —
+  // owner report, 2026-08-15).
+  put(left, DIP_ROW_OFFSET);
+  put(right, -DIP_ROW_OFFSET);
   return positions;
 }
