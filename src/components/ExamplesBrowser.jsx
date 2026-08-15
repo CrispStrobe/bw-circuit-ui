@@ -8,6 +8,93 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 
+const INTRO_L10N = {
+  en: { intro: 'About this example', loading: 'Loading…', noIntro: 'No introduction available.',
+        level: 'Level', age: 'Age', prereqs: 'Prerequisites', teaches: 'Teaches' },
+  de: { intro: 'Über dieses Beispiel', loading: 'Wird geladen…', noIntro: 'Keine Einführung verfügbar.',
+        level: 'Stufe', age: 'Alter', prereqs: 'Voraussetzungen', teaches: 'Vermittelt' },
+};
+const LEVEL_LABELS = {
+  en: { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' },
+  de: { beginner: 'Anfänger', intermediate: 'Fortgeschritten', advanced: 'Fortgeschritten+' },
+};
+const LEVEL_COLORS = { beginner: '#22c55e', intermediate: '#f59e0b', advanced: '#f97316' };
+
+/** Parse YAML frontmatter + markdown body from an intro file. */
+function parseIntro(text) {
+  const m = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  if (!m) return { meta: {}, body: text };
+  const meta = {};
+  for (const line of m[1].split('\n')) {
+    const kv = line.match(/^(\w+):\s*(.+)$/);
+    if (kv) {
+      const val = kv[2].trim();
+      meta[kv[1]] = val.startsWith('[') ? val.slice(1, -1).split(',').map(s => s.trim()).filter(Boolean) : val;
+    }
+  }
+  return { meta, body: m[2].trim() };
+}
+
+/** Render minimal markdown to React elements (## headings, **bold**, `code`, lists, links, paragraphs). */
+function renderMarkdown(md, palette) {
+  const lines = md.split('\n');
+  const elements = [];
+  let listItems = [];
+  const flushList = () => {
+    if (listItems.length) {
+      elements.push(<ul key={`ul-${elements.length}`} style={{margin: '4px 0 8px', paddingLeft: 18, color: palette.text, fontSize: 12}}>{listItems}</ul>);
+      listItems = [];
+    }
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^## /.test(line)) {
+      flushList();
+      elements.push(<div key={`h-${i}`} style={{fontWeight: 700, fontSize: 13, color: palette.heading, marginTop: i > 0 ? 10 : 0, marginBottom: 3}} data-intro-heading>{line.slice(3)}</div>);
+    } else if (/^- /.test(line)) {
+      listItems.push(<li key={`li-${i}`} style={{marginBottom: 2}}>{renderInline(line.slice(2))}</li>);
+    } else if (/^\d+\. /.test(line)) {
+      // Numbered list item — render as unordered for simplicity
+      listItems.push(<li key={`li-${i}`} style={{marginBottom: 2}}>{renderInline(line.replace(/^\d+\.\s*/, ''))}</li>);
+    } else if (line.trim()) {
+      flushList();
+      elements.push(<p key={`p-${i}`} style={{margin: '2px 0 6px', color: palette.text, fontSize: 12, lineHeight: 1.5}}>{renderInline(line)}</p>);
+    }
+  }
+  flushList();
+  return elements;
+}
+
+/** Render inline markdown: **bold**, `code`, [links](url). */
+function renderInline(text) {
+  const parts = [];
+  let rest = text;
+  let key = 0;
+  while (rest.length) {
+    // Links: [text](url)
+    const linkM = rest.match(/\[([^\]]+)\]\(([^)]+)\)/);
+    // Bold: **text**
+    const boldM = rest.match(/\*\*([^*]+)\*\*/);
+    // Code: `text`
+    const codeM = rest.match(/`([^`]+)`/);
+    // Find the earliest match
+    const matches = [linkM, boldM, codeM].filter(Boolean);
+    if (!matches.length) { parts.push(rest); break; }
+    const earliest = matches.reduce((a, b) => (a.index < b.index ? a : b));
+    if (earliest.index > 0) parts.push(rest.slice(0, earliest.index));
+    if (earliest === linkM) {
+      parts.push(<a key={key++} href={linkM[2]} style={{color: '#3b82f6', textDecoration: 'underline'}}
+        onClick={e => e.stopPropagation()}>{linkM[1]}</a>);
+    } else if (earliest === boldM) {
+      parts.push(<strong key={key++}>{boldM[1]}</strong>);
+    } else {
+      parts.push(<code key={key++} style={{background: 'rgba(0,0,0,0.08)', padding: '1px 3px', borderRadius: 2, fontSize: 11}}>{codeM[1]}</code>);
+    }
+    rest = rest.slice(earliest.index + earliest[0].length);
+  }
+  return parts;
+}
+
 const CATEGORY_LABELS = {
   basics: 'Basics',
   analog: 'Analog',
@@ -383,13 +470,38 @@ const DEVICE_LABELS = {
 
 function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason }) {
   const [hovered, setHovered] = useState(false);
+  const [introOpen, setIntroOpen] = useState(false);
+  const [introData, setIntroData] = useState(null); // {meta, body} or 'loading' or 'none'
   const title = example.title?.[lang] || example.title?.en || example.id;
   const catColor = CATEGORY_COLORS[example.category] || '#555';
   const diff = DIFFICULTY_LABELS[example.difficulty] || '';
+  const t = INTRO_L10N[lang] || INTRO_L10N.en;
+  const ll = LEVEL_LABELS[lang] || LEVEL_LABELS.en;
+
+  const loadIntro = () => {
+    if (introData && introData !== 'loading') { setIntroOpen(!introOpen); return; }
+    setIntroOpen(true);
+    setIntroData('loading');
+    const suffix = lang === 'de' ? '.de.md' : '.md';
+    const dir = example.id;
+    fetch(`examples/${dir}/intro${suffix}`)
+      .then(r => r.ok ? r.text() : null)
+      .then(text => {
+        if (!text && lang === 'de') {
+          // Fallback to English
+          return fetch(`examples/${dir}/intro.md`).then(r => r.ok ? r.text() : null);
+        }
+        return text;
+      })
+      .then(text => {
+        if (text) setIntroData(parseIntro(text));
+        else setIntroData('none');
+      })
+      .catch(() => setIntroData('none'));
+  };
 
   return (
     <div
-      onClick={disabled ? undefined : onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       title={disabledReason || ''}
@@ -398,27 +510,87 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
         background: hovered && !disabled ? palette.cardHover : palette.card,
         border: `1px solid ${hovered && !disabled ? catColor : palette.cardBorder}`,
         borderRadius: '6px',
-        cursor: disabled ? 'default' : 'pointer',
         transition: 'border-color 80ms, background 80ms',
         opacity: disabled ? 0.5 : 1,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ color: palette.heading, fontSize: '13px', fontWeight: 650 }}>{title}</div>
+        <div style={{ color: palette.heading, fontSize: '13px', fontWeight: 650, cursor: disabled ? 'default' : 'pointer', flex: 1 }}
+          onClick={disabled ? undefined : onClick}>{title}</div>
         <span style={{
           fontSize: '10px', color: palette.text,
           background: `${catColor}22`, padding: '1px 4px',
-          borderRadius: '2px',
+          borderRadius: '2px', marginRight: 4,
         }}>{example.category}</span>
+        {/* Intro toggle — ℹ icon */}
+        <button type="button" onClick={e => { e.stopPropagation(); loadIntro(); }}
+          title={t.intro}
+          style={{
+            width: 20, height: 20, padding: 0, border: 'none', borderRadius: '50%',
+            background: introOpen ? palette.accent : palette.button,
+            color: introOpen ? '#fff' : palette.muted,
+            fontSize: 11, fontWeight: 700, cursor: 'pointer', fontStyle: 'italic',
+            flexShrink: 0,
+          }}
+          data-testid="bw-example-intro-toggle">i</button>
       </div>
       {diff && (
-        <div style={{ color: palette.muted, fontSize: '11px', marginTop: '4px' }}>
+        <div style={{ color: palette.muted, fontSize: '11px', marginTop: '4px', cursor: disabled ? 'default' : 'pointer' }}
+          onClick={disabled ? undefined : onClick}>
           {'★'.repeat(example.difficulty)}{'☆'.repeat(3 - example.difficulty)} {diff}
         </div>
       )}
       {disabled && disabledReason && (
         <div style={{ color: '#ef4444', fontSize: '11px', marginTop: '4px', fontStyle: 'italic' }}>
           {disabledReason}
+        </div>
+      )}
+      {/* Intro panel — expandable */}
+      {introOpen && (
+        <div style={{ marginTop: 8, padding: '8px 10px', background: palette.panel,
+          border: `1px solid ${palette.border}`, borderRadius: 6 }}
+          data-testid="bw-example-intro-panel">
+          {introData === 'loading' && <div style={{color: palette.muted, fontSize: 12}}>{t.loading}</div>}
+          {introData === 'none' && <div style={{color: palette.muted, fontSize: 12}}>{t.noIntro}</div>}
+          {introData && typeof introData === 'object' && (
+            <>
+              {/* Badges: level, age */}
+              <div style={{display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap'}}>
+                {introData.meta.level && (
+                  <span style={{fontSize: 10, padding: '1px 6px', borderRadius: 10,
+                    background: LEVEL_COLORS[introData.meta.level] || '#64748b', color: '#fff', fontWeight: 600}}>
+                    {t.level}: {ll[introData.meta.level] || introData.meta.level}
+                  </span>
+                )}
+                {introData.meta.age && (
+                  <span style={{fontSize: 10, padding: '1px 6px', borderRadius: 10,
+                    background: '#6366f1', color: '#fff', fontWeight: 600}}>
+                    {t.age}: {introData.meta.age}
+                  </span>
+                )}
+                {Array.isArray(introData.meta.teaches) && introData.meta.teaches.map(tag => (
+                  <span key={tag} style={{fontSize: 10, padding: '1px 6px', borderRadius: 10,
+                    background: palette.button, color: palette.text, border: `1px solid ${palette.border}`}}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+              {/* Prereqs as links */}
+              {Array.isArray(introData.meta.prereqs) && introData.meta.prereqs.length > 0 && (
+                <div style={{fontSize: 11, color: palette.muted, marginBottom: 6}}>
+                  {t.prereqs}: {introData.meta.prereqs.map((p, i) => (
+                    <span key={p}>
+                      {i > 0 && ', '}
+                      <a href="#" onClick={e => { e.preventDefault(); e.stopPropagation(); }}
+                        style={{color: palette.accent, textDecoration: 'underline'}}>{p}</a>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {/* Markdown body */}
+              {renderMarkdown(introData.body, palette)}
+            </>
+          )}
         </div>
       )}
     </div>
