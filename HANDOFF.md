@@ -1,7 +1,7 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 816/0/3 (CI clean). 23/23 browser gate green. CI green.
-VDP keyboard: 4/4. Fabric gate: 11/11. Capability: 6/6. TileVGA: 3/3.
+npm test 819/0/3 (CI clean). 23/23 browser gate green. CI green.
+VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3. Snapshot drop: 3/3.
 Deploy current. MPL-2.0 by owner decision.
 
 ## Completed since brief
@@ -153,6 +153,11 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **Snapshot drop-zone** (2ce27e1): drag .SNA or .Z80 onto VdpScreen to
+  load into running Spectrum machine. Extension filter, visual feedback.
+  Kempston joystick (bw-board 39a10cb) makes arrows/WASD drive archive
+  games automatically via the existing setButtons path.
+  Playwright: 3 checks (.sna, .z80, .txt rejection). i18n EN+DE.
 - **Build Machine flow** (00ab540): extractor-driven wired-computer builder.
   Runs extract6502Machine/extractZ80Machine on the designer's circuit,
   evaluating NAND decode at all 65536 addresses. Refusals render verbatim
