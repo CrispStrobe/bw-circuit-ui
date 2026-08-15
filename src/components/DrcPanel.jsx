@@ -11,7 +11,7 @@ import { PartThumbnail } from './PartThumbnail.jsx';
 const SEVERITY_COLORS = {
   danger: '#e74c3c',
   warning: '#f39c12',
-  info: '#3498db',
+  info: '#64748b',
 };
 
 const SEVERITY_LABELS = {
@@ -94,10 +94,13 @@ export function DrcPanel({ warnings, onSelectPart, onAddFixPart }) {
               }}
             >
               <span style={{
-                color, fontWeight: 'bold', fontSize: '12px',
+                color: w.severity === 'info' ? '#94a3b8' : color,
+                fontWeight: w.severity === 'info' ? 600 : 'bold',
+                fontSize: w.severity === 'info' ? '11px' : '12px',
                 width: '18px', textAlign: 'center',
+                fontStyle: w.severity === 'info' ? 'italic' : 'normal',
               }}>
-                {RULE_ICONS[w.rule] || '!'}
+                {RULE_ICONS[w.rule] || (w.severity === 'info' ? 'i' : '!')}
               </span>
               <span style={{ color, fontSize: '9px', flexShrink: 0 }}>
                 {SEVERITY_LABELS[w.severity]}

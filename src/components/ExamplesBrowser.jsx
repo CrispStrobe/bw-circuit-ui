@@ -311,20 +311,29 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
 
       {!open ? null : <div data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, maxHeight: 'none', overflowY: 'auto', overscrollBehavior: 'contain'}}>
 
-      {/* Search */}
-      <input
-        type="text"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        placeholder="search examples..."
-        style={{
-          width: '100%', padding: '4px 6px', marginBottom: '6px',
-          background: palette.input, border: `1px solid ${palette.border}`,
-          borderRadius: '4px', color: palette.text,
-          fontFamily: 'inherit', fontSize: '13px',
-          boxSizing: 'border-box',
-        }}
-      />
+      {/* Search — prominent for large catalogues */}
+      <div style={{ position: 'relative', marginBottom: '6px' }}>
+        <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
+          color: palette.muted, fontSize: '13px', pointerEvents: 'none' }}>&#x1F50D;</span>
+        <input
+          type="text"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder={`Search ${examples.length} examples\u2026`}
+          style={{
+            width: '100%', padding: '6px 8px 6px 28px',
+            background: palette.input, border: `1px solid ${palette.border}`,
+            borderRadius: '6px', color: palette.text,
+            fontFamily: 'inherit', fontSize: '13px',
+            boxSizing: 'border-box',
+          }}
+        />
+        {filter && <button type="button" onClick={() => setFilter('')}
+          style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+            background: 'none', border: 'none', color: palette.muted, cursor: 'pointer',
+            fontSize: '14px', padding: '0 2px', lineHeight: 1 }}
+          aria-label="Clear search">&times;</button>}
+      </div>
 
       {/* Filter toolbar: each group stays compact and the groups share rows. */}
       <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '4px', marginBottom: '4px'}}>
@@ -391,7 +400,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       {filtered.length === 0 ? (
         <div style={{ color: palette.muted, fontSize: '13px', padding: '8px 4px' }}>No examples match these filters.</div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {filtered.map(ex => {
             const compat = deviceCompat(ex, currentDevice);
             const reason = !compat.ok
@@ -505,40 +514,37 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
       onMouseLeave={() => setHovered(false)}
       title={disabledReason || ''}
       style={{
-        padding: '8px',
+        padding: '4px 6px',
         background: hovered && !disabled ? palette.cardHover : palette.card,
         border: `1px solid ${hovered && !disabled ? catColor : palette.cardBorder}`,
-        borderRadius: '6px',
+        borderRadius: '4px',
         transition: 'border-color 80ms, background 80ms',
         opacity: disabled ? 0.7 : 1,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ color: palette.heading, fontSize: '13px', fontWeight: 650, cursor: 'pointer', flex: 1 }}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
+        <div style={{ color: palette.heading, fontSize: '12px', fontWeight: 650, cursor: 'pointer', flex: 1, lineHeight: 1.3 }}
           onClick={onClick}>{title}</div>
+        {diff && <span style={{ color: palette.muted, fontSize: '9px', flexShrink: 0 }}>
+          {'★'.repeat(example.difficulty)}{'☆'.repeat(3 - example.difficulty)}
+        </span>}
         <span style={{
-          fontSize: '10px', color: palette.text,
+          fontSize: '9px', color: palette.text,
           background: `${catColor}22`, padding: '1px 4px',
-          borderRadius: '2px', marginRight: 4,
+          borderRadius: '2px', flexShrink: 0,
         }}>{example.category}</span>
         {/* Intro toggle — ℹ icon */}
         <button type="button" onClick={e => { e.stopPropagation(); loadIntro(); }}
           title={t.intro}
           style={{
-            width: 20, height: 20, padding: 0, border: 'none', borderRadius: '50%',
+            width: 18, height: 18, padding: 0, border: 'none', borderRadius: '50%',
             background: introOpen ? palette.accent : palette.button,
             color: introOpen ? '#fff' : palette.muted,
-            fontSize: 11, fontWeight: 700, cursor: 'pointer', fontStyle: 'italic',
+            fontSize: 10, fontWeight: 700, cursor: 'pointer', fontStyle: 'italic',
             flexShrink: 0,
           }}
           data-testid="bw-example-intro-toggle">i</button>
       </div>
-      {diff && (
-        <div style={{ color: palette.muted, fontSize: '11px', marginTop: '4px', cursor: 'pointer' }}
-          onClick={onClick}>
-          {'★'.repeat(example.difficulty)}{'☆'.repeat(3 - example.difficulty)} {diff}
-        </div>
-      )}
       {disabled && disabledReason && (
         <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px', fontStyle: 'italic',
           cursor: 'pointer' }} onClick={onClick}
