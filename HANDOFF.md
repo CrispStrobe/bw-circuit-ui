@@ -1,6 +1,7 @@
 # bw-circuit-ui -- handoff for the next session
 
 npm test 985/0/3 (CI clean). 23/23 browser gate green. CI green.
+Pendant Playwright test added (test:render suite).
 VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
 Snapshot drop: 3/3. Sensor faces: 3/3. Contract: 37/37.
 Deploy current. MPL-2.0 by owner decision.
@@ -154,6 +155,10 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **Device picker + MCU label completeness** (12db6f6): DEVICE_LABELS adds
+  micro:bit. Needs badge neutral slate (#94a3b8) not orange. mcuChipInfo
+  covers atmega168p, arduino-uno/nano/mega, eater6502, micro:bit. Pendant
+  example Playwright test verifies ATtiny88 label on canvas (test:render).
 - **Click-through fix** (e75b0be): two-pass partAt() — non-breadboard first,
   breadboards only if nothing else hit. Seated parts selectable again.
 - **Auto-seat MCU** (e75b0be): on example load, unseated MCU-class parts
