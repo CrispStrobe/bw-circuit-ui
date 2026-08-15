@@ -39,13 +39,19 @@ export const TERMINAL_ALIASES = {
   l293d: {
     vcc: 'vcc1', gnd: 'gnd1', vs: 'vcc2',
   },
-  // pot / potentiometer: gallery uses cw/ccw for the outer legs
+  // pot / potentiometer: gallery uses cw/ccw or lead1/lead2 for outer legs
   potentiometer: {
     cw: 'a',
     ccw: 'b',
+    lead1: 'a',
+    lead2: 'b',
   },
-  // resistor: gallery uses lead1/lead2 for the terminals
+  // resistor / button: gallery uses lead1/lead2 for the terminals
   resistor: {
+    lead1: 'a',
+    lead2: 'b',
+  },
+  button: {
     lead1: 'a',
     lead2: 'b',
   },

@@ -28,18 +28,18 @@ describe('LOGIC_CHIPS', () => {
 });
 
 describe('logicChipTerminals', () => {
-  it('74hc08 has 12 signal terminals (4 gates × 3 pins, no vcc/gnd)', () => {
+  it('74hc08 has 14 terminals (4 gates × 3 pins + vcc + gnd)', () => {
     const terms = logicChipTerminals('74hc08');
-    assert.equal(terms.length, 12);
-    assert.ok(!terms.includes('vcc'));
-    assert.ok(!terms.includes('gnd'));
+    assert.equal(terms.length, 14);
+    assert.ok(terms.includes('vcc'), 'includes vcc');
+    assert.ok(terms.includes('gnd'), 'includes gnd');
     assert.ok(terms.includes('1a'));
     assert.ok(terms.includes('1y'));
   });
 
-  it('74hc04 has 12 signal terminals (6 inverters × 2)', () => {
+  it('74hc04 has 14 terminals (6 inverters × 2 + vcc + gnd)', () => {
     const terms = logicChipTerminals('74hc04');
-    assert.equal(terms.length, 12);
+    assert.equal(terms.length, 14);
   });
 
   it('returns null for unknown kind', () => {

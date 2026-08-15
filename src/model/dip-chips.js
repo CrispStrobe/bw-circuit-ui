@@ -258,8 +258,9 @@ export function logicChipTerminals(kind) {
   // Try bw-parts sidecar first (one owner for pin maps)
   const sc = sidecarTerminals(kind);
   if (sc && sc.length > 2) {
-    // Filter power pins — terminalsForKind returns signal pins only
-    return sc.filter(n => n !== 'vcc' && n !== 'gnd');
+    // Power pins (vcc/gnd) are real terminals — gallery examples wire
+    // to them and stripping them breaks wire resolution.
+    return sc;
   }
   // Fallback to local table
   const chip = LOGIC_CHIPS[kind];
