@@ -382,9 +382,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         return (
           <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
             <path d="M -10 -14 L -10 14 L 0 14 A 14 14 0 0 0 0 -14 Z"
-              fill={#1a1a2e} stroke={selStroke || '#3498db'} strokeWidth={1.5} />
-            {kind === 'gate_nand' && <circle cx={16} cy={0} r={3} fill={#1a1a2e} stroke={selStroke || '#3498db'} strokeWidth={1.5} />}
-            <text x={0} y={22} textAnchor="middle" fill={#7f8c8d} fontSize={7}
+              fill="#1a1a2e" stroke={selStroke || '#3498db'} strokeWidth={1.5} />
+            {kind === 'gate_nand' && <circle cx={16} cy={0} r={3} fill="#1a1a2e" stroke={selStroke || '#3498db'} strokeWidth={1.5} />}
+            <text x={0} y={22} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -393,9 +393,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         return (
           <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
             <path d="M -12 -14 Q -4 0 -12 14 Q 4 14 14 0 Q 4 -14 -12 -14 Z"
-              fill={#1a1a2e} stroke={selStroke || '#2ecc71'} strokeWidth={1.5} />
-            {kind === 'gate_nor' && <circle cx={16} cy={0} r={3} fill={#1a1a2e} stroke={selStroke || '#2ecc71'} strokeWidth={1.5} />}
-            <text x={0} y={22} textAnchor="middle" fill={#7f8c8d} fontSize={7}
+              fill="#1a1a2e" stroke={selStroke || '#2ecc71'} strokeWidth={1.5} />
+            {kind === 'gate_nor' && <circle cx={16} cy={0} r={3} fill="#1a1a2e" stroke={selStroke || '#2ecc71'} strokeWidth={1.5} />}
+            <text x={0} y={22} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -404,8 +404,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
             <path d="M -14 -14 Q -6 0 -14 14" fill="none" stroke={selStroke || '#9b59b6'} strokeWidth={1.5} />
             <path d="M -12 -14 Q -4 0 -12 14 Q 4 14 14 0 Q 4 -14 -12 -14 Z"
-              fill={#1a1a2e} stroke={selStroke || '#9b59b6'} strokeWidth={1.5} />
-            <text x={0} y={22} textAnchor="middle" fill={#7f8c8d} fontSize={7}
+              fill="#1a1a2e" stroke={selStroke || '#9b59b6'} strokeWidth={1.5} />
+            <text x={0} y={22} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -413,9 +413,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         return (
           <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
             <path d="M -12 -12 L -12 12 L 10 0 Z"
-              fill={#1a1a2e} stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
-            <circle cx={14} cy={0} r={3} fill={#1a1a2e} stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
-            <text x={0} y={22} textAnchor="middle" fill={#7f8c8d} fontSize={7}
+              fill="#1a1a2e" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
+            <circle cx={14} cy={0} r={3} fill="#1a1a2e" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
+            <text x={0} y={22} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
