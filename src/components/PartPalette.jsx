@@ -44,7 +44,7 @@ const CATEGORIES = [
         params: { variant: 'bench', volts: 5, iLimit: 0.5 },
         tooltip: 'Adjustable DC supply — CV/CC mode, turn up voltage and watch current clamp' },
       { kind: 'vcc', label: '+5V post', params: { volts: 5 }, color: '#e74c3c',
-        tooltip: 'Bench supply binding post — double-click to adjust voltage' },
+        tooltip: 'Bench supply binding post — editable voltage (default 5 V)' },
       { kind: 'gnd', label: 'GND post', params: {}, color: '#3498db',
         tooltip: 'Bench supply binding post (ground)' },
     ],
