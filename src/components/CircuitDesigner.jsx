@@ -30,6 +30,12 @@
  *     matching pin declarations — standalone circuits have no MCU.
  *     Set to null/undefined after loading to allow the next load.
  *
+ *   onProgramChange?: (program: {source: string, device?: string, pins?: Array}) => void
+ *     Called when an example with both circuit AND program is loaded.
+ *     The host uses this to load the program into the blocks/runtime
+ *     (without it, examples with program.bw load only the circuit half
+ *     and the debugger says "no pins declared").
+ *
  * Every electrical value comes from bw-board. Nothing is fabricated.
  */
 
@@ -64,7 +70,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, onLoadExample, lang = 'en' }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, onLoadExample, onProgramChange, lang = 'en' }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -795,7 +801,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           </div>
           <div data-examples-selector style={{flex: `${1 - selectorSplit} 1 0`, minHeight: 70, overflowY: 'auto'}}>
             {examples && onLoadExample ? (
-              <ExamplesBrowser examples={examples} onLoadExample={onLoadExample} theme={theme} />
+              <ExamplesBrowser examples={examples} onLoadExample={(ex) => {
+                onLoadExample(ex);
+                // When the example carries a program, notify the host so it
+                // can load the program half (blocks/runtime.stc). Without this,
+                // examples with both circuit.json and program.bw load only the
+                // circuit and the debugger says "no pins declared".
+                if (onProgramChange && ex.program) onProgramChange(ex.program);
+              }} theme={theme} />
             ) : (
               <InferPanel onLoadCircuit={handleLoadCircuit} />
             )}
