@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 40" width="24" height="40">
+  <!-- UM66T Melody Generator IC — TO-92 package, bench-style -->
+  <!-- Package body -->
+  <path d="M2 6 Q12 2 22 6 L22 24 Q12 28 2 24 Z" fill="#1a1a1a" stroke="#333" stroke-width="0.8"/>
+  <rect x="4" y="8" width="16" height="14" rx="1" fill="#222" stroke="#333" stroke-width="0.3"/>
+  <!-- Label -->
+  <text x="12" y="14" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#aaa">UM66T</text>
+  <!-- Musical note icon -->
+  <circle cx="10" cy="20" r="1.5" fill="#888"/>
+  <line x1="11.5" y1="20" x2="11.5" y2="16" stroke="#888" stroke-width="0.6"/>
+  <path d="M11.5 16 Q14 15 14 17" fill="none" stroke="#888" stroke-width="0.5"/>
+  <!-- Leads: VDD, GND, OUT -->
+  <line x1="6" y1="24" x2="6" y2="40" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="6" cy="40" r="1.5" fill="#c0c0c0"/>
+  <line x1="12" y1="24" x2="12" y2="40" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="12" cy="40" r="1.5" fill="#c0c0c0"/>
+  <line x1="18" y1="24" x2="18" y2="40" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="18" cy="40" r="1.5" fill="#c0c0c0"/>
+</svg>

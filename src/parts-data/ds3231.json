@@ -1,0 +1,22 @@
+{
+  "kind": "ds3231",
+  "w": 40,
+  "h": 48,
+  "terminals": [
+    { "name": "vcc", "x": 10, "y": 48, "functions": [] },
+    { "name": "gnd", "x": 18, "y": 48, "functions": [] },
+    { "name": "sda", "x": 26, "y": 48, "functions": [] },
+    { "name": "scl", "x": 34, "y": 48, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "DS3231 real-time clock module. I2C interface, 4-pin header: VCC, GND, SDA, SCL. Default address 0x68. Battery-backed, temperature-compensated crystal oscillator. Param: temperature (float, default 25).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "sda": { "dRow": 0, "dCol": 2 },
+      "scl": { "dRow": 0, "dCol": 3 }
+    }
+  }
+}

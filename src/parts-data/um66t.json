@@ -1,0 +1,20 @@
+{
+  "kind": "um66t",
+  "w": 24,
+  "h": 40,
+  "terminals": [
+    { "name": "vdd", "x": 6, "y": 40, "functions": [] },
+    { "name": "gnd", "x": 12, "y": 40, "functions": [] },
+    { "name": "out", "x": 18, "y": 40, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "UM66T melody generator IC. TO-92 package, 3-pin: VDD, GND, OUT (square-wave melody output). Plays built-in tune when VDD-GND > 2V. No user params.",
+  "footprint": {
+    "refTerminal": "vdd",
+    "leads": {
+      "vdd": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "out": { "dRow": 0, "dCol": 2 }
+    }
+  }
+}

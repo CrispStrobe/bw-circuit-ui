@@ -1,0 +1,18 @@
+{
+  "kind": "ammeter",
+  "w": 60,
+  "h": 80,
+  "terminals": [
+    { "name": "a", "x": 18, "y": 80, "functions": [] },
+    { "name": "b", "x": 42, "y": 80, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "Dedicated bench ammeter. Series measurement: current flows in at terminal A and out at terminal B (or vice versa). Engine device in bench-meters.js. Live display via getDeviceState in bw-circuit-ui; SVG is static palette thumbnail.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": { "dRow": 0, "dCol": 0 },
+      "b": { "dRow": 0, "dCol": 1 }
+    }
+  }
+}

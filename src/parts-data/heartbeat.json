@@ -1,0 +1,20 @@
+{
+  "kind": "heartbeat",
+  "w": 32,
+  "h": 45,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 45, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 45, "functions": [] },
+    { "name": "ao", "x": 24, "y": 45, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "Heartbeat / pulse sensor module (37-in-1 kit). 3-pin: VCC, GND, AO (analog output, raised-cosine pulse). PPG optical sensor. Param: bpm (integer 20..240, default 70).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "ao":  { "dRow": 0, "dCol": 2 }
+    }
+  }
+}

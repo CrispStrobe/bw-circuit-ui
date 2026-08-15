@@ -1,0 +1,22 @@
+{
+  "kind": "ssd1306",
+  "w": 56,
+  "h": 48,
+  "terminals": [
+    { "name": "vcc", "x": 14, "y": 48, "functions": [] },
+    { "name": "gnd", "x": 22, "y": 48, "functions": [] },
+    { "name": "sda", "x": 30, "y": 48, "functions": [] },
+    { "name": "scl", "x": 38, "y": 48, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "SSD1306 128x64 OLED display module (0.96 inch). I2C, 4-pin: VCC, GND, SDA, SCL. Default address 0x3C. State: fb (Uint8Array 1024, 8 pages x 128 cols framebuffer), displayOn (boolean), inverted (boolean), contrast (0-255), entireOn (boolean). Param: address (0x3C or 0x3D).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "sda": { "dRow": 0, "dCol": 2 },
+      "scl": { "dRow": 0, "dCol": 3 }
+    }
+  }
+}

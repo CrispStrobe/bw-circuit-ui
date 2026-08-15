@@ -1,0 +1,20 @@
+{
+  "kind": "logic_probe",
+  "w": 24,
+  "h": 80,
+  "terminals": [
+    { "name": "vcc", "x": 6, "y": 80, "functions": [] },
+    { "name": "gnd", "x": 12, "y": 80, "functions": [] },
+    { "name": "tip", "x": 18, "y": 80, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "Logic probe — pen-shaped test instrument. VCC/GND power the probe circuitry, TIP is the measurement point. Engine device in bench-meters.js. state.level ('high'/'low'/'float') sets indicator colour; state.pulsing lights the pulse lamp. Live indicators rendered via getDeviceState in bw-circuit-ui; SVG is static palette thumbnail showing HIGH state.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "tip": { "dRow": 0, "dCol": 2 }
+    }
+  }
+}

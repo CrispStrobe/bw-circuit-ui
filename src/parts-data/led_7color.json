@@ -1,0 +1,18 @@
+{
+  "kind": "led_7color",
+  "w": 24,
+  "h": 40,
+  "terminals": [
+    { "name": "a", "x": 9, "y": 40, "functions": [] },
+    { "name": "k", "x": 15, "y": 40, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "7-color auto-cycling LED. 2-terminal: A (anode), K (cathode). 10k internal resistance. Cycles through 7 colors at cycleHz when forward voltage > 2V. Param: cycleHz (float, default 2). State: colorIndex (0-6) drives the rendered color.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": { "dRow": 0, "dCol": 0 },
+      "k": { "dRow": 0, "dCol": 1 }
+    }
+  }
+}

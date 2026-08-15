@@ -1,0 +1,25 @@
+{
+  "kind": "kd9561",
+  "w": 40,
+  "h": 48,
+  "terminals": [
+    { "name": "vdd", "x": 0, "y": 10, "functions": [] },
+    { "name": "gnd", "x": 0, "y": 20, "functions": [] },
+    { "name": "out", "x": 0, "y": 30, "functions": [] },
+    { "name": "sel1", "x": 40, "y": 10, "functions": [] },
+    { "name": "sel2", "x": 40, "y": 20, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "KD9561 4-sound effect IC. 5-pin: VDD, GND, OUT (square-wave), SEL1, SEL2 (effect select, pulled low internally). Effects: 00=siren, 01=fire, 10=ambulance, 11=machine gun.",
+  "footprint": {
+    "refTerminal": "vdd",
+    "leads": {
+      "vdd":  { "dRow": 0, "dCol": 0 },
+      "gnd":  { "dRow": 0, "dCol": 1 },
+      "out":  { "dRow": 0, "dCol": 2 },
+      "sel1": { "dRow": 5, "dCol": 0 },
+      "sel2": { "dRow": 5, "dCol": 1 }
+    },
+    "straddlesGutter": true
+  }
+}

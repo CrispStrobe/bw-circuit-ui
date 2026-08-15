@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 40" width="24" height="40">
+  <!-- 7-Color Auto-cycling LED — bench-style -->
+  <!-- LED dome (diffused, translucent) -->
+  <ellipse cx="12" cy="12" rx="8" ry="8" fill="#e8e8e8" stroke="#ccc" stroke-width="0.6"/>
+  <!-- Internal die glow (rainbow shimmer) -->
+  <ellipse cx="12" cy="14" rx="4" ry="3" fill="#ffd700" opacity="0.4"/>
+  <ellipse cx="10" cy="12" rx="2" ry="2" fill="#ff4444" opacity="0.25"/>
+  <ellipse cx="14" cy="12" rx="2" ry="2" fill="#4444ff" opacity="0.25"/>
+  <ellipse cx="12" cy="10" rx="2" ry="2" fill="#44ff44" opacity="0.25"/>
+  <!-- LED base / flange -->
+  <rect x="5" y="19" width="14" height="3" rx="1" fill="#ccc" stroke="#aaa" stroke-width="0.4"/>
+  <!-- LED body (cylindrical lower part) -->
+  <rect x="7" y="22" width="10" height="4" rx="0.5" fill="#ddd" stroke="#bbb" stroke-width="0.3"/>
+  <!-- Leads: anode (long) and cathode (short) -->
+  <line x1="9" y1="26" x2="9" y2="40" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="9" cy="40" r="1.5" fill="#c0c0c0"/>
+  <line x1="15" y1="26" x2="15" y2="38" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="15" y1="38" x2="15" y2="40" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="15" cy="40" r="1.5" fill="#c0c0c0"/>
+  <!-- Cathode flat -->
+  <line x1="19" y1="10" x2="20" y2="10" stroke="#bbb" stroke-width="0.8"/>
+</svg>

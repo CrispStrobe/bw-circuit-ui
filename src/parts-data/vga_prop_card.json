@@ -1,0 +1,20 @@
+{
+  "kind": "vga_prop_card",
+  "w": 130,
+  "h": 70,
+  "terminals": [
+    { "name": "vcc", "x": 44, "y": 70, "functions": [] },
+    { "name": "gnd", "x": 60, "y": 70, "functions": [] },
+    { "name": "bus", "x": 76, "y": 70, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "VGA Propeller tile card module. Parallax P8X32A Propeller driving VGA output via R-2R DAC, with EEPROM for tile data and 5 MHz crystal. Machine-level video card; bus terminal is a placeholder for machine-level wiring. Card face for retro 6502/Z80 builds with tile-based VGA output.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 2 },
+      "bus": { "dRow": 0, "dCol": 4 }
+    }
+  }
+}

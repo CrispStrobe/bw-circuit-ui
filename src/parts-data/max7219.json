@@ -1,0 +1,26 @@
+{
+  "kind": "max7219",
+  "w": 64,
+  "h": 58,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 58, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 58, "functions": [] },
+    { "name": "din", "x": 24, "y": 58, "functions": [] },
+    { "name": "clk", "x": 32, "y": 58, "functions": [] },
+    { "name": "cs", "x": 40, "y": 58, "functions": [] },
+    { "name": "dout", "x": 48, "y": 58, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "MAX7219 8x8 LED matrix module. SPI interface, 6-pin header: VCC, GND, DIN (data in), CLK (serial clock), CS (chip select active low), DOUT (daisy-chain data out). State: digits[0..7] framebuffer, shutdown (true=blanked), displayTest, intensity 0..15.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc":  { "dRow": 0, "dCol": 0 },
+      "gnd":  { "dRow": 0, "dCol": 1 },
+      "din":  { "dRow": 0, "dCol": 2 },
+      "clk":  { "dRow": 0, "dCol": 3 },
+      "cs":   { "dRow": 0, "dCol": 4 },
+      "dout": { "dRow": 0, "dCol": 5 }
+    }
+  }
+}

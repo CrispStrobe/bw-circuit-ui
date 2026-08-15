@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 45" width="32" height="45">
+  <!-- Heartbeat / Pulse Sensor Module — bench-style -->
+  <!-- PCB (round-ish, green) -->
+  <rect x="2" y="2" width="28" height="31" rx="2" fill="#1a6b1a" stroke="#0d4d0d" stroke-width="0.8"/>
+  <!-- Optical sensor window -->
+  <circle cx="16" cy="12" r="5" fill="#2a2a2a" stroke="#444" stroke-width="0.5"/>
+  <!-- Green LED (PPG sensor) -->
+  <circle cx="14" cy="11" r="1.2" fill="#00aa00" opacity="0.8"/>
+  <!-- Photodiode -->
+  <circle cx="18" cy="13" r="1.2" fill="#333" stroke="#444" stroke-width="0.3"/>
+  <!-- Heart symbol -->
+  <path d="M13 21 Q13 18 16 20 Q19 18 19 21 Q19 24 16 26 Q13 24 13 21" fill="#cc3333" opacity="0.7"/>
+  <!-- Label -->
+  <text x="16" y="31" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#aaa">PULSE</text>
+  <!-- 3 header pins: VCC, GND, AO -->
+  <line x1="8" y1="33" x2="8" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="16" y1="33" x2="16" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="16" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="24" y1="33" x2="24" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="24" cy="45" r="1.5" fill="#c0c0c0"/>
+</svg>

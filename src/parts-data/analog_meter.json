@@ -1,0 +1,18 @@
+{
+  "kind": "analog_meter",
+  "w": 70,
+  "h": 60,
+  "terminals": [
+    { "name": "a", "x": 22, "y": 60, "functions": [] },
+    { "name": "b", "x": 48, "y": 60, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "Analog panel meter (moving-coil d'Arsonval movement). Terminal A (+), B (-). Engine device in bench-meters.js. state.deflection (0..1) drives needle angle; params.fullScale sets scale label (e.g. '5V', '1A'). Live needle rendered via getDeviceState in bw-circuit-ui; SVG shows static mid-deflection as palette thumbnail.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": { "dRow": 0, "dCol": 0 },
+      "b": { "dRow": 0, "dCol": 1 }
+    }
+  }
+}

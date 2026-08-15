@@ -1,0 +1,20 @@
+{
+  "kind": "ir_reflect",
+  "w": 32,
+  "h": 45,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 45, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 45, "functions": [] },
+    { "name": "do", "x": 24, "y": 45, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "IR reflective sensor module (37-in-1 kit). 3-pin: VCC, GND, DO (digital, active low). IR emitter/detector pair with comparator. Param: detect (boolean, default false). DO low when detect is true.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "do":  { "dRow": 0, "dCol": 2 }
+    }
+  }
+}

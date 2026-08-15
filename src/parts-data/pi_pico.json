@@ -571,6 +571,18 @@
       "gp16": {
         "dRow": 5,
         "dCol": 19
+      },
+      "swclk": {
+        "dRow": 3,
+        "dCol": 8
+      },
+      "swd_gnd": {
+        "dRow": 3,
+        "dCol": 9
+      },
+      "swdio": {
+        "dRow": 3,
+        "dCol": 10
       }
     },
     "straddlesGutter": true,

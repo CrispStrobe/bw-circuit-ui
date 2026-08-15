@@ -1,0 +1,24 @@
+{
+  "kind": "joystick",
+  "w": 56,
+  "h": 60,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 60, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 60, "functions": [] },
+    { "name": "vrx", "x": 24, "y": 60, "functions": [] },
+    { "name": "vry", "x": 32, "y": 60, "functions": [] },
+    { "name": "sw", "x": 40, "y": 60, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "Dual-axis analog joystick module with pushbutton switch. 5-pin header: VCC, GND, VRX (X-axis analog), VRY (Y-axis analog), SW (push-button, active low). 10k potentiometers, x/y params range -1..1 (center = 0).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "vrx": { "dRow": 0, "dCol": 2 },
+      "vry": { "dRow": 0, "dCol": 3 },
+      "sw":  { "dRow": 0, "dCol": 4 }
+    }
+  }
+}

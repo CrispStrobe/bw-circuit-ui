@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 80" width="24" height="80">
+  <!-- Logic Probe — pen-shaped instrument, bench-style -->
+  <!-- Body tube -->
+  <rect x="4" y="6" width="16" height="50" rx="3" fill="#2a2a4a" stroke="#1a1a3a" stroke-width="0.8"/>
+  <!-- Grip section -->
+  <rect x="5" y="32" width="14" height="18" rx="1" fill="#3a3a5a" stroke="#2a2a4a" stroke-width="0.3"/>
+  <!-- HIGH indicator LED (red, lit = static thumbnail shows HIGH) -->
+  <circle cx="12" cy="14" r="3" fill="#ff3333" stroke="#aa2222" stroke-width="0.4"/>
+  <circle cx="12" cy="14" r="1.5" fill="#ff8888" opacity="0.6"/>
+  <text x="12" y="11" text-anchor="middle" font-family="monospace" font-size="2" fill="#aaa">H</text>
+  <!-- LOW indicator LED (green, unlit) -->
+  <circle cx="12" cy="22" r="3" fill="#226622" stroke="#1a4a1a" stroke-width="0.4"/>
+  <text x="12" y="19" text-anchor="middle" font-family="monospace" font-size="2" fill="#aaa">L</text>
+  <!-- PULSE lamp -->
+  <circle cx="12" cy="29" r="2" fill="#443322" stroke="#332211" stroke-width="0.3"/>
+  <text x="12" y="27" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#888">P</text>
+  <!-- Probe tip (tapered) -->
+  <path d="M8 56 L12 72 L16 56" fill="#c0c0c0" stroke="#888" stroke-width="0.5"/>
+  <line x1="12" y1="72" x2="12" y2="74" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <!-- Power leads (clips at bottom) -->
+  <line x1="6" y1="56" x2="6" y2="80" stroke="#cc3030" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="6" cy="80" r="1.5" fill="#cc3030"/>
+  <line x1="12" y1="74" x2="12" y2="80" stroke="#333" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="12" cy="80" r="1.5" fill="#333"/>
+  <line x1="18" y1="56" x2="18" y2="80" stroke="#4488cc" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="18" cy="80" r="1.5" fill="#4488cc"/>
+</svg>

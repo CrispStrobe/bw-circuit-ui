@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 45" width="32" height="45">
+  <!-- TTP223 Capacitive Touch Sensor Module — bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="2" width="28" height="31" rx="2" fill="#1a1a6b" stroke="#0d0d4d" stroke-width="0.8"/>
+  <!-- Touch pad (circular copper area) -->
+  <circle cx="16" cy="14" r="8" fill="none" stroke="#c89632" stroke-width="1.5"/>
+  <circle cx="16" cy="14" r="6" fill="none" stroke="#c89632" stroke-width="0.8"/>
+  <circle cx="16" cy="14" r="3.5" fill="#c89632" opacity="0.4"/>
+  <!-- TTP223 IC -->
+  <rect x="10" y="24" width="12" height="5" rx="0.5" fill="#303030" stroke="#222" stroke-width="0.3"/>
+  <text x="16" y="28" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#aaa">TTP223</text>
+  <!-- 3 header pins: VCC, GND, DO -->
+  <line x1="8" y1="33" x2="8" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="16" y1="33" x2="16" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="16" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="24" y1="33" x2="24" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="24" cy="45" r="1.5" fill="#c0c0c0"/>
+</svg>

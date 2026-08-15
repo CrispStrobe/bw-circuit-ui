@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 48" width="56" height="48">
+  <!-- MPU-6050 / GY-521 IMU Module — bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="2" width="52" height="34" rx="2" fill="#1a1a6b" stroke="#0d0d4d" stroke-width="0.8"/>
+  <!-- MPU-6050 QFN package -->
+  <rect x="14" y="8" width="16" height="16" rx="1" fill="#303030" stroke="#1a1a1a" stroke-width="0.6"/>
+  <!-- Die mark circle -->
+  <circle cx="18" cy="12" r="1" fill="#555"/>
+  <!-- IC label -->
+  <text x="22" y="18" text-anchor="middle" font-family="monospace" font-size="3" fill="#aaa">MPU</text>
+  <text x="22" y="22" text-anchor="middle" font-family="monospace" font-size="3" fill="#aaa">6050</text>
+  <!-- Voltage regulator -->
+  <rect x="36" y="10" width="8" height="5" rx="0.5" fill="#303030" stroke="#222" stroke-width="0.3"/>
+  <!-- Decoupling caps -->
+  <rect x="36" y="18" width="4" height="2" rx="0.5" fill="#c89632" stroke="#8a6a20" stroke-width="0.3"/>
+  <rect x="42" y="18" width="4" height="2" rx="0.5" fill="#c89632" stroke="#8a6a20" stroke-width="0.3"/>
+  <!-- Module label -->
+  <text x="28" y="30" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#aaa">GY-521</text>
+  <!-- Axis indicator -->
+  <line x1="8" y1="28" x2="8" y2="22" stroke="#44aa44" stroke-width="0.6"/>
+  <text x="8" y="21" text-anchor="middle" font-family="monospace" font-size="2" fill="#44aa44">Y</text>
+  <line x1="8" y1="28" x2="13" y2="28" stroke="#aa4444" stroke-width="0.6"/>
+  <text x="14" y="29" font-family="monospace" font-size="2" fill="#aa4444">X</text>
+  <!-- Mounting hole -->
+  <circle cx="48" cy="7" r="1.5" fill="none" stroke="#888" stroke-width="0.4"/>
+  <!-- 6 header pins: VCC, GND, SDA, SCL, AD0, INT -->
+  <line x1="8" y1="36" x2="8" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="16" y1="36" x2="16" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="16" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="24" y1="36" x2="24" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="24" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="32" y1="36" x2="32" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="32" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="40" y1="36" x2="40" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="40" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="48" y1="36" x2="48" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="48" cy="48" r="1.5" fill="#c0c0c0"/>
+</svg>

@@ -1,0 +1,22 @@
+{
+  "kind": "hall_analog",
+  "w": 40,
+  "h": 45,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 45, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 45, "functions": [] },
+    { "name": "ao", "x": 24, "y": 45, "functions": [] },
+    { "name": "do", "x": 32, "y": 45, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "Hall effect analog sensor module (37-in-1 kit). 4-pin: VCC, GND, AO (analog output), DO (digital output, active low). Params: field (float -1..1, default 0), threshold (float, default 0.5). AO = vcc/2 + field*(vcc/2)*0.8; DO low when |field| >= threshold.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "ao":  { "dRow": 0, "dCol": 2 },
+      "do":  { "dRow": 0, "dCol": 3 }
+    }
+  }
+}

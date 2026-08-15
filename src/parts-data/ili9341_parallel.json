@@ -1,0 +1,47 @@
+{
+  "kind": "ili9341_parallel",
+  "w": 160,
+  "h": 58,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 58, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 58, "functions": [] },
+    { "name": "cs", "x": 24, "y": 58, "functions": [] },
+    { "name": "rst", "x": 32, "y": 58, "functions": [] },
+    { "name": "dc", "x": 40, "y": 58, "functions": [] },
+    { "name": "wrb", "x": 48, "y": 58, "functions": [] },
+    { "name": "rdb", "x": 56, "y": 58, "functions": [] },
+    { "name": "d0", "x": 64, "y": 58, "functions": [] },
+    { "name": "d1", "x": 72, "y": 58, "functions": [] },
+    { "name": "d2", "x": 80, "y": 58, "functions": [] },
+    { "name": "d3", "x": 88, "y": 58, "functions": [] },
+    { "name": "d4", "x": 96, "y": 58, "functions": [] },
+    { "name": "d5", "x": 104, "y": 58, "functions": [] },
+    { "name": "d6", "x": 112, "y": 58, "functions": [] },
+    { "name": "d7", "x": 120, "y": 58, "functions": [] },
+    { "name": "led", "x": 128, "y": 58, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "ILI9341 2.4-inch 240x320 TFT LCD module — 8080-style 8-bit parallel interface (red PCB breakout). 16-pin header: VCC, GND, CS (chip select, active low), RST (reset, active low), DC (data/command), WR# (write strobe, active low), RD# (read strobe, active low), D0-D7 (8-bit parallel data bus), LED (backlight anode). Common red module variant with level shifters for 5V-tolerant operation. Distinct from SPI ili9341 (9-pin header).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "cs":  { "dRow": 0, "dCol": 2 },
+      "rst": { "dRow": 0, "dCol": 3 },
+      "dc":  { "dRow": 0, "dCol": 4 },
+      "wrb": { "dRow": 0, "dCol": 5 },
+      "rdb": { "dRow": 0, "dCol": 6 },
+      "d0":  { "dRow": 0, "dCol": 7 },
+      "d1":  { "dRow": 0, "dCol": 8 },
+      "d2":  { "dRow": 0, "dCol": 9 },
+      "d3":  { "dRow": 0, "dCol": 10 },
+      "d4":  { "dRow": 0, "dCol": 11 },
+      "d5":  { "dRow": 0, "dCol": 12 },
+      "d6":  { "dRow": 0, "dCol": 13 },
+      "d7":  { "dRow": 0, "dCol": 14 },
+      "led": { "dRow": 0, "dCol": 15 }
+    },
+    "minCols": 16
+  }
+}

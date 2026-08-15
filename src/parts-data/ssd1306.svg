@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 48" width="56" height="48">
+  <!-- SSD1306 0.96" OLED Display Module — bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="14" width="52" height="22" rx="2" fill="#1a1a6b" stroke="#0d0d4d" stroke-width="0.8"/>
+  <!-- OLED display panel (black bezel) -->
+  <rect x="2" y="0" width="52" height="18" rx="1" fill="#111" stroke="#333" stroke-width="0.8"/>
+  <!-- Active display area -->
+  <rect x="5" y="2" width="46" height="14" rx="0.5" fill="#0a0a0a" stroke="#222" stroke-width="0.3"/>
+  <!-- Sample pixel pattern (shows "OLED" text simulation) -->
+  <g fill="#00aaff" opacity="0.7">
+    <!-- O -->
+    <rect x="10" y="6" width="1" height="4" rx="0.2"/>
+    <rect x="14" y="6" width="1" height="4" rx="0.2"/>
+    <rect x="11" y="5" width="3" height="1" rx="0.2"/>
+    <rect x="11" y="10" width="3" height="1" rx="0.2"/>
+    <!-- L -->
+    <rect x="17" y="5" width="1" height="6" rx="0.2"/>
+    <rect x="18" y="10" width="3" height="1" rx="0.2"/>
+    <!-- E -->
+    <rect x="23" y="5" width="1" height="6" rx="0.2"/>
+    <rect x="24" y="5" width="3" height="1" rx="0.2"/>
+    <rect x="24" y="7.5" width="2" height="1" rx="0.2"/>
+    <rect x="24" y="10" width="3" height="1" rx="0.2"/>
+    <!-- D -->
+    <rect x="29" y="5" width="1" height="6" rx="0.2"/>
+    <rect x="30" y="5" width="2" height="1" rx="0.2"/>
+    <rect x="30" y="10" width="2" height="1" rx="0.2"/>
+    <rect x="32" y="6" width="1" height="4" rx="0.2"/>
+  </g>
+  <!-- 128x64 label -->
+  <text x="44" y="14" text-anchor="middle" font-family="monospace" font-size="2" fill="#333">128x64</text>
+  <!-- SSD1306 controller (on back, shown as label) -->
+  <text x="28" y="24" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#aaa">SSD1306</text>
+  <!-- Module label -->
+  <text x="28" y="30" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#666">0.96" OLED</text>
+  <!-- Decoupling caps -->
+  <rect x="42" y="26" width="4" height="2" rx="0.5" fill="#c89632" stroke="#8a6a20" stroke-width="0.3"/>
+  <!-- 4 header pins: VCC, GND, SDA, SCL -->
+  <line x1="14" y1="36" x2="14" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="14" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="22" y1="36" x2="22" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="22" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="30" y1="36" x2="30" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="30" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="38" y1="36" x2="38" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="38" cy="48" r="1.5" fill="#c0c0c0"/>
+</svg>

@@ -1,0 +1,20 @@
+{
+  "kind": "dht11",
+  "w": 32,
+  "h": 48,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 48, "functions": [] },
+    { "name": "data", "x": 16, "y": 48, "functions": [] },
+    { "name": "gnd", "x": 24, "y": 48, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "DHT11 temperature and humidity sensor. 3-pin: VCC, DATA (single-wire), GND. Blue plastic housing with ventilation grille. Range: 20-90% RH, 0-50 C. Params: humidity (0..95, default 50), temperature (0..50, default 25).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc":  { "dRow": 0, "dCol": 0 },
+      "data": { "dRow": 0, "dCol": 1 },
+      "gnd":  { "dRow": 0, "dCol": 2 }
+    }
+  }
+}

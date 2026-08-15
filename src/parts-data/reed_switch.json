@@ -1,0 +1,18 @@
+{
+  "kind": "reed_switch",
+  "w": 36,
+  "h": 20,
+  "terminals": [
+    { "name": "a", "x": 0, "y": 10, "functions": [] },
+    { "name": "b", "x": 36, "y": 10, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "Reed switch in glass envelope. 2-terminal: A, B. Normally open, closes (10 ohm) when magnet param is true. Param: magnet (boolean, default false).",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": { "dRow": 0, "dCol": 0 },
+      "b": { "dRow": 0, "dCol": 3 }
+    }
+  }
+}

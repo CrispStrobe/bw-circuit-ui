@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 45" width="40" height="45">
+  <!-- Hall Effect Analog Sensor Module — bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="2" width="36" height="31" rx="2" fill="#1a1a6b" stroke="#0d0d4d" stroke-width="0.8"/>
+  <!-- Hall sensor chip (3-pin TO-92 style) -->
+  <path d="M12 10 Q20 7 28 10 L28 20 Q20 23 12 20 Z" fill="#1a1a1a" stroke="#333" stroke-width="0.5"/>
+  <text x="20" y="17" text-anchor="middle" font-family="monospace" font-size="3" fill="#aaa">HALL</text>
+  <!-- Comparator IC -->
+  <rect x="24" y="22" width="8" height="5" rx="0.5" fill="#303030" stroke="#222" stroke-width="0.3"/>
+  <!-- Trimpot -->
+  <circle cx="8" cy="26" r="3" fill="#4682b4" stroke="#36648b" stroke-width="0.4"/>
+  <line x1="8" y1="24" x2="8" y2="28" stroke="#fff" stroke-width="0.5"/>
+  <!-- Label -->
+  <text x="20" y="31" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#aaa">AO DO</text>
+  <!-- 4 header pins: VCC, GND, AO, DO -->
+  <line x1="8" y1="33" x2="8" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="16" y1="33" x2="16" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="16" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="24" y1="33" x2="24" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="24" cy="45" r="1.5" fill="#c0c0c0"/>
+  <line x1="32" y1="33" x2="32" y2="45" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="32" cy="45" r="1.5" fill="#c0c0c0"/>
+</svg>

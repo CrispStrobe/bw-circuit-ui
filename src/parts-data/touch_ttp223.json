@@ -1,0 +1,20 @@
+{
+  "kind": "touch_ttp223",
+  "w": 32,
+  "h": 45,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 45, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 45, "functions": [] },
+    { "name": "do", "x": 24, "y": 45, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "TTP223 capacitive touch sensor module (37-in-1 kit). 3-pin: VCC, GND, DO (high when touched). Param: touched (boolean, default false).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "do":  { "dRow": 0, "dCol": 2 }
+    }
+  }
+}

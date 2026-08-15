@@ -1,0 +1,20 @@
+{
+  "kind": "hall_digital",
+  "w": 32,
+  "h": 45,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 45, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 45, "functions": [] },
+    { "name": "do", "x": 24, "y": 45, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "Hall effect digital sensor module (37-in-1 kit). 3-pin: VCC, GND, DO (digital output, active low). Params: field (float, default 0), threshold (float, default 0.5). DO low when field >= threshold.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "do":  { "dRow": 0, "dCol": 2 }
+    }
+  }
+}

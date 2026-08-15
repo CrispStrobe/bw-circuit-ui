@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 58" width="64" height="58">
+  <!-- MAX7219 8x8 LED Matrix Module — bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="2" width="60" height="44" rx="2" fill="#8b1a1a" stroke="#5a0d0d" stroke-width="0.8"/>
+  <!-- LED matrix frame -->
+  <rect x="6" y="5" width="36" height="36" rx="1" fill="#222" stroke="#444" stroke-width="0.6"/>
+  <!-- 8x8 LED dot grid -->
+  <g fill="#600000">
+    <!-- Row 0 -->
+    <circle cx="10" cy="9" r="1.4"/><circle cx="14.5" cy="9" r="1.4"/><circle cx="19" cy="9" r="1.4"/><circle cx="23.5" cy="9" r="1.4"/>
+    <circle cx="28" cy="9" r="1.4"/><circle cx="32.5" cy="9" r="1.4"/><circle cx="37" cy="9" r="1.4"/><circle cx="41.5" cy="9" r="1.4"/>
+    <!-- Row 1 -->
+    <circle cx="10" cy="13.5" r="1.4"/><circle cx="14.5" cy="13.5" r="1.4"/><circle cx="19" cy="13.5" r="1.4"/><circle cx="23.5" cy="13.5" r="1.4"/>
+    <circle cx="28" cy="13.5" r="1.4"/><circle cx="32.5" cy="13.5" r="1.4"/><circle cx="37" cy="13.5" r="1.4"/><circle cx="41.5" cy="13.5" r="1.4"/>
+    <!-- Row 2 -->
+    <circle cx="10" cy="18" r="1.4"/><circle cx="14.5" cy="18" r="1.4"/><circle cx="19" cy="18" r="1.4"/><circle cx="23.5" cy="18" r="1.4"/>
+    <circle cx="28" cy="18" r="1.4"/><circle cx="32.5" cy="18" r="1.4"/><circle cx="37" cy="18" r="1.4"/><circle cx="41.5" cy="18" r="1.4"/>
+    <!-- Row 3 -->
+    <circle cx="10" cy="22.5" r="1.4"/><circle cx="14.5" cy="22.5" r="1.4"/><circle cx="19" cy="22.5" r="1.4"/><circle cx="23.5" cy="22.5" r="1.4"/>
+    <circle cx="28" cy="22.5" r="1.4"/><circle cx="32.5" cy="22.5" r="1.4"/><circle cx="37" cy="22.5" r="1.4"/><circle cx="41.5" cy="22.5" r="1.4"/>
+    <!-- Row 4 -->
+    <circle cx="10" cy="27" r="1.4"/><circle cx="14.5" cy="27" r="1.4"/><circle cx="19" cy="27" r="1.4"/><circle cx="23.5" cy="27" r="1.4"/>
+    <circle cx="28" cy="27" r="1.4"/><circle cx="32.5" cy="27" r="1.4"/><circle cx="37" cy="27" r="1.4"/><circle cx="41.5" cy="27" r="1.4"/>
+    <!-- Row 5 -->
+    <circle cx="10" cy="31.5" r="1.4"/><circle cx="14.5" cy="31.5" r="1.4"/><circle cx="19" cy="31.5" r="1.4"/><circle cx="23.5" cy="31.5" r="1.4"/>
+    <circle cx="28" cy="31.5" r="1.4"/><circle cx="32.5" cy="31.5" r="1.4"/><circle cx="37" cy="31.5" r="1.4"/><circle cx="41.5" cy="31.5" r="1.4"/>
+    <!-- Row 6 -->
+    <circle cx="10" cy="36" r="1.4"/><circle cx="14.5" cy="36" r="1.4"/><circle cx="19" cy="36" r="1.4"/><circle cx="23.5" cy="36" r="1.4"/>
+    <circle cx="28" cy="36" r="1.4"/><circle cx="32.5" cy="36" r="1.4"/><circle cx="37" cy="36" r="1.4"/><circle cx="41.5" cy="36" r="1.4"/>
+    <!-- Row 7 (partial last row visible) -->
+    <circle cx="10" cy="40.5" r="1.2"/><circle cx="14.5" cy="40.5" r="1.2"/><circle cx="19" cy="40.5" r="1.2"/><circle cx="23.5" cy="40.5" r="1.2"/>
+    <circle cx="28" cy="40.5" r="1.2"/><circle cx="32.5" cy="40.5" r="1.2"/><circle cx="37" cy="40.5" r="1.2"/><circle cx="41.5" cy="40.5" r="1.2"/>
+  </g>
+  <!-- MAX7219 IC -->
+  <rect x="44" y="12" width="14" height="18" rx="1" fill="#303030" stroke="#1a1a1a" stroke-width="0.5"/>
+  <text x="51" y="21" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#aaa">MAX</text>
+  <text x="51" y="25" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#aaa">7219</text>
+  <!-- Decoupling caps -->
+  <rect x="46" y="34" width="4" height="2" rx="0.5" fill="#c89632" stroke="#8a6a20" stroke-width="0.3"/>
+  <rect x="52" y="34" width="4" height="2" rx="0.5" fill="#c89632" stroke="#8a6a20" stroke-width="0.3"/>
+  <!-- 6 header pins: VCC, GND, DIN, CLK, CS, DOUT -->
+  <line x1="8" y1="46" x2="8" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="16" y1="46" x2="16" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="16" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="24" y1="46" x2="24" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="24" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="32" y1="46" x2="32" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="32" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="40" y1="46" x2="40" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="40" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="48" y1="46" x2="48" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="48" cy="58" r="1.5" fill="#c0c0c0"/>
+</svg>

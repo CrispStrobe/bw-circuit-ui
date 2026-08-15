@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 48" width="32" height="48">
+  <!-- DHT11 Temperature & Humidity Sensor — bench-style module -->
+  <!-- Blue plastic housing -->
+  <rect x="2" y="2" width="28" height="32" rx="2" fill="#2a6eb5" stroke="#1a4a80" stroke-width="0.8"/>
+  <!-- Ventilation grille slots -->
+  <rect x="8" y="6" width="16" height="1.2" rx="0.5" fill="#1f5a99"/>
+  <rect x="8" y="9" width="16" height="1.2" rx="0.5" fill="#1f5a99"/>
+  <rect x="8" y="12" width="16" height="1.2" rx="0.5" fill="#1f5a99"/>
+  <rect x="8" y="15" width="16" height="1.2" rx="0.5" fill="#1f5a99"/>
+  <rect x="8" y="18" width="16" height="1.2" rx="0.5" fill="#1f5a99"/>
+  <rect x="8" y="21" width="16" height="1.2" rx="0.5" fill="#1f5a99"/>
+  <!-- Label -->
+  <text x="16" y="29" text-anchor="middle" font-family="monospace" font-size="4" fill="#d0e0f0">DHT11</text>
+  <!-- 3 pins: VCC, GND, DATA -->
+  <line x1="8" y1="34" x2="8" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="16" y1="34" x2="16" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="16" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="24" y1="34" x2="24" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="24" cy="48" r="1.5" fill="#c0c0c0"/>
+</svg>

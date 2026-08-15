@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 58" width="80" height="58">
+  <!-- ILI9341 2.4" TFT Display Module — red PCB, 9-pin header, bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="2" width="76" height="44" rx="2" fill="#8b1a1a" stroke="#5a0d0d" stroke-width="0.8"/>
+  <!-- TFT display panel (dark bezel) -->
+  <rect x="4" y="4" width="58" height="38" rx="1" fill="#111" stroke="#333" stroke-width="0.6"/>
+  <!-- Active display area -->
+  <rect x="7" y="7" width="52" height="32" rx="0.5" fill="#0a0a0a" stroke="#222" stroke-width="0.3"/>
+  <!-- Sample screen content (color bars) -->
+  <rect x="9" y="10" width="7" height="26" fill="#cc0000" opacity="0.5"/>
+  <rect x="16" y="10" width="7" height="26" fill="#00cc00" opacity="0.5"/>
+  <rect x="23" y="10" width="7" height="26" fill="#0000cc" opacity="0.5"/>
+  <rect x="30" y="10" width="7" height="26" fill="#cccc00" opacity="0.5"/>
+  <rect x="37" y="10" width="7" height="26" fill="#cc00cc" opacity="0.5"/>
+  <rect x="44" y="10" width="7" height="26" fill="#00cccc" opacity="0.5"/>
+  <rect x="51" y="10" width="6" height="26" fill="#cccccc" opacity="0.3"/>
+  <!-- Resolution label -->
+  <text x="34" y="40" text-anchor="middle" font-family="monospace" font-size="2" fill="#333">240x320</text>
+  <!-- ILI9341 controller label -->
+  <text x="68" y="18" text-anchor="middle" font-family="monospace" font-size="3" fill="#aaa" transform="rotate(90,68,18)">ILI9341</text>
+  <!-- SD card slot outline -->
+  <rect x="64" y="30" width="12" height="10" rx="1" fill="#444" stroke="#333" stroke-width="0.4"/>
+  <text x="70" y="37" text-anchor="middle" font-family="monospace" font-size="2" fill="#888">SD</text>
+  <!-- 9 header pins: VCC GND CS RST DC MOSI SCK MISO LED -->
+  <line x1="8" y1="46" x2="8" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="8" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="16" y1="46" x2="16" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="16" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="24" y1="46" x2="24" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="24" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="32" y1="46" x2="32" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="32" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="40" y1="46" x2="40" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="40" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="48" y1="46" x2="48" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="48" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="56" y1="46" x2="56" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="56" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="64" y1="46" x2="64" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="64" cy="58" r="1.5" fill="#c0c0c0"/>
+  <line x1="72" y1="46" x2="72" y2="58" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="72" cy="58" r="1.5" fill="#c0c0c0"/>
+</svg>

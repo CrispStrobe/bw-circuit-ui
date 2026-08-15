@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 60" width="70" height="60">
+  <!-- Analog Panel Meter — moving-coil face, bench-style -->
+  <!-- Case -->
+  <rect x="2" y="2" width="66" height="48" rx="4" fill="#e8e0d0" stroke="#999" stroke-width="0.8"/>
+  <!-- Meter face (white semicircle) -->
+  <path d="M10 42 A27 27 0 0 1 60 42" fill="#fff" stroke="#888" stroke-width="0.5"/>
+  <!-- Scale arc -->
+  <path d="M14 40 A24 24 0 0 1 56 40" fill="none" stroke="#333" stroke-width="0.6"/>
+  <!-- Graduation marks -->
+  <line x1="14" y1="40" x2="16" y2="38" stroke="#333" stroke-width="0.4"/>
+  <line x1="19" y1="33" x2="21" y2="32" stroke="#333" stroke-width="0.3"/>
+  <line x1="25" y1="27" x2="27" y2="27" stroke="#333" stroke-width="0.4"/>
+  <line x1="31" y1="24" x2="32" y2="25" stroke="#333" stroke-width="0.3"/>
+  <line x1="35" y1="23" x2="35" y2="25" stroke="#333" stroke-width="0.4"/>
+  <line x1="39" y1="24" x2="38" y2="25" stroke="#333" stroke-width="0.3"/>
+  <line x1="45" y1="27" x2="43" y2="27" stroke="#333" stroke-width="0.4"/>
+  <line x1="51" y1="33" x2="49" y2="32" stroke="#333" stroke-width="0.3"/>
+  <line x1="56" y1="40" x2="54" y2="38" stroke="#333" stroke-width="0.4"/>
+  <!-- Scale labels -->
+  <text x="13" y="44" font-family="serif" font-size="3" fill="#333">0</text>
+  <text x="35" y="20" text-anchor="middle" font-family="serif" font-size="3" fill="#333">5</text>
+  <text x="55" y="44" font-family="serif" font-size="3" fill="#333">10</text>
+  <!-- Needle at mid-deflection (state.deflection=0.5) -->
+  <line x1="35" y1="44" x2="35" y2="24" stroke="#cc2222" stroke-width="0.8" stroke-linecap="round"/>
+  <!-- Pivot -->
+  <circle cx="35" cy="44" r="2" fill="#444"/>
+  <!-- Scale label from params.fullScale -->
+  <text x="35" y="39" text-anchor="middle" font-family="serif" font-size="3" fill="#555">V DC</text>
+  <!-- Binding posts at bottom -->
+  <circle cx="22" cy="52" r="3" fill="#222" stroke="#444" stroke-width="0.4"/>
+  <circle cx="22" cy="52" r="1.5" fill="#cc3030"/>
+  <circle cx="48" cy="52" r="3" fill="#222" stroke="#444" stroke-width="0.4"/>
+  <circle cx="48" cy="52" r="1.5" fill="#333"/>
+  <!-- Terminal leads -->
+  <line x1="22" y1="54" x2="22" y2="60" stroke="#cc3030" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="22" cy="60" r="1.5" fill="#cc3030"/>
+  <line x1="48" y1="54" x2="48" y2="60" stroke="#333" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="48" cy="60" r="1.5" fill="#333"/>
+</svg>

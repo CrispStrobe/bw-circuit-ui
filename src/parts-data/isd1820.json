@@ -1,0 +1,31 @@
+{
+  "kind": "isd1820",
+  "w": 72,
+  "h": 50,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 50, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 50, "functions": [] },
+    { "name": "rec", "x": 24, "y": 50, "functions": [] },
+    { "name": "playe", "x": 32, "y": 50, "functions": [] },
+    { "name": "playl", "x": 40, "y": 50, "functions": [] },
+    { "name": "mic", "x": 48, "y": 50, "functions": [] },
+    { "name": "sp_p", "x": 56, "y": 50, "functions": [] },
+    { "name": "sp_n", "x": 64, "y": 50, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "ISD1820 voice record/playback module. 8-pin: VCC, GND, REC (record trigger), PLAYE (play edge-triggered), PLAYL (play level-hold), MIC (microphone input), SP_P/SP_N (BTL speaker output). 8 kHz sample rate, ~10 s recording. State: playbackActive (boolean, UI-facing).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc":   { "dRow": 0, "dCol": 0 },
+      "gnd":   { "dRow": 0, "dCol": 1 },
+      "rec":   { "dRow": 0, "dCol": 2 },
+      "playe": { "dRow": 0, "dCol": 3 },
+      "playl": { "dRow": 0, "dCol": 4 },
+      "mic":   { "dRow": 0, "dCol": 5 },
+      "sp_p":  { "dRow": 0, "dCol": 6 },
+      "sp_n":  { "dRow": 0, "dCol": 7 }
+    },
+    "minCols": 8
+  }
+}
