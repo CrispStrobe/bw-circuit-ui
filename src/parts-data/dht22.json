@@ -1,0 +1,20 @@
+{
+  "kind": "dht22",
+  "w": 32,
+  "h": 48,
+  "terminals": [
+    { "name": "vcc", "x": 8, "y": 48, "functions": [] },
+    { "name": "data", "x": 16, "y": 48, "functions": [] },
+    { "name": "gnd", "x": 24, "y": 48, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "DHT22 (AM2302) temperature/humidity sensor. Pin table per Aosong AM2302 datasheet. 3-pin module: VCC, DATA (single-wire), GND. White housing. Range: 0-100% RH (0.1% resolution), -40..80°C (0.1°C resolution). 16-bit values encoded ×10. Same single-wire protocol as DHT11 (40-bit frame), different byte encoding. Params: humidity (0..100, default 50), temperature (-40..80, default 25).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "data": { "dRow": 0, "dCol": 1 },
+      "gnd": { "dRow": 0, "dCol": 2 }
+    }
+  }
+}

@@ -126,6 +126,10 @@ const CATEGORIES = [
       { kind: 'soil_moisture', label: 'Soil Moisture', params: {}, color: '#8B4513' },
       { kind: 'gas_sensor', label: 'Gas Sensor', params: {}, color: '#7f8c8d', tooltip: 'MQ series' },
       { kind: 'tilt_sensor', label: 'Tilt Sensor', params: {}, color: '#95a5a6' },
+      { kind: 'dht22', label: 'DHT22', params: {}, color: '#16a085',
+        tooltip: 'AM2302 — 0.1°C resolution, -40..80°C, 0-100% RH' },
+      { kind: 'ky002', label: 'KY-002 Vibration', params: {}, color: '#95a5a6',
+        tooltip: 'Ball-switch vibration/shock sensor module' },
     ],
   },
   {
@@ -160,6 +164,7 @@ const CATEGORIES = [
       { kind: '74hc08', label: '74HC08 AND', params: {}, color: '#9b59b6', tooltip: 'Quad 2-input AND — DIP-14' },
       { kind: '74hc32', label: '74HC32 OR', params: {}, color: '#9b59b6', tooltip: 'Quad 2-input OR — DIP-14' },
       { kind: '74hc86', label: '74HC86 XOR', params: {}, color: '#9b59b6', tooltip: 'Quad 2-input XOR — DIP-14' },
+      { kind: 'cd4093', label: 'CD4093 NAND', params: {}, color: '#8e44ad', tooltip: 'Quad 2-input Schmitt NAND — CMOS DIP-14' },
     ],
   },
   {
@@ -173,6 +178,8 @@ const CATEGORIES = [
       { kind: 'pcf8574', label: 'PCF8574', params: {}, color: '#8e44ad', tooltip: 'I²C 8-bit I/O expander' },
       { kind: 'eeprom', label: 'EEPROM', params: {}, color: '#2c3e50', tooltip: 'drawable — I²C' },
       { kind: 'at24c64', label: '24C64 EEPROM', params: {}, color: '#2c3e50', tooltip: 'I²C 8 KB EEPROM — DIP-8, address straps A0-A2, WP write-protect (blinkenrocket: SOIC-8 EIAJ)' },
+      { kind: 'mcp4725', label: 'MCP4725 DAC', params: {}, color: '#27ae60',
+        tooltip: '12-bit I²C DAC — analog voltage output, addr 0x60/0x62' },
     ],
   },
   {

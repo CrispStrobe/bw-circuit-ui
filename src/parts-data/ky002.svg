@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="24" height="36">
+  <!-- KY-002 vibration/shock switch module -->
+  <rect x="2" y="2" width="20" height="30" rx="2" fill="#c0392b" stroke="#922b21" stroke-width="1"/>
+  <!-- Switch element (cylinder) -->
+  <rect x="7" y="6" width="10" height="14" rx="5" fill="#2c3e50" stroke="#1a252f" stroke-width="0.5"/>
+  <circle cx="12" cy="13" r="2" fill="#7f8c8d" opacity="0.6"/>
+  <text x="12" y="26" text-anchor="middle" font-family="monospace" font-size="3" fill="#ecf0f1">KY-002</text>
+  <!-- Bottom pins -->
+  <g stroke="#aaa" stroke-width="1.2" stroke-linecap="round">
+    <line x1="6" y1="32" x2="6" y2="36"/><line x1="12" y1="32" x2="12" y2="36"/>
+    <line x1="18" y1="32" x2="18" y2="36"/>
+  </g>
+  <g fill="#c0c0c0">
+    <circle cx="6" cy="36" r="1.2"/><circle cx="12" cy="36" r="1.2"/>
+    <circle cx="18" cy="36" r="1.2"/>
+  </g>
+</svg>

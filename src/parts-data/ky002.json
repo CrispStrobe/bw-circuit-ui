@@ -1,0 +1,20 @@
+{
+  "kind": "ky002",
+  "w": 24,
+  "h": 36,
+  "terminals": [
+    { "name": "sig", "x": 6, "y": 36, "functions": [] },
+    { "name": "vcc", "x": 12, "y": 36, "functions": [] },
+    { "name": "gnd", "x": 18, "y": 36, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "KY-002 vibration/shock switch module. 3-pin: SIG (digital output, LOW when vibration detected — ball switch with pull-up), VCC, GND. Functionally identical to a tilt switch on a carrier board. The underlying ball-switch behavior is modeled by the tilt_sensor engine (2-terminal passive a/b); this sidecar represents the KY-002 module form factor with its on-board pull-up resistor.",
+  "footprint": {
+    "refTerminal": "sig",
+    "leads": {
+      "sig": { "dRow": 0, "dCol": 0 },
+      "vcc": { "dRow": 0, "dCol": 1 },
+      "gnd": { "dRow": 0, "dCol": 2 }
+    }
+  }
+}

@@ -27,16 +27,22 @@ const RULE_SHORT = {
   'engine': '⚠',
 };
 
+// Rules whose information is conveyed by in-body visual cues (color-coded
+// pins, corner badges) rather than floating pills. The DRC rule still
+// fires for programmatic consumers; only the overlay pill is suppressed.
+const PILL_SUPPRESSED = new Set(['mcu-power-pins']);
+
 /**
  * @param {{ warnings: Array, parts: Array }} props
  */
 export function DrcOverlay({ warnings, parts }) {
   if (!warnings || warnings.length === 0) return null;
 
-  // Group warnings by partId, take worst severity per part
+  // Group warnings by partId, take worst severity per part.
+  // Skip rules whose info is shown via in-body visual cues.
   const byPart = new Map();
   for (const w of warnings) {
-    if (!w.partId) continue;
+    if (!w.partId || PILL_SUPPRESSED.has(w.rule)) continue;
     const existing = byPart.get(w.partId);
     if (!existing || severityRank(w.severity) > severityRank(existing.severity)) {
       byPart.set(w.partId, w);

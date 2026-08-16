@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 48" width="32" height="48">
+  <!-- MCP4725 I2C DAC breakout module -->
+  <rect x="2" y="4" width="28" height="40" rx="2" fill="#1a5276" stroke="#154360" stroke-width="1"/>
+  <rect x="5" y="8" width="22" height="14" rx="1" fill="#212f3d" stroke="#1c2833" stroke-width="0.5"/>
+  <text x="16" y="16" text-anchor="middle" font-family="monospace" font-size="4" fill="#aed6f1">MCP</text>
+  <text x="16" y="21" text-anchor="middle" font-family="monospace" font-size="4" fill="#aed6f1">4725</text>
+  <text x="16" y="30" text-anchor="middle" font-family="monospace" font-size="3" fill="#85929e">12-BIT DAC</text>
+  <text x="16" y="36" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#5d6d7e">I2C 0x60</text>
+  <!-- Bottom pins -->
+  <g stroke="#aaa" stroke-width="1.2" stroke-linecap="round">
+    <line x1="5" y1="44" x2="5" y2="48"/><line x1="11" y1="44" x2="11" y2="48"/>
+    <line x1="17" y1="44" x2="17" y2="48"/><line x1="23" y1="44" x2="23" y2="48"/>
+    <line x1="29" y1="44" x2="29" y2="48"/>
+  </g>
+  <g fill="#c0c0c0">
+    <circle cx="5" cy="48" r="1.2"/><circle cx="11" cy="48" r="1.2"/>
+    <circle cx="17" cy="48" r="1.2"/><circle cx="23" cy="48" r="1.2"/>
+    <circle cx="29" cy="48" r="1.2"/>
+  </g>
+  <!-- Top pin (A0) -->
+  <line x1="5" y1="0" x2="5" y2="4" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="5" cy="0" r="1.2" fill="#c0c0c0"/>
+</svg>

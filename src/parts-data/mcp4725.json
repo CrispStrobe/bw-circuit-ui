@@ -1,0 +1,26 @@
+{
+  "kind": "mcp4725",
+  "w": 32,
+  "h": 48,
+  "terminals": [
+    { "name": "out", "x": 5, "y": 48, "functions": ["dac"] },
+    { "name": "gnd", "x": 11, "y": 48, "functions": [] },
+    { "name": "vcc", "x": 17, "y": 48, "functions": [] },
+    { "name": "sda", "x": 23, "y": 48, "functions": [] },
+    { "name": "scl", "x": 29, "y": 48, "functions": [] },
+    { "name": "a0", "x": 5, "y": 0, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "MCP4725 12-bit I2C DAC breakout module. Pin table audited against Microchip DS22039D. 6-pin module: OUT (analog voltage), GND, VCC, SDA, SCL, A0 (address select). Default I2C address 0x60 (A0 low) or 0x62 (A0 high). Output: vOut = (dacCode/4095) * VCC. First analog-output I2C part in the engine. Params: address (0x60 or 0x62).",
+  "footprint": {
+    "refTerminal": "out",
+    "leads": {
+      "out": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "vcc": { "dRow": 0, "dCol": 2 },
+      "sda": { "dRow": 0, "dCol": 3 },
+      "scl": { "dRow": 0, "dCol": 4 },
+      "a0":  { "dRow": 0, "dCol": 5 }
+    }
+  }
+}

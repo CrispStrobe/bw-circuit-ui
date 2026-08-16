@@ -1,0 +1,22 @@
+{
+  "kind": "tm1637",
+  "w": 66,
+  "h": 36,
+  "terminals": [
+    { "name": "clk", "x": 18, "y": 36, "functions": [] },
+    { "name": "dio", "x": 28, "y": 36, "functions": [] },
+    { "name": "vcc", "x": 38, "y": 36, "functions": [] },
+    { "name": "gnd", "x": 48, "y": 36, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "TM1637 4-digit 7-segment display module — alias for clock_display. Same terminals (clk, dio, vcc, gnd) and same 2-wire bit-bang protocol. The engine kind 'clock_display' models TM1637 semantics: CLK+DIO rising-edge bit sampling. This sidecar provides the TM1637 product name for kit canon recognition. Engine kind: clock_display.",
+  "footprint": {
+    "refTerminal": "clk",
+    "leads": {
+      "clk": { "dRow": 0, "dCol": 0 },
+      "dio": { "dRow": 0, "dCol": 1 },
+      "vcc": { "dRow": 0, "dCol": 2 },
+      "gnd": { "dRow": 0, "dCol": 3 }
+    }
+  }
+}

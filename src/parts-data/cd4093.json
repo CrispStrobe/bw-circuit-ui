@@ -1,0 +1,156 @@
+{
+  "kind": "cd4093",
+  "w": 70,
+  "h": 46,
+  "terminals": [
+    {
+      "name": "1a",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "1b",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "1y",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "2a",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "2b",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "2y",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "3y",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "3a",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "3b",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "4y",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "4a",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "4b",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "CD4093 Quad 2-input Schmitt-trigger NAND gate. Pin table per TI CD4093B datasheet (SCHS053). CMOS equivalent of 74HC132 — same 14-pin DIP pinout, CMOS voltage levels. DIP-14 package. Same pinout as 74HC00 (1A/1B/1Y, 2A/2B/2Y, 3A/3B/3Y, 4A/4B/4Y) — extractors alias to NAND logic. GND=pin 7, VCC=pin 14. Used in Wilson-primer SBC builds for address decode with hysteresis.",
+  "footprint": {
+    "refTerminal": "1a",
+    "leads": {
+      "1a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "1b": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "1y": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "2a": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "2b": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "2y": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "3y": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "3a": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "3b": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "4y": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "4a": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "4b": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 7
+  }
+}

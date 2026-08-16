@@ -38,7 +38,7 @@ const DIP_CHIP_LABELS = {
   '74hc32': '74HC32', '74hc74': '74HC74', '74hc138': '74HC138',
   '74hc245': '74HC245', '74hc374': '74HC374', '74hc595': '74HC595',
   '74c922': '74C922', r6507: 'R6507', mos6532: 'MOS6532',
-  at24c64: '24C64',
+  at24c64: '24C64', shift_register: '74HC595', cd4093: 'CD4093',
   // Device-true MCU DIPs: without these the blinkenrocket pendant's
   // seated ATtiny88 rendered as a ghost outline (owner screenshot) —
   // 28 pin names floating around no body at all.
@@ -297,16 +297,24 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 transform="rotate(0)">{chipInfo.label}</text>
               <text x={0} y={9} textAnchor="middle" fill="#777" fontSize={7}
                 fontFamily="monospace">{chipInfo.pkg}</text>
-              {sc.terminals.map(t => (
+              {sc.terminals.map(t => {
+                const isVCC = /^(VCC|AVCC|VDD)$/i.test(t.name);
+                const isGND = /^(GND|VSS)$/i.test(t.name);
+                const legColor = isVCC ? '#c0392b' : isGND ? '#2c2c2c' : '#b0b8c0';
+                const padColor = isVCC ? '#e74c3c' : isGND ? '#444' : '#d8dee4';
+                return (
                 <g key={t.name}>
+                  {(isVCC || isGND) && <title>{isVCC ? 'VCC — connect to +5 V rail' : 'GND — connect to ground rail'}</title>}
                   <line x1={px(t)} y1={py(t) < 0 ? -bodyH / 2 : bodyH / 2} x2={px(t)} y2={py(t)}
-                    stroke="#b0b8c0" strokeWidth={3} />
+                    stroke={legColor} strokeWidth={3} />
                   <rect x={px(t) - 5} y={py(t) - 2.5} width={10} height={5}
-                    fill="#d8dee4" stroke="#8090a0" strokeWidth={0.5} />
+                    fill={padColor} stroke={isVCC ? '#c0392b' : isGND ? '#333' : '#8090a0'} strokeWidth={0.5} />
                   <text x={px(t)} y={py(t) + (py(t) < 0 ? -8 : 14)} textAnchor="middle"
-                    fill="#7f8c8d" fontSize={4.2} fontFamily="monospace">{t.name}</text>
+                    fill={isVCC ? '#e74c3c' : isGND ? '#555' : '#7f8c8d'} fontSize={4.2} fontFamily="monospace"
+                    fontWeight={isVCC || isGND ? 'bold' : 'normal'}>{t.name}</text>
                 </g>
-              ))}
+                );
+              })}
             </g>
           );
         }
@@ -339,26 +347,36 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             {/* Left-side pins (1 to N/2) */}
             {part.terminals.slice(0, pinsPerSide).map((pin, i) => {
               const py = chipY + 12 + i * pinSpacing;
+              const isVCC = /^(VCC|AVCC|VDD)$/i.test(pin);
+              const isGND = /^(GND|VSS)$/i.test(pin);
+              const legFill = isVCC ? '#c0392b' : isGND ? '#2c2c2c' : '#b0b8c0';
+              const lblFill = isVCC ? '#e74c3c' : isGND ? '#555' : '#f39c12';
               return (
                 <g key={pin}>
-                  {/* Leg */}
+                  {(isVCC || isGND) && <title>{isVCC ? 'VCC — connect to +5 V rail' : 'GND — connect to ground rail'}</title>}
                   <rect x={-chipW / 2 - legLen} y={py - legW / 2} width={legLen} height={legW}
-                    fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
-                  {/* Label */}
+                    fill={legFill} stroke={isVCC ? '#c0392b' : isGND ? '#333' : '#8090a0'} strokeWidth={0.5} />
                   <text x={-chipW / 2 - legLen - 3} y={py + 3} textAnchor="end"
-                    fill="#f39c12" fontSize={7} fontFamily="monospace">{pin}</text>
+                    fill={lblFill} fontSize={7} fontFamily="monospace"
+                    fontWeight={isVCC || isGND ? 'bold' : 'normal'}>{pin}</text>
                 </g>
               );
             })}
             {/* Right-side pins (N/2+1 to N, bottom to top) */}
             {part.terminals.slice(pinsPerSide).map((pin, i) => {
               const py = chipY + 12 + (pinsPerSide - 1 - i) * pinSpacing;
+              const isVCC = /^(VCC|AVCC|VDD)$/i.test(pin);
+              const isGND = /^(GND|VSS)$/i.test(pin);
+              const legFill = isVCC ? '#c0392b' : isGND ? '#2c2c2c' : '#b0b8c0';
+              const lblFill = isVCC ? '#e74c3c' : isGND ? '#555' : '#f39c12';
               return (
                 <g key={pin}>
+                  {(isVCC || isGND) && <title>{isVCC ? 'VCC — connect to +5 V rail' : 'GND — connect to ground rail'}</title>}
                   <rect x={chipW / 2} y={py - legW / 2} width={legLen} height={legW}
-                    fill="#b0b8c0" stroke="#8090a0" strokeWidth={0.5} />
+                    fill={legFill} stroke={isVCC ? '#c0392b' : isGND ? '#333' : '#8090a0'} strokeWidth={0.5} />
                   <text x={chipW / 2 + legLen + 3} y={py + 3} textAnchor="start"
-                    fill="#f39c12" fontSize={7} fontFamily="monospace">{pin}</text>
+                    fill={lblFill} fontSize={7} fontFamily="monospace"
+                    fontWeight={isVCC || isGND ? 'bold' : 'normal'}>{pin}</text>
                 </g>
               );
             })}
@@ -638,7 +656,11 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         // right column at top row. Notch at left end, pin-1 dot bottom-left.
         const dipLabel = DIP_CHIP_LABELS[kind];
         if (dipLabel) {
-          const sc = typeof getSidecar === 'function' ? getSidecar(kind) : null;
+          // Friendly-name kinds may share a sidecar with the real IC name
+          // (e.g. shift_register → 74hc595).
+          const SIDECAR_ALIAS = { shift_register: '74hc595' };
+          const scKey = SIDECAR_ALIAS[kind] || kind;
+          const sc = typeof getSidecar === 'function' ? (getSidecar(scKey) || getSidecar(kind)) : null;
           if (sc && sc.terminals && sc.terminals.length > 2) {
             const pinCount = sc.terminals.length;
             const positions = dipTerminalPositions(sc);
@@ -665,16 +687,21 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 {sc.terminals.map(t => {
                   const pos = positions[t.name];
                   if (!pos) return null;
+                  const isVCC = /^(VCC|AVCC|VDD)$/i.test(t.name);
+                  const isGND = /^(GND|VSS)$/i.test(t.name);
+                  const legCol = isVCC ? '#c0392b' : isGND ? '#2c2c2c' : '#b0b8c0';
+                  const padCol = isVCC ? '#e74c3c' : isGND ? '#444' : '#d8dee4';
                   return (
                     <g key={t.name}>
+                      {(isVCC || isGND) && <title>{isVCC ? 'VCC — connect to +5 V rail' : 'GND — connect to ground rail'}</title>}
                       <line x1={pos.dx} y1={pos.dy < 0 ? -bodyH / 2 : bodyH / 2}
                         x2={pos.dx} y2={pos.dy}
-                        stroke="#b0b8c0" strokeWidth={2} />
+                        stroke={legCol} strokeWidth={2} />
                       <rect x={pos.dx - 3} y={pos.dy - 1.5} width={6} height={3}
-                        fill="#d8dee4" stroke="#8090a0" strokeWidth={0.3} />
+                        fill={padCol} stroke={isVCC ? '#c0392b' : isGND ? '#333' : '#8090a0'} strokeWidth={0.3} />
                       <text x={pos.dx} y={pos.dy + (pos.dy < 0 ? -6 : 10)}
-                        textAnchor="middle" fill="#7f8c8d" fontSize={3.5}
-                        fontFamily="monospace">{t.name}</text>
+                        textAnchor="middle" fill={isVCC ? '#e74c3c' : isGND ? '#555' : '#7f8c8d'} fontSize={3.5}
+                        fontFamily="monospace" fontWeight={isVCC || isGND ? 'bold' : 'normal'}>{t.name}</text>
                     </g>
                   );
                 })}
@@ -1405,11 +1432,11 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             </div>
           </div>
         );
-      case 'shift_register':
       case 'led_matrix':
       case 'temp_sensor':
       case 'eeprom':
         // Generic IC rendering for parts without wokwi elements
+        // (shift_register now renders as DIP-16 body via SvgParts)
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 25, top: y - 15, cursor: 'move' }}
@@ -1418,7 +1445,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             <svg width={50} height={30} viewBox="0 0 50 30">
               <rect x={2} y={2} width={46} height={26} rx={3} fill="#2c3e50" stroke="#7f8c8d" strokeWidth={1} />
               <text x={25} y={18} textAnchor="middle" fill="#ecf0f1" fontSize={8} fontFamily="monospace">
-                {kind === 'shift_register' ? '595' : kind === 'led_matrix' ? '8×8' : kind === 'temp_sensor' ? '18B20' : 'IC'}
+                {kind === 'led_matrix' ? '8×8' : kind === 'temp_sensor' ? '18B20' : 'IC'}
               </text>
             </svg>
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
@@ -2894,18 +2921,23 @@ export function BoardCanvas({
           )}
 
           {parts.filter(q => q.seat && ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(q.kind)).map(q => {
-            // Offset badge to the part's top-left, never over another part's body.
-            // For straddling DIPs the body extends ~150px left and ~30px up from
-            // center; place the badge above-left of the body outline.
-            const bx = q.x - 150;
-            const by = q.y - 50;
+            // Small checkmark badge at the MCU body's top-right corner.
+            // The old 84×16 pill covered pins on crowded benches; this is
+            // 14px and stays inside the body outline.
+            const sc = typeof getSidecar === 'function'
+              ? (getSidecar((q.params?.device || '').toLowerCase().replace(/[^a-z0-9]/g, '')) || getSidecar(q.kind))
+              : null;
+            const pps = sc?.terminals ? Math.ceil(sc.terminals.length / 2) : 10;
+            const bw = (pps - 1) * DIP_PIN_PITCH + 20;
+            const bh = q.kind === 'mcu' ? 52 : DIP_ROW_OFFSET * 2 + 10;
+            const cx = q.x + bw / 2 - 10;
+            const cy = q.y - bh / 2 + 10;
             return (
-              <g key={`seat-badge-${q.id}`} style={{pointerEvents: 'none'}}>
-                <rect x={bx} y={by} width={84} height={16} rx={8}
-                  fill="#166534" stroke="#86efac" strokeWidth={1} />
-                <text x={bx + 42} y={by + 11} textAnchor="middle" fill="#dcfce7" fontSize={8} fontFamily="system-ui, sans-serif" fontWeight="bold">
-                  SEATED • PIN RASTER
-                </text>
+              <g key={`seat-badge-${q.id}`} style={{pointerEvents: 'auto', cursor: 'default'}}>
+                <title>SEATED • PIN RASTER</title>
+                <circle cx={cx} cy={cy} r={7} fill="#166534" stroke="#86efac" strokeWidth={1} />
+                <text x={cx} y={cy + 3.5} textAnchor="middle" fill="#dcfce7" fontSize={10}
+                  fontFamily="system-ui, sans-serif" fontWeight="bold">✓</text>
               </g>
             );
           })}
