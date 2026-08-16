@@ -79,7 +79,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en' }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en' }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -1346,8 +1346,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             the host's DebugPanel lives INSIDE it, and its runner is what
             eventually produces debugState — gating on debugState alone was
             a deadlock the bench could never leave (no pins, no panel, no
-            runner, no debugState). */}
-        {(hasMcuPins || debugState || (machineResult && machineResult.ok)) && debuggerPanel && (
+            runner, no debugState). benchOpen is the HOST's memory of the
+            same fact: this component remounts on tab switches and loses
+            machineResult, while the host's state survives — without it,
+            leaving for the Code tab (to write ASM!) closed the slot and
+            killed the bench. */}
+        {(hasMcuPins || debugState || benchOpen || (machineResult && machineResult.ok)) && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
             borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>
