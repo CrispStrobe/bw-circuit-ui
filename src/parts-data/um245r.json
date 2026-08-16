@@ -1,0 +1,46 @@
+{
+  "kind": "um245r",
+  "w": 70,
+  "h": 71,
+  "terminals": [
+    { "name": "d0", "x": 0, "y": 8, "functions": [] },
+    { "name": "d1", "x": 0, "y": 13, "functions": [] },
+    { "name": "d2", "x": 0, "y": 18, "functions": [] },
+    { "name": "d3", "x": 0, "y": 23, "functions": [] },
+    { "name": "d4", "x": 0, "y": 28, "functions": [] },
+    { "name": "d5", "x": 0, "y": 33, "functions": [] },
+    { "name": "d6", "x": 0, "y": 38, "functions": [] },
+    { "name": "d7", "x": 0, "y": 43, "functions": [] },
+    { "name": "rdb", "x": 0, "y": 48, "functions": [] },
+    { "name": "gnd", "x": 0, "y": 63, "functions": [] },
+    { "name": "rxfb", "x": 70, "y": 63, "functions": [] },
+    { "name": "txeb", "x": 70, "y": 58, "functions": [] },
+    { "name": "wr", "x": 70, "y": 38, "functions": [] },
+    { "name": "resetb", "x": 70, "y": 28, "functions": [] },
+    { "name": "vcc", "x": 70, "y": 18, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "FTDI UM245R USB-to-parallel-FIFO module (DIP-24 breakout). D0-D7 bidirectional data bus, /RD read strobe (active LOW, pops FIFO on rising edge), WR write strobe (active HIGH — falling edge latches), /TXE transmit FIFO status (LOW = room), /RXF receive FIFO status (LOW = byte waiting), /RESET active LOW. Empty-FIFO trap: repeats last byte, does not return zero. Pin order rationalised for clean wiring (not matching physical FTDI pinout).",
+  "footprint": {
+    "refTerminal": "d0",
+    "leads": {
+      "d0":     { "dRow": 0, "dCol": 0 },
+      "d1":     { "dRow": 0, "dCol": 1 },
+      "d2":     { "dRow": 0, "dCol": 2 },
+      "d3":     { "dRow": 0, "dCol": 3 },
+      "d4":     { "dRow": 0, "dCol": 4 },
+      "d5":     { "dRow": 0, "dCol": 5 },
+      "d6":     { "dRow": 0, "dCol": 6 },
+      "d7":     { "dRow": 0, "dCol": 7 },
+      "rdb":    { "dRow": 0, "dCol": 8 },
+      "gnd":    { "dRow": 0, "dCol": 11 },
+      "rxfb":   { "dRow": 5, "dCol": 11 },
+      "txeb":   { "dRow": 5, "dCol": 10 },
+      "wr":     { "dRow": 5, "dCol": 6 },
+      "resetb": { "dRow": 5, "dCol": 4 },
+      "vcc":    { "dRow": 5, "dCol": 2 }
+    },
+    "straddlesGutter": true,
+    "minCols": 12
+  }
+}
