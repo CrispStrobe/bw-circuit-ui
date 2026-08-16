@@ -41,6 +41,7 @@ export { OrientationInput } from './components/OrientationInput.jsx';
 export { MidiMonitor } from './components/MidiMonitor.jsx';
 export { StimulusControls } from './components/StimulusControls.jsx';
 export { SerialConsole } from './components/SerialConsole.jsx';
+export { AsmDebugPanel } from './components/AsmDebugPanel.jsx';
 
 // Panel data functions
 export { runDrc, setExtractors } from './model/drc.js';
