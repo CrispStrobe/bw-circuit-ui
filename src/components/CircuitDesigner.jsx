@@ -1342,7 +1342,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {debugState && typeof debugState.regs === 'function' && (
           <ArchitectureFace debugState={debugState} lang={lang} />
         )}
-        {(hasMcuPins || debugState) && debuggerPanel && (
+        {/* A machine bench (Build Machine succeeded) opens this slot too:
+            the host's DebugPanel lives INSIDE it, and its runner is what
+            eventually produces debugState — gating on debugState alone was
+            a deadlock the bench could never leave (no pins, no panel, no
+            runner, no debugState). */}
+        {(hasMcuPins || debugState || (machineResult && machineResult.ok)) && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
             borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>
