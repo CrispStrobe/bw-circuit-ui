@@ -2541,11 +2541,19 @@ export function BoardCanvas({
           // grew scrollbars on small windows. The viewBox + measured-fit
           // pipeline adapts to ANY container size now; the floors were
           // pre-responsive crutches.
+          // flex 1 1 auto: fill what the row offers (large windows fill,
+          // mid windows fit beside the 190px rail with no underlap). The
+          // floor is the LOGICAL canvas (700x500), not the old 900 —
+          // 900 exceeded the ~810 available beside the rail and slid the
+          // container UNDER it; with no floor at all the browser gate
+          // proved the canvas collapses to 2px on narrow panes, killing
+          // the narrow-window scroll story. 700 fits the mid case and
+          // still forces a scrollbar (not a crush) below it.
           flex: '1 1 auto',
           width: 'auto',
-          minWidth: 0,
+          minWidth: CANVAS_W,
           height: '100%',
-          minHeight: 0,
+          minHeight: CANVAS_H,
           background: '#16213e',
           borderRadius: '8px',
           border: '1px solid #2c3e50',
