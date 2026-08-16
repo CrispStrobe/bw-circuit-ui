@@ -1234,7 +1234,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
         }}>›</button>
         <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 34, boxSizing: 'border-box'}}>
-        {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins). */}
+        {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins).
+            The FACES below gate on capability, not on pins: a machine-class
+            bench (6502/Z80) has no PIN concept, yet its booted machine has
+            video/serial/registers. Gating faces on hasMcuPins kept the
+            VdpScreen dark on a booted VDP machine (deploy probe, 2026-08-16).
+            "Capabilities decide what is offered — never an assumption." */}
         {hasMcuPins && debugState && (
           <DebugStatus
             debugState={debugState}
@@ -1246,11 +1251,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             lang={lang}
           />
         )}
-        {hasMcuPins && debugState && typeof debugState.video === 'function' && (
+        {debugState && typeof debugState.video === 'function' && (
           <VdpScreen videoFn={debugState.video} setButtonsFn={debugState.setButtons} setKeysFn={debugState.setKeys} loadSnapshotFn={debugState.loadSnapshot} lang={lang} />
         )}
         {/* Serial console — for machines with ACIA serial (z80-bench, eater6502) */}
-        {hasMcuPins && debugState && typeof debugState.onSerial === 'function' && (
+        {debugState && typeof debugState.onSerial === 'function' && (
           <section style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box'}}>
             <div style={{fontSize: 11, fontWeight: 600, color: '#e2e8f0', marginBottom: 4, fontFamily: 'monospace'}}>
               {t('serialConsole', lang)}
@@ -1260,7 +1265,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           </section>
         )}
         {/* Framebuffer face — 1bpp monochrome video from machine chips */}
-        {hasMcuPins && debugState && debugState.framebuffer && (
+        {debugState && debugState.framebuffer && (
           <FramebufferFace chipState={debugState.framebuffer}
             width={debugState.framebuffer.width || 128}
             height={debugState.framebuffer.height || 64}
@@ -1268,7 +1273,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             lang={lang} />
         )}
         {/* Architecture face — block diagram with live register state */}
-        {hasMcuPins && debugState && typeof debugState.regs === 'function' && (
+        {debugState && typeof debugState.regs === 'function' && (
           <ArchitectureFace debugState={debugState} lang={lang} />
         )}
         {hasMcuPins && debuggerPanel && (
