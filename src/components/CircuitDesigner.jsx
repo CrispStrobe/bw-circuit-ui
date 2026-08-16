@@ -120,6 +120,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     if (!b) return null;
     try { return b.sevenSegmentBrightness(id); } catch { return null; }
   }, [externalBoard, circuit]);
+  const readSevenSeg3 = useCallback((id) => {
+    const b = (externalBoard && externalBoard.sevenSeg3Brightness) ? externalBoard
+      : (circuit && circuit.board && circuit.board.sevenSeg3Brightness) ? circuit.board : null;
+    if (!b) return null;
+    try { return b.sevenSeg3Brightness(id); } catch { return null; }
+  }, [externalBoard, circuit]);
   const readBuzzerTone = useCallback((id) => {
     if (externalBoard && externalBoard.buzzerTone) {
       try { return externalBoard.buzzerTone(id); } catch { return null; }
@@ -792,7 +798,15 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     circuit.parts = parsed.parts;
     circuit.wires = parsed.wires;
     circuit.breadboards = parsed.breadboards;
-    circuit._syncNetlist();
+    // Generated per-device benches carry {parts, nets} (engine-format nets,
+    // no wires). syncWithExternalNets feeds these directly to setNetlist,
+    // which is strictly more truthful than the wire→net derivation that
+    // _syncNetlist performs — the bench generator already computed the nets.
+    if (Array.isArray(data.nets) && data.nets.length > 0) {
+      circuit.syncWithExternalNets(data.nets);
+    } else {
+      circuit._syncNetlist();
+    }
     circuit._saveHistory();
     setSelectedParts(new Set());
     setSelectedWire(null);
@@ -993,14 +1007,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             {examples && onLoadExample ? (
               codexMode && curriculum ? (
                 <CodexBrowser curriculum={curriculum} examples={examples} lang={lang}
-                  onLoadExample={(ex) => {
-                    onLoadExample(ex);
-                    if (onProgramChange && ex.program) onProgramChange(ex.program);
+                  onLoadExample={(ex, opts) => {
+                    onLoadExample(ex, opts);
+                    if (onProgramChange && ex.program) onProgramChange(ex.program, opts);
                   }} theme={theme} />
               ) : (
-                <ExamplesBrowser examples={examples} onLoadExample={(ex) => {
-                  onLoadExample(ex);
-                  if (onProgramChange && ex.program) onProgramChange(ex.program);
+                <ExamplesBrowser examples={examples} onLoadExample={(ex, opts) => {
+                  onLoadExample(ex, opts);
+                  if (onProgramChange && ex.program) onProgramChange(ex.program, opts);
                 }} theme={theme} />
               )
             ) : (
@@ -1070,6 +1084,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           engineBoard={activeBoard}
           fitToken={fitToken}
           sevenSegments={readSevenSegment}
+          sevenSeg3={readSevenSeg3}
           parts={parts}
           wires={wires}
           theme={theme}

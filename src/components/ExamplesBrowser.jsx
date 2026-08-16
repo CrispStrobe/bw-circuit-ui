@@ -415,7 +415,11 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                 palette={palette}
                 disabled={!compat.ok}
                 disabledReason={reason}
-                onClick={() => { if (onLoadExample) { onLoadExample(ex); setLastLoaded(ex); setShowInfo(false); } }}
+                onClick={(device) => {
+                  if (!onLoadExample) return;
+                  const opts = device ? { device, bench: ex.benches?.[device] } : undefined;
+                  onLoadExample(ex, opts); setLastLoaded(ex); setShowInfo(false);
+                }}
               />
             );
           })}
@@ -469,7 +473,7 @@ function deviceCompatReason(example, device, lang = 'en') {
   return `${/^de/i.test(lang) ? 'Benötigt' : 'Needs'}: ${supported}`;
 }
 
-const DEVICE_LABELS = {
+export const DEVICE_LABELS = {
   stc12c5a60s2: 'STC12', stc89c52rc: 'STC89', stc15f2k60s2: 'STC15',
   'arduino-uno': 'Uno', 'arduino-nano': 'Nano', 'arduino-mega': 'Mega',
   pico: 'Pico', attiny85: 'ATtiny85', attiny88: 'ATtiny88', attiny13: 'ATtiny13', attiny2313: 'ATtiny2313',
@@ -477,10 +481,62 @@ const DEVICE_LABELS = {
   eater6502: '6502 Breadboard', gpascal: 'G-Pascal', z80: 'Z80', microbit: 'micro:bit',
 };
 
+// ── Per-example device persistence ────────────────────────────────
+const DEVICE_STORAGE_KEY = 'bw-example-device';
+function loadDeviceChoices() {
+  try { return JSON.parse(localStorage.getItem(DEVICE_STORAGE_KEY)) || {}; } catch { return {}; }
+}
+function saveDeviceChoice(exampleId, device) {
+  try {
+    const m = loadDeviceChoices();
+    m[exampleId] = device;
+    localStorage.setItem(DEVICE_STORAGE_KEY, JSON.stringify(m));
+  } catch { /* privacy mode */ }
+}
+function savedDeviceFor(exampleId) {
+  return loadDeviceChoices()[exampleId] || null;
+}
+
+/**
+ * DevicePicker — compact chip-row for choosing which device runs an example.
+ * Rendered on cards whose `devices` array has more than one entry.
+ */
+export function DevicePicker({ devices, selected, onSelect, palette }) {
+  if (!devices || devices.length <= 1) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 3 }}
+      data-testid="bw-device-picker">
+      {devices.map(d => {
+        const active = d === selected;
+        return (
+          <button key={d} type="button"
+            onClick={e => { e.stopPropagation(); onSelect(d); }}
+            style={{
+              padding: '1px 6px', borderRadius: 8, fontSize: 9, fontWeight: active ? 700 : 500,
+              fontFamily: 'inherit', cursor: 'pointer', lineHeight: '16px',
+              background: active ? palette.accent : palette.button,
+              color: active ? '#fff' : palette.muted,
+              border: `1px solid ${active ? palette.accent : palette.buttonBorder}`,
+            }}>
+            {DEVICE_LABELS[d] || d}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason }) {
   const [hovered, setHovered] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
   const [introData, setIntroData] = useState(null); // {meta, body} or 'loading' or 'none'
+  const multiDevice = Array.isArray(example.devices) && example.devices.length > 1;
+  const [pickedDevice, setPickedDevice] = useState(() =>
+    multiDevice ? (savedDeviceFor(example.id) || example.devices[0]) : null);
+  const handleDevicePick = (d) => {
+    setPickedDevice(d);
+    saveDeviceChoice(example.id, d);
+  };
   const title = example.title?.[lang] || example.title?.en || example.id;
   const catColor = CATEGORY_COLORS[example.category] || '#555';
   const diff = DIFFICULTY_LABELS[example.difficulty] || '';
@@ -525,7 +581,7 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
         <div style={{ color: palette.heading, fontSize: '12px', fontWeight: 650, cursor: 'pointer', flex: 1, lineHeight: 1.3 }}
-          onClick={onClick}>{title}</div>
+          onClick={() => onClick(pickedDevice)}>{title}</div>
         {diff && <span style={{ color: palette.muted, fontSize: '9px', flexShrink: 0 }}>
           {'★'.repeat(example.difficulty)}{'☆'.repeat(3 - example.difficulty)}
         </span>}
@@ -546,9 +602,13 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
           }}
           data-testid="bw-example-intro-toggle">i</button>
       </div>
+      {multiDevice && (
+        <DevicePicker devices={example.devices} selected={pickedDevice}
+          onSelect={handleDevicePick} palette={palette} />
+      )}
       {disabled && disabledReason && (
         <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px', fontStyle: 'italic',
-          cursor: 'pointer' }} onClick={onClick}
+          cursor: 'pointer' }} onClick={() => onClick(pickedDevice)}
           title={/^de/i.test(lang) ? 'Klicken zum Laden — Gerät wird automatisch gewechselt' : 'Click to load — device will switch automatically'}>
           {disabledReason}
         </div>
@@ -628,7 +688,7 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
             {!disabled && (
               <button type="button"
-                onClick={() => { setIntroOpen(false); onClick(); }}
+                onClick={() => { setIntroOpen(false); onClick(pickedDevice); }}
                 data-testid="bw-example-intro-open-bench"
                 style={{ padding: '8px 18px', border: 'none', borderRadius: 8,
                   background: palette.accent, color: '#fff', fontSize: 13,

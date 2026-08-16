@@ -1162,7 +1162,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates, sevenSegments }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates, sevenSegments, sevenSeg3 }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -1376,6 +1376,52 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
               if (seg) {
                 for (let k = 0; k < segKeys.length; k++) {
                   vals[k] = seg[segKeys[k]] > 0.2 ? 1 : 0;
+                }
+              }
+              return vals;
+            })()} color="#e74c3c" pins="none" />
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {partLabel(part)}
+            </div>
+          </div>
+        );
+      }
+      case 'seven_seg_3': {
+        // 3-digit multiplexed display (056SMG-3). Uses the engine's
+        // sevenSeg3Brightness(id) → [{a..dp}, {a..dp}, {a..dp}].
+        const seg3ElW = 12.55 * 3 * 3.78;
+        const seg3ElH = 22 * 3.78;
+        const seg3Seated = part.seat && part._seatTerminals;
+        let seg3Left = x - seg3ElW / 2, seg3Top = y - 35, seg3Scale;
+        if (seg3Seated) {
+          const aPos = part._seatTerminals.a;
+          const bPos = part._seatTerminals.com0 || part._seatTerminals.b;
+          if (aPos && bPos) {
+            const pinSpanY = Math.abs(bPos.y - aPos.y);
+            seg3Scale = pinSpanY / seg3ElH;
+            const cx = (aPos.x + bPos.x) / 2;
+            const cy = (aPos.y + bPos.y) / 2;
+            seg3Left = cx - (seg3ElW / 2) * seg3Scale;
+            seg3Top = cy - (seg3ElH / 2) * seg3Scale;
+          }
+        }
+        return (
+          <div key={id}
+            style={{ ...baseStyle, left: seg3Left, top: seg3Top, cursor: 'move',
+              ...(seg3Scale ? { transform: `scale(${seg3Scale})`, transformOrigin: 'top left' } : {}) }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            {...dragProps()}>
+            <WokwiSevenSegment digits={3} values={(() => {
+              const segKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'];
+              const vals = new Array(24).fill(0);
+              const digits = sevenSeg3?.(id);
+              if (digits && Array.isArray(digits)) {
+                for (let d = 0; d < 3; d++) {
+                  const seg = digits[d];
+                  if (!seg) continue;
+                  for (let k = 0; k < segKeys.length; k++) {
+                    vals[d * 8 + k] = seg[segKeys[k]] > 0.2 ? 1 : 0;
+                  }
                 }
               }
               return vals;
@@ -1679,7 +1725,7 @@ export function BoardCanvas({
   statusText,
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
-  circuit, engineBoard, fitToken, sevenSegments,
+  circuit, engineBoard, fitToken, sevenSegments, sevenSeg3,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onClearCircuit, onRewire,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
@@ -3241,6 +3287,7 @@ export function BoardCanvas({
             parts={parts}
             ledBrightness={ledBrightness}
             sevenSegments={sevenSegments}
+            sevenSeg3={sevenSeg3}
             buzzerTones={buzzerTones}
             meterReadings={(() => {
               const readings = {};

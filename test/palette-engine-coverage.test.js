@@ -31,7 +31,7 @@ const STAMPED = new Set([
   'vcc', 'gnd', 'resistor', 'capacitor', 'diode', 'led', 'potentiometer',
   'button', 'switch', 'buzzer', 'ldr', 'ntc', 'npn', 'pnp', 'inductor',
   'zener', 'nmos', 'pmos', 'opamp', 'vsource', 'isource', 'mcu',
-  'seven_segment', 'seven_seg_3', 'shift_register', 'ir_receiver', 'temp_sensor',
+  'seven_segment', 'shift_register', 'ir_receiver', 'temp_sensor',
   'eeprom', 'led_matrix', 'led_cube', 'rgb_led', 'char_lcd',
   'breadboard', 'meter',
   // seven_seg_3: engine composite since bw-board 71957c3 (24 LEDs over a

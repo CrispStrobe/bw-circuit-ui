@@ -14,6 +14,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { DevicePicker } from './ExamplesBrowser.jsx';
 
 // ── Shared intro helpers (same logic as ExamplesBrowser) ────────────
 
@@ -221,6 +222,8 @@ export function CodexBrowser({ curriculum, examples, lang = 'en', onLoadExample,
   // Intro reader modal state
   const [readerStation, setReaderStation] = useState(null); // { trail, chapterIdx, stationIdx, example, station }
   const [introData, setIntroData] = useState(null); // null | 'loading' | 'none' | { meta, body }
+  // Device picker for multi-device examples in the reader
+  const [readerDevice, setReaderDevice] = useState(null);
   // Progress
   const [progress, setProgress] = useState(readProgress);
 
@@ -237,6 +240,15 @@ export function CodexBrowser({ curriculum, examples, lang = 'en', onLoadExample,
     setProgress(markSeen(sk));
     setReaderStation({ trail, chapterIdx, stationIdx, example, station });
     setIntroData(null);
+    // Restore persisted device choice for this example
+    if (example && Array.isArray(example.devices) && example.devices.length > 1) {
+      try {
+        const saved = JSON.parse(localStorage.getItem('bw-example-device') || '{}');
+        setReaderDevice(saved[example.id] || example.devices[0]);
+      } catch { setReaderDevice(example.devices[0]); }
+    } else {
+      setReaderDevice(null);
+    }
 
     // Fetch intro for example stations
     if (example && example.files) {
@@ -267,9 +279,21 @@ export function CodexBrowser({ curriculum, examples, lang = 'en', onLoadExample,
 
   const loadOnBench = () => {
     if (readerStation?.example && onLoadExample) {
-      onLoadExample(readerStation.example);
+      const ex = readerStation.example;
+      const opts = readerDevice ? { device: readerDevice, bench: ex.benches?.[readerDevice] } : undefined;
+      onLoadExample(ex, opts);
     }
     closeReader();
+  };
+  const handleReaderDevicePick = (d) => {
+    setReaderDevice(d);
+    if (readerStation?.example) {
+      try {
+        const m = JSON.parse(localStorage.getItem('bw-example-device') || '{}');
+        m[readerStation.example.id] = d;
+        localStorage.setItem('bw-example-device', JSON.stringify(m));
+      } catch { /* privacy mode */ }
+    }
   };
 
   // ── Trail list view ───────────────────────────────────────────────
@@ -536,6 +560,18 @@ export function CodexBrowser({ curriculum, examples, lang = 'en', onLoadExample,
                 </div>
                 {renderMarkdown(introData.body, p)}
               </>
+            )}
+
+            {/* Device picker for multi-device examples */}
+            {readerStation.example && Array.isArray(readerStation.example.devices) && readerStation.example.devices.length > 1 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 10, color: p.muted, marginBottom: 3, fontWeight: 600 }}>
+                  {lang === 'de' ? 'Zielgerät' : 'Target device'}
+                </div>
+                <DevicePicker devices={readerStation.example.devices} selected={readerDevice}
+                  onSelect={handleReaderDevicePick}
+                  palette={{ accent: p.accent, button: p.button, muted: p.muted, buttonBorder: p.panelBorder }} />
+              </div>
             )}
 
             {/* Open on the bench */}
