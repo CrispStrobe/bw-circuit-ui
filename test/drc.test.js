@@ -469,3 +469,101 @@ describe('DRC: polarity', () => {
     assert.equal(hits.length, 0, 'correctly wired cap should not trigger');
   });
 });
+
+// ── Rule 9: Floating control inputs on retro CPUs ─────────────────
+
+describe('DRC: floating-control-6502', () => {
+  it('warns: W65C02 with IRQB floating', () => {
+    const c = setup();
+    const vcc = c.addPart('vcc', { volts: 5 }, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
+    const cpu = c.addPart('w65c02', {}, 0, 0);
+    const rom = c.addPart('28c256', {}, 0, 0);
+    // Wire address bus and data bus (minimal)
+    for (let i = 0; i < 15; i++) c.addWire(cpu.id, `a${i}`, rom.id, `a${i}`);
+    for (let i = 0; i < 8; i++) c.addWire(cpu.id, `d${i}`, rom.id, `d${i}`);
+    // Wire power and ROM control, but leave IRQB floating
+    c.addWire(vcc.id, 'vcc', cpu.id, 'vdd');
+    c.addWire(gnd.id, 'gnd', cpu.id, 'vss');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'resb');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'nmib');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'be');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'rdy');
+    // IRQB is NOT wired — should trigger
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'floating-control-6502');
+    assert.ok(hits.some(h => h.explanation.includes('IRQB')),
+      'should warn about floating IRQB');
+  });
+
+  it('no warning: all control pins pulled up', () => {
+    const c = setup();
+    const vcc = c.addPart('vcc', { volts: 5 }, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
+    const cpu = c.addPart('w65c02', {}, 0, 0);
+    const rom = c.addPart('28c256', {}, 0, 0);
+    for (let i = 0; i < 15; i++) c.addWire(cpu.id, `a${i}`, rom.id, `a${i}`);
+    for (let i = 0; i < 8; i++) c.addWire(cpu.id, `d${i}`, rom.id, `d${i}`);
+    c.addWire(vcc.id, 'vcc', cpu.id, 'vdd');
+    c.addWire(gnd.id, 'gnd', cpu.id, 'vss');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'resb');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'irqb');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'nmib');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'be');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'rdy');
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'floating-control-6502');
+    assert.equal(hits.length, 0, 'all control pins wired — no warning');
+  });
+});
+
+describe('DRC: bare-reset-6502', () => {
+  it('info: RESB wired but no RC circuit', () => {
+    const c = setup();
+    const vcc = c.addPart('vcc', { volts: 5 }, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
+    const cpu = c.addPart('w65c02', {}, 0, 0);
+    const rom = c.addPart('28c256', {}, 0, 0);
+    for (let i = 0; i < 15; i++) c.addWire(cpu.id, `a${i}`, rom.id, `a${i}`);
+    for (let i = 0; i < 8; i++) c.addWire(cpu.id, `d${i}`, rom.id, `d${i}`);
+    c.addWire(vcc.id, 'vcc', cpu.id, 'vdd');
+    c.addWire(gnd.id, 'gnd', cpu.id, 'vss');
+    // RESB just pulled high — no RC circuit
+    c.addWire(vcc.id, 'vcc', cpu.id, 'resb');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'irqb');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'nmib');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'be');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'rdy');
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'bare-reset-6502');
+    assert.ok(hits.length > 0, 'bare RESB should produce info note');
+    assert.equal(hits[0].severity, 'info');
+    assert.ok(hits[0].explanation.includes('reset'));
+  });
+});
+
+describe('DRC: floating-control-z80', () => {
+  it('warns: Z80 with INTb and WAITb floating', () => {
+    const c = setup();
+    const vcc = c.addPart('vcc', { volts: 5 }, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
+    const cpu = c.addPart('z80', {}, 0, 0);
+    const rom = c.addPart('28c256', {}, 0, 0);
+    for (let i = 0; i < 15; i++) c.addWire(cpu.id, `a${i}`, rom.id, `a${i}`);
+    for (let i = 0; i < 8; i++) c.addWire(cpu.id, `d${i}`, rom.id, `d${i}`);
+    c.addWire(vcc.id, 'vcc', cpu.id, 'vcc');
+    c.addWire(gnd.id, 'gnd', cpu.id, 'gnd');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'resetb');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'nmib');
+    c.addWire(vcc.id, 'vcc', cpu.id, 'busrqb');
+    // INTb and WAITb NOT wired
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'floating-control-z80');
+    assert.ok(hits.some(h => h.explanation.includes('INTB')), 'should warn about floating INTB');
+    assert.ok(hits.some(h => h.explanation.includes('WAITB')), 'should warn about floating WAITB');
+  });
+});

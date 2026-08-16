@@ -523,15 +523,14 @@ export function runDrc(circuit, board) {
   const hasW65c02 = parts.some(p => p.kind === 'w65c02');
   const hasZ80 = parts.some(p => p.kind === 'z80');
   if (hasW65c02 || hasZ80) {
-    try {
-      // Shape-adapt wires: the designer's wire objects are {from: {part, terminal}, to: ...}
-      // but the extractors expect the flat {from, fromTerminal, to, toTerminal} format.
-      const flatWires = wires.map(w => ({
+    // Shape-adapt wires for extractor and floating-pin checks
+    const flatWires = wires.map(w => ({
         from: w.from?.part || w.from,
         fromTerminal: w.from?.terminal || w.fromTerminal,
         to: w.to?.part || w.to,
         toTerminal: w.to?.terminal || w.toTerminal,
       }));
+    try {
       const circuitData = { parts, wires: flatWires };
       if (hasW65c02 && _extract6502) {
         const result = _extract6502(circuitData);
@@ -574,6 +573,78 @@ export function runDrc(circuit, board) {
         severity: 'warning', rule: 'bus-extract-error',
         explanation: `Bus extractor failed: ${e.message}`,
       });
+    }
+
+    // ── Floating control inputs on retro CPUs ─────────────────────
+    // From tebl/BE6502 errata: undriven IRQB/NMIB/RDY/BE on the
+    // W65C02 or INTb/NMIb/WAITb/BUSRQb on the Z80 pick up noise and
+    // cause random interrupts or halts at speed. A pull-up resistor
+    // to VCC fixes it.
+    // Reuse flatWires from the extractor block above (already shaped)
+    // Build a set of terminals that have at least one wire connected
+    const wiredTerminals = new Set();
+    for (const w of flatWires) {
+      wiredTerminals.add(`${w.from}.${w.fromTerminal}`);
+      wiredTerminals.add(`${w.to}.${w.toTerminal}`);
+    }
+
+    if (hasW65c02) {
+      const cpu = parts.find(p => p.kind === 'w65c02');
+      const controlPins = [
+        { pin: 'irqb', symptom: 'Random interrupts — the CPU sees phantom IRQ edges from noise on the floating line.' },
+        { pin: 'nmib', symptom: 'Spurious NMI — the CPU jumps to the NMI vector unpredictably.' },
+        { pin: 'rdy', symptom: 'The CPU halts randomly — RDY sampled LOW stalls the bus.' },
+        { pin: 'be', symptom: 'Bus tri-states randomly — BE LOW disconnects the CPU from the bus.' },
+      ];
+      for (const { pin, symptom } of controlPins) {
+        if (!wiredTerminals.has(`${cpu.id}.${pin}`)) {
+          warnings.push({
+            severity: 'warning', rule: 'floating-control-6502',
+            partId: cpu.id,
+            explanation: `${pin.toUpperCase()} is floating (no net). ${symptom}`,
+            fix: `Add a 3.3 kΩ pull-up resistor from ${pin.toUpperCase()} to VCC.`,
+          });
+        }
+      }
+
+      // ── Missing reset circuit ─────────────────────────────────────
+      // tebl found 1 MHz operation needs supervised reset — a bare
+      // RESB wire (just pulled high) works at low speed but glitches
+      // at full clock. An RC + supervisory circuit is the real fix.
+      const resbWired = wiredTerminals.has(`${cpu.id}.resb`);
+      const hasResetCircuit = resbWired && parts.some(p =>
+        p.kind === 'capacitor' && flatWires.some(w =>
+          (w.from === p.id || w.to === p.id) &&
+          (w.from === cpu.id && w.fromTerminal === 'resb' ||
+           w.to === cpu.id && w.toTerminal === 'resb')));
+      if (resbWired && !hasResetCircuit) {
+        warnings.push({
+          severity: 'info', rule: 'bare-reset-6502',
+          partId: cpu.id,
+          explanation: 'RESB is wired but has no RC reset circuit. At 1 MHz the CPU may not reset cleanly on power-up — tebl/BE6502 errata documents this.',
+          fix: 'Add a 1 µF capacitor from RESB to GND and a 1 kΩ resistor from RESB to VCC for a reliable power-on reset.',
+        });
+      }
+    }
+
+    if (hasZ80) {
+      const cpu = parts.find(p => p.kind === 'z80');
+      const controlPins = [
+        { pin: 'intb', symptom: 'Random interrupts — the Z80 sees phantom INT edges from noise.' },
+        { pin: 'nmib', symptom: 'Spurious NMI — the Z80 jumps to $0066 unpredictably.' },
+        { pin: 'waitb', symptom: 'The CPU stalls randomly — WAIT sampled LOW freezes the bus cycle.' },
+        { pin: 'busrqb', symptom: 'Bus tri-states randomly — BUSRQ LOW disconnects the CPU.' },
+      ];
+      for (const { pin, symptom } of controlPins) {
+        if (!wiredTerminals.has(`${cpu.id}.${pin}`)) {
+          warnings.push({
+            severity: 'warning', rule: 'floating-control-z80',
+            partId: cpu.id,
+            explanation: `${pin.toUpperCase()} is floating (no net). ${symptom}`,
+            fix: `Add a 3.3 kΩ pull-up resistor from ${pin.toUpperCase()} to VCC.`,
+          });
+        }
+      }
     }
   }
 
