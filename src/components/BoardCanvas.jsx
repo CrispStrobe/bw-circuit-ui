@@ -1319,6 +1319,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         );
       case 'char_lcd':
       case 'hd44780':
+      case 'char_lcd_i2c':
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 60, top: y - 25, cursor: 'move' }}
@@ -1326,8 +1327,10 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             {...dragProps()}>
             <WokwiLcd1602 text={(() => {
               const ds = deviceStates?.get(id);
-              if (ds && ds.text) return ds.text.join('\n');
-              return '';
+              // Parallel LCD models expose .text, the I2C backpack model
+              // exposes .display — same rows-of-chars idea, two spellings.
+              const rows = ds && (ds.text || ds.display);
+              return rows ? rows.join('\n') : '';
             })()} pins="none" screenOnly={true} />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
@@ -2909,7 +2912,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'matrix8x8' || p.kind === 'ssd1306') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'ssd1306') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
@@ -3170,7 +3173,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'char_lcd') {
+                if (p.kind === 'char_lcd' || p.kind === 'char_lcd_i2c') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
