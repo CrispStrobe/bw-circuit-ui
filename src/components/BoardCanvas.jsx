@@ -1587,6 +1587,7 @@ export function BoardCanvas({
       parts.length !== prevPartCount.current ||
       fitSize.w !== prevFitSize.current.w || fitSize.h !== prevFitSize.current.h;
     if (!changed) return;
+    const tokenChanged = fitToken !== prevFitToken.current;
     prevFitToken.current = fitToken;
     prevPartCount.current = parts.length;
     prevFitSize.current = fitSize;
@@ -1595,27 +1596,39 @@ export function BoardCanvas({
     // wide), so multi-board benches auto-fit with their left edges
     // CLIPPED off-screen (owner's 6502 screenshots; confirmed in a
     // self-taken screenshot the same day).
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const p of parts) {
-      const b = partBounds(p);
-      minX = Math.min(minX, b.minX);
-      maxX = Math.max(maxX, b.maxX);
-      minY = Math.min(minY, b.minY - (p.kind === 'vcc' || p.kind === 'gnd' ? 20 : 0));
-      maxY = Math.max(maxY, b.maxY);
+    const fitNow = (arr) => {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const p of arr) {
+        const b = partBounds(p);
+        minX = Math.min(minX, b.minX);
+        maxX = Math.max(maxX, b.maxX);
+        minY = Math.min(minY, b.minY - (p.kind === 'vcc' || p.kind === 'gnd' ? 20 : 0));
+        maxY = Math.max(maxY, b.maxY);
+      }
+      const contentW = maxX - minX + 40;
+      const contentH = maxY - minY + 40;
+      if (contentW <= 0 || contentH <= 0) return;
+      const { w: FW, h: FH } = fitSizeRef.current;
+      const fitZoom = Math.min(1.5, Math.min(FW / contentW, FH / contentH));
+      const z = Math.max(0.3, Math.min(1.5, fitZoom));
+      setZoom(z);
+      // Center the content in the viewport instead of pinning it top-left.
+      const viewW = FW / z, viewH = FH / z;
+      setPan({
+        x: minX - 20 - Math.max(0, (viewW - contentW) / 2),
+        y: minY - 20 - Math.max(0, (viewH - contentH) / 2),
+      });
+    };
+    fitNow(parts);
+    // A LOAD's fit can race the loaded parts through React's commit
+    // ordering — one session fit the stale 4-part starter and left SOS
+    // half off-screen while an identical session fit fine. One more fit
+    // on the next frame reads the refs, so the LAST fit always sees the
+    // settled parts and the measured container. Idempotent when the
+    // first fit was already right.
+    if (tokenChanged && typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => fitNow(partsRef.current));
     }
-    const contentW = maxX - minX + 40;
-    const contentH = maxY - minY + 40;
-    if (contentW <= 0 || contentH <= 0) return;
-    const { w: FW, h: FH } = fitSizeRef.current;
-    const fitZoom = Math.min(1.5, Math.min(FW / contentW, FH / contentH));
-    const z = Math.max(0.3, Math.min(1.5, fitZoom));
-    setZoom(z);
-    // Center the content in the viewport instead of pinning it top-left.
-    const viewW = FW / z, viewH = FH / z;
-    setPan({
-      x: minX - 20 - Math.max(0, (viewW - contentW) / 2),
-      y: minY - 20 - Math.max(0, (viewH - contentH) / 2),
-    });
   }, [parts.length, fitToken, fitSize.w, fitSize.h]);
   const [panning, setPanning] = useState(false);
   const panStart = React.useRef(null);
