@@ -207,6 +207,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [warningsOpen, setWarningsOpen] = useState(false);
   const hasMcuPins = !!(projectData?.pins?.length > 0);
   const [machineResult, setMachineResult] = useState(null); // extractMachine result
+  const [loaderNote, setLoaderNote] = useState(null); // Machine Loader feedback line
 
   // Detect retro CPU on the board for the Build Machine action
   const hasRetroCpu = parts.some(p => p.kind === 'w65c02' || p.kind === 'z80');
@@ -235,10 +236,16 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const result = extractMachine(flatCircuit, extractors);
     setMachineResult(result);
 
-    // On success, notify the host so it can boot the machine
+    // On success, notify the host so it can boot the machine. The two
+    // extractors shape their bus differently — 6502 memory-maps its
+    // chips, the Z80 decodes I/O ports — so both fields travel and the
+    // machine constructor reads the one its architecture has.
     if (result.ok && typeof window !== 'undefined') {
+      const config = { regions: result.regions };
+      if (result.chips) config.chips = result.chips;
+      if (result.ports) config.ports = result.ports;
       window.dispatchEvent(new CustomEvent('bw-machine-extracted', {
-        detail: { kind: result.kind, config: { regions: result.regions, chips: result.chips } },
+        detail: { kind: result.kind, config },
       }));
     }
   }, [parts, wires]);
@@ -1408,32 +1415,48 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             )}
             {/* Machine Loader — visible after successful Build Machine */}
             {machineResult && machineResult.ok && (() => {
-              const kind = machineResult.kind === '6502' ? 'eater6502' : machineResult.kind === 'z80' ? 'z80' : null;
+              // extractMachine reports kind 'eater6502' (not '6502') for the
+              // W65C02 bench — matching only '6502' here left the 6502 loader
+              // with zero presets on deploy (owner report, 2038790).
+              const kind = (machineResult.kind === 'eater6502' || machineResult.kind === '6502') ? 'eater6502'
+                : machineResult.kind === 'z80' ? 'z80' : null;
+              // Each preset names its SLOT (machine-media routing) and its
+              // boot PROFILE — the machine shape the image was built for.
+              // Tali Forth is a py65mon build and MS BASIC an Eater-map/ACIA
+              // build; booting either on the user's extracted bus map would
+              // run silently into open bus, which is worse than saying so.
               const presets = kind === 'eater6502' ? [
-                { id: 'forth', label: 'Tali Forth 2', rom: 'taliforth-py65mon.bin', hint: 'Interactive Forth — type at the ok prompt' },
-                { id: 'basic', label: '6502 BASIC', rom: 'basic.rom', hint: 'MS BASIC (Woz monitor)' },
+                { id: 'forth', label: 'Tali Forth 2', rom: 'taliforth-py65mon.bin', slot: 'rom', profile: 'py65mon',
+                  hint: 'Interactive Forth (public domain) — py65mon console map, type at the ok prompt' },
+                { id: 'basic', label: 'MS BASIC (6502)', rom: 'basic.rom', slot: 'rom', profile: 'eater',
+                  hint: 'Microsoft BASIC 1.1 (MIT reconstruction) — Eater map, ACIA serial' },
               ] : kind === 'z80' ? [
-                { id: 'bbcbasic', label: 'BBC BASIC', rom: 'bbcbasic.com', hint: 'R.T. Russell — type at the > prompt' },
+                { id: 'bbcbasic', label: 'BBC BASIC', rom: 'bbcbasic.com', slot: 'com', profile: 'cpm',
+                  hint: 'R.T. Russell (zlib) — CP/M .COM over the BDOS shim, type at the > prompt' },
               ] : [];
-              const dispatchLoad = (slotId, bytes) => {
+              const dispatchLoad = (slotId, bytes, profile, name) => {
                 window.dispatchEvent(new CustomEvent('bw-machine-media-load', {
-                  detail: { slotId, bytes, kind },
+                  detail: { slotId, bytes, kind, profile, name },
                 }));
               };
               const loadPreset = async (p) => {
                 try {
+                  setLoaderNote(`fetching ${p.rom}…`);
                   const url = new URL(`static/roms/${p.rom}`, document.baseURI).href;
                   const res = await fetch(url);
                   if (!res.ok) throw new Error(`HTTP ${res.status}`);
                   const bytes = new Uint8Array(await res.arrayBuffer());
-                  dispatchLoad(p.id === 'bbcbasic' ? 'com' : 'rom', bytes);
+                  dispatchLoad(p.slot, bytes, p.profile, p.rom);
+                  setLoaderNote(`${p.rom} (${bytes.length} bytes) → bench`);
                 } catch (e) {
-                  console.warn('preset load failed:', e);
+                  setLoaderNote(`✗ ${p.rom}: ${e.message}`);
                 }
               };
               const loadFile = async (file) => {
                 const bytes = new Uint8Array(await file.arrayBuffer());
-                dispatchLoad('rom', bytes);
+                const slot = /\.com$/i.test(file.name) ? 'com' : 'rom';
+                dispatchLoad(slot, bytes, slot === 'com' ? 'cpm' : null, file.name);
+                setLoaderNote(`${file.name} (${bytes.length} bytes) → bench`);
               };
               return (
                 <div style={{marginTop: 8, padding: 6, borderRadius: 4, background: '#1e293b', border: '1px solid #334155'}}>
@@ -1460,6 +1483,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                     <div style={{fontSize: 9, color: '#64748b', marginTop: 2}}>
                       …or write ASM in the Code tab and Assemble &amp; Run
                     </div>
+                    {loaderNote && (
+                      <div data-loader-note style={{fontSize: 9, marginTop: 2,
+                        color: loaderNote.startsWith('✗') ? '#f87171' : '#22c55e'}}>
+                        {loaderNote}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
