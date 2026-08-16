@@ -44,7 +44,7 @@ const PASSTHROUGH_KINDS = new Set([
   // Video / retro DIPs (machine-class, engine has device models)
   'tms9918', 'mc6845', 'ns16c550',
   // Board / module variants
-  'microbit_breakout',
+  'microbit_breakout', 'pololu_motor_ctrl',
   // Video cards (machine-class sidecars, rendered as machine faces)
   'simplevga_card', 'tilevga', 'vga_prop_card',
   // Parallel display variant
@@ -1062,6 +1062,7 @@ export function terminalsForKind(kind, params) {
     case 'isource': return ['pos', 'neg'];
     case 'timer_555': return ['vcc', 'gnd', 'trigger', 'threshold', 'control', 'discharge', 'output', 'reset'];
     case 'seven_segment': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com'];
+    case 'seven_seg_3': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com0', 'com1', 'com2'];
     case 'char_lcd': return ['rs', 'rw', 'e', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'vcc', 'gnd', 'vo', 'bl_a', 'bl_k'];
     case 'shift_register': return ['data', 'clock', 'latch', 'oe', 'q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'];
     case 'ir_receiver': return ['vcc', 'gnd', 'out'];

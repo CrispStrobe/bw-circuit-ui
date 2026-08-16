@@ -31,7 +31,7 @@ const STAMPED = new Set([
   'vcc', 'gnd', 'resistor', 'capacitor', 'diode', 'led', 'potentiometer',
   'button', 'switch', 'buzzer', 'ldr', 'ntc', 'npn', 'pnp', 'inductor',
   'zener', 'nmos', 'pmos', 'opamp', 'vsource', 'isource', 'mcu',
-  'seven_segment', 'shift_register', 'ir_receiver', 'temp_sensor',
+  'seven_segment', 'seven_seg_3', 'shift_register', 'ir_receiver', 'temp_sensor',
   'eeprom', 'led_matrix', 'led_cube', 'rgb_led', 'char_lcd',
   'breadboard', 'meter',
   // seven_seg_3: engine composite since bw-board 71957c3 (24 LEDs over a
@@ -43,10 +43,12 @@ const STAMPED = new Set([
 // bench that will silently break the moment an example seats it. Burn
 // this down; never let it grow.
 const KNOWN_GAPS = new Set([
-  // Logic ICs: need chip-composer entries (complex pin mappings)
-  '556', '74c922', '74hc374', '74hc688',
-  // Motor controllers: need dedicated engine models
-  'pololu_motor_ctrl',
+  // All gaps burned down:
+  //   556        → dual 555 device (timer-555.js)
+  //   74c922     → keypad encoder device (tier2-parts.js)
+  //   74hc374    → octal D-FF device (chip-composer.js)
+  //   74hc688    → 8-bit comparator device (chip-composer.js)
+  //   pololu_motor_ctrl → PASSTHROUGH_KINDS (module, no engine model)
 ]);
 
 function passthroughKinds() {
