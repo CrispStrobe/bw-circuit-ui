@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 
 const INTRO_L10N = {
   en: { intro: 'About this example', loading: 'Loading…', noIntro: 'No introduction available.',
@@ -552,11 +553,37 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
           {disabledReason}
         </div>
       )}
-      {/* Intro panel — expandable */}
-      {introOpen && (
-        <div style={{ marginTop: 8, padding: '8px 10px', background: palette.panel,
-          border: `1px solid ${palette.border}`, borderRadius: 6 }}
+      {/* Intro READER — an almost-fullscreen modal via portal. The old
+          inline expander squeezed real intros into the card's few dozen
+          pixels (owner: "the (i) must display as an almost-fullscreen
+          modal"). The portal escapes the list frame entirely; the same
+          reader becomes the Lehrpfad's station view later. */}
+      {introOpen && createPortal(
+        <div
+          onClick={() => setIntroOpen(false)}
+          onKeyDown={e => { if (e.key === 'Escape') setIntroOpen(false); }}
+          role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}
+          ref={el => el && el.focus()}
+          style={{ position: 'fixed', inset: 0, zIndex: 3000,
+            background: 'rgba(10, 16, 28, 0.62)', backdropFilter: 'blur(2px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div onClick={e => e.stopPropagation()}
+          style={{ width: 'min(880px, 94vw)', maxHeight: '90vh', overflowY: 'auto',
+            padding: '22px 28px 18px', background: palette.panel,
+            border: `1px solid ${palette.border}`, borderRadius: 12,
+            boxShadow: '0 24px 64px rgba(0,0,0,0.45)', zoom: 1.2 }}
           data-testid="bw-example-intro-panel">
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
+            <div style={{ fontSize: 17, fontWeight: 750, color: palette.heading, flex: 1 }}>{title}</div>
+            {diff && <span style={{ color: palette.muted, fontSize: 12 }}>
+              {'★'.repeat(example.difficulty)}{'☆'.repeat(3 - example.difficulty)}</span>}
+            <span style={{ fontSize: 11, color: palette.text, background: `${catColor}22`,
+              padding: '2px 8px', borderRadius: 4 }}>{example.category}</span>
+            <button type="button" onClick={() => setIntroOpen(false)} aria-label="Close"
+              style={{ width: 26, height: 26, border: 'none', borderRadius: '50%',
+                background: palette.button, color: palette.text, cursor: 'pointer',
+                fontSize: 14, fontWeight: 700, lineHeight: 1 }}>×</button>
+          </div>
           {introData === 'loading' && <div style={{color: palette.muted, fontSize: 12}}>{t.loading}</div>}
           {introData === 'none' && <div style={{color: palette.muted, fontSize: 12}}>{t.noIntro}</div>}
           {introData && typeof introData === 'object' && (
@@ -598,7 +625,21 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
               {renderMarkdown(introData.body, palette)}
             </>
           )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+            {!disabled && (
+              <button type="button"
+                onClick={() => { setIntroOpen(false); onClick(); }}
+                data-testid="bw-example-intro-open-bench"
+                style={{ padding: '8px 18px', border: 'none', borderRadius: 8,
+                  background: palette.accent, color: '#fff', fontSize: 13,
+                  fontWeight: 700, cursor: 'pointer' }}>
+                {lang === 'de' ? 'Auf die Werkbank' : 'Open on the bench'}
+              </button>
+            )}
+          </div>
         </div>
+        </div>,
+        document.body
       )}
     </div>
   );
