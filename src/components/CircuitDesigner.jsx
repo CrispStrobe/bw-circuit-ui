@@ -314,7 +314,18 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // (owner screenshot: the inferred 8-of-18-pins bench where the
   // curated seated build should be). A loaded file wins until another
   // file loads or the user explicitly rebuilds via the Infer panel.
-  const fileLoadedRef = useRef(false);
+  //
+  // The ref used to reset to false on every remount, opening a race
+  // window where the inference effect could rebuild an "mcu1" bench
+  // between mount and the circuitData load. Seeding it from a
+  // localStorage flag (written beside the autosave) closes that window.
+  const fileLoadedRef = useRef(
+    // Seed from localStorage so the flag survives remounts.
+    (() => { try { return localStorage.getItem('bw-circuit-file-loaded') === '1'; } catch { return false; } })()
+    // If the host already has a circuitData prop waiting, inference must
+    // not run — the circuitData effect will load the file momentarily.
+    || !!circuitData
+  );
   useEffect(() => {
     const pins = projectData?.pins;
     // Shallow compare: skip if same array reference
@@ -719,6 +730,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // An EXPLICIT rebuild hands the canvas back to inference: future
     // declaration edits may re-derive again.
     fileLoadedRef.current = false;
+    try { localStorage.removeItem('bw-circuit-file-loaded'); } catch { /* ok */ }
     setAnnotations(ann || []);
     setSelectedParts(new Set());
     setSelectedWire(null);
@@ -826,6 +838,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // rebuild over it when the example's program load ripples new pins
     // through projectData a tick later (the pendant race).
     fileLoadedRef.current = true;
+    try { localStorage.setItem('bw-circuit-file-loaded', '1'); } catch { /* full */ }
     // Auto-seat: if a breadboard and an unseated MCU-class part both exist,
     // seat the MCU onto the breadboard. Many legacy examples ship the MCU
     // floating off the breadboard; this is the leveraged fix rather than
@@ -1175,10 +1188,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           drcWarnings={(() => {
             try {
               const drc = runDrc(circuit, circuit.board);
-              // A rejected netlist means the board on screen is ELECTRICALLY
-              // EMPTY — every voltage reads 0 and nothing lights. That state
-              // hid behind a silent catch for a six-layer debugging chain
-              // (the pendant, 2026-08-16); it is a first-class finding now.
               if (circuit.netlistError) {
                 drc.unshift({
                   severity: 'error',
@@ -1189,11 +1198,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                 });
               }
               // Merge bw-board engine warnings (from getWarnings/renderState)
-              // so aggregate current-budget warnings reach DrcOverlay too.
               for (const w of warnings) {
                 if (w.partIds && w.partIds.length > 0) {
-                  // Multi-part warning (e.g. aggregate current): one entry
-                  // per contributing part so the overlay highlights each one
                   for (const pid of w.partIds) {
                     drc.push({
                       severity: w.severity || 'warning',
@@ -1204,7 +1210,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                     });
                   }
                 } else {
-                  // Single-part or no-part warning: fall back to MCU or first part
                   drc.push({
                     severity: w.severity || 'warning',
                     rule: w.type || 'engine',
@@ -1213,7 +1218,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                   });
                 }
               }
-              return drc;
+              // Phantom guard: strip warnings referencing parts that are
+              // not in the current circuit — an inference-over-example race
+              // could leave phantom "mcu1" warnings on an eater6502 bench.
+              const partIds = new Set(parts.map(p => p.id));
+              return drc.filter(w => !w.partId || partIds.has(w.partId));
             } catch { return []; }
           })()}
           panelNav={panelNav}

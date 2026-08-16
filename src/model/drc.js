@@ -648,5 +648,12 @@ export function runDrc(circuit, board) {
     }
   }
 
+  // Stamp every warning with the part's kind so downstream consumers
+  // (DrcPanel, regression tests) can identify phantom parts instantly.
+  const kindMap = new Map(parts.map(p => [p.id, p.kind]));
+  for (const w of warnings) {
+    if (w.partId) w.partKind = kindMap.get(w.partId) || undefined;
+  }
+
   return warnings;
 }

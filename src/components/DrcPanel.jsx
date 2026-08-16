@@ -109,7 +109,7 @@ export function DrcPanel({ warnings, onSelectPart, onAddFixPart }) {
                 {/* The MESSAGE is the row: three collapsed rows all reading
                     "cpu: bus extract 6502 note" told the user nothing
                     (owner report). The rule name is detail, not headline. */}
-                {w.partId}{w.pinId ? `.${w.pinId}` : ''}: {w.explanation
+                {w.partId}{w.partKind ? ` (${w.partKind})` : ''}{w.pinId ? `.${w.pinId}` : ''}: {w.explanation
                   ? (w.explanation.length > 96 ? `${w.explanation.slice(0, 93)}…` : w.explanation)
                   : w.rule.replace(/-/g, ' ')}
               </span>
