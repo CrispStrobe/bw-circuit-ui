@@ -140,12 +140,21 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, loadSnapshotFn, la
     setTimeout(() => setSnapStatus(null), 2000);
   }, [loadSnapshotFn]);
 
-  // Paint loop
+  // Paint loop. videoFn is read through a ref so the loop's identity is
+  // stable across renders: a host that re-renders at rAF cadence (a debug
+  // panel emitting per pump) and passes a fresh arrow each time otherwise
+  // makes the effect below cancel-and-reschedule the pending rAF every
+  // frame — the paint callback is starved and never runs once, a black
+  // screen over a perfectly rendering machine (measured, brickwright-lite
+  // 2026-08-16).
+  const videoFnRef = useRef(videoFn);
+  videoFnRef.current = videoFn;
   const paint = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const v = typeof videoFn === 'function' ? videoFn() : null;
+    const fn = videoFnRef.current;
+    const v = typeof fn === 'function' ? fn() : null;
 
     if (!v || !v.rgba || v.signal === false) {
       // NO SIGNAL: clear to dark, draw placeholder text
@@ -176,7 +185,7 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, loadSnapshotFn, la
     const img = new ImageData(v.rgba, v.width, v.height);
     ctx.putImageData(img, 0, 0);
     rafRef.current = requestAnimationFrame(paint);
-  }, [videoFn, lang]);
+  }, [lang]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(paint);
