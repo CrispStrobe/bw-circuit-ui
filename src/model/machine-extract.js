@@ -44,6 +44,18 @@ export function extractMachine(circuit, extractors = {}) {
     return { ...result, kind: 'z80' };
   }
 
+  // A CPU IS on the board but the host never injected its extractor: that
+  // is a wiring failure in the app, not the student's circuit. Blaming the
+  // circuit here sent a live debugging session hunting a missing W65C02
+  // that was seated in plain sight (2026-08-16).
+  if (has6502 || hasZ80) {
+    return {
+      ok: false,
+      notes: [],
+      reasons: [`the ${has6502 ? 'W65C02' : 'Z80'} is on the board, but this build has no machine extractor wired — the host must inject extract${has6502 ? '6502' : 'Z80'}Machine via setEngine`],
+    };
+  }
+
   return {
     ok: false,
     notes: [],

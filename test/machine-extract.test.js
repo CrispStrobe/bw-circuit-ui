@@ -109,4 +109,14 @@ describe('extractMachine', () => {
     assert.equal(result.ok, false);
     assert.ok(result.reasons[0].includes('no retro CPU'));
   });
+
+  it('a seated CPU with no injected extractor blames the host, not the circuit', () => {
+    // Regression: with extractors missing, a board carrying a W65C02 used
+    // to answer "no retro CPU found" — a lie that sent a debugging session
+    // hunting a chip that was seated in plain sight.
+    const result = extractMachine({ parts: [{ id: 'cpu1', kind: 'w65c02' }], wires: [] }, {});
+    assert.equal(result.ok, false);
+    assert.ok(result.reasons[0].includes('no machine extractor wired'), result.reasons[0]);
+    assert.ok(!result.reasons[0].includes('no retro CPU'), 'must not blame the circuit');
+  });
 });
