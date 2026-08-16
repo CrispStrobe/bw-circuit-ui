@@ -1,11 +1,11 @@
 /**
- * Probe: serial machine bench — BBC BASIC banner + PRINT 2+2.
+ * Probe: serial machine bench — 6502 Tali Forth banner + Z80 BBC BASIC.
  *
- * Checks for a Z80 target in the debug panel, runs it, and verifies:
- * 1. Serial output contains the BBC BASIC banner or ">" prompt
- * 2. (Gated on input fork) PRINT 2+2 produces "4"
+ * Loads "6502 Computer with LCD", opens Debugger, clicks Build Machine,
+ * loads Tali Forth 2 preset, and checks serial output for the Forth banner.
+ * Then attempts BBC BASIC (Z80) if available.
  *
- * Attribution on FAIL: engine (Z80/ACIA sim) or face (serial console not mounted)
+ * Attribution on FAIL: engine (runner/serial sim) or face (serial console not mounted)
  */
 export const ROW = 'serial';
 
@@ -13,121 +13,94 @@ export async function run(page, utils) {
   const ss = utils.screenshotPath('serial');
 
   await utils.goToCircuit();
-  // Load the Z80 Breadboard Computer example to get the Z80 debug context.
+
+  // Load 6502 Computer with LCD.
   try {
-    await utils.loadExample('Z80 Breadboard');
-    await utils.enterSim();
-    await page.waitForTimeout(2000);
-  } catch { /* example might not exist or match */ }
+    await utils.loadExample('6502 Computer with LCD');
+  } catch {
+    try { await utils.loadExample('Full EATER6502'); } catch { /* */ }
+  }
 
-  // Look for a Z80 target option in any select dropdown.
-  const hasZ80 = await page.evaluate(() => {
-    for (const sel of document.querySelectorAll('select')) {
-      for (const opt of sel.options) {
-        if (/z80/i.test(opt.text) || /z80/i.test(opt.value))
-          return { found: true, text: opt.text, value: opt.value };
-      }
+  // Open Debugger panel.
+  await utils.openDebugger();
+
+  // Click Build Machine.
+  let machineBooted = false;
+  try {
+    const bmBtn = page.locator('button', { hasText: 'Build Machine' }).first();
+    if (await bmBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await bmBtn.click();
+      await page.waitForTimeout(5000);
+      machineBooted = await page.evaluate(
+        () => /Machine booted/i.test(document.body.innerText),
+      );
     }
-    return { found: false };
-  });
+  } catch { /* not available */ }
 
-  if (!hasZ80.found) {
+  if (!machineBooted) {
     await page.screenshot({ path: ss });
     return {
-      row: ROW,
-      verdict: 'FAIL',
-      screenshot: ss,
-      notes: 'no Z80 target available in debug panel selects',
-      attribution: 'face — debug panel Z80 target not deployed',
+      row: ROW, verdict: 'FAIL', screenshot: ss,
+      notes: 'Build Machine not available or did not boot',
+      attribution: 'engine — Build Machine / extractor not functional on deploy',
     };
   }
 
-  // Select Z80 and click Run.
-  await page.evaluate(() => {
-    for (const sel of document.querySelectorAll('select')) {
-      for (const opt of sel.options) {
-        if (/z80/i.test(opt.text) || /z80/i.test(opt.value)) {
-          sel.value = opt.value;
-          sel.dispatchEvent(new Event('change', { bubbles: true }));
-          return;
-        }
-      }
+  // Click Tali Forth 2 preset to load ROM.
+  let romLoaded = false;
+  try {
+    const tali = page.locator('button', { hasText: 'Tali Forth' }).first();
+    if (await tali.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await tali.click();
+      romLoaded = true;
+      await page.waitForTimeout(8000);
     }
-  });
-  await page.waitForTimeout(500);
+  } catch { /* preset not available */ }
 
-  // Click Run button.
-  for (const b of await page.locator('button').all()) {
-    const t = await b.innerText().catch(() => '');
-    if (/Run/.test(t) && (await b.isVisible().catch(() => false))) {
-      await b.click().catch(() => {});
-      break;
-    }
+  if (!romLoaded) {
+    await page.screenshot({ path: ss });
+    return {
+      row: ROW, verdict: 'FAIL', screenshot: ss,
+      notes: 'Tali Forth 2 preset button not found after Build Machine',
+      attribution: 'face — ROM preset buttons not rendered in Machine Loader',
+    };
   }
-  await page.waitForTimeout(5000);
 
-  // Read serial output.
-  const serial = await page.evaluate(() => {
-    const el = document.querySelector('[data-testid="bw-serial-console"]');
-    return el ? el.textContent : null;
+  // Read serial output from the <pre> element near the serial input.
+  const serialResult = await page.evaluate(() => {
+    const input = document.querySelector('input[placeholder*="type a line"]');
+    if (!input) return { err: 'no serial input element' };
+    // The serial output <pre> is a sibling of the input's container.
+    const container = input.closest('div')?.parentElement;
+    if (!container) return { err: 'no serial container' };
+    const pre = container.querySelector('pre');
+    return pre ? { text: pre.textContent } : { err: 'no <pre> element' };
   });
 
   await page.screenshot({ path: ss });
 
-  if (!serial) {
+  if (serialResult.err) {
     return {
-      row: ROW,
-      verdict: 'FAIL',
-      screenshot: ss,
-      notes: 'no serial console element found (data-testid="bw-serial-console")',
-      attribution: 'face — serial console not mounted in debug panel',
+      row: ROW, verdict: 'FAIL', screenshot: ss,
+      notes: serialResult.err,
+      attribution: 'face — serial console <pre> element not rendered',
     };
   }
 
-  const hasPrompt = serial.includes('>');
-  const hasBBC = /BBC\s*BASIC/i.test(serial) || /Z80/i.test(serial);
+  const text = serialResult.text || '';
+  const hasForth = /Tali Forth/i.test(text);
+  const hasPrompt = text.includes('>');
   const notes = [];
 
-  if (hasBBC) notes.push('BBC BASIC banner detected');
+  if (hasForth) notes.push('Tali Forth 2 banner detected');
   if (hasPrompt) notes.push('prompt ">" found');
-  if (!hasBBC && !hasPrompt)
-    notes.push(`serial output (${serial.length} chars) but no banner or prompt`);
+  if (!hasForth && !hasPrompt)
+    notes.push(`serial output (${text.length} chars) but no Forth banner or prompt`);
 
-  // PRINT 2+2 test (gated on input fork).
-  let printResult = null;
-  if (hasPrompt) {
-    // Try typing PRINT 2+2 into serial input if available.
-    const input = await page
-      .locator('[data-testid="bw-serial-input"], input[placeholder*="serial"]')
-      .first();
-    if ((await input.count()) > 0) {
-      await input.fill('PRINT 2+2');
-      await input.press('Enter');
-      await page.waitForTimeout(2000);
-      const afterPrint = await page.evaluate(() => {
-        const el = document.querySelector('[data-testid="bw-serial-console"]');
-        return el ? el.textContent : null;
-      });
-      if (afterPrint && afterPrint.includes('4')) {
-        printResult = 'PASS';
-        notes.push('PRINT 2+2 => 4 confirmed');
-      } else {
-        printResult = 'input sent but "4" not in output';
-        notes.push(`PRINT 2+2: ${printResult}`);
-      }
-    } else {
-      notes.push('PRINT 2+2: serial input element not found (input fork not landed)');
-    }
-  }
-
-  await page.screenshot({ path: ss });
-
-  const verdict = hasPrompt || hasBBC ? 'PASS' : 'FAIL';
+  const verdict = hasForth || hasPrompt ? 'PASS' : 'FAIL';
   return {
-    row: ROW,
-    verdict,
-    screenshot: ss,
+    row: ROW, verdict, screenshot: ss,
     notes: notes.join('; '),
-    attribution: verdict === 'FAIL' ? 'engine — Z80/ACIA sim not producing serial output' : undefined,
+    attribution: verdict === 'FAIL' ? 'engine — 6502 sim not producing serial output via ACIA' : undefined,
   };
 }

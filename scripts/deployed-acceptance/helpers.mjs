@@ -45,6 +45,7 @@ export function makeUtils(page, url) {
     enterSim: () => _enterSim(page),
     findRunner: () => page.evaluate(_findRunnerCode),
     screenshotPath: (name) => `/tmp/accept-${name}.png`,
+    openDebugger: () => _openDebugger(page),
   };
 }
 
@@ -92,8 +93,25 @@ async function _loadExample(page, searchTerm, exactTitle) {
     return false;
   }, target);
   if (!clicked) {
-    // Fallback: try getByText click on the filtered list.
-    await page.getByText(target, { exact: false }).last().click({ timeout: 10_000 });
+    // Retry: clear and re-fill search, then try evaluate click again.
+    await search.fill('');
+    await page.waitForTimeout(500);
+    await search.fill(searchTerm);
+    await page.waitForTimeout(1500);
+    const retry = await page.evaluate((term) => {
+      const entry = [...document.querySelectorAll('div')].find(
+        (e) =>
+          e.onclick &&
+          getComputedStyle(e).cursor === 'pointer' &&
+          e.textContent.includes(term),
+      );
+      if (entry) { entry.click(); return true; }
+      return false;
+    }, target);
+    if (!retry) {
+      // Last resort: getByText click.
+      await page.getByText(target, { exact: false }).last().click({ timeout: 10_000 });
+    }
   }
   await page.waitForTimeout(5000);
   try {
@@ -123,6 +141,16 @@ async function _enterSim(page) {
       return;
     }
   } catch { /* might already be in Sim */ }
+}
+
+async function _openDebugger(page) {
+  try {
+    const btn = page.locator('button[title="Debugger"]').first();
+    if (await btn.isVisible().catch(() => false)) {
+      await btn.click();
+      await page.waitForTimeout(2000);
+    }
+  } catch { /* debugger panel might already be open or not available */ }
 }
 
 const _findRunnerCode = `(() => {
