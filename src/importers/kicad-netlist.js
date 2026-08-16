@@ -46,6 +46,13 @@ const KICAD_KIND_MAP = {
   '74ls157': { kind: '74ls157', pinMap: { '1':'s','2':'1a','3':'1b','4':'1y','5':'2a','6':'2b','7':'2y','8':'gnd','9':'3y','10':'3b','11':'3a','12':'4y','13':'4b','14':'4a','15':'gb','16':'vcc' } },
   '74ls107': { kind: '74ls107', pinMap: { '1':'1j','2':'1qb','3':'1q','4':'1k','5':'2q','6':'2qb','7':'gnd','8':'2j','9':'2clk','10':'2clrb','11':'2k','12':'1clk','13':'1clrb','14':'vcc' } },
   '74ls283': { kind: '74hc283', pinMap: { '1':'s1','2':'b1','3':'a1','4':'s0','5':'a0','6':'b0','7':'cin','8':'gnd','9':'co','10':'s3','11':'b3','12':'a3','13':'s2','14':'a2','15':'b2','16':'vcc' } },
+  // Additional 74-series used in Eater 8-bit (map to closest engine kind)
+  '74ls139': { kind: '74hc138', pinMap: { '1':'a','2':'b','3':'c','4':'g2ab','5':'g2bb','6':'g1','7':'y7b','8':'gnd','9':'y6b','10':'y5b','11':'y4b','12':'y3b','13':'y2b','14':'y1b','15':'y0b','16':'vcc' }, _note: '74LS139 dual 2:4 decoder — mapped to 74HC138 (closest engine model)' },
+  '74ls273': { kind: '74ls173', pinMap: { '1':'mr','2':'q0','3':'d0','4':'d1','5':'q1','6':'q2','7':'d2','8':'d3','9':'gnd','10':'q3','11':'clk','12':'d3','13':'q3','14':'d2','15':'q2','16':'d1','17':'q1','18':'d0','19':'q0','20':'vcc' }, _note: '74LS273 octal D register — mapped to 74LS173 (closest 4-bit D register)' },
+  '74ls76': { kind: '74ls107', pinMap: { '1':'1j','2':'1qb','3':'1q','4':'1k','5':'2q','6':'2qb','7':'gnd','8':'2j','9':'2clk','10':'2clrb','11':'2k','12':'1clk','13':'1clrb','14':'vcc' }, _note: '74LS76 dual JK (preset+clear) — mapped to 74LS107 (falling-edge JK, no preset)' },
+  '74ls107-alt': { kind: '74ls107', pinMap: { '1':'1j','2':'1qb','3':'1q','4':'1k','5':'2q','6':'2qb','7':'gnd','8':'2j','9':'2clk','10':'2clrb','11':'2k','12':'1clk','13':'1clrb','14':'vcc' } },
+  '28c16':  { kind: '28c256', pinMap: { '1':'a7','2':'a6','3':'a5','4':'a4','5':'a3','6':'a2','7':'a1','8':'a0','9':'d0','10':'d1','11':'d2','12':'gnd','13':'d3','14':'d4','15':'d5','16':'d6','17':'d7','18':'ceb','19':'a10','20':'oeb','21':'web','22':'a9','23':'a8','24':'vcc' }, _note: '28C16 2K EEPROM — mapped to 28C256 (same interface, smaller address space)' },
+  '74189':  { kind: '74ls189', pinMap: { '1':'a0','2':'csb','3':'web','4':'d0','5':'o0','6':'d1','7':'o1','8':'gnd','9':'o2','10':'d2','11':'o3','12':'d3','13':'a3','14':'a2','15':'a1','16':'vcc' } },
 
   // ── Passives ───────────────────────────────────────────────────
   'r':         { kind: 'resistor',  pinMap: { '1': 'a', '2': 'b' } },
@@ -100,8 +107,8 @@ function normalizePartName(libsource) {
   // Strip "libraryname:" prefix
   const colon = name.lastIndexOf(':');
   if (colon >= 0) name = name.substring(colon + 1);
-  // Strip "-rescue" or "_rescue" suffixes
-  name = name.replace(/[-_]rescue$/, '').replace(/-8bit-computer-rescue$/, '');
+  // Strip "-rescue" or "_rescue" suffixes (including project-specific ones)
+  name = name.replace(/-[a-z0-9_]+-rescue$/, '').replace(/[-_]rescue$/, '');
   // Strip common prefixes
   name = name.replace(/^sn/, '').replace(/^74hct/, '74hc').replace(/^74act/, '74hc');
   return name;

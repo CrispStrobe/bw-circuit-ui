@@ -225,3 +225,94 @@ describe('importCircuit registry', () => {
     assert.ok(result.parts.length >= 3);
   });
 });
+
+// ── Acceptance: Eater 8-bit corpus components ────────────────────
+
+const EATER_NETLIST = `(export (version D)
+  (components
+    (comp (ref U1) (value LM555)
+      (libsource (lib 8bit-computer-rescue) (part LM555-8bit-computer-rescue)))
+    (comp (ref U31) (value 74LS00)
+      (libsource (lib 8bit-computer-rescue) (part 74LS00-8bit-computer-rescue)))
+    (comp (ref U22) (value 74LS02)
+      (libsource (lib 8bit-computer-rescue) (part 74LS02-8bit-computer-rescue)))
+    (comp (ref U28) (value 74LS04)
+      (libsource (lib 8bit-computer-rescue) (part 74LS04-8bit-computer-rescue)))
+    (comp (ref U10) (value 74LS08)
+      (libsource (lib 8bit-computer-rescue) (part 74LS08-8bit-computer-rescue)))
+    (comp (ref U11) (value 74LS32)
+      (libsource (lib 8bit-computer-rescue) (part 74LS32-8bit-computer-rescue)))
+    (comp (ref U12) (value 74LS86)
+      (libsource (lib 8bit-computer-rescue) (part 74LS86-8bit-computer-rescue)))
+    (comp (ref U13) (value 74LS173)
+      (libsource (lib 8bit-computer-rescue) (part 74LS173-8bit-computer-rescue)))
+    (comp (ref U14) (value 74LS161)
+      (libsource (lib 8bit-computer-rescue) (part 74LS161-8bit-computer-rescue)))
+    (comp (ref U24) (value 74189)
+      (libsource (lib 8bit-computer-rescue) (part 74189-8bit-computer-rescue)))
+    (comp (ref U15) (value 74LS157)
+      (libsource (lib 8bit-computer-rescue) (part 74LS157-8bit-computer-rescue)))
+    (comp (ref U30) (value 74LS107-ALT)
+      (libsource (lib 8bit-computer-rescue) (part 74LS107-ALT-8bit-computer-rescue)))
+    (comp (ref U16) (value 74LS245)
+      (libsource (lib 8bit-computer-rescue) (part 74LS245-8bit-computer-rescue)))
+    (comp (ref U17) (value 74LS138)
+      (libsource (lib 8bit-computer-rescue) (part 74LS138-8bit-computer-rescue)))
+    (comp (ref U18) (value 74LS283)
+      (libsource (lib 8bit-computer-rescue) (part 74LS283-8bit-computer-rescue)))
+    (comp (ref U45) (value 28C16)
+      (libsource (lib 8bit-computer-rescue) (part 28C16-8bit-computer-rescue)))
+    (comp (ref R1) (value 1K) (libsource (lib Device) (part R)))
+    (comp (ref R4) (value 1M) (libsource (lib Device) (part R)))
+    (comp (ref C1) (value "0.1µF") (libsource (lib Device) (part C)))
+    (comp (ref D1) (value BLUE) (libsource (lib Device) (part LED)))
+  )
+  (nets
+    (net (code 1) (name VCC)
+      (node (ref U13) (pin 16))
+      (node (ref U14) (pin 16))
+    )
+  )
+)`;
+
+describe('Acceptance: Eater 8-bit corpus', () => {
+  it('maps all SAP-1 chip types from rescue-suffixed libsources', () => {
+    const result = importKicadNetlist(EATER_NETLIST);
+    const kinds = new Set(result.parts.map(p => p.kind));
+
+    assert.ok(kinds.has('555'),       'LM555 → 555');
+    assert.ok(kinds.has('74hc00'),    '74LS00 → 74hc00');
+    assert.ok(kinds.has('74hc02'),    '74LS02 → 74hc02');
+    assert.ok(kinds.has('74hc04'),    '74LS04 → 74hc04');
+    assert.ok(kinds.has('74hc08'),    '74LS08 → 74hc08');
+    assert.ok(kinds.has('74hc32'),    '74LS32 → 74hc32');
+    assert.ok(kinds.has('74hc86'),    '74LS86 → 74hc86');
+    assert.ok(kinds.has('74ls173'),   '74LS173 → 74ls173');
+    assert.ok(kinds.has('74ls161'),   '74LS161 → 74ls161');
+    assert.ok(kinds.has('74ls189'),   '74189 → 74ls189');
+    assert.ok(kinds.has('74ls157'),   '74LS157 → 74ls157');
+    assert.ok(kinds.has('74ls107'),   '74LS107 → 74ls107');
+    assert.ok(kinds.has('74hc245'),   '74LS245 → 74hc245');
+    assert.ok(kinds.has('74hc138'),   '74LS138 → 74hc138');
+    assert.ok(kinds.has('74hc283'),   '74LS283 → 74hc283');
+    assert.ok(kinds.has('28c256'),    '28C16 → 28c256');
+    assert.ok(kinds.has('resistor'),  'R → resistor');
+    assert.ok(kinds.has('capacitor'), 'C → capacitor');
+    assert.ok(kinds.has('led'),       'LED → led');
+  });
+
+  it('has zero unmapped components for the Eater corpus', () => {
+    const result = importKicadNetlist(EATER_NETLIST);
+    assert.equal(result.unmapped.length, 0,
+      'All Eater 8-bit components should map: ' +
+      result.unmapped.map(u => u.ref + '=' + u.libsource).join(', '));
+  });
+
+  it('parses resistor values correctly', () => {
+    const result = importKicadNetlist(EATER_NETLIST);
+    const r1 = result.parts.find(p => p.id === 'r1');
+    assert.equal(r1.params.ohms, 1000);
+    const r4 = result.parts.find(p => p.id === 'r4');
+    assert.equal(r4.params.ohms, 1000000);
+  });
+});
