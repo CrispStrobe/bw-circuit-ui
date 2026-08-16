@@ -50,11 +50,15 @@ describe('pendant example ATtiny88 label', {
 
   it('pendant circuit.json has an MCU part with ATtiny88-compatible pins', () => {
     const circuit = JSON.parse(readFileSync(path.join(PENDANT_DIR, 'circuit.json'), 'utf8'));
-    const mcu = circuit.parts.find(p => p.kind === 'mcu');
-    assert.ok(mcu, 'pendant circuit must have an MCU part');
-    // ATtiny88 uses port-letter pins (PB0-PB7, PD0-PD7, PC3, PC7)
-    assert.ok(mcu.params.pins.some(p => /^PB/.test(p)),
-      'MCU pins should include ATtiny88 port-B pins');
+    // Pendant may use device-true 'attiny88' kind or generic 'mcu'
+    const mcu = circuit.parts.find(p => p.kind === 'attiny88' || p.kind === 'mcu');
+    assert.ok(mcu, 'pendant circuit must have an MCU or ATtiny88 part');
+    if (mcu.kind === 'mcu') {
+      // Generic MCU: verify ATtiny88 port-B pins in params
+      assert.ok(mcu.params.pins.some(p => /^PB/.test(p)),
+        'MCU pins should include ATtiny88 port-B pins');
+    }
+    // Device-true attiny88: pin names come from sidecar, no params.pins needed
   });
 
   it('canvas renders ATtiny88 label (not STC12) for device=attiny88', async () => {

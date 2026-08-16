@@ -1,0 +1,32 @@
+{
+  "kind": "attiny13",
+  "w": 60,
+  "h": 48,
+  "terminals": [
+    { "name": "pb5", "x": 0, "y": 8, "functions": ["reset", "adc0"] },
+    { "name": "pb3", "x": 0, "y": 18, "functions": ["gpio", "adc3"] },
+    { "name": "pb4", "x": 0, "y": 28, "functions": ["gpio", "adc2"] },
+    { "name": "gnd", "x": 0, "y": 38, "functions": [] },
+    { "name": "pb0", "x": 60, "y": 38, "functions": ["gpio", "mosi", "oc0a"] },
+    { "name": "pb1", "x": 60, "y": 28, "functions": ["gpio", "miso", "oc0b"] },
+    { "name": "pb2", "x": 60, "y": 18, "functions": ["gpio", "sck", "adc1", "int0", "t0"] },
+    { "name": "vcc", "x": 60, "y": 8, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "ATtiny13A 8-bit AVR MCU. Pin table audited against Microchip ATtiny13A datasheet (DS40002307). DIP-8 package. 1 KB flash, 64 B SRAM, 64 B EEPROM, 9.6 MHz internal RC. Port B only (PB0-PB5). PB5 = RESET (active low, fuse-selectable as GPIO/ADC0). PB3 = ADC3, PB4 = ADC2, PB2 = ADC1/INT0/T0, PB5 = ADC0 (if RSTDISBL fused). 4-channel 10-bit ADC. Timer0 8-bit (OC0A on PB0, OC0B on PB1). Analog comparator: AIN0 on PB0, AIN1 on PB1. Pin names match bw-board terminal spelling contract: lowercase pXn.",
+  "footprint": {
+    "refTerminal": "pb5",
+    "leads": {
+      "pb5": { "dRow": 0, "dCol": 0 },
+      "pb3": { "dRow": 0, "dCol": 1 },
+      "pb4": { "dRow": 0, "dCol": 2 },
+      "gnd": { "dRow": 0, "dCol": 3 },
+      "pb0": { "dRow": 5, "dCol": 3 },
+      "pb1": { "dRow": 5, "dCol": 2 },
+      "pb2": { "dRow": 5, "dCol": 1 },
+      "vcc": { "dRow": 5, "dCol": 0 }
+    },
+    "straddlesGutter": true,
+    "minCols": 4
+  }
+}

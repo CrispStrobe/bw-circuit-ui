@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 56" width="70" height="56">
+  <!-- ATtiny2313 MCU — DIP-20 package, bench-style -->
+  <!-- Package body -->
+  <rect x="8" y="2" width="54" height="52" rx="2" fill="#303030" stroke="#1a1a1a" stroke-width="1"/>
+  <!-- Notch -->
+  <path d="M32 2 Q35 6 38 2" fill="#303030" stroke="#555" stroke-width="0.8"/>
+  <!-- Pin 1 dot -->
+  <circle cx="14" cy="10" r="1.5" fill="#b0b0b0"/>
+  <!-- Label -->
+  <text x="35" y="22" text-anchor="middle" font-family="monospace" font-size="4.5" fill="#c0c0c0">ATtiny</text>
+  <text x="35" y="29" text-anchor="middle" font-family="monospace" font-size="5" fill="#c0c0c0">2313</text>
+  <text x="35" y="37" text-anchor="middle" font-family="monospace" font-size="3" fill="#888">DIP-20</text>
+  <text x="35" y="44" text-anchor="middle" font-family="monospace" font-size="3" fill="#555">2K FLASH</text>
+
+  <!-- Left pins (1-10, top to bottom) -->
+  <g stroke="#aaa" stroke-width="1.5" stroke-linecap="round">
+    <line x1="0" y1="8" x2="8" y2="8"/><line x1="0" y1="13" x2="8" y2="13"/>
+    <line x1="0" y1="18" x2="8" y2="18"/><line x1="0" y1="23" x2="8" y2="23"/>
+    <line x1="0" y1="28" x2="8" y2="28"/><line x1="0" y1="33" x2="8" y2="33"/>
+    <line x1="0" y1="38" x2="8" y2="38"/><line x1="0" y1="43" x2="8" y2="43"/>
+    <line x1="0" y1="48" x2="8" y2="48"/><line x1="0" y1="53" x2="8" y2="53"/>
+  </g>
+  <g fill="#c0c0c0">
+    <circle cx="0" cy="8" r="1.5"/><circle cx="0" cy="13" r="1.5"/>
+    <circle cx="0" cy="18" r="1.5"/><circle cx="0" cy="23" r="1.5"/>
+    <circle cx="0" cy="28" r="1.5"/><circle cx="0" cy="33" r="1.5"/>
+    <circle cx="0" cy="38" r="1.5"/><circle cx="0" cy="43" r="1.5"/>
+    <circle cx="0" cy="48" r="1.5"/><circle cx="0" cy="53" r="1.5"/>
+  </g>
+
+  <!-- Right pins (20-11, top to bottom) -->
+  <g stroke="#aaa" stroke-width="1.5" stroke-linecap="round">
+    <line x1="62" y1="8" x2="70" y2="8"/><line x1="62" y1="13" x2="70" y2="13"/>
+    <line x1="62" y1="18" x2="70" y2="18"/><line x1="62" y1="23" x2="70" y2="23"/>
+    <line x1="62" y1="28" x2="70" y2="28"/><line x1="62" y1="33" x2="70" y2="33"/>
+    <line x1="62" y1="38" x2="70" y2="38"/><line x1="62" y1="43" x2="70" y2="43"/>
+    <line x1="62" y1="48" x2="70" y2="48"/><line x1="62" y1="53" x2="70" y2="53"/>
+  </g>
+  <g fill="#c0c0c0">
+    <circle cx="70" cy="8" r="1.5"/><circle cx="70" cy="13" r="1.5"/>
+    <circle cx="70" cy="18" r="1.5"/><circle cx="70" cy="23" r="1.5"/>
+    <circle cx="70" cy="28" r="1.5"/><circle cx="70" cy="33" r="1.5"/>
+    <circle cx="70" cy="38" r="1.5"/><circle cx="70" cy="43" r="1.5"/>
+    <circle cx="70" cy="48" r="1.5"/><circle cx="70" cy="53" r="1.5"/>
+  </g>
+</svg>

@@ -29,6 +29,12 @@ const CATEGORIES = [
       { kind: 'pi_pico', label: 'Raspberry Pi Pico', params: {}, color: '#7b2cbf',
         capability: 'wiring only',
         tooltip: 'RP2040 board — 3.3 V logic; do not connect 5 V signals' },
+      { kind: 'attiny2313', label: 'ATtiny2313', params: {}, color: '#168aad',
+        capability: 'AVR simulation',
+        tooltip: 'DIP-20 MCU — 2 KB flash, UART (PD0/PD1), no ADC' },
+      { kind: 'attiny13', label: 'ATtiny13', params: {}, color: '#168aad',
+        capability: 'AVR simulation',
+        tooltip: 'DIP-8 MCU — 1 KB flash, 4-ch ADC, Timer0' },
     ],
   },
   {

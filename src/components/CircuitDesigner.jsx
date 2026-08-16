@@ -809,7 +809,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // floating off the breadboard; this is the leveraged fix rather than
     // re-authoring 200 circuits.
     try {
-      const mcuKinds = new Set(['mcu', 'stc_mcu', 'arduino_nano', 'arduino_uno', 'pi_pico', 'attiny85', 'attiny88']);
+      const mcuKinds = new Set(['mcu', 'stc_mcu', 'arduino_nano', 'arduino_uno', 'pi_pico', 'attiny85', 'attiny88', 'attiny13', 'attiny2313']);
       const bb = circuit.parts.find(p => p.kind === 'breadboard');
       const unseatMcu = circuit.parts.find(p => mcuKinds.has(p.kind) && !p.seat);
       if (bb && unseatMcu && BB_FOOTPRINTS[unseatMcu.kind]) {

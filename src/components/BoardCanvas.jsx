@@ -43,6 +43,7 @@ const DIP_CHIP_LABELS = {
   // seated ATtiny88 rendered as a ghost outline (owner screenshot) —
   // 28 pin names floating around no body at all.
   attiny88: 'ATtiny88', attiny85: 'ATtiny85',
+  attiny2313: 'ATtiny2313', attiny13: 'ATtiny13',
 };
 import { routeWire, routeWireWithWaypoints, partBBoxes, getPartBBox } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
@@ -80,8 +81,10 @@ function rotateOffset(dx, dy, deg) {
  */
 function mcuChipInfo(device) {
   const d = String(device || '').toLowerCase();
+  if (/attiny2313/.test(d)) return { label: 'ATtiny2313', pkg: 'DIP-20' };
   if (/attiny88/.test(d)) return { label: 'ATtiny88', pkg: 'DIP-28' };
   if (/attiny85/.test(d)) return { label: 'ATtiny85', pkg: 'DIP-8' };
+  if (/attiny13/.test(d)) return { label: 'ATtiny13', pkg: 'DIP-8' };
   if (/atmega168/.test(d)) return { label: 'ATmega168P', pkg: 'DIP-28' };
   if (/atmega2560/.test(d)) return { label: 'ATmega2560', pkg: 'TQFP-100' };
   if (/atmega328/.test(d)) return { label: 'ATmega328P', pkg: 'DIP-28' };
