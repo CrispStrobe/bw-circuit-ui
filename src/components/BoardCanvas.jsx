@@ -2515,13 +2515,6 @@ export function BoardCanvas({
             </g>
           )}
 
-          <Wires wires={wires} parts={parts}
-            selectedWire={selectedWire} onSelectWire={onSelectWire}
-            hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
-            nodeVoltages={nodeVoltages}
-            onUpdateWire={onUpdateWire} screenToCanvas={screenToCanvas}
-            setDraggingWaypoint={setDraggingWaypoint} />
-          <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
 
           {/* Teaching annotations from inference */}
           {annotations && annotations.map((ann, i) => (
@@ -2649,115 +2642,6 @@ export function BoardCanvas({
             </g>
           ))}
 
-          {/* Jumper wires. Short hops keep a small arc; LONG jumpers
-              route as STAPLES — down into a lane, flat across, up to the
-              far hole — the way real hookup wire lies on a board. The
-              old 25%-of-distance arc lift turned a seated build's 24
-              jumpers into a second hairball (owner screenshot: "double
-              wirings, straight and bent"). Lanes: above row a for
-              top-block runs, below row j for bottom-block, the center
-              gutter for mixed; a per-jumper offset separates parallel
-              runs in the same lane. */}
-          {circuit && circuit.holeWires && circuit.holeWires().map((jw, jwIdx) => {
-            const bb = parts.find(q => q.id === jw.boardId);
-            if (!bb) return null;
-            const a = holeWorldPos(bb, jw.a), b = holeWorldPos(bb, jw.b);
-            if (!a || !b) return null;
-            const isSel = selectedWire === jw.ref;
-            const color = isSel ? '#f1c40f' : (jw.color || '#e67e22');
-            const width = isSel ? 4 : 3;
-            let path;
-            if (Math.abs(b.x - a.x) <= 4 * BB_PITCH) {
-              const lift = Math.max(12, Math.hypot(b.x - a.x, b.y - a.y) * 0.2);
-              const midY = Math.min(a.y, b.y) - lift;
-              path = `M ${a.x} ${a.y} Q ${(a.x + b.x) / 2} ${midY} ${b.x} ${b.y}`;
-            } else {
-              const o = bbHoleOrigin(bb);
-              const topBlock = (y) => y < (o.topRowsY + o.bottomRowsY) / 2;
-              const offset = (jwIdx % 4) * 4;
-              let laneY;
-              if (topBlock(a.y) && topBlock(b.y)) laneY = o.topRowsY - 12 - offset;
-              else if (!topBlock(a.y) && !topBlock(b.y)) laneY = o.bottomRowsY + 4 * BB_PITCH + 12 + offset;
-              else laneY = (o.topRowsY + 4 * BB_PITCH + o.bottomRowsY) / 2 + (offset - 6);
-              const r = 6; // corner radius
-              const dirA = laneY < a.y ? -1 : 1;
-              const dirB = laneY < b.y ? 1 : -1;
-              const sx = a.x < b.x ? 1 : -1;
-              path = `M ${a.x} ${a.y} L ${a.x} ${laneY + r * -dirA}`
-                + ` Q ${a.x} ${laneY} ${a.x + r * sx} ${laneY}`
-                + ` L ${b.x - r * sx} ${laneY}`
-                + ` Q ${b.x} ${laneY} ${b.x} ${laneY + r * dirB}`
-                + ` L ${b.x} ${b.y}`;
-            }
-            return (
-              <g key={jw.ref} data-jumper={jw.ref} style={{ pointerEvents: 'none' }}>
-                <path d={path} fill="none" stroke={color}
-                  strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx={a.x} cy={a.y} r={3} fill={jw.color || '#e67e22'} />
-                <circle cx={b.x} cy={b.y} r={3} fill={jw.color || '#e67e22'} />
-              </g>
-            );
-          })}
-
-          {/* Tap wires: part terminal → board hole, drawn as bench wires */}
-          {wires.filter(w => isBoardEndpoint(w.from) || isBoardEndpoint(w.to)).map(w => {
-            const endPos = (e) => {
-              if (isBoardEndpoint(e)) {
-                const bb = parts.find(q => q.id === (e.board || e.boardId));
-                return bb ? holeWorldPos(bb, e.hole) : null;
-              }
-              const pp = parts.find(q => q.id === e.part);
-              return pp ? terminalPos(pp, e.terminal) : null;
-            };
-            const a = endPos(w.from), b = endPos(w.to);
-            if (!a || !b) return null;
-            const isSel = selectedWire === w.id;
-            const dx = b.x - a.x, dy = b.y - a.y;
-            const mx = a.x + dx / 2 - dy * 0.15, my = a.y + dy / 2 + dx * 0.15;
-            return (
-              <g key={w.id} data-wire={w.id} style={{ pointerEvents: 'none' }}>
-                <path d={`M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`}
-                  fill="none" stroke={isSel ? '#f1c40f' : (w.color || '#c0392b')}
-                  strokeWidth={isSel ? 4 : 3} strokeLinecap="round" />
-                <circle cx={a.x} cy={a.y} r={3} fill={w.color || '#c0392b'} />
-                <circle cx={b.x} cy={b.y} r={3} fill={w.color || '#c0392b'} />
-              </g>
-            );
-          })}
-
-          {/* Selected wire: endpoint grab handles for re-routing */}
-          {(() => {
-            if (!selectedWire || typeof selectedWire !== 'string' || selectedWire.startsWith('bbw:')) return null;
-            const w = wires.find(q => q.id === selectedWire);
-            if (!w) return null;
-            const endPos = (e) => {
-              if (e.board) {
-                const bb = parts.find(q => q.id === e.board);
-                return bb ? holeWorldPos(bb, e.hole) : null;
-              }
-              const pp = parts.find(q => q.id === e.part);
-              return pp ? terminalPos(pp, e.terminal) : null;
-            };
-            const a = endPos(w.from), b = endPos(w.to);
-            if (!a || !b) return null;
-            return (
-              <g style={{ pointerEvents: 'none' }}>
-                {[a, b].map((pt, i) => (
-                  <circle key={i} cx={pt.x} cy={pt.y} r={7} fill="none"
-                    stroke="#f1c40f" strokeWidth={2.5} strokeDasharray="3,2" />
-                ))}
-              </g>
-            );
-          })()}
-
-          {/* Re-routing preview: fixed end to cursor, green when snapped */}
-          {rewirePreview && (
-            <line x1={rewirePreview.from.x} y1={rewirePreview.from.y}
-              x2={rewirePreview.to.x} y2={rewirePreview.to.y}
-              stroke={rewirePreview.snapped ? '#2ecc71' : '#f1c40f'}
-              strokeWidth={2.5} strokeDasharray="6,4" strokeLinecap="round"
-              style={{ pointerEvents: 'none' }} />
-          )}
 
           {/* Live jumper preview while dragging hole-to-hole */}
           {holeWirePreview && (
@@ -2921,6 +2805,130 @@ export function BoardCanvas({
               return m.size > 0 ? m : null;
             })()}
           />
+
+          {/* ── WIRE LAYERS ── painted AFTER the boards and the parts:
+              the z contract is boards → parts → wires (owner spec,
+              stated twice — the first enforcement of this order died
+              UNCOMMITTED in a working tree and never shipped, which is
+              why test/z-contract-order.test.js now pins the mount
+              order at source level). Selection handles and the rewire
+              preview stay last: overlays above everything. */}
+          <Wires wires={wires} parts={parts}
+            selectedWire={selectedWire} onSelectWire={onSelectWire}
+            hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
+            nodeVoltages={nodeVoltages}
+            onUpdateWire={onUpdateWire} screenToCanvas={screenToCanvas}
+            setDraggingWaypoint={setDraggingWaypoint} />
+          <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
+          {/* Jumper wires. Short hops keep a small arc; LONG jumpers
+              route as STAPLES — down into a lane, flat across, up to the
+              far hole — the way real hookup wire lies on a board. The
+              old 25%-of-distance arc lift turned a seated build's 24
+              jumpers into a second hairball (owner screenshot: "double
+              wirings, straight and bent"). Lanes: above row a for
+              top-block runs, below row j for bottom-block, the center
+              gutter for mixed; a per-jumper offset separates parallel
+              runs in the same lane. */}
+          {circuit && circuit.holeWires && circuit.holeWires().map((jw, jwIdx) => {
+            const bb = parts.find(q => q.id === jw.boardId);
+            if (!bb) return null;
+            const a = holeWorldPos(bb, jw.a), b = holeWorldPos(bb, jw.b);
+            if (!a || !b) return null;
+            const isSel = selectedWire === jw.ref;
+            const color = isSel ? '#f1c40f' : (jw.color || '#e67e22');
+            const width = isSel ? 4 : 3;
+            let path;
+            if (Math.abs(b.x - a.x) <= 4 * BB_PITCH) {
+              const lift = Math.max(12, Math.hypot(b.x - a.x, b.y - a.y) * 0.2);
+              const midY = Math.min(a.y, b.y) - lift;
+              path = `M ${a.x} ${a.y} Q ${(a.x + b.x) / 2} ${midY} ${b.x} ${b.y}`;
+            } else {
+              const o = bbHoleOrigin(bb);
+              const topBlock = (y) => y < (o.topRowsY + o.bottomRowsY) / 2;
+              const offset = (jwIdx % 4) * 4;
+              let laneY;
+              if (topBlock(a.y) && topBlock(b.y)) laneY = o.topRowsY - 12 - offset;
+              else if (!topBlock(a.y) && !topBlock(b.y)) laneY = o.bottomRowsY + 4 * BB_PITCH + 12 + offset;
+              else laneY = (o.topRowsY + 4 * BB_PITCH + o.bottomRowsY) / 2 + (offset - 6);
+              const r = 6; // corner radius
+              const dirA = laneY < a.y ? -1 : 1;
+              const dirB = laneY < b.y ? 1 : -1;
+              const sx = a.x < b.x ? 1 : -1;
+              path = `M ${a.x} ${a.y} L ${a.x} ${laneY + r * -dirA}`
+                + ` Q ${a.x} ${laneY} ${a.x + r * sx} ${laneY}`
+                + ` L ${b.x - r * sx} ${laneY}`
+                + ` Q ${b.x} ${laneY} ${b.x} ${laneY + r * dirB}`
+                + ` L ${b.x} ${b.y}`;
+            }
+            return (
+              <g key={jw.ref} data-jumper={jw.ref} style={{ pointerEvents: 'none' }}>
+                <path d={path} fill="none" stroke={color}
+                  strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx={a.x} cy={a.y} r={3} fill={jw.color || '#e67e22'} />
+                <circle cx={b.x} cy={b.y} r={3} fill={jw.color || '#e67e22'} />
+              </g>
+            );
+          })}
+
+          {/* Tap wires: part terminal → board hole, drawn as bench wires */}
+          {wires.filter(w => isBoardEndpoint(w.from) || isBoardEndpoint(w.to)).map(w => {
+            const endPos = (e) => {
+              if (isBoardEndpoint(e)) {
+                const bb = parts.find(q => q.id === (e.board || e.boardId));
+                return bb ? holeWorldPos(bb, e.hole) : null;
+              }
+              const pp = parts.find(q => q.id === e.part);
+              return pp ? terminalPos(pp, e.terminal) : null;
+            };
+            const a = endPos(w.from), b = endPos(w.to);
+            if (!a || !b) return null;
+            const isSel = selectedWire === w.id;
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const mx = a.x + dx / 2 - dy * 0.15, my = a.y + dy / 2 + dx * 0.15;
+            return (
+              <g key={w.id} data-wire={w.id} style={{ pointerEvents: 'none' }}>
+                <path d={`M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`}
+                  fill="none" stroke={isSel ? '#f1c40f' : (w.color || '#c0392b')}
+                  strokeWidth={isSel ? 4 : 3} strokeLinecap="round" />
+                <circle cx={a.x} cy={a.y} r={3} fill={w.color || '#c0392b'} />
+                <circle cx={b.x} cy={b.y} r={3} fill={w.color || '#c0392b'} />
+              </g>
+            );
+          })}
+
+          {/* Selected wire: endpoint grab handles for re-routing */}
+          {(() => {
+            if (!selectedWire || typeof selectedWire !== 'string' || selectedWire.startsWith('bbw:')) return null;
+            const w = wires.find(q => q.id === selectedWire);
+            if (!w) return null;
+            const endPos = (e) => {
+              if (e.board) {
+                const bb = parts.find(q => q.id === e.board);
+                return bb ? holeWorldPos(bb, e.hole) : null;
+              }
+              const pp = parts.find(q => q.id === e.part);
+              return pp ? terminalPos(pp, e.terminal) : null;
+            };
+            const a = endPos(w.from), b = endPos(w.to);
+            if (!a || !b) return null;
+            return (
+              <g style={{ pointerEvents: 'none' }}>
+                {[a, b].map((pt, i) => (
+                  <circle key={i} cx={pt.x} cy={pt.y} r={7} fill="none"
+                    stroke="#f1c40f" strokeWidth={2.5} strokeDasharray="3,2" />
+                ))}
+              </g>
+            );
+          })()}
+
+          {/* Re-routing preview: fixed end to cursor, green when snapped */}
+          {rewirePreview && (
+            <line x1={rewirePreview.from.x} y1={rewirePreview.from.y}
+              x2={rewirePreview.to.x} y2={rewirePreview.to.y}
+              stroke={rewirePreview.snapped ? '#2ecc71' : '#f1c40f'}
+              strokeWidth={2.5} strokeDasharray="6,4" strokeLinecap="round"
+              style={{ pointerEvents: 'none' }} />
+          )}
         </div>
 
         {/* Inline property editor (double-click) */}
