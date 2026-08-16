@@ -188,6 +188,7 @@ function seatExample(id) {
         return null;
     };
 
+    const railsUsed = new Set(); // `${bbId}:${railRow}` touched by any generated jumper
     const holeWires = Array.isArray(c.holeWires) ? c.holeWires : [];
     const keptWires = [];
     let wireN = 0; let ci = 0;
@@ -225,6 +226,12 @@ function seatExample(id) {
             const rail = `${railRow}${pinHole.slice(1)}`;
             if (a) {
                 holeWires.push({ ref: `bbw:${bbId}:gen_${wireN++}`, boardId: bbId, a, b: rail, color: pk === 'vcc' ? 'red' : 'black' });
+                // This rail now CARRIES a load — it must be fed. Without
+                // this, a rank of LEDs dropped to a second board's ground
+                // rail hung off an unpowered strip: they could never
+                // light and the DRC flagged every one (owner screenshot,
+                // 8-LED chaser).
+                railsUsed.add(`${bbId}:${railRow}`);
             }
         }
         // Cross-board seated pairs land here with no jumper: the kept
@@ -255,6 +262,7 @@ function seatExample(id) {
             if (!a) continue;
             holeWires.push({ ref: `bbw:${bId}:gen_${wireN++}`, boardId: bId, a, b: `${railRow}${hole.slice(1)}`, color: isTop ? 'red' : 'black' });
             powered.add(`${bId}:${railRow}`);
+            railsUsed.add(`${bId}:${railRow}`);
         }
     }
     // Symbols feed the rails they serve. genPower marks these wires so a
@@ -264,7 +272,10 @@ function seatExample(id) {
         const railRow = sym.kind === 'vcc' ? 't+' : 'b-';
         for (const b2 of boards) {
             const bId = b2.bb.id;
-            if (!powered.has(`${bId}:${railRow}`)) continue;
+            // Tap every rail that carries EITHER a chip's power pin or any
+            // generated rail drop — a used rail without a supply is decor
+            // that silently breaks the circuit.
+            if (!powered.has(`${bId}:${railRow}`) && !railsUsed.has(`${bId}:${railRow}`)) continue;
             keptWires.push({
                 from: sym.id, fromTerminal: sym.kind,
                 to: { board: bId, hole: `${railRow}${2 + boards.indexOf(b2)}` },
