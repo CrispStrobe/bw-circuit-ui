@@ -50,17 +50,23 @@ export function DrcOverlay({ warnings, parts }) {
     const fill = SEVERITY_FILL[w.severity] || '#7f8c8d';
     const label = RULE_SHORT[w.rule] || w.rule;
 
+    // Offset badge to the part's top-left, not directly on the body.
+    // For DIP chips on crowded benches, the center-offset overlaps
+    // adjacent chip bodies. Use a consistent top-left placement that
+    // scales with the body size via a simple heuristic.
+    const isDip = part.seat && part._seatTerminals;
+    const bx = isDip ? part.x - 60 : part.x + 15;
+    const by = isDip ? part.y - 40 : part.y - 25;
+
     return (
       <g key={`drc-${partId}`} style={{ pointerEvents: 'none' }}>
-        {/* Badge background */}
         <rect
-          x={part.x + 15} y={part.y - 25}
+          x={bx} y={by}
           width={label.length * 6 + 10} height={14}
           rx={3} fill={fill} opacity={0.9}
         />
-        {/* Badge text */}
         <text
-          x={part.x + 20} y={part.y - 15}
+          x={bx + 5} y={by + 10}
           fill="#fff" fontSize={8} fontFamily="monospace" fontWeight="bold"
         >
           {label}

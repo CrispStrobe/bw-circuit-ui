@@ -1099,10 +1099,17 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
     });
 
     switch (kind) {
-      case 'resistor':
+      case 'resistor': {
+        // For seated resistors, span the Wokwi element across the actual
+        // seat hole positions so the body aligns with the breadboard grid
+        // instead of rendering at a fixed offset that looks ghostly/tiny.
+        const rSeated = part.seat && part._seatTerminals;
+        const rLeft = rSeated ? Math.min(part._seatTerminals.a?.x ?? x, part._seatTerminals.b?.x ?? x) : x - 30;
+        const rWidth = rSeated ? Math.abs((part._seatTerminals.b?.x ?? x) - (part._seatTerminals.a?.x ?? x)) + 10 : undefined;
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 30, top: y - 6, cursor: 'move' }}
+            style={{ ...baseStyle, left: rSeated ? rLeft - 5 : x - 30, top: y - 6, cursor: 'move',
+              ...(rSeated && rWidth ? { width: rWidth } : {}) }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiResistor value={String(params.ohms)} />
@@ -1111,6 +1118,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             </div>
           </div>
         );
+      }
       case 'led': {
         const b = ledBrightness?.(id) ?? 0;
         const isOn = b > 0.01;
@@ -2666,15 +2674,22 @@ export function BoardCanvas({
             </g>
           )}
 
-          {parts.filter(q => q.seat && ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(q.kind)).map(q => (
-            <g key={`seat-badge-${q.id}`} style={{pointerEvents: 'none'}}>
-              <rect x={q.x - 42} y={q.y - 42} width={84} height={16} rx={8}
-                fill="#166534" stroke="#86efac" strokeWidth={1} />
-              <text x={q.x} y={q.y - 31} textAnchor="middle" fill="#dcfce7" fontSize={8} fontFamily="system-ui, sans-serif" fontWeight="bold">
-                SEATED • PIN RASTER
-              </text>
-            </g>
-          ))}
+          {parts.filter(q => q.seat && ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(q.kind)).map(q => {
+            // Offset badge to the part's top-left, never over another part's body.
+            // For straddling DIPs the body extends ~150px left and ~30px up from
+            // center; place the badge above-left of the body outline.
+            const bx = q.x - 150;
+            const by = q.y - 50;
+            return (
+              <g key={`seat-badge-${q.id}`} style={{pointerEvents: 'none'}}>
+                <rect x={bx} y={by} width={84} height={16} rx={8}
+                  fill="#166534" stroke="#86efac" strokeWidth={1} />
+                <text x={bx + 42} y={by + 11} textAnchor="middle" fill="#dcfce7" fontSize={8} fontFamily="system-ui, sans-serif" fontWeight="bold">
+                  SEATED • PIN RASTER
+                </text>
+              </g>
+            );
+          })}
 
 
           {/* Live jumper preview while dragging hole-to-hole */}
