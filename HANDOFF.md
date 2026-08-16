@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 1005/0/3 (CI clean). Pendant Playwright test (test:render suite).
+npm test 1019/0/3 (CI clean). Pendant Playwright test (test:render suite).
 Parts-data index regenerated: 146 → 213 sidecar entries.
 Lite push freeze in effect — batching lite forwards until coordinator lifts.
 VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
@@ -156,6 +156,12 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **MediaPanel** (32d8a58): ROM/software loader. Per-slot drop targets from
+  describeMedia shape (label, accept, at, hint). Bundle .zip drop unpacks
+  brickwright-media.json manifest via dynamic JSZip, feeds one applyMedia
+  call. Returns null for MCU kinds. Same pane family as AsmDebugPanel.
+  14 structural tests. Exported from index.js. Waiting on bw-board cc479b7
+  to land locally for live wiring.
 - **AsmDebugPanel** (79cdde6): glass-box assembler debug view. Three tabs:
   token stream (colour-coded, hover→source), symbol table (pass-1 vs pass-2,
   unresolved→resolved highlighted), listing (addr + bytes + source). Accepts
