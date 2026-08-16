@@ -1,0 +1,156 @@
+{
+  "kind": "74ls107",
+  "w": 60,
+  "h": 43,
+  "terminals": [
+    {
+      "name": "1j",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "1qb",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "1q",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "1k",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "2q",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "2qb",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 60,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "1clrb",
+      "x": 60,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "1clk",
+      "x": 60,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "2k",
+      "x": 60,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "2clrb",
+      "x": 60,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "2clk",
+      "x": 60,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "2j",
+      "x": 60,
+      "y": 38,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "74LS107 dual JK flip-flop with clear. Pin table from TI SN74LS107A datasheet (SDLS060). DIP-14. FALLING-edge clock (unlike generic jkff). Active-low /CLR (no preset). Two independent flip-flops. Terminal names match engine kind in bw-board src/devices/sap1-chips.js.",
+  "footprint": {
+    "refTerminal": "1j",
+    "leads": {
+      "1j": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "1qb": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "1q": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "1k": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "2q": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "2qb": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "1clrb": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "1clk": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "2k": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "2clrb": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "2clk": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "2j": {
+        "dRow": 5,
+        "dCol": 6
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 7
+  }
+}

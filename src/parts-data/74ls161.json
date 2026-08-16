@@ -1,0 +1,176 @@
+{
+  "kind": "74ls161",
+  "w": 60,
+  "h": 48,
+  "terminals": [
+    {
+      "name": "clrb",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "clk",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "enp",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 60,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "rco",
+      "x": 60,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "q0",
+      "x": 60,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "q1",
+      "x": 60,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "q2",
+      "x": 60,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "q3",
+      "x": 60,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "ent",
+      "x": 60,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "loadb",
+      "x": 60,
+      "y": 43,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "74LS161 4-bit synchronous binary counter. Pin table from TI SN74LS161A datasheet (SDLS067). DIP-16. Rising-edge clock. /CLR (async clear), /LOAD (sync parallel load), ENP+ENT (count enables), RCO (ripple carry = ENT and count=15). Terminal names match engine kind in bw-board src/devices/sap1-chips.js.",
+  "footprint": {
+    "refTerminal": "clrb",
+    "leads": {
+      "clrb": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "clk": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "d0": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "d1": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "d2": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "d3": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "enp": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "rco": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "q0": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "q1": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "q2": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "q3": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "ent": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "loadb": {
+        "dRow": 5,
+        "dCol": 7
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 8
+  }
+}

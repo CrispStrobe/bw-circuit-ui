@@ -1,0 +1,176 @@
+{
+  "kind": "74ls189",
+  "w": 60,
+  "h": 48,
+  "terminals": [
+    {
+      "name": "a0",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "csb",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "web",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "o0",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "o1",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 60,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "a1",
+      "x": 60,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "a2",
+      "x": 60,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "a3",
+      "x": 60,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 60,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "o3",
+      "x": 60,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 60,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "o2",
+      "x": 60,
+      "y": 43,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "74LS189 16x4-bit static RAM with INVERTED outputs. Pin table from TI SN74LS189 datasheet (SDLS135). DIP-16. Address A0-A3, data D0-D3, inverted outputs O0-O3. Active-low /CS and /WE. THE CLASSIC TRAP: outputs are active-low (inverted). Terminal names match engine kind in bw-board src/devices/sap1-chips.js.",
+  "footprint": {
+    "refTerminal": "a0",
+    "leads": {
+      "a0": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "csb": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "web": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "d0": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "o0": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "d1": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "o1": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "a1": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "a2": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "a3": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "d3": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "o3": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "d2": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "o2": {
+        "dRow": 5,
+        "dCol": 7
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 8
+  }
+}
