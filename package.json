@@ -16,6 +16,7 @@
     "test:render": "node --test test/rendering.test.js test/mcu-device-label.test.js test/pendant-attiny88.test.js",
     "test:all": "npm test && npm run test:render",
     "verify:interaction": "node scripts/verify-interaction.mjs",
+    "verify:deployed": "node scripts/deployed-probes.mjs",
     "sync:parts": "node scripts/sync-parts-data.mjs"
   },
   "author": "CrispStrobe <cze+github@mailbox.org>",

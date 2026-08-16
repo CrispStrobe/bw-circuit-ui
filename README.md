@@ -64,7 +64,36 @@ npm test                 # 621 unit/integration tests
 npm run verify:interaction  # 12 Playwright interaction scenarios
 npm run test:render      # rendering tests (needs dev server)
 npm run sync:parts       # re-vendor bw-parts sidecars into src/parts-data/
+npm run verify:deployed  # deployed-page probes against GH Pages (see below)
 ```
+
+### Deployed-page probes
+
+Playwright probes that run against the live GitHub Pages deployment (no local
+server). They verify rendering invariants that unit tests cannot reach:
+
+1. **Single-renderer guard** — no two stroked SVG elements share endpoints
+   for one jumper; `addHoleWire` adds exactly one `[data-jumper]` element.
+2. **Z spot-check** — jumper `<path>` elements appear after chip bodies in
+   SVG document order (later = painted on top).
+3. **Blinkenrocket pendant** — ATtiny88 chip label, matrix brightness > 0,
+   button press reads correctly via `setControl`/`readPin('PC3')`.
+4. **Blink an LED** — exactly 3 tagged jumpers, zero untagged twins.
+
+```bash
+# Default: probes against GH Pages
+npm run verify:deployed
+
+# Custom URL (preview deploy, local dev server, etc.)
+PROOF_URL=https://my-preview.vercel.app/ npm run verify:deployed
+
+# Or as a positional arg
+node scripts/deployed-probes.mjs https://crispstrobe.github.io/brickwright-lite/
+```
+
+Requires `playwright` (`npm install`). The probes navigate to the Circuit tab,
+load examples from the gallery, and exercise the circuit model via
+`window.__circuit` and `window.__board`.
 
 ## Importing as a component
 
