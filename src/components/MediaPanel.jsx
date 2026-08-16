@@ -22,7 +22,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 
 // ── Slot drop target ─────────────────────────────────────────────
 
-function SlotDrop({ slot, onLoad, error, status }) {
+function SlotDrop({ slot, onLoad, error, status, byteCount }) {
   const [dragOver, setDragOver] = useState(false);
 
   const handleDragOver = useCallback((e) => {
@@ -101,7 +101,9 @@ function SlotDrop({ slot, onLoad, error, status }) {
         </div>
       )}
       {status === 'ok' && !error && (
-        <div style={{ color: '#2ecc71', fontSize: 9, marginTop: 2 }}>Loaded</div>
+        <div style={{ color: '#2ecc71', fontSize: 9, marginTop: 2 }}>
+          Loaded{byteCount != null ? ` (${byteCount.toLocaleString()} bytes)` : ''}
+        </div>
       )}
       {error && (
         <div style={{ color: '#e74c3c', fontSize: 9, marginTop: 2 }}>{error}</div>
@@ -230,24 +232,28 @@ async function unpackBundle(file, slots) {
 
 /**
  * @param {{
- *   describeMedia?: (kind: string) => Array<{id, label, accept, at, hint}>,
- *   applyMedia?: (target: any, media: Record<string, Uint8Array>) => {applied: string[], errors: Record<string, string>},
+ *   describeMedia?: (kind: string, opts?: {parts?: Array}) => Array<{id, label, accept, at, hint}>,
+ *   applyMedia?: (target: any, media: Record<string, Uint8Array>, opts?: object) => {applied: string[], errors: Array},
  *   target?: any,
  *   machineKind?: string,
+ *   parts?: Array<{id: string, kind: string, declName?: string}>,
+ *   board?: object,
  *   lang?: string,
  * }} props
  */
-export function MediaPanel({ describeMedia, applyMedia, target, machineKind, lang = 'en' }) {
+export function MediaPanel({ describeMedia, applyMedia, target, machineKind, parts, board, lang = 'en' }) {
   const [slotStatus, setSlotStatus] = useState({}); // slotId → 'ok' | null
   const [slotErrors, setSlotErrors] = useState({}); // slotId → error string
+  const [slotBytes, setSlotBytes] = useState({});   // slotId → byte count
 
-  // Describe available media slots for this machine kind
-  const slots = describeMedia && machineKind ? describeMedia(machineKind) : [];
+  // Describe available media slots — includes dynamic eeprom slots when parts provided
+  const slots = describeMedia && machineKind ? describeMedia(machineKind, { parts }) : [];
 
   // Reset state when machine kind changes
   useEffect(() => {
     setSlotStatus({});
     setSlotErrors({});
+    setSlotBytes({});
   }, [machineKind]);
 
   // MCU kinds return [] — hide the panel
@@ -262,33 +268,42 @@ export function MediaPanel({ describeMedia, applyMedia, target, machineKind, lan
       setSlotErrors(prev => ({ ...prev, [slotId]: 'No target available' }));
       return;
     }
-    const result = applyMedia(target, { [slotId]: bytes });
-    if (result.errors && Object.keys(result.errors).length > 0) {
-      setSlotErrors(prev => ({ ...prev, ...result.errors }));
+    const result = applyMedia(target, { [slotId]: bytes }, { parts, board });
+    if (result.errors && result.errors.length > 0) {
+      const errMap = {};
+      for (const e of result.errors) errMap[e.slot] = e.error;
+      setSlotErrors(prev => ({ ...prev, ...errMap }));
     } else {
       setSlotErrors(prev => { const n = { ...prev }; delete n[slotId]; return n; });
       setSlotStatus(prev => ({ ...prev, [slotId]: 'ok' }));
+      setSlotBytes(prev => ({ ...prev, [slotId]: bytes.length }));
     }
-  }, [applyMedia, target]);
+  }, [applyMedia, target, parts, board]);
 
   const handleBundleLoad = useCallback((media) => {
     if (!applyMedia || !target) return;
-    const result = applyMedia(target, media);
-    if (result.errors && Object.keys(result.errors).length > 0) {
-      setSlotErrors(prev => ({ ...prev, ...result.errors }));
+    const result = applyMedia(target, media, { parts, board });
+    if (result.errors && result.errors.length > 0) {
+      const errMap = {};
+      for (const e of result.errors) errMap[e.slot] = e.error;
+      setSlotErrors(prev => ({ ...prev, ...errMap }));
     }
     if (result.applied) {
       const newStatus = {};
-      for (const id of result.applied) newStatus[id] = 'ok';
+      const newBytes = {};
+      for (const id of result.applied) {
+        newStatus[id] = 'ok';
+        if (media[id]) newBytes[id] = media[id].length;
+      }
       setSlotStatus(prev => ({ ...prev, ...newStatus }));
-      // Clear errors for successfully applied slots
+      setSlotBytes(prev => ({ ...prev, ...newBytes }));
       setSlotErrors(prev => {
         const n = { ...prev };
         for (const id of result.applied) delete n[id];
         return n;
       });
     }
-  }, [applyMedia, target]);
+  }, [applyMedia, target, parts, board]);
 
   return (
     <div style={{
@@ -314,6 +329,7 @@ export function MediaPanel({ describeMedia, applyMedia, target, machineKind, lan
           onLoad={handleSlotLoad}
           error={slotErrors[slot.id] || null}
           status={slotStatus[slot.id] || null}
+          byteCount={slotBytes[slot.id] || null}
         />
       ))}
 

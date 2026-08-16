@@ -85,6 +85,31 @@ describe('MediaPanel', () => {
     assert.ok(/slotErrors/.test(src), 'should track per-slot errors');
   });
 
+  test('accepts parts and board props for dynamic eeprom slots', () => {
+    const src = readFileSync(componentPath, 'utf8');
+    assert.ok(/parts/.test(src), 'should accept parts prop');
+    assert.ok(/board/.test(src), 'should accept board prop');
+  });
+
+  test('passes parts to describeMedia for dynamic slot discovery', () => {
+    const src = readFileSync(componentPath, 'utf8');
+    assert.ok(/describeMedia\(machineKind, \{ parts \}\)/.test(src),
+      'should forward parts to describeMedia');
+  });
+
+  test('passes parts and board to applyMedia opts', () => {
+    const src = readFileSync(componentPath, 'utf8');
+    assert.ok(/applyMedia\(target,.*\{ parts, board \}/.test(src) ||
+      /\{ parts, board \}/.test(src),
+      'should forward parts and board to applyMedia');
+  });
+
+  test('shows byte count after successful load', () => {
+    const src = readFileSync(componentPath, 'utf8');
+    assert.ok(/byteCount/.test(src), 'should track and display byte counts');
+    assert.ok(/toLocaleString/.test(src), 'should format byte count with separators');
+  });
+
   test('is exported from index.js', () => {
     const idx = readFileSync(path.join(here, '../src/index.js'), 'utf8');
     assert.ok(/MediaPanel/.test(idx), 'index.js should export MediaPanel');
