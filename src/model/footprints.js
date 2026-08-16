@@ -168,6 +168,7 @@ const BUILTIN_FOOTPRINTS = {
   clock_display: { refTerminal: 'clk', leads: { clk: { dRow: 0, dCol: 0 }, dio: { dRow: 0, dCol: 1 }, vcc: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
   neopixel: { refTerminal: 'din', leads: { din: { dRow: 0, dCol: 0 }, vcc: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 }, dout: { dRow: 0, dCol: 3 } } },
   char_lcd_i2c: { refTerminal: 'gnd', leads: { gnd: { dRow: 0, dCol: 0 }, vcc: { dRow: 0, dCol: 1 }, sda: { dRow: 0, dCol: 2 }, scl: { dRow: 0, dCol: 3 } } },
+  ssd1306: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, sda: { dRow: 0, dCol: 2 }, scl: { dRow: 0, dCol: 3 } } },
   // 4-pin sensors/modules
   ultrasonic: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, trig: { dRow: 0, dCol: 1 }, echo: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
   gas_sensor: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, dout: { dRow: 0, dCol: 2 }, aout: { dRow: 0, dCol: 3 } } },

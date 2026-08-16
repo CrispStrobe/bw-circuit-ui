@@ -145,6 +145,8 @@ const CATEGORIES = [
       { kind: 'char_lcd', label: 'LCD 16×2', params: {}, color: '#2980b9', tooltip: 'HD44780 parallel' },
       { kind: 'char_lcd_i2c', label: 'LCD I²C', params: {}, color: '#2980b9', tooltip: 'PCF8574 backpack' },
       { kind: 'clock_display', label: 'Clock Display', params: {}, color: '#e74c3c', tooltip: 'TM1637 4-digit' },
+      { kind: 'ssd1306', label: 'OLED 128×64', params: {}, color: '#2c3e50',
+        tooltip: 'SSD1306 I²C OLED — 4-pin module (VCC, GND, SDA, SCL)' },
       { kind: 'led_matrix', label: 'LED Matrix', params: {}, color: '#27ae60', tooltip: 'drawable — 8×8' },
       { kind: 'led_cube', label: 'LED Cube 4³', params: {}, color: '#2ecc71' },
     ],
