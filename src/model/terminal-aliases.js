@@ -57,6 +57,11 @@ export const TERMINAL_ALIASES = {
     Q0: 'q0', Q1: 'q1', Q2: 'q2', Q3: 'q3',
     Q4: 'q4', Q5: 'q5', Q6: 'q6', Q7: 'q7',
   },
+  // hd44780: the model list moved to the datasheet names the engine device
+  // and the sidecar always used; old saves carry the friendly spellings.
+  hd44780: {
+    vcc: 'vdd', gnd: 'vss', vo: 'v0', bl_a: 'a', bl_k: 'k',
+  },
   // battery → vsource: terminals are already pos/neg, no rename needed.
   // h_bridge/l293d: gallery uses simplified names, sidecar has DIP-16 pins
   l293d: {
