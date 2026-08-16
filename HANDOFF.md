@@ -156,6 +156,11 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **Cross-board wire bundling** (80ce30f): wires spanning two different
+  boards grouped by (boardA, boardB) pair, routed as parallel straight
+  paths through the gap (4px spacing). Adapts to vertical/horizontal
+  board layout. Single cross-board wires keep default arc. User waypoints
+  still override. Makes multi-board benches read like real bus harnesses.
 - **Drag-snap ghost + DIP pin-1-bottom labels** (f3841e1): ghost preview
   during drag now uses two-pass logic (tight snapGhost → seatSnapHole loose
   fallback), matching endMove exactly — what you see is what the drop does.
