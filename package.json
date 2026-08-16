@@ -17,7 +17,8 @@
     "test:all": "npm test && npm run test:render",
     "verify:interaction": "node scripts/verify-interaction.mjs",
     "verify:deployed": "node scripts/deployed-probes.mjs",
-    "sync:parts": "node scripts/sync-parts-data.mjs"
+    "sync:parts": "node scripts/sync-parts-data.mjs",
+    "acceptance": "node scripts/deployed-acceptance/run-all.mjs"
   },
   "author": "CrispStrobe <cze+github@mailbox.org>",
   "license": "MIT",
