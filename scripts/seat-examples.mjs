@@ -27,6 +27,22 @@ import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { FOOTPRINTS, computeLeadMap } from '../src/model/footprints.js';
 import { BreadboardModel } from '../src/model/breadboard.js';
+import { registerSidecar } from '../src/model/parts-registry.js';
+
+// The FOOTPRINTS proxy falls back to sidecar-declared footprints (the
+// matrix8x8 seats that way); in the app the loader registers them —
+// here we bulk-load, or the generator would float every sidecar-seated
+// part the designer can seat.
+{
+    const dir = new URL('../src/parts-data/', import.meta.url);
+    for (const f of readdirSync(dir)) {
+        if (!f.endsWith('.json')) continue;
+        try {
+            const sc = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+            if (sc.kind) registerSidecar(sc);
+        } catch { /* a bad sidecar is bw-parts' problem, not the batch's */ }
+    }
+}
 
 const args = process.argv.slice(2);
 const dir = args[args.indexOf('--examples') + 1];

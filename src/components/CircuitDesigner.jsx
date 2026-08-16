@@ -782,6 +782,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       } catch { /* fall through: load the file as-is */ }
     }
     handleLoad(circuitData);
+    // The file's canvas is CLEAN: annotations from a previous inference
+    // run must not survive onto it (the pendant showed the curated
+    // build with the inferred bench's '8 of 18 pins' notes still
+    // underneath — owner screenshot; they are SVG text, which even the
+    // deployed verifier's innerText probe could not see).
+    setAnnotations([]);
     // A file is now on the canvas: the pin-inference effect must not
     // rebuild over it when the example's program load ripples new pins
     // through projectData a tick later (the pendant race).

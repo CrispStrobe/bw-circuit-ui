@@ -20,7 +20,7 @@ const BOTTOM_ROWS = ['f', 'g', 'h', 'i', 'j'];
  */
 
 /** @type {Record<string, Footprint>} */
-export const FOOTPRINTS = {
+const BUILTIN_FOOTPRINTS = {
 
   // ── Retro bench DIPs ─────────────────────────────────────────
   // Generated from the datasheet-audited sidecars (left column
@@ -286,3 +286,27 @@ export function computeLeadMap(footprint, refHole) {
   }
   return leadMap;
 }
+
+// Sidecar fallback: a part whose sidecar declares its own `footprint`
+// (the matrix8x8 was the first) is seatable WITHOUT an entry above —
+// bw-parts owns that geometry the same way it owns terminals. A Proxy
+// keeps all 17 existing `FOOTPRINTS[kind]` call sites working
+// untouched; Object.keys/entries still see only the built-ins, which
+// is what the contract tests iterate (sidecar footprints are validated
+// by bw-parts' own checks).
+import { getSidecar } from './parts-registry.js';
+
+export const FOOTPRINTS = new Proxy(BUILTIN_FOOTPRINTS, {
+  get(target, kind) {
+    if (kind in target) return target[kind];
+    if (typeof kind !== 'string') return undefined;
+    const sc = getSidecar(kind);
+    return (sc && sc.footprint) || undefined;
+  },
+  has(target, kind) {
+    if (kind in target) return true;
+    if (typeof kind !== 'string') return false;
+    const sc = getSidecar(kind);
+    return !!(sc && sc.footprint);
+  },
+});
