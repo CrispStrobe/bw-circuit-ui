@@ -40,16 +40,12 @@ const STAMPED = new Set([
 // bench that will silently break the moment an example seats it. Burn
 // this down; never let it grow.
 const KNOWN_GAPS = new Set([
+  // Logic ICs: need chip-composer entries (complex pin mappings)
   '556', '74c922', '74hc374', '74hc688',
-  'breadboard_full', 'breadboard_half', 'breadboard_mini', 'breadboard_psu',
-  'cd4017', 'dip_switch_dpst', 'dip_switch_spst', 'function_gen',
-  'ili9341_parallel', 'ky002', 'l293d', 'lemon_battery', 'light_sensor',
-  'mc6845', 'microbit_breakout', 'multimeter', 'neopixel_jewel',
-  'neopixel_ring', 'neopixel_strip', 'nmos_power', 'ns16c550',
-  'oscilloscope', 'pmos_power', 'pololu_motor_ctrl', 'potato_battery',
-  'seven_seg_3', 'simplevga_card', 'slide_switch', 'tilevga',
-  'tilt_switch', 'tilt_switch_v2', 'tm1637', 'tms9918',
-  'ultrasonic_3pin', 'vga_prop_card',
+  // Motor controllers: need dedicated engine models
+  'pololu_motor_ctrl',
+  // New display: needs multiplexed engine decomposition
+  'seven_seg_3',
 ]);
 
 function passthroughKinds() {

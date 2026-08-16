@@ -16,8 +16,31 @@ export const KIND_ALIASES = {
   battery: 'vsource',
   timer_555: '555',
   '74hc595': 'shift_register',
-  h_bridge: 'l293d',
+  l293d: 'h_bridge',
   pot: 'potentiometer',
+  // KNOWN_GAPS burn-down: alias electrically equivalent kinds
+  tilt_switch: 'tilt_sensor',
+  tilt_switch_v2: 'tilt_sensor',
+  cd4017: 'decade_counter',
+  tm1637: 'clock_display',
+  function_gen: 'vsource',
+  nmos_power: 'nmos',
+  pmos_power: 'pmos',
+  lemon_battery: 'vsource',
+  potato_battery: 'vsource',
+  neopixel_jewel: 'neopixel',
+  neopixel_ring: 'neopixel',
+  neopixel_strip: 'neopixel',
+  ky002: 'tilt_sensor',
+  light_sensor: 'ldr',
+  multimeter: 'meter',
+  oscilloscope: 'meter',
+  ultrasonic_3pin: 'ultrasonic',
+  // Breadboard size variants → structural breadboard
+  breadboard_full: 'breadboard',
+  breadboard_half: 'breadboard',
+  breadboard_mini: 'breadboard',
+  breadboard_psu: 'breadboard',
 };
 
 /** @type {Record<string, Record<string, string>>} */

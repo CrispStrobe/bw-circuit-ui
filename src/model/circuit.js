@@ -41,6 +41,14 @@ const PASSTHROUGH_KINDS = new Set([
   'r6507', 'mos6532',
   // Z80 family
   'z80', 'mc6850',
+  // Video / retro DIPs (machine-class, engine has device models)
+  'tms9918', 'mc6845', 'ns16c550',
+  // Board / module variants
+  'microbit_breakout',
+  // Video cards (machine-class sidecars, rendered as machine faces)
+  'simplevga_card', 'tilevga', 'vga_prop_card',
+  // Parallel display variant
+  'ili9341_parallel',
 ]);
 function engineKindFor(kind) {
   if (!PASSTHROUGH_KINDS.has(kind)) return kind;
