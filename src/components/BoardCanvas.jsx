@@ -1072,7 +1072,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates, sevenSegments }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -1245,7 +1245,14 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             style={{ ...baseStyle, left: x - 30, top: y - 35, cursor: 'move' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
-            <WokwiSevenSegment digits={1} values={[1,1,1,1,1,1,0,0]} color="#e74c3c" pins="none" />
+            <WokwiSevenSegment digits={1} values={(() => {
+              // REAL segments from the engine — this literal used to be
+              // hardcoded [1,1,1,1,1,1,0,0]: every 7-seg showed "0"
+              // forever, whatever the program did (owner report).
+              const seg = sevenSegments?.(id);
+              if (!seg) return [0, 0, 0, 0, 0, 0, 0, 0];
+              return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'].map(k => (seg[k] > 0.2 ? 1 : 0));
+            })()} color="#e74c3c" pins="none" />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
             </div>
@@ -1517,7 +1524,7 @@ export function BoardCanvas({
   statusText,
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
-  circuit, engineBoard, fitToken,
+  circuit, engineBoard, fitToken, sevenSegments,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onRewire,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
@@ -3057,6 +3064,7 @@ export function BoardCanvas({
           <WokwiParts
             parts={parts}
             ledBrightness={ledBrightness}
+            sevenSegments={sevenSegments}
             buzzerTones={buzzerTones}
             meterReadings={(() => {
               const readings = {};

@@ -108,6 +108,16 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     }
     return ledBrightness(id);
   }, [externalBoard, ledBrightness]);
+
+  // Seven-segment faces follow the ACTIVE board, same rule as every
+  // other read. The face used to render HARDCODED segments — a running
+  // counter always showed "0" (owner: displays must SHOW something).
+  const readSevenSegment = useCallback((id) => {
+    const b = (externalBoard && externalBoard.sevenSegmentBrightness) ? externalBoard
+      : (circuit && circuit.board && circuit.board.sevenSegmentBrightness) ? circuit.board : null;
+    if (!b) return null;
+    try { return b.sevenSegmentBrightness(id); } catch { return null; }
+  }, [externalBoard, circuit]);
   const readBuzzerTone = useCallback((id) => {
     if (externalBoard && externalBoard.buzzerTone) {
       try { return externalBoard.buzzerTone(id); } catch { return null; }
@@ -990,6 +1000,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         <BoardCanvas
           engineBoard={activeBoard}
           fitToken={fitToken}
+          sevenSegments={readSevenSegment}
           parts={parts}
           wires={wires}
           theme={theme}
