@@ -983,6 +983,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         )}
         {!showSchematic ? (<>
         <BoardCanvas
+          engineBoard={activeBoard}
           parts={parts}
           wires={wires}
           theme={theme}
@@ -1125,6 +1126,19 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           drcWarnings={(() => {
             try {
               const drc = runDrc(circuit, circuit.board);
+              // A rejected netlist means the board on screen is ELECTRICALLY
+              // EMPTY — every voltage reads 0 and nothing lights. That state
+              // hid behind a silent catch for a six-layer debugging chain
+              // (the pendant, 2026-08-16); it is a first-class finding now.
+              if (circuit.netlistError) {
+                drc.unshift({
+                  severity: 'error',
+                  rule: 'netlist-rejected',
+                  partId: parts[0]?.id,
+                  explanation: `The engine rejected this circuit — the board is ` +
+                    `inactive until this is fixed: ${circuit.netlistError}`,
+                });
+              }
               // Merge bw-board engine warnings (from getWarnings/renderState)
               // so aggregate current-budget warnings reach DrcOverlay too.
               for (const w of warnings) {

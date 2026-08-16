@@ -1455,7 +1455,7 @@ export function BoardCanvas({
   statusText,
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
-  circuit,
+  circuit, engineBoard,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onRewire,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
@@ -2806,11 +2806,18 @@ export function BoardCanvas({
           })}
           <SvgParts parts={parts} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick}
             deviceStates={(() => {
-              if (!circuit?.board?.getDeviceState) return null;
+              // Device faces follow the ACTIVE board — during a debug run
+              // that is the runner's board, and reading circuit.board here
+              // meant the emulator lit a matrix on a board the canvas never
+              // asked (the pendant: engine brightness 0.65, face dark).
+              // Same rule the instrument reads already obey.
+              const eb = (engineBoard && engineBoard.getDeviceState) ? engineBoard
+                : (circuit && circuit.board && circuit.board.getDeviceState) ? circuit.board : null;
+              if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
                 if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'matrix8x8') {
-                  const ds = circuit.board.getDeviceState(p.id);
+                  const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
               }
@@ -2900,11 +2907,14 @@ export function BoardCanvas({
             onPartBodyClick={handlePartBodyClick}
             onDoubleClick={(partId, cx, cy) => setInlineEdit({ partId, x: cx, y: cy })}
             deviceStates={(() => {
-              if (!circuit?.board?.getDeviceState) return null;
+              // Active-board rule, same as the SvgParts faces above.
+              const eb = (engineBoard && engineBoard.getDeviceState) ? engineBoard
+                : (circuit && circuit.board && circuit.board.getDeviceState) ? circuit.board : null;
+              if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
                 if (p.kind === 'char_lcd') {
-                  const ds = circuit.board.getDeviceState(p.id);
+                  const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
               }

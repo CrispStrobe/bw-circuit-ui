@@ -43,7 +43,18 @@ const PASSTHROUGH_KINDS = new Set([
   'z80', 'mc6850',
 ]);
 function engineKindFor(kind) {
-  return PASSTHROUGH_KINDS.has(kind) ? 'mcu' : kind;
+  if (!PASSTHROUGH_KINDS.has(kind)) return kind;
+  // A kind the engine has a REGISTERED device model for keeps its identity:
+  // the model is strictly more truthful than the generic 'mcu' surface —
+  // its power pins actually source (a Mega's 5v pin fed nothing as 'mcu'),
+  // gpioFollowsPinStates drives its GPIO, and readPin works through it.
+  // Kinds the engine does not know (older engine builds, machine-class
+  // DIPs) keep collapsing to 'mcu' exactly as before.
+  try {
+    const eng = getEngine();
+    if (eng && typeof eng.hasDevice === 'function' && eng.hasDevice(kind)) return kind;
+  } catch { /* engine not injected yet — construction-time default below */ }
+  return 'mcu';
 }
 
 /** Reset the ID counter (for tests). */
@@ -788,10 +799,20 @@ export class Circuit {
       if (prevSnap && this.board.restore) {
         this.board.restore(prevSnap);
       }
-    } catch {
+      this.netlistError = null;
+    } catch (e) {
       // Partial circuit (e.g. VCC without GND) — engine validation
       // rejects incomplete netlists. This is fine during construction;
-      // the next addPart/addWire will try again.
+      // the next addPart/addWire will try again. But SAY SO: this catch
+      // once swallowed a crashed validator, and the empty board it left
+      // behind took a six-layer debugging chain to trace back here
+      // (the pendant, 2026-08-16). The error is kept for the UI and
+      // warned once per distinct message, not per keystroke.
+      this.netlistError = (e && e.message) || String(e);
+      if (this.netlistError !== this._warnedNetlistError) {
+        console.warn('[circuit] netlist rejected — the board is EMPTY until this clears:', this.netlistError);
+        this._warnedNetlistError = this.netlistError;
+      }
     }
   }
 
@@ -813,8 +834,15 @@ export class Circuit {
     try {
       this.board.setNetlist(engineParts, nets);
       if (prevSnap && this.board.restore) this.board.restore(prevSnap);
-    } catch {
-      // Incomplete breadboard wiring — expected during construction
+      this.netlistError = null;
+    } catch (e) {
+      // Incomplete breadboard wiring — expected during construction.
+      // Same loudness contract as _syncNetlist above.
+      this.netlistError = (e && e.message) || String(e);
+      if (this.netlistError !== this._warnedNetlistError) {
+        console.warn('[circuit] netlist rejected — the board is EMPTY until this clears:', this.netlistError);
+        this._warnedNetlistError = this.netlistError;
+      }
     }
   }
 
