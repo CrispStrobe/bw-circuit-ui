@@ -1298,31 +1298,86 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           </div>
         );
       }
-      case 'seven_segment':
+      case 'seven_segment': {
+        const segDigits = part.params?.digits || 1;
+        // Wokwi element dimensions (mm → px via mmToPix=3.78):
+        // width = 12.55 * digits mm, height = 22mm (pins='none')
+        const segElW = 12.55 * segDigits * 3.78;
+        const segElH = 22 * 3.78;
+        // Seated scaling: the part straddles the gutter (pins a on row e,
+        // b on row f). Scale the element so it spans the actual pin gap.
+        const segSeated = part.seat && part._seatTerminals;
+        // Non-seated: centre horizontally, keep the old tuned y offset
+        let segLeft = x - segElW / 2, segTop = y - 35, segScale;
+        if (segSeated) {
+          const aPos = part._seatTerminals.a;
+          const bPos = part._seatTerminals.b;
+          if (aPos && bPos) {
+            const pinSpanY = Math.abs(bPos.y - aPos.y);
+            segScale = pinSpanY / segElH;
+            const cx = (aPos.x + bPos.x) / 2;
+            const cy = (aPos.y + bPos.y) / 2;
+            segLeft = cx - (segElW / 2) * segScale;
+            segTop = cy - (segElH / 2) * segScale;
+          }
+        }
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 30, top: y - 35, cursor: 'move' }}
+            style={{ ...baseStyle, left: segLeft, top: segTop, cursor: 'move',
+              ...(segScale ? { transform: `scale(${segScale})`, transformOrigin: 'top left' } : {}) }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
-            <WokwiSevenSegment digits={1} values={(() => {
-              // REAL segments from the engine — this literal used to be
-              // hardcoded [1,1,1,1,1,1,0,0]: every 7-seg showed "0"
-              // forever, whatever the program did (owner report).
+            <WokwiSevenSegment digits={segDigits} values={(() => {
+              // REAL segments from the engine — the face reads
+              // sevenSegmentBrightness per digit. Multi-digit parts
+              // would need per-digit engine support (${id}_d0 etc.);
+              // until then, digit 0 shows the engine's answer and
+              // remaining digits stay blank.
+              const segKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'];
+              const vals = new Array(8 * segDigits).fill(0);
               const seg = sevenSegments?.(id);
-              if (!seg) return [0, 0, 0, 0, 0, 0, 0, 0];
-              return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'].map(k => (seg[k] > 0.2 ? 1 : 0));
+              if (seg) {
+                for (let k = 0; k < segKeys.length; k++) {
+                  vals[k] = seg[segKeys[k]] > 0.2 ? 1 : 0;
+                }
+              }
+              return vals;
             })()} color="#e74c3c" pins="none" />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
             </div>
           </div>
         );
+      }
       case 'char_lcd':
       case 'hd44780':
-      case 'char_lcd_i2c':
+      case 'char_lcd_i2c': {
+        // Wokwi LCD1602 screenOnly dimensions (mm → px):
+        // panelWidth = 16 cols × 3.5125 mm ≈ 56.2mm ≈ 212px
+        // panelHeight = 2 rows × 5.75mm ≈ 11.5mm ≈ 43px
+        const lcdElW = 16 * 3.5125 * 3.78;
+        const lcdElH = 2 * 5.75 * 3.78;
+        const lcdSeated = part.seat && part._seatTerminals;
+        let lcdLeft = x - 60, lcdTop = y - 25, lcdScale;
+        if (lcdSeated) {
+          // The 4-bit footprint has 6 leads (rs, e, d4-d7) spanning
+          // 5 column gaps. Scale the screen panel so its width matches
+          // the pin span, and position it centred above the pin row.
+          const st = part._seatTerminals;
+          const xs = Object.values(st).map(p => p.x);
+          const ys = Object.values(st).map(p => p.y);
+          const pinSpanX = Math.max(...xs) - Math.min(...xs);
+          const pinCx = (Math.min(...xs) + Math.max(...xs)) / 2;
+          const pinY = Math.min(...ys); // pin row
+          lcdScale = Math.max(0.25, pinSpanX / lcdElW);
+          lcdLeft = pinCx - (lcdElW / 2) * lcdScale;
+          // Sit the screen just above the pin row
+          lcdTop = pinY - lcdElH * lcdScale - 2;
+        }
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 60, top: y - 25, cursor: 'move' }}
+            style={{ ...baseStyle, left: lcdLeft, top: lcdTop, cursor: 'move',
+              ...(lcdScale ? { transform: `scale(${lcdScale})`, transformOrigin: 'top left' } : {}) }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <WokwiLcd1602 text={(() => {
@@ -1337,6 +1392,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             </div>
           </div>
         );
+      }
       case 'ir_receiver':
         return (
           <div key={id}
