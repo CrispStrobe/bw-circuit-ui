@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 1019/0/3 (CI clean). Pendant Playwright test (test:render suite).
+npm test 1023/0/3 (CI clean). Pendant Playwright test (test:render suite).
 Parts-data index regenerated: 146 → 213 sidecar entries.
 Lite push freeze in effect — batching lite forwards until coordinator lifts.
 VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
@@ -162,6 +162,11 @@ Nothing uncommitted. No branches.
   call. Returns null for MCU kinds. Same pane family as AsmDebugPanel.
   14 structural tests. Exported from index.js. Waiting on bw-board cc479b7
   to land locally for live wiring.
+- **AsmDebugPanel wired to live service** (94062e3): verified against
+  stc-compiler /assemble debug=true. Listing tab now handles raw string
+  format (actual backend output). TOKEN_COLORS adds 'identifier' type.
+  8051: 8 tokens, 0 passes, 3 listing lines. 6502: 11 tokens, 1 pass
+  (29 symbols), 10 listing lines. Both chains verified live.
 - **AsmDebugPanel** (79cdde6): glass-box assembler debug view. Three tabs:
   token stream (colour-coded, hover→source), symbol table (pass-1 vs pass-2,
   unresolved→resolved highlighted), listing (addr + bytes + source). Accepts
