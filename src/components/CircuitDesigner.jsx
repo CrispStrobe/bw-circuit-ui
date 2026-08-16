@@ -44,6 +44,7 @@ import { BoardCanvas } from './BoardCanvas.jsx';
 import { PartPalette } from './PartPalette.jsx';
 import { InferPanel } from './InferPanel.jsx';
 import { ExamplesBrowser } from './ExamplesBrowser.jsx';
+import { CodexBrowser } from './CodexBrowser.jsx';
 import { t } from '../i18n/strings.js';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
@@ -78,7 +79,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, onLoadExample, onProgramChange, lang = 'en' }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en' }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -186,6 +187,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [selectorsOpen, setSelectorsOpen] = useState(!embedded);
   const [partsOpen, setPartsOpen] = useState(!embedded);
   const [selectorSplit, setSelectorSplit] = useState(0.68);
+  const [codexMode, setCodexMode] = useState(false);
   const [rightOpen, setRightOpen] = useState(!embedded || debuggerOn);
   useEffect(() => {
     if (debuggerOn) setRightOpen(true);
@@ -930,19 +932,44 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             style={{height: 10, flex: '0 0 10px', cursor: 'row-resize', borderTop: '2px solid #94a3b8', borderBottom: '2px solid #94a3b8', background: '#e2e8f0', margin: '1px 0'}}>
             <span style={{display: 'block', width: 42, height: 2, margin: '2px auto', background: '#475569', borderRadius: 2}} />
           </div>
-          <div data-examples-selector style={{flex: `${1 - selectorSplit} 1 0`, minHeight: 70, overflowY: 'auto'}}>
+          <div data-examples-selector style={{flex: `${1 - selectorSplit} 1 0`, minHeight: 70, overflowY: 'auto', display: 'flex', flexDirection: 'column'}}>
+            {/* Codex / Gallery toggle — only shown when both examples and curriculum are available */}
+            {examples && onLoadExample && curriculum && (
+              <div style={{display: 'flex', gap: 0, padding: '3px 4px 2px', borderBottom: '1px solid #2c3e50', flexShrink: 0}}>
+                <button type="button" onClick={() => setCodexMode(false)}
+                  style={{flex: 1, padding: '3px 6px', fontSize: 9, fontWeight: codexMode ? 400 : 700,
+                    fontFamily: 'system-ui, sans-serif', cursor: 'pointer',
+                    background: codexMode ? 'transparent' : 'rgba(59,130,246,0.15)',
+                    color: codexMode ? '#8a8a8a' : '#3b82f6',
+                    border: 'none', borderRadius: '3px 0 0 3px',
+                  }}>▦ Gallery</button>
+                <button type="button" onClick={() => setCodexMode(true)}
+                  style={{flex: 1, padding: '3px 6px', fontSize: 9, fontWeight: codexMode ? 700 : 400,
+                    fontFamily: 'Georgia, "Times New Roman", serif', cursor: 'pointer',
+                    background: codexMode ? 'rgba(212,165,116,0.15)' : 'transparent',
+                    color: codexMode ? '#d4a574' : '#8a8a8a',
+                    border: 'none', borderRadius: '0 3px 3px 0',
+                  }}>☙ Codex</button>
+              </div>
+            )}
+            <div style={{flex: 1, overflowY: 'auto'}}>
             {examples && onLoadExample ? (
-              <ExamplesBrowser examples={examples} onLoadExample={(ex) => {
-                onLoadExample(ex);
-                // When the example carries a program, notify the host so it
-                // can load the program half (blocks/runtime.stc). Without this,
-                // examples with both circuit.json and program.bw load only the
-                // circuit and the debugger says "no pins declared".
-                if (onProgramChange && ex.program) onProgramChange(ex.program);
-              }} theme={theme} />
+              codexMode && curriculum ? (
+                <CodexBrowser curriculum={curriculum} examples={examples} lang={lang}
+                  onLoadExample={(ex) => {
+                    onLoadExample(ex);
+                    if (onProgramChange && ex.program) onProgramChange(ex.program);
+                  }} theme={theme} />
+              ) : (
+                <ExamplesBrowser examples={examples} onLoadExample={(ex) => {
+                  onLoadExample(ex);
+                  if (onProgramChange && ex.program) onProgramChange(ex.program);
+                }} theme={theme} />
+              )
             ) : (
               <InferPanel onLoadCircuit={handleLoadCircuit} />
             )}
+            </div>
           </div>
         </div>
       ) : null}

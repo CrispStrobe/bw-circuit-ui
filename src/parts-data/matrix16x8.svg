@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 48" width="120" height="48">
+  <!-- 16x8 LED matrix — two 1088AS modules side by side -->
+  <rect x="4" y="2" width="112" height="44" rx="2" fill="#111" stroke="#333" stroke-width="1"/>
+  <!-- Left 8x8 grid -->
+  <g fill="#1a0000">
+    <g transform="translate(8,5)">
+      <!-- 8x8 dot grid, left half -->
+      <circle cx="0" cy="0" r="2"/><circle cx="6" cy="0" r="2"/><circle cx="12" cy="0" r="2"/><circle cx="18" cy="0" r="2"/><circle cx="24" cy="0" r="2"/><circle cx="30" cy="0" r="2"/><circle cx="36" cy="0" r="2"/><circle cx="42" cy="0" r="2"/>
+      <circle cx="0" cy="5" r="2"/><circle cx="6" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="24" cy="5" r="2"/><circle cx="30" cy="5" r="2"/><circle cx="36" cy="5" r="2"/><circle cx="42" cy="5" r="2"/>
+      <circle cx="0" cy="10" r="2"/><circle cx="6" cy="10" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="18" cy="10" r="2"/><circle cx="24" cy="10" r="2"/><circle cx="30" cy="10" r="2"/><circle cx="36" cy="10" r="2"/><circle cx="42" cy="10" r="2"/>
+      <circle cx="0" cy="15" r="2"/><circle cx="6" cy="15" r="2"/><circle cx="12" cy="15" r="2"/><circle cx="18" cy="15" r="2"/><circle cx="24" cy="15" r="2"/><circle cx="30" cy="15" r="2"/><circle cx="36" cy="15" r="2"/><circle cx="42" cy="15" r="2"/>
+      <circle cx="0" cy="20" r="2"/><circle cx="6" cy="20" r="2"/><circle cx="12" cy="20" r="2"/><circle cx="18" cy="20" r="2"/><circle cx="24" cy="20" r="2"/><circle cx="30" cy="20" r="2"/><circle cx="36" cy="20" r="2"/><circle cx="42" cy="20" r="2"/>
+      <circle cx="0" cy="25" r="2"/><circle cx="6" cy="25" r="2"/><circle cx="12" cy="25" r="2"/><circle cx="18" cy="25" r="2"/><circle cx="24" cy="25" r="2"/><circle cx="30" cy="25" r="2"/><circle cx="36" cy="25" r="2"/><circle cx="42" cy="25" r="2"/>
+      <circle cx="0" cy="30" r="2"/><circle cx="6" cy="30" r="2"/><circle cx="12" cy="30" r="2"/><circle cx="18" cy="30" r="2"/><circle cx="24" cy="30" r="2"/><circle cx="30" cy="30" r="2"/><circle cx="36" cy="30" r="2"/><circle cx="42" cy="30" r="2"/>
+      <circle cx="0" cy="35" r="2"/><circle cx="6" cy="35" r="2"/><circle cx="12" cy="35" r="2"/><circle cx="18" cy="35" r="2"/><circle cx="24" cy="35" r="2"/><circle cx="30" cy="35" r="2"/><circle cx="36" cy="35" r="2"/><circle cx="42" cy="35" r="2"/>
+    </g>
+    <!-- Right 8x8 grid -->
+    <g transform="translate(64,5)">
+      <circle cx="0" cy="0" r="2"/><circle cx="6" cy="0" r="2"/><circle cx="12" cy="0" r="2"/><circle cx="18" cy="0" r="2"/><circle cx="24" cy="0" r="2"/><circle cx="30" cy="0" r="2"/><circle cx="36" cy="0" r="2"/><circle cx="42" cy="0" r="2"/>
+      <circle cx="0" cy="5" r="2"/><circle cx="6" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="24" cy="5" r="2"/><circle cx="30" cy="5" r="2"/><circle cx="36" cy="5" r="2"/><circle cx="42" cy="5" r="2"/>
+      <circle cx="0" cy="10" r="2"/><circle cx="6" cy="10" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="18" cy="10" r="2"/><circle cx="24" cy="10" r="2"/><circle cx="30" cy="10" r="2"/><circle cx="36" cy="10" r="2"/><circle cx="42" cy="10" r="2"/>
+      <circle cx="0" cy="15" r="2"/><circle cx="6" cy="15" r="2"/><circle cx="12" cy="15" r="2"/><circle cx="18" cy="15" r="2"/><circle cx="24" cy="15" r="2"/><circle cx="30" cy="15" r="2"/><circle cx="36" cy="15" r="2"/><circle cx="42" cy="15" r="2"/>
+      <circle cx="0" cy="20" r="2"/><circle cx="6" cy="20" r="2"/><circle cx="12" cy="20" r="2"/><circle cx="18" cy="20" r="2"/><circle cx="24" cy="20" r="2"/><circle cx="30" cy="20" r="2"/><circle cx="36" cy="20" r="2"/><circle cx="42" cy="20" r="2"/>
+      <circle cx="0" cy="25" r="2"/><circle cx="6" cy="25" r="2"/><circle cx="12" cy="25" r="2"/><circle cx="18" cy="25" r="2"/><circle cx="24" cy="25" r="2"/><circle cx="30" cy="25" r="2"/><circle cx="36" cy="25" r="2"/><circle cx="42" cy="25" r="2"/>
+      <circle cx="0" cy="30" r="2"/><circle cx="6" cy="30" r="2"/><circle cx="12" cy="30" r="2"/><circle cx="18" cy="30" r="2"/><circle cx="24" cy="30" r="2"/><circle cx="30" cy="30" r="2"/><circle cx="36" cy="30" r="2"/><circle cx="42" cy="30" r="2"/>
+      <circle cx="0" cy="35" r="2"/><circle cx="6" cy="35" r="2"/><circle cx="12" cy="35" r="2"/><circle cx="18" cy="35" r="2"/><circle cx="24" cy="35" r="2"/><circle cx="30" cy="35" r="2"/><circle cx="36" cy="35" r="2"/><circle cx="42" cy="35" r="2"/>
+    </g>
+  </g>
+  <text x="60" y="47" text-anchor="middle" font-family="monospace" font-size="3" fill="#555">16×8</text>
+</svg>

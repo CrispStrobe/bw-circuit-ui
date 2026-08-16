@@ -1,0 +1,33 @@
+{
+  "kind": "matrix16x8",
+  "w": 120,
+  "h": 48,
+  "terminals": [
+    { "name": "col0",  "x": 0, "y": 8,  "functions": [] },
+    { "name": "col1",  "x": 0, "y": 11, "functions": [] },
+    { "name": "col2",  "x": 0, "y": 14, "functions": [] },
+    { "name": "col3",  "x": 0, "y": 17, "functions": [] },
+    { "name": "col4",  "x": 0, "y": 20, "functions": [] },
+    { "name": "col5",  "x": 0, "y": 23, "functions": [] },
+    { "name": "col6",  "x": 0, "y": 26, "functions": [] },
+    { "name": "col7",  "x": 0, "y": 29, "functions": [] },
+    { "name": "col8",  "x": 0, "y": 32, "functions": [] },
+    { "name": "col9",  "x": 0, "y": 35, "functions": [] },
+    { "name": "col10", "x": 0, "y": 38, "functions": [] },
+    { "name": "col11", "x": 0, "y": 41, "functions": [] },
+    { "name": "col12", "x": 60, "y": 8,  "functions": [] },
+    { "name": "col13", "x": 60, "y": 11, "functions": [] },
+    { "name": "col14", "x": 60, "y": 14, "functions": [] },
+    { "name": "col15", "x": 60, "y": 17, "functions": [] },
+    { "name": "row0",  "x": 120, "y": 8,  "functions": [] },
+    { "name": "row1",  "x": 120, "y": 13, "functions": [] },
+    { "name": "row2",  "x": 120, "y": 18, "functions": [] },
+    { "name": "row3",  "x": 120, "y": 23, "functions": [] },
+    { "name": "row4",  "x": 120, "y": 28, "functions": [] },
+    { "name": "row5",  "x": 120, "y": 33, "functions": [] },
+    { "name": "row6",  "x": 120, "y": 38, "functions": [] },
+    { "name": "row7",  "x": 120, "y": 43, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "16x8 scanned LED matrix — two 1088AS modules side by side (retro console playfield). 16 column lines + 8 row lines = 24 terminals. Column-scan: one column active at a time, all 8 rows driven simultaneously. Params: colActiveHigh (default true), rowActiveHigh (default true). Engine kind: matrix16x8."
+}

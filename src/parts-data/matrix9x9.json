@@ -1,0 +1,27 @@
+{
+  "kind": "matrix9x9",
+  "w": 60,
+  "h": 52,
+  "terminals": [
+    { "name": "col0", "x": 0, "y": 8,  "functions": [] },
+    { "name": "col1", "x": 0, "y": 13, "functions": [] },
+    { "name": "col2", "x": 0, "y": 18, "functions": [] },
+    { "name": "col3", "x": 0, "y": 23, "functions": [] },
+    { "name": "col4", "x": 0, "y": 28, "functions": [] },
+    { "name": "col5", "x": 0, "y": 33, "functions": [] },
+    { "name": "col6", "x": 0, "y": 38, "functions": [] },
+    { "name": "col7", "x": 0, "y": 43, "functions": [] },
+    { "name": "col8", "x": 0, "y": 48, "functions": [] },
+    { "name": "row0", "x": 60, "y": 8,  "functions": [] },
+    { "name": "row1", "x": 60, "y": 13, "functions": [] },
+    { "name": "row2", "x": 60, "y": 18, "functions": [] },
+    { "name": "row3", "x": 60, "y": 23, "functions": [] },
+    { "name": "row4", "x": 60, "y": 28, "functions": [] },
+    { "name": "row5", "x": 60, "y": 33, "functions": [] },
+    { "name": "row6", "x": 60, "y": 38, "functions": [] },
+    { "name": "row7", "x": 60, "y": 43, "functions": [] },
+    { "name": "row8", "x": 60, "y": 48, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "9x9 scanned LED matrix — 81-LED self-wired grid with 18 scan lines. 9 column lines + 9 row lines = 18 terminals. Column-scan multiplexed. Params: colActiveHigh (default true), rowActiveHigh (default true). Engine kind: matrix9x9."
+}

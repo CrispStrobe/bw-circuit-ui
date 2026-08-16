@@ -43,7 +43,7 @@ const DIP_CHIP_LABELS = {
   // seated ATtiny88 rendered as a ghost outline (owner screenshot) —
   // 28 pin names floating around no body at all.
   attiny88: 'ATtiny88', attiny85: 'ATtiny85',
-  attiny2313: 'ATtiny2313', attiny13: 'ATtiny13',
+  attiny2313: 'ATtiny2313', attiny13: 'ATtiny13', at89c2051: 'AT89C2051',
 };
 import { routeWire, routeWireWithWaypoints, partBBoxes, getPartBBox } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
@@ -187,10 +187,14 @@ function terminalOffsetsForPart(part) {
     case 'ili9341':
       return { vcc: r(-30, -50), gnd: r(-30, -40), cs: r(-30, -30), rst: r(-30, -20),
         dc: r(-30, -10), mosi: r(-30, 0), sck: r(-30, 10), miso: r(-30, 20), led: r(-30, 30) };
-    case 'matrix8x8': {
+    case 'matrix8x8': case 'matrix16x8': case 'matrix9x9': {
       const offsets = {};
-      for (let i = 0; i < 8; i++) offsets[`col${i}`] = r(-40, -28 + i * 8);
-      for (let i = 0; i < 8; i++) offsets[`row${i}`] = r(40, -28 + i * 8);
+      const cols = part.kind === 'matrix16x8' ? 16 : part.kind === 'matrix9x9' ? 9 : 8;
+      const rows = part.kind === 'matrix9x9' ? 9 : 8;
+      const maxN = Math.max(cols, rows);
+      const span = maxN * 8;
+      for (let i = 0; i < cols; i++) offsets[`col${i}`] = r(-span/2 - 8, -span/2 + 4 + i * (span / cols));
+      for (let i = 0; i < rows; i++) offsets[`row${i}`] = r(span/2 + 8, -span/2 + 4 + i * (span / rows));
       return offsets;
     }
     case 'gate_and': case 'gate_or': case 'gate_nand': case 'gate_nor': case 'gate_xor':
@@ -469,31 +473,31 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
       }
-      // ── 8x8 LED matrix display ──────────────────────────────────
-      case 'matrix8x8': {
+      // ── NxM LED matrix display ─────────────────────────────────
+      case 'matrix8x8': case 'matrix16x8': case 'matrix9x9': {
         const ds = deviceStates?.get(id);
-        const br = ds?.brightness; // Float64Array(64), row-major
-        const S = 4; // dot size
-        const G = 6; // grid spacing
-        const W = 8 * G;
-        // Seated, the module spans its 8 pin columns (7 gaps × hole
-        // pitch); the fixed 48-unit art floated as a small tile beside
-        // a wider ghost footprint (owner screenshot). Scale the body to
-        // the pin raster so the display SITS on its pins like the DIPs.
-        const seatK = part.seat ? (7 * BB_PITCH) / W : 1;
+        const br = ds?.brightness;
+        const mCols = ds?.cols ?? (kind === 'matrix16x8' ? 16 : kind === 'matrix9x9' ? 9 : 8);
+        const mRows = ds?.rows ?? (kind === 'matrix9x9' ? 9 : 8);
+        const n = mRows * mCols;
+        const S = 4;
+        const G = mCols > 9 ? 4 : 6;
+        const Wc = mCols * G, Wr = mRows * G;
+        const maxDim = Math.max(Wc, Wr);
+        const seatK = part.seat ? (Math.max(mCols, mRows) - 1) * BB_PITCH / maxDim : 1;
         return (
           <g key={id} transform={xform + (seatK !== 1 ? ` scale(${seatK.toFixed(3)})` : '')} onClick={handleClick} style={{ cursor: 'pointer' }}>
-            <rect x={-W/2 - 3} y={-W/2 - 3} width={W + 6} height={W + 6} rx={3}
+            <rect x={-Wc/2 - 3} y={-Wr/2 - 3} width={Wc + 6} height={Wr + 6} rx={3}
               fill="#111" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
-            {Array.from({ length: 64 }, (_, i) => {
-              const row = Math.floor(i / 8), col = i % 8;
+            {Array.from({ length: n }, (_, i) => {
+              const row = Math.floor(i / mCols), col = i % mCols;
               const b = br ? br[i] : 0;
               const color = b > 0.01 ? `rgba(255,${Math.round(40 + 40 * b)},${Math.round(20 * b)},${Math.min(1, b + 0.15)})` : '#1a0000';
               return <circle key={i}
-                cx={-W/2 + col * G + G/2} cy={-W/2 + row * G + G/2} r={S/2}
+                cx={-Wc/2 + col * G + G/2} cy={-Wr/2 + row * G + G/2} r={S/2}
                 fill={color} />;
             })}
-            <text x={0} y={W/2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+            <text x={0} y={Wr/2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -3000,7 +3004,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'ssd1306') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
