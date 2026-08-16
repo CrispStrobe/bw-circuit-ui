@@ -201,6 +201,75 @@ describe('Wokwi exporter', () => {
   });
 });
 
+// ── Wokwi acceptance: multi-part circuit with round-trip ────────
+
+describe('Acceptance: Wokwi multi-part circuit', () => {
+  const WOKWI_FULL = JSON.stringify({
+    version: 1,
+    parts: [
+      { type: 'wokwi-arduino-uno', id: 'uno', top: 0, left: 0, attrs: {} },
+      { type: 'wokwi-led', id: 'led1', top: -50, left: 200, attrs: { color: 'red' } },
+      { type: 'wokwi-resistor', id: 'r1', top: 10, left: 200, attrs: { value: '220' } },
+      { type: 'wokwi-pushbutton', id: 'btn1', top: 100, left: 300, attrs: {} },
+      { type: 'wokwi-potentiometer', id: 'pot1', top: 150, left: 100, attrs: {} },
+      { type: 'wokwi-lcd1602', id: 'lcd1', top: -150, left: 50, attrs: {} },
+      { type: 'wokwi-servo', id: 'servo1', top: 200, left: 0, attrs: {} },
+      { type: 'wokwi-hc-sr04', id: 'sr04', top: 300, left: 300, attrs: {} },
+      { type: 'wokwi-7segment', id: 'seg1', top: -100, left: 350, attrs: {} },
+      { type: 'wokwi-neopixel', id: 'neo1', top: 400, left: 0, attrs: {} },
+      { type: 'wokwi-pir-motion-sensor', id: 'pir1', top: 400, left: 100, attrs: {} },
+      { type: 'wokwi-dht22', id: 'dht1', top: 300, left: 200, attrs: {} },
+      { type: 'wokwi-photoresistor', id: 'ldr1', top: 300, left: 100, attrs: {} },
+      { type: 'wokwi-74hc595', id: 'sr595', top: 0, left: 400, attrs: {} },
+      { type: 'wokwi-ssd1306', id: 'oled1', top: -200, left: 300, attrs: {} },
+    ],
+    connections: [
+      ['uno:13', 'r1:1', 'green', []],
+      ['r1:2', 'led1:A', 'green', []],
+      ['led1:K', 'uno:GND', 'black', []],
+      ['sr04:TRIG', 'uno:7', 'purple', []],
+      ['sr04:ECHO', 'uno:8', 'cyan', []],
+      ['sr04:VCC', 'uno:5V', 'red', []],
+    ],
+  });
+
+  it('maps all 15 part types to engine kinds', () => {
+    const result = importWokwi(WOKWI_FULL);
+    assert.equal(result.parts.length, 15);
+    assert.equal(result.unmapped.length, 0);
+  });
+
+  it('maps all expected kinds', () => {
+    const result = importWokwi(WOKWI_FULL);
+    const kinds = new Set(result.parts.map(p => p.kind));
+    for (const expected of [
+      'arduino_uno', 'led', 'resistor', 'button', 'potentiometer',
+      'char_lcd', 'servo', 'ultrasonic', 'seven_segment', 'neopixel',
+      'pir', 'dht11', 'ldr', '74hc595', 'ssd1306',
+    ]) {
+      assert.ok(kinds.has(expected), `Missing kind: ${expected}`);
+    }
+  });
+
+  it('round-trips through export and re-import', () => {
+    const first = importWokwi(WOKWI_FULL);
+    const exported = exportWokwi(first);
+    const second = importWokwi(exported);
+    assert.equal(second.parts.length, first.parts.length);
+    assert.equal(second.wires.length, first.wires.length);
+    assert.equal(second.unmapped.length, 0);
+  });
+
+  it('maps wokwi pin aliases correctly', () => {
+    const result = importWokwi(WOKWI_FULL);
+    // 'sr04:VCC' → 'vcc', 'led1:A' → 'anode'
+    const vccWire = result.wires.find(w => w.toTerminal === 'vcc');
+    assert.ok(vccWire, '5V alias should map to vcc');
+    const anodeWire = result.wires.find(w => w.toTerminal === 'anode');
+    assert.ok(anodeWire, 'A alias should map to anode');
+  });
+});
+
 // ── Registry ─────────────────────────────────────────────────────
 
 describe('importCircuit registry', () => {
