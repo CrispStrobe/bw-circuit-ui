@@ -766,6 +766,37 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
     set.add(`${w.to.part}:${w.to.terminal}`);
   }
 
+  // ── Cross-board wire bundling ──────────────────────────────────
+  // Group wires that span two different boards into corridor bundles.
+  // Each bundle routes as parallel straight paths through the gap
+  // between the two boards, like a real bus harness.
+  const bundleOffsets = new Map(); // wireId → offset within its corridor
+  {
+    const corridors = new Map(); // "boardA:boardB" → [wireId, ...]
+    for (const w of wires) {
+      if (isBoardEndpoint(w.from) || isBoardEndpoint(w.to)) continue;
+      const fp = parts.find(p => p.id === w.from.part);
+      const tp = parts.find(p => p.id === w.to.part);
+      if (!fp || !tp) continue;
+      if (!fp.seat?.boardId || !tp.seat?.boardId) continue;
+      if (fp.seat.boardId === tp.seat.boardId) continue;
+      // Canonical key: sorted board IDs so A→B and B→A share a corridor
+      const key = [fp.seat.boardId, tp.seat.boardId].sort().join(':');
+      if (!corridors.has(key)) corridors.set(key, []);
+      corridors.get(key).push(w.id);
+    }
+    for (const group of corridors.values()) {
+      if (group.length < 2) continue; // single wires keep default arc
+      // Sort by wire id for stable ordering, then assign offsets
+      group.sort();
+      const spacing = 4; // pixels between parallel wires
+      const half = (group.length - 1) / 2;
+      for (let i = 0; i < group.length; i++) {
+        bundleOffsets.set(group[i], (i - half) * spacing);
+      }
+    }
+  }
+
   return wires.map(wire => {
     // Board-connected tap wires are drawn by the dedicated tap-wire layer.
     // A board hole is not a part terminal; rendering it here as well creates
@@ -791,13 +822,37 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
 
     const a = terminalPos(fromPart, wire.from.terminal);
     const b = terminalPos(toPart, wire.to.terminal);
-    // Wires draw as jumper-style arcs; each wire's id hashes to a distinct
-    // curvature so parallel runs SEPARATE instead of overlapping into one
-    // unreadable stroke. User waypoints still win.
     let pathD;
     if (wire.waypoints && wire.waypoints.length > 0) {
       pathD = routeWireWithWaypoints(a, b, wire.waypoints);
+    } else if (bundleOffsets.has(wire.id)) {
+      // ── Corridor bundle path ─────────────────────────────────
+      // Route as a tidy parallel path through the gap between boards,
+      // like a real bus harness. Detects whether boards are separated
+      // vertically or horizontally and routes through the appropriate gap.
+      const offset = bundleOffsets.get(wire.id);
+      const boardA = parts.find(p => p.id === fromPart.seat?.boardId);
+      const boardB = parts.find(p => p.id === toPart.seat?.boardId);
+      if (boardA && boardB) {
+        const dx = Math.abs(boardB.x - boardA.x);
+        const dy = Math.abs(boardB.y - boardA.y);
+        if (dy >= dx) {
+          // Boards stacked vertically: route through the Y gap
+          const corridorY = (boardA.y + boardB.y) / 2 + offset;
+          pathD = `M ${a.x} ${a.y} L ${a.x} ${corridorY} L ${b.x} ${corridorY} L ${b.x} ${b.y}`;
+        } else {
+          // Boards side by side: route through the X gap
+          const corridorX = (boardA.x + boardB.x) / 2 + offset;
+          pathD = `M ${a.x} ${a.y} L ${corridorX} ${a.y} L ${corridorX} ${b.y} L ${b.x} ${b.y}`;
+        }
+      } else {
+        // Fallback: straight line with offset
+        const dist = Math.hypot(b.x - a.x, b.y - a.y);
+        const nx = -(b.y - a.y) / (dist || 1), ny = (b.x - a.x) / (dist || 1);
+        pathD = `M ${a.x} ${a.y} Q ${(a.x + b.x) / 2 + nx * offset} ${(a.y + b.y) / 2 + ny * offset} ${b.x} ${b.y}`;
+      }
     } else {
+      // Single wires: jumper-style arcs with hash-derived curvature
       let h = 0;
       for (const ch of wire.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
       const dist = Math.hypot(b.x - a.x, b.y - a.y);
