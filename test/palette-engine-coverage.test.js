@@ -1,0 +1,112 @@
+// Every palette kind must have a defined path into the engine — the ratchet.
+//
+// The failure this kills: a sidecar kind that is neither stamped, nor a
+// registered device, nor aliased, nor in PASSTHROUGH_KINDS reaches
+// setNetlist RAW, the whole netlist is REJECTED, the designer board is
+// silently EMPTY, and the debug runner falls back to the inferred phantom
+// bench — the canvas shows one circuit while the emulator drives another
+// (stc15_mcu, the retro console, 2026-08-16; same family as "Blink
+// stopped blinking").
+//
+// KNOWN_GAPS documents the kinds that currently lack an engine path. It
+// may only SHRINK: fixing a kind means removing it here in the same
+// commit. Adding a kind to it requires a stated reason, not silence.
+import './_setup.js';
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+import { registerAllDevices } from '../../bw-board/src/register-all.js';
+import { getDevice } from '../../bw-board/src/devices.js';
+import { KIND_ALIASES } from '../src/model/terminal-aliases.js';
+
+registerAllDevices();
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+
+// Kinds mna.js stamps directly plus structural kinds the model filters.
+const STAMPED = new Set([
+  'vcc', 'gnd', 'resistor', 'capacitor', 'diode', 'led', 'potentiometer',
+  'button', 'switch', 'buzzer', 'ldr', 'ntc', 'npn', 'pnp', 'inductor',
+  'zener', 'nmos', 'pmos', 'opamp', 'vsource', 'isource', 'mcu',
+  'seven_segment', 'shift_register', 'ir_receiver', 'temp_sensor',
+  'eeprom', 'led_matrix', 'led_cube', 'rgb_led', 'char_lcd',
+  'breadboard', 'meter',
+]);
+
+// The debt ledger — kinds with NO engine path today. Every entry is a
+// bench that will silently break the moment an example seats it. Burn
+// this down; never let it grow.
+const KNOWN_GAPS = new Set([
+  '556', '74c922', '74hc374', '74hc688',
+  'breadboard_full', 'breadboard_half', 'breadboard_mini', 'breadboard_psu',
+  'cd4017', 'dip_switch_dpst', 'dip_switch_spst', 'function_gen',
+  'ili9341_parallel', 'ky002', 'l293d', 'lemon_battery', 'light_sensor',
+  'mc6845', 'microbit_breakout', 'multimeter', 'neopixel_jewel',
+  'neopixel_ring', 'neopixel_strip', 'nmos_power', 'ns16c550',
+  'oscilloscope', 'pmos_power', 'pololu_motor_ctrl', 'potato_battery',
+  'seven_seg_3', 'simplevga_card', 'slide_switch', 'tilevga',
+  'tilt_switch', 'tilt_switch_v2', 'tm1637', 'tms9918',
+  'ultrasonic_3pin', 'vga_prop_card',
+]);
+
+function passthroughKinds() {
+  const src = readFileSync(path.join(here, '..', 'src', 'model', 'circuit.js'), 'utf8');
+  const m = src.match(/PASSTHROUGH_KINDS = new Set\(\[([\s\S]*?)\]\)/);
+  assert.ok(m, 'PASSTHROUGH_KINDS found in circuit.js');
+  return new Set([...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]));
+}
+
+function sidecarKinds() {
+  const dir = path.join(here, '..', 'src', 'parts-data');
+  const kinds = new Set();
+  for (const f of readdirSync(dir)) {
+    if (!f.endsWith('.json')) continue;
+    try {
+      const d = JSON.parse(readFileSync(path.join(dir, f), 'utf8'));
+      if (d && d.kind) kinds.add(d.kind);
+    } catch { /* not a sidecar */ }
+  }
+  return kinds;
+}
+
+test('every palette kind reaches the engine, or is a DOCUMENTED gap', () => {
+  const listed = passthroughKinds();
+  const orphans = [];
+  for (const k of sidecarKinds()) {
+    if (STAMPED.has(k)) continue;
+    if (getDevice(k)) continue;
+    if (KIND_ALIASES[k]) continue;
+    if (listed.has(k)) continue;
+    if (KNOWN_GAPS.has(k)) continue;
+    orphans.push(k);
+  }
+  assert.deepEqual(orphans.sort(), [],
+    `these kinds reach setNetlist RAW and will EMPTY any board that seats them — ` +
+    `give each an engine device, an alias, a PASSTHROUGH entry, or (with a reason) a KNOWN_GAPS line`);
+});
+
+test('KNOWN_GAPS only shrinks: healed kinds must leave the ledger', () => {
+  const listed = passthroughKinds();
+  const healed = [...KNOWN_GAPS].filter(k =>
+    STAMPED.has(k) || getDevice(k) || KIND_ALIASES[k] || listed.has(k));
+  assert.deepEqual(healed, [],
+    `remove from KNOWN_GAPS, now covered: ${healed}`);
+});
+
+test('the console bench builds: stc15_mcu collapses to mcu, never rejects', async () => {
+  const { setEngine } = await import('../src/engine.js');
+  const eng = await import('../../bw-board/src/index.js');
+  setEngine({ BoardImpl: eng.BoardImpl, inferNetlist: eng.inferNetlist,
+    checkWiring: eng.checkWiring, hasDevice: eng.hasDevice });
+  const { Circuit } = await import('../src/model/circuit.js');
+  const c = new Circuit();
+  c.addPart('stc15_mcu');
+  c.addPart('vcc');
+  c.addPart('gnd');
+  c._syncNetlist();
+  assert.equal(c.netlistError, null,
+    `an MCU-class palette kind must never reject the netlist: ${c.netlistError}`);
+});
