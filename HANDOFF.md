@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 987/0/3 (CI clean). Pendant Playwright test (test:render suite).
+npm test 1005/0/3 (CI clean). Pendant Playwright test (test:render suite).
 Parts-data index regenerated: 146 → 213 sidecar entries.
 Lite push freeze in effect — batching lite forwards until coordinator lifts.
 VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
@@ -156,6 +156,12 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **AsmDebugPanel** (79cdde6): glass-box assembler debug view. Three tabs:
+  token stream (colour-coded, hover→source), symbol table (pass-1 vs pass-2,
+  unresolved→resolved highlighted), listing (addr + bytes + source). Accepts
+  {tokens, passes, listing} from stc-compiler /assemble. Exported from
+  index.js. 9 structural tests. Concept ref: EightBitCPUSim (GPL, nothing
+  copied). Ready to wire when coordinator lands the stages payload.
 - **Cross-board wire bundling** (80ce30f): wires spanning two different
   boards grouped by (boardA, boardB) pair, routed as parallel straight
   paths through the gap (4px spacing). Adapts to vertical/horizontal
