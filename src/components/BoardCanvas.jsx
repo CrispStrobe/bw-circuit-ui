@@ -1536,20 +1536,31 @@ export function BoardCanvas({
   React.useEffect(() => {
     if (parts.length === 0 || parts.length === prevPartCount.current) return;
     prevPartCount.current = parts.length;
-    // Calculate bounding box of all parts
+    // Bounding box from REAL part bounds. The old center±80 guess
+    // undershot a full breadboard by ~385px per side (the body is 930
+    // wide), so multi-board benches auto-fit with their left edges
+    // CLIPPED off-screen (owner's 6502 screenshots; confirmed in a
+    // self-taken screenshot the same day).
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const p of parts) {
-      minX = Math.min(minX, p.x - 80);
-      maxX = Math.max(maxX, p.x + 80);
-      minY = Math.min(minY, p.y - 60);
-      maxY = Math.max(maxY, p.y + 60);
+      const b = partBounds(p);
+      minX = Math.min(minX, b.minX);
+      maxX = Math.max(maxX, b.maxX);
+      minY = Math.min(minY, b.minY - (p.kind === 'vcc' || p.kind === 'gnd' ? 20 : 0));
+      maxY = Math.max(maxY, b.maxY);
     }
     const contentW = maxX - minX + 40;
     const contentH = maxY - minY + 40;
     if (contentW <= 0 || contentH <= 0) return;
     const fitZoom = Math.min(1.5, Math.min(CANVAS_W / contentW, CANVAS_H / contentH));
-    setZoom(Math.max(0.3, Math.min(1, fitZoom)));
-    setPan({ x: minX - 20, y: minY - 20 });
+    const z = Math.max(0.3, Math.min(1, fitZoom));
+    setZoom(z);
+    // Center the content in the viewport instead of pinning it top-left.
+    const viewW = CANVAS_W / z, viewH = CANVAS_H / z;
+    setPan({
+      x: minX - 20 - Math.max(0, (viewW - contentW) / 2),
+      y: minY - 20 - Math.max(0, (viewH - contentH) / 2),
+    });
   }, [parts.length]);
   const [panning, setPanning] = useState(false);
   const panStart = React.useRef(null);
