@@ -1230,7 +1230,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
             <div style={seated ? { transform: 'scale(0.78)', transformOrigin: '50% 50%' } : undefined}>
-            <WokwiLed color={params.color || 'red'} brightness={b} value={isOn} flip={flip || undefined} />
+            <WokwiLed color={(params && params.color) || 'red'} brightness={b} value={isOn} flip={flip || undefined} />
             </div>
             <div style={{
               textAlign: 'center',
@@ -1314,7 +1314,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             onMouseUp={() => { if (simulate) onButtonUp(id); }}
             onMouseLeave={() => { if (simulate) onButtonUp(id); }}
             onContextMenu={simulate ? (e) => e.preventDefault() : undefined}>
-            <WokwiPushbutton color={params.color || 'red'} />
+            <WokwiPushbutton color={(params && params.color) || 'red'} />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
             </div>

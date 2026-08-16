@@ -59,3 +59,21 @@ test('old friendly spellings migrate: a saved vcc/vo/bl_a wire still lands', asy
   c._syncNetlist();
   assert.equal(c.netlistError, null, `old spellings must not reject: ${c.netlistError}`);
 });
+
+test('fromJSON guarantees a params object on every part', async () => {
+  const { Circuit } = await import('../src/model/circuit.js');
+  const c = Circuit.fromJSON({
+    vcc: 5,
+    parts: [
+      { id: 'b1', kind: 'button' },
+      { id: 'd1', kind: 'led', params: null },
+      { id: 'r1', kind: 'resistor', params: { ohms: 220 } },
+    ],
+    wires: [], holeWires: [],
+  });
+  for (const p of c.parts) {
+    assert.equal(typeof p.params, 'object');
+    assert.ok(p.params !== null, `${p.id} params is an object, not null`);
+  }
+  assert.equal(c.parts[2].params.ohms, 220, 'existing params survive');
+});

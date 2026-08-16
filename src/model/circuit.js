@@ -892,6 +892,14 @@ export class Circuit {
       return {
         ...p,
         kind,
+        // The THIRD way a params-less part crashed the app: the engine's
+        // validateNetlist was the first (bw-board 355547e), terminals the
+        // second, and the renderer's bare `params.color` reads the third
+        // (eater6502-full-build, 2026-08-17 — button and LED faces map
+        // over parts and a missing object took the whole app down).
+        // Guarantee the object here, at the one choke point every load
+        // shares, so no downstream reader needs to re-learn this.
+        params: (p.params && typeof p.params === 'object') ? p.params : {},
         rotation: p.rotation ?? 0,
         terminals: Array.isArray(p.terminals) ? p.terminals : terminalsForKind(kind, p.params || {}),
       };
