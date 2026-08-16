@@ -675,15 +675,26 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     advanceBy(1n * MS);
   }, [setControl, advanceBy, externalBoard]);
 
+  // Buttons follow the same one-board-one-truth WRITE rule as the pot
+  // above. They didn't, and it was the last link in the pendant chain
+  // (owner report 2026-08-16): with the debugger driving an external
+  // board, a press reached only the idle internal board — the firmware
+  // polled a pin the press never touched, on every target kind.
   const handleButtonDown = useCallback((partId) => {
     setControl(partId, 1);
+    if (externalBoard && externalBoard.setControl) {
+      try { externalBoard.setControl(partId, 1); } catch { /* board mid-rebuild */ }
+    }
     advanceBy(1n * MS);
-  }, [setControl, advanceBy]);
+  }, [setControl, advanceBy, externalBoard]);
 
   const handleButtonUp = useCallback((partId) => {
     setControl(partId, 0);
+    if (externalBoard && externalBoard.setControl) {
+      try { externalBoard.setControl(partId, 0); } catch { /* board mid-rebuild */ }
+    }
     advanceBy(1n * MS);
-  }, [setControl, advanceBy]);
+  }, [setControl, advanceBy, externalBoard]);
 
   const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
     loadInferred(inferredParts, inferredNets);
