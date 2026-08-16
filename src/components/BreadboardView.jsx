@@ -177,26 +177,16 @@ function HoleGrid({ part, model, highlightStrip, highlightFn }) {
   return <>{holes}</>;
 }
 
-// ── Jumper wires ──────────────────────────────────────────────────
-
-function Jumpers({ part, model }) {
-  if (!model) return null;
-  const wires = [];
-  for (const [wireId, w] of model.wires) {
-    const a = holeWorldPos(part, w.a);
-    const b = holeWorldPos(part, w.b);
-    const color = w.color || '#333';
-    wires.push(
-      <g key={wireId}>
-        <line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-          stroke={color} strokeWidth={3} strokeLinecap="round" opacity={0.85} />
-        <circle cx={a.x} cy={a.y} r={2.5} fill={color} />
-        <circle cx={b.x} cy={b.y} r={2.5} fill={color} />
-      </g>
-    );
-  }
-  return <>{wires}</>;
-}
+// ── Jumper wires: DELIBERATELY NOT RENDERED HERE ─────────────────
+//
+// BoardCanvas's jumper layer is the ONE renderer for board-model wires
+// (staple routing, selection, correct z above the parts). A second,
+// straight-line renderer lived here and was removed on 2026-08-16 —
+// and then CAME BACK in a rebase, and every jumper drew twice again:
+// once bent (canvas layer), once straight (this one), the owner's
+// "each wire rendered TWICE" report, twice over. Do not reintroduce a
+// wire renderer in this file; test/single-jumper-renderer.test.js
+// fails the suite if one appears.
 
 // ── Placed parts ──────────────────────────────────────────────────
 
@@ -274,7 +264,6 @@ export function BreadboardView({ part, model, highlightStrip, footprint, selecte
       <BoardBg part={part} footprint={footprint} />
       <HoleGrid part={part} model={model} highlightStrip={highlightStrip}
         highlightFn={hasHighlight ? effectiveHighlight : null} />
-      {model && <Jumpers part={part} model={model} />}
       {model && <PlacedParts part={part} model={model} />}
     </g>
   );
