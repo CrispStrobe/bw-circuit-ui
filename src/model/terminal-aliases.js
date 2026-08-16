@@ -106,6 +106,16 @@ export function resolveTerminal(kind, terminalName, currentTerminals) {
     if (currentTerminals.includes(resolved)) return resolved;
   }
 
+  // Case-insensitive fallback, unique match only: authors and programs
+  // write PB0 the way the datasheet does, sidecars name the terminal
+  // pb0. Swapping the blinkenrocket pendant's controller from the
+  // generic mcu to the device-true attiny88 kind silently killed every
+  // wire over exactly this (2026-08-16). Unique-match-only keeps the
+  // "wrong terminal" guarantee: an ambiguous casing still refuses.
+  const lower = String(terminalName).toLowerCase();
+  const ciMatches = currentTerminals.filter(t => String(t).toLowerCase() === lower);
+  if (ciMatches.length === 1) return ciMatches[0];
+
   // No resolution — return as-is (the wire won't connect, which is
   // better than silently connecting to the wrong terminal)
   return terminalName;
