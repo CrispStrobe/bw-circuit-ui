@@ -2534,15 +2534,22 @@ export function BoardCanvas({
         data-canvas
         style={{
           position: 'relative',
-          flex: '0 0 auto',
-          width: 'max(100%, 900px)',
-          minWidth: CANVAS_W,
-          height: 'max(100%, 650px)',
-          minHeight: CANVAS_H,
+          // A true flex child. The old 'max(100%, 900px)' floor demanded
+          // more width than the row could give beside the 190px rail, so
+          // the container slid UNDER the rail (87px of every bench hidden
+          // behind an opaque panel — measured with elementsFromPoint) and
+          // grew scrollbars on small windows. The viewBox + measured-fit
+          // pipeline adapts to ANY container size now; the floors were
+          // pre-responsive crutches.
+          flex: '1 1 auto',
+          width: 'auto',
+          minWidth: 0,
+          height: '100%',
+          minHeight: 0,
           background: '#16213e',
           borderRadius: '8px',
           border: '1px solid #2c3e50',
-          overflow: 'visible',
+          overflow: 'hidden',
           touchAction: 'none',
         }}
         onPointerDown={handlePointerDown}
