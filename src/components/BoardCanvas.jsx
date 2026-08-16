@@ -453,8 +453,13 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         const S = 4; // dot size
         const G = 6; // grid spacing
         const W = 8 * G;
+        // Seated, the module spans its 8 pin columns (7 gaps × hole
+        // pitch); the fixed 48-unit art floated as a small tile beside
+        // a wider ghost footprint (owner screenshot). Scale the body to
+        // the pin raster so the display SITS on its pins like the DIPs.
+        const seatK = part.seat ? (7 * BB_PITCH) / W : 1;
         return (
-          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+          <g key={id} transform={xform + (seatK !== 1 ? ` scale(${seatK.toFixed(3)})` : '')} onClick={handleClick} style={{ cursor: 'pointer' }}>
             <rect x={-W/2 - 3} y={-W/2 - 3} width={W + 6} height={W + 6} rx={3}
               fill="#111" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
             {Array.from({ length: 64 }, (_, i) => {
@@ -1856,10 +1861,20 @@ export function BoardCanvas({
     if (pressedPart && pressedPart.kind === 'button' && apiRef.current.onButtonDown) {
       pressedButtonRef.current = pid;
       apiRef.current.onButtonDown(pid);
+      // While the SIMULATION runs, a click on a button IS the button
+      // press — full stop. Falling through to the interaction machine
+      // selected the part and opened the rotate/context UI mid-run
+      // (owner: "single click shows the context menu even in sim
+      // mode"), and you cannot play a game like that. Edit mode keeps
+      // the old behavior: press AND select/drag.
+      if (simulate) {
+        try { canvasContainerRef.current.setPointerCapture(e.pointerId); } catch { /* non-browser env */ }
+        return;
+      }
     }
     try { canvasContainerRef.current.setPointerCapture(e.pointerId); } catch { /* non-browser env */ }
     m.down(x, y, { shiftKey: e.shiftKey });
-  }, [eventToWorld]);
+  }, [eventToWorld, simulate]);
 
   const handlePointerMove = useCallback((e) => {
     if (panning && panStart.current) {
@@ -1887,13 +1902,17 @@ export function BoardCanvas({
     const wid = m.hit.wireAt(x, y, 8 / zoomRef.current);
     const hoverWire = wid ? wiresRef.current.find(w => w.id === wid) : null;
     setHoveredNet(hoverWire ? hoverWire.netId : null);
-  }, [panning, eventToWorld]);
+  }, [panning, eventToWorld, simulate]);
 
   const handlePointerUp = useCallback((e) => {
     if (panning) { setPanning(false); panStart.current = null; return; }
     if (pressedButtonRef.current) {
       if (apiRef.current.onButtonUp) apiRef.current.onButtonUp(pressedButtonRef.current);
       pressedButtonRef.current = null;
+      // Sim-mode presses never entered the interaction machine on the
+      // way down — an up() on an idle machine reads as a click and
+      // re-opens the selection UI the early-return just avoided.
+      if (simulate) return;
     }
     if (draggingWaypointRef.current) {
       setDraggingWaypoint(null);
@@ -2629,20 +2648,50 @@ export function BoardCanvas({
             </g>
           ))}
 
-          {/* Jumper wires: colored arcs hole-to-hole */}
-          {circuit && circuit.holeWires && circuit.holeWires().map(jw => {
+          {/* Jumper wires. Short hops keep a small arc; LONG jumpers
+              route as STAPLES — down into a lane, flat across, up to the
+              far hole — the way real hookup wire lies on a board. The
+              old 25%-of-distance arc lift turned a seated build's 24
+              jumpers into a second hairball (owner screenshot: "double
+              wirings, straight and bent"). Lanes: above row a for
+              top-block runs, below row j for bottom-block, the center
+              gutter for mixed; a per-jumper offset separates parallel
+              runs in the same lane. */}
+          {circuit && circuit.holeWires && circuit.holeWires().map((jw, jwIdx) => {
             const bb = parts.find(q => q.id === jw.boardId);
             if (!bb) return null;
             const a = holeWorldPos(bb, jw.a), b = holeWorldPos(bb, jw.b);
             if (!a || !b) return null;
-            const lift = Math.max(18, Math.hypot(b.x - a.x, b.y - a.y) * 0.25);
-            const midY = Math.min(a.y, b.y) - lift;
             const isSel = selectedWire === jw.ref;
+            const color = isSel ? '#f1c40f' : (jw.color || '#e67e22');
+            const width = isSel ? 4 : 3;
+            let path;
+            if (Math.abs(b.x - a.x) <= 4 * BB_PITCH) {
+              const lift = Math.max(12, Math.hypot(b.x - a.x, b.y - a.y) * 0.2);
+              const midY = Math.min(a.y, b.y) - lift;
+              path = `M ${a.x} ${a.y} Q ${(a.x + b.x) / 2} ${midY} ${b.x} ${b.y}`;
+            } else {
+              const o = bbHoleOrigin(bb);
+              const topBlock = (y) => y < (o.topRowsY + o.bottomRowsY) / 2;
+              const offset = (jwIdx % 4) * 4;
+              let laneY;
+              if (topBlock(a.y) && topBlock(b.y)) laneY = o.topRowsY - 12 - offset;
+              else if (!topBlock(a.y) && !topBlock(b.y)) laneY = o.bottomRowsY + 4 * BB_PITCH + 12 + offset;
+              else laneY = (o.topRowsY + 4 * BB_PITCH + o.bottomRowsY) / 2 + (offset - 6);
+              const r = 6; // corner radius
+              const dirA = laneY < a.y ? -1 : 1;
+              const dirB = laneY < b.y ? 1 : -1;
+              const sx = a.x < b.x ? 1 : -1;
+              path = `M ${a.x} ${a.y} L ${a.x} ${laneY + r * -dirA}`
+                + ` Q ${a.x} ${laneY} ${a.x + r * sx} ${laneY}`
+                + ` L ${b.x - r * sx} ${laneY}`
+                + ` Q ${b.x} ${laneY} ${b.x} ${laneY + r * dirB}`
+                + ` L ${b.x} ${b.y}`;
+            }
             return (
               <g key={jw.ref} data-jumper={jw.ref} style={{ pointerEvents: 'none' }}>
-                <path d={`M ${a.x} ${a.y} Q ${(a.x + b.x) / 2} ${midY} ${b.x} ${b.y}`}
-                  fill="none" stroke={isSel ? '#f1c40f' : (jw.color || '#e67e22')}
-                  strokeWidth={isSel ? 4 : 3} strokeLinecap="round" />
+                <path d={path} fill="none" stroke={color}
+                  strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />
                 <circle cx={a.x} cy={a.y} r={3} fill={jw.color || '#e67e22'} />
                 <circle cx={b.x} cy={b.y} r={3} fill={jw.color || '#e67e22'} />
               </g>
