@@ -1374,6 +1374,64 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                 )}
               </div>
             )}
+            {/* Machine Loader — visible after successful Build Machine */}
+            {machineResult && machineResult.ok && (() => {
+              const kind = machineResult.kind === '6502' ? 'eater6502' : machineResult.kind === 'z80' ? 'z80' : null;
+              const presets = kind === 'eater6502' ? [
+                { id: 'forth', label: 'Tali Forth 2', rom: 'taliforth-py65mon.bin', hint: 'Interactive Forth — type at the ok prompt' },
+                { id: 'basic', label: '6502 BASIC', rom: 'basic.rom', hint: 'MS BASIC (Woz monitor)' },
+              ] : kind === 'z80' ? [
+                { id: 'bbcbasic', label: 'BBC BASIC', rom: 'bbcbasic.com', hint: 'R.T. Russell — type at the > prompt' },
+              ] : [];
+              const dispatchLoad = (slotId, bytes) => {
+                window.dispatchEvent(new CustomEvent('bw-machine-media-load', {
+                  detail: { slotId, bytes, kind },
+                }));
+              };
+              const loadPreset = async (p) => {
+                try {
+                  const url = new URL(`static/roms/${p.rom}`, document.baseURI).href;
+                  const res = await fetch(url);
+                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                  const bytes = new Uint8Array(await res.arrayBuffer());
+                  dispatchLoad(p.id === 'bbcbasic' ? 'com' : 'rom', bytes);
+                } catch (e) {
+                  console.warn('preset load failed:', e);
+                }
+              };
+              const loadFile = async (file) => {
+                const bytes = new Uint8Array(await file.arrayBuffer());
+                dispatchLoad('rom', bytes);
+              };
+              return (
+                <div style={{marginTop: 8, padding: 6, borderRadius: 4, background: '#1e293b', border: '1px solid #334155'}}>
+                  <div style={{fontSize: 10, color: '#94a3b8', fontWeight: 600, marginBottom: 4}}>
+                    Load onto machine
+                  </div>
+                  <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
+                    {presets.map(p => (
+                      <button key={p.id} onClick={() => loadPreset(p)} title={p.hint}
+                        style={{padding: '4px 8px', cursor: 'pointer', fontSize: 10,
+                          background: '#0f172a', border: '1px solid #475569', borderRadius: 3,
+                          color: '#93c5fd', fontFamily: 'monospace', textAlign: 'left'}}>
+                        📀 {p.label}
+                      </button>
+                    ))}
+                    <label style={{padding: '4px 8px', cursor: 'pointer', fontSize: 10,
+                      background: '#0f172a', border: '1px solid #475569', borderRadius: 3,
+                      color: '#a5b4fc', fontFamily: 'monospace'}}>
+                      📁 Load .hex / .bin file…
+                      <input type="file" accept=".hex,.ihx,.bin,.rom,.com"
+                        style={{display: 'none'}}
+                        onChange={e => { if (e.target.files[0]) loadFile(e.target.files[0]); }} />
+                    </label>
+                    <div style={{fontSize: 9, color: '#64748b', marginTop: 2}}>
+                      …or write ASM in the Code tab and Assemble &amp; Run
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </section>
         )}
         {mode === 'simulate' && (
