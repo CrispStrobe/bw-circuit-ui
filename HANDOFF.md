@@ -1,6 +1,6 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 1023/0/3 (CI clean). Pendant Playwright test (test:render suite).
+npm test 1027/0/3 (CI clean). Pendant Playwright test (test:render suite).
 Parts-data index regenerated: 146 → 213 sidecar entries.
 Lite push freeze in effect — batching lite forwards until coordinator lifts.
 VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
@@ -156,12 +156,14 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **MediaPanel eeprom slot** (d5aaa65): accepts parts + board props, forwards
+  to describeMedia({parts}) for dynamic AT24C64 slot discovery. Shows byte
+  count after load. bw-board 1f7a308 adds eeprom slot to machine-media.js
+  (describeMedia dynamic + applyMedia via board.setPartParam). 18 tests.
 - **MediaPanel** (32d8a58): ROM/software loader. Per-slot drop targets from
   describeMedia shape (label, accept, at, hint). Bundle .zip drop unpacks
   brickwright-media.json manifest via dynamic JSZip, feeds one applyMedia
   call. Returns null for MCU kinds. Same pane family as AsmDebugPanel.
-  14 structural tests. Exported from index.js. Waiting on bw-board cc479b7
-  to land locally for live wiring.
 - **AsmDebugPanel wired to live service** (94062e3): verified against
   stc-compiler /assemble debug=true. Listing tab now handles raw string
   format (actual backend output). TOKEN_COLORS adds 'identifier' type.
