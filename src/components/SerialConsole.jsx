@@ -16,7 +16,7 @@ import { t } from '../i18n/strings.js';
 const MAX_LINES = 200;
 const MAX_LINE_LEN = 80;
 
-export function SerialConsole({ onSerialFn, sendSerialFn, lang = 'en' }) {
+export function SerialConsole({ onSerialFn, sendSerialFn, newline = 0x0d, lang = 'en' }) {
   const [lines, setLines] = useState(['']);
   const [focused, setFocused] = useState(false);
   const wrapRef = useRef(null);
@@ -60,7 +60,7 @@ export function SerialConsole({ onSerialFn, sendSerialFn, lang = 'en' }) {
   // Keyboard → RX
   const handleKeyDown = useCallback((e) => {
     if (typeof sendSerialFn !== 'function') return;
-    if (e.key === 'Enter') { sendSerialFn(0x0d); e.preventDefault(); }
+    if (e.key === 'Enter') { sendSerialFn(newline); e.preventDefault(); }
     else if (e.key === 'Backspace') { sendSerialFn(0x08); e.preventDefault(); }
     else if (e.key.length === 1) { sendSerialFn(e.key.charCodeAt(0)); e.preventDefault(); }
   }, [sendSerialFn]);

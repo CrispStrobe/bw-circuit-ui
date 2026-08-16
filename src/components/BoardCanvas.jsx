@@ -87,6 +87,7 @@ function mcuChipInfo(device) {
   if (/arduino.?mega/.test(d)) return { label: 'Arduino Mega', pkg: 'Board' };
   if (/arduino.?nano/.test(d)) return { label: 'Arduino Nano', pkg: 'Board' };
   if (/arduino.?uno/.test(d)) return { label: 'Arduino Uno', pkg: 'Board' };
+  if (/gpascal/.test(d)) return { label: 'G-Pascal', pkg: '6502+VIA' };
   if (/eater.?6502/.test(d)) return { label: 'Eater 6502', pkg: 'Breadboard' };
   if (/micro.?bit/.test(d)) return { label: 'micro:bit', pkg: 'Board' };
   if (/w65c02/.test(d)) return { label: 'W65C02S', pkg: 'DIP-40' };

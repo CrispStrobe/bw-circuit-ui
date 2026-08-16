@@ -1208,7 +1208,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             <div style={{fontSize: 11, fontWeight: 600, color: '#e2e8f0', marginBottom: 4, fontFamily: 'monospace'}}>
               {t('serialConsole', lang)}
             </div>
-            <SerialConsole onSerialFn={debugState.onSerial} sendSerialFn={debugState.sendSerial} lang={lang} />
+            <SerialConsole onSerialFn={debugState.onSerial} sendSerialFn={debugState.sendSerial}
+              newline={debugState.serialNewline || 0x0d} lang={lang} />
           </section>
         )}
         {/* Framebuffer face — 1bpp monochrome video from machine chips */}

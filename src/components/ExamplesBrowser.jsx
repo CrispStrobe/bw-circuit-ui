@@ -473,7 +473,7 @@ const DEVICE_LABELS = {
   'arduino-uno': 'Uno', 'arduino-nano': 'Nano', 'arduino-mega': 'Mega',
   pico: 'Pico', attiny85: 'ATtiny85', attiny88: 'ATtiny88',
   atmega168p: 'ATmega168P', atmega328p: 'ATmega328P', atmega2560: 'ATmega2560',
-  eater6502: '6502 Breadboard', z80: 'Z80', microbit: 'micro:bit',
+  eater6502: '6502 Breadboard', gpascal: 'G-Pascal', z80: 'Z80', microbit: 'micro:bit',
 };
 
 function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason }) {
