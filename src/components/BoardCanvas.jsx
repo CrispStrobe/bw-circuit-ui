@@ -288,7 +288,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           const pinsPerSide = Math.ceil(sc.terminals.length / 2);
           const bodyW = (pinsPerSide - 1) * DIP_PIN_PITCH + 20, bodyH = 52;
           return (
-            <g key={id} transform={xform} pointerEvents="none">
+            <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
               <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={5}
                 fill="#1a1a1a" stroke={selStroke || '#444'} strokeWidth={isSelected ? 3 : 1.5} />
               {/* Notch at left end — pin-1-bottom convention */}
@@ -333,7 +333,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         const legW = 3;
         return (
           <g key={id} transform={xform}
-            pointerEvents="none"
+            onClick={handleClick}
             style={{ cursor: 'pointer' }}>
             {/* Chip body — black DIP package */}
             <rect x={-chipW / 2} y={chipY} width={chipW} height={chipH} rx={3}
@@ -1301,13 +1301,19 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         );
       }
       case 'button':
+        // Sim mode: pointer events ON so press/release fires the engine
+        // pin edge. Build mode: pointer events OFF so the breadboard
+        // drag-select layer handles interaction.
         return (
           <div key={id}
-            style={{ ...baseStyle, left: x - 18, top: y - 18, cursor: 'move', pointerEvents: 'none' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
-            onMouseDown={(e) => { e.stopPropagation(); onButtonDown(id); }}
-            onMouseUp={() => onButtonUp(id)}
-            onMouseLeave={() => onButtonUp(id)}>
+            style={{ ...baseStyle, left: x - 18, top: y - 18,
+              cursor: simulate ? 'pointer' : 'move',
+              pointerEvents: simulate ? 'auto' : 'none' }}
+            onClick={simulate ? (e) => { e.stopPropagation(); } : (e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onMouseDown={(e) => { e.stopPropagation(); if (simulate) onButtonDown(id); else onDragStart(id); }}
+            onMouseUp={() => { if (simulate) onButtonUp(id); }}
+            onMouseLeave={() => { if (simulate) onButtonUp(id); }}
+            onContextMenu={simulate ? (e) => e.preventDefault() : undefined}>
             <WokwiPushbutton color={params.color || 'red'} />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
@@ -1675,7 +1681,7 @@ export function BoardCanvas({
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit, engineBoard, fitToken, sevenSegments,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
-  onSaveCircuit, onLoadCircuit, onRewire,
+  onSaveCircuit, onLoadCircuit, onClearCircuit, onRewire,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
@@ -2672,6 +2678,7 @@ export function BoardCanvas({
           {toolbarMoreOpen && <div data-toolbar-more-menu style={{position: 'absolute', zIndex: 80, top: 40, right: 0, display: 'flex', gap: 4, alignItems: 'center', padding: 4, background: '#0f172a', border: '1px solid #64748b', borderRadius: 5, boxShadow: '0 3px 10px rgba(0,0,0,.35)'}}>
             {onSaveCircuit && <button onClick={onSaveCircuit} title="Save wiring as file" aria-label="Save wiring as file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: 3, color: '#2ecc71', fontSize: 14, cursor: 'pointer'}}>💾</button>}
             {onLoadCircuit && <button onClick={onLoadCircuit} title="Load wiring from file" aria-label="Load wiring from file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: 3, color: '#3498db', fontSize: 14, cursor: 'pointer'}}>📂</button>}
+            {onClearCircuit && <button onClick={() => { onClearCircuit(); setToolbarMoreOpen(false); }} title={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} aria-label={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: 3, color: '#e74c3c', fontSize: 14, cursor: 'pointer'}}>🗑</button>}
             <span data-zoom-indicator title="Canvas zoom" style={{height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
           </div>}
         </div>

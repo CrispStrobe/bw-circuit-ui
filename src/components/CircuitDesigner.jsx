@@ -737,6 +737,23 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     setMode('build');
   }, [loadInferred]);
 
+  // Clear everything: wipe parts/wires/boards/annotations, save history
+  // so Ctrl+Z recovers, and clear the autosave slot deliberately.
+  const handleClear = useCallback(() => {
+    circuit._saveHistory();
+    circuit.parts.length = 0;
+    circuit.wires.length = 0;
+    circuit.breadboards = new Map();
+    circuit._syncNetlist();
+    setAnnotations([]);
+    setSelectedParts(new Set());
+    setSelectedWire(null);
+    setMode('build');
+    fileLoadedRef.current = false;
+    try { localStorage.removeItem('bw-circuit-autosave'); } catch { /* ok */ }
+    try { localStorage.removeItem('bw-circuit-file-loaded'); } catch { /* ok */ }
+  }, [circuit]);
+
   // Save circuit to JSON file download
   const handleSave = useCallback(() => {
     const json = JSON.stringify(circuit.toJSON(), null, 2);
@@ -1172,6 +1189,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onRedo={handleRedo}
           onSelectAll={handleSelectAll}
           onSaveCircuit={handleSave}
+          onClearCircuit={handleClear}
           onLoadCircuit={() => {
             const input = document.createElement('input');
             input.type = 'file';
@@ -1269,14 +1287,19 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
         }}>›</button>
-        <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 34, boxSizing: 'border-box'}}>
+        <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 36, padding: '36px 6px 6px', boxSizing: 'border-box'}}>
         {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins).
             The FACES below gate on capability, not on pins: a machine-class
             bench (6502/Z80) has no PIN concept, yet its booted machine has
             video/serial/registers. Gating faces on hasMcuPins kept the
             VdpScreen dark on a booted VDP machine (deploy probe, 2026-08-16).
             "Capabilities decide what is offered — never an assumption." */}
-        {hasMcuPins && debugState && (
+        {/* DebugStatus/step controls mount when the runner is active —
+            either via MCU pins (STC/Arduino) or via machine-class runner
+            (6502/Z80). The gate is debugState presence, not hasMcuPins:
+            a machine bench has no PIN concept but its runner provides
+            step/stepOver/registers. (widened per 57617b3 principle) */}
+        {debugState && (
           <DebugStatus
             debugState={debugState}
             capabilities={debugState.capabilities || null}
@@ -1312,7 +1335,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {debugState && typeof debugState.regs === 'function' && (
           <ArchitectureFace debugState={debugState} lang={lang} />
         )}
-        {hasMcuPins && debuggerPanel && (
+        {(hasMcuPins || debugState) && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
             borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>
@@ -1331,7 +1354,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         ) && (
           <div data-no-code-indicator style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
             background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
-            fontSize: 12, lineHeight: 1.35}}>
+            fontSize: 12, lineHeight: 1.35, marginTop: 4}}>
             <strong>{/^de/i.test(lang) ? 'Debugger inaktiv' : 'Debugger inactive'}</strong>
             <div>{/^de/i.test(lang)
               ? 'Noch keine Programm-Pins deklariert. Füge eine PIN-Deklaration in den Blöcken hinzu, um Ausführen und Einzelschritt zu aktivieren.'
@@ -1341,7 +1364,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {debuggerOn && hasRetroCpu && (!stc || !stc.pins || !stc.pins.length) && (
           <div data-machine-hint style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
             background: '#eff6ff', border: '1px solid #93c5fd', color: '#1e40af',
-            fontSize: 12, lineHeight: 1.35}}>
+            fontSize: 12, lineHeight: 1.35, marginTop: 4}}>
             <strong>{/^de/i.test(lang) ? 'Maschinen-Werkbank' : 'Machine bench'}</strong>
             <div>{/^de/i.test(lang)
               ? 'Dieser Rechner hat keine Pins — er hat einen Bus. „Build Machine" bootet ihn aus der Verdrahtung; das Programm kommt aus dem ASM-Tab.'
