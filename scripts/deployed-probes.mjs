@@ -271,6 +271,8 @@ await step('probe 3: Blinkenrocket pendant', async () => {
 
   await loadExample('Blinkenrocket');
 
+  await page.screenshot({ path: '/tmp/probe-pendant-matrix.png' });
+
   // 3a. Engine should be ATtiny88 — chip label must read "ATtiny88".
   const chipLabel = await page.evaluate(() => {
     const texts = [...document.querySelectorAll('svg text')];
@@ -353,6 +355,134 @@ await step('probe 3: Blinkenrocket pendant', async () => {
       : fail(`pendant: readPin('PC3') = ${btnResult.pinVal}, expected 1`);
   }
 });
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PROBE 5: 05-counter-7seg — seven-segment values must change over time
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+await step('probe 5: counter 7-seg', async () => {
+  // Reload for a clean circuit.
+  await page.goto(PROOF_URL + (PROOF_URL.includes('?') ? '&' : '?') + 'v=' + Date.now(), {
+    waitUntil: 'networkidle', timeout: TIMEOUT,
+  });
+  try {
+    await page.getByText('Circuit', { exact: false }).first().click({ timeout: 15_000 });
+    await page.waitForTimeout(3000);
+  } catch { /* standalone */ }
+
+  await loadExample('Counter');
+
+  // Enter Sim mode so the engine runs.
+  try {
+    const simBtn = page.locator('button', { hasText: /Sim/i }).first();
+    if (await simBtn.isVisible().catch(() => false)) {
+      await simBtn.click();
+      await page.waitForTimeout(1500);
+    }
+  } catch { /* might already be in Sim */ }
+
+  // Sample 1: read all WokwiSevenSegment values via their segment attributes.
+  const sample1 = await page.evaluate(() => {
+    const segs = document.querySelectorAll('wokwi-7segment');
+    if (segs.length === 0) return null;
+    return [...segs].map(el => {
+      // Read the values prop or the element's displayed segments.
+      const vals = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp']
+        .map(s => el.getAttribute(s) || el[s] || '0');
+      return vals.join(',');
+    }).join('|');
+  });
+
+  await page.screenshot({ path: '/tmp/probe-counter-7seg-t0.png' });
+
+  // Wait 1 second for the counter to advance.
+  await page.waitForTimeout(1200);
+
+  const sample2 = await page.evaluate(() => {
+    const segs = document.querySelectorAll('wokwi-7segment');
+    if (segs.length === 0) return null;
+    return [...segs].map(el => {
+      const vals = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp']
+        .map(s => el.getAttribute(s) || el[s] || '0');
+      return vals.join(',');
+    }).join('|');
+  });
+
+  await page.screenshot({ path: '/tmp/probe-counter-7seg-t1.png' });
+
+  if (sample1 === null || sample2 === null) {
+    fail('counter 7-seg: no wokwi-7segment elements found');
+  } else if (sample1 !== sample2) {
+    pass(`counter 7-seg: segments changed ("${sample1.slice(0, 40)}" → "${sample2.slice(0, 40)}")`);
+  } else {
+    fail(`counter 7-seg: segments unchanged after 1s ("${sample1.slice(0, 60)}")`);
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PROBE 6: eater6502-vdp-hello — VdpScreen canvas must be non-blank
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+await step('probe 6: eater6502 VDP hello', async () => {
+  // Reload for a clean circuit.
+  await page.goto(PROOF_URL + (PROOF_URL.includes('?') ? '&' : '?') + 'v=' + Date.now(), {
+    waitUntil: 'networkidle', timeout: TIMEOUT,
+  });
+  try {
+    await page.getByText('Circuit', { exact: false }).first().click({ timeout: 15_000 });
+    await page.waitForTimeout(3000);
+  } catch { /* standalone */ }
+
+  await loadExample('Eater 6502');
+
+  // Enter Sim mode.
+  try {
+    const simBtn = page.locator('button', { hasText: /Sim/i }).first();
+    if (await simBtn.isVisible().catch(() => false)) {
+      await simBtn.click();
+      await page.waitForTimeout(2000);
+    }
+  } catch { /* might already be in Sim */ }
+
+  // Let the 6502 execute for a few seconds to fill the VDP framebuffer.
+  await page.waitForTimeout(3000);
+
+  // Check the VdpScreen canvas for non-blank content.
+  const vdpResult = await page.evaluate(() => {
+    // VdpScreen renders a <canvas> — find it.
+    const canvases = document.querySelectorAll('canvas');
+    for (const cv of canvases) {
+      // Skip scope canvases (they have data-scope parents).
+      if (cv.closest('[data-scope-panel]') || cv.closest('[data-scope-module]')) continue;
+      // Skip tiny canvases (wokwi elements, etc.)
+      if (cv.width < 64 || cv.height < 48) continue;
+      const ctx = cv.getContext('2d');
+      if (!ctx) continue;
+      const img = ctx.getImageData(0, 0, cv.width, cv.height);
+      // Count non-black pixels.
+      let nonBlack = 0;
+      for (let i = 0; i < img.data.length; i += 4) {
+        if (img.data[i] > 10 || img.data[i + 1] > 10 || img.data[i + 2] > 10) nonBlack++;
+      }
+      if (nonBlack > 0) return { w: cv.width, h: cv.height, nonBlack, total: img.data.length / 4 };
+    }
+    return { err: 'no non-blank canvas found', canvasCount: canvases.length };
+  });
+
+  await page.screenshot({ path: '/tmp/probe-eater6502-vdp.png' });
+
+  if (vdpResult.err) {
+    fail(`VDP hello: ${vdpResult.err} (${vdpResult.canvasCount} canvases)`);
+  } else {
+    pass(`VDP hello: ${vdpResult.nonBlack} non-black pixels on ${vdpResult.w}×${vdpResult.h} canvas`);
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PROBE 7: matrix display (pendant already covers this — screenshot only)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Probe 3 above already validates matrix8x8 brightness > 0.
+// This section just takes a dedicated screenshot for the coordinator.
+// (No separate step needed — probe 3's screenshot is at /tmp/probe-pendant-matrix.png
+//  if we add it there.)
 
 // ── Summary ──────────────────────────────────────────────────────
 if (pageErrors.length) {
