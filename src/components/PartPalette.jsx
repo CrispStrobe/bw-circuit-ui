@@ -164,6 +164,7 @@ const CATEGORIES = [
       { kind: 'temp_sensor', label: 'Temp Sensor', params: {}, color: '#16a085', tooltip: 'drawable — DS18B20' },
       { kind: 'pcf8574', label: 'PCF8574', params: {}, color: '#8e44ad', tooltip: 'I²C 8-bit I/O expander' },
       { kind: 'eeprom', label: 'EEPROM', params: {}, color: '#2c3e50', tooltip: 'drawable — I²C' },
+      { kind: 'at24c64', label: '24C64 EEPROM', params: {}, color: '#2c3e50', tooltip: 'I²C 8 KB EEPROM — DIP-8, address straps A0-A2, WP write-protect' },
     ],
   },
   {

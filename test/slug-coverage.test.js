@@ -79,6 +79,7 @@ const EXCEPTIONS = new Set([
   'memsic2125',     // thermal 2-axis accelerometer (PWM output)
   'matrix8x8',      // 8x8 LED matrix display (bw-board device registry)
   'hd44780',        // HD44780 LCD (bw-board device registry, machine-level)
+  'at24c64',        // 24C64 I2C EEPROM (bw-board device registry)
   // Internal model terms (not part kinds)
   'lead',           // occupancy type in breadboard model
 ]);

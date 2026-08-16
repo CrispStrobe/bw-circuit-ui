@@ -38,6 +38,7 @@ const DIP_CHIP_LABELS = {
   '74hc32': '74HC32', '74hc74': '74HC74', '74hc138': '74HC138',
   '74hc245': '74HC245', '74hc374': '74HC374', '74hc595': '74HC595',
   '74c922': '74C922', r6507: 'R6507', mos6532: 'MOS6532',
+  at24c64: '24C64',
   // Device-true MCU DIPs: without these the blinkenrocket pendant's
   // seated ATtiny88 rendered as a ghost outline (owner screenshot) —
   // 28 pin names floating around no body at all.

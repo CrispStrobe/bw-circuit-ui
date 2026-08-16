@@ -60,6 +60,7 @@ export const FOOTPRINTS = {
   '74hc245': { w: 160, h: 90 }, '74hc374': { w: 160, h: 90 },
   '74hc595': { w: 130, h: 80 }, '74c922': { w: 150, h: 90 },
   matrix8x8: { w: 60, h: 60 },
+  at24c64: { w: 80, h: 80 },
 };
 
 export const DEFAULT_FOOTPRINT = { w: 48, h: 48 };
