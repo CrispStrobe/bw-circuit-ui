@@ -34,6 +34,9 @@ const STAMPED = new Set([
   'seven_segment', 'shift_register', 'ir_receiver', 'temp_sensor',
   'eeprom', 'led_matrix', 'led_cube', 'rgb_led', 'char_lcd',
   'breadboard', 'meter',
+  // seven_seg_3: engine composite since bw-board 71957c3 (24 LEDs over a
+  // shared segment bus, sevenSeg3Brightness reader) — healed from the ledger.
+  'seven_seg_3',
 ]);
 
 // The debt ledger — kinds with NO engine path today. Every entry is a
@@ -44,8 +47,6 @@ const KNOWN_GAPS = new Set([
   '556', '74c922', '74hc374', '74hc688',
   // Motor controllers: need dedicated engine models
   'pololu_motor_ctrl',
-  // New display: needs multiplexed engine decomposition
-  'seven_seg_3',
 ]);
 
 function passthroughKinds() {
