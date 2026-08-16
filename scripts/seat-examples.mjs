@@ -101,7 +101,10 @@ function seatExample(id) {
         delete part.x; delete part.y;
         seats.set(part.id, leadMap);
         seatBoard.set(part.id, board);
-        board.col += w + 2;
+        // +3, not +2: DIP bodies overhang their pin span by ~10 world
+        // units each side, so a 2-column gap left bodies 8 units apart —
+        // reading as touching/overlapping on screen (owner screenshot).
+        board.col += w + 3;
     }
     if (!seats.size) return { id, skip: 'no-seats-fit' };
 
@@ -153,13 +156,19 @@ function seatExample(id) {
         keptWires.push(w);   // ALWAYS kept: wires are the electrical
     }                        // truth; jumpers are the visual layer.
 
-    // Floating parts get parked above the board, spaced.
+    // Floating parts park ABOVE the first board, spaced — always. Keeping
+    // an original x/y sounded respectful and put floats ON TOP of the
+    // board that did not exist when those coordinates were authored
+    // (owner screenshot: an LED column through the middle of the build).
+    const boardTop = 330 - 310 / 2;   // first board's top edge in world units
     let fx = 80;
     for (const part of floating) {
-        if (part.x == null || (part.x === 120 && part.y === 120)) { part.x = fx; part.y = 60; fx += 140; }
+        part.x = fx; part.y = Math.min(60, boardTop - 100); fx += 140;
     }
 
-    for (const b of boards) c.parts.push(b.bb);
+    // Boards go to the FRONT of the parts array: every renderer that
+    // paints in array order then has the substrate below the parts.
+    for (const b of boards.reverse()) c.parts.unshift(b.bb);
     c.wires = keptWires;
     c.holeWires = holeWires;
     writeFileSync(p, JSON.stringify(c, null, 1));

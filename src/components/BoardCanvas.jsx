@@ -769,6 +769,19 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
     const toPart = parts.find(p => p.id === wire.to.part);
     if (!fromPart || !toPart) return null;
 
+    // Between two parts seated on the SAME board, the strips and the
+    // generated hole jumpers ARE the visible connection — drawing the
+    // logical wire too painted a 40-wire bus as an arc hairball over the
+    // board (owner screenshots, 2026-08-16). Likewise a power symbol
+    // feeding a seated pin: the rail jumper tells that story. The wire
+    // stays in the model (electrical truth); only its rendering yields.
+    const seatedSameBoard = fromPart.seat && toPart.seat &&
+      fromPart.seat.boardId === toPart.seat.boardId;
+    const powerToSeated =
+      ((fromPart.kind === 'vcc' || fromPart.kind === 'gnd') && toPart.seat) ||
+      ((toPart.kind === 'vcc' || toPart.kind === 'gnd') && fromPart.seat);
+    if ((seatedSameBoard || powerToSeated) && selectedWire !== wire.id) return null;
+
     const a = terminalPos(fromPart, wire.from.terminal);
     const b = terminalPos(toPart, wire.to.terminal);
     // Wires draw as jumper-style arcs; each wire's id hashes to a distinct
@@ -2466,6 +2479,17 @@ export function BoardCanvas({
           {/* Seated parts whose body floats off the hole row show LEGS
               dropping into their holes — the answer to "where are the
               poti's connectors?" is drawn, not guessed. */}
+          {/* Breadboard substrates render FIRST — SVG paints in document
+              order, and these two seated-part layers used to sit above
+              this block in the file, which painted them UNDER the board
+              (invisible leg dots; owner: "breadboard must be lowest"). */}
+          {parts.filter(p => p.kind === 'breadboard').map(bb => (
+            <BreadboardView key={bb.id} part={bb}
+              model={circuit?.breadboards?.get(bb.id)}
+              footprint={bbFootprint(bb)}
+              selectedPartId={selectedParts?.size === 1 ? [...selectedParts][0] : null} />
+          ))}
+
           {parts.filter(q => ['led', 'potentiometer', 'button'].includes(q.kind) && q.seat && q._seatTerminals).map(q => (
             <g key={`ledlegs-${q.id}`} style={{ pointerEvents: 'none' }}>
               {Object.values(q._seatTerminals).map((pos, i) => (
@@ -2496,14 +2520,6 @@ export function BoardCanvas({
                 SEATED • PIN RASTER
               </text>
             </g>
-          ))}
-
-          {/* Breadboard substrates render under everything else */}
-          {parts.filter(p => p.kind === 'breadboard').map(bb => (
-            <BreadboardView key={bb.id} part={bb}
-              model={circuit?.breadboards?.get(bb.id)}
-              footprint={bbFootprint(bb)}
-              selectedPartId={selectedParts?.size === 1 ? [...selectedParts][0] : null} />
           ))}
 
           {/* Jumper wires: colored arcs hole-to-hole */}

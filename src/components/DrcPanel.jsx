@@ -106,7 +106,12 @@ export function DrcPanel({ warnings, onSelectPart, onAddFixPart }) {
                 {SEVERITY_LABELS[w.severity]}
               </span>
               <span style={{ color: '#bdc3c7', fontSize: '9px', flex: 1 }}>
-                {w.partId}{w.pinId ? `.${w.pinId}` : ''}: {w.rule.replace(/-/g, ' ')}
+                {/* The MESSAGE is the row: three collapsed rows all reading
+                    "cpu: bus extract 6502 note" told the user nothing
+                    (owner report). The rule name is detail, not headline. */}
+                {w.partId}{w.pinId ? `.${w.pinId}` : ''}: {w.explanation
+                  ? (w.explanation.length > 96 ? `${w.explanation.slice(0, 93)}…` : w.explanation)
+                  : w.rule.replace(/-/g, ' ')}
               </span>
               <span style={{ color: '#556', fontSize: '8px' }}>{isExpanded ? '▾' : '▸'}</span>
             </div>
