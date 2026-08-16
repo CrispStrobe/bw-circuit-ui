@@ -1517,7 +1517,7 @@ export function BoardCanvas({
   statusText,
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
-  circuit, engineBoard,
+  circuit, engineBoard, fitToken,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onRewire,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
@@ -1551,10 +1551,18 @@ export function BoardCanvas({
   const selectedPartId = selectedPart || (selectedParts && selectedParts.size === 1 ? [...selectedParts][0] : null);
   const selectedPartModel = selectedPartId ? parts.find(part => part.id === selectedPartId) : null;
 
-  // Auto-fit: when parts change significantly, zoom to fit all content
+  // Auto-fit: on every LOAD (fitToken bumps), plus when the part count
+  // changes. Keying on count alone skipped the fit whenever a loaded
+  // example happened to have the same number of parts as the previous
+  // project — SOS opened half off-screen because the last bench's pan
+  // survived (self-taken deployed screenshot, 2026-08-16).
   const prevPartCount = React.useRef(0);
+  const prevFitToken = React.useRef(fitToken);
   React.useEffect(() => {
-    if (parts.length === 0 || parts.length === prevPartCount.current) return;
+    if (parts.length === 0) return;
+    const tokenChanged = fitToken !== prevFitToken.current;
+    if (!tokenChanged && parts.length === prevPartCount.current) return;
+    prevFitToken.current = fitToken;
     prevPartCount.current = parts.length;
     // Bounding box from REAL part bounds. The old center±80 guess
     // undershot a full breadboard by ~385px per side (the body is 930
@@ -1581,7 +1589,7 @@ export function BoardCanvas({
       x: minX - 20 - Math.max(0, (viewW - contentW) / 2),
       y: minY - 20 - Math.max(0, (viewH - contentH) / 2),
     });
-  }, [parts.length]);
+  }, [parts.length, fitToken]);
   const [panning, setPanning] = useState(false);
   const panStart = React.useRef(null);
 

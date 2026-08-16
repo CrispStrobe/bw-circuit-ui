@@ -268,6 +268,9 @@ function seatExample(id) {
             keptWires.push({
                 from: sym.id, fromTerminal: sym.kind,
                 to: { board: bId, hole: `${railRow}${2 + boards.indexOf(b2)}` },
+                // Bench color convention — without this the gnd tap rendered
+                // in the tap layer's default red (self-taken SOS screenshot).
+                color: sym.kind === 'vcc' ? 'red' : 'black',
                 genPower: true,
             });
         }
