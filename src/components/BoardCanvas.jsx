@@ -800,8 +800,20 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
     }
     for (const group of corridors.values()) {
       if (group.length < 2) continue; // single wires keep default arc
-      // Sort by wire id for stable ordering, then assign offsets
-      group.sort();
+      // Lanes ordered by GEOMETRY, not by wire id: id-sorted lanes gave
+      // a wire at x=100 lane -8 and its neighbor at x=105 lane +8, so
+      // every pair CROSSED inside the corridor — the owner's green comb
+      // on the 6502 bench. Sorting by midpoint x makes the harness lie
+      // parallel, like real hookup wire combed into a bundle.
+      const mid = (id) => {
+        const w = wires.find(q => q.id === id);
+        const fp = parts.find(p => p.id === w.from.part);
+        const tp = parts.find(p => p.id === w.to.part);
+        const a = fp ? terminalPos(fp, w.from.terminal) : null;
+        const b = tp ? terminalPos(tp, w.to.terminal) : null;
+        return a && b ? (a.x + b.x) / 2 : 0;
+      };
+      group.sort((p, q) => mid(p) - mid(q));
       const spacing = 4; // pixels between parallel wires
       const half = (group.length - 1) / 2;
       for (let i = 0; i < group.length; i++) {
@@ -849,14 +861,36 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
       if (boardA && boardB) {
         const dx = Math.abs(boardB.x - boardA.x);
         const dy = Math.abs(boardB.y - boardA.y);
+        const r = 6; // corner radius — hard 90° corners read as PCB traces,
+        //              rounded ones as hookup wire (same as the staples)
         if (dy >= dx) {
           // Boards stacked vertically: route through the Y gap
           const corridorY = (boardA.y + boardB.y) / 2 + offset;
-          pathD = `M ${a.x} ${a.y} L ${a.x} ${corridorY} L ${b.x} ${corridorY} L ${b.x} ${b.y}`;
+          const sy = corridorY > a.y ? 1 : -1;      // corridor below or above a
+          const sx = b.x > a.x ? 1 : -1;
+          if (Math.abs(b.x - a.x) < 2 * r) {
+            pathD = `M ${a.x} ${a.y} L ${a.x} ${corridorY} L ${b.x} ${corridorY} L ${b.x} ${b.y}`;
+          } else {
+            pathD = `M ${a.x} ${a.y} L ${a.x} ${corridorY - sy * r}` +
+              ` Q ${a.x} ${corridorY} ${a.x + sx * r} ${corridorY}` +
+              ` L ${b.x - sx * r} ${corridorY}` +
+              ` Q ${b.x} ${corridorY} ${b.x} ${corridorY + (b.y > corridorY ? r : -r)}` +
+              ` L ${b.x} ${b.y}`;
+          }
         } else {
           // Boards side by side: route through the X gap
           const corridorX = (boardA.x + boardB.x) / 2 + offset;
-          pathD = `M ${a.x} ${a.y} L ${corridorX} ${a.y} L ${corridorX} ${b.y} L ${b.x} ${b.y}`;
+          const sx = corridorX > a.x ? 1 : -1;
+          const sy = b.y > a.y ? 1 : -1;
+          if (Math.abs(b.y - a.y) < 2 * r) {
+            pathD = `M ${a.x} ${a.y} L ${corridorX} ${a.y} L ${corridorX} ${b.y} L ${b.x} ${b.y}`;
+          } else {
+            pathD = `M ${a.x} ${a.y} L ${corridorX - sx * r} ${a.y}` +
+              ` Q ${corridorX} ${a.y} ${corridorX} ${a.y + sy * r}` +
+              ` L ${corridorX} ${b.y - sy * r}` +
+              ` Q ${corridorX} ${b.y} ${corridorX + (b.x > corridorX ? r : -r)} ${b.y}` +
+              ` L ${b.x} ${b.y}`;
+          }
         }
       } else {
         // Fallback: straight line with offset
@@ -2870,31 +2904,63 @@ export function BoardCanvas({
             );
           })}
 
-          {/* Tap wires: part terminal → board hole, drawn as bench wires */}
-          {wires.filter(w => isBoardEndpoint(w.from) || isBoardEndpoint(w.to)).map(w => {
-            const endPos = (e) => {
-              if (isBoardEndpoint(e)) {
-                const bb = parts.find(q => q.id === (e.board || e.boardId));
-                return bb ? holeWorldPos(bb, e.hole) : null;
+          {/* Tap wires: part terminal → board hole. A rail tap used to
+              draw as a lazy bezier straight across the board FACE — on
+              the 6502 LED board, eight of them crossed every row and
+              every part (owner screenshot). Real hookup wire hugs the
+              COLUMN GAP: jog half a pitch into the gap beside the hole,
+              run vertically there, jog back at the far end. Taps that
+              share a gap get a small per-index offset like the staple
+              lanes, so parallel rail drops comb instead of overprint. */}
+          {(() => {
+            const taps = wires.filter(w => isBoardEndpoint(w.from) || isBoardEndpoint(w.to));
+            const gapUse = new Map(); // rounded gapX → count so far
+            return taps.map((w) => {
+              const endPos = (e) => {
+                if (isBoardEndpoint(e)) {
+                  const bb = parts.find(q => q.id === (e.board || e.boardId));
+                  return bb ? holeWorldPos(bb, e.hole) : null;
+                }
+                const pp = parts.find(q => q.id === e.part);
+                return pp ? terminalPos(pp, e.terminal) : null;
+              };
+              const a = endPos(w.from), b = endPos(w.to);
+              if (!a || !b) return null;
+              const isSel = selectedWire === w.id;
+              const color = isSel ? '#f1c40f' : (w.color || '#c0392b');
+              let d;
+              const r = 5;
+              if (Math.abs(b.x - a.x) <= BB_PITCH && Math.abs(b.y - a.y) > 3 * r) {
+                // Same-column rail drop: run in the gap beside the holes.
+                const gapKey = Math.round((a.x + BB_PITCH / 2) / 4);
+                const n = gapUse.get(gapKey) || 0;
+                gapUse.set(gapKey, n + 1);
+                const gapX = a.x + BB_PITCH / 2 + (n % 3) * 3;
+                const sy = b.y > a.y ? 1 : -1;
+                d = `M ${a.x} ${a.y} Q ${gapX} ${a.y} ${gapX} ${a.y + sy * r}` +
+                  ` L ${gapX} ${b.y - sy * r}` +
+                  ` Q ${gapX} ${b.y} ${b.x} ${b.y}`;
+              } else {
+                // Different-column tap: vertical in the source gap, then
+                // horizontal at the target row — a staple lying on its side.
+                const sx0 = b.x > a.x ? 1 : -1;
+                const gapX = a.x + sx0 * (BB_PITCH / 2);
+                const sy = b.y > a.y ? 1 : -1;
+                d = `M ${a.x} ${a.y} Q ${gapX} ${a.y} ${gapX} ${a.y + sy * r}` +
+                  ` L ${gapX} ${b.y - sy * r}` +
+                  ` Q ${gapX} ${b.y} ${gapX + sx0 * r} ${b.y}` +
+                  ` L ${b.x} ${b.y}`;
               }
-              const pp = parts.find(q => q.id === e.part);
-              return pp ? terminalPos(pp, e.terminal) : null;
-            };
-            const a = endPos(w.from), b = endPos(w.to);
-            if (!a || !b) return null;
-            const isSel = selectedWire === w.id;
-            const dx = b.x - a.x, dy = b.y - a.y;
-            const mx = a.x + dx / 2 - dy * 0.15, my = a.y + dy / 2 + dx * 0.15;
-            return (
-              <g key={w.id} data-wire={w.id} style={{ pointerEvents: 'none' }}>
-                <path d={`M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`}
-                  fill="none" stroke={isSel ? '#f1c40f' : (w.color || '#c0392b')}
-                  strokeWidth={isSel ? 4 : 3} strokeLinecap="round" />
-                <circle cx={a.x} cy={a.y} r={3} fill={w.color || '#c0392b'} />
-                <circle cx={b.x} cy={b.y} r={3} fill={w.color || '#c0392b'} />
-              </g>
-            );
-          })}
+              return (
+                <g key={w.id} data-wire={w.id} style={{ pointerEvents: 'none' }}>
+                  <path d={d} fill="none" stroke={color}
+                    strokeWidth={isSel ? 4 : 3} strokeLinecap="round" />
+                  <circle cx={a.x} cy={a.y} r={3} fill={w.color || '#c0392b'} />
+                  <circle cx={b.x} cy={b.y} r={3} fill={w.color || '#c0392b'} />
+                </g>
+              );
+            });
+          })()}
 
           {/* Selected wire: endpoint grab handles for re-routing */}
           {(() => {
