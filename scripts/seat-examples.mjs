@@ -26,6 +26,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { FOOTPRINTS, computeLeadMap } from '../src/model/footprints.js';
+import { holeWorldPos } from '../src/interaction/seat-geometry.js';
 import { BreadboardModel } from '../src/model/breadboard.js';
 import { registerSidecar } from '../src/model/parts-registry.js';
 
@@ -47,6 +48,7 @@ import { registerSidecar } from '../src/model/parts-registry.js';
 const args = process.argv.slice(2);
 const dir = args[args.indexOf('--examples') + 1];
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
+const reseat = args.includes('--reseat');
 if (!dir) { console.error('need --examples <dir>'); process.exit(1); }
 
 const COLORS = ['green', 'blue', 'yellow', 'orange', 'purple'];
@@ -62,8 +64,24 @@ function seatExample(id) {
     if (!existsSync(p)) return null;
     const c = JSON.parse(readFileSync(p, 'utf8'));
     if (!Array.isArray(c.parts) || !Array.isArray(c.wires)) return { id, skip: 'format' };
-    if (c.parts.some(q => q.seat)) return { id, skip: 'already-seated' };
-    if (c.parts.some(q => q.kind === 'breadboard')) return { id, skip: 'has-board' };
+    if (reseat) {
+        // CURATED benches are off limits: a board id outside the generator's
+        // own bb<N> naming means a human (or the designer) authored this
+        // bench, tap wires and all — stripping it dangles every {board,hole}
+        // reference (it broke the eleven pc* pure-circuit lessons).
+        const foreignBoard = c.parts.some(q => q.kind === 'breadboard' && !/^bb\d+$/.test(q.id));
+        if (foreignBoard) return { id, skip: 'curated-bench' };
+        // Strip everything a previous batch generated: boards, seats, the
+        // gen_* jumpers and gen-tap wires. Logical wires were ALWAYS kept,
+        // so the electrical truth survives the round trip.
+        c.parts = c.parts.filter(q => q.kind !== 'breadboard');
+        for (const q of c.parts) { delete q.seat; }
+        c.holeWires = (c.holeWires || []).filter(j => !/^bbw:bb\d+:gen_/.test(j.ref));
+        c.wires = c.wires.filter(w => !w.genPower);
+    } else {
+        if (c.parts.some(q => q.seat)) return { id, skip: 'already-seated' };
+        if (c.parts.some(q => q.kind === 'breadboard')) return { id, skip: 'has-board' };
+    }
 
     const seatable = [];
     const floating = [];
@@ -83,7 +101,11 @@ function seatExample(id) {
     const openBoard = () => {
         const n = boards.length + 1;
         const bb = { id: `bb${n}`, kind: 'breadboard', params: {}, terminals: [], x: 470, y: 330 + (n - 1) * 360, rotation: 0 };
-        const board = { bb, model: new BreadboardModel(bb.id, {}), col: 3 };
+        // col: top-block cursor (row a / gutter DIPs). colBot: bottom-block
+        // cursor (row f) — flat parts overflow there before a NEW board
+        // opens. This is what keeps an 8×(R+LED) rank on ONE board the way
+        // the real Ben Eater build lies (owner: "at most 3 breadboards").
+        const board = { bb, model: new BreadboardModel(bb.id, {}), col: 3, colBot: 3 };
         boards.push(board);
         return board;
     };
@@ -99,28 +121,49 @@ function seatExample(id) {
     for (const part of seatable) {
         const fp = FOOTPRINTS[part.kind];
         const w = widthOf(fp);
-        if (board.col + w > 62) {
+        const straddles = !!fp.straddlesGutter;
+        // Small flat parts use a tighter gap: a resistor does not overhang
+        // its span the way a DIP body does, and +3 gaps are what pushed the
+        // LED rank onto a fourth board.
+        const gap = (!straddles && w <= 6) ? 1 : 3;
+        // Where does this part go? Gutter DIPs need the top cursor. Flat
+        // parts take the top cursor while it fits, then the BOTTOM block
+        // of any open board, and only then a new board.
+        let target = null, useBottom = false;
+        if (board.col + w <= 62) { target = board; }
+        if (!target && !straddles) {
+            for (const b2 of boards) {
+                if (b2.colBot + w <= 62) { target = b2; useBottom = true; break; }
+            }
+        }
+        if (!target) {
             if (w + 3 > 62 || boards.length >= MAX_BOARDS) { floating.push(part); continue; }
             board = openBoard();
+            target = board;
         }
         // A gutter-straddling DIP seats at row e: its top pin row lands in e
         // and the bottom row in f — the tight straddle a real chip makes.
-        // Seating it at row a stretched the legs across the whole top block
-        // (a..f), which is not how any physical DIP sits. Flat parts keep
-        // row a/b territory.
-        const refRow = fp.straddlesGutter ? 'e' : 'a';
+        // Flat parts keep row a territory on top, row f when they overflow
+        // to the bottom block.
+        const refRow = straddles ? 'e' : (useBottom ? 'f' : 'a');
+        const col = useBottom ? target.colBot : target.col;
         let leadMap;
-        try { leadMap = computeLeadMap(fp, `${refRow}${board.col}`); } catch { floating.push(part); continue; }
-        try { board.model.occupy(part.id, leadMap); }
+        try { leadMap = computeLeadMap(fp, `${refRow}${col}`); } catch { floating.push(part); continue; }
+        try { target.model.occupy(part.id, leadMap); }
         catch { floating.push(part); continue; }   // occupy throws on conflict
-        part.seat = { boardId: board.bb.id, leadMap };
-        delete part.x; delete part.y;
+        part.seat = { boardId: target.bb.id, leadMap };
+        // Keep x/y AS WELL: the app derives position from the seat, but the
+        // file stays self-describing for every consumer that predates seats
+        // (the round-trip validity test requires coordinates on all parts).
+        try {
+            const firstHole = Object.values(leadMap)[0];
+            const pos = holeWorldPos(target.bb, firstHole);
+            part.x = Math.round(pos.x); part.y = Math.round(pos.y);
+        } catch { part.x = target.bb.x; part.y = target.bb.y; }
         seats.set(part.id, leadMap);
-        seatBoard.set(part.id, board);
-        // +3, not +2: DIP bodies overhang their pin span by ~10 world
-        // units each side, so a 2-column gap left bodies 8 units apart —
-        // reading as touching/overlapping on screen (owner screenshot).
-        board.col += w + 3;
+        seatBoard.set(part.id, target);
+        if (useBottom) target.colBot += w + gap;
+        else target.col += w + gap;
     }
     if (!seats.size) return { id, skip: 'no-seats-fit' };
 
@@ -143,11 +186,22 @@ function seatExample(id) {
     const keptWires = [];
     let wireN = 0; let ci = 0;
     const powerKind = (pid) => { const q = c.parts.find(x => x.id === pid); return q && (q.kind === 'vcc' || q.kind === 'gnd') ? q.kind : null; };
+    // The catalog mixes wire dialects: the original flat form
+    // ({from: 'id', fromTerminal: 't'}) and the modern object form
+    // ({from: {part, terminal}}) that later re-authors wrote. Reading
+    // only the flat fields silently skipped every object-form wire —
+    // pico01-blink came out of the batch with ZERO jumpers.
+    const norm = (w, side) => {
+        const v = w[side];
+        if (v && typeof v === 'object') return { part: v.part, terminal: v.terminal };
+        return { part: v, terminal: w[side + 'Terminal'] };
+    };
     for (const w of c.wires) {
-        const A = seats.get(w.from); const B = seats.get(w.to);
-        const aHole = A && A[w.fromTerminal]; const bHole = B && B[w.toTerminal];
-        const aBoard = seatBoard.get(w.from); const bBoard = seatBoard.get(w.to);
-        const pk = powerKind(w.from) || powerKind(w.to);
+        const F = norm(w, 'from'); const T = norm(w, 'to');
+        const A = seats.get(F.part); const B = seats.get(T.part);
+        const aHole = A && A[F.terminal]; const bHole = B && B[T.terminal];
+        const aBoard = seatBoard.get(F.part); const bBoard = seatBoard.get(T.part);
+        const pk = powerKind(F.part) || powerKind(T.part);
         if (aHole && bHole && aBoard === bBoard) {
             const bbId = aBoard.bb.id;
             const a = freeHole(bbId, aHole); const b = freeHole(bbId, bHole);
@@ -171,6 +225,47 @@ function seatExample(id) {
         // logical wire IS the hookup wire between boards.
         keptWires.push(w);   // ALWAYS kept: wires are the electrical
     }                        // truth; jumpers are the visual layer.
+
+    // ── POWER DISCIPLINE (owner audit 2026-08-16: 107 examples had MCU
+    // power pins wired to NOTHING and rails that floated) ──────────────
+    // 1. Every seated part's power-named pins jumper to the matching rail
+    //    on its own board — the chip is FED, visibly, like a real build.
+    // 2. Every vcc/gnd SYMBOL taps the first board's rail, so the rail
+    //    net actually carries the supply instead of floating decor.
+    // 3. Rails of LATER boards chain from board 1's rails via the
+    //    symbols' logical net (tap wires per board).
+    const POWER_TOP = new Set(['vcc', 'vdd', 'avcc', '5v', '3v3', 'vbus', 'vsys']);
+    const POWER_BOT = new Set(['gnd', 'gnd2', 'gnd3', 'vss', 'agnd', 'swd_gnd',
+        'gnd_1', 'gnd_2', 'gnd_3', 'gnd_4', 'gnd_5', 'gnd_6', 'gnd_7']);
+    const powered = new Set(); // `${bbId}:${railRow}` that already carry supply
+    for (const [pid, lm] of seats) {
+        const bId = seatBoard.get(pid).bb.id;
+        for (const [term, hole] of Object.entries(lm)) {
+            const t = term.toLowerCase();
+            const isTop = POWER_TOP.has(t); const isBot = POWER_BOT.has(t);
+            if (!isTop && !isBot) continue;
+            const railRow = isTop ? 't+' : 'b-';
+            const a = freeHole(bId, hole);
+            if (!a) continue;
+            holeWires.push({ ref: `bbw:${bId}:gen_${wireN++}`, boardId: bId, a, b: `${railRow}${hole.slice(1)}`, color: isTop ? 'red' : 'black' });
+            powered.add(`${bId}:${railRow}`);
+        }
+    }
+    // Symbols feed the rails they serve. genPower marks these wires so a
+    // --reseat run can strip and regenerate them.
+    const symbols = c.parts.filter(q => q.kind === 'vcc' || q.kind === 'gnd');
+    for (const sym of symbols) {
+        const railRow = sym.kind === 'vcc' ? 't+' : 'b-';
+        for (const b2 of boards) {
+            const bId = b2.bb.id;
+            if (!powered.has(`${bId}:${railRow}`)) continue;
+            keptWires.push({
+                from: sym.id, fromTerminal: sym.kind,
+                to: { board: bId, hole: `${railRow}${2 + boards.indexOf(b2)}` },
+                genPower: true,
+            });
+        }
+    }
 
     // Floating parts park ABOVE the first board, spaced — always. Keeping
     // an original x/y sounded respectful and put floats ON TOP of the
