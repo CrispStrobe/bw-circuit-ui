@@ -49,7 +49,7 @@ const KICAD_KIND_MAP = {
   // Additional 74-series used in Eater 8-bit (map to closest engine kind)
   '74ls139': { kind: '74hc138', pinMap: { '1':'a','2':'b','3':'c','4':'g2ab','5':'g2bb','6':'g1','7':'y7b','8':'gnd','9':'y6b','10':'y5b','11':'y4b','12':'y3b','13':'y2b','14':'y1b','15':'y0b','16':'vcc' }, _note: '74LS139 dual 2:4 decoder — mapped to 74HC138 (closest engine model)' },
   '74ls273': { kind: '74ls173', pinMap: { '1':'mr','2':'q0','3':'d0','4':'d1','5':'q1','6':'q2','7':'d2','8':'d3','9':'gnd','10':'q3','11':'clk','12':'d3','13':'q3','14':'d2','15':'q2','16':'d1','17':'q1','18':'d0','19':'q0','20':'vcc' }, _note: '74LS273 octal D register — mapped to 74LS173 (closest 4-bit D register)' },
-  '74ls76': { kind: '74ls107', pinMap: { '1':'1j','2':'1qb','3':'1q','4':'1k','5':'2q','6':'2qb','7':'gnd','8':'2j','9':'2clk','10':'2clrb','11':'2k','12':'1clk','13':'1clrb','14':'vcc' }, _note: '74LS76 dual JK (preset+clear) — mapped to 74LS107 (falling-edge JK, no preset)' },
+  '74ls76': { kind: '74ls107', pinMap: { '1':'1clk','2':'1clrb','3':'1clrb','4':'1j','5':'vcc','6':'1k','7':'1qb','8':'1q','9':'2clk','10':'2clrb','11':'2clrb','12':'2j','13':'gnd','14':'2k','15':'2qb','16':'2q' }, _note: '74LS76 dual JK DIP-16 — mapped to 74LS107; preset pins (2,10) aliased to clrb' },
   '74ls107-alt': { kind: '74ls107', pinMap: { '1':'1j','2':'1qb','3':'1q','4':'1k','5':'2q','6':'2qb','7':'gnd','8':'2j','9':'2clk','10':'2clrb','11':'2k','12':'1clk','13':'1clrb','14':'vcc' } },
   '28c16':  { kind: '28c256', pinMap: { '1':'a7','2':'a6','3':'a5','4':'a4','5':'a3','6':'a2','7':'a1','8':'a0','9':'d0','10':'d1','11':'d2','12':'gnd','13':'d3','14':'d4','15':'d5','16':'d6','17':'d7','18':'ceb','19':'a10','20':'oeb','21':'web','22':'a9','23':'a8','24':'vcc' }, _note: '28C16 2K EEPROM — mapped to 28C256 (same interface, smaller address space)' },
   '74189':  { kind: '74ls189', pinMap: { '1':'a0','2':'csb','3':'web','4':'d0','5':'o0','6':'d1','7':'o1','8':'gnd','9':'o2','10':'d2','11':'o3','12':'d3','13':'a3','14':'a2','15':'a1','16':'vcc' } },
@@ -79,11 +79,27 @@ const KICAD_KIND_MAP = {
   '62256':     { kind: '62256',  pinMap: { '1':'a14','2':'a12','3':'a7','4':'a6','5':'a5','6':'a4','7':'a3','8':'a2','9':'a1','10':'a0','11':'d0','12':'d1','13':'d2','14':'gnd','15':'d3','16':'d4','17':'d5','18':'d6','19':'d7','20':'csb','21':'a10','22':'oeb','23':'a11','24':'a9','25':'a8','26':'a13','27':'web','28':'vcc' } },
   'w65c02s':   { kind: 'w65c02', pinMap: { '1':'vpb','2':'rdy','3':'phi1o','4':'irqb','5':'mlb','6':'nmib','7':'sync','8':'vdd','9':'a0','10':'a1','11':'a2','12':'a3','13':'a4','14':'a5','15':'a6','16':'a7','17':'a8','18':'a9','19':'a10','20':'a11','21':'vss','22':'a12','23':'a13','24':'a14','25':'a15','26':'d7','27':'d6','28':'d5','29':'d4','30':'d3','31':'d2','32':'d1','33':'d0','34':'rwb','35':'nc','36':'be','37':'phi2','38':'sob','39':'phi2o','40':'resb' } },
 
+  // ── Display ─────────────────────────────────────────────────────
+  '7segment_cc': { kind: 'seven_segment', pinMap: { '1':'e','2':'d','3':'dp','4':'c','5':'g','6':'cc','7':'b','8':'cc2','9':'f','10':'a' } },
+  '7segment_ca': { kind: 'seven_segment', pinMap: { '1':'e','2':'d','3':'dp','4':'c','5':'g','6':'ca','7':'b','8':'ca2','9':'f','10':'a' } },
+
+  // ── Switches ───────────────────────────────────────────────────
+  'sw_push':    { kind: 'button',   pinMap: { '1': 'a', '2': 'b' } },
+  'sw_spdt':    { kind: 'slide_switch', pinMap: { '1': 'a', '2': 'com', '3': 'b' } },
+  'sw_dip_x04': { kind: 'dip_switch', pinMap: { '1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8' } },
+  'sw_dip_x08': { kind: 'dip_switch', pinMap: { '1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','10':'10','11':'11','12':'12','13':'13','14':'14','15':'15','16':'16' } },
+
+  // ── Passives (additional) ──────────────────────────────────────
+  'cp1':        { kind: 'polarized_cap', pinMap: { '1': 'pos', '2': 'neg' } },
+  'led_alt':    { kind: 'led',       pinMap: { '1': 'cathode', '2': 'anode' } },
+  'pot':        { kind: 'potentiometer', pinMap: { '1': 'a', '2': 'wiper', '3': 'b' } },
+
   // ── Connectors / power ─────────────────────────────────────────
   'vcc':       { kind: 'vcc', pinMap: { '1': 'vcc' } },
   'gnd':       { kind: 'gnd', pinMap: { '1': 'gnd' } },
   'pwr_flag':  null, // KiCad power flag — no circuit equivalent
   'conn_01x01': null, // test points etc — skip
+  'usb_b':     null, // USB connector — no engine equivalent
 };
 
 // Value-based fallbacks (when libsource doesn't match)
@@ -114,16 +130,67 @@ function normalizePartName(libsource) {
   return name;
 }
 
+// ── XML netlist parser ──────────────────────────────────────────
+//
+// KiCad 4.x exports netlists as XML with the same logical structure
+// as the s-expression format. This parser converts the XML into the
+// same nested-array tree so the rest of the importer works unchanged.
+
+function parseXmlNetlist(text) {
+  // Minimal tag-based parser — no external XML library needed.
+  // Converts <tag attr="val">children</tag> to ["tag", ["attr", "val"], ...children]
+  const result = { components: [], nets: [] };
+  const compRe = /<comp\s+ref="([^"]*)">([\s\S]*?)<\/comp>/g;
+  const netRe = /<net\s+code="([^"]*)"\s+name="([^"]*)">([\s\S]*?)<\/net>/g;
+  const nodeRe = /<node\s+ref="([^"]*)"\s+pin="([^"]*)"\s*\/>/g;
+  const valRe = /<value>([^<]*)<\/value>/;
+  const libRe = /<libsource\s+lib="([^"]*)"\s+part="([^"]*)"\s*\/>/;
+
+  let m;
+  while ((m = compRe.exec(text)) !== null) {
+    const ref = m[1];
+    const body = m[2];
+    const valM = valRe.exec(body);
+    const libM = libRe.exec(body);
+    result.components.push({
+      ref,
+      value: valM ? valM[1] : '',
+      lib: libM ? libM[1] : '',
+      part: libM ? libM[2] : '',
+    });
+  }
+
+  while ((m = netRe.exec(text)) !== null) {
+    const name = m[2];
+    const body = m[3];
+    const nodes = [];
+    let nm;
+    while ((nm = nodeRe.exec(body)) !== null) {
+      nodes.push({ ref: nm[1], pin: nm[2] });
+    }
+    nodeRe.lastIndex = 0;
+    result.nets.push({ name, nodes });
+  }
+
+  return result;
+}
+
 /**
- * Import a KiCad netlist (.net s-expression format).
+ * Import a KiCad netlist — supports both s-expression (.net) and XML formats.
  *
- * @param {string} text  Raw .net file content
+ * @param {string} text  Raw .net or .xml file content
  * @returns {{ parts: Array, wires: Array, warnings: string[], unmapped: Array }}
  */
 export function importKicadNetlist(text) {
+  // Auto-detect format: XML starts with <?xml or <export
+  const trimmed = text.trimStart();
+  if (trimmed.startsWith('<?xml') || trimmed.startsWith('<export')) {
+    return importKicadXml(text);
+  }
+
   const tree = parseSexpr(text);
   if (tree[0] !== 'export') {
-    return { parts: [], wires: [], warnings: ['Not a KiCad netlist (expected "export" root)'], unmapped: [] };
+    return { parts: [], wires: [], warnings: ['Not a KiCad netlist (expected "export" root or XML)'], unmapped: [] };
   }
 
   const warnings = [];
@@ -238,6 +305,93 @@ export function importKicadNetlist(text) {
           toTerminal: nodeTerminal,
         });
       }
+    }
+  }
+
+  return { parts, wires, warnings, unmapped };
+}
+
+/**
+ * Import from KiCad XML netlist format (KiCad 4.x / 5.x).
+ * Uses the same mapping tables as the s-expression importer.
+ */
+function importKicadXml(text) {
+  const parsed = parseXmlNetlist(text);
+  const warnings = [];
+  const unmapped = [];
+  const parts = [];
+  const partMap = new Map();
+
+  for (const comp of parsed.components) {
+    const { ref, value, lib, part } = comp;
+    const fullPart = part ? `${lib}:${part}` : '';
+
+    const normPart = normalizePartName(part);
+    const normFull = normalizePartName(fullPart);
+    const normValue = (value || '').toLowerCase();
+
+    let mapping = KICAD_KIND_MAP[normPart] || KICAD_KIND_MAP[normFull];
+
+    if (!mapping && normValue in KICAD_KIND_MAP) {
+      mapping = KICAD_KIND_MAP[normValue];
+    }
+
+    if (!mapping) {
+      if (/^r\d*$/i.test(ref || '')) mapping = KICAD_KIND_MAP['r'];
+      else if (/^c\d*$/i.test(ref || '')) mapping = KICAD_KIND_MAP['c'];
+      else if (/^d\d*$/i.test(ref || '')) mapping = KICAD_KIND_MAP['d'];
+    }
+
+    if (mapping === null) continue;
+
+    if (!mapping) {
+      unmapped.push({ ref, value, libsource: fullPart || part || value });
+      warnings.push(`Unmapped component: ${ref} (${part || value})`);
+      continue;
+    }
+
+    const partId = ref.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const params = {};
+
+    if (mapping.kind === 'resistor' && value) {
+      const ohms = parseResistorValue(value);
+      if (ohms !== null) params.ohms = ohms;
+    }
+    if ((mapping.kind === 'capacitor' || mapping.kind === 'polarized_cap') && value) {
+      params._value = value;
+    }
+
+    parts.push({ id: partId, kind: mapping.kind, params: Object.keys(params).length ? params : {}, x: 0, y: 0 });
+    partMap.set(ref, { kind: mapping.kind, pinMap: mapping.pinMap, partId });
+  }
+
+  const wires = [];
+  for (const net of parsed.nets) {
+    const { name, nodes } = net;
+    if (nodes.length < 2) continue;
+
+    const first = nodes[0];
+    const firstPart = partMap.get(first.ref);
+    if (!firstPart) continue;
+
+    const firstTerminal = firstPart.pinMap[first.pin];
+    if (!firstTerminal) {
+      warnings.push(`Unknown pin ${first.pin} on ${first.ref} in net "${name}"`);
+      continue;
+    }
+
+    for (let i = 1; i < nodes.length; i++) {
+      const nodePart = partMap.get(nodes[i].ref);
+      if (!nodePart) continue;
+      const nodeTerminal = nodePart.pinMap[nodes[i].pin];
+      if (!nodeTerminal) {
+        warnings.push(`Unknown pin ${nodes[i].pin} on ${nodes[i].ref} in net "${name}"`);
+        continue;
+      }
+      wires.push({
+        from: firstPart.partId, fromTerminal: firstTerminal,
+        to: nodePart.partId, toTerminal: nodeTerminal,
+      });
     }
   }
 

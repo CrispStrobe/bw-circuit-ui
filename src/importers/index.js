@@ -4,7 +4,7 @@
  * importCircuit(format, text) → { parts, wires, warnings, unmapped }
  *
  * Supported formats:
- *   'kicad-netlist'  — KiCad .net s-expression netlist
+ *   'kicad-netlist'  — KiCad .net s-expression or .xml netlist (auto-detected)
  *   'wokwi'          — Wokwi diagram.json
  *
  * The return value is a circuit descriptor compatible with the

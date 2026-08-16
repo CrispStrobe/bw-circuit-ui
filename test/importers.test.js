@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseSexpr, findOne, findAll, getVal } from '../src/importers/sexpr.js';
 import { importKicadNetlist } from '../src/importers/kicad-netlist.js';
@@ -314,5 +314,61 @@ describe('Acceptance: Eater 8-bit corpus', () => {
     assert.equal(r1.params.ohms, 1000);
     const r4 = result.parts.find(p => p.id === 'r4');
     assert.equal(r4.params.ohms, 1000000);
+  });
+});
+
+// ── Acceptance: KiCad XML netlist (real Eater 8-bit repo) ───────
+
+import fs from 'fs';
+import path from 'path';
+
+const REAL_XML_PATH = '/tmp/8-Bit-Breadboard-Computer/KiCAD/8bit-computer.xml';
+const hasRealXml = fs.existsSync(REAL_XML_PATH);
+
+describe('Acceptance: Eater 8-bit XML netlist', { skip: !hasRealXml && 'real XML netlist not available' }, () => {
+  let result;
+  before(() => {
+    const xml = fs.readFileSync(REAL_XML_PATH, 'utf8');
+    result = importKicadNetlist(xml);
+  });
+
+  it('maps all 274 components (275 minus USB_B)', () => {
+    assert.equal(result.parts.length, 274);
+  });
+
+  it('has zero unmapped components', () => {
+    assert.equal(result.unmapped.length, 0,
+      'All components should map: ' +
+      result.unmapped.map(u => `${u.ref}=${u.libsource}`).join(', '));
+  });
+
+  it('generates 900+ wires from the net list', () => {
+    assert.ok(result.wires.length >= 900,
+      `Expected 900+ wires, got ${result.wires.length}`);
+  });
+
+  it('has zero warnings (all pins mapped)', () => {
+    assert.equal(result.warnings.length, 0,
+      'Unexpected warnings: ' + result.warnings.join('; '));
+  });
+
+  it('maps all expected IC kinds', () => {
+    const kinds = new Set(result.parts.map(p => p.kind));
+    for (const expected of [
+      '555', '74hc00', '74hc02', '74hc04', '74hc08', '74hc32',
+      '74hc86', '74hc138', '74hc245', '74hc283',
+      '74ls173', '74ls161', '74ls189', '74ls157', '74ls107',
+      '28c256', 'resistor', 'capacitor', 'led',
+      'seven_segment', 'button', 'slide_switch', 'dip_switch',
+      'polarized_cap', 'potentiometer',
+    ]) {
+      assert.ok(kinds.has(expected), `Missing kind: ${expected}`);
+    }
+  });
+
+  it('auto-detects XML format without explicit format hint', () => {
+    const xml = fs.readFileSync(REAL_XML_PATH, 'utf8');
+    const r = importCircuit('kicad-netlist', xml);
+    assert.equal(r.parts.length, 274);
   });
 });
