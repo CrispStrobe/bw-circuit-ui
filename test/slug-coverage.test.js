@@ -78,6 +78,7 @@ const EXCEPTIONS = new Set([
   'adxl335',        // analog 3-axis accelerometer
   'memsic2125',     // thermal 2-axis accelerometer (PWM output)
   'matrix8x8',      // 8x8 LED matrix display (bw-board device registry)
+  'hd44780',        // HD44780 LCD (bw-board device registry, machine-level)
   // Internal model terms (not part kinds)
   'lead',           // occupancy type in breadboard model
 ]);

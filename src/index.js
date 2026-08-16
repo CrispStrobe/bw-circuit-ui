@@ -43,6 +43,7 @@ export { StimulusControls } from './components/StimulusControls.jsx';
 export { SerialConsole } from './components/SerialConsole.jsx';
 export { AsmDebugPanel } from './components/AsmDebugPanel.jsx';
 export { ArchitectureFace } from './components/ArchitectureFace.jsx';
+export { FramebufferFace } from './components/FramebufferFace.jsx';
 export { MediaPanel } from './components/MediaPanel.jsx';
 
 // Panel data functions

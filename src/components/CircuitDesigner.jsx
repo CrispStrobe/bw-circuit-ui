@@ -61,6 +61,7 @@ import { extractMachine } from '../model/machine-extract.js';
 import { OrientationInput } from './OrientationInput.jsx';
 import { SerialConsole } from './SerialConsole.jsx';
 import { ArchitectureFace } from './ArchitectureFace.jsx';
+import { FramebufferFace } from './FramebufferFace.jsx';
 import { StimulusControls } from './StimulusControls.jsx';
 import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
@@ -1209,6 +1210,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             </div>
             <SerialConsole onSerialFn={debugState.onSerial} sendSerialFn={debugState.sendSerial} lang={lang} />
           </section>
+        )}
+        {/* Framebuffer face — 1bpp monochrome video from machine chips */}
+        {hasMcuPins && debugState && debugState.framebuffer && (
+          <FramebufferFace chipState={debugState.framebuffer}
+            width={debugState.framebuffer.width || 128}
+            height={debugState.framebuffer.height || 64}
+            stride={debugState.framebuffer.stride}
+            lang={lang} />
         )}
         {/* Architecture face — block diagram with live register state */}
         {hasMcuPins && debugState && typeof debugState.regs === 'function' && (

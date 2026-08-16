@@ -990,6 +990,7 @@ export function terminalsForKind(kind, params) {
     case 'relay': return ['coil_a', 'coil_b', 'com', 'nc', 'no'];
     case 'servo': return ['signal', 'vcc', 'gnd'];
     case 'ili9341': return ['vcc', 'gnd', 'cs', 'rst', 'dc', 'mosi', 'sck', 'miso', 'led'];
+    case 'hd44780': return ['rs', 'rw', 'e', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'vcc', 'gnd', 'vo', 'bl_a', 'bl_k'];
     case 'adxl335': return ['vcc', 'gnd', 'xout', 'yout', 'zout', 'st'];
     case 'memsic2125': return ['vcc', 'gnd', 'xout', 'yout'];
     case 'matrix8x8': return ['col0', 'col1', 'col2', 'col3', 'col4', 'col5', 'col6', 'col7', 'row0', 'row1', 'row2', 'row3', 'row4', 'row5', 'row6', 'row7'];

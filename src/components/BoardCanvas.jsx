@@ -132,7 +132,9 @@ function terminalOffsetsForPart(part) {
       return offsets;
     }
     case 'seven_segment': return { a: r(-30, 30), b: r(30, 30) }; // pins at bottom
-    case 'char_lcd': return { rs: r(-50, 25), e: r(-30, 25), d4: r(-10, 25), d5: r(10, 25), d6: r(30, 25), d7: r(50, 25) };
+    case 'char_lcd':
+    case 'hd44780':
+      return { rs: r(-50, 25), e: r(-30, 25), d4: r(-10, 25), d5: r(10, 25), d6: r(30, 25), d7: r(50, 25) };
     case 'ir_receiver': return { out: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
     case 'shift_register': return { data: r(-20, -15), clock: r(0, -15), latch: r(20, -15) };
     case 'led_matrix': return { a: r(-20, 0), b: r(20, 0) };
@@ -1181,6 +1183,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           </div>
         );
       case 'char_lcd':
+      case 'hd44780':
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 60, top: y - 25, cursor: 'move' }}
@@ -2755,7 +2758,7 @@ export function BoardCanvas({
               if (!circuit?.board?.getDeviceState) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'matrix8x8') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'matrix8x8') {
                   const ds = circuit.board.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
