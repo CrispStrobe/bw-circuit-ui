@@ -75,11 +75,18 @@ export function mergeNets(netsA, netsB) {
 
   // Merged groups can collapse two source names onto one surviving id while a
   // DIFFERENT group still carries one of the collapsed names — uniquify.
-  const seen = new Map();
+  // Collision-proof against ALREADY-SUFFIXED ids: mergeNets runs once per
+  // breadboard, and the old per-call counter re-minted 'n-col-b5-m1' in a
+  // later pass when an earlier pass had already produced it. Two distinct
+  // nets sharing an id makes the engine's MNA matrix singular — the whole
+  // eater6502 bench read 0 V on every net (2026-08-17). The engine rejects
+  // duplicates as fatal now; this stops minting them.
+  const used = new Set();
   for (const net of out) {
-    const n = seen.get(net.id) ?? 0;
-    seen.set(net.id, n + 1);
-    if (n > 0) net.id = `${net.id}-m${n}`;
+    let id = net.id;
+    for (let n = 1; used.has(id); n++) id = `${net.id}-m${n}`;
+    net.id = id;
+    used.add(id);
   }
   return out;
 }
