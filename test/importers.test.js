@@ -390,6 +390,10 @@ describe('Acceptance: Eater 8-bit corpus', () => {
 
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FIXTURES = path.join(__dirname, 'fixtures');
 
 const REAL_XML_PATH = '/tmp/8-Bit-Breadboard-Computer/KiCAD/8bit-computer.xml';
 const hasRealXml = fs.existsSync(REAL_XML_PATH);
@@ -439,5 +443,162 @@ describe('Acceptance: Eater 8-bit XML netlist', { skip: !hasRealXml && 'real XML
     const xml = fs.readFileSync(REAL_XML_PATH, 'utf8');
     const r = importCircuit('kicad-netlist', xml);
     assert.equal(r.parts.length, 274);
+  });
+});
+
+// ── Acceptance: Real Wokwi diagram.json fixtures ────────────────
+//
+// Three public third-party projects:
+//   1. wokwi/arduino-simon-game — Uno + LEDs + buttons + 74HC595 + 7-segment
+//   2. arcostasi/avr8js-electron-playground blink-led — Uno + resistor + LED (v2 format)
+//   3. Aruack/7LED — Uno + breadboard + 8 LEDs + 8 resistors
+
+function loadFixture(name) {
+  return fs.readFileSync(path.join(FIXTURES, name), 'utf8');
+}
+
+describe('Acceptance: Wokwi Simon Game (wokwi/arduino-simon-game)', () => {
+  let result;
+  before(() => { result = importWokwi(loadFixture('wokwi-simon-game.json')); });
+
+  it('maps all 14 parts with zero unmapped', () => {
+    assert.equal(result.parts.length, 14);
+    assert.equal(result.unmapped.length, 0,
+      'Unmapped: ' + result.unmapped.map(u => `${u.ref}=${u.value}`).join(', '));
+  });
+
+  it('maps all expected kind types', () => {
+    const kinds = new Set(result.parts.map(p => p.kind));
+    for (const k of ['arduino_uno', 'buzzer', 'led', 'button', '74hc595', 'seven_segment']) {
+      assert.ok(kinds.has(k), `Missing kind: ${k}`);
+    }
+  });
+
+  it('generates 48 wires', () => {
+    assert.equal(result.wires.length, 48);
+  });
+
+  it('translates 74HC595 pin aliases correctly', () => {
+    // DS→ser, SHCP→srclk, STCP→rclk, MR→srclr, OE→oe, Q7S→qh_s
+    const sr1Wires = result.wires.filter(w => w.from === 'sr1' || w.to === 'sr1');
+    const terminals = new Set([
+      ...sr1Wires.map(w => w.from === 'sr1' ? w.fromTerminal : w.toTerminal),
+    ]);
+    assert.ok(terminals.has('ser'),   'DS should map to ser');
+    assert.ok(terminals.has('srclk'), 'SHCP should map to srclk');
+    assert.ok(terminals.has('rclk'),  'STCP should map to rclk');
+    assert.ok(terminals.has('srclr'), 'MR should map to srclr');
+    assert.ok(terminals.has('qh_s'),  'Q7S should map to qh_s');
+    assert.ok(terminals.has('qa'),    'Q0 should map to qa');
+  });
+
+  it('strips GND.N instance suffixes', () => {
+    const gndWires = result.wires.filter(w => w.fromTerminal === 'gnd' || w.toTerminal === 'gnd');
+    assert.ok(gndWires.length > 0, 'Should have GND wires');
+    // Verify no "gnd.1" etc leaked through
+    for (const w of gndWires) {
+      const t = w.fromTerminal === 'gnd' ? w.fromTerminal : w.toTerminal;
+      assert.equal(t, 'gnd', 'GND instance suffix should be stripped');
+    }
+  });
+
+  it('has zero warnings', () => {
+    assert.equal(result.warnings.length, 0,
+      'Warnings: ' + result.warnings.join('; '));
+  });
+});
+
+describe('Acceptance: Wokwi Blink LED v2 format (avr8js-electron-playground)', () => {
+  let result;
+  before(() => { result = importWokwi(loadFixture('wokwi-blink-led.json')); });
+
+  it('parses version 2 object-style connections', () => {
+    assert.equal(result.parts.length, 3);
+    assert.equal(result.wires.length, 3);
+    assert.equal(result.unmapped.length, 0);
+  });
+
+  it('maps Uno + resistor + LED', () => {
+    const kinds = new Set(result.parts.map(p => p.kind));
+    assert.ok(kinds.has('arduino_uno'));
+    assert.ok(kinds.has('resistor'));
+    assert.ok(kinds.has('led'));
+  });
+
+  it('translates C pin to cathode', () => {
+    const cathodeWire = result.wires.find(w =>
+      w.fromTerminal === 'cathode' || w.toTerminal === 'cathode');
+    assert.ok(cathodeWire, 'C should map to cathode');
+  });
+
+  it('translates A pin to anode', () => {
+    const anodeWire = result.wires.find(w =>
+      w.fromTerminal === 'anode' || w.toTerminal === 'anode');
+    assert.ok(anodeWire, 'A should map to anode');
+  });
+
+  it('preserves part positions', () => {
+    const uno = result.parts.find(p => p.kind === 'arduino_uno');
+    assert.equal(uno.x, 170);
+    assert.equal(uno.y, 332);
+  });
+});
+
+describe('Acceptance: Wokwi 7LED + breadboard (Aruack/7LED)', () => {
+  let result;
+  before(() => { result = importWokwi(loadFixture('wokwi-7led-breadboard.json')); });
+
+  it('maps all 18 parts (1 breadboard + 1 Uno + 8 resistors + 8 LEDs)', () => {
+    assert.equal(result.parts.length, 18);
+    assert.equal(result.unmapped.length, 0,
+      'Unmapped: ' + result.unmapped.map(u => `${u.ref}=${u.value}`).join(', '));
+  });
+
+  it('maps wokwi-breadboard to breadboard kind', () => {
+    const bb = result.parts.find(p => p.kind === 'breadboard');
+    assert.ok(bb, 'breadboard kind should exist');
+    assert.equal(bb.id, 'bb1');
+  });
+
+  it('generates 42 wires', () => {
+    assert.equal(result.wires.length, 42);
+  });
+
+  it('preserves breadboard hole coordinates as terminal names', () => {
+    const bbWires = result.wires.filter(w => w.from === 'bb1' || w.to === 'bb1');
+    assert.ok(bbWires.length > 0, 'Should have breadboard wires');
+    // Check that hole coordinates like "50b.j" pass through
+    const holeWire = bbWires.find(w => {
+      const t = w.from === 'bb1' ? w.fromTerminal : w.toTerminal;
+      return /^\d+[tb]\.[a-j]$/.test(t);
+    });
+    assert.ok(holeWire, 'Breadboard hole coords (e.g. 50b.j) should pass through');
+  });
+
+  it('preserves breadboard rail references', () => {
+    const bbWires = result.wires.filter(w => w.from === 'bb1' || w.to === 'bb1');
+    // Check for power rail refs like "bn.30", "tn.1"
+    const railWire = bbWires.find(w => {
+      const t = w.from === 'bb1' ? w.fromTerminal : w.toTerminal;
+      return /^[bt]n(\.\d+)?$/.test(t) || t === 'bn' || t === 'tn';
+    });
+    assert.ok(railWire, 'Breadboard rail refs (e.g. bn.30, tn.1) should pass through');
+  });
+
+  it('has zero warnings', () => {
+    assert.equal(result.warnings.length, 0,
+      'Warnings: ' + result.warnings.join('; '));
+  });
+});
+
+describe('Acceptance: Wokwi via registry dispatcher', () => {
+  it('dispatches all three fixtures through importCircuit', () => {
+    for (const fixture of ['wokwi-simon-game.json', 'wokwi-blink-led.json', 'wokwi-7led-breadboard.json']) {
+      const text = loadFixture(fixture);
+      const r = importCircuit('wokwi', text);
+      assert.ok(r.parts.length > 0, `${fixture} should produce parts`);
+      assert.equal(r.unmapped.length, 0, `${fixture} should have no unmapped: ` +
+        r.unmapped.map(u => `${u.ref}=${u.value}`).join(', '));
+    }
   });
 });

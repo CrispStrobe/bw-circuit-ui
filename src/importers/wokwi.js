@@ -4,13 +4,17 @@
  * Wokwi's format is very close to ours — the parts are "wokwi-style"
  * and our kind slugs are designed to map near-1:1.
  *
- * Wokwi diagram.json structure:
+ * Wokwi diagram.json structure (version 1):
  *   { version: 1,
  *     parts: [{ type: "wokwi-arduino-uno", id: "uno1", attrs: {...}, top, left }],
  *     connections: [["uno1:5V", "led1:A", "red", ["v0"]]] }
  *
- * Connections are [from, to, color, [path-hints]].
+ * Version 2 uses object-style connections:
+ *   connections: [{ id: "conn-0", from: "uno:13", to: "r1:2", color: "green" }]
+ *
  * Terminal references are "partId:pinName".
+ * Wokwi uses suffixed pins like "GND.1" (instance), "1.l"/"2.r" (button
+ * sides), and breadboard hole coordinates like "50b.j", "tn.30".
  *
  * @module
  */
@@ -55,6 +59,7 @@ const WOKWI_TO_KIND = {
   'wokwi-555':            '555',
   'wokwi-74hc595':        '74hc595',
   'wokwi-74hc165':        '74hc165',
+  'wokwi-breadboard':     'breadboard',
 };
 
 const KIND_TO_WOKWI = {};
@@ -64,16 +69,54 @@ for (const [wk, kind] of Object.entries(WOKWI_TO_KIND)) {
 
 // ── Wokwi pin name → engine terminal name ────────────────────────
 // Most map 1:1 (wokwi uses the same lowercase convention). Only
-// list exceptions.
+// list exceptions and aliases.
 const WOKWI_PIN_ALIASES = {
+  // Power / ground
   'VCC': 'vcc', 'GND': 'gnd', 'VDD': 'vdd', 'VSS': 'vss',
-  '5V':  'vcc', '3V3': '3v3', 'A':   'anode', 'K': 'cathode',
+  '5V':  'vcc', '3V3': '3v3',
+  // LED polarity
+  'A':   'anode', 'K': 'cathode', 'C': 'cathode',
+  // Generic signal pins
   'SIG': 'sig', 'TRIG': 'trig', 'ECHO': 'echo',
   'SDA': 'sda', 'SCL': 'scl',
+  // 74HC595 shift register
+  'DS':   'ser',   'SHCP': 'srclk', 'STCP': 'rclk',
+  'MR':   'srclr', 'OE':   'oe',    'Q7S':  'qh_s',
+  'Q0': 'qa', 'Q1': 'qb', 'Q2': 'qc', 'Q3': 'qd',
+  'Q4': 'qe', 'Q5': 'qf', 'Q6': 'qg', 'Q7': 'qh',
+  // 7-segment display
+  'COM': 'com',
 };
 
+/**
+ * Map a Wokwi pin name to an engine terminal name.
+ *
+ * Handles suffixed pins:
+ *   "GND.1" → strip instance suffix → "gnd"
+ *   "1.l" / "2.r" → strip side suffix → "1" / "2"
+ *   "50b.j" (breadboard hole) → pass through as-is (lowercase)
+ *   "COM.1" → strip instance suffix → "com"
+ */
 function mapWokwiPin(pin) {
-  return WOKWI_PIN_ALIASES[pin] || pin.toLowerCase();
+  // Strip instance suffix (.N where N is digits) for multi-instance pins
+  // e.g. "GND.1" → "GND", "COM.1" → "COM"
+  // But NOT breadboard coords like "50b.j" — those have alpha after dot
+  const instanceSuffix = pin.match(/^(.+)\.(\d+)$/);
+  if (instanceSuffix) {
+    pin = instanceSuffix[1];
+  }
+
+  // Strip button side suffixes: "1.l" → "1", "2.r" → "2"
+  const sideSuffix = pin.match(/^(\d+)\.[lr]$/);
+  if (sideSuffix) {
+    pin = sideSuffix[1];
+  }
+
+  // Check alias table first
+  if (WOKWI_PIN_ALIASES[pin]) return WOKWI_PIN_ALIASES[pin];
+
+  // Breadboard hole coordinates (e.g. "50b.j", "tn.30") — pass through lowercase
+  return pin.toLowerCase();
 }
 
 /**
@@ -103,7 +146,6 @@ export function importWokwi(text) {
     const partId = wp.id;
     const params = {};
     if (wp.attrs) {
-      // Map common wokwi attrs to params
       if (wp.attrs.value) params._value = wp.attrs.value;
       if (wp.attrs.color) params.color = wp.attrs.color;
     }
@@ -120,8 +162,21 @@ export function importWokwi(text) {
 
   const wires = [];
   for (const conn of (json.connections || [])) {
-    if (!Array.isArray(conn) || conn.length < 2) continue;
-    const [fromStr, toStr] = conn;
+    // Version 1: array [from, to, color, hints]
+    // Version 2: object { id, from, to, color }
+    let fromStr, toStr;
+    if (Array.isArray(conn)) {
+      if (conn.length < 2) continue;
+      [fromStr, toStr] = conn;
+    } else if (conn && typeof conn === 'object') {
+      fromStr = conn.from;
+      toStr = conn.to;
+    } else {
+      continue;
+    }
+
+    if (!fromStr || !toStr) continue;
+
     const [fromId, fromPin] = splitWokwiRef(fromStr);
     const [toId, toPin] = splitWokwiRef(toStr);
 
