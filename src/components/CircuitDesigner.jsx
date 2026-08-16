@@ -1312,8 +1312,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             {debuggerPanel}
           </section>
         )}
-        {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && parts.some(p =>
-            p.kind === 'mcu' || p.kind === 'arduino_uno' || p.kind === 'arduino_nano' || p.kind === 'pi_pico' || p.kind === 'w65c02' || p.kind === 'z80'
+        {/* MCU-class benches without pins get PIN advice; a MACHINE-class
+            bench (6502/Z80) has no PIN concept AT ALL — telling its user to
+            "add a PIN declaration" points them at a door that does not
+            exist (owner report, z80-bench 2026-08-16). It gets the truth:
+            Build Machine, then the ASM tab. */}
+        {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && !hasRetroCpu && parts.some(p =>
+            p.kind === 'mcu' || p.kind === 'arduino_uno' || p.kind === 'arduino_nano' || p.kind === 'pi_pico'
         ) && (
           <div data-no-code-indicator style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
             background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
@@ -1322,6 +1327,16 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             <div>{/^de/i.test(lang)
               ? 'Noch keine Programm-Pins deklariert. Füge eine PIN-Deklaration in den Blöcken hinzu, um Ausführen und Einzelschritt zu aktivieren.'
               : 'No program pins declared yet. Add a PIN declaration in Blocks to enable run and step.'}</div>
+          </div>
+        )}
+        {debuggerOn && hasRetroCpu && (!stc || !stc.pins || !stc.pins.length) && (
+          <div data-machine-hint style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
+            background: '#eff6ff', border: '1px solid #93c5fd', color: '#1e40af',
+            fontSize: 12, lineHeight: 1.35}}>
+            <strong>{/^de/i.test(lang) ? 'Maschinen-Werkbank' : 'Machine bench'}</strong>
+            <div>{/^de/i.test(lang)
+              ? 'Dieser Rechner hat keine Pins — er hat einen Bus. „Build Machine" bootet ihn aus der Verdrahtung; das Programm kommt aus dem ASM-Tab.'
+              : 'This computer has no pins — it has a bus. "Build Machine" boots it from the wiring; the program comes from the ASM tab.'}</div>
           </div>
         )}
         {/* Build Machine — for retro breadboard computers */}
