@@ -164,6 +164,12 @@ function seatExample(id) {
         seatBoard.set(part.id, target);
         if (useBottom) target.colBot += w + gap;
         else target.col += w + gap;
+        // A gutter-straddling DIP owns its f-row columns too — the bottom
+        // cursor must clear them or every flat part sent to the bottom
+        // block lands on the CPU's own pins, occupy() throws, and the
+        // whole LED rank ends up parked as floats in a line above the
+        // bench (self-taken screenshot, 2026-08-16).
+        if (straddles) target.colBot = Math.max(target.colBot, target.col);
     }
     if (!seats.size) return { id, skip: 'no-seats-fit' };
 
