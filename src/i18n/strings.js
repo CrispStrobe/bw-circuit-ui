@@ -152,6 +152,9 @@ const STRINGS = {
   serialConsole:       { en: 'Serial Console', de: 'Serielle Konsole' },
   serialEmpty:         { en: 'Waiting for serial output… (click to type)', de: 'Warte auf serielle Ausgabe… (klicken zum Tippen)' },
 
+  // ── Architecture face ─────────────────────────────────────────────
+  archFace6502:        { en: '6502 Architecture', de: '6502-Architektur' },
+
   // ── Instruments panel sections ─────────────────────────────────────
   debugger:            { en: 'Debugger', de: 'Debugger' },
   debuggerInactive:    { en: 'Debugger inactive', de: 'Debugger inaktiv' },

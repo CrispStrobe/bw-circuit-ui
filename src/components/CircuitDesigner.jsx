@@ -60,6 +60,7 @@ import { Circuit } from '../model/circuit.js';
 import { extractMachine } from '../model/machine-extract.js';
 import { OrientationInput } from './OrientationInput.jsx';
 import { SerialConsole } from './SerialConsole.jsx';
+import { ArchitectureFace } from './ArchitectureFace.jsx';
 import { StimulusControls } from './StimulusControls.jsx';
 import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
@@ -1185,6 +1186,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             </div>
             <SerialConsole onSerialFn={debugState.onSerial} sendSerialFn={debugState.sendSerial} lang={lang} />
           </section>
+        )}
+        {/* Architecture face — block diagram with live register state */}
+        {hasMcuPins && debugState && typeof debugState.regs === 'function' && (
+          <ArchitectureFace debugState={debugState} lang={lang} />
         )}
         {hasMcuPins && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
