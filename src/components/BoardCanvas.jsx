@@ -1558,12 +1558,38 @@ export function BoardCanvas({
   // survived (self-taken deployed screenshot, 2026-08-16).
   const prevPartCount = React.useRef(0);
   const prevFitToken = React.useRef(fitToken);
+  const prevFitSize = React.useRef({ w: CANVAS_W, h: CANVAS_H });
+  // The fit must measure the REAL container, not the 700×500 legacy
+  // constants: the svg viewBox already sizes from the container, so a
+  // fit computed against the constants was wrong on every other window
+  // size — small-in-a-corner on large windows, clipped on tall ones
+  // (owner: "does not properly scale to larger windows").
+  const fitSizeRef = React.useRef({ w: CANVAS_W, h: CANVAS_H });
+  const [fitSize, setFitSize] = useState({ w: CANVAS_W, h: CANVAS_H });
+  React.useEffect(() => {
+    const el = canvasContainerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const w = el.clientWidth || CANVAS_W, h = el.clientHeight || CANVAS_H;
+      fitSizeRef.current = { w, h };
+      setFitSize(prev => (prev.w === w && prev.h === h) ? prev : { w, h });
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  }, []);
   React.useEffect(() => {
     if (parts.length === 0) return;
-    const tokenChanged = fitToken !== prevFitToken.current;
-    if (!tokenChanged && parts.length === prevPartCount.current) return;
+    // Re-fit on any of the three signals: a file load (fitToken), a
+    // structural change (part count), or the container being resized.
+    const changed = fitToken !== prevFitToken.current ||
+      parts.length !== prevPartCount.current ||
+      fitSize.w !== prevFitSize.current.w || fitSize.h !== prevFitSize.current.h;
+    if (!changed) return;
     prevFitToken.current = fitToken;
     prevPartCount.current = parts.length;
+    prevFitSize.current = fitSize;
     // Bounding box from REAL part bounds. The old center±80 guess
     // undershot a full breadboard by ~385px per side (the body is 930
     // wide), so multi-board benches auto-fit with their left edges
@@ -1580,16 +1606,17 @@ export function BoardCanvas({
     const contentW = maxX - minX + 40;
     const contentH = maxY - minY + 40;
     if (contentW <= 0 || contentH <= 0) return;
-    const fitZoom = Math.min(1.5, Math.min(CANVAS_W / contentW, CANVAS_H / contentH));
-    const z = Math.max(0.3, Math.min(1, fitZoom));
+    const { w: FW, h: FH } = fitSizeRef.current;
+    const fitZoom = Math.min(1.5, Math.min(FW / contentW, FH / contentH));
+    const z = Math.max(0.3, Math.min(1.5, fitZoom));
     setZoom(z);
     // Center the content in the viewport instead of pinning it top-left.
-    const viewW = CANVAS_W / z, viewH = CANVAS_H / z;
+    const viewW = FW / z, viewH = FH / z;
     setPan({
       x: minX - 20 - Math.max(0, (viewW - contentW) / 2),
       y: minY - 20 - Math.max(0, (viewH - contentH) / 2),
     });
-  }, [parts.length, fitToken]);
+  }, [parts.length, fitToken, fitSize.w, fitSize.h]);
   const [panning, setPanning] = useState(false);
   const panStart = React.useRef(null);
 
