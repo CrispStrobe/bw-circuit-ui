@@ -1,8 +1,8 @@
 # bw-circuit-ui -- handoff for the next session
 
-npm test 983/2/3 (2 failures are upstream footprints.js 62256 refTerminal from coordinator's retro DIP push).
-Pendant Playwright test added (test:render suite).
+npm test 987/0/3 (CI clean). Pendant Playwright test (test:render suite).
 Parts-data index regenerated: 146 → 213 sidecar entries.
+Lite push freeze in effect — batching lite forwards until coordinator lifts.
 VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
 Snapshot drop: 3/3. Sensor faces: 3/3. Contract: 37/37.
 Deploy current. MPL-2.0 by owner decision.
@@ -156,6 +156,12 @@ Nothing uncommitted. No branches.
 
 ## Recently completed
 
+- **Drag-snap ghost + DIP pin-1-bottom labels** (f3841e1): ghost preview
+  during drag now uses two-pass logic (tight snapGhost → seatSnapHole loose
+  fallback), matching endMove exactly — what you see is what the drop does.
+  Applied to both moveSelection and placeGhost (palette drag). DIP body
+  renderer for retro chips: notch at left end, pin-1 dot bottom-left
+  (pin-1-bottom convention), pin name labels from sidecar at each leg.
 - **UX polish** (15af19d): DrcPanel INFO-severity notes get italic 'i' icon
   + neutral slate (#64748b) instead of '!' affordance. ExamplesBrowser: denser
   cards (single-row layout), prominent search with magnifier + clear button,
