@@ -47,6 +47,7 @@ import { ExamplesBrowser } from './ExamplesBrowser.jsx';
 import { t } from '../i18n/strings.js';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
+import { SweepPanel } from './SweepPanel.jsx';
 import { SchematicPanel } from './SchematicPanel.jsx';
 import { useCircuit } from '../hooks/useCircuit.js';
 import { useBoard } from '../hooks/useBoard.js';
@@ -197,6 +198,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   });
   const toggleScope = () => setShowScope(v => { const n = !v; try { localStorage.setItem('bw-instr-scope', n ? '1' : '0'); } catch {} return n; });
   const toggleMeter = () => setShowMeter(v => { const n = !v; try { localStorage.setItem('bw-instr-meter', n ? '1' : '0'); } catch {} return n; });
+  const [showSweep, setShowSweep] = useState(() => {
+    try { return localStorage.getItem('bw-instr-sweep') === '1'; } catch { return false; }
+  });
+  const toggleSweep = () => setShowSweep(v => { const n = !v; try { localStorage.setItem('bw-instr-sweep', n ? '1' : '0'); } catch {} return n; });
   const [warningsOpen, setWarningsOpen] = useState(false);
   const hasMcuPins = !!(projectData?.pins?.length > 0);
   const [machineResult, setMachineResult] = useState(null); // extractMachine result
@@ -1348,9 +1353,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           <button onClick={toggleMeter} style={{ flex: 1, padding: '4px 6px', background: showMeter ? '#2c3e50' : '#16213e', border: '1px solid #f1c40f', borderRadius: 4, color: '#f1c40f', fontFamily: 'monospace', fontSize: 10 }}>
             {showMeter ? (/^de/i.test(lang) ? '⌁ Multimeter verbergen' : '⌁ Hide meter') : (/^de/i.test(lang) ? '⌁ Multimeter' : '⌁ Meter')}
           </button>
+          <button onClick={toggleSweep} data-testid="bw-sweep-toggle" style={{ flex: 1, padding: '4px 6px', background: showSweep ? '#2c3e50' : '#16213e', border: '1px solid #9b59b6', borderRadius: 4, color: '#9b59b6', fontFamily: 'monospace', fontSize: 10 }}>
+            {showSweep ? (/^de/i.test(lang) ? '∿ Sweep verbergen' : '∿ Hide sweep') : '∿ Sweep'}
+          </button>
         </div>
         {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} lang={lang} /></div>}
         {showMeter && <div data-meter-module style={{width: 280, flex: '0 0 auto'}}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} lang={lang} /></div>}
+        {showSweep && <div data-sweep-module style={{width: 280, flex: '0 0 auto'}}><SweepPanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} lang={lang} /></div>}
         {/* Orientation input — for accelerometer parts (mpu6050, adxl335, memsic2125) */}
         {parts.filter(p => ['mpu6050', 'adxl335', 'memsic2125'].includes(p.kind)).map(p => (
           <OrientationInput key={p.id} partId={p.id} kind={p.kind} lang={lang}
