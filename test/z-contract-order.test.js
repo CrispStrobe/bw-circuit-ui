@@ -30,7 +30,12 @@ test('mount order: substrate < chip bodies < wokwi parts < wire layers', () => {
   const wires = at('<Wires wires={wires}');
   const jumpers = at('{/* Jumper wires.');
   assert.ok(substrate < svgParts, 'boards must paint before chip bodies');
-  assert.ok(svgParts < wokwi, 'chip bodies before wokwi parts');
-  assert.ok(wokwi < wires, 'WIRES must paint after ALL parts (z contract)');
-  assert.ok(wokwi < jumpers, 'JUMPERS must paint after ALL parts (z contract)');
+  assert.ok(svgParts < wires, 'WIRES paint after the svg part bodies (z contract)');
+  assert.ok(svgParts < jumpers, 'JUMPERS paint after the svg part bodies (z contract)');
+  // WokwiParts is an HTML OVERLAY mounted after the svg closes. Svg wire
+  // elements placed after it are INERT DOM and render nothing — that
+  // exact mistake shipped once and every jumper vanished from the
+  // deployed Blink. The wire layers must sit BEFORE it (inside the svg).
+  assert.ok(wires < wokwi, 'wire layers stay INSIDE the svg (before the HTML overlay)');
+  assert.ok(jumpers < wokwi, 'jumper layer stays INSIDE the svg (before the HTML overlay)');
 });
