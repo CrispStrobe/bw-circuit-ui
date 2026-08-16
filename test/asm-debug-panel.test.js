@@ -43,7 +43,7 @@ describe('AsmDebugPanel', () => {
 
   test('token colours cover the expected types', () => {
     const src = readFileSync(componentPath, 'utf8');
-    for (const type of ['instruction', 'register', 'number', 'label', 'directive', 'comment']) {
+    for (const type of ['instruction', 'register', 'identifier', 'number', 'label', 'directive', 'comment']) {
       assert.ok(src.includes(type), `TOKEN_COLORS should cover '${type}'`);
     }
   });
@@ -64,6 +64,17 @@ describe('AsmDebugPanel', () => {
   test('onHighlightLine callback wired for hover cross-reference', () => {
     const src = readFileSync(componentPath, 'utf8');
     assert.ok(/onHighlightLine/.test(src), 'should support onHighlightLine callback');
+  });
+
+  test('listing handles raw string format from live backend', () => {
+    const src = readFileSync(componentPath, 'utf8');
+    assert.ok(/typeof listing === 'string'/.test(src),
+      'should detect raw string listing format');
+  });
+
+  test('listing handles parsed array format', () => {
+    const src = readFileSync(componentPath, 'utf8');
+    assert.ok(/entry\.addr/.test(src), 'should handle parsed array with addr');
   });
 
   test('is exported from index.js', () => {

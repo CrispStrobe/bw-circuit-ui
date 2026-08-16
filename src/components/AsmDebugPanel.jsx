@@ -30,6 +30,7 @@ import React, { useState, useCallback } from 'react';
 const TOKEN_COLORS = {
   instruction: '#e06c75', // mnemonic / opcode
   register:    '#61afef', // register name
+  identifier:  '#abb2bf', // unclassified identifier (instruction/register/symbol)
   number:      '#d19a66', // numeric literal
   label:       '#98c379', // label definition / reference
   directive:   '#c678dd', // assembler directive (.org, .db)
@@ -167,14 +168,41 @@ function SymbolTable({ passes }) {
 }
 
 // ── Listing tab ──────────────────────────────────────────────────
+// The live backend sends listing as a raw string (sdas/ca65 .lst output).
+// We render it as a coloured pre-formatted block: the address column in
+// gray, hex bytes in orange, source in white — same colours as the parsed
+// format but without needing a structured parse on every toolchain.
 
 function Listing({ listing, onHighlightLine }) {
   const [hovered, setHovered] = useState(null);
 
-  if (!listing || listing.length === 0) {
+  if (!listing || (typeof listing === 'string' && !listing.trim()) ||
+      (Array.isArray(listing) && listing.length === 0)) {
     return <div style={{ color: '#5c6370', padding: 8 }}>No listing</div>;
   }
 
+  // Raw string format from the live backend
+  if (typeof listing === 'string') {
+    const lines = listing.split('\n').filter(l => l.trim());
+    return (
+      <div style={{ overflowY: 'auto', maxHeight: '100%' }}>
+        {lines.map((line, i) => (
+          <div key={i}
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+            style={{
+              fontFamily: 'monospace', fontSize: '9px',
+              padding: '0 4px', lineHeight: 1.6, whiteSpace: 'pre',
+              background: hovered === i ? '#1e2d4a' : 'transparent',
+              borderLeft: hovered === i ? '2px solid #61afef' : '2px solid transparent',
+              color: '#abb2bf',
+            }}>{line}</div>
+        ))}
+      </div>
+    );
+  }
+
+  // Parsed array format (future structured backend or client-side parse)
   return (
     <div style={{ overflowY: 'auto', maxHeight: '100%' }}>
       {listing.map((entry, i) => (
@@ -223,7 +251,9 @@ export function AsmDebugPanel({ asmDebug, onHighlightLine, lang = 'en' }) {
   const tokenCount = tokens?.filter(t => t.type !== 'newline' && t.type !== 'whitespace').length || 0;
   const symbolCount = passes?.[passes.length - 1]
     ? Object.keys(passes[passes.length - 1].symbols || {}).length : 0;
-  const listingLines = listing?.length || 0;
+  const listingLines = typeof listing === 'string'
+    ? listing.split('\n').filter(l => l.trim()).length
+    : (listing?.length || 0);
 
   return (
     <div style={{
