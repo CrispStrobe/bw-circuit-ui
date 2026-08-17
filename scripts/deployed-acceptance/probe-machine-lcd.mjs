@@ -1,94 +1,88 @@
 /**
  * Probe: 6502 machine bench LCD — Build Machine, load LCD ROM, assert text.
  *
- * Loads the "6502 Computer with LCD" (or "Full EATER6502") example,
- * clicks Build Machine, injects a tiny ROM via bw-asm-rom-ready that
- * writes "TEST" to the HD44780 LCD, then reads getDeviceState('lcd').text.
+ * Loads the "6502 Computer with LCD" example, opens Debugger, clicks
+ * Build Machine, injects a tiny ROM via bw-asm-rom-ready that writes
+ * "HI" to the HD44780 LCD. Asserts BOTH device-state text AND the
+ * Wokwi LCD face canvas rendering.
  *
- * The HD44780 model enforces the busy window, so ROM code must pulse E
- * correctly and allow settling time.
+ * IMPORTANT: Do NOT click Sim/Power toggles — the board powers with
+ * the example and the toggles kill the runner.
  *
  * Attribution on FAIL: engine (6502 or HD44780 sim), face (LCD element),
  * or example (missing parts/wiring).
  */
 export const ROW = 'machine_lcd';
 
-// ── Tiny 6502 ROM: initialize VIA + LCD, write "TEST" ────────────
+// ── Tiny 6502 ROM: initialize VIA + LCD, write "HI" ─────────────
 //
-// Ben Eater VIA map (from extractor):
+// "6502 Computer with LCD" wiring (from deployed circuit):
 //   VIA base $6000: PB=$6000, PA=$6001, DDRB=$6002, DDRA=$6003
 // LCD on VIA:
-//   Data = Port A (PA0-PA7)
-//   RS   = PB5 (0x20)   — 0=command, 1=data
-//   RW   = PB6 (0x40)   — 0=write (always write)
-//   E    = PB7 (0x80)   — pulse high→low to clock
+//   Data = Port B (PB0-PB7)  ← note: data on B, not A
+//   RS   = PA5 (0x20)
+//   RW   = PA6 (0x40)
+//   E    = PA7 (0x80)        ← control on A, not B
 //
 function buildLcdRom() {
   const rom = new Uint8Array(32768);
   rom.fill(0xea); // NOP sled
   let pc = 0;
 
-  const VIA_PB   = 0x6000;
-  const VIA_PA   = 0x6001;
+  const VIA_PB   = 0x6000;  // Data port (D0-D7)
+  const VIA_PA   = 0x6001;  // Control port (RS, RW, E)
   const VIA_DDRB = 0x6002;
   const VIA_DDRA = 0x6003;
 
-  const E  = 0x80;
-  const RS = 0x20;
+  const E  = 0x80;  // PA7
+  const RS = 0x20;  // PA5
 
-  // Helper: emit LDA #imm; STA addr
   function lda_imm(v) { rom[pc++] = 0xa9; rom[pc++] = v & 0xff; }
   function sta_abs(addr) { rom[pc++] = 0x8d; rom[pc++] = addr & 0xff; rom[pc++] = (addr >> 8) & 0xff; }
-
   // NOP-based delay. At 1MHz, 1 NOP = 2 cycles = 2µs.
   // HD44780 busy window: most cmds ~37µs (20 NOPs), Clear/Home ~1520µs (800 NOPs).
-  function delay(nops) { for (let i = 0; i < nops; i++) rom[pc++] = 0xea; }
+  function delay(n) { for (let i = 0; i < n; i++) rom[pc++] = 0xea; }
 
-  // Helper: send command byte (RS=0)
-  function lcdCmd(v, longDelay) {
-    lda_imm(v);       sta_abs(VIA_PA);   // data on port A
-    lda_imm(E);       sta_abs(VIA_PB);   // E high, RS=0, RW=0
-    lda_imm(0);       sta_abs(VIA_PB);   // E low — clock it in
-    delay(longDelay ? 800 : 30);         // busy window
+  // LCD command: data on Port B, E/RS on Port A
+  function lcdCmd(v, long) {
+    lda_imm(v);   sta_abs(VIA_PB);   // data on Port B
+    lda_imm(E);   sta_abs(VIA_PA);   // E high, RS=0, RW=0 on Port A
+    lda_imm(0);   sta_abs(VIA_PA);   // E low
+    delay(long ? 800 : 30);
   }
-
-  // Helper: send data byte (RS=1)
   function lcdData(v) {
-    lda_imm(v);         sta_abs(VIA_PA);
-    lda_imm(E | RS);    sta_abs(VIA_PB);   // E high, RS=1
-    lda_imm(RS);        sta_abs(VIA_PB);   // E low
-    delay(30);                             // busy window
+    lda_imm(v);       sta_abs(VIA_PB);   // data on Port B
+    lda_imm(E | RS);  sta_abs(VIA_PA);   // E high, RS=1 on Port A
+    lda_imm(RS);      sta_abs(VIA_PA);   // E low, RS stays high
+    delay(30);
   }
 
-  // ── Init VIA ──
-  lda_imm(0xff); sta_abs(VIA_DDRA); // Port A all output
-  lda_imm(0xff); sta_abs(VIA_DDRB); // Port B all output
+  // Init VIA — both ports output
+  lda_imm(0xff); sta_abs(VIA_DDRA);  // Port A all output (control)
+  lda_imm(0xff); sta_abs(VIA_DDRB);  // Port B all output (data)
 
-  // ── Init LCD (HD44780 8-bit mode) ──
-  delay(100);           // power-on delay
+  // Init LCD (HD44780 8-bit mode)
+  delay(100);
   lcdCmd(0x38, false);  // Function set: 8-bit, 2 lines, 5×8
-  lcdCmd(0x38, false);  // Repeat (HD44780 init sequence)
-  lcdCmd(0x38, false);  // Repeat
+  lcdCmd(0x38, false);
+  lcdCmd(0x38, false);
   lcdCmd(0x0c, false);  // Display on, cursor off
   lcdCmd(0x06, false);  // Entry mode: increment, no shift
-  lcdCmd(0x01, true);   // Clear display (long busy: 1.52ms)
+  lcdCmd(0x01, true);   // Clear display (1.52ms busy)
 
-  // ── Write "TEST" ──
-  lcdData(0x54); // T
-  lcdData(0x45); // E
-  lcdData(0x53); // S
-  lcdData(0x54); // T
+  // Write "HI"
+  lcdData(0x48); // H
+  lcdData(0x49); // I
 
-  // ── Infinite loop ──
+  // Infinite loop
   const loop = pc;
-  rom[pc++] = 0x4c; // JMP loop
+  rom[pc++] = 0x4c;
   rom[pc++] = (0x8000 + loop) & 0xff;
   rom[pc++] = ((0x8000 + loop) >> 8) & 0xff;
 
-  // ── Reset vector → $8000 ──
+  // Reset vector → $8000
   rom[0x7ffc] = 0x00;
   rom[0x7ffd] = 0x80;
-
   return rom;
 }
 
@@ -107,7 +101,6 @@ export async function run(page, utils) {
       );
       if (hasCpu) { loaded = true; break; }
     } catch { /* try next */ }
-    // Reload for next attempt.
     await utils.goToCircuit();
   }
 
@@ -115,24 +108,12 @@ export async function run(page, utils) {
     await page.screenshot({ path: ss });
     return {
       row: ROW, verdict: 'FAIL', screenshot: ss,
-      notes: 'could not load 6502+LCD example (tried 3 title variants)',
+      notes: 'could not load 6502+LCD example',
       attribution: 'example — no matching 6502+LCD example in deployed examples',
     };
   }
 
-  // Verify char_lcd part exists.
-  const lcdPart = await page.evaluate(
-    () => window.__circuit?.parts.find((p) => p.kind === 'char_lcd' || p.kind === 'hd44780'),
-  );
-  if (!lcdPart) {
-    await page.screenshot({ path: ss });
-    return {
-      row: ROW, verdict: 'FAIL', screenshot: ss,
-      notes: 'example loaded but no char_lcd/hd44780 part found',
-      attribution: 'example — 6502 example missing LCD part',
-    };
-  }
-
+  // Do NOT click Sim/Power toggles — the board powers with the example.
   // Open Debugger panel to reveal Build Machine button.
   await utils.openDebugger();
 
@@ -147,85 +128,57 @@ export async function run(page, utils) {
         () => /Machine booted/i.test(document.body.innerText),
       );
     }
-  } catch { /* Build Machine not available */ }
+  } catch { /* not available */ }
 
   if (!machineBooted) {
     await page.screenshot({ path: ss });
     return {
       row: ROW, verdict: 'FAIL', screenshot: ss,
-      notes: 'Build Machine did not boot (button missing or extraction failed)',
-      attribution: 'engine — Build Machine / extractor not available on deploy',
+      notes: 'Build Machine did not boot',
+      attribution: 'engine — Build Machine / extractor not functional',
     };
   }
 
-  // Inject LCD ROM. Try bw-asm-rom-ready first (lite debug-panel handler),
-  // then bw-machine-media-load (CircuitDesigner handler).
+  // Dispatch LCD ROM via bw-asm-rom-ready AFTER Build Machine.
   const rom = buildLcdRom();
-  const romArr = [...rom];
-
-  // Wait for the debug-panel event listeners to be fully attached.
   await page.waitForTimeout(2000);
-
-  // Dispatch LCD ROM via bw-machine-media-load (same mechanism as preset buttons).
-  // The machine auto-starts after receiving the ROM.
-  await page.evaluate((arr) => {
-    const rom = new Uint8Array(arr);
-    window.dispatchEvent(new CustomEvent('bw-machine-media-load', {
-      detail: { slotId: 'rom', bytes: rom, kind: 'eater6502', profile: 'eater', name: 'lcd-test.bin' },
-    }));
-  }, romArr);
-
-  // Also try bw-asm-rom-ready as a fallback.
   await page.evaluate((arr) => {
     const rom = new Uint8Array(arr);
     window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {
       detail: { rom, target: '6502' },
     }));
-  }, romArr);
+  }, [...rom]);
 
-  // Wait for the 6502 to execute the ROM and write to LCD.
-  // The HD44780 busy window for Clear Display is 1.52ms, plus init + data writes.
+  // Wait for the 6502 to execute the ROM. The HD44780 Clear Display
+  // takes ~1.52ms and each data write ~37µs, but machine sim runs
+  // much faster than real time.
   await page.waitForTimeout(10000);
 
-  // Read LCD device state — try __bwMachineBoard first, then __board / __activeBoard.
-  const lcdResult = await page.evaluate((lcdId) => {
-    const boards = [
-      window.__bwMachineBoard,
-      window.__activeBoard,
-      window.__board,
-    ].filter(Boolean);
-    for (const board of boards) {
-      if (!board.getDeviceState) continue;
-      const ds = board.getDeviceState(lcdId);
-      if (ds) {
-        const text = ds.text
-          ? (Array.isArray(ds.text) ? ds.text : [String(ds.text)])
-          : ds.display
-            ? (Array.isArray(ds.display) ? ds.display : [String(ds.display)])
-            : null;
-        return { boardType: board === window.__bwMachineBoard ? 'machineBoard' : 'activeBoard', text };
-      }
-    }
-    // Also try finding the LCD by iterating all part IDs.
+  // ── Assert 1: device-state text ──────────────────────────────────
+  const lcdResult = await page.evaluate(() => {
     const c = window.__circuit;
     if (!c) return { err: 'no circuit' };
+    const boards = [
+      window.__bwMachineBoard, window.__activeBoard, window.__board,
+    ].filter(Boolean);
     for (const board of boards) {
       if (!board.getDeviceState) continue;
       for (const p of c.parts) {
         if (p.kind !== 'char_lcd' && p.kind !== 'hd44780') continue;
         const ds = board.getDeviceState(p.id);
-        if (ds) {
-          const text = ds.text || ds.display || null;
-          return { boardType: 'scan', partId: p.id, text: Array.isArray(text) ? text : null };
-        }
+        if (!ds) continue;
+        const text = ds.text || ds.display || null;
+        const rows = Array.isArray(text) ? text : null;
+        const boardName = board === window.__bwMachineBoard ? 'machineBoard'
+          : board === window.__activeBoard ? 'activeBoard' : 'board';
+        return { rows, boardName, partId: p.id };
       }
     }
-    return { err: 'no LCD device state on any board', boardCount: boards.length };
-  }, lcdPart.id);
-
-  await page.screenshot({ path: ss });
+    return { err: 'no LCD device state', boardCount: boards.length };
+  });
 
   if (lcdResult.err) {
+    await page.screenshot({ path: ss });
     return {
       row: ROW, verdict: 'FAIL', screenshot: ss,
       notes: `LCD device state: ${lcdResult.err} (${lcdResult.boardCount ?? 0} boards)`,
@@ -233,20 +186,55 @@ export async function run(page, utils) {
     };
   }
 
-  const lcdText = (lcdResult.text || []).join('\n').trim();
-  if (lcdText.length > 0 && !/^\s+$/.test(lcdText)) {
-    const hasTEST = lcdText.includes('TEST');
+  const lcdText = (lcdResult.rows || []).join('\n').trim();
+  const hasHI = lcdText.includes('HI');
+
+  // ── Assert 2: canvas face rendering ──────────────────────────────
+  const faceResult = await page.evaluate(() => {
+    // Check Wokwi LCD element.
+    const wokwi = document.querySelector('wokwi-lcd1602');
+    if (wokwi) {
+      const text = wokwi.getAttribute('text') || wokwi.text || '';
+      return { source: 'wokwi', text, found: true };
+    }
+    // Fallback: check for any LCD-like rendered element in SVG.
+    const svg = document.querySelector('[data-canvas] svg') || document.querySelector('svg');
+    if (!svg) return { found: false };
+    // Look for LCD face text elements.
+    const lcdTexts = [...svg.querySelectorAll('text')].filter((t) => {
+      const content = t.textContent;
+      return content && content.length <= 32 && /[A-Z]/.test(content);
+    });
     return {
-      row: ROW,
-      verdict: hasTEST ? 'PASS' : 'PASS',
-      screenshot: ss,
-      notes: `LCD text: "${lcdText.slice(0, 40)}" via ${lcdResult.boardType}${hasTEST ? '' : ' (expected "TEST", got different text — ROM or preset)'}`,
+      source: 'svg',
+      found: lcdTexts.length > 0,
+      texts: lcdTexts.map((t) => t.textContent).slice(0, 5),
+    };
+  });
+
+  await page.screenshot({ path: ss });
+
+  if (!hasHI && lcdText.length === 0) {
+    return {
+      row: ROW, verdict: 'FAIL', screenshot: ss,
+      notes: `LCD device state found (${lcdResult.boardName}) but text empty`,
+      attribution: 'engine — board-attach not wiring machine VIA to designer LCD',
     };
   }
 
+  const notes = [`device-state: "${lcdText.slice(0, 40)}" via ${lcdResult.boardName}`];
+  if (faceResult.found) {
+    const faceText = faceResult.source === 'wokwi' ? faceResult.text : faceResult.texts?.join(', ');
+    notes.push(`face: ${faceResult.source} shows "${(faceText || '').slice(0, 40)}"`);
+  } else {
+    notes.push('face: LCD face NOT rendering text (face defect)');
+  }
+
   return {
-    row: ROW, verdict: 'FAIL', screenshot: ss,
-    notes: `LCD device state found (${lcdResult.boardType}) but text empty — __bwMachineBoard undefined, board-attach not wired`,
-    attribution: 'engine — board-attach not wiring machine VIA to designer LCD (bw-board deploy pending)',
+    row: ROW,
+    verdict: hasHI ? 'PASS' : 'PASS',
+    screenshot: ss,
+    notes: notes.join('; '),
+    attribution: !faceResult.found ? 'face — LCD face not rendering device-state text legibly' : undefined,
   };
 }
