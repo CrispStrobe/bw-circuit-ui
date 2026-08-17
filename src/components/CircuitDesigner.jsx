@@ -966,7 +966,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       {selectorsOpen ? (
         <div data-selectors-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 auto', width: '100%', minWidth: 0, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
           <div data-parts-selector style={{position: 'relative', flex: partsOpen ? `${selectorSplit} 1 0` : '0 0 30px', minHeight: partsOpen ? 80 : 30, display: 'flex', minWidth: 0, overflow: 'hidden'}}>
-            <button onClick={() => setPartsOpen(v => !v)} aria-label={partsOpen ? 'Collapse Parts' : 'Expand Parts'} aria-expanded={partsOpen} title={partsOpen ? 'Collapse Parts' : 'Expand Parts'} style={{position: 'absolute', zIndex: 4, left: -13, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{partsOpen ? '‹' : '›'}</button>
+            <button onClick={() => setPartsOpen(v => !v)} aria-label={partsOpen ? 'Collapse Parts' : 'Expand Parts'} aria-expanded={partsOpen} title={partsOpen ? 'Collapse Parts' : 'Expand Parts'} style={{position: 'absolute', zIndex: 4, left: 2, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{partsOpen ? '‹' : '›'}</button>
             {partsOpen ? (
               <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
             ) : (
@@ -989,7 +989,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             <span style={{display: 'block', width: 42, height: 2, margin: '2px auto', background: '#475569', borderRadius: 2}} />
           </div>
           <div data-examples-selector style={{position: 'relative', flex: examplesOpen ? `${1 - selectorSplit} 1 0` : '0 0 30px', minHeight: examplesOpen ? 70 : 30, overflowY: examplesOpen ? 'auto' : 'hidden', display: 'flex', flexDirection: 'column'}}>
-            <button onClick={() => setExamplesOpen(v => !v)} aria-label={examplesOpen ? 'Collapse Examples' : 'Expand Examples'} aria-expanded={examplesOpen} title={examplesOpen ? 'Collapse Examples' : 'Expand Examples'} style={{position: 'absolute', zIndex: 4, left: -13, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{examplesOpen ? '‹' : '›'}</button>
+            <button onClick={() => setExamplesOpen(v => !v)} aria-label={examplesOpen ? 'Collapse Examples' : 'Expand Examples'} aria-expanded={examplesOpen} title={examplesOpen ? 'Collapse Examples' : 'Expand Examples'} style={{position: 'absolute', zIndex: 4, left: 2, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{examplesOpen ? '‹' : '›'}</button>
             {examplesOpen ? (<>
             {/* Codex / Gallery toggle — only shown when both examples and curriculum are available */}
             {examples && onLoadExample && curriculum && (
