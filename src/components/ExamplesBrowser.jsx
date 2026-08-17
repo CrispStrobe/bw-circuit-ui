@@ -486,9 +486,19 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                       background: palette.input, color: palette.text,
                       border: `1px solid ${palette.buttonBorder}`, borderRadius: 4,
                     }}>
-                    {pDevices.map(d => (
-                      <option key={d} value={d}>{DEVICE_LABELS[d] || d}</option>
-                    ))}
+                    {pDevices.map(d => {
+                      // Transform refusals are app-readable data
+                      // (e.transformRefused, sb3 0da6ed2): offer the pick
+                      // greyed with its reason instead of loading a
+                      // mismatched pairing.
+                      const refusal = pEx.transformRefused && pEx.transformRefused[d];
+                      return (
+                        <option key={d} value={d} disabled={!!refusal}
+                          title={refusal || undefined}>
+                          {(DEVICE_LABELS[d] || d) + (refusal ? ' — unavailable: ' + refusal : '')}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               )}
