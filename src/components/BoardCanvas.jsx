@@ -2878,6 +2878,19 @@ export function BoardCanvas({
           style={{ width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↶</button>
         <button onClick={() => onRedo && onRedo()} title={t('redoTitle', lang)} aria-label={t('redo', lang)}
           style={{ width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↷</button>
+        {simulate ? (
+          <button type="button" data-voltage-view-toggle
+            aria-pressed={voltageView} onClick={toggleVoltageView}
+            title={voltageView ? 'Hide voltages (wire colors, labels, legend)' : 'Show voltages on wires'}
+            aria-label={voltageView ? 'Hide voltages' : 'Show voltages'}
+            style={{height: 30, boxSizing: 'border-box', padding: '4px 8px',
+              fontSize: 12, fontWeight: 700, fontFamily: 'monospace',
+              color: voltageView ? '#0f172a' : '#e2e8f0',
+              background: voltageView ? '#f1c40f' : '#334155',
+              border: '1px solid #64748b', borderRadius: 4, cursor: 'pointer'}}>
+            {'V\u26a1'}
+          </button>
+        ) : null}
         <div data-toolbar-more style={{position: 'relative', flex: '0 0 auto'}}>
           <button onClick={() => setToolbarMoreOpen(v => !v)} title="More circuit controls: Save, Load, Zoom" aria-label="More circuit controls" aria-expanded={toolbarMoreOpen}
             style={{width: 34, minWidth: 34, height: 34, padding: 0, background: toolbarMoreOpen ? '#1e3a5f' : '#2c3e50', border: '1px solid #64748b', borderRadius: 4, color: '#e2e8f0', fontSize: '17px', cursor: 'pointer'}}>⋯</button>
@@ -2885,19 +2898,6 @@ export function BoardCanvas({
             {onSaveCircuit && <button onClick={onSaveCircuit} title="Save wiring as file" aria-label="Save wiring as file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: 3, color: '#2ecc71', fontSize: 14, cursor: 'pointer'}}>💾</button>}
             {onLoadCircuit && <button onClick={onLoadCircuit} title="Load wiring from file" aria-label="Load wiring from file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: 3, color: '#3498db', fontSize: 14, cursor: 'pointer'}}>📂</button>}
             {onClearCircuit && <button onClick={() => { onClearCircuit(); setToolbarMoreOpen(false); }} title={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} aria-label={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: 3, color: '#e74c3c', fontSize: 14, cursor: 'pointer'}}>🗑</button>}
-            {simulate ? (
-              <button type="button" data-voltage-view-toggle
-                aria-pressed={voltageView} onClick={toggleVoltageView}
-                title={voltageView ? 'Hide voltages (wire colors, labels, legend)' : 'Show voltages on wires'}
-                aria-label={voltageView ? 'Hide voltages' : 'Show voltages'}
-                style={{height: 34, boxSizing: 'border-box', padding: '4px 9px',
-                  fontSize: 12, fontWeight: 700, fontFamily: 'monospace',
-                  color: voltageView ? '#0f172a' : '#e2e8f0',
-                  background: voltageView ? '#f1c40f' : '#334155',
-                  border: '1px solid #64748b', borderRadius: 4, cursor: 'pointer'}}>
-                {'V\u26a1'}
-              </button>
-            ) : null}
             <span data-zoom-indicator title="Canvas zoom" style={{height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
           </div>}
         </div>
