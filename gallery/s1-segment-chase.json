@@ -1,0 +1,20 @@
+{
+  "vcc": 5,
+  "parts": [
+    { "id": "vcc1", "kind": "vcc", "params": {}, "x": 0, "y": 0 },
+    { "id": "gnd1", "kind": "gnd", "params": {}, "x": 0, "y": 0 },
+    { "id": "mcu", "kind": "mcu", "params": {}, "x": 0, "y": 0 },
+    { "id": "disp", "kind": "seven_segment", "params": {}, "x": 0, "y": 0 }
+  ],
+  "wires": [
+    { "from": "vcc1", "fromTerminal": "vcc", "to": "mcu", "toTerminal": "VCC" },
+    { "from": "gnd1", "fromTerminal": "gnd", "to": "mcu", "toTerminal": "GND" },
+    { "from": "mcu", "fromTerminal": "P1.0", "to": "disp", "toTerminal": "a" },
+    { "from": "gnd1", "fromTerminal": "gnd", "to": "disp", "toTerminal": "b" }
+  ],
+  "_title": "7-segment: segment chase",
+  "_description": "A single 7-segment display cycles through segments driven by the MCU.",
+  "_category": "digital",
+  "_difficulty": 2,
+  "_stage": "S1"
+}
