@@ -209,12 +209,20 @@ const BUILTIN_FOOTPRINTS = {
       ...Object.fromEntries(['P2.0','P2.1','P2.2','P2.3','P2.4','P2.5','P2.6','P2.7','P4.4','P4.5','P4.6','P0.7','P0.6','P0.5','P0.4','P0.3','P0.2','P0.1','P0.0','VCC'].map((name, i) => [name, { dRow: 0, dCol: 19 - i }])),
     },
   },
-  // Development boards expose headers on a fixed 2.54 mm raster. Their
-  // bodies are not DIP footprints, but seating still uses real breadboard
-  // holes so a cable on the same strip is electrically connected.
-  arduino_uno: {refTerminal: 'D0', leads: Object.fromEntries(Array.from({length: 14}, (_, i) => [`D${i}`, {dRow: 0, dCol: i}]))},
-  arduino_nano: {refTerminal: 'D0', leads: Object.fromEntries(Array.from({length: 14}, (_, i) => [`D${i}`, {dRow: 0, dCol: i}]))},
-  pi_pico: {refTerminal: 'GP0', leads: Object.fromEntries(Array.from({length: 20}, (_, i) => [`GP${i}`, {dRow: 0, dCol: i}]))},
+  // Development boards: NO builtin entries — deliberately.
+  //
+  // Nano and Pico are genuine breadboard modules and their sidecars declare
+  // the real dual-row, gutter-straddling footprints (all 30/43 pins, lowercase
+  // terminal names matching the engine parts). Builtin flat single-row stubs
+  // (D0..D13 in row a, uppercase, half the pins missing) used to SHADOW those
+  // sidecars via the FOOTPRINTS proxy: every auto-seated Nano lay flat across
+  // the top rows with its body over the rail, and the uppercase leadMap keys
+  // never matched the engine's lowercase terminals (owner screenshot,
+  // 2026-08-17). Deleting the stubs lets the sidecar footprints win.
+  //
+  // Uno and Mega are NOT breadboard-seatable (female headers, standoff feet);
+  // they float beside the board and connect by explicit wires — exactly how
+  // the Mega, which never had a builtin entry, has always behaved.
   // Logic gates: 3-pin inline (2-input gates) or 2-pin inline (NOT)
   gate_and:  { refTerminal: 'in0', leads: { in0: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 3 } } },
   gate_or:   { refTerminal: 'in0', leads: { in0: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 3 } } },

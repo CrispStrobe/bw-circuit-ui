@@ -143,13 +143,18 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const lastDeclRef = useRef(null);
   useEffect(() => {
     if (!onDeclarationChange) return;
-    const decls = circuitToDeclarations(parts, wires);
+    // Pass the RESOLVED nets: a seated bench connects through breadboard
+    // rows and jumpers, which the wire-walk alone cannot see — without
+    // this, every seated board-kind bench derived zero pins and the
+    // host's declaration merge wiped the program's pins with the empty
+    // list (owner report, 2026-08-17).
+    const decls = circuitToDeclarations(parts, wires, circuit.resolvedNets);
     const json = JSON.stringify(decls);
     if (json !== lastDeclRef.current) {
       lastDeclRef.current = json;
       onDeclarationChange(decls);
     }
-  }, [parts, wires, onDeclarationChange]);
+  }, [parts, wires, onDeclarationChange, circuit]);
 
   // ── Expose the Board to the host (for the circuit extension) ──
   useEffect(() => {

@@ -800,6 +800,11 @@ export class Circuit {
       }))
       .filter(n => n.terminals.length > 0);
 
+    // The resolved view — wires, rows and jumpers unioned into single
+    // nodes — is what net-aware consumers (declaration derivation for
+    // seated benches) need; keep it accessible after the sync.
+    this.resolvedNets = engineNets;
+
     // Snapshot engine state before rebuilding (preserves cap voltages, etc.)
     const prevSnap = this.board.snapshot ? this.board.snapshot() : null;
 
@@ -839,6 +844,8 @@ export class Circuit {
       params: p.params,
       terminals: p.terminals,
     }));
+
+    this.resolvedNets = nets;
 
     const prevSnap = this.board.snapshot ? this.board.snapshot() : null;
     this.board = new this._BoardImpl(this.vcc);

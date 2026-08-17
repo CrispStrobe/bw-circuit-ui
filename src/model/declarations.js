@@ -139,12 +139,21 @@ export function partToDeclaration(part, pin, context) {
   const base = match
     ? { name: part.declName, port, bit, pin }
     : { name: part.declName, where, pin: where };
-  const { parts, wires, toneAlreadyClaimed } = context || {};
+  const { parts, wires, nets, toneAlreadyClaimed } = context || {};
+  // Polarity questions go to the net graph when we have one (seated
+  // benches have no part-to-part wires for the wire walkers to follow).
+  const reaches = (partId, terminal, target) =>
+    nets ? reachesViaNets(partId, terminal, target, nets) : null;
 
   switch (part.kind) {
     case 'led': {
       // Polarity from wiring, not a default
-      const activeLow = (parts && wires)
+      let activeLow;
+      const viaVcc = reaches(part.id, 'anode', 'vcc');
+      const viaGnd = reaches(part.id, 'cathode', 'gnd');
+      if (viaVcc) activeLow = true;
+      else if (viaGnd) activeLow = false;
+      else activeLow = (parts && wires)
         ? deriveActiveLow(part.id, parts, wires)
         : (part.params.activeLow ?? true);
       return { ...base, direction: 'output', activeLow };
@@ -160,14 +169,24 @@ export function partToDeclaration(part, pin, context) {
     }
 
     case 'button': {
-      const activeLow = (parts && wires)
+      let activeLow;
+      const toGnd = reaches(part.id, 'a', 'gnd') || reaches(part.id, 'b', 'gnd');
+      const toVcc = reaches(part.id, 'a', 'vcc') || reaches(part.id, 'b', 'vcc');
+      if (toGnd) activeLow = true;
+      else if (toVcc) activeLow = false;
+      else activeLow = (parts && wires)
         ? deriveButtonActiveLow(part.id, parts, wires)
         : true;
       return { ...base, direction: 'input', activeLow };
     }
 
     case 'potentiometer': {
-      // ANALOG is P1.x only
+      // ANALOG capability is per-device: P1.x on the STC parts, the An
+      // header on Arduinos, GP26-28 on the Pico (the only ADC-capable GPs).
+      if (where) {
+        const analog = /^A\d+$/.test(where) || /^GP2[678]$/.test(where);
+        return { ...base, direction: analog ? 'analog' : 'input', activeLow: false };
+      }
       if (port !== 1) return { ...base, direction: 'input', activeLow: false };
       return { ...base, direction: 'analog', activeLow: false };
     }
@@ -175,6 +194,86 @@ export function partToDeclaration(part, pin, context) {
     default:
       return null;
   }
+}
+
+// ── Net-aware derivation ─────────────────────────────────────────────
+//
+// Explicit part-to-part wires are only ONE way a circuit connects: a
+// SEATED bench connects through breadboard rows and hole jumpers, which
+// the wire walkers above cannot see. Every seated Arduino bench therefore
+// derived ZERO pins, and the host's declaration merge wiped the program's
+// pins with that empty list ("Debugger inactive — no program pins",
+// owner report 2026-08-17). These helpers walk the circuit's RESOLVED
+// nets (Circuit#resolvedNets — rows, jumpers and wires already unioned)
+// and are used as the fallback whenever the wire walk comes up empty.
+
+/** GPIO terminals only: P1.0-style (STC), Dn/An (Arduino), GPn (Pico).
+ *  Power, reset, crystal and debug terminals must never become a PIN —
+ *  a button leg sharing the ground rail with the MCU's gnd2 terminal is
+ *  a supply connection, not a declaration. */
+const GPIO_TERMINAL = /^(p\d+\.\d+|d\d+|a\d+|gp\d+)$/i;
+
+function indexNets(nets, parts) {
+  const byTerm = new Map();   // "part:terminal" → net
+  const byPart = new Map();   // partId → [net, ...]
+  for (const n of nets || []) {
+    for (const t of n.terminals) {
+      byTerm.set(`${t.part}:${t.terminal}`, n);
+      if (!byPart.has(t.part)) byPart.set(t.part, []);
+      if (!byPart.get(t.part).includes(n)) byPart.get(t.part).push(n);
+    }
+  }
+  const partById = new Map((parts || []).map(p => [p.id, p]));
+  return { byTerm, byPart, partById };
+}
+
+/** The MCU GPIO terminal this part reaches — directly on a shared net,
+ *  or across exactly one resistor (the series-R idiom). */
+function mcuPinViaNets(part, mcu, idx) {
+  const gpioOn = net => {
+    const t = net.terminals.find(t => t.part === mcu.id && GPIO_TERMINAL.test(t.terminal));
+    return t && t.terminal;
+  };
+  const nets = idx.byPart.get(part.id) || [];
+  for (const net of nets) {
+    const direct = gpioOn(net);
+    if (direct) return direct;
+  }
+  for (const net of nets) {
+    for (const t of net.terminals) {
+      const p = idx.partById.get(t.part);
+      if (!p || p.kind !== 'resistor') continue;
+      const other = t.terminal === 'a' ? 'b' : 'a';
+      const net2 = idx.byTerm.get(`${p.id}:${other}`);
+      const viaR = net2 && gpioOn(net2);
+      if (viaR) return viaR;
+    }
+  }
+  return null;
+}
+
+/** Net-graph reachability, resistors transparent — the polarity question
+ *  ("does the anode side reach VCC?") asked of rows instead of wires. */
+function reachesViaNets(partId, terminal, targetKind, idx) {
+  const seen = new Set();
+  const queue = [[partId, terminal]];
+  while (queue.length) {
+    const [pid, term] = queue.shift();
+    const key = `${pid}:${term}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const net = idx.byTerm.get(key);
+    if (!net) continue;
+    for (const t of net.terminals) {
+      const p = idx.partById.get(t.part);
+      if (!p) continue;
+      if (p.kind === targetKind) return true;
+      if (p.kind === 'resistor') {
+        queue.push([p.id, t.terminal === 'a' ? 'b' : 'a']);
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -186,15 +285,16 @@ const BOARD_TO_DEVICE = {
 };
 const MCU_KINDS = new Set(['mcu', ...Object.keys(BOARD_TO_DEVICE)]);
 
-export function circuitToDeclarations(parts, wires) {
+export function circuitToDeclarations(parts, wires, nets = null) {
   const pins = [];
   const mcu = parts.find(p => MCU_KINDS.has(p.kind));
   if (!mcu) return { pins, ports: [], parts: [] };
   const device = BOARD_TO_DEVICE[mcu.kind] || undefined;
   const isBoard = !!device;
 
+  const idx = nets ? indexNets(nets, parts) : null;
   let toneAlreadyClaimed = false;
-  const context = { parts, wires, toneAlreadyClaimed: false };
+  const context = { parts, wires, nets: idx, toneAlreadyClaimed: false };
 
   for (const part of parts) {
     if (!part.declName) continue;
@@ -218,6 +318,9 @@ export function circuitToDeclarations(parts, wires) {
       }
       if (mcuPin) break;
     }
+
+    // Seated benches connect through rows, not wires — fall back to nets.
+    if (!mcuPin && idx) mcuPin = mcuPinViaNets(part, mcu, idx);
 
     if (mcuPin) {
       const decl = partToDeclaration(part, mcuPin, context);
