@@ -216,7 +216,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     try { return localStorage.getItem('bw-instr-sweep') === '1'; } catch { return false; }
   });
   const toggleSweep = () => setShowSweep(v => { const n = !v; try { localStorage.setItem('bw-instr-sweep', n ? '1' : '0'); } catch {} return n; });
-  const [warningsOpen, setWarningsOpen] = useState(false);
+  // warningsOpen state removed — warnings now live in the toolbar chip (BoardCanvas)
   const hasMcuPins = !!(projectData?.pins?.length > 0);
   const [machineResult, setMachineResult] = useState(null); // extractMachine result
   const [loaderNote, setLoaderNote] = useState(null); // Machine Loader feedback line
@@ -1313,16 +1313,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         )}
         </div>
 
-        {/* Engine warnings — teaching feedback */}
-        {warnings.length > 0 && (
-          <div style={{marginTop: '8px', fontFamily: 'monospace', fontSize: '10px'}}>
-            <button onClick={() => setWarningsOpen(v => !v)} title="Show circuit warnings" aria-label={`${warnings.length} circuit warnings`} aria-expanded={warningsOpen}
-              style={{border: 'none', background: 'transparent', color: warnings.some(w => w.severity === 'danger') ? '#dc2626' : '#d97706', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 3px'}}>▲</button>
-            {warningsOpen && <div style={{marginTop: 4, padding: '8px', background: '#1a1a0e', border: '1px solid #e67e22', borderRadius: '4px'}}>
-              {warnings.map((w, i) => <div key={i} style={{color: w.severity === 'danger' ? '#e74c3c' : '#f39c12', marginBottom: '2px'}}>{w.severity === 'danger' ? '⚠' : '!'} {w.message}</div>)}
-            </div>}
-          </div>
-        )}
+        {/* Engine warnings moved to the toolbar warning chip (BoardCanvas).
+            The bottom triangle is gone — all findings surface in the top-row
+            count-badged chip with its popover listing. */}
       </div>
 
       {/* Right sidebar — collapsible */}

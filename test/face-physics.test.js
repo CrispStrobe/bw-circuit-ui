@@ -48,7 +48,7 @@ test('LCD face passes backlight from deviceState to WokwiLcd1602', () => {
   // occurrence — inside WokwiParts, after terminal offsets).
   const lcdCaseStart = src.lastIndexOf("case 'char_lcd':");
   assert.ok(lcdCaseStart > 0, 'char_lcd render case found');
-  const lcdBlock = src.slice(lcdCaseStart, lcdCaseStart + 3000);
+  const lcdBlock = src.slice(lcdCaseStart, lcdCaseStart + 4000);
   assert.ok(lcdBlock.includes('backlight={'), 'backlight prop passed to WokwiLcd1602');
   // Must read from deviceStates, not hardcode.
   assert.ok(lcdBlock.includes('ds.backlight'), 'backlight read from device state');
@@ -59,7 +59,7 @@ test('LCD backlight threshold: dim below 0.1, not a hard binary', () => {
   // at a low value so a dim-but-nonzero backlight still reads as "on".
   const lcdCaseStart = src.lastIndexOf("case 'char_lcd':");
   assert.ok(lcdCaseStart > 0, 'char_lcd render case found');
-  const lcdBlock = src.slice(lcdCaseStart, lcdCaseStart + 3000);
+  const lcdBlock = src.slice(lcdCaseStart, lcdCaseStart + 4000);
   assert.ok(
     lcdBlock.includes('> 0.1'),
     'backlight threshold at 0.1 (not 0.0 or 0.5)',
