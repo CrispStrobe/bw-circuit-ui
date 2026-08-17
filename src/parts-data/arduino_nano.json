@@ -1,387 +1,388 @@
 {
-  "kind": "arduino_nano",
-  "w": 60,
-  "h": 160,
-  "terminals": [
-    {
-      "name": "d1",
-      "x": 4,
-      "y": 16,
-      "functions": [
-        "gpio",
-        "txd0"
-      ]
-    },
-    {
-      "name": "d0",
-      "x": 4,
-      "y": 24,
-      "functions": [
-        "gpio",
-        "rxd0"
-      ]
-    },
-    {
-      "name": "reset",
-      "x": 4,
-      "y": 32,
-      "functions": []
-    },
-    {
-      "name": "gnd",
-      "x": 4,
-      "y": 40,
-      "functions": []
-    },
-    {
-      "name": "d2",
-      "x": 4,
-      "y": 48,
-      "functions": [
-        "gpio",
-        "int0"
-      ]
-    },
-    {
-      "name": "d3",
-      "x": 4,
-      "y": 56,
-      "functions": [
-        "gpio",
-        "int1",
-        "pwm_t2b"
-      ]
-    },
-    {
-      "name": "d4",
-      "x": 4,
-      "y": 64,
-      "functions": [
-        "gpio",
-        "t0"
-      ]
-    },
-    {
-      "name": "d5",
-      "x": 4,
-      "y": 72,
-      "functions": [
-        "gpio",
-        "pwm_t0b",
-        "t1"
-      ]
-    },
-    {
-      "name": "d6",
-      "x": 4,
-      "y": 80,
-      "functions": [
-        "gpio",
-        "pwm_t0a",
-        "ain0"
-      ]
-    },
-    {
-      "name": "d7",
-      "x": 4,
-      "y": 88,
-      "functions": [
-        "gpio",
-        "ain1"
-      ]
-    },
-    {
-      "name": "d8",
-      "x": 4,
-      "y": 96,
-      "functions": [
-        "gpio",
-        "icp1"
-      ]
-    },
-    {
-      "name": "d9",
-      "x": 4,
-      "y": 104,
-      "functions": [
-        "gpio",
-        "pwm_t1a"
-      ]
-    },
-    {
-      "name": "d10",
-      "x": 4,
-      "y": 112,
-      "functions": [
-        "gpio",
-        "pwm_t1b",
-        "ss"
-      ]
-    },
-    {
-      "name": "d11",
-      "x": 4,
-      "y": 120,
-      "functions": [
-        "gpio",
-        "pwm_t2a",
-        "mosi"
-      ]
-    },
-    {
-      "name": "d12",
-      "x": 4,
-      "y": 128,
-      "functions": [
-        "gpio",
-        "miso"
-      ]
-    },
-    {
-      "name": "vin",
-      "x": 56,
-      "y": 16,
-      "functions": []
-    },
-    {
-      "name": "gnd2",
-      "x": 56,
-      "y": 24,
-      "functions": []
-    },
-    {
-      "name": "reset2",
-      "x": 56,
-      "y": 32,
-      "functions": []
-    },
-    {
-      "name": "5v",
-      "x": 56,
-      "y": 40,
-      "functions": []
-    },
-    {
-      "name": "a7",
-      "x": 56,
-      "y": 48,
-      "functions": [
-        "analog_only"
-      ]
-    },
-    {
-      "name": "a6",
-      "x": 56,
-      "y": 56,
-      "functions": [
-        "analog_only"
-      ]
-    },
-    {
-      "name": "a5",
-      "x": 56,
-      "y": 64,
-      "functions": [
-        "gpio",
-        "adc5",
-        "scl"
-      ]
-    },
-    {
-      "name": "a4",
-      "x": 56,
-      "y": 72,
-      "functions": [
-        "gpio",
-        "adc4",
-        "sda"
-      ]
-    },
-    {
-      "name": "a3",
-      "x": 56,
-      "y": 80,
-      "functions": [
-        "gpio",
-        "adc3"
-      ]
-    },
-    {
-      "name": "a2",
-      "x": 56,
-      "y": 88,
-      "functions": [
-        "gpio",
-        "adc2"
-      ]
-    },
-    {
-      "name": "a1",
-      "x": 56,
-      "y": 96,
-      "functions": [
-        "gpio",
-        "adc1"
-      ]
-    },
-    {
-      "name": "a0",
-      "x": 56,
-      "y": 104,
-      "functions": [
-        "gpio",
-        "adc0"
-      ]
-    },
-    {
-      "name": "aref",
-      "x": 56,
-      "y": 112,
-      "functions": []
-    },
-    {
-      "name": "3v3",
-      "x": 56,
-      "y": 120,
-      "functions": []
-    },
-    {
-      "name": "d13",
-      "x": 56,
-      "y": 128,
-      "functions": [
-        "gpio",
-        "sclk"
-      ]
-    }
-  ],
-  "variants": null,
-  "_note": "ATmega328P (or ATmega168P — pin-compatible, same package and Arduino pin mapping; only flash/RAM differ), same MCU as Uno R3. A6/A7 are analog-only (no digital I/O, no port bit). D13 (SCK) drives the onboard LED (active high). Pin table in docs/pin-table-atmega328p.md.",
-  "footprint": {
-    "refTerminal": "d1",
-    "leads": {
-      "d1": {
-        "dRow": 0,
-        "dCol": 0
-      },
-      "d0": {
-        "dRow": 0,
-        "dCol": 1
-      },
-      "reset": {
-        "dRow": 0,
-        "dCol": 2
-      },
-      "gnd": {
-        "dRow": 0,
-        "dCol": 3
-      },
-      "d2": {
-        "dRow": 0,
-        "dCol": 4
-      },
-      "d3": {
-        "dRow": 0,
-        "dCol": 5
-      },
-      "d4": {
-        "dRow": 0,
-        "dCol": 6
-      },
-      "d5": {
-        "dRow": 0,
-        "dCol": 7
-      },
-      "d6": {
-        "dRow": 0,
-        "dCol": 8
-      },
-      "d7": {
-        "dRow": 0,
-        "dCol": 9
-      },
-      "d8": {
-        "dRow": 0,
-        "dCol": 10
-      },
-      "d9": {
-        "dRow": 0,
-        "dCol": 11
-      },
-      "d10": {
-        "dRow": 0,
-        "dCol": 12
-      },
-      "d11": {
-        "dRow": 0,
-        "dCol": 13
-      },
-      "d12": {
-        "dRow": 0,
-        "dCol": 14
-      },
-      "vin": {
-        "dRow": 5,
-        "dCol": 0
-      },
-      "gnd2": {
-        "dRow": 5,
-        "dCol": 1
-      },
-      "reset2": {
-        "dRow": 5,
-        "dCol": 2
-      },
-      "5v": {
-        "dRow": 5,
-        "dCol": 3
-      },
-      "a7": {
-        "dRow": 5,
-        "dCol": 4
-      },
-      "a6": {
-        "dRow": 5,
-        "dCol": 5
-      },
-      "a5": {
-        "dRow": 5,
-        "dCol": 6
-      },
-      "a4": {
-        "dRow": 5,
-        "dCol": 7
-      },
-      "a3": {
-        "dRow": 5,
-        "dCol": 8
-      },
-      "a2": {
-        "dRow": 5,
-        "dCol": 9
-      },
-      "a1": {
-        "dRow": 5,
-        "dCol": 10
-      },
-      "a0": {
-        "dRow": 5,
-        "dCol": 11
-      },
-      "aref": {
-        "dRow": 5,
-        "dCol": 12
-      },
-      "3v3": {
-        "dRow": 5,
-        "dCol": 13
-      },
-      "d13": {
-        "dRow": 5,
-        "dCol": 14
-      }
-    },
-    "straddlesGutter": true,
-    "minCols": 15
+ "kind": "arduino_nano",
+ "w": 60,
+ "h": 160,
+ "terminals": [
+  {
+   "name": "d1",
+   "x": 4,
+   "y": 16,
+   "functions": [
+    "gpio",
+    "txd0"
+   ]
+  },
+  {
+   "name": "d0",
+   "x": 4,
+   "y": 24,
+   "functions": [
+    "gpio",
+    "rxd0"
+   ]
+  },
+  {
+   "name": "reset",
+   "x": 4,
+   "y": 32,
+   "functions": []
+  },
+  {
+   "name": "gnd",
+   "x": 4,
+   "y": 40,
+   "functions": []
+  },
+  {
+   "name": "d2",
+   "x": 4,
+   "y": 48,
+   "functions": [
+    "gpio",
+    "int0"
+   ]
+  },
+  {
+   "name": "d3",
+   "x": 4,
+   "y": 56,
+   "functions": [
+    "gpio",
+    "int1",
+    "pwm_t2b"
+   ]
+  },
+  {
+   "name": "d4",
+   "x": 4,
+   "y": 64,
+   "functions": [
+    "gpio",
+    "t0"
+   ]
+  },
+  {
+   "name": "d5",
+   "x": 4,
+   "y": 72,
+   "functions": [
+    "gpio",
+    "pwm_t0b",
+    "t1"
+   ]
+  },
+  {
+   "name": "d6",
+   "x": 4,
+   "y": 80,
+   "functions": [
+    "gpio",
+    "pwm_t0a",
+    "ain0"
+   ]
+  },
+  {
+   "name": "d7",
+   "x": 4,
+   "y": 88,
+   "functions": [
+    "gpio",
+    "ain1"
+   ]
+  },
+  {
+   "name": "d8",
+   "x": 4,
+   "y": 96,
+   "functions": [
+    "gpio",
+    "icp1"
+   ]
+  },
+  {
+   "name": "d9",
+   "x": 4,
+   "y": 104,
+   "functions": [
+    "gpio",
+    "pwm_t1a"
+   ]
+  },
+  {
+   "name": "d10",
+   "x": 4,
+   "y": 112,
+   "functions": [
+    "gpio",
+    "pwm_t1b",
+    "ss"
+   ]
+  },
+  {
+   "name": "d11",
+   "x": 4,
+   "y": 120,
+   "functions": [
+    "gpio",
+    "pwm_t2a",
+    "mosi"
+   ]
+  },
+  {
+   "name": "d12",
+   "x": 4,
+   "y": 128,
+   "functions": [
+    "gpio",
+    "miso"
+   ]
+  },
+  {
+   "name": "vin",
+   "x": 56,
+   "y": 16,
+   "functions": []
+  },
+  {
+   "name": "gnd2",
+   "x": 56,
+   "y": 24,
+   "functions": []
+  },
+  {
+   "name": "reset2",
+   "x": 56,
+   "y": 32,
+   "functions": []
+  },
+  {
+   "name": "5v",
+   "x": 56,
+   "y": 40,
+   "functions": []
+  },
+  {
+   "name": "a7",
+   "x": 56,
+   "y": 48,
+   "functions": [
+    "analog_only"
+   ]
+  },
+  {
+   "name": "a6",
+   "x": 56,
+   "y": 56,
+   "functions": [
+    "analog_only"
+   ]
+  },
+  {
+   "name": "a5",
+   "x": 56,
+   "y": 64,
+   "functions": [
+    "gpio",
+    "adc5",
+    "scl"
+   ]
+  },
+  {
+   "name": "a4",
+   "x": 56,
+   "y": 72,
+   "functions": [
+    "gpio",
+    "adc4",
+    "sda"
+   ]
+  },
+  {
+   "name": "a3",
+   "x": 56,
+   "y": 80,
+   "functions": [
+    "gpio",
+    "adc3"
+   ]
+  },
+  {
+   "name": "a2",
+   "x": 56,
+   "y": 88,
+   "functions": [
+    "gpio",
+    "adc2"
+   ]
+  },
+  {
+   "name": "a1",
+   "x": 56,
+   "y": 96,
+   "functions": [
+    "gpio",
+    "adc1"
+   ]
+  },
+  {
+   "name": "a0",
+   "x": 56,
+   "y": 104,
+   "functions": [
+    "gpio",
+    "adc0"
+   ]
+  },
+  {
+   "name": "aref",
+   "x": 56,
+   "y": 112,
+   "functions": []
+  },
+  {
+   "name": "3v3",
+   "x": 56,
+   "y": 120,
+   "functions": []
+  },
+  {
+   "name": "d13",
+   "x": 56,
+   "y": 128,
+   "functions": [
+    "gpio",
+    "sclk"
+   ]
   }
+ ],
+ "variants": null,
+ "_note": "ATmega328P (or ATmega168P — pin-compatible, same package and Arduino pin mapping; only flash/RAM differ), same MCU as Uno R3. A6/A7 are analog-only (no digital I/O, no port bit). D13 (SCK) drives the onboard LED (active high). Pin table in docs/pin-table-atmega328p.md.",
+ "footprint": {
+  "refTerminal": "d1",
+  "leads": {
+   "d1": {
+    "dRow": 0,
+    "dCol": 0
+   },
+   "d0": {
+    "dRow": 0,
+    "dCol": 1
+   },
+   "reset": {
+    "dRow": 0,
+    "dCol": 2
+   },
+   "gnd": {
+    "dRow": 0,
+    "dCol": 3
+   },
+   "d2": {
+    "dRow": 0,
+    "dCol": 4
+   },
+   "d3": {
+    "dRow": 0,
+    "dCol": 5
+   },
+   "d4": {
+    "dRow": 0,
+    "dCol": 6
+   },
+   "d5": {
+    "dRow": 0,
+    "dCol": 7
+   },
+   "d6": {
+    "dRow": 0,
+    "dCol": 8
+   },
+   "d7": {
+    "dRow": 0,
+    "dCol": 9
+   },
+   "d8": {
+    "dRow": 0,
+    "dCol": 10
+   },
+   "d9": {
+    "dRow": 0,
+    "dCol": 11
+   },
+   "d10": {
+    "dRow": 0,
+    "dCol": 12
+   },
+   "d11": {
+    "dRow": 0,
+    "dCol": 13
+   },
+   "d12": {
+    "dRow": 0,
+    "dCol": 14
+   },
+   "vin": {
+    "dRow": 5,
+    "dCol": 0
+   },
+   "gnd2": {
+    "dRow": 5,
+    "dCol": 1
+   },
+   "reset2": {
+    "dRow": 5,
+    "dCol": 2
+   },
+   "5v": {
+    "dRow": 5,
+    "dCol": 3
+   },
+   "a7": {
+    "dRow": 5,
+    "dCol": 4
+   },
+   "a6": {
+    "dRow": 5,
+    "dCol": 5
+   },
+   "a5": {
+    "dRow": 5,
+    "dCol": 6
+   },
+   "a4": {
+    "dRow": 5,
+    "dCol": 7
+   },
+   "a3": {
+    "dRow": 5,
+    "dCol": 8
+   },
+   "a2": {
+    "dRow": 5,
+    "dCol": 9
+   },
+   "a1": {
+    "dRow": 5,
+    "dCol": 10
+   },
+   "a0": {
+    "dRow": 5,
+    "dCol": 11
+   },
+   "aref": {
+    "dRow": 5,
+    "dCol": 12
+   },
+   "3v3": {
+    "dRow": 5,
+    "dCol": 13
+   },
+   "d13": {
+    "dRow": 5,
+    "dCol": 14
+   }
+  },
+  "straddlesGutter": true,
+  "rowSpanPitches": 6,
+  "minCols": 15
+ }
 }

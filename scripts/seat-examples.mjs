@@ -25,7 +25,7 @@
  */
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { FOOTPRINTS, computeLeadMap } from '../src/model/footprints.js';
+import { FOOTPRINTS, computeLeadMap, straddleRefRow } from '../src/model/footprints.js';
 import { holeWorldPos } from '../src/interaction/seat-geometry.js';
 import { BreadboardModel } from '../src/model/breadboard.js';
 import { registerSidecar } from '../src/model/parts-registry.js';
@@ -34,13 +34,14 @@ import { registerSidecar } from '../src/model/parts-registry.js';
 // matrix8x8 seats that way); in the app the loader registers them —
 // here we bulk-load, or the generator would float every sidecar-seated
 // part the designer can seat.
+const sidecarByKind = new Map(); // kind → sidecar (float spacing reads w/h)
 {
     const dir = new URL('../src/parts-data/', import.meta.url);
     for (const f of readdirSync(dir)) {
         if (!f.endsWith('.json')) continue;
         try {
             const sc = JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
-            if (sc.kind) registerSidecar(sc);
+            if (sc.kind) { registerSidecar(sc); sidecarByKind.set(sc.kind, sc); }
         } catch { /* a bad sidecar is bw-parts' problem, not the batch's */ }
     }
 }
@@ -141,11 +142,12 @@ function seatExample(id) {
             board = openBoard();
             target = board;
         }
-        // A gutter-straddling DIP seats at row e: its top pin row lands in e
-        // and the bottom row in f — the tight straddle a real chip makes.
-        // Flat parts keep row a territory on top, row f when they overflow
-        // to the bottom block.
-        const refRow = straddles ? 'e' : (useBottom ? 'f' : 'a');
+        // A gutter-straddling part seats at the row its PHYSICAL span
+        // demands: a classic DIP at e (0.3", the tight straddle), the
+        // Nano at b (0.6"), the Pico at a (0.7") — straddleRefRow reads
+        // the sidecar's rowSpanPitches. Flat parts keep row a territory
+        // on top, row f when they overflow to the bottom block.
+        const refRow = straddles ? straddleRefRow(fp) : (useBottom ? 'f' : 'a');
         const col = useBottom ? target.colBot : target.col;
         let leadMap;
         try { leadMap = computeLeadMap(fp, `${refRow}${col}`); } catch { floating.push(part); continue; }
@@ -291,10 +293,26 @@ function seatExample(id) {
     // an original x/y sounded respectful and put floats ON TOP of the
     // board that did not exist when those coordinates were authored
     // (owner screenshot: an LED column through the middle of the build).
+    // Spacing follows each part's REAL width from its sidecar: the flat
+    // 140-unit step parked the next float inside an Arduino Mega's 340-
+    // unit body, and the overlapped Uno could barely be clicked, let
+    // alone selected and moved (owner report, 2026-08-17). Wide dev
+    // boards therefore sit NEXT TO the bench, never on it: rows wrap
+    // before a float would cross the board's left edge... which is at
+    // x≈45, so in practice they wrap into clear rows above the board.
     const boardTop = 330 - 310 / 2;   // first board's top edge in world units
-    let fx = 80;
+    const widthOfFloat = (part) => {
+        const sc = sidecarByKind.get(part.kind);
+        return (sc && sc.w) ? sc.w : 60;
+    };
+    const MARGIN = 40;
+    let fx = 80, fy = Math.min(60, boardTop - 100), rowH = 0;
     for (const part of floating) {
-        part.x = fx; part.y = Math.min(60, boardTop - 100); fx += 140;
+        const w = widthOfFloat(part);
+        if (fx + w > 1000 && fx > 80) { fx = 80; fy -= rowH + MARGIN; rowH = 0; }
+        part.x = fx; part.y = fy;
+        fx += w + MARGIN;
+        rowH = Math.max(rowH, (sidecarByKind.get(part.kind)?.h) || 60);
     }
 
     // Boards go to the FRONT of the parts array: every renderer that

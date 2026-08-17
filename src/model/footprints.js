@@ -259,6 +259,23 @@ export function rotateFootprint(footprint, quarterTurns) {
   return { ...footprint, leads };
 }
 
+/**
+ * The reference row a gutter-straddling part seats at, from its physical
+ * row spacing. Pitch accounting on the standard grid: a..e step 1 pitch
+ * each, e→f across the gutter is 3 pitches (0.3"). A classic DIP spans
+ * 0.3" → e/f; the Nano's rows sit 0.6" apart → b/f (three free rows
+ * inside); the Pico's 0.7" → a/f (four free rows). Sidecars declare
+ * `rowSpanPitches`; absent means the DIP default. The dRow-5 leads land
+ * in f from ANY top-block reference (computeLeadMap's straddle branch),
+ * so this row choice alone sets the physical width.
+ * @param {Footprint} footprint
+ * @returns {string} row letter for the reference hole
+ */
+export function straddleRefRow(footprint) {
+  const span = footprint.rowSpanPitches ?? 3;
+  return { 3: 'e', 4: 'd', 5: 'c', 6: 'b', 7: 'a' }[span] ?? 'e';
+}
+
 export function computeLeadMap(footprint, refHole) {
   const refRow = refHole[0];
   const refCol = Number(refHole.slice(1));

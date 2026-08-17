@@ -19,7 +19,7 @@
  * @module
  */
 
-import { FOOTPRINTS, computeLeadMap } from './footprints.js';
+import { FOOTPRINTS, computeLeadMap, straddleRefRow } from './footprints.js';
 
 /**
  * Build the seated circuit for a project's declarations into `circuit`.
@@ -57,10 +57,11 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
     isBoard ? {} : { pins: pins.map(p => controllerPin(p)), device: stc.device || '' },
     canSeat ? 470 : 470, canSeat ? 330 : 40);
 
-  // Seat the MCU on the breadboard if it has a straddling footprint
+  // Seat the MCU on the breadboard if it has a straddling footprint —
+  // at the row its physical span demands (DIP e, Nano b, Pico a).
   if (canSeat) {
     try {
-      circuit.seatPart(mcu.id, bb.id, computeLeadMap(fp, 'e1'));
+      circuit.seatPart(mcu.id, bb.id, computeLeadMap(fp, `${straddleRefRow(fp)}1`));
     } catch {
       // Seating failed — fall back to floating position
       mcu.x = 470; mcu.y = 40;

@@ -1,598 +1,600 @@
 {
-  "kind": "pi_pico",
-  "w": 60,
-  "h": 210,
-  "terminals": [
-    {
-      "name": "gp0",
-      "x": 4,
-      "y": 14,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd0",
-        "sda0",
-        "spi0_rx"
-      ]
-    },
-    {
-      "name": "gp1",
-      "x": 4,
-      "y": 22,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd0",
-        "scl0",
-        "spi0_csn"
-      ]
-    },
-    {
-      "name": "gnd_1",
-      "x": 4,
-      "y": 30,
-      "functions": []
-    },
-    {
-      "name": "gp2",
-      "x": 4,
-      "y": 38,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi0_sck"
-      ]
-    },
-    {
-      "name": "gp3",
-      "x": 4,
-      "y": 46,
-      "functions": [
-        "gpio",
-        "pwm",
-        "scl1",
-        "spi0_tx"
-      ]
-    },
-    {
-      "name": "gp4",
-      "x": 4,
-      "y": 54,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd1",
-        "sda0",
-        "spi0_rx"
-      ]
-    },
-    {
-      "name": "gp5",
-      "x": 4,
-      "y": 62,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd1",
-        "scl0",
-        "spi0_csn"
-      ]
-    },
-    {
-      "name": "gnd_2",
-      "x": 4,
-      "y": 70,
-      "functions": []
-    },
-    {
-      "name": "gp6",
-      "x": 4,
-      "y": 78,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi0_sck"
-      ]
-    },
-    {
-      "name": "gp7",
-      "x": 4,
-      "y": 86,
-      "functions": [
-        "gpio",
-        "pwm",
-        "scl1",
-        "spi0_tx"
-      ]
-    },
-    {
-      "name": "gp8",
-      "x": 4,
-      "y": 94,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd1",
-        "sda0",
-        "spi1_rx"
-      ]
-    },
-    {
-      "name": "gp9",
-      "x": 4,
-      "y": 102,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd1",
-        "scl0",
-        "spi1_csn"
-      ]
-    },
-    {
-      "name": "gnd_3",
-      "x": 4,
-      "y": 110,
-      "functions": []
-    },
-    {
-      "name": "gp10",
-      "x": 4,
-      "y": 118,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi1_sck"
-      ]
-    },
-    {
-      "name": "gp11",
-      "x": 4,
-      "y": 126,
-      "functions": [
-        "gpio",
-        "pwm",
-        "scl1",
-        "spi1_tx"
-      ]
-    },
-    {
-      "name": "gp12",
-      "x": 4,
-      "y": 134,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd0",
-        "sda0",
-        "spi1_rx"
-      ]
-    },
-    {
-      "name": "gp13",
-      "x": 4,
-      "y": 142,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd0",
-        "scl0",
-        "spi1_csn"
-      ]
-    },
-    {
-      "name": "gnd_4",
-      "x": 4,
-      "y": 150,
-      "functions": []
-    },
-    {
-      "name": "gp14",
-      "x": 4,
-      "y": 158,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi1_sck"
-      ]
-    },
-    {
-      "name": "gp15",
-      "x": 4,
-      "y": 166,
-      "functions": [
-        "gpio",
-        "pwm",
-        "scl1",
-        "spi1_tx"
-      ]
-    },
-    {
-      "name": "vbus",
-      "x": 56,
-      "y": 14,
-      "functions": []
-    },
-    {
-      "name": "vsys",
-      "x": 56,
-      "y": 22,
-      "functions": []
-    },
-    {
-      "name": "gnd_5",
-      "x": 56,
-      "y": 30,
-      "functions": []
-    },
-    {
-      "name": "3v3_en",
-      "x": 56,
-      "y": 38,
-      "functions": []
-    },
-    {
-      "name": "3v3",
-      "x": 56,
-      "y": 46,
-      "functions": []
-    },
-    {
-      "name": "adc_vref",
-      "x": 56,
-      "y": 54,
-      "functions": []
-    },
-    {
-      "name": "gp28",
-      "x": 56,
-      "y": 62,
-      "functions": [
-        "gpio",
-        "pwm",
-        "adc2",
-        "sda0",
-        "spi1_rx"
-      ]
-    },
-    {
-      "name": "agnd",
-      "x": 56,
-      "y": 70,
-      "functions": []
-    },
-    {
-      "name": "gp27",
-      "x": 56,
-      "y": 78,
-      "functions": [
-        "gpio",
-        "pwm",
-        "adc1",
-        "scl1",
-        "spi1_tx"
-      ]
-    },
-    {
-      "name": "gp26",
-      "x": 56,
-      "y": 86,
-      "functions": [
-        "gpio",
-        "pwm",
-        "adc0",
-        "sda1",
-        "spi1_sck"
-      ]
-    },
-    {
-      "name": "run",
-      "x": 56,
-      "y": 94,
-      "functions": []
-    },
-    {
-      "name": "gp22",
-      "x": 56,
-      "y": 102,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi0_sck"
-      ]
-    },
-    {
-      "name": "gnd_6",
-      "x": 56,
-      "y": 110,
-      "functions": []
-    },
-    {
-      "name": "gp21",
-      "x": 56,
-      "y": 118,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd1",
-        "scl0",
-        "spi0_csn"
-      ]
-    },
-    {
-      "name": "gp20",
-      "x": 56,
-      "y": 126,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd1",
-        "sda0",
-        "spi0_rx"
-      ]
-    },
-    {
-      "name": "gp19",
-      "x": 56,
-      "y": 134,
-      "functions": [
-        "gpio",
-        "pwm",
-        "scl1",
-        "spi0_tx"
-      ]
-    },
-    {
-      "name": "gp18",
-      "x": 56,
-      "y": 142,
-      "functions": [
-        "gpio",
-        "pwm",
-        "sda1",
-        "spi0_sck"
-      ]
-    },
-    {
-      "name": "gnd_7",
-      "x": 56,
-      "y": 150,
-      "functions": []
-    },
-    {
-      "name": "gp17",
-      "x": 56,
-      "y": 158,
-      "functions": [
-        "gpio",
-        "pwm",
-        "rxd0",
-        "scl0",
-        "spi0_csn"
-      ]
-    },
-    {
-      "name": "gp16",
-      "x": 56,
-      "y": 166,
-      "functions": [
-        "gpio",
-        "pwm",
-        "txd0",
-        "sda0",
-        "spi0_rx"
-      ]
-    },
-    {
-      "name": "swclk",
-      "x": 20,
-      "y": 198,
-      "functions": []
-    },
-    {
-      "name": "swd_gnd",
-      "x": 30,
-      "y": 198,
-      "functions": []
-    },
-    {
-      "name": "swdio",
-      "x": 40,
-      "y": 198,
-      "functions": []
-    },
-    {
-      "name": "gp25",
-      "x": 30,
-      "y": 14,
-      "functions": [],
-      "_note": "onboard LED net \u2014 not on the 2x20 header; the engine expands GP25 -> 1k -> LED internally"
-    }
-  ],
-  "variants": null,
-  "_note": "RP2040 dual-core Cortex-M0+. 3.3V logic \u2014 NOT 5V tolerant. GP23/24/25/29 are used internally (regulator, VBUS detect, LED, VSYS sense) and not on the header. Pin table in docs/pin-table-rp2040.md.",
-  "footprint": {
-    "refTerminal": "gp0",
-    "leads": {
-      "gp0": {
-        "dRow": 0,
-        "dCol": 0
-      },
-      "gp1": {
-        "dRow": 0,
-        "dCol": 1
-      },
-      "gnd_1": {
-        "dRow": 0,
-        "dCol": 2
-      },
-      "gp2": {
-        "dRow": 0,
-        "dCol": 3
-      },
-      "gp3": {
-        "dRow": 0,
-        "dCol": 4
-      },
-      "gp4": {
-        "dRow": 0,
-        "dCol": 5
-      },
-      "gp5": {
-        "dRow": 0,
-        "dCol": 6
-      },
-      "gnd_2": {
-        "dRow": 0,
-        "dCol": 7
-      },
-      "gp6": {
-        "dRow": 0,
-        "dCol": 8
-      },
-      "gp7": {
-        "dRow": 0,
-        "dCol": 9
-      },
-      "gp8": {
-        "dRow": 0,
-        "dCol": 10
-      },
-      "gp9": {
-        "dRow": 0,
-        "dCol": 11
-      },
-      "gnd_3": {
-        "dRow": 0,
-        "dCol": 12
-      },
-      "gp10": {
-        "dRow": 0,
-        "dCol": 13
-      },
-      "gp11": {
-        "dRow": 0,
-        "dCol": 14
-      },
-      "gp12": {
-        "dRow": 0,
-        "dCol": 15
-      },
-      "gp13": {
-        "dRow": 0,
-        "dCol": 16
-      },
-      "gnd_4": {
-        "dRow": 0,
-        "dCol": 17
-      },
-      "gp14": {
-        "dRow": 0,
-        "dCol": 18
-      },
-      "gp15": {
-        "dRow": 0,
-        "dCol": 19
-      },
-      "vbus": {
-        "dRow": 5,
-        "dCol": 0
-      },
-      "vsys": {
-        "dRow": 5,
-        "dCol": 1
-      },
-      "gnd_5": {
-        "dRow": 5,
-        "dCol": 2
-      },
-      "3v3_en": {
-        "dRow": 5,
-        "dCol": 3
-      },
-      "3v3": {
-        "dRow": 5,
-        "dCol": 4
-      },
-      "adc_vref": {
-        "dRow": 5,
-        "dCol": 5
-      },
-      "gp28": {
-        "dRow": 5,
-        "dCol": 6
-      },
-      "agnd": {
-        "dRow": 5,
-        "dCol": 7
-      },
-      "gp27": {
-        "dRow": 5,
-        "dCol": 8
-      },
-      "gp26": {
-        "dRow": 5,
-        "dCol": 9
-      },
-      "run": {
-        "dRow": 5,
-        "dCol": 10
-      },
-      "gp22": {
-        "dRow": 5,
-        "dCol": 11
-      },
-      "gnd_6": {
-        "dRow": 5,
-        "dCol": 12
-      },
-      "gp21": {
-        "dRow": 5,
-        "dCol": 13
-      },
-      "gp20": {
-        "dRow": 5,
-        "dCol": 14
-      },
-      "gp19": {
-        "dRow": 5,
-        "dCol": 15
-      },
-      "gp18": {
-        "dRow": 5,
-        "dCol": 16
-      },
-      "gnd_7": {
-        "dRow": 5,
-        "dCol": 17
-      },
-      "gp17": {
-        "dRow": 5,
-        "dCol": 18
-      },
-      "gp16": {
-        "dRow": 5,
-        "dCol": 19
-      },
-      "swclk": {
-        "dRow": 3,
-        "dCol": 8
-      },
-      "swd_gnd": {
-        "dRow": 3,
-        "dCol": 9
-      },
-      "swdio": {
-        "dRow": 3,
-        "dCol": 10
-      }
-    },
-    "straddlesGutter": true,
-    "minCols": 20
+ "kind": "pi_pico",
+ "w": 60,
+ "h": 210,
+ "terminals": [
+  {
+   "name": "gp0",
+   "x": 4,
+   "y": 14,
+   "functions": [
+    "gpio",
+    "pwm",
+    "txd0",
+    "sda0",
+    "spi0_rx"
+   ]
+  },
+  {
+   "name": "gp1",
+   "x": 4,
+   "y": 22,
+   "functions": [
+    "gpio",
+    "pwm",
+    "rxd0",
+    "scl0",
+    "spi0_csn"
+   ]
+  },
+  {
+   "name": "gnd_1",
+   "x": 4,
+   "y": 30,
+   "functions": []
+  },
+  {
+   "name": "gp2",
+   "x": 4,
+   "y": 38,
+   "functions": [
+    "gpio",
+    "pwm",
+    "sda1",
+    "spi0_sck"
+   ]
+  },
+  {
+   "name": "gp3",
+   "x": 4,
+   "y": 46,
+   "functions": [
+    "gpio",
+    "pwm",
+    "scl1",
+    "spi0_tx"
+   ]
+  },
+  {
+   "name": "gp4",
+   "x": 4,
+   "y": 54,
+   "functions": [
+    "gpio",
+    "pwm",
+    "txd1",
+    "sda0",
+    "spi0_rx"
+   ]
+  },
+  {
+   "name": "gp5",
+   "x": 4,
+   "y": 62,
+   "functions": [
+    "gpio",
+    "pwm",
+    "rxd1",
+    "scl0",
+    "spi0_csn"
+   ]
+  },
+  {
+   "name": "gnd_2",
+   "x": 4,
+   "y": 70,
+   "functions": []
+  },
+  {
+   "name": "gp6",
+   "x": 4,
+   "y": 78,
+   "functions": [
+    "gpio",
+    "pwm",
+    "sda1",
+    "spi0_sck"
+   ]
+  },
+  {
+   "name": "gp7",
+   "x": 4,
+   "y": 86,
+   "functions": [
+    "gpio",
+    "pwm",
+    "scl1",
+    "spi0_tx"
+   ]
+  },
+  {
+   "name": "gp8",
+   "x": 4,
+   "y": 94,
+   "functions": [
+    "gpio",
+    "pwm",
+    "txd1",
+    "sda0",
+    "spi1_rx"
+   ]
+  },
+  {
+   "name": "gp9",
+   "x": 4,
+   "y": 102,
+   "functions": [
+    "gpio",
+    "pwm",
+    "rxd1",
+    "scl0",
+    "spi1_csn"
+   ]
+  },
+  {
+   "name": "gnd_3",
+   "x": 4,
+   "y": 110,
+   "functions": []
+  },
+  {
+   "name": "gp10",
+   "x": 4,
+   "y": 118,
+   "functions": [
+    "gpio",
+    "pwm",
+    "sda1",
+    "spi1_sck"
+   ]
+  },
+  {
+   "name": "gp11",
+   "x": 4,
+   "y": 126,
+   "functions": [
+    "gpio",
+    "pwm",
+    "scl1",
+    "spi1_tx"
+   ]
+  },
+  {
+   "name": "gp12",
+   "x": 4,
+   "y": 134,
+   "functions": [
+    "gpio",
+    "pwm",
+    "txd0",
+    "sda0",
+    "spi1_rx"
+   ]
+  },
+  {
+   "name": "gp13",
+   "x": 4,
+   "y": 142,
+   "functions": [
+    "gpio",
+    "pwm",
+    "rxd0",
+    "scl0",
+    "spi1_csn"
+   ]
+  },
+  {
+   "name": "gnd_4",
+   "x": 4,
+   "y": 150,
+   "functions": []
+  },
+  {
+   "name": "gp14",
+   "x": 4,
+   "y": 158,
+   "functions": [
+    "gpio",
+    "pwm",
+    "sda1",
+    "spi1_sck"
+   ]
+  },
+  {
+   "name": "gp15",
+   "x": 4,
+   "y": 166,
+   "functions": [
+    "gpio",
+    "pwm",
+    "scl1",
+    "spi1_tx"
+   ]
+  },
+  {
+   "name": "vbus",
+   "x": 56,
+   "y": 14,
+   "functions": []
+  },
+  {
+   "name": "vsys",
+   "x": 56,
+   "y": 22,
+   "functions": []
+  },
+  {
+   "name": "gnd_5",
+   "x": 56,
+   "y": 30,
+   "functions": []
+  },
+  {
+   "name": "3v3_en",
+   "x": 56,
+   "y": 38,
+   "functions": []
+  },
+  {
+   "name": "3v3",
+   "x": 56,
+   "y": 46,
+   "functions": []
+  },
+  {
+   "name": "adc_vref",
+   "x": 56,
+   "y": 54,
+   "functions": []
+  },
+  {
+   "name": "gp28",
+   "x": 56,
+   "y": 62,
+   "functions": [
+    "gpio",
+    "pwm",
+    "adc2",
+    "sda0",
+    "spi1_rx"
+   ]
+  },
+  {
+   "name": "agnd",
+   "x": 56,
+   "y": 70,
+   "functions": []
+  },
+  {
+   "name": "gp27",
+   "x": 56,
+   "y": 78,
+   "functions": [
+    "gpio",
+    "pwm",
+    "adc1",
+    "scl1",
+    "spi1_tx"
+   ]
+  },
+  {
+   "name": "gp26",
+   "x": 56,
+   "y": 86,
+   "functions": [
+    "gpio",
+    "pwm",
+    "adc0",
+    "sda1",
+    "spi1_sck"
+   ]
+  },
+  {
+   "name": "run",
+   "x": 56,
+   "y": 94,
+   "functions": []
+  },
+  {
+   "name": "gp22",
+   "x": 56,
+   "y": 102,
+   "functions": [
+    "gpio",
+    "pwm",
+    "sda1",
+    "spi0_sck"
+   ]
+  },
+  {
+   "name": "gnd_6",
+   "x": 56,
+   "y": 110,
+   "functions": []
+  },
+  {
+   "name": "gp21",
+   "x": 56,
+   "y": 118,
+   "functions": [
+    "gpio",
+    "pwm",
+    "rxd1",
+    "scl0",
+    "spi0_csn"
+   ]
+  },
+  {
+   "name": "gp20",
+   "x": 56,
+   "y": 126,
+   "functions": [
+    "gpio",
+    "pwm",
+    "txd1",
+    "sda0",
+    "spi0_rx"
+   ]
+  },
+  {
+   "name": "gp19",
+   "x": 56,
+   "y": 134,
+   "functions": [
+    "gpio",
+    "pwm",
+    "scl1",
+    "spi0_tx"
+   ]
+  },
+  {
+   "name": "gp18",
+   "x": 56,
+   "y": 142,
+   "functions": [
+    "gpio",
+    "pwm",
+    "sda1",
+    "spi0_sck"
+   ]
+  },
+  {
+   "name": "gnd_7",
+   "x": 56,
+   "y": 150,
+   "functions": []
+  },
+  {
+   "name": "gp17",
+   "x": 56,
+   "y": 158,
+   "functions": [
+    "gpio",
+    "pwm",
+    "rxd0",
+    "scl0",
+    "spi0_csn"
+   ]
+  },
+  {
+   "name": "gp16",
+   "x": 56,
+   "y": 166,
+   "functions": [
+    "gpio",
+    "pwm",
+    "txd0",
+    "sda0",
+    "spi0_rx"
+   ]
+  },
+  {
+   "name": "swclk",
+   "x": 20,
+   "y": 198,
+   "functions": []
+  },
+  {
+   "name": "swd_gnd",
+   "x": 30,
+   "y": 198,
+   "functions": []
+  },
+  {
+   "name": "swdio",
+   "x": 40,
+   "y": 198,
+   "functions": []
+  },
+  {
+   "name": "gp25",
+   "internal": true,
+   "x": 30,
+   "y": 14,
+   "functions": [],
+   "_note": "onboard LED net — not on the 2x20 header; the engine expands GP25 -> 1k -> LED internally"
   }
+ ],
+ "variants": null,
+ "_note": "RP2040 dual-core Cortex-M0+. 3.3V logic — NOT 5V tolerant. GP23/24/25/29 are used internally (regulator, VBUS detect, LED, VSYS sense) and not on the header. Pin table in docs/pin-table-rp2040.md.",
+ "footprint": {
+  "refTerminal": "gp0",
+  "leads": {
+   "gp0": {
+    "dRow": 0,
+    "dCol": 0
+   },
+   "gp1": {
+    "dRow": 0,
+    "dCol": 1
+   },
+   "gnd_1": {
+    "dRow": 0,
+    "dCol": 2
+   },
+   "gp2": {
+    "dRow": 0,
+    "dCol": 3
+   },
+   "gp3": {
+    "dRow": 0,
+    "dCol": 4
+   },
+   "gp4": {
+    "dRow": 0,
+    "dCol": 5
+   },
+   "gp5": {
+    "dRow": 0,
+    "dCol": 6
+   },
+   "gnd_2": {
+    "dRow": 0,
+    "dCol": 7
+   },
+   "gp6": {
+    "dRow": 0,
+    "dCol": 8
+   },
+   "gp7": {
+    "dRow": 0,
+    "dCol": 9
+   },
+   "gp8": {
+    "dRow": 0,
+    "dCol": 10
+   },
+   "gp9": {
+    "dRow": 0,
+    "dCol": 11
+   },
+   "gnd_3": {
+    "dRow": 0,
+    "dCol": 12
+   },
+   "gp10": {
+    "dRow": 0,
+    "dCol": 13
+   },
+   "gp11": {
+    "dRow": 0,
+    "dCol": 14
+   },
+   "gp12": {
+    "dRow": 0,
+    "dCol": 15
+   },
+   "gp13": {
+    "dRow": 0,
+    "dCol": 16
+   },
+   "gnd_4": {
+    "dRow": 0,
+    "dCol": 17
+   },
+   "gp14": {
+    "dRow": 0,
+    "dCol": 18
+   },
+   "gp15": {
+    "dRow": 0,
+    "dCol": 19
+   },
+   "vbus": {
+    "dRow": 5,
+    "dCol": 0
+   },
+   "vsys": {
+    "dRow": 5,
+    "dCol": 1
+   },
+   "gnd_5": {
+    "dRow": 5,
+    "dCol": 2
+   },
+   "3v3_en": {
+    "dRow": 5,
+    "dCol": 3
+   },
+   "3v3": {
+    "dRow": 5,
+    "dCol": 4
+   },
+   "adc_vref": {
+    "dRow": 5,
+    "dCol": 5
+   },
+   "gp28": {
+    "dRow": 5,
+    "dCol": 6
+   },
+   "agnd": {
+    "dRow": 5,
+    "dCol": 7
+   },
+   "gp27": {
+    "dRow": 5,
+    "dCol": 8
+   },
+   "gp26": {
+    "dRow": 5,
+    "dCol": 9
+   },
+   "run": {
+    "dRow": 5,
+    "dCol": 10
+   },
+   "gp22": {
+    "dRow": 5,
+    "dCol": 11
+   },
+   "gnd_6": {
+    "dRow": 5,
+    "dCol": 12
+   },
+   "gp21": {
+    "dRow": 5,
+    "dCol": 13
+   },
+   "gp20": {
+    "dRow": 5,
+    "dCol": 14
+   },
+   "gp19": {
+    "dRow": 5,
+    "dCol": 15
+   },
+   "gp18": {
+    "dRow": 5,
+    "dCol": 16
+   },
+   "gnd_7": {
+    "dRow": 5,
+    "dCol": 17
+   },
+   "gp17": {
+    "dRow": 5,
+    "dCol": 18
+   },
+   "gp16": {
+    "dRow": 5,
+    "dCol": 19
+   },
+   "swclk": {
+    "dRow": 3,
+    "dCol": 8
+   },
+   "swd_gnd": {
+    "dRow": 3,
+    "dCol": 9
+   },
+   "swdio": {
+    "dRow": 3,
+    "dCol": 10
+   }
+  },
+  "straddlesGutter": true,
+  "rowSpanPitches": 7,
+  "minCols": 20
+ }
 }
