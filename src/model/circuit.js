@@ -1100,6 +1100,12 @@ export function terminalsForKind(kind, params) {
     case 'ir_receiver': return ['vcc', 'gnd', 'out'];
     case 'temp_sensor': return ['vcc', 'gnd', 'dq'];
     case 'eeprom': return ['sda', 'scl', 'vcc', 'gnd'];
+    // PS/2 keyboard: protocol delivery is machine-side; the terminals
+    // mirror bw-board's ps2 device contract. The generic a/b fallback
+    // made the ENGINE reject the whole 6502-full-build netlist — the
+    // designer board stayed empty and the machine drove a phantom
+    // ('designer board empty', owner: LCD Hello shows nothing).
+    case 'ps2': return ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'da'];
     case 'led_matrix': return ['a', 'b'];
     case 'led_cube': return [
       ...Array.from({length: 8}, (_, i) => `sel_${i}`),
