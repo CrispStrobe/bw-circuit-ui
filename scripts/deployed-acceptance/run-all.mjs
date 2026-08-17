@@ -21,6 +21,9 @@ import * as probeSsd1306 from './probe-ssd1306.mjs';
 import * as probeVdp from './probe-vdp.mjs';
 import * as probeSerial from './probe-serial.mjs';
 import * as probeMachineLcd from './probe-machine-lcd.mjs';
+import * as probeConsoleMatrix from './probe-console-matrix.mjs';
+import * as probeLcdHello from './probe-lcd-hello.mjs';
+import * as probeContrast from './probe-contrast.mjs';
 
 const PROBES = [
   probeMatrix,
@@ -31,6 +34,9 @@ const PROBES = [
   probeVdp,
   probeSerial,
   probeMachineLcd,
+  probeConsoleMatrix,
+  probeLcdHello,
+  probeContrast,
 ];
 
 const url = resolveUrl();
