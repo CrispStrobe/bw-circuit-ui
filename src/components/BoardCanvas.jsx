@@ -917,7 +917,34 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
 
 // ── Wires ────────────────────────────────────────────────────────
 
-function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages, voltageMode, onUpdateWire, screenToCanvas, setDraggingWaypoint }) {
+/** Endpoint position for part-terminal OR breadboard-hole endpoints. */
+function endpointWorld(parts, e) {
+  if (!e) return null;
+  if (e.board) {
+    const bb = parts.find(q => q.id === e.board);
+    return bb ? holeWorldPos(bb, e.hole) : null;
+  }
+  const pp = parts.find(q => q.id === e.part);
+  return pp ? terminalPos(pp, e.terminal) : null;
+}
+
+/** A wire's net id, resolving breadboard endpoints through the strip map. */
+function wireNetId(circuit, wire) {
+  if (wire.netId) return wire.netId;
+  if (!circuit || !circuit.boardStripNets || !circuit.breadboards) return null;
+  for (const e of [wire.from, wire.to]) {
+    if (!e || !e.board) continue;
+    const strips = circuit.breadboards.get(e.board);
+    const map = circuit.boardStripNets.get(e.board);
+    if (strips && map) {
+      const id = map.get(strips.stripOf(e.hole));
+      if (id) return id;
+    }
+  }
+  return null;
+}
+
+function Wires({ wires, parts, circuit, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages, voltageMode, onUpdateWire, screenToCanvas, setDraggingWaypoint }) {
   // Group wires by net to find all terminals in each net
   const netTerminals = new Map();
   for (const w of wires) {
@@ -1060,7 +1087,7 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
 
     // Wire color by voltage: red at VCC, blue near GND, green/yellow in between
     let voltageColor = '#2ecc71'; // default green
-    const v = nodeVoltages?.[wire.netId];
+    const v = nodeVoltages?.[wire.netId ?? wireNetId(circuit, wire)];
     if (v != null && typeof v === 'number') {
       const vcc = 5.0;
       const ratio = Math.max(0, Math.min(1, v / vcc));
@@ -1176,76 +1203,53 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
 
 function VoltageLabels({ wires, parts, nodeVoltages, circuit }) {
   if (!nodeVoltages) return null;
-  const shownNets = new Set();
-  // Breadboard jumpers first: resolve each jumper's strip to its net and
-  // pill the staple midpoint — nets that live only on a breadboard had no
-  // label at all before (owner: 'also for wires on breadboards?').
-  const jumperPills = [];
-  if (circuit && circuit.holeWires && circuit.boardStripNets) {
+  // One pill per net, anchored to the net's MOST VISIBLE conductor (its
+  // longest wire or jumper), with a leader line touching the wire — the
+  // first draft dropped pills at ambiguous midpoints and skipped every
+  // net whose first wire had a breadboard endpoint (owner screenshot:
+  // orphaned 5.0V pills in empty space, interesting nets unlabeled).
+  const best = new Map(); // netId → {len, mx, my, ax, ay}
+  const consider = (netId, a, b, lift) => {
+    if (!netId) return;
+    const v = nodeVoltages[netId];
+    if (v == null) return;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const cur = best.get(netId);
+    if (cur && cur.len >= len) return;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - (lift || 0);
+    best.set(netId, {len, mx, my, v});
+  };
+  for (const wire of wires) {
+    const a = endpointWorld(parts, wire.from);
+    const b = endpointWorld(parts, wire.to);
+    if (!a || !b) continue;
+    consider(wire.netId ?? wireNetId(circuit, wire), a, b, 0);
+  }
+  if (circuit && circuit.holeWires && circuit.boardStripNets && circuit.breadboards) {
     for (const jw of circuit.holeWires()) {
       const bb = parts.find(q => q.id === jw.boardId);
-      const strips = circuit.breadboards && circuit.breadboards.get(jw.boardId);
+      const strips = circuit.breadboards.get(jw.boardId);
       const map = circuit.boardStripNets.get(jw.boardId);
       if (!bb || !strips || !map) continue;
       const netId = map.get(strips.stripOf(jw.a));
-      if (!netId || shownNets.has(netId)) continue;
-      const v = nodeVoltages[netId];
-      if (v == null) continue;
-      const a = holeWorldPos(bb, jw.a), b2 = holeWorldPos(bb, jw.b);
-      if (!a || !b2) continue;
-      shownNets.add(netId);
-      const mx = (a.x + b2.x) / 2;
-      const my = Math.min(a.y, b2.y) - Math.max(18, Math.hypot(b2.x - a.x, b2.y - a.y) * 0.25);
-      const label = Math.abs(v) < 1 ? `${(v * 1000).toFixed(0)}mV` : `${v.toFixed(1)}V`;
-      jumperPills.push(
-        <g key={`jvl-${netId}`} transform={`translate(${mx}, ${my - 8})`} pointerEvents="none">
-          <rect x={-22} y={-9} width={44} height={15} rx={3} fill="#0a0a1a" fillOpacity={0.85} />
-          <text textAnchor="middle" y={3} fill="#f1c40f" fontSize={10}
-            fontFamily="monospace" fontWeight="bold">{label}</text>
-        </g>
-      );
+      const a = holeWorldPos(bb, jw.a), b = holeWorldPos(bb, jw.b);
+      if (!a || !b) continue;
+      consider(netId, a, b, Math.max(18, Math.hypot(b.x - a.x, b.y - a.y) * 0.25));
     }
   }
-  return [...jumperPills, ...wires.map(wire => {
-    if (shownNets.has(wire.netId)) return null;
-    shownNets.add(wire.netId);
-    const v = nodeVoltages[wire.netId];
-    if (v == null) return null;
-
-    const fromPart = parts.find(p => p.id === wire.from.part);
-    const toPart = parts.find(p => p.id === wire.to.part);
-    if (!fromPart || !toPart) return null;
-    const a = terminalPos(fromPart, wire.from.terminal);
-    const b = terminalPos(toPart, wire.to.terminal);
-
-    // Offset label perpendicular to the wire so it doesn't overlap
-    const mx = (a.x + b.x) / 2;
-    const my = (a.y + b.y) / 2;
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const len = Math.sqrt(dx * dx + dy * dy) || 1;
-    // Perpendicular offset (to the right of the wire direction)
-    const offsetX = (-dy / len) * 14;
-    const offsetY = (dx / len) * 14;
-
-    return (
-      <g key={`v-${wire.netId}`}>
-        <rect
-          x={mx + offsetX - 18} y={my + offsetY - 8}
-          width={36} height={14} rx={3}
-          fill="#0a0a1a" fillOpacity={0.8}
-          style={{ pointerEvents: 'none' }}
-        />
-        <text
-          x={mx + offsetX} y={my + offsetY + 3}
-          textAnchor="middle" fill="#f1c40f" fontSize={10}
-          fontFamily="monospace" fontWeight="bold"
-          style={{ pointerEvents: 'none' }}>
-          {fmtV(v)}
-        </text>
+  const fmtV = (v) => Math.abs(v) < 1 ? `${(v * 1000).toFixed(0)}mV` : `${v.toFixed(1)}V`;
+  return [...best.entries()].map(([netId, c]) => (
+    <g key={`vl-${netId}`} pointerEvents="none">
+      {/* leader: pill → wire midpoint, so the label is unambiguous */}
+      <line x1={c.mx} y1={c.my - 16} x2={c.mx} y2={c.my} stroke="#f1c40f" strokeWidth={1} strokeDasharray="2 2" opacity={0.85} />
+      <circle cx={c.mx} cy={c.my} r={2.2} fill="#f1c40f" />
+      <g transform={`translate(${c.mx}, ${c.my - 24})`}>
+        <rect x={-23} y={-9} width={46} height={16} rx={3} fill="#0a0a1a" fillOpacity={0.88} />
+        <text textAnchor="middle" y={3.5} fill="#f1c40f" fontSize={10}
+          fontFamily="monospace" fontWeight="bold">{fmtV(c.v)}</text>
       </g>
-    );
-  })];
+    </g>
+  ));
 }
 
 // ── Wokwi element layer ─────────────────────────────────────────
@@ -3252,7 +3256,7 @@ export function BoardCanvas({
               every jumper vanished from the deployed Blink). Wires
               live here, inside the svg, above the chip bodies; the
               HTML part bodies overlay them, which is bench-real. */}
-          <Wires wires={wires} parts={parts}
+          <Wires wires={wires} parts={parts} circuit={circuit}
             selectedWire={selectedWire} onSelectWire={onSelectWire}
             hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
             nodeVoltages={nodeVoltages}
@@ -3276,7 +3280,18 @@ export function BoardCanvas({
             const a = holeWorldPos(bb, jw.a), b = holeWorldPos(bb, jw.b);
             if (!a || !b) return null;
             const isSel = selectedWire === jw.ref;
-            const color = isSel ? '#f1c40f' : (jw.color || '#e67e22');
+            let jwVColor = null;
+            if (simulate && voltageView && nodeVoltages && circuit && circuit.boardStripNets && circuit.breadboards) {
+              const strips = circuit.breadboards.get(jw.boardId);
+              const map = circuit.boardStripNets.get(jw.boardId);
+              const nid = strips && map ? map.get(strips.stripOf(jw.a)) : null;
+              const v = nid != null ? nodeVoltages[nid] : null;
+              if (v != null) {
+                const r = Math.max(0, Math.min(1, v / 5));
+                jwVColor = r > 0.8 ? '#e74c3c' : r > 0.4 ? '#f39c12' : r > 0.15 ? '#2ecc71' : '#3498db';
+              }
+            }
+            const color = isSel ? '#f1c40f' : (jwVColor || jw.color || '#e67e22');
             const width = isSel ? 4 : 3;
             let path;
             if (Math.abs(b.x - a.x) <= 4 * BB_PITCH) {
