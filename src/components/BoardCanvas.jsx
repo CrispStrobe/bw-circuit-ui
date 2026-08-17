@@ -3319,7 +3319,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'char_lcd' || p.kind === 'char_lcd_i2c') {
+                if (p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
