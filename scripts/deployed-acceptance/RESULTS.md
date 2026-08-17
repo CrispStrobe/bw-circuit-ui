@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-08-17T18:35:43.231Z |
-| Deploy SHA | `504ddd2` |
+| Date | 2026-08-17T18:43:02.533Z |
+| Deploy SHA | `4236ccc` |
 | URL | https://crispstrobe.github.io/brickwright-lite/ |
 | Summary | **4 PASS**, 6 FAIL, 1 SKIP |
 
