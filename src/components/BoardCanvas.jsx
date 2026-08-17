@@ -1185,7 +1185,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates, sevenSegments, sevenSeg3 }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates, sevenSegments, sevenSeg3, controlValues }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -1293,7 +1293,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
               pointerEvents: simulate ? 'auto' : 'none' }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}>
             <WokwiPotentiometer
-              min={0} max={1} step={0.01} value={0.5}
+              min={0} max={1} step={0.01} value={controlValues?.get(id) ?? 0.5}
               onInput={(e) => {
                 const val = parseFloat(e.target.value);
                 if (!isNaN(val)) onControlChange(id, val);
@@ -1495,8 +1495,14 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
               // VDD−V0, and only the CHARACTERS fade — the backlight and
               // glass stay, exactly like turning the real trimmer.
               const c = ds && typeof ds.contrast === 'number' ? ds.contrast : 1;
+              // Backlight: parallel LCD gives 0..1 float from A-K current,
+              // I2C gives boolean.  Wokwi element takes boolean.
+              const bl = !ds || ds.backlight === undefined ? true
+                : typeof ds.backlight === 'number' ? ds.backlight > 0.1
+                : !!ds.backlight;
               return <WokwiLcd1602 text={rows ? rows.join('\n') : ''}
                 color={`rgba(16,24,16,${c.toFixed(3)})`}
+                backlight={bl}
                 pins="none" screenOnly={true} />;
             })()}
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
@@ -3359,6 +3365,21 @@ export function BoardCanvas({
                 if (p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
+                }
+              }
+              return m.size > 0 ? m : null;
+            })()}
+            controlValues={(() => {
+              // Read pot/control positions from the active board so the
+              // knob graphic tracks the actual engine state.
+              const eb = (engineBoard && engineBoard.getControl) ? engineBoard
+                : (circuit && circuit.board && circuit.board.getControl) ? circuit.board : null;
+              if (!eb) return null;
+              const m = new Map();
+              for (const p of parts) {
+                if (p.kind === 'potentiometer') {
+                  const v = eb.getControl(p.id);
+                  if (v != null) m.set(p.id, v);
                 }
               }
               return m.size > 0 ? m : null;
