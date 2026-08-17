@@ -53,5 +53,9 @@ export { generateBom, bomToCsv } from './model/bom.js';
 // Machine extraction (wired-bus → bootable config)
 export { extractMachine } from './model/machine-extract.js';
 
+// Audio — share the host's AudioContext so circuit buzzers and Scratch
+// sound blocks don't fight over the browser's audio thread.
+export { setSharedAudioContext } from './audio/buzzer-audio.js';
+
 // i18n
 export { t } from './i18n/strings.js';

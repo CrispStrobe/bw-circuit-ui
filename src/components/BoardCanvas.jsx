@@ -126,6 +126,8 @@ function terminalOffsetsForPart(part) {
     case 'button': return { a: r(-15, 0), b: r(15, 0) };
     case 'buzzer': return { a: r(-15, 0), b: r(15, 0) };
     case 'capacitor': return { a: r(-15, 0), b: r(15, 0) };
+    case 'diode':
+    case 'zener': return { anode: r(-20, 0), cathode: r(20, 0) };
     case 'meter': return { probe_a: r(-25, 20), probe_b: r(25, 20) };
     case 'vsource': {
       const variant = String(part.params?.variant ?? (part.params?.wave && part.params.wave !== 'dc' ? 'fg' : '9v'));
@@ -1374,6 +1376,36 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             </div>
           </div>
         );
+      case 'diode':
+      case 'zener': {
+        // Diode symbol: triangle (anode→cathode) + bar at cathode.
+        // Zener adds angled ticks on the bar.
+        const dsel = selectedParts?.has(id);
+        const isZener = kind === 'zener';
+        return (
+          <div key={id} style={{ ...baseStyle, left: x - 22, top: y - 12 }}>
+            <svg width={44} height={24} viewBox="-22 -12 44 24">
+              {/* Anode lead */}
+              <line x1={-20} y1={0} x2={-6} y2={0} stroke="#95a5a6" strokeWidth={2} />
+              {/* Diode triangle (pointing right → current flow direction) */}
+              <polygon points="-6,-8 -6,8 6,0" fill="#2c3e50"
+                stroke={dsel ? '#f1c40f' : '#555'} strokeWidth={1.5} strokeLinejoin="round" />
+              {/* Cathode bar */}
+              <line x1={6} y1={-8} x2={6} y2={8}
+                stroke={dsel ? '#f1c40f' : '#95a5a6'} strokeWidth={2} />
+              {isZener && <>
+                {/* Zener ticks on bar ends */}
+                <line x1={6} y1={-8} x2={3} y2={-10} stroke="#95a5a6" strokeWidth={1.5} />
+                <line x1={6} y1={8} x2={9} y2={10} stroke="#95a5a6" strokeWidth={1.5} />
+              </>}
+              {/* Cathode lead */}
+              <line x1={6} y1={0} x2={20} y2={0} stroke="#95a5a6" strokeWidth={2} />
+              {/* Cathode band marker (like a real diode package) */}
+              <rect x={14} y={-5} width={3} height={10} rx={0.5} fill="#95a5a6" opacity={0.6} />
+            </svg>
+          </div>
+        );
+      }
       case 'capacitor': {
         const csel = selectedParts?.has(id);
         return (

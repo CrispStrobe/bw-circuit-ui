@@ -471,6 +471,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   }, []);
 
   useEffect(() => {
+    if (mode !== 'simulate') return; // only produce audio while simulating
     const buzzers = parts.filter(p => p.kind === 'buzzer');
     for (const bz of buzzers) {
       try {
@@ -478,7 +479,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         updateBuzzerAudio(bz.id, tone);
       } catch {}
     }
-  }, [rev, parts, readBuzzerTone, renderState]);
+  }, [rev, parts, readBuzzerTone, renderState, mode]);
 
   useEffect(() => {
     if (mode !== 'simulate') stopAllBuzzers();
