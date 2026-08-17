@@ -2918,7 +2918,10 @@ export function BoardCanvas({
                 title={`${drcWarnings.length} circuit finding${drcWarnings.length !== 1 ? 's' : ''}`}
                 aria-label={`${drcWarnings.length} circuit findings`} aria-expanded={warningsOpen}
                 style={{
-                  height: 30, boxSizing: 'border-box', padding: '4px 10px',
+                  // Same control height as every toolbar button (the UX
+                  // gate asserts it); width is content-driven — a count-
+                  // badged chip is a chip, not a square icon button.
+                  height: 34, boxSizing: 'border-box', padding: '4px 10px',
                   fontSize: 11, fontWeight: 700, fontFamily: 'monospace',
                   color: chipColor, background: chipBg,
                   border: `1px solid ${chipColor}`, borderRadius: 4, cursor: 'pointer',
