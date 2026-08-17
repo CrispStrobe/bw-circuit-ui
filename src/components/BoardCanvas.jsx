@@ -1575,7 +1575,15 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           const pinSpanX = Math.max(...xs) - Math.min(...xs);
           const pinCx = (Math.min(...xs) + Math.max(...xs)) / 2;
           const pinY = Math.min(...ys); // pin row
-          lcdScale = Math.max(0.25, pinSpanX / lcdElW);
+          // Scale-to-pin-span suits the PARALLEL module (6 leads span
+          // wide); the I2C backpack has 4 pins over 3 gaps and shrank
+          // the whole 16x2 panel to an unreadable ~50px bar (owner:
+          // 'we see NOTHING on the LCD' — the text was there, at 2px).
+          // A real I2C LCD is ~80mm wide regardless of its header:
+          // render at a readable fixed scale, centred above the pins.
+          lcdScale = part.kind === 'char_lcd_i2c'
+            ? 0.55
+            : Math.max(0.25, pinSpanX / lcdElW);
           lcdLeft = pinCx - (lcdElW / 2) * lcdScale;
           // Sit the screen just above the pin row
           lcdTop = pinY - lcdElH * lcdScale - 2;
