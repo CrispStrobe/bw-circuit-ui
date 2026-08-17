@@ -203,9 +203,9 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
     window.addEventListener('bw-circuit-theme', onTheme);
     return () => window.removeEventListener('bw-circuit-theme', onTheme);
   }, []);
-  // The dedicated Examples mode is already an explicitly selected panel;
-  // starting it collapsed made the mode look empty and hid its scroll area.
-  const [open, setOpen] = useState(() => true);
+  // Collapse is now managed by the host (CircuitDesigner) — ExamplesBrowser
+  // always renders its full content when mounted.
+  const open = true;
 
   const categories = useMemo(() => {
     if (!examples) return [];
@@ -283,18 +283,8 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       display: 'flex',
       flexDirection: 'column',
     }}>
-      <button type="button" onClick={() => setOpen(v => !v)} aria-expanded={open}
-        aria-label={open ? 'Collapse examples selector' : 'Expand examples selector'}
-        title={open ? 'Collapse examples selector' : 'Expand examples selector'}
-        style={{position: 'absolute', left: 5, top: 5, width: 24, height: 24, padding: 0, zIndex: 2,
-          /* left: 5, not -13: this container clips (overflow hidden), and a
-             handle outside the clip is invisible AND unclickable — the click
-             lands on whatever sits underneath. The heading's paddingLeft: 34
-             reserves this seat. The designer's own handles keep -13 because
-             their containers are overflow: visible. */
-          border: `1px solid ${palette.buttonBorder}`, borderRadius: '999px', background: palette.button, color: palette.text, cursor: 'pointer'}}>
-        {open ? '‹' : '›'}
-      </button>
+      {/* Collapse control now lives in CircuitDesigner at left: -13,
+         aligned with the Parts panel's control. */}
       <div style={{ color: palette.heading, fontSize: '16px', marginBottom: '8px', fontWeight: 700, paddingLeft: 34, letterSpacing: '.01em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span>Examples <span style={{color: palette.muted, fontSize: '12px', fontWeight: 400}}>({filtered.length}/{examples.length})</span></span>
         <button type="button" onClick={() => setShowInfo(v => !v)} disabled={!lastLoaded}

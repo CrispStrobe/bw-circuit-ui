@@ -192,6 +192,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   }, [stopToken]);
   const [selectorsOpen, setSelectorsOpen] = useState(!embedded);
   const [partsOpen, setPartsOpen] = useState(!embedded);
+  const [examplesOpen, setExamplesOpen] = useState(true);
   const [selectorSplit, setSelectorSplit] = useState(0.68);
   const [codexMode, setCodexMode] = useState(false);
   const [rightOpen, setRightOpen] = useState(!embedded || debuggerOn);
@@ -964,9 +965,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       <div data-selectors-rail style={{position: 'relative', display: 'flex', flex: selectorsOpen ? '0 0 190px' : '0 0 0px', width: selectorsOpen ? 190 : 0, minWidth: selectorsOpen ? 190 : 0, minHeight: 0, height: '100%', overflow: 'visible'}}>
       {selectorsOpen ? (
         <div data-selectors-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 auto', width: '100%', minWidth: 0, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
-          <div data-parts-selector style={{position: 'relative', flex: `${selectorSplit} 1 0`, minHeight: partsOpen ? 80 : 34, display: 'flex', minWidth: 0}}>
-            <button onClick={() => setPartsOpen(v => !v)} aria-label={partsOpen ? 'Collapse Parts Selector' : 'Expand Parts Selector'} aria-expanded={partsOpen} title={partsOpen ? 'Collapse Parts Selector' : 'Expand Parts Selector'} style={{position: 'absolute', zIndex: 4, left: -13, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{partsOpen ? '‹' : '›'}</button>
-            {partsOpen && <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />}
+          <div data-parts-selector style={{position: 'relative', flex: partsOpen ? `${selectorSplit} 1 0` : '0 0 30px', minHeight: partsOpen ? 80 : 30, display: 'flex', minWidth: 0, overflow: 'hidden'}}>
+            <button onClick={() => setPartsOpen(v => !v)} aria-label={partsOpen ? 'Collapse Parts' : 'Expand Parts'} aria-expanded={partsOpen} title={partsOpen ? 'Collapse Parts' : 'Expand Parts'} style={{position: 'absolute', zIndex: 4, left: -13, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{partsOpen ? '‹' : '›'}</button>
+            {partsOpen ? (
+              <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
+            ) : (
+              <div style={{padding: '6px 8px 6px 14px', color: '#334155', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%'}} onClick={() => setPartsOpen(true)}>Parts</div>
+            )}
           </div>
           <div data-selector-divider role="separator" aria-label="Resize Parts and Examples selectors" tabIndex={0}
             onPointerDown={event => {
@@ -983,7 +988,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             style={{height: 10, flex: '0 0 10px', cursor: 'row-resize', borderTop: '2px solid #94a3b8', borderBottom: '2px solid #94a3b8', background: '#e2e8f0', margin: '1px 0'}}>
             <span style={{display: 'block', width: 42, height: 2, margin: '2px auto', background: '#475569', borderRadius: 2}} />
           </div>
-          <div data-examples-selector style={{flex: `${1 - selectorSplit} 1 0`, minHeight: 70, overflowY: 'auto', display: 'flex', flexDirection: 'column'}}>
+          <div data-examples-selector style={{position: 'relative', flex: examplesOpen ? `${1 - selectorSplit} 1 0` : '0 0 30px', minHeight: examplesOpen ? 70 : 30, overflowY: examplesOpen ? 'auto' : 'hidden', display: 'flex', flexDirection: 'column'}}>
+            <button onClick={() => setExamplesOpen(v => !v)} aria-label={examplesOpen ? 'Collapse Examples' : 'Expand Examples'} aria-expanded={examplesOpen} title={examplesOpen ? 'Collapse Examples' : 'Expand Examples'} style={{position: 'absolute', zIndex: 4, left: -13, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{examplesOpen ? '‹' : '›'}</button>
+            {examplesOpen ? (<>
             {/* Codex / Gallery toggle — only shown when both examples and curriculum are available */}
             {examples && onLoadExample && curriculum && (
               <div style={{display: 'flex', gap: 0, padding: '3px 4px 2px', borderBottom: '1px solid #2c3e50', flexShrink: 0}}>
@@ -1021,6 +1028,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
               <InferPanel onLoadCircuit={handleLoadCircuit} />
             )}
             </div>
+            </>) : (
+              <div style={{padding: '6px 8px 6px 14px', color: '#334155', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%'}} onClick={() => setExamplesOpen(true)}>Examples</div>
+            )}
           </div>
         </div>
       ) : null}
