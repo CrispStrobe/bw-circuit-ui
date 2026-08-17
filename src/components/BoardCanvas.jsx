@@ -395,46 +395,51 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       case 'arduino_nano':
       case 'pi_pico': {
         // Board sidecars provide the audited dimensions and pin coordinates.
-        // The designer deliberately keeps this clean-room inline renderer:
-        // the sidecar is geometry/data, not an imported third-party runtime.
+        // Render HORIZONTALLY (long edge = width) so modules seat on
+        // breadboards the same way DIP chips do. Sidecar coordinates are
+        // transposed: x↔y, so the vertical pin columns become top/bottom rows.
         const sc = getSidecar(kind);
         const geometry = boardGeometry(sc);
-        const W = geometry?.w ?? (kind === 'arduino_nano' ? 150 : kind === 'pi_pico' ? 150 : 450);
-        const H = geometry?.h ?? (kind === 'arduino_nano' ? 400 : kind === 'pi_pico' ? 525 : 300);
+        // Swap w↔h for horizontal orientation.
+        const W = geometry?.h ?? (kind === 'arduino_nano' ? 400 : kind === 'pi_pico' ? 525 : 300);
+        const H = geometry?.w ?? 150;
         const boardColor = kind === 'pi_pico' ? '#7b2cbf' : '#087ea4';
         const title = kind === 'arduino_uno' ? 'ARDUINO UNO' : kind === 'arduino_nano' ? 'ARDUINO NANO' : 'RASPBERRY PI PICO';
+        const subtitle = kind === 'pi_pico' ? 'RP2040 · 3V3' : kind === 'arduino_mega' ? 'ATmega2560 · 5V' : 'ATmega328P · 5V';
         const S = geometry?.scale || 1;
-        const pin = (t) => ({ x: t.x * S - W / 2, y: t.y * S - H / 2 });
+        // Transpose terminal coordinates for horizontal layout.
+        const pin = (t) => ({ x: t.y * S - W / 2, y: t.x * S - H / 2 });
         return (
           <g key={id} transform={xform} pointerEvents="none">
             <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={5}
               fill={boardColor} stroke={selStroke || '#164e63'} strokeWidth={isSelected ? 3 : 1.5} />
             <rect x={-W / 2 + 8} y={-H / 2 + 8} width={Math.max(20, W - 16)} height={Math.max(20, H - 16)}
               rx={3} fill="#0b6b8a" opacity={0.35} />
-            <text x={0} y={kind === 'arduino_nano' ? 5 : 4} textAnchor="middle"
-              fill="#dff6ff" fontSize={kind === 'pi_pico' ? 5.5 : 9} fontFamily="monospace" fontWeight="bold">
+            <text x={0} y={-4} textAnchor="middle"
+              fill="#dff6ff" fontSize={kind === 'pi_pico' ? 5.5 : 7} fontFamily="monospace" fontWeight="bold">
               {title}
             </text>
-            <text x={0} y={kind === 'arduino_nano' ? 16 : 16} textAnchor="middle"
-              fill="#a9dbea" fontSize={6} fontFamily="monospace">
-              {kind === 'pi_pico' ? 'RP2040 · 3V3' : 'ATmega328P · 5V'}
+            <text x={0} y={8} textAnchor="middle"
+              fill="#a9dbea" fontSize={5} fontFamily="monospace">
+              {subtitle}
             </text>
             {sc?.terminals?.map(t => {
               const p = pin(t);
-              // Sidecars place pads on the two long edges. Labels belong
-              // beside their pad, inside the PCB: left edge → right-aligned
-              // toward the body; right edge → left-aligned toward the body.
-              const leftSide = p.x < 0;
+              // After transpose, top/bottom rows correspond to original left/right columns.
+              const topSide = p.y < 0;
               return (
                 <g key={t.name}>
-                  <circle cx={p.x} cy={p.y} r={5} fill="#d8dee4" stroke="#637381" strokeWidth={1} />
-                  <text x={p.x + (leftSide ? 7 : -7)} y={p.y + 1.6}
-                    textAnchor={leftSide ? 'start' : 'end'}
-                    fill="#d6eef5" fontSize={kind === 'pi_pico' ? 3.7 : 4.5}
+                  <rect x={p.x - 3} y={p.y - 1.5} width={6} height={3}
+                    fill="#d8dee4" stroke="#637381" strokeWidth={0.3} />
+                  <text x={p.x} y={p.y + (topSide ? -5 : 8)}
+                    textAnchor="middle"
+                    fill="#d6eef5" fontSize={kind === 'pi_pico' ? 3.2 : 3.8}
                     fontFamily="monospace">{t.name.toUpperCase()}</text>
                 </g>
               );
             })}
+            <text x={0} y={H / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
       }
