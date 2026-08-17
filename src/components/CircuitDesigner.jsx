@@ -1454,6 +1454,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                   hint: 'Interactive Forth (public domain) — py65mon console map, type at the ok prompt' },
                 { id: 'basic', label: 'MS BASIC (6502)', rom: 'basic.rom', slot: 'rom', profile: 'eater',
                   hint: 'Microsoft BASIC 1.1 (MIT reconstruction) — Eater map, ACIA serial' },
+                // The one-click display proof: boots on the EXTRACTED machine
+                // (no profile), so the VIA drives whatever the bench wires —
+                // the LCD on the Eater build. Without a program that writes
+                // the display, "nothing shows on the LCD" is the correct and
+                // useless truth (owner report, 2026-08-17).
+                { id: 'lcdhello', label: 'LCD Hello', rom: 'lcd-hello.bin', slot: 'rom',
+                  hint: 'Writes HI BRICKWRIGHT to the HD44780 through the VIA — busy-window honest; turn the contrast pot' },
               ] : kind === 'z80' ? [
                 { id: 'bbcbasic', label: 'BBC BASIC', rom: 'bbcbasic.com', slot: 'com', profile: 'cpm',
                   hint: 'R.T. Russell (zlib) — CP/M .COM over the BDOS shim, type at the > prompt' },
