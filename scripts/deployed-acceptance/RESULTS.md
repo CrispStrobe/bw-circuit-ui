@@ -2,10 +2,10 @@
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-08-17T15:12:29.897Z |
-| Deploy SHA | `fd21631` |
+| Date | 2026-08-17T18:35:43.231Z |
+| Deploy SHA | `504ddd2` |
 | URL | https://crispstrobe.github.io/brickwright-lite/ |
-| Summary | **1 PASS**, 9 FAIL, 1 SKIP |
+| Summary | **4 PASS**, 6 FAIL, 1 SKIP |
 
 ## Probe results
 
@@ -18,10 +18,11 @@
 | ssd1306 | ❌ FAIL | `/tmp/accept-ssd1306.png` | no SSD1306 PCB body rect (fill="#0a0a1e") in SVG — face not deployed |
 | vdp | ❌ FAIL | `/tmp/accept-vdp.png` | VDP canvas still blank after ROM injection |
 | serial | ✅ PASS | `/tmp/accept-serial.png` | Tali Forth 2 banner detected |
-| machine_lcd | ❌ FAIL | `/tmp/accept-machine-lcd.png` | LCD device state: no LCD device state (2 boards) |
-| console_matrix | ❌ ERROR | — | TimeoutError: page.screenshot: Timeout 30000ms exceeded. |
-| lcd_hello | ❌ FAIL | `/tmp/accept-lcd-hello.png` | no LCD device state found after LCD Hello preset |
-| contrast_pot | ❌ FAIL | `/tmp/accept-contrast-pot.png` | no LCD contrast data available |
+| machine_lcd | ✅ PASS | `/tmp/accept-machine-lcd.png` | device-state: "HI" via board; face: wokwi shows "HI              
+                " |
+| console_matrix | ❌ FAIL | `/tmp/accept-console-matrix.png` | zero lit dots in SVG — scan-duty gamma not producing visible pixels |
+| lcd_hello | ✅ PASS | `/tmp/accept-lcd-hello.png` | LCD text: "HI BRICKWR" |
+| contrast_pot | ✅ PASS | `/tmp/accept-contrast-pot.png` | contrast swept: 1 → 0 (pot 0→1) |
 
 ## Findings
 
@@ -31,7 +32,4 @@
 - **seven_seg_3** (SKIP): face — seven_seg_3 display face not yet in deployed build
 - **ssd1306** (FAIL): face — SvgParts ssd1306 handler not in deployed build (needs vendor-forward)
 - **vdp** (FAIL): face — VdpScreen canvas not mounted or TMS9918 render not wired
-- **machine_lcd** (FAIL): engine — machine board not exposing LCD device state
-- **console_matrix** (ERROR): harness — probe threw an unhandled exception
-- **lcd_hello** (FAIL): engine — LCD device state not populated
-- **contrast_pot** (FAIL): engine — LCD contrast model not exposing data
+- **console_matrix** (FAIL): face — ledDisplayLevel gamma curve not applied

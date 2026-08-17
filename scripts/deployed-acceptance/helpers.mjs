@@ -111,46 +111,35 @@ async function _loadExample(page, searchTerm, exactTitle, deviceHint) {
       if (entry) entry.click();
     }, target);
   }
-  // If a confirm dialog appeared (device-chooser from task 2), select
-  // the requested device in the dropdown (if specified), then click OK.
-  await page.waitForTimeout(800);
-  try {
-    const okBtn = page.locator('button', { hasText: 'OK' }).first();
-    if (await okBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-      // If a specific device was requested, select it in the dialog's
-      // dropdown. Try the data attribute first, then label-adjacent fallback.
-      if (deviceHint) {
-        try {
-          // Try data-attribute select (deployed after fd21631).
-          let found = false;
-          const daSel = page.locator('[data-device-chooser-select]').first();
-          if (await daSel.isVisible({ timeout: 300 }).catch(() => false)) {
-            await daSel.selectOption(deviceHint);
-            found = true;
+  // If a confirm dialog appeared (device-chooser), optionally select the
+  // device hint, then click OK. Uses evaluate (not Playwright locators)
+  // because portal-rendered dialogs are unreliable with locator.click().
+  await page.waitForTimeout(1200);
+  await page.evaluate((dev) => {
+    const btns = [...document.querySelectorAll('button')].filter(
+      (b) => b.textContent.trim() === 'OK',
+    );
+    for (const b of btns) {
+      let el = b;
+      while (el) {
+        if (getComputedStyle(el).position === 'fixed') {
+          if (dev) {
+            const sel = el.querySelector('select');
+            if (sel && [...sel.options].some((o) => o.value === dev)) {
+              const setter = Object.getOwnPropertyDescriptor(
+                HTMLSelectElement.prototype, 'value',
+              ).set;
+              setter.call(sel, dev);
+              sel.dispatchEvent(new Event('change', { bubbles: true }));
+            }
           }
-          // Fallback: find select inside the fixed overlay (dialog portal).
-          if (!found) {
-            await page.evaluate((dev) => {
-              for (const sel of document.querySelectorAll('select')) {
-                if (!sel.closest('[style*="fixed"]')) continue;
-                const opts = [...sel.options].map(o => o.value);
-                if (opts.includes(dev)) {
-                  // React controlled: use native setter to trigger onChange.
-                  const nativeSetter = Object.getOwnPropertyDescriptor(
-                    window.HTMLSelectElement.prototype, 'value').set;
-                  nativeSetter.call(sel, dev);
-                  sel.dispatchEvent(new Event('change', { bubbles: true }));
-                  return;
-                }
-              }
-            }, deviceHint);
-          }
-          await page.waitForTimeout(500);
-        } catch { /* no dropdown or device not available */ }
+          b.click();
+          return;
+        }
+        el = el.parentElement;
       }
-      await okBtn.click();
     }
-  } catch { /* no dialog — direct load (pre-task-2 deploy) */ }
+  }, deviceHint || null);
   await page.waitForTimeout(5000);
   try {
     await page.waitForFunction(

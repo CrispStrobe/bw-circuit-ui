@@ -441,10 +441,11 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         const hasDevices = pDevices.length > 1;
         const handleOk = () => {
           if (onLoadExample) {
-            // Read the select's CURRENT value to avoid stale-closure issues
+            // Read the select's CURRENT DOM value to avoid stale-closure issues
             // when external tools (Playwright) change the select between renders.
-            const selEl = document.querySelector('[data-device-chooser-select]');
-            const d = (selEl && selEl.value) || pendingLoad.device || pDevices[0];
+            const selEl = typeof document !== 'undefined'
+              ? document.querySelector('[data-device-chooser-select]') : null;
+            const d = (selEl?.value) || pendingLoad.device || pDevices[0];
             // Picking the AUTHORED device means the authored pairing —
             // no opts, so the host loads the curated circuit instead of a
             // generated bench (a single-entry list used to silently
