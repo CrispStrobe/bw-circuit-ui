@@ -453,7 +453,16 @@ export function runDrc(circuit, board) {
   // the sum is a lower bound — say so honestly.
   // Only applies when an MCU part is present — non-MCU circuits (e.g.
   // 555 tone generators) are not constrained by MCU pin current limits.
-  if (parts.some(p => p.kind === 'mcu' || /^(arduino|pi_pico|attiny|atmega|stc|at89)/.test(p.kind))) {
+  const mcuPart = parts.find(p => p.kind === 'mcu' || /^(arduino|pi_pico|attiny|atmega|stc|at89)/.test(p.kind));
+  if (mcuPart) {
+    // Human-readable chip name for the warning message.
+    const chipName = mcuPart.params?.device || mcuPart.params?.label || {
+      mcu: 'MCU', arduino_uno: 'ATmega328P', arduino_nano: 'ATmega328P',
+      arduino_mega: 'ATmega2560', pi_pico: 'RP2040',
+      attiny85: 'ATtiny85', attiny88: 'ATtiny88', attiny13: 'ATtiny13',
+      attiny2313: 'ATtiny2313', atmega168p: 'ATmega168P',
+      atmega328p: 'ATmega328P', atmega2560: 'ATmega2560',
+    }[mcuPart.kind] || mcuPart.kind.toUpperCase();
     let totalA = 0;
     let hasUnrated = false;
     const unratedKinds = [];
@@ -496,7 +505,7 @@ export function runDrc(circuit, board) {
         rule: 'aggregate-current',
         partId: parts.find(p => p.kind === 'mcu')?.id || parts[0]?.id,
         explanation: `Total circuit current is ${hasUnrated ? 'at least ' : ''}${totalMa} mA, ` +
-          `exceeding the chip's ~${limitMa} mA limit. ` +
+          `exceeding the ${chipName}'s ~${limitMa} mA limit. ` +
           `Largest consumers: ${topStr}.` +
           (hasUnrated ? ` Some parts (${unratedKinds.join(', ')}) cannot be rated — the real total may be higher.` : ''),
         fix: 'Reduce the number of simultaneously active loads, or use external drivers ' +
@@ -510,7 +519,7 @@ export function runDrc(circuit, board) {
         severity: 'warning',
         rule: 'aggregate-current',
         partId: parts.find(p => p.kind === 'mcu')?.id || parts[0]?.id,
-        explanation: `Rated parts draw ${totalMa} mA (limit ~${limitMa} mA), ` +
+        explanation: `Rated parts draw ${totalMa} mA (${chipName} limit ~${limitMa} mA), ` +
           `but ${unratedKinds.join(', ')} cannot be rated — ` +
           `the total is a lower bound, not a sum. The actual current may exceed the limit.`,
         fix: 'Check the current through unrated parts with the multimeter.',
