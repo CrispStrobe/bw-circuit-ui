@@ -111,35 +111,21 @@ async function _loadExample(page, searchTerm, exactTitle, deviceHint) {
       if (entry) entry.click();
     }, target);
   }
-  // If a confirm dialog appeared (device-chooser), optionally select the
-  // device hint, then click OK. Uses evaluate (not Playwright locators)
-  // because portal-rendered dialogs are unreliable with locator.click().
+  // If a confirm dialog appeared (device-chooser), click OK. The dialog
+  // defaults to the example's authoring device (ca6d810), so just clicking
+  // OK loads the correct bench. Uses evaluate because portal dialogs are
+  // unreliable with Playwright locator.click().
   await page.waitForTimeout(1200);
-  await page.evaluate((dev) => {
-    const btns = [...document.querySelectorAll('button')].filter(
-      (b) => b.textContent.trim() === 'OK',
-    );
-    for (const b of btns) {
+  await page.evaluate(() => {
+    for (const b of document.querySelectorAll('button')) {
+      if (b.textContent.trim() !== 'OK') continue;
       let el = b;
       while (el) {
-        if (getComputedStyle(el).position === 'fixed') {
-          if (dev) {
-            const sel = el.querySelector('select');
-            if (sel && [...sel.options].some((o) => o.value === dev)) {
-              const setter = Object.getOwnPropertyDescriptor(
-                HTMLSelectElement.prototype, 'value',
-              ).set;
-              setter.call(sel, dev);
-              sel.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-          }
-          b.click();
-          return;
-        }
+        if (getComputedStyle(el).position === 'fixed') { b.click(); return; }
         el = el.parentElement;
       }
     }
-  }, deviceHint || null);
+  });
   await page.waitForTimeout(5000);
   try {
     await page.waitForFunction(
