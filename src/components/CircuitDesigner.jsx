@@ -925,10 +925,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const effectiveNodeVoltages = hasSimulation ? nodeVoltages : {};
 
   let statusText = null;
-  const picoPresent = parts.some(part => part.kind === 'pi_pico');
-  if (picoPresent && !externalBoard) {
-    statusText = 'WIRING ONLY — Pico execution is not available yet';
-  } else if (!hasSimulation && externalBoard) {
+  if (!hasSimulation && externalBoard) {
     statusText = 'HARDWARE — voltage/current readings need the simulator';
   } else if (externalBoard && halted && staleBy > 0) {
     statusText = `SNAPSHOT — the board kept running for ${
@@ -1401,18 +1398,25 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             "add a PIN declaration" points them at a door that does not
             exist (owner report, z80-bench 2026-08-16). It gets the truth:
             Build Machine, then the ASM tab. */}
-        {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && !hasRetroCpu && parts.some(p =>
-            p.kind === 'mcu' || p.kind === 'arduino_uno' || p.kind === 'arduino_nano' || p.kind === 'pi_pico'
-        ) && (
-          <div data-no-code-indicator style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
-            background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
-            fontSize: 12, lineHeight: 1.35, marginTop: 4}}>
-            <strong>{/^de/i.test(lang) ? 'Debugger inaktiv' : 'Debugger inactive'}</strong>
-            <div>{/^de/i.test(lang)
-              ? 'Noch keine Programm-Pins deklariert. Füge eine PIN-Deklaration in den Blöcken hinzu, um Ausführen und Einzelschritt zu aktivieren.'
-              : 'No program pins declared yet. Add a PIN declaration in Blocks to enable run and step.'}</div>
-          </div>
-        )}
+        {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && !hasRetroCpu && (() => {
+          const mcuPart = parts.find(p =>
+            p.kind === 'mcu' || p.kind === 'arduino_uno' || p.kind === 'arduino_nano' || p.kind === 'pi_pico');
+          if (!mcuPart) return null;
+          const chipName = mcuPart.kind === 'pi_pico' ? 'Pico (RP2040)'
+            : mcuPart.kind === 'arduino_nano' ? 'Arduino Nano'
+            : mcuPart.kind === 'arduino_uno' ? 'Arduino Uno'
+            : mcuPart.declName || mcuPart.kind;
+          return (
+            <div data-no-code-indicator style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
+              background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412',
+              fontSize: 12, lineHeight: 1.35, marginTop: 4}}>
+              <strong>{/^de/i.test(lang) ? 'Debugger inaktiv' : 'Debugger inactive'}</strong>
+              <div>{/^de/i.test(lang)
+                ? `Keine Programm-Pins für ${chipName}. Programm laden oder PIN-Deklaration in Blöcken hinzufügen.`
+                : `No program pins for ${chipName}. Load a program or add a PIN declaration in Blocks. If you retargeted an example, the pin mapping may not be available for this chip.`}</div>
+            </div>
+          );
+        })()}
         {debuggerOn && hasRetroCpu && (!stc || !stc.pins || !stc.pins.length) && (
           <div data-machine-hint style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
             background: '#eff6ff', border: '1px solid #93c5fd', color: '#1e40af',

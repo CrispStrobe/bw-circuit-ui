@@ -245,7 +245,8 @@ function fmtV(v) {
 function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
-    const rot = (part.rotation || 0) + ((part.kind === 'mcu' ? (part.seat?.rot || 0) * 90 : 0));
+    const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
+    const rot = (part.rotation || 0) + seatRot;
     const flip = part.flipped;
     const isSelected = selectedParts?.has(id);
     const selStroke = isSelected ? '#f1c40f' : undefined;
@@ -409,8 +410,20 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         const pin = needsTranspose
           ? (t) => ({ x: t.y * S - W / 2, y: t.x * S - H / 2 })
           : (t) => ({ x: t.x * S - W / 2, y: t.y * S - H / 2 });
+        // When seated on a breadboard, scale the body down to match the
+        // hole span. Footprint leads span (maxCol) gaps × BB_PITCH wide.
+        let seatK = 1;
+        if (part.seat && part._seatTerminals) {
+          const terms = Object.values(part._seatTerminals);
+          if (terms.length >= 2) {
+            const xs = terms.map(t => t.x);
+            const worldSpan = Math.max(...xs) - Math.min(...xs);
+            if (worldSpan > 0 && W > 0) seatK = worldSpan / W;
+          }
+        }
+        const seatXform = seatK !== 1 ? ` scale(${seatK.toFixed(4)})` : '';
         return (
-          <g key={id} transform={xform} pointerEvents="none">
+          <g key={id} transform={xform + seatXform} onClick={handleClick} style={{ cursor: 'pointer' }}>
             <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={5}
               fill={boardColor} stroke={selStroke || '#164e63'} strokeWidth={isSelected ? 3 : 1.5} />
             <rect x={-W / 2 + 8} y={-H / 2 + 8} width={Math.max(20, W - 16)} height={Math.max(20, H - 16)}
@@ -426,7 +439,6 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             {sc?.terminals?.map(t => {
               const p = pin(t);
               if (needsTranspose) {
-                // Transposed: top/bottom rows, labels above/below.
                 const topSide = p.y < 0;
                 return (
                   <g key={t.name}>
@@ -439,7 +451,6 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                   </g>
                 );
               }
-              // Landscape (Uno): left/right columns, labels beside pins.
               const leftSide = p.x < 0;
               return (
                 <g key={t.name}>
