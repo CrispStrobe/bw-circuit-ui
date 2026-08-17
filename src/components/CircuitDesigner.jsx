@@ -79,7 +79,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en' }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -1331,6 +1331,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             (6502/Z80). The gate is debugState presence, not hasMcuPins:
             a machine bench has no PIN concept but its runner provides
             step/stepOver/registers. (widened per 57617b3 principle) */}
+        {/* ── Debugger dock: 'top' = render here in instruments; 'right' = host
+            renders full-size in the right column. The >> / << button flips. */}
+        {debugDock === 'top' && (<>
         {debugState && (
           <DebugStatus
             debugState={debugState}
@@ -1345,7 +1348,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {debugState && typeof debugState.video === 'function' && (
           <VdpScreen videoFn={debugState.video} setButtonsFn={debugState.setButtons} setKeysFn={debugState.setKeys} loadSnapshotFn={debugState.loadSnapshot} lang={lang} />
         )}
-        {/* Serial console — for machines with ACIA serial (z80-bench, eater6502) */}
         {debugState && typeof debugState.onSerial === 'function' && (
           <section style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box'}}>
             <div style={{fontSize: 11, fontWeight: 600, color: '#e2e8f0', marginBottom: 4, fontFamily: 'monospace'}}>
@@ -1355,7 +1357,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
               newline={debugState.serialNewline || 0x0d} lang={lang} />
           </section>
         )}
-        {/* Framebuffer face — 1bpp monochrome video from machine chips */}
         {debugState && debugState.framebuffer && (
           <FramebufferFace chipState={debugState.framebuffer}
             width={debugState.framebuffer.width || 128}
@@ -1363,26 +1364,36 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             stride={debugState.framebuffer.stride}
             lang={lang} />
         )}
-        {/* Architecture face — block diagram with live register state */}
         {debugState && typeof debugState.regs === 'function' && (
           <ArchitectureFace debugState={debugState} lang={lang} />
         )}
-        {/* A machine bench (Build Machine succeeded) opens this slot too:
-            the host's DebugPanel lives INSIDE it, and its runner is what
-            eventually produces debugState — gating on debugState alone was
-            a deadlock the bench could never leave (no pins, no panel, no
-            runner, no debugState). benchOpen is the HOST's memory of the
-            same fact: this component remounts on tab switches and loses
-            machineResult, while the host's state survives — without it,
-            leaving for the Code tab (to write ASM!) closed the slot and
-            killed the bench. */}
         {(hasMcuPins || debugState || benchOpen || (machineResult && machineResult.ok)) && debuggerPanel && (
           <section data-debugger-panel style={{width: '100%', flex: '0 0 auto', minHeight: 0, boxSizing: 'border-box', padding: 8,
             borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
-            <div style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0', marginBottom: 6}}>
-              {/^de/i.test(lang) ? 'Debugger' : 'Debugger'}
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6}}>
+              <span style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0'}}>Debugger</span>
+              {onDebugDockChange && (
+                <button type="button" onClick={() => onDebugDockChange('right')}
+                  title="Move debugger to full-size right pane"
+                  style={{padding: '1px 6px', fontSize: 10, background: '#1e293b', color: '#94a3b8',
+                    border: '1px solid #475569', borderRadius: 3, cursor: 'pointer'}}>&gt;&gt;</button>
+              )}
             </div>
             {debuggerPanel}
+          </section>
+        )}
+        </>)}
+        {/* When docked right, show a << button to bring it back to instruments */}
+        {debugDock === 'right' && onDebugDockChange && (debugState || benchOpen || debuggerOn) && (
+          <section style={{width: '100%', flex: '0 0 auto', padding: 8, borderRadius: 6,
+            background: '#0f172a', border: '1px solid #475569'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+              <span style={{fontSize: 11, color: '#94a3b8'}}>Debugger in right pane</span>
+              <button type="button" onClick={() => onDebugDockChange('top')}
+                title="Move debugger back to instruments"
+                style={{padding: '1px 6px', fontSize: 10, background: '#1e293b', color: '#94a3b8',
+                  border: '1px solid #475569', borderRadius: 3, cursor: 'pointer'}}>&lt;&lt;</button>
+            </div>
           </section>
         )}
         {/* MCU-class benches without pins get PIN advice; a MACHINE-class
