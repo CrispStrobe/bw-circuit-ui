@@ -48,6 +48,20 @@ const DIP_CHIP_LABELS = {
   // Discrete DIP ICs that were ghost-faced in bus-computer benches
   '555': 'NE555', tms9918: 'TMS9918', bargraph: 'LED BAR',
   ns16c550: 'NS16C550', mc6845: 'MC6845',
+  // Part-matrix burn-down: DIP ICs with sidecars but no face
+  '556': 'NE556', '74hc02': '74HC02', '74hc86': '74HC86',
+  '74hc10': '74HC10', '74hc11': '74HC11', '74hc14': '74HC14',
+  '74hc20': '74HC20', '74hc21': '74HC21', '74hc27': '74HC27',
+  '74hc73': '74HC73', '74hc75': '74HC75', '74hc93': '74HC93',
+  '74hc95': '74HC95', '74hc132': '74HC132', '74hc165': '74HC165',
+  '74hc244': '74HC244', '74hc283': '74HC283', '74hc688': '74HC688',
+  cd4511: 'CD4511', cd74hc4067: 'CD74HC4067',
+  '74ls04': '74LS04', '74ls32': '74LS32', '74ls107': '74LS107',
+  '74ls157': '74LS157', '74ls161': '74LS161', '74ls173': '74LS173',
+  '74ls189': '74LS189',
+  lm358: 'LM358', lm339: 'LM339', lm393: 'LM393',
+  pcf8574: 'PCF8574', mcp4725: 'MCP4725', max7219: 'MAX7219',
+  at24c02: '24C02', um245r: 'UM245R',
 };
 import { routeWire, routeWireWithWaypoints, partBBoxes, getPartBBox } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
@@ -1918,6 +1932,7 @@ export function BoardCanvas({
   const [rubberBand, setRubberBand] = useState(null);
   const [inlineEdit, setInlineEdit] = useState(null); // { partId, x, y }
   const [noticeOpen, setNoticeOpen] = useState(false);
+  const [warningsOpen, setWarningsOpen] = useState(false);
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
   const [draggingWaypoint, setDraggingWaypoint] = useState(null); // { wireId, index }
 
@@ -2891,6 +2906,59 @@ export function BoardCanvas({
         }}>
           {wiringFrom ? t('modeWiring', lang) : t('modeSelect', lang)}
         </span>
+
+        {/* Warning chip: count-badged, red for danger, amber for advisory */}
+        {drcWarnings && drcWarnings.length > 0 && (() => {
+          const dangerCount = drcWarnings.filter(w => w.severity === 'danger' || w.severity === 'error').length;
+          const chipColor = dangerCount > 0 ? '#dc2626' : '#d97706';
+          const chipBg = dangerCount > 0 ? '#451a1a' : '#451f0a';
+          return (
+            <div style={{position: 'relative', flex: '0 0 auto'}}>
+              <button data-warnings-chip onClick={() => setWarningsOpen(v => !v)}
+                title={`${drcWarnings.length} circuit finding${drcWarnings.length !== 1 ? 's' : ''}`}
+                aria-label={`${drcWarnings.length} circuit findings`} aria-expanded={warningsOpen}
+                style={{
+                  height: 30, boxSizing: 'border-box', padding: '4px 10px',
+                  fontSize: 11, fontWeight: 700, fontFamily: 'monospace',
+                  color: chipColor, background: chipBg,
+                  border: `1px solid ${chipColor}`, borderRadius: 4, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}>
+                {dangerCount > 0 ? '\u26A0' : '!'}{' '}{drcWarnings.length}
+              </button>
+              {warningsOpen && (
+                <div data-warnings-popover style={{
+                  position: 'absolute', zIndex: 90, top: 38, left: 0,
+                  width: 340, maxHeight: 320, overflowY: 'auto',
+                  background: '#0f172a', border: `1px solid ${chipColor}`,
+                  borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,.5)',
+                  padding: '8px', fontFamily: 'monospace', fontSize: '10px',
+                }}>
+                  <div style={{color: '#ecf0f1', fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', display: 'flex', justifyContent: 'space-between'}}>
+                    <span>Circuit Check ({drcWarnings.length})</span>
+                    <button onClick={() => setWarningsOpen(false)} aria-label="Close"
+                      style={{background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: '0 2px'}}>{'\u00D7'}</button>
+                  </div>
+                  {drcWarnings.map((w, i) => {
+                    const c = w.severity === 'danger' || w.severity === 'error' ? '#e74c3c' : w.severity === 'warning' ? '#f39c12' : '#3498db';
+                    return (
+                      <div key={i} style={{
+                        marginBottom: 3, padding: '4px 6px',
+                        background: '#1e293b', border: `1px solid ${c}33`,
+                        borderRadius: 3, color: c, lineHeight: 1.4,
+                        cursor: w.partId ? 'pointer' : 'default',
+                      }} onClick={() => { if (w.partId) onSelectPart(w.partId, false); }}>
+                        <span style={{fontWeight: 700}}>{w.severity === 'danger' || w.severity === 'error' ? '\u26A0' : w.severity === 'info' ? 'i' : '!'}</span>
+                        {' '}{w.partKind ? `${w.partKind}: ` : ''}{w.explanation}
+                        {w.fix && <div style={{color: '#2ecc71', fontSize: 9, marginTop: 2}}>Fix: {w.fix}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Compact status warning; click the triangle to reveal the full explanation. */}
         {statusText && /WIRING ONLY|HARDWARE|SNAPSHOT/.test(statusText) ? (

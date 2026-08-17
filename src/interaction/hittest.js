@@ -60,7 +60,37 @@ export const FOOTPRINTS = {
   '74hc245': { w: 160, h: 90 }, '74hc374': { w: 160, h: 90 },
   '74hc595': { w: 130, h: 80 }, '74c922': { w: 150, h: 90 },
   matrix8x8: { w: 60, h: 60 },
+  matrix16x8: { w: 110, h: 60 }, matrix9x9: { w: 70, h: 70 },
   at24c64: { w: 80, h: 80 },
+  // Part-matrix burn-down: palette parts that used DEFAULT_FOOTPRINT
+  rgb_led: { w: 40, h: 50 }, neopixel: { w: 30, h: 30 },
+  inductor: { w: 52, h: 20 }, photodiode: { w: 36, h: 36 },
+  slide_switch: { w: 48, h: 28 }, dip_switch: { w: 60, h: 30 },
+  tip120: { w: 44, h: 52 }, relay_dpdt: { w: 70, h: 60 },
+  gearmotor: { w: 70, h: 70 }, vibration_motor: { w: 36, h: 36 },
+  '555': { w: 80, h: 60 }, '556': { w: 120, h: 80 },
+  cd4093: { w: 120, h: 80 },
+  ssd1306: { w: 100, h: 50 }, seven_seg_3: { w: 80, h: 50 },
+  clock_display: { w: 80, h: 40 }, max7219: { w: 60, h: 60 },
+  ultrasonic: { w: 70, h: 40 }, dht22: { w: 40, h: 50 },
+  pir_sensor: { w: 50, h: 50 }, soil_moisture: { w: 40, h: 60 },
+  gas_sensor: { w: 50, h: 50 }, tilt_sensor: { w: 36, h: 36 },
+  tmp36: { w: 32, h: 44 }, ky002: { w: 36, h: 36 },
+  header: { w: 80, h: 20 }, usb_a: { w: 50, h: 30 },
+  ir_remote: { w: 36, h: 44 }, solar_cell: { w: 60, h: 50 },
+  light_bulb: { w: 36, h: 50 },
+  // DIP ICs from the matrix burn-down
+  '74hc02': { w: 120, h: 80 }, '74hc86': { w: 120, h: 80 },
+  '74hc132': { w: 120, h: 80 }, '74hc165': { w: 130, h: 80 },
+  '74hc244': { w: 160, h: 90 }, '74hc688': { w: 160, h: 90 },
+  '74hc73': { w: 120, h: 80 }, '74hc93': { w: 120, h: 80 },
+  '74hc95': { w: 120, h: 80 },
+  pcf8574: { w: 130, h: 80 }, mcp4725: { w: 80, h: 50 },
+  char_lcd_i2c: { w: 140, h: 56 },
+  l293d: { w: 130, h: 80 },
+  // Board footprints (seated on breadboard, so width matters)
+  arduino_uno: { w: 180, h: 70 }, arduino_nano: { w: 130, h: 50 },
+  pi_pico: { w: 160, h: 60 },
 };
 
 export const DEFAULT_FOOTPRINT = { w: 48, h: 48 };
