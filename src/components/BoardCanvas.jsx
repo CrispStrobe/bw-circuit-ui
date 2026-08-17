@@ -156,6 +156,7 @@ function terminalOffsetsForPart(part) {
       for (let i = 0; i < 8; i++) offsets[`data_${i}`] = r(60, -30 + i * 10);
       return offsets;
     }
+    case 'max7219': return { vcc: r(-25, 30), gnd: r(-15, 30), din: r(-5, 30), clk: r(5, 30), cs: r(15, 30), dout: r(25, 30) };
     case 'seven_segment': return { a: r(-30, 30), b: r(30, 30) }; // pins at bottom
     case 'char_lcd':
     case 'hd44780':
@@ -546,6 +547,46 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               // console matrix perfectly (owner report, 2026-08-17).
               const v = ledDisplayLevel(br ? br[i] : 0);
               const color = v > 0.05 ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})` : '#1a0000';
+              return <circle key={i}
+                cx={-Wc/2 + col * G + G/2} cy={-Wr/2 + row * G + G/2} r={S/2}
+                fill={color} />;
+            })}
+            <text x={0} y={Wr/2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── MAX7219 8×8 LED matrix driver ────────────────────────────
+      case 'max7219': {
+        const ds = deviceStates?.get(id);
+        // digits[0..7]: each byte is one row, MSB = column 7.
+        // shutdown = true means display off; displayTest = all on.
+        // intensity 0..15 maps to brightness.
+        const off = !ds || ds.shutdown;
+        const testMode = ds && ds.displayTest;
+        const intensity = ds ? (ds.intensity ?? 0) / 15 : 0;
+        const G = 6, S = 4;
+        const Wc = 8 * G, Wr = 8 * G;
+        const seatK = part.seat ? 7 * BB_PITCH / Wc : 1;
+        return (
+          <g key={id} transform={xform + (seatK !== 1 ? ` scale(${seatK.toFixed(3)})` : '')} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Red PCB background */}
+            <rect x={-Wc/2 - 4} y={-Wr/2 - 4} width={Wc + 8} height={Wr + 8} rx={3}
+              fill="#2a0a0a" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
+            {Array.from({ length: 64 }, (_, i) => {
+              const row = Math.floor(i / 8), col = i % 8;
+              let lit = false;
+              if (testMode) {
+                lit = true;
+              } else if (!off && ds?.digits) {
+                // Each digit byte: bit 0 = col 0 (segment DP/A), bit 7 = col 7
+                lit = (ds.digits[row] >> col) & 1;
+              }
+              const v = lit ? Math.max(0.15, 0.3 + 0.7 * intensity) : 0;
+              const color = v > 0.05
+                ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})`
+                : '#1a0000';
               return <circle key={i}
                 cx={-Wc/2 + col * G + G/2} cy={-Wr/2 + row * G + G/2} r={S/2}
                 fill={color} />;
@@ -3342,7 +3383,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
