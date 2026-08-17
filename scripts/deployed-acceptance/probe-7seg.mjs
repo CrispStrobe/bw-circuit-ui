@@ -14,7 +14,7 @@ export async function run(page, utils) {
   const ss1 = utils.screenshotPath('7seg-t1');
 
   await utils.goToCircuit();
-  await utils.loadExample('7-segment');
+  await utils.loadExample('7-segment', undefined, 'stc12c5a60s2');
   await utils.enterSim();
   await page.waitForTimeout(3000);
 

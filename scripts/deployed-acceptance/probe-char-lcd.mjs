@@ -13,7 +13,7 @@ export async function run(page, utils) {
   const ss = utils.screenshotPath('char-lcd');
 
   await utils.goToCircuit();
-  await utils.loadExample('I2C LCD');
+  await utils.loadExample('I2C LCD', undefined, 'stc12c5a60s2');
   await utils.enterSim();
   await page.waitForTimeout(5000);
 

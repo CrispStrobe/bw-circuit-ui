@@ -36,7 +36,7 @@ export async function createHarness(opts = {}) {
 export function makeUtils(page, url) {
   return {
     goToCircuit: () => _goToCircuit(page, url),
-    loadExample: (search, exact) => _loadExample(page, search, exact),
+    loadExample: (search, exact, device) => _loadExample(page, search, exact, device),
     waitForCircuit: () =>
       page.waitForFunction(
         () => window.__circuit && window.__circuit.parts.length > 0,
@@ -67,13 +67,17 @@ async function _goToCircuit(page, url) {
   }
 }
 
-async function _loadExample(page, searchTerm, exactTitle) {
+async function _loadExample(page, searchTerm, exactTitle, deviceHint) {
   // Open examples panel if needed.
   const exBtn = page.locator('button', { hasText: 'Examples' }).first();
   if (await exBtn.count()) {
     await exBtn.click({ timeout: 10_000 });
     await page.waitForTimeout(1500);
   }
+  // Clear stale device choices so the dialog picks the authoring device.
+  await page.evaluate(() => {
+    try { localStorage.removeItem('bw-example-device'); } catch { /* */ }
+  });
   // Type into search.
   const search = page.locator('input[placeholder*="example"]').first();
   if (await search.count()) {
@@ -93,26 +97,50 @@ async function _loadExample(page, searchTerm, exactTitle) {
     return false;
   }, target);
   if (!clicked) {
-    // Retry: clear and re-fill search, then try evaluate click again.
     await search.fill('');
     await page.waitForTimeout(500);
     await search.fill(searchTerm);
     await page.waitForTimeout(1500);
-    const retry = await page.evaluate((term) => {
+    await page.evaluate((term) => {
       const entry = [...document.querySelectorAll('div')].find(
         (e) =>
           e.onclick &&
           getComputedStyle(e).cursor === 'pointer' &&
           e.textContent.includes(term),
       );
-      if (entry) { entry.click(); return true; }
-      return false;
+      if (entry) entry.click();
     }, target);
-    if (!retry) {
-      // Last resort: getByText click.
-      await page.getByText(target, { exact: false }).last().click({ timeout: 10_000 });
-    }
   }
+  // If a confirm dialog appeared (device-chooser from task 2), select
+  // the requested device in the dropdown (if specified), then click OK.
+  await page.waitForTimeout(800);
+  try {
+    const okBtn = page.locator('button', { hasText: 'OK' }).first();
+    if (await okBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      // If a specific device was requested, select it in the dialog's
+      // dropdown and wait for React to re-render.
+      if (deviceHint) {
+        try {
+          const sel = page.locator('[data-device-chooser-select]').first();
+          if (await sel.isVisible({ timeout: 500 }).catch(() => false)) {
+            await sel.selectOption(deviceHint);
+            await page.waitForTimeout(500);
+          } else {
+            // Fallback: try the label-adjacent select.
+            const chipLabel = page.locator('label', { hasText: 'Chip' });
+            if (await chipLabel.isVisible({ timeout: 300 }).catch(() => false)) {
+              const fallbackSel = chipLabel.locator('..').locator('select').first();
+              if (await fallbackSel.isVisible({ timeout: 300 }).catch(() => false)) {
+                await fallbackSel.selectOption(deviceHint);
+                await page.waitForTimeout(500);
+              }
+            }
+          }
+        } catch { /* no dropdown or device not available */ }
+      }
+      await okBtn.click();
+    }
+  } catch { /* no dialog — direct load (pre-task-2 deploy) */ }
   await page.waitForTimeout(5000);
   try {
     await page.waitForFunction(

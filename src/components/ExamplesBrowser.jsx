@@ -411,9 +411,13 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                 onClick={() => {
                   // Open the confirm dialog with device chooser.
                   const devices = ex.devices || [];
-                  // Default device: current project chip if compatible, else authoring chip.
+                  // Default device: current project chip if compatible, else
+                  // saved choice (only if still in the example's device list),
+                  // else the authoring chip.
+                  const saved = savedDeviceFor(ex.id);
                   const defaultDev = devices.includes(currentDevice) ? currentDevice
-                    : (savedDeviceFor(ex.id) || devices[0] || undefined);
+                    : (saved && devices.includes(saved)) ? saved
+                    : (devices[0] || undefined);
                   setPendingLoad({ example: ex, device: defaultDev });
                 }}
               />
@@ -431,7 +435,10 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         const hasDevices = pDevices.length > 1;
         const handleOk = () => {
           if (onLoadExample) {
-            const d = pendingLoad.device || pDevices[0];
+            // Read the select's CURRENT value to avoid stale-closure issues
+            // when external tools (Playwright) change the select between renders.
+            const selEl = document.querySelector('[data-device-chooser-select]');
+            const d = (selEl && selEl.value) || pendingLoad.device || pDevices[0];
             const opts = d ? { device: d, bench: pEx.benches?.[d] } : undefined;
             onLoadExample(pEx, opts);
             setLastLoaded(pEx);
@@ -461,7 +468,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                   <label style={{ color: palette.muted, fontSize: 11, display: 'block', marginBottom: 4 }}>
                     Chip
                   </label>
-                  <select
+                  <select data-device-chooser-select
                     value={pDev || ''}
                     onChange={e => setPendingLoad(prev => ({ ...prev, device: e.target.value }))}
                     style={{

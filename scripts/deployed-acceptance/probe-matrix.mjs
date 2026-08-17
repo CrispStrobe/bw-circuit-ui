@@ -13,7 +13,7 @@ export async function run(page, utils) {
   const ss = utils.screenshotPath('matrix');
 
   await utils.goToCircuit();
-  await utils.loadExample('Blinkenrocket');
+  await utils.loadExample('Blinkenrocket', undefined, 'attiny88');
   await utils.enterSim();
   await page.waitForTimeout(3000);
 

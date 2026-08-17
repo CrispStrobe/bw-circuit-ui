@@ -13,7 +13,7 @@ export async function run(page, utils) {
   const ss = utils.screenshotPath('console-matrix');
 
   await utils.goToCircuit();
-  await utils.loadExample('Retro console: self-test');
+  await utils.loadExample('Retro console: self-test', undefined, 'stc15f2k60s2');
   await utils.enterSim();
   await page.waitForTimeout(5000);
 
