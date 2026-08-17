@@ -1579,10 +1579,13 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           // wide); the I2C backpack has 4 pins over 3 gaps and shrank
           // the whole 16x2 panel to an unreadable ~50px bar (owner:
           // 'we see NOTHING on the LCD' — the text was there, at 2px).
-          // A real I2C LCD is ~80mm wide regardless of its header:
-          // render at a readable fixed scale, centred above the pins.
+          // A real LCD1602 is 80x36 mm — it DWARFS its connector. Full
+          // panel scale reads as one column per character (~16 columns
+          // wide); 0.55 was still 'very tiny, not a real face, two pin
+          // rows tall' (owner, build 7a4feb0). The PCB face below makes
+          // it a module, not a floating text strip.
           lcdScale = part.kind === 'char_lcd_i2c'
-            ? 0.55
+            ? 1.0
             : Math.max(0.25, pinSpanX / lcdElW);
           lcdLeft = pinCx - (lcdElW / 2) * lcdScale;
           // Sit the screen just above the pin row
@@ -1608,10 +1611,32 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
               const bl = !ds || ds.backlight === undefined ? true
                 : typeof ds.backlight === 'number' ? ds.backlight > 0.1
                 : !!ds.backlight;
-              return <WokwiLcd1602 text={rows ? rows.join('\n') : ''}
+              const screen = <WokwiLcd1602 text={rows ? rows.join('\n') : ''}
                 color={`rgba(16,24,16,${c.toFixed(3)})`}
                 backlight={bl}
                 pins="none" screenOnly={true} />;
+              // The I2C module gets its PCB: green board, mounting holes,
+              // the backpack silk — a display MODULE, not a bare glass
+              // strip hovering over the bench (owner, build 7a4feb0).
+              if (part.kind !== 'char_lcd_i2c') return screen;
+              return (
+                <div style={{ background: '#1a6a2a', border: '1px solid #0e4a1a',
+                  borderRadius: 4, padding: '7px 10px 5px', position: 'relative',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
+                  {[[2, 2], [2, null], [null, 2], [null, null]].map(([t, l], i) => (
+                    <div key={i} style={{ position: 'absolute', width: 5, height: 5,
+                      borderRadius: '50%', background: '#0b3d17',
+                      border: '1px solid #d4af37',
+                      top: t != null ? t : undefined, bottom: t == null ? 2 : undefined,
+                      left: l != null ? l : undefined, right: l == null ? 2 : undefined }} />
+                  ))}
+                  {screen}
+                  <div style={{ textAlign: 'center', color: '#a7f3d0', fontSize: 7,
+                    fontFamily: 'monospace', opacity: 0.85, marginTop: 1 }}>
+                    LCD1602 · I²C {(part.params && part.params.address) ? `0x${Number(part.params.address).toString(16)}` : '0x27'}
+                  </div>
+                </div>
+              );
             })()}
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
