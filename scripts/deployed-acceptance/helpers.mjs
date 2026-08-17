@@ -118,24 +118,34 @@ async function _loadExample(page, searchTerm, exactTitle, deviceHint) {
     const okBtn = page.locator('button', { hasText: 'OK' }).first();
     if (await okBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
       // If a specific device was requested, select it in the dialog's
-      // dropdown and wait for React to re-render.
+      // dropdown. Try the data attribute first, then label-adjacent fallback.
       if (deviceHint) {
         try {
-          const sel = page.locator('[data-device-chooser-select]').first();
-          if (await sel.isVisible({ timeout: 500 }).catch(() => false)) {
-            await sel.selectOption(deviceHint);
-            await page.waitForTimeout(500);
-          } else {
-            // Fallback: try the label-adjacent select.
-            const chipLabel = page.locator('label', { hasText: 'Chip' });
-            if (await chipLabel.isVisible({ timeout: 300 }).catch(() => false)) {
-              const fallbackSel = chipLabel.locator('..').locator('select').first();
-              if (await fallbackSel.isVisible({ timeout: 300 }).catch(() => false)) {
-                await fallbackSel.selectOption(deviceHint);
-                await page.waitForTimeout(500);
-              }
-            }
+          // Try data-attribute select (deployed after fd21631).
+          let found = false;
+          const daSel = page.locator('[data-device-chooser-select]').first();
+          if (await daSel.isVisible({ timeout: 300 }).catch(() => false)) {
+            await daSel.selectOption(deviceHint);
+            found = true;
           }
+          // Fallback: find select inside the fixed overlay (dialog portal).
+          if (!found) {
+            await page.evaluate((dev) => {
+              for (const sel of document.querySelectorAll('select')) {
+                if (!sel.closest('[style*="fixed"]')) continue;
+                const opts = [...sel.options].map(o => o.value);
+                if (opts.includes(dev)) {
+                  // React controlled: use native setter to trigger onChange.
+                  const nativeSetter = Object.getOwnPropertyDescriptor(
+                    window.HTMLSelectElement.prototype, 'value').set;
+                  nativeSetter.call(sel, dev);
+                  sel.dispatchEvent(new Event('change', { bubbles: true }));
+                  return;
+                }
+              }
+            }, deviceHint);
+          }
+          await page.waitForTimeout(500);
         } catch { /* no dropdown or device not available */ }
       }
       await okBtn.click();
