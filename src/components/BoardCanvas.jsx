@@ -22,6 +22,7 @@ import { getSidecar } from '../model/parts-registry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { BreadboardView } from './BreadboardView.jsx';
+import { ledDisplayLevel } from './led-perception.js';
 import { DrcOverlay } from './DrcOverlay.jsx';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
@@ -491,8 +492,11 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fill="#111" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
             {Array.from({ length: n }, (_, i) => {
               const row = Math.floor(i / mCols), col = i % mCols;
-              const b = br ? br[i] : 0;
-              const color = b > 0.01 ? `rgba(255,${Math.round(40 + 40 * b)},${Math.round(20 * b)},${Math.min(1, b + 0.15)})` : '#1a0000';
+              // Perceptual, not linear: a 1/16-duty scan row averages ~0.06
+              // and painted near-black while the emulator scanned the
+              // console matrix perfectly (owner report, 2026-08-17).
+              const v = ledDisplayLevel(br ? br[i] : 0);
+              const color = v > 0.05 ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})` : '#1a0000';
               return <circle key={i}
                 cx={-Wc/2 + col * G + G/2} cy={-Wr/2 + row * G + G/2} r={S/2}
                 fill={color} />;
@@ -1463,13 +1467,19 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
               ...(lcdScale ? { transform: `scale(${lcdScale})`, transformOrigin: 'top left' } : {}) }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
             {...dragProps()}>
-            <WokwiLcd1602 text={(() => {
+            {(() => {
               const ds = deviceStates?.get(id);
               // Parallel LCD models expose .text, the I2C backpack model
               // exposes .display — same rows-of-chars idea, two spellings.
               const rows = ds && (ds.text || ds.display);
-              return rows ? rows.join('\n') : '';
-            })()} pins="none" screenOnly={true} />
+              // V0 is physical now: the model reports contrast 0..1 from
+              // VDD−V0, and only the CHARACTERS fade — the backlight and
+              // glass stay, exactly like turning the real trimmer.
+              const c = ds && typeof ds.contrast === 'number' ? ds.contrast : 1;
+              return <WokwiLcd1602 text={rows ? rows.join('\n') : ''}
+                color={`rgba(16,24,16,${c.toFixed(3)})`}
+                pins="none" screenOnly={true} />;
+            })()}
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
             </div>
