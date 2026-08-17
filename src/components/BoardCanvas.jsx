@@ -2715,13 +2715,14 @@ export function BoardCanvas({
       onSelectWire(null);
     }, [onSelectPart, onSelectWire]),
     onLongPress: useCallback((clientX, clientY) => {
+      if (simulate) return; // SIM: long-press is not an edit gesture
       if ((selectedParts && selectedParts.size > 0) || selectedWire) {
         setContextMenu({
           x: clientX, y: clientY,
           type: (selectedParts && selectedParts.size === 1) ? 'part' : selectedWire ? 'wire' : 'part',
         });
       }
-    }, [selectedParts, selectedWire]),
+    }, [selectedParts, selectedWire, simulate]),
     onPinch: useCallback((scale) => {
       setZoom(z => Math.max(0.3, Math.min(3, z * scale)));
     }, []),
@@ -2858,6 +2859,9 @@ export function BoardCanvas({
         onContextMenu={(e) => {
           e.preventDefault();
           // Right-click selects what is under the cursor, then opens the menu.
+          // In SIM mode there is nothing to edit: a pot click must TURN the
+          // pot, never surface Rotate/Remove (owner report, repeatedly).
+          if (simulate) return;
           const { x, y } = eventToWorld(e);
           const pid = machineRef.current.hit.partAt(x, y);
           if (pid && !(selectedParts && selectedParts.has(pid))) {
@@ -2870,7 +2874,7 @@ export function BoardCanvas({
           }
         }}
       >
-        {selectedPartModel && (
+        {selectedPartModel && !simulate && (
           <div data-selection-actions style={{position: 'absolute', left: `${((selectedPartModel.x - pan.x) / (containerSize.w / zoom)) * 100}%`, top: `${((selectedPartModel.y - pan.y) / (containerSize.h / zoom)) * 100}%`, transform: 'translate(18px, -50%)', zIndex: 60, display: 'flex', gap: 4,
             padding: 4, borderRadius: 6, background: 'rgba(22,33,62,.92)', boxShadow: '0 2px 8px rgba(0,0,0,.35)'}}
             onPointerDown={e => e.stopPropagation()}>
