@@ -27,8 +27,8 @@ const CATEGORIES = [
         capability: 'AVR simulation',
         tooltip: 'ATmega328P Nano board — 5 V logic, compact headers' },
       { kind: 'pi_pico', label: 'Raspberry Pi Pico', params: {}, color: '#7b2cbf',
-        capability: 'wiring only',
-        tooltip: 'RP2040 board — 3.3 V logic; do not connect 5 V signals' },
+        capability: 'RP2040 simulation',
+        tooltip: 'RP2040 board — 3.3 V logic, GPIO simulation; do not connect 5 V signals' },
     ],
   },
   {

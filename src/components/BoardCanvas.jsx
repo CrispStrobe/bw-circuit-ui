@@ -256,7 +256,6 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
     const handleClick = (e) => {
       e.stopPropagation();
       onSelectPart(id, e.shiftKey);
-      if (onPartBodyClick) onPartBodyClick(id);
     };
 
     switch (kind) {
@@ -395,20 +394,21 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       case 'arduino_nano':
       case 'pi_pico': {
         // Board sidecars provide the audited dimensions and pin coordinates.
-        // Render HORIZONTALLY (long edge = width) so modules seat on
-        // breadboards the same way DIP chips do. Sidecar coordinates are
-        // transposed: x↔y, so the vertical pin columns become top/bottom rows.
+        // Render HORIZONTALLY (long edge = width). Sidecars that are
+        // taller than wide (Nano, Pico) get coordinates transposed x↔y;
+        // sidecars that are already landscape (Uno) render as-is.
         const sc = getSidecar(kind);
         const geometry = boardGeometry(sc);
-        // Swap w↔h for horizontal orientation.
-        const W = geometry?.h ?? (kind === 'arduino_nano' ? 400 : kind === 'pi_pico' ? 525 : 300);
-        const H = geometry?.w ?? 150;
+        const needsTranspose = geometry && geometry.h > geometry.w;
+        const W = needsTranspose ? (geometry?.h ?? 400) : (geometry?.w ?? 450);
+        const H = needsTranspose ? (geometry?.w ?? 150) : (geometry?.h ?? 300);
         const boardColor = kind === 'pi_pico' ? '#7b2cbf' : '#087ea4';
         const title = kind === 'arduino_uno' ? 'ARDUINO UNO' : kind === 'arduino_nano' ? 'ARDUINO NANO' : 'RASPBERRY PI PICO';
         const subtitle = kind === 'pi_pico' ? 'RP2040 · 3V3' : kind === 'arduino_mega' ? 'ATmega2560 · 5V' : 'ATmega328P · 5V';
         const S = geometry?.scale || 1;
-        // Transpose terminal coordinates for horizontal layout.
-        const pin = (t) => ({ x: t.y * S - W / 2, y: t.x * S - H / 2 });
+        const pin = needsTranspose
+          ? (t) => ({ x: t.y * S - W / 2, y: t.x * S - H / 2 })
+          : (t) => ({ x: t.x * S - W / 2, y: t.y * S - H / 2 });
         return (
           <g key={id} transform={xform} pointerEvents="none">
             <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={5}
@@ -425,15 +425,29 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             </text>
             {sc?.terminals?.map(t => {
               const p = pin(t);
-              // After transpose, top/bottom rows correspond to original left/right columns.
-              const topSide = p.y < 0;
+              if (needsTranspose) {
+                // Transposed: top/bottom rows, labels above/below.
+                const topSide = p.y < 0;
+                return (
+                  <g key={t.name}>
+                    <rect x={p.x - 3} y={p.y - 1.5} width={6} height={3}
+                      fill="#d8dee4" stroke="#637381" strokeWidth={0.3} />
+                    <text x={p.x} y={p.y + (topSide ? -5 : 8)}
+                      textAnchor="middle"
+                      fill="#d6eef5" fontSize={kind === 'pi_pico' ? 3.2 : 3.8}
+                      fontFamily="monospace">{t.name.toUpperCase()}</text>
+                  </g>
+                );
+              }
+              // Landscape (Uno): left/right columns, labels beside pins.
+              const leftSide = p.x < 0;
               return (
                 <g key={t.name}>
-                  <rect x={p.x - 3} y={p.y - 1.5} width={6} height={3}
+                  <rect x={p.x - 1.5} y={p.y - 3} width={3} height={6}
                     fill="#d8dee4" stroke="#637381" strokeWidth={0.3} />
-                  <text x={p.x} y={p.y + (topSide ? -5 : 8)}
-                    textAnchor="middle"
-                    fill="#d6eef5" fontSize={kind === 'pi_pico' ? 3.2 : 3.8}
+                  <text x={p.x + (leftSide ? 5 : -5)} y={p.y + 1.5}
+                    textAnchor={leftSide ? 'start' : 'end'}
+                    fill="#d6eef5" fontSize={4}
                     fontFamily="monospace">{t.name.toUpperCase()}</text>
                 </g>
               );
@@ -1231,7 +1245,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           <div key={id}
             style={{ ...baseStyle, left: rSeated ? rLeft - 5 : x - 30, top: y - 6, cursor: 'move',
               ...(rSeated && rWidth ? { width: rWidth } : {}) }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
             <WokwiResistor value={String(params.ohms)} />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
@@ -1255,7 +1269,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 20, top: y - 25, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
             <div style={seated ? { transform: 'scale(0.78)', transformOrigin: '50% 50%' } : undefined}>
             <WokwiLed color={(params && params.color) || 'red'} brightness={b} value={isOn} flip={flip || undefined} />
@@ -1296,7 +1310,8 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
               ...(potScale ? { transform: `scale(${potScale})`, transformOrigin: 'top left' } : {}),
               cursor: simulate ? 'pointer' : 'move',
               pointerEvents: simulate ? 'auto' : 'none' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}>
+            onClick={simulate ? (e) => e.stopPropagation() : (e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
+            onContextMenu={simulate ? (e) => e.preventDefault() : undefined}>
             <WokwiPotentiometer
               min={0} max={1} step={0.01} value={controlValues?.get(id) ?? 0.5}
               onInput={(e) => {
@@ -1315,7 +1330,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 20, top: y - 20, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
             <WokwiBuzzer hasSignal={tone?.on ?? false} />
             <div style={{
@@ -1337,7 +1352,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             style={{ ...baseStyle, left: x - 18, top: y - 18,
               cursor: simulate ? 'pointer' : 'move',
               pointerEvents: simulate ? 'auto' : 'none' }}
-            onClick={simulate ? (e) => { e.stopPropagation(); } : (e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={simulate ? (e) => { e.stopPropagation(); } : (e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             onMouseDown={(e) => { e.stopPropagation(); if (simulate) onButtonDown(id); else onDragStart(id); }}
             onMouseUp={() => { if (simulate) onButtonUp(id); }}
             onMouseLeave={() => { if (simulate) onButtonUp(id); }}
@@ -1390,7 +1405,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           <div key={id}
             style={{ ...baseStyle, left: segLeft, top: segTop, cursor: 'move',
               ...(segScale ? { transform: `scale(${segScale})`, transformOrigin: 'top left' } : {}) }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
             <WokwiSevenSegment digits={segDigits} values={(() => {
               // REAL segments from the engine — the face reads
@@ -1437,7 +1452,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           <div key={id}
             style={{ ...baseStyle, left: seg3Left, top: seg3Top, cursor: 'move',
               ...(seg3Scale ? { transform: `scale(${seg3Scale})`, transformOrigin: 'top left' } : {}) }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
             <WokwiSevenSegment digits={3} values={(() => {
               const segKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'];
@@ -1489,7 +1504,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           <div key={id}
             style={{ ...baseStyle, left: lcdLeft, top: lcdTop, cursor: 'move',
               ...(lcdScale ? { transform: `scale(${lcdScale})`, transformOrigin: 'top left' } : {}) }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
             {(() => {
               const ds = deviceStates?.get(id);
@@ -1520,7 +1535,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 15, top: y - 15, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
             <WokwiIrReceiver />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
@@ -1536,7 +1551,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 25, top: y - 15, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
             <svg width={50} height={30} viewBox="0 0 50 30">
               <rect x={2} y={2} width={46} height={26} rx={3} fill="#2c3e50" stroke="#7f8c8d" strokeWidth={1} />
@@ -1557,7 +1572,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 50, top: y - 50, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
             <svg width={100} height={100} viewBox="0 0 100 100">
               <rect x={0} y={0} width={100} height={100} rx={4}
@@ -1674,7 +1689,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         return (
           <div key={id}
             style={{ ...baseStyle, left: x - 35, top: y - 25, cursor: 'move' }}
-            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); if (onPartBodyClick) onPartBodyClick(id); }}
+            onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
             <svg width={70} height={55} viewBox="0 0 70 55">
               <rect x={2} y={2} width={66} height={38} rx={4}
