@@ -1070,7 +1070,9 @@ export function terminalsForKind(kind, params) {
     case 'ultrasonic': return ['vcc', 'gnd', 'trig', 'echo'];
     case 'tmp36': return ['vcc', 'gnd', 'vout'];
     case 'gas_sensor': return ['vcc', 'gnd', 'aout', 'dout'];
-    case 'slide_switch': return ['a', 'common', 'b'];
+    // Engine + sidecar say 'com' — 'common' here was the ghost-terminal
+    // disease again (a power switch wired to com failed netlist validation).
+    case 'slide_switch': return ['a', 'com', 'b'];
     // Engine + sidecar agree: FOUR switches, s0..s3 (0-indexed), and
     // params.switches is the CLOSED-switch BITMASK — this case used to
     // read it as a switch COUNT and mint s1..sN terminals, a third
