@@ -1,0 +1,216 @@
+{
+  "kind": "74hc244",
+  "w": 70,
+  "h": 61,
+  "terminals": [
+    {
+      "name": "1oeb",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "1a0",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "2y3",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "1a1",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "2y2",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "1a2",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "2y1",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "1a3",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "2y0",
+      "x": 0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "2oeb",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "2a3",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "1y0",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "2a2",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "1y1",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "2a1",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "1y2",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "2a0",
+      "x": 70,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "1y3",
+      "x": 70,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 70,
+      "y": 53,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "74HC244 octal buffer / line driver, 3-state. Pin table from TI SN74HC244 datasheet (SCLS131), DIP-20. Two groups of four: 1A0-1A3->1Y0-1Y3 gated by 1OEB (pin 1), 2A0-2A3->2Y0-2Y3 gated by 2OEB (pin 19). GND=pin 10, VCC=pin 20. Engine terminal names (buffer244/z80-extract) used throughout.",
+  "footprint": {
+    "refTerminal": "1oeb",
+    "leads": {
+      "1oeb": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "1a0": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "2y3": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "1a1": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "2y2": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "1a2": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "2y1": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "1a3": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "2y0": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "2oeb": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "2a3": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "1y0": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "2a2": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "1y1": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "2a1": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "1y2": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "2a0": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "1y3": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 10
+  }
+}

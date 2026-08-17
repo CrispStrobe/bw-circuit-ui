@@ -10,6 +10,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 
 import { registerAllDevices } from '../../bw-board/src/register-all.js';
 import { getDevice } from '../../bw-board/src/devices.js';
@@ -76,4 +78,53 @@ test('fromJSON guarantees a params object on every part', async () => {
     assert.ok(p.params !== null, `${p.id} params is an object, not null`);
   }
   assert.equal(c.parts[2].params.ohms, 220, 'existing params survive');
+});
+
+test('EVERY sidecar with an engine device agrees on terminals', () => {
+  // The generalization of the hd44780 lesson: a sidecar naming terminals
+  // the engine device does not have (or missing ones it has) makes every
+  // wire to those pins fail validation — the whole bench goes phantom.
+  // 74hc244 simply had NO sidecar and fell back to a/b (z80-pd-bench,
+  // 2026-08-17). Kinds listed in EXCEPTIONS carry a stated reason.
+  const EXCEPTIONS = new Map([
+    // sidecar models the PHYSICAL module (power+contrast+backlight pins);
+    // engine char_lcd is the logical-bus model — hd44780 is the physical twin.
+    ['char_lcd', 'logical-bus model; the physical sidecar twin is hd44780'],
+  ]);
+  // THE BURN-DOWN LEDGER — pre-existing sidecar/engine mismatches found the
+  // day this test generalized (2026-08-17). Every entry is a phantom-bench
+  // landmine: an example wiring these kinds' mismatched pins is silently
+  // rejected whole. The ledger may only SHRINK — fixing a kind means
+  // removing it here in the same commit; adding one requires a stated
+  // reason beside it, not silence. (Owner-bug class: 'several parts are
+  // ghosts' / 'nothing shows'.)
+  const KNOWN_MISMATCHES = new Set([
+    '74hc20', '74hc21', '74hc283', '74hc73', '74hc74', '74hc75', '74hc93',
+    '74hc95', 'at24c02', 'cd4511', 'ds1302', 'gas_sensor', 'ir_remote',
+    'keypad_4x4', 'ld1117v33', 'lm7805', 'pcf8574', 'pi_pico',
+    'soil_moisture', 'solenoid', 'stepper', 'tmp36',
+  ]);
+  const dir = path.join(here, '..', 'src', 'parts-data');
+  const fs2 = require('node:fs');
+  const bad = [];
+  for (const f of fs2.readdirSync(dir)) {
+    if (!f.endsWith('.json')) continue;
+    let side;
+    try { side = JSON.parse(fs2.readFileSync(path.join(dir, f), 'utf8')); } catch { continue; }
+    const kind = side.kind;
+    if (!kind || EXCEPTIONS.has(kind)) continue;
+    const dev = getDevice(kind);
+    if (!dev || !Array.isArray(dev.terminals)) continue;
+    const sideNames = new Set((side.terminals || []).map(t => typeof t === 'string' ? t : t.name));
+    const devNames = new Set(dev.terminals);
+    const missing = [...devNames].filter(n => !sideNames.has(n));
+    const extra = [...sideNames].filter(n => !devNames.has(n));
+    if (missing.length || extra.length) {
+      if (KNOWN_MISMATCHES.has(kind)) continue;
+      bad.push(`${kind}: sidecar missing [${missing}] extra [${extra}]`);
+    } else if (KNOWN_MISMATCHES.has(kind)) {
+      bad.push(`${kind}: healed — remove it from KNOWN_MISMATCHES`);
+    }
+  }
+  assert.deepEqual(bad, [], `sidecar/engine terminal parity:\n${bad.join('\n')}`);
 });
