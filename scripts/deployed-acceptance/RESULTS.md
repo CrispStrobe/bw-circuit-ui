@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| Date | 2026-08-17T00:04:28.256Z |
-| Deploy SHA | `1f31195` |
+| Date | 2026-08-17T00:09:48.721Z |
+| Deploy SHA | `e74a1b7` |
 | URL | https://crispstrobe.github.io/brickwright-lite/ |
 | Summary | **5 PASS**, 2 FAIL, 1 SKIP |
 
@@ -12,7 +12,7 @@
 | Row | Verdict | Screenshot | Notes |
 |-----|---------|------------|-------|
 | matrix | ✅ PASS | `/tmp/accept-matrix.png` | brightness changed between samples (max=1.000) |
-| char_lcd | ✅ PASS | `/tmp/accept-char-lcd.png` | LCD text: "H" (wokwi) |
+| char_lcd | ✅ PASS | `/tmp/accept-char-lcd.png` | LCD text: "HI BRICK" (wokwi) |
 | 7seg | ✅ PASS | `/tmp/accept-7seg-t1.png` | segments changed: "0,0,0,0,0,0,0,0" → "1,0,0,0,0,0,0,0" |
 | seven_seg_3 | ⚪ SKIP | `/tmp/accept-seven-seg-3.png` | seven_seg_3 part added but no display face rendered (walking-8 check pending) |
 | ssd1306 | ❌ FAIL | `/tmp/accept-ssd1306.png` | no SSD1306 PCB body rect (fill="#0a0a1e") in SVG — face not deployed |
