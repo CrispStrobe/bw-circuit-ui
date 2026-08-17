@@ -126,7 +126,27 @@ export function createHitTest(getParts, getWirePaths, getTerminals) {
           return parts[i].id;
         }
       }
-      // Second pass: breadboards (bottom layer)
+      // Near-miss pass: a seated part's VISIBLE pixels sit offset from its
+      // model bounds (a pot's knob is drawn above its seat row), so exact
+      // bounds miss clicks that land squarely on the drawn body — and the
+      // breadboard underneath swallowed them ("click a part, select the
+      // breadboard", owner report, ~ten times over 48h). Before any
+      // breadboard may win, the nearest non-breadboard part within one
+      // breadboard pitch of its bounds takes the click.
+      const SLOP = 16;
+      let near = null, nearD = Infinity;
+      for (let i = parts.length - 1; i >= 0; i--) {
+        if (parts[i].kind === 'breadboard') continue;
+        const b = partBounds(parts[i]);
+        if (wx >= b.minX - SLOP && wx <= b.maxX + SLOP &&
+            wy >= b.minY - SLOP && wy <= b.maxY + SLOP) {
+          const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2;
+          const d = Math.hypot(wx - cx, wy - cy);
+          if (d < nearD) { nearD = d; near = parts[i].id; }
+        }
+      }
+      if (near) return near;
+      // Last pass: breadboards (bottom layer)
       for (let i = parts.length - 1; i >= 0; i--) {
         if (parts[i].kind !== 'breadboard') continue;
         const b = partBounds(parts[i]);
