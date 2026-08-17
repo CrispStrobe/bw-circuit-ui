@@ -1060,7 +1060,12 @@ export function terminalsForKind(kind, params) {
     case 'tmp36': return ['vcc', 'gnd', 'vout'];
     case 'gas_sensor': return ['vcc', 'gnd', 'aout', 'dout'];
     case 'slide_switch': return ['a', 'common', 'b'];
-    case 'dip_switch': return params?.switches ? Array.from({length: params.switches * 2}, (_, i) => `s${Math.floor(i/2)+1}_${i%2 === 0 ? 'a' : 'b'}`) : ['s1_a', 's1_b'];
+    // Engine + sidecar agree: FOUR switches, s0..s3 (0-indexed), and
+    // params.switches is the CLOSED-switch BITMASK — this case used to
+    // read it as a switch COUNT and mint s1..sN terminals, a third
+    // dialect that rejected any bench wiring the real pins (z80-pd-bench
+    // stage one, 2026-08-17).
+    case 'dip_switch': return ['s0_a', 's0_b', 's1_a', 's1_b', 's2_a', 's2_b', 's3_a', 's3_b'];
     case 'l293d': case 'h_bridge': return ['vcc', 'gnd', 'en1', 'in1', 'out1', 'in2', 'out2', 'en2', 'vs'];
     case 'relay_dpdt': return ['coil_a', 'coil_b', 'no1', 'com1', 'nc1', 'no2', 'com2', 'nc2'];
     case 'tip120': return ['base', 'collector', 'emitter'];

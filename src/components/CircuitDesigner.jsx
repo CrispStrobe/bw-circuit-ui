@@ -1464,6 +1464,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
               ] : kind === 'z80' ? [
                 { id: 'bbcbasic', label: 'BBC BASIC', rom: 'bbcbasic.com', slot: 'com', profile: 'cpm',
                   hint: 'R.T. Russell (zlib) — CP/M .COM over the BDOS shim, type at the > prompt' },
+                // Six bytes, the whole first program of every Searle-lineage
+                // build: IN A,(0); OUT (0),A; JR -6. Boots on the EXTRACTED
+                // machine so it reads the DIP and drives the LEDs the bench
+                // actually wires.
+                { id: 'mirror', label: 'Switch Mirror', rom: 'z80-mirror.bin', slot: 'rom',
+                  hint: 'Mirrors the DIP switches onto the LEDs through the 244/374 pair — flip a switch, watch the LED' },
               ] : [];
               const dispatchLoad = (slotId, bytes, profile, name) => {
                 window.dispatchEvent(new CustomEvent('bw-machine-media-load', {
