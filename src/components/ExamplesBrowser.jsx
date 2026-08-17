@@ -417,7 +417,10 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                 disabledReason={reason}
                 onClick={(device) => {
                   if (!onLoadExample) return;
-                  const opts = device ? { device, bench: ex.benches?.[device] } : undefined;
+                  // Always emit the device — fall back to the example's
+                  // authoring device when no explicit pick was made.
+                  const d = device || ex.devices?.[0] || undefined;
+                  const opts = d ? { device: d, bench: ex.benches?.[d] } : undefined;
                   onLoadExample(ex, opts); setLastLoaded(ex); setShowInfo(false);
                 }}
               />
@@ -536,6 +539,8 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
   const handleDevicePick = (d) => {
     setPickedDevice(d);
     saveDeviceChoice(example.id, d);
+    // Clicking a device chip loads the example with that device immediately.
+    onClick(d);
   };
   const title = example.title?.[lang] || example.title?.en || example.id;
   const catColor = CATEGORY_COLORS[example.category] || '#555';
