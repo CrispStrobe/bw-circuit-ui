@@ -451,7 +451,9 @@ export function runDrc(circuit, board) {
   // the chip's total rating (~120 mA for STC12), warn. If any part
   // has a null rating (current depends on the circuit, not the kind),
   // the sum is a lower bound — say so honestly.
-  {
+  // Only applies when an MCU part is present — non-MCU circuits (e.g.
+  // 555 tone generators) are not constrained by MCU pin current limits.
+  if (parts.some(p => p.kind === 'mcu' || /^(arduino|pi_pico|attiny|atmega|stc|at89)/.test(p.kind))) {
     let totalA = 0;
     let hasUnrated = false;
     const unratedKinds = [];
