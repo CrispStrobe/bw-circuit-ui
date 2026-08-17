@@ -54,6 +54,8 @@ const EXCEPTIONS = new Set([
   'meter',          // UI-only instrument
   'mcu',            // dynamic terminals from params
   'led_cube',       // composite with dynamic terminals
+  'ps2',            // machine-side protocol device (bw-board ps2-device.js);
+                    // terminals declared in terminalsForKind, no sidecar art yet
   // Kind aliases (resolveKind handles these)
   'h_bridge',       // → l293d
   'battery',        // → vsource
