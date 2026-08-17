@@ -405,10 +405,17 @@
       "x": 40,
       "y": 198,
       "functions": []
+    },
+    {
+      "name": "gp25",
+      "x": 30,
+      "y": 14,
+      "functions": [],
+      "_note": "onboard LED net \u2014 not on the 2x20 header; the engine expands GP25 -> 1k -> LED internally"
     }
   ],
   "variants": null,
-  "_note": "RP2040 dual-core Cortex-M0+. 3.3V logic — NOT 5V tolerant. GP23/24/25/29 are used internally (regulator, VBUS detect, LED, VSYS sense) and not on the header. Pin table in docs/pin-table-rp2040.md.",
+  "_note": "RP2040 dual-core Cortex-M0+. 3.3V logic \u2014 NOT 5V tolerant. GP23/24/25/29 are used internally (regulator, VBUS detect, LED, VSYS sense) and not on the header. Pin table in docs/pin-table-rp2040.md.",
   "footprint": {
     "refTerminal": "gp0",
     "leads": {

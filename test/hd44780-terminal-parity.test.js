@@ -101,7 +101,7 @@ test('EVERY sidecar with an engine device agrees on terminals', () => {
   const KNOWN_MISMATCHES = new Set([
     '74hc20', '74hc21', '74hc283', '74hc73', '74hc74', '74hc75', '74hc93',
     '74hc95', 'at24c02', 'cd4511', 'ds1302', 'gas_sensor', 'ir_remote',
-    'keypad_4x4', 'ld1117v33', 'lm7805', 'pcf8574', 'pi_pico',
+    'keypad_4x4', 'ld1117v33', 'lm7805', 'pcf8574',
     'soil_moisture', 'solenoid', 'stepper', 'tmp36',
   ]);
   const dir = path.join(here, '..', 'src', 'parts-data');
