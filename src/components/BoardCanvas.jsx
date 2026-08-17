@@ -2889,9 +2889,13 @@ export function BoardCanvas({
             style={{width: 34, minWidth: 34, height: 34, padding: 0, background: mode === 'simulate' ? '#16a34a' : '#475569', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>▶</button>
         </div>
         <div role="radiogroup" aria-label="Power state" data-power-toggle data-circuit-control-group style={{display: 'inline-flex', width: 70, height: 34, boxSizing: 'border-box', border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
-          <button data-circuit-toggle-state={powered ? 'selected' : 'unselected'} role="radio" aria-checked={powered} onClick={() => onPowerToggle?.(true)} title="Power on" aria-label="Power on"
+          <button data-circuit-toggle-state={powered ? 'selected' : 'unselected'} role="radio" aria-checked={powered} onClick={() => onPowerToggle?.(true)}
+            title={lang === 'de' ? 'Strom ein — VCC- und GND-Schienen versorgen die Bauteile. LEDs leuchten, Chips arbeiten, die Simulation löst den Stromkreis.' : 'Power on — VCC and GND rails energise the circuit. LEDs light, chips run, the simulation solves voltages and currents.'}
+            aria-label={lang === 'de' ? 'Strom ein' : 'Power on'}
             style={{width: 34, minWidth: 34, height: 34, padding: 0, background: powered ? '#16a34a' : '#475569', border: 'none', borderRight: '1px solid #cbd5e1', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>⏻</button>
-          <button data-circuit-toggle-state={!powered ? 'selected' : 'unselected'} role="radio" aria-checked={!powered} onClick={() => onPowerToggle?.(false)} title="Power off" aria-label="Power off"
+          <button data-circuit-toggle-state={!powered ? 'selected' : 'unselected'} role="radio" aria-checked={!powered} onClick={() => onPowerToggle?.(false)}
+            title={lang === 'de' ? 'Strom aus — alle Schienen spannungslos. Bauteile behalten ihre Position, aber nichts leuchtet oder rechnet. Im Baumodus ist Strom immer aus.' : 'Power off — all rails de-energised. Parts keep their positions but nothing lights or computes. In Build mode power is always off.'}
+            aria-label={lang === 'de' ? 'Strom aus' : 'Power off'}
             style={{width: 34, minWidth: 34, height: 34, padding: 0, background: !powered ? '#dc2626' : '#475569', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>◯</button>
         </div>
 
