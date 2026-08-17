@@ -2733,7 +2733,12 @@ export function BoardCanvas({
 
   return (
     <div
-      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', width: '100%', minWidth: 0, minHeight: 0 }}
+      // stretch + a real height chain: alignItems 'center' pinned the
+      // canvas child at its 700px minimum, centered in whatever space the
+      // row offered — the owner's tenth 'the grid does not use the screen'
+      // report was THIS line. The canvas is flex 1 1 auto; give it a
+      // column that lets it grow both ways.
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', position: 'relative', width: '100%', height: '100%', flex: '1 1 auto', minWidth: 0, minHeight: 0 }}
       tabIndex={0}
       onKeyDown={handleKeyDown}
     >
