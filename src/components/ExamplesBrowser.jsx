@@ -173,6 +173,9 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
   // example, the i button shows its details compactly.
   const [lastLoaded, setLastLoaded] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
+  // Confirm dialog state: when set, shows the device-chooser dialog
+  // before loading the example.
+  const [pendingLoad, setPendingLoad] = useState(null); // {example, device}
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState(null);
   const [selectedPart, setSelectedPart] = useState(null);
@@ -415,13 +418,13 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                 palette={palette}
                 disabled={!compat.ok}
                 disabledReason={reason}
-                onClick={(device) => {
-                  if (!onLoadExample) return;
-                  // Always emit the device — fall back to the example's
-                  // authoring device when no explicit pick was made.
-                  const d = device || ex.devices?.[0] || undefined;
-                  const opts = d ? { device: d, bench: ex.benches?.[d] } : undefined;
-                  onLoadExample(ex, opts); setLastLoaded(ex); setShowInfo(false);
+                onClick={() => {
+                  // Open the confirm dialog with device chooser.
+                  const devices = ex.devices || [];
+                  // Default device: current project chip if compatible, else authoring chip.
+                  const defaultDev = devices.includes(currentDevice) ? currentDevice
+                    : (savedDeviceFor(ex.id) || devices[0] || undefined);
+                  setPendingLoad({ example: ex, device: defaultDev });
                 }}
               />
             );
@@ -429,6 +432,77 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         </div>
       )}
       </div>}
+
+      {/* ── Confirm dialog with device chooser ─────────────────── */}
+      {pendingLoad && (() => {
+        const { example: pEx, device: pDev } = pendingLoad;
+        const pTitle = pEx.title?.[lang] || pEx.title?.en || pEx.id;
+        const pDevices = pEx.devices || [];
+        const hasDevices = pDevices.length > 1;
+        const handleOk = () => {
+          if (onLoadExample) {
+            const d = pendingLoad.device || pDevices[0];
+            const opts = d ? { device: d, bench: pEx.benches?.[d] } : undefined;
+            onLoadExample(pEx, opts);
+            setLastLoaded(pEx);
+            setShowInfo(false);
+          }
+          setPendingLoad(null);
+        };
+        const handleCancel = () => setPendingLoad(null);
+        return createPortal(
+          <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex',
+            alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)' }}
+            onClick={handleCancel}
+            onKeyDown={e => {
+              if (e.key === 'Escape') handleCancel();
+              if (e.key === 'Enter') { e.preventDefault(); handleOk(); }
+            }}>
+            <div style={{
+              background: palette.panel, border: `1px solid ${palette.border}`,
+              borderRadius: 8, padding: '16px 20px', minWidth: 260, maxWidth: 360,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            }} onClick={e => e.stopPropagation()}>
+              <div style={{ color: palette.heading, fontSize: 14, fontWeight: 700, marginBottom: 12 }}>
+                Open &ldquo;{pTitle}&rdquo;?
+              </div>
+              {hasDevices && (
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ color: palette.muted, fontSize: 11, display: 'block', marginBottom: 4 }}>
+                    Chip
+                  </label>
+                  <select
+                    value={pDev || ''}
+                    onChange={e => setPendingLoad(prev => ({ ...prev, device: e.target.value }))}
+                    style={{
+                      width: '100%', padding: '4px 8px', fontSize: 12,
+                      background: palette.input, color: palette.text,
+                      border: `1px solid ${palette.buttonBorder}`, borderRadius: 4,
+                    }}>
+                    {pDevices.map(d => (
+                      <option key={d} value={d}>{DEVICE_LABELS[d] || d}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button type="button" onClick={handleCancel} autoFocus
+                  style={{
+                    padding: '5px 14px', fontSize: 12, borderRadius: 4, cursor: 'pointer',
+                    background: palette.button, color: palette.text,
+                    border: `1px solid ${palette.buttonBorder}`,
+                  }}>Cancel</button>
+                <button type="button" onClick={handleOk}
+                  style={{
+                    padding: '5px 14px', fontSize: 12, borderRadius: 4, cursor: 'pointer',
+                    background: palette.accent, color: '#fff', border: 'none',
+                  }}>OK</button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        );
+      })()}
     </div>
   );
 }
@@ -533,15 +607,6 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
   const [hovered, setHovered] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
   const [introData, setIntroData] = useState(null); // {meta, body} or 'loading' or 'none'
-  const multiDevice = Array.isArray(example.devices) && example.devices.length > 1;
-  const [pickedDevice, setPickedDevice] = useState(() =>
-    multiDevice ? (savedDeviceFor(example.id) || example.devices[0]) : null);
-  const handleDevicePick = (d) => {
-    setPickedDevice(d);
-    saveDeviceChoice(example.id, d);
-    // Clicking a device chip loads the example with that device immediately.
-    onClick(d);
-  };
   const title = example.title?.[lang] || example.title?.en || example.id;
   const catColor = CATEGORY_COLORS[example.category] || '#555';
   const diff = DIFFICULTY_LABELS[example.difficulty] || '';
@@ -586,7 +651,7 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
         <div style={{ color: palette.heading, fontSize: '12px', fontWeight: 650, cursor: 'pointer', flex: 1, lineHeight: 1.3 }}
-          onClick={() => onClick(pickedDevice)}>{title}</div>
+          onClick={() => onClick()}>{title}</div>
         {diff && <span style={{ color: palette.muted, fontSize: '9px', flexShrink: 0 }}>
           {'★'.repeat(example.difficulty)}{'☆'.repeat(3 - example.difficulty)}
         </span>}
@@ -607,13 +672,9 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
           }}
           data-testid="bw-example-intro-toggle">i</button>
       </div>
-      {multiDevice && (
-        <DevicePicker devices={example.devices} selected={pickedDevice}
-          onSelect={handleDevicePick} palette={palette} />
-      )}
       {disabled && disabledReason && (
         <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px', fontStyle: 'italic',
-          cursor: 'pointer' }} onClick={() => onClick(pickedDevice)}
+          cursor: 'pointer' }} onClick={() => onClick()}
           title={/^de/i.test(lang) ? 'Klicken zum Laden — Gerät wird automatisch gewechselt' : 'Click to load — device will switch automatically'}>
           {disabledReason}
         </div>
