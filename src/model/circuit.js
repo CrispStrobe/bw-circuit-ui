@@ -756,6 +756,10 @@ export class Circuit {
     for (const [boardId, bb] of this.breadboards) {
       try {
         const derived = bb.deriveNets();
+        // Retained for the canvas: hole -> net resolution at render time
+        // (voltage labels on breadboard jumpers need the strip's net id).
+        if (!this.boardStripNets) this.boardStripNets = new Map();
+        this.boardStripNets.set(boardId, derived.stripToNet);
         const stripNets = derived.nets.map(n => ({ ...n, terminals: [...n.terminals] }));
         // Glue each tap-wire hole into its strip's net (or fabricate the
         // strip's net if nothing else lives there yet). For column strips

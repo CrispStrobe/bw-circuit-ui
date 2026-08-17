@@ -917,7 +917,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
 
 // ── Wires ────────────────────────────────────────────────────────
 
-function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages, onUpdateWire, screenToCanvas, setDraggingWaypoint }) {
+function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages, voltageMode, onUpdateWire, screenToCanvas, setDraggingWaypoint }) {
   // Group wires by net to find all terminals in each net
   const netTerminals = new Map();
   for (const w of wires) {
@@ -1070,8 +1070,12 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
       else voltageColor = '#3498db';                    // blue: near GND
     }
 
-    // Manual color overrides voltage-keyed color (bench discipline: red=+, black=GND)
-    const baseColor = wire.color || voltageColor;
+    // Voltage view: voltage-keyed color wins over author colors (the
+    // whole point of the mode). Otherwise the author's color, with a
+    // neutral fallback while simulating (green stays the build-mode
+    // default so unpowered canvases look unchanged).
+    const baseColor = voltageMode ? voltageColor
+      : (wire.color || (nodeVoltages ? '#8b98a9' : voltageColor));
     const wireColor = isSelected ? '#f1c40f' : isHovered ? '#9b59b6' : baseColor;
     const wireWidth = isSelected ? 3 : isHovered ? 2.5 : 2;
 
@@ -1170,10 +1174,39 @@ function Wires({ wires, parts, selectedWire, onSelectWire, hoveredNet, onHoverNe
 
 // ── Voltage labels ───────────────────────────────────────────────
 
-function VoltageLabels({ wires, parts, nodeVoltages }) {
+function VoltageLabels({ wires, parts, nodeVoltages, circuit }) {
   if (!nodeVoltages) return null;
   const shownNets = new Set();
-  return wires.map(wire => {
+  // Breadboard jumpers first: resolve each jumper's strip to its net and
+  // pill the staple midpoint — nets that live only on a breadboard had no
+  // label at all before (owner: 'also for wires on breadboards?').
+  const jumperPills = [];
+  if (circuit && circuit.holeWires && circuit.boardStripNets) {
+    for (const jw of circuit.holeWires()) {
+      const bb = parts.find(q => q.id === jw.boardId);
+      const strips = circuit.breadboards && circuit.breadboards.get(jw.boardId);
+      const map = circuit.boardStripNets.get(jw.boardId);
+      if (!bb || !strips || !map) continue;
+      const netId = map.get(strips.stripOf(jw.a));
+      if (!netId || shownNets.has(netId)) continue;
+      const v = nodeVoltages[netId];
+      if (v == null) continue;
+      const a = holeWorldPos(bb, jw.a), b2 = holeWorldPos(bb, jw.b);
+      if (!a || !b2) continue;
+      shownNets.add(netId);
+      const mx = (a.x + b2.x) / 2;
+      const my = Math.min(a.y, b2.y) - Math.max(18, Math.hypot(b2.x - a.x, b2.y - a.y) * 0.25);
+      const label = Math.abs(v) < 1 ? `${(v * 1000).toFixed(0)}mV` : `${v.toFixed(1)}V`;
+      jumperPills.push(
+        <g key={`jvl-${netId}`} transform={`translate(${mx}, ${my - 8})`} pointerEvents="none">
+          <rect x={-22} y={-9} width={44} height={15} rx={3} fill="#0a0a1a" fillOpacity={0.85} />
+          <text textAnchor="middle" y={3} fill="#f1c40f" fontSize={10}
+            fontFamily="monospace" fontWeight="bold">{label}</text>
+        </g>
+      );
+    }
+  }
+  return [...jumperPills, ...wires.map(wire => {
     if (shownNets.has(wire.netId)) return null;
     shownNets.add(wire.netId);
     const v = nodeVoltages[wire.netId];
@@ -1212,7 +1245,7 @@ function VoltageLabels({ wires, parts, nodeVoltages }) {
         </text>
       </g>
     );
-  });
+  })];
 }
 
 // ── Wokwi element layer ─────────────────────────────────────────
@@ -1853,6 +1886,17 @@ export function BoardCanvas({
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
+  // Voltage view: ONE toggle owns the whole overlay — voltage-keyed wire
+  // colors, one label pill per net (breadboard jumpers included), and the
+  // legend. OFF = wires keep their author colors and the canvas stays
+  // clean (owner design, 2026-08-17). SIM-only; build mode never shows it.
+  const [voltageView, setVoltageView] = useState(() => {
+    try { return localStorage.getItem('bw-voltage-view') !== '0'; } catch { return true; }
+  });
+  const toggleVoltageView = () => setVoltageView(v => {
+    try { localStorage.setItem('bw-voltage-view', v ? '0' : '1'); } catch { /* private mode */ }
+    return !v;
+  });
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const selectedPartId = selectedPart || (selectedParts && selectedParts.size === 1 ? [...selectedParts][0] : null);
   const selectedPartModel = selectedPartId ? parts.find(part => part.id === selectedPartId) : null;
@@ -2837,6 +2881,19 @@ export function BoardCanvas({
             {onSaveCircuit && <button onClick={onSaveCircuit} title="Save wiring as file" aria-label="Save wiring as file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: 3, color: '#2ecc71', fontSize: 14, cursor: 'pointer'}}>💾</button>}
             {onLoadCircuit && <button onClick={onLoadCircuit} title="Load wiring from file" aria-label="Load wiring from file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: 3, color: '#3498db', fontSize: 14, cursor: 'pointer'}}>📂</button>}
             {onClearCircuit && <button onClick={() => { onClearCircuit(); setToolbarMoreOpen(false); }} title={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} aria-label={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: 3, color: '#e74c3c', fontSize: 14, cursor: 'pointer'}}>🗑</button>}
+            {simulate ? (
+              <button type="button" data-voltage-view-toggle
+                aria-pressed={voltageView} onClick={toggleVoltageView}
+                title={voltageView ? 'Hide voltages (wire colors, labels, legend)' : 'Show voltages on wires'}
+                aria-label={voltageView ? 'Hide voltages' : 'Show voltages'}
+                style={{height: 34, boxSizing: 'border-box', padding: '4px 9px',
+                  fontSize: 12, fontWeight: 700, fontFamily: 'monospace',
+                  color: voltageView ? '#0f172a' : '#e2e8f0',
+                  background: voltageView ? '#f1c40f' : '#334155',
+                  border: '1px solid #64748b', borderRadius: 4, cursor: 'pointer'}}>
+                {'V\u26a1'}
+              </button>
+            ) : null}
             <span data-zoom-indicator title="Canvas zoom" style={{height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
           </div>}
         </div>
@@ -2937,9 +2994,10 @@ export function BoardCanvas({
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
 
-          {/* Voltage color legend (only when simulating and there are voltages) */}
-          {nodeVoltages && Object.keys(nodeVoltages).length > 0 && (
-            <g transform={`translate(${CANVAS_W - 100}, 10)`}>
+          {/* Voltage color legend — part of voltage view, anchored to the
+              visible top-right corner (pan/zoom aware). */}
+          {simulate && voltageView && nodeVoltages && Object.keys(nodeVoltages).length > 0 && (
+            <g transform={`translate(${pan.x + containerSize.w / zoom - 105}, ${pan.y + 10}) scale(${1 / zoom})`}>
               <rect x={-4} y={-2} width={95} height={58} rx={4}
                 fill="#0a0a1a" fillOpacity={0.7} />
               <circle cx={6} cy={8} r={4} fill="#e74c3c" />
@@ -3198,9 +3256,11 @@ export function BoardCanvas({
             selectedWire={selectedWire} onSelectWire={onSelectWire}
             hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
             nodeVoltages={nodeVoltages}
+            voltageMode={!!(simulate && voltageView && nodeVoltages)}
             onUpdateWire={onUpdateWire} screenToCanvas={screenToCanvas}
             setDraggingWaypoint={setDraggingWaypoint} />
-          <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} />
+          {simulate && voltageView ?
+            <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} circuit={circuit} /> : null}
           {/* Jumper wires. Short hops keep a small arc; LONG jumpers
               route as STAPLES — down into a lane, flat across, up to the
               far hole — the way real hookup wire lies on a board. The
