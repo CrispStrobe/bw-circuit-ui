@@ -158,7 +158,10 @@ const BUILTIN_FOOTPRINTS = {
   gearmotor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
   motor_encoder: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 }, enc_a: { dRow: 0, dCol: 3 }, enc_b: { dRow: 0, dCol: 4 } } },
   tilt_sensor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
-  slide_switch: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, common: { dRow: 0, dCol: 1 }, b: { dRow: 0, dCol: 2 } } },
+  // 'com', as the sidecar and engine both say — 'common' here seated a
+  // lead no terminal owns and the switch's centre pole floated (third
+  // sighting of the ghost-terminal disease, same part).
+  slide_switch: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, com: { dRow: 0, dCol: 1 }, b: { dRow: 0, dCol: 2 } } },
   tip120: { refTerminal: 'emitter', leads: { emitter: { dRow: 0, dCol: 0 }, base: { dRow: 0, dCol: 1 }, collector: { dRow: 0, dCol: 2 } } },
   // 3-pin sensors (TO-92 or module)
   soil_moisture: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, sig: { dRow: 0, dCol: 2 } } },

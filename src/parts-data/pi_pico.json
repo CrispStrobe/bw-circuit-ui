@@ -390,18 +390,24 @@
   },
   {
    "name": "swclk",
+   "internal": true,
+   "_note": "SWD pad — a castellation on the module edge, wired with clips, never through a breadboard strip (seating it at dRow 3 put it INSIDE the top-block strips and shorted gp7 to swd_gnd through the breadboard itself; owner-visible as key b4 shorted to GND, 2026-08-17)",
    "x": 20,
    "y": 198,
    "functions": []
   },
   {
    "name": "swd_gnd",
+   "internal": true,
+   "_note": "SWD pad — a castellation on the module edge, wired with clips, never through a breadboard strip (seating it at dRow 3 put it INSIDE the top-block strips and shorted gp7 to swd_gnd through the breadboard itself; owner-visible as key b4 shorted to GND, 2026-08-17)",
    "x": 30,
    "y": 198,
    "functions": []
   },
   {
    "name": "swdio",
+   "internal": true,
+   "_note": "SWD pad — a castellation on the module edge, wired with clips, never through a breadboard strip (seating it at dRow 3 put it INSIDE the top-block strips and shorted gp7 to swd_gnd through the breadboard itself; owner-visible as key b4 shorted to GND, 2026-08-17)",
    "x": 40,
    "y": 198,
    "functions": []
@@ -579,18 +585,6 @@
    "gp16": {
     "dRow": 5,
     "dCol": 19
-   },
-   "swclk": {
-    "dRow": 3,
-    "dCol": 8
-   },
-   "swd_gnd": {
-    "dRow": 3,
-    "dCol": 9
-   },
-   "swdio": {
-    "dRow": 3,
-    "dCol": 10
    }
   },
   "straddlesGutter": true,

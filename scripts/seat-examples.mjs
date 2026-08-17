@@ -253,12 +253,27 @@ function seatExample(id) {
     const POWER_BOT = new Set(['gnd', 'gnd2', 'gnd3', 'vss', 'agnd', 'swd_gnd',
         'gnd_1', 'gnd_2', 'gnd_3', 'gnd_4', 'gnd_5', 'gnd_6', 'gnd_7']);
     const powered = new Set(); // `${bbId}:${railRow}` that already carry supply
+    // A power pin the AUTHOR wired deliberately keeps its wiring: the
+    // calculator feeds vsys THROUGH the ON/OFF switch, and the blanket
+    // rail jumper here silently bypassed it — pwr.a and pwr.com ended in
+    // one net and the switch could never cut anything (peer probe,
+    // 2026-08-17). Auto-feed only power pins with NO logical wire.
+    const wiredPower = new Set();
+    for (const w of keptWires) {
+        for (const side of ['from', 'to']) {
+            const v = w[side];
+            const part = (v && typeof v === 'object') ? v.part : v;
+            const term = (v && typeof v === 'object') ? v.terminal : w[side + 'Terminal'];
+            if (part && term) wiredPower.add(`${part}:${String(term).toLowerCase()}`);
+        }
+    }
     for (const [pid, lm] of seats) {
         const bId = seatBoard.get(pid).bb.id;
         for (const [term, hole] of Object.entries(lm)) {
             const t = term.toLowerCase();
             const isTop = POWER_TOP.has(t); const isBot = POWER_BOT.has(t);
             if (!isTop && !isBot) continue;
+            if (wiredPower.has(`${pid}:${t}`)) continue;
             const railRow = isTop ? 't+' : 'b-';
             const a = freeHole(bId, hole);
             if (!a) continue;
