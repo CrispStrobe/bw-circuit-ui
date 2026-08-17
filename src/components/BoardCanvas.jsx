@@ -45,6 +45,9 @@ const DIP_CHIP_LABELS = {
   // 28 pin names floating around no body at all.
   attiny88: 'ATtiny88', attiny85: 'ATtiny85',
   attiny2313: 'ATtiny2313', attiny13: 'ATtiny13', at89c2051: 'AT89C2051',
+  // Discrete DIP ICs that were ghost-faced in bus-computer benches
+  '555': 'NE555', tms9918: 'TMS9918', bargraph: 'LED BAR',
+  ns16c550: 'NS16C550', mc6845: 'MC6845',
 };
 import { routeWire, routeWireWithWaypoints, partBBoxes, getPartBBox } from '../model/wire-router.js';
 import { findSnapTarget } from '../model/snap.js';
@@ -658,6 +661,22 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
 
+      case 'ps2': {
+        // PS/2 keyboard connector — 2 terminals (data + clock), not a DIP.
+        const bw = 40, bh = 25;
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            <rect x={-bw / 2} y={-bh / 2} width={bw} height={bh} rx={4}
+              fill="#2c2c3e" stroke={selStroke || '#6a5acd'} strokeWidth={isSelected ? 3 : 1.5} />
+            <text x={0} y={-2} textAnchor="middle" fill="#b0b8ff" fontSize={7}
+              fontFamily="monospace" fontWeight="bold">PS/2</text>
+            <text x={0} y={8} textAnchor="middle" fill="#666" fontSize={5}
+              fontFamily="monospace">KBD</text>
+            <text x={0} y={bh / 2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
       default: {
         // Generic DIP body for retro/logic ICs that have sidecars.
         // Pin-1-bottom convention: left column (pin 1 side) at bottom row,
@@ -1828,7 +1847,9 @@ export function BoardCanvas({
       if (contentW <= 0 || contentH <= 0) return;
       const { w: FW, h: FH } = fitSizeRef.current;
       const fitZoom = Math.min(1.5, Math.min(FW / contentW, FH / contentH));
-      const z = Math.max(0.3, Math.min(1.5, fitZoom));
+      // Floor at 0.08 so even the tallest benches (y≈1500) fit; the 0.3
+      // floor clipped 4-breadboard bus-computer circuits.
+      const z = Math.max(0.08, Math.min(1.5, fitZoom));
       setZoom(z);
       // Center the content in the viewport instead of pinning it top-left.
       const viewW = FW / z, viewH = FH / z;
@@ -2571,9 +2592,15 @@ export function BoardCanvas({
         minY = Math.min(minY, p.y - 60); maxY = Math.max(maxY, p.y + 60);
       }
       const cw = maxX - minX + 40, ch = maxY - minY + 40;
-      const fz = Math.max(0.3, Math.min(1, Math.min(CANVAS_W / cw, CANVAS_H / ch)));
+      const { w: FW, h: FH } = fitSizeRef.current;
+      const fz = Math.max(0.08, Math.min(1, Math.min(FW / cw, FH / ch)));
       setZoom(fz);
-      setPan({ x: minX - 20, y: minY - 20 });
+      // Center the content like fitNow does.
+      const viewW = FW / fz, viewH = FH / fz;
+      setPan({
+        x: minX - 20 - Math.max(0, (viewW - cw) / 2),
+        y: minY - 20 - Math.max(0, (viewH - ch) / 2),
+      });
     }
     // Copy/paste
     if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedParts && selectedParts.size > 0) {
