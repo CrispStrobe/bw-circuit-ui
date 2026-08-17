@@ -415,9 +415,15 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                   // saved choice (only if still in the example's device list),
                   // else the authoring chip.
                   const saved = savedDeviceFor(ex.id);
-                  const defaultDev = devices.includes(currentDevice) ? currentDevice
+                  // Curated builds (kind 'full') default to their AUTHORED
+                  // device — current-chip-first loaded a generated LED bench
+                  // where the retro console's matrices belonged. Plain
+                  // programs keep current-chip-first.
+                  const defaultDev = ex.kind === 'full'
+                    ? (ex.authored || devices[0] || undefined)
+                    : devices.includes(currentDevice) ? currentDevice
                     : (saved && devices.includes(saved)) ? saved
-                    : (devices[0] || undefined);
+                    : (ex.authored || devices[0] || undefined);
                   setPendingLoad({ example: ex, device: defaultDev });
                 }}
               />
@@ -439,7 +445,11 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
             // when external tools (Playwright) change the select between renders.
             const selEl = document.querySelector('[data-device-chooser-select]');
             const d = (selEl && selEl.value) || pendingLoad.device || pDevices[0];
-            const opts = d ? { device: d, bench: pEx.benches?.[d] } : undefined;
+            // Picking the AUTHORED device means the authored pairing —
+            // no opts, so the host loads the curated circuit instead of a
+            // generated bench (a single-entry list used to silently
+            // retarget the self-test to Mega: 'Simulated ATmega, not STC').
+            const opts = d && d !== pEx.authored ? { device: d, bench: pEx.benches?.[d] } : undefined;
             onLoadExample(pEx, opts);
             setLastLoaded(pEx);
             setShowInfo(false);
