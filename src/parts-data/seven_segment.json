@@ -3,28 +3,34 @@
   "w": 50,
   "h": 70,
   "terminals": [
-    {
-      "name": "a",
-      "x": 15,
-      "y": 70,
-      "functions": []
-    },
-    {
-      "name": "b",
-      "x": 35,
-      "y": 70,
-      "functions": []
-    }
+    { "name": "a", "x": 5, "y": 0, "functions": [] },
+    { "name": "b", "x": 15, "y": 0, "functions": [] },
+    { "name": "c", "x": 25, "y": 0, "functions": [] },
+    { "name": "d", "x": 35, "y": 0, "functions": [] },
+    { "name": "e", "x": 45, "y": 0, "functions": [] },
+    { "name": "f", "x": 5, "y": 70, "functions": [] },
+    { "name": "g", "x": 15, "y": 70, "functions": [] },
+    { "name": "dp", "x": 25, "y": 70, "functions": [] },
+    { "name": "common", "x": 45, "y": 70, "functions": [] }
   ],
   "variants": [
-    {
-      "param": "digits",
-      "values": [
-        1,
-        2,
-        4
-      ]
-    }
+    { "param": "digits", "values": [1, 2, 4] }
   ],
-  "footprint": null
+  "_note": "Common-cathode 7-segment LED display. Segments a-g + decimal point (dp), one common cathode. Terminal names match the engine composite expansion in board.js.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a":      { "dRow": 0, "dCol": 0 },
+      "b":      { "dRow": 0, "dCol": 1 },
+      "c":      { "dRow": 0, "dCol": 2 },
+      "d":      { "dRow": 0, "dCol": 3 },
+      "e":      { "dRow": 0, "dCol": 4 },
+      "f":      { "dRow": 5, "dCol": 4 },
+      "g":      { "dRow": 5, "dCol": 3 },
+      "dp":     { "dRow": 5, "dCol": 2 },
+      "common": { "dRow": 5, "dCol": 0 }
+    },
+    "straddlesGutter": true,
+    "minCols": 5
+  }
 }
