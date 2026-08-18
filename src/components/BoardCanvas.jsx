@@ -46,7 +46,7 @@ const DIP_CHIP_LABELS = {
   attiny88: 'ATtiny88', attiny85: 'ATtiny85',
   attiny2313: 'ATtiny2313', attiny13: 'ATtiny13', at89c2051: 'AT89C2051',
   // Discrete DIP ICs that were ghost-faced in bus-computer benches
-  '555': 'NE555', tms9918: 'TMS9918', bargraph: 'LED BAR',
+  '555': 'NE555', tms9918: 'TMS9918',
   ns16c550: 'NS16C550', mc6845: 'MC6845',
   // Part-matrix burn-down: DIP ICs with sidecars but no face
   '556': 'NE556', '74hc02': '74HC02', '74hc86': '74HC86',
@@ -158,6 +158,13 @@ function terminalOffsetsForPart(part) {
     }
     case 'max7219': return { vcc: r(-25, 30), gnd: r(-15, 30), din: r(-5, 30), clk: r(5, 30), cs: r(15, 30), dout: r(25, 30) };
     case 'seven_segment': return { a: r(-30, 30), b: r(30, 30) }; // pins at bottom
+    case 'bargraph': {
+      // 10 anodes (top) + 10 cathodes (bottom), spaced at 6px
+      const offsets = {};
+      for (let i = 0; i < 10; i++) offsets[`a${i}`] = r(-27 + i * 6, -12);
+      for (let i = 0; i < 10; i++) offsets[`k${i}`] = r(-27 + i * 6, 12);
+      return offsets;
+    }
     case 'char_lcd':
     case 'hd44780':
       return { rs: r(-50, 25), e: r(-30, 25), d4: r(-10, 25), d5: r(10, 25), d6: r(30, 25), d7: r(50, 25) };
@@ -663,6 +670,34 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 fontFamily="monospace">OFF</text>
             )}
             <text x={14} y={66} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── 10-LED bargraph display ────────────────────────────────
+      case 'bargraph': {
+        const ds = deviceStates?.get(id);
+        const br = ds?.brightness;
+        const N = 10;
+        const G = 6;                   // gap between LED centres
+        const W = N * G, H = 12;       // body dimensions
+        const seatK = part.seat ? (9 * BB_PITCH) / W : 1;
+        return (
+          <g key={id} transform={xform + (seatK !== 1 ? ` scale(${seatK.toFixed(3)})` : '')} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            <rect x={-W / 2 - 3} y={-H / 2 - 3} width={W + 6} height={H + 6} rx={2}
+              fill="#111" stroke={selStroke || '#27ae60'} strokeWidth={isSelected ? 3 : 1.5} />
+            {Array.from({ length: N }, (_, i) => {
+              const v = ledDisplayLevel(br ? br[i] : 0);
+              const color = v > 0.05
+                ? `rgba(${i < 8 ? '50,220,50' : '220,50,50'},${Math.min(1, 0.3 + 0.7 * v)})`
+                : '#0a1a0a';
+              return <rect key={i}
+                x={-W / 2 + i * G + 1} y={-H / 2 + 1}
+                width={G - 2} height={H - 2} rx={1}
+                fill={color} />;
+            })}
+            <text x={0} y={H / 2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -3405,7 +3440,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
