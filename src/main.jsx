@@ -16,6 +16,12 @@ import './model/sidecar-loader.js';
 import { setEngine } from './engine.js';
 import { BoardImpl } from '../../bw-board/src/board.js';
 import { inferNetlist, checkWiring } from '../../bw-board/src/infer-netlist.js';
+import { registerAllDevices } from '../../bw-board/src/register-all.js';
+
+// The dev app must register devices like production (lite) does, or every
+// registered kind (keypad_4x4, at24c02, …) rejects the netlist and the
+// board sits empty — found by the A2 Playwright acceptance, 2026-08-18.
+registerAllDevices();
 setEngine({ BoardImpl, inferNetlist, checkWiring });
 
 import { CircuitDesigner } from './components/CircuitDesigner.jsx';

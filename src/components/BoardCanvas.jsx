@@ -1450,34 +1450,48 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         // Interactive 4x4 keypad: each key is a real press — mouse-down sets
         // the device's `pressed` param (the engine stamps a 0.1 ohm
         // row-to-column bridge, the same physics the A2 bench measured),
-        // mouse-up releases it. Outside simulate mode a key drags the part.
+        // mouse-up releases it. Outside simulate mode the pad drags.
+        // HTML overlay layer: this renderer's cases are absolutely
+        // positioned divs, not SVG (an SVG <g> here renders nothing — found
+        // by the Playwright acceptance, 2026-08-18).
         const KP_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
         const kpPressed = part.params?.pressed ?? -1;
-        const KS = 12, KG = 3;                       // key size / gap
-        const KW = 4 * KS + 3 * KG, KH = 4 * KS + 3 * KG;
+        const KS = 15, KG = 3;
+        const KW = 4 * KS + 3 * KG;
         return (
-          <g key={id} transform={xform} onClick={handleClick}>
-            <rect x={-KW/2 - 5} y={-KH/2 - 5} width={KW + 10} height={KH + 10} rx={4}
-              fill="#1b2733" stroke={selStroke || '#345'} strokeWidth={1.5} />
+          <div key={id}
+            data-keypad={id}
+            style={{ ...baseStyle, left: x - KW / 2 - 5, top: y - KW / 2 - 5,
+              width: KW + 10, padding: 5, background: '#1b2733',
+              border: '1.5px solid #345', borderRadius: 4,
+              cursor: simulate ? 'default' : 'move',
+              pointerEvents: 'auto',
+              display: 'grid', gridTemplateColumns: `repeat(4, ${KS}px)`, gap: KG }}
+            onClick={simulate ? (e) => e.stopPropagation() : (e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
+            onMouseDown={simulate ? undefined : (e) => { e.stopPropagation(); onDragStart(id); }}>
             {KP_LABELS.map((lbl, k) => {
-              const kr = Math.floor(k / 4), kc = k % 4;
-              const kx = -KW/2 + kc * (KS + KG), ky = -KH/2 + kr * (KS + KG);
               const down = kpPressed === k;
               return (
-                <g key={k}
-                  onMouseDown={(e) => { e.stopPropagation(); if (simulate && onKeypadKey) onKeypadKey(id, k); else if (!simulate) onDragStart(id); }}
-                  onMouseUp={(e) => { e.stopPropagation(); if (simulate && onKeypadKey) onKeypadKey(id, -1); }}
-                  onMouseLeave={() => { if (simulate && down && onKeypadKey) onKeypadKey(id, -1); }}
-                  style={{ cursor: simulate ? 'pointer' : 'grab' }}>
-                  <rect x={kx} y={ky} width={KS} height={KS} rx={2}
-                    fill={down ? '#e74c3c' : '#37475a'} stroke="#0d1520" strokeWidth={0.8} />
-                  <text x={kx + KS/2} y={ky + KS/2 + 3} textAnchor="middle"
-                    fill={down ? '#fff' : '#cdd'} fontSize={7} fontFamily="monospace"
-                    style={{ pointerEvents: 'none', userSelect: 'none' }}>{lbl}</text>
-                </g>
+                <div key={k}
+                  // Pointer capture: the press survives the re-render the
+                  // engine bump triggers (a mouseleave-based release fired on
+                  // React's redraw and released the key instantly — found by
+                  // the Playwright acceptance, 2026-08-18).
+                  onPointerDown={(e) => { e.stopPropagation(); if (simulate && onKeypadKey) { e.currentTarget.setPointerCapture(e.pointerId); onKeypadKey(id, k); } }}
+                  onPointerUp={(e) => { e.stopPropagation(); if (simulate && onKeypadKey) onKeypadKey(id, -1); }}
+                  onPointerCancel={() => { if (simulate && onKeypadKey) onKeypadKey(id, -1); }}
+                  style={{ width: KS, height: KS, borderRadius: 2, userSelect: 'none',
+                    background: down ? '#e74c3c' : '#37475a',
+                    border: '1px solid #0d1520',
+                    color: down ? '#fff' : '#ccdddd',
+                    font: '9px monospace', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    cursor: simulate ? 'pointer' : 'grab' }}>
+                  {lbl}
+                </div>
               );
             })}
-          </g>
+          </div>
         );
       }
       case 'potentiometer': {
