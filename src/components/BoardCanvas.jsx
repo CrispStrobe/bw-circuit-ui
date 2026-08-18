@@ -568,12 +568,19 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       // ── MAX7219 8×8 LED matrix driver ────────────────────────────
       case 'max7219': {
         const ds = deviceStates?.get(id);
-        // digits[0..7]: each byte is one row, MSB = column 7.
+        // Two brightness paths:
+        //  A. Per-pixel: ds.brightness (Float64Array, 0.0–1.0) — used when
+        //     the device model provides graded intensity per LED (e.g. a
+        //     PWM-driven matrix or a future MAX7219 model with duty-cycle
+        //     measurement). Passed through ledDisplayLevel for perception.
+        //  B. On/off + global intensity: ds.digits[0..7] bit patterns with
+        //     ds.intensity 0..15. The current bw-board MAX7219 model uses
+        //     this path.
         // shutdown = true means display off; displayTest = all on.
-        // intensity 0..15 maps to brightness.
         const off = !ds || ds.shutdown;
         const testMode = ds && ds.displayTest;
-        const intensity = ds ? (ds.intensity ?? 0) / 15 : 0;
+        const perPixel = ds?.brightness; // path A
+        const globalIntensity = ds ? (ds.intensity ?? 0) / 15 : 0;
         const G = 6, S = 4;
         const Wc = 8 * G, Wr = 8 * G;
         const seatK = part.seat ? 7 * BB_PITCH / Wc : 1;
@@ -584,14 +591,19 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fill="#2a0a0a" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
             {Array.from({ length: 64 }, (_, i) => {
               const row = Math.floor(i / 8), col = i % 8;
-              let lit = false;
+              let v = 0;
               if (testMode) {
-                lit = true;
-              } else if (!off && ds?.digits) {
-                // Each digit byte: bit 0 = col 0 (segment DP/A), bit 7 = col 7
-                lit = (ds.digits[row] >> col) & 1;
+                v = 1;
+              } else if (!off) {
+                if (perPixel) {
+                  // Path A: per-pixel brightness from device model
+                  v = ledDisplayLevel(perPixel[i] ?? 0);
+                } else if (ds?.digits) {
+                  // Path B: on/off bits + global intensity
+                  const lit = (ds.digits[row] >> col) & 1;
+                  v = lit ? Math.max(0.15, 0.3 + 0.7 * globalIntensity) : 0;
+                }
               }
-              const v = lit ? Math.max(0.15, 0.3 + 0.7 * intensity) : 0;
               const color = v > 0.05
                 ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})`
                 : '#1a0000';

@@ -22,7 +22,7 @@ test('max7219 face reads deviceStates and renders 64 LEDs', () => {
   // Find the render case (the one with "MAX7219 8×8" comment), not terminal offsets
   const caseStart = src.indexOf('MAX7219 8');
   assert.ok(caseStart > 0, 'max7219 render case found');
-  const block = src.slice(caseStart, caseStart + 2000);
+  const block = src.slice(caseStart, caseStart + 3000);
   assert.ok(block.includes('deviceStates'), 'reads from deviceStates');
   assert.ok(block.includes('ds.digits') || block.includes('ds?.digits'), 'reads digits array from device state');
   assert.ok(block.includes('64'), 'renders 64 LEDs (8×8 grid)');
@@ -30,10 +30,20 @@ test('max7219 face reads deviceStates and renders 64 LEDs', () => {
 
 test('max7219 face respects shutdown and displayTest flags', () => {
   const caseStart = src.indexOf('MAX7219 8');
-  const block = src.slice(caseStart, caseStart + 2000);
+  const block = src.slice(caseStart, caseStart + 3000);
   assert.ok(block.includes('shutdown'), 'reads shutdown flag');
   assert.ok(block.includes('displayTest'), 'reads displayTest flag');
   assert.ok(block.includes('intensity'), 'reads intensity level');
+});
+
+test('max7219 face supports per-pixel brightness from ds.brightness', () => {
+  const caseStart = src.indexOf('MAX7219 8');
+  const block = src.slice(caseStart, caseStart + 3000);
+  // Path A: per-pixel brightness array
+  assert.ok(block.includes('ds?.brightness') || block.includes('perPixel'), 'reads per-pixel brightness');
+  assert.ok(block.includes('ledDisplayLevel'), 'uses ledDisplayLevel for perception');
+  // Path B preserved: on/off digits + global intensity
+  assert.ok(block.includes('globalIntensity') || block.includes('ds.intensity'), 'global intensity fallback preserved');
 });
 
 test('max7219 is included in the SvgParts deviceStates gathering', () => {
