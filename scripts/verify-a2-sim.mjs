@@ -167,6 +167,64 @@ await page.evaluate(() => {
     : fail(`no 4-digit element in the DOM (digits attrs: ${JSON.stringify(digitAttr)})`);
 }
 
+// ---- 5+6. the AUTHORED example circuits load through the real path --------
+// examples/77-keypad-keyshow and 78-a2-calculator live in sb3-creator; they
+// are injected via the dev app's __setCircuitData hook so they travel the
+// CircuitDesigner circuitData effect (legacy/rich detection included).
+import('node:fs').then(() => {});
+{
+  const { readFileSync } = await import('node:fs');
+  const { join, dirname } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const exDir = join(here, '..', '..', 'sb3-creator', 'examples');
+  const CASES = [
+    { slug: '77-keypad-keyshow',  parts: 17, minNets: 20, fourDigit: 0 },
+    { slug: '78-a2-calculator',   parts: 26, minNets: 30, fourDigit: 2 },
+  ];
+  for (const cs of CASES) {
+    const data = JSON.parse(readFileSync(join(exDir, cs.slug, 'circuit.json'), 'utf8'));
+    await page.evaluate((d) => window.__setCircuitData(d), data);
+    await page.waitForTimeout(600);
+    const diag = await page.evaluate(() => ({
+      err: window.__circuit.netlistError ? String(window.__circuit.netlistError).slice(0, 120) : null,
+      parts: window.__circuit.parts.length,
+      nets: (window.__circuit.resolvedNets || []).length,
+      kinds: window.__circuit.parts.map(p => p.kind),
+    }));
+    (!diag.err && diag.parts >= cs.parts && diag.nets >= cs.minNets)
+      ? pass(`${cs.slug}: loads clean (${diag.parts} parts, ${diag.nets} nets)`)
+      : fail(`${cs.slug}: err=${diag.err} parts=${diag.parts} nets=${diag.nets} kinds=${JSON.stringify(diag.kinds)}`);
+    const fourDigits = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('wokwi-7segment'))
+        .filter(e => Number(e.digits ?? e.getAttribute('digits')) === 4).length);
+    (fourDigits === cs.fourDigit)
+      ? pass(`${cs.slug}: ${fourDigits} four-digit tube(s) rendered`)
+      : fail(`${cs.slug}: ${fourDigits} four-digit tubes (want ${cs.fourDigit})`);
+  }
+  // the calculator's keypad face is pressable in the loaded example too.
+  // Loading a circuitData file drops the designer back to edit mode, so
+  // re-enter Sim first; and match the key label exactly ('5', not any
+  // ancestor div whose text contains a 5).
+  await page.getByRole('radio', { name: /Sim/i }).first().click();
+  await page.waitForTimeout(600);
+  const key5 = page.locator('[data-keypad] div').filter({ hasText: /^5$/ }).first();
+  if (await key5.count()) {
+    const bb = await key5.boundingBox();
+    await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(250);
+    const pressed = await page.evaluate(() => {
+      const p = window.__circuit.parts.find(pp => pp.kind === 'keypad_4x4');
+      return p?.params?.pressed;
+    });
+    await page.mouse.up();
+    pressed === 5
+      ? pass("78-a2-calculator: pressing '5' on the loaded example sets pressed=5")
+      : fail(`78-a2-calculator: pressed=${pressed} (want 5)`);
+  } else fail('78-a2-calculator: no keypad face in the DOM');
+}
+
 if (errors.length) fail(`page errors: ${errors.slice(0, 3).join(' | ')}`);
 else pass('no page errors');
 

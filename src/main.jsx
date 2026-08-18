@@ -58,6 +58,11 @@ function getDebugProps() {
 
 function App() {
   const debugProps = getDebugProps();
+  // Test hook: scripts/verify-a2-sim.mjs injects authored example circuit
+  // files here so they travel the REAL circuitData load path (legacy/rich
+  // detection and all), not a bespoke side door.
+  const [circuitData, setCircuitData] = React.useState(null);
+  React.useEffect(() => { window.__setCircuitData = setCircuitData; }, []);
   return (
     <div style={{ height: '100%', overflow: 'clip',
       background: '#1a1a2e',
@@ -81,6 +86,7 @@ function App() {
           { id: 'ex-pot', title: { en: 'Potentiometer' }, category: 'analog', difficulty: 2 },
         ]}
         onLoadExample={(ex) => { console.log('load example', ex.id); }}
+        {...(circuitData ? { circuitData } : {})}
         {...debugProps}
       />
     </div>
