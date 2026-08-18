@@ -552,10 +552,11 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
       }
-      // ── NxM LED matrix display ─────────────────────────────────
+      // ── NxM LED matrix display (with per-pixel brightness levels) ─
       case 'matrix8x8': case 'matrix16x8': case 'matrix9x9': {
         const ds = deviceStates?.get(id);
         const br = ds?.brightness;
+        const levels = ds?.levels;  // Uint8Array, 0..MATRIX_LEVELS (quantized)
         const mCols = ds?.cols ?? (kind === 'matrix16x8' ? 16 : kind === 'matrix9x9' ? 9 : 8);
         const mRows = ds?.rows ?? (kind === 'matrix9x9' ? 9 : 8);
         const n = mRows * mCols;
@@ -570,10 +571,20 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fill="#111" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
             {Array.from({ length: n }, (_, i) => {
               const row = Math.floor(i / mCols), col = i % mCols;
-              // Perceptual, not linear: a 1/16-duty scan row averages ~0.06
-              // and painted near-black while the emulator scanned the
-              // console matrix perfectly (owner report, 2026-08-17).
-              const v = ledDisplayLevel(br ? br[i] : 0);
+              // Two brightness paths:
+              //  A. Quantized levels (0..MATRIX_LEVELS) from bw-board matrix
+              //     model — 4-level graded brightness (off/dim/mid/full).
+              //  B. Continuous brightness (Float64Array 0..1) with perceptual
+              //     gamma lift via ledDisplayLevel (legacy / non-level models).
+              let v;
+              if (levels) {
+                // Path A: quantized level → normalised 0..1
+                // MATRIX_LEVELS = 3 in bw-board (4 values: off/dim/mid/full).
+                v = levels[i] / 3;
+              } else {
+                // Path B: perceptual gamma lift on raw duty-cycle average
+                v = ledDisplayLevel(br ? br[i] : 0);
+              }
               const color = v > 0.05 ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})` : '#1a0000';
               return <circle key={i}
                 cx={-Wc/2 + col * G + G/2} cy={-Wr/2 + row * G + G/2} r={S/2}
