@@ -57,18 +57,28 @@ await page.waitForFunction(() => window.__circuit && window.__circuit.parts.leng
 //   . . . . . . . .    0x00
 //
 const HEART = [0x66, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C, 0x18, 0x00];
+
+// Standard 7-segment encoding: digit "5" = a,c,d,f,g ON; b,e OFF.
+const DIGIT_5 = { a: true, b: false, c: true, d: true, e: false, f: true, g: true, dp: false };
+
+// LED bank chase pattern: 0xAA = bits 10101010 → LEDs 1,3,5,7 ON.
+const LED_PATTERN = 0xAA;
 // ────────────────────────────────────────────────────────────────────────────
 
-// ---- build the test rig programmatically -----------------------------------
-// A matrix8x8 with 8 column + 8 row voltage sources, all grounded.
-// The scan loop drives them exactly as compiled firmware would: one column
-// at a time, rows per the image, 1 ms per column = 8 ms per frame.
+// ---- build ALL test rigs in one batch ----------------------------------------
+// Every addPart/addWire rebuilds the board (fresh timeNs=0, fresh ledHistory),
+// so all rigs must be wired BEFORE entering sim mode.  The board then stays
+// stable for the matrix scan, seven-segment, and LED checks.
+//
+// Rig 1 – MATRIX8X8: 8 col + 8 row voltage sources drive a column-scanned image.
+// Rig 2 – SEVENSEG8: a seven_seg_4 with per-segment vsources showing digit "5".
+// Rig 3 – LEDBANK8: 8 LEDs driven through vsources in an alternating chase.
 await page.evaluate(() => {
   const c = window.__circuit;
   const gn = c.addPart('gnd', {}, 100, 700);
-  const matrix = c.addPart('matrix8x8', {}, 500, 400);
 
-  // 8 column voltage sources
+  // ── Rig 1: matrix8x8 ──────────────────────────────────────────────────
+  const matrix = c.addPart('matrix8x8', {}, 500, 400);
   const colSrcs = [];
   for (let i = 0; i < 8; i++) {
     const vs = c.addPart('vsource', { volts: 0 }, 120 + i * 50, 150);
@@ -76,8 +86,6 @@ await page.evaluate(() => {
     c.addWire(vs.id, 'neg', gn.id, 'gnd');
     colSrcs.push(vs.id);
   }
-
-  // 8 row voltage sources
   const rowSrcs = [];
   for (let i = 0; i < 8; i++) {
     const vs = c.addPart('vsource', { volts: 0 }, 120 + i * 50, 650);
@@ -86,7 +94,42 @@ await page.evaluate(() => {
     rowSrcs.push(vs.id);
   }
 
+  // ── Rig 2: seven_seg_4 showing digit "5" on digit 0 ────────────────
+  const seg = c.addPart('seven_seg_4', {}, 400, 850);
+  c.addWire(seg.id, 'com0', gn.id, 'gnd');
+  // Park unused digits HIGH (standard common-cathode scan discipline)
+  const vpark = c.addPart('vcc', {}, 350, 800);
+  c.addWire(seg.id, 'com1', vpark.id, 'vcc');
+  c.addWire(seg.id, 'com2', vpark.id, 'vcc');
+  c.addWire(seg.id, 'com3', vpark.id, 'vcc');
+  const segSrcs = {};
+  for (const s of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp']) {
+    const vs = c.addPart('vsource', { volts: 0 }, 250, 800);
+    const rs = c.addPart('resistor', { ohms: 220 }, 300, 800);
+    c.addWire(vs.id, 'pos', rs.id, 'a');
+    c.addWire(rs.id, 'b', seg.id, s);
+    c.addWire(vs.id, 'neg', gn.id, 'gnd');
+    segSrcs[s] = vs.id;
+  }
+
+  // ── Rig 3: 8-LED bank ─────────────────────────────────────────────────
+  const ledIds = [];
+  const ledSrcs = [];
+  for (let i = 0; i < 8; i++) {
+    const led = c.addPart('led', { color: 'red' }, 700 + i * 40, 850);
+    const vs = c.addPart('vsource', { volts: 0 }, 700 + i * 40, 780);
+    const rs = c.addPart('resistor', { ohms: 220 }, 700 + i * 40, 810);
+    c.addWire(vs.id, 'pos', rs.id, 'a');
+    c.addWire(rs.id, 'b', led.id, 'anode');
+    c.addWire(led.id, 'cathode', gn.id, 'gnd');
+    c.addWire(vs.id, 'neg', gn.id, 'gnd');
+    ledIds.push(led.id);
+    ledSrcs.push(vs.id);
+  }
+
   window.__matrixRig = { matrix: matrix.id, colSrcs, rowSrcs };
+  window.__segRig = { seg: seg.id, segSrcs };
+  window.__ledRig = { ledIds, ledSrcs };
 });
 await page.waitForTimeout(300);
 
@@ -104,14 +147,100 @@ await page.waitForTimeout(300);
     : fail(`rig netlist error: ${diag.err}`);
 }
 
-// ---- enter simulate mode, then PAUSE so the background timer does not
-//      interfere with our scan loop (it would advance past the scanned
-//      window, leaving only the last column active).
+// ---- pre-set the STATIC rigs (sevenseg + LED) BEFORE entering sim mode
+//      so the sim timer integrates brightness from the first tick.
+await page.evaluate(({ segs, pattern }) => {
+  const board = window.__circuit.board;
+  const segRig = window.__segRig;
+  const ledRig = window.__ledRig;
+
+  // Sevenseg: drive segments for digit "5"
+  for (const [s, on] of Object.entries(segs)) {
+    board.setControl(segRig.segSrcs[s], on ? 5 : 0);
+  }
+
+  // LEDs: drive pattern 0xAA
+  for (let i = 0; i < 8; i++) {
+    board.setControl(ledRig.ledSrcs[i], ((pattern >> i) & 1) ? 5 : 0);
+  }
+}, { segs: DIGIT_5, pattern: LED_PATTERN });
+
+// ---- enter simulate mode — the timer will advance the board, integrating
+//      sevenseg and LED brightness over the ~20 ms window naturally.
 await page.getByRole('radio', { name: /Sim/i }).first().click();
-await page.waitForTimeout(600);
-// Pause the simulation — the button label is ⏸ (U+23F8) or "Pause"
-const pauseBtn = page.locator('button', { hasText: /⏸|Pause/i }).first();
-if (await pauseBtn.count()) await pauseBtn.click();
+await page.waitForTimeout(1500); // let the brightness filter charge
+
+// ---- SEVENSEG8: assert digit brightness -----------------------------------
+{
+  const result = await page.evaluate(() => {
+    const board = window.__circuit.board;
+    const rig = window.__segRig;
+    return board.sevenSeg3Brightness(rig.seg, 4)[0];
+  });
+
+  const segNames = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'];
+  let segOk = true;
+  const segReport = [];
+  for (const s of segNames) {
+    const expected = DIGIT_5[s];
+    const b = result[s];
+    const ok = expected ? b > 0.2 : b < 0.02;
+    if (!ok) segOk = false;
+    segReport.push(`${s}=${b.toFixed(3)}${expected ? '✓' : ''}`);
+  }
+  segOk
+    ? pass(`SEVENSEG8 digit "5": segments ${segNames.filter(s => DIGIT_5[s]).join(',')} lit — ${segReport.join(' ')}`)
+    : fail(`SEVENSEG8 digit "5": ${segReport.join(' ')}`);
+}
+
+// ---- SEVENSEG8: assert DOM face -------------------------------------------
+{
+  const hasSeg = await page.evaluate(() =>
+    document.querySelectorAll('wokwi-7segment').length > 0);
+  hasSeg
+    ? pass('SEVENSEG8 face: wokwi-7segment element rendered')
+    : fail('SEVENSEG8 face: no wokwi-7segment element in the DOM');
+}
+
+// ---- LEDBANK8: assert brightness per LED ----------------------------------
+{
+  const result = await page.evaluate(() => {
+    const board = window.__circuit.board;
+    const rig = window.__ledRig;
+    return rig.ledIds.map(id => board.ledBrightness(id));
+  });
+
+  let ledOk = true;
+  const ledReport = [];
+  for (let i = 0; i < 8; i++) {
+    const expected = ((LED_PATTERN >> i) & 1) === 1;
+    const b = result[i];
+    const ok = expected ? b > 0.1 : b < 0.02;
+    if (!ok) ledOk = false;
+    ledReport.push(`LED${i}=${b.toFixed(3)}${expected ? '↑' : '↓'}`);
+  }
+  ledOk
+    ? pass(`LEDBANK8 pattern 0xAA: LEDs 1,3,5,7 ON, LEDs 0,2,4,6 OFF — ${ledReport.join(' ')}`)
+    : fail(`LEDBANK8 pattern 0xAA: ${ledReport.join(' ')}`);
+}
+
+// ---- LEDBANK8: assert DOM face --------------------------------------------
+{
+  const ledDom = await page.evaluate(() =>
+    ({ count: document.querySelectorAll('wokwi-led').length }));
+  (ledDom.count >= 8)
+    ? pass(`LEDBANK8 face: ${ledDom.count} wokwi-led elements rendered (≥8)`)
+    : fail(`LEDBANK8 face: only ${ledDom.count} wokwi-led elements (need ≥8)`);
+}
+
+// ── MATRIX8X8: column-scanned heart image (needs paused sim) ──────────────
+// Pause via evaluate (direct button click can time out on overlay-heavy pages)
+await page.evaluate(() => {
+  // Find and click the pause button programmatically
+  const btns = [...document.querySelectorAll('button')];
+  const pause = btns.find(b => b.textContent.includes('⏸') || /pause/i.test(b.textContent));
+  if (pause) pause.click();
+});
 await page.waitForTimeout(300);
 
 // ---- run the scan loop (simulating compiled show-image firmware) -----------
