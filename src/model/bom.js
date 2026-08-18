@@ -93,6 +93,7 @@ const KIND_LABELS = {
   clock_display: 'Clock Display (TM1637)',
   ssd1306: 'OLED 128×64 (SSD1306)',
   seven_seg_3: '3-Digit 7-Segment',
+  seven_seg_4: '4-Digit 7-Segment',
   matrix8x8: 'LED Matrix 8×8',
   matrix16x8: 'LED Matrix 16×8',
   matrix9x9: 'LED Matrix 9×9',

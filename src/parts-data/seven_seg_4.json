@@ -1,0 +1,81 @@
+{
+  "kind": "seven_seg_4",
+  "w": 67,
+  "h": 48,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 8.0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 16.0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "c",
+      "x": 24.0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "d",
+      "x": 32.0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "e",
+      "x": 40.0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "f",
+      "x": 48.0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "g",
+      "x": 56.0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "dp",
+      "x": 64.0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "com0",
+      "x": 13.3,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "com1",
+      "x": 33.3,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "com2",
+      "x": 53.3,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "com3",
+      "x": 73.3,
+      "y": 0,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "3-digit 0.56-inch 7-segment display block (056SMG_3 style). Common-cathode scanned: shared segment bus (a-g, dp) + 3 digit-select commons (com0-com2). No colon \u2014 this is the console score display, not a clock. 11 terminals: 8 segments bottom, 3 commons top. Firmware multiplexes the three digits by cycling com0-com2. Engine decomposes into per-digit virtual LEDs for MNA segment current."
+}

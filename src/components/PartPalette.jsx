@@ -161,6 +161,8 @@ const CATEGORIES = [
         tooltip: 'SSD1306 I²C OLED — 4-pin module (VCC, GND, SDA, SCL)' },
       { kind: 'seven_seg_3', label: '3-Digit 7-Seg', params: {}, color: '#e74c3c',
         tooltip: '056SMG 3-digit — multiplexed segments + 3 commons, no colon' },
+      { kind: 'seven_seg_4', label: '4-Digit 7-Seg', params: {}, color: '#e74c3c',
+        tooltip: '4-digit multiplexed — shared segments + 4 commons (the Prechin A2 tube)' },
       { kind: 'matrix8x8', label: 'LED Matrix 8×8', params: {}, color: '#27ae60',
         tooltip: '1088AS scanned dot matrix — 16 pins (col0-7, row0-7)' },
       { kind: 'matrix16x8', label: 'LED Matrix 16×8', params: {}, color: '#27ae60',

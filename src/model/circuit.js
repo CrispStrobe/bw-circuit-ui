@@ -615,6 +615,11 @@ export class Circuit {
     this.board.setControl(partId, value);
   }
 
+  /** Set a named device parameter (e.g. the keypad's pressed key) and re-solve. */
+  setPartParam(partId, param, value) {
+    if (this.board.setPartParam) this.board.setPartParam(partId, param, value);
+  }
+
   /**
    * Set a pin state (for scripted MCU driving).
    * @param {string} pin
@@ -1097,6 +1102,7 @@ export function terminalsForKind(kind, params) {
     case 'timer_555': return ['vcc', 'gnd', 'trigger', 'threshold', 'control', 'discharge', 'output', 'reset'];
     case 'seven_segment': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com'];
     case 'seven_seg_3': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com0', 'com1', 'com2'];
+    case 'seven_seg_4': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com0', 'com1', 'com2', 'com3'];
     case 'char_lcd': return ['rs', 'rw', 'e', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'vcc', 'gnd', 'vo', 'bl_a', 'bl_k'];
     case 'shift_register': return ['data', 'clock', 'latch', 'oe', 'q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'];
     case 'ir_receiver': return ['vcc', 'gnd', 'out'];

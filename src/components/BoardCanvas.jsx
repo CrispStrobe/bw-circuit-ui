@@ -1366,7 +1366,7 @@ function VoltageLabels({ wires, parts, nodeVoltages, circuit }) {
 
 // ── Wokwi element layer ─────────────────────────────────────────
 
-function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates, sevenSegments, sevenSeg3, controlValues }) {
+function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScans, onSelectPart, selectedParts, onControlChange, onButtonDown, onButtonUp, onKeypadKey, onDragStart, onHoverPart, onPartBodyClick, onDoubleClick, simulate, deviceStates, sevenSegments, sevenSeg3, controlValues }) {
   return parts.map(part => {
     const { id, kind, params, x, y } = part;
     const rot = part.rotation || 0;
@@ -1444,6 +1444,40 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
               {isOn ? `${(b * 100).toFixed(0)}%` : ''}
             </div>
           </div>
+        );
+      }
+      case 'keypad_4x4': {
+        // Interactive 4x4 keypad: each key is a real press — mouse-down sets
+        // the device's `pressed` param (the engine stamps a 0.1 ohm
+        // row-to-column bridge, the same physics the A2 bench measured),
+        // mouse-up releases it. Outside simulate mode a key drags the part.
+        const KP_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
+        const kpPressed = part.params?.pressed ?? -1;
+        const KS = 12, KG = 3;                       // key size / gap
+        const KW = 4 * KS + 3 * KG, KH = 4 * KS + 3 * KG;
+        return (
+          <g key={id} transform={xform} onClick={handleClick}>
+            <rect x={-KW/2 - 5} y={-KH/2 - 5} width={KW + 10} height={KH + 10} rx={4}
+              fill="#1b2733" stroke={selStroke || '#345'} strokeWidth={1.5} />
+            {KP_LABELS.map((lbl, k) => {
+              const kr = Math.floor(k / 4), kc = k % 4;
+              const kx = -KW/2 + kc * (KS + KG), ky = -KH/2 + kr * (KS + KG);
+              const down = kpPressed === k;
+              return (
+                <g key={k}
+                  onMouseDown={(e) => { e.stopPropagation(); if (simulate && onKeypadKey) onKeypadKey(id, k); else if (!simulate) onDragStart(id); }}
+                  onMouseUp={(e) => { e.stopPropagation(); if (simulate && onKeypadKey) onKeypadKey(id, -1); }}
+                  onMouseLeave={() => { if (simulate && down && onKeypadKey) onKeypadKey(id, -1); }}
+                  style={{ cursor: simulate ? 'pointer' : 'grab' }}>
+                  <rect x={kx} y={ky} width={KS} height={KS} rx={2}
+                    fill={down ? '#e74c3c' : '#37475a'} stroke="#0d1520" strokeWidth={0.8} />
+                  <text x={kx + KS/2} y={ky + KS/2 + 3} textAnchor="middle"
+                    fill={down ? '#fff' : '#cdd'} fontSize={7} fontFamily="monospace"
+                    style={{ pointerEvents: 'none', userSelect: 'none' }}>{lbl}</text>
+                </g>
+              );
+            })}
+          </g>
         );
       }
       case 'potentiometer': {
@@ -1621,10 +1655,11 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           </div>
         );
       }
-      case 'seven_seg_3': {
-        // 3-digit multiplexed display (056SMG-3). Uses the engine's
-        // sevenSeg3Brightness(id) → [{a..dp}, {a..dp}, {a..dp}].
-        const seg3ElW = 12.55 * 3 * 3.78;
+      case 'seven_seg_3': case 'seven_seg_4': {
+        // Multiplexed display, 3 digits (056SMG-3) or 4 (the A2's tube).
+        // Uses the engine's sevenSeg3Brightness(id, n) → n×{a..dp}.
+        const segN = kind === 'seven_seg_4' ? 4 : 3;
+        const seg3ElW = 12.55 * segN * 3.78;
         const seg3ElH = 22 * 3.78;
         const seg3Seated = part.seat && part._seatTerminals;
         let seg3Left = x - seg3ElW / 2, seg3Top = y - 35, seg3Scale;
@@ -1646,12 +1681,12 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
               ...(seg3Scale ? { transform: `scale(${seg3Scale})`, transformOrigin: 'top left' } : {}) }}
             onClick={(e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             {...dragProps()}>
-            <WokwiSevenSegment digits={3} values={(() => {
+            <WokwiSevenSegment digits={segN} values={(() => {
               const segKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp'];
-              const vals = new Array(24).fill(0);
-              const digits = sevenSeg3?.(id);
+              const vals = new Array(8 * segN).fill(0);
+              const digits = sevenSeg3?.(id, segN);
               if (digits && Array.isArray(digits)) {
-                for (let d = 0; d < 3; d++) {
+                for (let d = 0; d < segN; d++) {
                   const seg = digits[d];
                   if (!seg) continue;
                   for (let k = 0; k < segKeys.length; k++) {
@@ -2000,7 +2035,7 @@ export function BoardCanvas({
   onAddWire, onRemoveWire, onRemovePart, onMovePart,
   onSelectPart, selectedPart, selectedParts,
   onSelectWire, selectedWire,
-  onControlChange, onButtonDown, onButtonUp,
+  onControlChange, onButtonDown, onButtonUp, onKeypadKey,
   mode, onModeChange, powered, onPowerToggle,
   statusText,
   placingProbe, onTerminalClickForProbe,
@@ -3699,6 +3734,7 @@ export function BoardCanvas({
             selectedParts={selectedParts}
             simulate={!!simulate}
             onControlChange={onControlChange}
+            onKeypadKey={onKeypadKey}
             onButtonDown={onButtonDown}
             onButtonUp={onButtonUp}
             onDragStart={(partId) => setDragging(partId)}

@@ -115,6 +115,12 @@ export function useCircuit(vcc = 5.0) {
     bump();
   }, [circuit, bump]);
 
+  /** Named device param (e.g. keypad `pressed`); re-solves like setControl. */
+  const setPartParam = useCallback((partId, param, value) => {
+    circuit.setPartParam(partId, param, value);
+    bump();
+  }, [circuit, bump]);
+
   const setPin = useCallback((pin, mode, driveHigh) => {
     circuit.setPin(pin, mode, driveHigh);
     bump();
@@ -227,6 +233,7 @@ export function useCircuit(vcc = 5.0) {
     addTapWire,
     updateWire,
     setControl,
+    setPartParam,
     setPin,
     advanceTo,
     advanceBy,

@@ -86,7 +86,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     parts, wires, powered, rev,
     addPart, removePart, nudgeSeated, movePart, duplicatePart, rotatePart, flipPart, updateParams,
     addWire, removeWire, addHoleWire, addTapWire, updateWire,
-    setControl, setPin, advanceTo, advanceBy, setPower,
+    setControl, setPartParam, setPin, advanceTo, advanceBy, setPower,
     loadInferred, undo, redo, canUndo, canRedo, saveHistory,
     ledBrightness, buzzerTone, nodeVoltage,
     circuit,
@@ -120,11 +120,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     if (!b) return null;
     try { return b.sevenSegmentBrightness(id); } catch { return null; }
   }, [externalBoard, circuit]);
-  const readSevenSeg3 = useCallback((id) => {
+  const readSevenSeg3 = useCallback((id, digits = 3) => {
     const b = (externalBoard && externalBoard.sevenSeg3Brightness) ? externalBoard
       : (circuit && circuit.board && circuit.board.sevenSeg3Brightness) ? circuit.board : null;
     if (!b) return null;
-    try { return b.sevenSeg3Brightness(id); } catch { return null; }
+    try { return b.sevenSeg3Brightness(id, digits); } catch { return null; }
   }, [externalBoard, circuit]);
   const readBuzzerTone = useCallback((id) => {
     if (externalBoard && externalBoard.buzzerTone) {
@@ -745,6 +745,17 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     advanceBy(1n * MS);
   }, [setControl, advanceBy, externalBoard]);
 
+  // A keypad key press/release: sets the device's `pressed` param so the
+  // engine stamps/unstamps the row-column bridge (-1 = none). Same
+  // one-board-one-truth rule as buttons for an external board.
+  const handleKeypadKey = useCallback((partId, key) => {
+    setPartParam(partId, 'pressed', key);
+    if (externalBoard && externalBoard.setPartParam) {
+      try { externalBoard.setPartParam(partId, 'pressed', key); } catch { /* board mid-rebuild */ }
+    }
+    advanceBy(1n * MS);
+  }, [setPartParam, advanceBy, externalBoard]);
+
   const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
     loadInferred(inferredParts, inferredNets);
     // An EXPLICIT rebuild hands the canvas back to inference: future
@@ -1172,6 +1183,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onControlChange={handleControlChange}
           onButtonDown={handleButtonDown}
           onButtonUp={handleButtonUp}
+          onKeypadKey={handleKeypadKey}
           statusText={statusText}
           placingProbe={placingProbe}
           placing={placingPart}

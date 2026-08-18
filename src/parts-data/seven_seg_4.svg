@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 48" width="50" height="48">
+  <!-- 3-digit 0.56" 7-segment display block (056SMG_3) -->
+  <rect x="1" y="1" width="48" height="42" rx="2" fill="#1a1a2e" stroke="#16213e" stroke-width="1"/>
+  <!-- Three digit windows -->
+  <g fill="#0a0a15" stroke="#333" stroke-width="0.5">
+    <rect x="3" y="4" width="13" height="20" rx="1"/>
+    <rect x="18" y="4" width="13" height="20" rx="1"/>
+    <rect x="33" y="4" width="13" height="20" rx="1"/>
+  </g>
+  <!-- Dim segment placeholders -->
+  <g fill="#1a3a1a" opacity="0.3">
+    <!-- Digit 0 -->
+    <rect x="5" y="6" width="9" height="1.5" rx="0.5"/>
+    <rect x="5" y="13" width="9" height="1.5" rx="0.5"/>
+    <rect x="5" y="20" width="9" height="1.5" rx="0.5"/>
+    <!-- Digit 1 -->
+    <rect x="20" y="6" width="9" height="1.5" rx="0.5"/>
+    <rect x="20" y="13" width="9" height="1.5" rx="0.5"/>
+    <rect x="20" y="20" width="9" height="1.5" rx="0.5"/>
+    <!-- Digit 2 -->
+    <rect x="35" y="6" width="9" height="1.5" rx="0.5"/>
+    <rect x="35" y="13" width="9" height="1.5" rx="0.5"/>
+    <rect x="35" y="20" width="9" height="1.5" rx="0.5"/>
+  </g>
+  <text x="25" y="34" text-anchor="middle" font-family="monospace" font-size="3" fill="#666">056SMG</text>
+  <text x="25" y="40" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#555">3-DIGIT</text>
+  <!-- Bottom pins (segments a-g, dp) -->
+  <g stroke="#aaa" stroke-width="1" stroke-linecap="round">
+    <line x1="6" y1="43" x2="6" y2="48"/><line x1="12" y1="43" x2="12" y2="48"/>
+    <line x1="18" y1="43" x2="18" y2="48"/><line x1="24" y1="43" x2="24" y2="48"/>
+    <line x1="30" y1="43" x2="30" y2="48"/><line x1="36" y1="43" x2="36" y2="48"/>
+    <line x1="42" y1="43" x2="42" y2="48"/><line x1="48" y1="43" x2="48" y2="48"/>
+  </g>
+  <g fill="#c0c0c0">
+    <circle cx="6" cy="48" r="1"/><circle cx="12" cy="48" r="1"/>
+    <circle cx="18" cy="48" r="1"/><circle cx="24" cy="48" r="1"/>
+    <circle cx="30" cy="48" r="1"/><circle cx="36" cy="48" r="1"/>
+    <circle cx="42" cy="48" r="1"/><circle cx="48" cy="48" r="1"/>
+  </g>
+  <!-- Top pins (com0, com1, com2) -->
+  <g stroke="#aaa" stroke-width="1" stroke-linecap="round">
+    <line x1="10" y1="0" x2="10" y2="1"/><line x1="25" y1="0" x2="25" y2="1"/>
+    <line x1="40" y1="0" x2="40" y2="1"/>
+  </g>
+  <g fill="#c0c0c0">
+    <circle cx="10" cy="0" r="1"/><circle cx="25" cy="0" r="1"/>
+    <circle cx="40" cy="0" r="1"/>
+  </g>
+</svg>

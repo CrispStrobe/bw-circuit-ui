@@ -37,6 +37,9 @@ const STAMPED = new Set([
   // seven_seg_3: engine composite since bw-board 71957c3 (24 LEDs over a
   // shared segment bus, sevenSeg3Brightness reader) — healed from the ledger.
   'seven_seg_3',
+  // seven_seg_4: same composite generalized to 4 digits (the Prechin A2
+  // tube), sevenSeg3Brightness(id, 4) reader — engine sibling of _3.
+  'seven_seg_4',
 ]);
 
 // The debt ledger — kinds with NO engine path today. Every entry is a
