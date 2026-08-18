@@ -208,6 +208,14 @@ function terminalOffsetsForPart(part) {
     case 'ili9341':
       return { vcc: r(-30, -50), gnd: r(-30, -40), cs: r(-30, -30), rst: r(-30, -20),
         dc: r(-30, -10), mosi: r(-30, 0), sck: r(-30, 10), miso: r(-30, 20), led: r(-30, 30) };
+    case 'ili9341_par':
+    case 'ili9341_parallel': {
+      // 16-pin 8080 parallel: VCC GND CS RST RS WR RD D0-D7 LED
+      const offsets = {};
+      const pins = ['vcc','gnd','cs','rst','rs','wr','rd','d0','d1','d2','d3','d4','d5','d6','d7','led'];
+      for (let i = 0; i < pins.length; i++) offsets[pins[i]] = r(-30, -50 + i * 7);
+      return offsets;
+    }
     case 'matrix8x8': case 'matrix16x8': case 'matrix9x9': {
       const offsets = {};
       const cols = part.kind === 'matrix16x8' ? 16 : part.kind === 'matrix9x9' ? 9 : 8;
@@ -597,8 +605,10 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         );
       }
 
-      // ── ILI9341 TFT display ──────────────────────────────────────
-      case 'ili9341': {
+      // ── ILI9341 TFT display (SPI + 8080 parallel variants) ───────
+      case 'ili9341':
+      case 'ili9341_par':
+      case 'ili9341_parallel': {
         const ds = deviceStates?.get(id);
         const dark = ds && (ds.sleeping || !ds.displayOn);
         return (
@@ -3383,7 +3393,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
