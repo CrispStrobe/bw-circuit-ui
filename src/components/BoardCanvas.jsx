@@ -174,6 +174,10 @@ function terminalOffsetsForPart(part) {
     case 'temp_sensor': return { dq: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
     case 'eeprom': return { sda: r(-10, 15), scl: r(10, 15) };
     case 'ssd1306': return { vcc: r(-12, 24), gnd: r(-4, 24), sda: r(4, 24), scl: r(12, 24) };
+    case 'keypad': return {
+      r1: r(-21, 35), r2: r(-15, 35), r3: r(-9, 35), r4: r(-3, 35),
+      c1: r(3, 35), c2: r(9, 35), c3: r(15, 35), c4: r(21, 35),
+    };
     case 'mcu': {
       // Sidecar geometry (datasheet DIP-40) scaled to the canvas: every
       // physical pin sits where the package puts it. Fallback: the old
@@ -274,7 +278,10 @@ function fmtV(v) {
 
 // ── SVG part rendering ───────────────────────────────────────────
 
-function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates }) {
+// Standard 4×4 keypad key labels, row-major (key 0 = '1', key 15 = 'D').
+const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
+
+function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -756,6 +763,55 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 fontFamily="monospace">OFF</text>
             )}
             <text x={0} y={H/2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── 4×4 matrix keypad ──────────────────────────────────────────
+      case 'keypad': {
+        const ds = deviceStates?.get(id);
+        const pressed = ds?._pressed ?? part.params?.pressed ?? -1;
+        // Grid layout: 4 cols × 4 rows, each key 12×12 with 1px gaps
+        const KS = 12, KG = 1;
+        const gridW = 4 * KS + 3 * KG; // 51
+        const gridH = 4 * KS + 3 * KG; // 51
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Body */}
+            <rect x={-30} y={-35} width={60} height={62} rx={3}
+              fill="#e8e0d8" stroke={selStroke || '#999'} strokeWidth={isSelected ? 3 : 1.2} />
+            {/* Connector strip */}
+            <rect x={-22} y={24} width={44} height={5} rx={1} fill="#666" stroke="#444" strokeWidth={0.3} />
+            {/* Key grid */}
+            {Array.from({ length: 16 }, (_, i) => {
+              const row = Math.floor(i / 4), col = i % 4;
+              const kx = -gridW / 2 + col * (KS + KG);
+              const ky = -30 + row * (KS + KG);
+              const isPressed = pressed === i;
+              return (
+                <g key={i}>
+                  <rect
+                    x={kx} y={ky} width={KS} height={KS} rx={2}
+                    fill={isPressed ? '#f39c12' : '#ddd'}
+                    stroke={isPressed ? '#e67e22' : '#bbb'}
+                    strokeWidth={isPressed ? 1.5 : 0.5}
+                    style={simulate ? { cursor: 'pointer', pointerEvents: 'all' } : undefined}
+                    onMouseDown={simulate && onKeypadKey ? (e) => { e.stopPropagation(); onKeypadKey(id, i); } : undefined}
+                    onMouseUp={simulate && onKeypadKey ? (e) => { e.stopPropagation(); onKeypadKey(id, -1); } : undefined}
+                    onMouseLeave={simulate && onKeypadKey ? () => onKeypadKey(id, -1) : undefined}
+                  />
+                  <text x={kx + KS / 2} y={ky + KS / 2 + 3} textAnchor="middle"
+                    fill={isPressed ? '#fff' : '#555'} fontSize={7}
+                    fontFamily="monospace" fontWeight={isPressed ? 'bold' : 'normal'}
+                    style={{ pointerEvents: 'none' }}>
+                    {KEYPAD_LABELS[i]}
+                  </text>
+                </g>
+              );
+            })}
+            {/* Label */}
+            <text x={0} y={40} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -3489,13 +3545,15 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
               }
               return m.size > 0 ? m : null;
-            })()} />
+            })()}
+            simulate={!!simulate}
+            onKeypadKey={onKeypadKey} />
 
           {/* ── WIRE LAYERS ── INSIDE the svg, painted after the substrate and
               the SvgParts chip bodies:
