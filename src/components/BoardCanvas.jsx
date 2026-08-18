@@ -174,6 +174,12 @@ function terminalOffsetsForPart(part) {
     case 'temp_sensor': return { dq: r(0, 15), vcc: r(-10, -10), gnd: r(10, -10) };
     case 'eeprom': return { sda: r(-10, 15), scl: r(10, 15) };
     case 'ssd1306': return { vcc: r(-12, 24), gnd: r(-4, 24), sda: r(4, 24), scl: r(12, 24) };
+    case 'sevenseg8': return {
+      vcc: r(-52, 35), gnd: r(-44, 35),
+      seg_a: r(-36, 35), seg_b: r(-28, 35), seg_c: r(-20, 35), seg_d: r(-12, 35),
+      seg_e: r(-4, 35), seg_f: r(4, 35), seg_g: r(12, 35), seg_dp: r(20, 35),
+      sel_a: r(28, 35), sel_b: r(36, 35), sel_c: r(44, 35),
+    };
     case 'keypad': return {
       r1: r(-21, 35), r2: r(-15, 35), r3: r(-9, 35), r4: r(-3, 35),
       c1: r(3, 35), c2: r(9, 35), c3: r(15, 35), c4: r(21, 35),
@@ -812,6 +818,70 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             })}
             {/* Label */}
             <text x={0} y={40} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── SEVENSEG8: 8-digit 2×4 common-cathode 7-segment display ───
+      case 'sevenseg8': {
+        const ds = deviceStates?.get(id);
+        // ds.digits: Uint8Array(8), per-digit segment bits
+        //   bit 0=a, 1=b, 2=c, 3=d, 4=e, 5=f, 6=g, 7=dp
+        // Layout: 2 rows × 4 columns (digits 0-3 top, 4-7 bottom)
+        const DW = 18, DH = 26;  // per-digit cell
+        const DG = 3;            // gap between digits
+        const cols = 4, rows = 2;
+        const totalW = cols * DW + (cols - 1) * DG; // 81
+        const totalH = rows * DH + (rows - 1) * DG; // 55
+        // 7-segment geometry within a digit cell (relative to digit top-left)
+        const segW = 10, segH = 3; // horizontal segment size
+        const segVW = 3, segVH = 8; // vertical segment size
+        const ox = (DW - segW) / 2; // x offset to centre horizontals
+        const oy = 2;               // top margin
+        // Segment path definitions (relative to digit origin):
+        //  a = top horizontal, b = top-right vertical, c = bottom-right vertical,
+        //  d = bottom horizontal, e = bottom-left vertical, f = top-left vertical,
+        //  g = middle horizontal, dp = decimal point
+        const segDefs = [
+          /* a */ { x: ox, y: oy, w: segW, h: segH },
+          /* b */ { x: ox + segW - segVW, y: oy + segH, w: segVW, h: segVH },
+          /* c */ { x: ox + segW - segVW, y: oy + segH + segVH + segH, w: segVW, h: segVH },
+          /* d */ { x: ox, y: oy + segH + segVH + segH + segVH, w: segW, h: segH },
+          /* e */ { x: ox, y: oy + segH + segVH + segH, w: segVW, h: segVH },
+          /* f */ { x: ox, y: oy + segH, w: segVW, h: segVH },
+          /* g */ { x: ox, y: oy + segH + segVH, w: segW, h: segH },
+        ];
+        const dpR = 1.5; // decimal point radius
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Dark PCB body */}
+            <rect x={-totalW / 2 - 4} y={-totalH / 2 - 4} width={totalW + 8} height={totalH + 8}
+              rx={3} fill="#0a0a0a" stroke={selStroke || '#e74c3c'} strokeWidth={1.5} />
+            {Array.from({ length: 8 }, (_, di) => {
+              const col = di % cols, row = Math.floor(di / cols);
+              const dx = -totalW / 2 + col * (DW + DG);
+              const dy = -totalH / 2 + row * (DH + DG);
+              const seg = ds ? ds.digits[di] : 0;
+              return (
+                <g key={di}>
+                  {/* Digit background */}
+                  <rect x={dx} y={dy} width={DW} height={DH} rx={1}
+                    fill="#111" stroke="#222" strokeWidth={0.3} />
+                  {/* 7 segments */}
+                  {segDefs.map((s, si) => {
+                    const lit = (seg >> si) & 1;
+                    return <rect key={si}
+                      x={dx + s.x} y={dy + s.y} width={s.w} height={s.h} rx={0.5}
+                      fill={lit ? '#ff3030' : '#1a0000'} />;
+                  })}
+                  {/* Decimal point */}
+                  <circle cx={dx + DW - 2} cy={dy + DH - 3} r={dpR}
+                    fill={(seg >> 7) & 1 ? '#ff3030' : '#1a0000'} />
+                </g>
+              );
+            })}
+            <text x={0} y={totalH / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -3545,7 +3615,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
