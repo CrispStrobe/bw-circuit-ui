@@ -188,6 +188,8 @@ function terminalOffsetsForPart(part) {
     case 'joystick': return { vcc: r(-20, 30), gnd: r(-10, 30), vrx: r(0, 30), vry: r(10, 30), sw: r(20, 30) };
     case 'slider': return { a: r(-20, 15), wiper: r(0, 15), b: r(20, 15) };
     case 'gauge': return { signal: r(0, 25), vcc: r(-15, 25), gnd: r(15, 25) };
+    case 'mono_lcd': return { vcc: r(-15, 40), gnd: r(15, 40) };
+    case 'rgb_light': return { vcc: r(-10, 15), gnd: r(10, 15) };
     case 'keypad': return {
       r1: r(-21, 35), r2: r(-15, 35), r3: r(-9, 35), r4: r(-3, 35),
       c1: r(3, 35), c2: r(9, 35), c3: r(15, 35), c4: r(21, 35),
@@ -1095,6 +1097,98 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             <text x={0} y={14} textAnchor="middle" fill="#bdc3c7" fontSize={7}
               fontFamily="monospace">{typeof val === 'number' ? val.toFixed(2) : val}</text>
             <text x={0} y={28} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── Graphical mono LCD (EV3 178×128, NXT 100×64) ─────────────
+      // Parametric W×H monochrome pixel buffer. The fb is a 1bpp packed
+      // row-major buffer (byte 0 bit 7 = pixel (0,0)). Reads from
+      // part.params.fb (set via setPartParam from the pump) or
+      // deviceStates for engine-driven displays.
+      case 'mono_lcd': {
+        const ds = deviceStates?.get(id);
+        const FW = part.params?.width ?? ds?.width ?? 178;
+        const FH = part.params?.height ?? ds?.height ?? 128;
+        const fb = ds?.fb ?? part.params?.fb;
+        const displayOn = ds?.displayOn !== false && part.params?.displayOn !== false;
+        // Scale the native resolution into a compact SVG footprint.
+        // The rendered box is fixed at 60×40; the canvas stretches.
+        const boxW = 60, boxH = 40;
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Case body */}
+            <rect x={-boxW/2 - 3} y={-boxH/2 - 3} width={boxW + 6} height={boxH + 16} rx={3}
+              fill="#2c3e50" stroke={selStroke || '#95a5a6'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Screen bezel */}
+            <rect x={-boxW/2} y={-boxH/2} width={boxW} height={boxH} rx={1}
+              fill={displayOn ? '#a8b8a0' : '#666'} stroke="#555" strokeWidth={0.5} />
+            {displayOn && fb && fb.length >= Math.ceil(FW * FH / 8) && (
+              <foreignObject x={-boxW/2} y={-boxH/2} width={boxW} height={boxH}>
+                <canvas
+                  ref={el => {
+                    if (!el) return;
+                    const rgba = new Uint8ClampedArray(FW * FH * 4);
+                    const stride = Math.ceil(FW / 8);
+                    for (let y = 0; y < FH; y++) {
+                      for (let x = 0; x < FW; x++) {
+                        const byteIdx = y * stride + (x >> 3);
+                        const bit = 7 - (x & 7); // MSB first
+                        const on = (fb[byteIdx] >> bit) & 1;
+                        const idx = (y * FW + x) * 4;
+                        // Mono LCD: dark green on light green-gray
+                        rgba[idx]     = on ? 0x20 : 0xa0;
+                        rgba[idx + 1] = on ? 0x30 : 0xb0;
+                        rgba[idx + 2] = on ? 0x10 : 0x90;
+                        rgba[idx + 3] = 255;
+                      }
+                    }
+                    if (el.width !== FW) el.width = FW;
+                    if (el.height !== FH) el.height = FH;
+                    el.style.width = `${boxW}px`;
+                    el.style.height = `${boxH}px`;
+                    el.style.imageRendering = 'pixelated';
+                    el.getContext('2d').putImageData(new ImageData(rgba, FW, FH), 0, 0);
+                  }}
+                  style={{ width: boxW, height: boxH, imageRendering: 'pixelated' }}
+                />
+              </foreignObject>
+            )}
+            {!displayOn && (
+              <text x={0} y={2} textAnchor="middle" fill="#444" fontSize={6}
+                fontFamily="monospace">OFF</text>
+            )}
+            {/* Resolution label */}
+            <text x={0} y={boxH/2 + 4} textAnchor="middle" fill="#7f8c8d" fontSize={5}
+              fontFamily="monospace">{FW}×{FH}</text>
+            <text x={0} y={boxH/2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── RGB status light (WeDo 2 / Boost single-colour indicator) ──
+      case 'rgb_light': {
+        const ds = deviceStates?.get(id);
+        const r0 = ds?.r ?? part.params?.r ?? 0;
+        const g0 = ds?.g ?? part.params?.g ?? 0;
+        const b0 = ds?.b ?? part.params?.b ?? 0;
+        const on = r0 > 0 || g0 > 0 || b0 > 0;
+        const fill = on ? `rgb(${r0},${g0},${b0})` : '#222';
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Diffuser body */}
+            <circle cx={0} cy={0} r={12}
+              fill="#1a1a2e" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Lit area */}
+            <circle cx={0} cy={0} r={9} fill={fill} />
+            {on && (
+              <circle cx={0} cy={0} r={9} fill="white" opacity={0.15} />
+            )}
+            {/* Highlight */}
+            <circle cx={-2} cy={-2} r={3} fill="white" opacity={on ? 0.25 : 0.05} />
+            <text x={0} y={20} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -3894,7 +3988,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge' || p.kind === 'mono_lcd' || p.kind === 'rgb_light') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }

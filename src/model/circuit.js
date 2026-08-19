@@ -1115,6 +1115,8 @@ export function terminalsForKind(kind, params) {
     case 'sgp30': return ['vcc', 'gnd', 'sda', 'scl'];
     case 'veml7700': return ['vcc', 'gnd', 'sda', 'scl'];
     case 'as5600': return ['vcc', 'gnd', 'sda', 'scl', 'dir', 'out'];
+    case 'mono_lcd': return ['vcc', 'gnd'];
+    case 'rgb_light': return ['vcc', 'gnd'];
     case 'matrix9x9': return [
       'col0','col1','col2','col3','col4','col5','col6','col7','col8',
       'row0','row1','row2','row3','row4','row5','row6','row7','row8',
