@@ -92,6 +92,12 @@ const EXCEPTIONS = new Set([
   'sgp30',          // I2C air-quality (VOC/eCO2) sensor
   'veml7700',       // I2C ambient light sensor
   'as5600',         // I2C magnetic rotary position sensor
+  // OLED/display kinds — terminals in terminalsForKind, bw-board device registry
+  'ssd1306',        // I2C 128×64 OLED (bw-board device registry)
+  'sh1106',         // SH1106 variant (same terminals as SSD1306)
+  // Lego faceplate display widgets (no sidecar art, panel-driven)
+  'mono_lcd',       // parametric W×H mono graphical LCD (EV3/NXT)
+  'rgb_light',      // RGB status indicator (WeDo 2 / Boost)
   // Internal model terms (not part kinds)
   'lead',           // occupancy type in breadboard model
 ]);
