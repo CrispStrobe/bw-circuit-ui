@@ -180,6 +180,11 @@ function terminalOffsetsForPart(part) {
       seg_e: r(-4, 35), seg_f: r(4, 35), seg_g: r(12, 35), seg_dp: r(20, 35),
       sel_a: r(28, 35), sel_b: r(36, 35), sel_c: r(44, 35),
     };
+    case 'ledbank8': {
+      const offsets = { vcc: r(-35, 15), gnd: r(-27, 15) };
+      for (let i = 0; i < 8; i++) offsets[`d${i}`] = r(-19 + i * 8, 15);
+      return offsets;
+    }
     case 'keypad': return {
       r1: r(-21, 35), r2: r(-15, 35), r3: r(-9, 35), r4: r(-3, 35),
       c1: r(3, 35), c2: r(9, 35), c3: r(15, 35), c4: r(21, 35),
@@ -837,8 +842,14 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       // ── SEVENSEG8: 8-digit 2×4 common-cathode 7-segment display ───
       case 'sevenseg8': {
         const ds = deviceStates?.get(id);
-        // ds.digits: Uint8Array(8), per-digit segment bits
-        //   bit 0=a, 1=b, 2=c, 3=d, 4=e, 5=f, 6=g, 7=dp
+        // Two brightness paths:
+        //  A. Per-segment brightness: ds.segBrightness (Float64Array,
+        //     8 digits × 8 segments = 64 entries, 0.0–1.0) — used when
+        //     the device model provides duty-cycle-averaged brightness
+        //     per segment (ISR-scanned multiplexed display).
+        //  B. On/off bits: ds.digits[0..7] (Uint8Array, bit 0=a..6=g, 7=dp).
+        //     Current bw-board SEVENSEG8 model uses this path.
+        const segBr = ds?.segBrightness; // path A
         // Layout: 2 rows × 4 columns (digits 0-3 top, 4-7 bottom)
         const DW = 18, DH = 26;  // per-digit cell
         const DG = 3;            // gap between digits
@@ -864,6 +875,10 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           /* g */ { x: ox, y: oy + segH + segVH, w: segW, h: segH },
         ];
         const dpR = 1.5; // decimal point radius
+        // Segment color from brightness value (0..1)
+        const segColor = (v) => v > 0.05
+          ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})`
+          : '#1a0000';
         return (
           <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
             {/* Dark PCB body */}
@@ -879,20 +894,75 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                   {/* Digit background */}
                   <rect x={dx} y={dy} width={DW} height={DH} rx={1}
                     fill="#111" stroke="#222" strokeWidth={0.3} />
-                  {/* 7 segments */}
+                  {/* 7 segments — graded brightness or on/off */}
                   {segDefs.map((s, si) => {
-                    const lit = (seg >> si) & 1;
+                    let v;
+                    if (segBr) {
+                      // Path A: per-segment brightness (8 segments per digit)
+                      v = ledDisplayLevel(segBr[di * 8 + si] ?? 0);
+                    } else {
+                      // Path B: on/off from digit bit pattern
+                      v = (seg >> si) & 1 ? 1 : 0;
+                    }
                     return <rect key={si}
                       x={dx + s.x} y={dy + s.y} width={s.w} height={s.h} rx={0.5}
-                      fill={lit ? '#ff3030' : '#1a0000'} />;
+                      fill={segColor(v)} />;
                   })}
-                  {/* Decimal point */}
-                  <circle cx={dx + DW - 2} cy={dy + DH - 3} r={dpR}
-                    fill={(seg >> 7) & 1 ? '#ff3030' : '#1a0000'} />
+                  {/* Decimal point — graded or on/off */}
+                  {(() => {
+                    let dpV;
+                    if (segBr) {
+                      dpV = ledDisplayLevel(segBr[di * 8 + 7] ?? 0);
+                    } else {
+                      dpV = (seg >> 7) & 1 ? 1 : 0;
+                    }
+                    return <circle cx={dx + DW - 2} cy={dy + DH - 3} r={dpR}
+                      fill={segColor(dpV)} />;
+                  })()}
                 </g>
               );
             })}
             <text x={0} y={totalH / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── LEDBANK8: 8 discrete LEDs with graded brightness ──────────
+      case 'ledbank8': {
+        const ds = deviceStates?.get(id);
+        // Two brightness paths:
+        //  A. Per-LED brightness: ds.brightness (Float64Array(8), 0.0–1.0)
+        //     — used when the device model provides duty-cycle-averaged
+        //     brightness (e.g. ISR-scanned shared port with SEVENSEG8).
+        //  B. On/off: ds.leds (Uint8Array(8), 0/1) — current bw-board
+        //     LEDBANK8 model uses this path.
+        const br = ds?.brightness; // path A
+        const leds = ds?.leds;     // path B
+        const N = 8;
+        const G = 7;               // gap between LED centres
+        const W = N * G, H = 10;   // body dimensions
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            <rect x={-W / 2 - 3} y={-H / 2 - 3} width={W + 6} height={H + 6} rx={2}
+              fill="#1a1a1a" stroke={selStroke || '#27ae60'} strokeWidth={isSelected ? 3 : 1.5} />
+            {Array.from({ length: N }, (_, i) => {
+              let v;
+              if (br) {
+                // Path A: per-LED continuous brightness
+                v = ledDisplayLevel(br[i] ?? 0);
+              } else {
+                // Path B: on/off from leds array
+                v = leds ? leds[i] : 0;
+              }
+              const color = v > 0.05
+                ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})`
+                : '#1a0000';
+              return <circle key={i}
+                cx={-W / 2 + i * G + G / 2} cy={0} r={3}
+                fill={color} />;
+            })}
+            <text x={0} y={H / 2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -3626,7 +3696,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
