@@ -93,3 +93,46 @@ export function classifyWheel(ev) {
   }
   return { kind: 'pan', dx: -ev.deltaX, dy: -ev.deltaY };
 }
+
+/**
+ * "Fit all parts" — the {zoom, pan} that frames a set of world-space part
+ * bounds inside a screen-space viewport, centered. This is the single source
+ * of the fit math shared by the auto-fit-on-load, the F shortcut, and the
+ * Fit button, so all three frame a circuit identically.
+ *
+ * @param {Array<{minX:number,maxX:number,minY:number,maxY:number}>} boundsList
+ *   per-part world bounds (already carrying any per-kind padding, e.g. the
+ *   extra headroom a VCC/GND rail wants above it).
+ * @param {{w:number, h:number}} viewport  container size in screen px.
+ * @param {{margin?:number, pad?:number, minZoom?:number, maxZoom?:number}} [opts]
+ * @returns {{zoom:number, pan:{x:number,y:number}} | null}
+ *   null when there is nothing to frame (no parts, degenerate box, or an
+ *   unmeasured viewport) — callers should leave the view untouched.
+ */
+export function computeFitView(boundsList, viewport, opts = {}) {
+  const { margin = 40, pad = 20, minZoom = 0.08, maxZoom = 1.5 } = opts;
+  if (!Array.isArray(boundsList) || boundsList.length === 0) return null;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const b of boundsList) {
+    if (!b) continue;
+    minX = Math.min(minX, b.minX);
+    maxX = Math.max(maxX, b.maxX);
+    minY = Math.min(minY, b.minY);
+    maxY = Math.max(maxY, b.maxY);
+  }
+  if (!Number.isFinite(minX)) return null;
+  const contentW = maxX - minX + margin;
+  const contentH = maxY - minY + margin;
+  const FW = viewport && viewport.w, FH = viewport && viewport.h;
+  if (!(contentW > 0) || !(contentH > 0) || !(FW > 0) || !(FH > 0)) return null;
+  const fitZoom = Math.min(maxZoom, Math.min(FW / contentW, FH / contentH));
+  const zoom = Math.max(minZoom, Math.min(maxZoom, fitZoom));
+  const viewW = FW / zoom, viewH = FH / zoom;
+  return {
+    zoom,
+    pan: {
+      x: minX - pad - Math.max(0, (viewW - contentW) / 2),
+      y: minY - pad - Math.max(0, (viewH - contentH) / 2),
+    },
+  };
+}

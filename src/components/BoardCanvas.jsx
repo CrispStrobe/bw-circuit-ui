@@ -14,7 +14,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { t } from '../i18n/strings.js';
 import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
-import { classifyWheel } from '../interaction/transform.js';
+import { classifyWheel, computeFitView } from '../interaction/transform.js';
 import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
 import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
@@ -2507,6 +2507,25 @@ export function BoardCanvas({
     measure();
     return () => ro.disconnect();
   }, []);
+  // The single fit routine — frames all parts, centered, at the current
+  // MEASURED container size. Shared by auto-fit-on-load, the F shortcut and
+  // the Fit button, via the pure computeFitView helper, so a circuit always
+  // frames identically however the fit was triggered.
+  const applyFit = React.useCallback((arr) => {
+    if (!arr || arr.length === 0) return;
+    const boundsList = arr.map(p => {
+      const b = partBounds(p);
+      // VCC/GND rails want a little headroom above their glyph.
+      return {
+        minX: b.minX, maxX: b.maxX,
+        minY: b.minY - (p.kind === 'vcc' || p.kind === 'gnd' ? 20 : 0), maxY: b.maxY,
+      };
+    });
+    const v = computeFitView(boundsList, fitSizeRef.current);
+    if (!v) return;
+    setZoom(v.zoom);
+    setPan(v.pan);
+  }, []);
   React.useEffect(() => {
     if (parts.length === 0) return;
     // Re-fit on any of the three signals: a file load (fitToken), a
@@ -2524,32 +2543,7 @@ export function BoardCanvas({
     // wide), so multi-board benches auto-fit with their left edges
     // CLIPPED off-screen (owner's 6502 screenshots; confirmed in a
     // self-taken screenshot the same day).
-    const fitNow = (arr) => {
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      for (const p of arr) {
-        const b = partBounds(p);
-        minX = Math.min(minX, b.minX);
-        maxX = Math.max(maxX, b.maxX);
-        minY = Math.min(minY, b.minY - (p.kind === 'vcc' || p.kind === 'gnd' ? 20 : 0));
-        maxY = Math.max(maxY, b.maxY);
-      }
-      const contentW = maxX - minX + 40;
-      const contentH = maxY - minY + 40;
-      if (contentW <= 0 || contentH <= 0) return;
-      const { w: FW, h: FH } = fitSizeRef.current;
-      const fitZoom = Math.min(1.5, Math.min(FW / contentW, FH / contentH));
-      // Floor at 0.08 so even the tallest benches (y≈1500) fit; the 0.3
-      // floor clipped 4-breadboard bus-computer circuits.
-      const z = Math.max(0.08, Math.min(1.5, fitZoom));
-      setZoom(z);
-      // Center the content in the viewport instead of pinning it top-left.
-      const viewW = FW / z, viewH = FH / z;
-      setPan({
-        x: minX - 20 - Math.max(0, (viewW - contentW) / 2),
-        y: minY - 20 - Math.max(0, (viewH - contentH) / 2),
-      });
-    };
-    fitNow(parts);
+    applyFit(parts);
     // A LOAD's fit can race the loaded parts through React's commit
     // ordering — one session fit the stale 4-part starter and left SOS
     // half off-screen while an identical session fit fine. One more fit
@@ -2557,7 +2551,7 @@ export function BoardCanvas({
     // settled parts and the measured container. Idempotent when the
     // first fit was already right.
     if (tokenChanged && typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(() => fitNow(partsRef.current));
+      requestAnimationFrame(() => applyFit(partsRef.current));
     }
   }, [parts.length, fitToken, fitSize.w, fitSize.h]);
   const [panning, setPanning] = useState(false);
@@ -3274,24 +3268,9 @@ export function BoardCanvas({
       setZoom(1);
       setPan({ x: 0, y: 0 });
     }
-    // F → fit all parts in view
+    // F → fit all parts in view (same framing as auto-fit and the Fit button)
     if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-      if (parts.length === 0) return;
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      for (const p of parts) {
-        minX = Math.min(minX, p.x - 80); maxX = Math.max(maxX, p.x + 80);
-        minY = Math.min(minY, p.y - 60); maxY = Math.max(maxY, p.y + 60);
-      }
-      const cw = maxX - minX + 40, ch = maxY - minY + 40;
-      const { w: FW, h: FH } = fitSizeRef.current;
-      const fz = Math.max(0.08, Math.min(1, Math.min(FW / cw, FH / ch)));
-      setZoom(fz);
-      // Center the content like fitNow does.
-      const viewW = FW / fz, viewH = FH / fz;
-      setPan({
-        x: minX - 20 - Math.max(0, (viewW - cw) / 2),
-        y: minY - 20 - Math.max(0, (viewH - ch) / 2),
-      });
+      applyFit(partsRef.current);
     }
     // Copy/paste
     if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedParts && selectedParts.size > 0) {
@@ -3606,6 +3585,34 @@ export function BoardCanvas({
           }
         }}
       >
+        {/* Fit-to-parts: zoom+pan so the whole circuit frames on screen.
+            Same framing as auto-fit-on-load and the F shortcut (applyFit).
+            Floating bottom-right; only meaningful once parts exist. */}
+        {parts.length > 0 && (
+          <button
+            data-testid="bw-circuit-fit"
+            onClick={() => applyFit(partsRef.current)}
+            title={/^de/i.test(lang) ? 'Alle Bauteile einpassen (F)' : 'Fit all parts (F)'}
+            aria-label={/^de/i.test(lang) ? 'Alle Bauteile einpassen' : 'Fit all parts'}
+            style={{
+              position: 'absolute', right: 12, bottom: 12, zIndex: 70,
+              width: 36, height: 36, padding: 0, display: 'inline-flex',
+              alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(22,33,62,.92)', border: '1px solid #64748b',
+              borderRadius: 6, color: '#e2e8f0', cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,.35)',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+              strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 9 V4 H9" />
+              <path d="M15 4 H20 V9" />
+              <path d="M20 15 V20 H15" />
+              <path d="M9 20 H4 V15" />
+            </svg>
+          </button>
+        )}
         {selectedPartModel && !simulate && (
           <div data-selection-actions style={{position: 'absolute', left: `${((selectedPartModel.x - pan.x) / (containerSize.w / zoom)) * 100}%`, top: `${((selectedPartModel.y - pan.y) / (containerSize.h / zoom)) * 100}%`, transform: 'translate(18px, -50%)', zIndex: 60, display: 'flex', gap: 4,
             padding: 4, borderRadius: 6, background: 'rgba(22,33,62,.92)', boxShadow: '0 2px 8px rgba(0,0,0,.35)'}}

@@ -321,3 +321,52 @@ describe('edge cases', () => {
       `VCC net should have 3+ terminals, got ${vccNets[0].terminals.length}`);
   });
 });
+
+// ── Fit-to-parts view math (the Circuit Designer's "fit all parts" button,
+//    the F shortcut, and auto-fit-on-load all frame a circuit through this).
+import { computeFitView } from '../src/interaction/transform.js';
+
+describe('computeFitView — frame all parts in the viewport', () => {
+  // screen = (world − pan) · zoom  (the canvas's screenToCanvas inverse)
+  const toScreen = (v, wx, wy) => ({ x: (wx - v.pan.x) * v.zoom, y: (wy - v.pan.y) * v.zoom });
+
+  it('returns null when there is nothing to frame', () => {
+    assert.equal(computeFitView([], { w: 800, h: 600 }), null);
+    assert.equal(computeFitView(null, { w: 800, h: 600 }), null);
+    assert.equal(computeFitView([{ minX: 0, maxX: 10, minY: 0, maxY: 10 }], { w: 0, h: 0 }), null);
+  });
+
+  it('centers the content bounding box in the viewport', () => {
+    const v = computeFitView([{ minX: 0, maxX: 100, minY: 0, maxY: 50 }], { w: 800, h: 600 });
+    const c = toScreen(v, 50, 25); // content center → viewport center
+    assert.ok(Math.abs(c.x - 400) < 1e-6, `center x = ${c.x}`);
+    assert.ok(Math.abs(c.y - 300) < 1e-6, `center y = ${c.y}`);
+  });
+
+  it('clamps zoom to maxZoom for tiny content (no absurd magnification)', () => {
+    const v = computeFitView([{ minX: 0, maxX: 10, minY: 0, maxY: 10 }], { w: 800, h: 600 });
+    assert.equal(v.zoom, 1.5);
+  });
+
+  it('zooms out to fit large content, with the whole box on screen', () => {
+    const v = computeFitView([{ minX: 0, maxX: 2000, minY: 0, maxY: 1500 }], { w: 800, h: 600 });
+    assert.ok(v.zoom < 1, `zoom ${v.zoom} < 1`);
+    const tl = toScreen(v, 0, 0), br = toScreen(v, 2000, 1500);
+    assert.ok(tl.x >= -1 && tl.y >= -1, `top-left in view (${tl.x},${tl.y})`);
+    assert.ok(br.x <= 801 && br.y <= 601, `bottom-right in view (${br.x},${br.y})`);
+  });
+
+  it('respects the minZoom floor for enormous benches', () => {
+    const v = computeFitView([{ minX: 0, maxX: 100000, minY: 0, maxY: 100000 }], { w: 800, h: 600 });
+    assert.equal(v.zoom, 0.08);
+  });
+
+  it('merges multiple part bounds into one framing', () => {
+    const single = computeFitView([{ minX: 0, maxX: 100, minY: 0, maxY: 100 }], { w: 800, h: 600 });
+    const split = computeFitView([
+      { minX: 0, maxX: 40, minY: 0, maxY: 100 },
+      { minX: 60, maxX: 100, minY: 0, maxY: 100 },
+    ], { w: 800, h: 600 });
+    assert.deepEqual(split, single); // identical overall bbox → identical view
+  });
+});
