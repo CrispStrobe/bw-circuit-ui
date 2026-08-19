@@ -1084,7 +1084,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           `setControl` stays live either way: turning the pot is user intent,
           not physics, so nothing here disables interaction. */}
       <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0,
+        // minWidth:0 lets this flex wrapper shrink below its content width so the
+        // designer column is bounded by the pane, not the (wide) circuit canvas.
+        // Without it the whole column stayed at canvas width and the circuit
+        // toolbar (which already flex-wraps) overflowed the pane, clipping the
+        // Undo/Redo/⋯ buttons off the right edge.
+        flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0,
         filter: !hasSimulation ? 'saturate(0.5) brightness(0.9)' : staleBy > 0 ? 'saturate(0.35)' : 'none',
         transition: 'filter 120ms ease-out',
         position: 'relative',
