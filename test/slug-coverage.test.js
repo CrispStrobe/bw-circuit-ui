@@ -82,6 +82,16 @@ const EXCEPTIONS = new Set([
   'matrix8x8',      // 8x8 LED matrix display (bw-board device registry)
   'hd44780',        // HD44780 LCD (bw-board device registry, machine-level)
   'at24c64',        // 24C64 I2C EEPROM (bw-board device registry)
+  // I2C sensor kinds — terminals declared in terminalsForKind (sensor
+  // acceptance rigs, added with the VL53L0X/SGP30/VEML7700/AS5600 work);
+  // sidecar art not yet authored, same status as the device-registry parts.
+  'bmp280',         // I2C pressure/temperature sensor
+  'tcs34725',       // I2C RGB colour sensor
+  'ina219',         // I2C current/power monitor
+  'vl53l0x',        // I2C time-of-flight distance sensor
+  'sgp30',          // I2C air-quality (VOC/eCO2) sensor
+  'veml7700',       // I2C ambient light sensor
+  'as5600',         // I2C magnetic rotary position sensor
   // Internal model terms (not part kinds)
   'lead',           // occupancy type in breadboard model
 ]);
