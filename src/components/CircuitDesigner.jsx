@@ -756,6 +756,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     advanceBy(1n * MS);
   }, [setPartParam, advanceBy, externalBoard]);
 
+  const handleSetPartParam = useCallback((partId, param, value) => {
+    setPartParam(partId, param, value);
+    if (externalBoard && externalBoard.setPartParam) {
+      try { externalBoard.setPartParam(partId, param, value); } catch { /* board mid-rebuild */ }
+    }
+    advanceBy(1n * MS);
+  }, [setPartParam, advanceBy, externalBoard]);
+
   const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
     loadInferred(inferredParts, inferredNets);
     // An EXPLICIT rebuild hands the canvas back to inference: future
@@ -1184,6 +1192,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onButtonDown={handleButtonDown}
           onButtonUp={handleButtonUp}
           onKeypadKey={handleKeypadKey}
+          onSetPartParam={handleSetPartParam}
           statusText={statusText}
           placingProbe={placingProbe}
           placing={placingPart}

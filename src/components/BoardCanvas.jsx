@@ -185,6 +185,9 @@ function terminalOffsetsForPart(part) {
       for (let i = 0; i < 8; i++) offsets[`d${i}`] = r(-19 + i * 8, 15);
       return offsets;
     }
+    case 'joystick': return { vcc: r(-20, 30), gnd: r(-10, 30), vrx: r(0, 30), vry: r(10, 30), sw: r(20, 30) };
+    case 'slider': return { a: r(-20, 15), wiper: r(0, 15), b: r(20, 15) };
+    case 'gauge': return { signal: r(0, 25), vcc: r(-15, 25), gnd: r(15, 25) };
     case 'keypad': return {
       r1: r(-21, 35), r2: r(-15, 35), r3: r(-9, 35), r4: r(-3, 35),
       c1: r(3, 35), c2: r(9, 35), c3: r(15, 35), c4: r(21, 35),
@@ -292,7 +295,7 @@ function fmtV(v) {
 // Standard 4×4 keypad key labels, row-major (key 0 = '1', key 15 = 'D').
 const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
 
-function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey }) {
+function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -923,6 +926,175 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               );
             })}
             <text x={0} y={totalH / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── JOYSTICK: 2-axis interactive controller pad ────────────────
+      case 'joystick': {
+        // Params: x (-1..1), y (-1..1), pressed (0/1)
+        // Value contract: bw-board joystick device reads part.params.x/y
+        // and maps to analog voltage dividers on vrx/vry terminals.
+        const px = part.params?.x ?? 0;
+        const py = part.params?.y ?? 0;
+        const pressed = part.params?.pressed ? true : false;
+        const R = 22; // pad radius
+        // Thumb position: x maps left-right, y maps up-down (inverted for SVG)
+        const thumbX = px * (R - 4);
+        const thumbY = -py * (R - 4); // SVG y is down, joystick y is up
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Body */}
+            <rect x={-28} y={-28} width={56} height={50} rx={4}
+              fill="#1a1a2e" stroke={selStroke || '#3498db'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Pad area */}
+            <circle cx={0} cy={0} r={R} fill="#0d1117" stroke="#333" strokeWidth={0.8} />
+            {/* Crosshair */}
+            <line x1={-R + 2} y1={0} x2={R - 2} y2={0} stroke="#222" strokeWidth={0.5} />
+            <line x1={0} y1={-R + 2} x2={0} y2={R - 2} stroke="#222" strokeWidth={0.5} />
+            {/* Thumb */}
+            <circle cx={thumbX} cy={thumbY} r={5}
+              fill={pressed ? '#e74c3c' : '#3498db'} stroke={pressed ? '#c0392b' : '#2980b9'}
+              strokeWidth={1.5} fillOpacity={0.9}
+              style={simulate && onSetPartParam ? { cursor: 'grab', pointerEvents: 'all' } : undefined}
+              onMouseDown={simulate && onSetPartParam ? (e) => {
+                e.stopPropagation();
+                const svg = e.target.closest('svg');
+                if (!svg) return;
+                const move = (me) => {
+                  const pt = svg.createSVGPoint();
+                  pt.x = me.clientX; pt.y = me.clientY;
+                  const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+                  const dx = Math.max(-1, Math.min(1, (svgP.x - x) / (R - 4)));
+                  const dy = Math.max(-1, Math.min(1, -(svgP.y - y) / (R - 4)));
+                  onSetPartParam(id, 'x', Math.round(dx * 100) / 100);
+                  onSetPartParam(id, 'y', Math.round(dy * 100) / 100);
+                };
+                const up = () => {
+                  window.removeEventListener('mousemove', move);
+                  window.removeEventListener('mouseup', up);
+                  onSetPartParam(id, 'x', 0);
+                  onSetPartParam(id, 'y', 0);
+                };
+                window.addEventListener('mousemove', move);
+                window.addEventListener('mouseup', up);
+              } : undefined}
+            />
+            <text x={0} y={30} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── SLIDER: single-axis interactive controller ─────────────────
+      case 'slider': {
+        // Params: value (0..1), min/max optional
+        // Value contract: slider writes part.params.value (0..1),
+        // device maps to wiper position on a resistive divider.
+        const val = part.params?.value ?? 0.5;
+        const mn = part.params?.min ?? 0;
+        const mx = part.params?.max ?? 1;
+        const norm = mx > mn ? (val - mn) / (mx - mn) : 0.5;
+        const trackH = 40, trackW = 6;
+        const thumbY = (1 - norm) * trackH - trackH / 2; // top = max
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Body */}
+            <rect x={-14} y={-trackH / 2 - 6} width={28} height={trackH + 12} rx={3}
+              fill="#1a1a2e" stroke={selStroke || '#27ae60'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Track */}
+            <rect x={-trackW / 2} y={-trackH / 2} width={trackW} height={trackH} rx={2}
+              fill="#0d1117" stroke="#333" strokeWidth={0.5} />
+            {/* Fill (bottom to thumb) */}
+            <rect x={-trackW / 2 + 0.5} y={thumbY} width={trackW - 1}
+              height={trackH / 2 - thumbY} rx={1.5} fill="#27ae60" fillOpacity={0.4} />
+            {/* Thumb */}
+            <rect x={-8} y={thumbY - 3} width={16} height={6} rx={2}
+              fill="#27ae60" stroke="#1e8449" strokeWidth={1}
+              style={simulate && onSetPartParam ? { cursor: 'ns-resize', pointerEvents: 'all' } : undefined}
+              onMouseDown={simulate && onSetPartParam ? (e) => {
+                e.stopPropagation();
+                const svg = e.target.closest('svg');
+                if (!svg) return;
+                const move = (me) => {
+                  const pt = svg.createSVGPoint();
+                  pt.x = me.clientX; pt.y = me.clientY;
+                  const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+                  const rawNorm = 1 - Math.max(0, Math.min(1, (svgP.y - y + trackH / 2) / trackH));
+                  const mapped = mn + rawNorm * (mx - mn);
+                  onSetPartParam(id, 'value', Math.round(mapped * 100) / 100);
+                };
+                const up = () => {
+                  window.removeEventListener('mousemove', move);
+                  window.removeEventListener('mouseup', up);
+                };
+                window.addEventListener('mousemove', move);
+                window.addEventListener('mouseup', up);
+              } : undefined}
+            />
+            {/* Value label */}
+            <text x={0} y={trackH / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── GAUGE: read-only indicator/meter face ──────────────────────
+      case 'gauge': {
+        // Reads ds.value (0..1) from device state, or part.params.value
+        // as fallback. Renders an arc gauge with a needle.
+        const ds = deviceStates?.get(id);
+        const val = ds?.value ?? part.params?.value ?? 0;
+        const mn = part.params?.min ?? 0;
+        const mx = part.params?.max ?? 1;
+        const norm = mx > mn ? Math.max(0, Math.min(1, (val - mn) / (mx - mn))) : 0;
+        const R = 20; // arc radius
+        // Arc from -135° to +135° (270° sweep)
+        const startAngle = -135 * Math.PI / 180;
+        const sweepAngle = 270 * Math.PI / 180;
+        const needleAngle = startAngle + norm * sweepAngle;
+        // Arc path for background
+        const arcPath = (r, start, end) => {
+          const x1 = Math.cos(start) * r, y1 = Math.sin(start) * r;
+          const x2 = Math.cos(end) * r, y2 = Math.sin(end) * r;
+          const largeArc = (end - start) > Math.PI ? 1 : 0;
+          return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
+        };
+        // Tick marks at 0%, 25%, 50%, 75%, 100%
+        const ticks = [0, 0.25, 0.5, 0.75, 1];
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Body */}
+            <rect x={-28} y={-24} width={56} height={46} rx={4}
+              fill="#1a1a2e" stroke={selStroke || '#e67e22'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Arc track */}
+            <path d={arcPath(R, startAngle, startAngle + sweepAngle)}
+              fill="none" stroke="#333" strokeWidth={3} strokeLinecap="round" />
+            {/* Arc fill (green to red gradient approximation via value) */}
+            {norm > 0.01 && (
+              <path d={arcPath(R, startAngle, needleAngle)}
+                fill="none"
+                stroke={norm < 0.6 ? '#2ecc71' : norm < 0.85 ? '#f39c12' : '#e74c3c'}
+                strokeWidth={3} strokeLinecap="round" />
+            )}
+            {/* Tick marks */}
+            {ticks.map((t, i) => {
+              const a = startAngle + t * sweepAngle;
+              return <line key={i}
+                x1={Math.cos(a) * (R - 4)} y1={Math.sin(a) * (R - 4)}
+                x2={Math.cos(a) * (R + 2)} y2={Math.sin(a) * (R + 2)}
+                stroke="#666" strokeWidth={0.8} />;
+            })}
+            {/* Needle */}
+            <line x1={0} y1={0}
+              x2={Math.cos(needleAngle) * (R - 2)} y2={Math.sin(needleAngle) * (R - 2)}
+              stroke="#e74c3c" strokeWidth={1.5} strokeLinecap="round" />
+            <circle cx={0} cy={0} r={2} fill="#e74c3c" />
+            {/* Value text */}
+            <text x={0} y={14} textAnchor="middle" fill="#bdc3c7" fontSize={7}
+              fontFamily="monospace">{typeof val === 'number' ? val.toFixed(2) : val}</text>
+            <text x={0} y={28} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -2256,7 +2428,7 @@ export function BoardCanvas({
   onAddWire, onRemoveWire, onRemovePart, onMovePart,
   onSelectPart, selectedPart, selectedParts,
   onSelectWire, selectedWire,
-  onControlChange, onButtonDown, onButtonUp, onKeypadKey,
+  onControlChange, onButtonDown, onButtonUp, onKeypadKey, onSetPartParam,
   mode, onModeChange, powered, onPowerToggle,
   statusText,
   placingProbe, onTerminalClickForProbe,
@@ -3696,7 +3868,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8') {
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
@@ -3704,7 +3876,8 @@ export function BoardCanvas({
               return m.size > 0 ? m : null;
             })()}
             simulate={!!simulate}
-            onKeypadKey={onKeypadKey} />
+            onKeypadKey={onKeypadKey}
+            onSetPartParam={onSetPartParam} />
 
           {/* ── WIRE LAYERS ── INSIDE the svg, painted after the substrate and
               the SvgParts chip bodies:
