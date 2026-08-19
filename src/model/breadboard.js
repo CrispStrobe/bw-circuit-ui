@@ -220,7 +220,7 @@ export class BreadboardModel {
    * @returns {{nets: Array<{id: string, terminals: Array<{part: string, terminal: string}>}>,
    *            stripToNet: Map<string, string>, notes: string[]}}
    */
-  deriveNets() {
+  deriveNets(boardId) {
     /** @type {Map<string, string>} union-find parent */
     const parent = new Map();
     const find = (x) => {
@@ -278,10 +278,15 @@ export class BreadboardModel {
       groups.get(root).push(strip);
     }
 
+    // Net ids must incorporate the boardId so that the same column index
+    // on two different breadboards yields DISTINCT net ids.  Without this,
+    // col-t13-m1 on board A collided with col-t13-m1 on board B, merging
+    // an LED indicator net with a CPU data bus (eater6502 benches).
+    const prefix = boardId ? `${boardId}:` : '';
     const netIdFor = (members) => {
       const rails = members.filter(m => m.startsWith('rail-')).sort();
-      if (rails.length > 0) return rails[0];
-      return `n-${[...members].sort()[0]}`;
+      if (rails.length > 0) return `${prefix}${rails[0]}`;
+      return `${prefix}n-${[...members].sort()[0]}`;
     };
 
     const nets = [];

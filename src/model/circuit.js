@@ -760,7 +760,7 @@ export class Circuit {
     let engineNets = wireNets;
     for (const [boardId, bb] of this.breadboards) {
       try {
-        const derived = bb.deriveNets();
+        const derived = bb.deriveNets(boardId);
         // Retained for the canvas: hole -> net resolution at render time
         // (voltage labels on breadboard jumpers need the strip's net id).
         if (!this.boardStripNets) this.boardStripNets = new Map();

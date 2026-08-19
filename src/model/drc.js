@@ -93,9 +93,9 @@ export function runDrc(circuit, board) {
     terminalToNet.set(`${w.to.part}:${w.to.terminal}`, w.netId);
   }
   // Also from breadboard nets if available
-  for (const bb of circuit.breadboards?.values() || []) {
+  for (const [boardId, bb] of circuit.breadboards?.entries() || []) {
     try {
-      const { nets } = bb.deriveNets();
+      const { nets } = bb.deriveNets(boardId);
       for (const net of nets) {
         for (const t of net.terminals) {
           terminalToNet.set(`${t.part}:${t.terminal}`, net.id);
