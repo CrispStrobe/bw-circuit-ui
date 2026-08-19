@@ -39,21 +39,42 @@ test('sevenseg8 face reads per-digit segments from device state', () => {
 
 test('sevenseg8 face renders 7 segments + decimal point per digit', () => {
   const caseStart = boardSrc.indexOf('SEVENSEG8: 8-digit 2×4');
-  const block = boardSrc.slice(caseStart, caseStart + 4000);
+  const block = boardSrc.slice(caseStart, caseStart + 6000);
   // 7 segment rectangles from segDefs
   assert.ok(block.includes('segDefs'), 'uses segDefs for segment geometry');
   assert.ok(block.includes('segDefs.map'), 'iterates over segment definitions');
   // Decimal point circle
   assert.ok(block.includes('circle'), 'renders decimal point as circle');
-  // Bit 7 = dp
+  // Bit 7 = dp (in the brightness fallback path)
   assert.ok(block.includes('seg >> 7'), 'reads bit 7 for decimal point');
 });
 
-test('sevenseg8 face uses lit/unlit segment colors', () => {
+test('sevenseg8 face uses graded segment colors via segColor helper', () => {
   const caseStart = boardSrc.indexOf('SEVENSEG8: 8-digit 2×4');
-  const block = boardSrc.slice(caseStart, caseStart + 4000);
-  assert.ok(block.includes('#ff3030'), 'lit segment color present');
+  const block = boardSrc.slice(caseStart, caseStart + 5000);
   assert.ok(block.includes('#1a0000'), 'unlit segment color present');
+  assert.ok(block.includes('segColor'), 'uses segColor helper for graded rendering');
+  assert.ok(block.includes('40 + 140 * v'), 'green channel scales with brightness');
+});
+
+test('sevenseg8 face supports per-segment brightness from ds.segBrightness', () => {
+  const caseStart = boardSrc.indexOf('SEVENSEG8: 8-digit 2×4');
+  const block = boardSrc.slice(caseStart, caseStart + 5000);
+  assert.ok(block.includes('ds?.segBrightness'), 'reads segBrightness from device state');
+  assert.ok(block.includes('segBr[di * 8 + si]'), 'indexes per-digit per-segment brightness');
+  assert.ok(block.includes('ledDisplayLevel('), 'uses ledDisplayLevel for perceptual mapping');
+});
+
+test('sevenseg8 face falls back to on/off from ds.digits when no brightness', () => {
+  const caseStart = boardSrc.indexOf('SEVENSEG8: 8-digit 2×4');
+  const block = boardSrc.slice(caseStart, caseStart + 5000);
+  // In the segment loop, segBr path is checked first, then fallback to bits
+  const loopStart = block.indexOf('segDefs.map');
+  const loopBlock = block.slice(loopStart, loopStart + 1000);
+  const brIdx = loopBlock.indexOf('if (segBr)');
+  const bitIdx = loopBlock.indexOf('(seg >> si) & 1');
+  assert.ok(brIdx >= 0, 'segBrightness path exists in segment loop');
+  assert.ok(bitIdx > brIdx, 'bit fallback comes after brightness check');
 });
 
 test('sevenseg8 is included in the SvgParts deviceStates gathering', () => {
