@@ -1,0 +1,27 @@
+/**
+ * File download utility for netlist exporters.
+ *
+ * Follows the same Blob → anchor → click pattern as export-png.js,
+ * but for text files (SPICE .cir, KiCad .net, etc.).
+ *
+ * @module
+ */
+
+/**
+ * Trigger a browser download of a text string as a file.
+ *
+ * @param {string} content — file content
+ * @param {string} filename — download filename (e.g. 'circuit.cir')
+ * @param {string} [mimeType='text/plain'] — MIME type
+ */
+export function downloadText(content, filename, mimeType = 'text/plain') {
+  const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
