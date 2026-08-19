@@ -2460,6 +2460,21 @@ export function BoardCanvas({
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
+  // Responsive toolbar: below a width threshold the secondary nav groups
+  // (Designer/Warnings/Parts/Examples + the Realistic/Schematic view toggles)
+  // collapse INTO the ⋯ menu rather than wrapping the toolbar onto a second row
+  // (the owner asked for hide-behind-⋯, not a 2nd row). The essential controls
+  // (Build/Sim, Power, status, Undo/Redo, ⋯) always stay on the one row.
+  const toolbarRef = React.useRef(null);
+  const [toolbarCramped, setToolbarCramped] = useState(false);
+  React.useEffect(() => {
+    const el = toolbarRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const update = () => setToolbarCramped((el.clientWidth || 999) < 560);
+    const ro = new ResizeObserver(update);
+    ro.observe(el); update();
+    return () => ro.disconnect();
+  }, []);
   const [draggingWaypoint, setDraggingWaypoint] = useState(null); // { wireId, index }
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
@@ -3377,7 +3392,7 @@ export function BoardCanvas({
     >
       {/* Status/action bar */}
       {/* Toolbar */}
-      <div data-circuit-toolbar style={{
+      <div ref={toolbarRef} data-circuit-toolbar style={{
         display: 'flex', alignItems: 'center', gap: '6px',
         fontFamily: 'monospace', fontSize: '10px',
         marginBottom: '8px', minHeight: '44px',
@@ -3404,8 +3419,8 @@ export function BoardCanvas({
             style={{width: 34, minWidth: 34, height: 34, padding: 0, background: !powered ? '#dc2626' : '#475569', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>◯</button>
         </div>
 
-        {panelNav ? <div data-circuit-control-group style={{flex: '0 0 auto', width: 150, height: 34, minHeight: 34, display: 'flex', alignItems: 'center'}}>{panelNav}</div> : null}
-        {viewNav ? <div data-circuit-control-group style={{flex: '0 0 auto', width: 70, height: 34, minHeight: 34, display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
+        {!toolbarCramped && panelNav ? <div data-circuit-control-group style={{flex: '0 0 auto', width: 150, height: 34, minHeight: 34, display: 'flex', alignItems: 'center'}}>{panelNav}</div> : null}
+        {!toolbarCramped && viewNav ? <div data-circuit-control-group style={{flex: '0 0 auto', width: 70, height: 34, minHeight: 34, display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
         {/* Mode indicator */}
         <span style={{
           padding: '2px 8px', borderRadius: '3px',
@@ -3507,7 +3522,11 @@ export function BoardCanvas({
         <div data-toolbar-more style={{position: 'relative', flex: '0 0 auto'}}>
           <button onClick={() => setToolbarMoreOpen(v => !v)} title="More circuit controls: Save, Load, Zoom" aria-label="More circuit controls" aria-expanded={toolbarMoreOpen}
             style={{width: 34, minWidth: 34, height: 34, padding: 0, background: toolbarMoreOpen ? '#1e3a5f' : '#2c3e50', border: '1px solid #64748b', borderRadius: 4, color: '#e2e8f0', fontSize: '17px', cursor: 'pointer'}}>⋯</button>
-          {toolbarMoreOpen && <div data-toolbar-more-menu style={{position: 'absolute', zIndex: 80, top: 40, right: 0, display: 'flex', gap: 4, alignItems: 'center', padding: 4, background: '#0f172a', border: '1px solid #64748b', borderRadius: 5, boxShadow: '0 3px 10px rgba(0,0,0,.35)'}}>
+          {toolbarMoreOpen && <div data-toolbar-more-menu style={{position: 'absolute', zIndex: 80, top: 40, right: 0, display: 'flex', flexWrap: 'wrap', maxWidth: '92vw', justifyContent: 'flex-end', gap: 4, alignItems: 'center', padding: 4, background: '#0f172a', border: '1px solid #64748b', borderRadius: 5, boxShadow: '0 3px 10px rgba(0,0,0,.35)'}}>
+            {/* When the toolbar is cramped, the secondary nav groups live here instead of on a 2nd row. */}
+            {toolbarCramped && panelNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center'}}>{panelNav}</div> : null}
+            {toolbarCramped && viewNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
+            {toolbarCramped && (panelNav || viewNav) ? <span style={{width: 1, height: 24, background: '#334155', margin: '0 2px'}} /> : null}
             {onSaveCircuit && <button onClick={onSaveCircuit} title="Save wiring as file" aria-label="Save wiring as file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: 3, color: '#2ecc71', fontSize: 14, cursor: 'pointer'}}>💾</button>}
             {onLoadCircuit && <button onClick={onLoadCircuit} title="Load wiring from file" aria-label="Load wiring from file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: 3, color: '#3498db', fontSize: 14, cursor: 'pointer'}}>📂</button>}
             {onClearCircuit && <button onClick={() => { onClearCircuit(); setToolbarMoreOpen(false); }} title={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} aria-label={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: 3, color: '#e74c3c', fontSize: 14, cursor: 'pointer'}}>🗑</button>}
