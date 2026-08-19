@@ -63,6 +63,20 @@ const DIGIT_5 = { a: true, b: false, c: true, d: true, e: false, f: true, g: tru
 
 // LED bank chase pattern: 0xAA = bits 10101010 → LEDs 1,3,5,7 ON.
 const LED_PATTERN = 0xAA;
+
+// Arcade-shield 9x9 grid: an X pattern (diagonals).
+// Row-major, 9 bits per row, MSB = col 0 (left).
+const ARCADE_X = [
+  0b100000001, // row 0
+  0b010000010, // row 1
+  0b001000100, // row 2
+  0b000101000, // row 3
+  0b000010000, // row 4
+  0b000101000, // row 5
+  0b001000100, // row 6
+  0b010000010, // row 7
+  0b100000001, // row 8
+];
 // ────────────────────────────────────────────────────────────────────────────
 
 // ---- build ALL test rigs in one batch ----------------------------------------
@@ -162,11 +176,29 @@ await page.evaluate(() => {
   c.addWire(as.id, 'vcc', vpark.id, 'vcc');
   c.addWire(as.id, 'gnd', gn.id, 'gnd');
 
+  // ── Rig 11: matrix9x9 arcade-shield grid ───────────────────────────────
+  const m9 = c.addPart('matrix9x9', {}, 900, 400);
+  const m9colSrcs = [];
+  for (let i = 0; i < 9; i++) {
+    const vs = c.addPart('vsource', { volts: 0 }, 820 + i * 30, 150);
+    c.addWire(vs.id, 'pos', m9.id, 'col' + i);
+    c.addWire(vs.id, 'neg', gn.id, 'gnd');
+    m9colSrcs.push(vs.id);
+  }
+  const m9rowSrcs = [];
+  for (let i = 0; i < 9; i++) {
+    const vs = c.addPart('vsource', { volts: 0 }, 820 + i * 30, 650);
+    c.addWire(vs.id, 'pos', m9.id, 'row' + i);
+    c.addWire(vs.id, 'neg', gn.id, 'gnd');
+    m9rowSrcs.push(vs.id);
+  }
+
   window.__matrixRig = { matrix: matrix.id, colSrcs, rowSrcs };
   window.__segRig = { seg: seg.id, segSrcs };
   window.__ledRig = { ledIds, ledSrcs };
   window.__sensorRig = { bmp: bmp.id, tcs: tcs.id, ina: ina.id,
     vl: vl.id, sgp: sgp.id, veml: veml.id, as: as.id };
+  window.__arcadeRig = { matrix: m9.id, colSrcs: m9colSrcs, rowSrcs: m9rowSrcs };
 });
 await page.waitForTimeout(300);
 
@@ -535,6 +567,71 @@ await page.waitForTimeout(400);
   (count >= 64)
     ? pass(`SVG face: ${count} matrix circles rendered (face mounted, brightness verified above)`)
     : fail(`SVG face: only ${count} matrix circles (need ≥64)`);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ARCADE SHIELD: 9×9 grid — column-scan an X pattern, assert brightness.
+// Same scan approach as the 8×8 heart: one column at a time, 1 ms/col,
+// 4 frames (36 ms > 20 ms window).
+// ════════════════════════════════════════════════════════════════════════════
+{
+  const result = await page.evaluate((pattern) => {
+    const board = window.__circuit.board;
+    const rig = window.__arcadeRig;
+    const FRAMES = 6; // 54 ms > 20 ms window; 9-col scan needs more headroom than 8-col
+    const COL_NS = 1_000_000n;
+    const t0 = board.timeNs;
+
+    for (let frame = 0; frame < FRAMES; frame++) {
+      for (let col = 0; col < 9; col++) {
+        for (let c = 0; c < 9; c++)
+          board.setControl(rig.colSrcs[c], c === col ? 5 : 0);
+        for (let row = 0; row < 9; row++) {
+          const bit = (pattern[row] >> (8 - col)) & 1;
+          board.setControl(rig.rowSrcs[row], bit ? 5 : 0);
+        }
+        board.advanceTo(t0 + BigInt(frame * 9 + col + 1) * COL_NS);
+      }
+    }
+
+    const ds = board.getDeviceState(rig.matrix);
+    if (!ds) return { error: 'no device state' };
+    return { brightness: [...ds.brightness], rows: ds.rows, cols: ds.cols };
+  }, ARCADE_X);
+
+  if (result.error) {
+    fail(`arcade 9×9: ${result.error}`);
+  } else {
+    const br = result.brightness;
+    let onOk = 0, offOk = 0, onFail = 0, offFail = 0;
+    for (let row = 0; row < 9; row++) {
+      for (let col = 0; col < 9; col++) {
+        const idx = row * 9 + col;
+        const want = ((ARCADE_X[row] >> (8 - col)) & 1) === 1;
+        if (want) { br[idx] > 0.05 ? onOk++ : onFail++; }
+        else      { br[idx] < 0.01 ? offOk++ : offFail++; }
+      }
+    }
+    const totalOn = ARCADE_X.reduce((s, r) => {
+      let c = 0; for (let i = 0; i < 9; i++) c += (r >> i) & 1; return s + c;
+    }, 0);
+    (onOk === totalOn && offFail === 0)
+      ? pass(`arcade 9×9 X: ${onOk}/${totalOn} ON lit, ${offOk}/${81 - totalOn} OFF dark`)
+      : fail(`arcade 9×9 X: ${onOk}/${totalOn} ON, ${offOk}/${81 - totalOn} OFF; ${onFail} on-miss, ${offFail} off-miss`);
+  }
+}
+
+// Assert the 9×9 face renders 81 matrix circles
+{
+  const count = await page.evaluate(() =>
+    [...document.querySelectorAll('svg circle')].filter(el => {
+      const f = el.getAttribute('fill') || '';
+      return f === '#1a0000' || /^rgba\(255,/.test(f);
+    }).length);
+  // 64 from 8×8 + 81 from 9×9 = 145
+  (count >= 145)
+    ? pass(`arcade face: ${count} total matrix circles (8×8 + 9×9 both mounted)`)
+    : fail(`arcade face: ${count} matrix circles (need ≥145 for 8×8 + 9×9)`);
 }
 
 if (errors.length) fail(`page errors: ${errors.slice(0, 3).join(' | ')}`);
