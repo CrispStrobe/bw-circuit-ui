@@ -1108,6 +1108,9 @@ export function terminalsForKind(kind, params) {
     case 'ir_receiver': return ['vcc', 'gnd', 'out'];
     case 'temp_sensor': return ['vcc', 'gnd', 'dq'];
     case 'eeprom': return ['sda', 'scl', 'vcc', 'gnd'];
+    case 'bmp280': return ['vcc', 'gnd', 'sda', 'scl'];
+    case 'tcs34725': return ['vcc', 'gnd', 'sda', 'scl', 'int', 'led'];
+    case 'ina219': return ['vcc', 'gnd', 'sda', 'scl', 'vin_p', 'vin_n'];
     // PS/2 keyboard: protocol delivery is machine-side; the terminals
     // mirror bw-board's ps2 device contract. The generic a/b fallback
     // made the ENGINE reject the whole 6502-full-build netlist — the

@@ -127,9 +127,25 @@ await page.evaluate(() => {
     ledSrcs.push(vs.id);
   }
 
+  // ── Rig 4: BMP280 pressure/temperature sensor ──────────────────────────
+  const bmp = c.addPart('bmp280', { temperature: 25, pressure: 101325 }, 200, 200);
+  c.addWire(bmp.id, 'vcc', vpark.id, 'vcc');
+  c.addWire(bmp.id, 'gnd', gn.id, 'gnd');
+
+  // ── Rig 5: TCS34725 RGB color sensor ──────────────────────────────────
+  const tcs = c.addPart('tcs34725', { red: 0, green: 0, blue: 0 }, 300, 200);
+  c.addWire(tcs.id, 'vcc', vpark.id, 'vcc');
+  c.addWire(tcs.id, 'gnd', gn.id, 'gnd');
+
+  // ── Rig 6: INA219 current/voltage monitor ─────────────────────────────
+  const ina = c.addPart('ina219', { busVoltage: 5, current_mA: 0, shuntOhms: 0.1 }, 400, 200);
+  c.addWire(ina.id, 'vcc', vpark.id, 'vcc');
+  c.addWire(ina.id, 'gnd', gn.id, 'gnd');
+
   window.__matrixRig = { matrix: matrix.id, colSrcs, rowSrcs };
   window.__segRig = { seg: seg.id, segSrcs };
   window.__ledRig = { ledIds, ledSrcs };
+  window.__sensorRig = { bmp: bmp.id, tcs: tcs.id, ina: ina.id };
 });
 await page.waitForTimeout(300);
 
@@ -163,6 +179,16 @@ await page.evaluate(({ segs, pattern }) => {
   for (let i = 0; i < 8; i++) {
     board.setControl(ledRig.ledSrcs[i], ((pattern >> i) & 1) ? 5 : 0);
   }
+
+  // Sensors: inject world stimulus via setPartParam
+  const sr = window.__sensorRig;
+  board.setPartParam(sr.bmp, 'temperature', 37.5);
+  board.setPartParam(sr.bmp, 'pressure', 98700);
+  board.setPartParam(sr.tcs, 'red', 40000);
+  board.setPartParam(sr.tcs, 'green', 12000);
+  board.setPartParam(sr.tcs, 'blue', 5000);
+  board.setPartParam(sr.ina, 'busVoltage', 12.0);
+  board.setPartParam(sr.ina, 'current_mA', 250);
 }, { segs: DIGIT_5, pattern: LED_PATTERN });
 
 // ---- enter simulate mode — the timer will advance the board, integrating
@@ -231,6 +257,64 @@ await page.waitForTimeout(1500); // let the brightness filter charge
   (ledDom.count >= 8)
     ? pass(`LEDBANK8 face: ${ledDom.count} wokwi-led elements rendered (≥8)`)
     : fail(`LEDBANK8 face: only ${ledDom.count} wokwi-led elements (need ≥8)`);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SENSOR FACES: BMP280, TCS34725, INA219 — world stimulus via setPartParam,
+// assert getDeviceState reads the injected values back.
+// ════════════════════════════════════════════════════════════════════════════
+
+// ---- BMP280: temperature + pressure ----------------------------------------
+{
+  const ds = await page.evaluate(() => {
+    const board = window.__circuit.board;
+    return board.getDeviceState(window.__sensorRig.bmp);
+  });
+  if (!ds) {
+    fail('BMP280: no device state (device not registered?)');
+  } else {
+    const tOk = Math.abs(ds.temperature - 37.5) < 0.5;
+    const pOk = Math.abs(ds.pressure - 98700) < 100;
+    (tOk && pOk)
+      ? pass(`BMP280: temperature=${ds.temperature}°C (want 37.5), pressure=${ds.pressure} Pa (want 98700)`)
+      : fail(`BMP280: temperature=${ds.temperature} (want 37.5), pressure=${ds.pressure} (want 98700)`);
+  }
+}
+
+// ---- TCS34725: RGB color channels ------------------------------------------
+{
+  const ds = await page.evaluate(() => {
+    const board = window.__circuit.board;
+    return board.getDeviceState(window.__sensorRig.tcs);
+  });
+  if (!ds) {
+    fail('TCS34725: no device state (device not registered?)');
+  } else {
+    const rOk = ds.red === 40000;
+    const gOk = ds.green === 12000;
+    const bOk = ds.blue === 5000;
+    (rOk && gOk && bOk)
+      ? pass(`TCS34725: R=${ds.red} G=${ds.green} B=${ds.blue} (want 40000/12000/5000)`)
+      : fail(`TCS34725: R=${ds.red} G=${ds.green} B=${ds.blue} (want 40000/12000/5000)`);
+  }
+}
+
+// ---- INA219: bus voltage + current -----------------------------------------
+{
+  const ds = await page.evaluate(() => {
+    const board = window.__circuit.board;
+    return board.getDeviceState(window.__sensorRig.ina);
+  });
+  if (!ds) {
+    fail('INA219: no device state (device not registered?)');
+  } else {
+    const vOk = Math.abs(ds.busVoltage - 12.0) < 0.5;
+    const iOk = Math.abs(ds.current_mA - 250) < 10;
+    const pOk = ds.power_mW > 2500; // 12V × 250mA = 3000 mW
+    (vOk && iOk && pOk)
+      ? pass(`INA219: busV=${ds.busVoltage}V current=${ds.current_mA}mA power=${ds.power_mW}mW`)
+      : fail(`INA219: busV=${ds.busVoltage} (want 12), current=${ds.current_mA} (want 250), power=${ds.power_mW} (want ~3000)`);
+  }
 }
 
 // ── MATRIX8X8: column-scanned heart image (needs paused sim) ──────────────
