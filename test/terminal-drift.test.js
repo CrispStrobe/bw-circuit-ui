@@ -36,6 +36,7 @@ const DRIFTED = [
   { kind: 'matrix8x8',    minTerminals: 16, sample: ['col0', 'row0', 'col7', 'row7'] },
   { kind: 'slide_switch', minTerminals: 3,  sample: ['a', 'com', 'b'] },
   { kind: 'ili9341',      minTerminals: 9,  sample: ['vcc', 'gnd', 'cs', 'mosi', 'sck'] },
+  { kind: 'lm358',        minTerminals: 8,  sample: ['vcc', 'gnd', '1_pos', '1_neg', '1_out', '2_out'] },
 ];
 
 describe('terminal-drift regression: 5 drifted kinds resolve via sidecar', () => {
@@ -87,5 +88,45 @@ describe('_syncNetlist catch records the error', () => {
     const method = circuitSrc.slice(defIdx, defIdx + 6000);
     assert.ok(method.includes('this.netlistError'), 'catch records the error');
     assert.ok(method.includes('console.warn'), 'catch warns to console');
+  });
+});
+
+// ── Broad sidecar coverage: every gallery circuit part must resolve ───
+
+describe('gallery coverage: no part kind falls to default [a,b]', () => {
+  // Passives and power symbols genuinely have ≤ 2 terminals
+  const TWO_TERMINAL_OK = new Set([
+    'resistor', 'capacitor', 'inductor', 'led', 'diode', 'zener',
+    'button', 'switch', 'buzzer', 'ldr', 'ntc', 'vcc', 'gnd',
+    'vsource', 'battery', 'isource', 'breadboard', 'meter',
+    'led_matrix', // legacy 2-pin shorthand
+  ]);
+
+  const galleryDir = join(here, '../gallery');
+  let galleryKinds;
+  try {
+    const files = readdirSync(galleryDir).filter(f => f.endsWith('.json'));
+    galleryKinds = new Set();
+    for (const f of files) {
+      const data = JSON.parse(readFileSync(join(galleryDir, f), 'utf8'));
+      for (const p of data.parts || []) {
+        if (p.kind) galleryKinds.add(p.kind);
+      }
+    }
+  } catch { galleryKinds = null; }
+
+  const skip = !galleryKinds && 'gallery dir not available';
+
+  test('every gallery part kind has a sidecar with >2 terminals (or is a known passive)', { skip }, () => {
+    const missing = [];
+    for (const kind of galleryKinds) {
+      if (TWO_TERMINAL_OK.has(kind)) continue;
+      const terms = sidecarTerminals(kind);
+      if (!terms || terms.length <= 2) {
+        missing.push(kind);
+      }
+    }
+    assert.equal(missing.length, 0,
+      `gallery kinds falling to default [a,b]: ${missing.join(', ')}`);
   });
 });
