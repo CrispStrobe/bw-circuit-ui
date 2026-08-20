@@ -102,6 +102,31 @@ export function sidecarTerminalPositions(kind) {
 }
 
 /**
+ * Alias → physical-twin pairs declared by a kind's sidecar.
+ *
+ * bw-board registers some devices under two namespaces over one set of
+ * legs (74hc595's ser/data, stc15_mcu's P3.0/p3.0). The sidecar marks the
+ * second spelling on the pin it belongs to; this is the flat view of that,
+ * for callers that hold a name→position map and need the extra keys.
+ *
+ * They deliberately do NOT go into `footprint.leads`: BreadboardModel's
+ * occupy() rejects "hole used twice by this part", so a leads map with
+ * aliases in it makes the chip refuse to seat at all.
+ *
+ * @param {string} kind
+ * @returns {Array<[string, string]>} [alias, twin] pairs
+ */
+export function terminalAliasPairs(kind) {
+  const sc = _cache.get(kind);
+  if (!sc?.terminals) return [];
+  const pairs = [];
+  for (const t of sc.terminals) {
+    for (const a of (t.aliases || [])) pairs.push([a, t.name]);
+  }
+  return pairs;
+}
+
+/**
  * List all registered kinds.
  * @returns {string[]}
  */
