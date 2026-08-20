@@ -8,11 +8,13 @@
  *   'kicad-sch'      - KiCad 6+ schematic (.kicad_sch, s-expression)
  *   'kicad-legacy'   - KiCad 4/5 schematic (.sch, EESchema plain text)
  *   'kicad-netlist'  - KiCad .net s-expression or .xml netlist (auto-detected)
+ *   'easyeda'        - EasyEDA Standard schematic (.json, tilde-delimited DSL)
  *   'wokwi'          - Wokwi diagram.json
  *
- * The two schematic importers differ from the netlist one in kind, not in
- * degree: a netlist states its connections, a schematic states GEOMETRY and
- * the reader must work the connections out. See kicad-common.js.
+ * The SCHEMATIC importers differ from the netlist one in kind, not in degree:
+ * a netlist states its connections, a schematic states GEOMETRY and the
+ * reader must work the connections out. See kicad-common.js, whose NetSolver
+ * the KiCad and EasyEDA front ends share.
  *
  * The return value is a circuit descriptor compatible with the
  * bw-circuit-ui circuit model: parts[] with {id, kind, params, x, y},
@@ -28,6 +30,7 @@ import { importEagle } from './eagle.js';
 import { importKicadSch } from './kicad-sch.js';
 import { importKicadLegacy } from './kicad-legacy.js';
 import { importKicadNetlist } from './kicad-netlist.js';
+import { importEasyEda } from './easyeda.js';
 import { importWokwi, exportWokwi } from './wokwi.js';
 
 const IMPORTERS = {
@@ -35,6 +38,7 @@ const IMPORTERS = {
   'kicad-sch':     importKicadSch,
   'kicad-legacy':  importKicadLegacy,
   'kicad-netlist': importKicadNetlist,
+  'easyeda':       importEasyEda,
   'wokwi':         importWokwi,
 };
 
