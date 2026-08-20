@@ -39,7 +39,8 @@ describe('addPart', () => {
     assert.deepEqual(c.addPart('vcc', {}, 0, 0).terminals, ['vcc']);
     assert.deepEqual(c.addPart('gnd', {}, 0, 0).terminals, ['gnd']);
     assert.deepEqual(c.addPart('led', { vf: 2 }, 0, 0).terminals, ['anode', 'cathode']);
-    assert.deepEqual(c.addPart('potentiometer', { ohms: 10000 }, 0, 0).terminals, ['a', 'b', 'wiper']);
+    // a, wiper, b — the pot's physical pin order, per the measured sidecar.
+    assert.deepEqual(c.addPart('potentiometer', { ohms: 10000 }, 0, 0).terminals, ['a', 'wiper', 'b']);
     assert.deepEqual(c.addPart('button', {}, 0, 0).terminals, ['a', 'b']);
     assert.deepEqual(c.addPart('buzzer', {}, 0, 0).terminals, ['a', 'b']);
     assert.deepEqual(c.addPart('capacitor', { farads: 0.0001 }, 0, 0).terminals, ['a', 'b']);

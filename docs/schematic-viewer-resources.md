@@ -18,6 +18,16 @@ Measured, not guessed:
   a generic box. That gap IS the "incomplete" feeling — it is a symbol
   problem at least as much as a layout problem.
 
+**Superseded, 2026-08-20.** The two renderers are now one: `SchematicPanel.jsx`
+and the headless `schematic-svg.js` both draw `shapeFor()` from
+`schematic-symbols.js`, and the symbol count is up from 22. Rendering the whole
+gallery headless (1034 circuits, 8387 parts) and ranking the fallbacks showed
+the gap is much narrower than "62 minus 22" suggests: most undrawn kinds are
+ICs, MCUs, memories and display modules, for which a pin-labelled rectangle IS
+the conventional symbol. Generic boxes went 1199 → 1111 in our gallery and
+1310 → 348 across the imported corpus by adding only the discretes. Measure
+with `bwc batch <dir> --render <dir>` before adding artwork.
+
 Anyone improving this should measure first: with a corpus (below) you can
 import hundreds of real schematics and count overlapping symbols, off-canvas
 placement, crossing trunks and unsymboled parts. That turns "buggy" into a
@@ -92,3 +102,77 @@ shape (`sexpr.js` already exists here).
 Altium `.SchDoc`/`.PcbDoc` remains declined: OLE2 compound binary, no public
 spec, only partial reverse-engineered readers. Route it through an exported
 netlist instead.
+
+
+## Reviewed 2026-08-20: ten KiCad-adjacent repositories
+
+Cloned to `~/code/kicad-refs/` — **LOCAL ONLY, never committed, never
+published**, same rule as `~/code/eagle-corpus`. Licences below were read from
+each repo's own LICENSE file, not taken from its README badge.
+
+| repo | licence (verified) | what it is | what it is good for |
+|---|---|---|---|
+| `Steffen-W/KiCadFiles` | **MIT** | >200 Python dataclasses covering the whole KiCad S-expression vocabulary; 13 `.kicad_sch`, 2 `.kicad_sym` | **The one worth porting.** MIT permits it. Its `schematic_system.py` names exactly the tokens a geometric-connectivity importer must handle: `Junction`, `Label`, `GlobalLabel`, `HierarchicalLabel`, `Bus`, `BusEntry`, `NoConnect` |
+| `hunes3d/kicad-skip` | **LGPL-2.1** (fork of psychogenic/kicad-skip) | Pythonic read/modify of `.kicad_sch` | Format knowledge only. **Copy no code.** A fact about what a token means is not copyrightable; an implementation is |
+| `hunes3d/kAIcad` | **AGPL-3.0** | AI sidecar for KiCad, 8.7k lines | Ideas only, and treat even those carefully. **Copy nothing.** AGPL would reach our whole served application |
+| `toandeptrai16zz/kicad-ai-assistant` | MIT | KiCad plugin, multi-provider LLM chat over a board | Shows how a plugin reads `.kicad_sch` from board context. Not on our path |
+| `upb-lea/KiClearance` | **no LICENSE file** | clearance checking, 2 `.kicad_sch` | All rights reserved by default. Ideas only, local test files only |
+| `PatriceVigier/…-Reorder-Schematic-Fields-Script` / `-Plugin` / `-Default-Fields-Plugin` | MIT | reorder `(property …)` blocks inside `(symbol …)`, KiCad 6–9 | Small and directly relevant to **roundtrip fidelity**: they show which properties exist on a symbol and that their ORDER is meaningful. Our exporter should preserve unknown properties rather than drop them |
+| `eoommaa/Water-Sump-Pump` | MIT | real RP2040 project, 3 `.kicad_sch`, 3 `.kicad_sym` | Import test material. Filenames contain spaces — a good accidental test of path handling |
+| `Ikarthikmb/Circuit-Designs` | **no LICENSE file** | 7 projects | Turned out to be **KiCad v4/v5 LEGACY `.sch`** (`EESchema Schematic File Version 4`), not S-expression and not EAGLE. Local test only |
+
+### The finding that changes the plan
+
+`Circuit-Designs` exposed a **third** schematic format. Counting what is on
+disk now:
+
+- 266 EAGLE `.sch` (XML) — supported, 94.1% part coverage
+- 81 KiCad v6+ `.kicad_sch` (S-expression) — **not supported**
+- 7 KiCad v4/v5 `.sch` (legacy EESchema text) — **not supported**
+
+KiCad legacy and EAGLE share the `.sch` extension, which is precisely why
+`detect.js` sniffs CONTENT rather than trusting the extension. That decision
+now pays for itself.
+
+### Why KiCad import is harder than EAGLE, in one sentence
+
+EAGLE states connectivity (`<pinref>` inside `<net>`); KiCad v6 does **not** —
+a pin is connected because its resolved position coincides with a wire
+endpoint or junction, so the importer has to place every symbol's pins through
+its `lib_symbols` definition, apply the instance rotation and mirror, union
+wire segments by shared endpoints, and then merge nets that share a `label` /
+`global_label` name. Power symbols in particular connect by NAME, not by wire.
+An importer that gets this subtly wrong produces a plausible schematic with
+silently missing connections, which is why the roundtrip property is net
+partitions, never wire counts.
+
+## Symbol ARTWORK: the licence trap, and the way around it
+
+`.kicad_sym` files carry complete symbol geometry — polylines, rectangles,
+arcs, circles and pins with positions — in exactly the shape our
+`schematic-symbols.js` already models (`{paths, circles, texts}`). It is
+tempting to harvest KiCad's official library and be done with 200 symbols.
+
+**Do not.** The KiCad symbol libraries are **CC-BY-SA 4.0 with an exception**,
+and the exception is narrower than it first reads (verified 2026-08-20 against
+`KiCad/kicad-symbols/LICENSE.md`):
+
+> "To the extent that the creation of electronic designs that use 'Licensed
+> Material' can be considered to be 'Adapted Material', then the copyright
+> holder waives article 3 of the license with respect to these designs and any
+> generated files which use data provided as part of the 'Licensed Material'."
+
+That waiver covers **designs made with** the library. It does not cover
+**redistributing the library**, which is what bundling its geometry into our
+source would be — and share-alike would then reach our own files. This is the
+same rule already applied to `eagle-corpus`.
+
+The way around it is a feature rather than a workaround: **render `.kicad_sym`
+the user supplies**, at runtime, instead of shipping any. The user's own
+library stays the user's; we ship a renderer, not artwork. `shapeFor()` already
+returns a plain `{paths, circles, texts}` shape and both renderers consume it,
+so a `kicad_sym → Shape` adapter drops straight in beside the hand-drawn table.
+That also scales past anything we would ever draw by hand.
+
+Hand-drawn symbols stay the default for the parts our own gallery uses, so the
+app is complete offline with nothing imported.

@@ -275,12 +275,16 @@ describe('Acceptance: Wokwi multi-part circuit', () => {
 describe('importCircuit registry', () => {
   it('lists supported formats', () => {
     const formats = getSupportedFormats();
-    assert.ok(formats.includes('kicad-netlist'));
-    assert.ok(formats.includes('wokwi'));
+    for (const f of ['eagle', 'kicad-sch', 'kicad-legacy', 'kicad-netlist', 'wokwi']) {
+      assert.ok(formats.includes(f), `${f} is missing from the registry`);
+    }
   });
 
   it('returns error for unknown format', () => {
-    const result = importCircuit('eagle', '');
+    // This asked for 'eagle' until the EAGLE importer was written, at which
+    // point it started asserting that a REGISTERED format is unknown. The
+    // file is not in `npm test`, so nothing noticed for as long as that took.
+    const result = importCircuit('altium', '');
     assert.ok(result.warnings[0].includes('Unknown'));
   });
 

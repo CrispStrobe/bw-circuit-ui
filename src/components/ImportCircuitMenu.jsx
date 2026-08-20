@@ -27,6 +27,15 @@ import { detectFormat } from '../importers/detect.js';
 const FORMATS = [
   { id: 'eagle', label: 'EAGLE schematic (.sch)', labelDe: 'EAGLE-Schaltplan (.sch)',
     accept: '.sch,.xml' },
+  { id: 'kicad-sch', label: 'KiCad 6+ schematic (.kicad_sch)',
+    labelDe: 'KiCad-6+-Schaltplan (.kicad_sch)', accept: '.kicad_sch' },
+  // A KiCad 4/5 .sch holds no pin geometry -- it lives in the project's
+  // -cache.lib -- so the picker takes both files at once and the hint says so.
+  // Without the library the import is every part and not one connection.
+  { id: 'kicad-legacy', label: 'KiCad 4/5 schematic (.sch + -cache.lib)',
+    labelDe: 'KiCad-4/5-Schaltplan (.sch + -cache.lib)', accept: '.sch,.lib',
+    hint: 'pick the .sch AND its -cache.lib together',
+    hintDe: 'die .sch UND die -cache.lib zusammen wählen' },
   { id: 'kicad-netlist', label: 'KiCad netlist (.net/.xml)', labelDe: 'KiCad-Netzliste (.net/.xml)',
     accept: '.net,.xml' },
   { id: 'wokwi', label: 'Wokwi (diagram.json)', labelDe: 'Wokwi (diagram.json)',
@@ -52,11 +61,24 @@ export function ImportCircuitMenu({ onImport, lang = 'en' }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const handleFile = useCallback(async (file, forcedFormat) => {
-    if (!file) return;
-    let text;
+  const handleFile = useCallback(async (files, forcedFormat) => {
+    const picked = [...(files || [])];
+    if (!picked.length) return;
+    // A .lib is never the thing being imported; it is the symbol library a
+    // KiCad 4/5 schematic needs and does not contain.
+    const libFiles = picked.filter((f) => /\.lib$/i.test(f.name));
+    const file = picked.find((f) => !/\.lib$/i.test(f.name));
+    if (!file) {
+      setResult({ name: picked[0].name,
+        error: de
+          ? 'Nur eine Bibliothek gewählt — bitte auch den Schaltplan wählen.'
+          : 'That is only a symbol library — pick the schematic too.' });
+      return;
+    }
+    let text; let libs;
     try {
       text = await file.text();
+      libs = await Promise.all(libFiles.map((f) => f.text()));
     } catch (e) {
       setResult({ name: file.name, error: String(e && e.message || e) });
       return;
@@ -71,7 +93,7 @@ export function ImportCircuitMenu({ onImport, lang = 'en' }) {
       });
       return;
     }
-    const r = importCircuit(format, text);
+    const r = importCircuit(format, text, libs.length ? { lib: libs } : {});
     setResult({ name: file.name, format, ...r });
     // Load even when some components were unmapped: a partial import is
     // useful as long as the gap is stated. Nothing is loaded if NOTHING
@@ -108,12 +130,13 @@ export function ImportCircuitMenu({ onImport, lang = 'en' }) {
         type="file"
         style={{ display: 'none' }}
         data-testid="import-circuit-file"
+        multiple
         onChange={(e) => {
-          const f = e.target.files && e.target.files[0];
+          const fs = e.target.files;
           const forced = e.target.dataset.format || '';
           e.target.value = '';            // so the same file can be re-picked
           setOpen(false);
-          handleFile(f, forced || undefined);
+          handleFile(fs, forced || undefined);
         }}
       />
 
@@ -130,7 +153,14 @@ export function ImportCircuitMenu({ onImport, lang = 'en' }) {
             <button key={f.id} type="button" onClick={() => pick(f.id)}
               style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px',
                 border: 0, background: 'transparent', cursor: 'pointer' }}
-            >{de ? f.labelDe : f.label}</button>
+            >
+              {de ? f.labelDe : f.label}
+              {f.hint && (
+                <span style={{ display: 'block', fontSize: 11, color: '#64748b' }}>
+                  {de ? f.hintDe : f.hint}
+                </span>
+              )}
+            </button>
           ))}
         </div>
       )}
@@ -169,6 +199,15 @@ export function ImportCircuitMenu({ onImport, lang = 'en' }) {
                       ))}
                     </ul>
                   </>
+                )}
+                {result.needsLibrary && (
+                  <div style={{ color: '#b45309', marginTop: 6 }}>
+                    {de
+                      ? 'Ohne die -cache.lib des Projekts konnten keine Verbindungen aufgelöst '
+                        + 'werden — bitte .sch und .lib zusammen wählen.'
+                      : 'Without the project\'s -cache.lib no connections could be resolved — '
+                        + 'pick the .sch and the .lib together.'}
+                  </div>
                 )}
                 {result.parts.length === 0 && (
                   <div style={{ color: '#b91c1c', marginTop: 6 }}>

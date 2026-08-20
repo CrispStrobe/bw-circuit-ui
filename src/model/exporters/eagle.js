@@ -40,6 +40,26 @@ const KIND_TO_EAGLE = {
   battery_coin: { deviceset: '2032',  pins: { pos: '+', neg: '-' } },
   at24c02:      { deviceset: 'EEPROM-I2C', byName: true },
   attiny88:     { deviceset: 'TINY48/88',  byName: true },
+  // Added when the importer gained rules for these; without an inverse entry
+  // the exporter SKIPS the part silently, and a skipped part takes its nets
+  // with it -- 84 of 287 corpus files stopped round-tripping and the only
+  // symptom was a net count that had quietly shrunk. importer-exporter
+  // symmetry is now a test, not a hope.
+  polarized_cap: { deviceset: 'CPOL-EU', pins: { a: '1', b: '2' }, value: (p) => p.farads },
+  nmos:         { deviceset: 'MOSFET-N', pins: { gate: 'G', drain: 'D', source: 'S' } },
+  pmos:         { deviceset: 'MOSFET-P', pins: { gate: 'G', drain: 'D', source: 'S' } },
+  npn:          { deviceset: 'NPN', pins: { base: 'B', collector: 'C', emitter: 'E' } },
+  pnp:          { deviceset: 'PNP', pins: { base: 'B', collector: 'C', emitter: 'E' } },
+  button:       { deviceset: 'SWITCH_TACT', pins: { a: '1', b: '2' } },
+  // The changeover's common pin sits BETWEEN the throws, matching the SPDT
+  // symbol; getting this order wrong swaps which throw is normally closed.
+  slide_switch: { deviceset: 'SWITCH_DPDT', pins: { a: '1', com: '2', b: '3' } },
+  crystal:      { deviceset: 'XTAL', pins: { a: '1', b: '2' } },
+  vreg:         { deviceset: 'VREG', byName: true },
+  lm7805:       { deviceset: 'LM7805', byName: true },
+  ld1117v33:    { deviceset: 'LD1117', byName: true },
+  neopixel:     { deviceset: 'WS2812B', byName: true },
+  usb_a:        { deviceset: 'USB', byName: true },
   matrix8x8:    { deviceset: 'SEGMENT_8X8_ROWCATHODE',
     pins: Object.fromEntries([
       ...Array.from({ length: 8 }, (_, i) => ['col' + i, 'A' + (i + 1)]),
@@ -47,7 +67,7 @@ const KIND_TO_EAGLE = {
     ]) },
 };
 
-const eagleFor = (kind) => {
+export const eagleFor = (kind) => {
   if (KIND_TO_EAGLE[kind]) return KIND_TO_EAGLE[kind];
   const m = /^74hc(\d{2,3})$/i.exec(kind);
   if (m) return { deviceset: '74HC' + m[1], byName: true };
