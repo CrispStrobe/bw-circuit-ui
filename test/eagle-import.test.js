@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { importEagle, parseEagleValue, normalizeEaglePin } from '../src/importers/eagle.js';
 import { importCircuit } from '../src/importers/index.js';
+import { detectFormat } from '../src/importers/detect.js';
 
 const FIXTURE = `<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
@@ -142,3 +143,15 @@ describe('EAGLE import against a real schematic',
                 'the row/col orientation is an assumption and must say so');
         });
     });
+
+describe('import format detection', () => {
+    test('recognises EAGLE, KiCad and Wokwi from content, not the extension', () => {
+        assert.equal(detectFormat(FIXTURE, 'anything.txt'), 'eagle');
+        assert.equal(detectFormat('(export (version D) (components ...', 'x'), 'kicad-netlist');
+        assert.equal(detectFormat('{"parts": [], "connections": []}', 'diagram.json'), 'wokwi');
+    });
+    test('falls back to the extension, then admits defeat', () => {
+        assert.equal(detectFormat('nothing recognisable', 'board.sch'), 'eagle');
+        assert.equal(detectFormat('nothing recognisable', 'notes.txt'), null);
+    });
+});
