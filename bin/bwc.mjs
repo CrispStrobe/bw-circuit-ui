@@ -9,7 +9,7 @@
  * it behaves across three hundred real boards.
  *
  *   bwc info      <file>                    what is in it, and what did not map
- *   bwc convert   <file> --to eagle|kicad|spice|json [-o out]
+ *   bwc convert   <file> --to eagle|kicad-sch|kicad|spice|json [-o out]
  *   bwc render    <file> [-o out.svg] [--dark]
  *   bwc roundtrip <file>                    import -> export -> import, compared
  *   bwc batch     <dir>  [--render <outdir>] [--roundtrip]
@@ -37,6 +37,7 @@ const SRC = join(HERE, '..', 'src');
 const { importCircuit } = await import(join(SRC, 'importers/index.js'));
 const { detectFormat } = await import(join(SRC, 'importers/detect.js'));
 const { toEagleSch } = await import(join(SRC, 'model/exporters/eagle.js'));
+const { toKicadSch } = await import(join(SRC, 'model/exporters/kicad-sch.js'));
 const { renderSchematicSvg, netsFromWires } = await import(join(SRC, 'model/schematic-svg.js'));
 
 /** The engine is optional: only netlist exports need it. */
@@ -96,7 +97,7 @@ const die = (m) => { console.error('bwc: ' + m); process.exit(2); };
 const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
-    + '  bwc convert <file> --to eagle|kicad|spice|json [-o out]\n'
+    + '  bwc convert <file> --to eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
     + '\n  audit <dir> [dir...]        four-layer readiness per part kind'
     + '\nInput: EAGLE .sch, KiCad .kicad_sch, KiCad legacy .sch, KiCad netlist,\n       Wokwi diagram.json, or our circuit .json.');
@@ -165,13 +166,20 @@ switch (cmd) {
   }
 
   case 'convert': {
-    const to = opts.to || die('convert needs --to eagle|kicad|spice|json');
+    const to = opts.to || die('convert needs --to eagle|kicad-sch|kicad|spice|json');
     const c = await loadOrDie(file);
     let text; let ext;
     if (to === 'eagle') {
       const r = toEagleSch({ parts: c.parts, wires: c.wires });
       for (const w of r.warnings) console.error('  warning: ' + w);
       text = r.xml; ext = '.sch';
+    } else if (to === 'kicad-sch') {
+      // A .kicad_sch, unlike our EAGLE output, is a file KiCad will open: it
+      // carries its own lib_symbols. Connectivity is written as labels, not
+      // wires -- see the exporter's header for why.
+      const r = toKicadSch({ parts: c.parts, wires: c.wires });
+      for (const w of r.warnings) console.error('  warning: ' + w);
+      text = r.text; ext = '.kicad_sch';
     } else if (to === 'json') {
       text = JSON.stringify({ vcc: 5, parts: c.parts, wires: c.wires }, null, 1) + '\n'; ext = '.json';
     } else if (to === 'kicad' || to === 'spice') {
@@ -196,7 +204,7 @@ switch (cmd) {
         text = r.text; ext = '.cir';
       }
     } else {
-      die('unknown --to "' + to + '" (eagle, kicad, spice, json)');
+      die('unknown --to "' + to + '" (eagle, kicad-sch, kicad, spice, json)');
     }
     const out = opts.o || basename(file, extname(file)) + ext;
     writeFileSync(out, text);

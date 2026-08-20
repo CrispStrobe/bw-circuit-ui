@@ -213,6 +213,25 @@ const REG_PINS = { VI: 'vin', VO: 'vout', GND: 'gnd', IN: 'vin', OUT: 'vout',
 const VREG_PINS = { VI: 'in', VO: 'out', GND: 'gnd', IN: 'in', OUT: 'out',
   VIN: 'in', VOUT: 'out', EN: 'in' };
 
+const BJT_ORDER = { B: 'base', C: 'collector', E: 'emitter' };
+const FET_ORDER = { G: 'gate', D: 'drain', S: 'source' };
+
+/**
+ * Read a pin order out of a KiCad symbol name: `Q_NMOS_GDS` says pin 1 is the
+ * gate, pin 2 the drain, pin 3 the source. Returns null when the name carries
+ * no such suffix, so the caller falls back to its default table.
+ */
+function orderedPins(name, letters) {
+  const keys = Object.keys(letters).join('');
+  const m = new RegExp(`_([${keys}]{3})(_|$)`).exec(String(name).toUpperCase());
+  if (!m) return null;
+  const seq = m[1];
+  if (new Set(seq).size !== 3) return null;
+  const pins = {};
+  for (let i = 0; i < 3; i++) { pins[String(i + 1)] = letters[seq[i]]; pins[seq[i]] = letters[seq[i]]; }
+  return pins;
+}
+
 const headerOf = (n, why) => ({
   kind: 'header',
   params: { pins: n },
@@ -282,12 +301,19 @@ export const KICAD_RULES = [
   [/^D_Zener|^Zener|^BZX|^1N47\d\d/i, () => ({ kind: 'zener', pins: DIODE_PINS })],
   [/^D(_(Small|Schottky|TVS|Photo|Bridge|ALT)\w*)?$|^1N\d{4}|^ESD5Z|^BAT\d{2}|^SS1[24]/i,
     () => ({ kind: 'diode', pins: DIODE_PINS })],
-  [/^Q?_?NPN|^BC(1\d\d|2\d\d|3[0-4]\d)|^2N(2222|3904|5551)|^S8050|^MMBT39\d\d/i,
-    () => ({ kind: 'npn', pins: BJT_PINS })],
-  [/^Q?_?PNP|^BC(30[5-9]|32\d|55[6-9])|^2N(2907|3906)|^S8550/i,
-    () => ({ kind: 'pnp', pins: BJT_PINS })],
-  [/^Q?_?NMOS|^BSS138|^IRF[ZLR]?\d|^AO\d{4}|^2N7000/i, () => ({ kind: 'nmos', pins: FET_PINS })],
-  [/^Q?_?PMOS|^AO32\d\d|^IRF9/i, () => ({ kind: 'pmos', pins: FET_PINS })],
+  // KiCad spells the pin ORDER into the symbol name: Q_NPN_BCE has base on 1
+  // and collector on 2, Q_NPN_BEC has them the other way round, and the same
+  // for Q_NMOS_GDS against Q_NMOS_GSD. A fixed table is right for one variant
+  // and silently wrong for the other -- which swaps a transistor's drain and
+  // source, a circuit that still draws and cannot work.
+  [/^Q?_?NPN|^BC(1\d\d|2\d\d|3[0-4]\d|54\d|550)|^2N(2222|3904|5551)|^S8050|^MMBT39\d\d/i,
+    (v, n) => ({ kind: 'npn', pins: orderedPins(n, BJT_ORDER) || BJT_PINS })],
+  [/^Q?_?PNP|^BC(30[5-9]|32\d|55[6-9]|560)|^2N(2907|3906)|^S8550/i,
+    (v, n) => ({ kind: 'pnp', pins: orderedPins(n, BJT_ORDER) || BJT_PINS })],
+  [/^Q?_?NMOS|^BSS138|^IRF[ZLR]?\d|^AO\d{4}|^2N7000/i,
+    (v, n) => ({ kind: 'nmos', pins: orderedPins(n, FET_ORDER) || FET_PINS })],
+  [/^Q?_?PMOS|^AO32\d\d|^IRF9/i,
+    (v, n) => ({ kind: 'pmos', pins: orderedPins(n, FET_ORDER) || FET_PINS })],
   [/^TIP12\d|^Darlington/i, () => ({ kind: 'tip120', pins: BJT_PINS })],
   // Power BJTs whose part number says nothing about polarity: BD24x is the
   // NPN half of a complementary pair (BD25x is the PNP).
@@ -395,10 +421,16 @@ export const KICAD_RULES = [
     pins: { VDD: 'vcc', VCC: 'vcc', DATA: 'data', DAT: 'data', GND: 'gnd',
       1: 'vcc', 2: 'data', 4: 'gnd' },
     terminals: ['vcc', 'data', 'gnd'] })],
-  [/^Relay_|^NSL-32|^Optocoupler|^PC8\d\d|^4N\d\d/i, () => ({ kind: 'optocoupler',
-    pins: { A: 'anode', K: 'cathode', C: 'cathode', E: 'emitter', 1: 'anode', 2: 'cathode',
-      4: 'emitter', 5: 'collector' },
-    terminals: ['anode', 'cathode', 'emitter', 'collector'] })],
+  // On an optocoupler "C" is the COLLECTOR, not the cathode -- the LED side
+  // is A/K and the transistor side is C/E. The four-pin numbering (PC817 and
+  // most of the family) is 1 anode, 2 cathode, 3 emitter, 4 collector; the
+  // six-pin 4N35 numbers its transistor 4/5 instead, so that package has to
+  // be read by pin NAME, and is.
+  [/^Relay_|^NSL-32|^Optocoupler|^PC8\d\d|^4N\d\d|^TLP\d{3}|^LTV-?8\d\d/i,
+    () => ({ kind: 'optocoupler',
+      pins: { A: 'anode', K: 'cathode', C: 'collector', E: 'emitter',
+        1: 'anode', 2: 'cathode', 3: 'emitter', 4: 'collector' },
+      terminals: ['anode', 'cathode', 'emitter', 'collector'] })],
   [/^WS2812|^SK6812|^APA10\d/i, () => ({ kind: 'neopixel', byName: true })],
   [/^Battery(_Cell)?$/i,
     () => ({ kind: 'battery', pins: { 1: 'pos', 2: 'neg', '+': 'pos', '-': 'neg' } })],

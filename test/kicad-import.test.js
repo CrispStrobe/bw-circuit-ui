@@ -32,6 +32,7 @@ import { importKicadLegacy, parseLegacyLib } from '../src/importers/kicad-legacy
 import { NetSolver, placePin, mapKicadSymbol } from '../src/importers/kicad-common.js';
 import { importEagle } from '../src/importers/eagle.js';
 import { toEagleSch } from '../src/model/exporters/eagle.js';
+import { toKicadSch } from '../src/model/exporters/kicad-sch.js';
 import { shapeFor } from '../src/model/schematic-symbols.js';
 
 const HERE = import.meta.dirname;
@@ -300,11 +301,30 @@ describe('KiCad 4/5 legacy schematic', () => {
   // and pin 2 on the right, and only pin 1 has a label under it; SW1's common
   // (pin 2) reaches MID through the third label. Both +5V symbols carry the
   // rail by name.
-  const EXPECTED = ['R1/1|R3/1', 'R1/2|R2/1|R3/2|R5/1|SW1/2'];
+  // U9 is a chip with an INVISIBLE +5V pin and no wire attached to it; the
+  // visibility field in the .lib X record is the only thing that puts it on
+  // the rail, this format having no (power) marker at all.
+  const EXPECTED = ['R1/1|R3/1|U9/8', 'R1/2|R2/1|R3/2|R5/1|SW1/2'];
   const imported = () => importKicadLegacy(LEGACY, { lib: LEGACY_LIB });
 
   test('every node lands in the right net', () => {
     assert.deepEqual(imported().nodePartition, EXPECTED);
+  });
+
+  test('an invisible power pin reaches its rail with no wire', () => {
+    const all = imported().nodePartition;
+    assert.ok(all.some((n) => n.includes('U9/8') && n.includes('R1/1')),
+      'U9 pin 8 is an invisible +5V input and belongs on the +5V net');
+    assert.ok(!all.join('|').includes('U9/1'), 'U9 pin 1 is an ordinary pin on nothing');
+  });
+
+  test('a pin NAME on an ordinary symbol is not a net name', () => {
+    // SW2 sits in the corner wired to nothing, and its pins are called A, B
+    // and C -- the same names SW1's carry. Only a POWER pin names a net; let
+    // any pin do it and the two switches short together, and so does every
+    // other pair of parts that happens to share a pin name.
+    const all = imported().nodePartition.join('|');
+    assert.ok(!all.includes('SW2/'), 'SW2 is unwired and must stay out of every net');
   });
 
   test('the orientation matrix is applied as a*px + b*py, not transposed', () => {
@@ -334,7 +354,8 @@ describe('KiCad 4/5 legacy schematic', () => {
     const r = imported();
     assert.deepEqual(r.parts.map((p) => `${p.id}:${p.kind}`).sort(), [
       'PWR01:vcc', 'PWR02:vcc', 'PWR03:gnd',
-      'R1:resistor', 'R2:resistor', 'R3:resistor', 'R5:resistor', 'SW1:slide_switch',
+      'R1:resistor', 'R2:resistor', 'R3:resistor', 'R5:resistor',
+      'SW1:slide_switch', 'SW2:slide_switch',
     ]);
     assert.equal(r.parts.find((p) => p.id === 'R2').params.ohms, 4700);
   });
@@ -443,6 +464,167 @@ describe('round trip: KiCad in, EAGLE out, EAGLE back in', () => {
   test('the electrical partition survives (wire COUNT may not)', () => {
     const back = importEagle(toEagleSch({ parts: src.parts, wires: src.wires }).xml);
     assert.deepEqual(partition(back.wires), partition(src.wires));
+  });
+});
+
+// ---------------------------------------------------------------------
+describe('round trip: KiCad in, KiCad out, KiCad back in', () => {
+  const src = importKicadSch(SCH);
+  const out = toKicadSch({ parts: src.parts, wires: src.wires });
+  const back = importKicadSch(out.text);
+
+  test('the exporter writes something our own detector recognises', () => {
+    assert.equal(detectFormat(out.text, 'x.kicad_sch'), 'kicad-sch');
+    assert.deepEqual(out.skipped, []);
+  });
+
+  test('every part survives with its id and kind', () => {
+    const ids = (r) => r.parts.map((p) => [p.id, p.kind]).sort();
+    assert.deepEqual(ids(back), ids(src));
+  });
+
+  test('the electrical partition survives', () => {
+    assert.deepEqual(partition(back.wires), partition(src.wires));
+  });
+
+  test('values survive', () => {
+    assert.equal(back.parts.find((p) => p.id === 'R2').params.ohms, 4700);
+  });
+
+  test('two DIFFERENT rails do not become one', () => {
+    // The exporter names a net after the power symbol on it, and writes that
+    // name into the symbol's own pin -- which is how KiCad states a rail. Use
+    // one generic `power:VCC` for every vcc part and a 5 V rail and a 3V3
+    // rail collapse into a single net, with the parts and the wire count
+    // still identical. Eight corpus boards round-tripped wrong that way.
+    const parts = [
+      { id: 'P1', kind: 'vcc', params: { _value: '+5V' } },
+      { id: 'P2', kind: 'vcc', params: { _value: '+3V3' } },
+      { id: 'R1', kind: 'resistor', params: { ohms: 1000 } },
+      { id: 'R2', kind: 'resistor', params: { ohms: 2200 } },
+      { id: 'G1', kind: 'gnd', params: { _value: 'GND' } },
+    ];
+    const wires = [
+      { from: 'P1', fromTerminal: 'vcc', to: 'R1', toTerminal: 'a' },
+      { from: 'P2', fromTerminal: 'vcc', to: 'R2', toTerminal: 'a' },
+      { from: 'R1', fromTerminal: 'b', to: 'G1', toTerminal: 'gnd' },
+      { from: 'R2', fromTerminal: 'b', to: 'G1', toTerminal: 'gnd' },
+    ];
+    const round = importKicadSch(toKicadSch({ parts, wires }).text);
+    assert.deepEqual(partition(round.wires), partition(wires));
+  });
+
+  test('a kind with no KiCad symbol is reported, not silently written', () => {
+    const r = toKicadSch({ parts: [{ id: 'X1', kind: 'nonexistent_kind', params: {} }], wires: [] });
+    assert.equal(r.skipped.length, 1);
+    assert.match(r.warnings[0], /No KiCad symbol/);
+  });
+
+  test('re-exporting the same circuit produces byte-identical output', () => {
+    // The UUIDs are hashed, not random. Otherwise every re-export is a diff
+    // of nothing but UUIDs and the change that mattered is invisible.
+    assert.equal(toKicadSch({ parts: src.parts, wires: src.wires }).text, out.text);
+  });
+});
+
+// ---------------------------------------------------------------------
+describe('a hidden power pin drives a net; a power FLAG does not', () => {
+  // Both halves are load-bearing and were found by round-tripping the corpus.
+  //
+  // PWR_FLAG is a power symbol with a pin called "pwr", and a board scatters
+  // one onto every rail. Reading that as a rail name shorted +5V, +3V3, +1V8
+  // and GND into ONE net on a real board -- and the import reported nothing.
+  //
+  // The other way round, a project library that converts its power symbols
+  // without writing (power) leaves only the HIDDEN power-input pin to go on,
+  // and ignoring that split one VPP rail into three separate nets.
+  const sheet = (extra) => `(kicad_sch (version 20231120)
+    (lib_symbols
+      (symbol "Device:R"
+        (symbol "R_1_1"
+          (pin passive line (at 0 3.81 270) (name "~") (number "1"))
+          (pin passive line (at 0 -3.81 90) (name "~") (number "2"))))
+      (symbol "power:GND" (power)
+        (symbol "GND_1_1" (pin power_in line (at 0 0 270) (name "GND") (number "1"))))
+      (symbol "power:PWR_FLAG" (power)
+        (symbol "PWR_FLAG_1_1" (pin power_out line (at 0 0 90) (name "pwr") (number "1"))))
+      (symbol "local:VPP"
+        (symbol "VPP_1_1"
+          (pin power_in line (at 0 0 90) (hide yes) (name "VPP") (number "1"))))
+      (symbol "local:TAP" (power)
+        (symbol "TAP_1_1"
+          (pin power_out line (at 0 0 90) (name "pwr") (number "1")))))
+    (symbol (lib_id "Device:R") (at 100 50 0) (unit 1)
+      (property "Reference" "R1" (at 100 45 0)) (property "Value" "1k" (at 100 55 0)))
+    (symbol (lib_id "Device:R") (at 200 50 0) (unit 1)
+      (property "Reference" "R2" (at 200 45 0)) (property "Value" "2k" (at 200 55 0)))
+    ${extra})`;
+
+  test('two PWR_FLAGs on unrelated pins do NOT join them', () => {
+    const t = sheet(`(symbol (lib_id "power:PWR_FLAG") (at 100 46.19 0) (unit 1)
+        (property "Reference" "#FLG01" (at 100 40 0)) (property "Value" "PWR_FLAG" (at 100 40 0)))
+      (symbol (lib_id "power:PWR_FLAG") (at 200 46.19 0) (unit 1)
+        (property "Reference" "#FLG02" (at 200 40 0)) (property "Value" "PWR_FLAG" (at 200 40 0)))`);
+    assert.deepEqual(kicadSchPartition(t), []);
+  });
+
+  test('a power_OUT pin drives nothing, whatever the symbol is called', () => {
+    // The PWR_FLAG case above is also caught by the drawing-artifact filter,
+    // so on its own it does not prove the pin TYPE is being read. This one is
+    // a (power) symbol NOT called PWR_FLAG: only the pin type -- power_out --
+    // stands between it and a short across every rail it is placed on.
+    const t = sheet(`(symbol (lib_id "local:TAP") (at 100 46.19 0) (unit 1)
+        (property "Reference" "#FLG03" (at 100 40 0)) (property "Value" "pwr" (at 100 40 0)))
+      (symbol (lib_id "local:TAP") (at 200 46.19 0) (unit 1)
+        (property "Reference" "#FLG04" (at 200 40 0)) (property "Value" "pwr" (at 200 40 0)))`);
+    assert.deepEqual(kicadSchPartition(t), []);
+  });
+
+  test('a chip\'s two hidden power pins reach two DIFFERENT rails', () => {
+    // The naming is per PIN. Take the symbol's first driving pin and apply
+    // its name to all of them and a chip's VCC and GND pins land on one net
+    // -- a short through the part that is meant to be powered by them.
+    const t = `(kicad_sch (version 20231120)
+      (lib_symbols
+        (symbol "Device:R"
+          (symbol "R_1_1"
+            (pin passive line (at 0 3.81 270) (name "~") (number "1"))
+            (pin passive line (at 0 -3.81 90) (name "~") (number "2"))))
+        (symbol "power:GND" (power)
+          (symbol "GND_1_1" (pin power_in line (at 0 0 270) (name "GND") (number "1"))))
+        (symbol "power:VCC" (power)
+          (symbol "VCC_1_1" (pin power_in line (at 0 0 90) (name "VCC") (number "1"))))
+        (symbol "local:U"
+          (symbol "U_1_1"
+            (pin power_in line (at 0 -5.08 90) (hide yes) (name "GND") (number "4"))
+            (pin power_in line (at 0 5.08 270) (hide yes) (name "VCC") (number "8")))))
+      (symbol (lib_id "local:U") (at 150 50 0) (unit 1)
+        (property "Reference" "U1" (at 150 44 0)) (property "Value" "U" (at 150 56 0)))
+      (symbol (lib_id "Device:R") (at 100 50 0) (unit 1)
+        (property "Reference" "R1" (at 100 45 0)) (property "Value" "1k" (at 100 55 0)))
+      (symbol (lib_id "Device:R") (at 200 50 0) (unit 1)
+        (property "Reference" "R2" (at 200 45 0)) (property "Value" "2k" (at 200 55 0)))
+      (symbol (lib_id "power:GND") (at 100 46.19 0) (unit 1)
+        (property "Reference" "#PWR05" (at 100 40 0)) (property "Value" "GND" (at 100 40 0)))
+      (symbol (lib_id "power:VCC") (at 200 46.19 0) (unit 1)
+        (property "Reference" "#PWR06" (at 200 40 0)) (property "Value" "VCC" (at 200 40 0))))`;
+    assert.deepEqual(kicadSchPartition(t), ['R1/1|U1/4', 'R2/1|U1/8']);
+  });
+
+  test('two GND symbols DO join, by name', () => {
+    const t = sheet(`(symbol (lib_id "power:GND") (at 100 46.19 0) (unit 1)
+        (property "Reference" "#PWR01" (at 100 40 0)) (property "Value" "GND" (at 100 40 0)))
+      (symbol (lib_id "power:GND") (at 200 46.19 0) (unit 1)
+        (property "Reference" "#PWR02" (at 200 40 0)) (property "Value" "GND" (at 200 40 0)))`);
+    assert.deepEqual(kicadSchPartition(t), ['R1/1|R2/1']);
+  });
+
+  test('a HIDDEN power-input pin joins them even with no (power) marker', () => {
+    const t = sheet(`(symbol (lib_id "local:VPP") (at 100 46.19 0) (unit 1)
+        (property "Reference" "#PWR03" (at 100 40 0)) (property "Value" "VPP" (at 100 40 0)))
+      (symbol (lib_id "local:VPP") (at 200 46.19 0) (unit 1)
+        (property "Reference" "#PWR04" (at 200 40 0)) (property "Value" "VPP" (at 200 40 0)))`);
+    assert.deepEqual(kicadSchPartition(t), ['R1/1|R2/1']);
   });
 });
 

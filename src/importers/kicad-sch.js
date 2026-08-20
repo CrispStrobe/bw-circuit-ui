@@ -84,8 +84,13 @@ function libPins(symNode) {
       // `(pin output line ...)`: the electrical type is the first atom, the
       // graphic style the second. The type is how an opamp's unnamed output
       // is found -- see terminalFor().
+      const hideNode = findOne(p, 'hide');
       out.push({ unit, num: String(num[1]), name: nam ? String(nam[1]) : '~',
-        type: typeof p[1] === 'string' ? p[1] : '', x: a.x, y: a.y });
+        type: typeof p[1] === 'string' ? p[1] : '',
+        // `(hide yes)` in v7+, a bare `hide` atom before that. A HIDDEN
+        // power-input pin is a global net driver in KiCad, which is how a
+        // chip's invisible VCC pin reaches the rail with no wire drawn.
+        hidden: !!hideNode && hideNode[1] !== 'no', x: a.x, y: a.y });
     }
     for (const sub of findAll(node, 'symbol')) {
       const m = /_(\d+)_(\d+)$/.exec(String(sub[1] || ''));
@@ -169,6 +174,7 @@ export function resolveKicadSch(text) {
     const def = lib.get(libId) || { pins: [], isPower: false };
     const ref = propOf(inst, 'Reference') || `U?${++anon}`;
     const value = propOf(inst, 'Value') || '';
+    const symName = libId.includes(':') ? libId.slice(libId.indexOf(':') + 1) : libId;
 
     let rec = placements.get(ref);
     if (!rec) {
@@ -182,18 +188,44 @@ export function resolveKicadSch(text) {
     // leaves the rail name only in the Value field. Reading just the pin name
     // turned one 100-node ground net into a hundred two-node nets, each of
     // which still drew and wired perfectly.
-    const railName = def.isPower
-      ? ((def.pins.find((p) => p.name && p.name !== '~') || {}).name
-         || value
-         || (libId.includes(':') ? libId.slice(libId.indexOf(':') + 1) : libId))
-      : null;
+    //
+    // Only a POWER_IN pin names a net, and PWR_FLAG is why. A flag is a power
+    // symbol, carries the (power) marker, and has a pin called "pwr" -- and a
+    // board scatters one onto every rail it has. Treat that as a rail name and
+    // all of them join: +5V, +3V3, +1V8 and GND became ONE net on the
+    // tinytapeout board, a dead short that imported without a murmur. KiCad
+    // itself does not name nets from a flag; its pin is power_OUT, which is
+    // the mark that separates the two.
+    // Which pins DRIVE a net name. Two cases, and KiCad has both:
+    //
+    //   - a symbol marked (power): its power-input pin is the rail. If the
+    //     library left that pin unnamed ("~", as circuit-synth writes it) the
+    //     name falls back to the Value field, then to the symbol's own name.
+    //   - any HIDDEN power-input pin, on any symbol. That is the classic
+    //     invisible-power-pin rule: a chip's VCC pin reaches the rail with no
+    //     wire drawn. Some project libraries convert their power symbols this
+    //     way and never write (power) at all -- pic_programmer's VPP is one,
+    //     and without this rule its three VPP symbols were three nets.
+    //
+    // What must NOT drive a name: a power_OUT pin. PWR_FLAG has one, called
+    // "pwr", and a board scatters one onto every rail it has. Reading that as
+    // a rail name joined +5V, +3V3, +1V8 and GND into ONE net on the
+    // tinytapeout board -- a dead short that imported without a murmur.
+    const drives = (p) => p.type === 'power_in'
+      && (def.isPower || p.hidden)
+      && !NON_ELECTRICAL.test(symName);
+    const nameOf = (p) => (p.name && p.name !== '~' ? p.name
+      : (def.isPower ? (value || symName) : null));
 
     for (const p of def.pins) {
       if (p.unit !== 0 && p.unit !== unit) continue;
       const [x, y] = placePin(p.x, p.y, at);
       rec.pins.push({ num: p.num, name: p.name, type: p.type, x, y });
       net.addPoint(x, y);
-      if (railName) net.addName(x, y, railName);
+      // Per PIN, never per symbol: a chip with hidden VCC and GND pins drives
+      // two different rails, and an earlier version that applied one rail name
+      // to every pin of the symbol shorted them together.
+      if (drives(p)) { const nm = nameOf(p); if (nm) net.addName(x, y, nm); }
     }
   }
 

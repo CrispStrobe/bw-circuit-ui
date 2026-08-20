@@ -86,8 +86,11 @@ export function parseLegacyLib(text) {
       const ETYPE = { I: 'input', O: 'output', B: 'bidirectional', T: 'tri_state',
         P: 'passive', U: 'unspecified', W: 'power_in', w: 'power_out',
         C: 'open_collector', E: 'open_emitter', N: 'no_connect' };
+      // f[12], where present, is the pin shape, and a leading N means the pin
+      // is INVISIBLE -- which for a power input makes it a global net driver.
       cur.push({ name: f[1], num: f[2], x: Number(f[3]), y: Number(f[4]),
-        unit: Number(f[9]), type: ETYPE[f[11]] || '' });
+        unit: Number(f[9]), type: ETYPE[f[11]] || '',
+        hidden: /^N/.test(f[12] || '') });
     } else if (line === 'ENDDEF' && cur) {
       for (const n of [name, ...aliases]) if (n) out.set(n, cur);
       cur = null; name = null; aliases = [];
@@ -225,18 +228,22 @@ export function importKicadLegacy(text, opts = {}) {
     // Value field, then the symbol name. A rail whose name is not found does
     // not connect at all, because a wire is not how rails are drawn.
     const placed = [];
-    const railName = isPower
-      ? (((def || []).find((p) => p.name && p.name !== '~') || {}).name
-         || value
-         || (libId.includes(':') ? libId.slice(libId.indexOf(':') + 1) : libId))
-      : null;
+    // Which pins drive a net name, same two rules as the v6 importer: a
+    // power symbol's power-input pin, and any HIDDEN power-input pin on any
+    // symbol. A power_OUT pin (PWR_FLAG's) drives nothing -- see kicad-sch.js
+    // for what happens when it does.
+    const drives = (p) => p.type === 'power_in'
+      && (isPower || p.hidden)
+      && !NON_ELECTRICAL.test(name);
+    const nameOf = (p) => (p.name && p.name !== '~' ? p.name
+      : (isPower ? (value || name) : null));
     for (const p of def || []) {
       if (p.unit !== 0 && p.unit !== unit) continue;
       const x = px + mat[0] * p.x + mat[1] * p.y;
       const y = py + mat[2] * p.x + mat[3] * p.y;
       placed.push({ num: p.num, name: p.name, type: p.type, x, y });
       net.addPoint(x, y);
-      if (railName) net.addName(x, y, railName);
+      if (drives(p)) { const nm = nameOf(p); if (nm) net.addName(x, y, nm); }
     }
     rawPlacements.push({ ref, pins: placed });
 
