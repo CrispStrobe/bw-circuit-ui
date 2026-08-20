@@ -460,8 +460,12 @@ export function importEasyEda(text) {
       warnings: [`Not an EasyEDA file: the JSON did not parse (${e.message})`] };
   }
   // docType 3 is a PCB and 4 a footprint. Same class of mistake as handing
-  // eagle.js a .brd: the copper is there and the netlist is not.
-  const dt = String(doc?.docType ?? '');
+  // eagle.js a .brd: the copper is there and the netlist is not. A PCB
+  // exported on its own carries no top-level docType at all -- it is a bare
+  // `{head, shape}` payload and the type is inside `head`, so both places are
+  // read. Without the second one such a file imports as "no components
+  // found", which is true and unhelpful: its LIB shapes hold PADs, not pins.
+  const dt = String(doc?.docType ?? doc?.head?.docType ?? '');
   if (dt === '3' || dt === '4') {
     return { parts, wires: [], unmapped, ignored,
       warnings: ['This is an EasyEDA PCB/footprint document (docType ' + dt + '). '

@@ -358,6 +358,17 @@ describe('what it refuses, and how loudly', () => {
     assert.match(r.warnings[0], /PCB\/footprint document/);
   });
 
+  test('a bare PCB payload is refused too -- its type is inside `head`', () => {
+    // A PCB exported on its own has no top-level docType. Its LIB shapes hold
+    // PADs rather than pins, so without this it imports as "no components
+    // found" -- true, and no help at all in working out why.
+    const pcb = JSON.stringify({ head: { docType: '3', x: '0', y: '0' },
+      shape: ['LIB~100~100~package`RELAY-PKG`spicePre`K~0~~g1~1~pkg~0~~yes~~'] });
+    const r = importEasyEda(pcb);
+    assert.deepEqual(r.parts, []);
+    assert.match(r.warnings[0], /PCB\/footprint document/);
+  });
+
   test('unparseable JSON says so', () => {
     const r = importEasyEda('{ this is not json');
     assert.deepEqual(r.parts, []);
