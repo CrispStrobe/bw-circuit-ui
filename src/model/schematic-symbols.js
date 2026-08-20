@@ -105,7 +105,7 @@ export const SYMBOLS = {
   potentiometer: { paths: [ZIGZAG, 'M 0 -16 L 0 -6 M -4 -10 L 0 -6 L 4 -10'] },
   capacitor:     { paths: ['M -30 0 L -4 0 M 4 0 L 30 0', 'M -4 -10 L -4 10 M 4 -10 L 4 10'], value: 'farads' },
   // Electrolytic: one straight plate, one curved, and a + by the anode.
-  capacitor_pol: { paths: ['M -30 0 L -4 0 M 6 0 L 30 0', 'M -4 -10 L -4 10', 'M 10 -10 Q 4 0 10 10'],
+  polarized_cap: { paths: ['M -30 0 L -4 0 M 6 0 L 30 0', 'M -4 -10 L -4 10', 'M 10 -10 Q 4 0 10 10'],
     texts: [{ x: -12, y: -10, s: '+', size: 9 }], value: 'farads' },
   inductor:      { paths: ['M -30 0 L -18 0 M 18 0 L 30 0',
     'M -18 0 A 6 6 0 0 1 -6 0 A 6 6 0 0 1 6 0 A 6 6 0 0 1 18 0'] },
@@ -213,8 +213,9 @@ export const ALIASES = {
   lm358: 'opamp',      // dual op-amp; one triangle per used section
   lm324: 'opamp',
   speaker: 'buzzer',
-  electrolytic: 'capacitor_pol',
-  cap_pol: 'capacitor_pol',
+  electrolytic: 'polarized_cap',
+  cap_pol: 'polarized_cap',
+  capacitor_pol: 'polarized_cap',
   pot: 'potentiometer',
   trimpot: 'potentiometer',
   photoresistor: 'ldr',

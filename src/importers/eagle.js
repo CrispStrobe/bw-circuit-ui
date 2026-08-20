@@ -70,7 +70,7 @@ function headerOf(n, ds) {
   };
 }
 
-const RULES = [
+export const RULES = [
   // power symbols — one terminal, and EAGLE draws one per connection point
   // The symbol's PIN name is not its deviceset name: a VCC symbol may carry a
   // pin called VIN, and a supply symbol's pins are +VE/-VE in some libraries.
@@ -170,14 +170,18 @@ const RULES = [
   // engine's neopixel is the right model, and the corpus has 106 of them.
   [/^(WS2812|SK6812|APA10\d)/i,        () => ({ kind: 'neopixel', byName: true })],
 
-  // Regulators. There is NO engine model for one, so this deliberately does
-  // not pretend otherwise -- it imports as its own kind, draws as a
-  // pin-labelled box, and carries a note. Mapping it onto some existing
-  // three-pin part would put a WRONG model in a simulated circuit, which is
-  // worse than an honest box. 119 parts in the corpus.
-  [/^(VREG|LM\d{2,4}|LP\d{3,4}|AP\d{4}|MCP17\d\d|AMS1117|AXP\d+|LD1117)/i,
-    (v, ds) => ({ kind: 'regulator', byName: true,
-      _note: `EAGLE ${ds} imported as a regulator: schematic only, no engine model` })],
+  // Regulators. The engine HAS models for these -- vreg generically, plus
+  // lm7805 and ld1117v33 by name -- which is why the part number is matched
+  // before the generic rule. An earlier version of this invented a
+  // `regulator` kind instead, which drew a nice box and could not be
+  // simulated, wired to an MCU or used from the dialect. A symbol is one
+  // layer of four; emitting a kind the engine does not know silently loses
+  // the other three. engine-contract.test.js now fails on that.
+  [/^(LM7805|7805|MC7805)/i,           () => ({ kind: 'lm7805' })],
+  [/^(LD1117|AMS1117|LM1117)/i,        () => ({ kind: 'ld1117v33' })],
+  [/^(VREG|LM\d{2,4}|LP\d{3,4}|AP\d{4}|MCP17\d\d|AXP\d+|TPS\d{4}|XC6\d{3})/i,
+    (v, ds) => ({ kind: 'vreg',
+      _note: `EAGLE ${ds} imported as a generic vreg; check the pinout` })],
 
   // Connectors. USB, card sockets, terminal blocks, JST leads and the various
   // 1xN strips are all "a labelled row of pins" to a netlist. Together they

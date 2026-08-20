@@ -126,6 +126,9 @@ describe('EAGLE import against a real schematic',
         });
 
         test('the MCU and the 8x8 matrix are recognised, not just the passives', () => {
+            // attiny88 and at24c02 are REGISTERED device models, whatever
+            // BoardImpl.getPartKinds() says -- see engine-contract.test.js on
+            // why that list is not the authority.
             const kinds = new Set(r.parts.map((p) => p.kind));
             for (const k of ['attiny88', 'matrix8x8', 'at24c02', 'resistor', 'capacitor', 'gnd', 'vcc']) {
                 assert.ok(kinds.has(k), `expected a ${k}`);
