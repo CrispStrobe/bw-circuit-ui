@@ -25,6 +25,7 @@ import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { netsFromWires } from '../src/model/schematic-svg.js';
 import { importEagle } from '../src/importers/eagle.js';
 import { toEagleSch } from '../src/model/exporters/eagle.js';
 
@@ -127,3 +128,51 @@ describe('EAGLE round-trip: the solver as oracle',
         '4k7 read as 4.7 must change the solution — if it does not, this oracle proves nothing');
     });
   });
+
+describe('a repeated pinref is one node, not two', () => {
+    // Real schematics repeat a pinref — Adafruit's Relay FeatherWing lists
+    // JP4 pin 1 twice in the same net. Harmless until the net's other member
+    // is an unmapped part: the survivors are then two copies of ONE pin, and
+    // a star topology wires that pin to itself.
+    const SCH = `<?xml version="1.0"?>
+<eagle version="6.0"><drawing><schematic><parts>
+  <part name="JP1" library="con" deviceset="PINHD-1X02" device=""/>
+  <part name="R1" library="rcl" deviceset="R-EU_" device="" value="1k"/>
+  <part name="MS1" library="x" deviceset="TOTALLY_UNKNOWN_THING" device=""/>
+</parts><sheets><sheet><nets>
+  <net name="N$1"><segment>
+    <pinref part="MS1" gate="G$1" pin="A"/>
+    <pinref part="JP1" gate="G$1" pin="1"/>
+    <pinref part="JP1" gate="G$1" pin="1"/>
+  </segment></net>
+  <net name="N$2"><segment>
+    <pinref part="JP1" gate="G$1" pin="2"/>
+    <pinref part="R1" gate="G$1" pin="1"/>
+  </segment></net>
+</nets></sheet></sheets></schematic></drawing></eagle>`;
+
+    test('no wire connects a terminal to itself', () => {
+        const c = importEagle(SCH);
+        const loops = c.wires.filter(w => w.from === w.to && w.fromTerminal === w.toTerminal);
+        assert.deepEqual(loops, [],
+            `a self-loop is not a connection: ${JSON.stringify(loops)}`);
+    });
+
+    test('the duplicated pin does not become a net of its own', () => {
+        // The real cost: netsFromWires counts a self-loop as a net, so eight
+        // of them reported 14 nets against an export of 6 and five corpus
+        // boards failed round-trip on a difference that did not exist.
+        const c = importEagle(SCH);
+        const nets = netsFromWires(c.wires);
+        assert.equal(nets.length, 1, 'only JP1:p2—R1 is a real connection here');
+        assert.equal(nets[0].terminals.length, 2);
+    });
+
+    test('the fixture still exercises the path', () => {
+        // If MS1 ever starts mapping, the net gains a second real member and
+        // this stops testing what it names.
+        const c = importEagle(SCH);
+        assert.ok(c.unmapped.some(u => /TOTALLY_UNKNOWN_THING/.test(u.libsource)),
+            'the third part must stay unmapped for this fixture to mean anything');
+    });
+});

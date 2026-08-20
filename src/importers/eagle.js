@@ -331,10 +331,27 @@ export function importEagle(text) {
       }
       refs.push({ part: a.part, terminal: term });
     }
-    for (let i = 1; i < refs.length; i++) {
+    // Dedupe by electrical NODE before wiring the star. Real schematics repeat
+    // a pinref: Adafruit's Relay FeatherWing lists JP4 pin 1 twice in one net,
+    // presumably because two wire segments land on the same pad. A repeat adds
+    // no connectivity, but it does add a ref — and when the net's OTHER member
+    // is an unmapped part (MS1/MICROSHIELD here), the survivors are two copies
+    // of one pin and the star wires that pin TO ITSELF.
+    //
+    // A self-loop is not harmless. netsFromWires counts it as a net, so eight
+    // of them turned 6 real nets into "14" on import, against 6 on export, and
+    // five corpus boards failed round-trip on a difference that did not exist.
+    const seen = new Set();
+    const uniq = refs.filter((r) => {
+      const k = r.part + '\u0000' + r.terminal;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    for (let i = 1; i < uniq.length; i++) {
       wires.push({
-        from: refs[0].part, fromTerminal: refs[0].terminal,
-        to: refs[i].part, toTerminal: refs[i].terminal,
+        from: uniq[0].part, fromTerminal: uniq[0].terminal,
+        to: uniq[i].part, toTerminal: uniq[i].terminal,
       });
     }
   }
