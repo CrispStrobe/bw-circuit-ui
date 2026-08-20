@@ -23,8 +23,18 @@
  *      a schematic. Deferred on purpose.
  *   3. Discretes and electromechanical parts, which DO have standard symbols
  *      every reader expects -- relay, slide_switch, dc_motor, battery,
- *      inductor, zener, mosfet, piezo. Those are the real gap, and they are
- *      what this file gained.
+ *      inductor, zener, mosfet, piezo, fuse. Those are the real gap, and they
+ *      are what this file gained.
+ *
+ * Re-ranked over the KiCad corpus once those importers landed (88 more
+ * schematics), and it moved almost nothing: of the ten kinds still falling
+ * back there, nine are group 1 or 2 -- lm7805, at24c02, h_bridge, usb_a,
+ * vreg, ams1117_33, dht11, 74hc125 -- and one, `fuse`, was group 3 and is now
+ * drawn. `optocoupler` is the one deliberate omission: it has a standard
+ * symbol, but its four terminals are laid out first-half-left by
+ * schematic-projection, which would put the emitter above the collector and
+ * draw the phototransistor upside down. It needs per-terminal placement
+ * first, which is a bigger change than one shape.
  *
  * So "the viewer is incomplete" is much narrower than the raw count of undrawn
  * kinds suggests. See docs/schematic-viewer-resources.md for symbol sources.
@@ -109,6 +119,12 @@ export const SYMBOLS = {
     texts: [{ x: -12, y: -10, s: '+', size: 9 }], value: 'farads' },
   inductor:      { paths: ['M -30 0 L -18 0 M 18 0 L 30 0',
     'M -18 0 A 6 6 0 0 1 -6 0 A 6 6 0 0 1 6 0 A 6 6 0 0 1 18 0'] },
+  // Fuse, IEC 60617: the element drawn straight through a plain body. Two
+  // terminals and a symbol every reader knows, so a labelled box is a real
+  // loss here in a way it is not for an IC. Four of them in the KiCad corpus
+  // and none in the EAGLE one, which is why it only surfaced now.
+  fuse:          { paths: ['M -30 0 L -16 0 M 16 0 L 30 0',
+    'M -16 -7 L 16 -7 L 16 7 L -16 7 Z', 'M -16 0 L 16 0'] },
   diode:         { paths: ['M -30 0 L -8 0 M 8 0 L 30 0', 'M -8 -8 L -8 8 L 8 0 Z', 'M 8 -8 L 8 8'] },
   // Zener: the cathode bar gains its characteristic bent ends.
   zener:         { paths: ['M -30 0 L -8 0 M 8 0 L 30 0', 'M -8 -8 L -8 8 L 8 0 Z',

@@ -32,6 +32,7 @@ import { importKicadLegacy, parseLegacyLib } from '../src/importers/kicad-legacy
 import { NetSolver, placePin, mapKicadSymbol } from '../src/importers/kicad-common.js';
 import { importEagle } from '../src/importers/eagle.js';
 import { toEagleSch } from '../src/model/exporters/eagle.js';
+import { shapeFor } from '../src/model/schematic-symbols.js';
 
 const HERE = import.meta.dirname;
 const CUI = join(HERE, '..');
@@ -397,6 +398,28 @@ describe('the symbol vocabulary maps by name, and knows what it does not know', 
     assert.equal(mapKicadSymbol('local:VDD_FPGA_CORE', '', true).kind, 'vcc');
     assert.equal(mapKicadSymbol('local:CHASSIS_GND', '', true).kind, 'gnd');
     assert.equal(mapKicadSymbol('local:VDD_FPGA_CORE', '', false), null);
+  });
+});
+
+// ---------------------------------------------------------------------
+describe('the kinds these importers newly produce can be drawn', () => {
+  // Re-ranking the fallback-to-a-box list over the KiCad corpus moved almost
+  // nothing: the kinds still falling back are ICs, modules and connectors,
+  // which schematic-symbols.js draws as pin-labelled boxes ON PURPOSE. One
+  // was not -- a fuse is a two-terminal discrete with a symbol every reader
+  // knows, and it appears only in the KiCad corpus, which is why it surfaced
+  // now and not during the EAGLE work.
+  test('a fuse has a symbol, not a generic box', () => {
+    assert.ok(shapeFor('fuse'), 'fuse falls back to a labelled rectangle');
+  });
+
+  test('the discretes these importers emit all have symbols', () => {
+    const discretes = ['resistor', 'capacitor', 'polarized_cap', 'inductor', 'fuse',
+      'crystal', 'led', 'diode', 'zener', 'npn', 'pnp', 'nmos', 'pmos', 'tip120',
+      'button', 'slide_switch', 'dip_switch', 'potentiometer', 'dc_motor', 'buzzer',
+      'battery', 'vcc', 'gnd', 'header', 'opamp'];
+    const missing = discretes.filter((k) => !shapeFor(k, { pins: 4 }));
+    assert.deepEqual(missing, []);
   });
 });
 
