@@ -40,6 +40,11 @@ const DIP_CHIP_LABELS = {
   '74hc00': '74HC00', '74hc04': '74HC04', '74hc08': '74HC08',
   '74hc32': '74HC32', '74hc74': '74HC74', '74hc138': '74HC138',
   '74hc245': '74HC245', '74hc374': '74HC374', '74hc595': '74HC595',
+  // These three gained sidecars in the reconcile but not a DIP label, so they
+  // fell back to {a,b} and rendered their pins stacked at the origin. Labels
+  // only; the pin geometry comes from the sidecar terminals (74hc4050 is the
+  // odd one — 16 pins with VCC on pin 1 and two real NCs).
+  '74hc125': '74HC125', '74hc34': '74HC34', '74hc4050': '74HC4050',
   '74c922': '74C922', r6507: 'R6507', mos6532: 'MOS6532',
   at24c64: '24C64', shift_register: '74HC595', cd4093: 'CD4093',
   // Device-true MCU DIPs: without these the blinkenrocket pendant's
