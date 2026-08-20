@@ -1130,6 +1130,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {!showSchematic ? (<>
         <BoardCanvas
           engineBoard={activeBoard}
+          videoFn={debugState && typeof debugState.video === 'function' ? debugState.video : null}
           fitToken={fitToken}
           sevenSegments={readSevenSegment}
           sevenSeg3={readSevenSeg3}

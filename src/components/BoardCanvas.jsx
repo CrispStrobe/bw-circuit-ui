@@ -298,7 +298,7 @@ function fmtV(v) {
 // Standard 4×4 keypad key labels, row-major (key 0 = '1', key 15 = 'D').
 const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
 
-function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam }) {
+function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -1230,6 +1230,53 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 fill={color} />;
             })}
             <text x={0} y={H / 2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── SimpleVGA / TMS9918 video thumbnail ───────────────────────
+      // Machine-class video peripherals expose a videoFn callback (via
+      // debugState.video). If available, render a compact live thumbnail
+      // on the chip body so the display content is visible on the board.
+      case 'simplevga_card':
+      case 'tms9918': {
+        // Fall through to default DIP body when no video available
+        if (typeof videoFn !== 'function') break;
+        const chipLabel = kind === 'tms9918' ? 'TMS9918' : 'SimpleVGA';
+        const vW = 48, vH = 36;
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* DIP body */}
+            <rect x={-30} y={-25} width={60} height={50} rx={3}
+              fill="#1a1a2e" stroke={selStroke || '#6a5acd'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Notch */}
+            <circle cx={-30} cy={-15} r={3} fill="#1a1a2e" stroke="#555" strokeWidth={0.5} />
+            {/* Video thumbnail */}
+            <foreignObject x={-vW / 2} y={-vH / 2 + 2} width={vW} height={vH}>
+              <canvas
+                ref={el => {
+                  if (!el) return;
+                  try {
+                    const f = videoFn();
+                    if (!f || !f.rgba) return;
+                    const W = f.width || 256, H = f.height || 192;
+                    if (el.width !== W) el.width = W;
+                    if (el.height !== H) el.height = H;
+                    el.style.width = `${vW}px`;
+                    el.style.height = `${vH}px`;
+                    el.style.imageRendering = 'pixelated';
+                    const ctx = el.getContext('2d');
+                    ctx.putImageData(new ImageData(new Uint8ClampedArray(f.rgba.buffer, f.rgba.byteOffset, f.rgba.byteLength), W, H), 0, 0);
+                  } catch { /* video not ready */ }
+                }}
+                style={{ width: vW, height: vH, imageRendering: 'pixelated' }}
+              />
+            </foreignObject>
+            {/* Chip label */}
+            <text x={0} y={-20} textAnchor="middle" fill="#888" fontSize={5}
+              fontFamily="monospace">{chipLabel}</text>
+            <text x={0} y={32} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -2528,7 +2575,7 @@ export function BoardCanvas({
   statusText,
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
-  circuit, engineBoard, fitToken, sevenSegments, sevenSeg3,
+  circuit, engineBoard, videoFn, fitToken, sevenSegments, sevenSeg3,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onClearCircuit, onRewire,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
@@ -3991,7 +4038,19 @@ export function BoardCanvas({
               const m = new Map();
               for (const p of parts) {
                 if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge' || p.kind === 'mono_lcd' || p.kind === 'rgb_light') {
-                  const ds = eb.getDeviceState(p.id);
+                  let ds = eb.getDeviceState(p.id);
+                  // Bargraph: passive device exports no brightness — compute
+                  // from branch current across each anode/cathode pair.
+                  if (p.kind === 'bargraph' && eb.branchCurrent) {
+                    const brightness = new Float64Array(10);
+                    for (let i = 0; i < 10; i++) {
+                      try {
+                        const mA = Math.abs(eb.branchCurrent(p.id, `a${i}`)) * 1000;
+                        brightness[i] = Math.min(1, mA / 15); // 15 mA ≈ full brightness
+                      } catch { /* net missing */ }
+                    }
+                    ds = { ...(ds || {}), brightness };
+                  }
                   if (ds) m.set(p.id, ds);
                 }
               }
@@ -3999,7 +4058,8 @@ export function BoardCanvas({
             })()}
             simulate={!!simulate}
             onKeypadKey={onKeypadKey}
-            onSetPartParam={onSetPartParam} />
+            onSetPartParam={onSetPartParam}
+            videoFn={videoFn} />
 
           {/* ── WIRE LAYERS ── INSIDE the svg, painted after the substrate and
               the SvgParts chip bodies:
