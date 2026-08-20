@@ -173,6 +173,10 @@ const CATEGORIES = [
         tooltip: 'SPI 8×8 LED driver — DIN/CLK/CS, daisy-chainable' },
       { kind: 'led_matrix', label: 'LED Matrix', params: {}, color: '#27ae60', tooltip: 'drawable — 8×8' },
       { kind: 'led_cube', label: 'LED Cube 4³', params: {}, color: '#2ecc71' },
+      { kind: 'bargraph', label: 'LED Bargraph', params: {}, color: '#e67e22',
+        tooltip: '10-segment LED bar — 20 pins (a0-a9 anodes, k0-k9 cathodes), DIP straddle' },
+      { kind: 'simplevga_card', label: 'SimpleVGA Card', params: {}, color: '#6a5acd',
+        tooltip: 'gfoot SimpleVGA6502 VGA card — machine-level video (vcc, gnd, bus)' },
     ],
   },
   {
