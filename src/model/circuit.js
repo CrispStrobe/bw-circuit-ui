@@ -1051,7 +1051,10 @@ export function terminalsForKind(kind, params) {
     case 'zener': return ['anode', 'cathode'];
     case 'led': return ['anode', 'cathode'];
     case 'rgb_led': return ['r_anode', 'g_anode', 'b_anode', 'cathode'];
-    case 'potentiometer': return ['a', 'b', 'wiper'];
+    // Physical pin order (end, wiper, end) — matches the sidecar, which is
+    // the authority. A fallback that disagrees only shows up on kinds whose
+    // sidecar is missing, so keep the two in step.
+    case 'potentiometer': return ['a', 'wiper', 'b'];
     case 'button': return ['a', 'b'];
     case 'switch': return ['a', 'b'];
     case 'buzzer': return ['a', 'b'];
