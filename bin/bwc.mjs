@@ -98,6 +98,7 @@ const usage = () => {
     + '  bwc info    <file>\n'
     + '  bwc convert <file> --to eagle|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
+    + '\n  audit <dir> [dir...]        four-layer readiness per part kind'
     + '\nInput: EAGLE .sch, KiCad netlist, Wokwi diagram.json, or our circuit .json.');
 };
 
@@ -211,6 +212,112 @@ switch (cmd) {
       + '   ' + (pa === pb ? 'IDENTICAL' : 'CHANGED'));
     if (out.skipped.length) console.log('  skipped   ' + out.skipped.map((s2) => s2.id + ':' + s2.kind).join(', '));
     process.exit(idsA === idsB && pa === pb ? 0 : 1);
+    break;
+  }
+
+  case 'audit': {
+    // Four-layer readiness per part kind. A symbol is the visible layer and
+    // the least of them: a kind can draw beautifully and still be unplaceable,
+    // unsimulable, or unreachable from a .bw program. This walks one or more
+    // directories of circuits, tallies the kinds actually in use, and reports
+    // which layers each one has.
+    const { readdirSync, statSync } = await import('node:fs');
+    const dirs = positional.filter(Boolean);
+    const files = [];
+    for (const d of dirs) {
+      (function walk(x) {
+        for (const e of readdirSync(x)) {
+          if (e === '.git' || e === 'node_modules') continue;
+          const q = join(x, e);
+          if (statSync(q).isDirectory()) walk(q);
+          else if (/\.(sch|kicad_sch|net|json)$/i.test(e)) files.push(q);
+        }
+      })(d);
+    }
+
+    const count = new Map();
+    for (const f of files) {
+      let c; try { c = await load(f); } catch { continue; }
+      for (const p of c.parts) count.set(p.kind, (count.get(p.kind) || 0) + 1);
+    }
+
+    const { shapeFor } = await import(join(SRC, 'model/schematic-symbols.js'));
+    const { terminalsForKind } = await import(join(SRC, 'model/circuit.js'));
+    let engineKinds = null;
+    try {
+      const eng = join(SRC, '..', '..', 'bw-board', 'src');
+      const { registeredKinds } = await import(join(eng, 'devices.js'));
+      const { registerAllDevices } = await import(join(eng, 'register-all.js'));
+      const { BoardImpl } = await import(join(eng, 'board.js'));
+      registerAllDevices();                       // registry is EMPTY until this runs
+      engineKinds = new Set([...registeredKinds(), ...BoardImpl.getPartKinds()]);
+    } catch { /* engine not beside us; that column reads '?' */ }
+
+    // Active kinds and the dialect verb that drives or reads each. Absence
+    // from this table means "passive" — a resistor needs no verb.
+    const DIALECT = {
+      relay: 'devices_setrelay', dc_motor: 'devices_setmotor',
+      gearmotor: 'devices_setmotor', servo: 'devices_setservo',
+      neopixel: 'devices_setneopixel', matrix8x8: 'devices_setpixel',
+      led_matrix: 'devices_setpixel', ssd1306: 'devices_oledprint',
+      sh1106: 'devices_oledprint', ili9341: 'devices_tftprint',
+      char_lcd_i2c: 'devices_lcdprint', hd44780: 'devices_lcdprint',
+      seven_segment: 'devices_showdigit', seven_seg_3: 'devices_showdigit',
+      seven_seg_4: 'devices_showdigit', ultrasonic: 'devices_distance',
+      pir_sensor: 'devices_motion', tilt_sensor: 'devices_tilted',
+      temp_sensor: 'devices_temperature', tmp36: 'devices_temperature',
+      ldr: 'devices_light', ir_receiver: 'devices_ircode',
+      button: 'devices_pressed',
+    };
+    // If the generator cannot be read, the dialect column must say so. An
+    // earlier version defaulted `gen` to '' and swallowed the error, so a
+    // missing checkout reported EVERY active part as unreachable from the
+    // dialect -- a column full of confident, invented failures.
+    let gen = null;
+    const GEN_PATHS = [
+      join(SRC, '..', '..', 'sb3-creator', 'src', 'utils', 'sb3Creator.js'),
+      join(process.env.HOME || '', 'code', 'sb3-creator', 'src', 'utils', 'sb3Creator.js'),
+    ];
+    const { readFileSync } = await import('node:fs');
+    for (const g of GEN_PATHS) {
+      try { gen = readFileSync(g, 'utf8'); break; } catch { /* try the next */ }
+    }
+    if (gen === null) {
+      console.error('bwc: sb3-creator not found beside us — the bw column reads "?"');
+    }
+
+    const rows = [...count].sort((a, b) => b[1] - a[1]).map(([kind, n]) => {
+      const sym = shapeFor(kind) ? 'sym' : ' -  ';
+      let term = ' -  ';
+      try { const t = terminalsForKind(kind, { pins: 4 }); if (t && t.length) term = 'wire'; } catch { }
+      const eng = engineKinds ? (engineKinds.has(kind) ? 'eng' : ' -  ') : ' ?  ';
+      const verb = DIALECT[kind];
+      const dia = !verb ? '  . ' : gen === null ? ' ?  ' : (gen.includes(verb) ? 'bw ' : ' -  ');
+      return { kind, n, sym, term, eng, dia };
+    });
+
+    console.log('layers: sym=schematic symbol  wire=placeable/wireable  '
+      + 'eng=engine model (MNA)  bw=dialect verb   ( . = passive, no verb needed)');
+    console.log('');
+    console.log('  count  kind             sym  wire  eng   bw');
+    for (const r of rows.slice(0, 60)) {
+      console.log('  ' + String(r.n).padStart(5) + '  ' + r.kind.padEnd(16)
+        + ' ' + r.sym + ' ' + r.term + '  ' + r.eng + '  ' + r.dia);
+    }
+    // The breadboard is the substrate, not a component: it has no engine model
+    // because it is not supposed to have one, and at 1058 instances it would
+    // otherwise dominate this list and make the real gaps look like noise.
+    const NOT_A_COMPONENT = new Set(['breadboard', 'meter']);
+    const inert = rows.filter((r) => r.eng === ' -  ' && !NOT_A_COMPONENT.has(r.kind));
+    const mute = rows.filter((r) => r.dia === ' -  ');
+    console.log('');
+    console.log('DRAWS BUT HAS NO ENGINE MODEL — inert on the board (' + inert.length + ' kinds, '
+      + inert.reduce((a, r) => a + r.n, 0) + ' parts):');
+    for (const r of inert.slice(0, 30)) console.log('  ' + String(r.n).padStart(5) + '  ' + r.kind);
+    if (mute.length) {
+      console.log('ACTIVE BUT UNREACHABLE FROM THE DIALECT (' + mute.length + '):');
+      for (const r of mute) console.log('  ' + String(r.n).padStart(5) + '  ' + r.kind);
+    }
     break;
   }
 
