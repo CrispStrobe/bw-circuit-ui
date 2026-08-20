@@ -92,6 +92,11 @@ export function sidecarTerminalPositions(kind) {
   const pos = {};
   for (const t of sc.terminals) {
     pos[t.name] = { x: t.x, y: t.y };
+    // An alias is a second name bw-board accepts for the SAME metal, not a
+    // second pin: it shares its twin's coordinates exactly.
+    if (Array.isArray(t.aliases)) {
+      for (const a of t.aliases) pos[a] = { x: t.x, y: t.y };
+    }
   }
   return pos;
 }

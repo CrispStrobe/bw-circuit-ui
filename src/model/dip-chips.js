@@ -222,14 +222,21 @@ export const LOGIC_CHIPS = {
     desc: 'BCD to 7-segment latch/decoder/driver',
     pinMap: { 1: 'b', 2: 'c', 3: 'lt', 4: 'bi', 5: 'le', 6: 'd', 7: 'a', 8: 'gnd', 9: 'e', 10: 'd_out', 11: 'c_out', 12: 'b_out', 13: 'a_out', 14: 'g', 15: 'f', 16: 'vcc' },
   },
+  // Nexperia spells this part DS/SHCP/STCP/MR/Q7S and TI spells the same
+  // sixteen pins SER/SRCLK/RCLK/SRCLR/QH'. bw-board registered the TI
+  // names, so the TI names are what this map has to say — a pin map that
+  // spells five pins a way the engine has never heard of names terminals
+  // no wire can land on. The outputs keep the Q0..Q7 numbering both
+  // vendors agree on (Q0 = pin 15, Q1..Q7 = pins 1..7) via the letters
+  // the engine treats as their physical twins: qa = q0 = pin 15.
   '74hc595': {
     kind: '74hc595', label: '74HC595 Shift Register', pins: 16,
     desc: '8-bit shift register with output latch',
     pinMap: {
-      1: 'q1', 2: 'q2', 3: 'q3', 4: 'q4', 5: 'q5', 6: 'q6', 7: 'q7',
+      1: 'qb', 2: 'qc', 3: 'qd', 4: 'qe', 5: 'qf', 6: 'qg', 7: 'qh',
       8: 'gnd',
-      9: 'q7s', 10: 'mr', 11: 'shcp', 12: 'stcp', 13: 'oe',
-      14: 'ds', 15: 'q0',
+      9: 'qh_s', 10: 'srclr', 11: 'srclk', 12: 'rclk', 13: 'oe',
+      14: 'ser', 15: 'qa',
       16: 'vcc',
     },
   },
