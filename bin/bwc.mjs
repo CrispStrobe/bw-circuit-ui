@@ -99,11 +99,11 @@ const usage = () => {
     + '  bwc convert <file> --to eagle|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
     + '\n  audit <dir> [dir...]        four-layer readiness per part kind'
-    + '\nInput: EAGLE .sch, KiCad netlist, Wokwi diagram.json, or our circuit .json.');
+    + '\nInput: EAGLE .sch, KiCad .kicad_sch, KiCad legacy .sch, KiCad netlist,\n       Wokwi diagram.json, or our circuit .json.');
 };
 
 /** Read any supported file into {parts, wires, unmapped, ignored, warnings}. */
-function load(path) {
+async function load(path) {
   const text = readFileSync(path, 'utf8');
   if (/^\s*\{/.test(text)) {
     try {
@@ -114,6 +114,22 @@ function load(path) {
     } catch { /* not our json; fall through to the importers */ }
   }
   const fmt = detectFormat(text, path);
+  if (fmt === 'kicad-legacy') {
+    // A legacy .sch keeps NO pin geometry: it lives in the project's
+    // `<project>-cache.lib`, which KiCad writes beside the .sch for exactly
+    // this reason. Without it every part imports and not one wire does, so
+    // finding it is part of reading the file, not an extra.
+    const dir = dirname(path) || '.';
+    const libs = [];
+    try {
+      const { readdirSync } = await import('node:fs');
+      for (const e of readdirSync(dir)) {
+        if (/\.lib$/i.test(e)) libs.push(readFileSync(join(dir, e), 'utf8'));
+      }
+    } catch { /* no directory listing; the importer will say what is missing */ }
+    const r = importCircuit(fmt, text, { lib: libs });
+    return { ...r, format: fmt };
+  }
   if (!fmt) {
     // THROW, never exit: batch must survive a file it cannot read, and a
     // single unrecognised schematic must not abort a 335-file run.
@@ -127,11 +143,11 @@ function load(path) {
 if (!cmd || cmd === '--help' || cmd === '-h') { usage(); process.exit(0); }
 const file = positional[0];
 if (!file) die(cmd + ' needs a file');
-const loadOrDie = (p2) => { try { return load(p2); } catch (e) { die(e.message); } };
+const loadOrDie = async (p2) => { try { return await load(p2); } catch (e) { return die(e.message); } };
 
 switch (cmd) {
   case 'info': {
-    const c = loadOrDie(file);
+    const c = await loadOrDie(file);
     console.log(basename(file) + '  [' + c.format + ']');
     console.log('  parts    : ' + c.parts.length);
     console.log('  wires    : ' + c.wires.length);
@@ -150,7 +166,7 @@ switch (cmd) {
 
   case 'convert': {
     const to = opts.to || die('convert needs --to eagle|kicad|spice|json');
-    const c = loadOrDie(file);
+    const c = await loadOrDie(file);
     let text; let ext;
     if (to === 'eagle') {
       const r = toEagleSch({ parts: c.parts, wires: c.wires });
@@ -189,7 +205,7 @@ switch (cmd) {
   }
 
   case 'render': {
-    const c = loadOrDie(file);
+    const c = await loadOrDie(file);
     const r = renderSchematicSvg({ parts: c.parts, wires: c.wires }, { dark: !!opts.dark });
     const out = opts.o || basename(file, extname(file)) + '.svg';
     writeFileSync(out, r.svg);
@@ -200,7 +216,7 @@ switch (cmd) {
   }
 
   case 'roundtrip': {
-    const c = loadOrDie(file);
+    const c = await loadOrDie(file);
     const out = toEagleSch({ parts: c.parts, wires: c.wires });
     const back = importCircuit('eagle', out.xml);
     const idsA = JSON.stringify(c.parts.map((p) => [p.id, p.kind]).sort());
@@ -340,7 +356,7 @@ switch (cmd) {
     const unmappedBy = new Map();
     for (const f of files) {
       let c;
-      try { c = load(f); } catch (e) {
+      try { c = await load(f); } catch (e) {
         failed++;
         const why = /could not recognise/.test(e.message) ? 'unrecognised format' : e.message.slice(0, 40);
         unreadable.set(why, (unreadable.get(why) || 0) + 1);
