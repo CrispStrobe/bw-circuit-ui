@@ -93,8 +93,24 @@ export const RULES = [
   // power symbols — one terminal, and EAGLE draws one per connection point
   // The symbol's PIN name is not its deviceset name: a VCC symbol may carry a
   // pin called VIN, and a supply symbol's pins are +VE/-VE in some libraries.
-  [/^(GND|AGND|DGND|0V)$/i,            () => ({ kind: 'gnd', anyPin: 'gnd' })],
-  [/^(VCC|VDD|\+5V|V\+|VIN|VBUS|VBAT)$/i, () => ({ kind: 'vcc', anyPin: 'vcc' })],
+  // VSS is a GROUND, not a supply — the negative rail in CMOS naming. Mapping
+  // it by its V-prefix onto vcc would tie the return path to the positive
+  // rail, which is worse than dropping it.
+  [/^([AD]?GND[A-Z0-9]*|0V|[AD]?VSS[A-Z0-9]*)$/i, () => ({ kind: 'gnd', anyPin: 'gnd' })],
+  // Analog and I/O supplies are still supplies. AVDD, AVCC, VCCIO, VDDIO and
+  // friends were unmapped, and an unmapped POWER SYMBOL is not a cosmetic
+  // loss: dropping it disconnects the rail, which leaves the nodes behind it
+  // with no path to ground. Five corpus boards were reported by lcapy as
+  // "the circuit graph is disjoint" partly for this reason.
+  //
+  // They all clamp to the board voltage, because the name does not carry one:
+  // a 3.3 V AVDD imported beside a 5 V VCC will read 5 V. That is a stated
+  // simplification, not an accident — the topology is right and the number is
+  // approximate, which beats a rail that is not there at all.
+  [/^([AD]?V(CC|DD)[A-Z0-9]*|\+\d+V\d*|V\+|VIN|VBUS|VBAT|VDDA|VCCA)$/i,
+    (v, ds) => ({ kind: 'vcc', anyPin: 'vcc',
+      _note: /^(VCC|VDD)$/i.test(ds) ? undefined
+        : `EAGLE ${ds} imported as a supply rail at the board voltage` })],
   // SparkFun and friends name the supply symbol after the RAIL: 5V, 3.3V,
   // 5.0V, 3V3. Sixty of these in a twelve-board corpus, all previously
   // unmapped, which is why the rule is by shape rather than by enumeration.

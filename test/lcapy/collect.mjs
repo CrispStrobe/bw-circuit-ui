@@ -58,13 +58,20 @@ export function collectLinearCircuits(root) {
 
     const nets = netsFromWires(c.wires).map((n, i) => ({ id: `N${i}`, terminals: n.terminals }));
     const gndIds = new Set(c.parts.filter((p) => p.kind === 'gnd').map((p) => p.id));
-    const gndNet = nets.find((n) => n.terminals.some((t) => gndIds.has(t.part)));
+    // EVERY net carrying a ground symbol is the same node. A board draws one
+    // GND symbol per connection point, so a schematic routinely has several
+    // separate ground NETS that are electrically one reference — an Adafruit
+    // MAX4466 has two. Taking only the first left the others floating in the
+    // lcapy netlist while our engine correctly clamped them all, which read as
+    // a solver disagreement and was this line.
+    const gndNets = nets.filter((n) => n.terminals.some((t) => gndIds.has(t.part)));
+    const gndNet = gndNets[0];
     // A hierarchical SUB-SHEET draws its supply from the parent through
     // hierarchical labels and carries no ground symbol of its own. It is a
     // fragment, not a circuit, and is skipped rather than forced.
     if (!gndNet) { skipped.push(`${name}: no ground (hierarchical fragment?)`); continue; }
 
-    const node = new Map([[gndNet.id, 0]]);
+    const node = new Map(gndNets.map((n) => [n.id, 0]));
     let k = 1; for (const n of nets) if (!node.has(n.id)) node.set(n.id, k++);
     const netOf = (part, terminal) => {
       const n = nets.find((x) => x.terminals.some((t) => t.part === part && t.terminal === terminal));
