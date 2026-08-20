@@ -207,7 +207,7 @@ export function resolveKicadSch(text) {
   }
 
   net.solve();
-  const live = new Set();
+  const live = net.liveRoots();
   for (const k of anchors) {
     const c = k.indexOf(',');
     live.add(net.netAt(Number(k.slice(0, c)), Number(k.slice(c + 1))));

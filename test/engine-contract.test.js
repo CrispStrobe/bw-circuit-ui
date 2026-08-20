@@ -27,6 +27,7 @@ import { registerAllDevices } from '../../bw-board/src/register-all.js';
 import { terminalsForKind } from '../src/model/circuit.js';
 import { RULES } from '../src/importers/eagle.js';
 import { eagleFor } from '../src/model/exporters/eagle.js';
+import { KICAD_RULES } from '../src/importers/kicad-common.js';
 
 // The AUTHORITY is the runtime device registry, not BoardImpl.getPartKinds().
 // That method returns a HAND-MAINTAINED array, and it is stale: attiny88,
@@ -57,6 +58,34 @@ const PROBES = [
 
 
 /**
+ * The same list for the KiCad importers, whose vocabulary is SYMBOL names
+ * (the half after the colon in `Device:R`), not EAGLE devicesets. Two rule
+ * tables, one contract: a kind emitted from either side has to be a kind the
+ * engine can build, or the part draws and is inert.
+ */
+const KICAD_PROBES = [
+    'GND', 'GNDREF', 'Earth_Protective', 'VCC', 'VDD', '+3V3', '+5V', '+1V8', 'AC',
+    'R', 'R_Small', 'R_Potentiometer', 'R_Network08', 'R1206_10K_1%_0.25W_100PPM',
+    'C', 'C_Small', 'C_Polarized', 'CTEB2200_2.2UF_35V',
+    'L', 'L_Small', 'INDUCTOR', 'Ferrite_Bead', 'Fuse', 'Polyfuse', 'Crystal', 'ECS-2520MV',
+    'LED', 'LED_Small', 'D', 'D_Schottky', 'D_Zener', '1N4007', 'ESD5Zxx',
+    'Q_NPN_BEC', 'BC337', '2N3904', 'Q_PNP_BEC', 'BC557', 'Q_NMOS_GDS', 'BSS138',
+    'Q_PMOS_GDS', 'TIP120',
+    'SW_Push', 'SW_SPST', 'SW_DIP_x08', 'SW_SPDT', 'SW_DPDT_x2', 'SW_Rotary', 'Jumper_2',
+    'JUMPER_TRIPLE',
+    'LM7805_TO220', '7809', 'LM7812', 'AMS1117-3.3', 'AZ1117-3.3', 'AMS1117', 'LM7915',
+    'AP2112K-3.3',
+    'TL072', 'LM358', 'NE555', '74HC595', '74LS138', 'SN74AHC1G14', 'L298N', 'PCF8574',
+    '24LC256',
+    'Motor_DC', 'Fan', 'Buzzer', 'Speaker', 'Relay_SPDT', 'NSL-32', 'WS2812B',
+    'Battery_Cell', 'Lamp',
+    'USB_B_Micro', 'USB_C_Receptacle_USB2.0_16P', 'Conn_01x04', 'Conn_02x03_Odd_Even',
+    'CONN_13X2', 'Conn_2', 'TestPoint', 'BNC', 'DB9', 'AudioJack2', 'IEC_60320_C13_Plug',
+    'PMOD_HOST_2x6',
+];
+
+
+/**
  * Kinds the importer may emit that the engine deliberately does NOT model.
  *
  * Every entry needs a reason. This list is a debt register, not an escape
@@ -71,15 +100,21 @@ describe('imported kinds are usable, not just drawable', () => {
     // Every kind any rule can produce. Rules are functions, so this calls each
     // with a representative deviceset name rather than reading the source.
     const emitted = new Set();
-    for (const [re, fn] of RULES) {
-        for (const probe of PROBES) {
-            if (!re.test(probe)) continue;
-            try {
-                const r = fn('10k', probe);
-                if (r && r.kind) emitted.add(r.kind);
-            } catch { /* rule needs a shape this probe does not have */ }
+    const fire = (rules, probes) => {
+        const hit = new Set();
+        for (const [re, fn] of rules) {
+            for (const probe of probes) {
+                if (!re.test(probe)) continue;
+                try {
+                    const r = fn('10k', probe);
+                    if (r && r.kind) { emitted.add(r.kind); hit.add(r.kind); }
+                } catch { /* rule needs a shape this probe does not have */ }
+            }
         }
-    }
+        return hit;
+    };
+    const fromEagle = fire(RULES, PROBES);
+    const fromKicad = fire(KICAD_RULES, KICAD_PROBES);
 
     test('the registry is populated, so the check has something to check', () => {
         // Without registerAllDevices() the registry is EMPTY and every kind
@@ -89,9 +124,10 @@ describe('imported kinds are usable, not just drawable', () => {
             `engine knows only ${ENGINE_KINDS.size} kinds — registerAllDevices did not run`);
     });
 
-    test('the probe list actually exercises the rule table', () => {
+    test('the probe lists actually exercise BOTH rule tables', () => {
         // If the probes stop matching, every assertion below passes vacuously.
-        assert.ok(emitted.size >= 20, `only ${emitted.size} kinds emitted — probes have gone stale`);
+        assert.ok(fromEagle.size >= 20, `EAGLE: only ${fromEagle.size} kinds emitted — probes have gone stale`);
+        assert.ok(fromKicad.size >= 25, `KiCad: only ${fromKicad.size} kinds emitted — probes have gone stale`);
     });
 
     test('every emitted kind is one the engine knows', () => {

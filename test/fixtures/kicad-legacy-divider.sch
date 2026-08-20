@@ -1,0 +1,116 @@
+EESchema Schematic File Version 4
+EELAYER 30 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 1 1
+Title "kicad-legacy-divider"
+Date ""
+Rev ""
+Comp ""
+Comment1 "Hand-written fixture: the expected net partition is computable by hand."
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L Device:R R1
+U 1 1 00000001
+P 2000 1500
+F 0 "R1" H 2070 1546 50  0000 L CNN
+F 1 "10k" H 2070 1455 50  0000 L CNN
+F 2 "" V 1930 1500 50  0001 C CNN
+F 3 "~" H 2000 1500 50  0001 C CNN
+	1    2000 1500
+	1    0    0    -1
+$EndComp
+$Comp
+L Device:R R2
+U 1 1 00000002
+P 2000 2000
+F 0 "R2" H 2070 2046 50  0000 L CNN
+F 1 "4k7" H 2070 1955 50  0000 L CNN
+F 2 "" V 1930 2000 50  0001 C CNN
+F 3 "~" H 2000 2000 50  0001 C CNN
+	1    2000 2000
+	1    0    0    -1
+$EndComp
+$Comp
+L Device:R R3
+U 1 1 00000003
+P 3000 1150
+F 0 "R3" V 2793 1150 50  0000 C CNN
+F 1 "1k" V 2884 1150 50  0000 C CNN
+F 2 "" V 2930 1150 50  0001 C CNN
+F 3 "~" H 3000 1150 50  0001 C CNN
+	1    3000 1150
+	0    1    1    0
+$EndComp
+$Comp
+L Switch:SW_DPDT SW1
+U 1 1 00000004
+P 4000 1500
+F 0 "SW1" H 4000 1785 50  0000 C CNN
+F 1 "SW_DPDT" H 4000 1694 50  0000 C CNN
+F 2 "" H 4000 1500 50  0001 C CNN
+F 3 "~" H 4000 1500 50  0001 C CNN
+	1    4000 1500
+	1    0    0    -1
+$EndComp
+$Comp
+L power:+5V #PWR01
+U 1 1 00000005
+P 2000 1350
+F 0 "#PWR01" H 2000 1200 50  0001 C CNN
+F 1 "+5V" H 2015 1523 50  0000 C CNN
+F 2 "" H 2000 1350 50  0001 C CNN
+F 3 "" H 2000 1350 50  0001 C CNN
+	1    2000 1350
+	1    0    0    -1
+$EndComp
+$Comp
+L power:+5V #PWR02
+U 1 1 00000006
+P 3150 1150
+F 0 "#PWR02" H 3150 1000 50  0001 C CNN
+F 1 "+5V" H 3165 1323 50  0000 C CNN
+F 2 "" H 3150 1150 50  0001 C CNN
+F 3 "" H 3150 1150 50  0001 C CNN
+	1    3150 1150
+	1    0    0    -1
+$EndComp
+$Comp
+L power:GND #PWR03
+U 1 1 00000007
+P 2000 2150
+F 0 "#PWR03" H 2000 1900 50  0001 C CNN
+F 1 "GND" H 2005 1977 50  0000 C CNN
+F 2 "" H 2000 2150 50  0001 C CNN
+F 3 "" H 2000 2150 50  0001 C CNN
+	1    2000 2150
+	1    0    0    -1
+$EndComp
+$Comp
+L Device:R R5
+U 1 1 00000008
+P 5000 1150
+F 0 "R5" V 4793 1150 50  0000 C CNN
+F 1 "330" V 4884 1150 50  0000 C CNN
+F 2 "" V 4930 1150 50  0001 C CNN
+F 3 "~" H 5000 1150 50  0001 C CNN
+	1    5000 1150
+	0    -1   1    0
+$EndComp
+Wire Wire Line
+	2000 1650 2000 1850
+Wire Wire Line
+	3800 1500 3600 1500
+Text Label 2000 1750 0    50   ~ 0
+MID
+Text Label 2850 1150 0    50   ~ 0
+MID
+Text Label 3600 1500 0    50   ~ 0
+MID
+Text Label 4850 1150 0    50   ~ 0
+MID
+$EndSCHEMATC

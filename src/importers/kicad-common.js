@@ -57,6 +57,7 @@ export class NetSolver {
     this.parent = new Map();
     this.segments = [];          // {x1,y1,x2,y2}
     this.points = new Set();     // keys of every point that may T onto a wire
+    this.names = new Set();      // every net NAME the sheet mentions
   }
 
   _find(a) {
@@ -85,6 +86,7 @@ export class NetSolver {
   /** Tie a point to a NAME, so every other point with that name joins it. */
   addName(x, y, name) {
     if (!name) return;
+    this.names.add(name);
     this.union(this.addPoint(x, y), 'name:' + name);
   }
 
@@ -132,6 +134,20 @@ export class NetSolver {
 
   /** Net id for a NAME node (power rails, labels). */
   netOfName(name) { return this._find('name:' + name); }
+
+  /**
+   * Roots of every net the author actually drew or named.
+   *
+   * A pin outside this set touches no wire, no junction and no label, and is
+   * floating. Names belong in it: a rail joined only by its +3V3 symbol is
+   * connected, and counting it as floating made a correct import look like a
+   * half-failed one.
+   */
+  liveRoots() {
+    const live = new Set();
+    for (const n of this.names) live.add(this.netOfName(n));
+    return live;
+  }
 }
 
 /**
@@ -257,7 +273,13 @@ export const KICAD_RULES = [
     return { kind: 'dip_switch', params: { positions: w },
       pins: Object.fromEntries(Array.from({ length: 2 * w }, (_, i) => [String(i + 1), String(i + 1)])) };
   }],
-  [/^SW_(SPDT|DPDT|DP3T|Rotary|Lever)/i, () => ({ kind: 'slide_switch' })],
+  // KiCad's own SPDT/DPDT symbols put the COMMON on pin 2: the library draws
+  // A(1) and C(3) as the two throws on one side and B(2) alone on the other.
+  // Checked against Switch_SW_DPDT_x2 in a real cache library rather than
+  // assumed from the pin numbering, which reads as if 1 were the common.
+  [/^SW_(SPDT|DPDT|DP3T)/i, () => ({ kind: 'slide_switch',
+    pins: { 1: 'a', 2: 'com', 3: 'b', A: 'a', B: 'com', C: 'b' } })],
+  [/^SW_(Rotary|Lever|Toggle)/i, () => ({ kind: 'slide_switch' })],
   [/^JUMPER_TRIPLE$|^Jumper_3/i, (v, n) => headerOf(3, `${n} imported as a 3-pin header`)],
   [/^Jumper(_\w+)?$|^JUMPER$/i, (v, n) => headerOf(2, `${n} imported as a 2-pin header`)],
 
