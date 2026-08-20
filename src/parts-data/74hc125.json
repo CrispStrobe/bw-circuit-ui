@@ -1,0 +1,156 @@
+{
+  "kind": "74hc125",
+  "w": 70,
+  "h": 46,
+  "terminals": [
+    {
+      "name": "1oeb",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "1a",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "1y",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "2oeb",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "2a",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "2y",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "3y",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "3a",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "3oeb",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "4y",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "4a",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "4oeb",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Clean-room from the TI/Nexperia datasheet pinout, cross-checked against bw-board src/devices/tier3-parts.js, whose terminal array is the DIP package order and whose header comment spells the same pinout out. 74HC125 quad bus buffer with per-gate active-LOW output enable, DIP-14: 1OE 1A 1Y 2OE 2A 2Y GND | 3Y 3A 3OE 4Y 4A 4OE VCC.",
+  "footprint": {
+    "refTerminal": "1oeb",
+    "leads": {
+      "1oeb": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "1a": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "1y": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "2oeb": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "2a": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "2y": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "3y": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "3a": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "3oeb": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "4y": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "4a": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "4oeb": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 7
+  }
+}

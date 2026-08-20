@@ -1,0 +1,100 @@
+{
+  "kind": "at24c64",
+  "w": 60,
+  "h": 31,
+  "terminals": [
+    {
+      "name": "a0",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "a1",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "a2",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "sda",
+      "x": 60,
+      "y": 23,
+      "functions": [
+        "sda"
+      ]
+    },
+    {
+      "name": "scl",
+      "x": 60,
+      "y": 18,
+      "functions": [
+        "scl"
+      ]
+    },
+    {
+      "name": "wp",
+      "x": 60,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 60,
+      "y": 8,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "AT24C64 / 24C64 8-Kbit (8192 x 8) serial I2C EEPROM, DIP-8 — pin-for-pin the AT24C02's package: A0/A1/A2 (pins 1-3, address straps, sampled electrically to form the bus address 0b1010|A2A1A0), GND (4), SDA (5), SCL (6), WP (7, write protect), VCC (8). It was already in BoardCanvas's DIP_CHIP_LABELS with no sidecar behind it, so all eight pins rendered stacked at the part origin (2026-08-20).",
+  "footprint": {
+    "refTerminal": "a0",
+    "leads": {
+      "a0": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "a1": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "a2": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "sda": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "scl": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "wp": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 4
+  }
+}

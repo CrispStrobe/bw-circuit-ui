@@ -274,3 +274,51 @@ test('74hc595 and stc15_mcu place every engine name on a real leg', async () => 
   assert.equal(rightCol[0].name, 'P4.5', 'the right column starts at pin 40 and runs 40→21');
   assert.equal(rightCol[19].name, 'P3.0', 'and ends at pin 21');
 });
+
+/**
+ * The gap that has no sidecar at all.
+ *
+ * BoardCanvas routes a kind through the sidecar DIP path only if it is in
+ * DIP_CHIP_LABELS. If it IS listed and no sidecar answers, the default
+ * branch returns {a: -15, b: +15} and EVERY terminal of that chip lands on
+ * the {dx:0, dy:0} origin fallback — a pile of pins on one point, which is
+ * the same symptom as a missing name and just as invisible to a name-set
+ * comparison. at24c64 sat in that state (listed since the blinkenrocket
+ * badge work, sidecar never written) until 2026-08-20.
+ *
+ * Reading the label table out of the JSX is deliberate: the table lives in
+ * a component this suite cannot import, and a hand-copied list here would
+ * be a fifth stale table of exactly the kind this file exists to prevent.
+ */
+test('every kind the canvas draws as a DIP has a sidecar that places its pins', async () => {
+  const { dipTerminalPositions } = await import('../src/model/dip-geometry.js');
+  const fs2 = require('node:fs');
+  const jsx = fs2.readFileSync(path.join(here, '..', 'src', 'components', 'BoardCanvas.jsx'), 'utf8');
+  const start = jsx.indexOf('const DIP_CHIP_LABELS = {');
+  assert.ok(start > 0, 'DIP_CHIP_LABELS has moved or been renamed — this test has gone blind');
+  const body = jsx.slice(start + jsx.slice(start).indexOf('{') + 1,
+    start + jsx.slice(start).indexOf('\n};'));
+  const labelled = [...new Set([...body.matchAll(/(?:^|[,{\n]\s*)'?([A-Za-z0-9_]+)'?\s*:/g)].map(m => m[1]))];
+  assert.ok(labelled.length > 40,
+    `only ${labelled.length} DIP labels parsed out of BoardCanvas.jsx — the regex has gone stale`);
+
+  // The one documented indirection: a friendly kind sharing the real IC's
+  // sidecar. Mirrors SIDECAR_ALIAS in BoardCanvas's DIP body renderer.
+  const SIDECAR_ALIAS = { shift_register: '74hc595' };
+  const dir = path.join(here, '..', 'src', 'parts-data');
+  const bad = [];
+  for (const kind of labelled.sort()) {
+    const file = path.join(dir, `${SIDECAR_ALIAS[kind] || kind}.json`);
+    if (!fs2.existsSync(file)) {
+      bad.push(`${kind}: listed in DIP_CHIP_LABELS with no sidecar — the canvas falls back to {a,b} and every pin renders at the part origin`);
+      continue;
+    }
+    const side = JSON.parse(fs2.readFileSync(file, 'utf8'));
+    const dev = getDevice(kind);
+    if (!dev || !Array.isArray(dev.terminals)) continue;
+    const pos = dipTerminalPositions(side);
+    const unplaced = dev.terminals.filter(n => !pos[n]);
+    if (unplaced.length) bad.push(`${kind}: engine terminals with no leg to sit on: ${unplaced}`);
+  }
+  assert.deepEqual(bad, [], `DIP kinds that cannot be drawn:\n${bad.join('\n')}`);
+});
