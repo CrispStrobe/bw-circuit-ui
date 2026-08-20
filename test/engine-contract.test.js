@@ -26,6 +26,7 @@ import { registeredKinds } from '../../bw-board/src/devices.js';
 import { registerAllDevices } from '../../bw-board/src/register-all.js';
 import { terminalsForKind } from '../src/model/circuit.js';
 import { RULES } from '../src/importers/eagle.js';
+import { eagleFor } from '../src/model/exporters/eagle.js';
 
 // The AUTHORITY is the runtime device registry, not BoardImpl.getPartKinds().
 // That method returns a HAND-MAINTAINED array, and it is stale: attiny88,
@@ -118,6 +119,40 @@ describe('imported kinds are usable, not just drawable', () => {
             assert.ok(!ENGINE_KINDS.has(k),
                 `${k} is listed as schematic-only but the engine models it — drop the excuse`);
         }
+    });
+});
+
+describe('importer and exporter stay symmetric', () => {
+    // A kind the importer can produce but the exporter cannot write is not a
+    // cosmetic gap: toEagleSch SKIPS such a part, and a skipped part takes its
+    // nets with it. When the importer gained rules for MOSFETs, connectors and
+    // regulators without matching exporter entries, corpus round-trips fell
+    // from 282/287 to 203/287 and the only visible symptom was a net count
+    // that had quietly shrunk. Nothing failed; the numbers just got worse.
+    const emitted = new Set();
+    for (const [re, fn] of RULES) {
+        for (const probe of PROBES) {
+            if (!re.test(probe)) continue;
+            try {
+                const r = fn('10k', probe);
+                if (r && r.kind) emitted.add(r.kind);
+            } catch { /* rule needs a shape this probe does not have */ }
+        }
+    }
+
+    test('every importable kind can also be exported', () => {
+        // header is built per-instance by headerFor(), not looked up in the
+        // table, so it is exportable without a KIND_TO_EAGLE entry.
+        const orphans = [...emitted].filter((k) => k !== 'header' && !eagleFor(k));
+        assert.deepEqual(orphans, [],
+            `these import but cannot be exported, so a round-trip silently drops them `
+            + `and their nets: ${orphans.join(', ')}`);
+    });
+
+    test('the check is not vacuous', () => {
+        assert.ok(emitted.size >= 20, `only ${emitted.size} kinds emitted — probes are stale`);
+        assert.equal(eagleFor('definitely_not_a_part'), null,
+            'eagleFor must return null for an unknown kind, or the check above cannot fail');
     });
 });
 
