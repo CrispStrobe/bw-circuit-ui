@@ -1044,14 +1044,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                   }}>☙ Codex</button>
               </div>
             )}
-            {/* Foreign-schematic import. Lives here rather than beside
-                ExportNetlistMenu in BoardCanvas because it needs handleLoad,
-                which is defined in this component — the same reason InferPanel
-                takes onLoadCircuit. Self-contained, so it can be moved to the
-                toolbar with two lines when its owner wants it there. */}
-            <div style={{padding: '4px 6px', display: 'flex', justifyContent: 'flex-end'}}>
-              <ImportCircuitMenu onImport={handleLoad} lang={lang} />
-            </div>
+            {/* Import moved to the ⋯ toolbar menu (BoardCanvas FileMenu) */}
             <div style={{flex: 1, overflowY: 'auto'}}>
             {examples && onLoadExample ? (
               codexMode && curriculum ? (

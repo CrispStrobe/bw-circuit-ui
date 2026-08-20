@@ -2564,6 +2564,155 @@ function BreadboardSubstrate({ part }) {
   );
 }
 
+// ── File menu (inside the ⋯ overflow) ─────────────────────────────
+// Four top-level actions: Load, Save, Import ▸, Export ▸.
+// Format variants live on 2nd-level submenus, never top level.
+// Clear is a destructive op, kept separate at the bottom.
+
+function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone }) {
+  const [sub, setSub] = useState(null); // 'import' | 'export' | null
+  const de = /^de/i.test(lang);
+  const itemStyle = { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 10px', background: 'none', border: 'none', color: '#e2e8f0', fontSize: 12, fontFamily: 'system-ui, sans-serif', cursor: 'pointer', borderRadius: 3, textAlign: 'left' };
+  const itemHover = (e) => { e.currentTarget.style.background = '#1e293b'; };
+  const itemLeave = (e) => { e.currentTarget.style.background = 'none'; };
+  const subStyle = { ...itemStyle, paddingLeft: 24, fontSize: 11, color: '#94a3b8' };
+
+  // Import needs a file picker — driven by a hidden <input>.
+  const fileRef = useRef(null);
+  const pendingFormat = useRef(null);
+
+  const handleImportFile = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !onImport) return;
+    let text;
+    try { text = await file.text(); } catch { return; }
+    // Auto-detect or use the forced format
+    const { detectFormat } = await import('../importers/detect.js');
+    const { importCircuit } = await import('../importers/index.js');
+    const format = pendingFormat.current || detectFormat(text, file.name);
+    if (!format) return;
+    const r = importCircuit(format, text);
+    if (r.parts.length) onImport({ parts: r.parts, wires: r.wires });
+    if (onDone) onDone();
+    e.target.value = '';
+  }, [onImport, onDone]);
+
+  const pickImport = (formatId) => {
+    pendingFormat.current = formatId || null;
+    if (fileRef.current) {
+      fileRef.current.accept = formatId
+        ? { eagle: '.sch', kicad: '.net,.xml', json: '.json' }[formatId] || '*'
+        : '.sch,.net,.xml,.json';
+      fileRef.current.click();
+    }
+  };
+
+  // Export uses the existing logic from ExportNetlistMenu.
+  const handleExport = useCallback(async (formatId) => {
+    if (!circuit) return;
+    const { extractNetlist } = await import('../model/netlist.js');
+    const { downloadText } = await import('../model/exporters/download.js');
+    const netlist = extractNetlist(circuit);
+    switch (formatId) {
+      case 'spice': {
+        const { toSpice } = await import('../model/exporters/spice.js');
+        const { text } = toSpice(netlist);
+        downloadText(text, 'circuit.cir');
+        break;
+      }
+      case 'kicad': {
+        const { toKicadNet } = await import('../model/exporters/kicad.js');
+        downloadText(toKicadNet(netlist), 'circuit.net');
+        break;
+      }
+      case 'easyeda': {
+        const { toEasyEDA } = await import('../model/exporters/easyeda.js');
+        const { text } = toEasyEDA(netlist);
+        downloadText(text, 'circuit-for-easyeda.net');
+        break;
+      }
+    }
+    if (onDone) onDone();
+  }, [circuit, onDone]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={handleImportFile} />
+      {/* Load / Open */}
+      {onLoad && (
+        <button onClick={() => { onLoad(); if (onDone) onDone(); }} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={itemStyle}>
+          <span style={{ width: 16, textAlign: 'center' }}>📂</span> {de ? 'Öffnen' : 'Open'}
+        </button>
+      )}
+      {/* Save */}
+      {onSave && (
+        <button onClick={() => { onSave(); if (onDone) onDone(); }} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={itemStyle}>
+          <span style={{ width: 16, textAlign: 'center' }}>💾</span> {de ? 'Speichern' : 'Save'}
+        </button>
+      )}
+      {/* Import ▸ (submenu) */}
+      {onImport && (
+        <>
+          <button onClick={() => setSub(sub === 'import' ? null : 'import')} onMouseEnter={itemHover} onMouseLeave={itemLeave}
+            style={{ ...itemStyle, justifyContent: 'space-between' }}>
+            <span><span style={{ width: 16, display: 'inline-block', textAlign: 'center' }}>📥</span> Import</span>
+            <span style={{ fontSize: 10, color: '#64748b' }}>{sub === 'import' ? '▾' : '▸'}</span>
+          </button>
+          {sub === 'import' && (
+            <div>
+              <button onClick={() => pickImport(null)} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                {de ? 'Datei (automatisch)' : 'File (auto-detect)'}
+              </button>
+              <button onClick={() => pickImport('eagle')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                EAGLE schematic (.sch)
+              </button>
+              <button onClick={() => pickImport('kicad')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                KiCad netlist (.net/.xml)
+              </button>
+              <button onClick={() => pickImport('json')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                Diagram (.json)
+              </button>
+            </div>
+          )}
+        </>
+      )}
+      {/* Export ▸ (submenu) */}
+      {circuit && (
+        <>
+          <button onClick={() => setSub(sub === 'export' ? null : 'export')} onMouseEnter={itemHover} onMouseLeave={itemLeave}
+            style={{ ...itemStyle, justifyContent: 'space-between' }}>
+            <span><span style={{ width: 16, display: 'inline-block', textAlign: 'center' }}>📤</span> Export</span>
+            <span style={{ fontSize: 10, color: '#64748b' }}>{sub === 'export' ? '▾' : '▸'}</span>
+          </button>
+          {sub === 'export' && (
+            <div>
+              <button onClick={() => handleExport('spice')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                SPICE (.cir)
+              </button>
+              <button onClick={() => handleExport('kicad')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                KiCad Netlist (.net)
+              </button>
+              <button onClick={() => handleExport('easyeda')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                EasyEDA (via KiCad)
+              </button>
+            </div>
+          )}
+        </>
+      )}
+      {/* Separator + Clear */}
+      {onClear && (
+        <>
+          <span style={{ display: 'block', height: 1, background: '#334155', margin: '4px 0' }} />
+          <button onClick={() => { onClear(); if (onDone) onDone(); }} onMouseEnter={(e) => { e.currentTarget.style.background = '#2a1010'; }} onMouseLeave={itemLeave}
+            style={{ ...itemStyle, color: '#f87171' }}>
+            <span style={{ width: 16, textAlign: 'center' }}>🗑</span> {de ? 'Alles löschen' : 'Clear all'}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Main BoardCanvas ─────────────────────────────────────────────
 
 export function BoardCanvas({
@@ -3665,17 +3814,21 @@ export function BoardCanvas({
         <div data-toolbar-more style={{position: 'relative', flex: '0 0 auto'}}>
           <button onClick={() => setToolbarMoreOpen(v => !v)} title="More circuit controls: Save, Load, Zoom" aria-label="More circuit controls" aria-expanded={toolbarMoreOpen}
             style={{width: 34, minWidth: 34, height: 34, padding: 0, background: toolbarMoreOpen ? '#1e3a5f' : '#2c3e50', border: '1px solid #64748b', borderRadius: 4, color: '#e2e8f0', fontSize: '17px', cursor: 'pointer'}}>⋯</button>
-          {toolbarMoreOpen && <div data-toolbar-more-menu style={{position: 'absolute', zIndex: 80, top: 40, right: 0, display: 'flex', flexWrap: 'wrap', maxWidth: '92vw', justifyContent: 'flex-end', gap: 4, alignItems: 'center', padding: 4, background: '#0f172a', border: '1px solid #64748b', borderRadius: 5, boxShadow: '0 3px 10px rgba(0,0,0,.35)'}}>
+          {toolbarMoreOpen && <div data-toolbar-more-menu style={{position: 'absolute', zIndex: 80, top: 40, right: 0, minWidth: 180, maxWidth: '92vw', padding: 4, background: '#0f172a', border: '1px solid #64748b', borderRadius: 5, boxShadow: '0 3px 10px rgba(0,0,0,.35)'}}>
             {/* When the toolbar is cramped, the secondary nav groups live here instead of on a 2nd row. */}
-            {toolbarCramped && panelNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center'}}>{panelNav}</div> : null}
-            {toolbarCramped && viewNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
-            {toolbarCramped && (panelNav || viewNav) ? <span style={{width: 1, height: 24, background: '#334155', margin: '0 2px'}} /> : null}
-            {onSaveCircuit && <button onClick={onSaveCircuit} title="Save wiring as file" aria-label="Save wiring as file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: 3, color: '#2ecc71', fontSize: 14, cursor: 'pointer'}}>💾</button>}
-            {circuit && <ExportNetlistMenu circuit={circuit} lang={lang} />}
-            {onImport && <ImportCircuitMenu onImport={onImport} lang={lang} />}
-            {onLoadCircuit && <button onClick={onLoadCircuit} title="Load wiring from file" aria-label="Load wiring from file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: 3, color: '#3498db', fontSize: 14, cursor: 'pointer'}}>📂</button>}
-            {onClearCircuit && <button onClick={() => { onClearCircuit(); setToolbarMoreOpen(false); }} title={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} aria-label={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: 3, color: '#e74c3c', fontSize: 14, cursor: 'pointer'}}>🗑</button>}
-            <span data-zoom-indicator title="Canvas zoom" style={{height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
+            {toolbarCramped && panelNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center', padding: '2px 0'}}>{panelNav}</div> : null}
+            {toolbarCramped && viewNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center', padding: '2px 0'}}>{viewNav}</div> : null}
+            {toolbarCramped && (panelNav || viewNav) ? <span style={{display: 'block', height: 1, background: '#334155', margin: '4px 0'}} /> : null}
+            <FileMenu
+              circuit={circuit} lang={lang}
+              onLoad={onLoadCircuit} onSave={onSaveCircuit}
+              onImport={onImport} onClear={onClearCircuit}
+              onDone={() => setToolbarMoreOpen(false)}
+            />
+            <span style={{display: 'block', height: 1, background: '#334155', margin: '4px 0'}} />
+            <div style={{display: 'flex', justifyContent: 'flex-end', padding: '2px 0'}}>
+              <span data-zoom-indicator title="Canvas zoom" style={{height: 28, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
+            </div>
           </div>}
         </div>
       </div>
