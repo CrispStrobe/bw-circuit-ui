@@ -16,6 +16,7 @@ import { extractNetlist } from '../model/netlist.js';
 import { toSpice } from '../model/exporters/spice.js';
 import { toKicadNet } from '../model/exporters/kicad.js';
 import { toEasyEDA } from '../model/exporters/easyeda.js';
+import { toEagleSch } from '../model/exporters/eagle.js';
 import { downloadText } from '../model/exporters/download.js';
 
 const FORMATS = [
@@ -25,6 +26,10 @@ const FORMATS = [
     ext: '.net', mime: 'text/plain' },
   { id: 'easyeda', label: 'EasyEDA (via KiCad)', labelDe: 'EasyEDA (via KiCad)',
     ext: '.net', mime: 'text/plain' },
+  // Connectivity only — no symbol geometry, so EAGLE itself will not render
+  // it. Round-trips through our own importer; useful as interchange.
+  { id: 'eagle', label: 'EAGLE schematic (.sch, netlist only)',
+    labelDe: 'EAGLE-Schaltplan (.sch, nur Netzliste)', ext: '.sch', mime: 'application/xml' },
 ];
 
 /**
@@ -64,6 +69,15 @@ export default function ExportNetlistMenu({ circuit, lang = 'en' }) {
       case 'kicad': {
         const text = toKicadNet(netlist);
         downloadText(text, filename);
+        break;
+      }
+      case 'eagle': {
+        // From the circuit's own parts and wires, NOT the netlist:
+        // extractNetlist drops power rails and infrastructure, and a
+        // round-trip that loses every GND symbol is not a round-trip.
+        const { xml, warnings } = toEagleSch({ parts: circuit.parts, wires: circuit.wires });
+        if (warnings.length) console.log('[Export] EAGLE:\n  ' + warnings.join('\n  '));
+        downloadText(xml, filename);
         break;
       }
       case 'easyeda': {
