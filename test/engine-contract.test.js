@@ -92,9 +92,12 @@ const KICAD_PROBES = [
  * hatch: a part here imports for the schematic and is inert on the board, so
  * it should either gain an engine model or stop being imported.
  */
-const SCHEMATIC_ONLY = {
-    crystal: 'no engine model for a resonator; imported so the schematic is complete',
-};
+// 2026-08-20: EMPTIED. `crystal` was the only entry and bw-board db2c5e2
+// gave it a real device (terminals a/b), so the excuse went with it. The
+// map stays as the place a future gap declares itself — it may only grow
+// with a stated reason, and every entry has to be gone the moment the
+// engine models the kind.
+const SCHEMATIC_ONLY = {};
 
 describe('imported kinds are usable, not just drawable', () => {
     // Every kind any rule can produce. Rules are functions, so this calls each

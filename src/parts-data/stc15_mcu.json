@@ -1,508 +1,629 @@
 {
- "kind": "stc15_mcu",
- "w": 80,
- "h": 111,
- "terminals": [
-  {
-   "name": "P0.0",
-   "x": 0,
-   "y": 8,
-   "functions": [
-    "gpio"
-   ]
+  "kind": "stc15_mcu",
+  "w": 80,
+  "h": 111,
+  "terminals": [
+    {
+      "name": "P0.0",
+      "x": 0,
+      "y": 8,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p0.0"
+      ]
+    },
+    {
+      "name": "P0.1",
+      "x": 0,
+      "y": 13,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p0.1"
+      ]
+    },
+    {
+      "name": "P0.2",
+      "x": 0,
+      "y": 18,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p0.2"
+      ]
+    },
+    {
+      "name": "P0.3",
+      "x": 0,
+      "y": 23,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p0.3"
+      ]
+    },
+    {
+      "name": "P0.4",
+      "x": 0,
+      "y": 28,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p0.4"
+      ]
+    },
+    {
+      "name": "P0.5",
+      "x": 0,
+      "y": 33,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p0.5"
+      ]
+    },
+    {
+      "name": "P0.6",
+      "x": 0,
+      "y": 38,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p0.6"
+      ]
+    },
+    {
+      "name": "P0.7",
+      "x": 0,
+      "y": 43,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p0.7"
+      ]
+    },
+    {
+      "name": "P1.0",
+      "x": 0,
+      "y": 48,
+      "functions": [
+        "gpio",
+        "adc0"
+      ],
+      "aliases": [
+        "p1.0"
+      ]
+    },
+    {
+      "name": "P1.1",
+      "x": 0,
+      "y": 53,
+      "functions": [
+        "gpio",
+        "adc1"
+      ],
+      "aliases": [
+        "p1.1"
+      ]
+    },
+    {
+      "name": "P1.2",
+      "x": 0,
+      "y": 58,
+      "functions": [
+        "gpio",
+        "adc2"
+      ],
+      "aliases": [
+        "p1.2"
+      ]
+    },
+    {
+      "name": "P1.3",
+      "x": 0,
+      "y": 63,
+      "functions": [
+        "gpio",
+        "adc3"
+      ],
+      "aliases": [
+        "p1.3"
+      ]
+    },
+    {
+      "name": "P1.4",
+      "x": 0,
+      "y": 68,
+      "functions": [
+        "gpio",
+        "adc4"
+      ],
+      "aliases": [
+        "p1.4"
+      ]
+    },
+    {
+      "name": "P1.5",
+      "x": 0,
+      "y": 73,
+      "functions": [
+        "gpio",
+        "adc5"
+      ],
+      "aliases": [
+        "p1.5"
+      ]
+    },
+    {
+      "name": "P1.6",
+      "x": 0,
+      "y": 78,
+      "functions": [
+        "gpio",
+        "xtal2",
+        "adc6"
+      ],
+      "aliases": [
+        "p1.6"
+      ]
+    },
+    {
+      "name": "P1.7",
+      "x": 0,
+      "y": 83,
+      "functions": [
+        "gpio",
+        "xtal1",
+        "adc7"
+      ],
+      "aliases": [
+        "p1.7"
+      ]
+    },
+    {
+      "name": "P5.4",
+      "x": 0,
+      "y": 88,
+      "functions": [
+        "gpio",
+        "rst"
+      ],
+      "aliases": [
+        "p5.4"
+      ]
+    },
+    {
+      "name": "VCC",
+      "x": 0,
+      "y": 93,
+      "functions": [
+        "power"
+      ],
+      "aliases": [
+        "vcc"
+      ]
+    },
+    {
+      "name": "P5.5",
+      "x": 0,
+      "y": 98,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p5.5"
+      ]
+    },
+    {
+      "name": "GND",
+      "x": 0,
+      "y": 103,
+      "functions": [
+        "power"
+      ],
+      "aliases": [
+        "gnd"
+      ]
+    },
+    {
+      "name": "P4.5",
+      "x": 80,
+      "y": 8,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p4.5"
+      ]
+    },
+    {
+      "name": "P2.7",
+      "x": 80,
+      "y": 13,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p2.7"
+      ]
+    },
+    {
+      "name": "P2.6",
+      "x": 80,
+      "y": 18,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p2.6"
+      ]
+    },
+    {
+      "name": "P2.5",
+      "x": 80,
+      "y": 23,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p2.5"
+      ]
+    },
+    {
+      "name": "P2.4",
+      "x": 80,
+      "y": 28,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p2.4"
+      ]
+    },
+    {
+      "name": "P2.3",
+      "x": 80,
+      "y": 33,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p2.3"
+      ]
+    },
+    {
+      "name": "P2.2",
+      "x": 80,
+      "y": 38,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p2.2"
+      ]
+    },
+    {
+      "name": "P2.1",
+      "x": 80,
+      "y": 43,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p2.1"
+      ]
+    },
+    {
+      "name": "P2.0",
+      "x": 80,
+      "y": 48,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p2.0"
+      ]
+    },
+    {
+      "name": "P4.4",
+      "x": 80,
+      "y": 53,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p4.4"
+      ]
+    },
+    {
+      "name": "P4.2",
+      "x": 80,
+      "y": 58,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p4.2"
+      ]
+    },
+    {
+      "name": "P4.1",
+      "x": 80,
+      "y": 63,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p4.1"
+      ]
+    },
+    {
+      "name": "P3.7",
+      "x": 80,
+      "y": 68,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p3.7"
+      ]
+    },
+    {
+      "name": "P3.6",
+      "x": 80,
+      "y": 73,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p3.6"
+      ]
+    },
+    {
+      "name": "P3.5",
+      "x": 80,
+      "y": 78,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p3.5"
+      ]
+    },
+    {
+      "name": "P3.4",
+      "x": 80,
+      "y": 83,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p3.4"
+      ]
+    },
+    {
+      "name": "P3.3",
+      "x": 80,
+      "y": 88,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p3.3"
+      ]
+    },
+    {
+      "name": "P3.2",
+      "x": 80,
+      "y": 93,
+      "functions": [
+        "gpio"
+      ],
+      "aliases": [
+        "p3.2"
+      ]
+    },
+    {
+      "name": "P3.1",
+      "x": 80,
+      "y": 98,
+      "functions": [
+        "gpio",
+        "txd0"
+      ],
+      "aliases": [
+        "p3.1"
+      ]
+    },
+    {
+      "name": "P3.0",
+      "x": 80,
+      "y": 103,
+      "functions": [
+        "gpio",
+        "rxd0"
+      ],
+      "aliases": [
+        "p3.0"
+      ]
+    }
+  ],
+  "_pinmap_source": "docs/PINOUT-STC15.md + RETRO-CONSOLE-RBS15667.md schematic transcription (2026-08-16): PDIP-40, VCC pin 18, GND 20, RST=P5.4 pin 17, P5.5 pin 19, P0 ASCENDING from pin 1, no dedicated XTAL pins (P1.6/P1.7 double)",
+  "footprint": {
+    "refTerminal": "P0.0",
+    "leads": {
+      "P0.0": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "P0.1": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "P0.2": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "P0.3": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "P0.4": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "P0.5": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "P0.6": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "P0.7": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "P1.0": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "P1.1": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "P1.2": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "P1.3": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "P1.4": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "P1.5": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "P1.6": {
+        "dRow": 0,
+        "dCol": 14
+      },
+      "P1.7": {
+        "dRow": 0,
+        "dCol": 15
+      },
+      "P5.4": {
+        "dRow": 0,
+        "dCol": 16
+      },
+      "VCC": {
+        "dRow": 0,
+        "dCol": 17
+      },
+      "P5.5": {
+        "dRow": 0,
+        "dCol": 18
+      },
+      "GND": {
+        "dRow": 0,
+        "dCol": 19
+      },
+      "P4.5": {
+        "dRow": 5,
+        "dCol": 19
+      },
+      "P2.7": {
+        "dRow": 5,
+        "dCol": 18
+      },
+      "P2.6": {
+        "dRow": 5,
+        "dCol": 17
+      },
+      "P2.5": {
+        "dRow": 5,
+        "dCol": 16
+      },
+      "P2.4": {
+        "dRow": 5,
+        "dCol": 15
+      },
+      "P2.3": {
+        "dRow": 5,
+        "dCol": 14
+      },
+      "P2.2": {
+        "dRow": 5,
+        "dCol": 13
+      },
+      "P2.1": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "P2.0": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "P4.4": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "P4.2": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "P4.1": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "P3.7": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "P3.6": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "P3.5": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "P3.4": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "P3.3": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "P3.2": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "P3.1": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "P3.0": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 20
   },
-  {
-   "name": "P0.1",
-   "x": 0,
-   "y": 13,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P0.2",
-   "x": 0,
-   "y": 18,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P0.3",
-   "x": 0,
-   "y": 23,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P0.4",
-   "x": 0,
-   "y": 28,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P0.5",
-   "x": 0,
-   "y": 33,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P0.6",
-   "x": 0,
-   "y": 38,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P0.7",
-   "x": 0,
-   "y": 43,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P1.0",
-   "x": 0,
-   "y": 48,
-   "functions": [
-    "gpio",
-    "adc0"
-   ]
-  },
-  {
-   "name": "P1.1",
-   "x": 0,
-   "y": 53,
-   "functions": [
-    "gpio",
-    "adc1"
-   ]
-  },
-  {
-   "name": "P1.2",
-   "x": 0,
-   "y": 58,
-   "functions": [
-    "gpio",
-    "adc2"
-   ]
-  },
-  {
-   "name": "P1.3",
-   "x": 0,
-   "y": 63,
-   "functions": [
-    "gpio",
-    "adc3"
-   ]
-  },
-  {
-   "name": "P1.4",
-   "x": 0,
-   "y": 68,
-   "functions": [
-    "gpio",
-    "adc4"
-   ]
-  },
-  {
-   "name": "P1.5",
-   "x": 0,
-   "y": 73,
-   "functions": [
-    "gpio",
-    "adc5"
-   ]
-  },
-  {
-   "name": "P1.6",
-   "x": 0,
-   "y": 78,
-   "functions": [
-    "gpio",
-    "xtal2",
-    "adc6"
-   ]
-  },
-  {
-   "name": "P1.7",
-   "x": 0,
-   "y": 83,
-   "functions": [
-    "gpio",
-    "xtal1",
-    "adc7"
-   ]
-  },
-  {
-   "name": "P5.4",
-   "x": 0,
-   "y": 88,
-   "functions": [
-    "gpio",
-    "rst"
-   ]
-  },
-  {
-   "name": "VCC",
-   "x": 0,
-   "y": 93,
-   "functions": [
-    "power"
-   ]
-  },
-  {
-   "name": "P5.5",
-   "x": 0,
-   "y": 98,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "GND",
-   "x": 0,
-   "y": 103,
-   "functions": [
-    "power"
-   ]
-  },
-  {
-   "name": "P4.5",
-   "x": 80,
-   "y": 8,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P2.7",
-   "x": 80,
-   "y": 13,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P2.6",
-   "x": 80,
-   "y": 18,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P2.5",
-   "x": 80,
-   "y": 23,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P2.4",
-   "x": 80,
-   "y": 28,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P2.3",
-   "x": 80,
-   "y": 33,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P2.2",
-   "x": 80,
-   "y": 38,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P2.1",
-   "x": 80,
-   "y": 43,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P2.0",
-   "x": 80,
-   "y": 48,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P4.4",
-   "x": 80,
-   "y": 53,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P4.2",
-   "x": 80,
-   "y": 58,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P4.1",
-   "x": 80,
-   "y": 63,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P3.7",
-   "x": 80,
-   "y": 68,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P3.6",
-   "x": 80,
-   "y": 73,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P3.5",
-   "x": 80,
-   "y": 78,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P3.4",
-   "x": 80,
-   "y": 83,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P3.3",
-   "x": 80,
-   "y": 88,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P3.2",
-   "x": 80,
-   "y": 93,
-   "functions": [
-    "gpio"
-   ]
-  },
-  {
-   "name": "P3.1",
-   "x": 80,
-   "y": 98,
-   "functions": [
-    "gpio",
-    "txd0"
-   ]
-  },
-  {
-   "name": "P3.0",
-   "x": 80,
-   "y": 103,
-   "functions": [
-    "gpio",
-    "rxd0"
-   ]
-  }
- ],
- "_pinmap_source": "docs/PINOUT-STC15.md + RETRO-CONSOLE-RBS15667.md schematic transcription (2026-08-16): PDIP-40, VCC pin 18, GND 20, RST=P5.4 pin 17, P5.5 pin 19, P0 ASCENDING from pin 1, no dedicated XTAL pins (P1.6/P1.7 double)",
- "footprint": {
-  "refTerminal": "P0.0",
-  "leads": {
-   "P0.0": {
-    "dRow": 0,
-    "dCol": 0
-   },
-   "P0.1": {
-    "dRow": 0,
-    "dCol": 1
-   },
-   "P0.2": {
-    "dRow": 0,
-    "dCol": 2
-   },
-   "P0.3": {
-    "dRow": 0,
-    "dCol": 3
-   },
-   "P0.4": {
-    "dRow": 0,
-    "dCol": 4
-   },
-   "P0.5": {
-    "dRow": 0,
-    "dCol": 5
-   },
-   "P0.6": {
-    "dRow": 0,
-    "dCol": 6
-   },
-   "P0.7": {
-    "dRow": 0,
-    "dCol": 7
-   },
-   "P1.0": {
-    "dRow": 0,
-    "dCol": 8
-   },
-   "P1.1": {
-    "dRow": 0,
-    "dCol": 9
-   },
-   "P1.2": {
-    "dRow": 0,
-    "dCol": 10
-   },
-   "P1.3": {
-    "dRow": 0,
-    "dCol": 11
-   },
-   "P1.4": {
-    "dRow": 0,
-    "dCol": 12
-   },
-   "P1.5": {
-    "dRow": 0,
-    "dCol": 13
-   },
-   "P1.6": {
-    "dRow": 0,
-    "dCol": 14
-   },
-   "P1.7": {
-    "dRow": 0,
-    "dCol": 15
-   },
-   "P5.4": {
-    "dRow": 0,
-    "dCol": 16
-   },
-   "VCC": {
-    "dRow": 0,
-    "dCol": 17
-   },
-   "P5.5": {
-    "dRow": 0,
-    "dCol": 18
-   },
-   "GND": {
-    "dRow": 0,
-    "dCol": 19
-   },
-   "P4.5": {
-    "dRow": 5,
-    "dCol": 19
-   },
-   "P2.7": {
-    "dRow": 5,
-    "dCol": 18
-   },
-   "P2.6": {
-    "dRow": 5,
-    "dCol": 17
-   },
-   "P2.5": {
-    "dRow": 5,
-    "dCol": 16
-   },
-   "P2.4": {
-    "dRow": 5,
-    "dCol": 15
-   },
-   "P2.3": {
-    "dRow": 5,
-    "dCol": 14
-   },
-   "P2.2": {
-    "dRow": 5,
-    "dCol": 13
-   },
-   "P2.1": {
-    "dRow": 5,
-    "dCol": 12
-   },
-   "P2.0": {
-    "dRow": 5,
-    "dCol": 11
-   },
-   "P4.4": {
-    "dRow": 5,
-    "dCol": 10
-   },
-   "P4.2": {
-    "dRow": 5,
-    "dCol": 9
-   },
-   "P4.1": {
-    "dRow": 5,
-    "dCol": 8
-   },
-   "P3.7": {
-    "dRow": 5,
-    "dCol": 7
-   },
-   "P3.6": {
-    "dRow": 5,
-    "dCol": 6
-   },
-   "P3.5": {
-    "dRow": 5,
-    "dCol": 5
-   },
-   "P3.4": {
-    "dRow": 5,
-    "dCol": 4
-   },
-   "P3.3": {
-    "dRow": 5,
-    "dCol": 3
-   },
-   "P3.2": {
-    "dRow": 5,
-    "dCol": 2
-   },
-   "P3.1": {
-    "dRow": 5,
-    "dCol": 1
-   },
-   "P3.0": {
-    "dRow": 5,
-    "dCol": 0
-   }
-  },
-  "straddlesGutter": true,
-  "minCols": 20
- }
+  "_aliases_source": "bw-board's stc15_mcu device declares all forty PDIP-40 pins TWICE — datasheet case (P0.0, VCC) and lowercase (p0.0, vcc) — because the corpus writes both. Each lowercase name is the same leg as the uppercase one above it, so it takes that pin's position exactly. The physical pinout itself is unchanged and still comes from docs/PINOUT-STC15.md."
 }

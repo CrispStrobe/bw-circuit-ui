@@ -1,0 +1,176 @@
+{
+  "kind": "74hc4050",
+  "w": 70,
+  "h": 51,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "1y",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "1a",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "2y",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "2a",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "3y",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "3a",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "4a",
+      "x": 70,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "4y",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "5a",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "5y",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "nc1",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "nc2",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "6a",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "6y",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Clean-room from the TI/Nexperia datasheet pinout, cross-checked against bw-board src/devices/tier3-parts.js, whose terminal array is the DIP package order and whose header comment spells the same pinout out. 74HC4050 hex non-inverting buffer / level shifter, DIP-16: VCC 1Y 1A 2Y 2A 3Y 3A GND | 4A 4Y 5A 5Y NC NC 6A 6Y. Pins 13 and 14 are the two no-connects; the engine models them as terminals nc1/nc2 so the package is complete.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "1y": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "1a": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "2y": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "2a": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "3y": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "3a": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "4a": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "4y": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "5a": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "5y": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "nc1": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "nc2": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "6a": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "6y": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 8
+  }
+}

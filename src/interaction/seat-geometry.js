@@ -14,6 +14,7 @@
  */
 
 import { bbHoleOrigin, bbRows, BB_PITCH } from './breadboard-snap.js';
+import { terminalAliasPairs } from '../model/parts-registry.js';
 
 /**
  * World position of a hole id on a given breadboard part.
@@ -74,6 +75,16 @@ export function resolveSeatedParts(parts) {
     if (!bb) return p;
     const geo = seatGeometry(bb, p.seat.leadMap);
     if (!geo) return p;
-    return { ...p, x: geo.x, y: geo.y, _seatTerminals: geo.terminals };
+    // A terminal bw-board knows by two names has ONE leg and therefore one
+    // hole. Only the physical spelling is in the leadMap (occupy() refuses
+    // a hole claimed twice), so the alias would miss _seatTerminals, fall
+    // through to the free-part offset table, and draw on the opposite row
+    // of the package — 38 units from the leg it names. Give it the twin's
+    // hole, which is where the metal actually is.
+    const terminals = { ...geo.terminals };
+    for (const [alias, twin] of terminalAliasPairs(p.kind)) {
+      if (terminals[twin] && !terminals[alias]) terminals[alias] = terminals[twin];
+    }
+    return { ...p, x: geo.x, y: geo.y, _seatTerminals: terminals };
   });
 }
