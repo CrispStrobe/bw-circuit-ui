@@ -35,6 +35,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { netsFromWires } from '../src/model/schematic-svg.js';
+import { terminalsForKind } from '../src/model/circuit.js';
 import { detectFormat } from '../src/importers/detect.js';
 import { importCircuit } from '../src/importers/index.js';
 import {
@@ -436,11 +437,21 @@ describe('kinds: spicePre first, part number ahead of it', () => {
     // EasyEDA writes Y0 and G2A; the engine marks active-low pins with a
     // trailing b. `byName` here would hand the board eight terminals it does
     // not have -- wires that draw and do not conduct.
+    //
+    // engine-contract.test.js CANNOT catch this: its terminal-name check reads
+    // r.pins, and a `byName` rule has none to read -- that limitation is
+    // stated in its own comments. So the check lives here, and it checks the
+    // WHOLE map against the engine rather than four spellings, or the next
+    // typo in it goes the same way.
     const p = map({ spicePre: 'U', descriptor: 'SN74LS138N', pinCount: 16 }).pins;
     assert.equal(p.Y0, 'y0b');
     assert.equal(p.G2A, 'g2ab');
     assert.equal(p.A, 'a');
     assert.equal(p.VCC, 'vcc');
+    const have = new Set(terminalsForKind('74hc138', {}));
+    assert.ok(have.size > 4, 'the engine did not answer for 74hc138 -- check is vacuous');
+    assert.deepEqual([...new Set(Object.values(p))].filter((n) => !have.has(n)), [],
+      'the rule names terminals the engine\'s 74hc138 does not have');
   });
 
   test('nothing at all maps to nothing at all', () => {
