@@ -275,7 +275,7 @@ switch (cmd) {
       console.log('  ' + genericBy.size + ' distinct kinds need artwork');
     }
     console.log('top unmapped:');
-    for (const [k, v] of [...unmappedBy].sort((a, b) => b[1] - a[1]).slice(0, 10)) {
+    for (const [k, v] of [...unmappedBy].sort((a, b) => b[1] - a[1]).slice(0, 45)) {
       console.log('  ' + String(v).padStart(4) + '  ' + k);
     }
     break;

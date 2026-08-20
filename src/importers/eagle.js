@@ -57,6 +57,19 @@ const NON_ELECTRICAL = /^(FIDUCIAL|MOUNTING[-_ ]?HOLE|STAND[-_ ]?OFF|FRAME|LOGO|
 const DIODE_PINS = { A: 'anode', C: 'cathode', K: 'cathode', '1': 'anode', '2': 'cathode', 'P$1': 'anode', 'P$2': 'cathode' };
 const SUPPLY_PINS = { '+': 'pos', '-': 'neg', '+VE': 'pos', '-VE': 'neg', 'P$1': 'pos', 'P$2': 'neg', '1': 'pos', '2': 'neg' };
 
+const FET_PINS = { G: 'gate', D: 'drain', S: 'source', '1': 'gate', '2': 'source', '3': 'drain' };
+const BJT_PINS = { B: 'base', C: 'collector', E: 'emitter', '1': 'base', '2': 'collector', '3': 'emitter' };
+
+/** An n-pin header, with p1..pn terminals. Connectors differ only in width. */
+function headerOf(n, ds) {
+  return {
+    kind: 'header',
+    params: { pins: n },
+    pins: Object.fromEntries(Array.from({ length: n }, (_, i) => [String(i + 1), `p${i + 1}`])),
+    _note: `EAGLE ${ds} imported as a ${n}-pin header`,
+  };
+}
+
 const RULES = [
   // power symbols — one terminal, and EAGLE draws one per connection point
   // The symbol's PIN name is not its deviceset name: a VCC symbol may carry a
@@ -125,6 +138,68 @@ const RULES = [
     pins: Object.fromEntries(Array.from({ length: Number(/1X(\d+)/i.exec(ds)[1]) },
       (_, i) => [String(i + 1), `p${i + 1}`])),
   })],
+  // ── rules driven by MEASURING a real corpus ──────────────────────
+  // Everything below was added by importing 286 published EAGLE schematics
+  // and ranking what failed to map, rather than by guessing which parts are
+  // common. The counts in the comments are from that run.
+
+  // Discretes. A ferrite bead is an inductor as far as any netlist is
+  // concerned, and the corpus spells inductors both ways (70 + 38).
+  [/^(FERRITE|FERRITE[-_]?BEAD|BLM\d|MPZ\d)/i, () => ({ kind: 'inductor',
+    params: { henries: 1e-6 }, pins: { '1': 'a', '2': 'b' } })],
+  [/^INDUCTOR/i,                       (v) => ({ kind: 'inductor',
+    params: { henries: parseEagleValue(v) ?? 1e-3 }, pins: { '1': 'a', '2': 'b' } })],
+  // MOSFET-N_DUAL is two devices in one package; the engine has one model, so
+  // it maps to a single N-channel and says so rather than inventing a pair.
+  [/^MOSFET[-_]?N[-_]?DUAL/i,          () => ({ kind: 'nmos', pins: FET_PINS,
+    _note: 'dual N-MOSFET imported as a single device — the second channel is not modelled' })],
+  [/^(MOSFET[-_]?N|NMOS|N[-_]?CHANNEL)/i, () => ({ kind: 'nmos', pins: FET_PINS })],
+  [/^(MOSFET[-_]?P|PMOS|P[-_]?CHANNEL)/i, () => ({ kind: 'pmos', pins: FET_PINS })],
+  [/NPN/i,                             () => ({ kind: 'npn', pins: BJT_PINS })],
+  [/PNP/i,                             () => ({ kind: 'pnp', pins: BJT_PINS })],
+  [/^XTAL|^CRYSTAL|^RESONATOR/i,       () => ({ kind: 'crystal',
+    pins: { '1': 'a', '2': 'b' },
+    _note: 'crystal has no engine model; imported for the schematic only' })],
+
+  // Switches. A tact switch is a momentary button; DPDT is a changeover.
+  [/^SWITCH[-_]?DPDT|^DPDT/i,          () => ({ kind: 'slide_switch' })],
+  [/^(SWITCH[-_]?TACT|SPST[-_]?TACT|TACT|B3F|KMR\d)/i, () => ({ kind: 'button',
+    pins: { '1': 'a', '2': 'b', '3': 'a', '4': 'b', 'P$1': 'a', 'P$2': 'b' } })],
+
+  // Addressable LEDs. One package, one RGB emitter plus its controller: the
+  // engine's neopixel is the right model, and the corpus has 106 of them.
+  [/^(WS2812|SK6812|APA10\d)/i,        () => ({ kind: 'neopixel', byName: true })],
+
+  // Regulators. There is NO engine model for one, so this deliberately does
+  // not pretend otherwise -- it imports as its own kind, draws as a
+  // pin-labelled box, and carries a note. Mapping it onto some existing
+  // three-pin part would put a WRONG model in a simulated circuit, which is
+  // worse than an honest box. 119 parts in the corpus.
+  [/^(VREG|LM\d{2,4}|LP\d{3,4}|AP\d{4}|MCP17\d\d|AMS1117|AXP\d+|LD1117)/i,
+    (v, ds) => ({ kind: 'regulator', byName: true,
+      _note: `EAGLE ${ds} imported as a regulator: schematic only, no engine model` })],
+
+  // Connectors. USB, card sockets, terminal blocks, JST leads and the various
+  // 1xN strips are all "a labelled row of pins" to a netlist. Together they
+  // are the single largest unmapped group in the corpus.
+  [/^USB(?![A-Z])|^USB[-_]?(A|B|C|MICRO|MINI|TYPEA|TYPEC)/i, () => ({ kind: 'usb_a' })],
+  [/^(MICROSD|SD[-_]?CARD|MICRO[-_]?SD)/i, () => ({ kind: 'header', params: { pins: 8 },
+    _note: 'microSD socket imported as an 8-pin header' })],
+  [/^(TERMBLOCK|JST|MOLEX|SCREWTERMINAL|CONN)[-_]?(\d+)?X?(\d+)?/i, (v, ds) => {
+    const m = /(\d+)/.exec(ds.replace(/^[A-Z_]+/i, ''));
+    return headerOf(m ? Number(m[1]) : 2, ds);
+  }],
+  [/^(\d+)X(\d+)$/i,                   (v, ds) => {
+    const m = /^(\d+)X(\d+)$/i.exec(ds);
+    return headerOf(Number(m[1]) * Number(m[2]), ds);
+  }],
+  [/^(\d+)[-_]?STRIP$/i,               (v, ds) => headerOf(Number(/^(\d+)/.exec(ds)[1]), ds) ],
+  [/^(STEMMA|QWIIC|GROVE)/i,           (v, ds) => headerOf(4, ds) ],
+  [/^(FEATHERWING|ARDUINO_R3|ICSP|SHIELD)/i, (v, ds) => headerOf(6, ds) ],
+  // A pad is a one-pin connector: test points, perfboard holes and Adafruit's
+  // conductive sewing taps all exist so a wire can be attached.
+  [/^(TP|PERFHOLE|SEWTAP|PAD|VIA)$/i,  (v, ds) => headerOf(1, ds) ],
+
   // 74-series: the deviceset carries the number, e.g. 74*00N / 74HC595N
   [/^74\w*?(\d{2,3})[A-Z]?$/i,         (v, ds) => {
     const n = /^74\w*?(\d{2,3})/i.exec(ds)[1];

@@ -76,6 +76,27 @@ function sevenSeg(n) {
   return { paths: paths.map((d) => ({ d, w: 2.2 })) };
 }
 
+/**
+ * A pin header / connector: one square pad per pin with a lead out to the
+ * right, inside the shroud outline. Built from the pin count because a 2-pin
+ * JST and a 40-pin GPIO strip are the same symbol at different heights --
+ * 955 of the corpus's parts are one of these.
+ *
+ * @param {number} n
+ * @returns {Shape}
+ */
+function headerSym(n) {
+  const pitch = 12, h = Math.max(n * pitch, pitch);
+  const y0 = -h / 2 + pitch / 2;
+  const paths = [{ d: `M -14 ${-h / 2} L 4 ${-h / 2} L 4 ${h / 2} L -14 ${h / 2} Z`, w: 1.4 }];
+  for (let i = 0; i < n; i++) {
+    const y = y0 + i * pitch;
+    paths.push({ d: `M -8 ${y - 3} L -2 ${y - 3} L -2 ${y + 3} L -8 ${y + 3} Z`, w: 1.2 });
+    paths.push(`M 4 ${y} L 30 ${y}`);
+  }
+  return { paths };
+}
+
 /** @type {Record<string, Shape>} */
 export const SYMBOLS = {
   resistor:      { paths: [ZIGZAG], value: 'ohms' },
@@ -154,6 +175,12 @@ export const SYMBOLS = {
   seven_segment: sevenSeg(1),
   seven_seg_3:   sevenSeg(3),
   seven_seg_4:   sevenSeg(4),
+  // Crystal: the piezo element between two plates. Iconic enough that a box
+  // would be a real loss of legibility.
+  crystal:       { paths: ['M -30 0 L -10 0 M 10 0 L 30 0',
+    'M -10 -10 L -10 10 M 10 -10 L 10 10', 'M -4 -12 L -4 12 L 4 12 L 4 -12 Z'] },
+  // header has no fixed geometry -- shapeFor builds it from params.pins.
+  header:        headerSym(2),
   opamp:         { paths: ['M -14 -14 L -14 14 L 16 0 Z', 'M -30 -7 L -14 -7 M -30 7 L -14 7 M 16 0 L 30 0'],
     texts: [{ x: -10, y: -3, s: '−', size: 8 }, { x: -10, y: 10, s: '+', size: 8 }] },
   gate_and:      { paths: ['M -12 -16 L -12 16 L 0 16 A 16 16 0 0 0 0 -16 Z', 'M -30 -8 L -12 -8 M -30 8 L -12 8 M 16 0 L 30 0'] },
@@ -194,6 +221,11 @@ export const ALIASES = {
   thermistor: 'ntc',
   toggle_switch: 'slide_switch',
   seven_seg: 'seven_segment',
+  pin_header: 'header',
+  connector: 'header',
+  jst: 'header',
+  resonator: 'crystal',
+  xtal: 'crystal',
   seven_seg_1: 'seven_segment',
   spdt_switch: 'slide_switch',
 };
@@ -214,6 +246,12 @@ export function shapeFor(kind, params = {}) {
   if (!s) return null;
   // An AC source is a circle with a sine, not a cell stack -- same kind, and
   // the only place a param changes which symbol is correct.
+  // A header's height is its pin count, so it is the one symbol built per
+  // instance rather than looked up.
+  if (resolved === 'header') {
+    const n = Number(params.pins) || (Array.isArray(params.terminals) ? params.terminals.length : 2);
+    return headerSym(Math.max(1, Math.min(n, 40)));
+  }
   if (resolved === 'vsource' && params.wave && params.wave !== 'dc') {
     return {
       paths: ['M -30 0 L -12 0 M 12 0 L 30 0', { d: 'M -6 0 Q -3 -6 0 0 T 6 0', w: 1.2 }],
