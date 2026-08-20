@@ -4,7 +4,7 @@
   "h": 48,
   "terminals": [
     {
-      "name": "vin",
+      "name": "in",
       "x": 12,
       "y": 48,
       "functions": []
@@ -16,7 +16,7 @@
       "functions": []
     },
     {
-      "name": "vout",
+      "name": "out",
       "x": 32,
       "y": 48,
       "functions": []
@@ -24,9 +24,9 @@
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "vin",
+    "refTerminal": "in",
     "leads": {
-      "vin": {
+      "in": {
         "dRow": 0,
         "dCol": 0
       },
@@ -34,7 +34,7 @@
         "dRow": 0,
         "dCol": 1
       },
-      "vout": {
+      "out": {
         "dRow": 0,
         "dCol": 2
       }

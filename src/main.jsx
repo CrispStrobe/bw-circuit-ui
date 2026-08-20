@@ -17,12 +17,17 @@ import { setEngine } from './engine.js';
 import { BoardImpl } from '../../bw-board/src/board.js';
 import { inferNetlist, checkWiring } from '../../bw-board/src/infer-netlist.js';
 import { registerAllDevices } from '../../bw-board/src/register-all.js';
+import { getDevice } from '../../bw-board/src/devices.js';
 
 // The dev app must register devices like production (lite) does, or every
 // registered kind (keypad_4x4, at24c02, …) rejects the netlist and the
 // board sits empty — found by the A2 Playwright acceptance, 2026-08-18.
 registerAllDevices();
-setEngine({ BoardImpl, inferNetlist, checkWiring });
+// getDevice makes the engine's device model the AUTHORITY for terminal
+// names. Without it the catalog invents terminals bw-board does not have
+// (addPart('vreg') minted a/b against in/out/gnd) and checkWiring rejects
+// the netlist WHOLE — one part, no wires, and the board renders empty.
+setEngine({ BoardImpl, inferNetlist, checkWiring, getDevice });
 
 import { CircuitDesigner } from './components/CircuitDesigner.jsx';
 

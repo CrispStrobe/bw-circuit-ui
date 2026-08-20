@@ -4,13 +4,13 @@
   "h": 40,
   "terminals": [
     {
-      "name": "a",
+      "name": "coil_a",
       "x": 22,
       "y": 40,
       "functions": []
     },
     {
-      "name": "b",
+      "name": "coil_b",
       "x": 42,
       "y": 40,
       "functions": []

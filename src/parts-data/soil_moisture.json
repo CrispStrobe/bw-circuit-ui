@@ -16,7 +16,7 @@
       "functions": []
     },
     {
-      "name": "sig",
+      "name": "out",
       "x": 16,
       "y": 60,
       "functions": []
@@ -34,7 +34,7 @@
         "dRow": 0,
         "dCol": 1
       },
-      "sig": {
+      "out": {
         "dRow": 0,
         "dCol": 2
       }

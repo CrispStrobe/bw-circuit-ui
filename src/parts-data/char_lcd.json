@@ -4,19 +4,19 @@
   "h": 70,
   "terminals": [
     {
-      "name": "vss",
+      "name": "gnd",
       "x": 12,
       "y": 70,
       "functions": []
     },
     {
-      "name": "vdd",
+      "name": "vcc",
       "x": 20,
       "y": 70,
       "functions": []
     },
     {
-      "name": "v0",
+      "name": "vo",
       "x": 28,
       "y": 70,
       "functions": []
@@ -88,13 +88,13 @@
       "functions": []
     },
     {
-      "name": "a",
+      "name": "bl_a",
       "x": 124,
       "y": 70,
       "functions": []
     },
     {
-      "name": "k",
+      "name": "bl_k",
       "x": 132,
       "y": 70,
       "functions": []
@@ -103,24 +103,72 @@
   "variants": null,
   "_note": "HD44780U-compatible 16x2 character LCD module. Pin table audited against Hitachi HD44780U datasheet (ADE-207-272(Z) rev 0.0, 1998-09). 16-pin single-row header: VSS (pin 1), VDD (pin 2), V0 (pin 3, contrast), RS (pin 4, register select: 0=cmd 1=data), RW (pin 5, read/write: 0=write 1=read), E (pin 6, enable), D0-D7 (pins 7-14, data bus), A (pin 15, backlight LED anode), K (pin 16, backlight LED cathode). Supports 4-bit mode (D4-D7 only) and 8-bit mode (D0-D7). Canonical 6502 breadboard wiring: RS/RW/E to VIA PA5-PA7, D0-D7 to VIA PB0-PB7.",
   "footprint": {
-    "refTerminal": "vss",
+    "refTerminal": "gnd",
     "leads": {
-      "vss": { "dRow": 0, "dCol": 0 },
-      "vdd": { "dRow": 0, "dCol": 1 },
-      "v0":  { "dRow": 0, "dCol": 2 },
-      "rs":  { "dRow": 0, "dCol": 3 },
-      "rw":  { "dRow": 0, "dCol": 4 },
-      "e":   { "dRow": 0, "dCol": 5 },
-      "d0":  { "dRow": 0, "dCol": 6 },
-      "d1":  { "dRow": 0, "dCol": 7 },
-      "d2":  { "dRow": 0, "dCol": 8 },
-      "d3":  { "dRow": 0, "dCol": 9 },
-      "d4":  { "dRow": 0, "dCol": 10 },
-      "d5":  { "dRow": 0, "dCol": 11 },
-      "d6":  { "dRow": 0, "dCol": 12 },
-      "d7":  { "dRow": 0, "dCol": 13 },
-      "a":   { "dRow": 0, "dCol": 14 },
-      "k":   { "dRow": 0, "dCol": 15 }
+      "gnd": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "vcc": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "vo": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "rs": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "rw": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "e": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "d0": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "d1": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "d2": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "d3": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "d4": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "d5": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "d6": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "d7": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "bl_a": {
+        "dRow": 0,
+        "dCol": 14
+      },
+      "bl_k": {
+        "dRow": 0,
+        "dCol": 15
+      }
     },
     "straddlesGutter": false,
     "minCols": 16

@@ -10,7 +10,7 @@
       "functions": []
     },
     {
-      "name": "vout",
+      "name": "out",
       "x": 12,
       "y": 40,
       "functions": []
@@ -30,7 +30,7 @@
         "dRow": 0,
         "dCol": 0
       },
-      "vout": {
+      "out": {
         "dRow": 0,
         "dCol": 1
       },

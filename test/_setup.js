@@ -7,13 +7,19 @@
 import { setEngine } from '../src/engine.js';
 import { BoardImpl } from '../../bw-board/src/board.js';
 import { inferNetlist, checkWiring } from '../../bw-board/src/infer-netlist.js';
+import { getDevice } from '../../bw-board/src/devices.js';
+import { registerAllDevices } from '../../bw-board/src/register-all.js';
 import { getMaxCurrent, PORT_LIMITS } from '../../bw-board/src/current-ratings.js';
 import { registerSidecar } from '../src/model/parts-registry.js';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-setEngine({ BoardImpl, inferNetlist, checkWiring, getMaxCurrent, PORT_LIMITS });
+// getDevice mirrors what main.jsx and lite inject: bw-board is the
+// authority for terminal names. A test harness that omits it tests a
+// configuration no host actually runs.
+registerAllDevices();
+setEngine({ BoardImpl, inferNetlist, checkWiring, getMaxCurrent, PORT_LIMITS, getDevice });
 
 // Load sidecars into the parts registry.
 // Prefer vendored copies (src/parts-data/) — same data, no sibling dependency.

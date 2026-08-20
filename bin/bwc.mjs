@@ -47,7 +47,12 @@ async function loadEngine() {
     const { setEngine } = await import(join(SRC, 'engine.js'));
     const eng = await import(join(BWB, 'src/index.js'));
     (await import(join(BWB, 'src/register-all.js'))).registerAllDevices();
-    setEngine({ BoardImpl: eng.BoardImpl, inferNetlist: eng.inferNetlist, checkWiring: eng.checkWiring });
+    // getDevice makes bw-board authoritative for terminal names. Without it
+    // this CLI reproduces the browser bug it is meant to check for: parts
+    // placed by kind get terminals the engine rejects, and checkWiring
+    // rejects the whole netlist rather than the pin.
+    setEngine({ BoardImpl: eng.BoardImpl, inferNetlist: eng.inferNetlist,
+      checkWiring: eng.checkWiring, getDevice: eng.getDevice });
     const { registerSidecar } = await import(join(SRC, 'model/parts-registry.js'));
     const { readdirSync } = await import('node:fs');
     for (const f of readdirSync(join(SRC, 'parts-data'))) {

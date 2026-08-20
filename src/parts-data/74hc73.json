@@ -52,7 +52,7 @@
       "functions": []
     },
     {
-      "name": "2qn",
+      "name": "2q_bar",
       "x": 70,
       "y": 33,
       "functions": []
@@ -76,7 +76,7 @@
       "functions": []
     },
     {
-      "name": "1qn",
+      "name": "1q_bar",
       "x": 70,
       "y": 13,
       "functions": []
@@ -124,7 +124,7 @@
         "dRow": 5,
         "dCol": 6
       },
-      "2qn": {
+      "2q_bar": {
         "dRow": 5,
         "dCol": 5
       },
@@ -140,7 +140,7 @@
         "dRow": 5,
         "dCol": 2
       },
-      "1qn": {
+      "1q_bar": {
         "dRow": 5,
         "dCol": 1
       },

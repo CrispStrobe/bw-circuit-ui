@@ -22,7 +22,7 @@
       "functions": []
     },
     {
-      "name": "bi",
+      "name": "bl",
       "x": 0,
       "y": 23,
       "functions": []
@@ -52,43 +52,43 @@
       "functions": []
     },
     {
-      "name": "e",
+      "name": "qe",
       "x": 70,
       "y": 43,
       "functions": []
     },
     {
-      "name": "d_out",
+      "name": "qd",
       "x": 70,
       "y": 38,
       "functions": []
     },
     {
-      "name": "c_out",
+      "name": "qc",
       "x": 70,
       "y": 33,
       "functions": []
     },
     {
-      "name": "b_out",
+      "name": "qb",
       "x": 70,
       "y": 28,
       "functions": []
     },
     {
-      "name": "a_out",
+      "name": "qa",
       "x": 70,
       "y": 23,
       "functions": []
     },
     {
-      "name": "g",
+      "name": "qg",
       "x": 70,
       "y": 18,
       "functions": []
     },
     {
-      "name": "f",
+      "name": "qf",
       "x": 70,
       "y": 13,
       "functions": []
@@ -116,7 +116,7 @@
         "dRow": 0,
         "dCol": 2
       },
-      "bi": {
+      "bl": {
         "dRow": 0,
         "dCol": 3
       },
@@ -136,31 +136,31 @@
         "dRow": 0,
         "dCol": 7
       },
-      "e": {
+      "qe": {
         "dRow": 5,
         "dCol": 7
       },
-      "d_out": {
+      "qd": {
         "dRow": 5,
         "dCol": 6
       },
-      "c_out": {
+      "qc": {
         "dRow": 5,
         "dCol": 5
       },
-      "b_out": {
+      "qb": {
         "dRow": 5,
         "dCol": 4
       },
-      "a_out": {
+      "qa": {
         "dRow": 5,
         "dCol": 3
       },
-      "g": {
+      "qg": {
         "dRow": 5,
         "dCol": 2
       },
-      "f": {
+      "qf": {
         "dRow": 5,
         "dCol": 1
       },

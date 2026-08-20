@@ -4,7 +4,7 @@
   "h": 46,
   "terminals": [
     {
-      "name": "cka",
+      "name": "clk_a",
       "x": 0,
       "y": 8,
       "functions": []
@@ -34,13 +34,13 @@
       "functions": []
     },
     {
-      "name": "r0a",
+      "name": "r0_1",
       "x": 0,
       "y": 33,
       "functions": []
     },
     {
-      "name": "r0b",
+      "name": "r0_2",
       "x": 0,
       "y": 38,
       "functions": []
@@ -82,7 +82,7 @@
       "functions": []
     },
     {
-      "name": "ckb",
+      "name": "clk_b",
       "x": 70,
       "y": 8,
       "functions": []
@@ -90,9 +90,9 @@
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "cka",
+    "refTerminal": "clk_a",
     "leads": {
-      "cka": {
+      "clk_a": {
         "dRow": 0,
         "dCol": 0
       },
@@ -112,11 +112,11 @@
         "dRow": 0,
         "dCol": 4
       },
-      "r0a": {
+      "r0_1": {
         "dRow": 0,
         "dCol": 5
       },
-      "r0b": {
+      "r0_2": {
         "dRow": 0,
         "dCol": 6
       },
@@ -144,7 +144,7 @@
         "dRow": 5,
         "dCol": 1
       },
-      "ckb": {
+      "clk_b": {
         "dRow": 5,
         "dCol": 0
       }
