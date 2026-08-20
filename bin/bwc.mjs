@@ -269,7 +269,7 @@ switch (cmd) {
     if (opts.roundtrip) console.log('round-trip : ' + (ok - rtBad) + '/' + ok + ' preserved the net partition');
     if (outDir && genericBy.size) {
       console.log('KINDS WITH NO SCHEMATIC SYMBOL (drawn as a generic box):');
-      for (const [k, v] of [...genericBy].sort((a, b) => b[1] - a[1]).slice(0, 20)) {
+      for (const [k, v] of [...genericBy].sort((a, b) => b[1] - a[1]).slice(0, 60)) {
         console.log('  ' + String(v).padStart(5) + '  ' + k);
       }
       console.log('  ' + genericBy.size + ' distinct kinds need artwork');

@@ -13,7 +13,7 @@
  */
 
 import { projectSchematic } from './schematic-projection.js';
-import { SYMBOLS } from './schematic-symbols.js';
+import { shapeFor } from './schematic-symbols.js';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -70,11 +70,27 @@ export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts
     out.push('<circle cx="' + j.x + '" cy="' + j.y + '" r="2.4" fill="' + STROKE + '"/>');
   }
   for (const s of p.symbols || []) {
-    const art = SYMBOLS[s.kind];
+    const art = shapeFor(s.kind, s.params || {});
     const bits = [];
     if (art) {
-      for (const d of art.paths) bits.push('<path d="' + esc(d) + '"/>');
-      for (const c of art.circles || []) bits.push('<circle cx="' + c.cx + '" cy="' + c.cy + '" r="' + c.r + '"/>');
+      for (const p of art.paths) {
+        const d = typeof p === 'string' ? p : p.d;
+        const w = typeof p === 'string' ? '' : (p.w ? ' stroke-width="' + p.w + '"' : '');
+        // 'currentColor' keeps the symbol table free of theme colours; each
+        // renderer substitutes its own stroke.
+        const f = typeof p === 'string' || !p.fill ? ''
+          : ' fill="' + (p.fill === 'currentColor' ? STROKE : esc(p.fill)) + '"';
+        bits.push('<path d="' + esc(d) + '"' + w + f + '/>');
+      }
+      for (const c of art.circles || []) {
+        bits.push('<circle cx="' + c.cx + '" cy="' + c.cy + '" r="' + c.r + '"'
+          + (c.fill ? ' fill="' + esc(c.fill) + '"' : '') + '/>');
+      }
+      for (const t of art.texts || []) {
+        bits.push('<text x="' + t.x + '" y="' + t.y + '" text-anchor="middle" font-size="'
+          + (t.size || 8) + '" font-family="monospace" fill="' + STROKE + '" stroke="none">'
+          + esc(t.s) + '</text>');
+      }
       const params = s.params || {};
       let val = '';
       if (art.value === 'ohms' && params.ohms != null) val = fmtOhms(params.ohms);

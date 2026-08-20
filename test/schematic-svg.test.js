@@ -10,7 +10,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { SYMBOLS, DRAWN_KINDS } from '../src/model/schematic-symbols.js';
+import { SYMBOLS, DRAWN_KINDS, ALIASES, shapeFor } from '../src/model/schematic-symbols.js';
 import { renderSchematicSvg, netsFromWires } from '../src/model/schematic-svg.js';
 import { importEagle } from '../src/importers/eagle.js';
 
@@ -19,22 +19,59 @@ const FIXTURE = readFileSync(join(HERE, 'fixtures', 'eagle-rc-diode.sch'), 'utf8
 
 describe('schematic symbol table', () => {
     test('every entry has drawable geometry', () => {
-        for (const k of DRAWN_KINDS) {
+        for (const k of Object.keys(SYMBOLS)) {
             const s = SYMBOLS[k];
             assert.ok(Array.isArray(s.paths) && s.paths.length, `${k} has no paths`);
-            for (const d of s.paths) assert.match(d, /^[Mm]/, `${k}: a path must start with a move`);
+            for (const p of s.paths) {
+                const d = typeof p === 'string' ? p : p.d;
+                assert.match(d, /^[Mm]/, `${k}: a path must start with a move`);
+            }
         }
     });
 
-    test('the panel and the table agree on which kinds have artwork', () => {
-        // Two renderers over one description. If SchematicPanel gains a case
-        // the table does not have, the CLI silently draws a box instead —
-        // the drift this file exists to make loud.
+    test('the panel draws from the table, not its own switch', () => {
+        // The earlier version of this test compared the panel's `case 'kind':`
+        // labels against the table. Once the panel was unified onto shapeFor()
+        // it had NO cases left, so that assertion passed vacuously -- a check
+        // that could no longer fail. This one can: it fails if the panel
+        // regrows a per-kind switch or stops importing the shared table.
         const panel = readFileSync(join(HERE, '..', 'src', 'components', 'SchematicPanel.jsx'), 'utf8');
+        assert.match(panel, /import \{ shapeFor \}/, 'panel must draw from the shared symbol table');
         const cases = [...panel.matchAll(/case '([a-z0-9_]+)':/g)].map((m) => m[1]);
-        const missing = [...new Set(cases)].filter((k) => !SYMBOLS[k]);
-        assert.deepEqual(missing, [],
-            `SchematicPanel draws these but schematic-symbols.js does not: ${missing.join(', ')}`);
+        assert.deepEqual(cases, [],
+            `panel regrew a per-kind switch (${cases.join(', ')}) — artwork added there `
+            + 'would be invisible to the headless renderer');
+    });
+
+    test('every advertised kind actually draws something', () => {
+        // DRAWN_KINDS is what the CLI reports as "has a symbol". If a name is
+        // listed but shapeFor returns nothing, the tally lies about coverage.
+        for (const k of DRAWN_KINDS) {
+            const art = shapeFor(k);
+            assert.ok(art, `${k} is advertised as drawn but shapeFor returns null`);
+            assert.ok(art.paths.length, `${k} resolves to a shape with no paths`);
+        }
+    });
+
+    test('aliases resolve to the same artwork as their target', () => {
+        for (const [alias, target] of Object.entries(ALIASES)) {
+            assert.ok(SYMBOLS[target], `alias ${alias} -> ${target}, which is not a symbol`);
+            assert.deepEqual(shapeFor(alias), shapeFor(target), `${alias} must draw as ${target}`);
+        }
+    });
+
+    test('an NPN is distinguishable from a PNP', () => {
+        // They drew the identical shape until the emitter arrowhead was added,
+        // so a schematic could not say which part it held.
+        assert.notDeepEqual(shapeFor('npn'), shapeFor('pnp'));
+    });
+
+    test('an AC source is a different symbol from a DC one', () => {
+        const dc = shapeFor('vsource', { wave: 'dc' });
+        const ac = shapeFor('vsource', { wave: 'sine' });
+        assert.notDeepEqual(dc, ac, 'wave must select the circle-and-sine symbol');
+        assert.equal((ac.circles || []).length, 1, 'AC source is drawn as a circle');
+        assert.equal((dc.circles || []).length, 0, 'DC source is a cell stack, not a circle');
     });
 });
 
