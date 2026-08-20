@@ -17,11 +17,19 @@ import path from 'node:path';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const galleryDir = path.join(here, '..', 'gallery');
 
-// Import extractors and machine presets from bw-board (read-only sibling)
-const { extract6502Machine } = await import('/mnt/volume1/code/bw-board/src/m6502-extract.js');
-const { EATER6502 } = await import('/mnt/volume1/code/bw-board/src/m6502-machine.js');
-const { extractZ80Machine } = await import('/mnt/volume1/code/bw-board/src/z80-extract.js');
-const { SEARLE } = await import('/mnt/volume1/code/bw-board/src/z80-machine.js');
+// Import extractors and machine presets from bw-board (read-only sibling).
+//
+// These four were ABSOLUTE paths into /mnt/volume1/code/bw-board -- a VPS
+// checkout. Off that one machine the imports throw ERR_MODULE_NOT_FOUND and
+// the whole file dies before a single test registers, which is invisible
+// because the file is not in `npm test` either. The same defect was found the
+// same day in bw-board's stc15-bench-load, where a hardcoded VPS path made it
+// report "found 0 benches" everywhere else. Sibling-relative is how every
+// other test in this directory reaches the engine.
+const { extract6502Machine } = await import('../../bw-board/src/m6502-extract.js');
+const { EATER6502 } = await import('../../bw-board/src/m6502-machine.js');
+const { extractZ80Machine } = await import('../../bw-board/src/z80-extract.js');
+const { SEARLE } = await import('../../bw-board/src/z80-machine.js');
 
 function loadStage(prefix) {
   const files = readdirSync(galleryDir).filter(f => f.startsWith(prefix) && f.endsWith('.json'));
@@ -105,8 +113,14 @@ describe('Z80 pedagogy ladder — extractor verification', () => {
     assert.ok(circuit, 'Z1 circuit exists');
     const result = extractZ80Machine(circuit);
     assert.equal(result.ok, false);
-    assert.ok(result.reasons.some(r => r.includes('no RAM, ROM or ACIA')),
-      'refuses because there are no addressable chips');
+    // Matched loosely on purpose. The extractor's wording drifted to
+    // "no RAM, ROM, ACIA or OUT latch on the board" when OUT-latch support
+    // landed, and this assertion did not notice for the same reason the
+    // wording was free to drift: the file was in nobody's `npm test`. Pin the
+    // stable core of the sentence rather than a prose snapshot that any
+    // future capability will break again.
+    assert.ok(result.reasons.some(r => /no RAM, ROM[ ,]/.test(r)),
+      `refuses because there are no addressable chips; got: ${result.reasons.join('; ')}`);
   });
 
   it('Z1.5 ROM only: accepted — ROM at $0000-$7FFF', () => {
