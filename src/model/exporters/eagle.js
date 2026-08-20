@@ -69,7 +69,14 @@ const KIND_TO_EAGLE = {
 
 export const eagleFor = (kind) => {
   if (KIND_TO_EAGLE[kind]) return KIND_TO_EAGLE[kind];
-  const m = /^74hc(\d{2,3})$/i.exec(kind);
+  // FOUR digits, not three. The 4000 series is four digits long, and the
+  // importer has said so since the 74HC4050/74HC4051 collapse was fixed
+  // (`(\d{2,4})` in eagle.js RULES). This side still stopped at three, so
+  // every 4000-series part imported fine and was SKIPPED on the way out --
+  // dropped along with its nets, which is the failure the symmetry test was
+  // written for and could not see, because no probe in either list had four
+  // digits in it. `74HC4050D` is in PROBES now.
+  const m = /^74hc(\d{2,4})$/i.exec(kind);
   if (m) return { deviceset: '74HC' + m[1], byName: true };
   return null;
 };

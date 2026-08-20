@@ -105,7 +105,8 @@ const usage = () => {
     + '  bwc convert <file> --to eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
     + '\n  audit <dir> [dir...]        four-layer readiness per part kind'
-    + '\nInput: EAGLE .sch, KiCad .kicad_sch, KiCad legacy .sch, KiCad netlist,\n       Wokwi diagram.json, or our circuit .json.');
+    + '\nInput: EAGLE .sch, KiCad .kicad_sch, KiCad legacy .sch, KiCad netlist,\n'
+    + '       EasyEDA .json, Wokwi diagram.json, or our circuit .json.');
 };
 
 /** Read any supported file into {parts, wires, unmapped, ignored, warnings}. */
@@ -140,7 +141,7 @@ async function load(path) {
     // THROW, never exit: batch must survive a file it cannot read, and a
     // single unrecognised schematic must not abort a 335-file run.
     throw new Error('could not recognise ' + basename(path)
-      + ' (not EAGLE, KiCad schematic, KiCad netlist, Wokwi or circuit JSON)');
+      + ' (not EAGLE, KiCad schematic, KiCad netlist, EasyEDA, Wokwi or circuit JSON)');
   }
   const r = importCircuit(fmt, text);
   return { ...r, format: fmt };

@@ -26,7 +26,9 @@ import { registeredKinds } from '../../bw-board/src/devices.js';
 import { registerAllDevices } from '../../bw-board/src/register-all.js';
 import { terminalsForKind } from '../src/model/circuit.js';
 import { RULES } from '../src/importers/eagle.js';
-import { eagleFor } from '../src/model/exporters/eagle.js';
+import { EASYEDA_RULES, mapEasyEdaPart } from '../src/importers/easyeda.js';
+import { eagleFor, toEagleSch } from '../src/model/exporters/eagle.js';
+import { importEagle } from '../src/importers/eagle.js';
 import { KICAD_RULES } from '../src/importers/kicad-common.js';
 
 // The AUTHORITY is the runtime device registry, not BoardImpl.getPartKinds().
@@ -48,7 +50,7 @@ const ENGINE_KINDS = new Set([...registeredKinds(), ...BoardImpl.getPartKinds()]
 const PROBES = [
     'GND', 'VCC', '+3V3', '100NF', '10KOHM', 'R-EU_0207/10', 'C-EU025-025X050',
     'L-EU', 'LED5MM', 'DIODE-SOD123', 'ZENER-DIODE', 'BATTERY', 'CR2032',
-    'ATTINY88', '24LC256', 'PINHD-1X6', 'HEADER-2X5', '74HC595N',
+    'ATTINY88', '24LC256', 'PINHD-1X6', 'HEADER-2X5', '74HC595N', '74HC4050D',
     'FERRITE', 'INDUCTOR', 'MOSFET-N', 'MOSFET-P', 'MOSFET-N_DUAL',
     'TRANSISTOR_NPN', 'PNP-SOT23', 'XTAL', 'SWITCH_DPDT', 'SWITCH_TACT_SMT',
     'WS2812B', 'LM7805', 'LD1117', 'VREG_SOT23-5', 'USB_TYPEA', 'MICROSD',
@@ -86,6 +88,48 @@ const KICAD_PROBES = [
 
 
 /**
+ * The same list again for the EasyEDA importer, whose vocabulary is a PART
+ * NUMBER (`Manufacturer Part`, or the value text when the library left it
+ * blank). Three rule tables now, one contract.
+ */
+const EASYEDA_PROBES = [
+    'LM7805AL-TA3-T', '7809', 'MC7812', 'AMS1117-3.3', 'AMS1117-5.0', 'LD1117V33',
+    'SN74LS138N', '74HC595', '74HC4050', '74LS161', '74HC00', '74HC373',
+    'CD4093BE', 'CD4511BE', 'NE555', 'NE556', 'LM358', 'LM339', 'LM393',
+    'MAX7219', 'PCF8574', '24LC256', 'WS2812B', 'DS18B20', 'DHT11', 'DHT22',
+    'DS1302', 'DS3231', 'TIP120', 'HD44780', 'SSD1306',
+];
+
+/**
+ * EasyEDA's OTHER half. A schematic that says only `spicePre` and `1k` never
+ * reaches the rule table above, and the generic mapper is what decides those
+ * -- which is most of a real board. Firing it here keeps the two halves under
+ * the same contract instead of only the half with part numbers in it.
+ */
+const SPICE_PRE_PROBES = [
+    { spicePre: 'R', value: '10k', pinCount: 2 },
+    { spicePre: 'R', value: '10k', pinCount: 3 },
+    { spicePre: 'C', value: '100nF', pinCount: 2 },
+    { spicePre: 'L', value: '10uH', pinCount: 2 },
+    { spicePre: 'D', value: '1N4148', pinCount: 2 },
+    { spicePre: 'D', value: 'LED-RED', pinCount: 2 },
+    { spicePre: 'D', value: 'BZX55C5V1', pinCount: 2 },
+    { spicePre: 'Q', value: '2N3904', pinCount: 3 },
+    { spicePre: 'Q', value: '2N3906', pinCount: 3 },
+    { spicePre: 'Q', value: 'IRF540N', pinCount: 3 },
+    { spicePre: 'K', value: 'SRD-05VDC', pinCount: 5 },
+    { spicePre: 'S', value: 'reset', pinCount: 2 },
+    { spicePre: 'S', value: 'mode', pinCount: 3 },
+    { spicePre: 'X', value: '16MHz', pinCount: 2 },
+    { spicePre: 'P', value: 'Header', pinCount: 2 },
+    { spicePre: 'P', value: 'Ports', pinCount: 20 },
+    { spicePre: 'J', value: 'DC_M', pinCount: 3 },
+    { spicePre: 'H', value: 'Header', pinCount: 3 },
+    { spicePre: 'V', value: '9V', pinCount: 2 },
+    { spicePre: 'BT', value: 'AA', pinCount: 2 },
+];
+
+/**
  * Kinds the importer may emit that the engine deliberately does NOT model.
  *
  * Every entry needs a reason. This list is a debt register, not an escape
@@ -118,6 +162,12 @@ describe('imported kinds are usable, not just drawable', () => {
     };
     const fromEagle = fire(RULES, PROBES);
     const fromKicad = fire(KICAD_RULES, KICAD_PROBES);
+    const fromEasyEda = fire(EASYEDA_RULES, EASYEDA_PROBES);
+    const fromSpicePre = new Set();
+    for (const probe of SPICE_PRE_PROBES) {
+        const r = mapEasyEdaPart({ descriptor: '', package: '', ...probe });
+        if (r && r.kind) { emitted.add(r.kind); fromSpicePre.add(r.kind); }
+    }
 
     test('the registry is populated, so the check has something to check', () => {
         // Without registerAllDevices() the registry is EMPTY and every kind
@@ -131,6 +181,8 @@ describe('imported kinds are usable, not just drawable', () => {
         // If the probes stop matching, every assertion below passes vacuously.
         assert.ok(fromEagle.size >= 20, `EAGLE: only ${fromEagle.size} kinds emitted — probes have gone stale`);
         assert.ok(fromKicad.size >= 25, `KiCad: only ${fromKicad.size} kinds emitted — probes have gone stale`);
+        assert.ok(fromEasyEda.size >= 15, `EasyEDA: only ${fromEasyEda.size} kinds emitted — probes have gone stale`);
+        assert.ok(fromSpicePre.size >= 12, `EasyEDA spicePre: only ${fromSpicePre.size} kinds emitted`);
     });
 
     test('every emitted kind is one the engine knows', () => {
@@ -230,6 +282,20 @@ describe('the TERMINAL names a rule emits are terminals the engine has', () => {
     };
     collect(RULES, PROBES, 'EAGLE');
     collect(KICAD_RULES, KICAD_PROBES, 'KiCad');
+    collect(EASYEDA_RULES, EASYEDA_PROBES, 'EasyEDA');
+    for (const probe of SPICE_PRE_PROBES) {
+        const r = mapEasyEdaPart({ descriptor: '', package: '', ...probe });
+        if (!r || !r.kind) continue;
+        const names = new Set([
+            ...Object.values(r.pins || {}),
+            ...(r.anyPin ? [r.anyPin] : []),
+            ...(r.terminals || []),
+        ]);
+        if (names.size) {
+            cases.push({ label: 'EasyEDA spicePre', probe: `${probe.spicePre}/${probe.value}`,
+                kind: r.kind, params: r.params || {}, names });
+        }
+    }
 
     test('there is something to check', () => {
         assert.ok(cases.length >= 40, `only ${cases.length} rule/probe pairs name terminals`);
@@ -283,5 +349,85 @@ describe('active parts reach the dialect', () => {
             .map(([k, op]) => `${k} (${op})`);
         assert.deepEqual(missing, [],
             `the dialect lost the verbs for: ${missing.join(', ')}`);
+    });
+});
+
+describe('what EasyEDA can import, and what survives being written back out', () => {
+    // Same failure as the EAGLE block above, one importer further on: a kind
+    // toEagleSch has no entry for is SKIPPED, and a skipped part takes its
+    // nets with it. So this does not ask whether eagleFor() answers -- it
+    // EXPORTS a two-part circuit and re-imports it, which is the property the
+    // corpus round-trips actually depend on.
+    const emitted = new Map();
+    const note = (r) => { if (r && r.kind && !emitted.has(r.kind)) emitted.set(r.kind, r.params || {}); };
+    for (const [re, fn] of EASYEDA_RULES) {
+        for (const probe of EASYEDA_PROBES) {
+            if (!re.test(probe)) continue;
+            try { note(fn('10k', probe)); } catch { /* probe lacks a shape this rule wants */ }
+        }
+    }
+    for (const probe of SPICE_PRE_PROBES) note(mapEasyEdaPart({ descriptor: '', package: '', ...probe }));
+    // Power symbols are parts too, and they carry the rails.
+    note({ kind: 'vcc' }); note({ kind: 'gnd' });
+
+    /**
+     * Kinds with NO inverse in the EAGLE vocabulary.
+     *
+     * Not an exporter gap that a table entry would close: eagle.js's RULES
+     * have no rule that reads these devicesets BACK, so writing one would
+     * round-trip the part to a different kind -- an AMS1117 returns as
+     * `ld1117v33`, an LM7809 as a generic `vreg`, a 74LS161 as `74hc161` --
+     * which is quieter and worse than a visible skip. Closing them means
+     * adding importer rules to eagle.js, whose table also serves the KiCad
+     * side and which already emits most of these same kinds with the same
+     * exposure. That is a job for the EAGLE lane, not this one.
+     *
+     * The list is asserted EXACTLY, both ways: a new EasyEDA rule for an
+     * unexportable kind fails here, and so does fixing one of these without
+     * striking it off.
+     */
+    const NO_EAGLE_INVERSE = new Set([
+        '74ls161', 'ams1117_33', 'ams1117_50', 'cd4093', 'cd4511', 'dht11', 'dht22',
+        'ds1302', 'ds18b20', 'ds3231', 'hd44780', 'lm339', 'lm358', 'lm393',
+        'lm7809', 'lm7812', 'max7219', 'pcf8574', 'potentiometer', 'relay',
+        'ssd1306', 'timer_555', 'timer_556', 'tip120', 'vsource',
+    ]);
+
+    /** Export two of a kind, wire them, read it back. Returns the kinds seen. */
+    const roundTrip = (kind, params) => {
+        const terms = terminalsForKind(kind, { pins: 4, ...params }) || [];
+        const parts = [{ id: 'X1', kind, params, x: 0, y: 0 }, { id: 'X2', kind, params, x: 0, y: 0 }];
+        const wires = terms.length
+            ? [{ from: 'X1', fromTerminal: terms[0], to: 'X2', toTerminal: terms[0] }] : [];
+        return importEagle(toEagleSch({ parts, wires }).xml).parts.map((p) => p.kind);
+    };
+
+    test('there is something to check', () => {
+        assert.ok(emitted.size >= 40, `only ${emitted.size} EasyEDA kinds emitted — probes are stale`);
+        assert.deepEqual(roundTrip('definitely_not_a_part', {}), [],
+            'an unknown kind must round-trip to nothing, or the check below cannot fail');
+    });
+
+    test('every kind not on the gap list survives export and re-import', () => {
+        const lost = [];
+        for (const [kind, params] of emitted) {
+            if (NO_EAGLE_INVERSE.has(kind)) continue;
+            const back = roundTrip(kind, params);
+            if (back.length !== 2 || back[0] !== kind) lost.push(`${kind} -> ${back.join(',') || 'DROPPED'}`);
+        }
+        assert.deepEqual(lost, [],
+            `these import from EasyEDA and are silently dropped on the way out, taking `
+            + `their nets with them: ${lost.join('; ')}`);
+    });
+
+    test('the gap list is exactly the kinds that really cannot make the trip', () => {
+        // Both directions. A stale entry here is a fix nobody noticed landing;
+        // a missing one is a net quietly disappearing.
+        const actuallyLost = new Set();
+        for (const [kind, params] of emitted) {
+            const back = roundTrip(kind, params);
+            if (back.length !== 2 || back[0] !== kind) actuallyLost.add(kind);
+        }
+        assert.deepEqual([...actuallyLost].sort(), [...NO_EAGLE_INVERSE].sort());
     });
 });

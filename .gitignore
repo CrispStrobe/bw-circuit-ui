@@ -1,4 +1,8 @@
 node_modules/
+# ...and node_modules as a SYMLINK, which `node_modules/` does not match. A
+# sibling worktree links it rather than reinstalling, and without this line
+# the link itself gets committed -- which it was, once.
+node_modules
 dist/
 .vite/
 *.local

@@ -17,6 +17,8 @@
  * @module
  */
 
+import { looksLikeEasyEda } from './easyeda.js';
+
 /**
  * @param {string} text      Raw file content
  * @param {string} filename  Used only as a fallback
@@ -33,6 +35,13 @@ export function detectFormat(text, filename = '') {
   if (/^\s*EESchema Schematic File Version\s+\d+/.test(text)) return 'kicad-legacy';
   if (/^\s*\(export\b|<export\b/i.test(text)) return 'kicad-netlist';
   if (/"parts"\s*:/.test(text) && /"connections"\s*:/.test(text)) return 'wokwi';
+  // EasyEDA Standard. JSON, and announced by `editorVersion` plus a payload
+  // key -- NOT by the extension, which is the bare `.json` our own circuit
+  // files use. The wokwi rule runs first for the same reason the EAGLE rule
+  // runs before KiCad's: both are JSON and only a key tells them apart. Our
+  // own circuit JSON has a top-level `parts` ARRAY and no `editorVersion`,
+  // and bin/bwc.mjs checks for that array before it ever calls this.
+  if (looksLikeEasyEda(text)) return 'easyeda';
   if (/\.kicad_sch$/i.test(filename)) return 'kicad-sch';
   if (/\.sch$/i.test(filename)) return 'eagle';
   if (/\.net$/i.test(filename)) return 'kicad-netlist';
