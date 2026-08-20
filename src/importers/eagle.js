@@ -204,9 +204,17 @@ export const RULES = [
   // conductive sewing taps all exist so a wire can be attached.
   [/^(TP|PERFHOLE|SEWTAP|PAD|VIA)$/i,  (v, ds) => headerOf(1, ds) ],
 
-  // 74-series: the deviceset carries the number, e.g. 74*00N / 74HC595N
-  [/^74\w*?(\d{2,3})[A-Z]?$/i,         (v, ds) => {
-    const n = /^74\w*?(\d{2,3})/i.exec(ds)[1];
+  // 74-series: the deviceset carries the number, e.g. 74*00N / 74HC595N.
+  //
+  // The part number must be captured WHOLE. A lazy `\w*?` in front of
+  // `(\d{2,3})` walks forward until three digits match and stops there, so
+  // 74HC4050D and 74HC4051 BOTH became `74hc405` -- a hex buffer and an
+  // 8-channel analog mux collapsed into one kind that is neither, 23 parts of
+  // it in the gallery. The digits are anchored between the family letters and
+  // the package suffix instead, and four digits are allowed because the 4000
+  // series is four digits long.
+  [/^74[A-Z*_ -]{0,5}(\d{2,4})[A-Z]*\d?$/i, (v, ds) => {
+    const n = /^74[A-Z*_ -]{0,5}(\d{2,4})/i.exec(ds)[1];
     return { kind: `74hc${n}`, _note: `EAGLE ${ds} mapped to 74hc${n}; verify the pinout matches` };
   }],
 ];

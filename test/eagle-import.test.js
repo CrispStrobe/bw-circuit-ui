@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { importEagle, parseEagleValue, normalizeEaglePin } from '../src/importers/eagle.js';
+import { RULES, importEagle, parseEagleValue, normalizeEaglePin } from '../src/importers/eagle.js';
 import { importCircuit } from '../src/importers/index.js';
 import { detectFormat } from '../src/importers/detect.js';
 
@@ -146,6 +146,42 @@ describe('EAGLE import against a real schematic',
                 'the row/col orientation is an assumption and must say so');
         });
     });
+
+describe('74-series part numbers survive the mapping', () => {
+    // A lazy quantifier in front of the digit group used to stop as soon as
+    // three digits matched, so the number was TRUNCATED rather than read.
+    // 74HC4050D (hex buffer) and 74HC4051 (8-channel analog mux) both became
+    // `74hc405` -- one kind that is neither part, 23 of them in the gallery.
+    // The bug is invisible in the import summary: the parts map, the coverage
+    // percentage goes UP, and the resulting circuit is wrong.
+    const kindOf = (ds) => {
+        for (const [re, fn] of RULES) {
+            if (!re.test(ds)) continue;
+            let r; try { r = fn('', ds); } catch { continue; }
+            if (r && r.kind) return r.kind;
+        }
+        return null;
+    };
+
+    test('four-digit numbers are not clipped to three', () => {
+        assert.equal(kindOf('74HC4050D'), '74hc4050');
+        assert.equal(kindOf('74HC4051'), '74hc4051');
+        assert.equal(kindOf('74HC4067'), '74hc4067');
+    });
+
+    test('two parts with different numbers never share a kind', () => {
+        assert.notEqual(kindOf('74HC4050D'), kindOf('74HC4051'),
+            'a hex buffer and an analog mux must not import as the same part');
+    });
+
+    test('package suffixes and family letters are stripped, not counted', () => {
+        for (const [ds, want] of [
+            ['74HC595N', '74hc595'], ['74HC00N', '74hc00'], ['74HC125D', '74hc125'],
+            ['74HCT245', '74hc245'], ['74LS244', '74hc244'], ['74HC374', '74hc374'],
+            ['74*245', '74hc245'],   // the corpus really does spell it this way
+        ]) assert.equal(kindOf(ds), want, `${ds} should map to ${want}`);
+    });
+});
 
 describe('import format detection', () => {
     test('recognises EAGLE, KiCad and Wokwi from content, not the extension', () => {
