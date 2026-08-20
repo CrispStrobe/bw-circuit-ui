@@ -1,25 +1,27 @@
 /**
- * Gallery values that a documented spec pins, not that we snapshotted.
+ * Gallery values that a documented spec pins — and one that guards a fix.
  *
- * Every number here is asserted because a datasheet or a shipped EXPECTED.md
- * says so — not because the engine currently produces it. That distinction is
- * the point: these same examples were producing DIFFERENT numbers until an
- * unconnected terminal stopped being stamped as a grounded one, and the old
- * values contradicted content we ship.
+ * TWO different things live here, and the difference matters because I got it
+ * wrong once already and shipped the mistake.
  *
- *   pc38-relay-changeover  EXPECTED.md: relay.nc 4.9997 V   (was 0.000)
- *   75-battery-tester      EXPECTED.md: >1399 mV -> FULL    (was 0.000, "dead")
- *   pc25-relay-isolator    EXPECTED.md: coil 0 V, no 2.00 V (was 2.5 / 0.000)
- *   the 555 examples       datasheet: CONTROL = 2/3 Vcc     (was 0.000)
+ * The first four tests are SPEC CONFORMANCE. Each number comes from a
+ * datasheet or a shipped EXPECTED.md, never from what the engine happens to
+ * print. They are true and worth keeping. They do NOT guard the
+ * unconnected-terminal fix — measured, not assumed: all four pass against the
+ * pre-fix solver.
  *
- * Why this exists as well as bw-board's dangling-terminal unit test: the same
- * ground/no-net conflation still lives in stampZener, stampOpamp and
- * stampCapAsSource, which were left alone deliberately. If it comes back
- * through one of those, a unit test on stampResistor will not notice and
- * twenty-three shipped examples will quietly go wrong again. This will notice.
+ * I originally claimed they did guard it. That came from an A/B whose
+ * comparison module tree had its OWN devices.js with an EMPTY registry,
+ * because registerAllDevices() had only been called on the primary tree. With
+ * no device models, relays and 555s fell back to generic behaviour, and I read
+ * a missing registry as a code change — inventing dramatic before/after values
+ * for a battery tester and a relay isolator that never moved at all.
  *
- * Skips, loudly, without the gallery checkout — it is a sibling, not vendored.
+ * The LAST test is the actual regression guard, and it fails against the
+ * pre-fix solver. When comparing two versions of a module across separate
+ * trees, register the devices in both, or the diff measures the harness.
  */
+
 
 import './_setup.js';
 import { test, describe } from 'node:test';
@@ -77,6 +79,27 @@ describe('gallery values their own specs pin', { skip: SKIP }, () => {
     const v = at('cell1.pos');
     assert.ok(v > 1.399, `cell1.pos = ${v} V; the example's own FULL threshold is 1.399 V`);
     assert.ok(v < 1.6, `cell1.pos = ${v} V is above any plausible AA cell`);
+  });
+
+  test('an unconnected CONTROL pin does not load the 555 timing network', () => {
+    // THIS one guards the fix. The 555's control pin is unwired in these
+    // examples, and while an unconnected terminal was stamped as a grounded
+    // one it loaded the chip's internal divider and dragged the timing node
+    // below the rail. At the DC operating point, with the cap open and nothing
+    // loading it, threshold must sit AT the supply.
+    //
+    // Pre-fix: 4.8077 V in 51-555-astable, 1.6656 V in pc74-ldr-555-blinker —
+    // a pin attached to nothing pulling a timing node down by 3.3 V.
+    let checked = 0;
+    for (const [dir, term] of [['51-555-astable', 'u1.threshold'],
+      ['pc74-ldr-555-blinker', 'timer_555_3.threshold']]) {
+      if (!existsSync(path.join(GALLERY, dir, 'circuit.json'))) continue;
+      const v = solveExample(dir).at(term);
+      assert.ok(Math.abs(v - 5) < 0.01,
+        `${dir} ${term} = ${v} V; an unwired CONTROL pin must not load it below the 5 V rail`);
+      checked++;
+    }
+    assert.ok(checked >= 1, 'neither 555 example was found — this guard has hollowed out');
   });
 
   test('an unloaded relay contact sits at its own supply', () => {
