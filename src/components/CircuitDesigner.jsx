@@ -1272,6 +1272,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onSelectAll={handleSelectAll}
           onSaveCircuit={handleSave}
           onClearCircuit={handleClear}
+          onImport={handleLoad}
           onLoadCircuit={() => {
             const input = document.createElement('input');
             input.type = 'file';
