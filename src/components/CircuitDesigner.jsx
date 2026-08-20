@@ -929,6 +929,38 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     } catch { /* seating failed — leave as-is */ }
   }, [circuitData, handleLoad, projectData, circuit]);
 
+  // ── Main-menu File/ integration ─────────────────────────────────
+  // The host's menu bar dispatches 'bw-circuit-file' CustomEvents with
+  // detail.action = 'load'|'save'|'import'|'export'. Map each to the
+  // SAME handlers the ⋯ menu uses — one handler set, no duplication.
+  // For import/export, set fileAction state so BoardCanvas opens the
+  // format-picker submenu.
+  const [fileAction, setFileAction] = useState(null);
+  useEffect(() => {
+    const handler = (e) => {
+      const action = e.detail?.action;
+      if (action === 'save') { handleSave(); return; }
+      if (action === 'load') {
+        // Same file-picker as the ⋯ menu's Open
+        const input = document.createElement('input');
+        input.type = 'file'; input.accept = '.json';
+        input.onchange = () => {
+          const f = input.files?.[0]; if (!f) return;
+          const reader = new FileReader();
+          reader.onload = () => { try { handleLoad(JSON.parse(String(reader.result))); } catch {} };
+          reader.readAsText(f);
+        };
+        input.click();
+        return;
+      }
+      if (action === 'import' || action === 'export') {
+        setFileAction(action); // BoardCanvas FileMenu opens the submenu
+      }
+    };
+    window.addEventListener('bw-circuit-file', handler);
+    return () => window.removeEventListener('bw-circuit-file', handler);
+  }, [handleSave, handleLoad]);
+
   // All keyboard shortcuts are handled by BoardCanvas (single focus scope).
   const handleUndo = useCallback(() => undo(), [undo]);
   const handleRedo = useCallback(() => redo(), [redo]);
@@ -1266,6 +1298,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onSaveCircuit={handleSave}
           onClearCircuit={handleClear}
           onImport={handleLoad}
+          fileAction={fileAction}
+          onFileActionDone={() => setFileAction(null)}
           onLoadCircuit={() => {
             const input = document.createElement('input');
             input.type = 'file';

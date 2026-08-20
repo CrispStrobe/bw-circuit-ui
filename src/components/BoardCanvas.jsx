@@ -2569,8 +2569,16 @@ function BreadboardSubstrate({ part }) {
 // Format variants live on 2nd-level submenus, never top level.
 // Clear is a destructive op, kept separate at the bottom.
 
-function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone }) {
+function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, fileAction, onFileActionDone }) {
   const [sub, setSub] = useState(null); // 'import' | 'export' | null
+
+  // Respond to main-menu File/ events: open the right submenu
+  React.useEffect(() => {
+    if (fileAction === 'import' || fileAction === 'export') {
+      setSub(fileAction);
+      if (onFileActionDone) onFileActionDone();
+    }
+  }, [fileAction, onFileActionDone]);
   const de = /^de/i.test(lang);
   const itemStyle = { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 10px', background: 'none', border: 'none', color: '#e2e8f0', fontSize: 12, fontFamily: 'system-ui, sans-serif', cursor: 'pointer', borderRadius: 3, textAlign: 'left' };
   const itemHover = (e) => { e.currentTarget.style.background = '#1e293b'; };
@@ -2728,6 +2736,7 @@ export function BoardCanvas({
   circuit, engineBoard, videoFn, fitToken, sevenSegments, sevenSeg3,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onClearCircuit, onRewire, onImport,
+  fileAction, onFileActionDone,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
@@ -2752,6 +2761,10 @@ export function BoardCanvas({
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
+  // Auto-open the ⋯ menu when a File/ action arrives from the main menu
+  React.useEffect(() => {
+    if (fileAction) setToolbarMoreOpen(true);
+  }, [fileAction]);
   // Responsive toolbar: below a width threshold the secondary nav groups
   // (Designer/Warnings/Parts/Examples + the Realistic/Schematic view toggles)
   // collapse INTO the ⋯ menu rather than wrapping the toolbar onto a second row
@@ -3823,6 +3836,7 @@ export function BoardCanvas({
               circuit={circuit} lang={lang}
               onLoad={onLoadCircuit} onSave={onSaveCircuit}
               onImport={onImport} onClear={onClearCircuit}
+              fileAction={fileAction} onFileActionDone={onFileActionDone}
               onDone={() => setToolbarMoreOpen(false)}
             />
             <span style={{display: 'block', height: 1, background: '#334155', margin: '4px 0'}} />
