@@ -8,7 +8,7 @@
  * This module is the testable core — no React, no DOM, no browser APIs.
  */
 
-import { getEngine } from '../engine.js';
+import { getEngine, engineTerminals } from '../engine.js';
 import { History } from './history.js';
 import { mergeNets } from './merge-nets.js';
 import { BreadboardModel } from './breadboard.js';
@@ -1017,14 +1017,47 @@ export class Circuit {
 }
 
 /**
+ * Kinds that keep the local catalog even when the engine has a model.
+ *
+ * `header` is the ONLY genuinely params-dependent kind: its terminals come
+ * from `params.pins`, so a fixed engine list (p1..p8) would silently turn
+ * every 6- or 10-way header into an 8-way one. Every other registered kind
+ * was probed with two different params objects and returned the same list,
+ * so "it's dynamic" is not an excuse available to anything else here.
+ *
+ * @type {Set<string>}
+ */
+const ENGINE_AUTHORITY_EXEMPT = new Set(['header']);
+
+/**
  * Return the terminal names for a given part kind.
  *
- * Sidecar-first: checks bw-parts sidecar data before the local switch.
- * Special kinds (mcu, breadboard, led_cube) need params-dependent or
- * dynamic terminals and bypass the sidecar.
+ * ENGINE-FIRST. bw-board's registered device model is the authority for
+ * terminal NAMES; a divergence is a bug in the catalog, never in the
+ * engine. Before this, the catalog resolved sidecar -> switch -> ['a','b'],
+ * consulting the engine nowhere: `addPart('vreg')` minted terminals a/b
+ * against an engine that has in/out/gnd, `checkWiring` rejected the whole
+ * netlist, and the board went EMPTY with one part on it and no wires.
+ *
+ * The engine is only consulted when the host injected `getDevice` into
+ * setEngine(). A host that injects the three original keys gets exactly the
+ * old resolution order, which is why this is a safe additive change.
+ *
+ * Below the engine, the old order still applies for kinds the engine has no
+ * model for (built-ins, unregistered kinds): sidecar -> switch -> ['a','b'].
+ *
+ * POSITIONS: the canvas looks terminal positions up BY NAME out of the
+ * sidecar, so an engine name the sidecar does not carry renders at the part
+ * origin. The fix for that is in the sidecar, not here — `src/parts-data/`
+ * was renamed to the engine's names wherever the two describe the same
+ * physical pin (see test/hd44780-terminal-parity.test.js's ledger).
  */
 /** @internal Exported for the contract test only. */
 export function terminalsForKind(kind, params) {
+  if (!ENGINE_AUTHORITY_EXEMPT.has(kind)) {
+    const fromEngine = engineTerminals(kind);
+    if (fromEngine) return fromEngine;
+  }
   // Sidecar-first: a parts-data JSON with measured terminal positions is the
   // authority — the hardcoded switch below is the FALLBACK for kinds that have
   // no sidecar (simple passives, power symbols, dynamic-terminal kinds like
