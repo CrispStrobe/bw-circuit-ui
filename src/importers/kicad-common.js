@@ -395,9 +395,14 @@ export const KICAD_RULES = [
   // reads 74CBTLV3257 as "74hc325" -- a kind no engine models and no
   // datasheet describes, which then draws as a plausible box and simulates
   // as nothing. An unrecognised family is reported as unmapped instead.
-  [/^(SN|MC|DM|CD)?74(HCT|HC|LS|ALS|AHCT|AHC|ACT|AC|AS|LVC|LVT|VHC|VHCT|F|S|C|H|L)?(\d{2,3})[A-Z]*$/i,
+  // Four digits, not three: the 4000 series is four long, and capturing only
+  // three collapses 74HC4050 and 74HC4051 -- a hex buffer and an 8-channel
+  // analog mux -- onto one kind that is neither. That failure makes the
+  // coverage numbers look BETTER, which is how it survived on the EAGLE side
+  // until someone went looking for the datasheet of "74hc405".
+  [/^(SN|MC|DM|CD)?74(HCT|HC|LS|ALS|AHCT|AHC|ACT|AC|AS|LVC|LVT|VHC|VHCT|F|S|C|H|L)?(\d{2,4})[A-Z]*\d?$/i,
     (v, n) => {
-      const num = /^(?:SN|MC|DM|CD)?74(?:HCT|HC|LS|ALS|AHCT|AHC|ACT|AC|AS|LVC|LVT|VHC|VHCT|F|S|C|H|L)?(\d{2,3})/i.exec(n)[1];
+      const num = /^(?:SN|MC|DM|CD)?74(?:HCT|HC|LS|ALS|AHCT|AHC|ACT|AC|AS|LVC|LVT|VHC|VHCT|F|S|C|H|L)?(\d{2,4})/i.exec(n)[1];
       return { kind: `74hc${num}`, byName: true,
         _note: `${n} mapped to 74hc${num}; verify the pinout matches` };
     }],

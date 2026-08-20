@@ -405,6 +405,20 @@ describe('the symbol vocabulary maps by name, and knows what it does not know', 
     assert.equal(mapKicadSymbol('Regulator_Linear:LM7805_TO220', '').kind, 'lm7805');
   });
 
+  test('a 74-series part number is captured WHOLE', () => {
+    // Capturing three digits collapses the 4000 series: 74HC4050 (hex buffer)
+    // and 74HC4051 (8-channel mux) both became "74hc405", a kind that is
+    // neither and has no datasheet. The tell is that it makes coverage look
+    // better -- the parts map, nothing warns, and the circuit is the wrong
+    // chip. Same defect was found independently in eagle.js.
+    const kind = (n) => mapKicadSymbol(`74xx:${n}`, '')?.kind;
+    assert.equal(kind('74HC4050'), '74hc4050');
+    assert.equal(kind('74HC4051'), '74hc4051');
+    assert.notEqual(kind('74HC4050'), kind('74HC4051'));
+    assert.equal(kind('74HC595'), '74hc595');
+    assert.equal(kind('74LS138'), '74hc138');
+  });
+
   test('an unknown logic family is reported, not turned into an invented chip', () => {
     // 74CBTLV3257 once became "74hc325": a kind no engine models and no
     // datasheet describes, which draws a plausible box and simulates nothing.
