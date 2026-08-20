@@ -48,6 +48,12 @@ export function parseEagleValue(raw) {
 // ── deviceset → engine kind ────────────────────────────────────────
 // Matched against the deviceset name, which is the stable part of an EAGLE
 // library reference (the device suffix is the package: R-EU_0207/10).
+// Drawing artifacts, not components. A fiducial, a mounting hole, a sheet
+// frame or a test point has no electrical model and never should have one, so
+// counting them as "unmapped" overstates the loss and buries the components
+// that genuinely need a rule. They are reported separately.
+const NON_ELECTRICAL = /^(FIDUCIAL|MOUNTING[-_ ]?HOLE|STAND[-_ ]?OFF|FRAME|LOGO|TEST[-_ ]?POINT|TESTPOINT|DOCFIELD|SJ|SOLDER[-_ ]?JUMPER)/i;
+
 const DIODE_PINS = { A: 'anode', C: 'cathode', K: 'cathode', '1': 'anode', '2': 'cathode', 'P$1': 'anode', 'P$2': 'cathode' };
 const SUPPLY_PINS = { '+': 'pos', '-': 'neg', '+VE': 'pos', '-VE': 'neg', 'P$1': 'pos', 'P$2': 'neg', '1': 'pos', '2': 'neg' };
 
@@ -55,10 +61,27 @@ const RULES = [
   // power symbols — one terminal, and EAGLE draws one per connection point
   // The symbol's PIN name is not its deviceset name: a VCC symbol may carry a
   // pin called VIN, and a supply symbol's pins are +VE/-VE in some libraries.
-  [/^(GND|AGND|DGND|0V)$/i,            () => ({ kind: 'gnd',
-    pins: { GND: 'gnd', VSS: 'gnd', '0V': 'gnd', '1': 'gnd', 'P$1': 'gnd' } })],
-  [/^(VCC|VDD|\+5V|V\+|VIN|VBUS)$/i,   () => ({ kind: 'vcc',
-    pins: { VCC: 'vcc', VDD: 'vcc', VIN: 'vcc', VBUS: 'vcc', 'V+': 'vcc', '+V': 'vcc', '1': 'vcc', 'P$1': 'vcc' } })],
+  [/^(GND|AGND|DGND|0V)$/i,            () => ({ kind: 'gnd', anyPin: 'gnd' })],
+  [/^(VCC|VDD|\+5V|V\+|VIN|VBUS|VBAT)$/i, () => ({ kind: 'vcc', anyPin: 'vcc' })],
+  // SparkFun and friends name the supply symbol after the RAIL: 5V, 3.3V,
+  // 5.0V, 3V3. Sixty of these in a twelve-board corpus, all previously
+  // unmapped, which is why the rule is by shape rather than by enumeration.
+  [/^[+]?\d+(\.\d+)?V\d*$|^[+]?\d+V\d+$/i, () => ({ kind: 'vcc',
+    anyPin: 'vcc' })],
+  // ...and the passive after its VALUE: 0.1UF, 1KOHM, 10KOHM.
+  [/^[\d.]+\s*(UF|NF|PF|MF)$/i,       (v, ds) => ({ kind: 'capacitor',
+    params: { farads: parseEagleValue(ds.replace(/F$/i, '').replace(/U$/i, 'u').replace(/N$/i, 'n').replace(/P$/i, 'p')) ?? 1e-7 },
+    pins: { '1': 'a', '2': 'b' } })],
+  [/^[\d.]+\s*[KM]?OHMS?$/i,          (v, ds) => ({ kind: 'resistor',
+    params: { ohms: parseEagleValue(ds.replace(/OHMS?$/i, '')) ?? 1000 },
+    pins: { '1': 'a', '2': 'b' } })],
+  // connectors
+  [/^(HEADER|PINHD)[-_]?(\d+)X(\d+)/i, (v, ds) => {
+    const m = /(\d+)X(\d+)/i.exec(ds);
+    const n = Number(m[1]) * Number(m[2]);
+    return { kind: 'header', params: { pins: n },
+      pins: Object.fromEntries(Array.from({ length: n }, (_, i) => [String(i + 1), `p${i + 1}`])) };
+  }],
   // passives
   [/^R[-_]?(EU|US)?/i,                 (v) => ({ kind: 'resistor',  params: { ohms: parseEagleValue(v) ?? 1000 }, pins: { '1': 'a', '2': 'b' } })],
   [/^C[-_]?(EU|US)?/i,                 (v) => ({ kind: 'capacitor', params: { farads: parseEagleValue(v) ?? 1e-7 }, pins: { '1': 'a', '2': 'b' } })],
@@ -90,7 +113,12 @@ const RULES = [
   // ICs whose EAGLE pin names already ARE our terminal names once the
   // annotations are stripped — see normalizeEaglePin.
   [/^(TINY|ATTINY)\s*48\/?88|^ATTINY88/i, () => ({ kind: 'attiny88', byName: true })],
-  [/^EEPROM[-_]?I2C|^24[CL]C?\d/i,         () => ({ kind: 'at24c02',  byName: true })],
+  // The engine's at24c02 models the bus only. A real 24Cxx also has A0-A2 and
+  // WP, and emitting those would hand the engine terminals it does not have —
+  // which does not warn, it REJECTS THE WHOLE BENCH and leaves a board with
+  // zero parts. Found by round-tripping a real board, not by reading the model.
+  [/^EEPROM[-_]?I2C|^24[CL]C?\d/i,         () => ({ kind: 'at24c02',  byName: true,
+    terminals: ['vcc', 'gnd', 'sda', 'scl'] })],
   [/^PINHD[-_]?1X(\d+)/i,                  (v, ds) => ({
     kind: 'header',
     params: { pins: Number(/1X(\d+)/i.exec(ds)[1]) },
@@ -136,15 +164,16 @@ function mapDeviceset(deviceset, value) {
 export function importEagle(text) {
   const warnings = [];
   const unmapped = [];
+  const ignored = [];               // drawing artifacts: no electrical model by design
   const parts = [];
   const wires = [];
 
   if (!/<eagle\b/.test(text)) {
-    return { parts, wires, unmapped, warnings: ['Not an EAGLE file: no <eagle> root element'] };
+    return { parts, wires, unmapped, ignored, warnings: ['Not an EAGLE file: no <eagle> root element'] };
   }
   if (/<board\b/.test(text) && !/<schematic\b/.test(text)) {
     return {
-      parts, wires, unmapped,
+      parts, wires, unmapped, ignored,
       warnings: ['This is an EAGLE .brd (board layout). Import the matching .sch — '
         + 'the schematic carries the netlist; a board carries copper and footprints.'],
     };
@@ -153,9 +182,12 @@ export function importEagle(text) {
   // ── parts ────────────────────────────────────────────────────────
   const pinMaps = new Map();          // part name -> EAGLE pin -> our terminal
   const byName = new Set();           // parts whose pins are named, not numbered
+  const anyPin = new Map();           // single-pin symbols: any pin is that terminal
+  const allowed = new Map();          // kinds whose engine model is narrower than the chip
   for (const m of text.matchAll(/<part\s+([^>]*?)\/?>/g)) {
     const a = attrs(m[1]);
     if (!a.name || !a.deviceset) continue;
+    if (NON_ELECTRICAL.test(a.deviceset)) { ignored.push({ ref: a.name, libsource: `${a.library || '?'}/${a.deviceset}` }); continue; }
     const hit = mapDeviceset(a.deviceset, a.value);
     if (!hit) {
       unmapped.push({ ref: a.name, value: a.value || '', libsource: `${a.library || '?'}/${a.deviceset}` });
@@ -168,6 +200,8 @@ export function importEagle(text) {
     parts.push({ id: a.name, kind: hit.kind, params, x: 0, y: 0 });
     pinMaps.set(a.name, hit.pins || {});
     if (hit.byName) byName.add(a.name);
+    if (hit.anyPin) anyPin.set(a.name, hit.anyPin);
+    if (hit.terminals) allowed.set(a.name, new Set(hit.terminals));
   }
 
   // ── nets → wires ─────────────────────────────────────────────────
@@ -182,9 +216,19 @@ export function importEagle(text) {
       if (!a.part || !a.pin) continue;
       if (!known.has(a.part)) continue;                 // its component was unmapped
       const map = pinMaps.get(a.part) || {};
-      const term = map[a.pin] ?? (byName.has(a.part) ? normalizeEaglePin(a.pin) : undefined);
+      const term = map[a.pin]
+        ?? anyPin.get(a.part)
+        ?? (byName.has(a.part) ? normalizeEaglePin(a.pin) : undefined);
       if (!term) {
         warnings.push(`Unknown pin "${a.pin}" on ${a.part} in net "${netName}"`);
+        continue;
+      }
+      const ok = allowed.get(a.part);
+      if (ok && !ok.has(term)) {
+        // Emitting it would be worse than dropping it: the engine validates
+        // terminals and refuses the ENTIRE netlist, so one extra pin costs the
+        // whole board.
+        warnings.push(`${a.part} pin "${a.pin}" dropped — the engine's model has no "${term}" terminal`);
         continue;
       }
       refs.push({ part: a.part, terminal: term });
@@ -197,6 +241,7 @@ export function importEagle(text) {
     }
   }
 
+  if (ignored.length) warnings.push(`${ignored.length} drawing artifact(s) skipped (fiducials, mounting holes, frames, test points) — not components`);
   if (!parts.length) warnings.push('No mappable components found — is this an EAGLE 6+ schematic?');
-  return { parts, wires, warnings, unmapped };
+  return { parts, wires, warnings, unmapped, ignored };
 }

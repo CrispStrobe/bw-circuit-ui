@@ -9,7 +9,7 @@
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { importEagle, parseEagleValue, normalizeEaglePin } from '../src/importers/eagle.js';
@@ -155,3 +155,47 @@ describe('import format detection', () => {
         assert.equal(detectFormat('nothing recognisable', 'notes.txt'), null);
     });
 });
+
+// A corpus run is the only way to find out what a format ACTUALLY contains.
+// Point EAGLE_CORPUS at a directory of open-hardware checkouts to enable it.
+// Deliberately env-gated and never committed: those files are CC BY-SA
+// hardware licences, and copying them into this repo would pull a share-alike
+// obligation onto our source.
+const CORPUS = process.env.EAGLE_CORPUS;
+describe('EAGLE import across a corpus',
+    { skip: CORPUS && existsSync(CORPUS) ? false : 'set EAGLE_CORPUS to a directory of EAGLE projects' }, () => {
+        const files = [];
+        (function walk(d) {
+            for (const e of readdirSync(d)) {
+                if (e === '.git') continue;
+                const p = join(d, e);
+                if (statSync(p).isDirectory()) walk(p);
+                else if (/\.sch$/i.test(e)) files.push(p);
+            }
+        })(CORPUS);
+
+        test('the corpus is not empty', () => assert.ok(files.length > 0, `no .sch under ${CORPUS}`));
+
+        test('most components map, and the rest are named', () => {
+            let mapped = 0; let unmapped = 0;
+            for (const f of files) {
+                const text = readFileSync(f, 'utf8');
+                if (!/<eagle\b/.test(text)) continue;
+                const r = importEagle(text);
+                mapped += r.parts.length; unmapped += r.unmapped.length;
+            }
+            const pct = 100 * mapped / (mapped + unmapped || 1);
+            // 82% on the reference corpus; a rule regression shows up here long
+            // before anyone notices a board importing half-empty.
+            assert.ok(pct >= 75, `only ${pct.toFixed(1)}% of components mapped (${mapped}/${mapped + unmapped})`);
+        });
+
+        test('drawing artifacts are skipped, not counted as failures', () => {
+            let ignored = 0;
+            for (const f of files) {
+                const text = readFileSync(f, 'utf8');
+                if (/<eagle\b/.test(text)) ignored += importEagle(text).ignored.length;
+            }
+            assert.ok(ignored > 0, 'a real corpus contains fiducials, mounting holes and frames');
+        });
+    });
