@@ -208,10 +208,15 @@ const FET_PINS = { 1: 'gate', 2: 'source', 3: 'drain', G: 'gate', S: 'source', D
  */
 const HEADER_TERMINALS = 8;
 
-const REG_PINS = { VI: 'vin', VO: 'vout', GND: 'gnd', IN: 'vin', OUT: 'vout',
-  VIN: 'vin', VOUT: 'vout', 1: 'vin', 2: 'gnd', 3: 'vout' };
+// ONE map for every three-pin regulator. There used to be two -- a `vin/vout`
+// one for lm7805 and an `in/out` one for vreg -- because the catalog sidecars
+// disagreed with each other about the same physical pin. The engine calls them
+// in/out/gnd for all three, and the sidecars now agree, so the second spelling
+// is gone. It was not harmless while it lasted: a wire to `vin` is accepted by
+// the importer and then ignored by the board, which is a connection that
+// exists on screen and not in the simulation.
 const VREG_PINS = { VI: 'in', VO: 'out', GND: 'gnd', IN: 'in', OUT: 'out',
-  VIN: 'in', VOUT: 'out', EN: 'in' };
+  VIN: 'in', VOUT: 'out', EN: 'in', 1: 'in', 2: 'gnd', 3: 'out' };
 
 const BJT_ORDER = { B: 'base', C: 'collector', E: 'emitter' };
 const FET_ORDER = { G: 'gate', D: 'drain', S: 'source' };
@@ -348,7 +353,7 @@ export const KICAD_RULES = [
   // engine already models lm7805, ams1117_33 and a generic vreg. Inventing a
   // `regulator` kind here is the mistake eagle.js's comments record.
   // KiCad names a three-terminal regulator's pins VI / VO / GND.
-  [/^(LM|MC|KA|UA)?78[LM]?05/i, () => ({ kind: 'lm7805', pins: REG_PINS })],
+  [/^(LM|MC|KA|UA)?78[LM]?05/i, () => ({ kind: 'lm7805', pins: VREG_PINS })],
   // lm7809 and lm7812 are registered engine kinds with NO terminal geometry
   // in this repo -- no sidecar, so terminalsForKind falls back to a generic
   // two-pin shape. Naming vin/gnd/vout would emit wires the board accepts and
