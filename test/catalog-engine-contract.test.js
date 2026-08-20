@@ -272,6 +272,58 @@ describe('catalog ↔ engine terminal-name contract', () => {
  * — the stale hand-maintained table that started this whole class of bug.
  * Behaviour, not a second table.
  */
+/**
+ * The FOURTH table. src/model/dip-chips.js maps DIP pin number → terminal
+ * name for 22 logic chips, and nine of them name pins bw-board does not
+ * have — the same spellings the sidecars carried until this branch (qn for
+ * q_bar, 1-based bit slices, bare segment names, NC pins).
+ *
+ * It is not currently reachable for these kinds: terminalsForKind asks the
+ * engine first, and logicChipTerminals() is only consulted in the default
+ * branch below that. "Not currently reachable" is exactly what the other
+ * three stale tables looked like before someone reordered something, so
+ * the drift gets pinned rather than trusted. dip-chips.js is not this
+ * change's to edit; this ledger is here so that fixing it is a one-line
+ * deletion and NOT fixing it stays visible.
+ */
+describe('dip-chips.js pin maps vs the engine — the fourth table', () => {
+  /** kind → why its pin map still names terminals the engine lacks. */
+  const DIP_PINMAP_LEDGER = new Map([
+    ['74hc20', 'names the NC pins nc1/nc2; the engine models no NC'],
+    ['74hc21', 'names the NC pins nc1/nc2; the engine models no NC'],
+    ['74hc73', 'inverted outputs spelled 1qn/2qn; the engine says 1q_bar/2q_bar'],
+    ['74hc74', 'spells 1qn/2qn and 1prn/2prn; the engine says q_bar and pre'],
+    ['74hc75', 'spells the enables 1en..4en and carries 1qn..4qn; the engine has 1e/2e and no inverted outputs'],
+    ['74hc93', 'cka/ckb, mr1/mr2 and four NC pins; the engine says clk_a/clk_b, r0_1/r0_2'],
+    ['74hc95', 'splits the clock into clk1/clk2; the engine models one clk'],
+    ['74hc283', 'numbers the bit slices 1..4; the engine numbers them 0..3'],
+    ['cd4511', 'segment outputs as bare a_out..g and bi; the engine says qa..qg and bl'],
+  ]);
+
+  it('the ledger may only shrink — a healed pin map deletes its line', async () => {
+    const { LOGIC_CHIPS } = await import('../src/model/dip-chips.js');
+    const drifted = [];
+    const healed = [];
+    for (const [kind, def] of Object.entries(LOGIC_CHIPS)) {
+      const dev = getDevice(kind);
+      if (!dev || !Array.isArray(dev.terminals)) continue;   // no engine model to check against
+      const engine = new Set(dev.terminals);
+      const extra = [...new Set(Object.values(def.pinMap))].filter(n => !engine.has(n));
+      if (extra.length && !DIP_PINMAP_LEDGER.has(kind)) {
+        drifted.push(`${kind}: pin map names [${extra}] — engine has [${dev.terminals}]`);
+      }
+      if (!extra.length && DIP_PINMAP_LEDGER.has(kind)) healed.push(kind);
+    }
+    assert.deepEqual(drifted, [],
+      `a new stale pin map — bw-board is the authority here too.\n${drifted.join('\n')}`);
+    assert.deepEqual(healed, [],
+      `healed — delete from DIP_PINMAP_LEDGER: ${healed.join(', ')}`);
+    for (const [kind, reason] of DIP_PINMAP_LEDGER) {
+      assert.ok(reason.length > 10, `${kind} needs a stated reason`);
+    }
+  });
+});
+
 describe('placing one part never empties the board', () => {
   const kinds = [...new Set([...registeredKinds(), ...BUILTIN_KINDS])].sort();
 
