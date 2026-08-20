@@ -4,6 +4,7 @@
  * importCircuit(format, text) → { parts, wires, warnings, unmapped }
  *
  * Supported formats:
+ *   'eagle'          — EAGLE 6+ schematic (.sch, XML)
  *   'kicad-netlist'  — KiCad .net s-expression or .xml netlist (auto-detected)
  *   'wokwi'          — Wokwi diagram.json
  *
@@ -17,10 +18,12 @@
  * @module
  */
 
+import { importEagle } from './eagle.js';
 import { importKicadNetlist } from './kicad-netlist.js';
 import { importWokwi, exportWokwi } from './wokwi.js';
 
 const IMPORTERS = {
+  'eagle':         importEagle,
   'kicad-netlist': importKicadNetlist,
   'wokwi':         importWokwi,
 };
