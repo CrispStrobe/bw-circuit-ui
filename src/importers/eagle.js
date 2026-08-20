@@ -60,13 +60,32 @@ const SUPPLY_PINS = { '+': 'pos', '-': 'neg', '+VE': 'pos', '-VE': 'neg', 'P$1':
 const FET_PINS = { G: 'gate', D: 'drain', S: 'source', '1': 'gate', '2': 'source', '3': 'drain' };
 const BJT_PINS = { B: 'base', C: 'collector', E: 'emitter', '1': 'base', '2': 'collector', '3': 'emitter' };
 
+/**
+ * The engine's header model has EIGHT terminals and no parameter widens it.
+ * So a 2x5 connector is DRAWN ten wide and can be WIRED only eight wide, and
+ * emitting p9/p10 anyway produces wires the board silently ignores -- the
+ * quietest kind of wrong. The count still goes in params, because the symbol
+ * and the BOM want it; the pin map stops where the engine does, and says so.
+ * Found by the terminal-name contract in engine-contract.test.js, which was
+ * written for the KiCad importers and immediately caught this one here.
+ */
+const HEADER_TERMINALS = 8;
+
 /** An n-pin header, with p1..pn terminals. Connectors differ only in width. */
+function headerPins(n) {
+  return Object.fromEntries(Array.from({ length: Math.min(n, HEADER_TERMINALS) },
+    (_, i) => [String(i + 1), `p${i + 1}`]));
+}
+
 function headerOf(n, ds) {
   return {
     kind: 'header',
     params: { pins: n },
-    pins: Object.fromEntries(Array.from({ length: n }, (_, i) => [String(i + 1), `p${i + 1}`])),
-    _note: `EAGLE ${ds} imported as a ${n}-pin header`,
+    pins: headerPins(n),
+    _note: `EAGLE ${ds} imported as a ${n}-pin header`
+      + (n > HEADER_TERMINALS
+        ? `; only the first ${HEADER_TERMINALS} pins can be wired -- the engine's header model has ${HEADER_TERMINALS} terminals`
+        : ''),
   };
 }
 
@@ -91,9 +110,7 @@ export const RULES = [
   // connectors
   [/^(HEADER|PINHD)[-_]?(\d+)X(\d+)/i, (v, ds) => {
     const m = /(\d+)X(\d+)/i.exec(ds);
-    const n = Number(m[1]) * Number(m[2]);
-    return { kind: 'header', params: { pins: n },
-      pins: Object.fromEntries(Array.from({ length: n }, (_, i) => [String(i + 1), `p${i + 1}`])) };
+    return headerOf(Number(m[1]) * Number(m[2]), ds);
   }],
   // passives
   [/^R[-_]?(EU|US)?/i,                 (v) => ({ kind: 'resistor',  params: { ohms: parseEagleValue(v) ?? 1000 }, pins: { '1': 'a', '2': 'b' } })],
@@ -132,12 +149,7 @@ export const RULES = [
   // zero parts. Found by round-tripping a real board, not by reading the model.
   [/^EEPROM[-_]?I2C|^24[CL]C?\d/i,         () => ({ kind: 'at24c02',  byName: true,
     terminals: ['vcc', 'gnd', 'sda', 'scl'] })],
-  [/^PINHD[-_]?1X(\d+)/i,                  (v, ds) => ({
-    kind: 'header',
-    params: { pins: Number(/1X(\d+)/i.exec(ds)[1]) },
-    pins: Object.fromEntries(Array.from({ length: Number(/1X(\d+)/i.exec(ds)[1]) },
-      (_, i) => [String(i + 1), `p${i + 1}`])),
-  })],
+  [/^PINHD[-_]?1X(\d+)/i,                  (v, ds) => headerOf(Number(/1X(\d+)/i.exec(ds)[1]), ds)],
   // ── rules driven by MEASURING a real corpus ──────────────────────
   // Everything below was added by importing 286 published EAGLE schematics
   // and ranking what failed to map, rather than by guessing which parts are
@@ -187,8 +199,7 @@ export const RULES = [
   // 1xN strips are all "a labelled row of pins" to a netlist. Together they
   // are the single largest unmapped group in the corpus.
   [/^USB(?![A-Z])|^USB[-_]?(A|B|C|MICRO|MINI|TYPEA|TYPEC)/i, () => ({ kind: 'usb_a' })],
-  [/^(MICROSD|SD[-_]?CARD|MICRO[-_]?SD)/i, () => ({ kind: 'header', params: { pins: 8 },
-    _note: 'microSD socket imported as an 8-pin header' })],
+  [/^(MICROSD|SD[-_]?CARD|MICRO[-_]?SD)/i, (v, ds) => headerOf(8, ds)],
   [/^(TERMBLOCK|JST|MOLEX|SCREWTERMINAL|CONN)[-_]?(\d+)?X?(\d+)?/i, (v, ds) => {
     const m = /(\d+)/.exec(ds.replace(/^[A-Z_]+/i, ''));
     return headerOf(m ? Number(m[1]) : 2, ds);

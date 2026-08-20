@@ -199,11 +199,28 @@ const DIODE_PINS = { 1: 'cathode', 2: 'anode', K: 'cathode', A: 'anode' };
 const BJT_PINS = { 1: 'base', 2: 'collector', 3: 'emitter', B: 'base', C: 'collector', E: 'emitter' };
 const FET_PINS = { 1: 'gate', 2: 'source', 3: 'drain', G: 'gate', S: 'source', D: 'drain' };
 
+/**
+ * The engine's header model has EIGHT terminals and no parameter widens it,
+ * so a 12-pin connector can be drawn twelve-wide and wired only eight-wide.
+ * The pin COUNT still goes in params (the symbol and the BOM want it); the
+ * pin MAP stops at what the engine can actually accept, and says so. Emitting
+ * p9 instead produces a wire the board quietly ignores.
+ */
+const HEADER_TERMINALS = 8;
+
+const REG_PINS = { VI: 'vin', VO: 'vout', GND: 'gnd', IN: 'vin', OUT: 'vout',
+  VIN: 'vin', VOUT: 'vout', 1: 'vin', 2: 'gnd', 3: 'vout' };
+const VREG_PINS = { VI: 'in', VO: 'out', GND: 'gnd', IN: 'in', OUT: 'out',
+  VIN: 'in', VOUT: 'out', EN: 'in' };
+
 const headerOf = (n, why) => ({
   kind: 'header',
   params: { pins: n },
-  pins: Object.fromEntries(Array.from({ length: n }, (_, i) => [String(i + 1), `p${i + 1}`])),
-  _note: why,
+  pins: Object.fromEntries(Array.from({ length: Math.min(n, HEADER_TERMINALS) },
+    (_, i) => [String(i + 1), `p${i + 1}`])),
+  _note: n > HEADER_TERMINALS
+    ? `${why || `imported as a ${n}-pin header`}; only the first ${HEADER_TERMINALS} pins can be wired -- the engine's header model has ${HEADER_TERMINALS} terminals`
+    : why,
 });
 
 /**
@@ -227,6 +244,8 @@ export const KICAD_RULES = [
   [/^(VCC|VDD|VDDA|VBUS|VBAT|VAA|VPP|VEE|VMEM|VIN|VDRIVE)$/i, () => ({ kind: 'vcc', anyPin: 'vcc' })],
   // Rails named after their VOLTAGE: +3V3, +5V, +1V8, +3.3V, +12V, P3V3.
   [/^[+-]?P?\d+(\.\d+)?V\d*$/i, () => ({ kind: 'vcc', anyPin: 'vcc' })],
+  // SPICE-flavoured symbol libraries: a real source and a plain capacitor.
+  [/^VSOURCE$|^VDC$|^VSRC$/i, () => ({ kind: 'vsource', pins: { 1: 'pos', 2: 'neg', '+': 'pos', '-': 'neg' } })],
   [/^AC$/i, () => ({ kind: 'vcc', anyPin: 'vcc',
     _note: 'AC supply symbol imported as a DC rail -- the engine has no AC source' })],
 
@@ -245,6 +264,11 @@ export const KICAD_RULES = [
       pins: { 1: 'pos', 2: 'neg' } })],
   [/^C(_(Small|US))?$/i,
     (v) => ({ kind: 'capacitor', params: { farads: parseEagleValue(v) ?? 1e-7 }, pins: PASSIVE2 })],
+  // BOM-driven libraries name a part after its footprint AND its value:
+  // CC1206_100NF_50V_10%_X7R, CTEB_2.2UF_35V. The value in the name is the
+  // only value such a symbol carries.
+  [/^C[A-Z]{1,3}\d{0,4}_[\d.]+\s*[UNPM]F/i, (v, n) => ({ kind: 'capacitor',
+    params: { farads: parseEagleValue(v) ?? parseEagleValue(n.split('_')[1]) ?? 1e-7 }, pins: PASSIVE2 })],
   [/^C[CTE]{1,2}\d{3,4}[_-]/i, (v, n) => ({ kind: 'capacitor',
     params: { farads: parseEagleValue(v) ?? parseEagleValue(n.split('_')[1]) ?? 1e-7 }, pins: PASSIVE2 })],
   [/^L(_(Small|Core_Ferrite|Core_Iron))?$|^INDUCTOR$|^Ferrite|^Choke/i,
@@ -265,13 +289,23 @@ export const KICAD_RULES = [
   [/^Q?_?NMOS|^BSS138|^IRF[ZLR]?\d|^AO\d{4}|^2N7000/i, () => ({ kind: 'nmos', pins: FET_PINS })],
   [/^Q?_?PMOS|^AO32\d\d|^IRF9/i, () => ({ kind: 'pmos', pins: FET_PINS })],
   [/^TIP12\d|^Darlington/i, () => ({ kind: 'tip120', pins: BJT_PINS })],
+  // Power BJTs whose part number says nothing about polarity: BD24x is the
+  // NPN half of a complementary pair (BD25x is the PNP).
+  [/^BD1\d\d$|^BD24\d|^TIP3\d/i, () => ({ kind: 'npn', pins: BJT_PINS })],
+  [/^BD25\d|^TIP3[24]\d/i, () => ({ kind: 'pnp', pins: BJT_PINS })],
 
   // -- switches ----------------------------------------------------
   [/^SW_?Push|^SW_SPST|^SW_MEC|^Tact|^B3F|^KMR\d/i, () => ({ kind: 'button', pins: PASSIVE2 })],
+  // A DIP switch's terminals are s<i>_a / s<i>_b, not its pin NUMBERS, and
+  // the engine models four positions. An 8-way switch draws eight and wires
+  // four; emitting "1".."16" wired nothing at all.
   [/^SW_DIP_x(\d+)/i, (v, n) => {
     const w = Number(/x(\d+)/i.exec(n)[1]);
-    return { kind: 'dip_switch', params: { positions: w },
-      pins: Object.fromEntries(Array.from({ length: 2 * w }, (_, i) => [String(i + 1), String(i + 1)])) };
+    const modelled = Math.min(w, 4);
+    const pins = {};
+    for (let i = 0; i < modelled; i++) { pins[String(i + 1)] = `s${i}_a`; pins[String(w + i + 1)] = `s${i}_b`; }
+    return { kind: 'dip_switch', params: { positions: w }, pins,
+      _note: w > modelled ? `${n} has ${w} positions; the engine models ${modelled}` : null };
   }],
   // KiCad's own SPDT/DPDT symbols put the COMMON on pin 2: the library draws
   // A(1) and C(3) as the two throws on one side and B(2) alone on the other.
@@ -287,9 +321,16 @@ export const KICAD_RULES = [
   // Part number BEFORE the generic rule, and never a new kind name: the
   // engine already models lm7805, ams1117_33 and a generic vreg. Inventing a
   // `regulator` kind here is the mistake eagle.js's comments record.
-  [/^(LM|MC|KA|UA)?78[LM]?05/i, () => ({ kind: 'lm7805' })],
-  [/^(LM|MC|KA|UA)?78[LM]?09/i, () => ({ kind: 'lm7809' })],
-  [/^(LM|MC|KA|UA)?78[LM]?1[25]/i, () => ({ kind: 'lm7812' })],
+  // KiCad names a three-terminal regulator's pins VI / VO / GND.
+  [/^(LM|MC|KA|UA)?78[LM]?05/i, () => ({ kind: 'lm7805', pins: REG_PINS })],
+  // lm7809 and lm7812 are registered engine kinds with NO terminal geometry
+  // in this repo -- no sidecar, so terminalsForKind falls back to a generic
+  // two-pin shape. Naming vin/gnd/vout would emit wires the board accepts and
+  // ignores, so the part imports for the schematic and says why.
+  [/^(LM|MC|KA|UA)?78[LM]?09/i, (v, n) => ({ kind: 'lm7809',
+    _note: `${n} imported for the schematic only -- lm7809 has no terminal geometry here yet` })],
+  [/^(LM|MC|KA|UA)?78[LM]?1[25]/i, (v, n) => ({ kind: 'lm7812',
+    _note: `${n} imported for the schematic only -- lm7812 has no terminal geometry here yet` })],
   [/^(AMS|AZ|LM|LD)1117[-_]?3\.?3/i, () => ({ kind: 'ams1117_33' })],
   [/^(AMS|AZ|LM|LD)1117[-_]?5\.?0/i, () => ({ kind: 'ams1117_50' })],
   [/^(AMS|AZ|LM|LD)1117/i, () => ({ kind: 'ams1117_33',
@@ -297,16 +338,33 @@ export const KICAD_RULES = [
   [/^(LM|MC|KA|UA)?79[LM]?\d\d/i, () => ({ kind: 'vreg',
     _note: 'negative regulator imported as a generic vreg -- the engine models positive rails only' })],
   [/^(LP|AP|MCP1|TPS|XC6|NCP|MIC|HT7|AZ11|LD11)\d{2,4}[A-Z]?[-_]?/i,
-    (v, n) => ({ kind: 'vreg', _note: `${n} imported as a generic vreg; check the pinout` })],
+    (v, n) => ({ kind: 'vreg', pins: VREG_PINS,
+      _note: `${n} imported as a generic vreg; check the pinout` })],
 
   // -- analogue and logic ICs --------------------------------------
   // opamp's engine model is the ideal three-terminal one, so the supply pins
   // and the second half of a dual package have nowhere to go. Emitting them
   // anyway does not warn, it REJECTS THE WHOLE NETLIST -- see eagle.js.
-  [/^(TL07\d|TL08\d|LM3\d\d|OPA\d+|MCP60\d|LF35\d|UA741|LM741)/i,
-    (v, n) => ({ kind: 'opamp', byName: true, terminals: ['in_p', 'in_n', 'out'],
+  // The engine's opamp is the ideal three-terminal one: inp, inn, out. Its
+  // supply pins and the second half of a dual package have nowhere to go.
+  // KiCad names the inputs "+" and "-" and leaves the OUTPUT unnamed ("~"),
+  // so the output is found by the pin's electrical TYPE instead -- there is
+  // nothing else to find it by, and a per-number map cannot work because
+  // unit A's output is pin 1 and unit B's is pin 7.
+  [/^(TL07\d|TL08\d|LM3\d\d|OPA\d+|MCP60\d|LF35\d|UA741|LM741|NE553\d)/i,
+    (v, n) => ({ kind: 'opamp',
+      pins: { '+': 'inp', '-': 'inn', '~+': 'inp', '~-': 'inn' },
+      byType: { output: 'out' },
+      terminals: ['inp', 'inn', 'out'],
       _note: `${n} imported as an ideal opamp -- supply pins and any second channel are dropped` })],
-  [/^(LM|NE|SE|ICM|TLC)?555\w*$/i, () => ({ kind: 'timer_555', byName: true })],
+  // The 555's engine terminals are the datasheet's FUNCTION names; KiCad's
+  // symbol abbreviates them (TR, THR, CV, DIS, Q, R), so byName alone maps
+  // none of them.
+  [/^(LM|NE|SE|ICM|TLC)?555\w*$/i, () => ({ kind: 'timer_555',
+    pins: { GND: 'gnd', TR: 'trigger', Q: 'output', OUT: 'output', R: 'reset',
+      RESET: 'reset', CV: 'control', CONT: 'control', THR: 'threshold',
+      TH: 'threshold', DIS: 'discharge', VCC: 'vcc', VDD: 'vcc' },
+    terminals: ['gnd', 'trigger', 'output', 'reset', 'vcc', 'discharge', 'threshold', 'control'] })],
   // The logic FAMILY has to be enumerated. An unanchored `^74\w*?(\d{2,3})`
   // reads 74CBTLV3257 as "74hc325" -- a kind no engine models and no
   // datasheet describes, which then draws as a plausible box and simulates
@@ -317,23 +375,43 @@ export const KICAD_RULES = [
       return { kind: `74hc${num}`, byName: true,
         _note: `${n} mapped to 74hc${num}; verify the pinout matches` };
     }],
-  [/^L298/i, () => ({ kind: 'h_bridge', byName: true })],
+  [/^L298/i, () => ({ kind: 'h_bridge',
+    pins: { ENA: 'en1', ENB: 'en2', IN1: 'in1', IN2: 'in2', IN3: 'in3', IN4: 'in4',
+      OUT1: 'out1', OUT2: 'out2', OUT3: 'out3', OUT4: 'out4',
+      VS: 'vcc', VSS: 'vcc', GND: 'gnd' },
+    terminals: ['vcc', 'gnd', 'en1', 'in1', 'in2', 'out1', 'out2', 'en2', 'in3', 'in4', 'out3', 'out4'],
+    _note: 'L298 imported as an h_bridge; the current-sense pins have no model' })],
   [/^PCF8574/i, () => ({ kind: 'pcf8574', byName: true })],
   [/^24[LC]C?\d{2,3}|^AT24C/i, () => ({ kind: 'at24c02', byName: true,
     terminals: ['vcc', 'gnd', 'sda', 'scl'] })],
 
   // -- modules and actuators ---------------------------------------
+  // dc_motor's terminals are a and b -- it has no polarity in the model, and
+  // emitting pos/neg wired the motor to nothing.
   [/^Motor_DC$|^Motor_Servo|^Fan(_\w+)?$|^MOTOR/i,
-    () => ({ kind: 'dc_motor', pins: { 1: 'pos', 2: 'neg' } })],
+    () => ({ kind: 'dc_motor', pins: { 1: 'a', 2: 'b', '+': 'a', '-': 'b' } })],
   [/^Buzzer$|^Speaker/i, () => ({ kind: 'buzzer', pins: PASSIVE2 })],
-  [/^Relay_|^NSL-32|^Optocoupler|^PC8\d\d|^4N\d\d/i, () => ({ kind: 'optocoupler', byName: true })],
+  [/^DHT(11|21|22)$|^AM230\d/i, (v, n) => ({ kind: /22|2302|AM230/i.test(n) ? 'dht22' : 'dht11',
+    pins: { VDD: 'vcc', VCC: 'vcc', DATA: 'data', DAT: 'data', GND: 'gnd',
+      1: 'vcc', 2: 'data', 4: 'gnd' },
+    terminals: ['vcc', 'data', 'gnd'] })],
+  [/^Relay_|^NSL-32|^Optocoupler|^PC8\d\d|^4N\d\d/i, () => ({ kind: 'optocoupler',
+    pins: { A: 'anode', K: 'cathode', C: 'cathode', E: 'emitter', 1: 'anode', 2: 'cathode',
+      4: 'emitter', 5: 'collector' },
+    terminals: ['anode', 'cathode', 'emitter', 'collector'] })],
   [/^WS2812|^SK6812|^APA10\d/i, () => ({ kind: 'neopixel', byName: true })],
   [/^Battery(_Cell)?$/i,
     () => ({ kind: 'battery', pins: { 1: 'pos', 2: 'neg', '+': 'pos', '-': 'neg' } })],
   [/^Lamp|^Light_Bulb/i, () => ({ kind: 'light_bulb', pins: PASSIVE2 })],
 
   // -- connectors --------------------------------------------------
-  [/^USB_/i, () => ({ kind: 'usb_a', byName: true, terminals: ['vbus', 'gnd', 'dp', 'dm'] })],
+  // KiCad spells the data pair "D+"/"D-"; the engine spells it dp/dm, and
+  // normalising the name does not bridge that.
+  [/^USB_/i, () => ({ kind: 'usb_a',
+    pins: { VBUS: 'vbus', GND: 'gnd', 'D+': 'dp', 'D-': 'dm', 'D_P': 'dp', 'D_N': 'dm',
+      'D+_1': 'dp', 'D-_1': 'dm' },
+    terminals: ['vbus', 'gnd', 'dp', 'dm'],
+    _note: 'USB connector imported as usb_a; shield, ID and CC pins have no model' })],
   [/^Conn_(\d+)x(\d+)/i, (v, n) => {
     const m = /Conn_(\d+)x(\d+)/i.exec(n);
     return headerOf(Number(m[1]) * Number(m[2]), null);
@@ -393,11 +471,15 @@ export function mapKicadSymbol(libId, value, isPower = false) {
  * @param {object} hit   the mapKicadSymbol result
  * @param {string} num   the pin NUMBER as written in the file
  * @param {string} pname the pin NAME ("~" when the library left it blank)
+ * @param {string} [ptype] the pin's electrical type: input, output, power_in...
  */
-export function terminalFor(hit, num, pname) {
+export function terminalFor(hit, num, pname, ptype) {
   const direct = hit.pins?.[num] ?? (pname ? hit.pins?.[pname] : undefined);
   if (direct) return direct;
   if (hit.anyPin) return hit.anyPin;
+  // By electrical TYPE. Only useful where the library leaves the pin unnamed
+  // and the type is the only distinguishing mark -- an opamp's output.
+  if (hit.byType && ptype && hit.byType[ptype]) return hit.byType[ptype];
   if (hit.byName && pname && pname !== '~') return normalizeEaglePin(pname);
   return undefined;
 }

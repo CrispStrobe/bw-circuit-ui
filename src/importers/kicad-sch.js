@@ -81,7 +81,11 @@ function libPins(symNode) {
       const num = findOne(p, 'number');
       const nam = findOne(p, 'name');
       if (!a || !num) continue;
-      out.push({ unit, num: String(num[1]), name: nam ? String(nam[1]) : '~', x: a.x, y: a.y });
+      // `(pin output line ...)`: the electrical type is the first atom, the
+      // graphic style the second. The type is how an opamp's unnamed output
+      // is found -- see terminalFor().
+      out.push({ unit, num: String(num[1]), name: nam ? String(nam[1]) : '~',
+        type: typeof p[1] === 'string' ? p[1] : '', x: a.x, y: a.y });
     }
     for (const sub of findAll(node, 'symbol')) {
       const m = /_(\d+)_(\d+)$/.exec(String(sub[1] || ''));
@@ -100,7 +104,8 @@ function libPins(symNode) {
  * @returns {{
  *   ok: boolean, error?: string,
  *   placements: Array<{ref:string, libId:string, value:string, isPower:boolean,
- *                      unit:number, pins:Array<{num:string,name:string,x:number,y:number}>}>,
+ *                      unit:number,
+ *                      pins:Array<{num:string,name:string,type:string,x:number,y:number}>}>,
  *   net: NetSolver, live: Set<string>,
  *   sheets: number, buses: number, labels: number, noConnects: number
  * }}
@@ -186,7 +191,7 @@ export function resolveKicadSch(text) {
     for (const p of def.pins) {
       if (p.unit !== 0 && p.unit !== unit) continue;
       const [x, y] = placePin(p.x, p.y, at);
-      rec.pins.push({ num: p.num, name: p.name, x, y });
+      rec.pins.push({ num: p.num, name: p.name, type: p.type, x, y });
       net.addPoint(x, y);
       if (railName) net.addName(x, y, railName);
     }
@@ -298,7 +303,7 @@ export function importKicadSch(text) {
 
     const allow = hit.terminals ? new Set(hit.terminals) : null;
     for (const p of pl.pins) {
-      const term = terminalFor(hit, p.num, p.name);
+      const term = terminalFor(hit, p.num, p.name, p.type);
       if (!term) continue;                         // a pin our model has no home for
       if (allow && !allow.has(term)) continue;     // narrower engine model; see eagle.js
       pinCount++;

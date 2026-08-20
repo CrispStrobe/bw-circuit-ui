@@ -80,7 +80,14 @@ export function parseLegacyLib(text) {
       // a DPDT switch placed as unit 1 then claimed pins 4-6 as well, and
       // shorted the two poles together in a way nothing downstream could see.
       if (f.length < 12) continue;
-      cur.push({ name: f[1], num: f[2], x: Number(f[3]), y: Number(f[4]), unit: Number(f[9]) });
+      // f[11] is the electrical type, a single letter: I input, O output,
+      // B bidirectional, P passive, W power-in. Spelled out here so both
+      // importers hand terminalFor() the same vocabulary.
+      const ETYPE = { I: 'input', O: 'output', B: 'bidirectional', T: 'tri_state',
+        P: 'passive', U: 'unspecified', W: 'power_in', w: 'power_out',
+        C: 'open_collector', E: 'open_emitter', N: 'no_connect' };
+      cur.push({ name: f[1], num: f[2], x: Number(f[3]), y: Number(f[4]),
+        unit: Number(f[9]), type: ETYPE[f[11]] || '' });
     } else if (line === 'ENDDEF' && cur) {
       for (const n of [name, ...aliases]) if (n) out.set(n, cur);
       cur = null; name = null; aliases = [];
@@ -227,7 +234,7 @@ export function importKicadLegacy(text, opts = {}) {
       if (p.unit !== 0 && p.unit !== unit) continue;
       const x = px + mat[0] * p.x + mat[1] * p.y;
       const y = py + mat[2] * p.x + mat[3] * p.y;
-      placed.push({ num: p.num, name: p.name, x, y });
+      placed.push({ num: p.num, name: p.name, type: p.type, x, y });
       net.addPoint(x, y);
       if (railName) net.addName(x, y, railName);
     }
@@ -256,7 +263,7 @@ export function importKicadLegacy(text, opts = {}) {
 
     const allow = entry.hit.terminals ? new Set(entry.hit.terminals) : null;
     for (const p of placed) {
-      const term = terminalFor(entry.hit, p.num, p.name);
+      const term = terminalFor(entry.hit, p.num, p.name, p.type);
       if (!term) continue;
       if (allow && !allow.has(term)) continue;
       pinRefs.push({ x: p.x, y: p.y, part: entry.id, terminal: term });

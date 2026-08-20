@@ -192,6 +192,62 @@ describe('importer and exporter stay symmetric', () => {
     });
 });
 
+describe('the TERMINAL names a rule emits are terminals the engine has', () => {
+    // Layer 3 has a second half that nothing was checking. A rule can name a
+    // real engine kind and still hand it terminals that kind does not have,
+    // and the result is a wire the board accepts and ignores -- no warning, no
+    // rejection, just a connection that is drawn and does not conduct.
+    //
+    // Writing this found five: the KiCad rules gave opamp `in_p`/`in_n` where
+    // the engine says `inp`/`inn`, dc_motor `pos`/`neg` where it says `a`/`b`,
+    // and a DIP switch its PIN NUMBERS where it wants `s0_a`; and BOTH rule
+    // tables emitted p9/p10 for a ten-pin connector, when the engine's header
+    // model stops at eight.
+    //
+    // Only explicit pin maps and `terminals` allowlists can be checked this
+    // way. A `byName` rule computes its terminal from whatever the library
+    // called the pin, which is not enumerable from here -- those are covered
+    // by the corpus runs and by the allowlists the risky ones carry.
+    const cases = [];
+    const collect = (rules, probes, label) => {
+        for (const [re, fn] of rules) {
+            for (const probe of probes) {
+                if (!re.test(probe)) continue;
+                let r;
+                try { r = fn('10k', probe); } catch { continue; }
+                if (!r || !r.kind) continue;
+                const names = new Set([
+                    ...Object.values(r.pins || {}),
+                    ...(r.anyPin ? [r.anyPin] : []),
+                    ...(r.terminals || []),
+                ]);
+                if (names.size) cases.push({ label, probe, kind: r.kind, params: r.params || {}, names });
+            }
+        }
+    };
+    collect(RULES, PROBES, 'EAGLE');
+    collect(KICAD_RULES, KICAD_PROBES, 'KiCad');
+
+    test('there is something to check', () => {
+        assert.ok(cases.length >= 40, `only ${cases.length} rule/probe pairs name terminals`);
+    });
+
+    test('no rule names a terminal its kind does not have', () => {
+        const bad = [];
+        for (const c of cases) {
+            let have;
+            try { have = terminalsForKind(c.kind, { pins: 4, ...c.params }); } catch { continue; }
+            if (!have || !have.length) continue;          // dynamic-terminal kind
+            const set = new Set(have);
+            for (const n of c.names) {
+                if (!set.has(n)) bad.push(`${c.label} ${c.probe} -> ${c.kind}: "${n}" not in [${have.join(',')}]`);
+            }
+        }
+        assert.deepEqual([...new Set(bad)], [],
+            'these rules emit wires the engine accepts and then ignores');
+    });
+});
+
 describe('active parts reach the dialect', () => {
     // An actuator or sensor that cannot be driven from a .bw program is only
     // half-integrated, however well it simulates.
