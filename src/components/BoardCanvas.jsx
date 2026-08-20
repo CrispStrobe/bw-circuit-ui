@@ -27,6 +27,7 @@ import { DrcOverlay } from './DrcOverlay.jsx';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
+import ExportNetlistMenu from './ExportNetlistMenu.jsx';
 
 // DIP chip kinds that get a generic IC body renderer (not a custom SVG).
 // These are discrete retro/logic ICs placed on breadboards — without a
@@ -3622,6 +3623,7 @@ export function BoardCanvas({
             {toolbarCramped && viewNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
             {toolbarCramped && (panelNav || viewNav) ? <span style={{width: 1, height: 24, background: '#334155', margin: '0 2px'}} /> : null}
             {onSaveCircuit && <button onClick={onSaveCircuit} title="Save wiring as file" aria-label="Save wiring as file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: 3, color: '#2ecc71', fontSize: 14, cursor: 'pointer'}}>💾</button>}
+            {circuit && <ExportNetlistMenu circuit={circuit} lang={lang} />}
             {onLoadCircuit && <button onClick={onLoadCircuit} title="Load wiring from file" aria-label="Load wiring from file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: 3, color: '#3498db', fontSize: 14, cursor: 'pointer'}}>📂</button>}
             {onClearCircuit && <button onClick={() => { onClearCircuit(); setToolbarMoreOpen(false); }} title={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} aria-label={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: 3, color: '#e74c3c', fontSize: 14, cursor: 'pointer'}}>🗑</button>}
             <span data-zoom-indicator title="Canvas zoom" style={{height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
