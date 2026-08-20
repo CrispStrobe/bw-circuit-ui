@@ -26,6 +26,7 @@ import { registeredKinds } from '../../bw-board/src/devices.js';
 import { registerAllDevices } from '../../bw-board/src/register-all.js';
 import { terminalsForKind } from '../src/model/circuit.js';
 import { RULES } from '../src/importers/eagle.js';
+import { EASYEDA_RULES, mapEasyEdaPart } from '../src/importers/easyeda.js';
 import { eagleFor } from '../src/model/exporters/eagle.js';
 import { KICAD_RULES } from '../src/importers/kicad-common.js';
 
@@ -86,6 +87,48 @@ const KICAD_PROBES = [
 
 
 /**
+ * The same list again for the EasyEDA importer, whose vocabulary is a PART
+ * NUMBER (`Manufacturer Part`, or the value text when the library left it
+ * blank). Three rule tables now, one contract.
+ */
+const EASYEDA_PROBES = [
+    'LM7805AL-TA3-T', '7809', 'MC7812', 'AMS1117-3.3', 'AMS1117-5.0', 'LD1117V33',
+    'SN74LS138N', '74HC595', '74HC4050', '74LS161', '74HC00', '74HC373',
+    'CD4093BE', 'CD4511BE', 'NE555', 'NE556', 'LM358', 'LM339', 'LM393',
+    'MAX7219', 'PCF8574', '24LC256', 'WS2812B', 'DS18B20', 'DHT11', 'DHT22',
+    'DS1302', 'DS3231', 'TIP120', 'HD44780', 'SSD1306',
+];
+
+/**
+ * EasyEDA's OTHER half. A schematic that says only `spicePre` and `1k` never
+ * reaches the rule table above, and the generic mapper is what decides those
+ * -- which is most of a real board. Firing it here keeps the two halves under
+ * the same contract instead of only the half with part numbers in it.
+ */
+const SPICE_PRE_PROBES = [
+    { spicePre: 'R', value: '10k', pinCount: 2 },
+    { spicePre: 'R', value: '10k', pinCount: 3 },
+    { spicePre: 'C', value: '100nF', pinCount: 2 },
+    { spicePre: 'L', value: '10uH', pinCount: 2 },
+    { spicePre: 'D', value: '1N4148', pinCount: 2 },
+    { spicePre: 'D', value: 'LED-RED', pinCount: 2 },
+    { spicePre: 'D', value: 'BZX55C5V1', pinCount: 2 },
+    { spicePre: 'Q', value: '2N3904', pinCount: 3 },
+    { spicePre: 'Q', value: '2N3906', pinCount: 3 },
+    { spicePre: 'Q', value: 'IRF540N', pinCount: 3 },
+    { spicePre: 'K', value: 'SRD-05VDC', pinCount: 5 },
+    { spicePre: 'S', value: 'reset', pinCount: 2 },
+    { spicePre: 'S', value: 'mode', pinCount: 3 },
+    { spicePre: 'X', value: '16MHz', pinCount: 2 },
+    { spicePre: 'P', value: 'Header', pinCount: 2 },
+    { spicePre: 'P', value: 'Ports', pinCount: 20 },
+    { spicePre: 'J', value: 'DC_M', pinCount: 3 },
+    { spicePre: 'H', value: 'Header', pinCount: 3 },
+    { spicePre: 'V', value: '9V', pinCount: 2 },
+    { spicePre: 'BT', value: 'AA', pinCount: 2 },
+];
+
+/**
  * Kinds the importer may emit that the engine deliberately does NOT model.
  *
  * Every entry needs a reason. This list is a debt register, not an escape
@@ -118,6 +161,12 @@ describe('imported kinds are usable, not just drawable', () => {
     };
     const fromEagle = fire(RULES, PROBES);
     const fromKicad = fire(KICAD_RULES, KICAD_PROBES);
+    const fromEasyEda = fire(EASYEDA_RULES, EASYEDA_PROBES);
+    const fromSpicePre = new Set();
+    for (const probe of SPICE_PRE_PROBES) {
+        const r = mapEasyEdaPart({ descriptor: '', package: '', ...probe });
+        if (r && r.kind) { emitted.add(r.kind); fromSpicePre.add(r.kind); }
+    }
 
     test('the registry is populated, so the check has something to check', () => {
         // Without registerAllDevices() the registry is EMPTY and every kind
@@ -131,6 +180,8 @@ describe('imported kinds are usable, not just drawable', () => {
         // If the probes stop matching, every assertion below passes vacuously.
         assert.ok(fromEagle.size >= 20, `EAGLE: only ${fromEagle.size} kinds emitted — probes have gone stale`);
         assert.ok(fromKicad.size >= 25, `KiCad: only ${fromKicad.size} kinds emitted — probes have gone stale`);
+        assert.ok(fromEasyEda.size >= 15, `EasyEDA: only ${fromEasyEda.size} kinds emitted — probes have gone stale`);
+        assert.ok(fromSpicePre.size >= 12, `EasyEDA spicePre: only ${fromSpicePre.size} kinds emitted`);
     });
 
     test('every emitted kind is one the engine knows', () => {
@@ -230,6 +281,20 @@ describe('the TERMINAL names a rule emits are terminals the engine has', () => {
     };
     collect(RULES, PROBES, 'EAGLE');
     collect(KICAD_RULES, KICAD_PROBES, 'KiCad');
+    collect(EASYEDA_RULES, EASYEDA_PROBES, 'EasyEDA');
+    for (const probe of SPICE_PRE_PROBES) {
+        const r = mapEasyEdaPart({ descriptor: '', package: '', ...probe });
+        if (!r || !r.kind) continue;
+        const names = new Set([
+            ...Object.values(r.pins || {}),
+            ...(r.anyPin ? [r.anyPin] : []),
+            ...(r.terminals || []),
+        ]);
+        if (names.size) {
+            cases.push({ label: 'EasyEDA spicePre', probe: `${probe.spicePre}/${probe.value}`,
+                kind: r.kind, params: r.params || {}, names });
+        }
+    }
 
     test('there is something to check', () => {
         assert.ok(cases.length >= 40, `only ${cases.length} rule/probe pairs name terminals`);

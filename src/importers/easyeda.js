@@ -32,14 +32,20 @@
  *
  * ── Buses ───────────────────────────────────────────────────────────
  *
- * `B` (a bus polyline) is NOT wire. Unioning a bus would short A0..A15 into
- * one node -- the loudest possible wrong answer. `BE` (a bus entry) IS wire:
- * it is the short diagonal stub between a wire end and the bus, and the net
- * LABEL that names the connection sits at its bus-side end. Drop BE and the
- * label never reaches the wire and the whole address bus goes dark; keep BE
- * and drop B and each entry stays private to its own label, which is exactly
- * the bus semantics. Same policy as kicad-common: connect by NAME, never by
- * the bus body.
+ * `B` (a bus polyline) is NOT wire, and this is the MEASURED one. Renaming
+ * the reference board's five `B` shapes to `W` collapses its 43 nets to 25
+ * and builds a single 63-node net out of the whole address bus -- the loudest
+ * possible wrong answer. Bus membership is by NAME expansion, so the labels
+ * do that job and the bus body never conducts. Same policy as kicad-common.
+ *
+ * `BE` (a bus entry, the short diagonal stub between a wire end and the bus)
+ * IS treated as wire, because it is one. It was expected to be load-bearing
+ * and MEASUREMENT SAYS IT IS NOT: dropping all 59 of them leaves the same 43
+ * nets, because every bus signal on that board also carries a net label at
+ * its wire end and merges by name regardless. Kept as the semantically
+ * correct reading of a conductor, not as a fix for an observed failure --
+ * which is why the test that covers it uses a hand-built sheet where the
+ * label sits at the BUS end and the entry is the only path.
  *
  * @module
  */
@@ -234,9 +240,12 @@ const LOGIC_74LS = new Set(['04', '107', '157', '161', '173', '189', '32']);
  * 4050/4051 collapse again: a transparent latch is not a D flip-flop.
  */
 export function logicKind(n) {
-  const s = String(n).replace(/^0+(?=\d)/, '');
-  if (LOGIC_74HC.has(s) || LOGIC_74HC.has(String(n))) return `74hc${LOGIC_74HC.has(s) ? s : n}`;
-  if (LOGIC_74LS.has(s) || LOGIC_74LS.has(String(n))) return `74ls${LOGIC_74LS.has(s) ? s : n}`;
+  const s = String(n);
+  const pad = s.length === 1 ? `0${s}` : s;      // "4" and "04" are one part
+  for (const [set, family] of [[LOGIC_74HC, '74hc'], [LOGIC_74LS, '74ls']]) {
+    if (set.has(s)) return family + s;
+    if (set.has(pad)) return family + pad;
+  }
   return null;
 }
 
@@ -305,7 +314,13 @@ function mapSpicePre(pre, value, pinCount, pkg) {
 /**
  * One component to an engine part, or null.
  *
- * @param {{descriptor:string, value:string, spicePre:string, pins:number, package:string}} c
+ * `pinCount` is a NUMBER and `pins` is the pin ARRAY. They were once the same
+ * field: passing the array where the count belonged built headers with an
+ * empty pin map, so every connector on a board imported, drew, and wired
+ * nothing. Two names now, and mapSpicePre refuses anything non-finite.
+ *
+ * @param {{descriptor:string, value:string, spicePre:string, pinCount:number,
+ *          pins?:Array, package:string}} c
  */
 export function mapEasyEdaPart(c) {
   for (const [re, make] of EASYEDA_RULES) {
@@ -314,7 +329,7 @@ export function mapEasyEdaPart(c) {
     try { r = make(c.value, c.descriptor); } catch { continue; }
     if (r) return { params: {}, pins: {}, ...r };
   }
-  const g = mapSpicePre(c.spicePre, c.value, c.pins.length, c.package);
+  const g = mapSpicePre(c.spicePre, c.value, c.pinCount ?? c.pins?.length ?? 0, c.package);
   return g ? { params: {}, pins: {}, ...g } : null;
 }
 
@@ -368,7 +383,7 @@ export function easyEdaSheets(doc) {
 /**
  * Pull the components out of one sheet's shape array.
  *
- * @returns {Array<{ref, value, descriptor, spicePre, package, pins, rot, mirror}>}
+ * @returns {Array<{ref, value, descriptor, spicePre, package, pins, pinCount, rot, mirror}>}
  */
 export function readComponents(shape) {
   const out = [];
@@ -395,13 +410,15 @@ export function readComponents(shape) {
         });
       }
     }
+    const geo = pins.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
     const mp = attrs['Manufacturer Part'];
     out.push({
       ref, value,
       descriptor: (mp && mp.trim()) || value || attrs.package || '',
       spicePre: attrs.spicePre || '',
       package: attrs.package || '',
-      pins: pins.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y)),
+      pins: geo,
+      pinCount: geo.length,
       rot: head[4] || '0',
       mirror: head[5] || '0',
     });
@@ -466,11 +483,25 @@ export function importEasyEda(text) {
 
   sheets.forEach((sheet, sheetIx) => {
     const net = new NetSolver();
+    // Every point the AUTHOR drew: wire ends, bus entries, junctions, label
+    // anchors. `attached` below counts pins that landed on one of these, so
+    // it measures how much of the drawn geometry we hit -- not how many nets
+    // happen to have two members, which would be this code marking its own
+    // homework. Same construction as kicad-sch.js.
+    const anchors = new Set();
+    const anchor = (x, y) => { if (Number.isFinite(x) && Number.isFinite(y)) anchors.add(`${x},${y}`); };
     // Net names are scoped to the SHEET. Merging them across sheets would
     // invent connections between two boards that merely reused a label,
     // which is the failure this codebase prefers to lose nets over; see the
     // bus note in kicad-sch.js. The prefix keeps them apart.
     const scope = (n) => `s${sheetIx}:${n}`;
+    // A net id is a POINT KEY ("100,-140"), and two sheets drawn on the same
+    // canvas coordinates produce the same one. Each sheet has its own solver,
+    // so the ids mean different things -- but `byNet` is shared, and without
+    // the sheet prefix a two-sheet document silently welds the two sheets
+    // together wherever their geometry happens to line up. Caught by
+    // duplicating a fixture sheet, which is the cheapest possible collision.
+    const netKey = (id) => `s${sheetIx}\u0000${id}`;
     const railNames = new Set();
 
     // -- geometry first, so every pin has something to land on ------
@@ -480,6 +511,7 @@ export function importEasyEda(text) {
       switch (f[0]) {
         case 'W': {                                  // a wire polyline
           const pts = polyline(f[1]);
+          for (const [px, py] of pts) anchor(px, py);
           for (let i = 0; i + 1 < pts.length; i++) {
             net.addSegment(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
           }
@@ -492,17 +524,22 @@ export function importEasyEda(text) {
           busEntries++;
           const x1 = Number(f[2]); const y1 = Number(f[3]);
           const x2 = Number(f[4]); const y2 = Number(f[5]);
-          if ([x1, y1, x2, y2].every(Number.isFinite)) net.addSegment(x1, y1, x2, y2);
+          if ([x1, y1, x2, y2].every(Number.isFinite)) {
+            net.addSegment(x1, y1, x2, y2); anchor(x1, y1); anchor(x2, y2);
+          }
           break;
         }
         case 'J':                                    // junction dot
-          if (Number.isFinite(Number(f[1]))) net.addPoint(Number(f[1]), Number(f[2]));
+          if (Number.isFinite(Number(f[1]))) {
+            net.addPoint(Number(f[1]), Number(f[2])); anchor(Number(f[1]), Number(f[2]));
+          }
           break;
         case 'N': {                                  // net label
           const name = f[5];
           if (name && Number.isFinite(Number(f[1]))) {
             labels++;
             net.addName(Number(f[1]), Number(f[2]), scope(name));
+            anchor(Number(f[1]), Number(f[2]));
           }
           break;
         }
@@ -513,6 +550,7 @@ export function importEasyEda(text) {
           if (name && Number.isFinite(x)) {
             labels++;
             net.addName(x, y, scope(name));
+            anchor(x, y);
             // GND and VCC flags are not just labels: they are the board's
             // reference and supply. One part per distinct rail NAME, not one
             // per flag -- a sheet with forty GND symbols wants one ground.
@@ -531,13 +569,18 @@ export function importEasyEda(text) {
       for (const p of c.pins) net.addPoint(p.x, p.y);
     }
     net.solve();
+    const live = net.liveRoots();
+    for (const k of anchors) {
+      const c = k.indexOf(',');
+      live.add(net.netAt(Number(k.slice(0, c)), Number(k.slice(c + 1))));
+    }
 
     for (const name of railNames) {
       const kind = classifyPower(name);
       const id = makeId(name.replace(/[^A-Za-z0-9_]/g, '') || kind, used);
       parts.push({ id, kind, params: { _value: name }, x: 0, y: 0 });
       rails.set(scope(name), id);
-      const netId = net.netOfName(scope(name));
+      const netId = netKey(net.netOfName(scope(name)));
       if (!byNet.has(netId)) byNet.set(netId, []);
       byNet.get(netId).push({ part: id, terminal: kind });
     }
@@ -575,10 +618,11 @@ export function importEasyEda(text) {
         if (!term) continue;
         if (allow && !allow.has(term)) continue;
         pinCount++;
-        const netId = net.netAt(p.x, p.y);
+        const raw = net.netAt(p.x, p.y);
+        const netId = netKey(raw);
         if (!byNet.has(netId)) byNet.set(netId, []);
         byNet.get(netId).push({ part: id, terminal: term });
-        if (net.liveRoots().has(netId)) attached++; else floating++;
+        if (live.has(raw)) attached++; else floating++;
       }
     }
   });
@@ -591,9 +635,10 @@ export function importEasyEda(text) {
       + 'loses a connection rather than inventing one');
   }
   if (buses) {
-    warnings.push(`${buses} bus polyline(s) ignored -- bus membership is by name expansion. `
-      + `The ${busEntries} bus entr(y/ies) ARE followed, so a labelled bus connection still `
-      + 'resolves through its net label.');
+    warnings.push(`${buses} bus polyline(s) ignored -- bus membership is by name expansion, `
+      + 'and conducting the bus body would short every signal on it together. Labelled bus '
+      + `connections still resolve through their net labels; the ${busEntries} bus entr(y/ies) `
+      + 'are followed as ordinary wire.');
   }
   if (mirrored) {
     warnings.push(`${mirrored} component(s) carry a mirror flag; EasyEDA writes pin `
