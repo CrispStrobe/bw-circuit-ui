@@ -267,3 +267,63 @@ it wants a low rate and should never be run in a loop from CI.
 A cheaper corpus, and the one that worked for EAGLE: search GitHub for
 EasyEDA project JSON in repositories that carry an explicit licence, where
 the licence is stated once for the whole repo instead of per artefact.
+
+
+## CORRECTION, 2026-08-20: how to read a licence
+
+The table above called `kycilius/8085-microprocessor-devkit` and
+`ElectroIoT/EasyEDA-Tutorial-Project` unlicensed. **Both are MIT**, stated in
+their READMEs:
+
+> "MIT License – Feel free to use, modify, or build upon this project."
+> "All designs are under [MIT License](LICENSE) – free to use…"
+
+The method was wrong, not the reading. Checking for a top-level `LICENSE`
+file answers "is there a licence FILE", which is a different question from
+"is this licensed". An explicit grant in a README is a grant; the file is a
+convention, not the instrument. Worth noting that **GitHub's own API agrees
+with the mistake** — `repos/{o}/{r}.license.spdx_id` returns `none` for both,
+because its detector also keys on the file. So the API is not a second
+opinion here; it is the same opinion.
+
+**Check, in order: a LICENSE/COPYING file, the README, then the GitHub API —
+and treat "no file" as "look harder", never as "all rights reserved".** Only
+after all three come up empty is a repo genuinely unlicensed (`Circuit-Designs`
+and `KiClearance` still are, verified all three ways).
+
+## Third batch: CC0 changes what is possible
+
+| repo | licence (verified) | what it holds |
+|---|---|---|
+| `upb-lea/Inkscape_electric_Symbols` | **CC0-1.0** (file) | a 2.3 MB Inkscape stencil sheet of electrical symbols |
+| `supersynthesis/eurorack` | **CC0** (README) | Eurorack production modules; "public domain, use without restriction" |
+| `carletz/Zigbee-End-Device` | MIT (file) | a Zigbee end-device design |
+| `kycilius/8085-microprocessor-devkit` | **MIT** (README) | one real **EasyEDA schematic JSON**, `docType: 5` |
+| `ElectroIoT/EasyEDA-Tutorial-Project` | **MIT** (README) | 24 files: Gerbers, BOM spreadsheets, PDFs, renders. **No schematic source** — manufacturing OUTPUT, so it is not import test material however well licensed |
+
+### Why CC0 matters more than the rest of this document
+
+Earlier this file established the trap: KiCad's symbol libraries are
+CC-BY-SA 4.0, and the exception waives share-alike for *designs made with*
+them, not for redistributing the geometry — so bundling ~200 KiCad symbols
+into `schematic-symbols.js` would pull share-alike onto our source. The
+conclusion was to render a user-supplied `.kicad_sym` at runtime and never
+vendor artwork.
+
+**CC0 has no such problem.** It is a public-domain dedication: no
+attribution requirement, no share-alike, nothing to infect. Symbol geometry
+from a CC0 source can be traced, adapted, and committed straight into our
+repo.
+
+The catch is practical, not legal. `Inkscape_electric_Symbols` is a single
+canvas laid out for Inkscape's symbol-search workflow — no `<symbol>` defs,
+one layer ("Ebene 1"), and its 457 `<tspan>`s are glyphs *inside* the symbols
+(V, A, M, +, −, dq, αβ), not names. There is no index to iterate. Extracting
+a symbol means segmenting the sheet by bounding box and naming each one by
+hand — a morning's work per batch, not an import.
+
+So the honest ranking for finishing the viewer: our hand-drawn table remains
+the default, a user-supplied `.kicad_sym` renderer is the scalable answer,
+and CC0 sheets like this one are where to look when a specific symbol needs
+drawing and nobody wants to invent the geometry. Cite the source in a
+comment even though CC0 does not require it.
