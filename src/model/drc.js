@@ -116,6 +116,24 @@ export function runDrc(circuit, board) {
   const partById = (id) => parts.find(p => p.id === id);
   const netOf = (partId, terminal) => terminalToNet.get(`${partId}:${terminal}`);
 
+  // Electrical supply roles are terminal-specific. Treating only standalone
+  // VCC/GND symbols as supplies missed the more dangerous and more common
+  // mistakes: battery + to battery -, or an Arduino/Pico supply pin to GND.
+  const supplyRole = (member) => {
+    const part = partById(member.part);
+    if (!part) return null;
+    const term = String(member.terminal || '').toLowerCase();
+    if (part.kind === 'vcc') return 'positive';
+    if (part.kind === 'gnd') return 'ground';
+    if (part.kind === 'vsource') {
+      if (term === 'pos') return 'positive';
+      if (term === 'neg') return 'ground';
+    }
+    if (/^(gnd\d*|agnd|swd_gnd|vss)$/.test(term)) return 'ground';
+    if (/^(vcc|avcc|vdd|5v|3v3|vin|vbus|vsys)$/.test(term)) return 'positive';
+    return null;
+  };
+
   // ── Rule 0: Pico GPIO voltage domain ──────────────────────────────
   // RP2040 GPIO is 3.3 V only. VBUS is deliberately excluded: it is the
   // board's 5 V USB input, not a GPIO signal.
@@ -339,29 +357,16 @@ export function runDrc(circuit, board) {
 
   // ── Rule 5: Supply short ──────────────────────────────────────────
   for (const [netId, members] of netMembers) {
-    const hasVcc = members.some(m => partById(m.part)?.kind === 'vcc');
-    const hasGnd = members.some(m => partById(m.part)?.kind === 'gnd');
-    if (!hasVcc || !hasGnd) continue;
-
-    // VCC and GND on the same net: check if there's meaningful impedance
-    const hasResistor = members.some(m => {
-      const p = partById(m.part);
-      return p && (p.kind === 'resistor' || p.kind === 'potentiometer' || p.kind === 'ldr' || p.kind === 'ntc');
-    });
-    const hasLed = members.some(m => partById(m.part)?.kind === 'led');
-    const hasSemiconductor = members.some(m => {
-      const p = partById(m.part);
-      return p && ['npn', 'pnp', 'nmos', 'pmos', 'opamp'].includes(p.kind);
-    });
-
-    if (!hasResistor && !hasLed && !hasSemiconductor) {
+    const positive = members.find(m => supplyRole(m) === 'positive');
+    const ground = members.find(m => supplyRole(m) === 'ground');
+    if (positive && ground) {
       warnings.push({
         severity: 'danger',
         rule: 'supply-short',
-        partId: members.find(m => partById(m.part)?.kind === 'vcc')?.part,
-        explanation: 'VCC and GND are connected through no meaningful impedance. ' +
-          'This is a short circuit — maximum current will flow, ' +
-          'potentially damaging components or the power supply.',
+        partId: positive.part,
+        pinId: positive.terminal,
+        explanation: `${positive.terminal.toUpperCase()} and ${ground.terminal.toUpperCase()} are on the same electrical net. ` +
+          'This directly shorts the positive supply to ground and can damage the board, battery, or power supply.',
         fix: 'Check the wiring. Every path from VCC to GND should go through a load (resistor, LED, motor, etc.).',
       });
     }

@@ -131,19 +131,21 @@ describe('pump-gap regression (controller-binding.js)', () => {
   const skip = !bindingSrc && 'lite checkout not available';
 
   test('mono_lcd in isDisplay', { skip }, () => {
-    assert.ok(bindingSrc.includes("'mono_lcd'"), 'mono_lcd in isDisplay check');
-    const isDisplayLine = bindingSrc.match(/isDisplay.*=.*mono_lcd/);
-    assert.ok(isDisplayLine, 'mono_lcd appears in isDisplay function');
+    const displaySet = bindingSrc.slice(bindingSrc.indexOf('const DISPLAYS'), bindingSrc.indexOf('export function bindPanelToVariables'));
+    assert.ok(displaySet.includes("'mono_lcd'"), 'mono_lcd is a display kind');
+    assert.match(bindingSrc, /const isDisplay = \(w\) => DISPLAYS\.has\(w\.type\)/,
+      'isDisplay consumes the shared display-kind set');
   });
 
   test('mono_lcd in pump setter-dispatch', { skip }, () => {
-    assert.ok(bindingSrc.includes('setMonoLcdBuffer'), 'pump calls setMonoLcdBuffer');
+    assert.ok(bindingSrc.includes('setMonoLcdText'), 'pump calls the mono LCD text setter');
   });
 
   test('rgb_light in isDisplay', { skip }, () => {
-    assert.ok(bindingSrc.includes("'rgb_light'"), 'rgb_light in isDisplay check');
-    const isDisplayLine = bindingSrc.match(/isDisplay.*=.*rgb_light/);
-    assert.ok(isDisplayLine, 'rgb_light appears in isDisplay function');
+    const displaySet = bindingSrc.slice(bindingSrc.indexOf('const DISPLAYS'), bindingSrc.indexOf('export function bindPanelToVariables'));
+    assert.ok(displaySet.includes("'rgb_light'"), 'rgb_light is a display kind');
+    assert.match(bindingSrc, /const isDisplay = \(w\) => DISPLAYS\.has\(w\.type\)/,
+      'isDisplay consumes the shared display-kind set');
   });
 
   test('rgb_light in pump setter-dispatch', { skip }, () => {
@@ -180,8 +182,8 @@ describe('controller.js widget types', () => {
     assert.ok(controllerSrc.includes('rgb_light:'), 'rgb_light in DEFAULTS');
   });
 
-  test('setMonoLcdBuffer method exists', { skip }, () => {
-    assert.ok(controllerSrc.includes('setMonoLcdBuffer('), 'setter method defined');
+  test('setMonoLcdText method exists', { skip }, () => {
+    assert.ok(controllerSrc.includes('setMonoLcdText('), 'setter method defined');
   });
 
   test('setRgbLightColor method exists', { skip }, () => {

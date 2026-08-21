@@ -1,5 +1,6 @@
 import { getSidecar } from '../model/parts-registry.js';
 import { boardVisualGeometry } from '../model/board-geometry.js';
+import { dipPackageGeometry } from '../model/dip-geometry.js';
 
 /**
  * Model-space hit testing — parts, terminals, wires — as pure math.
@@ -104,6 +105,11 @@ export function footprintOf(part) {
   if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico'].includes(part.kind)) {
     const geometry = boardVisualGeometry(part.kind, getSidecar(part.kind));
     if (geometry) return { w: geometry.w, h: geometry.h };
+  }
+  const sidecar = getSidecar(part.kind);
+  if (sidecar?.footprint?.straddlesGutter) {
+    const dip = dipPackageGeometry(sidecar);
+    if (dip) return { w: dip.w, h: dip.h };
   }
   return FOOTPRINTS[part.kind] ?? DEFAULT_FOOTPRINT;
 }

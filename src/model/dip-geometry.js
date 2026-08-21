@@ -3,6 +3,19 @@
 export const DIP_PIN_PITCH = 14;
 export const DIP_ROW_OFFSET = 19;
 
+/** Physical body envelope used by both the DIP renderer and hit testing. */
+export function dipPackageGeometry(sidecar) {
+  if (!sidecar?.terminals?.length) return null;
+  const left = sidecar.terminals.filter(t => t.x <= sidecar.w / 2).length;
+  const right = sidecar.terminals.length - left;
+  const pinsPerSide = Math.max(left, right);
+  return {
+    w: Math.max(34, (pinsPerSide - 1) * DIP_PIN_PITCH + 20),
+    h: 52,
+    pinsPerSide,
+  };
+}
+
 /**
  * Terminal offsets for a DIP part, keyed by terminal NAME.
  *

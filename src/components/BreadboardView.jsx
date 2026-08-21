@@ -138,11 +138,7 @@ function HoleGrid({ part, model, highlightStrip, highlightFn }) {
   const holes = [];
 
   for (const row of rows) {
-    const isRail = row.name.startsWith('t') || row.name.startsWith('b');
     for (let c = 0; c < origin.cols; c++) {
-      // Real boards break rail contacts at column groups of 5–6
-      if (isRail && (c % 6 === 5)) continue;
-
       const col = c + 1;
       const holeId = `${row.name}${col}`;
       const x = origin.x + c * BB_PITCH;
@@ -169,7 +165,7 @@ function HoleGrid({ part, model, highlightStrip, highlightFn }) {
       }
 
       holes.push(
-        <circle key={holeId} cx={x} cy={y} r={HOLE_RADIUS}
+        <circle key={holeId} data-hole={holeId} cx={x} cy={y} r={HOLE_RADIUS}
           fill={fill} stroke={stroke} strokeWidth={sw} opacity={0.75} />
       );
     }
@@ -260,7 +256,7 @@ export function BreadboardView({ part, model, highlightStrip, footprint, selecte
     : (strip) => strip === highlightStrip ? 'selected' : false;
 
   return (
-    <g style={{ pointerEvents: 'none' }}>
+    <g data-breadboard={part.id} data-breadboard-size={part.params?.size || 'full'} style={{ pointerEvents: 'none' }}>
       <BoardBg part={part} footprint={footprint} />
       <HoleGrid part={part} model={model} highlightStrip={highlightStrip}
         highlightFn={hasHighlight ? effectiveHighlight : null} />

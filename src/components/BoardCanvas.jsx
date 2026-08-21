@@ -80,12 +80,13 @@ import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../model/ledcube.js';
 import { getPinFunctionsForPart } from '../model/pin-functions.js';
 import { isBoardEndpoint } from '../model/wire-endpoints.js';
 import { boardTerminalOffsets, boardVisualGeometry } from '../model/board-geometry.js';
-import { dipTerminalPositions, DIP_PIN_PITCH, DIP_ROW_OFFSET } from '../model/dip-geometry.js';
+import { dipTerminalPositions, dipPackageGeometry, DIP_PIN_PITCH, DIP_ROW_OFFSET } from '../model/dip-geometry.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
 const CANVAS_W = 700;
 const CANVAS_H = 500;
+const SEATED_PREVIEW_SCALE = Object.freeze({ led: 0.78 });
 
 /**
  * Rotate a {dx, dy} offset by deg degrees (0, 90, 180, 270).
@@ -348,10 +349,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           const positions = dipTerminalPositions(sc);
           const px = (t) => positions[t.name]?.dx || 0;
           const py = (t) => positions[t.name]?.dy || 0;
-          const pinsPerSide = Math.ceil(sc.terminals.length / 2);
-          const bodyW = (pinsPerSide - 1) * DIP_PIN_PITCH + 20, bodyH = 52;
+          const { w: bodyW, h: bodyH } = dipPackageGeometry(sc);
           return (
-            <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            <g key={id} data-part-face={kind} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
               <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={5}
                 fill="#1a1a1a" stroke={selStroke || '#444'} strokeWidth={isSelected ? 3 : 1.5} />
               {/* Notch at left end — pin-1-bottom convention */}
@@ -376,8 +376,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                     stroke={legColor} strokeWidth={3} />
                   <rect x={px(t) - 5} y={py(t) - 2.5} width={10} height={5}
                     fill={padColor} stroke={isVCC ? '#c0392b' : isGND ? '#333' : '#8090a0'} strokeWidth={0.5} />
-                  <text x={px(t)} y={py(t) + (py(t) < 0 ? -8 : 14)} textAnchor="middle"
-                    fill={isVCC ? '#e74c3c' : isGND ? '#555' : '#7f8c8d'} fontSize={4.2} fontFamily="monospace"
+                  <text x={px(t)} y={py(t) + (py(t) < 0 ? -7 : 12)} textAnchor="middle"
+                    fill={isVCC ? '#e74c3c' : isGND ? '#777' : '#94a3b8'} fontSize={3.2} fontFamily="monospace"
                     fontWeight={isVCC || isGND ? 'bold' : 'normal'}>{t.name}</text>
                 </g>
                 );
@@ -465,11 +465,19 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         const WokwiFace = kind === 'arduino_uno' ? WokwiArduinoUno
           : kind === 'arduino_nano' ? WokwiArduinoNano
           : kind === 'arduino_mega' ? WokwiArduinoMega : null;
+        const faceTransform = (rot || flip)
+          ? `translate(${x} ${y}) rotate(${rot}) scale(${flip ? -1 : 1} 1) translate(${-x} ${-y})`
+          : undefined;
         return (
-          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
-            data-board-face={kind} data-board-face-license={WokwiFace ? 'MIT' : 'code'}>
+          <React.Fragment key={id}>
             {WokwiFace && geometry ? (
-              <foreignObject x={-W / 2} y={-H / 2} width={W} height={H}
+              /* Chromium can drop a parent <g> translation when laying out
+                 transformed HTML inside foreignObject. Anchor the licensed
+                 face in world coordinates directly; its outline, pins and
+                 hit box now share the same (x,y,W,H) contract. */
+              <foreignObject x={x - W / 2} y={y - H / 2} width={W} height={H}
+                transform={faceTransform}
+                data-board-face={kind} data-board-face-license="MIT"
                 style={{pointerEvents: 'none', overflow: 'hidden'}}>
                 <div xmlns="http://www.w3.org/1999/xhtml" style={{
                   width: geometry.nativeW, height: geometry.nativeH,
@@ -479,6 +487,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 </div>
               </foreignObject>
             ) : null}
+          <g transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
+            data-board-face={kind} data-board-face-license={WokwiFace ? 'MIT' : 'code'}>
             <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={5}
               fill={WokwiFace ? 'transparent' : boardColor} stroke={selStroke || '#164e63'} strokeWidth={isSelected ? 3 : 1.5} />
             {!WokwiFace && <>
@@ -521,6 +531,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             <text x={0} y={H / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
+          </React.Fragment>
         );
       }
       case 'servo': {
@@ -1355,9 +1366,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           if (sc && sc.terminals && sc.terminals.length > 2) {
             const pinCount = sc.terminals.length;
             const positions = dipTerminalPositions(sc);
-            const pinsPerSide = Math.ceil(pinCount / 2);
-            const bodyW = Math.max(80, pinsPerSide * DIP_PIN_PITCH + 20);
-            const bodyH = DIP_ROW_OFFSET * 2 + 10;
+            const { w: bodyW, h: bodyH } = dipPackageGeometry(sc);
             return (
               <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
                 data-dip-body={kind} data-dip-label={dipLabel}>
@@ -1391,7 +1400,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                       <rect x={pos.dx - 3} y={pos.dy - 1.5} width={6} height={3}
                         fill={padCol} stroke={isVCC ? '#c0392b' : isGND ? '#333' : '#8090a0'} strokeWidth={0.3} />
                       <text x={pos.dx} y={pos.dy + (pos.dy < 0 ? -6 : 10)}
-                        textAnchor="middle" fill={isVCC ? '#e74c3c' : isGND ? '#555' : '#7f8c8d'} fontSize={3.5}
+                        textAnchor="middle" fill={isVCC ? '#e74c3c' : isGND ? '#777' : '#94a3b8'} fontSize={3.0}
                         fontFamily="monospace" fontWeight={isVCC || isGND ? 'bold' : 'normal'}>{t.name}</text>
                     </g>
                   );
@@ -1457,7 +1466,17 @@ function pinInfoForPart(part, pin) {
   return '';
 }
 
-function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDown, onTerminalUp, placingProbe }) {
+function terminalSupplyRole(part, terminal) {
+  const term = String(terminal || '').toLowerCase();
+  if (part?.kind === 'vcc') return 'positive';
+  if (part?.kind === 'gnd') return 'ground';
+  if (part?.kind === 'vsource') return term === 'pos' ? 'positive' : term === 'neg' ? 'ground' : null;
+  if (/^(gnd\d*|agnd|swd_gnd|vss)$/.test(term)) return 'ground';
+  if (/^(vcc|avcc|vdd|5v|3v3|vin|vbus|vsys)$/.test(term)) return 'positive';
+  return null;
+}
+
+function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDown, onTerminalUp, placingProbe, selectedParts, hoveredPart }) {
   const connected = new Set();
   for (const w of wires) {
     connected.add(`${w.from.part}:${w.from.terminal}`);
@@ -1466,9 +1485,12 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
 
   // When wiring, all potential targets should glow
   const isWiring = !!wiringFrom;
+  const sourcePart = wiringFrom ? parts.find(part => part.id === wiringFrom.part) : null;
+  const sourceSupplyRole = sourcePart ? terminalSupplyRole(sourcePart, wiringFrom.terminal) : null;
 
   const dots = [];
   for (const part of parts) {
+    const isPartActive = selectedParts?.has(part.id) || hoveredPart === part.id;
     for (const term of part.terminals) {
       const pos = terminalPos(part, term);
       const isSource = wiringFrom &&
@@ -1476,23 +1498,27 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
       const isConnected = connected.has(`${part.id}:${term}`);
       const isSamePart = wiringFrom && wiringFrom.part === part.id;
       const isValidTarget = isWiring && !isSource && !isSamePart;
+      const targetSupplyRole = terminalSupplyRole(part, term);
+      const isSupplyConflict = isValidTarget && sourceSupplyRole && targetSupplyRole && sourceSupplyRole !== targetSupplyRole;
 
       // A SEATED terminal IS a breadboard hole. The hole is already visible;
       // a permanent ring + name label on every leg is what buried the first
       // example under chrome (owner screenshot, 2026-08-10). Seated legs
       // surface only while they are live wiring/probe targets.
       const isSeated = !!(part._seatTerminals && part._seatTerminals[term]);
-      if (isSeated && !isWiring && !placingProbe && !isSource) continue;
+      if (isSeated && !isWiring && !placingProbe && !isSource && !isPartActive) continue;
       // A DIP chip labels its own pins on the body; forty 8px rings at a
       // ~15px pitch drew as an unreadable red chain down both sides (owner
       // screenshot). Many-pin parts surface terminals only while wiring.
       const manyPins = part.terminals.length > 12;
-      if (manyPins && !isWiring && !placingProbe && !isSource && !isConnected) continue;
+      if (manyPins && !isWiring && !placingProbe && !isSource && !isConnected && !isPartActive) continue;
 
       // Sizes: large enough to tap on a tablet (minimum 10px radius)
       let fill, stroke, r, opacity;
       if (isSource) {
         fill = '#f1c40f'; stroke = '#f39c12'; r = 12; opacity = 1;
+      } else if (isSupplyConflict) {
+        fill = '#ef4444'; stroke = '#991b1b'; r = 11; opacity = 1;
       } else if (isValidTarget) {
         // Pulsing green glow — "you can connect here"
         fill = '#2ecc71'; stroke = '#27ae60'; r = 10; opacity = 0.8;
@@ -1509,6 +1535,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
 
       dots.push(
         <g key={`${part.id}:${term}`}>
+          {isSupplyConflict && <title>Danger: this directly connects a positive supply to ground</title>}
           {/* Invisible large hit area for touch */}
           <circle
             cx={pos.x} cy={pos.y} r={Math.max(r, 16)}
@@ -1526,7 +1553,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
           {isValidTarget && (
             <circle
               cx={pos.x} cy={pos.y} r={14}
-              fill="none" stroke="#2ecc71" strokeWidth={1.5}
+              fill="none" stroke={isSupplyConflict ? '#ef4444' : '#2ecc71'} strokeWidth={1.5}
               opacity={0.5} strokeDasharray="3,3"
               style={{ pointerEvents: 'none' }}
             />
@@ -1574,6 +1601,54 @@ function wireNetId(circuit, wire) {
     }
   }
   return null;
+}
+
+function quadraticPoints(a, control, b, steps = 16) {
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps, u = 1 - t;
+    return {
+      x: u * u * a.x + 2 * u * t * control.x + t * t * b.x,
+      y: u * u * a.y + 2 * u * t * control.y + t * t * b.y,
+    };
+  });
+}
+
+/** Shared visible/hit geometry for an ordinary free wire. */
+function freeWireCurve(wire, a, b) {
+  let hash = 0;
+  for (const ch of wire.id) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const dist = Math.hypot(b.x - a.x, b.y - a.y);
+  const lift = Math.min(30, Math.max(10, dist * 0.14)) * (hash % 2 ? 1 : -1) * (1 + (hash % 3) * 0.35);
+  const nx = -(b.y - a.y) / (dist || 1), ny = (b.x - a.x) / (dist || 1);
+  const control = { x: (a.x + b.x) / 2 + nx * lift, y: (a.y + b.y) / 2 + ny * lift };
+  return {
+    path: `M ${a.x} ${a.y} Q ${control.x} ${control.y} ${b.x} ${b.y}`,
+    points: quadraticPoints(a, control, b),
+  };
+}
+
+/** Approximate the tap renderer's column-gap staple for pointer hits. */
+function tapWireHitPoints(a, b) {
+  const sx = b.x >= a.x ? 1 : -1;
+  const gapX = a.x + sx * (BB_PITCH / 2);
+  return [a, { x: gapX, y: a.y }, { x: gapX, y: b.y }, b];
+}
+
+/** Shared centre-line points for a rendered breadboard jumper. */
+function jumperHitPoints(bb, a, b, index) {
+  if (Math.abs(b.x - a.x) <= 4 * BB_PITCH) {
+    const lift = Math.max(12, Math.hypot(b.x - a.x, b.y - a.y) * 0.2);
+    const control = { x: (a.x + b.x) / 2, y: Math.min(a.y, b.y) - lift };
+    return quadraticPoints(a, control, b);
+  }
+  const o = bbHoleOrigin(bb);
+  const topBlock = (y) => y < (o.topRowsY + o.bottomRowsY) / 2;
+  const offset = (index % 4) * 4;
+  let laneY;
+  if (topBlock(a.y) && topBlock(b.y)) laneY = o.topRowsY - 12 - offset;
+  else if (!topBlock(a.y) && !topBlock(b.y)) laneY = o.bottomRowsY + 4 * BB_PITCH + 12 + offset;
+  else laneY = (o.topRowsY + 4 * BB_PITCH + o.bottomRowsY) / 2 + (offset - 6);
+  return [a, { x: a.x, y: laneY }, { x: b.x, y: laneY }, b];
 }
 
 function Wires({ wires, parts, circuit, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages, voltageMode, onUpdateWire, screenToCanvas, setDraggingWaypoint }) {
@@ -1707,12 +1782,7 @@ function Wires({ wires, parts, circuit, selectedWire, onSelectWire, hoveredNet, 
       }
     } else {
       // Single wires: jumper-style arcs with hash-derived curvature
-      let h = 0;
-      for (const ch of wire.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-      const dist = Math.hypot(b.x - a.x, b.y - a.y);
-      const lift = Math.min(30, Math.max(10, dist * 0.14)) * (h % 2 ? 1 : -1) * (1 + (h % 3) * 0.35);
-      const nx = -(b.y - a.y) / (dist || 1), ny = (b.x - a.x) / (dist || 1);
-      pathD = `M ${a.x} ${a.y} Q ${(a.x + b.x) / 2 + nx * lift} ${(a.y + b.y) / 2 + ny * lift} ${b.x} ${b.y}`;
+      pathD = freeWireCurve(wire, a, b).path;
     }
     const isSelected = selectedWire === wire.id;
     const isHovered = hoveredNet && hoveredNet === wire.netId;
@@ -2925,7 +2995,11 @@ export function BoardCanvas({
         const a = endPos(w.from);
         const b = endPos(w.to);
         if (!a || !b) return { id: w.id, points: [] };
-        return { id: w.id, points: [a, ...(w.waypoints || []), b] };
+        if (w.waypoints?.length) return { id: w.id, points: [a, ...w.waypoints, b] };
+        if (isBoardEndpoint(w.from) || isBoardEndpoint(w.to)) {
+          return { id: w.id, points: tapWireHitPoints(a, b) };
+        }
+        return { id: w.id, points: freeWireCurve(w, a, b).points };
       }),
       (part) => part.terminals.map(t => ({ terminal: t, ...terminalPos(part, t) }))
     );
@@ -2934,14 +3008,16 @@ export function BoardCanvas({
     hit.wireAt = (wx, wy, radius) => {
       const c = circuitRef.current;
       if (c && c.holeWires) {
-        for (const jw of c.holeWires()) {
+        const jumpers = c.holeWires();
+        for (let jwIdx = jumpers.length - 1; jwIdx >= 0; jwIdx--) {
+          const jw = jumpers[jwIdx];
           const bb = partsRef.current.find(q => q.id === jw.boardId);
           if (!bb) continue;
           const a = holeWorldPos(bb, jw.a), b = holeWorldPos(bb, jw.b);
           if (!a || !b) continue;
-          // Sample the arc coarsely: chord segments through the raised midpoint.
-          const mid = { x: (a.x + b.x) / 2, y: Math.min(a.y, b.y) - Math.max(18, Math.hypot(b.x - a.x, b.y - a.y) * 0.25) };
-          for (const [p1, p2] of [[a, mid], [mid, b]]) {
+          const points = jumperHitPoints(bb, a, b, jwIdx);
+          for (let i = 0; i + 1 < points.length; i++) {
+            const p1 = points[i], p2 = points[i + 1];
             const d = distToSeg(wx, wy, p1.x, p1.y, p2.x, p2.y);
             if (d <= radius + 3) return jw.ref;
           }
@@ -4063,35 +4139,6 @@ export function BoardCanvas({
             );
           })()}
 
-          {/* Ghost of the part being placed from the palette */}
-          {placeGhost && (() => {
-            const fp = FOOTPRINTS[placeGhost.kind] ?? { w: 48, h: 48 };
-            // When snapped to a breadboard, seated parts scale to 0.78 —
-            // the ghost must match so the part does not change size on drop.
-            const scale = placeGhost.snapped ? 0.78 : 1;
-            const gw = fp.w * scale, gh = fp.h * scale;
-            return (
-              <g style={{ pointerEvents: 'none' }} opacity={0.55}>
-                <rect x={placeGhost.x - gw / 2} y={placeGhost.y - gh / 2}
-                  width={gw} height={gh} rx={6}
-                  fill="#3498db" fillOpacity={0.15}
-                  stroke="#3498db" strokeWidth={1.5} strokeDasharray="6,3" />
-                <text x={placeGhost.x} y={placeGhost.y + 4} textAnchor="middle"
-                  fill="#3498db" fontSize={11} fontFamily="monospace">{placeGhost.kind}</text>
-                {placeGhost.legs && placeGhost.legs.map((leg, i) => (
-                  <circle key={i} cx={leg.x} cy={leg.y} r={4.5}
-                    fill={leg.free ? '#2ecc71' : '#e74c3c'}
-                    fillOpacity={0.8}
-                    stroke={leg.free ? '#27ae60' : '#c0392b'} strokeWidth={1.5} />
-                ))}
-                {placeGhost.snapped && !placeGhost.legs && (
-                  <circle cx={placeGhost.x} cy={placeGhost.y} r={5} fill="none"
-                    stroke="#f1c40f" strokeWidth={2} />
-                )}
-              </g>
-            );
-          })()}
-
           {/* Seated parts whose body floats off the hole row show LEGS
               dropping into their holes — the answer to "where are the
               poti's connectors?" is drawn, not guessed. */}
@@ -4231,6 +4278,37 @@ export function BoardCanvas({
             onKeypadKey={onKeypadKey}
             onSetPartParam={onSetPartParam}
             videoFn={videoFn} />
+
+          {/* Placement preview is an interaction overlay: paint it after
+              every substrate and part so a board can never cover a Pico,
+              Nano, or DIP while it is being positioned. */}
+          {placeGhost && (() => {
+            const bounds = partBounds(placeGhost);
+            // Only faces that really shrink when seated may shrink here.
+            // Nano and Pico keep their physical header pitch on a board.
+            const seatScale = placeGhost.snapped ? (SEATED_PREVIEW_SCALE[placeGhost.kind] ?? 1) : 1;
+            const gw = (bounds.maxX - bounds.minX) * seatScale;
+            const gh = (bounds.maxY - bounds.minY) * seatScale;
+            return (
+              <g data-placement-ghost={placeGhost.kind} style={{ pointerEvents: 'none' }} opacity={0.72}>
+                <rect x={placeGhost.x - gw / 2} y={placeGhost.y - gh / 2}
+                  width={gw} height={gh} rx={6}
+                  fill="#3498db" fillOpacity={0.18}
+                  stroke="#60a5fa" strokeWidth={2} strokeDasharray="6,3" />
+                <text x={placeGhost.x} y={placeGhost.y + 4} textAnchor="middle"
+                  fill="#93c5fd" fontSize={11} fontFamily="monospace">{placeGhost.kind}</text>
+                {placeGhost.legs && placeGhost.legs.map((leg, i) => (
+                  <circle key={i} cx={leg.x} cy={leg.y} r={4.5}
+                    fill={leg.free ? '#2ecc71' : '#e74c3c'} fillOpacity={0.8}
+                    stroke={leg.free ? '#27ae60' : '#c0392b'} strokeWidth={1.5} />
+                ))}
+                {placeGhost.snapped && !placeGhost.legs && (
+                  <circle cx={placeGhost.x} cy={placeGhost.y} r={5} fill="none"
+                    stroke="#f1c40f" strokeWidth={2} />
+                )}
+              </g>
+            );
+          })()}
 
           {/* ── WIRE LAYERS ── INSIDE the svg, painted after the substrate and
               the SvgParts chip bodies:
@@ -4446,7 +4524,9 @@ export function BoardCanvas({
                 onTerminalClick={handleTerminalClick}
                 onTerminalDown={handleTerminalDown}
                 onTerminalUp={handleTerminalUp}
-                placingProbe={placingProbe} />
+                placingProbe={placingProbe}
+                selectedParts={selectedParts}
+                hoveredPart={hoveredPart} />
 
           {/* DRC warning badges on parts */}
           {drcWarnings && drcWarnings.length > 0 && (
