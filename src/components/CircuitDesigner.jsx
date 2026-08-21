@@ -201,9 +201,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [examplesOpen, setExamplesOpen] = useState(true);
   const [selectorSplit, setSelectorSplit] = useState(0.68);
   const [codexMode, setCodexMode] = useState(false);
-  // Start with maximum bench space. A debugger-dependent lesson/run may
-  // explicitly open the instruments column through debuggerOn below.
-  const [rightOpen, setRightOpen] = useState(!!debuggerOn);
+  // The dedicated Circuit tab owns enough width for its instruments column;
+  // only the compact embedded right-pane view starts collapsed. A debugger-
+  // dependent lesson/run opens it in either host through debuggerOn below.
+  const [rightOpen, setRightOpen] = useState(!embedded || debuggerOn);
   useEffect(() => {
     if (debuggerOn) setRightOpen(true);
   }, [debuggerOn]);
