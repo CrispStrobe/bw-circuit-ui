@@ -1,3 +1,6 @@
+import { getSidecar } from '../model/parts-registry.js';
+import { boardVisualGeometry } from '../model/board-geometry.js';
+
 /**
  * Model-space hit testing — parts, terminals, wires — as pure math.
  *
@@ -88,15 +91,20 @@ export const FOOTPRINTS = {
   pcf8574: { w: 130, h: 80 }, mcp4725: { w: 80, h: 50 },
   char_lcd_i2c: { w: 140, h: 56 },
   l293d: { w: 130, h: 80 },
-  // Board footprints (seated on breadboard, so width matters)
-  arduino_uno: { w: 180, h: 70 }, arduino_nano: { w: 130, h: 50 },
-  pi_pico: { w: 160, h: 60 },
+  // Board values are fallback-only; footprintOf resolves the shared visual
+  // geometry first so drawing, auto-fit and pointer hits remain identical.
+  arduino_uno: { w: 400, h: 294 }, arduino_nano: { w: 248, h: 98 },
+  arduino_mega: { w: 566, h: 280 }, pi_pico: { w: 281, h: 116 },
 };
 
 export const DEFAULT_FOOTPRINT = { w: 48, h: 48 };
 
 /** @param {{kind: string}} part */
 export function footprintOf(part) {
+  if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico'].includes(part.kind)) {
+    const geometry = boardVisualGeometry(part.kind, getSidecar(part.kind));
+    if (geometry) return { w: geometry.w, h: geometry.h };
+  }
   return FOOTPRINTS[part.kind] ?? DEFAULT_FOOTPRINT;
 }
 

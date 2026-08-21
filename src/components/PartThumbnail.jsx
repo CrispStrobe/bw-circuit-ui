@@ -7,6 +7,8 @@
 
 import React from 'react';
 import { getSidecar, resolveArtSlug } from '../model/parts-registry.js';
+import { boardVisualGeometry } from '../model/board-geometry.js';
+import { WokwiArduinoUno, WokwiArduinoNano, WokwiArduinoMega } from '../wokwi-wrappers/index.js';
 
 const S = 48; // internal coordinate space
 
@@ -29,6 +31,29 @@ export function PartThumbnail({ kind, color, params, displaySize }) {
   const w = displaySize || S;
   const h = displaySize || S;
   const cx = S / 2, cy = S / 2;
+
+  // Board thumbnails share the same MIT Wokwi faces as the canvas. This is
+  // deliberately before the Vite-only SVG lookup: BrickWright Lite is built
+  // by Webpack, where import.meta.glob is unavailable and board cards used to
+  // degrade to a dashed text placeholder.
+  const BoardFace = kind === 'arduino_uno' ? WokwiArduinoUno
+    : kind === 'arduino_nano' ? WokwiArduinoNano
+    : kind === 'arduino_mega' ? WokwiArduinoMega : null;
+  if (BoardFace) {
+    const geometry = boardVisualGeometry(kind);
+    const scale = Math.min(w / geometry.nativeW, h / geometry.nativeH);
+    return (
+      <div style={{width: w, height: h, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'}}
+        data-board-thumbnail={kind} data-board-face-license="MIT">
+        <div style={{width: geometry.nativeW * scale, height: geometry.nativeH * scale}}>
+          <div style={{width: geometry.nativeW, height: geometry.nativeH,
+            transform: `scale(${scale})`, transformOrigin: '0 0'}}>
+            <BoardFace style={{display: 'block'}} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Prefer bw-parts SVG art when available (resolve slug aliases for art)
   const svgUrl = getSvgUrl(kind) || getSvgUrl(resolveArtSlug(kind));
