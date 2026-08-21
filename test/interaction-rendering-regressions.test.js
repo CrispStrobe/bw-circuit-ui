@@ -72,4 +72,5 @@ test('generated Nano and Pico benches use one canonical supply and ground feed',
     'generated benches reserve the rendered body width, not only lead span');
   assert.match(seatGeneratorSource, /invalidControllersOnly && !c\.parts\.some/,
     'the migration can target physically unseatable Uno/Mega authored benches safely');
+  assert.match(seatGeneratorSource, /Controller-only lessons do not need a decorative empty breadboard/);
 });

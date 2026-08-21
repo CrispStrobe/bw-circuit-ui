@@ -107,7 +107,21 @@ function seatExample(id) {
         if (!fp0) { floating.push(part); continue; }
         seatable.push(part);
     }
-    if (!seatable.length) return { id, skip: 'nothing-seatable' };
+    if (!seatable.length) {
+        if (!invalidControllersOnly) return { id, skip: 'nothing-seatable' };
+        // Controller-only lessons do not need a decorative empty breadboard.
+        // The reseat prelude has already removed the impossible Uno/Mega seat;
+        // give the remaining board and power posts a readable floating row.
+        const floatPositions = layoutFloatingParts(
+            floating,
+            kind => sidecarByKind.get(kind),
+            {boardTop: 500, left: 40, right: 1000, gap: 40},
+        );
+        for (const part of floating) Object.assign(part, floatPositions.get(part.id));
+        c.parts = floating;
+        writeFileSync(p, JSON.stringify(c, null, 1));
+        return { id, seated: 0, boards: 0, jumpers: 0, kept: c.wires.length, floating: floating.length };
+    }
 
     // Boards open on demand, stacked vertically like the real machines
     // (a full-size board is ~310 world units tall; 360 leaves an air gap
