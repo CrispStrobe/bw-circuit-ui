@@ -49,9 +49,9 @@ test('Arduino face uses absolute world coordinates, not a foreignObject parent t
   assert.match(canvasSource, /data-board-face-license="MIT"/);
 });
 
-test('dedicated designer starts with instruments; compact embed may collapse them', () => {
-  assert.match(designerSource, /useState\(!embedded \|\| debuggerOn\)/);
-  assert.match(designerSource, /if \(debuggerOn\) setRightOpen\(true\)/);
+test('instruments start collapsed unless a debugger or bench explicitly needs them', () => {
+  assert.match(designerSource, /useState\(!!debuggerOn \|\| !!benchOpen\)/);
+  assert.match(designerSource, /if \(debuggerOn \|\| benchOpen\) setRightOpen\(true\)/);
 });
 
 test('battery positive directly wired to negative is a supply-short warning', () => {
