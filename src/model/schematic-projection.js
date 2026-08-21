@@ -75,6 +75,19 @@ export function projectSchematic(parts, nets) {
     if (!cols.has(c)) cols.set(c, []);
     cols.get(c).push(p);
   }
+
+  const connectedTerms = p => {
+    const all = p.terminals ?? [];
+    const used = all.filter(name => {
+      const netId = findPinNet(nets, p.id, name);
+      return netId && (netPins.get(netId) ?? []).length >= 2;
+    });
+    return used.length ? used : all.slice(0, 2);
+  };
+  const halfHeight = p => {
+    const perSide = Math.max(1, Math.ceil(connectedTerms(p).length / 2));
+    return Math.max(20, ((perSide - 1) * PIN_PITCH) / 2 + 16);
+  };
   const rowOf = new Map();
   const layoutCol = new Map();
   // A graph rank can contain dozens of parallel LEDs, bus devices or display
@@ -98,29 +111,27 @@ export function projectSchematic(parts, nets) {
       return n > 0 ? sum / n : Number.POSITIVE_INFINITY;
     };
     members.sort((a, b) => (bary(a) - bary(b)) || a.id.localeCompare(b.id));
-    members.forEach((p, i) => {
-      layoutCol.set(p.id, nextLayoutCol + Math.floor(i / maxRows));
-      rowOf.set(p.id, i % maxRows);
-    });
-    nextLayoutCol += Math.max(1, Math.ceil(members.length / maxRows));
+    let subcol = 0;
+    let rowsInSubcol = 0;
+    let subcolHeight = 0;
+    for (const p of members) {
+      const itemHeight = halfHeight(p) * 2 + SYMBOL_GAP_Y;
+      if (rowsInSubcol > 0 && (rowsInSubcol >= maxRows || subcolHeight + itemHeight > 820)) {
+        subcol++;
+        rowsInSubcol = 0;
+        subcolHeight = 0;
+      }
+      layoutCol.set(p.id, nextLayoutCol + subcol);
+      rowOf.set(p.id, rowsInSubcol++);
+      subcolHeight += itemHeight;
+    }
+    nextLayoutCol += subcol + 1;
   }
 
   // A fixed 110px row only works for two-pin parts. A DIP with twenty
   // connected pins is roughly 180px tall, so neighbouring packages used to
   // overlap before routing even began. Pack each visual column using the
   // actual connected-pin height instead.
-  const connectedTerms = p => {
-    const all = p.terminals ?? [];
-    const used = all.filter(name => {
-      const netId = findPinNet(nets, p.id, name);
-      return netId && (netPins.get(netId) ?? []).length >= 2;
-    });
-    return used.length ? used : all.slice(0, 2);
-  };
-  const halfHeight = p => {
-    const perSide = Math.max(1, Math.ceil(connectedTerms(p).length / 2));
-    return Math.max(20, ((perSide - 1) * PIN_PITCH) / 2 + 16);
-  };
   const yOf = new Map();
   const visualCols = new Map();
   for (const p of electrical) {
