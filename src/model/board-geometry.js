@@ -191,7 +191,10 @@ export function layoutFloatingParts(parts, sidecarForKind, options = {}) {
   for (const packed of rows) {
     let cursor = left;
     for (const { part, size } of packed.items) {
-      positions.set(part.id, { x: cursor + size.w / 2, y: rowBottom - size.h / 2 });
+      positions.set(part.id, {
+        x: Math.round(cursor + size.w / 2),
+        y: Math.round(rowBottom - size.h / 2),
+      });
       cursor += size.w + gap;
     }
     rowBottom -= packed.height + gap;
