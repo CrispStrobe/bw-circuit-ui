@@ -108,6 +108,13 @@ export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts
   for (const j of p.junctions || []) {
     out.push('<circle cx="' + j.x + '" cy="' + j.y + '" r="2.4" fill="' + STROKE + '"/>');
   }
+  for (const label of p.netLabels || []) {
+    out.push('<g><line x1="' + label.x1 + '" y1="' + label.y1 + '" x2="' + label.x2
+      + '" y2="' + label.y2 + '" stroke="' + STROKE + '" stroke-width="1.2"/>'
+      + '<text x="' + label.x + '" y="' + label.y + '" text-anchor="' + label.anchor
+      + '" font-size="6.5" font-family="monospace" fill="' + LABEL + '">'
+      + esc(label.text) + '</text></g>');
+  }
   for (const s of p.symbols || []) {
     const art = shapeFor(s.kind, s.params || {});
     const bits = [];

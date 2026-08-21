@@ -137,3 +137,38 @@ test('dense parallel ranks wrap into readable column bands', () => {
   assert.ok(projected.height < 1200, `dense projection is ${projected.height} units tall`);
   assert.ok(projected.width > 500, 'parallel parts use more than one visual column');
 });
+
+test('dense digital circuits use labelled stubs instead of a trunk thicket', () => {
+  const sourceTerms = Array.from({length: 20}, (_, i) => `s${i}`);
+  const parts = [{id: 'src', kind: 'mcu', terminals: sourceTerms}];
+  const nets = [];
+  for (let i = 0; i < 20; i++) {
+    parts.push({id: `chip${i}`, kind: 'mcu', terminals: ['a', 'b']});
+    nets.push({id: `bus${i}`, terminals: [
+      {part: 'src', terminal: `s${i}`}, {part: `chip${i}`, terminal: 'a'}
+    ]});
+  }
+  const p = projectSchematic(parts, nets);
+  assert.equal(p.labelledRouting, true);
+  assert.equal(p.wires.length, 0);
+  assert.ok(p.netLabels.length >= 40);
+});
+
+test('tall multi-pin packages never overlap vertically in a column', () => {
+  const parts = [];
+  const nets = [];
+  for (let i = 0; i < 3; i++) {
+    const terminals = Array.from({length: 20}, (_, n) => `p${n}`);
+    parts.push({id: `ic${i}`, kind: 'mcu', terminals});
+    for (const terminal of terminals) nets.push({id: `${i}-${terminal}`, terminals: [
+      {part: `ic${i}`, terminal}, {part: 'sink', terminal: `${i}-${terminal}`}
+    ]});
+  }
+  parts.push({id: 'sink', kind: 'mcu', terminals: nets.map(n => n.id)});
+  const p = projectSchematic(parts, nets);
+  const chips = p.symbols.filter(s => s.id.startsWith('ic')).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < chips.length; i++) {
+    const a = chips[i - 1], b = chips[i];
+    assert.ok(b.y - a.y >= 190, `${a.id} and ${b.id} are vertically separated`);
+  }
+});

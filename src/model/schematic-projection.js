@@ -20,6 +20,8 @@ const ROW_H = 110;
 const MARGIN_X = 70;
 const MARGIN_Y = 55;
 const PIN_HALF = 30; // horizontal reach of a symbol's pins
+const PIN_PITCH = 18;
+const SYMBOL_GAP_Y = 30;
 
 const SOURCE_KINDS = new Set(['vsource', 'isource', 'vcc']);
 
@@ -103,6 +105,39 @@ export function projectSchematic(parts, nets) {
     nextLayoutCol += Math.max(1, Math.ceil(members.length / maxRows));
   }
 
+  // A fixed 110px row only works for two-pin parts. A DIP with twenty
+  // connected pins is roughly 180px tall, so neighbouring packages used to
+  // overlap before routing even began. Pack each visual column using the
+  // actual connected-pin height instead.
+  const connectedTerms = p => {
+    const all = p.terminals ?? [];
+    const used = all.filter(name => {
+      const netId = findPinNet(nets, p.id, name);
+      return netId && (netPins.get(netId) ?? []).length >= 2;
+    });
+    return used.length ? used : all.slice(0, 2);
+  };
+  const halfHeight = p => {
+    const perSide = Math.max(1, Math.ceil(connectedTerms(p).length / 2));
+    return Math.max(20, ((perSide - 1) * PIN_PITCH) / 2 + 16);
+  };
+  const yOf = new Map();
+  const visualCols = new Map();
+  for (const p of electrical) {
+    const col = layoutCol.get(p.id);
+    if (!visualCols.has(col)) visualCols.set(col, []);
+    visualCols.get(col).push(p);
+  }
+  for (const members of visualCols.values()) {
+    members.sort((a, b) => rowOf.get(a.id) - rowOf.get(b.id));
+    let cursor = MARGIN_Y;
+    for (const p of members) {
+      const half = halfHeight(p);
+      yOf.set(p.id, cursor + half);
+      cursor += half * 2 + SYMBOL_GAP_Y;
+    }
+  }
+
   // Symbols with pin geometry: 2-pin parts run left→right; more pins split
   // across the two sides in terminal order.
   //
@@ -116,7 +151,7 @@ export function projectSchematic(parts, nets) {
     const col = layoutCol.get(p.id);
     const row = rowOf.get(p.id);
     const x = MARGIN_X + col * COL_W;
-    const y = MARGIN_Y + row * ROW_H;
+    const y = yOf.get(p.id) ?? (MARGIN_Y + row * ROW_H);
     const allTerms = p.terminals ?? [];
     let terms = allTerms.filter(name => {
       const netId = findPinNet(nets, p.id, name);
@@ -139,7 +174,7 @@ export function projectSchematic(parts, nets) {
         netId,
         side,
         x: x + (side === 'left' ? -PIN_HALF : PIN_HALF),
-        y: y + offset * 18,
+        y: y + offset * PIN_PITCH,
       };
     });
     symbols.push({
@@ -182,6 +217,7 @@ export function projectSchematic(parts, nets) {
   // screenshots, 2026-08-10). Nets sharing a gap fan out on an even grid.
   const wires = [];
   const junctions = [];
+  const netLabels = [];
   const netIds = [...netPins.keys()].sort();
   // First pass: pick each net's gap (between column g-1 and g).
   const routed = [];
@@ -199,9 +235,33 @@ export function projectSchematic(parts, nets) {
     gapUse.get(gap).push(netId);
     routed.push({ netId, pins, gap });
   }
+  // Dense digital machines become less truthful, not more, when every bus
+  // bit is drawn as a full-height trunk. Conventional schematics use repeated
+  // net labels for exactly this case. Small teaching circuits retain direct
+  // wires; dense circuits get short labelled stubs with stable N01... names.
+  const pinCount = routed.reduce((n, r) => n + r.pins.length, 0);
+  const labelledRouting = routed.length > 18 || pinCount > 52;
+  const netName = (r, index) => {
+    const terms = netPins.get(r.netId) || [];
+    if (terms.some(t => partById.get(t.part)?.kind === 'gnd' || /^gnd$/i.test(t.terminal))) return 'GND';
+    if (terms.some(t => partById.get(t.part)?.kind === 'vcc' || /^(vcc|5v|3v3)$/i.test(t.terminal))) return 'VCC';
+    return `N${String(index + 1).padStart(2, '0')}`;
+  };
+
   // Second pass: spread the nets of each gap across its usable band.
   const BAND = COL_W - 2 * PIN_HALF - 24; // free space between column pin tips
-  for (const r of routed) {
+  for (const [routeIndex, r] of routed.entries()) {
+    if (labelledRouting) {
+      const text = netName(r, routeIndex);
+      for (const pin of r.pins) {
+        const direction = pin.side === 'left' ? -1 : 1;
+        netLabels.push({netId: r.netId, text,
+          x1: pin.x, y1: pin.y, x2: pin.x + direction * 13, y2: pin.y,
+          x: pin.x + direction * 16, y: pin.y + 2.5,
+          anchor: direction < 0 ? 'end' : 'start'});
+      }
+      continue;
+    }
     const mates = gapUse.get(r.gap);
     const slot = mates.indexOf(r.netId);
     const gapCenter = MARGIN_X + r.gap * COL_W - COL_W / 2;
@@ -236,6 +296,7 @@ export function projectSchematic(parts, nets) {
     for (const pin of sym.pins) touch(pin.x, pin.y);
   }
   for (const w of wires) { touch(w.trunk.x, w.trunk.y1); touch(w.trunk.x, w.trunk.y2); }
+  for (const l of netLabels) { touch(l.x1, l.y1); touch(l.x, l.y); }
   if (!symbols.length) { minX = 0; minY = 0; maxX = 100; maxY = 60; }
   const shiftX = MARGIN_X - minX;
   const shiftY = MARGIN_Y - minY;
@@ -248,10 +309,14 @@ export function projectSchematic(parts, nets) {
     for (const seg of w.stubs) for (const pt of seg) { pt.x += shiftX; pt.y += shiftY; }
   }
   for (const j of junctions) { j.x += shiftX; j.y += shiftY; }
+  for (const l of netLabels) {
+    l.x1 += shiftX; l.x2 += shiftX; l.x += shiftX;
+    l.y1 += shiftY; l.y2 += shiftY; l.y += shiftY;
+  }
   const width = (maxX - minX) + MARGIN_X * 2;
   const height = (maxY - minY) + MARGIN_Y * 2;
 
-  return { symbols, wires, junctions, width, height };
+  return { symbols, wires, junctions, netLabels, labelledRouting, width, height };
 }
 
 function findPinNet(nets, partId, terminal) {

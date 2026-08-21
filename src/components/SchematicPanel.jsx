@@ -219,6 +219,14 @@ export function SchematicPanel({ parts, nets }) {
       {proj.junctions.map((j, i) => (
         <circle key={i} cx={j.x} cy={j.y} r={2.4} fill="#3d5a75" />
       ))}
+      {proj.netLabels.map((label, i) => (
+        <g key={`${label.netId}-${i}`}>
+          <line x1={label.x1} y1={label.y1} x2={label.x2} y2={label.y2}
+            stroke="#3d5a75" strokeWidth={1.2} />
+          <text x={label.x} y={label.y} textAnchor={label.anchor}
+            fill="#64748b" fontSize={6.5} fontFamily="monospace">{label.text}</text>
+        </g>
+      ))}
       {proj.symbols.map(s => <Symbol key={s.id} s={s} />)}
     </svg>
   );
