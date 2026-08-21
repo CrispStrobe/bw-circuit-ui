@@ -316,6 +316,7 @@ function PartButton({ part, palette, onAddPart, onDragPart, onStartPlace, ledCol
         role="button"
         tabIndex={0}
         aria-label={label}
+        data-palette-kind={kind}
         onPointerDown={startPlacement}
         onKeyDown={event => {
           if (event.key !== 'Enter' && event.key !== ' ') return;

@@ -53,6 +53,7 @@ test('Arduino face uses absolute world coordinates, not a foreignObject parent t
 test('palette placement controls are keyboard-accessible buttons', () => {
   assert.match(paletteSource, /role="button"/);
   assert.match(paletteSource, /aria-label=\{label\}/);
+  assert.match(paletteSource, /data-palette-kind=\{kind\}/);
   assert.match(paletteSource, /event\.key !== 'Enter' && event\.key !== ' '/);
 });
 
