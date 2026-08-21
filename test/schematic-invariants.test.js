@@ -23,6 +23,18 @@ function checkInvariants(parts, nets, label) {
     }
   }
   for (const w of proj.wires) {
+    if (w.segments) {
+      assert.ok(w.segments.length >= 1, `${label}: detoured net ${w.netId} has no segments`);
+      for (const [a, b] of w.segments) {
+        assert.ok(inside(a.x, a.y) && inside(b.x, b.y), `${label}: detour ${w.netId} outside canvas`);
+      }
+      const endpoints = [w.segments[0][0], w.segments[w.segments.length - 1][1]];
+      for (const endpoint of endpoints) {
+        assert.ok(pinSet.has(`${Math.round(endpoint.x)},${Math.round(endpoint.y)}`),
+          `${label}: detour ${w.netId} ends off-pin at ${endpoint.x | 0},${endpoint.y | 0}`);
+      }
+      continue;
+    }
     assert.ok(inside(w.trunk.x, w.trunk.y1) && inside(w.trunk.x, w.trunk.y2),
       `${label}: trunk ${w.netId} outside canvas`);
     for (const sym of proj.symbols) {

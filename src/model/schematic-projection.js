@@ -300,7 +300,7 @@ export function projectSchematic(parts, nets) {
     return false;
   };
   const routeCollisions = (route) => {
-    const segments = [
+    const segments = route.segments || [
       [{x: route.trunk.x, y: route.trunk.y1}, {x: route.trunk.x, y: route.trunk.y2}],
       ...route.stubs,
     ];
@@ -312,6 +312,60 @@ export function projectSchematic(parts, nets) {
     return hits;
   };
   const collisionRoutedNets = [];
+  const detouredRoutingNets = [];
+  const obstacleRoute = (start, end) => {
+    // Route geometry owns its points. Reusing pin objects here would shift
+    // endpoints twice when projection bounds translate symbols and wires.
+    start = {x: start.x, y: start.y};
+    end = {x: end.x, y: end.y};
+    const boxes = symbols.map(bodyBounds);
+    const clear = ([a, b]) => (a.x === b.x || a.y === b.y) &&
+      !boxes.some(box => segmentCrossesBody(a, b, box));
+    const xs = new Set([start.x, end.x]);
+    const ys = new Set([start.y, end.y]);
+    for (const box of boxes) {
+      xs.add(box.left - 10); xs.add(box.right + 10);
+      ys.add(box.top - 10); ys.add(box.bottom + 10);
+    }
+    const compact = points => {
+      const out = [];
+      for (const point of points) {
+        const last = out[out.length - 1];
+        if (!last || last.x !== point.x || last.y !== point.y) out.push(point);
+      }
+      for (let i = 1; i < out.length - 1;) {
+        const a = out[i - 1], b = out[i], c = out[i + 1];
+        if ((a.x === b.x && b.x === c.x) || (a.y === b.y && b.y === c.y)) out.splice(i, 1);
+        else i++;
+      }
+      return out;
+    };
+    const candidates = [
+      [start, end],
+      [start, {x: end.x, y: start.y}, end],
+      [start, {x: start.x, y: end.y}, end],
+    ];
+    for (const x of xs) candidates.push([start, {x, y: start.y}, {x, y: end.y}, end]);
+    for (const y of ys) candidates.push([start, {x: start.x, y}, {x: end.x, y}, end]);
+    for (const x of xs) for (const y of ys) {
+      candidates.push([start, {x: start.x, y}, {x, y}, {x, y: end.y}, end]);
+      candidates.push([start, {x, y: start.y}, {x, y}, {x: end.x, y}, end]);
+    }
+    let best = null, bestCost = Infinity;
+    for (const raw of candidates) {
+      const points = compact(raw);
+      // Each segment owns endpoint objects; shared corner references would be
+      // translated once per adjoining segment during bounds normalization.
+      const segments = points.slice(1).map((point, i) => [
+        {x: points[i].x, y: points[i].y}, {x: point.x, y: point.y},
+      ]);
+      if (!segments.every(clear)) continue;
+      const length = segments.reduce((n, [a, b]) => n + Math.abs(a.x - b.x) + Math.abs(a.y - b.y), 0);
+      const cost = length + Math.max(0, segments.length - 1) * 12;
+      if (cost < bestCost) { best = segments; bestCost = cost; }
+    }
+    return best;
+  };
 
   // Second pass: spread the nets of each gap across its usable band.
   const BAND = COL_W - 2 * PIN_HALF - 24; // free space between column pin tips
@@ -339,6 +393,14 @@ export function projectSchematic(parts, nets) {
     };
     const collisions = routeCollisions(route);
     if (collisions.length) {
+      if (r.pins.length === 2) {
+        const segments = obstacleRoute(r.pins[0], r.pins[1]);
+        if (segments) {
+          wires.push({netId: r.netId, segments});
+          detouredRoutingNets.push(r.netId);
+          continue;
+        }
+      }
       collisionRoutedNets.push({netId: r.netId, symbols: collisions});
       const text = netName(r, routeIndex);
       for (const pin of r.pins) labelPin(r, text, pin);
@@ -364,7 +426,10 @@ export function projectSchematic(parts, nets) {
     touch(sym.x + PIN_HALF + 20, sym.y + Math.max(28, ((sym.pinsPerSide || 1) - 1) * 9 + 24));
     for (const pin of sym.pins) touch(pin.x, pin.y);
   }
-  for (const w of wires) { touch(w.trunk.x, w.trunk.y1); touch(w.trunk.x, w.trunk.y2); }
+  for (const w of wires) {
+    if (w.segments) for (const seg of w.segments) for (const pt of seg) touch(pt.x, pt.y);
+    else { touch(w.trunk.x, w.trunk.y1); touch(w.trunk.x, w.trunk.y2); }
+  }
   for (const l of netLabels) { touch(l.x1, l.y1); touch(l.x, l.y); }
   if (!symbols.length) { minX = 0; minY = 0; maxX = 100; maxY = 60; }
   const shiftX = MARGIN_X - minX;
@@ -374,8 +439,12 @@ export function projectSchematic(parts, nets) {
     for (const pin of sym.pins) { pin.x += shiftX; pin.y += shiftY; }
   }
   for (const w of wires) {
-    w.trunk.x += shiftX; w.trunk.y1 += shiftY; w.trunk.y2 += shiftY;
-    for (const seg of w.stubs) for (const pt of seg) { pt.x += shiftX; pt.y += shiftY; }
+    if (w.segments) {
+      for (const seg of w.segments) for (const pt of seg) { pt.x += shiftX; pt.y += shiftY; }
+    } else {
+      w.trunk.x += shiftX; w.trunk.y1 += shiftY; w.trunk.y2 += shiftY;
+      for (const seg of w.stubs) for (const pt of seg) { pt.x += shiftX; pt.y += shiftY; }
+    }
   }
   for (const j of junctions) { j.x += shiftX; j.y += shiftY; }
   for (const l of netLabels) {
@@ -385,7 +454,8 @@ export function projectSchematic(parts, nets) {
   const width = (maxX - minX) + MARGIN_X * 2;
   const height = (maxY - minY) + MARGIN_Y * 2;
 
-  return { symbols, wires, junctions, netLabels, labelledRouting, collisionRoutedNets, width, height };
+  return { symbols, wires, junctions, netLabels, labelledRouting, collisionRoutedNets,
+    detouredRoutingNets, width, height };
 }
 
 function findPinNet(nets, partId, terminal) {

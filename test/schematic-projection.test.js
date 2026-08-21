@@ -48,7 +48,8 @@ test('projection: every multi-pin net routes and touches its pins', () => {
     const pinPts = proj.symbols.flatMap(s => s.pins).filter(p => p.netId === w.netId);
     assert.ok(pinPts.length >= 2);
     for (const p of pinPts) {
-      const touched = w.stubs.some(seg => seg[0].x === p.x && seg[0].y === p.y);
+      const touched = (w.segments || w.stubs).some(seg =>
+        (seg[0].x === p.x && seg[0].y === p.y) || (seg[1].x === p.x && seg[1].y === p.y));
       assert.ok(touched, `wire ${w.netId} touches pin at ${p.x},${p.y}`);
     }
   }
@@ -56,7 +57,8 @@ test('projection: every multi-pin net routes and touches its pins', () => {
     const pinPts = proj.symbols.flatMap(s => s.pins).filter(p => p.netId === netId);
     for (const p of pinPts) {
       const directlyTouched = proj.wires.filter(w => w.netId === netId)
-        .some(w => w.stubs.some(seg => seg[0].x === p.x && seg[0].y === p.y));
+        .some(w => (w.segments || w.stubs).some(seg =>
+          (seg[0].x === p.x && seg[0].y === p.y) || (seg[1].x === p.x && seg[1].y === p.y)));
       const labelTouched = proj.netLabels.filter(l => l.netId === netId)
         .some(l => l.x1 === p.x && l.y1 === p.y);
       assert.ok(directlyTouched || labelTouched, `net ${netId} touches pin at ${p.x},${p.y}`);
@@ -227,5 +229,29 @@ test('a route through a foreign symbol is replaced by net labels', () => {
   for (const collision of p.collisionRoutedNets) {
     assert.ok(!p.wires.some(w => w.netId === collision.netId));
     assert.ok(p.netLabels.some(l => l.netId === collision.netId));
+  }
+});
+
+test('two-pin teaching nets detour around symbols before falling back to labels', () => {
+  resetIds();
+  const c = Circuit.fromJSON({
+    vcc: 5,
+    parts: [
+      {id: 'bat', kind: 'battery', params: {volts: 9}},
+      {id: 'r', kind: 'resistor', params: {ohms: 1000}},
+      {id: 'led', kind: 'led', params: {}},
+    ],
+    wires: [
+      {from: 'bat', fromTerminal: 'pos', to: 'r', toTerminal: 'a'},
+      {from: 'r', fromTerminal: 'b', to: 'led', toTerminal: 'anode'},
+      {from: 'led', fromTerminal: 'cathode', to: 'bat', toTerminal: 'neg'},
+    ],
+  });
+  const p = projectSchematic(c.parts, c.board.getNets());
+  assert.ok(p.detouredRoutingNets.length >= 1, 'at least one return path uses a drawn detour');
+  for (const netId of p.detouredRoutingNets) {
+    const wire = p.wires.find(w => w.netId === netId);
+    assert.ok(wire?.segments?.length >= 2, `${netId} has an orthogonal detour`);
+    assert.ok(!p.netLabels.some(label => label.netId === netId), `${netId} is not replaced by labels`);
   }
 });

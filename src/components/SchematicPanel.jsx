@@ -210,8 +210,8 @@ export function SchematicPanel({ parts, nets }) {
       }}>
       {proj.wires.map(w => (
         <g key={w.netId} stroke="#3d5a75" strokeWidth={1.3} fill="none">
-          <line x1={w.trunk.x} y1={w.trunk.y1} x2={w.trunk.x} y2={w.trunk.y2} />
-          {w.stubs.map((seg, i) => (
+          {!w.segments && <line x1={w.trunk.x} y1={w.trunk.y1} x2={w.trunk.x} y2={w.trunk.y2} />}
+          {(w.segments || w.stubs).map((seg, i) => (
             <line key={i} x1={seg[0].x} y1={seg[0].y} x2={seg[1].x} y2={seg[1].y} />
           ))}
         </g>

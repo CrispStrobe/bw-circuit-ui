@@ -99,7 +99,7 @@ export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts
     : a.x === b.x && a.x > box.left && a.x < box.right && Math.max(a.y, b.y) > box.top && Math.min(a.y, b.y) < box.bottom;
   const wireSymbolCrossings = [];
   for (const wire of p.wires || []) {
-    const segments = [[{x: wire.trunk.x, y: wire.trunk.y1}, {x: wire.trunk.x, y: wire.trunk.y2}], ...(wire.stubs || [])];
+    const segments = wire.segments || [[{x: wire.trunk.x, y: wire.trunk.y1}, {x: wire.trunk.x, y: wire.trunk.y2}], ...(wire.stubs || [])];
     for (const symbol of p.symbols || []) {
       if (segments.some(([a, b]) => crosses(a, b, boundsFor(symbol)))) {
         wireSymbolCrossings.push({netId: wire.netId, symbol: symbol.id});
@@ -127,10 +127,11 @@ export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts
     // projectSchematic exposes orthogonal trunk/stub geometry. The original
     // CLI expected a prebuilt `d` string that the projection has never
     // returned, producing valid-looking SVG files with every wire omitted.
+    const segments = w.segments || [
+      [{x: w.trunk.x, y: w.trunk.y1}, {x: w.trunk.x, y: w.trunk.y2}], ...(w.stubs || []),
+    ];
     out.push('<g fill="none" stroke="' + STROKE + '" stroke-width="1.2">'
-      + '<line x1="' + w.trunk.x + '" y1="' + w.trunk.y1 + '" x2="'
-      + w.trunk.x + '" y2="' + w.trunk.y2 + '"/>'
-      + (w.stubs || []).map(seg => '<line x1="' + seg[0].x + '" y1="' + seg[0].y
+      + segments.map(seg => '<line x1="' + seg[0].x + '" y1="' + seg[0].y
         + '" x2="' + seg[1].x + '" y2="' + seg[1].y + '"/>').join('')
       + '</g>');
   }
@@ -214,5 +215,5 @@ export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts
   return { svg, symbols: (p.symbols || []).length, generic, genericKinds,
     wires: (p.wires || []).length, netLabels: (p.netLabels || []).length,
     collisionRoutedNets: p.collisionRoutedNets || [], wireSymbolCrossings,
-    symbolOverlaps, width: w, height: h };
+    detouredRoutingNets: p.detouredRoutingNets || [], symbolOverlaps, width: w, height: h };
 }
