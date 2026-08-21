@@ -49,8 +49,8 @@ test('Arduino face uses absolute world coordinates, not a foreignObject parent t
   assert.match(canvasSource, /data-board-face-license="MIT"/);
 });
 
-test('instruments start collapsed unless a debugger or bench explicitly needs them', () => {
-  assert.match(designerSource, /useState\(!!debuggerOn \|\| !!benchOpen\)/);
+test('dedicated Circuit keeps instruments open while compact embeds may collapse them', () => {
+  assert.match(designerSource, /useState\(!embedded \|\| !!debuggerOn \|\| !!benchOpen\)/);
   assert.match(designerSource, /if \(debuggerOn \|\| benchOpen\) setRightOpen\(true\)/);
 });
 

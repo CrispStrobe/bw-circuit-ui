@@ -201,10 +201,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [examplesOpen, setExamplesOpen] = useState(true);
   const [selectorSplit, setSelectorSplit] = useState(0.68);
   const [codexMode, setCodexMode] = useState(false);
-  // Fresh designers prioritize bench space. Debugger and lesson/bench
-  // contexts may explicitly demand Instruments, and simulation opens the
-  // column at the moment it is used.
-  const [rightOpen, setRightOpen] = useState(!!debuggerOn || !!benchOpen);
+  // Dedicated Circuit has room for instruments and lessons need all three
+  // views at once. The compact embed starts collapsed unless debugger/bench
+  // demand opens it.
+  const [rightOpen, setRightOpen] = useState(!embedded || !!debuggerOn || !!benchOpen);
   useEffect(() => {
     if (debuggerOn || benchOpen) setRightOpen(true);
   }, [debuggerOn, benchOpen]);
