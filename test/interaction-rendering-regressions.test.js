@@ -9,6 +9,7 @@ import { runDrc } from '../src/model/drc.js';
 const canvasSource = readFileSync(new URL('../src/components/BoardCanvas.jsx', import.meta.url), 'utf8');
 const breadboardSource = readFileSync(new URL('../src/components/BreadboardView.jsx', import.meta.url), 'utf8');
 const designerSource = readFileSync(new URL('../src/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
+const paletteSource = readFileSync(new URL('../src/components/PartPalette.jsx', import.meta.url), 'utf8');
 const seatGeneratorSource = readFileSync(new URL('../scripts/seat-examples.mjs', import.meta.url), 'utf8');
 
 test('placement bounds preserve full, half, and mini breadboard dimensions', () => {
@@ -47,6 +48,12 @@ test('full breadboard renders every logical hole without visual-only gaps', () =
 test('Arduino face uses absolute world coordinates, not a foreignObject parent transform', () => {
   assert.match(canvasSource, /<foreignObject x=\{x - W \/ 2\} y=\{y - H \/ 2\}/);
   assert.match(canvasSource, /data-board-face-license="MIT"/);
+});
+
+test('palette placement controls are keyboard-accessible buttons', () => {
+  assert.match(paletteSource, /role="button"/);
+  assert.match(paletteSource, /aria-label=\{label\}/);
+  assert.match(paletteSource, /event\.key !== 'Enter' && event\.key !== ' '/);
 });
 
 test('owner default keeps instruments collapsed unless debugger or bench needs them', () => {

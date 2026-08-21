@@ -303,15 +303,24 @@ function PartButton({ part, palette, onAddPart, onDragPart, onStartPlace, ledCol
 
   // For LEDs, use the selected color
   const effectiveParams = kind === 'led' ? { ...params, color: ledColor } : params;
+  const startPlacement = () => {
+    // Arm ghost placement: press-drag-release onto the canvas, or click here
+    // and click the canvas — both commit at the cursor.
+    if (onStartPlace) onStartPlace(kind, effectiveParams);
+    else onAddPart(kind, effectiveParams);
+  };
 
   return (
     <div style={{ position: 'relative' }}>
       <div
-        onPointerDown={() => {
-          // Arm ghost placement: press-drag-release onto the canvas, or
-          // click here and click the canvas — both commit at the cursor.
-          if (onStartPlace) onStartPlace(kind, effectiveParams);
-          else onAddPart(kind, effectiveParams);
+        role="button"
+        tabIndex={0}
+        aria-label={label}
+        onPointerDown={startPlacement}
+        onKeyDown={event => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          startPlacement();
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
