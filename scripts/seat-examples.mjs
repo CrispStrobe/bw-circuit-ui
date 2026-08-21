@@ -319,6 +319,17 @@ function seatExample(id) {
         if (!candidates) continue;
         const declared = new Set(dev.terminals || []);
         const physical = new Set((sidecarByKind.get(dev.kind)?.terminals || []).map(t => t.name));
+        // Keep generated JSON self-describing: a floating Uno/Mega cannot
+        // borrow a seat's leadMap, so every logical wire endpoint must also
+        // be present in its terminal surface. Previously the power pass
+        // replaced an omitted list with only 5v/gnd and left e.g. D2 wires
+        // visually attached to a pin the part did not advertise.
+        for (const w of keptWires) for (const side of ['from', 'to']) {
+            const ep = norm(w, side);
+            if (ep.part !== dev.id || !physical.has(ep.terminal) || declared.has(ep.terminal)) continue;
+            dev.terminals = [...(dev.terminals || []), ep.terminal];
+            declared.add(ep.terminal);
+        }
         for (const supplyKind of ['vcc', 'gnd']) {
             const sym = symbols.find(q => q.kind === supplyKind);
             const alreadyPowered = candidates[supplyKind].some(name => endpointUsed(dev.id, name));

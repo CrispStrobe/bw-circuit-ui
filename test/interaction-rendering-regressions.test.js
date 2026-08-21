@@ -66,4 +66,6 @@ test('generated Nano and Pico benches use one canonical supply and ground feed',
   assert.match(seatGeneratorSource, /arduino_nano: \{ vcc: '5v', gnd: 'gnd' \}/);
   assert.match(seatGeneratorSource, /pi_pico: \{ vcc: 'vbus', gnd: 'gnd_1' \}/);
   assert.match(seatGeneratorSource, /if \(devPower && t !== \(isTop \? devPower\.vcc : devPower\.gnd\)\) continue/);
+  assert.match(seatGeneratorSource, /if \(ep\.part !== dev\.id \|\| !physical\.has\(ep\.terminal\)/,
+    'floating development boards advertise every wired signal endpoint');
 });
