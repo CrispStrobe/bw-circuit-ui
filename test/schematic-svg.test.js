@@ -105,6 +105,11 @@ describe('headless SVG', () => {
         assert.equal(typeof globalThis.document, 'undefined',
             'if a DOM exists here the test proves nothing — this must run headless');
     });
+
+    test('reports mechanical legibility invariants', () => {
+        assert.deepEqual(r.wireSymbolCrossings, []);
+        assert.deepEqual(r.symbolOverlaps, []);
+    });
 });
 
 describe('nets from wires', () => {

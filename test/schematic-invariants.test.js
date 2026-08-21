@@ -74,7 +74,8 @@ test('pure battery circuit: no clipping, no dangling nets', () => {
     ],
   });
   const proj = checkInvariants(c.parts, c.board.getNets(), 'battery');
-  assert.equal(proj.wires.length, 3, 'three nets drawn');
+  assert.equal(new Set([...proj.wires.map(w => w.netId), ...proj.netLabels.map(l => l.netId)]).size,
+    3, 'three nets drawn directly or with repeated labels');
 });
 
 test('multi-pin IC (555): pins stay on the box, all wired ends meet pins', () => {

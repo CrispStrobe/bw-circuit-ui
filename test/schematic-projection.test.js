@@ -38,14 +38,28 @@ test('projection: every multi-pin net routes and touches its pins', () => {
   const nets = c.board.getNets();
   const proj = projectSchematic(c.parts, nets);
   // The seated chain: bat.pos—R.a and R.b—LED.anode and LED.cathode—bat.neg
-  // = 3 electrical nets, all with 2+ pins → 3 routed wires.
-  assert.equal(proj.wires.length, 3, JSON.stringify(proj.wires.map(w => w.netId)));
+  // = 3 electrical nets. A route that would cross a component is represented
+  // by repeated net-label stubs rather than a misleading line through it.
+  const routedIds = new Set([
+    ...proj.wires.map(w => w.netId), ...proj.netLabels.map(l => l.netId),
+  ]);
+  assert.equal(routedIds.size, 3, JSON.stringify([...routedIds]));
   for (const w of proj.wires) {
     const pinPts = proj.symbols.flatMap(s => s.pins).filter(p => p.netId === w.netId);
     assert.ok(pinPts.length >= 2);
     for (const p of pinPts) {
       const touched = w.stubs.some(seg => seg[0].x === p.x && seg[0].y === p.y);
       assert.ok(touched, `wire ${w.netId} touches pin at ${p.x},${p.y}`);
+    }
+  }
+  for (const netId of routedIds) {
+    const pinPts = proj.symbols.flatMap(s => s.pins).filter(p => p.netId === netId);
+    for (const p of pinPts) {
+      const directlyTouched = proj.wires.filter(w => w.netId === netId)
+        .some(w => w.stubs.some(seg => seg[0].x === p.x && seg[0].y === p.y));
+      const labelTouched = proj.netLabels.filter(l => l.netId === netId)
+        .some(l => l.x1 === p.x && l.y1 === p.y);
+      assert.ok(directlyTouched || labelTouched, `net ${netId} touches pin at ${p.x},${p.y}`);
     }
   }
 });
@@ -170,5 +184,48 @@ test('tall multi-pin packages never overlap vertically in a column', () => {
   for (let i = 1; i < chips.length; i++) {
     const a = chips[i - 1], b = chips[i];
     assert.ok(b.y - a.y >= 190, `${a.id} and ${b.id} are vertically separated`);
+  }
+});
+
+test('transistors and potentiometers use the terminals drawn by their symbols', () => {
+  const parts = [
+    {id: 'q', kind: 'npn', terminals: ['base', 'collector', 'emitter']},
+    {id: 'pot', kind: 'potentiometer', terminals: ['a', 'b', 'wiper']},
+  ];
+  const p = projectSchematic(parts, [
+    {id: 'n1', terminals: [{part: 'q', terminal: 'base'}, {part: 'pot', terminal: 'a'}]},
+    {id: 'n2', terminals: [{part: 'q', terminal: 'collector'}, {part: 'pot', terminal: 'b'}]},
+    {id: 'n3', terminals: [{part: 'q', terminal: 'emitter'}, {part: 'pot', terminal: 'wiper'}]},
+  ]);
+  const q = p.symbols.find(s => s.id === 'q');
+  const pot = p.symbols.find(s => s.id === 'pot');
+  const local = (s, name) => {
+    const pin = s.pins.find(x => x.name === name);
+    return {x: pin.x - s.x, y: pin.y - s.y, side: pin.side};
+  };
+  assert.deepEqual(local(q, 'base'), {x: -30, y: 0, side: 'left'});
+  assert.deepEqual(local(q, 'collector'), {x: 30, y: -12, side: 'right'});
+  assert.deepEqual(local(q, 'emitter'), {x: 30, y: 12, side: 'right'});
+  assert.deepEqual(local(pot, 'wiper'), {x: 0, y: -30, side: 'top'});
+});
+
+test('a route through a foreign symbol is replaced by net labels', () => {
+  const parts = [
+    {id: 'src', kind: 'vcc', terminals: ['vcc']},
+    {id: 'middle', kind: 'resistor', terminals: ['a', 'b']},
+    {id: 'sink', kind: 'led', terminals: ['anode', 'cathode']},
+  ];
+  const nets = [
+    {id: 'crossing', terminals: [
+      {part: 'src', terminal: 'vcc'}, {part: 'sink', terminal: 'anode'},
+    ]},
+    {id: 'places-middle', terminals: [
+      {part: 'src', terminal: 'vcc'}, {part: 'middle', terminal: 'a'},
+    ]},
+  ];
+  const p = projectSchematic(parts, nets);
+  for (const collision of p.collisionRoutedNets) {
+    assert.ok(!p.wires.some(w => w.netId === collision.netId));
+    assert.ok(p.netLabels.some(l => l.netId === collision.netId));
   }
 });

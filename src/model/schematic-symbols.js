@@ -47,6 +47,9 @@
  * @property {Array<string|{d:string,w?:number,fill?:string}>} paths
  * @property {Array<{cx:number,cy:number,r:number,fill?:string}>} [circles]
  * @property {Array<{x:number,y:number,s:string,size?:number}>} [texts] static glyphs
+ * @property {Record<string,{x:number,y:number,side:'left'|'right'|'top'|'bottom'}>} [anchors]
+ *   terminal-specific connection points for symbols whose pins are not a
+ *   simple left/right pair
  * @property {'ohms'|'farads'|'volts'} [value] which param renders as a value label
  */
 
@@ -55,6 +58,18 @@ const SPDT = {
   paths: ['M -30 0 L -10 0', 'M 10 -8 L 30 -8 M 10 6 L 30 6', 'M -10 0 L 9 -8'],
   circles: [{ cx: -10, cy: 0, r: 2 }, { cx: 10, cy: -8, r: 2 }, { cx: 10, cy: 6, r: 2 }],
 };
+
+/** Connection aliases shared by bipolar and field-effect transistors. */
+function transistorAnchors(control, upper, lower) {
+  return {
+    [control]: { x: -30, y: 0, side: 'left' },
+    [control[0]]: { x: -30, y: 0, side: 'left' },
+    [upper]: { x: 30, y: -12, side: 'right' },
+    [upper[0]]: { x: 30, y: -12, side: 'right' },
+    [lower]: { x: 30, y: 12, side: 'right' },
+    [lower[0]]: { x: 30, y: 12, side: 'right' },
+  };
+}
 
 /**
  * A seven-segment digit outline, drawn as the figure-8 every datasheet uses.
@@ -112,7 +127,16 @@ export const SYMBOLS = {
   resistor:      { paths: [ZIGZAG], value: 'ohms' },
   ldr:           { paths: [ZIGZAG], value: 'ohms' },
   ntc:           { paths: [ZIGZAG], value: 'ohms' },
-  potentiometer: { paths: [ZIGZAG, 'M 0 -16 L 0 -6 M -4 -10 L 0 -6 L 4 -10'] },
+  potentiometer: { paths: [ZIGZAG, 'M 0 -30 L 0 -6 M -4 -10 L 0 -6 L 4 -10'],
+    anchors: {
+      a: { x: -30, y: 0, side: 'left' },
+      b: { x: 30, y: 0, side: 'right' },
+      wiper: { x: 0, y: -30, side: 'top' },
+      w: { x: 0, y: -30, side: 'top' },
+      '1': { x: -30, y: 0, side: 'left' },
+      '2': { x: 0, y: -30, side: 'top' },
+      '3': { x: 30, y: 0, side: 'right' },
+    } },
   capacitor:     { paths: ['M -30 0 L -4 0 M 4 0 L 30 0', 'M -4 -10 L -4 10 M 4 -10 L 4 10'], value: 'farads' },
   // Electrolytic: one straight plate, one curved, and a + by the anode.
   polarized_cap: { paths: ['M -30 0 L -4 0 M 6 0 L 30 0', 'M -4 -10 L -4 10', 'M 10 -10 Q 4 0 10 10'],
@@ -170,24 +194,28 @@ export const SYMBOLS = {
   // of it for P, and is the only difference between the two.
   nmos:          { paths: ['M -30 0 L -16 0', 'M -16 -11 L -16 11',
     { d: 'M -9 -12 L -9 -5 M -9 -3 L -9 3 M -9 5 L -9 12', w: 1.8 },
-    'M -9 -9 L 10 -9 L 10 -20', 'M -9 9 L 10 9 L 10 20', 'M -1 0 L 10 0 L 10 9',
+    'M -9 -9 L 10 -9 L 30 -12', 'M -9 9 L 10 9 L 30 12', 'M -1 0 L 10 0 L 10 9',
     { d: 'M -9 0 L -1 -4 L -1 4 Z', fill: 'currentColor' }],
-    circles: [{ cx: 0, cy: 0, r: 16 }] },
+    circles: [{ cx: 0, cy: 0, r: 16 }],
+    anchors: transistorAnchors('gate', 'drain', 'source') },
   pmos:          { paths: ['M -30 0 L -16 0', 'M -16 -11 L -16 11',
     { d: 'M -9 -12 L -9 -5 M -9 -3 L -9 3 M -9 5 L -9 12', w: 1.8 },
-    'M -9 -9 L 10 -9 L 10 -20', 'M -9 9 L 10 9 L 10 20', 'M -1 0 L 10 0 L 10 9',
+    'M -9 -9 L 10 -9 L 30 -12', 'M -9 9 L 10 9 L 30 12', 'M -1 0 L 10 0 L 10 9',
     { d: 'M -1 0 L -9 -4 L -9 4 Z', fill: 'currentColor' }],
-    circles: [{ cx: 0, cy: 0, r: 16 }] },
+    circles: [{ cx: 0, cy: 0, r: 16 }],
+    anchors: transistorAnchors('gate', 'drain', 'source') },
   // Bipolars. Base bar, collector up, emitter down -- and an ARROWHEAD on the
   // emitter, which is the only thing distinguishing the two. Both kinds drew
   // the identical shape until it was added, so a schematic could not say
   // whether it held an NPN or a PNP.
-  npn:           { paths: ['M -30 0 L -6 0 M -6 -9 L -6 9', 'M -6 -3 L 8 -10 L 8 -18 M -6 3 L 8 10 L 8 18',
+  npn:           { paths: ['M -30 0 L -6 0 M -6 -9 L -6 9', 'M -6 -3 L 8 -10 L 30 -12 M -6 3 L 8 10 L 30 12',
     { d: 'M 3 5 L 8 10 L 2 11 Z', fill: 'currentColor' }],
-    circles: [{ cx: 0, cy: 0, r: 13 }] },
-  pnp:           { paths: ['M -30 0 L -6 0 M -6 -9 L -6 9', 'M -6 -3 L 8 -10 L 8 -18 M -6 3 L 8 10 L 8 18',
+    circles: [{ cx: 0, cy: 0, r: 13 }],
+    anchors: transistorAnchors('base', 'collector', 'emitter') },
+  pnp:           { paths: ['M -30 0 L -6 0 M -6 -9 L -6 9', 'M -6 -3 L 8 -10 L 30 -12 M -6 3 L 8 10 L 30 12',
     { d: 'M -1 2 L -6 3 L 0 8 Z', fill: 'currentColor' }],
-    circles: [{ cx: 0, cy: 0, r: 13 }] },
+    circles: [{ cx: 0, cy: 0, r: 13 }],
+    anchors: transistorAnchors('base', 'collector', 'emitter') },
   seven_segment: sevenSeg(1),
   seven_seg_3:   sevenSeg(3),
   seven_seg_4:   sevenSeg(4),

@@ -15,6 +15,8 @@
  * @module
  */
 
+import { shapeFor } from './schematic-symbols.js';
+
 const COL_W = 150;
 const ROW_H = 110;
 const MARGIN_X = 70;
@@ -170,7 +172,18 @@ export function projectSchematic(parts, nets) {
     });
     if (terms.length === 0) terms = allTerms.slice(0, 2); // disconnected part: keep its shape
     const perSide = Math.ceil(terms.length / 2);
+    const art = shapeFor(p.kind, p.params ?? {});
     const pins = terms.map((name, i) => {
+      const anchor = art?.anchors?.[String(name).toLowerCase()];
+      if (anchor) {
+        return {
+          name,
+          netId: findPinNet(nets, p.id, name),
+          side: anchor.side,
+          x: x + anchor.x,
+          y: y + anchor.y,
+        };
+      }
       let side, offset;
       if (terms.length <= 2) {
         side = i === 0 ? 'left' : 'right';
@@ -258,19 +271,54 @@ export function projectSchematic(parts, nets) {
     if (terms.some(t => partById.get(t.part)?.kind === 'vcc' || /^(vcc|5v|3v3)$/i.test(t.terminal))) return 'VCC';
     return `N${String(index + 1).padStart(2, '0')}`;
   };
+  const labelPin = (r, text, pin) => {
+    const vectors = {
+      left: [-1, 0, 'end'], right: [1, 0, 'start'],
+      top: [0, -1, 'middle'], bottom: [0, 1, 'middle'],
+    };
+    const [dx, dy, anchor] = vectors[pin.side] || vectors.right;
+    netLabels.push({netId: r.netId, text,
+      x1: pin.x, y1: pin.y, x2: pin.x + dx * 13, y2: pin.y + dy * 13,
+      x: pin.x + dx * 16, y: pin.y + dy * 16 + (dy === 0 ? 2.5 : (dy < 0 ? -2 : 7)),
+      anchor});
+  };
+  const bodyBounds = (s) => {
+    const art = shapeFor(s.kind, s.params);
+    if (art) return {left: s.x - 25, right: s.x + 25, top: s.y - 22, bottom: s.y + 22};
+    const halfH = Math.max(20, ((Math.max(1, s.pinsPerSide) - 1) * PIN_PITCH) / 2 + 16);
+    return {left: s.x - 26, right: s.x + 26, top: s.y - halfH, bottom: s.y + halfH};
+  };
+  const segmentCrossesBody = (a, b, box) => {
+    if (a.y === b.y) {
+      return a.y > box.top && a.y < box.bottom &&
+        Math.max(a.x, b.x) > box.left && Math.min(a.x, b.x) < box.right;
+    }
+    if (a.x === b.x) {
+      return a.x > box.left && a.x < box.right &&
+        Math.max(a.y, b.y) > box.top && Math.min(a.y, b.y) < box.bottom;
+    }
+    return false;
+  };
+  const routeCollisions = (route) => {
+    const segments = [
+      [{x: route.trunk.x, y: route.trunk.y1}, {x: route.trunk.x, y: route.trunk.y2}],
+      ...route.stubs,
+    ];
+    const hits = [];
+    for (const s of symbols) {
+      const box = bodyBounds(s);
+      if (segments.some(([a, b]) => segmentCrossesBody(a, b, box))) hits.push(s.id);
+    }
+    return hits;
+  };
+  const collisionRoutedNets = [];
 
   // Second pass: spread the nets of each gap across its usable band.
   const BAND = COL_W - 2 * PIN_HALF - 24; // free space between column pin tips
   for (const [routeIndex, r] of routed.entries()) {
     if (labelledRouting) {
       const text = netName(r, routeIndex);
-      for (const pin of r.pins) {
-        const direction = pin.side === 'left' ? -1 : 1;
-        netLabels.push({netId: r.netId, text,
-          x1: pin.x, y1: pin.y, x2: pin.x + direction * 13, y2: pin.y,
-          x: pin.x + direction * 16, y: pin.y + 2.5,
-          anchor: direction < 0 ? 'end' : 'start'});
-      }
+      for (const pin of r.pins) labelPin(r, text, pin);
       continue;
     }
     const mates = gapUse.get(r.gap);
@@ -283,13 +331,23 @@ export function projectSchematic(parts, nets) {
     const points = [];
     for (const pin of r.pins.sort((a, b) => a.y - b.y || a.x - b.x)) {
       points.push([{ x: pin.x, y: pin.y }, { x: trunkX, y: pin.y }]);
-      if (r.pins.length > 2) junctions.push({ x: trunkX, y: pin.y, netId: r.netId });
     }
-    wires.push({
+    const route = {
       netId: r.netId,
       trunk: { x: trunkX, y1: minY, y2: maxY },
       stubs: points,
-    });
+    };
+    const collisions = routeCollisions(route);
+    if (collisions.length) {
+      collisionRoutedNets.push({netId: r.netId, symbols: collisions});
+      const text = netName(r, routeIndex);
+      for (const pin of r.pins) labelPin(r, text, pin);
+      continue;
+    }
+    wires.push(route);
+    if (r.pins.length > 2) {
+      for (const pin of r.pins) junctions.push({ x: trunkX, y: pin.y, netId: r.netId });
+    }
   }
 
   // Canvas bounds from the GEOMETRY, not the grid: multi-pin symbols and
@@ -327,7 +385,7 @@ export function projectSchematic(parts, nets) {
   const width = (maxX - minX) + MARGIN_X * 2;
   const height = (maxY - minY) + MARGIN_Y * 2;
 
-  return { symbols, wires, junctions, netLabels, labelledRouting, width, height };
+  return { symbols, wires, junctions, netLabels, labelledRouting, collisionRoutedNets, width, height };
 }
 
 function findPinNet(nets, partId, terminal) {

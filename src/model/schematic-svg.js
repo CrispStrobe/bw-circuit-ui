@@ -87,6 +87,35 @@ export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts
     return {...part, terminals};
   });
   const p = projectSchematic(normalizedParts, netList);
+  const boundsFor = s => {
+    if (shapeFor(s.kind, s.params || {})) {
+      return {left: s.x - 25, right: s.x + 25, top: s.y - 22, bottom: s.y + 22};
+    }
+    const halfH = Math.max(20, ((Math.max(1, s.pinsPerSide || 1) - 1) * 18) / 2 + 16);
+    return {left: s.x - 26, right: s.x + 26, top: s.y - halfH, bottom: s.y + halfH};
+  };
+  const crosses = (a, b, box) => a.y === b.y
+    ? a.y > box.top && a.y < box.bottom && Math.max(a.x, b.x) > box.left && Math.min(a.x, b.x) < box.right
+    : a.x === b.x && a.x > box.left && a.x < box.right && Math.max(a.y, b.y) > box.top && Math.min(a.y, b.y) < box.bottom;
+  const wireSymbolCrossings = [];
+  for (const wire of p.wires || []) {
+    const segments = [[{x: wire.trunk.x, y: wire.trunk.y1}, {x: wire.trunk.x, y: wire.trunk.y2}], ...(wire.stubs || [])];
+    for (const symbol of p.symbols || []) {
+      if (segments.some(([a, b]) => crosses(a, b, boundsFor(symbol)))) {
+        wireSymbolCrossings.push({netId: wire.netId, symbol: symbol.id});
+      }
+    }
+  }
+  const symbolOverlaps = [];
+  for (let i = 0; i < (p.symbols || []).length; i++) {
+    const a = p.symbols[i], ab = boundsFor(a);
+    for (let j = i + 1; j < p.symbols.length; j++) {
+      const b = p.symbols[j], bb = boundsFor(b);
+      if (ab.left < bb.right && ab.right > bb.left && ab.top < bb.bottom && ab.bottom > bb.top) {
+        symbolOverlaps.push([a.id, b.id]);
+      }
+    }
+  }
   const STROKE = opts.dark ? '#e2e8f0' : '#1e293b';
   const LABEL = opts.dark ? '#94a3b8' : '#64748b';
   const BG = opts.dark ? '#0f172a' : '#ffffff';
@@ -182,5 +211,8 @@ export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts
   // genericKinds is what the PROJECTION actually drew as a box — counting
   // circuit.parts instead would blame kinds the projection never draws at
   // all (breadboards and meters are filtered out before layout).
-  return { svg, symbols: (p.symbols || []).length, generic, genericKinds, width: w, height: h };
+  return { svg, symbols: (p.symbols || []).length, generic, genericKinds,
+    wires: (p.wires || []).length, netLabels: (p.netLabels || []).length,
+    collisionRoutedNets: p.collisionRoutedNets || [], wireSymbolCrossings,
+    symbolOverlaps, width: w, height: h };
 }
