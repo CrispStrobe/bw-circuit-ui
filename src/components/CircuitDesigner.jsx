@@ -521,7 +521,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       return;
     }
 
-    const mcu = parts.find(p => ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(p.kind));
+    const mcu = parts.find(p => ['mcu', 'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico'].includes(p.kind));
     // No MCU is NOT "no simulation": pure circuits (battery+LED, FG+scope,
     // RC charge) need the clock just as much. Only the demo pin script
     // below is MCU-conditional.
@@ -1474,7 +1474,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             Build Machine, then the ASM tab. */}
         {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && !hasRetroCpu && (() => {
           const mcuPart = parts.find(p =>
-            p.kind === 'mcu' || p.kind === 'arduino_uno' || p.kind === 'arduino_nano' || p.kind === 'pi_pico');
+            p.kind === 'mcu' || p.kind === 'arduino_uno' || p.kind === 'arduino_nano' || p.kind === 'arduino_mega' || p.kind === 'pi_pico');
           if (!mcuPart) return null;
           const chipName = mcuPart.kind === 'pi_pico' ? 'Pico (RP2040)'
             : mcuPart.kind === 'arduino_nano' ? 'Arduino Nano'

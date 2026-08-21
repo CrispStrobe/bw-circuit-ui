@@ -25,7 +25,7 @@ import { BreadboardView } from './BreadboardView.jsx';
 import { ledDisplayLevel } from './led-perception.js';
 import { DrcOverlay } from './DrcOverlay.jsx';
 import { useTouch } from '../hooks/useTouch.js';
-import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
+import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver, WokwiArduinoUno, WokwiArduinoNano, WokwiArduinoMega } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
 import ExportNetlistMenu from './ExportNetlistMenu.jsx';
 import ImportCircuitMenu from './ImportCircuitMenu.jsx';
@@ -79,7 +79,7 @@ import { getMeterReading } from '../model/meter-reading.js';
 import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../model/ledcube.js';
 import { getPinFunctionsForPart } from '../model/pin-functions.js';
 import { isBoardEndpoint } from '../model/wire-endpoints.js';
-import { boardGeometry } from '../model/board-geometry.js';
+import { boardTerminalOffsets, boardVisualGeometry } from '../model/board-geometry.js';
 import { dipTerminalPositions, DIP_PIN_PITCH, DIP_ROW_OFFSET } from '../model/dip-geometry.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
@@ -227,15 +227,12 @@ function terminalOffsetsForPart(part) {
     }
     case 'arduino_uno':
     case 'arduino_nano':
+    case 'arduino_mega':
     case 'pi_pico': {
       const sc = getSidecar(part.kind);
-      if (sc?.terminals?.length) {
-        const S = boardGeometry(sc)?.scale || 1;
-        const offsets = {};
-        for (const t of sc.terminals) {
-          offsets[t.name] = r((t.x - sc.w / 2) * S, (t.y - sc.h / 2) * S);
-        }
-        return offsets;
+      const offsets = boardTerminalOffsets(part.kind, sc);
+      if (Object.keys(offsets).length) {
+        return Object.fromEntries(Object.entries(offsets).map(([name, p]) => [name, r(p.dx, p.dy)]));
       }
       return { a: r(-15, 0), b: r(15, 0) };
     }
@@ -455,73 +452,69 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       }
       case 'arduino_uno':
       case 'arduino_nano':
+      case 'arduino_mega':
       case 'pi_pico': {
-        // Board sidecars provide the audited dimensions and pin coordinates.
-        // Render HORIZONTALLY (long edge = width). Sidecars that are
-        // taller than wide (Nano, Pico) get coordinates transposed x↔y;
-        // sidecars that are already landscape (Uno) render as-is.
         const sc = getSidecar(kind);
-        const geometry = boardGeometry(sc);
-        const needsTranspose = geometry && geometry.h > geometry.w;
-        const W = needsTranspose ? (geometry?.h ?? 400) : (geometry?.w ?? 450);
-        const H = needsTranspose ? (geometry?.w ?? 150) : (geometry?.h ?? 300);
+        const geometry = boardVisualGeometry(kind, sc);
+        const W = geometry?.w ?? 400;
+        const H = geometry?.h ?? 150;
         const boardColor = kind === 'pi_pico' ? '#7b2cbf' : '#087ea4';
-        const title = kind === 'arduino_uno' ? 'ARDUINO UNO' : kind === 'arduino_nano' ? 'ARDUINO NANO' : 'RASPBERRY PI PICO';
+        const title = kind === 'arduino_uno' ? 'ARDUINO UNO' : kind === 'arduino_nano' ? 'ARDUINO NANO' : kind === 'arduino_mega' ? 'ARDUINO MEGA' : 'RASPBERRY PI PICO';
         const subtitle = kind === 'pi_pico' ? 'RP2040 · 3V3' : kind === 'arduino_mega' ? 'ATmega2560 · 5V' : 'ATmega328P · 5V';
-        const S = geometry?.scale || 1;
-        const pin = needsTranspose
-          ? (t) => ({ x: t.y * S - W / 2, y: t.x * S - H / 2 })
-          : (t) => ({ x: t.x * S - W / 2, y: t.y * S - H / 2 });
-        // When seated on a breadboard, scale the body down to match the
-        // hole span. Footprint leads span (maxCol) gaps × BB_PITCH wide.
-        let seatK = 1;
-        if (part.seat && part._seatTerminals) {
-          const terms = Object.values(part._seatTerminals);
-          if (terms.length >= 2) {
-            const xs = terms.map(t => t.x);
-            const worldSpan = Math.max(...xs) - Math.min(...xs);
-            if (worldSpan > 0 && W > 0) seatK = worldSpan / W;
-          }
-        }
-        const seatXform = seatK !== 1 ? ` scale(${seatK.toFixed(4)})` : '';
+        const offsets = boardTerminalOffsets(kind, sc);
+        const WokwiFace = kind === 'arduino_uno' ? WokwiArduinoUno
+          : kind === 'arduino_nano' ? WokwiArduinoNano
+          : kind === 'arduino_mega' ? WokwiArduinoMega : null;
         return (
-          <g key={id} transform={xform + seatXform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
+            data-board-face={kind} data-board-face-license={WokwiFace ? 'MIT' : 'code'}>
+            {WokwiFace && geometry ? (
+              <foreignObject x={-W / 2} y={-H / 2} width={W} height={H}
+                style={{pointerEvents: 'none', overflow: 'hidden'}}>
+                <div xmlns="http://www.w3.org/1999/xhtml" style={{
+                  width: geometry.nativeW, height: geometry.nativeH,
+                  transform: `scale(${geometry.wokwiScale})`, transformOrigin: '0 0',
+                }}>
+                  <WokwiFace style={{display: 'block'}} />
+                </div>
+              </foreignObject>
+            ) : null}
             <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={5}
-              fill={boardColor} stroke={selStroke || '#164e63'} strokeWidth={isSelected ? 3 : 1.5} />
-            <rect x={-W / 2 + 8} y={-H / 2 + 8} width={Math.max(20, W - 16)} height={Math.max(20, H - 16)}
-              rx={3} fill="#0b6b8a" opacity={0.35} />
-            <text x={0} y={-4} textAnchor="middle"
+              fill={WokwiFace ? 'transparent' : boardColor} stroke={selStroke || '#164e63'} strokeWidth={isSelected ? 3 : 1.5} />
+            {!WokwiFace && <>
+              <rect x={-W / 2 + 8} y={-H / 2 + 8} width={Math.max(20, W - 16)} height={Math.max(20, H - 16)}
+                rx={3} fill="#0b6b8a" opacity={0.35} />
+              <text x={0} y={-4} textAnchor="middle"
               fill="#dff6ff" fontSize={kind === 'pi_pico' ? 5.5 : 7} fontFamily="monospace" fontWeight="bold">
-              {title}
-            </text>
-            <text x={0} y={8} textAnchor="middle"
-              fill="#a9dbea" fontSize={5} fontFamily="monospace">
-              {subtitle}
-            </text>
-            {sc?.terminals?.map(t => {
-              const p = pin(t);
-              if (needsTranspose) {
-                const topSide = p.y < 0;
+                {title}
+              </text>
+              <text x={0} y={8} textAnchor="middle" fill="#a9dbea" fontSize={5} fontFamily="monospace">
+                {subtitle}
+              </text>
+            </>}
+            {!WokwiFace && Object.entries(offsets).map(([name, p]) => {
+              if (geometry?.transpose) {
+                const topSide = p.dy < 0;
                 return (
-                  <g key={t.name}>
-                    <rect x={p.x - 3} y={p.y - 1.5} width={6} height={3}
+                  <g key={name}>
+                    <rect x={p.dx - 3} y={p.dy - 1.5} width={6} height={3}
                       fill="#d8dee4" stroke="#637381" strokeWidth={0.3} />
-                    <text x={p.x} y={p.y + (topSide ? -5 : 8)}
+                    <text x={p.dx} y={p.dy + (topSide ? -5 : 8)}
                       textAnchor="middle"
                       fill="#d6eef5" fontSize={kind === 'pi_pico' ? 3.2 : 3.8}
-                      fontFamily="monospace">{t.name.toUpperCase()}</text>
+                      fontFamily="monospace">{name.toUpperCase()}</text>
                   </g>
                 );
               }
-              const leftSide = p.x < 0;
+              const leftSide = p.dx < 0;
               return (
-                <g key={t.name}>
-                  <rect x={p.x - 1.5} y={p.y - 3} width={3} height={6}
+                <g key={name}>
+                  <rect x={p.dx - 1.5} y={p.dy - 3} width={3} height={6}
                     fill="#d8dee4" stroke="#637381" strokeWidth={0.3} />
-                  <text x={p.x + (leftSide ? 5 : -5)} y={p.y + 1.5}
+                  <text x={p.dx + (leftSide ? 5 : -5)} y={p.dy + 1.5}
                     textAnchor={leftSide ? 'start' : 'end'}
                     fill="#d6eef5" fontSize={4}
-                    fontFamily="monospace">{t.name.toUpperCase()}</text>
+                    fontFamily="monospace">{name.toUpperCase()}</text>
                 </g>
               );
             })}
@@ -4131,7 +4124,7 @@ export function BoardCanvas({
             </g>
           )}
 
-          {parts.filter(q => q.seat && ['mcu', 'arduino_uno', 'arduino_nano', 'pi_pico'].includes(q.kind)).map(q => {
+          {parts.filter(q => q.seat && ['mcu', 'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico'].includes(q.kind)).map(q => {
             // Small checkmark badge at the MCU body's top-right corner.
             // The old 84×16 pill covered pins on crowded benches; this is
             // 14px and stays inside the body outline.

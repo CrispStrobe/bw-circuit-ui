@@ -17,6 +17,9 @@ import { PushbuttonElement } from '@wokwi/elements/dist/esm/pushbutton-element.j
 import { SevenSegmentElement } from '@wokwi/elements/dist/esm/7segment-element.js';
 import { LCD1602Element } from '@wokwi/elements/dist/esm/lcd1602-element.js';
 import { IRReceiverElement } from '@wokwi/elements/dist/esm/ir-receiver-element.js';
+import { ArduinoUnoElement } from '@wokwi/elements/dist/esm/arduino-uno-element.js';
+import { ArduinoNanoElement } from '@wokwi/elements/dist/esm/arduino-nano-element.js';
+import { ArduinoMegaElement } from '@wokwi/elements/dist/esm/arduino-mega-element.js';
 
 export const WokwiLed = createComponent({
   tagName: 'wokwi-led',
@@ -71,4 +74,16 @@ export const WokwiIrReceiver = createComponent({
   tagName: 'wokwi-ir-receiver',
   elementClass: IRReceiverElement,
   react: React,
+});
+
+export const WokwiArduinoUno = createComponent({
+  tagName: 'wokwi-arduino-uno', elementClass: ArduinoUnoElement, react: React,
+});
+
+export const WokwiArduinoNano = createComponent({
+  tagName: 'wokwi-arduino-nano', elementClass: ArduinoNanoElement, react: React,
+});
+
+export const WokwiArduinoMega = createComponent({
+  tagName: 'wokwi-arduino-mega', elementClass: ArduinoMegaElement, react: React,
 });

@@ -29,6 +29,7 @@ import { FOOTPRINTS, computeLeadMap, straddleRefRow } from '../src/model/footpri
 import { holeWorldPos } from '../src/interaction/seat-geometry.js';
 import { BreadboardModel } from '../src/model/breadboard.js';
 import { registerSidecar } from '../src/model/parts-registry.js';
+import { layoutFloatingParts } from '../src/model/board-geometry.js';
 
 // The FOOTPRINTS proxy falls back to sidecar-declared footprints (the
 // matrix8x8 seats that way); in the app the loader registers them —
@@ -282,9 +283,49 @@ function seatExample(id) {
             railsUsed.add(`${bId}:${railRow}`);
         }
     }
+    const symbols = c.parts.filter(q => q.kind === 'vcc' || q.kind === 'gnd');
+
+    // A floating development board is not breadboard-seated, so its actual
+    // supply pins never pass through the rail-jumper loop above. Generated
+    // benches must still power the board itself, not merely its peripherals.
+    // Append omitted supply terminals (program-derived benches often list
+    // only GPIOs), then connect the canonical symbols exactly once.
+    const DEV_POWER = {
+        arduino_uno: { vcc: ['5v'], gnd: ['gnd2', 'gnd3', 'gnd'] },
+        arduino_nano: { vcc: ['5v'], gnd: ['gnd', 'gnd2'] },
+        arduino_mega: { vcc: ['5v'], gnd: ['gnd2', 'gnd3', 'gnd'] },
+        pi_pico: { vcc: ['vbus', 'vsys'], gnd: ['gnd_1', 'gnd_2', 'gnd_3', 'gnd_4', 'gnd_5'] },
+    };
+    const endpointUsed = (partId, terminal) => keptWires.some(w => {
+        const F = norm(w, 'from'); const T = norm(w, 'to');
+        return (F.part === partId && F.terminal === terminal) ||
+            (T.part === partId && T.terminal === terminal);
+    });
+    for (const dev of floating) {
+        const candidates = DEV_POWER[dev.kind];
+        if (!candidates) continue;
+        const declared = new Set(dev.terminals || []);
+        const physical = new Set((sidecarByKind.get(dev.kind)?.terminals || []).map(t => t.name));
+        for (const supplyKind of ['vcc', 'gnd']) {
+            const sym = symbols.find(q => q.kind === supplyKind);
+            const alreadyPowered = candidates[supplyKind].some(name => endpointUsed(dev.id, name));
+            const terminal = candidates[supplyKind].find(name => physical.has(name));
+            if (!sym || !terminal || alreadyPowered) continue;
+            if (!declared.has(terminal)) {
+                dev.terminals = [...(dev.terminals || []), terminal];
+                declared.add(terminal);
+            }
+            keptWires.push({
+                from: sym.id, fromTerminal: supplyKind,
+                to: dev.id, toTerminal: terminal,
+                color: supplyKind === 'vcc' ? 'red' : 'black',
+                genPower: true,
+            });
+        }
+    }
+
     // Symbols feed the rails they serve. genPower marks these wires so a
     // --reseat run can strip and regenerate them.
-    const symbols = c.parts.filter(q => q.kind === 'vcc' || q.kind === 'gnd');
     for (const sym of symbols) {
         const railRow = sym.kind === 'vcc' ? 't+' : 'b-';
         for (const b2 of boards) {
@@ -304,31 +345,15 @@ function seatExample(id) {
         }
     }
 
-    // Floating parts park ABOVE the first board, spaced — always. Keeping
-    // an original x/y sounded respectful and put floats ON TOP of the
-    // board that did not exist when those coordinates were authored
-    // (owner screenshot: an LED column through the middle of the build).
-    // Spacing follows each part's REAL width from its sidecar: the flat
-    // 140-unit step parked the next float inside an Arduino Mega's 340-
-    // unit body, and the overlapped Uno could barely be clicked, let
-    // alone selected and moved (owner report, 2026-08-17). Wide dev
-    // boards therefore sit NEXT TO the bench, never on it: rows wrap
-    // before a float would cross the board's left edge... which is at
-    // x≈45, so in practice they wrap into clear rows above the board.
-    const boardTop = 330 - 310 / 2;   // first board's top edge in world units
-    const widthOfFloat = (part) => {
-        const sc = sidecarByKind.get(part.kind);
-        return (sc && sc.w) ? sc.w : 60;
-    };
-    const MARGIN = 40;
-    let fx = 80, fy = Math.min(60, boardTop - 100), rowH = 0;
-    for (const part of floating) {
-        const w = widthOfFloat(part);
-        if (fx + w > 1000 && fx > 80) { fx = 80; fy -= rowH + MARGIN; rowH = 0; }
-        part.x = fx; part.y = fy;
-        fx += w + MARGIN;
-        rowH = Math.max(rowH, (sidecarByKind.get(part.kind)?.h) || 60);
-    }
+    // Floating parts park in body-aware rows ABOVE the first board. This
+    // uses the exact same physical board geometry as rendering and hit-test;
+    // x/y are centres, not mistaken left edges.
+    const floatPositions = layoutFloatingParts(
+        floating,
+        kind => sidecarByKind.get(kind),
+        { boardTop: 330 - 310 / 2, left: 40, right: 1000, gap: 40 },
+    );
+    for (const part of floating) Object.assign(part, floatPositions.get(part.id));
 
     // Boards go to the FRONT of the parts array: every renderer that
     // paints in array order then has the substrate below the parts.

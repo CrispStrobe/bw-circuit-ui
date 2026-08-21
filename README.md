@@ -142,7 +142,7 @@ Measured by `vite build` at commit `2d6f617`.
 | Package | Licence | Role |
 |---------|---------|------|
 | react, react-dom | MIT | peer (host provides) |
-| @wokwi/elements | MIT | runtime — LED, resistor, pot, buzzer, button, 7-seg, LCD, IR |
+| @wokwi/elements | MIT | runtime — Arduino Uno/Nano/Mega faces, LED, resistor, pot, buzzer, button, 7-seg, LCD, IR |
 | lit, @lit/react | BSD-3-Clause | runtime — React wrappers for wokwi web components |
 | vite | MIT | dev only |
 | playwright | Apache-2.0 | dev only — interaction gate |
