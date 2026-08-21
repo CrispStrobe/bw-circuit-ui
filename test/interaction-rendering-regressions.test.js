@@ -9,6 +9,7 @@ import { runDrc } from '../src/model/drc.js';
 const canvasSource = readFileSync(new URL('../src/components/BoardCanvas.jsx', import.meta.url), 'utf8');
 const breadboardSource = readFileSync(new URL('../src/components/BreadboardView.jsx', import.meta.url), 'utf8');
 const designerSource = readFileSync(new URL('../src/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
+const seatGeneratorSource = readFileSync(new URL('../scripts/seat-examples.mjs', import.meta.url), 'utf8');
 
 test('placement bounds preserve full, half, and mini breadboard dimensions', () => {
   const bounds = size => partBounds({ kind: 'breadboard', x: 0, y: 0, params: { size } });
@@ -59,4 +60,10 @@ test('battery positive directly wired to negative is a supply-short warning', ()
   const battery = circuit.addPart('vsource', { variant: '9v', volts: 9 }, 0, 0);
   circuit.addWire(battery.id, 'pos', battery.id, 'neg');
   assert.ok(runDrc(circuit, circuit.board).some(w => w.rule === 'supply-short'));
+});
+
+test('generated Nano and Pico benches use one canonical supply and ground feed', () => {
+  assert.match(seatGeneratorSource, /arduino_nano: \{ vcc: '5v', gnd: 'gnd' \}/);
+  assert.match(seatGeneratorSource, /pi_pico: \{ vcc: 'vbus', gnd: 'gnd_1' \}/);
+  assert.match(seatGeneratorSource, /if \(devPower && t !== \(isTop \? devPower\.vcc : devPower\.gnd\)\) continue/);
 });

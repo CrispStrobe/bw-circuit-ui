@@ -253,6 +253,16 @@ function seatExample(id) {
     const POWER_TOP = new Set(['vcc', 'vdd', 'avcc', '5v', '3v3', 'vbus', 'vsys']);
     const POWER_BOT = new Set(['gnd', 'gnd2', 'gnd3', 'vss', 'agnd', 'swd_gnd',
         'gnd_1', 'gnd_2', 'gnd_3', 'gnd_4', 'gnd_5', 'gnd_6', 'gnd_7']);
+    // Breadboard modules expose several supply and ground pads for routing,
+    // but a readable starter bench needs one feed of each polarity, not a
+    // jumper on every equivalent pad. The previous blanket loop produced a
+    // forest of five black and three red drops across every Pico example.
+    // These canonical pins power the whole module; learners may add another
+    // ground locally when their own layout benefits from it.
+    const SEATED_DEV_POWER = {
+        arduino_nano: { vcc: '5v', gnd: 'gnd' },
+        pi_pico: { vcc: 'vbus', gnd: 'gnd_1' },
+    };
     const powered = new Set(); // `${bbId}:${railRow}` that already carry supply
     // A power pin the AUTHOR wired deliberately keeps its wiring: the
     // calculator feeds vsys THROUGH the ON/OFF switch, and the blanket
@@ -270,10 +280,13 @@ function seatExample(id) {
     }
     for (const [pid, lm] of seats) {
         const bId = seatBoard.get(pid).bb.id;
+        const part = c.parts.find(q => q.id === pid);
+        const devPower = SEATED_DEV_POWER[part?.kind];
         for (const [term, hole] of Object.entries(lm)) {
             const t = term.toLowerCase();
             const isTop = POWER_TOP.has(t); const isBot = POWER_BOT.has(t);
             if (!isTop && !isBot) continue;
+            if (devPower && t !== (isTop ? devPower.vcc : devPower.gnd)) continue;
             if (wiredPower.has(`${pid}:${t}`)) continue;
             const railRow = isTop ? 't+' : 'b-';
             const a = freeHole(bId, hole);
