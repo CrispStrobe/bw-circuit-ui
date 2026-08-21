@@ -60,6 +60,7 @@ test('palette placement controls are keyboard-accessible buttons', () => {
 test('owner default keeps instruments collapsed unless debugger or bench needs them', () => {
   assert.match(designerSource, /useState\(!!debuggerOn \|\| !!benchOpen\)/);
   assert.match(designerSource, /if \(debuggerOn \|\| benchOpen\) setRightOpen\(true\)/);
+  assert.match(designerSource, /if \(hasRetroCpu\) setRightOpen\(true\)/);
 });
 
 test('battery positive directly wired to negative is a supply-short warning', () => {

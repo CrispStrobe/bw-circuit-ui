@@ -227,6 +227,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   // Detect retro CPU on the board for the Build Machine action
   const hasRetroCpu = parts.some(p => p.kind === 'w65c02' || p.kind === 'z80');
+  useEffect(() => {
+    // Machine-class examples need Build Machine and their program loader,
+    // both of which live in Instruments. This is a contextual exception to
+    // the owner default; an empty or ordinary Circuit Designer stays closed.
+    if (hasRetroCpu) setRightOpen(true);
+  }, [hasRetroCpu]);
 
   // Build Machine action: run the extractor, show result, boot on success.
   // Extractors come from the engine (injected via setEngine) or via the
