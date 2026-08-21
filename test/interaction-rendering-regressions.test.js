@@ -68,4 +68,6 @@ test('generated Nano and Pico benches use one canonical supply and ground feed',
   assert.match(seatGeneratorSource, /if \(devPower && t !== \(isTop \? devPower\.vcc : devPower\.gnd\)\) continue/);
   assert.match(seatGeneratorSource, /if \(ep\.part !== dev\.id \|\| !physical\.has\(ep\.terminal\)/,
     'floating development boards advertise every wired signal endpoint');
+  assert.match(seatGeneratorSource, /Math\.max\(leadWidthOf\(fp\), Math\.ceil\(footprintOf\(part\)\.w \/ 14\)\)/,
+    'generated benches reserve the rendered body width, not only lead span');
 });

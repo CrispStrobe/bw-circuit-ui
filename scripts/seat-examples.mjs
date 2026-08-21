@@ -30,6 +30,7 @@ import { holeWorldPos } from '../src/interaction/seat-geometry.js';
 import { BreadboardModel } from '../src/model/breadboard.js';
 import { registerSidecar } from '../src/model/parts-registry.js';
 import { layoutFloatingParts } from '../src/model/board-geometry.js';
+import { footprintOf } from '../src/interaction/hittest.js';
 
 // The FOOTPRINTS proxy falls back to sidecar-declared footprints (the
 // matrix8x8 seats that way); in the app the loader registers them —
@@ -55,10 +56,18 @@ if (!dir) { console.error('need --examples <dir>'); process.exit(1); }
 
 const COLORS = ['green', 'blue', 'yellow', 'orange', 'purple'];
 
-function widthOf(fp) {
+function leadWidthOf(fp) {
     let max = 0;
     for (const o of Object.values(fp.leads)) max = Math.max(max, o.dCol);
     return max + 1;
+}
+
+// Packing by lead span alone lets wide bodies overlap even though their pins
+// occupy different holes (motor beside diode, transistor beside resistor).
+// Reserve the larger of electrical span and the exact rendered/hit width.
+function widthOf(part) {
+    const fp = FOOTPRINTS[part.kind];
+    return Math.max(leadWidthOf(fp), Math.ceil(footprintOf(part).w / 14));
 }
 
 function seatExample(id) {
@@ -116,13 +125,13 @@ function seatExample(id) {
     // DIPs claim whole boards before the small parts fill the gaps.
     seatable.sort((a, b) =>
         ((b.kind === 'mcu') - (a.kind === 'mcu')) ||
-        (widthOf(FOOTPRINTS[b.kind]) - widthOf(FOOTPRINTS[a.kind])));
+        (widthOf(b) - widthOf(a)));
     const seats = new Map();        // part id → leadMap
     const seatBoard = new Map();    // part id → board
     let board = openBoard();
     for (const part of seatable) {
         const fp = FOOTPRINTS[part.kind];
-        const w = widthOf(fp);
+        const w = widthOf(part);
         const straddles = !!fp.straddlesGutter;
         // Small flat parts use a tighter gap: a resistor does not overhang
         // its span the way a DIP body does, and +3 gaps are what pushed the
