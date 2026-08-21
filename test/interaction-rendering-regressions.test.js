@@ -70,4 +70,6 @@ test('generated Nano and Pico benches use one canonical supply and ground feed',
     'floating development boards advertise every wired signal endpoint');
   assert.match(seatGeneratorSource, /Math\.max\(leadWidthOf\(fp\), Math\.ceil\(footprintOf\(part\)\.w \/ 14\)\)/,
     'generated benches reserve the rendered body width, not only lead span');
+  assert.match(seatGeneratorSource, /invalidControllersOnly && !c\.parts\.some/,
+    'the migration can target physically unseatable Uno/Mega authored benches safely');
 });

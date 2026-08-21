@@ -52,6 +52,7 @@ const args = process.argv.slice(2);
 const dir = args[args.indexOf('--examples') + 1];
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
 const reseat = args.includes('--reseat');
+const invalidControllersOnly = args.includes('--invalid-controllers-only');
 if (!dir) { console.error('need --examples <dir>'); process.exit(1); }
 
 const COLORS = ['green', 'blue', 'yellow', 'orange', 'purple'];
@@ -75,6 +76,10 @@ function seatExample(id) {
     if (!existsSync(p)) return null;
     const c = JSON.parse(readFileSync(p, 'utf8'));
     if (!Array.isArray(c.parts) || !Array.isArray(c.wires)) return { id, skip: 'format' };
+    if (invalidControllersOnly && !c.parts.some(q =>
+        (q.kind === 'arduino_uno' || q.kind === 'arduino_mega') && q.seat)) {
+        return { id, skip: 'controller-layout-valid' };
+    }
     if (reseat) {
         // CURATED benches are off limits: a board id outside the generator's
         // own bb<N> naming means a human (or the designer) authored this
