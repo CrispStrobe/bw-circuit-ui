@@ -31,9 +31,24 @@ export function netsFromWires(wires) {
     while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); }
     return x;
   };
+  const endpoint = (wire, side) => {
+    const raw = wire[side];
+    const terminal = wire[`${side}Terminal`];
+    if (typeof raw === 'string' && terminal != null) return `${raw} ${terminal}`;
+    if (raw && typeof raw === 'object' && raw.part && raw.terminal) {
+      return `${raw.part} ${raw.terminal}`;
+    }
+    // Breadboard holes need the circuit model's strip resolver. Do not turn
+    // every object endpoint into the same "[object Object] undefined" node:
+    // that merged VCC and GND rails into a fictional short in CLI renders.
+    return null;
+  };
   for (const w of wires || []) {
-    const a = find(w.from + ' ' + w.fromTerminal);
-    const b = find(w.to + ' ' + w.toTerminal);
+    const ak = endpoint(w, 'from');
+    const bk = endpoint(w, 'to');
+    if (!ak || !bk) continue;
+    const a = find(ak);
+    const b = find(bk);
     if (a !== b) parent.set(a, b);
   }
   const groups = new Map();
@@ -55,7 +70,23 @@ export function netsFromWires(wires) {
  */
 export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts = {}) {
   const netList = (nets && nets.length) ? nets : netsFromWires(wires);
-  const p = projectSchematic(parts, netList);
+  // Older gallery circuits omit `part.terminals`; the interactive loader
+  // normalizes them before projection, but a headless renderer has no model
+  // layer to do that work. Infer exactly the terminals the authored nets use
+  // so CLI and UI render the same connections.
+  const normalizedParts = parts.map(part => {
+    if (Array.isArray(part.terminals) && part.terminals.length) return part;
+    const terminals = [];
+    for (const net of netList) {
+      for (const terminal of net.terminals || []) {
+        if (terminal.part === part.id && !terminals.includes(terminal.terminal)) {
+          terminals.push(terminal.terminal);
+        }
+      }
+    }
+    return {...part, terminals};
+  });
+  const p = projectSchematic(normalizedParts, netList);
   const STROKE = opts.dark ? '#e2e8f0' : '#1e293b';
   const LABEL = opts.dark ? '#94a3b8' : '#64748b';
   const BG = opts.dark ? '#0f172a' : '#ffffff';
@@ -64,7 +95,15 @@ export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts
   let generic = 0;
   const genericKinds = [];
   for (const w of p.wires || []) {
-    out.push('<path d="' + esc(w.d || '') + '" fill="none" stroke="' + STROKE + '" stroke-width="1.2"/>');
+    // projectSchematic exposes orthogonal trunk/stub geometry. The original
+    // CLI expected a prebuilt `d` string that the projection has never
+    // returned, producing valid-looking SVG files with every wire omitted.
+    out.push('<g fill="none" stroke="' + STROKE + '" stroke-width="1.2">'
+      + '<line x1="' + w.trunk.x + '" y1="' + w.trunk.y1 + '" x2="'
+      + w.trunk.x + '" y2="' + w.trunk.y2 + '"/>'
+      + (w.stubs || []).map(seg => '<line x1="' + seg[0].x + '" y1="' + seg[0].y
+        + '" x2="' + seg[1].x + '" y2="' + seg[1].y + '"/>').join('')
+      + '</g>');
   }
   for (const j of p.junctions || []) {
     out.push('<circle cx="' + j.x + '" cy="' + j.y + '" r="2.4" fill="' + STROKE + '"/>');

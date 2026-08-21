@@ -74,6 +74,16 @@ export function projectSchematic(parts, nets) {
     cols.get(c).push(p);
   }
   const rowOf = new Map();
+  const layoutCol = new Map();
+  // A graph rank can contain dozens of parallel LEDs, bus devices or display
+  // segments. One unbounded rank column produced 390×3356 schematics which
+  // looked empty at fit scale and were impractical to pan. Preserve rank
+  // order, but wrap large ranks into adjacent visual columns.
+  // Eight also matches common 8-bit buses/LED banks, keeping one logical
+  // bank in one column instead of splitting it 6+2 and making unrelated
+  // horizontal nets appear as a daisy chain.
+  const maxRows = Math.max(8, Math.ceil(Math.sqrt(Math.max(1, electrical.length) * 1.5)));
+  let nextLayoutCol = 0;
   for (const c of [...cols.keys()].sort((a, b) => a - b)) {
     const members = cols.get(c);
     const bary = (p) => {
@@ -86,7 +96,11 @@ export function projectSchematic(parts, nets) {
       return n > 0 ? sum / n : Number.POSITIVE_INFINITY;
     };
     members.sort((a, b) => (bary(a) - bary(b)) || a.id.localeCompare(b.id));
-    members.forEach((p, i) => rowOf.set(p.id, i));
+    members.forEach((p, i) => {
+      layoutCol.set(p.id, nextLayoutCol + Math.floor(i / maxRows));
+      rowOf.set(p.id, i % maxRows);
+    });
+    nextLayoutCol += Math.max(1, Math.ceil(members.length / maxRows));
   }
 
   // Symbols with pin geometry: 2-pin parts run left→right; more pins split
@@ -99,7 +113,7 @@ export function projectSchematic(parts, nets) {
   // "the chip is connected to nothing" (owner screenshots, 2026-08-10).
   const symbols = [];
   for (const p of electrical) {
-    const col = rank.get(p.id);
+    const col = layoutCol.get(p.id);
     const row = rowOf.get(p.id);
     const x = MARGIN_X + col * COL_W;
     const y = MARGIN_Y + row * ROW_H;

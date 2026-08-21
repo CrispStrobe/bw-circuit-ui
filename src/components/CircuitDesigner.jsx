@@ -80,7 +80,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -1015,7 +1015,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       style={{
         display: 'flex',
         gap: '12px',
-        padding: '12px',
+        // The Code-tab portal shares the right pane with Scratch's stage
+        // controls. Keep this first row below the green flag/stop row.
+        padding: embedded ? '56px 12px 12px' : '12px',
         height: '100%',
         minHeight: 0, // allow flex shrinking
         alignItems: 'stretch',
@@ -1177,7 +1179,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             // Simulation controls live in the instrument column. Selecting
             // Sim must reveal that column even in the compact embedded view;
             // otherwise the mode changes but its controls are unreachable.
-            if (nextMode === 'simulate') setRightOpen(true);
+            if (nextMode === 'simulate') {
+              setRightOpen(true);
+              // SIM runs the authored MCU program as well as the circuit.
+              if (onSimulationStart) onSimulationStart();
+            }
           }}
           powered={powered}
           onPowerToggle={next => setPower(typeof next === 'boolean' ? next : !powered)}
@@ -1455,7 +1461,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         )}
         </>)}
         {/* When docked right, show a << button to bring it back to instruments */}
-        {debugDock === 'right' && onDebugDockChange && (debugState || benchOpen || debuggerOn) && (
+        {debugDock === 'right' && onDebugDockChange && (hasMcuPins || debugState || benchOpen || debuggerOn) && (
           <section style={{width: '100%', flex: '0 0 auto', padding: 8, borderRadius: 6,
             background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>

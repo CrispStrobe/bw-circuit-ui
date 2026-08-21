@@ -2773,10 +2773,14 @@ export function BoardCanvas({
   React.useEffect(() => {
     const el = toolbarRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const update = () => setToolbarCramped((el.clientWidth || 999) < 560);
+    let frame = 0;
+    const update = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => setToolbarCramped((el.clientWidth || 999) < 560));
+    };
     const ro = new ResizeObserver(update);
     ro.observe(el); update();
-    return () => ro.disconnect();
+    return () => { ro.disconnect(); cancelAnimationFrame(frame); };
   }, []);
   const [draggingWaypoint, setDraggingWaypoint] = useState(null); // { wireId, index }
 
@@ -3795,7 +3799,7 @@ export function BoardCanvas({
           <button onClick={() => setNoticeOpen(v => !v)} title={statusText} aria-label={statusText} aria-expanded={noticeOpen}
             style={{border: 'none', background: 'transparent', color: /WIRING ONLY/.test(statusText) ? '#f59e0b' : '#ef4444', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 3px'}}>▲</button>
         ) : null}
-        <span style={{ color: '#cbd5e1', flex: 1, minWidth: 40, fontSize: '10px', display: 'flex', alignItems: 'center' }}>
+        <span style={{ color: theme === 'light' ? '#334155' : '#cbd5e1', flex: 1, minWidth: 40, fontSize: '10px', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
           {wiringFrom
             ? `${wiringFrom.part}:${wiringFrom.terminal} → ?`
             : (noticeOpen || !statusText || !/WIRING ONLY|HARDWARE|SNAPSHOT/.test(statusText))

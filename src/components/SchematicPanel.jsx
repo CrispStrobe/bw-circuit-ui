@@ -105,29 +105,67 @@ export function SchematicPanel({ parts, nets }) {
   const [cam, setCam] = useState(null); // {x, y, k} in drawing units
   const hostRef = useRef(null);
   const dragRef = useRef(null);
-  const view = cam ?? { x: 0, y: 0, k: 1 };
-  const vw = proj.width / view.k;
-  const vh = proj.height / view.k;
+  const [viewport, setViewport] = useState({ width: 1, height: 1 });
+
+  // Match the viewBox aspect ratio to the actual viewport. The old camera
+  // used the drawing's aspect ratio while preserveAspectRatio letterboxed it;
+  // pointer coordinates then counted those bars as drawing space, so zoom
+  // drifted away from the cursor and vertical pans barely moved (or jumped).
+  const drawingAspect = proj.width / Math.max(1, proj.height);
+  const viewportAspect = viewport.width / Math.max(1, viewport.height);
+  let fitW = proj.width;
+  let fitH = proj.height;
+  if (viewportAspect > drawingAspect) fitW = fitH * viewportAspect;
+  else fitH = fitW / viewportAspect;
+  fitW *= 1.08;
+  fitH *= 1.08;
+  const fitX = (proj.width - fitW) / 2;
+  const fitY = (proj.height - fitH) / 2;
+  const view = cam ?? {x: fitX, y: fitY, k: 1};
+  const vw = fitW / view.k;
+  const vh = fitH / view.k;
+
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let frame = 0;
+    const measure = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const r = el.getBoundingClientRect();
+        const width = Math.max(1, Math.round(r.width));
+        const height = Math.max(1, Math.round(r.height));
+        setViewport(old => old.width === width && old.height === height ? old : {width, height});
+      });
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    measure();
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, []);
 
   const onWheel = useCallback((e) => {
     e.preventDefault();
     const g = classifyWheel(e);
     setCam(c => {
-      const cur = c ?? { x: 0, y: 0, k: 1 };
+      const cur = c ?? {x: fitX, y: fitY, k: 1};
       if (g.kind === 'pan') {
-        return { ...cur, x: cur.x + g.dx / cur.k, y: cur.y + g.dy / cur.k };
+        return { ...cur,
+          x: cur.x + g.dx * (fitW / cur.k) / viewport.width,
+          y: cur.y + g.dy * (fitH / cur.k) / viewport.height };
       }
       const nk = Math.max(0.4, Math.min(6, cur.k * g.factor));
       // Zoom about the cursor: keep the drawing point under it fixed.
       const host = hostRef.current;
+      if (!host) return cur;
       const r = host.getBoundingClientRect();
       const fx = (e.clientX - r.left) / r.width;
       const fy = (e.clientY - r.top) / r.height;
-      const wx = cur.x + fx * (proj.width / cur.k);
-      const wy = cur.y + fy * (proj.height / cur.k);
-      return { x: wx - fx * (proj.width / nk), y: wy - fy * (proj.height / nk), k: nk };
+      const wx = cur.x + fx * (fitW / cur.k);
+      const wy = cur.y + fy * (fitH / cur.k);
+      return { x: wx - fx * (fitW / nk), y: wy - fy * (fitH / nk), k: nk };
     });
-  }, [proj.width, proj.height]);
+  }, [fitX, fitY, fitW, fitH, viewport.width, viewport.height]);
 
   // React makes wheel listeners passive; preventDefault needs a real one.
   useEffect(() => {
@@ -157,10 +195,10 @@ export function SchematicPanel({ parts, nets }) {
         const r = e.currentTarget.getBoundingClientRect();
         const scale = vw / r.width;
         setCam(c => {
-          const cur = c ?? { x: 0, y: 0, k: 1 };
+          const cur = c ?? {x: fitX, y: fitY, k: 1};
           return { ...cur,
             x: cur.x - (e.clientX - dragRef.current.x) * scale,
-            y: cur.y - (e.clientY - dragRef.current.y) * scale };
+            y: cur.y - (e.clientY - dragRef.current.y) * (vh / r.height) };
         });
         dragRef.current = { x: e.clientX, y: e.clientY };
       }}
@@ -168,7 +206,7 @@ export function SchematicPanel({ parts, nets }) {
       onDoubleClick={() => setCam(null)}
       style={{
         background: '#111a26', borderRadius: 6, display: 'block',
-        cursor: 'grab', touchAction: 'none',
+        cursor: 'grab', touchAction: 'none', minHeight: 240,
       }}>
       {proj.wires.map(w => (
         <g key={w.netId} stroke="#3d5a75" strokeWidth={1.3} fill="none">

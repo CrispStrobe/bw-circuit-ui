@@ -123,3 +123,17 @@ test('connected circuit must project at least one net (the LED chaser defect)', 
     `a projection with ${proj.symbols.length} symbols must have wires, got ${proj.wires.length} — ` +
     'parts floating disconnected is the LED chaser defect');
 });
+
+test('dense parallel ranks wrap into readable column bands', () => {
+  const parts = [{ id: 'VCC', kind: 'vcc', terminals: ['vcc'] }];
+  const nets = [];
+  for (let i = 0; i < 32; i++) {
+    parts.push({ id: `led${i}`, kind: 'led', terminals: ['anode', 'cathode'] });
+    nets.push({ id: `n${i}`, terminals: [
+      { part: 'VCC', terminal: 'vcc' }, { part: `led${i}`, terminal: 'anode' },
+    ] });
+  }
+  const projected = projectSchematic(parts, nets);
+  assert.ok(projected.height < 1200, `dense projection is ${projected.height} units tall`);
+  assert.ok(projected.width > 500, 'parallel parts use more than one visual column');
+});

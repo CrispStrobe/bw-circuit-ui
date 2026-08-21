@@ -122,4 +122,15 @@ describe('nets from wires', () => {
             { from: 'C', fromTerminal: 'a', to: 'D', toTerminal: 'a' },
         ]).length, 2);
     });
+    test('never shorts distinct rails through object-valued board holes', () => {
+        const nets = netsFromWires([
+            { from: 'VCC', fromTerminal: 'vcc', to: { board: 'bb1', hole: 't+2' } },
+            { from: 'GND', fromTerminal: 'gnd', to: { board: 'bb1', hole: 'b-2' } },
+            { from: 'R1', fromTerminal: 'b', to: 'D1', toTerminal: 'anode' },
+        ]);
+        assert.equal(nets.length, 1);
+        assert.deepEqual(nets[0].terminals, [
+            { part: 'R1', terminal: 'b' }, { part: 'D1', terminal: 'anode' },
+        ]);
+    });
 });
