@@ -246,19 +246,30 @@ function analyse(resolvedNets, parts, projection) {
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * The corpus is cross-repo. It is byte-identical in sb3-creator and in
- * brickwright-lite (verified 2026-08-23: both the file-name list and the
- * concatenated contents hash the same across all 1,034 variants), so the
- * gate resolves whichever sibling is present. CI already clones
- * sb3-creator, which is why this gate can run there; cloning lite would
- * cost ~1.1 GB.
+ * Corpus resolution. An EXPLICIT path WINS ABSOLUTELY: if EXAMPLES_DIR is set
+ * and does not resolve, that is a failure, never a fall-through to a different
+ * corpus.
+ *
+ * The previous form listed EXAMPLES_DIR first among candidates and took the
+ * first that existed. Proven 2026-08-23: with EXAMPLES_DIR=/nonexistent/typo
+ * this gate reported a clean 10/10 having measured a DIFFERENT corpus — and it
+ * fell through to /tmp/lego/..., which on this machine is a symlink into a live
+ * checkout another session edits. Anyone who selected a corpus and mistyped it
+ * was silently told about someone else's tree. bw-audit hit the same shape in
+ * sb3-creator's sibling locator — an env var with a silent ../<name> fallback
+ * behind it — and reached the same rule: a selected path that does not resolve
+ * is an error, because the alternative is measuring what you did not choose.
  */
-const CORPUS_ROOTS = [
-  process.env.EXAMPLES_DIR,
+const EXPLICIT_ROOT = process.env.EXAMPLES_DIR || null;
+if (EXPLICIT_ROOT && !existsSync(EXPLICIT_ROOT)) {
+  throw new Error(`EXAMPLES_DIR=${EXPLICIT_ROOT} does not exist. An explicitly selected `
+    + 'corpus is never silently replaced by another one — fix the path or unset it.');
+}
+const CORPUS_ROOTS = EXPLICIT_ROOT ? [EXPLICIT_ROOT] : [
   path.resolve(here, '../../sb3-creator/examples'),
   path.resolve(here, '../../lego/brickwright-lite/overlay/scratch-gui/examples'),
   path.join(process.env.HOME || '', 'code', 'sb3-creator', 'examples'),
-].filter(Boolean);
+];
 
 const examplesRoot = CORPUS_ROOTS.find(r => existsSync(r)) || null;
 

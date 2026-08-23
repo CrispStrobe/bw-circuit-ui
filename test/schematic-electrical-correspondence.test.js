@@ -288,14 +288,31 @@ function compareConnectivity(resolvedNets, parts, projection) {
 // ── Corpus discovery ────────────────────────────────────────────
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-// Corpus is byte-identical in sb3-creator and brickwright-lite (verified
-// 2026-08-23). CI clones sb3-creator, so resolve whichever is present.
-const CORPUS_ROOTS = [
-  process.env.EXAMPLES_DIR,
+/**
+ * Corpus resolution. An EXPLICIT path WINS ABSOLUTELY: if EXAMPLES_DIR is set
+ * and does not resolve, that is a failure, never a fall-through to a different
+ * corpus.
+ *
+ * The previous form listed EXAMPLES_DIR first among candidates and took the
+ * first that existed. Proven 2026-08-23: with EXAMPLES_DIR=/nonexistent/typo
+ * this gate reported a clean 10/10 having measured a DIFFERENT corpus — and it
+ * fell through to /tmp/lego/..., which on this machine is a symlink into a live
+ * checkout another session edits. Anyone who selected a corpus and mistyped it
+ * was silently told about someone else's tree. bw-audit hit the same shape in
+ * sb3-creator's sibling locator — an env var with a silent ../<name> fallback
+ * behind it — and reached the same rule: a selected path that does not resolve
+ * is an error, because the alternative is measuring what you did not choose.
+ */
+const EXPLICIT_ROOT = process.env.EXAMPLES_DIR || null;
+if (EXPLICIT_ROOT && !existsSync(EXPLICIT_ROOT)) {
+  throw new Error(`EXAMPLES_DIR=${EXPLICIT_ROOT} does not exist. An explicitly selected `
+    + 'corpus is never silently replaced by another one — fix the path or unset it.');
+}
+const CORPUS_ROOTS = EXPLICIT_ROOT ? [EXPLICIT_ROOT] : [
   path.resolve(here, '../../sb3-creator/examples'),
   path.resolve(here, '../../lego/brickwright-lite/overlay/scratch-gui/examples'),
   path.join(process.env.HOME || '', 'code', 'sb3-creator', 'examples'),
-].filter(Boolean);
+];
 const examplesRoot = CORPUS_ROOTS.find(r => existsSync(r)) || '';
 
 function discoverVariants() {
