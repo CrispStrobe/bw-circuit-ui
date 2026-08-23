@@ -14,6 +14,7 @@ import { mergeNets } from './merge-nets.js';
 import { BreadboardModel } from './breadboard.js';
 import { logicChipTerminals } from './dip-chips.js';
 import { resolveKind, resolveTerminal } from './terminal-aliases.js';
+import { wireEndpoint } from './wire-endpoints.js';
 import { sidecarTerminals } from './parts-registry.js';
 import { computeLeadMap, rotateFootprint, FOOTPRINTS as BB_FOOTPRINTS_FOR_ROTATE } from './footprints.js';
 import { getSidecar } from './parts-registry.js';
@@ -952,22 +953,13 @@ export class Circuit {
     // drop anything that resolves to no part/terminal — a lost wire renders
     // as a gap the user can see and re-draw, a throw renders as nothing at
     // all.
-    const endpoint = (w, side) => {
-      const v = w[side];
-      if (v && typeof v === 'object') return { ...v };
-      if (typeof v === 'string') {
-        const t = w[`${side}Terminal`];
-        if (typeof t === 'string') return { part: v, terminal: t };
-      }
-      return null;
-    };
+    // The canonical dialect reader (wire-endpoints.js) — its validity
+    // rules were lifted from this very function, so behaviour is
+    // unchanged; the hand-rolled copy is retired.
     c.wires = (data.wires || []).flatMap(w => {
-      const from = endpoint(w, 'from');
-      const to = endpoint(w, 'to');
+      const from = wireEndpoint(w, 'from');
+      const to = wireEndpoint(w, 'to');
       if (!from || !to) return [];
-      const ok = e => e.board ? typeof e.hole === 'string'
-        : typeof e.part === 'string' && typeof e.terminal === 'string';
-      if (!ok(from) || !ok(to)) return [];
       // Legacy wires have no id either; the canvas hashes wire.id for
       // stable rendering offsets, so a missing one is a render crash.
       return [{ ...w, from, to, id: typeof w.id === 'string' ? w.id : genId('wire') }];

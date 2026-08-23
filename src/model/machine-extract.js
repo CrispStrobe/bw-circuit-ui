@@ -1,3 +1,5 @@
+import { flatWire } from './wire-endpoints.js';
+
 /**
  * Machine extraction — turns a hand-wired designer circuit into a
  * bootable machine config by evaluating the bus decode network.
@@ -20,14 +22,10 @@
 export function extractMachine(circuit, extractors = {}) {
   const parts = circuit.parts || [];
 
-  // Shape-adapt wires: the designer uses {from: {part, terminal}} objects
-  // but the extractors expect flat {from, fromTerminal, to, toTerminal}.
-  const wires = (circuit.wires || []).map(w => ({
-    from: w.from?.part || w.from,
-    fromTerminal: w.from?.terminal || w.fromTerminal,
-    to: w.to?.part || w.to,
-    toTerminal: w.to?.terminal || w.toTerminal,
-  }));
+  // Shape-adapt wires to the flat form the extractors expect — through
+  // the ONE canonical dialect reader (wire-endpoints.js), not another
+  // hand-rolled adapter.
+  const wires = (circuit.wires || []).map(flatWire);
   const flatCircuit = { parts, wires };
 
   // Detect which CPU family is on the board

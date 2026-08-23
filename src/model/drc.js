@@ -19,6 +19,7 @@
  */
 
 import { getEngine } from '../engine.js';
+import { flatWire } from './wire-endpoints.js';
 
 /**
  * Read current-rating data from the injected engine if available.
@@ -539,13 +540,9 @@ export function runDrc(circuit, board) {
   const hasW65c02 = parts.some(p => p.kind === 'w65c02');
   const hasZ80 = parts.some(p => p.kind === 'z80');
   if (hasW65c02 || hasZ80) {
-    // Shape-adapt wires for extractor and floating-pin checks
-    const flatWires = wires.map(w => ({
-        from: w.from?.part || w.from,
-        fromTerminal: w.from?.terminal || w.fromTerminal,
-        to: w.to?.part || w.to,
-        toTerminal: w.to?.terminal || w.toTerminal,
-      }));
+    // Shape-adapt wires for extractor and floating-pin checks — through
+    // the one canonical dialect reader.
+    const flatWires = wires.map(flatWire);
     try {
       const circuitData = { parts, wires: flatWires };
       if (hasW65c02 && _extract6502) {
