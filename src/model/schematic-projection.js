@@ -271,6 +271,23 @@ export function projectSchematic(parts, nets) {
     if (terms.some(t => partById.get(t.part)?.kind === 'vcc' || /^(vcc|5v|3v3)$/i.test(t.terminal))) return 'VCC';
     return `N${String(index + 1).padStart(2, '0')}`;
   };
+  // A label text IS the connection when routing falls back to labels: a
+  // reader has nothing else to go on. So the text must identify the net
+  // uniquely. netName's GND/VCC heuristics are not injective — a board with
+  // a power switch has VBUS and VSYS nets that both look like "VCC", and
+  // drawing both as "VCC" renders the switch shorted. Disambiguate the
+  // second and later claimants; the first keeps the plain name, so circuits
+  // without a collision render byte-identically.
+  const routeName = new Map(); // netId -> label text
+  {
+    const used = new Map(); // text -> how many nets have claimed it
+    for (const [i, r] of routed.entries()) {
+      const base = netName(r, i);
+      const seen = used.get(base) ?? 0;
+      used.set(base, seen + 1);
+      routeName.set(r.netId, seen === 0 ? base : `${base}${seen + 1}`);
+    }
+  }
   const labelPin = (r, text, pin) => {
     const vectors = {
       left: [-1, 0, 'end'], right: [1, 0, 'start'],
@@ -371,7 +388,7 @@ export function projectSchematic(parts, nets) {
   const BAND = COL_W - 2 * PIN_HALF - 24; // free space between column pin tips
   for (const [routeIndex, r] of routed.entries()) {
     if (labelledRouting) {
-      const text = netName(r, routeIndex);
+      const text = routeName.get(r.netId);
       for (const pin of r.pins) labelPin(r, text, pin);
       continue;
     }
@@ -402,7 +419,7 @@ export function projectSchematic(parts, nets) {
         }
       }
       collisionRoutedNets.push({netId: r.netId, symbols: collisions});
-      const text = netName(r, routeIndex);
+      const text = routeName.get(r.netId);
       for (const pin of r.pins) labelPin(r, text, pin);
       continue;
     }

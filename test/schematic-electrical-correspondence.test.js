@@ -288,7 +288,15 @@ function compareConnectivity(resolvedNets, parts, projection) {
 // ── Corpus discovery ────────────────────────────────────────────
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const examplesRoot = path.resolve(here, '../../lego/brickwright-lite/overlay/scratch-gui/examples');
+// Corpus is byte-identical in sb3-creator and brickwright-lite (verified
+// 2026-08-23). CI clones sb3-creator, so resolve whichever is present.
+const CORPUS_ROOTS = [
+  process.env.EXAMPLES_DIR,
+  path.resolve(here, '../../sb3-creator/examples'),
+  path.resolve(here, '../../lego/brickwright-lite/overlay/scratch-gui/examples'),
+  path.join(process.env.HOME || '', 'code', 'sb3-creator', 'examples'),
+].filter(Boolean);
+const examplesRoot = CORPUS_ROOTS.find(r => existsSync(r)) || '';
 
 function discoverVariants() {
   if (!existsSync(examplesRoot)) return [];
