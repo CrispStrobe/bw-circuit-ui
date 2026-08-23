@@ -1,0 +1,296 @@
+{
+  "kind": "ay8912",
+  "w": 70,
+  "h": 81,
+  "terminals": [
+    {
+      "name": "analogc",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "test1",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "analogb",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "analoga",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "vss",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "ioa7",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "ioa6",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "ioa5",
+      "x": 0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "ioa4",
+      "x": 0,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "ioa3",
+      "x": 0,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "ioa2",
+      "x": 0,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "ioa1",
+      "x": 0,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "ioa0",
+      "x": 0,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "da7",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "da6",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "da5",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "da4",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "da3",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "da2",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "da1",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "da0",
+      "x": 70,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "a8",
+      "x": 70,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "resetb",
+      "x": 70,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "clock",
+      "x": 70,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "bdir",
+      "x": 70,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "bc2",
+      "x": 70,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "bc1",
+      "x": 70,
+      "y": 73,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "GI AY-3-8912 programmable sound generator, DIP-28. 1 ANALOG C, 2 TEST1, 3 VCC, 4 ANALOG B, 5 ANALOG A, 6 VSS, 7-14 IOA7-IOA0, 15-22 DA7-DA0, 23 A8 (active-high select, tied high when unwired), 24 /RESET, 25 CLOCK, 26 BDIR, 27 BC2 (tie high), 28 BC1. BDIR/BC1 are the GI bus-control pair \u2014 the extractor classifies them over (address, RWB) per bw-board's two-phase select spec; wire BDIR from select AND ~RWB.",
+  "footprint": {
+    "refTerminal": "da7",
+    "leads": {
+      "analogc": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "test1": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "analogb": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "analoga": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "vss": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "ioa7": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "ioa6": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "ioa5": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "ioa4": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "ioa3": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "ioa2": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "ioa1": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "ioa0": {
+        "dRow": 5,
+        "dCol": 13
+      },
+      "da7": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "da6": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "da5": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "da4": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "da3": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "da2": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "da1": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "da0": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "a8": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "resetb": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "clock": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "bdir": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "bc2": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "bc1": {
+        "dRow": 0,
+        "dCol": 13
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 14
+  }
+}
