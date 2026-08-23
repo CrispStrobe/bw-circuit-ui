@@ -1,0 +1,416 @@
+{
+  "kind": "m6532",
+  "w": 80,
+  "h": 111,
+  "terminals": [
+    {
+      "name": "vss",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "a5",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "a4",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "a3",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "a2",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "a1",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "a0",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "pa0",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "pa1",
+      "x": 0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "pa2",
+      "x": 0,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "pa3",
+      "x": 0,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "pa4",
+      "x": 0,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "pa5",
+      "x": 0,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "pa6",
+      "x": 0,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "pa7",
+      "x": 0,
+      "y": 78,
+      "functions": []
+    },
+    {
+      "name": "phi2",
+      "x": 0,
+      "y": 83,
+      "functions": []
+    },
+    {
+      "name": "pb7",
+      "x": 0,
+      "y": 88,
+      "functions": []
+    },
+    {
+      "name": "pb6",
+      "x": 0,
+      "y": 93,
+      "functions": []
+    },
+    {
+      "name": "pb5",
+      "x": 0,
+      "y": 98,
+      "functions": []
+    },
+    {
+      "name": "pb4",
+      "x": 0,
+      "y": 103,
+      "functions": []
+    },
+    {
+      "name": "pb3",
+      "x": 80,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "pb2",
+      "x": 80,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "pb1",
+      "x": 80,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "pb0",
+      "x": 80,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "irqb",
+      "x": 80,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "d7",
+      "x": 80,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "d6",
+      "x": 80,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "d5",
+      "x": 80,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "d4",
+      "x": 80,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 80,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 80,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 80,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 80,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "resb",
+      "x": 80,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "rwb",
+      "x": 80,
+      "y": 78,
+      "functions": []
+    },
+    {
+      "name": "a6",
+      "x": 80,
+      "y": 83,
+      "functions": []
+    },
+    {
+      "name": "cs2b",
+      "x": 80,
+      "y": 88,
+      "functions": []
+    },
+    {
+      "name": "cs1",
+      "x": 80,
+      "y": 93,
+      "functions": []
+    },
+    {
+      "name": "rs0b",
+      "x": 80,
+      "y": 98,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 80,
+      "y": 103,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "MOS 6532 RIOT (RAM-I/O-Timer), DIP-40. 1 VSS, 2-7 A5-A0, 8-15 PA0-PA7, 16 PHI2, 17-24 PB7-PB0, 25 /IRQ, 26-33 D7-D0, 34 /RES, 35 R/W, 36 A6, 37 /CS2, 38 CS1, 39 RS0/, 40 VCC. RS0/ partitions the window: low = 128 bytes RAM, high = ports/timer; the engine's decode convention wires it to A7 (6507SBC shape). Same footprint convention as the w65c02 sidecar.",
+  "footprint": {
+    "refTerminal": "pb3",
+    "leads": {
+      "vss": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "a5": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "a4": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "a3": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "a2": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "a1": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "a0": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "pa0": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "pa1": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "pa2": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "pa3": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "pa4": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "pa5": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "pa6": {
+        "dRow": 5,
+        "dCol": 13
+      },
+      "pa7": {
+        "dRow": 5,
+        "dCol": 14
+      },
+      "phi2": {
+        "dRow": 5,
+        "dCol": 15
+      },
+      "pb7": {
+        "dRow": 5,
+        "dCol": 16
+      },
+      "pb6": {
+        "dRow": 5,
+        "dCol": 17
+      },
+      "pb5": {
+        "dRow": 5,
+        "dCol": 18
+      },
+      "pb4": {
+        "dRow": 5,
+        "dCol": 19
+      },
+      "pb3": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "pb2": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "pb1": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "pb0": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "irqb": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "d7": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "d6": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "d5": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "d4": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "d3": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "d2": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "d1": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "d0": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "resb": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "rwb": {
+        "dRow": 0,
+        "dCol": 14
+      },
+      "a6": {
+        "dRow": 0,
+        "dCol": 15
+      },
+      "cs2b": {
+        "dRow": 0,
+        "dCol": 16
+      },
+      "cs1": {
+        "dRow": 0,
+        "dCol": 17
+      },
+      "rs0b": {
+        "dRow": 0,
+        "dCol": 18
+      },
+      "vcc": {
+        "dRow": 0,
+        "dCol": 19
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 20
+  }
+}
