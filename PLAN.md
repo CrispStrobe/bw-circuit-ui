@@ -117,6 +117,11 @@ bw-board is imported by path, not installed — it is dependency-free ESM.
 
 ## Schematic audit — open items (2026-08-23)
 
+*Re-verified at bw-circuit-ui `0a3ec00e…`, bw-board `a7338cdcdd5d54122bdc5be44c02908bdb6a4fd6`,
+sb3-creator `3c4973b08034a25f1e1e7edda64e600282459804` (2,098 circuit files).
+All eleven classes still measure as `docs/SCHEMATIC-AUDIT.md` records; the
+corpus lost nine files upstream, none of them among the ten worst.*
+
 The end-to-end audit is in `docs/SCHEMATIC-AUDIT.md`. Class I (a conductor
 drawn through a pin on another net, 799 of 2,107 circuits) is FIXED here. Three
 things it turned up are NOT fixed here, each with what blocks it:

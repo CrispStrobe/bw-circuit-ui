@@ -1,15 +1,36 @@
 # Schematic viewer — end-to-end audit
 
-Measured 2026-08-23 against a pinned rig, by RENDERING every shipped circuit
-rather than by reading the code:
+Measured by RENDERING every shipped circuit, not by reading the code.
+
+## Denominators move — every number here names its sha
+
+The corpus is another repo's tree and it changes under this document. Both
+figures below are correct, at their own sha, and the difference is nine circuit
+files deleted upstream:
+
+| sb3-creator sha | circuit files |
+|---|---|
+| `965d1720c9dc636a051acafdea8a1af4a7a5cc57` (first measurement) | 2,107 |
+| `3c4973b08034a25f1e1e7edda64e600282459804` (current, and what CI clones) | 2,098 |
+
+**The current, authoritative rig:**
 
 | repo | sha | role |
 |---|---|---|
-| bw-circuit-ui | `05c56820ff138360658821c705a0edd2ada63bd4` | the projection under audit (pre-fix baseline) |
-| bw-board | `e195f64de9d7a6661007429520b34c7cba32486e` | the engine that resolves nets |
-| sb3-creator | `965d1720c9dc636a051acafdea8a1af4a7a5cc57` | the corpus, 2,107 circuit files |
+| bw-circuit-ui | `0a3ec00e848e67615eef19ff8642b86bf533780c` | the projection |
+| bw-board | `a7338cdcdd5d54122bdc5be44c02908bdb6a4fd6` | the engine that resolves nets |
+| sb3-creator | `3c4973b08034a25f1e1e7edda64e600282459804` | the corpus, 2,098 circuit files |
 
-Reproduce with:
+**CI evidence** — both gates run there, against a cloned corpus, not skipped:
+
+- bw-circuit-ui [run 32663059860](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/32663059860) —
+  `discovered 2098, analysed 2098, failed 0`, `I conductor through a foreign
+  pin  0 / 2098`, suite `951 tests, 937 pass, 0 fail, 14 skipped`.
+- sb3-creator [run 32664733204](https://github.com/CrispStrobe/sb3-creator/actions/runs/32664733204) —
+  checks out bw-circuit-ui at `0a3ec00e…` and runs the cross-repo gates:
+  `6451 tests, 6356 pass, 0 fail, 95 skipped`.
+
+Reproduce locally with:
 
 ```
 EXAMPLES_DIR=<sb3-creator>/examples node scripts/schematic-audit.mjs
@@ -108,25 +129,46 @@ false — see class I below. A gate cannot find a defect it has defined away.
 
 ## 3. Corpus measurement, per defect class
 
-All 2,107 files, all analysed, none errored.
+At the current rig: 2,098 files, all analysed, none errored. The first column
+maps the classes onto the six the audit was asked for by name.
 
-| | class | circuits | occurrences |
-|---|---|---|---|
-| A | solver connection with no drawn path | 0 / 2107 | 0 |
-| B | connection drawn that the solver denies | 0 / 2107 | 0 |
-| C | drawn pin resolving to no net | 4 / 2107 | 10 |
-| D | electrical part with no symbol | 0 / 2107 | 0 |
-| E | visible net with neither copper nor label | 0 / 2107 | 0 |
-| F | foreign crossing carrying a junction dot | 0 / 2107 | 0 |
-| G | same-net tee with no junction dot | 0 / 2107 | 0 |
-| H | two trunks within 4px over a shared span | 0 / 2107 | 0 |
-| **I** | **conductor through a pin on another net** | **799 / 2107** | **4,213** |
-| J | one net under two label texts | 0 / 2107 | 0 |
-| K | one net as both copper and label | 0 / 2107 | 0 |
+| asked for as | | class | circuits | occurrences |
+|---|---|---|---|---|
+| net exists electrically, no drawn path | A | solver connection with no drawn path | 0 / 2098 | 0 |
+| — | B | connection drawn that the solver denies | 0 / 2098 | 0 |
+| terminals resolving nowhere | C | drawn pin resolving to no net | 4 / 2098 | 10 |
+| components silently dropped | D | electrical part with no symbol | 0 / 2098 | 0 |
+| net exists electrically, no drawn path | E | visible net with neither copper nor label | 0 / 2098 | 0 |
+| crossings drawn as junctions | F | foreign crossing carrying a junction dot | 0 / 2098 | 0 |
+| junctions drawn as crossings | G | same-net tee with no junction dot | 0 / 2098 | 0 |
+| — | H | two trunks within 4px over a shared span | 0 / 2098 | 0 |
+| **wire through a pin it is not connected to** | **I** | **conductor through a pin on another net** | **0 / 2098** | **0** |
+| labels attached to the wrong net | J | one net under two label texts | 0 / 2098 | 0 |
+| — | K | one net as both copper and label | 0 / 2098 | 0 |
 
-A zero is only worth as much as the detector behind it, so F and G are
-mutation-proved against real corpus geometry (692 circuits contain a genuine
-foreign crossing, 286 contain junction dots — the detectors have material).
+"Labels attached to the wrong net" has two directions and both are gated. J
+above is one net wearing two texts — a false DISCONNECTION, the reader sees two
+nets where there is one. The other direction, one text worn by two nets — a
+false CONNECTION — is `net labels are injective` in
+`schematic-rendered-netlist.test.js`, also 0 across the corpus.
+
+A zero is worth only as much as the detector behind it, so F and G are
+mutation-proved against real corpus geometry rather than invented coordinates:
+692 circuits contain a genuine foreign crossing and 286 contain junction dots,
+so the detectors have material to work on.
+
+### What class I looked like BEFORE the fix
+
+Same corpus, same engine, only the router reverted:
+
+| | at sb3-creator `965d1720…` (2,107 files) | at `3c4973b0…` (2,098 files) |
+|---|---|---|
+| circuits affected | 799 (37.9%) | 790 (37.7%) |
+| pin incidences | 4,213 | 4,204 |
+| example directories | 105 | 105 |
+
+The ten worst are identical in both, in the same order — the nine deleted files
+were not among them.
 
 ### Class I — the defect (799 of 2,107 circuits, 37.9%)
 
@@ -150,7 +192,7 @@ Four pins on four different nets, with one wire drawn through all of them. A
 reader sees five nets shorted together. The solver has them separate, and no
 gate said a word.
 
-Spread: **105 example directories**.
+Spread: **105 example directories**, unchanged across both corpus shas.
 
 ### The ten worst
 
@@ -167,7 +209,10 @@ Spread: **105 example directories**.
 | 30 | `46-port-overcurrent/circuit-flat.arduino-uno.json` |
 | 30 | `46-port-overcurrent/circuit-flat.atmega168p.json` |
 
-All ten now carry a reviewed SVG baseline in `docs/schematic-baselines/`.
+All ten carry a reviewed SVG baseline in `docs/schematic-baselines/`, gated
+byte-for-byte by `test/schematic-baselines.test.js`. The ranking is the same at
+both corpus shas, so the baseline set is still exactly the ten worst — which
+that gate re-derives rather than trusting this table.
 
 ### Class C is a corpus fact, not a viewer defect
 
@@ -180,6 +225,8 @@ draw them dangling — the circuits really are unwired there:
 | `eater6502-full-build/circuit.json` | 2 | `kbd` d0/d1, same cause |
 | `pico01-blink/circuit-flat.json` | 3 | **the file has zero wires**: 2 parts, nothing joins them |
 | `pico01-blink/circuit.json` | 1 | likewise, 3 parts and no wires |
+
+Unchanged at both corpus shas: 4 circuits, 10 pins.
 
 `pico01-blink` shipping with an unwired circuit is an upstream corpus finding,
 not a rendering one — see PLAN.md.
