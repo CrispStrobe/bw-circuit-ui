@@ -45,9 +45,28 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(ROOT, 'src');
 
-/** Any dialect field named on a member expression. */
-const DIALECT_FIELD =
-    /\.(?:fromTerminal|toTerminal)\b|\.(?:from|to)\.(?:part|terminal|board|boardId|hole)\b/g;
+/**
+ * Any dialect field named on a member expression — dotted OR computed.
+ *
+ * The dotted half alone had a blind spot, and something was hiding in it:
+ * schematic-svg.js reached the endpoint as `wire[side]` and
+ * `wire[`${side}Terminal`]`, an eighth private copy of the dialect rule,
+ * sitting in the module the schematic audit was about. Computed access reads
+ * the same fields; it just spells them with brackets. So the pattern now also
+ * catches a `Terminal` suffix built by interpolation or concatenation, and a
+ * side name used as a computed key.
+ */
+const DIALECT_FIELD = new RegExp([
+    // dotted:  .fromTerminal / .toTerminal
+    String.raw`\.(?:fromTerminal|toTerminal)\b`,
+    // dotted:  .from.part / .to.hole / …
+    String.raw`\.(?:from|to)\.(?:part|terminal|board|boardId|hole)\b`,
+    // computed: ["fromTerminal"] / ['toTerminal'] / [`toTerminal`]
+    String.raw`\[\s*['"\`](?:fromTerminal|toTerminal)['"\`]\s*\]`,
+    // computed: [`${side}Terminal`]  and  [side + 'Terminal']
+    String.raw`\[\s*\`\$\{[^}]*\}Terminal\`\s*\]`,
+    String.raw`\[\s*[A-Za-z_$][\w$]*\s*\+\s*['"\`]Terminal['"\`]\s*\]`,
+].join('|'), 'g');
 
 /**
  * The subset that ONLY a wire endpoint has. Gesture state in the interaction
@@ -119,8 +138,19 @@ describe('the wire-endpoint dialect has exactly one reader', () => {
             `only ${files.length} source files scanned — the walk found nothing`);
         // A known-positive and a known-negative, so a regex that stopped
         // matching cannot pass this suite by finding zero of everything.
-        assert.match('key(w.from.part, w.fromTerminal)', DIALECT_FIELD);
-        assert.doesNotMatch('const rows = Array.from(xs); wireEndpoint(w, "from")', DIALECT_FIELD);
+        // A FRESH, non-global copy per assertion. `assert.match` calls
+        // `regexp.test()`, which on a /g regex advances `lastIndex` — so a
+        // second assertion resumes mid-string and reports "did not match" for
+        // a pattern that does. Caught here rather than shipped.
+        const P = () => new RegExp(DIALECT_FIELD.source);
+        assert.match('key(w.from.part, w.fromTerminal)', P());
+        // The computed spellings, each a real form found in this repo or its
+        // siblings. A regex that stopped matching one of these would let the
+        // whole class back in while still reporting zero.
+        assert.match('const t = wire[`${side}Terminal`];', P());
+        assert.match("const t = wire[side + 'Terminal'];", P());
+        assert.match('const t = wire["fromTerminal"];', P());
+        assert.doesNotMatch('const rows = Array.from(xs); wireEndpoint(w, "from")', P());
         assert.ok(hits.size > 0, 'zero hits anywhere — the scan is not reading the source');
     });
 

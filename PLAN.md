@@ -112,3 +112,43 @@ bw-board is imported by path, not installed — it is dependency-free ESM.
 - Edit anything outside this repo's working directory
 - Create a GitHub repo (will ask)
 - Add AI attribution to commits
+
+---
+
+## Schematic audit — open items (2026-08-23)
+
+The end-to-end audit is in `docs/SCHEMATIC-AUDIT.md`. Class I (a conductor
+drawn through a pin on another net, 799 of 2,107 circuits) is FIXED here. Three
+things it turned up are NOT fixed here, each with what blocks it:
+
+**1. `pico01-blink` ships an unwired circuit.** `circuit.json` has three parts
+and zero wires; `circuit-flat.json` has two and zero. The schematic draws two
+symbols and no connections, which is the honest rendering of an empty netlist —
+the defect is upstream in the corpus, not in the viewer. **Blocked on
+sb3-creator**: authoring the wiring is a content decision (which Pico pin, which
+resistor), not a mechanical repair, and inventing it would be fabricating a
+circuit. Recorded in `KNOWN_UNCONNECTED_PINS` so it cannot grow quietly.
+
+**2. `eater6502-full-build` seats `kbd` d0/d1 and `bargraph` a0/k0 on empty
+breadboard columns.** Six dangling pins across two variants. Same disposition:
+the drawing is faithful, the circuit is incomplete. **Blocked on sb3-creator**
+for the same reason — someone has to decide where those data lines go.
+
+**3. brickwright-lite's vendored copy is behind.** Lite renders its schematic
+baselines from `overlay/scratch-gui/src/lib/bw-circuit-ui/`, a vendored copy of
+this repo, and holds four reviewed SVGs in `docs/schematic-baselines/`. Its
+copy still has the pre-fix router, so its four baselines still show conductors
+running through foreign pins. **Blocked on a vendor sync** from this repo at the
+sha carrying the fix; the four baselines must then be re-rendered and LOOKED at,
+not accepted blind. Lite's own `test/schematic-projection.test.mjs` and
+`test/schematic-visual-baselines.test.mjs` should also take the corpus-discovery
+widening, or lite will keep measuring half the gallery.
+
+**Not a defect, worth knowing:** the projection falls back to net labels for
+dense drawings (`>18 nets` or `>52 pins`) and for any route it cannot draw
+without crossing a symbol. After the class-I fix, 33 more label stubs and 15
+fewer trunk routes across the corpus. That is a legitimate schematic convention
+and the rendered-netlist gate treats repeated labels as connectivity, but it
+does mean a denser drawing shows fewer wires. If the owner would rather see
+copper there, the lever is the routing band (`COL_W` / `PIN_HALF`), not the
+pin-clearance rule.

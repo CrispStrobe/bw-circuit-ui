@@ -305,6 +305,37 @@ export function projectSchematic(parts, nets) {
     const halfH = Math.max(20, ((Math.max(1, s.pinsPerSide) - 1) * PIN_PITCH) / 2 + 16);
     return {left: s.x - 26, right: s.x + 26, top: s.y - halfH, bottom: s.y + halfH};
   };
+  // A conductor may run through its OWN net's pins — that is what a stub does.
+  // Through ANOTHER net's pin it must not: a line touching a pin reads as
+  // attached to it, and `bodyBounds` above stops 26px from a symbol's centre
+  // while its pins reach 30px, so a trunk placed in that 4px band ran straight
+  // down a whole column of DIP pins. Measured before this check existed: 799 of
+  // 2,107 shipped circuits drew at least one such conductor, 4,213 pin
+  // incidences in all — 46-port-overcurrent drew one trunk through four MCU
+  // port pins on four different nets, which reads as those four pins shorted.
+  // The rendered-netlist gate could not see it: it excludes trunk-side vertices
+  // from connectivity on the stated ground that they "sit in free space", which
+  // is an assumption about geometry rather than a check of it.
+  const PIN_CLEARANCE = 2; // a conductor within 2px of a pin reads as touching it
+  const allPins = [];
+  for (const s of symbols) for (const pin of s.pins) allPins.push(pin);
+  const segmentHitsForeignPin = (a, b, netId) => {
+    const horizontal = Math.abs(a.y - b.y) < 0.5;
+    const vertical = Math.abs(a.x - b.x) < 0.5;
+    if (!horizontal && !vertical) return false;
+    for (const pin of allPins) {
+      if (pin.netId && pin.netId === netId) continue;
+      if (horizontal) {
+        if (Math.abs(pin.y - a.y) >= PIN_CLEARANCE) continue;
+        if (pin.x >= Math.min(a.x, b.x) && pin.x <= Math.max(a.x, b.x)) return true;
+      } else {
+        if (Math.abs(pin.x - a.x) >= PIN_CLEARANCE) continue;
+        if (pin.y >= Math.min(a.y, b.y) && pin.y <= Math.max(a.y, b.y)) return true;
+      }
+    }
+    return false;
+  };
+
   const segmentCrossesBody = (a, b, box) => {
     if (a.y === b.y) {
       return a.y > box.top && a.y < box.bottom &&
@@ -326,18 +357,20 @@ export function projectSchematic(parts, nets) {
       const box = bodyBounds(s);
       if (segments.some(([a, b]) => segmentCrossesBody(a, b, box))) hits.push(s.id);
     }
+    if (segments.some(([a, b]) => segmentHitsForeignPin(a, b, route.netId))) hits.push('__foreign_pin__');
     return hits;
   };
   const collisionRoutedNets = [];
   const detouredRoutingNets = [];
-  const obstacleRoute = (start, end) => {
+  const obstacleRoute = (start, end, netId) => {
     // Route geometry owns its points. Reusing pin objects here would shift
     // endpoints twice when projection bounds translate symbols and wires.
     start = {x: start.x, y: start.y};
     end = {x: end.x, y: end.y};
     const boxes = symbols.map(bodyBounds);
     const clear = ([a, b]) => (a.x === b.x || a.y === b.y) &&
-      !boxes.some(box => segmentCrossesBody(a, b, box));
+      !boxes.some(box => segmentCrossesBody(a, b, box)) &&
+      !segmentHitsForeignPin(a, b, netId);
     const xs = new Set([start.x, end.x]);
     const ys = new Set([start.y, end.y]);
     for (const box of boxes) {
@@ -411,7 +444,7 @@ export function projectSchematic(parts, nets) {
     const collisions = routeCollisions(route);
     if (collisions.length) {
       if (r.pins.length === 2) {
-        const segments = obstacleRoute(r.pins[0], r.pins[1]);
+        const segments = obstacleRoute(r.pins[0], r.pins[1], r.netId);
         if (segments) {
           wires.push({netId: r.netId, segments});
           detouredRoutingNets.push(r.netId);

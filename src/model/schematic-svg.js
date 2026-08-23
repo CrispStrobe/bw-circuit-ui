@@ -12,6 +12,8 @@
  * @module
  */
 
+import { wireEndpoint, isBoardEndpoint } from './wire-endpoints.js';
+
 import { projectSchematic } from './schematic-projection.js';
 import { shapeFor } from './schematic-symbols.js';
 
@@ -31,17 +33,20 @@ export function netsFromWires(wires) {
     while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); }
     return x;
   };
+  // Through the ONE canonical dialect reader. This was a private copy —
+  // the eighth — and computed member access (`wire[`${side}Terminal`]`) is
+  // why the adoption gate could not see it; that blind spot is closed in
+  // test/wire-endpoint-adoption.test.js.
+  //
+  // A breadboard hole still returns null: resolving a hole to a strip needs
+  // the circuit model, which a headless renderer does not have. Turning every
+  // object endpoint into one "[object Object] undefined" node merged the VCC
+  // and GND rails into a fictional short in CLI renders, so an unresolvable
+  // endpoint drops its wire and shows as a gap instead.
   const endpoint = (wire, side) => {
-    const raw = wire[side];
-    const terminal = wire[`${side}Terminal`];
-    if (typeof raw === 'string' && terminal != null) return `${raw} ${terminal}`;
-    if (raw && typeof raw === 'object' && raw.part && raw.terminal) {
-      return `${raw.part} ${raw.terminal}`;
-    }
-    // Breadboard holes need the circuit model's strip resolver. Do not turn
-    // every object endpoint into the same "[object Object] undefined" node:
-    // that merged VCC and GND rails into a fictional short in CLI renders.
-    return null;
+    const e = wireEndpoint(wire, side);
+    if (!e || isBoardEndpoint(e)) return null;
+    return `${e.part} ${e.terminal}`;
   };
   for (const w of wires || []) {
     const ak = endpoint(w, 'from');

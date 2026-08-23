@@ -322,7 +322,13 @@ function discoverVariants() {
     if (!dir.isDirectory()) continue;
     const dirPath = path.join(examplesRoot, dir.name);
     for (const file of readdirSync(dirPath)) {
-      if (/^circuit(?:\.[^.]+)*\.json$/i.test(file)) {
+      // Loose on purpose. This was `^circuit(?:\.[^.]+)*\.json$`, whose `\.`
+      // cannot match the HYPHEN in `circuit-flat.<target>.json` — so 1,006 of
+      // the 2,107 shipped circuit files, every per-MCU flat twin, sat outside
+      // this gate's denominator while it reported "discovered 1101, analysed
+      // 1101" and a clean bill of health. A denominator that silently excludes
+      // half the corpus is the most expensive kind of green.
+      if (/^circuit.*\.json$/i.test(file)) {
         variants.push({ id: `${dir.name}/${file}`, path: path.join(dirPath, file) });
       }
     }
@@ -335,7 +341,7 @@ const variants = discoverVariants();
 // ── Gate tests ──────────────────────────────────────────────────
 
 test('corpus discovery finds the expected variant count', () => {
-  assert.ok(variants.length >= 1000,
+  assert.ok(variants.length >= 2000,
     `Expected ≥1000 circuit variants, found ${variants.length}`);
 });
 

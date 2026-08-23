@@ -280,7 +280,13 @@ function discoverVariants() {
     if (!dir.isDirectory()) continue;
     const dirPath = path.join(examplesRoot, dir.name);
     for (const file of readdirSync(dirPath)) {
-      if (/^circuit(?:\.[^.]+)*\.json$/i.test(file)) {
+      // Loose on purpose. This was `^circuit(?:\.[^.]+)*\.json$`, whose `\.`
+      // cannot match the HYPHEN in `circuit-flat.<target>.json` — so 1,006 of
+      // the 2,107 shipped circuit files, every per-MCU flat twin, sat outside
+      // this gate's denominator while it reported "discovered 1101, analysed
+      // 1101" and a clean bill of health. A denominator that silently excludes
+      // half the corpus is the most expensive kind of green.
+      if (/^circuit.*\.json$/i.test(file)) {
         variants.push({ id: `${dir.name}/${file}`, path: path.join(dirPath, file) });
       }
     }
@@ -300,7 +306,13 @@ test('corpus is present and complete (cross-repo gate must not silently skip)', 
     `Corpus absent. Tried:\n  ${CORPUS_ROOTS.join('\n  ')}\n` +
     `A missing sibling checkout is a FAILURE, not a skip — a gate that cannot run ` +
     `must not report green (ROADMAP §5). Set EXAMPLES_DIR or clone sb3-creator.`);
-  assert.ok(variants.length >= 1000, `Expected >=1000 variants, found ${variants.length}`);
+  // A MEASURED floor, not a round number: the corpus holds 2,107 circuit
+  // files. The old floor of 1,000 sat below the 1,101 a too-narrow discovery
+  // regex found, so halving the denominator passed it. 2,000 fails on any
+  // repeat of that.
+  assert.ok(variants.length >= 2000,
+    `Expected >=2000 variants, found ${variants.length}. Either the corpus shrank or the ` +
+    `discovery pattern narrowed again — it must match circuit-flat.<target>.json too.`);
 });
 
 function runCorpus() {
@@ -440,8 +452,9 @@ test('ANTI-VACUITY: the gate compares a substantial number of real pairs', () =>
   const pairs = corpus.rows.reduce((n, r) => n + r.renderedPairs, 0);
   const withArtwork = corpus.rows.filter(r => r.renderedPairs > 0).length;
   console.log(`\nAnti-vacuity: ${pairs} rendered pairs compared across ${withArtwork} circuits`);
-  assert.ok(pairs > 5000, `only ${pairs} pairs compared — gate is vacuous`);
-  assert.ok(withArtwork > 900, `only ${withArtwork} circuits had drawn connectivity`);
+  // Floors re-measured after the denominator doubled (2026-08-23).
+  assert.ok(pairs > 40000, `only ${pairs} pairs compared — gate is vacuous`);
+  assert.ok(withArtwork > 1800, `only ${withArtwork} circuits had drawn connectivity`);
 });
 
 /** Load a real corpus circuit for mutation work. */
