@@ -138,6 +138,23 @@ gate runs there; cloning lite would cost ~1.1 GB.
 | A/B: same label mutation, netId-derived view | unchanged (blind) | unchanged — asserted |
 | Instrument: one module instance, shared terminals | same | same |
 
+### Whole-renderer mutation, and what it proves about the prior gate
+
+The unit mutations above perturb the analysis input. The decisive one perturbs the **renderer
+source** and runs the committed corpus gates against it. Mutation: `wires.push(route)` becomes
+conditional so that **every 2-pin wire stops being drawn** — for most of the corpus, a schematic
+that draws almost nothing.
+
+| Gate | Result under the mutation |
+|---|---|
+| `schematic-rendered-netlist` (this one) | **RED** — 646 circuits, 968 undrawn pairs |
+| `schematic-electrical-correspondence` (prior) | **GREEN — all 6 tests pass** |
+
+The prior gate cannot distinguish a correct schematic from one with its wires deleted, because
+`pin.netId` is unchanged either way. That is the concrete measure of the gap this gate closes,
+and the reason its "0 soundness errors across 1,034 variants" was not evidence of a correct
+renderer. Source restored and both gates re-verified green (16/16) afterwards.
+
 ### The rig was wrong first — and looked dramatic
 
 The first corpus run reported **21 circuits inventing connections**. That was the instrument,
