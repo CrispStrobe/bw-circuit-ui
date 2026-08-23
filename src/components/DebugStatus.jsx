@@ -128,10 +128,16 @@ export function DebugStatus({ debugState, capabilities, onStep, onStepOver, onSt
               display: 'flex', alignItems: 'center', gap: '4px',
               color: '#bdc3c7', fontSize: '9px', marginBottom: '1px',
             }}>
-              <span style={{ color: '#3498db', minWidth: '50px' }}>{task.name}</span>
+              {/* Both debug targets emit { task, state } and, while a task is
+                  waiting, `until`. This bound `task.name` and `task.label`,
+                  which NOTHING emits — so the name column rendered empty on
+                  every target and the wait deadline, which the runner's
+                  stillWaiting() already consumes, was never shown at all.
+                  Pinned by test/debug-status-contract.test.js. */}
+              <span style={{ color: '#3498db', minWidth: '50px' }}>{task.task}</span>
               <span>{t('state', lang)}{task.state}</span>
-              {task.label && (
-                <span style={{ color: '#7f8c8d' }}>→ {task.label}</span>
+              {task.until !== undefined && (
+                <span style={{ color: '#7f8c8d' }}>→ {t('waitUntil', lang)}{task.until}</span>
               )}
             </div>
           ))}

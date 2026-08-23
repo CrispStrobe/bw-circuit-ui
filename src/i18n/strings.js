@@ -125,6 +125,7 @@ const STRINGS = {
   boardKeptRunning:    { en: ' (board kept running)', de: ' (Board lief weiter)' },
   wallTimeAhead:       { en: 'Wall time: +{ms} ahead', de: 'Echtzeit: +{ms} voraus' },
   state:               { en: 'state ', de: 'Zustand ' },
+  waitUntil:           { en: 'until ', de: 'bis ' },
   noSingleStep:        { en: 'Single-step not available on this target', de: 'Einzelschritt auf diesem Ziel nicht verfügbar' },
   noBreakpoints:       { en: 'Code breakpoints not available on this target', de: 'Code-Haltepunkte auf diesem Ziel nicht verfügbar' },
   stepOver:            { en: 'Step over', de: 'Überspringen' },
