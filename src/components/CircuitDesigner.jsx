@@ -55,6 +55,7 @@ import { useCircuit } from '../hooks/useCircuit.js';
 import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
 import { generatePartName, circuitToDeclarations } from '../model/declarations.js';
+import { flatWire, isLegacyFlatWire, wireEndpoint } from '../model/wire-endpoints.js';
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
@@ -240,12 +241,11 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const handleBuildMachine = useCallback(() => {
     const flatCircuit = {
       parts: parts.map(p => ({ id: p.id, kind: p.kind, params: p.params })),
-      wires: wires.map(w => ({
-        from: w.from?.part || w.from,
-        fromTerminal: w.from?.terminal || w.fromTerminal,
-        to: w.to?.part || w.to,
-        toTerminal: w.to?.terminal || w.toTerminal,
-      })),
+      // flatWire is the canonical dialect reader; this used to be a
+      // fifth private copy of it (`w.from?.part || w.from`), which
+      // handed a breadboard-hole endpoint straight through as the
+      // extractor's `from` string.
+      wires: wires.map(flatWire),
     };
 
     // Try extractors from the engine injection
@@ -324,10 +324,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   const handleTerminalClickForProbe = useCallback((partId, terminal) => {
     if (!placingProbe) return false;
-    const wire = wires.find(w =>
-      (w.from.part === partId && w.from.terminal === terminal) ||
-      (w.to.part === partId && w.to.terminal === terminal)
-    );
+    const wire = wires.find(w => ['from', 'to'].some(side => {
+      const e = wireEndpoint(w, side);
+      return e && e.part === partId && e.terminal === terminal;
+    }));
     setProbePlacement({ netId: wire?.netId || null, partId, terminal });
     return true;
   }, [placingProbe, wires]);
@@ -548,11 +548,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         // Find what's wired to this pin
         const connectedKinds = new Set();
         for (const w of wires) {
+          const f = wireEndpoint(w, 'from');
+          const t = wireEndpoint(w, 'to');
+          if (!f || !t) continue;
           let otherPart = null;
-          if (w.from.part === mcu.id && w.from.terminal === pin) {
-            otherPart = w.to.part;
-          } else if (w.to.part === mcu.id && w.to.terminal === pin) {
-            otherPart = w.from.part;
+          if (f.part === mcu.id && f.terminal === pin) {
+            otherPart = t.part;
+          } else if (t.part === mcu.id && t.terminal === pin) {
+            otherPart = f.part;
           }
           if (otherPart) {
             const p = parts.find(pp => pp.id === otherPart);
@@ -655,8 +658,14 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const idSet = partIds instanceof Set ? partIds : new Set(partIds);
     const copiedParts = parts.filter(p => idSet.has(p.id)).map(p => ({ ...p, params: { ...p.params } }));
     // Wires where both ends are in the copied set
-    const copiedWires = wires.filter(w => idSet.has(w.from.part) && idSet.has(w.to.part))
-      .map(w => ({ ...w, from: { ...w.from }, to: { ...w.to } }));
+    // wireEndpoint already returns a fresh object per side, so the copy the
+    // clipboard needs falls out of reading through the canonical accessor.
+    const copiedWires = wires.flatMap(w => {
+      const from = wireEndpoint(w, 'from');
+      const to = wireEndpoint(w, 'to');
+      if (!from || !to || !idSet.has(from.part) || !idSet.has(to.part)) return [];
+      return [{ ...w, from, to }];
+    });
     clipboardRef.current = { parts: copiedParts, wires: copiedWires };
   }, [parts, wires]);
 
@@ -693,10 +702,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
     // Re-create internal wires with new IDs
     for (const w of srcWires) {
-      const fromId = idMap.get(w.from.part);
-      const toId = idMap.get(w.to.part);
+      const f = wireEndpoint(w, 'from');
+      const t = wireEndpoint(w, 'to');
+      if (!f || !t) continue;
+      const fromId = idMap.get(f.part);
+      const toId = idMap.get(t.part);
       if (fromId && toId) {
-        addWire(fromId, w.from.terminal, toId, w.to.terminal);
+        addWire(fromId, f.terminal, toId, t.terminal);
       }
     }
 
@@ -870,7 +882,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // legacy file inform nothing. Modern files (endpoint objects) load
     // verbatim.
     const legacy = Array.isArray(circuitData.wires) &&
-      circuitData.wires.some(w => typeof w.from === 'string');
+      circuitData.wires.some(isLegacyFlatWire);
     // A file carrying seats or hole wires was deliberately RE-AUTHORED as a
     // breadboard build — the seated-catalog generator keeps the original
     // flat wires as electrical truth, so the wire dialect alone no longer

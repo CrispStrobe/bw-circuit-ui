@@ -4,6 +4,7 @@
  * The meter is a UI-only part with two probe terminals. Its reading
  * depends on where the probes are wired and the meter's mode (V/A/Ω).
  */
+import { wireEndpoint } from './wire-endpoints.js';
 
 /**
  * Get the reading for a meter part.
@@ -86,19 +87,25 @@ function findProbeNet(meterId, probeTerminal, wires) {
   // may not exist in the engine. Follow the wire to the OTHER end's
   // part+terminal, then find what engine net THAT terminal is on.
   for (const w of wires) {
+    const f = wireEndpoint(w, 'from');
+    const t = wireEndpoint(w, 'to');
+    if (!f || !t) continue;
     let otherPart, otherTerm;
-    if (w.from.part === meterId && w.from.terminal === probeTerminal) {
-      otherPart = w.to.part; otherTerm = w.to.terminal;
-    } else if (w.to.part === meterId && w.to.terminal === probeTerminal) {
-      otherPart = w.from.part; otherTerm = w.from.terminal;
+    if (f.part === meterId && f.terminal === probeTerminal) {
+      otherPart = t.part; otherTerm = t.terminal;
+    } else if (t.part === meterId && t.terminal === probeTerminal) {
+      otherPart = f.part; otherTerm = f.terminal;
     }
     if (!otherPart) continue;
 
     // Find the engine net this other terminal is on
     for (const w2 of wires) {
-      if (w2.from.part === meterId || w2.to.part === meterId) continue; // skip meter wires
-      if ((w2.from.part === otherPart && w2.from.terminal === otherTerm) ||
-          (w2.to.part === otherPart && w2.to.terminal === otherTerm)) {
+      const f2 = wireEndpoint(w2, 'from');
+      const t2 = wireEndpoint(w2, 'to');
+      if (!f2 || !t2) continue;
+      if (f2.part === meterId || t2.part === meterId) continue; // skip meter wires
+      if ((f2.part === otherPart && f2.terminal === otherTerm) ||
+          (t2.part === otherPart && t2.terminal === otherTerm)) {
         return w2.netId;
       }
     }
@@ -110,11 +117,14 @@ function findProbeNet(meterId, probeTerminal, wires) {
 
 function findProbePartTerminal(meterId, probeTerminal, wires) {
   for (const w of wires) {
-    if (w.from.part === meterId && w.from.terminal === probeTerminal) {
-      return { part: w.to.part, terminal: w.to.terminal };
+    const f = wireEndpoint(w, 'from');
+    const t = wireEndpoint(w, 'to');
+    if (!f || !t) continue;
+    if (f.part === meterId && f.terminal === probeTerminal) {
+      return { part: t.part, terminal: t.terminal };
     }
-    if (w.to.part === meterId && w.to.terminal === probeTerminal) {
-      return { part: w.from.part, terminal: w.from.terminal };
+    if (t.part === meterId && t.terminal === probeTerminal) {
+      return { part: f.part, terminal: f.terminal };
     }
   }
   return null;

@@ -6,6 +6,8 @@
  * snap offset and the terminals to auto-wire.
  */
 
+import { wireEndpoint } from './wire-endpoints.js';
+
 const SNAP_DISTANCE = 25; // pixels — how close before snapping
 
 /**
@@ -66,8 +68,10 @@ export function findSnapTarget(draggedPart, allParts, wires) {
   // Build set of already-connected terminal pairs
   const connected = new Set();
   for (const w of wires) {
-    connected.add(`${w.from.part}:${w.from.terminal}`);
-    connected.add(`${w.to.part}:${w.to.terminal}`);
+    for (const side of ['from', 'to']) {
+      const e = wireEndpoint(w, side);
+      if (e && e.part) connected.add(`${e.part}:${e.terminal}`);
+    }
   }
 
   let bestDist = SNAP_DISTANCE;

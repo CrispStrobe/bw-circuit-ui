@@ -19,6 +19,8 @@
  * @module
  */
 
+import { wireEndpoint, isBoardEndpoint } from '../model/wire-endpoints.js';
+
 // ── Wokwi type → engine kind mapping ────────────────────────────
 
 const WOKWI_TO_KIND = {
@@ -217,12 +219,21 @@ export function exportWokwi(circuit) {
     };
   });
 
-  const connections = (circuit.wires || []).map(w => [
-    `${w.from}:${w.fromTerminal}`,
-    `${w.to}:${w.toTerminal}`,
-    '',   // color (empty = auto)
-    [],   // path hints
-  ]);
+  // Endpoints through the canonical accessor: the live app holds NESTED
+  // wires (Circuit.fromJSON normalizes them), and reading `w.from` raw
+  // wrote "[object Object]:undefined" into every Wokwi connection.
+  // A breadboard hole is not a Wokwi part pin, so those are dropped.
+  const connections = (circuit.wires || []).flatMap(w => {
+    const f = wireEndpoint(w, 'from');
+    const t = wireEndpoint(w, 'to');
+    if (!f || !t || isBoardEndpoint(f) || isBoardEndpoint(t)) return [];
+    return [[
+      `${f.part}:${f.terminal}`,
+      `${t.part}:${t.terminal}`,
+      '',   // color (empty = auto)
+      [],   // path hints
+    ]];
+  });
 
   return JSON.stringify({ version: 1, parts, connections }, null, 2);
 }

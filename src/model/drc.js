@@ -19,7 +19,7 @@
  */
 
 import { getEngine } from '../engine.js';
-import { flatWire } from './wire-endpoints.js';
+import { flatWire, wireEndpoint } from './wire-endpoints.js';
 
 /**
  * Read current-rating data from the injected engine if available.
@@ -90,8 +90,10 @@ export function runDrc(circuit, board) {
   // Build net membership for quick lookup
   const terminalToNet = new Map();
   for (const w of wires) {
-    terminalToNet.set(`${w.from.part}:${w.from.terminal}`, w.netId);
-    terminalToNet.set(`${w.to.part}:${w.to.terminal}`, w.netId);
+    for (const side of ['from', 'to']) {
+      const e = wireEndpoint(w, side);
+      if (e && e.part) terminalToNet.set(`${e.part}:${e.terminal}`, w.netId);
+    }
   }
   // Also from breadboard nets if available
   for (const [boardId, bb] of circuit.breadboards?.entries() || []) {
@@ -436,8 +438,10 @@ export function runDrc(circuit, board) {
     const mcu = parts.find(p => p.kind === 'mcu');
     if (mcu && mcu.terminals.includes('VCC')) {
       const touched = (term) => wires.some(w =>
-        (w.from.part === mcu.id && w.from.terminal === term) ||
-        (w.to.part === mcu.id && w.to.terminal === term));
+        ['from', 'to'].some(side => {
+          const e = wireEndpoint(w, side);
+          return e && e.part === mcu.id && e.terminal === term;
+        }));
       const missing = ['VCC', 'GND'].filter(t => !touched(t));
       if (missing.length > 0) {
         warnings.push({

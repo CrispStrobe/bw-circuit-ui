@@ -1,11 +1,22 @@
-/** Migrate only the original built-in LED starter's redundant rail jumpers. */
+/**
+ * Migrate only the original built-in LED starter's redundant rail jumpers.
+ *
+ * This runs on RAW autosave JSON, before Circuit.fromJSON has normalized
+ * anything — so both endpoint dialects are live here and the canonical
+ * reader is the only safe way to look at one.
+ */
+import { wireEndpoint, isBoardEndpoint } from './wire-endpoints.js';
+
 function joins(wire, a, b) {
   return (wire.a === a && wire.b === b) || (wire.a === b && wire.b === a);
 }
 
 function tap(wire, batteryId, terminal, boardId, hole) {
-  return wire.from?.part === batteryId && wire.from?.terminal === terminal &&
-    wire.to?.board === boardId && wire.to?.hole === hole;
+  const from = wireEndpoint(wire, 'from');
+  const to = wireEndpoint(wire, 'to');
+  return Boolean(from && to && !isBoardEndpoint(from) && isBoardEndpoint(to) &&
+    from.part === batteryId && from.terminal === terminal &&
+    to.board === boardId && to.hole === hole);
 }
 
 export function migrateStarterAutosave(data) {
@@ -27,8 +38,10 @@ export function migrateStarterAutosave(data) {
   return {
     ...data,
     wires: data.wires.map(wire => {
-      if (wire === positive) return {...wire, to: {...wire.to, hole: 'a5'}};
-      if (wire === negative) return {...wire, to: {...wire.to, hole: 'a10'}};
+      // `tap()` has already proved this side is a hole endpoint in either
+      // dialect; wireEndpoint gives it back as an object to rewrite.
+      if (wire === positive) return {...wire, to: {...wireEndpoint(wire, 'to'), hole: 'a5'}};
+      if (wire === negative) return {...wire, to: {...wireEndpoint(wire, 'to'), hole: 'a10'}};
       return wire;
     }),
     holeWires: data.holeWires.filter(wire => !jumpers.includes(wire)),

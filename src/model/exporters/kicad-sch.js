@@ -28,6 +28,8 @@
  * @module
  */
 
+import { wireEndpoint, isBoardEndpoint } from '../wire-endpoints.js';
+
 /** Quote a KiCad s-expression atom. */
 const q = (s) => `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 
@@ -151,7 +153,21 @@ function railNameOf(part) {
   return part.kind === 'gnd' ? 'GND' : 'VCC';
 }
 
-/** Union-find over wires, so one NET is emitted per electrical node. */
+/**
+ * Union-find over wires, so one NET is emitted per electrical node.
+ *
+ * Reads endpoints through the canonical accessor. The hand-rolled version
+ * keyed on `${w.from} ${w.fromTerminal}`, which on a NESTED wire is the
+ * literal string "[object Object] undefined" — one key for every endpoint
+ * of every wire, so the whole circuit union-found into a single root and
+ * the emitted schematic carried NO net labels at all. That is the shape
+ * the live app holds (Circuit.fromJSON normalizes to nested), so KiCad
+ * export from the running app produced a schematic of floating symbols.
+ *
+ * Breadboard-hole endpoints are dropped: connectivity here is written as
+ * NET LABELS on part pins, and a hole has no pin to label. This exporter
+ * is scoped to round-tripping our own importer, which has no breadboards.
+ */
 function netsFromWires(wires) {
   const parent = new Map();
   const find = (x) => {
@@ -160,7 +176,10 @@ function netsFromWires(wires) {
     return x;
   };
   for (const w of wires || []) {
-    const a = find(`${w.from} ${w.fromTerminal}`); const b = find(`${w.to} ${w.toTerminal}`);
+    const f = wireEndpoint(w, 'from');
+    const t = wireEndpoint(w, 'to');
+    if (!f || !t || isBoardEndpoint(f) || isBoardEndpoint(t)) continue;
+    const a = find(`${f.part} ${f.terminal}`); const b = find(`${t.part} ${t.terminal}`);
     if (a !== b) parent.set(a, b);
   }
   const groups = new Map();
@@ -214,10 +233,12 @@ export function toKicadSch({ parts = [], wires = [] }, opts = {}) {
   // pin list is not fixed.
   const usedTerms = new Map();
   for (const w of wires) {
-    if (!usedTerms.has(w.from)) usedTerms.set(w.from, new Set());
-    usedTerms.get(w.from).add(w.fromTerminal);
-    if (!usedTerms.has(w.to)) usedTerms.set(w.to, new Set());
-    usedTerms.get(w.to).add(w.toTerminal);
+    for (const side of ['from', 'to']) {
+      const e = wireEndpoint(w, side);
+      if (!e || isBoardEndpoint(e)) continue;
+      if (!usedTerms.has(e.part)) usedTerms.set(e.part, new Set());
+      usedTerms.get(e.part).add(e.terminal);
+    }
   }
 
   // ---- name the nets FIRST ------------------------------------------

@@ -5,7 +5,15 @@
  * 1. POLARITY comes from the WIRING (LED to VCC → active-low, LED to GND → active-high)
  * 2. TONE is singular (one Timer 1 per program)
  * 3. ANALOG is P1.x only, PWM is P1.3/P1.4 only
+ *
+ * Wire endpoints are read ONLY through wire-endpoints.js. This module is
+ * exported from src/index.js, so a host may hand it wires straight out of a
+ * circuit.json — where the flat dialect is common — as well as the nested
+ * ones Circuit.fromJSON produces. Reading `w.from.part` raw silently sees
+ * `undefined` on a flat wire, and a polarity derived from no wires at all
+ * comes back "active-high" for an active-low LED.
  */
+import { wireEndpoint } from './wire-endpoints.js';
 
 /**
  * Generate a unique name for a part.
@@ -49,11 +57,13 @@ function deriveActiveLow(partId, parts, wires) {
 
     // Follow wires from this terminal
     for (const w of wires) {
+      const wf = wireEndpoint(w, 'from');
+      const wt = wireEndpoint(w, 'to');
       let next = null;
-      if (w.from.part === fromPart && w.from.terminal === fromTerminal) {
-        next = w.to;
-      } else if (w.to.part === fromPart && w.to.terminal === fromTerminal) {
-        next = w.from;
+      if (wf && wf.part === fromPart && wf.terminal === fromTerminal) {
+        next = wt;
+      } else if (wt && wt.part === fromPart && wt.terminal === fromTerminal) {
+        next = wf;
       }
       if (!next) continue;
 
@@ -100,9 +110,11 @@ function deriveButtonActiveLow(partId, parts, wires) {
     const p = parts.find(pp => pp.id === fromPart);
     if (p && p.kind === target) return true;
     for (const w of wires) {
+      const wf = wireEndpoint(w, 'from');
+      const wt = wireEndpoint(w, 'to');
       let next = null;
-      if (w.from.part === fromPart && w.from.terminal === fromTerminal) next = w.to;
-      else if (w.to.part === fromPart && w.to.terminal === fromTerminal) next = w.from;
+      if (wf && wf.part === fromPart && wf.terminal === fromTerminal) next = wt;
+      else if (wt && wt.part === fromPart && wt.terminal === fromTerminal) next = wf;
       if (!next) continue;
       const np = parts.find(pp => pp.id === next.part);
       if (np && np.kind === target) return true;
@@ -302,19 +314,25 @@ export function circuitToDeclarations(parts, wires, nets = null) {
     // Find the MCU pin this part connects to (directly or through a resistor)
     let mcuPin = null;
     for (const wire of wires) {
+      const f = wireEndpoint(wire, 'from');
+      const t = wireEndpoint(wire, 'to');
+      if (!f || !t) continue;
       // Direct connection
-      if (wire.from.part === mcu.id && wire.to.part === part.id) mcuPin = wire.from.terminal;
-      else if (wire.to.part === mcu.id && wire.from.part === part.id) mcuPin = wire.to.terminal;
+      if (f.part === mcu.id && t.part === part.id) mcuPin = f.terminal;
+      else if (t.part === mcu.id && f.part === part.id) mcuPin = t.terminal;
       if (mcuPin) break;
 
       // Through a resistor
-      const mid = wire.from.part === part.id ? wire.to.part
-        : wire.to.part === part.id ? wire.from.part : null;
+      const mid = f.part === part.id ? t.part
+        : t.part === part.id ? f.part : null;
       if (!mid) continue;
       for (const w2 of wires) {
         if (w2 === wire) continue;
-        if (w2.from.part === mid && w2.to.part === mcu.id) { mcuPin = w2.to.terminal; break; }
-        if (w2.to.part === mid && w2.from.part === mcu.id) { mcuPin = w2.from.terminal; break; }
+        const f2 = wireEndpoint(w2, 'from');
+        const t2 = wireEndpoint(w2, 'to');
+        if (!f2 || !t2) continue;
+        if (f2.part === mid && t2.part === mcu.id) { mcuPin = t2.terminal; break; }
+        if (t2.part === mid && f2.part === mcu.id) { mcuPin = f2.terminal; break; }
       }
       if (mcuPin) break;
     }

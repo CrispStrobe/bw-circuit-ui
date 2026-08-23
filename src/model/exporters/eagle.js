@@ -22,6 +22,8 @@
  * @module
  */
 
+import { wireEndpoint, isBoardEndpoint } from '../wire-endpoints.js';
+
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -92,8 +94,24 @@ const headerFor = (part) => {
   };
 };
 
-/** Union-find over wires, so one <net> is emitted per electrical node. */
-function netsFromWires(parts, wires) {
+/**
+ * Union-find over wires, so one <net> is emitted per electrical node.
+ *
+ * Endpoints arrive in EITHER dialect and this used to read only the flat
+ * one — `key(w.from, w.fromTerminal)` on a nested wire keys on
+ * "[object Object] undefined", so every endpoint of every wire collapsed
+ * into ONE union-find root and the emitted <nets> section came out EMPTY.
+ * ExportNetlistMenu passes `circuit.wires`, which Circuit.fromJSON has
+ * already normalized to the NESTED dialect — so "Export → EAGLE" from the
+ * running app wrote a schematic with every part floating, silently, for
+ * every circuit. Read through the canonical accessor.
+ *
+ * A breadboard-hole endpoint has no part.pin to name in an EAGLE net, and
+ * this exporter is scoped to round-tripping our own importer, which has no
+ * breadboards — so a hole is dropped WITH a warning rather than keyed as
+ * a phantom terminal.
+ */
+function netsFromWires(parts, wires, warnings = []) {
   const key = (p, t) => p + ' ' + t;
   const parent = new Map();
   const find = (x) => {
@@ -102,7 +120,20 @@ function netsFromWires(parts, wires) {
     return x;
   };
   const union = (a, b) => { const ra = find(a); const rb = find(b); if (ra !== rb) parent.set(ra, rb); };
-  for (const w of wires || []) union(key(w.from, w.fromTerminal), key(w.to, w.toTerminal));
+  for (const w of wires || []) {
+    const f = wireEndpoint(w, 'from');
+    const t = wireEndpoint(w, 'to');
+    if (!f || !t) {
+      warnings.push('Wire ' + (w && w.id ? w.id : '(unnamed)') + ' has an unreadable endpoint — connection omitted');
+      continue;
+    }
+    if (isBoardEndpoint(f) || isBoardEndpoint(t)) {
+      warnings.push('Wire ' + (w && w.id ? w.id : '(unnamed)') +
+        ' lands in a breadboard hole, which EAGLE has no pin for — connection omitted');
+      continue;
+    }
+    union(key(f.part, f.terminal), key(t.part, t.terminal));
+  }
   const groups = new Map();
   for (const k of parent.keys()) {
     const r = find(k);
@@ -139,7 +170,7 @@ export function toEagleSch({ parts = [], wires = [], nets = null }) {
       + esc(e.deviceset) + '" device=""' + valAttr + '/>');
   }
 
-  const netList = (nets && nets.length) ? nets : netsFromWires(parts, wires);
+  const netList = (nets && nets.length) ? nets : netsFromWires(parts, wires, warnings);
   const netLines = [];
   for (const n of netList) {
     const refs = [];
