@@ -397,15 +397,15 @@ test('SOUNDNESS: the rendered artwork never invents a connection', () => {
  * fail from the sibling being OLD rather than from a fix landing. Its message
  * says so.
  */
-const KNOWN_BROKEN_PARTITION = new Set([
-  'pc82-mini-roulette/circuit.json',
-  'pc83-gluecksrad/circuit.json',
-  'pc84-led-herz/circuit.json',
-  'pc85-led-lampe-puls/circuit.json',
-  'pc88-lichtorgel/circuit.json',
-]);
+// EMPTIED 2026-08-23: the five pc8x divergences were the engine's
+// terminal-coalescing/net-merge defect, fixed upstream (bw-board 2235e...
+// series, vendored at 804f19f). The staleness guard below forced this
+// deletion in the same commit the fix reached the sibling — exactly its
+// job. Add entries back only with a diverging circuit AND the engine sha
+// that introduced it.
+const KNOWN_BROKEN_PARTITION = new Set([]);
 
-test('COMPLETENESS: the artwork draws every solver connection, bar 3 named circuits', () => {
+test('COMPLETENESS: the artwork draws every solver connection', () => {
   const withDrops = corpus.rows.filter(r => r.drops.length > 0);
   const totalDrops = corpus.rows.reduce((n, r) => n + r.drops.length, 0);
   console.log(`\nCompleteness: ${withDrops.length} circuit(s) with undrawn solver connections, ${totalDrops} pairs total`);

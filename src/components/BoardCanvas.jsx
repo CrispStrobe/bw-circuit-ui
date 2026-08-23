@@ -39,7 +39,8 @@ const DIP_CHIP_LABELS = {
   z80: 'Z80 CPU', mc6850: 'MC6850',
   '74hc00': '74HC00', '74hc04': '74HC04', '74hc08': '74HC08',
   '74hc32': '74HC32', '74hc74': '74HC74', '74hc138': '74HC138',
-  '74hc245': '74HC245', '74hc374': '74HC374', '74hc595': '74HC595',
+  '74hc245': '74HC245', '74hc373': '74HC373', '74hc374': '74HC374', '74hc595': '74HC595',
+  '74ls373': '74LS373', 'osc_can': 'OSC',
   // These three gained sidecars in the reconcile but not a DIP label, so they
   // fell back to {a,b} and rendered their pins stacked at the origin. Labels
   // only; the pin geometry comes from the sidecar terminals (74hc4050 is the

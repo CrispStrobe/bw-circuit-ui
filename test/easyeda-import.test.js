@@ -433,15 +433,18 @@ describe('kinds: spicePre first, part number ahead of it', () => {
 
   test('74-series numbers are only emitted when the engine HAS them', () => {
     // eagle.js emits 74hc${n} for any n. Here a number with no engine model
-    // stays unmapped: the board's 74LS373 is a transparent latch, the engine's
-    // 74hc374 is a D flip-flop, and mapping one to the other is the 4050/4051
-    // collapse all over again.
+    // stays unmapped. The '373 sat on the refusal side of this rule until
+    // the engine grew a real transparent latch (bw-board ea81407) — mapping
+    // it to the '374 D flip-flop was never an option, and now no longer a
+    // temptation: both families map to their own kinds.
     assert.equal(logicKind('138'), '74hc138');
     assert.equal(logicKind('595'), '74hc595');
     assert.equal(logicKind('161'), '74ls161');
-    assert.equal(logicKind('373'), null, 'the engine has no 74hc373');
+    assert.equal(logicKind('373'), '74hc373', 'the engine has a real latch now');
     assert.equal(logicKind('9999'), null);
-    assert.equal(map({ spicePre: 'U', descriptor: '74LS373_ASP', pinCount: 20 }), null);
+    const ls373 = map({ spicePre: 'U', descriptor: '74LS373_ASP', pinCount: 20 });
+    assert.ok(ls373, 'the reference board keeps its 74LS373');
+    assert.equal(ls373.kind, '74ls373');
   });
 
   test('the 74HC138 pin map speaks the ENGINE\'s spelling, not the datasheet\'s', () => {
@@ -488,15 +491,17 @@ describe('the 8085 devkit board (read in place, never copied here)',
     test('it is detected and it imports', () => {
       assert.equal(detectFormat(text, BOARD), 'easyeda');
       const r = importEasyEda(text);
-      assert.equal(r.parts.length, 27, 'twenty-five components plus a vcc and a gnd rail');
-      assert.equal(r.unmapped.length, 5);
+      assert.equal(r.parts.length, 28, 'twenty-six components plus a vcc and a gnd rail');
+      assert.equal(r.unmapped.length, 4);
       assert.equal(r.ignored.length, 1, 'the sheet frame');
     });
 
-    test('coverage: 25 of its 30 electrical components map', () => {
+    test('coverage: 26 of its 30 electrical components map', () => {
+      // 26 since the engine grew a real 74LS373 (it was the named loss
+      // in logicKind's own doc until then).
       const r = importEasyEda(text);
       const mapped = r.parts.filter((p) => p.kind !== 'vcc' && p.kind !== 'gnd').length;
-      assert.equal(mapped, 25);
+      assert.equal(mapped, 26);
       assert.equal(mapped + r.unmapped.length, 30, 'thirty-one LIB shapes less the sheet frame');
     });
 
@@ -526,7 +531,7 @@ describe('the 8085 devkit board (read in place, never copied here)',
       const rotated = comps.filter((c) => ['90', '180', '270'].includes(String(c.rot)));
       assert.equal(rotated.length, 21, 'the board stopped having rotated symbols');
       const g = importEasyEda(text).warnings.find((w) => w.startsWith('geometry:'));
-      assert.match(g, /^geometry: 67\/73 mapped pins/);
+      assert.match(g, /^geometry: 87\/93 mapped pins/);
     });
   });
 
@@ -576,6 +581,6 @@ describe('the imported bench solves, and a misparse changes the answer',
 
     test('the 8085 board loads too', { skip: haveBoard ? false : 'no corpus' }, () => {
       const r = importEasyEda(readFileSync(BOARD, 'utf8'));
-      assert.equal(solve(r.parts, r.wires).parts, 27);
+      assert.equal(solve(r.parts, r.wires).parts, 28);
     });
   });

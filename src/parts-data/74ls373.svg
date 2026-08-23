@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 61" width="70" height="61">
+  <!-- 74ls373 — 20-pin DIP package, bench-style -->
+  <rect x="10" y="2" width="50" height="57" rx="2" fill="#303030" stroke="#1a1a1a" stroke-width="1"/>
+  <path d="M32 2 Q35 6 38 2" fill="#303030" stroke="#555" stroke-width="0.8"/>
+  <circle cx="15" cy="8" r="1.5" fill="#b0b0b0"/>
+  <text x="35" y="26" text-anchor="middle" font-family="monospace" font-size="5" fill="#c0c0c0">74LS373</text>
+  <text x="35" y="34" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#888">OCT LATCH</text>
+  <!-- Left pins (1-10) -->
+  <line x1="0" y1="8" x2="10" y2="8" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="8" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="13" x2="10" y2="13" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="13" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="18" x2="10" y2="18" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="18" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="23" x2="10" y2="23" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="23" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="28" x2="10" y2="28" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="28" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="33" x2="10" y2="33" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="33" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="38" x2="10" y2="38" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="38" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="43" x2="10" y2="43" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="43" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="48" x2="10" y2="48" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="0" y1="53" x2="10" y2="53" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="53" r="1.5" fill="#c0c0c0"/>
+  <!-- Right pins (20-11) -->
+  <line x1="60" y1="8" x2="70" y2="8" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="70" cy="8" r="1.5" fill="#c0c0c0"/>
+  <line x1="60" y1="13" x2="70" y2="13" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="70" cy="13" r="1.5" fill="#c0c0c0"/>
+  <line x1="60" y1="18" x2="70" y2="18" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="70" cy="18" r="1.5" fill="#c0c0c0"/>
+  <line x1="60" y1="23" x2="70" y2="23" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="70" cy="23" r="1.5" fill="#c0c0c0"/>
+  <line x1="60" y1="28" x2="70" y2="28" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="70" cy="28" r="1.5" fill="#c0c0c0"/>
+  <line x1="60" y1="33" x2="70" y2="33" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="70" cy="33" r="1.5" fill="#c0c0c0"/>
+  <line x1="60" y1="38" x2="70" y2="38" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="70" cy="38" r="1.5" fill="#c0c0c0"/>
+  <line x1="60" y1="43" x2="70" y2="43" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="70" cy="43" r="1.5" fill="#c0c0c0"/>
+  <line x1="60" y1="48" x2="70" y2="48" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="70" cy="48" r="1.5" fill="#c0c0c0"/>
+  <line x1="60" y1="53" x2="70" y2="53" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="70" cy="53" r="1.5" fill="#c0c0c0"/>
+</svg>

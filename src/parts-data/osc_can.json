@@ -1,0 +1,24 @@
+{
+  "kind": "osc_can",
+  "w": 70,
+  "h": 46,
+  "terminals": [
+    { "name": "oe", "x": 0, "y": 8, "functions": [] },
+    { "name": "gnd", "x": 0, "y": 38, "functions": [] },
+    { "name": "out", "x": 70, "y": 38, "functions": [] },
+    { "name": "vcc", "x": 70, "y": 8, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "Full-size DIP-14 metal-can crystal oscillator module (ECS-100AX / ECS-2100AX class). Four corner leads in DIP-14 package order: pin 1 OE (internal pullup — floating means RUN), pin 7 GND, pin 8 OUT, pin 14 VCC. A POWERED clock source, not a crystal: params.freq sets the square-wave frequency; OE low or no power tri-states OUT.",
+  "footprint": {
+    "refTerminal": "oe",
+    "leads": {
+      "oe": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 6 },
+      "out": { "dRow": 5, "dCol": 6 },
+      "vcc": { "dRow": 5, "dCol": 0 }
+    },
+    "straddlesGutter": true,
+    "minCols": 7
+  }
+}
