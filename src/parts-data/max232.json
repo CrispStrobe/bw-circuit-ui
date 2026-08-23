@@ -1,0 +1,176 @@
+{
+  "kind": "max232",
+  "w": 70,
+  "h": 51,
+  "terminals": [
+    {
+      "name": "c1p",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "vp",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "c1m",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "c2p",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "c2m",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "vm",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "t2out",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "r2in",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "r2out",
+      "x": 70,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "t2in",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "t1in",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "r1out",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "r1in",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "t1out",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "MAX232 dual RS-232 driver/receiver (DIP-16). Pin table from TI SLLS047. 1 C1+, 2 V+, 3 C1-, 4 C2+, 5 C2-, 6 V-, 7 T2OUT, 8 R2IN, 9 R2OUT, 10 T2IN, 11 T1IN, 12 R1OUT, 13 R1IN, 14 T1OUT, 15 GND, 16 VCC. Engine models the LEVEL story: inverting +/-8 V drivers, TTL receivers with 5 k input load; the data path stays on the UART/ACIA hooks.",
+  "footprint": {
+    "refTerminal": "c1p",
+    "leads": {
+      "c1p": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "vp": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "c1m": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "c2p": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "c2m": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "vm": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "t2out": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "r2in": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "r2out": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "t2in": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "t1in": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "r1out": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "r1in": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "t1out": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "gnd": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 8
+  }
+}

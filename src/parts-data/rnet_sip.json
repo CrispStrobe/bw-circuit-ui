@@ -1,0 +1,116 @@
+{
+  "kind": "rnet_sip",
+  "w": 88,
+  "h": 26,
+  "terminals": [
+    {
+      "name": "p1",
+      "x": 8,
+      "y": 26,
+      "functions": []
+    },
+    {
+      "name": "p2",
+      "x": 16,
+      "y": 26,
+      "functions": []
+    },
+    {
+      "name": "p3",
+      "x": 24,
+      "y": 26,
+      "functions": []
+    },
+    {
+      "name": "p4",
+      "x": 32,
+      "y": 26,
+      "functions": []
+    },
+    {
+      "name": "p5",
+      "x": 40,
+      "y": 26,
+      "functions": []
+    },
+    {
+      "name": "p6",
+      "x": 48,
+      "y": 26,
+      "functions": []
+    },
+    {
+      "name": "p7",
+      "x": 56,
+      "y": 26,
+      "functions": []
+    },
+    {
+      "name": "p8",
+      "x": 64,
+      "y": 26,
+      "functions": []
+    },
+    {
+      "name": "p9",
+      "x": 72,
+      "y": 26,
+      "functions": []
+    },
+    {
+      "name": "p10",
+      "x": 80,
+      "y": 26,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "SIP resistor network (Bourns 4600X class), 10 pins max. params.ohms sets the element value, params.topology 'bussed' (pin 1 common, default) or 'isolated' (independent pairs), params.pins how many are populated (the BOM's 4609X is 9). Single-in-line: all leads in one breadboard row.",
+  "footprint": {
+    "refTerminal": "p1",
+    "leads": {
+      "p1": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "p2": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "p3": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "p4": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "p5": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "p6": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "p7": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "p8": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "p9": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "p10": {
+        "dRow": 0,
+        "dCol": 9
+      }
+    },
+    "straddlesGutter": false,
+    "minCols": 10
+  }
+}

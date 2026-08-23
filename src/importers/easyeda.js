@@ -210,6 +210,15 @@ export const EASYEDA_RULES = [
   [/^(LM|MC)?339/i, () => ({ kind: 'lm339', byName: true })],
   [/^(LM|MC)?393/i, () => ({ kind: 'lm393', byName: true })],
   [/^MAX7219/i, () => ({ kind: 'max7219', byName: true })],
+  // MAX232: EasyEDA writes datasheet pin names (C1+, T1IN, V+); the engine
+  // spells them c1p/t1in/vp — an explicit map, same reason as the '138.
+  [/^MAX232/i, () => ({ kind: 'max232', pins: {
+    'C1+': 'c1p', 'C1-': 'c1m', 'C2+': 'c2p', 'C2-': 'c2m',
+    'V+': 'vp', 'V-': 'vm',
+    T1IN: 't1in', T1OUT: 't1out', T2IN: 't2in', T2OUT: 't2out',
+    R1IN: 'r1in', R1OUT: 'r1out', R2IN: 'r2in', R2OUT: 'r2out',
+    VCC: 'vcc', GND: 'gnd',
+  } })],
   [/^PCF8574/i, () => ({ kind: 'pcf8574', byName: true })],
   [/^(AT)?24[CL]C?\d/i, () => ({ kind: 'at24c02', byName: true,
     terminals: ['vcc', 'gnd', 'sda', 'scl'],
