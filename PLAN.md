@@ -8,6 +8,11 @@ turn a potentiometer and watch an LED dim, probe nodes with a virtual multimeter
 **UI only.** Every electrical value comes from `bw-board` (sibling repo, boundary B).
 No fabricated numbers, no placeholders that survive past the commit they appear in.
 
+**Next campaign is scoped: see `ROADMAP.md` (2026-08-23)** — export-path defect fixes
+(X0, do first: unsimulatable SPICE decks, mega/milli suffix, three dead exporters,
+silent menu no-op), new interchange formats (X1), and instrument post-processing in
+workers (X2). Engine prerequisites are cross-referenced to `../bw-board/ROADMAP.md`.
+
 ## Architecture
 
 ```
