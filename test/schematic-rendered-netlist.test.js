@@ -370,17 +370,36 @@ test('SOUNDNESS: the rendered artwork never invents a connection', () => {
 });
 
 /**
- * The three circuits below have a genuinely broken SOLVER partition: the
- * same terminal (vcc_1:vcc) is a member of two different resolved nets, so
- * no drawing can be faithful to both. They are named individually rather
- * than tolerated by pattern — an allowlist that matches a shape would also
- * absorb the next real defect of that shape.
+ * These circuits have a genuinely broken SOLVER partition: the same terminal
+ * — a supply or ground post — is a member of two different resolved nets, so
+ * no drawing can be faithful to both. `findPinNet` returns the first, so the
+ * post is drawn on one net and the other net's members are left joined to
+ * each other and to nothing else. Named individually rather than tolerated by
+ * pattern: an allowlist that matches a shape would absorb the next real defect
+ * of that shape.
  *
- * Fixing them is a net-merge change in the solver, tracked in
- * ELECTRICAL-CORRESPONDENCE-REPORT.md (divergence D3). When that lands,
- * delete the entry and this gate holds at zero.
+ * THIS IS A SOLVER DEFECT, NOT A DRAWING ONE. Do not try to fix it in the
+ * projection. Measured 2026-08-23 across the same 1,092-circuit corpus with
+ * only the engine changed:
+ *
+ *   bw-board b1da99e   3 circuits, 4 terminals in more than one net
+ *   bw-board 8ca1504   5 circuits, 9 terminals  <- pc82 and pc83 join
+ *
+ * pc82/pc83 are a REGRESSION introduced between those revisions, and the trio
+ * worsened in the same step (each gained gnd_2:gnd). In pc82 under 8ca1504,
+ * gnd_2:gnd sits in both net_7 (15 members) and net_8 (3: rst, en, gnd_2), so
+ * the decade counter's reset and enable are drawn tied to each other and not
+ * to ground. Under b1da99e that was one net and the circuit drew correctly.
+ * The likely origin is the ground-merge rework in that range (d9136cc
+ * "per-solve terminal map + non-mutating ground merge"); filed for bw-board.
+ *
+ * Because the list tracks an ENGINE behaviour, the staleness guard below can
+ * fail from the sibling being OLD rather than from a fix landing. Its message
+ * says so.
  */
 const KNOWN_BROKEN_PARTITION = new Set([
+  'pc82-mini-roulette/circuit.json',
+  'pc83-gluecksrad/circuit.json',
   'pc84-led-herz/circuit.json',
   'pc85-led-lampe-puls/circuit.json',
   'pc88-lichtorgel/circuit.json',
@@ -403,7 +422,11 @@ test('COMPLETENESS: the artwork draws every solver connection, bar 3 named circu
   // is fixed, the entry has to go, or it starts hiding the next defect.
   const stale = [...KNOWN_BROKEN_PARTITION].filter(id => !withDrops.some(r => r.id === id));
   assert.deepEqual(stale, [],
-    `allowlisted circuit(s) no longer diverge — remove them from KNOWN_BROKEN_PARTITION`);
+    `allowlisted circuit(s) no longer diverge: ${stale.join(', ')}. Either the solver's `
+    + 'net-merge defect is FIXED — delete them from KNOWN_BROKEN_PARTITION in the same '
+    + 'commit — or the bw-board sibling is OLDER than the one that introduced them '
+    + '(pc82/pc83 diverge from 8ca1504 and not from b1da99e), in which case update the '
+    + 'sibling rather than the list.');
 });
 
 // ── Anti-vacuity and mutation proofs ────────────────────────────
