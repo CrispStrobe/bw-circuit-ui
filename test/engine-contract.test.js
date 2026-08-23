@@ -20,7 +20,9 @@
 import './_setup.js';
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { BoardImpl } from '../../bw-board/src/board.js';
 import { registeredKinds } from '../../bw-board/src/devices.js';
 import { registerAllDevices } from '../../bw-board/src/register-all.js';
@@ -320,8 +322,20 @@ describe('the TERMINAL names a rule emits are terminals the engine has', () => {
 describe('active parts reach the dialect', () => {
     // An actuator or sensor that cannot be driven from a .bw program is only
     // half-integrated, however well it simulates.
-    const gen = readFileSync(
-        '/Users/christianstrobele/code/sb3-creator/src/utils/sb3Creator.js', 'utf8');
+    // Was hardcoded to one machine's home directory, so it threw ENOENT
+    // everywhere else — and node reports a suite that throws in its body as
+    // `not ok` WITHOUT counting it as a failure, so this ran nowhere and the
+    // file still reported 12/12/0. A gate that cannot fail.
+    // Explicit wins absolutely; absent is a failure, never a skip (ROADMAP §5).
+    const SB3 = process.env.SB3_CREATOR
+        || resolve(dirname(fileURLToPath(import.meta.url)), '../../sb3-creator');
+    const genPath = join(SB3, 'src/utils/sb3Creator.js');
+    if (!existsSync(genPath)) {
+        throw new Error(`sb3-creator not found at ${genPath}. This suite checks that every `
+            + 'active part reaches the dialect, which needs the emitter; set SB3_CREATOR to a '
+            + 'sb3-creator checkout. Absent is a failure, not a skip.');
+    }
+    const gen = readFileSync(genPath, 'utf8');
 
     /** kind -> a dialect opcode (or pin verb) that drives or reads it. */
     const ACTIVE = {
