@@ -85,7 +85,15 @@ describe('_syncNetlist catch records the error', () => {
     // boundary-B netlist"), not a call site.
     const defIdx = circuitSrc.indexOf('_syncNetlist() {');
     assert.ok(defIdx > 0, '_syncNetlist definition found');
-    const method = circuitSrc.slice(defIdx, defIdx + 6000);
+    // Slice to the NEXT method definition rather than a fixed byte count.
+    // A fixed window silently stops covering the method as it grows: at
+    // 6000 bytes this guard began passing over a truncated body and then
+    // failed outright when netlistError slid past the cut, reporting "catch
+    // does not record the error" about a catch that still did.
+    const rest = circuitSrc.slice(defIdx + '_syncNetlist() {'.length);
+    const nextDef = rest.search(/\n  [A-Za-z_]\w*\([^)]*\) \{/);
+    assert.ok(nextDef > 0, 'found the end of _syncNetlist');
+    const method = rest.slice(0, nextDef);
     assert.ok(method.includes('this.netlistError'), 'catch records the error');
     assert.ok(method.includes('console.warn'), 'catch warns to console');
   });

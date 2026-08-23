@@ -358,16 +358,41 @@ test('SOUNDNESS: the rendered artwork never invents a connection', () => {
     `${offenders.length} circuit(s) draw a connection the solver does not have`);
 });
 
-test('COMPLETENESS: report solver connections the artwork does not draw', () => {
+/**
+ * The three circuits below have a genuinely broken SOLVER partition: the
+ * same terminal (vcc_1:vcc) is a member of two different resolved nets, so
+ * no drawing can be faithful to both. They are named individually rather
+ * than tolerated by pattern — an allowlist that matches a shape would also
+ * absorb the next real defect of that shape.
+ *
+ * Fixing them is a net-merge change in the solver, tracked in
+ * ELECTRICAL-CORRESPONDENCE-REPORT.md (divergence D3). When that lands,
+ * delete the entry and this gate holds at zero.
+ */
+const KNOWN_BROKEN_PARTITION = new Set([
+  'pc84-led-herz/circuit.json',
+  'pc85-led-lampe-puls/circuit.json',
+  'pc88-lichtorgel/circuit.json',
+]);
+
+test('COMPLETENESS: the artwork draws every solver connection, bar 3 named circuits', () => {
   const withDrops = corpus.rows.filter(r => r.drops.length > 0);
   const totalDrops = corpus.rows.reduce((n, r) => n + r.drops.length, 0);
   console.log(`\nCompleteness: ${withDrops.length} circuit(s) with undrawn solver connections, ${totalDrops} pairs total`);
-  for (const o of withDrops.slice(0, 10)) {
-    console.log(`  ${o.id}: ${o.drops.length} pairs, e.g. ${o.drops[0][0]} <-> ${o.drops[0][1]}`);
+  for (const o of withDrops) {
+    console.log(`  ${o.id}: ${o.drops.length} pairs, e.g. ${o.drops[0][0]} <-> ${o.drops[0][1]}` +
+      `${KNOWN_BROKEN_PARTITION.has(o.id) ? '  [known: broken solver partition]' : '  <-- NEW'}`);
   }
-  // Reported, not asserted-zero: see the documented gap classes in
-  // ELECTRICAL-CORRESPONDENCE-REPORT.md. Asserted below in mutation form.
-  assert.ok(true);
+
+  const unexpected = withDrops.filter(r => !KNOWN_BROKEN_PARTITION.has(r.id));
+  assert.deepEqual(unexpected.map(r => r.id), [],
+    `${unexpected.length} circuit(s) drop a solver connection that is not a known-broken partition`);
+
+  // The allowlist must not rot into a blanket exemption: if a listed circuit
+  // is fixed, the entry has to go, or it starts hiding the next defect.
+  const stale = [...KNOWN_BROKEN_PARTITION].filter(id => !withDrops.some(r => r.id === id));
+  assert.deepEqual(stale, [],
+    `allowlisted circuit(s) no longer diverge — remove them from KNOWN_BROKEN_PARTITION`);
 });
 
 // ── Anti-vacuity and mutation proofs ────────────────────────────

@@ -734,12 +734,35 @@ export class Circuit {
     // terminal "@bb:<board>"/"<hole>" — mergeNets unions through it, and it
     // is stripped again before the engine ever sees it.
     const holeEnd = (e) => e.board ? { part: `@bb:${e.board}`, terminal: e.hole } : e;
+
+    // One physical pin must be ONE net key. seat.leadMap spells STC pins
+    // uppercase ("P1.0") while part.terminals and the wires that reference
+    // them are lowercase ("p1.0"), so the union-find below saw two distinct
+    // terminals and split one pin into two nets: the breadboard column got
+    // MCU:P1.0 and the LED's wire got MCU:p1.0. The circuit still solved
+    // (the stray half was a singleton), but findPinNet could resolve the
+    // schematic's pin to the empty half and draw the MCU driving nothing —
+    // 27 STC15 variants rendered exactly that. Canonicalise every terminal
+    // to the part's DECLARED spelling before any net key is built.
+    const canonBy = new Map(); // partId -> Map(lowercase -> declared spelling)
+    for (const p of this.parts) {
+      const m = new Map();
+      for (const t of p.terminals || []) m.set(String(t).toLowerCase(), t);
+      canonBy.set(p.id, m);
+    }
+    const canonEnd = (e) => {
+      const m = canonBy.get(e.part);
+      if (!m) return e; // pseudo-terminals (@bb:*) and unknown parts pass through
+      const declared = m.get(String(e.terminal).toLowerCase());
+      return declared === undefined || declared === e.terminal
+        ? e : { ...e, terminal: declared };
+    };
     const netMap = new Map(); // netId → Map of key → {part, terminal}
     for (const w of this.wires) {
       if (!netMap.has(w.netId)) netMap.set(w.netId, new Map());
       const net = netMap.get(w.netId);
-      const f = holeEnd(w.from);
-      const t = holeEnd(w.to);
+      const f = canonEnd(holeEnd(w.from));
+      const t = canonEnd(holeEnd(w.to));
       const fk = `${f.part}:${f.terminal}`;
       const tk = `${t.part}:${t.terminal}`;
       if (!net.has(fk)) net.set(fk, f);
@@ -765,7 +788,7 @@ export class Circuit {
         // (voltage labels on breadboard jumpers need the strip's net id).
         if (!this.boardStripNets) this.boardStripNets = new Map();
         this.boardStripNets.set(boardId, derived.stripToNet);
-        const stripNets = derived.nets.map(n => ({ ...n, terminals: [...n.terminals] }));
+        const stripNets = derived.nets.map(n => ({ ...n, terminals: n.terminals.map(canonEnd) }));
         // Glue each tap-wire hole into its strip's net (or fabricate the
         // strip's net if nothing else lives there yet). For column strips
         // (not rails), track fabricated nets so multiple taps into the same
