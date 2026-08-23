@@ -3,92 +3,412 @@
   "w": 80,
   "h": 111,
   "terminals": [
-    { "name": "d0", "x": 0, "y": 8, "functions": [] },
-    { "name": "d1", "x": 0, "y": 13, "functions": [] },
-    { "name": "d2", "x": 0, "y": 18, "functions": [] },
-    { "name": "d3", "x": 0, "y": 23, "functions": [] },
-    { "name": "d4", "x": 0, "y": 28, "functions": [] },
-    { "name": "d5", "x": 0, "y": 33, "functions": [] },
-    { "name": "d6", "x": 0, "y": 38, "functions": [] },
-    { "name": "d7", "x": 0, "y": 43, "functions": [] },
-    { "name": "rclk", "x": 0, "y": 48, "functions": [] },
-    { "name": "sin", "x": 0, "y": 53, "functions": [] },
-    { "name": "sout", "x": 0, "y": 58, "functions": [] },
-    { "name": "cs0", "x": 0, "y": 63, "functions": [] },
-    { "name": "cs1", "x": 0, "y": 68, "functions": [] },
-    { "name": "csb", "x": 0, "y": 73, "functions": [] },
-    { "name": "baudoutb", "x": 0, "y": 78, "functions": [] },
-    { "name": "xin", "x": 0, "y": 83, "functions": [] },
-    { "name": "xout", "x": 0, "y": 88, "functions": [] },
-    { "name": "wrb", "x": 0, "y": 93, "functions": [] },
-    { "name": "wr2b", "x": 0, "y": 98, "functions": [] },
-    { "name": "vss", "x": 0, "y": 103, "functions": [] },
-    { "name": "vcc", "x": 80, "y": 8, "functions": [] },
-    { "name": "mr", "x": 80, "y": 13, "functions": [] },
-    { "name": "nc2", "x": 80, "y": 18, "functions": [] },
-    { "name": "nc1", "x": 80, "y": 23, "functions": [] },
-    { "name": "irq", "x": 80, "y": 28, "functions": [] },
-    { "name": "out2b", "x": 80, "y": 33, "functions": [] },
-    { "name": "out1b", "x": 80, "y": 38, "functions": [] },
-    { "name": "dtrb", "x": 80, "y": 43, "functions": [] },
-    { "name": "rtsb", "x": 80, "y": 48, "functions": [] },
-    { "name": "ctsb", "x": 80, "y": 53, "functions": [] },
-    { "name": "dsrb", "x": 80, "y": 58, "functions": [] },
-    { "name": "dcdb", "x": 80, "y": 63, "functions": [] },
-    { "name": "rib", "x": 80, "y": 68, "functions": [] },
-    { "name": "a0", "x": 80, "y": 73, "functions": [] },
-    { "name": "a1", "x": 80, "y": 78, "functions": [] },
-    { "name": "a2", "x": 80, "y": 83, "functions": [] },
-    { "name": "adsb", "x": 80, "y": 88, "functions": [] },
-    { "name": "txrdyb", "x": 80, "y": 93, "functions": [] },
-    { "name": "rd2b", "x": 80, "y": 98, "functions": [] },
-    { "name": "rdb", "x": 80, "y": 103, "functions": [] }
+    {
+      "name": "d0",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "d1",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "d4",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "d5",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "d6",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "d7",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "rclk",
+      "x": 0,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "sin",
+      "x": 0,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "sout",
+      "x": 0,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "cs0",
+      "x": 0,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "cs1",
+      "x": 0,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "cs2b",
+      "x": 0,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "baudoutb",
+      "x": 0,
+      "y": 78,
+      "functions": []
+    },
+    {
+      "name": "xin",
+      "x": 0,
+      "y": 83,
+      "functions": []
+    },
+    {
+      "name": "xout",
+      "x": 0,
+      "y": 88,
+      "functions": []
+    },
+    {
+      "name": "wrb",
+      "x": 0,
+      "y": 93,
+      "functions": []
+    },
+    {
+      "name": "wr",
+      "x": 0,
+      "y": 98,
+      "functions": []
+    },
+    {
+      "name": "vss",
+      "x": 0,
+      "y": 103,
+      "functions": []
+    },
+    {
+      "name": "rd",
+      "x": 80,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "rdb",
+      "x": 80,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "ddis",
+      "x": 80,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "txrdyb",
+      "x": 80,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "adsb",
+      "x": 80,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "a2",
+      "x": 80,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "a1",
+      "x": 80,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "a0",
+      "x": 80,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "rxrdyb",
+      "x": 80,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "intr",
+      "x": 80,
+      "y": 53,
+      "functions": []
+    },
+    {
+      "name": "out2b",
+      "x": 80,
+      "y": 58,
+      "functions": []
+    },
+    {
+      "name": "rtsb",
+      "x": 80,
+      "y": 63,
+      "functions": []
+    },
+    {
+      "name": "dtrb",
+      "x": 80,
+      "y": 68,
+      "functions": []
+    },
+    {
+      "name": "out1b",
+      "x": 80,
+      "y": 73,
+      "functions": []
+    },
+    {
+      "name": "mr",
+      "x": 80,
+      "y": 78,
+      "functions": []
+    },
+    {
+      "name": "ctsb",
+      "x": 80,
+      "y": 83,
+      "functions": []
+    },
+    {
+      "name": "dsrb",
+      "x": 80,
+      "y": 88,
+      "functions": []
+    },
+    {
+      "name": "dcdb",
+      "x": 80,
+      "y": 93,
+      "functions": []
+    },
+    {
+      "name": "rib",
+      "x": 80,
+      "y": 98,
+      "functions": []
+    },
+    {
+      "name": "vdd",
+      "x": 80,
+      "y": 103,
+      "functions": []
+    }
   ],
   "variants": null,
-  "_note": "NS16C550 / PC16550D UART (National Semiconductor / TI). Pin table from TI PC16550D datasheet (SNLS378F). DIP-40 package. Intel bus mode adopted: WRB (pin 18, /WR1 write strobe active low), WR2B (pin 19, /WR2), RDB (pin 21, /RD1 read strobe active low), RD2B (pin 22, /RD2). In Intel mode tie WR2B and RD2B low to use WRB/RDB as active-low strobes. CSB (pin 14, /CS2 active low, uniform memory-select naming), CS0 (pin 12, active high), CS1 (pin 13, active high). 8-bit data bus (D0-D7), 3-bit register address (A0-A2). Serial: SIN (pin 10), SOUT (pin 11). Modem: RTSB/CTSB/DTRB/DSRB/DCDB/RIB (all active low). IRQ (pin 36, INTR active high). XIN/XOUT (pins 16-17, oscillator). MR (pin 39, master reset active high). NC pins 37-38. VSS=pin 20, VCC=pin 40.",
+  "_note": "NS16C550/PC16550D UART, DIP-40 (TI/NS datasheet pin table). Pins 1-8 D0-D7, 9 RCLK, 10 SIN, 11 SOUT, 12 CS0, 13 CS1, 14 /CS2, 15 /BAUDOUT, 16 XIN, 17 XOUT, 18 /WR, 19 WR, 20 VSS, 21 RD, 22 /RD, 23 DDIS, 24 /TXRDY, 25 /ADS, 26 A2, 27 A1, 28 A0, 29 /RXRDY, 30 INTR, 31 /OUT2, 32 /RTS, 33 /DTR, 34 /OUT1, 35 MR, 36 /CTS, 37 /DSR, 38 /DCD, 39 /RI, 40 VDD. Same footprint convention as the w65c02 sidecar.",
   "footprint": {
-    "refTerminal": "d0",
+    "refTerminal": "rd",
     "leads": {
-      "d0": { "dRow": 0, "dCol": 0 },
-      "d1": { "dRow": 0, "dCol": 1 },
-      "d2": { "dRow": 0, "dCol": 2 },
-      "d3": { "dRow": 0, "dCol": 3 },
-      "d4": { "dRow": 0, "dCol": 4 },
-      "d5": { "dRow": 0, "dCol": 5 },
-      "d6": { "dRow": 0, "dCol": 6 },
-      "d7": { "dRow": 0, "dCol": 7 },
-      "rclk": { "dRow": 0, "dCol": 8 },
-      "sin": { "dRow": 0, "dCol": 9 },
-      "sout": { "dRow": 0, "dCol": 10 },
-      "cs0": { "dRow": 0, "dCol": 11 },
-      "cs1": { "dRow": 0, "dCol": 12 },
-      "csb": { "dRow": 0, "dCol": 13 },
-      "baudoutb": { "dRow": 0, "dCol": 14 },
-      "xin": { "dRow": 0, "dCol": 15 },
-      "xout": { "dRow": 0, "dCol": 16 },
-      "wrb": { "dRow": 0, "dCol": 17 },
-      "wr2b": { "dRow": 0, "dCol": 18 },
-      "vss": { "dRow": 0, "dCol": 19 },
-      "vcc": { "dRow": 5, "dCol": 0 },
-      "mr": { "dRow": 5, "dCol": 1 },
-      "nc2": { "dRow": 5, "dCol": 2 },
-      "nc1": { "dRow": 5, "dCol": 3 },
-      "irq": { "dRow": 5, "dCol": 4 },
-      "out2b": { "dRow": 5, "dCol": 5 },
-      "out1b": { "dRow": 5, "dCol": 6 },
-      "dtrb": { "dRow": 5, "dCol": 7 },
-      "rtsb": { "dRow": 5, "dCol": 8 },
-      "ctsb": { "dRow": 5, "dCol": 9 },
-      "dsrb": { "dRow": 5, "dCol": 10 },
-      "dcdb": { "dRow": 5, "dCol": 11 },
-      "rib": { "dRow": 5, "dCol": 12 },
-      "a0": { "dRow": 5, "dCol": 13 },
-      "a1": { "dRow": 5, "dCol": 14 },
-      "a2": { "dRow": 5, "dCol": 15 },
-      "adsb": { "dRow": 5, "dCol": 16 },
-      "txrdyb": { "dRow": 5, "dCol": 17 },
-      "rd2b": { "dRow": 5, "dCol": 18 },
-      "rdb": { "dRow": 5, "dCol": 19 }
+      "d0": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "d1": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "d2": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "d3": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "d4": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "d5": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "d6": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "d7": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "rclk": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "sin": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "sout": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "cs0": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "cs1": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "cs2b": {
+        "dRow": 5,
+        "dCol": 13
+      },
+      "baudoutb": {
+        "dRow": 5,
+        "dCol": 14
+      },
+      "xin": {
+        "dRow": 5,
+        "dCol": 15
+      },
+      "xout": {
+        "dRow": 5,
+        "dCol": 16
+      },
+      "wrb": {
+        "dRow": 5,
+        "dCol": 17
+      },
+      "wr": {
+        "dRow": 5,
+        "dCol": 18
+      },
+      "vss": {
+        "dRow": 5,
+        "dCol": 19
+      },
+      "rd": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "rdb": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "ddis": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "txrdyb": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "adsb": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "a2": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "a1": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "a0": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "rxrdyb": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "intr": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "out2b": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "rtsb": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "dtrb": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "out1b": {
+        "dRow": 0,
+        "dCol": 13
+      },
+      "mr": {
+        "dRow": 0,
+        "dCol": 14
+      },
+      "ctsb": {
+        "dRow": 0,
+        "dCol": 15
+      },
+      "dsrb": {
+        "dRow": 0,
+        "dCol": 16
+      },
+      "dcdb": {
+        "dRow": 0,
+        "dCol": 17
+      },
+      "rib": {
+        "dRow": 0,
+        "dCol": 18
+      },
+      "vdd": {
+        "dRow": 0,
+        "dCol": 19
+      }
     },
     "straddlesGutter": true,
     "minCols": 20
