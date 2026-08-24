@@ -127,8 +127,13 @@ const examplesRoot = CORPUS_ROOTS.find(r => existsSync(r)) || null;
 const KNOWN_UNCONNECTED_PINS = new Map([
   ['eater6502-full-build/circuit-flat.json', 4],  // kbd d0/d1, bargraph a0/k0 — seated on empty columns
   ['eater6502-full-build/circuit.json', 2],       // kbd d0/d1
-  ['pico01-blink/circuit-flat.json', 3],          // the file has ZERO wires: 2 parts, nothing joins them
-  ['pico01-blink/circuit.json', 1],               // likewise, 3 parts and no wires
+  // BOTH pico01-blink entries came OFF this list on 2026-08-24. They were
+  // recorded as "ZERO wires: 2 parts, nothing joins them" and "likewise, 3 parts
+  // and no wires"; the files now hold 4 parts / 3 wires and 5 parts / 4 wires.
+  // They were wired up upstream, the entries stopped reproducing, and the
+  // ratchet said so — removed rather than re-numbered, exactly as its own
+  // message asks. The second only surfaced once the first was gone, which is
+  // the ordinary shape of a masked list: fix one, the next appears.
 ]);
 
 describe('schematic geometry across the whole shipped corpus', () => {
