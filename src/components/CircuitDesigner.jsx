@@ -55,6 +55,7 @@ import { useCircuit } from '../hooks/useCircuit.js';
 import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
 import { generatePartName, circuitToDeclarations } from '../model/declarations.js';
+import { circuitSignature } from '../model/circuit-signature.js';
 import { flatWire, isLegacyFlatWire, wireEndpoint } from '../model/wire-endpoints.js';
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
@@ -81,7 +82,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -157,6 +158,38 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       onDeclarationChange(decls);
     }
   }, [parts, wires, onDeclarationChange, circuit]);
+
+  // ── Tell the host the CIRCUIT changed, as against the declarations ──
+  //
+  // `onDeclarationChange` above fires only when the DERIVED PIN DECLARATIONS
+  // move. On a bench with no microcontroller they never do —
+  // `{"pins":[],"ports":[],"parts":[]}` before and after every edit — so on
+  // those benches the host was told nothing, ever. Changing a resistor value,
+  // breaking a wire, deleting a part: all silent.
+  //
+  // That cost three of brickwright-lite's lesson waves a checkpoint each
+  // (`starter-circuit-path`, `signals-resonance`, `machines-contention`), all of
+  // which ask the learner to edit the circuit and watch for a response, and all
+  // three of whose benches are MCU-less by design — a battery and an LED, an RLC
+  // network, a 6502 bus. Their reviews found it independently, one wave at a
+  // time.
+  //
+  // The signature is deliberately STRUCTURAL rather than a reference compare on
+  // `parts`/`wires`: those arrays are rebuilt on every render, so a reference
+  // compare would fire continuously. `circuitSignature` says what is in it and
+  // what is left out, and is tested directly.
+  const lastEditRef = useRef(null);
+  useEffect(() => {
+    if (!onCircuitEdit) return;
+    const signature = circuitSignature(parts, wires);
+    if (signature === lastEditRef.current) return;
+    const first = lastEditRef.current === null;
+    lastEditRef.current = signature;
+    // The first signature is the circuit ARRIVING, not the learner editing it.
+    // A host that treats it as an edit gets one spurious event per load, which
+    // is precisely the false positive `circuit-ready` already covers.
+    if (!first) onCircuitEdit({ parts: parts.length, wires: wires.length });
+  }, [parts, wires, onCircuitEdit]);
 
   // ── Expose the Board to the host (for the circuit extension) ──
   useEffect(() => {
