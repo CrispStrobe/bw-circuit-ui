@@ -30,6 +30,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const STAMPED = new Set([
   'vcc', 'gnd', 'resistor', 'capacitor', 'diode', 'led', 'potentiometer',
   'button', 'switch', 'buzzer', 'ldr', 'ntc', 'npn', 'pnp', 'inductor',
+  // transformer: mna-stamped coupled pair since bw-board 52f6f3e (E3.4).
+  'transformer',
   'zener', 'nmos', 'pmos', 'opamp', 'vsource', 'isource', 'mcu',
   'seven_segment', 'shift_register', 'ir_receiver', 'temp_sensor',
   'eeprom', 'led_matrix', 'led_cube', 'rgb_led', 'char_lcd',
