@@ -298,6 +298,21 @@ That question had already paid twice — the discovery regex that missed half th
 corpus, and the "trunk-side vertices sit in free space" assumption that became
 class I. It paid a third, fourth, fifth and sixth time.
 
+**CI evidence** — "the gates exist" and "the gates ran" are different claims and
+only the second is worth anything.
+[run 32704664707](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/32704664707)
+at `a5fbe123a8bf1f82031b525760cd15b79f063800`, against a freshly cloned corpus:
+
+```
+  discovered 2098, analysed 2098, failed 0
+  C drawn pin resolving to no net                    4 / 2098 circuits, 10 occurrences
+  D E F G H I J K L M N O P                          0 / 2098 circuits,  0 occurrences
+# tests 959   # pass 945   # fail 0   # skipped 14
+```
+
+(The local suite reports 965/951/0/14 — six tests are registered only when a
+local-only fixture is present. Both are 0 fail.)
+
 **Rig for every number below:**
 
 | repo | sha | role |
