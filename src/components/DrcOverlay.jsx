@@ -25,6 +25,12 @@ const RULE_SHORT = {
   'aggregate-current': '⚡ chip limit',
   'supply-current': '⚡ USB limit',
   'engine': '⚠',
+  // The engine's shared-terminal repair note (a terminal listed in two
+  // nets is merged deterministically and REPORTED — bw-board setNetlist).
+  // Without an entry the pill printed the raw rule id "net-coalesced",
+  // which reads as jargon on the canvas (owner screenshot, 2026-08-25);
+  // the full message stays available as the badge tooltip below.
+  'net-coalesced': '⧉ nets merged',
 };
 
 // Rules whose information is conveyed by in-body visual cues (color-coded
@@ -66,6 +72,7 @@ export function DrcOverlay({ warnings, parts }) {
 
     return (
       <g key={`drc-${partId}`} style={{ pointerEvents: 'none' }}>
+        <title>{w.explanation || w.rule}</title>
         <rect
           x={bx} y={by}
           width={label.length * 6 + 10} height={14}

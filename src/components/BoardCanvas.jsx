@@ -1911,22 +1911,39 @@ function VoltageLabels({ wires, parts, nodeVoltages, circuit }) {
   // first draft dropped pills at ambiguous midpoints and skipped every
   // net whose first wire had a breadboard endpoint (owner screenshot:
   // orphaned 5.0V pills in empty space, interesting nets unlabeled).
-  const best = new Map(); // netId → {len, mx, my, ax, ay}
-  const consider = (netId, a, b, lift) => {
-    if (!netId) return;
+  const best = new Map(); // netId → {len, mx, my, v}
+  const considerAt = (netId, m, len) => {
+    if (!netId || !m) return;
     const v = nodeVoltages[netId];
     if (v == null) return;
-    const len = Math.hypot(b.x - a.x, b.y - a.y);
     const cur = best.get(netId);
     if (cur && cur.len >= len) return;
-    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2 - (lift || 0);
-    best.set(netId, {len, mx, my, v});
+    best.set(netId, {len, mx: m.x, my: m.y, v});
+  };
+  /** Arclength midpoint of a polyline — a point ON the drawn conductor. */
+  const polyMid = (pts) => {
+    let total = 0; const segs = [];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const L = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+      segs.push(L); total += L;
+    }
+    let d = total / 2;
+    for (let i = 0; i < segs.length; i++) {
+      if (d <= segs[i]) {
+        const t = segs[i] ? d / segs[i] : 0;
+        return { m: { x: pts[i].x + (pts[i + 1].x - pts[i].x) * t,
+          y: pts[i].y + (pts[i + 1].y - pts[i].y) * t }, total };
+      }
+      d -= segs[i];
+    }
+    return { m: pts[0], total };
   };
   for (const wire of wires) {
     const a = endpointWorld(parts, wire.from);
     const b = endpointWorld(parts, wire.to);
     if (!a || !b) continue;
-    consider(wire.netId ?? wireNetId(circuit, wire), a, b, 0);
+    considerAt(wire.netId ?? wireNetId(circuit, wire),
+      { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, Math.hypot(b.x - a.x, b.y - a.y));
   }
   if (circuit && circuit.holeWires && circuit.boardStripNets && circuit.breadboards) {
     for (const jw of circuit.holeWires()) {
@@ -1937,12 +1954,20 @@ function VoltageLabels({ wires, parts, nodeVoltages, circuit }) {
       const netId = map.get(strips.stripOf(jw.a));
       const a = holeWorldPos(bb, jw.a), b = holeWorldPos(bb, jw.b);
       if (!a || !b) continue;
-      consider(netId, a, b, Math.max(18, Math.hypot(b.x - a.x, b.y - a.y) * 0.25));
+      // Anchor ON the rendered conductor: jumpers draw via
+      // jumperHitPoints (short = arc, long = orthogonal lane route),
+      // and the old straight-midpoint-minus-25%-of-length lift matched
+      // NEITHER — a 686-unit generated jumper on the calculator bench
+      // put its pill 170 units into empty space, leader pointing at
+      // nothing (owner screenshot, 2026-08-25). The label now rides the
+      // arclength midpoint of the same polyline the renderer draws.
+      const { m, total } = polyMid(jumperHitPoints(bb, a, b, 0));
+      considerAt(netId, m, total);
     }
   }
   const fmtV = (v) => Math.abs(v) < 1 ? `${(v * 1000).toFixed(0)}mV` : `${v.toFixed(1)}V`;
   return [...best.entries()].map(([netId, c]) => (
-    <g key={`vl-${netId}`} pointerEvents="none">
+    <g key={`vl-${netId}`} data-vl-net={netId} data-vl-len={Math.round(c.len)} pointerEvents="none">
       {/* leader: pill → wire midpoint, so the label is unambiguous */}
       <line x1={c.mx} y1={c.my - 16} x2={c.mx} y2={c.my} stroke="#f1c40f" strokeWidth={1} strokeDasharray="2 2" opacity={0.85} />
       <circle cx={c.mx} cy={c.my} r={2.2} fill="#f1c40f" />
@@ -2156,7 +2181,17 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             onClick={simulate ? (e) => { e.stopPropagation(); } : (e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
             onMouseDown={(e) => { e.stopPropagation(); if (simulate) onButtonDown(id); else onDragStart(id); }}
             onMouseUp={() => { if (simulate) onButtonUp(id); }}
-            onMouseLeave={() => { if (simulate) onButtonUp(id); }}
+            // NO release on mouseleave: the canvas pointer-down path
+            // captures the pointer on the container (so a game-mode press
+            // can roam), and capture RETARGETS boundary events — the div
+            // under a perfectly still pointer got a spurious mouseleave on
+            // the first post-press re-render, releasing the key after
+            // ~80 ms of simulated time: too short for any firmware scan
+            // loop, so calculator keys typed nothing (owner report,
+            // 2026-08-25). Release is owned by the container's
+            // pointer-up/cancel, which capture makes reliable wherever
+            // the pointer ends up.
+            onPointerCancel={() => { if (simulate) onButtonUp(id); }}
             onContextMenu={simulate ? (e) => e.preventDefault() : undefined}>
             <WokwiPushbutton color={(params && params.color) || 'red'} />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
