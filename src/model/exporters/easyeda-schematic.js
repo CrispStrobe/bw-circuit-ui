@@ -242,6 +242,15 @@ export function toEasyEdaSchematic(circuit, opts = {}) {
     // whole escape region is the invariant; making ESC_STEP and LANE_STEP
     // coprime would only dodge the exact-hit case and leave a lane
     // endpoint free to land on an escape's vertical leg.
+    //
+    // The bound is an UPPER bound only because exact-left implies
+    // nearest-left: rightPins counts every tm.x !== 0 pin, while slots
+    // are taken by NEAREST-edge classification — and a tm.x === 0 pin
+    // has dl = 0, the minimum by construction, so it can never classify
+    // top/bottom and steal a right-band slot beyond the count. Verified
+    // over all 243 sidecars (strictly conservative for 20, e.g. the
+    // Pico's inset rows). If the edge classifier changes — which already
+    // happened once — this bound must be re-derived with it.
     maxEscBottom = Math.max(maxEscBottom,
       PY0 + (sc.h ?? 40) + ESC0 + Math.max(0, rightPins - 1) * ESC_STEP);
     cursor = x0 + (sc.w ?? 40) + mr;
