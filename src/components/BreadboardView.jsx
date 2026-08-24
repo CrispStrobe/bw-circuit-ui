@@ -235,7 +235,14 @@ function PlacedParts({ part: bbPart, model }) {
  *
  * @param {{ part: object, model?: BreadboardModel, highlightStrip?: string, footprint?: object }} props
  */
-export function BreadboardView({ part, model, highlightStrip, footprint, selectedPartId, hoveredPartId }) {
+// Memoized: ~756 hole circles per board, rebuilt on every parent render —
+// during an emulator run the 20 Hz renderState tick re-diffed ~2,270
+// static circles across three boards and starved the emulator to 4.8 %
+// of real time (CPU profile, 2026-08-25: React reconciliation dominated
+// while executeInstruction got 2 %). With resolveSeatedParts memoized in
+// BoardCanvas the props here are referentially stable between ticks, so
+// the default shallow compare skips the whole board subtree.
+export const BreadboardView = React.memo(function BreadboardView({ part, model, highlightStrip, footprint, selectedPartId, hoveredPartId }) {
   // Collect strips for selected and hovered seated parts
   const selectedStrips = new Set();
   const hoveredStrips = new Set();
@@ -263,4 +270,4 @@ export function BreadboardView({ part, model, highlightStrip, footprint, selecte
       {model && <PlacedParts part={part} model={model} />}
     </g>
   );
-}
+});
