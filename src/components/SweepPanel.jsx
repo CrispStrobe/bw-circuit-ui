@@ -18,6 +18,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { getEngine } from '../engine.js';
 import { listSweepSources, netOfTerminal, runKennlinie, runBode } from '../model/sweep-runner.js';
+import { bodeAxisLabels, formatHz, sweepRowsToCsv, thinRows } from '../model/sweep-readout.js';
 
 const W = 260;
 const H = 140;
@@ -73,10 +74,18 @@ function drawBode(canvas, rows) {
   g.beginPath();
   rows.forEach((r, k) => { k ? g.lineTo(x(r.f), yPh(r.phaseDeg)) : g.moveTo(x(r.f), yPh(r.phaseDeg)); });
   g.stroke();
+  // The axis. Until 2026-08-25 this plot had no frequency axis at all and its
+  // dB labels were rounded to WHOLE decibels, which collapses -3.010 dB and
+  // -3.5 dB — two different answers to "where is the corner" — onto one string.
+  const ax = bodeAxisLabels(rows);
   g.fillStyle = '#5d6d7e';
   g.font = '8px monospace';
-  g.fillText(`${dbHi.toFixed(0)}dB`, 3, 9);
-  g.fillText(`${dbLo.toFixed(0)}dB`, 3, H - 3);
+  g.fillText(ax.dbHi, 3, 9);
+  g.fillText(ax.dbLo, 3, H - 12);
+  g.fillText(ax.fLo, 3, H - 3);
+  g.textAlign = 'right';
+  g.fillText(ax.fHi, W - 34, H - 3);
+  g.textAlign = 'left';
   g.fillStyle = '#3498db';
   g.fillText('+180°', W - 30, 9);
   g.fillText('-180°', W - 30, H - 3);
@@ -95,6 +104,11 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
   const [outNet, setOutNet] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  // The measured points, kept rather than discarded after drawing. Every number
+  // the readout and the export show comes from here, so the table cannot
+  // disagree with the curve beside it.
+  const [rows, setRows] = useState([]);
+  const [copied, setCopied] = useState('');
 
   const sources = listSweepSources(board);
   useEffect(() => {
@@ -117,15 +131,29 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
         const result = mode === 'vi'
           ? runKennlinie(engine, board, { sourceId, from: Number(vFrom), to: Number(vTo) })
           : runBode(engine, board, { sourceId, inNet, outNet, fFrom: Number(fFrom), fTo: Number(fTo) });
-        if (!result.ok) { setStatus(result.reason); return; }
+        if (!result.ok) { setStatus(result.reason); setRows([]); return; }
         const canvas = canvasRef.current;
         if (canvas) (mode === 'vi' ? drawKennlinie : drawBode)(canvas, result.rows);
+        setRows(result.rows);
+        setCopied('');
         setStatus(`${result.rows.length} ${de ? 'Punkte' : 'points'}`);
       } finally {
         setBusy(false);
       }
     }, 20);
   }, [board, mode, sourceId, vFrom, vTo, fFrom, fTo, inNet, outNet, de]);
+
+  // Export. A model comparison that starts from the DISPLAY rounding is
+  // measuring the formatter, so the CSV carries full precision while the table
+  // above it stays readable.
+  const copyCsv = useCallback(() => {
+    const csv = sweepRowsToCsv(rows, mode);
+    const done = () => setCopied(de ? '✓ kopiert' : '✓ copied');
+    try {
+      if (navigator?.clipboard?.writeText) navigator.clipboard.writeText(csv).then(done, () => setCopied(csv));
+      else setCopied(csv);
+    } catch { setCopied(csv); }
+  }, [rows, mode, de]);
 
   const sel = { width: '100%', background: '#0d1420', color: '#aab', border: '1px solid #2c3e50', borderRadius: 3, fontFamily: 'monospace', fontSize: 10, padding: 2 };
   const num = { ...sel, width: 60 };
@@ -189,11 +217,45 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
 
       <canvas ref={canvasRef} width={W} height={H} style={{ width: '100%', imageRendering: 'pixelated', background: '#0d1420', borderRadius: 3 }} />
 
+      {/* The numbers. The plot is a picture; four Wave 6 lessons ask for values
+          off it, and before this existed the only way to attach a number to a
+          point was to set the sweep's start and end to the same frequency and
+          run it again — once per point. */}
+      {rows.length > 0 && (
+        <div data-testid="bw-sweep-readout" style={{ background: '#0d1420', border: '1px solid #2c3e50', borderRadius: 3, maxHeight: 108, overflowY: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'monospace', fontSize: 9, color: '#aab' }}>
+            <thead>
+              <tr style={{ color: '#5d6d7e' }}>
+                {mode === 'vi'
+                  ? <><th style={{ textAlign: 'right', padding: '1px 4px' }}>V</th><th style={{ textAlign: 'right', padding: '1px 4px' }}>mA</th></>
+                  : <><th style={{ textAlign: 'right', padding: '1px 4px' }}>f</th><th style={{ textAlign: 'right', padding: '1px 4px' }}>dB</th><th style={{ textAlign: 'right', padding: '1px 4px' }}>°</th></>}
+              </tr>
+            </thead>
+            <tbody>
+              {thinRows(rows, 12).map((r, k) => (
+                <tr key={k}>
+                  {mode === 'vi'
+                    ? <><td style={{ textAlign: 'right', padding: '1px 4px' }}>{r.v.toFixed(3)}</td><td style={{ textAlign: 'right', padding: '1px 4px' }}>{(r.i * 1000).toFixed(3)}</td></>
+                    : <><td style={{ textAlign: 'right', padding: '1px 4px' }}>{formatHz(r.f)}</td><td style={{ textAlign: 'right', padding: '1px 4px' }}>{r.magDb.toFixed(3)}</td><td style={{ textAlign: 'right', padding: '1px 4px' }}>{r.phaseDeg.toFixed(2)}</td></>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {rows.length > 0 && (
+        <button onClick={copyCsv} style={{ padding: '3px 6px', background: '#0d1420', border: '1px solid #2c3e50', borderRadius: 3, color: '#5d6d7e', fontFamily: 'monospace', fontSize: 9 }} data-testid="bw-sweep-csv">
+          {de ? `⧉ Alle ${rows.length} Punkte als CSV` : `⧉ All ${rows.length} points as CSV`}
+        </button>
+      )}
+      {copied && <div style={{ color: '#5d6d7e', fontFamily: 'monospace', fontSize: 8, whiteSpace: 'pre-wrap', maxHeight: 80, overflowY: 'auto' }}>{copied}</div>}
+
       {status && <div style={{ color: '#f39c12', fontFamily: 'monospace', fontSize: 9, whiteSpace: 'pre-wrap' }}>{status}</div>}
       <div style={{ ...lbl, fontSize: 8 }}>
         {mode === 'vi'
           ? (de ? 'Läuft auf einer Offline-Kopie — die laufende Schaltung bleibt unberührt.' : 'Runs on an offline copy — the live circuit is untouched.')
-          : (de ? 'Grün: Betrag (dB), Blau: Phase (°). Log-Frequenzachse.' : 'Green: magnitude (dB), blue: phase (°). Log frequency axis.')}
+          : (de ? 'Grün: Betrag (dB), Blau: Phase (°). Log-Frequenzachse; die Tabelle zeigt bis zu zwölf Punkte, das CSV alle.' : 'Green: magnitude (dB), blue: phase (°). Log frequency axis; the table shows up to twelve points, the CSV all of them.')}
       </div>
     </div>
   );
