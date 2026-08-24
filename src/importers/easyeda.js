@@ -584,7 +584,7 @@ export function importEasyEda(text) {
   const used = new Set();
   const byNet = new Map();
   const rails = new Map();            // rail name -> the part id that carries it
-  let attached = 0; let floating = 0; let pinCount = 0;
+  let attached = 0; let floating = 0; let pinCount = 0; let declaredNC = 0;
   let buses = 0; let busEntries = 0; let labels = 0; let mirrored = 0;
 
   sheets.forEach((sheet, sheetIx) => {
@@ -609,12 +609,27 @@ export function importEasyEda(text) {
     // duplicating a fixture sheet, which is the cheapest possible collision.
     const netKey = (id) => `s${sheetIx}\u0000${id}`;
     const railNames = new Set();
+    /**
+     * Pin dots the author marked NO-CONNECT, as "x,y".
+     *
+     * `O~x~y~id~pathStr~color` — the X. EasyEDA's Design Manager flags every
+     * unconnected pin until one of these sits on it, so a sheet that carries
+     * them is stating which pins are unused ON PURPOSE. Reading them keeps the
+     * deliberate ones out of the "touches no wire" count, where they would bury
+     * the accidental ones — the whole reason that count exists.
+     */
+    const noConnects = new Set();
 
     // -- geometry first, so every pin has something to land on ------
     for (const raw of sheet.shape) {
       const s = String(raw);
       const f = s.split('~');
       switch (f[0]) {
+        case 'O': {                                  // a NO-CONNECT flag (the X)
+          const nx = Number(f[1]); const ny = Number(f[2]);
+          if (Number.isFinite(nx) && Number.isFinite(ny)) noConnects.add(`${nx},${ny}`);
+          break;
+        }
         case 'W': {                                  // a wire polyline
           const pts = polyline(f[1]);
           for (const [px, py] of pts) anchor(px, py);
@@ -730,7 +745,9 @@ export function importEasyEda(text) {
         const netId = netKey(raw);
         if (!byNet.has(netId)) byNet.set(netId, []);
         byNet.get(netId).push({ part: id, terminal: term });
-        if (live.has(raw)) attached++; else floating++;
+        if (live.has(raw)) attached++;
+        else if (noConnects.has(`${p.x},${p.y}`)) declaredNC++;   // author said so
+        else floating++;
       }
     }
   });
@@ -767,6 +784,13 @@ export function importEasyEda(text) {
   warnings.push(`geometry: ${attached}/${pinCount} mapped pins landed on a net `
     + `(${nets} nets, ${labels} labels)`);
   if (floating) warnings.push(`${floating} pin(s) touch no wire, junction or label`);
+  // A NO-CONNECT is not a defect, it is a statement. EasyEDA flags every
+  // unconnected pin in the Design Manager until the author puts an `O` (the X)
+  // on it, so a sheet that HAS them is telling us which pins are unused on
+  // purpose -- and lumping those in with the accidents would bury the accidents.
+  if (declaredNC) {
+    warnings.push(`${declaredNC} pin(s) marked no-connect by the author`);
+  }
 
   return { parts, wires, unmapped, ignored, warnings };
 }

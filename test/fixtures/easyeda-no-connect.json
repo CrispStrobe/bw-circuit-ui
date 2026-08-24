@@ -1,0 +1,38 @@
+{
+ "editorVersion": "6.5.0",
+ "docType": "5",
+ "title": "no-connect",
+ "description": "",
+ "colors": {},
+ "schematics": [
+  {
+   "docType": "1",
+   "title": "Sheet_1",
+   "description": "",
+   "dataStr": {
+    "head": {
+     "docType": "1",
+     "editorVersion": "6.5.0",
+     "c_para": {},
+     "x": "0",
+     "y": "0"
+    },
+    "canvas": "CA~1000~1000~#FFFFFF~yes~#CCCCCC~5~1000~1000~line~5~pixel~5~0~0",
+    "shape": [
+     "LIB~100~-100~package`X`spicePre`R`~~0~gge803~~~0~~yes~yes~~~#@$T~N~100~-112~0~#000080~Arial~~~~~comment~1k~1~start~gge801~0~#@$T~P~100~-120~0~#000080~Arial~~~~~comment~R1~1~start~gge802~0~#@$P~show~0~1~100~-100~0~gge201~0^^100~-100^^M 100 -100 h -10~#880000^^0~100~-100~0~1~start~Arial~9pt~#0000FF^^0~100~-100~0~1~end~Arial~9pt~#0000FF#@$P~show~0~2~100~-140~0~gge202~0^^100~-140^^M 100 -140 h -10~#880000^^0~100~-140~0~2~start~Arial~9pt~#0000FF^^0~100~-140~0~2~end~Arial~9pt~#0000FF",
+     "LIB~200~-100~package`X`spicePre`R`~~0~gge803~~~0~~yes~yes~~~#@$T~N~200~-112~0~#000080~Arial~~~~~comment~1k~1~start~gge801~0~#@$T~P~200~-120~0~#000080~Arial~~~~~comment~R2~1~start~gge802~0~#@$P~show~0~1~200~-100~0~gge201~0^^200~-100^^M 200 -100 h -10~#880000^^0~200~-100~0~1~start~Arial~9pt~#0000FF^^0~200~-100~0~1~end~Arial~9pt~#0000FF#@$P~show~0~2~200~-140~0~gge202~0^^200~-140^^M 200 -140 h -10~#880000^^0~200~-140~0~2~start~Arial~9pt~#0000FF^^0~200~-140~0~2~end~Arial~9pt~#0000FF",
+     "W~100 -100 200 -100~#008800~1~0~none~gge900~0",
+     "O~100~-140~gge901~M96,-144 L104,-136 M104,-144 L96,-136~#FF0000",
+     "O~200~-140~gge902~M196,-144 L204,-136 M204,-144 L196,-136~#FF0000"
+    ],
+    "BBox": {
+     "x": 0,
+     "y": -200,
+     "width": 300,
+     "height": 200
+    },
+    "colors": {}
+   }
+  }
+ ]
+}

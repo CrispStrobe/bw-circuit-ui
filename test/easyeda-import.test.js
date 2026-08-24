@@ -680,3 +680,34 @@ describe('Pico and the 4-pin OLED module map to parts we already have', () => {
         assert.equal(r.byName, true, 'a named symbol must keep using its names');
     });
 });
+
+describe('a no-connect X is a statement, not a defect', () => {
+    /**
+     * `O~x~y~id~pathStr~colour` is EasyEDA's No Connect flag — the little X.
+     * Its Design Manager flags EVERY unconnected pin until one sits on it, so a
+     * sheet that carries them is telling us which pins are unused ON PURPOSE.
+     *
+     * Reading them keeps the deliberate ones out of the "touches no wire" count,
+     * where they would bury the accidental ones — which is the only thing that
+     * count is for. A real 17-key calculator sheet reports 51 unconnected pins;
+     * 50 of them are X-flagged and one is a genuine mistake, and without this
+     * the mistake is one line in a list of fifty.
+     *
+     * The fixture is hand-authored: two resistors joined by one wire, each with
+     * its second leg X-flagged.
+     */
+    test('X-flagged pins are counted as declared, not as floating', () => {
+        const raw = readFileSync(join(FIX, 'easyeda-no-connect.json'), 'utf8');
+        const res = importEasyEda(raw);
+        assert.equal(res.parts.length, 2, 'both resistors import');
+        assert.equal(res.wires.length, 1, 'the one wire between them resolves');
+
+        const declared = res.warnings.find((w) => /marked no-connect by the author/.test(w));
+        assert.ok(declared, 'the two X-flagged pins must be reported as deliberate');
+        assert.match(declared, /^2 pin/, 'both of them');
+
+        assert.ok(!res.warnings.some((w) => /touch no wire, junction or label/.test(w)),
+            'a pin the author X-flagged must NOT also be reported as floating — that is '
+            + 'the whole point: the accidental ones have to stay visible');
+    });
+});
