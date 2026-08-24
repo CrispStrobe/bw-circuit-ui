@@ -36,7 +36,19 @@ function parseIntro(text) {
   return { meta, body: m[2].trim() };
 }
 
-/** Render minimal markdown to React elements (## headings, **bold**, `code`, lists, links, paragraphs). */
+/**
+ * Render minimal markdown to React elements.
+ *
+ * "Minimal" was too minimal, and it showed. It handled `## ` but not `# `, and
+ * no fenced code blocks at all, so every unhandled line fell through to the
+ * paragraph branch and was printed VERBATIM. An intro opening with
+ * `# Pocket Calculator` displayed the hash, and its keypad table — a ``` block —
+ * appeared as raw lines with the fences still in them.
+ *
+ * Handles: # and ## headings, ``` fenced code, **bold**, `code`, - and 1. lists,
+ * links, paragraphs. Anything else still falls through to a paragraph, which is
+ * the right default; the bug was that two COMMON constructs were in that bucket.
+ */
 function renderMarkdown(md, palette) {
   const lines = md.split('\n');
   const elements = [];
@@ -49,7 +61,24 @@ function renderMarkdown(md, palette) {
   };
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (/^## /.test(line)) {
+    // Fenced code: consume to the closing fence and render as a block. Done
+    // first so nothing inside a fence is interpreted as markdown.
+    if (/^```/.test(line)) {
+      flushList();
+      const buf = [];
+      let j = i + 1;
+      for (; j < lines.length && !/^```/.test(lines[j]); j++) buf.push(lines[j]);
+      i = j;   // skip the closing fence; if it is missing, we consumed the rest
+      elements.push(
+        <pre key={`pre-${i}`} style={{margin: '4px 0 8px', padding: '6px 8px', overflowX: 'auto',
+          background: palette.codeBg || 'rgba(127,127,127,0.12)', color: palette.text,
+          fontSize: 11, lineHeight: 1.45, borderRadius: 4}}>{buf.join('\n')}</pre>);
+    } else if (/^# /.test(line)) {
+      // The document title. Bigger than ##, and it was previously printed with
+      // its hash still attached.
+      flushList();
+      elements.push(<div key={`h1-${i}`} style={{fontWeight: 700, fontSize: 15, color: palette.heading, marginTop: i > 0 ? 12 : 0, marginBottom: 4}} data-intro-heading>{line.slice(2)}</div>);
+    } else if (/^## /.test(line)) {
       flushList();
       elements.push(<div key={`h-${i}`} style={{fontWeight: 700, fontSize: 13, color: palette.heading, marginTop: i > 0 ? 10 : 0, marginBottom: 3}} data-intro-heading>{line.slice(3)}</div>);
     } else if (/^- /.test(line)) {
