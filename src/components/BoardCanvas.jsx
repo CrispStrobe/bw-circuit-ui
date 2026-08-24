@@ -2694,7 +2694,13 @@ function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, fi
   const pendingFormat = useRef(null);
 
   const handleImportFile = useCallback(async (e) => {
-    const file = e.target.files?.[0];
+    // Capture the input BEFORE any await: this React pools synthetic
+    // events, so past the first await `e.target` is null and the old
+    // trailing `e.target.value = ''` threw on EVERY import (measured:
+    // a pageerror per import; the import itself had already landed, so
+    // it looked like a working feature with a crash in the console).
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file || !onImport) return;
     let text;
     try { text = await file.text(); } catch { return; }
@@ -2705,8 +2711,9 @@ function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, fi
     if (!format) return;
     const r = importCircuit(format, text);
     if (r.parts.length) onImport({ parts: r.parts, wires: r.wires });
+    // Reset the input BEFORE onDone unmounts the menu (and the input).
+    try { input.value = ''; } catch (err) { /* already unmounted */ }
     if (onDone) onDone();
-    e.target.value = '';
   }, [onImport, onDone]);
 
   const pickImport = (formatId) => {
@@ -2811,8 +2818,15 @@ function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, fi
               <button onClick={() => handleExport('kicad')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
                 KiCad Netlist (.net)
               </button>
+              {/* The NATIVE exporter existed as a handleExport case with no
+                  button reaching it — the round-tripped, thrice-oracled
+                  format was unreachable from the UI while the lossier
+                  via-KiCad path had an entry (owner audit, 2026-08-25). */}
+              <button onClick={() => handleExport('easyeda-native')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
+                {de ? 'EasyEDA-Schaltplan (.json)' : 'EasyEDA schematic (.json)'}
+              </button>
               <button onClick={() => handleExport('easyeda')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
-                EasyEDA (via KiCad)
+                {de ? 'EasyEDA (via KiCad-Netzliste)' : 'EasyEDA (via KiCad)'}
               </button>
             </div>
           )}
