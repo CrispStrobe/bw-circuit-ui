@@ -1144,3 +1144,198 @@ The one to look at is `disp-sevenseg.svg`. Before: a figure-8 with two
 whiskers and eight wires ending in blank space. After: a labelled box with a
 lead and a terminal name — `a`, `b`, `c`, `d`, `e`, `f`, `g`, `common` — at
 each of the eight pins.
+
+---
+
+# Fourth pass — the round trip, and the last of the ink
+
+Two things this document had left as findings rather than fixes, plus the
+question the third pass ended on.
+
+**Rig.** bw-circuit-ui `43e2171` (branch point), bw-board `1dac64c` (and CI's
+own clone of bw-board master), sb3-creator `553a639` — 2,098 circuit files.
+
+## 16. The 403: closed, and now proved by REINTRODUCTION
+
+Re-verified at this sha rather than carried over: **Q is 0 / 2098**. The fix
+landed in `be4f0e1`; what was missing was the proof the DoD names.
+
+The class-Q gate had one mutation, which slides a pin off its own lead. That
+proves the DETECTOR reads geometry. It does not prove the thing that keeps the
+corpus clean, which is the projection's RULING about whether a kind's artwork
+can host this instance's terminals. So there is now a second mutation that
+re-creates the defect itself:
+
+```
+MUTATION: REINTRODUCING a bad symbol turns class Q red
+  class Q reintroduction fixture: 01-blink/circuit-flat.attiny88.json
+```
+
+It takes a symbol the projection ruled generic, forces `generic = false`, and
+sets its kind to `seven_segment` — artwork with exactly two lead ends at
+(±30, 0), which is precisely the state `disp-sevenseg` shipped in. Every pin
+but the two at y=0 must land in blank space. If that ever passes, the
+projection has stopped choosing the box on the artwork's ability to reach the
+pins and the 403 is on its way back.
+
+## 17. EasyEDA, both directions, with denominators
+
+### The exposure, restated precisely
+
+Our solver folds in a **T** — a registered point on another segment's span —
+because that is KiCad's rule. EasyEDA does not imply one. The export side was
+measured clean by an independent reader (0 cross-net contacts over 2,098), so
+**the exposure is import-only**: a schematic drawn in EasyEDA can behave
+differently here than in the tool it was drawn in.
+
+### Read the same file twice, with the same tested solver
+
+`easyEdaPartition(text)` is the tested oracle over EasyEDA's own
+`(designator, pin-number)` nodes, independent of our kind mapping. It now
+takes `{strict: true}`, which applies EasyEDA's junction rule through the same
+`NetSolver` — `solve({foldTeeAt})`, opt-in, so KiCad's readers are untouched.
+
+Using it rather than a fresh walk is not fastidiousness. An ad-hoc script has
+to re-learn that `F` power flags and `N` labels join **by name** so a
+label pair is one net however far apart the labels sit; that `BE` bus entries
+conduct while `B` bus bodies do not; that a pin on a wire's span is a
+connection; and that names are scoped per sheet. Miss any and the run invents
+dangling ends that are not there — the mistake made four times from this side
+before the tested solver existed.
+
+### The table
+
+| corpus | documents | nets, our rule | nets, EasyEDA's | agree | J-less T | net-split | node-orphan |
+|---|---|---|---|---|---|---|---|
+| our own exports of every shipped circuit | **2,098** | 11,683 | 11,683 | **2,098 / 2,098** | 0 | 0 | 0 |
+| vendor-dialect fixtures | 4 | 5 | 5 | **3 / 4** | 1 | 0 | **1** |
+
+Every disagreement is classified, and there are only two shapes it can take,
+because the strict rule can only ever REMOVE connections:
+
+- **net-split** — one permissive net is two or more strict ones;
+- **node-orphan** — a node with a net under our rule and none under theirs; in
+  EasyEDA it is a dangling pin.
+
+The one disagreement, in full:
+
+```
+easyeda-rc-divider.json: ours 2 nets, EasyEDA 2; 0 split, 1 orphaned (P1/2)
+                         J-less T at 100,-240
+```
+
+### The trap in the obvious instrument, which has its own test
+
+**A table of net counts would have called that file clean.** Ours: 2 nets.
+EasyEDA's: 2 nets. The undotted T joins `P1/2` to a net that already has two
+other members, so under EasyEDA's rule that net loses a member and remains a
+net. The connector pin is dangling all the same, and only a NODE-level
+comparison sees it. The DoD asked for "how many nets we infer vs how many
+EasyEDA's junction rule would give"; that column is in the table above and it
+is the column that would have missed the defect. The gate asserts on the
+classification.
+
+### The import warning now carries what it costs
+
+A bare joint count is not actionable — a file can carry ten J-less Ts and lose
+nothing, or one and drop a pin. The warning names the coordinates, the kind of
+each joint, and the same document read the other way:
+
+```
+1 T-joint(s) without a junction (1 wire-to-wire); EasyEDA treats these as
+crossings, so these connections exist here and not on the board -- at
+100,-240. Read EasyEDA's way this document has 2 net(s) rather than 2:
+0 net(s) come apart, and 1 pin(s) end up connected to nothing (P1/2)
+```
+
+When nothing is in dispute it says so instead, rather than leaving the reader
+to guess whether a count of ten matters.
+
+### Honesty bound on the denominator
+
+**This box holds four EasyEDA documents and no live corpus.** The 2,098-row is
+our own exports read back, which measures the exporter and not the importer;
+the 4-row is the only real vendor-dialect evidence here. So
+`scripts/easyeda-roundtrip.mjs` takes `EASYEDA_DIR=<directory>` and produces
+the same classified table over any tree of real schematics — the import-side
+denominator is one command away for whoever has the files. It refuses an empty
+directory rather than printing a clean-looking zero.
+
+## 18. What still no detector reads — not zero, and here is the number
+
+The third pass found a third of the ink outside every denominator. The
+question was whether that is now zero or merely smaller. **Merely smaller.**
+
+Enumerating what `schematic-svg.js` emits against what classes A–T read leaves
+two families:
+
+| | class | circuits | occurrences | verdict |
+|---|---|---|---|---|
+| **U** | drawn geometry outside the viewBox | **0 / 2098** | 0 | clean |
+| **V** | two pin NAMES whose text boxes overlap | **57 / 2098** | **105** | ratchet |
+| **W** | a net label's TEXT on a foreign net's conductor | **104 / 2098** | **172** | ratchet |
+
+**57,672 text runs** are drawn across the corpus and not one class had ever
+looked at any of them. U is the geometric remainder and it is clean: nothing
+is drawn off the page.
+
+**V and W are narrowed on purpose.** Measured raw, 813 pairs of text runs
+overlap and 1,525 text runs sit on copper. Most of that is not a defect:
+
+| raw finding | occurrences | verdict |
+|---|---|---|
+| a part's kind name under its own label | 388 | untidy, misleads nobody |
+| a pin name under its part's label | 320 | untidy |
+| **two PIN NAMES over each other** | **105** | **information destroyed** |
+| a part label lying over a wire | 1,353 | untidy; it names a part, not a net |
+| **a NET LABEL's text on FOREIGN copper** | **172** | **misleading** |
+
+Counting the untidy ones would have made W eight times bigger and eight times
+less true — the same 14× mistake class P made in the second pass, avoided here
+by classifying before reporting.
+
+The two that survive are real. A labelled box is 52px wide with its names
+drawn inward from ±22, so two long names facing each other (`GPIO16`, six
+characters at 6.5px, reaches 23px) collide and NEITHER can be read — the
+reader loses the one thing the labelled box exists to provide. And class P
+already forbids a label's LEADER from touching foreign copper; the text is the
+other four fifths of the same mark, and it is the half a reader actually
+reads.
+
+### The glyph model, and why the ratchets name it
+
+Both counts depend on a text-metrics model: monospace at `TEXT_ADVANCE = 0.6`
+em per character, 0.7 em cap height. DejaVu Sans Mono — the usual resolution
+of `font-family="monospace"` — advances 0.602 em. Swept:
+
+| advance | V pin-name collisions | W label texts on foreign copper |
+|---|---|---|
+| 0.50 | 55 | 124 |
+| 0.55 | 68 | 139 |
+| **0.60** (nominal) | **105** | **172** |
+| 0.62 | 105 | 172 |
+
+The counts roughly double across that range. **The classes are real at every
+setting — the conservative floor is 55 and 124, not zero — and their
+magnitude is a property of the model, not of the drawing.** The gate asserts
+the constant, so changing it fails loudly instead of silently re-baselining
+the ratchets against a different drawing.
+
+These are ratchets rather than zeros because fixing them means a
+collision-aware text placer, which would churn all 32 baselines; that is a
+scoped change and not this lane's. What is not deferred is the measurement:
+they can only shrink from here.
+
+## 19. Gates added
+
+| gate | class | mutation |
+|---|---|---|
+| `schematic-geometry-corpus.test.js` | Q | **reintroduce a bad symbol**: force a generic symbol back onto two-lead artwork |
+| " | U | push a pin 40px past the page edge |
+| " | V | give two facing pins fifteen-character names across a 52px box |
+| " | W | lengthen a label's text until its box reaches foreign copper — derived from the STRING, so it proves the class reads drawn text |
+| `easyeda-junction-rule.test.js` | the two readings | a net-count table would call the defective fixture clean; the classification must not |
+| " | " | the strict reading is not vacuous — dotted Ts still fold in |
+| " | " | 2,098 exports read both ways, 0 disagreements, with a floor on nets read so two empty readings cannot agree trivially |
+
+Corpus gate: **33 tests, 33 pass**. Junction-rule gate: **8 tests, 8 pass**.

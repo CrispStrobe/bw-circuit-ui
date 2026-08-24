@@ -116,7 +116,8 @@ import { fileURLToPath } from 'node:url';
 import { analyse, discover, wireThroughForeignPinOf, crossingsOf, foreignContactOf,
   parallelMergeOf, missingPinsOf, segmentRefsOf, labelLeaderContactOf,
   orphanPinsOf, orphanLeadsOf, fatJunctionsOf, symbolContactOf,
-  pinNetDisagreementOf } from '../scripts/schematic-audit.mjs';
+  pinNetDisagreementOf, offPageOf, pinNameCollisionsOf,
+  labelTextOnForeignCopperOf, textRunsOf, TEXT_MODEL } from '../scripts/schematic-audit.mjs';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { projectSchematic } from '../src/model/schematic-projection.js';
 
@@ -173,6 +174,23 @@ const KNOWN_UNUSED_LEADS = new Map([
   // pc25-relay-isolator: the armature end, drawn mid-swing between contacts.
   ['relay', 2],
 ]);
+
+/**
+ * The TEXT ratchets. Fourth-pass finding: classes A-T all read geometry, and
+ * the SVG also draws 57,672 text runs the corpus over — none of which any
+ * class had ever looked at.
+ *
+ * Both numbers depend on the glyph model in schematic-audit.mjs
+ * (TEXT_ADVANCE em per character). Measured across advance 0.50 -> 0.62 they
+ * roughly DOUBLE — 55 -> 105 pin-name collisions, 124 -> 172 label texts on
+ * foreign copper — so the classes are real at every setting in that range and
+ * these exact figures are a property of the model. The model constant is
+ * asserted below so that changing it FAILS here rather than silently
+ * re-baselining the ratchets.
+ *
+ * MAY ONLY SHRINK.
+ */
+const TEXT_RATCHET = { pinNameCollisions: 105, labelTextOnCopper: 172 };
 
 describe('schematic geometry across the whole shipped corpus', () => {
   const files = examplesRoot ? discover(examplesRoot) : null;
@@ -405,6 +423,47 @@ describe('schematic geometry across the whole shipped corpus', () => {
       + 'BOTH are written by the projection — that is the projection checked against itself, and '
       + 'a systematically wrong pin.netId would leave all of them green. This one compares the '
       + 'drawn pin against the engine\'s answer.');
+  });
+
+
+  test('U: nothing is drawn outside the page', () => {
+    const u = report('U drawn geometry outside the viewBox', r => r.offPage);
+    assert.deepEqual(u.map(r => r.id), [],
+      `${u.length} circuit(s) place drawn geometry outside the viewBox. schematic-svg.js sizes `
+      + 'the SVG from projection.width/height, so anything beyond it is ink the reader never '
+      + 'sees — a DROPPED connection that leaves no trace in any geometric class, because the '
+      + 'pins are there, the wire joins them, and the page stops before it.');
+  });
+
+  test('V/W: the text ratchets hold, and the glyph model has not moved', () => {
+    assert.equal(TEXT_MODEL.advance, 0.6,
+      'the glyph advance changed, so every V and W figure below is measuring a different '
+      + 'drawing than the one they were ratcheted against. Re-measure and re-ratchet '
+      + 'deliberately; do not adjust the numbers to match.');
+    const runs = rows.reduce((n, r) => n + r.textRuns, 0);
+    console.log(`\n  ${runs} text runs inspected — no class before this one read any of them`);
+    assert.ok(runs > 40000, `only ${runs} text runs seen — the text classes are vacuous`);
+
+    const v = report('V two pin NAMES overlapping', r => r.pinNameCollisions);
+    const w = report('W net label TEXT on foreign copper', r => r.labelTextOnCopper);
+    const vTotal = totalOf(r => r.pinNameCollisions);
+    const wTotal = totalOf(r => r.labelTextOnCopper);
+    assert.ok(vTotal <= TEXT_RATCHET.pinNameCollisions,
+      `${vTotal} overlapping pin-name pairs, ratcheted at ${TEXT_RATCHET.pinNameCollisions}. A `
+      + 'generic box is 52px wide and its names are drawn inward from ±22, so two long names on '
+      + 'opposite sides collide and NEITHER can be read — the reader loses the one thing the '
+      + 'labelled box exists to provide. This ratchet may only shrink.');
+    assert.ok(wTotal <= TEXT_RATCHET.labelTextOnCopper,
+      `${wTotal} net-label texts lying on a foreign net's conductor, ratcheted at `
+      + `${TEXT_RATCHET.labelTextOnCopper}. Class P forbids the label's LEADER from touching `
+      + 'foreign copper; the text is the other four fifths of the same mark and is the half a '
+      + 'reader actually reads. "Same text = same net" is the whole contract when routing falls '
+      + 'back to labels. This ratchet may only shrink.');
+    if (vTotal < TEXT_RATCHET.pinNameCollisions || wTotal < TEXT_RATCHET.labelTextOnCopper) {
+      assert.fail(`the drawing improved (V ${vTotal}/${TEXT_RATCHET.pinNameCollisions}, `
+        + `W ${wTotal}/${TEXT_RATCHET.labelTextOnCopper}) — lower TEXT_RATCHET to lock it in. `
+        + 'A ratchet left above the measurement stops being a ratchet.');
+    }
   });
 
   // ── Mutation proofs for the detector this gate exists for ────────────
@@ -648,6 +707,37 @@ describe('schematic geometry across the whole shipped corpus', () => {
     assert.equal(orphanPinsOf(proj).length, 0, 'the box must reach every pin it draws');
   });
 
+  test('MUTATION: REINTRODUCING a bad symbol turns class Q red', () => {
+    // The other class-Q proof slides a pin off its lead. This one re-creates
+    // the DEFECT ITSELF: give a kind artwork that cannot host its terminals,
+    // which is what fourteen kinds shipped with, and confirm the drawing goes
+    // wrong. A pin-slide proves the detector reads geometry; only this proves
+    // the artwork DECISION is what keeps the corpus clean.
+    //
+    // The bad symbol is the real one: `seven_segment`'s own drawing, two
+    // whiskers at (±30, 0), forced back on by overriding the projection's
+    // ruling. That is precisely the state `disp-sevenseg` shipped in.
+    const { proj, id } = findProjection(
+      p => p.symbols.some(s => s.generic && (s.pins || []).length > 3),
+      'a symbol the projection ruled cannot host its pins');
+    console.log(`  class Q reintroduction fixture: ${id}`);
+    assert.equal(orphanPinsOf(proj).length, 0, 'fixture must be clean before mutation');
+
+    const victim = proj.symbols.find(s => s.generic && (s.pins || []).length > 3);
+    const savedKind = victim.kind;
+    victim.generic = false;
+    victim.kind = 'seven_segment';        // art with exactly two lead ends
+    const hits = orphanPinsOf(proj);
+    assert.ok(hits.length >= victim.pins.length - 2,
+      `forcing ${victim.pins.length}-pin ${savedKind} to draw as a two-lead seven-segment left `
+      + `only ${hits.length} pin(s) unreached. Every pin but the two at y=0 must land in blank `
+      + 'space — if this passes, the projection is no longer choosing the box on the artwork\'s '
+      + 'ability to reach the pins, and the 403 comes back.');
+    victim.generic = true;
+    victim.kind = savedKind;
+    assert.equal(orphanPinsOf(proj).length, 0, 'restoring the ruling returns the drawing to clean');
+  });
+
   test('MUTATION: fattening a junction dot onto foreign copper turns class R red', () => {
     const { proj, id } = findProjection(
       p => (p.junctions || []).length > 0 && segmentRefsOf(p).length > 4,
@@ -697,6 +787,66 @@ describe('schematic geometry across the whole shipped corpus', () => {
       + 'them, and 7 shipped circuits did exactly this');
     seg[1].x = saved.x; seg[1].y = saved.y;
     assert.equal(symbolContactOf(proj).length, 0, 'restored');
+  });
+
+  test('MUTATION: pushing a pin past the page edge turns class U red', () => {
+    const { proj, id } = findProjection(p => (p.symbols || []).some(s => (s.pins || []).length),
+      'a drawing with any pin at all');
+    console.log(`  class U mutation fixture: ${id}`);
+    assert.equal(offPageOf(proj).length, 0, 'fixture must be clean before mutation');
+    const pin = proj.symbols.find(s => (s.pins || []).length).pins[0];
+    const saved = pin.x;
+    pin.x = (proj.width || 0) + 40;          // drawn, and off the page
+    assert.ok(offPageOf(proj).length > 0,
+      `moving a pin 40px past the right edge of ${id} was NOT caught — geometry outside the `
+      + 'viewBox is invisible to the reader and to every other class at once');
+    pin.x = saved;
+    assert.equal(offPageOf(proj).length, 0, 'restored');
+  });
+
+  test('MUTATION: a long pin name turns class V red, and text is really being read', () => {
+    const { proj, id } = findProjection(p => (p.symbols || []).some(
+      s => s.generic && (s.pins || []).some(pin => pin.side === 'left') &&
+        (s.pins || []).some(pin => pin.side === 'right')),
+      'a labelled box with pins on both sides');
+    console.log(`  class V mutation fixture: ${id}`);
+    const before = pinNameCollisionsOf(proj).length;
+    const sym = proj.symbols.find(s => s.generic &&
+      s.pins.some(p => p.side === 'left') && s.pins.some(p => p.side === 'right'));
+    const left = sym.pins.find(p => p.side === 'left');
+    const right = sym.pins.find(p => p.side === 'right');
+    right.y = left.y;                                   // same row, facing each other
+    const savedL = left.name, savedR = right.name;
+    left.name = 'AVERYLONGPINNAME';
+    right.name = 'ANOTHERLONGNAME';
+    assert.ok(pinNameCollisionsOf(proj).length > before,
+      `two fifteen-character pin names facing each other across a 52px box in ${id} did NOT `
+      + 'collide. Then the text boxes are not being computed from the strings at all, and the '
+      + 'V ratchet is measuring nothing.');
+    left.name = savedL; right.name = savedR;
+  });
+
+  test('MUTATION: widening a net label onto foreign copper turns class W red', () => {
+    const { proj, id } = findProjection(
+      p => (p.netLabels || []).length > 0 && (p.wires || []).length > 0,
+      'a drawing carrying both net labels and copper');
+    console.log(`  class W mutation fixture: ${id}`);
+    const before = labelTextOnForeignCopperOf(proj).length;
+    // Lengthen one label's text until its box reaches a foreign conductor.
+    // The text box is derived from the STRING, so this proves the class reads
+    // the drawn text and not some stored rectangle.
+    let caught = false; let victim = null; let saved = null;
+    for (const l of proj.netLabels) {
+      victim = l; saved = l.text;
+      l.text = saved + 'X'.repeat(60);
+      if (labelTextOnForeignCopperOf(proj).length > before) { caught = true; break; }
+      l.text = saved; victim = null;
+    }
+    assert.ok(caught,
+      `no label in ${id} could be widened onto a foreign conductor, so class W was never `
+      + 'exercised and its ratchet means nothing');
+    victim.text = saved;
+    assert.equal(labelTextOnForeignCopperOf(proj).length, before, 'restored');
   });
 
   test('MUTATION: relabelling a pin\'s net turns class T red', () => {

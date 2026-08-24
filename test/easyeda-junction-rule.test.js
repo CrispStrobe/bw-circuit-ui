@@ -44,9 +44,19 @@ import { importEasyEda } from '../src/importers/easyeda.js';
 import { toEasyEdaSchematic } from '../src/model/exporters/easyeda-schematic.js';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { discover } from '../scripts/schematic-audit.mjs';
+import { easyEdaPartition } from '../src/importers/easyeda.js';
+import { measureDocument, classifyDisagreement } from '../scripts/easyeda-roundtrip.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const TEE = /^(\d+) T-joint\(s\) without a junction/;
+
+// Module scope: BOTH describe blocks measure over the corpus, and a root
+// resolved inside one of them is `root is not defined` in the other.
+const CORPUS_ROOTS = process.env.EXAMPLES_DIR ? [process.env.EXAMPLES_DIR] : [
+  path.resolve(here, '../../sb3-creator/examples'),
+  path.resolve(here, '../../lego/brickwright-lite/overlay/scratch-gui/examples'),
+];
+const root = CORPUS_ROOTS.find((r) => existsSync(r)) || null;
 
 /** The warning's count, or 0 when it does not fire. */
 function undottedTees (result) {
@@ -91,12 +101,6 @@ describe('EasyEDA junction rule: a T is not a connection there', () => {
       'dotting a T we already folded in must not change the netlist — if it does, the '
       + 'warning is describing something other than what the solver did');
   });
-
-  const CORPUS_ROOTS = process.env.EXAMPLES_DIR ? [process.env.EXAMPLES_DIR] : [
-    path.resolve(here, '../../sb3-creator/examples'),
-    path.resolve(here, '../../lego/brickwright-lite/overlay/scratch-gui/examples'),
-  ];
-  const root = CORPUS_ROOTS.find((r) => existsSync(r)) || null;
 
   test('every circuit this app EXPORTS survives the stricter rule', { timeout: 300000 }, () => {
     assert.notEqual(root, null,
@@ -180,5 +184,87 @@ describe('EasyEDA junction rule: a T is not a connection there', () => {
     const n = undottedTees(importEasyEda(mutated));
     console.log(`  mutation: ${n} undotted T-joint(s) reported on an exported file`);
     assert.ok(n > 0, 'the mutation must be the thing that turned it red');
+  });
+});
+
+describe('the two readings of one file, as a measurement', () => {
+  const FIX = (n) => readFileSync(path.join(here, 'fixtures', `${n}.json`), 'utf-8');
+
+  test('a NET COUNT alone would call the defective fixture clean', () => {
+    // Worth its own test because it is the trap in the obvious instrument.
+    // In easyeda-rc-divider the undotted T joins P1/2 to a net that already
+    // has two other members, so under EasyEDA's rule that net loses a member
+    // and STAYS a net: 2 nets before, 2 nets after. A table of net counts
+    // reports no difference. The connector pin is dangling all the same.
+    const text = FIX('easyeda-rc-divider');
+    const ours = easyEdaPartition(text);
+    const theirs = easyEdaPartition(text, { strict: true });
+    assert.equal(ours.length, theirs.length,
+      'if these ever differ the fixture changed — the point of this case is that they do NOT');
+
+    const { splits, orphans } = classifyDisagreement(ours, theirs);
+    assert.equal(splits.length, 0, 'no net comes apart into pieces here');
+    assert.deepEqual(orphans, ['P1/2'],
+      'P1/2 reaches its net only through the undotted T at (100,-240). Under EasyEDA\'s rule '
+      + 'it connects to nothing, and only a NODE-level comparison sees that — which is why the '
+      + 'gate below asserts on the classification and not on the counts.');
+  });
+
+  test('the strict reading is not vacuous: it agrees where the author dotted the T', () => {
+    // easyeda-rc-divider carries THREE Ts and two J dots. If the strict
+    // reading simply dropped every T it would tear this file apart; it must
+    // differ at exactly the one the author left undotted.
+    const text = FIX('easyeda-rc-divider');
+    const theirs = easyEdaPartition(text, { strict: true });
+    assert.ok(theirs.some((n) => n.split('|').length >= 4),
+      'the dotted Ts must still fold in — a four-node net survives strict reading. If this '
+      + 'fails, `strict` is dropping ALL Ts rather than only the undotted ones, and every '
+      + 'number it produces is meaningless.');
+  });
+
+  test('every vendor fixture is classified, and one of four disagrees', () => {
+    const rows = ['easyeda-rc-divider', 'easyeda-bus', 'easyeda-no-connect', 'easyeda-switch-pincount']
+      .map((n) => measureDocument(n, FIX(n)));
+    const disagree = rows.filter((r) => !r.agree);
+    console.log(`\n  vendor fixtures: ${rows.length}, disagreeing ${disagree.length}`);
+    for (const r of rows) {
+      console.log(`    ${r.id.padEnd(28)} ours ${r.netsOurs} nets, EasyEDA ${r.netsEasyEda}, `
+        + `${r.tees} J-less T, ${r.splits} split, ${r.orphans} orphan`);
+    }
+    assert.equal(disagree.length, 1,
+      'exactly one of the four vendor-dialect fixtures reads differently under the two rules. '
+      + 'Zero would mean the strict reading is inert; more would mean a fixture changed.');
+    assert.equal(disagree[0].id, 'easyeda-rc-divider');
+  });
+
+  test('OUR OWN exports: the two readings agree over the whole corpus', { timeout: 600000 }, () => {
+    assert.notEqual(root, null, 'a gate that cannot run must not report green');
+    const files = discover(root);
+    assert.ok(files.length >= 2000, `only ${files.length} circuit files discovered`);
+    let exported = 0; let netsOurs = 0; let netsTheirs = 0;
+    const disagree = [];
+    for (const f of files) {
+      let text;
+      try {
+        resetIds();
+        text = toEasyEdaSchematic(Circuit.fromJSON(JSON.parse(readFileSync(f.path, 'utf-8')))).text;
+      } catch { continue; }
+      exported++;
+      const r = measureDocument(f.id, text);
+      netsOurs += r.netsOurs; netsTheirs += r.netsEasyEda;
+      if (!r.agree) disagree.push(`${f.id}: ${r.splits} split, ${r.orphans} orphan`);
+    }
+    console.log(`\n  exports read both ways: ${exported} documents`);
+    console.log(`  nets under OUR rule ${netsOurs}, under EASYEDA's ${netsTheirs}`);
+    console.log(`  disagreeing documents: ${disagree.length}`);
+    assert.ok(exported >= 2000, `only ${exported} exported — the comparison is vacuous at this size`);
+    assert.ok(netsOurs > 5000,
+      `only ${netsOurs} nets read — if the partition oracle returns nothing, two empty readings `
+      + 'agree trivially and this gate is worthless');
+    assert.deepEqual(disagree, [],
+      'an exported schematic reads differently under EasyEDA\'s junction rule than under ours. '
+      + 'The exporter gives each net its own lane and each pin its own vertical so that every '
+      + 'contact between different nets is an X crossing; a disagreement means it emitted a T '
+      + 'that only OUR reading folds in, and the file would behave differently in EasyEDA.');
   });
 });

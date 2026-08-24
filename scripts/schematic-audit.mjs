@@ -652,6 +652,150 @@ export function symbolContactOf (projection) { return symbolContact(projection, 
 export function pinNetDisagreementOf (projection, nets) { return pinNetDisagreement(projection, nets); }
 export function symbolCopperOf (symbol) { return symbolCopper(symbol); }
 
+
+// ── the TEXT, and the page edge — the last ink no class read ──────────────
+//
+// Third-pass finding: every class up to T reads geometry. The SVG also draws
+// 57,672 TEXT runs across the corpus — net-label texts, part labels, pin
+// names, kind names, value strings — and not one class looked at any of them.
+// It also has a viewBox, and geometry outside it is ink that does not exist
+// for the reader.
+//
+// GLYPH MODEL, stated because the counts depend on it: monospace at
+// TEXT_ADVANCE em per character and 0.7 em cap height. DejaVu Sans Mono, the
+// usual resolution of `font-family="monospace"`, advances 0.602 em. The V and
+// W counts roughly DOUBLE between advance 0.50 and 0.62 (55 -> 105 pin-name
+// collisions; 124 -> 172 label texts on foreign copper), so the classes are
+// real at every setting in that range and their MAGNITUDE is a property of
+// this model, not of the drawing. Changing the constant invalidates the
+// ratchets, which is why it lives here and is asserted in the gate.
+const TEXT_ADVANCE = 0.6;
+const TEXT_CAP = 0.7;
+
+/** Every text run the two renderers draw, as page-space boxes. */
+function textRuns (projection) {
+    const out = [];
+    const push = (x, y, str, size, anchor, kind, netId) => {
+        const s = String(str ?? '');
+        if (!s) return;
+        const w = TEXT_ADVANCE * size * s.length;
+        const h = TEXT_CAP * size;
+        const x1 = anchor === 'middle' ? x - w / 2 : anchor === 'end' ? x - w : x;
+        out.push({ x1, x2: x1 + w, y1: y - h, y2: y, s, kind, netId });
+    };
+    for (const l of projection.netLabels || []) push(l.x, l.y, l.text, 6.5, l.anchor, 'netlabel', l.netId);
+    for (const sym of projection.symbols || []) {
+        if (INFRA_KINDS.has(sym.kind)) continue;
+        const art = sym.generic ? null : shapeFor(sym.kind, sym.params || {});
+        push(sym.x, sym.y - 24, sym.label, 9, 'middle', 'symlabel');
+        if (art) {
+            for (const t of art.texts || []) push(sym.x + t.x, sym.y + t.y, t.s, t.size || 8, 'middle', 'glyph');
+            const p = sym.params || {};
+            const v = art.value === 'ohms' && p.ohms != null ? 'ohm'
+                : art.value === 'farads' && p.farads != null ? 'farad'
+                    : art.value === 'volts' ? `${p.volts ?? 5}V` : '';
+            if (v) push(sym.x, sym.y + 19, v, 8, 'middle', 'value');
+        } else {
+            const pins = sym.pins || [];
+            const perSide = Math.max(1, sym.pinsPerSide || Math.ceil(pins.length / 2));
+            const halfH = Math.max(20, ((perSide - 1) * 18) / 2 + 16);
+            for (const pin of pins) {
+                push(sym.x + (pin.side === 'left' ? -22 : 22), pin.y + 2.5, pin.name, 6.5,
+                    pin.side === 'left' ? 'start' : 'end', 'pinname');
+            }
+            push(sym.x, sym.y - halfH + 9, String(sym.kind).slice(0, 9), 7, 'middle', 'kindname');
+        }
+    }
+    return out;
+}
+
+const boxesOverlap = (a, b) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
+
+/**
+ * CLASS U — drawn geometry outside the viewBox.
+ *
+ * `schematic-svg.js` sizes the SVG from `projection.width/height`. Anything
+ * beyond that is ink the reader never sees, which is a DROPPED connection
+ * that leaves no trace in any geometric class: the pins are there, the wire
+ * joins them, and the page stops before it. Measured: 0 / 2098.
+ */
+function offPage (projection) {
+    const W = Math.max(1, Math.ceil(projection.width || 0));
+    const H = Math.max(1, Math.ceil(projection.height || 0));
+    const out = [];
+    const chk = (x, y, what) => { if (x < 0 || y < 0 || x > W || y > H) out.push({ x, y, what }); };
+    for (const sym of projection.symbols || []) {
+        if (INFRA_KINDS.has(sym.kind)) continue;
+        for (const p of sym.pins || []) chk(p.x, p.y, `${sym.id}:${p.name}`);
+    }
+    for (const s of segmentsOf(projection)) { chk(s.a.x, s.a.y, 'segment'); chk(s.b.x, s.b.y, 'segment'); }
+    for (const j of projection.junctions || []) chk(j.x, j.y, 'junction');
+    for (const l of projection.netLabels || []) chk(l.x, l.y, `label ${l.text}`);
+    return out;
+}
+
+/**
+ * CLASS V — two PIN NAMES whose text boxes overlap.
+ *
+ * Deliberately narrower than "two text runs overlap". Measured over the
+ * corpus, 813 pairs overlap and 708 of them are a part's own kind name or
+ * label sitting under its own label — untidy, and it misleads nobody. The
+ * 105 that destroy information are two PIN NAMES: a generic box is 52px wide
+ * and its names are drawn inward from ±22, so two long names on opposite
+ * sides (`GPIO16`, six characters at 6.5px, reaches 23px) collide and neither
+ * can be read. A reader who cannot tell which pin is which has lost the one
+ * thing the labelled box exists to provide.
+ */
+function pinNameCollisions (projection) {
+    const names = textRuns(projection).filter((t) => t.kind === 'pinname');
+    const out = [];
+    for (let i = 0; i < names.length; i++) {
+        for (let j = i + 1; j < names.length; j++) {
+            if (boxesOverlap(names[i], names[j])) out.push({ a: names[i].s, b: names[j].s });
+        }
+    }
+    return out;
+}
+
+/**
+ * CLASS W — a NET LABEL's text box lying on a FOREIGN net's conductor.
+ *
+ * Class P forbids the label's LEADER from touching foreign copper. The text
+ * is the other four fifths of the same mark and was never checked, and it is
+ * the half a reader actually reads: "same text = same net" is the entire
+ * contract when routing falls back to labels, so a label text lying across
+ * another net's wire invites reading that wire as carrying that name.
+ *
+ * Restricted to net labels on FOREIGN copper on purpose. A part label over a
+ * wire (1,353 occurrences) is untidy; it names a part, not a net, and asserts
+ * no connection. Counting those would have made this class eight times bigger
+ * and eight times less true.
+ */
+function labelTextOnForeignCopper (projection) {
+    const labels = textRuns(projection).filter((t) => t.kind === 'netlabel');
+    const segs = segmentsOf(projection);
+    const out = [];
+    for (const t of labels) {
+        for (const s of segs) {
+            if (s.netId === t.netId) continue;
+            const sx1 = Math.min(s.a.x, s.b.x), sx2 = Math.max(s.a.x, s.b.x);
+            const sy1 = Math.min(s.a.y, s.b.y), sy2 = Math.max(s.a.y, s.b.y);
+            if (t.x1 < sx2 && sx1 < t.x2 && t.y1 < sy2 && sy1 < t.y2) {
+                out.push({ text: t.s, net: t.netId, other: s.netId });
+                break;
+            }
+        }
+    }
+    return out;
+}
+
+/** U, V, W callable on a projection alone (mutation proofs). */
+export function offPageOf (projection) { return offPage(projection); }
+export function pinNameCollisionsOf (projection) { return pinNameCollisions(projection); }
+export function labelTextOnForeignCopperOf (projection) { return labelTextOnForeignCopper(projection); }
+export function textRunsOf (projection) { return textRuns(projection); }
+export const TEXT_MODEL = { advance: TEXT_ADVANCE, cap: TEXT_CAP };
+
 // ── per-circuit analysis ──────────────────────────────────────────────────
 
 export function analyse (file) {
@@ -717,6 +861,10 @@ export function analyse (file) {
         fatJunctions: fatJunctions(proj, segs),
         symbolContact: symbolContact(proj, segs),
         pinNetDisagreement: pinNetDisagreement(proj, nets),
+        offPage: offPage(proj),
+        pinNameCollisions: pinNameCollisions(proj),
+        labelTextOnCopper: labelTextOnForeignCopper(proj),
+        textRuns: textRuns(proj).length,
         drops, invents, unresolvedPins, droppedParts, undrawnNets,
         foreignCrossWithDot: geo.foreignCrossWithDot,
         wireThroughPin: wireThroughForeignPin(proj, idx),
@@ -785,6 +933,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         ['R junction dot disc covering foreign copper', (r) => r.fatJunctions.length],
         ['S conductor touching foreign symbol copper', (r) => r.symbolContact.length],
         ['T drawn pin netId disagrees with the solver', (r) => r.pinNetDisagreement.length],
+        ['U drawn geometry outside the viewBox', (r) => r.offPage.length],
+        ['V two pin NAMES overlapping (ratchet)', (r) => r.pinNameCollisions.length],
+        ['W a net label TEXT on foreign copper (ratchet)', (r) => r.labelTextOnCopper.length],
     ];
     if (process.argv.includes('--json')) {
         console.log(JSON.stringify({ root, discovered: files.length, errored, rows }, null, 1));

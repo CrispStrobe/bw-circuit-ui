@@ -50,7 +50,7 @@
  * @module
  */
 
-import { NetSolver, wiresFromNets, makeId, terminalFor, classifyPower } from './kicad-common.js';
+import { NetSolver, wiresFromNets, makeId, terminalFor, classifyPower, ptKey } from './kicad-common.js';
 import { parseEagleValue } from './eagle.js';
 
 // ── the shape DSL ──────────────────────────────────────────────────
@@ -815,15 +815,47 @@ export function importEasyEda(text) {
   if (!parts.length) warnings.push('No mappable components found -- is this an EasyEDA schematic (docType 5)?');
 
   // See `dots` above: a T our solver folds in and EasyEDA would not.
+  //
+  // The warning carries THREE things, because a bare count is not actionable:
+  // where each joint is (so the reader can look at it in EasyEDA), which kind
+  // it is, and WHAT IT COSTS -- the same document read under EasyEDA's rule,
+  // by the same tested solver, so the reader sees how many connections are in
+  // dispute rather than how many joints are. A file can carry ten J-less Ts
+  // and lose nothing (the nets are joined elsewhere too) or carry one and drop
+  // a pin, and only the second number tells them apart.
   if (undottedWireTees.length || undottedPinTees.length) {
-    const where = [...undottedWireTees, ...undottedPinTees].slice(0, 4).join(' ');
+    const all = [...undottedWireTees, ...undottedPinTees];
+    const SHOWN = 12;
+    const where = all.slice(0, SHOWN).join(' ') + (all.length > SHOWN ? ` ... (+${all.length - SHOWN})` : '');
     const parts_ = [];
     if (undottedWireTees.length) parts_.push(`${undottedWireTees.length} wire-to-wire`);
     if (undottedPinTees.length) parts_.push(`${undottedPinTees.length} pin-on-wire`);
-    warnings.push(`${undottedWireTees.length + undottedPinTees.length} T-joint(s) without a `
-      + `junction (${parts_.join(', ')}); EasyEDA treats these as crossings, so these `
-      + `connections exist here and not on the board -- at ${where}`
-      + (undottedWireTees.length + undottedPinTees.length > 4 ? ' ...' : ''));
+    let cost = '';
+    try {
+      const ours = easyEdaPartition(text);
+      const theirs = easyEdaPartition(text, { strict: true });
+      const strictOf = new Map();
+      theirs.forEach((n, i) => { for (const node of n.split('|')) strictOf.set(node, i); });
+      let split = 0; const orphaned = [];
+      for (const net of ours) {
+        const groups = new Set();
+        for (const node of net.split('|')) {
+          if (strictOf.has(node)) groups.add(strictOf.get(node));
+          else orphaned.push(node);
+        }
+        if (groups.size > 1) split++;
+      }
+      cost = (split || orphaned.length)
+        ? `. Read EasyEDA's way this document has ${theirs.length} net(s) rather than `
+          + `${ours.length}: ${split} net(s) come apart`
+          + (orphaned.length ? `, and ${orphaned.length} pin(s) end up connected to nothing `
+            + `(${orphaned.slice(0, 8).join(' ')}${orphaned.length > 8 ? ' ...' : ''})` : '')
+        : '. Read EasyEDA\'s way the netlist is UNCHANGED — every one of these nets is joined '
+          + 'elsewhere as well, so nothing is in dispute';
+    } catch { /* the partition oracle is advisory here; the joint list is the finding */ }
+    warnings.push(`${all.length} T-joint(s) without a junction (${parts_.join(', ')}); EasyEDA `
+      + `treats these as crossings, so these connections exist here and not on the board -- at `
+      + `${where}${cost}`);
   }
   warnings.push(`geometry: ${attached}/${pinCount} mapped pins landed on a net `
     + `(${nets} nets, ${labels} labels)`);
@@ -847,17 +879,27 @@ export function importEasyEda(text) {
  * the only oracle for the geometry that is not this importer's rule table
  * agreeing with itself.
  *
+ * `opts.strict` applies EASYEDA's junction rule instead of ours: a T -- a
+ * registered point on another segment's span -- folds in only where the author
+ * drew a `J` on it. Ours (KiCad's) folds every T. Running the same tested
+ * solver both ways over the same file is what makes "how far apart are the two
+ * readings" a measurement rather than an opinion; see
+ * scripts/easyeda-roundtrip.mjs. Coincident ENDPOINTS still connect in both
+ * readings -- that is addSegment's union, not the T rule.
+ *
  * @param {string} text
+ * @param {{strict?: boolean}} [opts]
  * @returns {string[]} one sorted "REF/PIN|REF/PIN|..." string per net with
  *                     two or more nodes, itself sorted.
  */
-export function easyEdaPartition(text) {
+export function easyEdaPartition(text, opts = {}) {
   let doc;
   try { doc = JSON.parse(text); } catch { return []; }
   const out = [];
   easyEdaSheets(doc).forEach((sheet, sheetIx) => {
     const net = new NetSolver();
     const scope = (n) => `s${sheetIx}:${n}`;
+    const dots = new Set();
     for (const raw of sheet.shape) {
       const s = String(raw); const f = s.split('~');
       if (f[0] === 'W') {
@@ -867,7 +909,10 @@ export function easyEdaPartition(text) {
         const n = [f[2], f[3], f[4], f[5]].map(Number);
         if (n.every(Number.isFinite)) net.addSegment(n[0], n[1], n[2], n[3]);
       } else if (f[0] === 'J') {
-        if (Number.isFinite(Number(f[1]))) net.addPoint(Number(f[1]), Number(f[2]));
+        if (Number.isFinite(Number(f[1]))) {
+          dots.add(ptKey(Number(f[1]), Number(f[2])));
+          net.addPoint(Number(f[1]), Number(f[2]));
+        }
       } else if (f[0] === 'N') {
         if (f[5] && Number.isFinite(Number(f[1]))) net.addName(Number(f[1]), Number(f[2]), scope(f[5]));
       } else if (f[0] === 'F') {
@@ -878,7 +923,7 @@ export function easyEdaPartition(text) {
     }
     const comps = readComponents(sheet.shape);
     for (const c of comps) for (const p of c.pins) net.addPoint(p.x, p.y);
-    net.solve();
+    net.solve(opts.strict ? { foldTeeAt: (k) => dots.has(k) } : {});
     const byNet = new Map();
     for (const c of comps) {
       if (!c.ref) continue;

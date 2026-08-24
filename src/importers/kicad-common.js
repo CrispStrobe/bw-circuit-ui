@@ -109,7 +109,18 @@ export class NetSolver {
    * axis-aligned: without it this is segments x points, and the 1.1 MB
    * tinytapeout board makes that eight million collinearity tests.
    */
-  solve() {
+  /**
+   * @param {{foldTeeAt?: (key: string) => boolean}} [opts]
+   *   `foldTeeAt` opts INTO the stricter rule: a T is folded only where the
+   *   predicate says the drawing licenses it. KiCad passes nothing and keeps
+   *   the permissive rule, which is correct for KiCad — eeschema drops a
+   *   junction dot at a T itself. EasyEDA does NOT imply one, so measuring
+   *   what an EasyEDA file means needs the strict reading, and comparing the
+   *   two partitions is the only way to say how far apart they are. See
+   *   scripts/easyeda-roundtrip.mjs.
+   */
+  solve(opts = {}) {
+    const foldTeeAt = opts.foldTeeAt || null;
     const byX = new Map(); const byY = new Map();
     const all = [];
     for (const k of this.points) {
@@ -135,6 +146,7 @@ export class NetSolver {
       }
       for (const p of cands) {
         if (this._find(p.k) !== this._find(endA)) this.tees.push({ x: p.x, y: p.y });
+        if (foldTeeAt && !foldTeeAt(p.k)) continue;   // strict: the drawing must license it
         this.union(p.k, endA);
       }
     }
