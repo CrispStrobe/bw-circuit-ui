@@ -2,6 +2,13 @@
 
 Measured by RENDERING every shipped circuit, not by reading the code.
 
+**This document has two passes.** The first (sections 1-5) audited the DRAWING
+and found one real defect, class I, out of eleven classes. The second
+("Second pass", sections 6-10) audited the DETECTORS on the grounds that ten
+classes reporting zero from detectors written by the same hand is an untested
+claim — and found five more. **Where the two disagree about shas, counts or the
+ten worst, the second pass is current.**
+
 ## Denominators move — every number here names its sha
 
 The corpus is another repo's tree and it changes under this document. Both
@@ -13,7 +20,9 @@ files deleted upstream:
 | `965d1720c9dc636a051acafdea8a1af4a7a5cc57` (first measurement) | 2,107 |
 | `3c4973b08034a25f1e1e7edda64e600282459804` (current, and what CI clones) | 2,098 |
 
-**The current, authoritative rig:**
+**The rig for the FIRST pass's numbers** — superseded for anything measured
+after it; the second pass names its own shas under "Second pass" below, and
+those are the current ones:
 
 | repo | sha | role |
 |---|---|---|
