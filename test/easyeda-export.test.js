@@ -258,7 +258,12 @@ describe('document refusals — empty-but-valid is the worst output', () => {
 const EXAMPLES = join(process.env.HOME || '', 'code', 'lego', 'brickwright-lite',
     'overlay', 'scratch-gui', 'examples');
 const CORPUS = ['78-a2-calculator/circuit.json',
-    '70-calculator/circuit.json', '70-calculator-simple/circuit.json'];
+    '70-calculator/circuit.json', '70-calculator-simple/circuit.json',
+    // The two mega variants that shorted (escape leg landed on a lane):
+    // named fixtures so the regression stays visible even if the full
+    // sweep's enumeration ever regresses.
+    '60-retro-console/circuit-flat.arduino-mega.json',
+    '61-console-pong/circuit-flat.arduino-mega.json'];
 const haveExamples = existsSync(join(EXAMPLES, CORPUS[0]));
 
 describe('the calculator corpus (read in place from lite)',
@@ -279,28 +284,40 @@ describe('the calculator corpus (read in place from lite)',
     });
 
 // ── 3b. the WHOLE examples corpus, as a property sweep ──────────────
-// Every loadable circuit.json in lite: the exported subgraph must
-// round-trip to exactly the source partition RESTRICTED to exported
-// parts, and every omission must be a NAMED skip — silent loss is the
-// only forbidden outcome. The census prints so coverage is a number,
-// not a feeling.
+// Every loadable circuit FILE in lite — bare circuit.json AND every
+// per-MCU twin (circuit.<target>.json, circuit-flat.<target>.json): the
+// exported subgraph must round-trip to exactly the source partition
+// RESTRICTED to exported parts, and every omission must be a NAMED
+// skip — silent loss is the only forbidden outcome. The census prints
+// so coverage is a number, not a feeling.
+//
+// The denominator matters as much as the assertion: the first sweep
+// enumerated only bare circuit.json (222 files) and by construction
+// could not see the mega-only lane/escape short, which lived solely in
+// two circuit-flat.arduino-mega.json variants — found by an independent
+// reader over all 2,098 files. Hence the file-count floor below: a glob
+// that silently stops matching must FAIL, not pass complete-looking.
 
 describe('the full lite examples corpus',
     { skip: haveExamples ? false : 'needs the lite examples sibling' }, () => {
-        test('every loadable example round-trips its exported subgraph or refuses by name', () => {
+        test('every loadable circuit file round-trips its exported subgraph or refuses by name', () => {
 
             const dirs = readdirSync(EXAMPLES, { withFileTypes: true })
                 .filter((d) => d.isDirectory()).map((d) => d.name);
             let full = 0; let partial = 0; let unloadable = 0; let mismatched = [];
+            let fileCount = 0;
             const skipCensus = new Map();
+            const isCircuitFile = (name) => /^circuit([.-][^/]+)*\.json$/.test(name);
             for (const dir of dirs) {
-                const file = join(EXAMPLES, dir, 'circuit.json');
-                if (!existsSync(file)) continue;
+                const files = readdirSync(join(EXAMPLES, dir)).filter(isCircuitFile);
+                for (const fname of files) {
+                const file = join(EXAMPLES, dir, fname);
+                fileCount++;
                 let c;
                 try { c = Circuit.fromJSON(JSON.parse(readFileSync(file, 'utf8'))); }
                 catch { unloadable++; continue; }
                 let out;
-                try { out = toEasyEdaSchematic(c, { title: dir }); }
+                try { out = toEasyEdaSchematic(c, { title: `${dir}/${fname}` }); }
                 catch { unloadable++; continue; }
                 const skippedIds = new Set(out.report.skipped.map((s2) => s2.id));
                 for (const s2 of out.report.skipped) {
@@ -313,15 +330,18 @@ describe('the full lite examples corpus',
                     if (out.report.skipped.every((s2) => s2.kind === 'breadboard')) full++;
                     else partial++;
                 } else {
-                    mismatched.push(dir);
+                    mismatched.push(`${dir}/${fname}`);
+                }
                 }
             }
-            console.log(`  corpus census: ${full} full, ${partial} partial (named skips), `
+            console.log(`  corpus census: ${fileCount} files — ${full} full, ${partial} partial (named skips), `
                 + `${unloadable} not loadable as circuits, ${mismatched.length} MISMATCHED`);
             console.log(`  skip census: ${JSON.stringify([...skipCensus.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10))}`);
             assert.deepEqual(mismatched, [],
                 'a partition mismatch is an exporter DEFECT — skips must be named, never silent');
-            assert.ok(full >= 200, `at least 200 examples export FULLY (measured 221 of 222 on 2026-08-24): got ${full}`);
+            assert.ok(fileCount >= 2000,
+                `the glob must keep matching the per-MCU twins (2,098 files on 2026-08-24): got ${fileCount}`);
+            assert.ok(full >= 1900, `nearly all circuit files export FULLY: got ${full} of ${fileCount}`);
         });
     });
 

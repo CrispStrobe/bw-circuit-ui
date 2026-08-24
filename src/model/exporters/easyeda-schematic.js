@@ -200,7 +200,12 @@ export function toEasyEdaSchematic(circuit, opts = {}) {
   const PY0 = 100;               // parts row top
   const ESC0 = 6;                // first escape length
   const ESC_STEP = 3;            // per-slot growth → unique bend coords
+  // NOTE: a right-edge pin at x = w−4 cannot collide with a top/bottom
+  // escape's vertical only because eLen differences are multiples of
+  // ESC_STEP (3) while the pin inset is 4 — a coincidence, not a design.
+  // Revisit if ESC_STEP or the sidecar inset ever changes.
   let maxBottom = PY0;
+  let maxEscBottom = PY0;
   let cursor = 60;
   const placed = []; // { p, t, sc, x0, y0, pinAbs: Map(term -> {x,y,edge}) }
   for (const lp of libParts) {
@@ -226,9 +231,22 @@ export function toEasyEdaSchematic(circuit, opts = {}) {
       lp.pinAbs.set(tm.name, { x: x0 + tm.x, y: PY0 + tm.y, edge });
     }
     maxBottom = Math.max(maxBottom, PY0 + (sc.h ?? 40));
+    // The lane band must clear the DEEPEST POSSIBLE bottom escape, not
+    // merely the tallest part: a bottom-edge pin's horizontal leg sits at
+    // y0 + h + ESC0 + slot·ESC_STEP, unbounded below, and with a fixed
+    // LANE0 = maxBottom + 40 it reaches the first lane at slot 12 and
+    // lands EXACTLY on one at slot ≡ 2 (mod 4). Only arduino_mega (78
+    // right-band pins) walked that far — both mega retro-console variants
+    // exported a two-net short, found by an independent reader of the
+    // shape stream, not by the shared-assumption round trip. Clearing the
+    // whole escape region is the invariant; making ESC_STEP and LANE_STEP
+    // coprime would only dodge the exact-hit case and leave a lane
+    // endpoint free to land on an escape's vertical leg.
+    maxEscBottom = Math.max(maxEscBottom,
+      PY0 + (sc.h ?? 40) + ESC0 + Math.max(0, rightPins - 1) * ESC_STEP);
     cursor = x0 + (sc.w ?? 40) + mr;
   }
-  const LANE0 = maxBottom + 40;
+  const LANE0 = Math.max(maxBottom, maxEscBottom) + 40;
   const LANE_STEP = 4;
 
   // ── emit LIB shapes ─────────────────────────────────────────────
