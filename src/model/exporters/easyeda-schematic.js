@@ -238,7 +238,14 @@ export function toEasyEdaSchematic(circuit, opts = {}) {
     // lands EXACTLY on one at slot ≡ 2 (mod 4). Only arduino_mega (78
     // right-band pins) walked that far — both mega retro-console variants
     // exported a two-net short, found by an independent reader of the
-    // shape stream, not by the shared-assumption round trip. Clearing the
+    // shape stream. The round trip was NOT blind to it — re-measured
+    // against the broken exporter, it goes red on the same files (the
+    // importer binds endpoint-on-span fine); only the sweep's
+    // denominator hid it, enumerating bare circuit.json and missing the
+    // per-MCU twins. So the glob fix + file-count floor IS the complete
+    // guard for this class; an independent reader's residual value is
+    // narrower — checking our importer's binding rule against the real
+    // dialect, which only the vendor artefact can settle. Clearing the
     // whole escape region is the invariant; making ESC_STEP and LANE_STEP
     // coprime would only dodge the exact-hit case and leave a lane
     // endpoint free to land on an escape's vertical leg.
