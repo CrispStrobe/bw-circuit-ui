@@ -663,6 +663,26 @@ a transistor beta). The denominator is 2,098 at both, no baselined circuit
 moved, and every number in this section was re-taken at `553a639` rather than
 carried over.
 
+**CI evidence** — "the gates exist" and "the gates ran" are different claims
+and only the second is worth anything.
+[run 32763155938](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/32763155938)
+at `be4f0e17c4d85f3097a680ea3841e58f04600072`, against freshly cloned siblings:
+
+```
+  exported and re-read 2098 / 2098 circuits
+  undotted T-joints: 0 file(s)
+  discovered 2098, analysed 2098, failed 0
+  Q drawn pin the symbol art does not reach          0 / 2098 circuits, 0 occurrences
+  Q2 symbol lead reaching no pin                    44 / 2098 circuits, 44 occurrences
+  R junction dot disc covering foreign copper        0 / 2098 circuits, 0 occurrences
+  S conductor touching foreign symbol copper         0 / 2098 circuits, 0 occurrences
+  T drawn pin netId disagrees with the solver        0 / 2098 circuits, 0 occurrences
+# tests 984   # pass 970   # fail 0   # skipped 14
+```
+
+(The local suite reports 995/978/0/17 — eleven tests register only when a
+local-only fixture is present. Both are 0 fail.)
+
 ## 11. Four new classes, two of them real
 
 | | class | circuits | occurrences | severity |
