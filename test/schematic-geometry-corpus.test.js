@@ -223,6 +223,24 @@ describe('schematic geometry across the whole shipped corpus', () => {
     assert.ok(drawn > 1500, `only ${drawn} circuits had any drawn copper`);
   });
 
+  /**
+   * DO NOT READ THIS CLASS'S REVERT NUMBER AS ITS IMPORTANCE.
+   *
+   * `segmentHitsForeignPin` and the symbol-lead registration (class S) forbid
+   * nearly the same geometry from opposite sides — a pin sits at the END of
+   * its own lead — so each masks about 98% of the other's corpus evidence.
+   * Measured in all four combinations by scripts/rule-isolation.mjs:
+   *
+   *              lead rule ON        lead rule OFF
+   *   pin ON     I 0    S 0          I 0    S 7        <- shipped is top-left
+   *   pin OFF    I 18   S 14         I 801  S 585
+   *
+   * Reverting the pin rule alone breaks 18 circuits and reverting the lead
+   * rule alone breaks 7, either of which reads as "nearly dead code".
+   * Reverting both breaks 801. Neither rule is redundant — each leaves a
+   * remainder the other cannot see — and neither may be judged by its own
+   * revert while the other stands.
+   */
   test('I: no conductor runs through a pin that is not on its net', () => {
     console.log('');
     const hit = report('I conductor through a foreign pin', r => r.wireThroughPin);

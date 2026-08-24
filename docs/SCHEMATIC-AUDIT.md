@@ -1007,20 +1007,74 @@ not ok 13 - R/S: a symbol's own copper is copper, and a dot is as wide as it is 
 ```
 
 **18 / 32 here, against 801 / 1,852 in the second pass and 790 / 4,204 in the
-first**, and the collapse is worth more than the number. THIS PASS'S OWN FIX
-absorbs most of class I: a pin sits at the end of its own symbol lead, that
-lead is now a registered conductor, and `segmentTouchesForeignConductor`
-therefore refuses most of the routes `segmentHitsForeignPin` used to refuse.
-So reverting the class-I fix alone no longer reproduces the class-I disaster —
-the drawing stays right because a different rule is holding it up.
+first.** The collapse is worth more than the number, and the first account
+written here of WHY was half right in a way that would mislead a reader, so it
+is replaced by a measurement.
 
-That is the same shape as pass two's finding that the class-I fix moved 799
-circuits out of class H's denominator, and it is worth naming rather than
-enjoying: **a fix that quietly subsumes another fix's job makes the older
-gate look stronger than it is.** The mitigation here is that the older gate
-still goes red (18 circuits, and its in-suite mutation proof still fires), and
-that class S now covers the same geometry from the symbol side. Nobody should
-delete `segmentHitsForeignPin` on the strength of an 18.
+The suspicion was that this pass's symbol-lead rule absorbs class I: a pin
+sits at the END of its own lead, so a route running through a foreign pin
+almost always also touches that pin's lead. True — but stated that way it
+invites "then `segmentHitsForeignPin` is nearly dead code", which is false,
+and the reason is symmetric. Both rules were reverted in all four
+combinations (`scripts/rule-isolation.mjs`, reproducible):
+
+| | lead rule ON | lead rule OFF |
+|---|---|---|
+| **pin rule ON** | I 0 / 0 · S 0 / 0 — **shipped** | I 0 / 0 · **S 7 / 7** |
+| **pin rule OFF** | **I 18 / 32** · S 14 / 14 | **I 801 / 1850** · S 585 / 802 |
+
+Read the diagonal. Reverting the pin rule alone breaks 18 circuits; reverting
+the lead rule alone breaks 7. **Either number on its own reads as "this rule
+barely does anything."** Reverting both breaks 801. Each rule is suppressing
+about 98 % of the other's corpus evidence, in both directions — it is not that
+the new rule subsumed the old one, it is that the two forbid nearly the same
+geometry from opposite sides.
+
+Two consequences, and the second is the one that matters:
+
+- **Neither rule is redundant.** Each leaves a remainder the other does not
+  catch — 18 circuits for the pin rule, 7 for the lead rule — and they are
+  different circuits. `segmentHitsForeignPin` catches a conductor passing
+  through a pin PERPENDICULAR to its lead, which class S does not count
+  because a proper crossing is legal contact-wise; the lead rule catches a
+  conductor ending on a lead at a point that is not a pin, which class I
+  cannot see.
+- **A revert measurement is only valid against the rest of the tree it is
+  taken on, and that now includes other rules covering the same ground.** This
+  document has said "a before-number that does not name its tree is not a
+  number" twice already, about the corpus and about the engine. This is the
+  third form and the least obvious: a number can be honest, reproducible, and
+  still not measure what its reader thinks, because a DIFFERENT fix is holding
+  the drawing up.
+
+The bottom-right cell is also the best available check that nothing else
+drifted: **801 / 1,850 with both rules off, against pass two's 801 / 1,852 on
+its own tree.** Same 801 circuits; the two missing occurrences are corpus
+drift. So the collapse really is these two rules overlapping, and not some
+third change quietly repairing the routing.
+
+**The instrument got this wrong once, and how it did is the point.** Its first
+version restored the source from a string it read at start-up. An earlier run
+had been killed by a two-minute timeout mid-measurement, which left the source
+REVERTED on disk — so the next run read the reverted file as its baseline and
+reported the shipped configuration as `I 18 / 32`. Every cell was shifted by
+one row and nothing said so; the output was internally consistent and
+completely wrong. It now refuses to start unless `git status --porcelain` on
+that file is empty, and restores through `git checkout` so that being killed
+mid-run cannot poison the next one. The refusal is mutation-proved:
+
+```
+$ printf '\n// deliberate dirt\n' >> src/model/schematic-projection.js
+$ node scripts/rule-isolation.mjs
+Error: src/model/schematic-projection.js has uncommitted changes:
+  M src/model/schematic-projection.js
+This script measures a tree by editing it, so it must start from a known one.
+```
+
+A tool that edits a tree in order to measure it must treat "the tree is where
+I think it is" as a precondition to CHECK rather than to assume. That is the
+same failure this document has now found three times in gates, arriving in the
+instrument built to measure the gates.
 
 Class P goes red alongside I at the identical count, exactly as pass two
 recorded: a conductor drawn through a pin necessarily also touches the leader
