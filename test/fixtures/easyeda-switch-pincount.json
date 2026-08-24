@@ -1,0 +1,35 @@
+{
+ "editorVersion": "6.5.0",
+ "docType": "5",
+ "title": "switch-pincount",
+ "description": "",
+ "colors": {},
+ "schematics": [
+  {
+   "docType": "1",
+   "title": "Sheet_1",
+   "description": "",
+   "dataStr": {
+    "head": {
+     "docType": "1",
+     "editorVersion": "6.5.0",
+     "c_para": {},
+     "x": "0",
+     "y": "0"
+    },
+    "canvas": "CA~1000~1000~#FFFFFF~yes~#CCCCCC~5~1000~1000~line~5~pixel~5~0~0",
+    "shape": [
+     "LIB~100~-100~package`X`spicePre`S`~~0~gge890~~~0~~yes~yes~~~#@$T~N~100~-112~0~#000080~Arial~~~~~comment~TACT_4P~1~start~gge888~0~#@$T~P~100~-120~0~#000080~Arial~~~~~comment~SW1~1~start~gge889~0~#@$P~show~0~1~90~-100~0~gge101~0^^90~-100^^M 90 -100 h -10~#880000^^0~90~-100~0~1~start~Arial~9pt~#0000FF^^0~90~-100~0~1~end~Arial~9pt~#0000FF#@$P~show~0~2~130~-100~0~gge102~0^^130~-100^^M 130 -100 h -10~#880000^^0~130~-100~0~2~start~Arial~9pt~#0000FF^^0~130~-100~0~2~end~Arial~9pt~#0000FF#@$P~show~0~3~90~-110~0~gge103~0^^90~-110^^M 90 -110 h -10~#880000^^0~90~-110~0~3~start~Arial~9pt~#0000FF^^0~90~-110~0~3~end~Arial~9pt~#0000FF#@$P~show~0~4~130~-110~0~gge104~0^^130~-110^^M 130 -110 h -10~#880000^^0~130~-110~0~4~start~Arial~9pt~#0000FF^^0~130~-110~0~4~end~Arial~9pt~#0000FF",
+     "LIB~300~-100~package`X`spicePre`S`~~0~gge264~~~0~~yes~yes~~~#@$T~N~300~-112~0~#000080~Arial~~~~~comment~SS-12D10L9~1~start~gge262~0~#@$T~P~300~-120~0~#000080~Arial~~~~~comment~SW2~1~start~gge263~0~#@$P~show~0~1~290~-100~0~gge101~0^^290~-100^^M 290 -100 h -10~#880000^^0~290~-100~0~1~start~Arial~9pt~#0000FF^^0~290~-100~0~1~end~Arial~9pt~#0000FF#@$P~show~0~2~330~-100~0~gge102~0^^330~-100^^M 330 -100 h -10~#880000^^0~330~-100~0~2~start~Arial~9pt~#0000FF^^0~330~-100~0~2~end~Arial~9pt~#0000FF#@$P~show~0~3~310~-120~0~gge103~0^^310~-120^^M 310 -120 h -10~#880000^^0~310~-120~0~3~start~Arial~9pt~#0000FF^^0~310~-120~0~3~end~Arial~9pt~#0000FF"
+    ],
+    "BBox": {
+     "x": 0,
+     "y": -200,
+     "width": 400,
+     "height": 200
+    },
+    "colors": {}
+   }
+  }
+ ]
+}

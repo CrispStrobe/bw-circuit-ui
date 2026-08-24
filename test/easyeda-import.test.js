@@ -584,3 +584,47 @@ describe('the imported bench solves, and a misparse changes the answer',
       assert.equal(solve(r.parts, r.wires).parts, 28);
     });
   });
+
+describe('switch pin count decides button vs changeover', () => {
+    /**
+     * `easyeda-switch-pincount.json` holds one FOUR-pin tactile key and one
+     * THREE-pin slide switch, and nothing else.
+     *
+     * The rule used to read `n >= 3 ? slide_switch : button`, while its own
+     * comment said "a 3-pin one is a changeover". Four pins is the commonest
+     * tactile key there is — a through-hole button bonds its pins in two pairs,
+     * so it draws as four — and every one of them imported as a slide switch.
+     * Measured on a real EasyEDA calculator sheet: seventeen keys, seventeen
+     * slide switches, zero buttons.
+     *
+     * The giveaway that it was a typo rather than a decision is the pin map on
+     * the button branch, `{1:'a', 2:'b', 3:'a', 4:'b'}`, which describes the
+     * four-pin part exactly and was unreachable.
+     */
+    test('a four-pin tactile key is a button, a three-pin switch is a changeover', () => {
+        const raw = readFileSync(join(FIX, 'easyeda-switch-pincount.json'), 'utf8');
+        const res = importEasyEda(raw);
+        assert.equal(res.unmapped.length, 0, 'both switches should map');
+        const kinds = {};
+        for (const p of res.parts) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
+        assert.deepEqual(kinds, { button: 1, slide_switch: 1 },
+            'four pins must be a button and three a slide switch');
+    });
+
+    test('the rule keys on pin count, and four pins collapse onto two terminals', () => {
+        const sw = (pinCount, value) => mapEasyEdaPart(
+            {descriptor: 'SW1', value, spicePre: 'S', pinCount, package: 'X'});
+
+        assert.equal(sw(2, 'TACT_2P').kind, 'button', 'two pins is a momentary button');
+        assert.equal(sw(4, 'TACT_4P').kind, 'button', 'FOUR pins is also a momentary button');
+        assert.equal(sw(3, 'SS-12D10L9').kind, 'slide_switch', 'three pins is a changeover');
+
+        // A four-pin key is electrically TWO nodes: its pins are bonded in pairs
+        // inside the package. Treating them as four would split the net the key
+        // is there to close.
+        const pins = sw(4, 'TACT_4P').pins;
+        assert.deepEqual(pins, {1: 'a', 2: 'b', 3: 'a', 4: 'b'},
+            'pins 1/3 and 2/4 must land on the same two terminals');
+        assert.deepEqual([...new Set(Object.values(pins))].sort(), ['a', 'b']);
+    });
+});

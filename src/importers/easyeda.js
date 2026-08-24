@@ -326,8 +326,17 @@ function mapSpicePre(pre, value, pinCount, pkg) {
       return { kind: 'relay', byName: true };
     case 'S':
     case 'SW':
-      // A 2-pin switch is a momentary button; a 3-pin one is a changeover.
-      return n >= 3
+      // A 2- OR 4-pin switch is a momentary button; a 3-pin one is a changeover.
+      //
+      // `n >= 3` sent FOUR-pin parts to slide_switch, and four pins is the
+      // commonest tactile key there is: a through-hole button bonds its pins in
+      // two pairs, so it draws as four. Measured on a real EasyEDA calculator
+      // sheet, all seventeen keys imported as slide_switch and none as a button.
+      //
+      // The giveaway that this was a typo rather than a decision is the map on
+      // the button branch itself — `{1:'a', 2:'b', 3:'a', 4:'b'}` describes the
+      // four-pin part exactly, and was unreachable.
+      return n === 3
         ? { kind: 'slide_switch', byName: true }
         : { kind: 'button', pins: { 1: 'a', 2: 'b', 3: 'a', 4: 'b' } };
     case 'X':
