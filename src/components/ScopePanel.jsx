@@ -7,8 +7,18 @@
  * drawn — a scope that renders data it never captured is the
  * multimeter-that-lies failure in a new costume, so gaps stay gaps.
  *
- * The UI owns what the contract assigns it: timebase (a window into the
- * ring), drawing, run/freeze, display scale, edge trigger, and time cursors.
+ * The UI owns what the contract assigns it: the capture rate, the timebase (a
+ * window into the ring), drawing, run/freeze, display scale, edge trigger, and
+ * time cursors.
+ *
+ * The capture rate was missing until 2026-08-25, and its absence is worth a
+ * sentence because the header above already claimed it. `windowFrac` zooms into
+ * the ring; nothing chose how long the ring IS. This panel called
+ * `addScopeChannel({type, netId})` and passed neither `sampleRateHz` nor
+ * `depth`, so every capture in the app was the engine default 100 kHz x 8192 =
+ * 81.92 ms, on every bench — against an RC step with tau = 1 s, a 555 whose
+ * period reaches 127 ms, and a tone a decade below a 15.9 Hz cutoff. No amount
+ * of zooming a ring that never held the event will show it.
  *
  * The engine rebuilds on every netlist edit (board identity changes), which
  * discards capture history. The panel re-attaches its channels to the new
@@ -22,6 +32,9 @@ import {
   findTriggerIndex,
   triggeredWindowStart,
 } from '../model/scope-tools.js';
+import {
+  SCOPE_DEPTH, SCOPE_RATES, formatSeconds, rateLabel, recordSeconds,
+} from '../model/scope-timebase.js';
 
 const CHANNEL_COLORS = ['#2ecc71', '#3498db'];
 const W = 260;
@@ -32,6 +45,11 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
   const [channels, setChannels] = useState([]); // [{netId, handle}]
   const [running, setRunning] = useState(true);
   const [windowFrac, setWindowFrac] = useState(1); // 1 | 0.25 | 0.05 of the buffer
+  // The ring's own length, as opposed to the window into it. Changing it
+  // re-attaches the channels, because a channel's rate is fixed when it is
+  // created — so the capture history is discarded, and the status line says so
+  // rather than pretending the old samples belong to the new cadence.
+  const [sampleRateHz, setSampleRateHz] = useState(SCOPE_RATES[0]);
   const [pickNet, setPickNet] = useState('');
   const [voltsPerDiv, setVoltsPerDiv] = useState('auto');
   const [verticalCenter, setVerticalCenter] = useState(2.5);
@@ -43,12 +61,15 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
   const triggeredRef = useRef(false);
 
   // (Re)attach channels whenever the board instance changes — an edit
-  // rebuilds the engine and the old handles die with it.
+  // rebuilds the engine and the old handles die with it — OR when the capture
+  // rate changes, because a channel's cadence is fixed at creation.
   useEffect(() => {
     if (!board || !board.addScopeChannel) return undefined;
     const attached = channels.map(c => ({
       ...c,
-      handle: board.addScopeChannel({ type: 'voltage', netId: c.netId }),
+      handle: board.addScopeChannel({
+        type: 'voltage', netId: c.netId, sampleRateHz, depth: SCOPE_DEPTH,
+      }),
     }));
     setChannels(attached);
     return () => {
@@ -57,14 +78,16 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [board]);
+  }, [board, sampleRateHz]);
 
   const addChannel = useCallback(() => {
     if (!board || !pickNet || channels.length >= 2) return;
     if (channels.some(c => c.netId === pickNet)) return;
-    const handle = board.addScopeChannel({ type: 'voltage', netId: pickNet });
+    const handle = board.addScopeChannel({
+      type: 'voltage', netId: pickNet, sampleRateHz, depth: SCOPE_DEPTH,
+    });
     setChannels(cs => [...cs, { netId: pickNet, handle }]);
-  }, [board, pickNet, channels]);
+  }, [board, pickNet, channels, sampleRateHz]);
 
   const removeChannel = useCallback((netId) => {
     setChannels(cs => {
@@ -202,12 +225,33 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
           border: '1px solid #2c3e50', borderRadius: '3px', padding: '1px 8px',
           cursor: 'pointer', fontSize: '9px', fontFamily: 'monospace',
         }}>{running ? t('scopeRun', lang) : t('scopeHold', lang)}</button>
+        {/* The RECORD, labelled by how much sim-time it holds — the question a
+            learner has is "does the thing I want to see fit", and a sample rate
+            does not answer it. Beside the zoom, which is a different control
+            and was long the only one. */}
+        <select value={sampleRateHz} onChange={e => setSampleRateHz(Number(e.target.value))}
+          title={lang === 'de' ? 'Aufzeichnungslänge (Abtastrate)' : 'Record length (capture rate)'}
+          data-testid="bw-scope-record"
+          style={{ background: '#1a1a2e', color: '#7f8c8d', border: '1px solid #2c3e50', fontSize: '9px' }}>
+          {SCOPE_RATES.map(hz => (
+            <option key={hz} value={hz}>{rateLabel(hz)}</option>
+          ))}
+        </select>
         <select value={windowFrac} onChange={e => setWindowFrac(Number(e.target.value))}
+          title={lang === 'de' ? 'Zoom in die Aufzeichnung' : 'Zoom into the record'}
           style={{ background: '#1a1a2e', color: '#7f8c8d', border: '1px solid #2c3e50', fontSize: '9px' }}>
           <option value={1}>{t('scopeSlow', lang)}</option>
           <option value={0.25}>{t('scopeMedium', lang)}</option>
           <option value={0.05}>{t('scopeFast', lang)}</option>
         </select>
+      </div>
+
+      {/* What is on screen, in seconds, so "it does not fit" is a reading
+          rather than a guess. */}
+      <div data-testid="bw-scope-span" style={{ color: '#5d6d7e', fontFamily: 'monospace', fontSize: '8px', marginBottom: '4px' }}>
+        {lang === 'de'
+          ? `Aufzeichnung ${formatSeconds(recordSeconds(sampleRateHz))} · sichtbar ${formatSeconds(recordSeconds(sampleRateHz) * windowFrac)}`
+          : `record ${formatSeconds(recordSeconds(sampleRateHz))} · showing ${formatSeconds(recordSeconds(sampleRateHz) * windowFrac)}`}
       </div>
 
       <div style={{ display: 'flex', gap: '4px', marginBottom: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
