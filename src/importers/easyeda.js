@@ -177,6 +177,26 @@ const PINS_74HC138 = {
  * Exported so engine-contract.test.js can fire every rule and check that the
  * kinds and terminal names it produces are ones the engine actually has.
  */
+/**
+ * Raspberry Pi Pico pins, keyed by the NAME its schematic symbols print.
+ * Several spellings per signal because libraries differ: "GPIO 0", "GPIO0" and
+ * "GP0" all name the same leg, and the 3V3 output appears as "3v3 (OUT)".
+ */
+const PICO_PIN_NAMES = (() => {
+  const m = {
+    GND: 'gnd_1', AGND: 'agnd', RUN: 'run', ADC_VREF: 'adc_vref',
+    VSYS: 'vsys', VBUS: 'vbus', '3V3_EN': '3v3_en', '3v3_EN': '3v3_en',
+    '3V3': '3v3', '3v3': '3v3', '3V3(OUT)': '3v3', '3v3 (OUT)': '3v3',
+    '3V3 (OUT)': '3v3', SWCLK: 'swclk', SWDIO: 'swdio', SWD_GND: 'swd_gnd'
+  };
+  for (let i = 0; i <= 28; i++) {
+    for (const spelling of [`GPIO ${i}`, `GPIO${i}`, `GP${i}`, `gpio ${i}`, `gp${i}`]) {
+      m[spelling] = `gp${i}`;
+    }
+  }
+  return m;
+})();
+
 export const EASYEDA_RULES = [
   // -- regulators. Part number first: the engine models these three by name,
   //    and falling through to the generic `vreg` would lose their models.
@@ -233,6 +253,42 @@ export const EASYEDA_RULES = [
   [/^(TIP120)/i, () => ({ kind: 'tip120', pins: BJT_PINS })],
   [/^(HD44780|LCD1602|LCD2004)/i, () => ({ kind: 'hd44780', byName: true })],
   [/^(SSD1306)/i, () => ({ kind: 'ssd1306', byName: true })],
+  // Raspberry Pi Pico. BY PIN NAME, NEVER BY NUMBER, and that is the whole
+  // point of this entry.
+  //
+  // `terminalFor` tries `pins[number]` BEFORE `pins[name]`, so a numeric map
+  // would win — and it would be wrong. The symbol on a real sheet numbers its
+  // pins 1..20 and 23..42, skipping 21 and 22 entirely: its pin 23 is GPIO 16,
+  // where the PHYSICAL pin 23 is a ground. A positional map built from the
+  // datasheet header order would have quietly mis-wired everything from pin 23
+  // up. The names, by contrast, are unambiguous and the symbol carries them.
+  //
+  // Every GND lands on `gnd_1`. All of the Pico's grounds are the same node —
+  // board-kinds.js maps `gnd_1`..`gnd_7`, `agnd` and `swd_gnd` to one `gnd`
+  // role — so distinguishing them buys nothing and inventing an order would
+  // reintroduce exactly the positional guess this rule avoids.
+  [/^(RASPBERRY[\s_-]*PI[\s_-]*)?PICO\b/i, () => ({ kind: 'pi_pico', pins: PICO_PIN_NAMES })],
+
+  // The 4-pin 0.96" I2C OLED MODULE, as EasyEDA's library names it. The rule
+  // above only matches parts called SSD1306; a module carrying the controller
+  // is usually called after its size, and imported as UNMAPPED.
+  //
+  // Its symbol names NO pins — segments 3 and 4 of every pin record read "1".."4"
+  // and the string SDA/SCL/VCC/GND appears nowhere in it — so `byName` has
+  // nothing to work with and the order has to come from somewhere.
+  //
+  // It was DERIVED, not assumed: on a real sheet using this exact part, pin 1
+  // wires to the Pico's GPIO 0, pin 2 to GPIO 1, pin 3 to GND and pin 4 to
+  // 3v3 (OUT). That is SDA, SCL, GND, VCC — which is NOT the GND/VCC/SCL/SDA
+  // order most 4-pin modules use, so guessing from the usual convention would
+  // have swapped power and ground and put the data lines on the wrong pins.
+  //
+  // Keyed tightly on the library name for that reason: another OLED symbol may
+  // well number its pins differently, and must not silently inherit this order.
+  [/^0\.96\s*OLED(_4P)?$/i, () => ({
+    kind: 'ssd1306', pins: { 1: 'sda', 2: 'scl', 3: 'gnd', 4: 'vcc' },
+    _note: 'pin order derived from wiring; this symbol carries no pin names'
+  })],
   // The export dialect's own chips (exporters/easyeda-schematic.js writes
   // these Manufacturer Part names; the round-trip test keeps both in step).
   [/^RPI[-_ ]?PICO|^PI[-_ ]?PICO/i, () => ({ kind: 'pi_pico', byName: true })],

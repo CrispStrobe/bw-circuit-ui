@@ -628,3 +628,55 @@ describe('switch pin count decides button vs changeover', () => {
         assert.deepEqual([...new Set(Object.values(pins))].sort(), ['a', 'b']);
     });
 });
+
+describe('Pico and the 4-pin OLED module map to parts we already have', () => {
+    /**
+     * Both parts existed all along — `pi_pico` (44 terminals) and `ssd1306`
+     * (4) have sidecars AND engine devices. What was missing was the two
+     * RECOGNITION rules, so a real EasyEDA calculator sheet imported them as
+     * "unmapped" and their pins never reached a net: 36 of 71 mapped pins
+     * landed on a net, over 2 nets, from a sheet with 43 wires.
+     */
+    test('the Pico maps BY NAME, because its symbols renumber', () => {
+        const r = mapEasyEdaPart({descriptor: 'PICO 2 3D MODEL', value: 'PICO 2 3D MODEL',
+            spicePre: 'U', pinCount: 40, package: 'X'});
+        assert.equal(r.kind, 'pi_pico');
+
+        // The reason a numeric map would be WRONG, and `terminalFor` tries
+        // pins[number] BEFORE pins[name]: the symbol on a real sheet numbers
+        // 1..20 and 23..42, skipping 21 and 22. ITS pin 23 is GPIO 16, where
+        // the PHYSICAL pin 23 is a ground.
+        assert.equal(r.pins['GPIO 16'], 'gp16', 'names must decide, not positions');
+        assert.equal(r.pins[23], undefined, 'no numeric key may exist to win over the name');
+
+        assert.equal(r.pins['GPIO 0'], 'gp0');
+        assert.equal(r.pins['GP0'], 'gp0', 'the short spelling too');
+        assert.equal(r.pins['3v3 (OUT)'], '3v3', 'the parenthesised 3V3 output');
+        assert.equal(r.pins.VSYS, 'vsys');
+        assert.equal(r.pins.RUN, 'run');
+        // Every ground is one node on this board — board-kinds.js gives gnd_1..7,
+        // agnd and swd_gnd the same `gnd` role — so one terminal is enough and
+        // spreading them would be a positional guess again.
+        assert.equal(r.pins.GND, 'gnd_1');
+    });
+
+    test('the 0.96" OLED module carries a derived pin order, not a guessed one', () => {
+        const r = mapEasyEdaPart({descriptor: '0.96OLED_4P', value: '0.96OLED_4P',
+            spicePre: 'O', pinCount: 4, package: 'X'});
+        assert.equal(r.kind, 'ssd1306');
+        // DERIVED from a real sheet: pin 1 wires to the Pico's GPIO 0, pin 2 to
+        // GPIO 1, pin 3 to GND, pin 4 to 3v3 (OUT). That is SDA/SCL/GND/VCC —
+        // NOT the GND/VCC/SCL/SDA order most 4-pin modules use, so taking the
+        // usual convention would have swapped power and ground.
+        assert.deepEqual(r.pins, {1: 'sda', 2: 'scl', 3: 'gnd', 4: 'vcc'});
+        assert.match(r._note, /derived from wiring/,
+            'the note must say the order was derived, since the symbol names no pins');
+    });
+
+    test('a part actually called SSD1306 still maps by name, unchanged', () => {
+        const r = mapEasyEdaPart({descriptor: 'SSD1306', value: 'SSD1306',
+            spicePre: 'U', pinCount: 4, package: 'X'});
+        assert.equal(r.kind, 'ssd1306');
+        assert.equal(r.byName, true, 'a named symbol must keep using its names');
+    });
+});
