@@ -241,6 +241,165 @@ function wireThroughForeignPin (projection, idx) {
     return out;
 }
 
+/**
+ * CLASS L / M — a conductor that TOUCHES another net's conductor.
+ *
+ * Two lines meeting at a proper X with no dot is the schematic convention for
+ * "these do not connect", and orthogonal routing cannot avoid crossings. The
+ * two configurations that are NOT crossings:
+ *
+ *   L  a T — one net's line ends on the interior of another's. Convention
+ *      reads a T as a branch, because there is no reason to draw one
+ *      otherwise, so a foreign T asserts a connection the solver denies.
+ *   M  a shared corner — both lines end at the same vertex, and the reader
+ *      sees one wire turning a corner rather than two wires touching.
+ *
+ * A foreign meet that CARRIES a dot is class F and counted there, so these
+ * three classes partition the foreign meets and never double-count.
+ */
+function foreignContact (projection) {
+    const segs = segmentsOf(projection);
+    const hs = segs.filter(isH); const vs = segs.filter(isV);
+    const dots = new Set((projection.junctions || []).map((j) => `${Math.round(j.x)},${Math.round(j.y)}`));
+    const tees = []; const corners = [];
+    for (const h of hs) {
+        for (const v of vs) {
+            if (h.netId === v.netId) continue;
+            const m = meets(h, v);
+            if (!m) continue;
+            if (dots.has(`${Math.round(m.x)},${Math.round(m.y)}`)) continue;   // class F
+            if (m.interiorH && m.interiorV) continue;                         // a legitimate crossing
+            const hit = { a: h.netId, b: v.netId, x: m.x, y: m.y };
+            if (m.interiorH || m.interiorV) tees.push(hit); else corners.push(hit);
+        }
+    }
+    return { tees, corners };
+}
+
+/**
+ * CLASS N — two nets drawn COLLINEAR and close enough to read as one line.
+ *
+ * Class H below is the same idea restricted to `w.trunk` wires and to the
+ * vertical axis. That restriction was the whole of its blindness: a detour
+ * route carries `segments` and no `trunk`, so H never looked at one, and the
+ * previous lane's class-I fix converted 799 circuits' trunks INTO detours —
+ * moving them out of H's denominator at the moment they most needed watching.
+ * N covers every wire shape and both axes.
+ */
+function parallelMerge (projection) {
+    const segs = segmentsOf(projection);
+    const out = [];
+    const scan = (list, perp, lo, hi) => {
+        for (let i = 0; i < list.length; i++) {
+            for (let j = i + 1; j < list.length; j++) {
+                const a = list[i], b = list[j];
+                if (a.netId === b.netId) continue;
+                if (Math.abs(perp(a) - perp(b)) >= 4) continue;
+                const s = Math.max(Math.min(lo(a), hi(a)), Math.min(lo(b), hi(b)));
+                const e = Math.min(Math.max(lo(a), hi(a)), Math.max(lo(b), hi(b)));
+                if (e - s > 0.75) out.push({ a: a.netId, b: b.netId, span: e - s, d: Math.abs(perp(a) - perp(b)) });
+            }
+        }
+    };
+    scan(segs.filter(isV), (s) => s.a.x, (s) => s.a.y, (s) => s.b.y);
+    scan(segs.filter(isH), (s) => s.a.y, (s) => s.a.x, (s) => s.b.x);
+    return out;
+}
+
+/**
+ * CLASS O — a terminal the SOLVER puts on a multi-pin net, on a part the
+ * projection DID draw, with no drawn pin for it.
+ *
+ * The correspondence gates restrict the solver side of their comparison to
+ * terminals the projection chose to draw (`visible`), so a terminal the
+ * projection omits leaves BOTH sides of the equation at once and every class
+ * stays green. Measured here against the nets instead: a seated MCU ships
+ * `terminals: ["pb0"]` while its `seat.leadMap` puts 28 leads in holes, so the
+ * strips resolve `vcc`/`avcc`/`gnd` onto the same part and the drawing showed
+ * an ATtiny88 with one pin and no supply.
+ */
+function missingPins (projection, nets, parts, idx) {
+    const kindOf = new Map(parts.map((p) => [p.id, p.kind]));
+    const drawnSyms = new Set(projection.symbols.map((s) => s.id));
+    const out = [];
+    for (const net of nets) {
+        const ts = (net.terminals || []).filter((t) => {
+            const pid = t.part || t.partId;
+            return pid && !INFRA_KINDS.has(kindOf.get(pid)) &&
+                !String(pid).startsWith('@bb:') && drawnSyms.has(pid);
+        });
+        if (ts.length < 2) continue;
+        for (const t of ts) {
+            const k = tKey(t.part || t.partId, t.terminal);
+            if (!idx.visible.has(k)) out.push({ net: net.id, terminal: k });
+        }
+    }
+    return out;
+}
+
+/**
+ * CLASS P — a net LABEL's leader line touching a foreign net's conductor.
+ *
+ * The leader is the short stub joining a pin to its label text, drawn in the
+ * same stroke as copper, so it obeys copper's rule: it may CROSS another net's
+ * conductor and must not TOUCH one.
+ *
+ * The first draft of this detector counted crossings too and reported 578
+ * circuits / 1,232 incidences. That was wrong by 14x: a leader crossing a wire
+ * at a proper X with no dot is the ordinary convention for "not connected".
+ * Counting only contact gives 43 circuits / 86 incidences, which is the number
+ * this class is worth. Recorded because a detector that over-counts by 14x
+ * would have sent a large and pointless change through the drawing.
+ */
+function labelLeaderContact (projection) {
+    const segs = segmentsOf(projection);
+    const out = [];
+    for (const l of projection.netLabels || []) {
+        const la = { x: l.x1, y: l.y1 }, lb = { x: l.x2, y: l.y2 };
+        const lead = { netId: l.netId, a: la, b: lb };
+        if (!isH(lead) && !isV(lead)) continue;
+        for (const s of segs) {
+            if (s.netId === l.netId) continue;
+            if (isH(lead) && isV(s)) {
+                const m = meets(lead, s);
+                if (m && !(m.interiorH && m.interiorV)) out.push({ label: l.text, net: l.netId, other: s.netId, x: m.x, y: m.y });
+            } else if (isV(lead) && isH(s)) {
+                const m = meets(s, lead);
+                if (m && !(m.interiorH && m.interiorV)) out.push({ label: l.text, net: l.netId, other: s.netId, x: m.x, y: m.y });
+            } else if (isH(lead) === isH(s)) {
+                const perp = isH(lead) ? [lead.a.y, s.a.y] : [lead.a.x, s.a.x];
+                if (Math.abs(perp[0] - perp[1]) >= 4) continue;
+                const p1 = isH(lead) ? [lead.a.x, lead.b.x] : [lead.a.y, lead.b.y];
+                const p2 = isH(lead) ? [s.a.x, s.b.x] : [s.a.y, s.b.y];
+                const lo = Math.max(Math.min(...p1), Math.min(...p2));
+                const hi = Math.min(Math.max(...p1), Math.max(...p2));
+                if (hi - lo > 0.75) out.push({ label: l.text, net: l.netId, other: s.netId, span: hi - lo });
+            }
+        }
+    }
+    return out;
+}
+
+/** Class P, callable on a projection alone (mutation proofs). */
+export function labelLeaderContactOf (projection) { return labelLeaderContact(projection); }
+
+/** Class L/M and N detectors, callable on a projection alone (mutation proofs). */
+export function foreignContactOf (projection) { return foreignContact(projection); }
+export function parallelMergeOf (projection) { return parallelMerge(projection); }
+
+/** Class O, callable on a projection plus the solver's own view (mutation proofs). */
+export function missingPinsOf (projection, nets, parts) {
+    return missingPins(projection, nets, parts, pinIndex(projection));
+}
+
+/**
+ * The LIVE segment objects behind the artwork, so a mutation proof can move a
+ * real conductor rather than invent coordinates that touch nothing. Trunk
+ * endpoints are synthesised (a trunk is stored as x/y1/y2), so mutations
+ * should move `segments` and `stubs` points, which are the real ones.
+ */
+export function segmentRefsOf (projection) { return segmentsOf(projection); }
+
 /** Two nets' trunks so close they read as one wire. */
 function trunkOverlaps (projection) {
     const trunks = (projection.wires || []).filter((w) => w.trunk)
@@ -343,6 +502,7 @@ export function analyse (file) {
     }
 
     const geo = crossingsAndJunctions(proj);
+    const contact = foreignContact(proj);
     return {
         drops, invents, unresolvedPins, droppedParts, undrawnNets,
         foreignCrossWithDot: geo.foreignCrossWithDot,
@@ -351,6 +511,11 @@ export function analyse (file) {
         mixedRouting: mixedRouting(proj),
         sameNetTeeNoDot: geo.sameNetTeeNoDot,
         trunkOverlaps: trunkOverlaps(proj),
+        foreignTees: contact.tees,
+        foreignCorners: contact.corners,
+        parallelMerge: parallelMerge(proj),
+        missingPins: missingPins(proj, nets, loaded.parts, idx),
+        leaderContact: labelLeaderContact(proj),
         visibleCount: idx.visible.size,
         partCount: loaded.parts.length,
         segCount: geo.segCount,
@@ -397,6 +562,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         ['I conductor runs through a foreign pin', (r) => r.wireThroughPin.length],
         ['J one net under two label texts', (r) => r.splitLabelNets.length],
         ['K one net drawn as both copper and label', (r) => r.mixedRouting.length],
+        ['L conductor tees onto a foreign conductor', (r) => r.foreignTees.length],
+        ['M two nets share a corner vertex', (r) => r.foreignCorners.length],
+        ['N two nets collinear within 4px', (r) => r.parallelMerge.length],
+        ['O connected terminal with no drawn pin', (r) => r.missingPins.length],
+        ['P label leader touching a foreign conductor', (r) => r.leaderContact.length],
     ];
     if (process.argv.includes('--json')) {
         console.log(JSON.stringify({ root, discovered: files.length, errored, rows }, null, 1));
@@ -408,13 +578,17 @@ if (import.meta.url === `file://${process.argv[1]}`) {
             const total = ok.reduce((n, r) => n + get(r), 0);
             console.log(`${name.padEnd(42)} ${String(hit.length).padStart(5)} / ${ok.length} circuits   ${total} occurrences`);
         }
-        console.log('\nWorst by (A + B + C + D + E + F + I):');
+        console.log('\nWorst by (A + B + C + D + E + F + I + L + M + N + O + P):');
         const score = (r) => r.drops.length + r.undrawnNets.length + r.droppedParts.length +
-            r.foreignCrossWithDot.length + r.invents.length + r.wireThroughPin.length + r.unresolvedPins.length;
+            r.foreignCrossWithDot.length + r.invents.length + r.wireThroughPin.length + r.unresolvedPins.length +
+            r.foreignTees.length + r.foreignCorners.length + r.parallelMerge.length + r.missingPins.length +
+            r.leaderContact.length;
         for (const r of ok.filter((r) => score(r) > 0).sort((a, b) => score(b) - score(a)).slice(0, 15)) {
             console.log(`  ${String(score(r)).padStart(5)}  ${r.id}  ` +
                 `[A=${r.drops.length} B=${r.invents.length} C=${r.unresolvedPins.length} D=${r.droppedParts.length} ` +
-                `E=${r.undrawnNets.length} F=${r.foreignCrossWithDot.length} I=${r.wireThroughPin.length}]`);
+                `E=${r.undrawnNets.length} F=${r.foreignCrossWithDot.length} I=${r.wireThroughPin.length} ` +
+                `L=${r.foreignTees.length} M=${r.foreignCorners.length} N=${r.parallelMerge.length} ` +
+                `O=${r.missingPins.length} P=${r.leaderContact.length}]`);
         }
         if (errored) {
             console.log('\nErrored:');

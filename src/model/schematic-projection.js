@@ -78,8 +78,39 @@ export function projectSchematic(parts, nets) {
     cols.get(c).push(p);
   }
 
+  // A part's DECLARED terminal list and the RESOLVED NETS are two different
+  // truths about the same part, and in the shipped corpus they disagree. A
+  // seated MCU ships `terminals: ["pb0"]` — only the terminal an explicit wire
+  // names — while its `seat.leadMap` drops 28 leads into breadboard holes, so
+  // the strips resolve nets that attribute `vcc`, `avcc` and `gnd` to that same
+  // part. Drawing the declared list alone renders an ATtiny88 as a one-pin
+  // symbol with no supply and no ground, which is a teaching falsehood: the
+  // chip is powered, and the drawing says it is not.
+  //
+  // Measured before this union existed: 763 connected terminals across 365 of
+  // 2,098 shipped circuits had no drawn pin. The correspondence gate could not
+  // see it, because it restricts the SOLVER side of the comparison to terminals
+  // the projection chose to draw — so a terminal the projection omits leaves
+  // both sides of the equation at once and the gate stays green. That is the
+  // same shape of blind spot as the two already recorded in the audit.
+  const netTerms = new Map(electrical.map(p => [p.id, new Map()]));
+  for (const pins of netPins.values()) {
+    for (const t of pins) {
+      const m = netTerms.get(t.part);
+      const lc = String(t.terminal).toLowerCase();
+      if (m && !m.has(lc)) m.set(lc, t.terminal);
+    }
+  }
+  const declaredAndWired = p => {
+    const all = [...(p.terminals ?? [])];
+    const seen = new Set(all.map(n => String(n).toLowerCase()));
+    for (const [lc, name] of netTerms.get(p.id) ?? []) {
+      if (!seen.has(lc)) { seen.add(lc); all.push(name); }
+    }
+    return all;
+  };
   const connectedTerms = p => {
-    const all = p.terminals ?? [];
+    const all = declaredAndWired(p);
     const used = all.filter(name => {
       const netId = findPinNet(nets, p.id, name);
       return netId && (netPins.get(netId) ?? []).length >= 2;
@@ -165,12 +196,9 @@ export function projectSchematic(parts, nets) {
     const row = rowOf.get(p.id);
     const x = MARGIN_X + col * COL_W;
     const y = yOf.get(p.id) ?? (MARGIN_Y + row * ROW_H);
-    const allTerms = p.terminals ?? [];
-    let terms = allTerms.filter(name => {
-      const netId = findPinNet(nets, p.id, name);
-      return netId && (netPins.get(netId) ?? []).length >= 2;
-    });
-    if (terms.length === 0) terms = allTerms.slice(0, 2); // disconnected part: keep its shape
+    // ONE definition of "which terminals get pins", shared with halfHeight
+    // above. It used to be written twice; two copies of a rule are two rules.
+    const terms = connectedTerms(p);
     const perSide = Math.ceil(terms.length / 2);
     const art = shapeFor(p.kind, p.params ?? {});
     const pins = terms.map((name, i) => {
@@ -288,16 +316,28 @@ export function projectSchematic(parts, nets) {
       routeName.set(r.netId, seen === 0 ? base : `${base}${seen + 1}`);
     }
   }
+  // A label's LEADER is drawn in the same stroke as copper, so it obeys the
+  // same rule: it may cross another net's conductor and must not touch one. It
+  // used to be neither checked nor registered, so a route could end exactly on
+  // one — 43 of 2,098 circuits, e.g. in 46-port-overcurrent net b40's wire
+  // ended at (305,117), which is a point on net b27's VCC leader spanning
+  // x=300..313 at y=117. Shorten the leader until it is clear; the text
+  // follows it, and a leader is only there to join a pin to its own text.
+  const LEADER_LENGTHS = [13, 10, 8, 6, 4];
   const labelPin = (r, text, pin) => {
     const vectors = {
       left: [-1, 0, 'end'], right: [1, 0, 'start'],
       top: [0, -1, 'middle'], bottom: [0, 1, 'middle'],
     };
     const [dx, dy, anchor] = vectors[pin.side] || vectors.right;
+    const len = LEADER_LENGTHS.find(l => !segmentTouchesForeignConductor(
+      {x: pin.x, y: pin.y}, {x: pin.x + dx * l, y: pin.y + dy * l}, r.netId)) ?? 13;
+    const x2 = pin.x + dx * len, y2 = pin.y + dy * len;
     netLabels.push({netId: r.netId, text,
-      x1: pin.x, y1: pin.y, x2: pin.x + dx * 13, y2: pin.y + dy * 13,
-      x: pin.x + dx * 16, y: pin.y + dy * 16 + (dy === 0 ? 2.5 : (dy < 0 ? -2 : 7)),
+      x1: pin.x, y1: pin.y, x2, y2,
+      x: pin.x + dx * (len + 3), y: pin.y + dy * (len + 3) + (dy === 0 ? 2.5 : (dy < 0 ? -2 : 7)),
       anchor});
+    registerConductor({x: pin.x, y: pin.y}, {x: x2, y: y2}, r.netId);
   };
   const bodyBounds = (s) => {
     const art = shapeFor(s.kind, s.params);
@@ -336,6 +376,102 @@ export function projectSchematic(parts, nets) {
     return false;
   };
 
+  // A conductor may CROSS another net's conductor — two lines meeting at a
+  // proper X with no dot is the schematic convention for "not connected", and
+  // orthogonal routing cannot avoid it. What it may NOT do is TOUCH one:
+  //
+  //   * end ON another net's line (a T), or share a corner vertex with it (an
+  //     L). Convention reads a T as a branch — there is no reason to draw one
+  //     otherwise — so a foreign T asserts a connection the solver denies.
+  //   * run COLLINEAR with one within a few px over any shared span. Two lines
+  //     that close together are one line to a reader.
+  //
+  // The router had no notion of another net's copper at all: it avoided symbol
+  // bodies and (since the previous lane) foreign pins, and nothing else. Worse,
+  // obstacleRoute derives its candidate coordinates from box edges, so every
+  // net detouring around the same column proposes the SAME x, and the cheapest
+  // candidate wins for all of them. Measured before this check existed, on
+  // 2,098 shipped circuits:
+  //
+  //     foreign T, no dot          426 circuits / 3,461 incidences
+  //     foreign shared corner       85 circuits /   218 incidences
+  //     collinear within 4px       426 circuits / 1,807 incidences
+  //
+  // In arduino-05-arrays five different column nets ran down x=385 at dx=0,
+  // overlapping 38-116px: five nets drawn as one wire. The existing class-H
+  // gate was aimed at exactly this and reported 0, because it inspects only
+  // `w.trunk` wires and every one of these is a `segments` detour.
+  const MERGE_CLEARANCE = 4;  // two lines closer than this read as one
+  const TOUCH = 0.75;
+  // Committed foreign conductors, indexed four ways so the check stays cheap:
+  // by the fixed axis (collinear tests) and by endpoint (contact tests).
+  const hByY = new Map(), vByX = new Map(), hByEndX = new Map(), vByEndY = new Map();
+  const push = (map, key, value) => {
+    const k = Math.round(key);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(value);
+  };
+  const bucket = (map, key, span = 0) => {
+    const out = [];
+    for (let k = Math.round(key) - span; k <= Math.round(key) + span; k++) {
+      const hit = map.get(k);
+      if (hit) out.push(...hit);
+    }
+    return out;
+  };
+  const registerConductor = (a, b, netId) => {
+    const seg = {netId, x1: Math.min(a.x, b.x), x2: Math.max(a.x, b.x),
+      y1: Math.min(a.y, b.y), y2: Math.max(a.y, b.y)};
+    if (Math.abs(a.y - b.y) < 0.5) {
+      push(hByY, seg.y1, seg);
+      push(hByEndX, seg.x1, seg); push(hByEndX, seg.x2, seg);
+    } else if (Math.abs(a.x - b.x) < 0.5) {
+      push(vByX, seg.x1, seg);
+      push(vByEndY, seg.y1, seg); push(vByEndY, seg.y2, seg);
+    }
+  };
+  const registerRoute = (route) => {
+    const segments = route.segments || [
+      [{x: route.trunk.x, y: route.trunk.y1}, {x: route.trunk.x, y: route.trunk.y2}],
+      ...route.stubs,
+    ];
+    for (const [a, b] of segments) registerConductor(a, b, route.netId);
+  };
+  const inSpan = (v, lo, hi) => v >= lo - TOUCH && v <= hi + TOUCH;
+  const segmentTouchesForeignConductor = (a, b, netId) => {
+    const horizontal = Math.abs(a.y - b.y) < 0.5;
+    const vertical = Math.abs(a.x - b.x) < 0.5;
+    if (!horizontal && !vertical) return false;
+    const lo = horizontal ? Math.min(a.x, b.x) : Math.min(a.y, b.y);
+    const hi = horizontal ? Math.max(a.x, b.x) : Math.max(a.y, b.y);
+    const fixed = horizontal ? a.y : a.x;
+    // 1. collinear and close: two parallel lines that read as one
+    for (const o of bucket(horizontal ? hByY : vByX, fixed, MERGE_CLEARANCE + 1)) {
+      if (o.netId === netId) continue;
+      if (Math.abs((horizontal ? o.y1 : o.x1) - fixed) >= MERGE_CLEARANCE) continue;
+      const olo = horizontal ? o.x1 : o.y1, ohi = horizontal ? o.x2 : o.y2;
+      if (Math.min(hi, ohi) - Math.max(lo, olo) > TOUCH) return true;
+    }
+    // 2. THIS segment's endpoint lands on a foreign perpendicular line
+    for (const end of [lo, hi]) {
+      for (const o of bucket(horizontal ? vByX : hByY, end, 1)) {
+        if (o.netId === netId) continue;
+        const operp = horizontal ? o.x1 : o.y1;
+        if (Math.abs(operp - end) > TOUCH) continue;
+        if (inSpan(fixed, horizontal ? o.y1 : o.x1, horizontal ? o.y2 : o.x2)) return true;
+      }
+    }
+    // 3. a foreign perpendicular line's endpoint lands on THIS segment
+    for (const o of bucket(horizontal ? vByEndY : hByEndX, fixed, 1)) {
+      if (o.netId === netId) continue;
+      const oFixed = horizontal ? o.x1 : o.y1;
+      const oEnds = horizontal ? [o.y1, o.y2] : [o.x1, o.x2];
+      if (!oEnds.some(e => Math.abs(e - fixed) <= TOUCH)) continue;
+      if (inSpan(oFixed, lo, hi)) return true;
+    }
+    return false;
+  };
+
   const segmentCrossesBody = (a, b, box) => {
     if (a.y === b.y) {
       return a.y > box.top && a.y < box.bottom &&
@@ -358,6 +494,7 @@ export function projectSchematic(parts, nets) {
       if (segments.some(([a, b]) => segmentCrossesBody(a, b, box))) hits.push(s.id);
     }
     if (segments.some(([a, b]) => segmentHitsForeignPin(a, b, route.netId))) hits.push('__foreign_pin__');
+    if (segments.some(([a, b]) => segmentTouchesForeignConductor(a, b, route.netId))) hits.push('__foreign_conductor__');
     return hits;
   };
   const collisionRoutedNets = [];
@@ -370,7 +507,8 @@ export function projectSchematic(parts, nets) {
     const boxes = symbols.map(bodyBounds);
     const clear = ([a, b]) => (a.x === b.x || a.y === b.y) &&
       !boxes.some(box => segmentCrossesBody(a, b, box)) &&
-      !segmentHitsForeignPin(a, b, netId);
+      !segmentHitsForeignPin(a, b, netId) &&
+      !segmentTouchesForeignConductor(a, b, netId);
     const xs = new Set([start.x, end.x]);
     const ys = new Set([start.y, end.y]);
     for (const box of boxes) {
@@ -446,7 +584,9 @@ export function projectSchematic(parts, nets) {
       if (r.pins.length === 2) {
         const segments = obstacleRoute(r.pins[0], r.pins[1], r.netId);
         if (segments) {
-          wires.push({netId: r.netId, segments});
+          const detour = {netId: r.netId, segments};
+          wires.push(detour);
+          registerRoute(detour);
           detouredRoutingNets.push(r.netId);
           continue;
         }
@@ -457,6 +597,7 @@ export function projectSchematic(parts, nets) {
       continue;
     }
     wires.push(route);
+    registerRoute(route);
     if (r.pins.length > 2) {
       for (const pin of r.pins) junctions.push({ x: trunkX, y: pin.y, netId: r.netId });
     }

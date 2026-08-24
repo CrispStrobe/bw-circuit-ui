@@ -157,3 +157,55 @@ and the rendered-netlist gate treats repeated labels as connectivity, but it
 does mean a denser drawing shows fewer wires. If the owner would rather see
 copper there, the lever is the routing band (`COL_W` / `PIN_HALF`), not the
 pin-clearance rule.
+
+---
+
+## Schematic audit, second pass — open items (2026-08-24)
+
+*Rig: bw-circuit-ui branch point `1b854032a7c38159bea3b919e5341e233b6d1e6f`,
+bw-board `a7338cdcdd5d54122bdc5be44c02908bdb6a4fd6`, sb3-creator
+`4a0826ae492d4b6b4f00d90528074e31c510c16d` (2,098 circuit files).*
+
+The second pass audited the DETECTORS rather than the drawing, on the grounds
+that ten classes reporting zero from detectors written by the same hand is an
+untested claim. Five more real classes came out of it (L, M, N, O, P in
+`docs/SCHEMATIC-AUDIT.md`), all fixed here and all mutation-proved. What is NOT
+fixed here:
+
+**1. The engine pin in this repo's local rig is older than the palette.**
+`test/palette-engine-coverage.test.js` fails at bw-board
+`a7338cdcdd5d54122bdc5be44c02908bdb6a4fd6` because `ay8912` — added to the
+designer in bw-circuit-ui `410f8ce` — has no engine device at that sha. CI is
+unaffected: it clones bw-board's main, which has it. This is a rig-pinning
+artefact and not a defect, but it means **a local `npm test` is only meaningful
+against a bw-board new enough for the palette**. Worth a `vendor-pins.json`-style
+floor so the mismatch fails loudly instead of looking like a viewer defect.
+
+**2. Label text can overlap a conductor.** The leader LINE is now gated
+(class P), but the label's rendered TEXT is not: in
+`arduino-05-arrays/circuit.pico.json` a `GND` glyph sits across a wire. This is
+a legibility defect, not a correctness one — the text is anchored to the right
+pin and the leader touches nothing — so it is deliberately not gated as a false
+connection. **Blocked on a text-metrics decision**: measuring glyph boxes needs
+a font metric the projection does not currently carry, and guessing one would
+produce a gate that fires on the wrong things. Fix is either a label-placement
+pass that tries the other side, or accepting it.
+
+**3. The label fallback grew.** Refusing to let two nets touch costs 1,385 more
+label stubs and 551 fewer drawn segments corpus-wide (§8 of the audit). That is
+standard schematic practice and the rendered-netlist gate treats repeated labels
+as connectivity, but a denser drawing now shows fewer wires than before. If the
+owner would rather see copper, the lever is the routing band (`COL_W`,
+`PIN_HALF`, the `>18 nets` / `>52 pins` label threshold) — **not** the contact
+rule, because loosening that buys wires by drawing shorts.
+
+**4. brickwright-lite's vendored copy is now two fixes behind**, not one. It
+still has the pre-class-I router AND the pre-L/M/N/O/P projection, so its four
+reviewed baselines show both defect families. **Blocked on a vendor sync** from
+this repo at the sha carrying these commits; the baselines must then be
+re-rendered and LOOKED at.
+
+**5. Items 1 and 2 from the first pass still stand** — `pico01-blink` ships a
+circuit with zero wires and `eater6502-full-build` seats four leads on empty
+columns. Both blocked on sb3-creator; both are corpus facts the viewer renders
+honestly, and both are held by the class-C ratchet.

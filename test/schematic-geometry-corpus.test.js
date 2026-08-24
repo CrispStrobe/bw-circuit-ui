@@ -45,6 +45,44 @@
  *   J  one solver net drawn under two different label texts
  *      (a false DISCONNECTION: the reader sees two nets)
  *   K  one net drawn as copper in one place and as a label in another
+ *   L  one net's conductor ENDING on another net's conductor (a T)
+ *   M  two nets' conductors sharing a corner vertex
+ *   N  two nets' conductors collinear within 4px over a shared span
+ *   O  a terminal the solver has on a multi-pin net with NO drawn pin
+ *
+ * L, M and N are the second half of the same story class I told. The router
+ * knew about symbol bodies, and (after class I) about foreign pins, and about
+ * nothing else — so two nets could end on each other, share a corner, or run
+ * down the SAME x. obstacleRoute derives its candidate coordinates from box
+ * edges, so every net detouring round one column proposes the same x and the
+ * cheapest candidate wins for all of them. Class H was aimed at exactly this
+ * and read 0, because it inspects `w.trunk` wires only and every one of these
+ * is a `segments` detour — and the class-I fix had just converted 799
+ * circuits' trunks INTO detours. Measured over 2,098 files before the fix:
+ *
+ *     L  426 circuits / 3,461 incidences   (worst: arduino-05-arrays .pico, 39)
+ *     M   85 circuits /   218 incidences
+ *     N  426 circuits / 1,807 incidences
+ *
+ * O is the same blind spot in the netlist gates a third time. They restrict
+ * the SOLVER side of the comparison to terminals the projection chose to draw,
+ * so a terminal the projection omits leaves both sides at once and every class
+ * stays green. A seated MCU ships `terminals: ["pb0"]` while its seat.leadMap
+ * puts 28 leads into holes; the strips resolve vcc/avcc/gnd onto that part and
+ * the drawing showed an ATtiny88 with one pin and no supply at all:
+ *
+ *     O  365 circuits /   763 terminals
+ *
+ *   P  a net label's LEADER line touching a foreign net's conductor
+ *
+ * P is copper's own rule applied to the stub that joins a pin to its label
+ * text, which is drawn in the same stroke: it may CROSS another net and must
+ * not TOUCH one. Worth recording how this one was nearly got wrong — the first
+ * detector counted crossings as well and reported 578 circuits / 1,232
+ * incidences, 14x the truth, which would have driven a large and pointless
+ * change through the drawing. Contact only:
+ *
+ *     P   43 circuits /    86 incidences
  *
  * Every class must be ZERO except C, which is a CORPUS fact rather than a
  * viewer defect: those circuits ship with genuinely unwired pins and the
@@ -59,7 +97,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { analyse, discover, wireThroughForeignPinOf, crossingsOf } from '../scripts/schematic-audit.mjs';
+import { analyse, discover, wireThroughForeignPinOf, crossingsOf, foreignContactOf,
+  parallelMergeOf, missingPinsOf, segmentRefsOf, labelLeaderContactOf } from '../scripts/schematic-audit.mjs';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { projectSchematic } from '../src/model/schematic-projection.js';
 
@@ -206,6 +245,45 @@ describe('schematic geometry across the whole shipped corpus', () => {
     }
   });
 
+  test('L/M/N: two nets touch nowhere — they may only cross', () => {
+    const l = report('L conductor tees onto a foreign conductor', r => r.foreignTees);
+    const m = report('M two nets share a corner vertex', r => r.foreignCorners);
+    const n = report('N two nets collinear within 4px', r => r.parallelMerge);
+    assert.deepEqual(l.map(r => r.id), [],
+      `${l.length} circuit(s) end one net's conductor on another net's, ${totalOf(r => r.foreignTees)} `
+      + 'incidences. A T is a branch by convention — there is no reason to draw one otherwise — so '
+      + 'this asserts a connection the solver denies. A proper X crossing with no dot is fine and is '
+      + 'not counted here; only TOUCHING is. See segmentTouchesForeignConductor in schematic-projection.js.');
+    assert.deepEqual(m.map(r => r.id), [],
+      'two nets whose conductors end at the same vertex read as one wire turning a corner');
+    assert.deepEqual(n.map(r => r.id), [],
+      `${n.length} circuit(s) draw two different nets collinear within 4px, `
+      + `${totalOf(r => r.parallelMerge)} incidences. Two lines that close are one line to a reader. `
+      + 'This is class H generalised off `w.trunk` and onto both axes, which is where it was blind.');
+  });
+
+  test('O: every terminal the solver connects has a pin to connect to', () => {
+    const o = report('O connected terminal with no drawn pin', r => r.missingPins);
+    for (const r of [...o].sort((a, b) => b.missingPins.length - a.missingPins.length).slice(0, 10)) {
+      console.log(`    ${r.id}: ${r.missingPins.map(x => x.terminal).join(' ')}`);
+    }
+    assert.deepEqual(o.map(r => r.id), [],
+      `${o.length} circuit(s) leave ${totalOf(r => r.missingPins)} solver-connected terminal(s) with no `
+      + 'drawn pin. The part is drawn, the net has two or more terminals on drawn parts, and one of '
+      + 'them has nowhere to attach — so the drawing silently omits a connection the circuit has. '
+      + 'The projection must take its terminal list from the declared list UNIONED with what the '
+      + 'resolved nets attribute to the part (declaredAndWired), not the declared list alone.');
+  });
+
+  test('P: a label leader may cross a foreign net, never touch one', () => {
+    const p = report('P label leader touching a foreign conductor', r => r.leaderContact);
+    assert.deepEqual(p.map(r => r.id), [],
+      `${p.length} circuit(s) draw a net label's leader touching another net's conductor, `
+      + `${totalOf(r => r.leaderContact)} incidences. The leader is drawn in the same stroke as `
+      + 'copper, so a wire ending on it reads as connected to that label\'s net. labelPin shortens '
+      + 'the leader until it is clear and registers it as a conductor so later routes avoid it.');
+  });
+
   // ── Mutation proofs for the detector this gate exists for ────────────
 
   /** Project a real corpus circuit, so a mutation acts on real geometry. */
@@ -214,8 +292,143 @@ describe('schematic geometry across the whole shipped corpus', () => {
     assert.ok(f, `fixture ${idFragment} not in corpus`);
     resetIds();
     const loaded = Circuit.fromJSON(JSON.parse(readFileSync(f.path, 'utf-8')));
-    return { proj: projectSchematic(loaded.parts, loaded.resolvedNets || []), path: f.path };
+    return { proj: projectSchematic(loaded.parts, loaded.resolvedNets || []), path: f.path, loaded };
   }
+
+  /**
+   * A REAL proper crossing between two different nets, with the live segment
+   * objects, so an L/M mutation can shorten a conductor until it TOUCHES the
+   * one it used to cross — turning a legitimate crossing into a false
+   * connection without inventing a single coordinate.
+   */
+  function findForeignCrossing() {
+    const near = (a, b) => Math.abs(a - b) < 0.75;
+    const inside = (v, p, q) => v > Math.min(p, q) + 0.75 && v < Math.max(p, q) - 0.75;
+    for (const f of files) {
+      try {
+        resetIds();
+        const loaded = Circuit.fromJSON(JSON.parse(readFileSync(f.path, 'utf-8')));
+        const proj = projectSchematic(loaded.parts, loaded.resolvedNets || []);
+        const segs = segmentRefsOf(proj);
+        const hs = segs.filter(x => near(x.a.y, x.b.y) && !near(x.a.x, x.b.x));
+        const vs = segs.filter(x => near(x.a.x, x.b.x) && !near(x.a.y, x.b.y));
+        for (const h of hs) {
+          for (const v of vs) {
+            if (h.netId === v.netId) continue;
+            if (inside(v.a.x, h.a.x, h.b.x) && inside(h.a.y, v.a.y, v.b.y)) {
+              return { proj, id: f.id, h, v };
+            }
+          }
+        }
+      } catch { /* another gate's problem */ }
+    }
+    assert.fail('no circuit in the corpus has two different nets properly crossing — the L/M '
+      + 'detectors are never exercised, so their zero means nothing');
+  }
+
+  test('MUTATION: shortening one net onto another turns class L red', () => {
+    const { proj, id, h, v } = findForeignCrossing();
+    console.log(`\n  class L mutation fixture: ${id}`);
+    assert.equal(foreignContactOf(proj).tees.length, 0, 'fixture must be clean before mutation');
+    // The crossing is interior to h. Pull h's far end back to the crossing and
+    // the X becomes a T: h now ENDS on v, which reads as h tapping into v.
+    const savedX = h.b.x;
+    h.b.x = v.a.x;
+    assert.ok(foreignContactOf(proj).tees.length > 0,
+      `ending one net's conductor on another net's was NOT caught in ${id} — the detector cannot `
+      + 'tell a branch from a crossing, which is the one distinction a schematic exists to make');
+    h.b.x = savedX;
+    assert.equal(foreignContactOf(proj).tees.length, 0, 'restoring the conductor returns it to clean');
+  });
+
+  test('MUTATION: two nets meeting at one vertex turns class M red', () => {
+    const { proj, id, h, v } = findForeignCrossing();
+    console.log(`  class M mutation fixture: ${id}`);
+    assert.equal(foreignContactOf(proj).corners.length, 0, 'fixture must be clean before mutation');
+    const saved = { hx: h.b.x, vy: v.b.y };
+    h.b.x = v.a.x;   // both conductors now END at (v.a.x, h.a.y)
+    v.b.y = h.a.y;
+    assert.ok(foreignContactOf(proj).corners.length > 0,
+      `two nets ending at the same vertex was NOT caught in ${id} — a reader sees one wire `
+      + 'turning a corner');
+    h.b.x = saved.hx; v.b.y = saved.vy;
+    assert.equal(foreignContactOf(proj).corners.length, 0, 'restored');
+  });
+
+  test('MUTATION: sliding one net onto another\'s x turns class N red', () => {
+    const near = (a, b) => Math.abs(a - b) < 0.75;
+    const { proj, id } = findProjection(p => {
+      const vs = segmentRefsOf(p).filter(x => near(x.a.x, x.b.x) && Math.abs(x.a.y - x.b.y) > 20);
+      return vs.some(a => vs.some(b => b.netId !== a.netId &&
+        Math.min(Math.max(a.a.y, a.b.y), Math.max(b.a.y, b.b.y)) -
+        Math.max(Math.min(a.a.y, a.b.y), Math.min(b.a.y, b.b.y)) > 8));
+    }, 'two different nets running vertically over a shared span');
+    console.log(`  class N mutation fixture: ${id}`);
+    assert.equal(parallelMergeOf(proj).length, 0, 'fixture must be clean before mutation');
+    const vs = segmentRefsOf(proj).filter(x => near(x.a.x, x.b.x) && Math.abs(x.a.y - x.b.y) > 20);
+    const a = vs.find(x => vs.some(y => y.netId !== x.netId &&
+      Math.min(Math.max(x.a.y, x.b.y), Math.max(y.a.y, y.b.y)) -
+      Math.max(Math.min(x.a.y, x.b.y), Math.min(y.a.y, y.b.y)) > 8));
+    const b = vs.find(y => y.netId !== a.netId &&
+      Math.min(Math.max(a.a.y, a.b.y), Math.max(y.a.y, y.b.y)) -
+      Math.max(Math.min(a.a.y, a.b.y), Math.min(y.a.y, y.b.y)) > 8);
+    const saved = { x1: b.a.x, x2: b.b.x };
+    b.a.x = a.a.x; b.b.x = a.a.x;      // two nets, one line
+    assert.ok(parallelMergeOf(proj).length > 0,
+      `two nets slid onto the same x over a shared span were NOT caught in ${id} — they render `
+      + 'as a single wire and the reader has no way to know there are two');
+    b.a.x = saved.x1; b.b.x = saved.x2;
+    assert.equal(parallelMergeOf(proj).length, 0, 'restored');
+  });
+
+  test('MUTATION: stretching a label leader onto a foreign net turns class P red', () => {
+    const near = (a, b) => Math.abs(a - b) < 0.75;
+    // A circuit that has BOTH labels and copper — a drawing that is all labels
+    // has no foreign conductor for a leader to reach, so it proves nothing.
+    const { proj, id } = findProjection(
+      p => (p.netLabels || []).length > 0 && (p.wires || []).length > 0,
+      'a drawing carrying both net labels and drawn copper');
+    console.log(`  class P mutation fixture: ${id}`);
+    assert.equal(labelLeaderContactOf(proj).length, 0, 'fixture must be clean before mutation');
+    // Stretch one leader until its far end lands on a foreign conductor.
+    const segs = segmentRefsOf(proj).filter(x => near(x.a.x, x.b.x));
+    let caught = false, victim = null, saved = null;
+    for (const l of proj.netLabels) {
+      if (!near(l.y1, l.y2)) continue;
+      const target = segs.find(v => v.netId !== l.netId &&
+        l.y1 >= Math.min(v.a.y, v.b.y) && l.y1 <= Math.max(v.a.y, v.b.y));
+      if (!target) continue;
+      victim = l; saved = l.x2;
+      l.x2 = target.a.x;                       // the leader now ENDS on that net
+      caught = labelLeaderContactOf(proj).length > 0;
+      if (caught) break;
+      l.x2 = saved; victim = null;
+    }
+    assert.ok(caught,
+      `no leader in ${id} could be stretched onto a foreign conductor, so class P was never `
+      + 'exercised — its zero would mean nothing');
+    victim.x2 = saved;
+    assert.equal(labelLeaderContactOf(proj).length, 0, 'restoring the leader returns it to clean');
+  });
+
+  test('MUTATION: deleting a connected pin turns class O red', () => {
+    const { proj, loaded, path: fixture } = projectOne('01-blink/circuit.attiny88.json');
+    const nets = loaded.resolvedNets || [];
+    assert.equal(missingPinsOf(proj, nets, loaded.parts).length, 0,
+      `${fixture} must be clean before mutation`);
+    // Drop one drawn pin whose net the solver shares with another drawn pin —
+    // exactly what the declared-terminals-only projection used to do to the
+    // MCU's vcc, avcc and gnd.
+    const sym = proj.symbols.find(s => s.pins.length > 1 && s.pins.some(p => p.netId));
+    const idx = sym.pins.findIndex(p => p.netId);
+    const [dropped] = sym.pins.splice(idx, 1);
+    const hits = missingPinsOf(proj, nets, loaded.parts);
+    assert.ok(hits.length > 0,
+      `deleting the drawn pin for ${sym.id}:${dropped.name} was NOT caught — the detector is `
+      + 'reading the projection back to itself instead of comparing it against the solver');
+    sym.pins.splice(idx, 0, dropped);
+    assert.equal(missingPinsOf(proj, nets, loaded.parts).length, 0, 'restored');
+  });
 
   test('MUTATION: dragging a trunk onto a foreign pin turns class I red', () => {
     const { proj } = projectOne('46-port-overcurrent/circuit.json');

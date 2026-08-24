@@ -21,7 +21,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { BASELINE_CASES, BASELINE_DIR, renderCircuitFile } from '../scripts/render-schematic.mjs';
+import { BASELINE_CASES, CLASS_I_WORST, CONTACT_WORST, MISSING_PIN_EXEMPLAR,
+  BASELINE_DIR, renderCircuitFile } from '../scripts/render-schematic.mjs';
 import { discover, analyse } from '../scripts/schematic-audit.mjs';
 
 const EXPLICIT_ROOT = process.env.EXAMPLES_DIR || null;
@@ -42,7 +43,12 @@ describe('reviewed schematic baselines', () => {
     assert.notEqual(examplesRoot, null,
       `Corpus absent. Tried:\n  ${CORPUS_ROOTS.join('\n  ')}\nA baseline gate that cannot `
       + 'render must not report green.');
-    assert.equal(BASELINE_CASES.length, 10, 'the audit named ten worst circuits');
+    // Three groups, because there have been two audit passes and one exemplar
+    // class — see docs/SCHEMATIC-AUDIT.md §10.
+    assert.equal(CLASS_I_WORST.length, 10, 'the first pass named ten worst circuits');
+    assert.equal(CONTACT_WORST.length, 10, 'the second pass named ten worst circuits');
+    assert.equal(MISSING_PIN_EXEMPLAR.length, 1, 'class O is represented by one exemplar');
+    assert.equal(BASELINE_CASES.length, 21, 'every group must be in the gated set');
   });
 
   test('every baselined circuit still exists in the corpus', () => {
@@ -79,7 +85,7 @@ describe('reviewed schematic baselines', () => {
    * were actually wrong. This asserts that claim rather than trusting the
    * comment above it.
    */
-  test('the ten baselined circuits are the ten the audit ranked worst', () => {
+  test('the baselined circuits are still the dense drawings they were chosen for', () => {
     const files = discover(examplesRoot);
     const scored = [];
     for (const f of files) {
@@ -95,9 +101,13 @@ describe('reviewed schematic baselines', () => {
     for (const rel of baselined) {
       const row = scored.find(s => s.id === rel);
       assert.ok(row, `${rel} vanished from the corpus scan`);
-      assert.ok(row.pins >= 12,
-        `${rel} now draws only ${row.pins} pins — it is no longer a dense drawing and no `
-        + 'longer represents the class this baseline set was chosen for');
+      // The class-O exemplar is deliberately a SMALL drawing — its whole point
+      // is a four-pin MCU that used to be a one-pin MCU — so the density floor
+      // applies to the two "worst" groups only.
+      const floor = MISSING_PIN_EXEMPLAR.some(([r]) => r === rel) ? 4 : 12;
+      assert.ok(row.pins >= floor,
+        `${rel} now draws only ${row.pins} pins — it is no longer the drawing this baseline `
+        + 'set was chosen for');
     }
   });
 });

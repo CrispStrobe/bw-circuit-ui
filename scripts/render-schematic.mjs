@@ -23,12 +23,24 @@ const { Circuit, resetIds } = await import(path.join(ROOT, 'src', 'model', 'circ
 const { renderSchematicSvg } = await import(path.join(ROOT, 'src', 'model', 'schematic-svg.js'));
 
 /**
- * The circuits docs/SCHEMATIC-AUDIT.md names as the ten worst — every one of
- * them drew a conductor through a foreign pin before the router learned to
- * treat pins as obstacles. Baselining exactly these means the regression that
- * matters is the one that shows up first.
+ * The circuits docs/SCHEMATIC-AUDIT.md names as worst, in three named groups
+ * because there have now been two audit passes and one exemplar class.
+ *
+ * CLASS_I_WORST — the first pass's ten worst. Every one drew a conductor
+ * through a foreign pin before the router treated pins as obstacles.
+ *
+ * CONTACT_WORST — the second pass's ten worst, by L+M+N (a net ending on
+ * another net, sharing its corner, or running down the same line). These are
+ * different circuits: the class-I defect lived in dense DIP drawings, and this
+ * one lives wherever obstacleRoute sent several detours round one column.
+ *
+ * MISSING_PIN_EXEMPLAR — class O. Ten of these would be ten copies of one
+ * drawing: EVERY class-O circuit has the same shape, a seated MCU whose
+ * declared terminal list omits the power pins its seat.leadMap wires up, so
+ * the chip drew with no supply. One representative is baselined and the
+ * corpus gate carries the other 364.
  */
-export const BASELINE_CASES = [
+export const CLASS_I_WORST = [
     ['46-port-overcurrent/circuit-flat.arduino-mega.json', '46-port-overcurrent-flat.arduino-mega.svg'],
     ['50-7seg-chase/circuit-flat.stc15f2k60s2.json', '50-7seg-chase-flat.stc15f2k60s2.svg'],
     ['50-7seg-chase/circuit-flat.stc89c52rc.json', '50-7seg-chase-flat.stc89c52rc.svg'],
@@ -40,6 +52,25 @@ export const BASELINE_CASES = [
     ['46-port-overcurrent/circuit-flat.arduino-uno.json', '46-port-overcurrent-flat.arduino-uno.svg'],
     ['46-port-overcurrent/circuit-flat.atmega168p.json', '46-port-overcurrent-flat.atmega168p.svg'],
 ];
+
+export const CONTACT_WORST = [
+    ['arduino-05-arrays/circuit-flat.pico.json', 'arduino-05-arrays-flat.pico.svg'],
+    ['arduino-05-arrays/circuit.pico.json', 'arduino-05-arrays.pico.svg'],
+    ['arduino-05-for-loop/circuit-flat.pico.json', 'arduino-05-for-loop-flat.pico.svg'],
+    ['arduino-05-for-loop/circuit.pico.json', 'arduino-05-for-loop.pico.svg'],
+    ['arduino-05-switch-case-2/circuit-flat.pico.json', 'arduino-05-switch-case-2-flat.pico.svg'],
+    ['arduino-05-switch-case-2/circuit.pico.json', 'arduino-05-switch-case-2.pico.svg'],
+    ['arduino-05-arrays/circuit-flat.json', 'arduino-05-arrays-flat.svg'],
+    ['arduino-05-arrays/circuit.arduino-mega.json', 'arduino-05-arrays.arduino-mega.svg'],
+    ['arduino-05-arrays/circuit.atmega168p.json', 'arduino-05-arrays.atmega168p.svg'],
+    ['arduino-05-arrays/circuit.json', 'arduino-05-arrays.svg'],
+];
+
+export const MISSING_PIN_EXEMPLAR = [
+    ['01-blink/circuit.attiny88.json', '01-blink.attiny88.svg'],
+];
+
+export const BASELINE_CASES = [...CLASS_I_WORST, ...CONTACT_WORST, ...MISSING_PIN_EXEMPLAR];
 
 export const BASELINE_DIR = path.join(ROOT, 'docs', 'schematic-baselines');
 

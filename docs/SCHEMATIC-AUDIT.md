@@ -283,3 +283,262 @@ pattern that did. Each assertion now gets a fresh non-global copy.)
 Every class except C must be **zero**. C's ratchet may only shrink: a listed
 circuit that gets wired up must be deleted from it, and an unlisted circuit
 that appears is a failure, never a new entry.
+
+---
+
+# Second pass — the detectors were the blind spot
+
+The first pass found one real defect out of eleven classes and reported the
+other ten as zero. Ten zeros from detectors written by the same hand that wrote
+the thing under test is not a clean bill of health, it is an untested claim, and
+the owner twice said the viewer still looked wrong. So this pass audited the
+AUDIT: for every class, what geometry does the detector define away?
+
+That question had already paid twice — the discovery regex that missed half the
+corpus, and the "trunk-side vertices sit in free space" assumption that became
+class I. It paid a third, fourth, fifth and sixth time.
+
+**Rig for every number below:**
+
+| repo | sha | role |
+|---|---|---|
+| bw-circuit-ui | `1b854032a7c38159bea3b919e5341e233b6d1e6f` (branch point) | the projection |
+| bw-board | `a7338cdcdd5d54122bdc5be44c02908bdb6a4fd6` | the engine that resolves nets |
+| sb3-creator | `4a0826ae492d4b6b4f00d90528074e31c510c16d` | the corpus, 2,098 circuit files |
+
+## 6. Five new classes, and one detector that was wrong
+
+| | class | circuits | occurrences | severity |
+|---|---|---|---|---|
+| **L** | one net's conductor ENDS on another net's (a T) | **426 / 2098** | **3,461** | false connection |
+| **M** | two nets' conductors share a corner vertex | **85 / 2098** | **218** | false connection |
+| **N** | two nets collinear within 4px over a shared span | **426 / 2098** | **1,807** | false connection |
+| **O** | a solver-connected terminal with NO drawn pin | **365 / 2098** | **763** | dropped connection |
+| **P** | a net label's leader touching a foreign conductor | **43 / 2098** | **86** | false connection |
+
+All five are now **0 / 2098**, gated, and mutation-proved.
+
+### The measurement that decides everything: touching vs crossing
+
+Two lines meeting at a proper **X** with no dot is the schematic convention for
+*not connected*, and orthogonal routing cannot avoid crossings. A **T** or a
+shared **corner** is the opposite: convention reads a T as a branch, because
+there is no reason to draw one otherwise. Every class below counts only
+**contact**, never crossing. This is the distinction a schematic exists to make
+and it is the whole content of classes L, M and P.
+
+### L, M, N — the router had no notion of another net's copper
+
+The class-I fix taught the router that a foreign **pin** is an obstacle. It
+still knew nothing about a foreign **conductor**. Worse, `obstacleRoute`
+derives its candidate coordinates from symbol-box edges, so every net detouring
+around the same column proposes the *same* x, and the cheapest candidate wins
+for all of them.
+
+In `arduino-05-arrays/circuit.pico.json`, five different column nets ran their
+detours down **exactly x=385**:
+
+```
+bb1:n-col-b27  (385,153)->(385,541)
+bb1:n-col-b31  (385,121)->(385,223)     dx=0, overlap 70px
+bb1:n-col-b35  (385,177)->(385,293)     dx=0, overlap 116px
+bb1:n-col-b39  (385,255)->(385,363)     dx=0, overlap 108px
+bb1:n-col-b43  (385,325)->(385,433)     dx=0, overlap 108px
+```
+
+Five nets drawn as one wire. **Class H was aimed at exactly this and read 0** —
+because it inspects `w.trunk` wires only, and every one of these is a
+`segments` detour. The class-I fix had just converted 799 circuits' trunks
+*into* detours, moving them out of H's denominator at the moment they most
+needed watching. A fix that relocates a defect past its own gate is the
+failure mode this pass exists to catch.
+
+**The fix**: `segmentTouchesForeignConductor()`, consulted by `routeCollisions`
+for trunks and by `obstacleRoute`'s `clear()` for detours. Committed routes
+register their segments, so each net is routed against the copper already on
+the page. Crossings stay legal; contact does not.
+
+### O — a microcontroller drawn with no power
+
+`01-blink/circuit.attiny88.json` renders an ATtiny88 as a **one-pin symbol**.
+Its `vcc`, `avcc` and `gnd` are wired — the solver has them on the rails — and
+the drawing simply does not have pins for them:
+
+```
+NET bb1:rail-b-   GND:gnd  LED_led1:cathode  MCU:gnd      MISSING PIN: MCU:gnd
+NET bb1:rail-t+   MCU:avcc MCU:vcc  VCC:vcc              MISSING PIN: MCU:avcc MCU:vcc
+```
+
+The cause is two disagreeing truths in one loaded model. The corpus file
+declares `terminals: ["pb0"]` — only the terminal an explicit wire names —
+while its `seat.leadMap` drops **28** leads into breadboard holes (`vcc:f9`,
+`gnd:f10`, `avcc:e8`). `Circuit.fromJSON` honours the declared list verbatim,
+the breadboard strips resolve nets that attribute those 28 terminals to the same
+part, and the projection read only the first. It was structurally incapable of
+drawing the chip's supply.
+
+**Why no gate saw it, and this is the important part**: both correspondence
+gates restrict the SOLVER side of their comparison to terminals the projection
+chose to draw (`visible`). A terminal the projection omits therefore leaves
+*both* sides of the equation at once, and every class stays green. The gate was
+asking "of the pins I drew, are they joined correctly?" — never "did I draw the
+pins I am required to draw?".
+
+**The fix**: `declaredAndWired()` — the drawable terminal set is the declared
+list UNIONED with what the resolved nets attribute to that part. Corpus pin
+count rose by exactly 763, matching the class-O count.
+
+### P — and a detector that was wrong by 14×
+
+A label's leader is the short stub joining a pin to its text, drawn in the same
+stroke as copper, so it obeys copper's rule. In `46-port-overcurrent/
+circuit.pico.json`, net `b40`'s wire ends at `(305,117)` — a point on net
+`b27`'s VCC leader, which spans `x=300..313` at `y=117`.
+
+The first version of this detector counted **crossings** as contact and reported
+**578 circuits / 1,232 incidences**. That is 14× the truth, and acting on it
+would have driven a large and pointless change through the drawing. Counting
+contact only gives **43 / 86**. Recorded here because the discipline that
+catches a defect is the same discipline that catches a phantom, and only one of
+those two mistakes is usually written down.
+
+**The fix**: `labelPin` shortens the leader (13→10→8→6→4px) until it is clear,
+and registers it as a conductor so later routes avoid it.
+
+## 7. The classes that really were clean
+
+A zero means nothing without material behind it. These were measured with the
+detectors exercised on real corpus geometry — 20,374 segments, 35,165 pins, 924
+junction dots and 22,321 label leaders:
+
+| probe | result |
+|---|---|
+| two pins of different nets at one coordinate | 0 |
+| a junction dot where no two segments meet | 0 |
+| a segment that is neither horizontal nor vertical | 0 |
+| a wire carrying both `segments` and `stubs` shapes | 0 |
+| a segment crossing a symbol body box | 0 |
+| a label anchored on no pin | 0 — **false positive**, see below |
+
+The label probe first reported 50 circuits. Every one was a label anchored on
+the **implicit ground** symbol's pin, which the probe excluded from its pin set
+and which is a perfectly legitimate pin. Disproved rather than reported.
+
+## 8. Cost of the fix
+
+Corpus-wide, comparing the drawing before and after:
+
+| | before | after |
+|---|---|---|
+| drawn segments | 20,925 | 20,374 |
+| drawn pins | 34,402 | 35,165 |
+| net labels | 20,936 | 22,321 |
+| trunk routes | 2,247 | 2,125 |
+| detour routes | 4,260 | 4,144 |
+
+**1,385 more label stubs and 551 fewer drawn segments.** That is the price of
+refusing to let two nets touch: a net that cannot be routed without contacting
+another falls back to repeated net labels, which is standard schematic practice
+and which the rendered-netlist gate already treats as connectivity. The 763
+extra pins are class O — connections that were previously not drawn at all.
+
+If the owner would rather see copper than labels there, the lever is the routing
+band (`COL_W` / `PIN_HALF` / the `>18 nets` label threshold), not the contact
+rule. Loosening the contact rule buys wires by drawing shorts.
+
+## 9. Mutation proofs — every gate shown RED
+
+A gate that has never failed is a gate nobody has tested. Each fix below was
+reverted **in the source**, the corpus gate re-run over all 2,098 files, and the
+fix restored. Reproduce any row with
+`scripts/` + the revert named in the "reverted" column.
+
+| reverted | classes that went RED | pass/fail |
+|---|---|---|
+| `segmentHitsForeignPin` (the first pass's fix) | **I 801 / 2098, 1,852** — and P 801 / 1,852 with it | 13 pass, 5 fail |
+| `segmentTouchesForeignConductor` | **L 456 / 3,659 · M 91 / 230 · N 456 / 1,913** | 16 pass, 2 fail |
+| `declaredAndWired` | **O 365 / 2098, 763** | 16 pass, 2 fail |
+| leader clearance in `labelPin` | **P 43 / 2098, 86** | 17 pass, 1 fail |
+
+Class I's RED output, as the audit asked for explicitly — the previously fixed
+defect re-introduced, confirmed red, restored:
+
+```
+#   I conductor through a foreign pin                801 / 2098 circuits, 1852 occurrences
+not ok 1 - schematic geometry across the whole shipped corpus
+# tests 18
+# pass 13
+# fail 5
+
+  801 circuit(s) draw a conductor through a foreign pin, 1852 incidences. A line
+  touching a pin reads as attached to it, so the drawing asserts a connection the
+  solver does not have. The router must treat foreign pins as obstacles
+  (segmentHitsForeignPin in schematic-projection.js), not only symbol bodies.
+```
+
+Two things about that row are worth stating rather than glossing:
+
+- **801 / 1,852, not the 790 / 4,204 the first pass recorded.** A reverted-router
+  measurement is a measurement of a *tree*, and this tree also has the L/M/N/O/P
+  fixes, which change where routes go. Same defect, different surroundings,
+  different count. A before-number that does not name its tree is not a number.
+- **Class P goes red alongside it, at the same count.** That is mechanical, not a
+  bug in either detector: a conductor drawn through a pin necessarily also
+  touches the leader of the label anchored at that pin, and in these drawings
+  each such pin carries exactly one label. The L/M/N revert leaves P at 2 / 4,
+  which is what shows the two detectors are independent.
+
+And the three classes L, M, N under their own revert:
+
+```
+#   L conductor tees onto a foreign conductor        456 / 2098 circuits, 3659 occurrences
+#   M two nets share a corner vertex                  91 / 2098 circuits, 230 occurrences
+#   N two nets collinear within 4px                  456 / 2098 circuits, 1913 occurrences
+# tests 18
+# pass 16
+# fail 2
+```
+
+`O` and `P` each go red alone, with every other class still 0 — an isolated
+proof, which is the useful kind:
+
+```
+#   O connected terminal with no drawn pin           365 / 2098 circuits, 763 occurrences
+#   P label leader touching a foreign conductor       43 / 2098 circuits, 86 occurrences
+```
+
+The in-suite mutation proofs are separate from these source-level reverts and
+run on every CI build. Each searches the corpus for geometry that actually
+exercises its detector and **fails if no such circuit exists**, so a detector
+that has gone vacuous is a failure rather than a zero:
+
+| in-suite proof | acts on |
+|---|---|
+| drag a trunk onto a foreign pin (I) | `46-port-overcurrent/circuit.json` |
+| shorten one net's conductor onto another's (L) | a real foreign crossing, searched for |
+| end two nets at one vertex (M) | the same crossing |
+| slide one net onto another's x (N) | two real overlapping verticals |
+| stretch a leader onto a foreign conductor (P) | a drawing with both labels and copper |
+| delete a drawn pin the solver connects (O) | `01-blink/circuit.attiny88.json` |
+| place a dot on a real foreign crossing (F) | searched for |
+| remove a dot from a real tee (G) | searched for |
+
+## 10. Baselines
+
+`docs/schematic-baselines/` now holds **21** reviewed SVGs in three groups, and
+`test/schematic-baselines.test.js` gates them byte-for-byte:
+
+- **`CLASS_I_WORST`** (10) — the first pass's ten worst, regenerated, since this
+  pass changes their drawings too.
+- **`CONTACT_WORST`** (10) — this pass's ten worst by L+M+N, which are different
+  circuits: class I lived in dense DIP drawings, contact lives wherever
+  `obstacleRoute` sent several detours round one column. Top of the ranking is
+  `arduino-05-arrays/circuit-flat.pico.json` at L=39, M=4, N=21.
+- **`MISSING_PIN_EXEMPLAR`** (1) — `01-blink/circuit.attiny88.json`, class O.
+  Ten of these would be ten copies of one drawing: every class-O circuit has the
+  same shape, a seated MCU whose declared terminal list omits the power pins its
+  `seat.leadMap` wires up. The corpus gate carries the other 364.
+
+The class-O exemplar is the one to look at first. Before: an ATtiny88 drawn as a
+single `pb0` pin, floating. After: `pb0`, `gnd`, `avcc`, `vcc`, with the `VCC`
+and `GND` net labels that put it on the rails.
