@@ -318,8 +318,21 @@ local-only fixture is present. Both are 0 fail.)
 | repo | sha | role |
 |---|---|---|
 | bw-circuit-ui | `1b854032a7c38159bea3b919e5341e233b6d1e6f` (branch point) | the projection |
-| bw-board | `a7338cdcdd5d54122bdc5be44c02908bdb6a4fd6` | the engine that resolves nets |
+| bw-board | `a7338cdcdd5d54122bdc5be44c02908bdb6a4fd6` | the engine, for the class measurements |
+| bw-board | `1dac64c7ac38ea030b2760a8b221ef4cce4f5bd5` | the engine, for the suite and the re-check |
 | sb3-creator | `4a0826ae492d4b6b4f00d90528074e31c510c16d` | the corpus, 2,098 circuit files |
+
+**Two engine shas, deliberately.** The engine resolves the nets the projection
+draws, so a newer engine could in principle bring a class back. Every class
+count below was measured at `a7338cdc…`; all fifteen were then re-measured at
+`1dac64c…` and are identical — `C 4 / 10`, everything else `0 / 2098`. Naming
+one sha and measuring at another is how a number stops meaning anything.
+
+One consequence worth stating rather than hiding: at `a7338cdc…` the local suite
+has one failure, `palette-engine-coverage`, because `ay8912` — added to the
+designer in bw-circuit-ui `410f8ce` — has no engine device at that sha. It is a
+rig-pinning artefact, not a viewer defect, and it is why the suite number below
+is quoted at `1dac64c…`. See PLAN.md.
 
 ## 6. Five new classes, and one detector that was wrong
 
@@ -341,6 +354,35 @@ shared **corner** is the opposite: convention reads a T as a branch, because
 there is no reason to draw one otherwise. Every class below counts only
 **contact**, never crossing. This is the distinction a schematic exists to make
 and it is the whole content of classes L, M and P.
+
+### The ten worst
+
+Ranked by `A+B+C+D+E+F+I+L+M+N+O` on the unfixed tree, which is the only tree
+where a ranking exists — after the fix every score is 0. Reproduce with the
+router reverted and `node scripts/schematic-audit.mjs`:
+
+| score | circuit | L | M | N |
+|---|---|---|---|---|
+| 64 | `arduino-05-arrays/circuit-flat.pico.json` | 39 | 4 | 21 |
+| 64 | `arduino-05-arrays/circuit.pico.json` | 39 | 4 | 21 |
+| 64 | `arduino-05-for-loop/circuit-flat.pico.json` | 39 | 4 | 21 |
+| 64 | `arduino-05-for-loop/circuit.pico.json` | 39 | 4 | 21 |
+| 64 | `arduino-05-switch-case-2/circuit-flat.pico.json` | 39 | 4 | 21 |
+| 64 | `arduino-05-switch-case-2/circuit.pico.json` | 39 | 4 | 21 |
+| 55 | `arduino-05-arrays/circuit-flat.json` | 35 | 2 | 18 |
+| 55 | `arduino-05-arrays/circuit.arduino-mega.json` | 35 | 2 | 18 |
+| 55 | `arduino-05-arrays/circuit.atmega168p.json` | 35 | 2 | 18 |
+| 55 | `arduino-05-arrays/circuit.json` | 35 | 2 | 18 |
+
+These are **different circuits from the first pass's ten worst**, which is the
+point: class I lived in dense DIP drawings (`46-port-overcurrent`,
+`50-7seg-chase`), and contact lives wherever `obstacleRoute` sent several
+detours around one column. Both sets are baselined — see §10.
+
+Class O does not appear here and that is not an oversight: every class-O circuit
+scores 1-3, because a seated MCU omits two or three power pins and no more. It
+is the *most* teaching-harmful class in this pass and the *lowest*-scoring, which
+is a reason to distrust a single ranking rather than a reason to ignore it.
 
 ### L, M, N — the router had no notion of another net's copper
 
