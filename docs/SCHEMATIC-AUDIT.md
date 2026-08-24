@@ -1155,6 +1155,26 @@ question the third pass ended on.
 **Rig.** bw-circuit-ui `43e2171` (branch point), bw-board `1dac64c` (and CI's
 own clone of bw-board master), sb3-creator `553a639` — 2,098 circuit files.
 
+**CI evidence** — the gates ran, against freshly cloned siblings.
+[run 32785286382](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/32785286382)
+at `bf22e34`:
+
+```
+  vendor fixtures: 4, disagreeing 1
+  exports read both ways: 2098 documents
+  nets under OUR rule 11683, under EASYEDA's 11683
+  disagreeing documents: 0
+  Q drawn pin the symbol art does not reach          0 / 2098 circuits, 0 occurrences
+  Q2 symbol lead reaching no pin                    44 / 2098 circuits, 44 occurrences
+  U drawn geometry outside the viewBox               0 / 2098 circuits, 0 occurrences
+  57672 text runs inspected — no class before this one read any of them
+  V two pin NAMES overlapping                       57 / 2098 circuits, 105 occurrences
+  W net label TEXT on foreign copper               104 / 2098 circuits, 172 occurrences
+# tests 994   # pass 980   # fail 0   # skipped 14
+```
+
+(Locally 1005/988/0/17 — eleven tests register only with a local-only fixture.)
+
 ## 16. The 403: closed, and now proved by REINTRODUCTION
 
 Re-verified at this sha rather than carried over: **Q is 0 / 2098**. The fix
