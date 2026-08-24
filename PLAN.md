@@ -209,3 +209,115 @@ re-rendered and LOOKED at.
 circuit with zero wires and `eater6502-full-build` seats four leads on empty
 columns. Both blocked on sb3-creator; both are corpus facts the viewer renders
 honestly, and both are held by the class-C ratchet.
+
+---
+
+## attiny88 footprint — fixed, and what is NOT fixed (2026-08-24)
+
+*Rig: bw-circuit-ui `9461c7f7caa2390f40ecab8df814170c9af481d4` (branch point),
+bw-board `1dac64c7ac38ea030b2760a8b221ef4cce4f5bd5`, sb3-creator
+`4a0826ae492d4b6b4f00d90528074e31c510c16d`.*
+
+### Fixed here
+
+The ATtiny88 PDIP-28 top row ran in the wrong order. At column c the bottom row
+is pin c+1 and the top row is pin 28-c, so the top row must read
+
+```
+PC5 PC4 PC3 PC2 PC1 PC0 [pin 22] PC7 AVCC PB5 PB4 PB3 PB2 PB1
+```
+
+Corrected in BOTH places that carry it, which is the first finding worth
+recording: **there were two.** `src/model/footprints.js`'s `BUILTIN_FOOTPRINTS`
+(14 of 14 columns wrong — it ran the row backwards) and
+`src/parts-data/attiny88.json` (8 of 14 wrong, and mirrored relative to the
+built-in). They now agree, and `refTerminal` moved to `pc5` because
+`test/footprints.test.js` requires the reference lead to sit at offset (0,0) and
+the old `pb1` only sat there because the row was backwards.
+
+**`FOOTPRINTS` is a Proxy that returns the BUILT-IN whenever a kind is built in,
+and consults the sidecar only as a fallback.** So for attiny88 — and for 53
+other kinds — the sidecar footprint was never read by seating. Fixing only the
+JSON, which is what this task originally described, would have changed nothing.
+
+### NOT fixed: pin 22 is still called `pa0`, and that is a real defect
+
+The PDIP-28 does not bond out port A; pin 22 is a SECOND GND. It keeps the wrong
+name because **bw-board is the authority for terminal names** — `circuit.js`'s
+`terminalsForKind` calls `engineTerminals(kind)` first, and the canvas then looks
+terminal POSITIONS up by name out of the sidecar. Renaming here alone would leave
+the engine's `pa0` with no position and render it at the part origin.
+
+Ordering, which cannot be shortened:
+
+1. **bw-board** — `src/devices/board-kinds.js`, `ATTINY88_TERMINALS`: `'pa0'` →
+   `'gnd2'`. Its own comment already says the spellings must match the sidecar.
+   **Blocked on bw-board** (sibling; a sibling agent is active there).
+2. **bw-circuit-ui** — this repo: rename in `src/parts-data/attiny88.json` and
+   `src/model/footprints.js`. One line each, already located.
+3. **bw-parts** — `parts/attiny88.json`, same rename. **Blocked on bw-parts.**
+4. **sb3-creator** — re-seat, see below.
+
+`gnd2` is the name to use: `arduino_uno`, `arduino_nano` and `arduino_mega`
+already spell a primary `gnd` plus numbered extras exactly that way. (`l293d`
+uses `gnd1..gnd4` with no bare `gnd`; `pi_pico` uses `gnd_1..gnd_7`. The arduino
+form is the one that fits "one primary, one extra".)
+
+### NOT done: the corpus re-seat
+
+135 shipped circuits seat an attiny88. Correcting the column order moves **13 of
+28 legs** — the whole top row — into different breadboard columns, which changes
+which strips they join and therefore the netlist. Measured on
+`01-blink/circuit.attiny88.json`, holding pin 1 at its current hole (refHole e3):
+
+```
+pc5  e15 -> e3     pc0  e10 -> e8      pb4  e6 -> e13
+pc4  e14 -> e4     pc7  e16 -> e10     pb3  e5 -> e14
+pc3  e13 -> e5     avcc e8  -> e11     pb2  e4 -> e15
+pc2  e12 -> e6     pb5  e7  -> e12     pb1  e3 -> e16
+pc1  e11 -> e7
+```
+
+`node scripts/gen-device-benches.mjs batch --only <id>` then `seat` then `index`,
+**in sb3-creator**. Not run here: this repo's standing rule is that everything
+under `/mnt/volume1/code/` outside bw-circuit-ui is a read-only reference mirror,
+and re-seating rewrites 135 files in a sibling that has several active branches.
+**Wants an explicit go-ahead**, and it should happen AFTER the rename above so
+the corpus is regenerated once rather than twice. `assert-physics` and
+`kcl-residual` must be measured either side of it; a move in either is a finding,
+not something to absorb.
+
+Until it runs, the shipped circuits keep their old leg positions (their saved
+`leadMap` is authoritative for an already-seated part) and only NEWLY seated
+attiny88s get the corrected geometry. That is a knowingly inconsistent state and
+it is why this entry exists.
+
+### The survey, with denominators
+
+`test/footprint-chirality.test.js` is the gate. Chirality is the invariant the
+three withdrawn designs were reaching for: a DIP may legitimately be seated
+rotated 180°, but never MIRRORED, and the sign of the cross product spanned by
+any three non-collinear leads is invariant under rotation and flips under
+reflection.
+
+| | count |
+|---|---|
+| built-in footprints | 78 |
+| of those, multi-row (have a handedness at all) | 25 |
+| single-row (no handedness — 2-pin passives) | 53 |
+| kinds with BOTH a built-in and a sidecar footprint | 54 |
+| of those, chirality-comparable | 17 |
+| **MIRRORED between the two** | **14** |
+
+The 14: `62256 w65c02 z80 28c256 w65c22 w65c51 mc6850 74hc00 74hc595 attiny85
+attiny2313 attiny13 at24c64 mcu`. They are latent, not active — the sidecar is
+inert for a built-in kind — so they are a ratchet that may only shrink, not a
+build break. attiny88 was the 15th until this commit.
+
+**Second-supply candidates for datasheet review** (mechanical criterion: a
+multi-row footprint with exactly ONE ground-ish lead — 17 of the 25). This is a
+candidate list, not a defect list: most of these genuinely have one ground.
+`w65c02` is the one worth checking first, since the 65C02 DIP-40 is commonly
+documented with VSS on two pins. **Not asserted here** — no datasheet was
+available on this machine, and the attiny88 case is exactly what guessing from
+memory produces.
