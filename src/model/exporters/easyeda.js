@@ -1,15 +1,17 @@
 /**
- * EasyEDA export — via KiCad netlist import.
+ * EasyEDA export — via KiCad netlist import (the FALLBACK path).
  *
- * EasyEDA's native JSON schematic format uses a tilde-delimited DSL
- * for every drawing primitive (pin geometry, component body outlines,
- * wire paths) that requires exact canvas coordinates and is not
- * practical to synthesize from a netlist. The documented import path
- * is KiCad .net → EasyEDA schematic, which handles symbol placement
- * and wiring automatically.
+ * HISTORY: this header once claimed the native tilde-DSL format "is not
+ * practical to synthesize from a netlist." That judgment aged out on
+ * 2026-08-24 — exporters/easyeda-schematic.js now writes the native
+ * dialect directly (sidecar pin geometry + a collision-free router +
+ * our own importer as the round-trip oracle: 221 of 222 lite examples
+ * export fully with partition equality). Prefer that path; the
+ * application opens its output natively.
  *
- * This module re-exports the KiCad serializer with an EasyEDA-branded
- * filename and adds user-facing instructions.
+ * This KiCad-netlist route stays as the working fallback for anything
+ * the native writer refuses, re-exporting the KiCad serializer with an
+ * EasyEDA-branded filename plus user-facing instructions.
  *
  * @module
  */

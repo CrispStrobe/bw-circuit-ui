@@ -16,6 +16,7 @@ import { extractNetlist } from '../model/netlist.js';
 import { toSpice } from '../model/exporters/spice.js';
 import { toKicadNet } from '../model/exporters/kicad.js';
 import { toEasyEDA } from '../model/exporters/easyeda.js';
+import { toEasyEdaSchematic } from '../model/exporters/easyeda-schematic.js';
 import { toEagleSch } from '../model/exporters/eagle.js';
 import { downloadText } from '../model/exporters/download.js';
 
@@ -24,7 +25,11 @@ const FORMATS = [
     ext: '.cir', mime: 'text/plain' },
   { id: 'kicad', label: 'KiCad Netlist (.net)', labelDe: 'KiCad-Netzliste (.net)',
     ext: '.net', mime: 'text/plain' },
-  { id: 'easyeda', label: 'EasyEDA (via KiCad)', labelDe: 'EasyEDA (via KiCad)',
+  // Native dialect: the application opens this directly; round-trips
+  // through our importer with partition equality (221/222 examples).
+  { id: 'easyeda-native', label: 'EasyEDA schematic (.json)',
+    labelDe: 'EasyEDA-Schaltplan (.json)', ext: '.json', mime: 'application/json' },
+  { id: 'easyeda', label: 'EasyEDA (via KiCad netlist)', labelDe: 'EasyEDA (via KiCad-Netzliste)',
     ext: '.net', mime: 'text/plain' },
   // Connectivity only — no symbol geometry, so EAGLE itself will not render
   // it. Round-trips through our own importer; useful as interchange.
@@ -78,6 +83,14 @@ export default function ExportNetlistMenu({ circuit, lang = 'en' }) {
         const { xml, warnings } = toEagleSch({ parts: circuit.parts, wires: circuit.wires });
         if (warnings.length) console.log('[Export] EAGLE:\n  ' + warnings.join('\n  '));
         downloadText(xml, filename);
+        break;
+      }
+      case 'easyeda-native': {
+        const { text, report } = toEasyEdaSchematic(circuit);
+        if (report.skipped.length) {
+          console.warn('EasyEDA export omissions:', report.skipped);
+        }
+        downloadText(text, 'circuit.easyeda.json');
         break;
       }
       case 'easyeda': {

@@ -233,6 +233,27 @@ export const EASYEDA_RULES = [
   [/^(TIP120)/i, () => ({ kind: 'tip120', pins: BJT_PINS })],
   [/^(HD44780|LCD1602|LCD2004)/i, () => ({ kind: 'hd44780', byName: true })],
   [/^(SSD1306)/i, () => ({ kind: 'ssd1306', byName: true })],
+  // The export dialect's own chips (exporters/easyeda-schematic.js writes
+  // these Manufacturer Part names; the round-trip test keeps both in step).
+  [/^RPI[-_ ]?PICO|^PI[-_ ]?PICO/i, () => ({ kind: 'pi_pico', byName: true })],
+  [/^KEYPAD[-_ ]?4X4/i, () => ({ kind: 'keypad_4x4', byName: true })],
+  [/^SEVENSEG4|^SEVEN[-_ ]?SEG[-_ ]?4/i, () => ({ kind: 'seven_seg_4', byName: true })],
+  [/^BW-MCU/i, () => ({ kind: 'mcu', byName: true })],
+  [/^ARDUINO[-_ ]?UNO/i, () => ({ kind: 'arduino_uno', byName: true })],
+  [/^BW-SWITCH/i, () => ({ kind: 'switch', pins: { 1: 'a', 2: 'b' } })],
+  [/^BW-BUZZER/i, () => ({ kind: 'buzzer', byName: true })],
+  [/^BW-LDR/i, () => ({ kind: 'ldr', pins: { 1: 'a', 2: 'b' } })],
+  [/^BW-NTC/i, () => ({ kind: 'ntc', pins: { 1: 'a', 2: 'b' } })],
+  [/^62256|^AS6C62256/i, () => ({ kind: '62256', byName: true })],
+  [/^28C256|^AT28C256/i, () => ({ kind: '28c256', byName: true })],
+  // The exporter's universal escape hatch: BW-<KIND> restores the exact
+  // kind. Only OUR exports write these descriptors, so the trust is in
+  // the name we minted, not in the wild.
+  // rawNames: bind pins by their LITERAL lowercased name, skipping
+  // normalizeEaglePin's vdd→vcc / vss→gnd remap — these are OUR OWN
+  // engine terminal names round-tripping (a w65c22's 'vdd' terminal
+  // must come back 'vdd', not 'vcc').
+  [/^BW-([A-Z0-9_.-]+)$/i, (v, d) => ({ kind: /^BW-([A-Z0-9_.-]+)$/i.exec(d)[1].toLowerCase(), rawNames: true })],
 ];
 
 /** 74-series numbers with a real engine device, from bw-board's registry. */
@@ -633,8 +654,10 @@ export function importEasyEda(text) {
         // A pin NUMBER may be "P1" rather than "1"; headerOf() carries both
         // spellings, and the digits are the fallback for anything else.
         const digits = /(\d+)/.exec(p.num)?.[1];
-        const term = terminalFor(hit, p.num, p.name, undefined)
-          ?? (digits ? hit.pins?.[digits] : undefined);
+        const term = (hit.rawNames && p.name && p.name !== '~')
+          ? String(p.name).toLowerCase()
+          : (terminalFor(hit, p.num, p.name, undefined)
+            ?? (digits ? hit.pins?.[digits] : undefined));
         if (!term) continue;
         if (allow && !allow.has(term)) continue;
         pinCount++;

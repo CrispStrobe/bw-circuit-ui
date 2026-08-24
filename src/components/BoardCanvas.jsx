@@ -2708,6 +2708,13 @@ function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, fi
         downloadText(text, 'circuit-for-easyeda.net');
         break;
       }
+      case 'easyeda-native': {
+        const { toEasyEdaSchematic } = await import('../model/exporters/easyeda-schematic.js');
+        const out = toEasyEdaSchematic(circuit);
+        if (out.report.skipped.length) console.warn('EasyEDA export omissions:', out.report.skipped);
+        downloadText(out.text, 'circuit.easyeda.json');
+        break;
+      }
     }
     if (onDone) onDone();
   }, [circuit, onDone]);
