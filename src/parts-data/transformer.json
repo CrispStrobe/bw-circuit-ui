@@ -1,0 +1,56 @@
+{
+  "kind": "transformer",
+  "w": 60,
+  "h": 46,
+  "terminals": [
+    {
+      "name": "p1",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "p2",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "s1",
+      "x": 60,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "s2",
+      "x": 60,
+      "y": 38,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Coupled-inductor transformer (bw-board E3.4, spec-updates/coupled-inductors.md). Dots at p1/s1. params: {l1,l2,k} in henries, or {ratio, lm, k} (turns ratio + magnetizing inductance; defaults lm=10, k=0.999). k must sit in (0,1) \u2014 k=1 is refused at validation. Lossless windings; DC passes each winding as a short with no coupling, exactly like the silicon-free physics.",
+  "footprint": {
+    "refTerminal": "p1",
+    "leads": {
+      "p1": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "p2": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "s1": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "s2": {
+        "dRow": 5,
+        "dCol": 3
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 4
+  }
+}

@@ -34,7 +34,7 @@ import ImportCircuitMenu from './ImportCircuitMenu.jsx';
 // These are discrete retro/logic ICs placed on breadboards — without a
 // body they render as invisible dots, making bench circuits unreadable.
 const DIP_CHIP_LABELS = {
-  w65c02: 'W65C02S', w65c22: 'W65C22', w65c51: 'W65C51', ns16c550: 'NS16C550', m6532: 'M6532', ay8912: 'AY-3-8912',
+  w65c02: 'W65C02S', w65c22: 'W65C22', w65c51: 'W65C51', ns16c550: 'NS16C550', m6532: 'M6532', ay8912: 'AY-3-8912', transformer: 'XFMR',
   '62256': '62256', '28c256': '28C256',
   z80: 'Z80 CPU', mc6850: 'MC6850',
   '74hc00': '74HC00', '74hc04': '74HC04', '74hc08': '74HC08',

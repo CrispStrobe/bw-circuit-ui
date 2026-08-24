@@ -55,7 +55,7 @@ export const FOOTPRINTS = {
   servo: { w: 70, h: 60 },
   // Retro/logic DIP ICs — body sizes matching the SvgParts renderer
   w65c02: { w: 300, h: 90 }, w65c22: { w: 300, h: 90 }, ns16c550: { w: 300, h: 90 },
-  m6532: { w: 300, h: 90 }, ay8912: { w: 220, h: 90 },
+  m6532: { w: 300, h: 90 }, ay8912: { w: 220, h: 90 }, transformer: { w: 130, h: 100 },
   w65c51: { w: 220, h: 90 }, z80: { w: 300, h: 90 },
   '62256': { w: 220, h: 90 }, '28c256': { w: 220, h: 90 },
   mc6850: { w: 200, h: 90 }, r6507: { w: 220, h: 90 }, mos6532: { w: 300, h: 90 },
