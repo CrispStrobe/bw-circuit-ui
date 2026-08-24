@@ -58,6 +58,18 @@ export class NetSolver {
     this.segments = [];          // {x1,y1,x2,y2}
     this.points = new Set();     // keys of every point that may T onto a wire
     this.names = new Set();      // every net NAME the sheet mentions
+    /**
+     * Every LOAD-BEARING T: a registered point on a segment's interior whose
+     * union actually merged two different nets.
+     *
+     * KiCad needs no record of these -- eeschema drops a junction dot at a T
+     * itself, so reading one as connected is reading the file correctly. The
+     * EasyEDA importer does need it: EasyEDA does NOT imply a junction, so a
+     * T with no `J` shape on it is a CROSSING there and a connection here,
+     * and a file we read as joined is separated on the board. Recorded rather
+     * than acted on -- see the warning in easyeda.js.
+     */
+    this.tees = [];
   }
 
   _find(a) {
@@ -121,7 +133,10 @@ export class NetSolver {
         cands = all.filter((p) => Math.abs((p.x - s.x1) * dy - (p.y - s.y1) * dx) < 1e-3
           && between(p.x, s.x1, s.x2) && between(p.y, s.y1, s.y2));
       }
-      for (const p of cands) this.union(p.k, endA);
+      for (const p of cands) {
+        if (this._find(p.k) !== this._find(endA)) this.tees.push({ x: p.x, y: p.y });
+        this.union(p.k, endA);
+      }
     }
     return this;
   }

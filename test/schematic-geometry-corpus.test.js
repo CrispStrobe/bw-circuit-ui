@@ -49,6 +49,22 @@
  *   M  two nets' conductors sharing a corner vertex
  *   N  two nets' conductors collinear within 4px over a shared span
  *   O  a terminal the solver has on a multi-pin net with NO drawn pin
+ *   P  a net label's leader touching a foreign net's conductor
+ *   Q  a drawn pin the symbol's OWN artwork does not reach
+ *   R  a junction dot whose drawn disc (r=2.4) covers a foreign conductor
+ *   S  a conductor TOUCHING a foreign symbol's own copper
+ *   T  a drawn pin whose netId disagrees with the SOLVER's net
+ *
+ * Q, R, S and T are the third pass. Every class up to P measures
+ * `projection.wires`; a symbol's own strokes are drawn by the two renderers
+ * straight from schematic-symbols.js and never appear there, so no class
+ * could see any of them. 403 drawn pins across 109 shipped circuits sat
+ * where their symbol's artwork does not reach — `disp-sevenseg` draws a digit
+ * outline with two whiskers at y=0 and lands EIGHT wires on eight points that
+ * touch no copper at all. T closes a different hole: I through S all compare a
+ * wire's netId with a pin's netId and BOTH are written by the projection, so
+ * they are the projection checked against itself; T compares the drawn pin
+ * against `resolvedNets`, which is the engine's answer.
  *
  * L, M and N are the second half of the same story class I told. The router
  * knew about symbol bodies, and (after class I) about foreign pins, and about
@@ -98,7 +114,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyse, discover, wireThroughForeignPinOf, crossingsOf, foreignContactOf,
-  parallelMergeOf, missingPinsOf, segmentRefsOf, labelLeaderContactOf } from '../scripts/schematic-audit.mjs';
+  parallelMergeOf, missingPinsOf, segmentRefsOf, labelLeaderContactOf,
+  orphanPinsOf, orphanLeadsOf, fatJunctionsOf, symbolContactOf,
+  pinNetDisagreementOf } from '../scripts/schematic-audit.mjs';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { projectSchematic } from '../src/model/schematic-projection.js';
 
@@ -134,6 +152,26 @@ const KNOWN_UNCONNECTED_PINS = new Map([
   // ratchet said so — removed rather than re-numbered, exactly as its own
   // message asks. The second only surfaced once the first was gone, which is
   // the ordinary shape of a masked list: fix one, the next appears.
+]);
+
+/**
+ * Symbol lead ends that reach no pin. NOT a defect — measured, then DISPROVED
+ * as one. Every entry is a part with a terminal this circuit does not use: a
+ * potentiometer wired as a rheostat (`b` left open), a slide switch using one
+ * throw, a relay's armature drawn mid-swing. Drawing the unused lead is how a
+ * schematic says the terminal is there and unconnected, and hiding it would be
+ * the lie. Recorded per KIND so the number cannot grow quietly.
+ * MAY ONLY SHRINK.
+ */
+const KNOWN_UNUSED_LEADS = new Map([
+  // 70-calculator-simple's `pwr` is wired com + a: the second throw is spare,
+  // and the SPDT drawing shows it, which is the point of drawing an SPDT.
+  ['slide_switch', 24],
+  // 74-ammeter / 76-multimeter / the two 555 benches wire the pot as a
+  // RHEOSTAT — `a` and `wiper`, with `b` open.
+  ['potentiometer', 18],
+  // pc25-relay-isolator: the armature end, drawn mid-swing between contacts.
+  ['relay', 2],
 ]);
 
 describe('schematic geometry across the whole shipped corpus', () => {
@@ -287,6 +325,68 @@ describe('schematic geometry across the whole shipped corpus', () => {
       + `${totalOf(r => r.leaderContact)} incidences. The leader is drawn in the same stroke as `
       + 'copper, so a wire ending on it reads as connected to that label\'s net. labelPin shortens '
       + 'the leader until it is clear and registers it as a conductor so later routes avoid it.');
+  });
+
+
+  test('Q: every drawn pin has the symbol\'s own copper to meet', () => {
+    const q = report('Q drawn pin the symbol art does not reach', r => r.orphanPins);
+    for (const r of [...q].sort((a, b) => b.orphanPins.length - a.orphanPins.length).slice(0, 10)) {
+      console.log(`    ${r.id}: ${r.orphanPins.length}, e.g. ${r.orphanPins[0].kind} ${r.orphanPins[0].pin}`);
+    }
+    assert.deepEqual(q.map(r => r.id), [],
+      `${q.length} circuit(s) draw ${totalOf(r => r.orphanPins)} pin(s) where the symbol's own `
+      + 'artwork does not reach. The wire arrives and there is nothing there to arrive at — a wire '
+      + 'ending in blank space beside the part. A symbol description carries its leads at FIXED '
+      + 'local coordinates while the projection places pins on its own grid, and the two coincide '
+      + 'only for a two-terminal part with leads at y=0 or where the art declares `anchors`. '
+      + 'Artwork must be used only when it reaches every pin (artReachesPins in '
+      + 'schematic-symbols.js); the labelled generic box draws a lead to every pin by construction.');
+  });
+
+  test('Q2: the unused-lead ratchet matches the corpus by kind, and may only shrink', () => {
+    const q2 = report('Q2 symbol lead reaching no pin', r => r.orphanLeads);
+    const byKind = new Map();
+    for (const r of q2) for (const o of r.orphanLeads) byKind.set(o.kind, (byKind.get(o.kind) || 0) + 1);
+    for (const [kind, n] of byKind) {
+      assert.ok(KNOWN_UNUSED_LEADS.has(kind),
+        `${kind} draws ${n} lead(s) reaching no pin and is not in KNOWN_UNUSED_LEADS. Either the `
+        + 'symbol acquired a lead its pins cannot reach, or a kind started falling back to art '
+        + 'that does not fit it. Fix the cause; do NOT add an entry to make this pass.');
+      assert.equal(n, KNOWN_UNUSED_LEADS.get(kind),
+        `${kind} now leaves ${n} lead(s) unreached, recorded as ${KNOWN_UNUSED_LEADS.get(kind)}`);
+    }
+    for (const kind of KNOWN_UNUSED_LEADS.keys()) {
+      assert.ok(byKind.has(kind),
+        `${kind} no longer leaves a lead unreached. Delete the entry: a ratchet that keeps a `
+        + 'fixed case starts hiding the next one.');
+    }
+  });
+
+  test('R/S: a symbol\'s own copper is copper, and a dot is as wide as it is drawn', () => {
+    const r_ = report('R junction dot disc covering foreign copper', r => r.fatJunctions);
+    const s_ = report('S conductor touching foreign symbol copper', r => r.symbolContact);
+    assert.deepEqual(r_.map(r => r.id), [],
+      `${r_.length} circuit(s) draw a junction dot whose DISC covers another net's conductor. `
+      + 'Class F asks whether a dot sits exactly on a foreign meet; the dot is drawn r=2.4 '
+      + '(schematic-svg.js), wider than the 2px pin clearance and three times the 0.75px contact '
+      + 'tolerance, so a dot 2px from foreign copper is a filled blob touching it.');
+    assert.deepEqual(s_.map(r => r.id), [],
+      `${s_.length} circuit(s) end a conductor on a foreign symbol's own copper, `
+      + `${totalOf(r => r.symbolContact)} incidences. This is class L against SYMBOL strokes `
+      + 'instead of wires: the router avoided body boxes and foreign pins and knew nothing about '
+      + 'a symbol\'s leads, so a route could end on one — 74-ammeter drew a potentiometer whose '
+      + 'unconnected `b` lead ends at (300,163) with another net\'s wire ending on that point. '
+      + 'The projection registers every lead that leaves the body box as a conductor.');
+  });
+
+  test('T: a drawn pin carries the net the SOLVER puts that terminal on', () => {
+    const t = report('T drawn pin netId disagrees with the solver', r => r.pinNetDisagreement);
+    assert.deepEqual(t.map(r => r.id), [],
+      `${t.length} circuit(s) draw a pin whose netId is not the net resolvedNets puts that `
+      + 'terminal on. Every class from I to S compares a wire\'s netId with a pin\'s netId and '
+      + 'BOTH are written by the projection — that is the projection checked against itself, and '
+      + 'a systematically wrong pin.netId would leave all of them green. This one compares the '
+      + 'drawn pin against the engine\'s answer.');
   });
 
   // ── Mutation proofs for the detector this gate exists for ────────────
@@ -490,6 +590,112 @@ describe('schematic geometry across the whole shipped corpus', () => {
       + 'detector cannot tell "connected here" from "passing over"');
     proj.junctions.pop();
     assert.equal(crossingsOf(proj).foreignCrossWithDot.length, 0, 'removing the dot returns it to clean');
+  });
+
+  test('MUTATION: moving a pin off its symbol\'s copper turns class Q red', () => {
+    // A symbol with ART, not the generic box: the box draws a lead to wherever
+    // the pin is, so moving a pin on one proves nothing about the class.
+    const { proj, id } = findProjection(
+      p => p.symbols.some(s => !s.generic && (s.pins || []).length > 0),
+      'a symbol drawn with its own artwork');
+    console.log(`\n  class Q mutation fixture: ${id}`);
+    assert.equal(orphanPinsOf(proj).length, 0, 'fixture must be clean before mutation');
+    const sym = proj.symbols.find(s => !s.generic && (s.pins || []).length > 0);
+    const pin = sym.pins[0];
+    const saved = pin.y;
+    pin.y += 23;                       // one PIN_PITCH-ish off the lead
+    assert.ok(orphanPinsOf(proj).length > 0,
+      `sliding ${sym.kind}:${pin.name} off its own lead in ${id} was NOT caught — the detector `
+      + 'is not reading the symbol\'s artwork, and the 403 pins this class found would have '
+      + 'stayed invisible');
+    pin.y = saved;
+    assert.equal(orphanPinsOf(proj).length, 0, 'restored');
+  });
+
+  test('MUTATION: a symbol whose art cannot host its pins must fall back to the box', () => {
+    // The FIX, proved on the corpus rather than asserted: the seven-segment
+    // digit outline has two whiskers at y=0 and the part has eight terminals,
+    // so no placement of eight pins can land on it and the projection must
+    // choose the labelled box. If it ever chooses the art again, class Q
+    // returns — this catches that at the decision instead of at the geometry.
+    const { proj, id } = findProjection(
+      p => p.symbols.some(s => /^seven_seg/.test(s.kind) && (s.pins || []).length > 2),
+      'a seven-segment display with more than two connected terminals');
+    console.log(`  seven-segment fallback fixture: ${id}`);
+    const sym = proj.symbols.find(s => /^seven_seg/.test(s.kind) && (s.pins || []).length > 2);
+    assert.equal(sym.generic, true,
+      `${id} draws ${sym.kind} with ${sym.pins.length} pins using its artwork, which reaches `
+      + 'only (±30, 0). Every other pin lands in blank space.');
+    // And the box really does reach them all.
+    assert.equal(orphanPinsOf(proj).length, 0, 'the box must reach every pin it draws');
+  });
+
+  test('MUTATION: fattening a junction dot onto foreign copper turns class R red', () => {
+    const { proj, id } = findProjection(
+      p => (p.junctions || []).length > 0 && segmentRefsOf(p).length > 4,
+      'a drawing with junction dots and copper');
+    console.log(`  class R mutation fixture: ${id}`);
+    assert.equal(fatJunctionsOf(proj).length, 0, 'fixture must be clean before mutation');
+    // Move one dot to 2px off a foreign conductor: inside the drawn r=2.4 disc
+    // and outside the 0.75px contact tolerance, which is exactly the gap
+    // between "class F is silent" and "the reader sees a blob on that wire".
+    const dot = proj.junctions[0];
+    const own = new Set(proj.wires.filter(w => (w.segments || []).some(
+      ([a, b]) => Math.abs(a.x - dot.x) < 1 && Math.abs(a.y - dot.y) < 1)).map(w => w.netId));
+    const target = segmentRefsOf(proj).find(v => !own.has(v.netId) && Math.abs(v.a.x - v.b.x) < 0.75);
+    assert.ok(target, `${id} has no foreign vertical conductor to move a dot beside`);
+    const saved = { x: dot.x, y: dot.y };
+    dot.x = target.a.x + 2;
+    dot.y = (Math.min(target.a.y, target.b.y) + Math.max(target.a.y, target.b.y)) / 2;
+    assert.ok(fatJunctionsOf(proj).length > 0,
+      `a junction dot placed 2px from a foreign conductor in ${id} was NOT caught — class F only `
+      + 'looks for an exact coincidence, and the dot is drawn three times wider than that');
+    dot.x = saved.x; dot.y = saved.y;
+    assert.equal(fatJunctionsOf(proj).length, 0, 'restored');
+  });
+
+  test('MUTATION: ending a wire on a foreign symbol\'s lead turns class S red', () => {
+    const { proj, id } = findProjection(
+      p => p.symbols.some(s => (s.pins || []).length > 0) && (p.wires || []).some(w => w.segments),
+      'a drawing with symbols and detour-routed copper');
+    console.log(`  class S mutation fixture: ${id}`);
+    assert.equal(symbolContactOf(proj).length, 0, 'fixture must be clean before mutation');
+    // End one net's conductor exactly on ANOTHER symbol's pin-lead — the
+    // 74-ammeter shape, re-created on real geometry.
+    const wire = proj.wires.find(w => w.segments && w.segments.length);
+    const victim = proj.symbols.find(s => (s.pins || []).length &&
+      !s.pins.some(p => p.netId === wire.netId));
+    assert.ok(victim, `${id} has no symbol foreign to a routed net`);
+    const pin = victim.pins[0];
+    const seg = wire.segments[wire.segments.length - 1];
+    const saved = { x: seg[1].x, y: seg[1].y };
+    // 2px inboard of the pin, ON the lead and NOT on the pin, so this proves
+    // class S and not class I.
+    seg[1].x = pin.x + (pin.side === 'left' ? 2 : -2);
+    seg[1].y = pin.y;
+    assert.ok(symbolContactOf(proj).length > 0,
+      `ending a conductor on ${victim.kind}:${pin.name}'s own lead in ${id} was NOT caught — a `
+      + 'symbol\'s strokes never appear in projection.wires, so every class up to P is blind to '
+      + 'them, and 7 shipped circuits did exactly this');
+    seg[1].x = saved.x; seg[1].y = saved.y;
+    assert.equal(symbolContactOf(proj).length, 0, 'restored');
+  });
+
+  test('MUTATION: relabelling a pin\'s net turns class T red', () => {
+    const { proj, loaded, path: fixture } = projectOne('46-port-overcurrent/circuit.json');
+    const nets = loaded.resolvedNets || [];
+    assert.equal(pinNetDisagreementOf(proj, nets).length, 0,
+      `${fixture} must be clean before mutation`);
+    const sym = proj.symbols.find(s => (s.pins || []).some(p => p.netId));
+    const pin = sym.pins.find(p => p.netId);
+    const saved = pin.netId;
+    pin.netId = 'not-a-net';
+    assert.ok(pinNetDisagreementOf(proj, nets).length > 0,
+      'a drawn pin carrying a net the solver does not put that terminal on was NOT caught — '
+      + 'then every class that compares one projection netId with another is comparing the '
+      + 'projection with itself');
+    pin.netId = saved;
+    assert.equal(pinNetDisagreementOf(proj, nets).length, 0, 'restored');
   });
 
   test('MUTATION: removing a junction dot from a real tee turns class G red', () => {

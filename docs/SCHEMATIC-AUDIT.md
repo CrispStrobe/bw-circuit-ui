@@ -608,3 +608,465 @@ that has gone vacuous is a failure rather than a zero:
 The class-O exemplar is the one to look at first. Before: an ATtiny88 drawn as a
 single `pb0` pin, floating. After: `pb0`, `gnd`, `avcc`, `vcc`, with the `VCC`
 and `GND` net labels that put it on the rails.
+
+---
+
+# Third pass — everything measured so far lived in `projection.wires`
+
+The second pass audited the detectors and found five more classes. This pass
+asked the question one level out: **what is in the drawing that no detector
+reads at all?**
+
+The answer is a whole category. Classes A through P are computed from
+`projection.wires`, `projection.junctions` and `projection.netLabels`. A
+**symbol's own copper** — the strokes `schematic-svg.js` and
+`SchematicPanel.jsx` draw from `schematic-symbols.js` — appears in none of
+those, so no class up to P could see a single stroke of it. Sixteen classes
+reporting clean said nothing about roughly a third of the ink on the page.
+
+Measured there: **403 drawn pins across 109 circuits sit where their symbol's
+artwork does not reach.** `disp-sevenseg/circuit.json` draws a seven-segment
+digit as a figure-8 with two horizontal whiskers at y=0, and then lands
+**eight** wires on eight points that touch no copper at all. A reader sees
+eight wires ending in blank space beside the part. It is the plainest way a
+drawing can be wrong, and it was invisible to every gate.
+
+**Rig for every number below.** The corpus moved twice during this pass, which
+is why each sha is named rather than described:
+
+| repo | sha | role |
+|---|---|---|
+| bw-circuit-ui | `dce2175af5bf407400eb551452508a6f39700ab9` (branch point) | the projection |
+| bw-board | `1dac64c7ac38ea030b2760a8b221ef4cce4f5bd5` | the engine that resolves nets |
+| sb3-creator | `553a6395289e1e28249416f24d75804a2624a718` | the corpus, 2,098 circuit files |
+
+**Two engine shas, deliberately — and this time because CI uses the other
+one.** `.github/workflows/ci.yml` clones bw-board with `--depth 1` at its
+default branch, so a CI green is measured against bw-board MASTER
+(`b1da99e21bc67c422144f8dedbfb5d29bab0c49a`) while the local rig above pins
+`1dac64c…`. The engine resolves the nets the projection draws, so those are
+two different measurements unless someone checks. All twenty-one classes were
+re-run against master:
+
+```
+A 0/0  B 0/0  C 2/6  D 0/0  E 0/0  F 0/0  G 0/0  H 0/0  I 0/0  J 0/0  K 0/0
+L 0/0  M 0/0  N 0/0  O 0/0  P 0/0  Q 0/0  Q2 44/44  R 0/0  S 0/0  T 0/0
+```
+
+Identical. Naming one sha and measuring at another is how a number stops
+meaning anything.
+
+**Corpus sha, and why it is not the one this pass started on.** The first
+measurements here were taken at sb3-creator `0777a17`; another lane landed
+`553a639` mid-pass, changing two `circuit.json` files (`44-darlington-motor`,
+a transistor beta). The denominator is 2,098 at both, no baselined circuit
+moved, and every number in this section was re-taken at `553a639` rather than
+carried over.
+
+## 11. Four new classes, two of them real
+
+| | class | circuits | occurrences | severity |
+|---|---|---|---|---|
+| **Q** | a drawn pin the symbol's own artwork does not reach | **109 / 2098** | **403** | the wire ends in blank space |
+| **Q2** | a symbol lead end that reaches no pin | 44 / 2098 | 44 | **disproved** — see below |
+| **R** | a junction dot whose drawn disc covers foreign copper | **0 / 2098** | 0 | clean |
+| **S** | a conductor TOUCHING a foreign symbol's own copper | **7 / 2098** | **7** | false connection |
+| **T** | a drawn pin whose netId disagrees with the solver | **0 / 2098** | 0 | clean |
+
+Q and S are now **0 / 2098**, gated, and mutation-proved. R and T were
+measured and found clean; Q2 was measured and **disproved as a defect**.
+
+All sixteen earlier classes were re-measured at the shas above and are
+unchanged: **C 2 / 6** (down from 4 / 10 — `pico01-blink` was wired upstream
+and came off the ratchet in `c11d305`), everything else **0 / 2098**.
+
+### Q — the symbol and the pin placement were two truths in one drawing
+
+A `Shape` in `schematic-symbols.js` carries its leads at FIXED local
+coordinates: a resistor's at (±30, 0), an op-amp's inputs at (-30, ∓7), a
+seven-segment digit's two whiskers at (±30, 0). `projectSchematic` places pins
+on its OWN grid — ±`PIN_HALF` on x, `PIN_PITCH` apart on y. The two coincide
+in exactly two cases: a two-terminal part whose leads sit at y=0, or a part
+whose art declares `anchors`.
+
+Every other combination draws pins in mid-air. In `disp-sevenseg`:
+
+```
+dis1  seven_segment  at (420,106)   art leads:  M -30 0 L -8 0    M 8 0 L 30 0
+  a       local(-30,-27)      no copper within 27px
+  b       local(-30, -9)      no copper
+  c       local(-30,  9)      no copper
+  d       local(-30, 27)      no copper
+  e       local( 30,-27)      no copper
+  f       local( 30, -9)      no copper
+  g       local( 30,  9)      no copper
+  common  local( 30, 27)      no copper
+```
+
+Eight of eight. And in `76-multimeter`, an LM358 drawn as a triangle with its
+inputs at y=±7 gets `vcc`, `gnd` and `1_pos` on the left at y=-18/0/+18 and
+`1_neg`, `1_out` on the right — four of its five pins land nowhere, and the
+one that lands is the output.
+
+**The most useful thing about this class is that the codebase had already
+written it down.** `schematic-symbols.js` explains why `optocoupler` is
+deliberately undrawn:
+
+> its four terminals are laid out first-half-left by schematic-projection,
+> which would put the emitter above the collector and draw the
+> phototransistor upside down. It needs per-terminal placement first
+
+That is exactly class Q, correctly diagnosed, for one kind — and fourteen
+other kinds shipped with it. A hazard avoided by hand in one place and not
+made structural is a hazard that has already recurred somewhere else.
+
+**The fix** makes it structural. `artReachesPins(art, localPins)` in
+`schematic-symbols.js`; the projection uses a kind's artwork **only if it
+reaches every pin of THIS instance**, and otherwise sets `symbol.generic` and
+falls back to the labelled box, which draws a lead and a terminal name to
+every pin by construction. Both renderers honour the flag (`git grep
+'shapeFor('` — every call site outside the decision itself now reads
+`s.generic ? null : shapeFor(...)`).
+
+Where the art can be matched EXACTLY it is matched instead of discarded:
+
+- `slide_switch` gained `anchors` — the SPDT drawing has three lead ends and
+  the engine's device has three terminals (`a`, `com`, `b`), so the blade
+  pivots on `com` and the throws are `a` and `b`. 24 instances keep their
+  symbol. `dip_switch` (eight terminals) and `tilt_sensor` (two) borrow the
+  same artwork and can NOT be mapped onto three leads, so they keep the bare
+  shape and take the box.
+- the four two-input gates gained `anchors` (`in0`/`in1` left, `out` right).
+  16 instances.
+
+Guessing was refused where the mapping is not derivable. A `relay` has five
+terminals (`coil_a`, `coil_b`, `com`, `nc`, `no`) and the drawing has four
+lead ends plus an armature; `lm358` has eight and a triangle has three. An
+anchor invented for those would be a fabricated drawing — a pin labelled `com`
+on a lead that is not the pole — which is worse than a correct box.
+
+**Cost, corpus-wide.** Of 14,843 drawn symbols, **76 trade bespoke artwork for
+the labelled box** (0.5 %):
+
+| kind | instances | why the art cannot host it |
+|---|---|---|
+| relay | 22 | 5 terminals, 4 lead ends and an armature |
+| seven_seg_3 | 14 | 3 digits, 2 whiskers |
+| rgb_led | 14 | 4 terminals, an LED's 2 leads |
+| seven_segment | 10 | 8 terminals, 2 whiskers |
+| opamp | 6 | 5 connected terminals, 3 leads |
+| lm358 | 4 | dual op-amp; `vcc`/`gnd` have nowhere to go |
+| seven_seg_4 | 2 | 4 digits, 2 whiskers |
+| tilt_sensor | 2 | 2 terminals borrowing an SPDT drawing |
+| dip_switch | 2 | 8 terminals borrowing an SPDT drawing |
+
+Everything else in the drawing barely moves:
+
+| | at the branch point | after |
+|---|---|---|
+| drawn segments | 20,406 | 20,370 |
+| drawn pins | 35,223 | 35,223 |
+| net labels | 22,315 | 22,345 |
+| trunk routes | 2,129 | 2,122 |
+| detour routes | 4,150 | 4,146 |
+| symbols drawn with artwork | 12,516 | 12,440 |
+
+The 21 baselines from the first two passes render **byte-identical** after
+this change: none of them contained an affected kind. That is what "surgical"
+looks like when it is measured rather than claimed.
+
+### Q2 — measured, then disproved
+
+44 symbol lead ends reach no pin. Every one is honest, and the class is a
+**ratchet by kind**, not a zero:
+
+| kind | leads | what it is |
+|---|---|---|
+| slide_switch | 24 | `70-calculator-simple`'s `pwr` is wired `com` + `a`; the second throw is spare, and showing it is the point of drawing an SPDT |
+| potentiometer | 18 | `74-ammeter`, `76-multimeter` and the two 555 benches wire the pot as a RHEOSTAT — `a` and `wiper`, with `b` open |
+| relay | 2 | `pc25-relay-isolator`'s armature, drawn mid-swing between contacts |
+
+Drawing an unused terminal is how a schematic says the terminal exists and is
+unconnected. Hiding it would be the lie. Recorded because the same measurement
+that finds a defect finds a non-defect, and only one of those two usually gets
+written down.
+
+### S — the router had never heard of a symbol's copper
+
+Class L asks whether a conductor ends on another net's WIRE. Nothing asked
+whether it ends on another part's LEAD, because a lead is not in
+`projection.wires`. Seven shipped circuits do, all the same shape:
+
+```
+74-ammeter/circuit.json
+  load1  potentiometer at (270,163), wired as a rheostat
+         zigzag: M -30 0 L -18 0 ... L 14 0 L 30 0
+         `b` is UNCONNECTED, so the lead end at (300,163) has no pin
+  net bb1:n-col-t6's conductor ENDS at (300,163)
+```
+
+A reader sees that net joined to the pot's third terminal. The solver has them
+apart. **The fix**: every symbol lead that leaves the body box is registered
+as a conductor before routing begins — under its pin's net if it ends on one,
+and under a sentinel net id (foreign to everyone) if it does not. Crossings
+stay legal; contact does not. 7 → 0, and nothing else in the corpus moved.
+
+### R and T — clean, and worth stating why they were asked
+
+**R.** Class F asks whether a junction dot sits *exactly* on a foreign meet.
+The dot is drawn `r=2.4` (`schematic-svg.js`), which is larger than the 2px
+pin clearance and more than three times the 0.75px contact tolerance — so a
+dot 2px from another net's copper is a filled blob touching it while class F
+stays silent. Measured across 950 drawn dots: **0**.
+
+**T.** Every class from I to S compares a wire's `netId` with a pin's `netId`,
+and **both are written by the projection**. That is the projection checked
+against itself, and a systematically wrong `pin.netId` would leave all of them
+green — the same species of tautology this codebase has recorded before. T
+compares each drawn pin against `resolvedNets`, which is the engine's answer.
+Across 35,223 drawn pins: **0**. The tautology is now closed by a gate rather
+than by argument.
+
+## 12. The EasyEDA junction rule — our solver is more permissive than theirs
+
+Raised by the owner, and it belongs here because it is **class G arriving from
+the other side**.
+
+`kicad-common.js`'s `NetSolver` folds in a **T** — a registered point (a wire
+endpoint, a pin, a label anchor) lying on another segment's span. That is
+KiCad's rule, stated in its own header: eeschema drops a junction dot at a T
+itself, so reading one as connected reads the file correctly.
+
+**EasyEDA does not imply one.** A T with no `J` shape on it is a CROSSING on
+the board and a CONNECTION here. So we can read a file as joined that is
+separated in the tool that wrote it — an import defect, not a curiosity: the
+circuit the learner sees is not the circuit the author drew.
+
+In the viewer, class G says *we must not DRAW a branch without a dot*. Here it
+says *we must not READ one*. Same distinction, opposite direction, and it is
+the whole reason a schematic distinguishes a dot from a crossing.
+
+**Reported, not acted on.** Dropping those unions would lose connections
+wherever the author's tool did imply them, and this importer prefers to lose
+nothing silently (see its bus note). `NetSolver` now records every
+**load-bearing** T — one whose union actually merged two different nets — and
+the EasyEDA importer warns:
+
+```
+1 T-joint(s) without a junction (1 wire-to-wire); EasyEDA treats these as
+crossings, so these connections exist here and not on the board -- at 100,-240
+```
+
+"Load-bearing" is the right filter and not a convenience: a T inside a net
+that is already joined elsewhere reads the same in both tools, and warning
+about it would bury the ones that matter.
+
+### Measured, with two denominators
+
+| corpus | files | with an undotted T |
+|---|---|---|
+| vendor-dialect fixtures, geometry checked by hand | 4 | **1** (`easyeda-rc-divider`) |
+| the whole shipped corpus, round-tripped through OUR OWN exporter | 2,098 | **0** |
+
+The fixture was verified against the tilde shapes directly, not against our
+own reading of them:
+
+```
+W~100 -220 100 -260          a vertical span at x=100, y=-220..-260
+W~300 -220 300 -240 100 -240 ENDS at (100,-240), strictly inside it
+J~100~-160   J~100~-220      the only two junction dots
+```
+
+So (100,-240) is a T the author did not dot, and the two dotted Ts must not be
+counted — a detector that cannot tell them apart is worthless. It reports 1.
+
+The second row is the more interesting number and it is **good news measured
+rather than assumed**. `exporters/easyeda-schematic.js` claims its routing is
+"safe by construction": one lane per net, one vertical per pin, so every
+remaining contact between different nets is an X crossing. That claim was
+written against the PERMISSIVE rule. Under the stricter one it still holds,
+across all 2,098 exported schematics. The round trip starts from what the app
+produces, not from a literal anyone typed.
+
+**Honesty bound.** There is no local corpus of third-party EasyEDA files. The
+denominators above are the four vendor-dialect fixtures and our own exports;
+what an arbitrary sheet drawn in the real application contains is not measured
+here, and the warning is what will tell its reader.
+
+## 13. Gates added, and every one shown RED
+
+A gate that has never failed is a gate nobody has tested. Each proof below
+runs in CI on every build, searches the corpus for geometry that actually
+exercises its detector, and **fails if no such circuit exists** — so a
+detector gone vacuous is a failure, not a zero.
+
+| gate | class | mutation |
+|---|---|---|
+| `schematic-geometry-corpus.test.js` | Q | slide one pin of an ART symbol 23px off its own lead |
+| " | Q (the fix) | assert a multi-terminal seven-segment RESOLVES to the box; if it ever chooses the art again, class Q returns |
+| " | Q2 | ratchet by kind; an unlisted kind is a failure, a listed kind that stops reproducing must be deleted |
+| " | R | move a real dot to 2px off a foreign conductor — inside the drawn disc, outside the contact tolerance |
+| " | S | end a real routed conductor 2px inboard of a foreign pin, ON the lead and not on the pin (so it proves S and not I) |
+| " | T | relabel a drawn pin's netId and require the solver comparison to catch it |
+| `easyeda-junction-rule.test.js` | the EasyEDA rule | extend one EXPORTED wire's polyline to end on another net's span |
+| `schematic-baselines.test.js` | Q, S | 11 more reviewed SVGs |
+
+### Class Q, RED — the defect this pass found
+
+**At the branch point** (`dce2175`, no part of this pass applied), over the
+current corpus — this is the defect as found:
+
+```
+Q drawn pin the symbol art does not reach    109 / 2098 circuits   403 occurrences
+Q2 symbol lead reaching no pin (ratchet)     125 / 2098 circuits   304 occurrences
+S conductor touching foreign symbol copper     7 / 2098 circuits     7 occurrences
+```
+
+**Reverting only `artReachesPins` on the FIXED tree** — that is, keeping the
+`slide_switch` and gate anchors — and re-running the corpus gate over all
+2,098 files:
+
+```
+#   Q drawn pin the symbol art does not reach         73 / 2098 circuits, 363 occurrences
+#   Q2 symbol lead reaching no pin                   113 / 2098 circuits, 264 occurrences
+not ok 11 - Q: every drawn pin has the symbol's own copper to meet
+not ok 12 - Q2: the unused-lead ratchet matches the corpus by kind, and may only shrink
+not ok 23 - MUTATION: a symbol whose art cannot host its pins must fall back to the box
+# tests 27
+# pass 24
+# fail 3
+
+  73 circuit(s) draw 363 pin(s) where the symbol's own artwork does not reach.
+  The wire arrives and there is nothing there to arrive at — a wire ending in
+  blank space beside the part.
+```
+
+**73 / 363 here and 109 / 403 there, and the difference is exactly the
+anchors**: 24 `slide_switch` pins and 16 gate pins now fit their artwork, so
+36 circuits and 40 pins leave the class before the revert can reach them. Both
+numbers are correct at their own tree, and a before-number that does not name
+its tree is not a number. That has now bitten three times in this document.
+
+Q2 goes red beside Q, at 264 rather than its ratcheted 44, and that is
+mechanical rather than a second defect: with the art kept for symbols it
+cannot host, every lead those symbols draw reaches no pin either. The two
+detectors ARE independent — see the isolated class-S revert below, where Q2
+stays at exactly its ratcheted 44.
+
+### Class S, RED, isolated
+
+Reverting only the symbol-lead registration. Every other class stays clean,
+which is the useful kind of proof:
+
+```
+#   Q drawn pin the symbol art does not reach          0 / 2098 circuits, 0 occurrences
+#   Q2 symbol lead reaching no pin                    44 / 2098 circuits, 44 occurrences
+#   R junction dot disc covering foreign copper        0 / 2098 circuits, 0 occurrences
+#   S conductor touching foreign symbol copper         7 / 2098 circuits, 7 occurrences
+#   T drawn pin netId disagrees with the solver        0 / 2098 circuits, 0 occurrences
+not ok 13 - R/S: a symbol's own copper is copper, and a dot is as wide as it is drawn
+# tests 27
+# pass 26
+# fail 1
+```
+
+### Class I, RED — the defect that was already fixed
+
+Asked for explicitly, because a fix without a standing gate comes back.
+Reverting `segmentHitsForeignPin` on the CURRENT tree:
+
+```
+#   I conductor through a foreign pin                 18 / 2098 circuits, 32 occurrences
+#   P label leader touching a foreign conductor       18 / 2098 circuits, 32 occurrences
+not ok 3 - I: no conductor runs through a pin that is not on its net
+not ok 10 - P: a label leader may cross a foreign net, never touch one
+not ok 13 - R/S: a symbol's own copper is copper, and a dot is as wide as it is drawn
+# tests 27
+# pass 24
+# fail 3
+```
+
+**18 / 32 here, against 801 / 1,852 in the second pass and 790 / 4,204 in the
+first**, and the collapse is worth more than the number. THIS PASS'S OWN FIX
+absorbs most of class I: a pin sits at the end of its own symbol lead, that
+lead is now a registered conductor, and `segmentTouchesForeignConductor`
+therefore refuses most of the routes `segmentHitsForeignPin` used to refuse.
+So reverting the class-I fix alone no longer reproduces the class-I disaster —
+the drawing stays right because a different rule is holding it up.
+
+That is the same shape as pass two's finding that the class-I fix moved 799
+circuits out of class H's denominator, and it is worth naming rather than
+enjoying: **a fix that quietly subsumes another fix's job makes the older
+gate look stronger than it is.** The mitigation here is that the older gate
+still goes red (18 circuits, and its in-suite mutation proof still fires), and
+that class S now covers the same geometry from the symbol side. Nobody should
+delete `segmentHitsForeignPin` on the strength of an 18.
+
+Class P goes red alongside I at the identical count, exactly as pass two
+recorded: a conductor drawn through a pin necessarily also touches the leader
+of the label anchored at that pin.
+
+## 14. What this pass says about the previous two
+
+Both earlier passes were careful and both were bounded by the same unstated
+assumption: *the drawing is `projection.wires`*. It is not — it is the SVG,
+and a third of that SVG comes from a different module.
+
+The pattern is now three for three:
+
+1. pass one — the discovery regex could not match a hyphen, so half the corpus
+   was outside every denominator;
+2. pass two — the netlist gate defined trunk-side vertices as free space, so
+   the class-I geometry was outside its question; and class H inspected only
+   `w.trunk`, so the class-I FIX moved 799 circuits out of H's denominator;
+3. pass three — every class read `projection.wires`, so all symbol copper was
+   outside all sixteen.
+
+Each time the defect was not in the code the gate watched; it was in what the
+gate's input excluded. **The question that pays is not "is this class zero"
+but "what is not in this class's denominator".**
+
+## 15. Baselines
+
+`docs/schematic-baselines/` now holds **32** reviewed SVGs in five groups,
+gated byte-for-byte:
+
+- **`CLASS_I_WORST`** (10) and **`CONTACT_WORST`** (10) — the first two passes.
+  Byte-identical after this pass's change.
+- **`ART_FIT_WORST`** (10) — this pass's ten worst by class Q. Different
+  circuits again, and for a different reason: this defect follows the PART,
+  not the routing.
+
+  | Q | circuit |
+  |---|---|
+  | 24 | `78-a2-calculator/circuit.json` |
+  | 11 | `76-multimeter/circuit-flat.json` |
+  | 11 | `76-multimeter/circuit.json` |
+  | 8 | `disp-sevenseg/circuit.arduino-mega.json` |
+  | 8 | `disp-sevenseg/circuit.arduino-nano.json` |
+  | 8 | `disp-sevenseg/circuit.arduino-uno.json` |
+  | 8 | `disp-sevenseg/circuit.atmega168p.json` |
+  | 8 | `disp-sevenseg/circuit.attiny88.json` |
+  | 8 | `disp-sevenseg/circuit.json` |
+  | 8 | `disp-sevenseg/circuit.pico.json` |
+
+  Ranks 4-10 are a **tie at 8** across near-identical `disp-sevenseg` MCU
+  variants. Kept, because the ranking is the ranking; stated, because seven
+  copies of one drawing is thin coverage and the reader should know that
+  rather than infer breadth from a count of ten.
+- **`SYMBOL_CONTACT_EXEMPLAR`** (1) — `74-ammeter/circuit.json`, class S. All
+  seven class-S circuits are the same shape; the corpus gate carries the other
+  six.
+- **`MISSING_PIN_EXEMPLAR`** (1) — unchanged from pass two.
+
+**Suite, at the rig above**: `EXAMPLES_DIR=<sb3-creator>/examples
+SB3_CREATOR=<sb3-creator> npm test` → `995 tests, 978 pass, 0 fail, 17
+skipped`. The two env vars are a WORKTREE artefact and not a rig requirement:
+both gates resolve their sibling as `../../<repo>`, which is right from a
+normal checkout and one level too shallow from a worktree under `wt/`. CI
+clones both siblings at the depth the tests expect and needs neither variable.
+
+The one to look at is `disp-sevenseg.svg`. Before: a figure-8 with two
+whiskers and eight wires ending in blank space. After: a labelled box with a
+lead and a terminal name — `a`, `b`, `c`, `d`, `e`, `f`, `g`, `common` — at
+each of the eight pins.

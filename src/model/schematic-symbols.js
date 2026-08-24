@@ -59,6 +59,39 @@ const SPDT = {
   circles: [{ cx: -10, cy: 0, r: 2 }, { cx: 10, cy: -8, r: 2 }, { cx: 10, cy: 6, r: 2 }],
 };
 
+// The SPDT drawing has three lead ends and the engine's slide_switch has
+// three terminals (`a`, `com`, `b`), so the two can be matched EXACTLY: the
+// blade pivots on `com`, and the two throws are the contacts it selects.
+// Without this the default first-half-left placement put pins at (-30,±9)
+// and (30,-9) — none of them on a lead — and 24 shipped instances drew three
+// wires ending in blank space beside a switch. Named terminals only:
+// `dip_switch` (eight terminals) and `tilt_sensor` (two) also borrow this
+// artwork, and neither can be mapped onto three leads, so they keep the
+// bare shape and fall back to the labelled box.
+const SPDT_SWITCH = {
+  ...SPDT,
+  anchors: {
+    com: { x: -30, y: 0, side: 'left' },
+    common: { x: -30, y: 0, side: 'left' },
+    a: { x: 30, y: -8, side: 'right' },
+    b: { x: 30, y: 6, side: 'right' },
+  },
+};
+
+/**
+ * Two inputs on the left, one output on the right — the geometry every
+ * two-input gate body in this file draws, and the names the engine's
+ * gate_* devices use.
+ */
+const GATE_ANCHORS = {
+  in0: { x: -30, y: -8, side: 'left' },
+  in1: { x: -30, y: 8, side: 'left' },
+  a: { x: -30, y: -8, side: 'left' },
+  b: { x: -30, y: 8, side: 'left' },
+  out: { x: 30, y: 0, side: 'right' },
+  y: { x: 30, y: 0, side: 'right' },
+};
+
 /** Connection aliases shared by bipolar and field-effect transistors. */
 function transistorAnchors(control, upper, lower) {
   return {
@@ -172,7 +205,7 @@ export const SYMBOLS = {
     circles: [{ cx: -10, cy: 0, r: 2 }, { cx: 10, cy: 0, r: 2 }] },
   // Changeover parts: one common, two throws. Drawn as SPDT so the common
   // terminal is visibly the one the blade pivots on.
-  slide_switch:  SPDT,
+  slide_switch:  SPDT_SWITCH,
   dip_switch:    SPDT,
   tilt_sensor:   SPDT,
   buzzer:        { paths: ['M -30 0 L -11 0 M 11 0 L 30 0'], circles: [{ cx: 0, cy: 0, r: 11 }],
@@ -227,13 +260,13 @@ export const SYMBOLS = {
   header:        headerSym(2),
   opamp:         { paths: ['M -14 -14 L -14 14 L 16 0 Z', 'M -30 -7 L -14 -7 M -30 7 L -14 7 M 16 0 L 30 0'],
     texts: [{ x: -10, y: -3, s: '−', size: 8 }, { x: -10, y: 10, s: '+', size: 8 }] },
-  gate_and:      { paths: ['M -12 -16 L -12 16 L 0 16 A 16 16 0 0 0 0 -16 Z', 'M -30 -8 L -12 -8 M -30 8 L -12 8 M 16 0 L 30 0'] },
-  gate_nand:     { paths: ['M -12 -16 L -12 16 L 0 16 A 16 16 0 0 0 0 -16 Z', 'M -30 -8 L -12 -8 M -30 8 L -12 8 M 16 0 L 30 0'],
+  gate_and:      { anchors: GATE_ANCHORS, paths: ['M -12 -16 L -12 16 L 0 16 A 16 16 0 0 0 0 -16 Z', 'M -30 -8 L -12 -8 M -30 8 L -12 8 M 16 0 L 30 0'] },
+  gate_nand:     { anchors: GATE_ANCHORS, paths: ['M -12 -16 L -12 16 L 0 16 A 16 16 0 0 0 0 -16 Z', 'M -30 -8 L -12 -8 M -30 8 L -12 8 M 16 0 L 30 0'],
     circles: [{ cx: 19, cy: 0, r: 3 }] },
-  gate_or:       { paths: ['M -12 -16 Q -4 0 -12 16 Q 6 16 16 0 Q 6 -16 -12 -16 Z', 'M -30 -8 L -8 -8 M -30 8 L -8 8 M 16 0 L 30 0'] },
-  gate_nor:      { paths: ['M -12 -16 Q -4 0 -12 16 Q 6 16 16 0 Q 6 -16 -12 -16 Z', 'M -30 -8 L -8 -8 M -30 8 L -8 8 M 16 0 L 30 0'],
+  gate_or:       { anchors: GATE_ANCHORS, paths: ['M -12 -16 Q -4 0 -12 16 Q 6 16 16 0 Q 6 -16 -12 -16 Z', 'M -30 -8 L -8 -8 M -30 8 L -8 8 M 16 0 L 30 0'] },
+  gate_nor:      { anchors: GATE_ANCHORS, paths: ['M -12 -16 Q -4 0 -12 16 Q 6 16 16 0 Q 6 -16 -12 -16 Z', 'M -30 -8 L -8 -8 M -30 8 L -8 8 M 16 0 L 30 0'],
     circles: [{ cx: 19, cy: 0, r: 3 }] },
-  gate_xor:      { paths: ['M -16 -16 Q -8 0 -16 16', 'M -12 -16 Q -4 0 -12 16 Q 6 16 16 0 Q 6 -16 -12 -16 Z',
+  gate_xor:      { anchors: GATE_ANCHORS, paths: ['M -16 -16 Q -8 0 -16 16', 'M -12 -16 Q -4 0 -12 16 Q 6 16 16 0 Q 6 -16 -12 -16 Z',
     'M -30 -8 L -8 -8 M -30 8 L -8 8 M 16 0 L 30 0'] },
   gate_not:      { paths: ['M -14 -14 L -14 14 L 12 0 Z', 'M -30 0 L -14 0 M 18 0 L 30 0'],
     circles: [{ cx: 15, cy: 0, r: 3 }] },
@@ -309,3 +342,91 @@ export function shapeFor(kind, params = {}) {
 
 /** Kinds with dedicated artwork; everything else gets the generic IC box. */
 export const DRAWN_KINDS = [...Object.keys(SYMBOLS), ...Object.keys(ALIASES)];
+
+// ── does the artwork actually REACH the pins the projection places? ────────
+//
+// A symbol description carries its leads at FIXED local coordinates: a
+// resistor's at (±30, 0), an op-amp's inputs at (-30, ∓7), a seven-segment
+// digit's two whiskers at (±30, 0). The projection places pins on its OWN
+// grid — ±PIN_HALF on x, PIN_PITCH apart on y — and the two only coincide for
+// a two-terminal part whose leads sit at y=0, or where the art declares
+// `anchors`.
+//
+// Measured over the 2,098 shipped circuits before this check existed: 403
+// drawn pins across 109 circuits sat where their symbol's artwork does not
+// reach. `disp-sevenseg/circuit.json` draws the digit outline with two
+// horizontal whiskers and then lands EIGHT wires on eight points that touch
+// no copper at all — a reader sees eight wires ending in blank space beside
+// the part. Neither previous audit pass could see it: both measure
+// `projection.wires`, and a symbol's own copper is drawn from this file by
+// the two renderers and never appears there.
+//
+// schematic-symbols.js already recorded this hazard for ONE kind —
+// `optocoupler` is deliberately undrawn because "its four terminals are laid
+// out first-half-left by schematic-projection, which would put the emitter
+// above the collector" — and shipped fourteen other kinds with exactly it.
+// So the rule is made structural instead of per-kind: art is used only when
+// it reaches every pin, and the labelled generic box (which draws a lead to
+// every pin by construction) is used when it does not.
+
+/** The `d` subset this file writes: M, L, Q, T, Z. Arcs are skipped. */
+function pathSegments (d) {
+  const t = String(d).trim().split(/[\s,]+/);
+  const out = [];
+  let i = 0; let cur = null; let start = null;
+  while (i < t.length) {
+    const c = t[i++];
+    if (c === 'M') { cur = { x: +t[i++], y: +t[i++] }; start = cur; }
+    else if (c === 'L') { const p = { x: +t[i++], y: +t[i++] }; if (cur) out.push([cur, p]); cur = p; }
+    else if (c === 'Q') { i += 2; const p = { x: +t[i++], y: +t[i++] }; if (cur) out.push([cur, p]); cur = p; }
+    else if (c === 'T') { const p = { x: +t[i++], y: +t[i++] }; if (cur) out.push([cur, p]); cur = p; }
+    else if (c === 'A') { i += 5; const p = { x: +t[i++], y: +t[i++] }; cur = p; }  // arc: no chord
+    else if (c === 'Z') { if (cur && start) out.push([cur, start]); cur = start; }
+    else i++;   // a bare coordinate pair continuing an implicit repeat
+  }
+  return out;
+}
+
+/**
+ * Every stroke a Shape draws, in SYMBOL-LOCAL coordinates.
+ *
+ * @param {Shape} art
+ * @returns {Array<[{x:number,y:number},{x:number,y:number}]>}
+ */
+export function artCopper (art) {
+  if (!art) return [];
+  const out = [];
+  for (const p of art.paths || []) out.push(...pathSegments(typeof p === 'string' ? p : p.d));
+  for (const c of art.circles || []) {
+    // A pad or a bubble: its rim, as the four extreme points' chords. Only
+    // ever a body feature, never a lead end, so the approximation is safe.
+    out.push([{ x: c.cx - c.r, y: c.cy }, { x: c.cx, y: c.cy - c.r }],
+      [{ x: c.cx, y: c.cy - c.r }, { x: c.cx + c.r, y: c.cy }],
+      [{ x: c.cx + c.r, y: c.cy }, { x: c.cx, y: c.cy + c.r }],
+      [{ x: c.cx, y: c.cy + c.r }, { x: c.cx - c.r, y: c.cy }]);
+  }
+  return out;
+}
+
+const REACH = 1.5;   // a pin this close to a stroke is drawn as meeting it
+
+/** Distance from a point to a segment. */
+function pointToSegment (px, py, a, b) {
+  const dx = b.x - a.x; const dy = b.y - a.y;
+  const L = dx * dx + dy * dy;
+  const t = L === 0 ? 0 : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / L));
+  return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
+}
+
+/**
+ * Does `art` draw copper at every one of these local pin positions?
+ *
+ * @param {Shape|null} art
+ * @param {Array<{x:number,y:number}>} localPins pin positions relative to the symbol origin
+ * @returns {boolean}
+ */
+export function artReachesPins (art, localPins) {
+  const copper = artCopper(art);
+  if (!copper.length) return false;
+  return localPins.every((p) => copper.some((seg) => pointToSegment(p.x, p.y, seg[0], seg[1]) <= REACH));
+}

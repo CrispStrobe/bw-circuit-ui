@@ -586,6 +586,7 @@ export function importEasyEda(text) {
   const rails = new Map();            // rail name -> the part id that carries it
   let attached = 0; let floating = 0; let pinCount = 0; let declaredNC = 0;
   let buses = 0; let busEntries = 0; let labels = 0; let mirrored = 0;
+  const undottedWireTees = []; const undottedPinTees = [];
 
   sheets.forEach((sheet, sheetIx) => {
     const net = new NetSolver();
@@ -620,6 +621,28 @@ export function importEasyEda(text) {
      */
     const noConnects = new Set();
 
+    /**
+     * Every `J` junction dot the author drew, as "x,y".
+     *
+     * OUR NET SOLVER IS MORE PERMISSIVE THAN EASYEDA'S. kicad-common's
+     * NetSolver folds in a T -- a registered point sitting on another
+     * segment's span -- because that is KiCad's rule: eeschema drops a
+     * junction dot there itself, so reading a T as connected reads the file
+     * correctly. EasyEDA does not imply one. A T with no `J` on it is a
+     * CROSSING on the board and a CONNECTION here, so we can read a file as
+     * joined that is separated in the tool that wrote it.
+     *
+     * This is the same distinction the schematic viewer's corpus gate calls
+     * class G, arriving from the other side: there we must not DRAW a branch
+     * without a dot, here we must not READ one.
+     *
+     * It is reported and not acted on. Dropping those unions would lose
+     * connections wherever the author's tool did imply them, and losing a
+     * connection silently is the failure this importer already prefers to
+     * avoid (see the bus note). The reader is told the count and where.
+     */
+    const dots = new Set();
+
     // -- geometry first, so every pin has something to land on ------
     for (const raw of sheet.shape) {
       const s = String(raw);
@@ -653,6 +676,7 @@ export function importEasyEda(text) {
         case 'J':                                    // junction dot
           if (Number.isFinite(Number(f[1]))) {
             net.addPoint(Number(f[1]), Number(f[2])); anchor(Number(f[1]), Number(f[2]));
+            dots.add(`${Number(f[1])},${Number(f[2])}`);
           }
           break;
         case 'N': {                                  // net label
@@ -690,6 +714,15 @@ export function importEasyEda(text) {
       for (const p of c.pins) net.addPoint(p.x, p.y);
     }
     net.solve();
+    const pinPoints = new Set();
+    for (const c of readComponents(sheet.shape)) {
+      for (const p of c.pins) pinPoints.add(`${p.x},${p.y}`);
+    }
+    for (const t of net.tees) {
+      const k = `${t.x},${t.y}`;
+      if (dots.has(k)) continue;                 // the author drew the dot: agreed
+      (pinPoints.has(k) ? undottedPinTees : undottedWireTees).push(k);
+    }
     const live = net.liveRoots();
     for (const k of anchors) {
       const c = k.indexOf(',');
@@ -781,6 +814,17 @@ export function importEasyEda(text) {
   }
   if (!parts.length) warnings.push('No mappable components found -- is this an EasyEDA schematic (docType 5)?');
 
+  // See `dots` above: a T our solver folds in and EasyEDA would not.
+  if (undottedWireTees.length || undottedPinTees.length) {
+    const where = [...undottedWireTees, ...undottedPinTees].slice(0, 4).join(' ');
+    const parts_ = [];
+    if (undottedWireTees.length) parts_.push(`${undottedWireTees.length} wire-to-wire`);
+    if (undottedPinTees.length) parts_.push(`${undottedPinTees.length} pin-on-wire`);
+    warnings.push(`${undottedWireTees.length + undottedPinTees.length} T-joint(s) without a `
+      + `junction (${parts_.join(', ')}); EasyEDA treats these as crossings, so these `
+      + `connections exist here and not on the board -- at ${where}`
+      + (undottedWireTees.length + undottedPinTees.length > 4 ? ' ...' : ''));
+  }
   warnings.push(`geometry: ${attached}/${pinCount} mapped pins landed on a net `
     + `(${nets} nets, ${labels} labels)`);
   if (floating) warnings.push(`${floating} pin(s) touch no wire, junction or label`);

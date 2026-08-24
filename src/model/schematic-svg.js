@@ -93,7 +93,7 @@ export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts
   });
   const p = projectSchematic(normalizedParts, netList);
   const boundsFor = s => {
-    if (shapeFor(s.kind, s.params || {})) {
+    if (!s.generic && shapeFor(s.kind, s.params || {})) {
       return {left: s.x - 25, right: s.x + 25, top: s.y - 22, bottom: s.y + 22};
     }
     const halfH = Math.max(20, ((Math.max(1, s.pinsPerSide || 1) - 1) * 18) / 2 + 16);
@@ -151,7 +151,9 @@ export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts
       + esc(label.text) + '</text></g>');
   }
   for (const s of p.symbols || []) {
-    const art = shapeFor(s.kind, s.params || {});
+    // `s.generic` is the projection's ruling that this kind's artwork does
+    // not reach this instance's pins; see artReachesPins.
+    const art = s.generic ? null : shapeFor(s.kind, s.params || {});
     const bits = [];
     if (art) {
       for (const p of art.paths) {

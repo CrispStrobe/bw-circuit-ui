@@ -23,6 +23,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 await import(path.join(here, '..', 'test', '_setup.js'));
 const { Circuit, resetIds } = await import(path.join(here, '..', 'src', 'model', 'circuit.js'));
 const { projectSchematic } = await import(path.join(here, '..', 'src', 'model', 'schematic-projection.js'));
+const { shapeFor } = await import(path.join(here, '..', 'src', 'model', 'schematic-symbols.js'));
 
 const INFRA_KINDS = new Set([
     'breadboard', 'breadboard_full', 'breadboard_half', 'breadboard_mini', 'meter',
@@ -445,6 +446,212 @@ function mixedRouting (projection) {
     return [...copper].filter((n) => labelled.has(n));
 }
 
+
+// ── a symbol's OWN copper, read INDEPENDENTLY of the projection ───────────
+//
+// Classes A-P all measure `projection.wires`. A symbol's strokes are drawn by
+// the two renderers straight from schematic-symbols.js and never appear
+// there, so no class up to P could see any of them — and 403 drawn pins
+// across 109 shipped circuits sat where their symbol's artwork does not
+// reach. `disp-sevenseg/circuit.json` draws a digit outline with two
+// whiskers at y=0 and lands EIGHT wires on eight points that touch no copper.
+//
+// This reader shares the shape TABLE with the fix (there is only one) and
+// shares no CODE with it: the path parser below is separate from
+// `artCopper()` in schematic-symbols.js on purpose, so a gate cannot be green
+// because the fix and the check make the same mistake. It mirrors what
+// schematic-svg.js and SchematicPanel.jsx actually draw, including their
+// `s.generic` branch.
+
+/** The `d` subset the symbol table writes. Arcs contribute no chord. */
+function dSegments (d) {
+    const t = String(d).trim().split(/[\s,]+/);
+    const out = [];
+    let i = 0, cur = null, start = null;
+    while (i < t.length) {
+        const c = t[i++];
+        if (c === 'M') { cur = {x: +t[i++], y: +t[i++]}; start = cur; }
+        else if (c === 'L') { const q = {x: +t[i++], y: +t[i++]}; if (cur) out.push([cur, q]); cur = q; }
+        else if (c === 'Q') { i += 2; const q = {x: +t[i++], y: +t[i++]}; if (cur) out.push([cur, q]); cur = q; }
+        else if (c === 'T') { const q = {x: +t[i++], y: +t[i++]}; if (cur) out.push([cur, q]); cur = q; }
+        else if (c === 'A') { i += 5; cur = {x: +t[i++], y: +t[i++]}; }
+        else if (c === 'Z') { if (cur && start) out.push([cur, start]); cur = start; }
+        else i++;
+    }
+    return out;
+}
+
+/** Every stroke a symbol group contains, in PAGE coordinates. */
+function symbolCopper (sym) {
+    const art = sym.generic ? null : shapeFor(sym.kind, sym.params || {});
+    const out = [];
+    const push = (a, b) => out.push([{x: a.x + sym.x, y: a.y + sym.y}, {x: b.x + sym.x, y: b.y + sym.y}]);
+    if (art) {
+        for (const p of art.paths || []) for (const [a, b] of dSegments(typeof p === 'string' ? p : p.d)) push(a, b);
+        for (const c of art.circles || []) {
+            push({x: c.cx - c.r, y: c.cy}, {x: c.cx, y: c.cy - c.r});
+            push({x: c.cx, y: c.cy - c.r}, {x: c.cx + c.r, y: c.cy});
+            push({x: c.cx + c.r, y: c.cy}, {x: c.cx, y: c.cy + c.r});
+            push({x: c.cx, y: c.cy + c.r}, {x: c.cx - c.r, y: c.cy});
+        }
+    } else {
+        // The generic labelled box, as both renderers build it.
+        const pins = sym.pins || [];
+        const perSide = Math.max(1, sym.pinsPerSide || Math.ceil(pins.length / 2));
+        const halfH = Math.max(20, ((perSide - 1) * 18) / 2 + 16);
+        push({x: -26, y: -halfH}, {x: 26, y: -halfH});
+        push({x: 26, y: -halfH}, {x: 26, y: halfH});
+        push({x: 26, y: halfH}, {x: -26, y: halfH});
+        push({x: -26, y: halfH}, {x: -26, y: -halfH});
+        for (const pin of pins) {
+            push({x: pin.side === 'left' ? -26 : 26, y: pin.y - sym.y}, {x: pin.x - sym.x, y: pin.y - sym.y});
+        }
+    }
+    return out;
+}
+
+const pointToSeg = (p, [a, b]) => {
+    const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy;
+    const t = L === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L));
+    return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+};
+
+/**
+ * CLASS Q — a drawn pin the symbol's own artwork does not reach.
+ *
+ * The wire arrives; there is nothing there to arrive AT. A reader sees a wire
+ * ending in blank space beside the part, which is the plainest possible way
+ * for a drawing to be wrong and the one no class before P was looking for.
+ */
+function orphanPins (projection) {
+    const out = [];
+    for (const sym of projection.symbols) {
+        if (INFRA_KINDS.has(sym.kind)) continue;
+        const copper = symbolCopper(sym);
+        if (!copper.length) continue;
+        for (const pin of sym.pins || []) {
+            if (!copper.some((seg) => pointToSeg(pin, seg) <= 1.5)) {
+                out.push({sym: sym.id, kind: sym.kind, pin: pin.name, x: pin.x, y: pin.y});
+            }
+        }
+    }
+    return out;
+}
+
+/**
+ * CLASS Q2 — a symbol lead END, outside the body, that reaches no pin.
+ *
+ * Measured and DISPROVED as a defect rather than reported as one. All 44 in
+ * the corpus are honest: a two- or three-terminal part with a terminal the
+ * circuit does not use (`74-ammeter`'s potentiometer leaves `b` open, a slide
+ * switch uses one throw), and drawing the unused lead is how a schematic says
+ * so. It carries a ratchet instead of a zero.
+ */
+function orphanLeads (projection) {
+    const out = [];
+    for (const sym of projection.symbols) {
+        if (INFRA_KINDS.has(sym.kind)) continue;
+        const copper = symbolCopper(sym);
+        for (const seg of copper) {
+            for (const end of seg) {
+                if (Math.abs(end.x - sym.x) < 25 && Math.abs(end.y - sym.y) < 22) continue;
+                if ((sym.pins || []).some((p) => Math.hypot(p.x - end.x, p.y - end.y) < 1.5)) continue;
+                if (copper.some((o) => o !== seg && pointToSeg(end, o) < 0.5)) continue;
+                out.push({sym: sym.id, kind: sym.kind, x: end.x, y: end.y});
+            }
+        }
+    }
+    return out;
+}
+
+/**
+ * CLASS R — a junction dot whose DRAWN DISC covers a foreign conductor.
+ *
+ * Class F asks whether a dot sits exactly on a foreign meet. The dot is drawn
+ * `r=2.4` (schematic-svg.js), which is larger than the 2px pin clearance and
+ * three times the 0.75px contact tolerance, so a dot 2px from another net's
+ * copper is a filled blob touching it. Measured and found clean: 0 / 2098.
+ */
+function fatJunctions (projection, segs) {
+    const out = [];
+    for (const j of projection.junctions || []) {
+        const own = new Set(segs.filter((s) => pointToSeg(j, [s.a, s.b]) < 0.75).map((s) => s.netId));
+        for (const s of segs) {
+            if (own.has(s.netId)) continue;
+            const d = pointToSeg(j, [s.a, s.b]);
+            if (d >= 0.75 && d < 2.4) out.push({x: j.x, y: j.y, other: s.netId, d});
+        }
+    }
+    return out;
+}
+
+/**
+ * CLASS S — a conductor TOUCHING a foreign symbol's own copper.
+ *
+ * Class L is this test against another net's WIRES. The router knew nothing
+ * about symbol copper at all — it avoided body boxes and foreign pins and
+ * nothing else — so a route could end on a lead. Seven shipped circuits did:
+ * `74-ammeter` draws a potentiometer whose unconnected `b` lead ends at
+ * (300,163) and another net's wire ends on that exact point, which reads as
+ * that net joined to the pot's third terminal.
+ *
+ * Contact only. A wire CROSSING a symbol lead at a proper X is the same legal
+ * crossing it is anywhere else.
+ */
+function symbolContact (projection, segs) {
+    const out = [];
+    const copper = [];
+    for (const sym of projection.symbols) {
+        if (INFRA_KINDS.has(sym.kind)) continue;
+        const nets = new Set((sym.pins || []).map((p) => p.netId));
+        for (const seg of symbolCopper(sym)) copper.push({seg, sym: sym.id, nets});
+    }
+    for (const s of segs) {
+        for (const {seg, sym, nets} of copper) {
+            if (nets.has(s.netId)) continue;
+            const [a, b] = seg;
+            const contacts = pointToSeg(s.a, seg) < 0.75 || pointToSeg(s.b, seg) < 0.75 ||
+                pointToSeg(a, [s.a, s.b]) < 0.75 || pointToSeg(b, [s.a, s.b]) < 0.75;
+            if (contacts) { out.push({sym, net: s.netId}); break; }
+        }
+    }
+    return out;
+}
+
+/**
+ * CLASS T — a drawn pin whose netId disagrees with the SOLVER's net.
+ *
+ * Every class from I onward compares a wire's `netId` with a pin's `netId`,
+ * and BOTH are written by the projection. That is the projection checked
+ * against itself. This one compares the drawn pin against `resolvedNets`,
+ * which is the engine's answer, and closes the loop. Clean: 0 / 2098.
+ */
+function pinNetDisagreement (projection, nets) {
+    const truth = new Map();
+    for (const n of nets) {
+        for (const t of n.terminals || []) truth.set(tKey(t.part || t.partId, t.terminal), n.id);
+    }
+    const out = [];
+    for (const sym of projection.symbols) {
+        if (INFRA_KINDS.has(sym.kind) || sym.id === IMPLICIT_GND) continue;
+        for (const pin of sym.pins || []) {
+            const want = truth.get(tKey(sym.id, pin.name));
+            if (want !== undefined && pin.netId !== want) {
+                out.push({pin: tKey(sym.id, pin.name), drawn: pin.netId, solver: want});
+            }
+        }
+    }
+    return out;
+}
+
+/** Q, R, S, T callable on a projection alone (mutation proofs). */
+export function orphanPinsOf (projection) { return orphanPins(projection); }
+export function orphanLeadsOf (projection) { return orphanLeads(projection); }
+export function fatJunctionsOf (projection) { return fatJunctions(projection, segmentsOf(projection)); }
+export function symbolContactOf (projection) { return symbolContact(projection, segmentsOf(projection)); }
+export function pinNetDisagreementOf (projection, nets) { return pinNetDisagreement(projection, nets); }
+export function symbolCopperOf (symbol) { return symbolCopper(symbol); }
+
 // ── per-circuit analysis ──────────────────────────────────────────────────
 
 export function analyse (file) {
@@ -503,7 +710,13 @@ export function analyse (file) {
 
     const geo = crossingsAndJunctions(proj);
     const contact = foreignContact(proj);
+    const segs = segmentsOf(proj);
     return {
+        orphanPins: orphanPins(proj),
+        orphanLeads: orphanLeads(proj),
+        fatJunctions: fatJunctions(proj, segs),
+        symbolContact: symbolContact(proj, segs),
+        pinNetDisagreement: pinNetDisagreement(proj, nets),
         drops, invents, unresolvedPins, droppedParts, undrawnNets,
         foreignCrossWithDot: geo.foreignCrossWithDot,
         wireThroughPin: wireThroughForeignPin(proj, idx),
@@ -567,6 +780,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         ['N two nets collinear within 4px', (r) => r.parallelMerge.length],
         ['O connected terminal with no drawn pin', (r) => r.missingPins.length],
         ['P label leader touching a foreign conductor', (r) => r.leaderContact.length],
+        ['Q drawn pin the symbol art does not reach', (r) => r.orphanPins.length],
+        ['Q2 symbol lead reaching no pin (ratchet)', (r) => r.orphanLeads.length],
+        ['R junction dot disc covering foreign copper', (r) => r.fatJunctions.length],
+        ['S conductor touching foreign symbol copper', (r) => r.symbolContact.length],
+        ['T drawn pin netId disagrees with the solver', (r) => r.pinNetDisagreement.length],
     ];
     if (process.argv.includes('--json')) {
         console.log(JSON.stringify({ root, discovered: files.length, errored, rows }, null, 1));
@@ -582,13 +800,15 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const score = (r) => r.drops.length + r.undrawnNets.length + r.droppedParts.length +
             r.foreignCrossWithDot.length + r.invents.length + r.wireThroughPin.length + r.unresolvedPins.length +
             r.foreignTees.length + r.foreignCorners.length + r.parallelMerge.length + r.missingPins.length +
-            r.leaderContact.length;
+            r.leaderContact.length + r.orphanPins.length + r.fatJunctions.length +
+            r.symbolContact.length + r.pinNetDisagreement.length;
         for (const r of ok.filter((r) => score(r) > 0).sort((a, b) => score(b) - score(a)).slice(0, 15)) {
             console.log(`  ${String(score(r)).padStart(5)}  ${r.id}  ` +
                 `[A=${r.drops.length} B=${r.invents.length} C=${r.unresolvedPins.length} D=${r.droppedParts.length} ` +
                 `E=${r.undrawnNets.length} F=${r.foreignCrossWithDot.length} I=${r.wireThroughPin.length} ` +
                 `L=${r.foreignTees.length} M=${r.foreignCorners.length} N=${r.parallelMerge.length} ` +
-                `O=${r.missingPins.length} P=${r.leaderContact.length}]`);
+                `O=${r.missingPins.length} P=${r.leaderContact.length} Q=${r.orphanPins.length} ` +
+                `R=${r.fatJunctions.length} S=${r.symbolContact.length} T=${r.pinNetDisagreement.length}]`);
         }
         if (errored) {
             console.log('\nErrored:');

@@ -21,7 +21,8 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { BASELINE_CASES, CLASS_I_WORST, CONTACT_WORST, MISSING_PIN_EXEMPLAR,
+import { BASELINE_CASES, CLASS_I_WORST, CONTACT_WORST, ART_FIT_WORST,
+  SYMBOL_CONTACT_EXEMPLAR, MISSING_PIN_EXEMPLAR,
   BASELINE_DIR, renderCircuitFile } from '../scripts/render-schematic.mjs';
 import { discover, analyse } from '../scripts/schematic-audit.mjs';
 
@@ -43,12 +44,14 @@ describe('reviewed schematic baselines', () => {
     assert.notEqual(examplesRoot, null,
       `Corpus absent. Tried:\n  ${CORPUS_ROOTS.join('\n  ')}\nA baseline gate that cannot `
       + 'render must not report green.');
-    // Three groups, because there have been two audit passes and one exemplar
-    // class — see docs/SCHEMATIC-AUDIT.md §10.
+    // Five groups, because there have been three audit passes and two
+    // exemplar classes — see docs/SCHEMATIC-AUDIT.md §10 and §16.
     assert.equal(CLASS_I_WORST.length, 10, 'the first pass named ten worst circuits');
     assert.equal(CONTACT_WORST.length, 10, 'the second pass named ten worst circuits');
+    assert.equal(ART_FIT_WORST.length, 10, 'the third pass named ten worst circuits');
+    assert.equal(SYMBOL_CONTACT_EXEMPLAR.length, 1, 'class S is represented by one exemplar');
     assert.equal(MISSING_PIN_EXEMPLAR.length, 1, 'class O is represented by one exemplar');
-    assert.equal(BASELINE_CASES.length, 21, 'every group must be in the gated set');
+    assert.equal(BASELINE_CASES.length, 32, 'every group must be in the gated set');
   });
 
   test('every baselined circuit still exists in the corpus', () => {

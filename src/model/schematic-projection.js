@@ -15,7 +15,7 @@
  * @module
  */
 
-import { shapeFor } from './schematic-symbols.js';
+import { shapeFor, artReachesPins, artCopper } from './schematic-symbols.js';
 
 const COL_W = 150;
 const ROW_H = 110;
@@ -201,8 +201,8 @@ export function projectSchematic(parts, nets) {
     const terms = connectedTerms(p);
     const perSide = Math.ceil(terms.length / 2);
     const art = shapeFor(p.kind, p.params ?? {});
-    const pins = terms.map((name, i) => {
-      const anchor = art?.anchors?.[String(name).toLowerCase()];
+    const layOut = (useAnchors) => terms.map((name, i) => {
+      const anchor = useAnchors ? art?.anchors?.[String(name).toLowerCase()] : null;
       if (anchor) {
         return {
           name,
@@ -229,10 +229,21 @@ export function projectSchematic(parts, nets) {
         y: y + offset * PIN_PITCH,
       };
     });
+    // Artwork is used only if it REACHES every pin. A symbol description
+    // carries its leads at fixed local coordinates; the projection places
+    // pins on its own grid, and the two coincide only for a two-terminal
+    // part with leads at y=0 or where the art declares `anchors`. Where they
+    // do not, the drawing lands a wire on blank space beside the part —
+    // measured at 403 pins across 109 shipped circuits — so the labelled
+    // generic box takes over, which draws a lead to every pin by
+    // construction. See artReachesPins in schematic-symbols.js.
+    let pins = layOut(true);
+    const generic = !art || !artReachesPins(art, pins.map(pin => ({x: pin.x - x, y: pin.y - y})));
+    if (generic && art) pins = layOut(false);
     symbols.push({
       id: p.id, kind: p.kind, label: p.declName || p.id,
       params: p.params ?? {}, col, row, x, y, pins,
-      pinsPerSide: perSide,
+      pinsPerSide: perSide, generic,
     });
   }
 
@@ -258,6 +269,7 @@ export function projectSchematic(parts, nets) {
         x, y,
         pins: [{name: 'gnd', netId: groundNetId, side: 'left', x: x - PIN_HALF, y}],
         pinsPerSide: 1,
+        generic: !artReachesPins(shapeFor('gnd', {}), [{x: -PIN_HALF, y: 0}]),
       });
     }
   }
@@ -340,7 +352,7 @@ export function projectSchematic(parts, nets) {
     registerConductor({x: pin.x, y: pin.y}, {x: x2, y: y2}, r.netId);
   };
   const bodyBounds = (s) => {
-    const art = shapeFor(s.kind, s.params);
+    const art = s.generic ? null : shapeFor(s.kind, s.params);
     if (art) return {left: s.x - 25, right: s.x + 25, top: s.y - 22, bottom: s.y + 22};
     const halfH = Math.max(20, ((Math.max(1, s.pinsPerSide) - 1) * PIN_PITCH) / 2 + 16);
     return {left: s.x - 26, right: s.x + 26, top: s.y - halfH, bottom: s.y + halfH};
@@ -430,6 +442,56 @@ export function projectSchematic(parts, nets) {
       push(vByEndY, seg.y1, seg); push(vByEndY, seg.y2, seg);
     }
   };
+  // A SYMBOL's own copper is a conductor too, and until now the router could
+  // not see any of it: everything it avoided came out of `projection.wires`,
+  // and a symbol's strokes are drawn by the two renderers straight from
+  // schematic-symbols.js. So a route could END on one. Measured over the
+  // 2,098 shipped circuits: 7 do, all the same shape — `74-ammeter` draws a
+  // potentiometer whose `b` terminal is UNCONNECTED, so its zigzag lead ends
+  // at (300,163) with no pin, and another net's wire ends on exactly that
+  // point. A reader sees that net joined to the pot's third terminal; the
+  // solver has them apart.
+  //
+  // Only the parts of a symbol that stick OUT of its body box are registered:
+  // interior strokes are already unreachable, because every route avoids the
+  // box. A lead that ends at one of the symbol's own pins is registered under
+  // that pin's net, so the net's own stub may meet it (that is what a stub is
+  // for); a lead that ends at no pin gets a sentinel net id, which matches
+  // nothing and is therefore foreign to everyone.
+  const SYMBOL_NET = '\u0000symbol';
+  const symbolLeads = (s) => {
+    const art = s.generic ? null : shapeFor(s.kind, s.params);
+    const box = bodyBounds(s);
+    const out = [];
+    const consider = (a, b) => {
+      const outside = (p) => p.x < box.left - 0.5 || p.x > box.right + 0.5 ||
+        p.y < box.top - 0.5 || p.y > box.bottom + 0.5;
+      if (!outside(a) && !outside(b)) return;
+      let netId = SYMBOL_NET;
+      for (const pin of s.pins) {
+        if (Math.hypot(pin.x - a.x, pin.y - a.y) <= 1.5 || Math.hypot(pin.x - b.x, pin.y - b.y) <= 1.5) {
+          netId = pin.netId || SYMBOL_NET;
+          break;
+        }
+      }
+      out.push([a, b, netId]);
+    };
+    if (art) {
+      for (const [a, b] of artCopper(art)) {
+        consider({x: s.x + a.x, y: s.y + a.y}, {x: s.x + b.x, y: s.y + b.y});
+      }
+    } else {
+      for (const pin of s.pins) {
+        const edgeX = pin.side === 'left' ? s.x - 26 : s.x + 26;
+        consider({x: edgeX, y: pin.y}, {x: pin.x, y: pin.y});
+      }
+    }
+    return out;
+  };
+  for (const s of symbols) {
+    for (const [a, b, netId] of symbolLeads(s)) registerConductor(a, b, netId);
+  }
+
   const registerRoute = (route) => {
     const segments = route.segments || [
       [{x: route.trunk.x, y: route.trunk.y1}, {x: route.trunk.x, y: route.trunk.y2}],

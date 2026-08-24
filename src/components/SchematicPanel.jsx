@@ -29,7 +29,10 @@ function Symbol({ s }) {
   // One description, two renderers: this and schematic-svg.js's headless one
   // both draw shapeFor(). When they each had their own switch, artwork added
   // to one silently missed the other.
-  const art = shapeFor(kind, params || {});
+  // `s.generic`: the projection ruled this kind's artwork does not reach
+  // this instance's pins, so the labelled box — which draws a lead to every
+  // pin by construction — is the honest symbol. See artReachesPins.
+  const art = s.generic ? null : shapeFor(kind, params || {});
   if (art) {
     const val = art.value === 'ohms' ? (params.ohms != null ? fmtOhms(params.ohms) : '')
       : art.value === 'farads' ? (params.farads != null ? fmtFarads(params.farads) : '')

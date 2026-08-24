@@ -34,6 +34,18 @@ const { renderSchematicSvg } = await import(path.join(ROOT, 'src', 'model', 'sch
  * different circuits: the class-I defect lived in dense DIP drawings, and this
  * one lives wherever obstacleRoute sent several detours round one column.
  *
+ * ART_FIT_WORST — the third pass's ten worst, by class Q (a drawn pin the
+ * symbol's OWN artwork does not reach). Different circuits again, and for a
+ * different reason: this defect follows the PART, not the routing, so it
+ * lives wherever a multi-terminal kind has bespoke two-lead artwork —
+ * seven-segment displays, op-amps, RGB LEDs, relays. Ranks 4-10 are a tie at
+ * 8 across near-identical `disp-sevenseg` MCU variants; they are kept because
+ * the ranking is the ranking, and the tie is stated rather than smoothed.
+ *
+ * SYMBOL_CONTACT_EXEMPLAR — class S, all 7 of which are one shape:
+ * `74-ammeter` draws a potentiometer wired as a rheostat, so its `b` lead
+ * ends at (300,163) with no pin, and another net's wire ended on that point.
+ *
  * MISSING_PIN_EXEMPLAR — class O. Ten of these would be ten copies of one
  * drawing: EVERY class-O circuit has the same shape, a seated MCU whose
  * declared terminal list omits the power pins its seat.leadMap wires up, so
@@ -66,11 +78,29 @@ export const CONTACT_WORST = [
     ['arduino-05-arrays/circuit.json', 'arduino-05-arrays.svg'],
 ];
 
+export const ART_FIT_WORST = [
+    ['78-a2-calculator/circuit.json', '78-a2-calculator.svg'],
+    ['76-multimeter/circuit-flat.json', '76-multimeter-flat.svg'],
+    ['76-multimeter/circuit.json', '76-multimeter.svg'],
+    ['disp-sevenseg/circuit.arduino-mega.json', 'disp-sevenseg.arduino-mega.svg'],
+    ['disp-sevenseg/circuit.arduino-nano.json', 'disp-sevenseg.arduino-nano.svg'],
+    ['disp-sevenseg/circuit.arduino-uno.json', 'disp-sevenseg.arduino-uno.svg'],
+    ['disp-sevenseg/circuit.atmega168p.json', 'disp-sevenseg.atmega168p.svg'],
+    ['disp-sevenseg/circuit.attiny88.json', 'disp-sevenseg.attiny88.svg'],
+    ['disp-sevenseg/circuit.json', 'disp-sevenseg.svg'],
+    ['disp-sevenseg/circuit.pico.json', 'disp-sevenseg.pico.svg'],
+];
+
+export const SYMBOL_CONTACT_EXEMPLAR = [
+    ['74-ammeter/circuit.json', '74-ammeter.svg'],
+];
+
 export const MISSING_PIN_EXEMPLAR = [
     ['01-blink/circuit.attiny88.json', '01-blink.attiny88.svg'],
 ];
 
-export const BASELINE_CASES = [...CLASS_I_WORST, ...CONTACT_WORST, ...MISSING_PIN_EXEMPLAR];
+export const BASELINE_CASES = [...CLASS_I_WORST, ...CONTACT_WORST, ...ART_FIT_WORST,
+    ...SYMBOL_CONTACT_EXEMPLAR, ...MISSING_PIN_EXEMPLAR];
 
 export const BASELINE_DIR = path.join(ROOT, 'docs', 'schematic-baselines');
 
