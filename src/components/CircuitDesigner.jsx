@@ -1047,6 +1047,52 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // the numbers would be fabricated, which is worse than absent.
   const effectiveNodeVoltages = hasSimulation ? nodeVoltages : {};
 
+
+  // DRC, memoized on TOPOLOGY + a warnings content stamp. This ran as an
+  // IIFE on every render, so the 10 Hz renderState tick re-ran the full
+  // DRC sweep (deriveNets showed in the run-mode CPU profile). `warnings`
+  // is rebuilt per render, so the stamp — not the array identity — is the
+  // honest key; engine warnings rarely change, so the memo holds through
+  // run-time ticks and re-runs on any edit via rev.
+  const warnStamp = warnings.map(w => `${w.type || ''}:${w.partId || ''}:${(w.message || '').length}`).join('|');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const drcWarningsMemo = React.useMemo(() => {
+    try {
+      const drc = runDrc(circuit, circuit.board);
+      if (circuit.netlistError) {
+        drc.unshift({
+          severity: 'error',
+          rule: 'netlist-rejected',
+          partId: parts[0]?.id,
+          explanation: `The engine rejected this circuit — the board is ` +
+            `inactive until this is fixed: ${circuit.netlistError}`,
+        });
+      }
+      for (const w of warnings) {
+        if (w.partIds && w.partIds.length > 0) {
+          for (const pid of w.partIds) {
+            drc.push({
+              severity: w.severity || 'warning',
+              rule: w.type || 'engine',
+              partId: pid,
+              explanation: w.message,
+              unratedIds: w.unratedIds,
+            });
+          }
+        } else {
+          drc.push({
+            severity: w.severity || 'warning',
+            rule: w.type || 'engine',
+            partId: w.partId || parts.find(p => p.kind === 'mcu')?.id || parts[0]?.id,
+            explanation: w.message,
+          });
+        }
+      }
+      const partIds = new Set(parts.map(p => p.id));
+      return drc.filter(w => !w.partId || partIds.has(w.partId));
+    } catch (e) { return []; }
+  }, [rev, parts, circuit, warnStamp]);
+
   let statusText = null;
   if (!hasSimulation && externalBoard) {
     statusText = 'HARDWARE — voltage/current readings need the simulator';
@@ -1373,46 +1419,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             };
             input.click();
           }}
-          drcWarnings={(() => {
-            try {
-              const drc = runDrc(circuit, circuit.board);
-              if (circuit.netlistError) {
-                drc.unshift({
-                  severity: 'error',
-                  rule: 'netlist-rejected',
-                  partId: parts[0]?.id,
-                  explanation: `The engine rejected this circuit — the board is ` +
-                    `inactive until this is fixed: ${circuit.netlistError}`,
-                });
-              }
-              // Merge bw-board engine warnings (from getWarnings/renderState)
-              for (const w of warnings) {
-                if (w.partIds && w.partIds.length > 0) {
-                  for (const pid of w.partIds) {
-                    drc.push({
-                      severity: w.severity || 'warning',
-                      rule: w.type || 'engine',
-                      partId: pid,
-                      explanation: w.message,
-                      unratedIds: w.unratedIds,
-                    });
-                  }
-                } else {
-                  drc.push({
-                    severity: w.severity || 'warning',
-                    rule: w.type || 'engine',
-                    partId: w.partId || parts.find(p => p.kind === 'mcu')?.id || parts[0]?.id,
-                    explanation: w.message,
-                  });
-                }
-              }
-              // Phantom guard: strip warnings referencing parts that are
-              // not in the current circuit — an inference-over-example race
-              // could leave phantom "mcu1" warnings on an eater6502 bench.
-              const partIds = new Set(parts.map(p => p.id));
-              return drc.filter(w => !w.partId || partIds.has(w.partId));
-            } catch { return []; }
-          })()}
+          drcWarnings={drcWarningsMemo}
           panelNav={panelNav}
           rightOpen={rightOpen}
           lang={lang}

@@ -2882,6 +2882,15 @@ export function BoardCanvas({
   const seatStamp = parts.map(p => `${p.id}:${p.x},${p.y},${p.rotation || 0}:${p.flipped ? 'f' : ''}:${p.seat ? `${p.seat.boardId}|${Object.values(p.seat.leadMap || {}).join(',')}` : ''}:${p.kind === 'breadboard' ? (p.params?.size || 'full') : ''}`).join(';');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   parts = React.useMemo(() => resolveSeatedParts(parts), [seatStamp]);
+  // Footprints too: `footprint={bbFootprint(bb)}` minted a fresh object
+  // per render, silently defeating BreadboardView's React.memo — the
+  // profile still showed stripOf/HoleGrid burning 0.6 s after the first
+  // memoization pass. Same value-stamp key as the resolution above.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const bbFootprints = React.useMemo(
+    () => new Map(parts.filter(p => p.kind === 'breadboard').map(bb => [bb.id, bbFootprint(bb)])),
+    [parts]
+  );
   const circuitRef = useRef(null); circuitRef.current = circuit;
   const [placeGhost, setPlaceGhost] = useState(null);
   const [dragLegs, setDragLegs] = useState(null); // hole highlights while dragging an existing part
@@ -4220,7 +4229,7 @@ export function BoardCanvas({
           {parts.filter(p => p.kind === 'breadboard').map(bb => (
             <BreadboardView key={bb.id} part={bb}
               model={circuit?.breadboards?.get(bb.id)}
-              footprint={bbFootprint(bb)}
+              footprint={bbFootprints.get(bb.id)}
               selectedPartId={selectedParts?.size === 1 ? [...selectedParts][0] : null} />
           ))}
 

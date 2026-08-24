@@ -11,7 +11,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-const THROTTLE_MS = 50; // 20 Hz max render rate
+// 10 Hz: at 20 Hz the renderState tick was the main thread's biggest
+// customer during an emulator run — the instruments read fine at 10 Hz
+// and the reclaimed frames go to the emulator (press-to-pixel latency
+// is the user-felt metric this serves).
+const THROTTLE_MS = 100; // 10 Hz max render rate
 
 /**
  * @param {object} board — a BoardImpl instance
