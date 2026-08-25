@@ -262,6 +262,13 @@ function parseText(f) {
 }
 
 function parseCopperArea(f, warnings) {
+  // Field 10 is EasyEDA's own computed fill: a JSON array of SVG path
+  // strings. ONE PATH STRING IS ONE EVEN-ODD REGION — its subpaths are the
+  // filled outline plus its carve-out HOLES (the clearance around other
+  // nets). Flattening the subpaths into independent rings would turn every
+  // hole back into copper and short the pour to everything it was carved
+  // AWAY from. So fills is an array of GROUPS: one array of rings per path
+  // string, even-odd semantics, never flattened.
   let fills = null;
   if (f[10]) {
     try {
@@ -272,7 +279,8 @@ function parseCopperArea(f, warnings) {
           const paths = Array.isArray(entry) ? entry : [entry];
           for (const p of paths) {
             if (typeof p !== 'string') continue;
-            for (const sp of parsePath(p)) fills.push(subpathToRing(sp));
+            const rings = parsePath(p).map((sp) => subpathToRing(sp)).filter((r) => r.length >= 3);
+            if (rings.length) fills.push(rings);
           }
         }
       }
@@ -550,7 +558,7 @@ export function importEasyEdaPcb(text) {
     outline: mmPts(c.outline),
     clearance: mmLen(c.clearance),
     fillStyle: c.fillStyle, thermal: c.thermal, keepIsland: c.keepIsland,
-    fills: c.fills ? c.fills.map(mmPts) : null,
+    fills: c.fills ? c.fills.map((group) => group.map(mmPts)) : null,
     fillFromFile: !!(c.fills && c.fills.length),
     id: c.id,
   }));

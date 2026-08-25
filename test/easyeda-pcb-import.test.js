@@ -172,9 +172,12 @@ describe('mini fixture — the partition, in millimetres, computed first', () =>
     assert.equal(c.net, 'GND');
     assert.equal(c.layer, 'bottom');
     assert.equal(c.fillFromFile, true);
+    // fills[group][ring][point]: one path string = one even-odd group whose
+    // later rings are HOLES, so the grouping is load-bearing, not cosmetic.
     assert.equal(c.fills.length, 1);
-    close(c.fills[0][0][0], 15.24);
-    close(c.fills[0][0][1], 11.43);
+    assert.equal(c.fills[0].length, 1);
+    close(c.fills[0][0][0][0], 17.78);
+    close(c.fills[0][0][0][1], 11.43);
     close(c.clearance, 0.8 * 0.254);
   });
 
