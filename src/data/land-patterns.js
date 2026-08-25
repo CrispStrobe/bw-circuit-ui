@@ -135,6 +135,31 @@ export const LAND_PATTERNS = {
       silk: [{ kind: 'rect', x: -6.35, y: -3, w: 12.7, h: 6 }],
     },
   },
+  stm32f030: {
+    'tssop-20': (() => {
+      // TSSOP-20: 0.65 mm pitch, 6.4 mm lead span (IPC-7351 nominal lands
+      // 0.45 x 1.35 at x = ±2.85). Terminal names in physical pin order
+      // from the engine's STM32F030_TERMINALS (bw-board 7de7f8a; ST DS9773
+      // Table 11): vss/vdd spelled gnd/vcc per the bare-chip convention,
+      // vcc2 = VDDA. Pins 1-10 down the left, 20-11 down the right.
+      const T = ['boot0', 'pf0', 'pf1', 'nrst', 'vcc2', 'pa0', 'pa1', 'pa2', 'pa3', 'pa4',
+        'pa5', 'pa6', 'pa7', 'pb1', 'gnd', 'vcc', 'pa9', 'pa10', 'pa13', 'pa14'];
+      const pads = [];
+      for (let i = 0; i < 10; i++) {
+        pads.push(smd(i + 1, T[i], -2.85, 2.925 - i * 0.65, 1.35, 0.45));
+      }
+      for (let i = 10; i < 20; i++) {
+        pads.push(smd(i + 1, T[i], 2.85, -2.925 + (i - 10) * 0.65, 1.35, 0.45));
+      }
+      return {
+        description: 'TSSOP-20, 0.65 mm pitch (STM32F030F4P6)',
+        pads,
+        courtyard: { w: 7.8, h: 7.0 },
+        silk: [{ kind: 'rect', x: -2.2, y: -3.25, w: 4.4, h: 6.5 }],
+        pin1: { x: -2.85, y: 2.925 },
+      };
+    })(),
+  },
   header: {
     '1x2': header1xN(2),
     '1x3': header1xN(3),
@@ -179,6 +204,7 @@ export const PACKAGE_KIND_RULES = [
   { match: /^DO-41|^DIODE-TH/i, kind: 'diode', variant: 'do-41' },
   { match: /OLED_4P|^HDR-1X4$|PinHeader_1x0?4(?!\d)/i, kind: 'header', variant: '1x4', params: { pins: 4 } },
   { match: /^HDR-1X(\d+)|PinHeader_1x0?(\d+)/i, kind: 'header', variantFromMatch: (m) => `1x${Number(m[1] || m[2])}`, paramsFromMatch: (m) => ({ pins: Number(m[1] || m[2]) }) },
+  { match: /STM32F030|TSSOP-?20_L6\.5-W4\.4|^TSSOP-?20$/i, kind: 'stm32f030', variant: 'tssop-20' },
   { match: /RASPBERRY PI PICO/i, kind: 'pi_pico', variant: null },
   { match: /^BAT-TH/i, kind: 'battery_aa', variant: null },
 ];

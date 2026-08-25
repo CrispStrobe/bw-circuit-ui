@@ -392,8 +392,12 @@ function mapSpicePre(pre, value, pinCount, pkg) {
       // The giveaway that this was a typo rather than a decision is the map on
       // the button branch itself — `{1:'a', 2:'b', 3:'a', 4:'b'}` describes the
       // four-pin part exactly, and was unreachable.
+      // The pins map is the fallback when the symbol's pin NAMES say
+      // nothing: an SS-12D10 drawn with bare numeric pins otherwise leaks
+      // its raw pin number as a terminal ("SW18.2"), which no other layer
+      // can name. Pin 2 is the pole on every 1P2T slide part.
       return n === 3
-        ? { kind: 'slide_switch', byName: true }
+        ? { kind: 'slide_switch', byName: true, pins: { 1: 'a', 2: 'com', 3: 'b' } }
         : { kind: 'button', pins: { 1: 'a', 2: 'b', 3: 'a', 4: 'b' } };
     case 'X':
       if (FREQ.test(v)) return { kind: 'crystal', pins: PASSIVE2 };
