@@ -76,6 +76,39 @@ function checkTerminalShorts(board, findings) {
 // ── rules 2 + 3: copper connectivity ───────────────────────────────
 
 function checkCopper(board, copper, findings) {
+  // Islands joined INSIDE a part are one node once soldered: pads sharing
+  // a terminal (via the land pattern's map, or KiCad's same-number
+  // convention) merge for the net-island verdict. This is physics, not
+  // leniency — a tact switch's unrouted twin pad is normal practice, and
+  // KiCad assigns the net to BOTH same-numbered pads while routing one;
+  // without the merge, every healthy KiCad board reads as split nets
+  // (§7.2: a warning that fires on healthy designs stops being read).
+  // copper-short stays PER PHYSICAL ISLAND: internal joins cannot excuse
+  // two nets on one piece of board copper.
+  const islandGroup = Array.from({ length: copper.islands.length }, (_, i) => i);
+  const rootOf = (i) => { let r = i; while (islandGroup[r] !== r) r = islandGroup[r]; islandGroup[i] = r; return r; };
+  const unite = (a, b) => { const ra = rootOf(a); const rb = rootOf(b); if (ra !== rb) islandGroup[ra] = rb; };
+  // Keyed by the pad's unique id: KiCad footprints legitimately carry
+  // duplicate pad NUMBERS (1,1,2,2 on a tact switch), which would collide.
+  const islandOfPad = new Map();
+  copper.islands.forEach((isl, i) => {
+    for (const p of isl.pads) if (p.padId) islandOfPad.set(p.padId, i);
+  });
+  for (const part of board.parts) {
+    const rec = recognizePackage(part.package, part.ref);
+    const pattern = rec && rec.variant ? getLandPattern(rec.kind, rec.variant) : null;
+    const byTerminal = new Map();
+    for (const pad of part.pads) {
+      const t = pattern ? (padTerminal(pattern, pad.num) ?? `num:${pad.num}`) : `num:${pad.num}`;
+      if (!byTerminal.has(t)) byTerminal.set(t, []);
+      byTerminal.get(t).push(pad);
+    }
+    for (const pads of byTerminal.values()) {
+      const islands = pads.map((p) => islandOfPad.get(p.id)).filter((i) => i !== undefined);
+      for (let i = 1; i < islands.length; i++) unite(islands[0], islands[i]);
+    }
+  }
+
   for (const island of copper.islands) {
     if (island.nets.length >= 2) {
       const byNet = new Map();
@@ -91,14 +124,22 @@ function checkCopper(board, copper, findings) {
         { nets: island.nets }));
     }
   }
-  for (const [net, islandIdx] of Object.entries(copper.netIslands)) {
-    if (islandIdx.length < 2) continue;
-    const groups = islandIdx.map((i) => copper.islands[i].pads
-      .filter((p) => p.net === net).map((p) => `${p.ref || '?'}.${p.num}`));
+  for (const [net, islandIdxAll] of Object.entries(copper.netIslands)) {
+    // Collapse to internally-merged groups before judging.
+    const byRoot = new Map();
+    for (const i of islandIdxAll) {
+      const r = rootOf(i);
+      if (!byRoot.has(r)) byRoot.set(r, []);
+      byRoot.get(r).push(i);
+    }
+    if (byRoot.size < 2) continue;
+    const islandIdx = [...byRoot.values()].map((g) => g[0]);
+    const groups = [...byRoot.values()].map((g) => g.flatMap((i) => copper.islands[i].pads
+      .filter((p) => p.net === net).map((p) => `${p.ref || '?'}.${p.num}`)));
     groups.sort((a, b) => a.length - b.length);
-    const approx = islandIdx.some((i) => copper.islands[i].approxPour);
+    const approx = islandIdxAll.some((i) => copper.islands[i].approxPour);
     findings.push(finding('danger', 'net-island', groups[0][0]?.split('.')[0] || '',
-      `Net ${net} is ${islandIdx.length} separate copper islands: `
+      `Net ${net} is ${byRoot.size} separate copper islands: `
       + groups.map((g) => `[${g.join(', ')}]`).join(' and ')
       + '. The copper never joins them.'
       + (approx ? ' (A pour without file fill is involved; connectivity is over-approximated, so the real board can only be MORE split.)' : ''),
@@ -245,6 +286,15 @@ function checkUnfinishedNets(board, findings) {
   for (const pad of board.freePads) eat(pad, pad.id);
   for (const [net, pads] of padsByNet) {
     if (pads.length === 1) {
+      // KiCad spells "this pin is unconnected" as a machine-named
+      // single-pad net -- Net-(U1-Pad20) up to v7, unconnected-(U1-...) from
+      // v8. Every IC with spare pins carries dozens; that is a statement of
+      // intent, not a missing route. The rule fires only on HUMAN-named
+      // nets (a VCC reaching one pad was meant to reach more).
+      if (/^(Net-|unconnected-)\(.+\)$/.test(net)) continue;
+      // A pour carrying the net IS its second consumer: a touch-sensor
+      // electrode is one pin plus its comb (measured, tomu's cap pads).
+      if ((board.pours || []).some((z) => z.net === net)) continue;
       findings.push(finding('warning', 'unfinished-net', pads[0].split('.')[0],
         `Net ${net} reaches exactly one pad (${pads[0]}). On a board a one-pad net `
         + 'drives nothing; either the second end was never routed, or the label is stale.',

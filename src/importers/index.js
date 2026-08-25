@@ -32,6 +32,7 @@ import { importKicadLegacy } from './kicad-legacy.js';
 import { importKicadNetlist } from './kicad-netlist.js';
 import { importEasyEda } from './easyeda.js';
 import { importEasyEdaPcbAsCircuit, importEasyEdaProStub } from './easyeda-pcb.js';
+import { importKicadPcbAsCircuit } from './kicad-pcb.js';
 import { importWokwi, exportWokwi } from './wokwi.js';
 
 const IMPORTERS = {
@@ -45,6 +46,8 @@ const IMPORTERS = {
   'easyeda-pcb':   importEasyEdaPcbAsCircuit,
   // Named refusal — EasyEDA Pro is a different format family.
   'easyeda-pro':   importEasyEdaProStub,
+  // KiCad board: same contract as easyeda-pcb — lifted circuit + board.
+  'kicad-pcb':     importKicadPcbAsCircuit,
   'wokwi':         importWokwi,
 };
 

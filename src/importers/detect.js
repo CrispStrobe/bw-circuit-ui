@@ -19,6 +19,7 @@
 
 import { looksLikeEasyEda } from './easyeda.js';
 import { looksLikeEasyEdaPcb, looksLikeEasyEdaPro } from './easyeda-pcb.js';
+import { looksLikeKicadPcb } from './kicad-pcb.js';
 
 /**
  * @param {string} text      Raw file content
@@ -30,6 +31,8 @@ export function detectFormat(text, filename = '') {
   // KiCad 6+ schematic. Checked before the netlist rule: both are
   // s-expressions and only the root tag separates them.
   if (/^\s*\(kicad_sch\b/.test(text)) return 'kicad-sch';
+  // KiCad board: same s-expression family, its own root tag.
+  if (looksLikeKicadPcb(text)) return 'kicad-pcb';
   // KiCad 4/5 legacy. The magic line is exact and versioned, and it shares
   // the `.sch` extension with EAGLE -- which is why the EAGLE rule runs first
   // and why neither of them may fall back to the extension before this point.

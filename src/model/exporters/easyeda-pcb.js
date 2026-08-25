@@ -21,6 +21,8 @@
  * @module
  */
 
+import { padOutlinePolygon } from '../pcb-geometry.js';
+
 const U = 0.254; // mm per EasyEDA unit
 const OX = 4000; // canvas origin, file units
 const OY = 3000;
@@ -160,10 +162,17 @@ function sanitize(s) {
 }
 
 function padShapeString(pad, fx, fy, fl, id) {
-  const name = PAD_SHAPE_NAMES[pad.shape] || 'ELLIPSE';
+  // EasyEDA has no roundrect pad; a cornerRadius pad goes out as a POLYGON
+  // sampled from the true outline (sub-10 um chord error). Writing it as a
+  // sharp RECT re-grew the corners and a pour-hugging pad touched the fill
+  // again after the round trip (measured, dvi-sock).
+  const cr = pad.cornerRadius || 0;
+  const effShape = cr > 0 ? 'polygon' : pad.shape;
+  const effPoints = cr > 0 ? padOutlinePolygon(pad) : pad.points;
+  const name = PAD_SHAPE_NAMES[effShape] || 'ELLIPSE';
   const layer = pad.through ? 11 : (pad.layer === 'bottom' ? 2 : 1);
   const holeR = pad.drill ? fl(pad.drill / 2) : '0';
-  const points = pad.points ? pad.points.map(([x, y]) => `${fx(x)} ${fy(y)}`).join(' ') : '';
+  const points = effPoints ? effPoints.map(([x, y]) => `${fx(x)} ${fy(y)}`).join(' ') : '';
   return `PAD~${name}~${fx(pad.x)}~${fy(pad.y)}~${fl(pad.w)}~${fl(pad.h)}~${layer}~${sanitize(pad.net)}~${sanitize(pad.num)}~${holeR}~${points}~${fmt(pad.rotation || 0)}~${id()}~0~~${pad.plated === false ? 'N' : 'Y'}~0~0~0.2~${fx(pad.x)},${fy(pad.y)}`;
 }
 

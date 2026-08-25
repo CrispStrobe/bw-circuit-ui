@@ -234,13 +234,14 @@ export const PAD_TERMINALS = {
 };
 
 export const PACKAGE_KIND_RULES = [
-  { match: /^SW-TH_4P.*6\.0|TS-66/i, kind: 'button', variant: 'tact-6x6' },
+  { match: /^SW-TH_4P.*6\.0|TS-66|SW_PUSH_6mm|SW_Push_6mm/i, kind: 'button', variant: 'tact-6x6' },
   { match: /^SW-TH_SS-12D|SS-12D10/i, kind: 'slide_switch', variant: 'ss-12d10' },
-  { match: /^R_AXIAL|^RES-TH/i, kind: 'resistor', variant: 'axial-0.4' },
+  // KiCad library spellings recognise too: the lift reads KiCad boards now.
+  { match: /^R_AXIAL|^RES-TH|:R_Axial_DIN/i, kind: 'resistor', variant: 'axial-0.4' },
   { match: /^R0603|^RES.*0603|^C0603R/i, kind: 'resistor', variant: '0603' },
   { match: /^C0603|^CAP.*0603/i, kind: 'capacitor', variant: '0603' },
   { match: /^CAP-TH|^C_Disc|RAD-2\.5/i, kind: 'capacitor', variant: 'radial-2.5' },
-  { match: /^LED-TH-5|^LED5|^LED_TH/i, kind: 'led', variant: 'tht-5mm' },
+  { match: /^LED-TH-5|^LED5|^LED_TH|:LED_D5\.0mm/i, kind: 'led', variant: 'tht-5mm' },
   { match: /^DO-41|^DIODE-TH/i, kind: 'diode', variant: 'do-41' },
   { match: /OLED_4P|^HDR-1X4$|PinHeader_1x0?4(?!\d)/i, kind: 'header', variant: '1x4', params: { pins: 4 } },
   { match: /^HDR-1X(\d+)|PinHeader_1x0?(\d+)/i, kind: 'header', variantFromMatch: (m) => `1x${Number(m[1] || m[2])}`, paramsFromMatch: (m) => ({ pins: Number(m[1] || m[2]) }) },

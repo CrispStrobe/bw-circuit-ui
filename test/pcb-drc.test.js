@@ -46,10 +46,13 @@ const byRule = (f, r) => f.filter((x) => x.rule === r);
 describe('mini fixture: the planted defects and nothing else', () => {
   const f = runPcbDrc(mini());
 
-  test('N1 is a net-island (SW1.3 reaches nothing), VCC is unfinished', () => {
-    assert.deepEqual(rules(f), ['net-island', 'unfinished-net']);
-    assert.match(byRule(f, 'net-island')[0].explanation, /Net N1/);
-    // GND has TWO pads (SW1.2 and SW1.4), so only VCC is a one-pad net.
+  test('only VCC is unfinished; SW1.3 is NOT an island (the switch joins it)', () => {
+    // SW1.3 shares terminal `a` with the routed SW1.1, so the part's own
+    // metal joins them once soldered — an unrouted twin pad is normal
+    // practice, and calling it a split net would fire on every healthy
+    // board with multi-pad terminals (§7.2). The genuine-split case lives
+    // in the mutation suite below.
+    assert.deepEqual(rules(f), ['unfinished-net']);
     assert.deepEqual(byRule(f, 'unfinished-net').map((x) => x.net), ['VCC']);
   });
 
@@ -61,6 +64,17 @@ describe('mini fixture: the planted defects and nothing else', () => {
 });
 
 describe('each rule can fire (planted mutations)', () => {
+  test('net-island: a net declared on an UNCONNECTED pad of another part', () => {
+    const b = mini();
+    // R1.1 (VCC, copper reaches nothing) relabelled N1: now N1 claims a
+    // pad no copper and no internal terminal can reach — a genuine split.
+    b.parts.find((p) => p.ref === 'R1').pads.find((p) => p.num === '1').net = 'N1';
+    const hits = byRule(runPcbDrc(b), 'net-island');
+    assert.equal(hits.length, 1);
+    assert.match(hits[0].explanation, /Net N1/);
+    assert.equal(hits[0].severity, 'danger');
+  });
+
   test('terminal-short: GND on the other pad of terminal a', () => {
     const b = mini();
     const sw = b.parts.find((p) => p.ref === 'SW1');

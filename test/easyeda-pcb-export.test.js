@@ -66,9 +66,18 @@ describe('mini fixture round trip', () => {
     assert.deepEqual(partition(b2), partition(b1));
   });
 
-  test('the planted defect SURVIVES: verdicts equal, finding for finding', () => {
+  test('verdicts equal, finding for finding', () => {
     assert.deepEqual(verdict(b2), verdict(b1));
-    assert.ok(verdict(b1).includes('net-island:danger'), 'the fixture defect must exist to survive');
+  });
+
+  test('a PLANTED defect survives the trip', () => {
+    // R1.1 relabelled N1: a genuine split (no copper and no internal
+    // terminal reaches it). The written file must carry the fault.
+    const planted = importEasyEdaPcb(read('easyeda-pcb-mini.json'));
+    planted.parts.find((p) => p.ref === 'R1').pads.find((p) => p.num === '1').net = 'N1';
+    assert.ok(verdict(planted).includes('net-island:danger'), 'the planted defect must exist');
+    const back = roundTrip(planted);
+    assert.deepEqual(verdict(back), verdict(planted));
   });
 
   test('geometry survives to a tenth of a micron', () => {

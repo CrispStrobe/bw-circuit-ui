@@ -29,7 +29,7 @@
  */
 
 import {
-  padShape, trackShapes, viaShape, shapesTouch, shapeListDist,
+  padShape, trackShapes, viaShape, shapeListDist, arcPointAt,
 } from './pcb-geometry.js';
 
 const WILDCARD_LAYER = 0; // vias and through-pads exist on every copper layer
@@ -54,44 +54,10 @@ function arcToTracks(arc) {
       // Reuse the SVG arc math by linear parameter fallback would be wrong;
       // the importer already converted arcs to endpoint form, so sample via
       // the same endpoint parameterisation.
-      points.push(sampleArcPoint(s, k / steps));
+      points.push(arcPointAt(s, k / steps));
     }
   }
   return { width: arc.width || 0, points, layerId: arc.layerId, net: arc.net };
-}
-
-/** Point at parameter t along an endpoint-parameterised elliptical arc. */
-function sampleArcPoint(a, t) {
-  const { x1, y1, x2, y2, largeArc, sweep } = a;
-  let rx = Math.abs(a.rx); let ry = Math.abs(a.ry);
-  if (!rx || !ry) return [x2, y2];
-  const phi = ((a.rot || 0) * Math.PI) / 180;
-  const cosP = Math.cos(phi); const sinP = Math.sin(phi);
-  const dx = (x1 - x2) / 2; const dy = (y1 - y2) / 2;
-  const x1p = cosP * dx + sinP * dy; const y1p = -sinP * dx + cosP * dy;
-  const lam = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
-  if (lam > 1) { const s = Math.sqrt(lam); rx *= s; ry *= s; }
-  const sign = largeArc !== sweep ? 1 : -1;
-  const den = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
-  const rad = Math.max(0, (rx * rx * ry * ry - den) / den);
-  const co = sign * Math.sqrt(rad);
-  const cxp = (co * rx * y1p) / ry; const cyp = (-co * ry * x1p) / rx;
-  const cx = cosP * cxp - sinP * cyp + (x1 + x2) / 2;
-  const cy = sinP * cxp + cosP * cyp + (y1 + y2) / 2;
-  const ang = (ux, uy, vx, vy) => {
-    const dot = ux * vx + uy * vy;
-    const len = Math.hypot(ux, uy) * Math.hypot(vx, vy);
-    let th = Math.acos(Math.min(1, Math.max(-1, dot / len)));
-    if (ux * vy - uy * vx < 0) th = -th;
-    return th;
-  };
-  const th1 = ang(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry);
-  let dth = ang((x1p - cxp) / rx, (y1p - cyp) / ry, (-x1p - cxp) / rx, (-y1p - cyp) / ry);
-  if (!sweep && dth > 0) dth -= 2 * Math.PI;
-  if (sweep && dth < 0) dth += 2 * Math.PI;
-  const th = th1 + dth * t;
-  const px = rx * Math.cos(th); const py = ry * Math.sin(th);
-  return [cosP * px - sinP * py + cx, sinP * px + cosP * py + cy];
 }
 
 const layerIdOf = (name) => (name === 'bottom' ? 2 : name === 'top' ? 1 : WILDCARD_LAYER);
@@ -124,7 +90,7 @@ export function computeCopperNetlist(board, opts = {}) {
       layer: pad.through ? WILDCARD_LAYER : layerIdOf(pad.layer),
       net: pad.net,
       shapes: [padShape(pad)],
-      pad: { partId, ref, num: pad.num, net: pad.net, layer: pad.layer },
+      pad: { partId, ref, num: pad.num, net: pad.net, layer: pad.layer, padId: pad.id },
     });
   }
   for (const t of board.tracks) {

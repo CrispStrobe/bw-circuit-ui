@@ -261,13 +261,16 @@ export function rotateAbout(x, y, cx, cy, deg) {
  * - oval:   stadium — seg core along the long axis, r = short/2
  * - polygon: poly core from its points (already absolute mm)
  *
- * EasyEDA pad rotation is stated in its Y-down frame; the importer flipped Y,
- * so the angle NEGATES here. A 90° rotation must land where the file put it,
- * not mirrored — covered by test, because this is exactly the kind of sign
- * that reads plausibly in both directions.
+ * Rotation signs are exactly the kind that read plausibly both ways; the
+ * convention above was pinned by measurement, not derivation.
  */
 export function padShape(pad) {
-  const rot = -(pad.rotation || 0);
+  // pad.rotation is CCW-positive in the MODEL (Y-up) frame; importers
+  // convert their file conventions to it. EasyEDA stores angles that are
+  // model-positive as-is (established at 135 deg on a fabbed board whose
+  // castellated pads overlap under the opposite sign); KiCad's CCW-in-
+  // Y-down angles negate on the Y flip (importer's duty).
+  const rot = pad.rotation || 0;
   if (pad.shape === 'circle' || (!pad.points && pad.w === pad.h && pad.shape !== 'rect')) {
     return { kind: 'point', x: pad.x, y: pad.y, r: pad.w / 2 };
   }
@@ -285,13 +288,18 @@ export function padShape(pad) {
     [x2, y2] = rotateAbout(x2, y2, pad.x, pad.y, rot);
     return { kind: 'seg', x1, y1, x2, y2, r: short / 2 };
   }
-  // rect (and the fallback for anything else with w×h)
-  const hw = pad.w / 2; const hh = pad.h / 2;
+  // rect (and the fallback for anything else with w×h). A roundrect is
+  // EXACTLY a rect shrunk by its corner radius with that radius put back
+  // as the outward r — the unified-shape model's Minkowski trick. Modelling
+  // it as a sharp rect bulges each corner by r(√2−1) ≈ 0.15 mm at KiCad's
+  // default rratio, which touched a tightly-hugging pour on a real board.
+  const cr = Math.min(pad.cornerRadius || 0, pad.w / 2, pad.h / 2);
+  const hw = pad.w / 2 - cr; const hh = pad.h / 2 - cr;
   const pts = [
     [pad.x - hw, pad.y - hh], [pad.x + hw, pad.y - hh],
     [pad.x + hw, pad.y + hh], [pad.x - hw, pad.y + hh],
   ].map(([x, y]) => rotateAbout(x, y, pad.x, pad.y, rot));
-  return { kind: 'poly', pts, r: 0 };
+  return { kind: 'poly', pts, r: cr };
 }
 
 /** One track polyline as an array of stadium shapes (seg core, r = w/2). */
@@ -319,4 +327,65 @@ export function shapeListDist(a, list) {
     min = Math.min(min, d);
   }
   return min;
+}
+
+/**
+ * Point at parameter t (0..1) along an endpoint-parameterised elliptical
+ * arc segment {x1,y1,x2,y2,rx,ry,rot,largeArc,sweep}. Shared by the copper
+ * netlist (fine arc sampling) and the KiCad exporter (3-point arcs need
+ * the true midpoint, t = 0.5).
+ */
+export function arcPointAt(a, t) {
+  const { x1, y1, x2, y2, largeArc, sweep } = a;
+  let rx = Math.abs(a.rx); let ry = Math.abs(a.ry);
+  if (!rx || !ry) return [x2, y2];
+  const phi = ((a.rot || 0) * Math.PI) / 180;
+  const cosP = Math.cos(phi); const sinP = Math.sin(phi);
+  const dx = (x1 - x2) / 2; const dy = (y1 - y2) / 2;
+  const x1p = cosP * dx + sinP * dy; const y1p = -sinP * dx + cosP * dy;
+  const lam = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
+  if (lam > 1) { const s = Math.sqrt(lam); rx *= s; ry *= s; }
+  const sign = largeArc !== sweep ? 1 : -1;
+  const den = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
+  const rad = Math.max(0, (rx * rx * ry * ry - den) / den);
+  const co = sign * Math.sqrt(rad);
+  const cxp = (co * rx * y1p) / ry; const cyp = (-co * ry * x1p) / rx;
+  const cx = cosP * cxp - sinP * cyp + (x1 + x2) / 2;
+  const cy = sinP * cxp + cosP * cyp + (y1 + y2) / 2;
+  const ang = (ux, uy, vx, vy) => {
+    const dot = ux * vx + uy * vy;
+    const len = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+    let th = Math.acos(Math.min(1, Math.max(-1, dot / len)));
+    if (ux * vy - uy * vx < 0) th = -th;
+    return th;
+  };
+  const th1 = ang(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry);
+  let dth = ang((x1p - cxp) / rx, (y1p - cyp) / ry, (-x1p - cxp) / rx, (-y1p - cyp) / ry);
+  if (!sweep && dth > 0) dth -= 2 * Math.PI;
+  if (sweep && dth < 0) dth += 2 * Math.PI;
+  const th = th1 + dth * t;
+  const px = rx * Math.cos(th); const py = ry * Math.sin(th);
+  return [cosP * px - sinP * py + cx, sinP * px + cosP * py + cy];
+}
+
+/**
+ * The outline polygon of a roundrect pad (cornerRadius > 0), sampled at
+ * `arcSteps` points per corner. Used by exporters whose target format has
+ * no roundrect pad (EasyEDA writes these as POLYGON pads). Chord error is
+ * r(1 − cos(π/2/steps)) — under 10 µm at KiCad's default radii.
+ */
+export function padOutlinePolygon(pad, arcSteps = 6) {
+  const cr = Math.min(pad.cornerRadius || 0, pad.w / 2, pad.h / 2);
+  const hw = pad.w / 2 - cr; const hh = pad.h / 2 - cr;
+  const corners = [
+    [hw, hh, 0], [-hw, hh, Math.PI / 2], [-hw, -hh, Math.PI], [hw, -hh, 3 * Math.PI / 2],
+  ];
+  const pts = [];
+  for (const [cx, cy, a0] of corners) {
+    for (let i = 0; i <= arcSteps; i++) {
+      const a = a0 + (Math.PI / 2) * (i / arcSteps);
+      pts.push([cx + cr * Math.cos(a), cy + cr * Math.sin(a)]);
+    }
+  }
+  return pts.map(([x, y]) => rotateAbout(pad.x + x, pad.y + y, pad.x, pad.y, pad.rotation || 0));
 }
