@@ -72,6 +72,13 @@ export function useCircuit(vcc = 5.0) {
     return ok;
   }, [circuit, bump]);
 
+  // Board placement overrides (circuit.pcb, docs/PCB-SUPPORT-PLAN.md
+  // Phase 6). Placement only — nothing in here may state connectivity.
+  const setPcbOverrides = useCallback((pcb) => {
+    circuit.pcb = pcb;
+    bump();
+  }, [circuit, bump]);
+
   const addWire = useCallback((fromPart, fromTerm, toPart, toTerm) => {
     const w = circuit.addWire(fromPart, fromTerm, toPart, toTerm);
     if (w) bump();
@@ -242,6 +249,7 @@ export function useCircuit(vcc = 5.0) {
     rotatePart,
     flipPart,
     updateParams,
+    setPcbOverrides,
     addWire,
     removeWire,
     addHoleWire,

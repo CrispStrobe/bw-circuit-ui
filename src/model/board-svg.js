@@ -181,6 +181,26 @@ export function renderBoardSvg(board, opts = {}) {
   }
   close();
 
+  // ── hit targets (transparent, editors only) ──────────────────────
+  // One rect per part over its pad bounding box, carrying data-part-id:
+  // BoardPanel's drag/select gestures dispatch on these. Transparent fill
+  // still receives pointer events; a selected part gets its outline via
+  // the .bw-pcb-selected CSS class the panel injects.
+  open('bw-pcb-hit');
+  for (const part of board.parts || []) {
+    if (!part.pads.length) continue;
+    let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity;
+    for (const pad of part.pads) {
+      minX = Math.min(minX, pad.x - pad.w / 2); maxX = Math.max(maxX, pad.x + pad.w / 2);
+      minY = Math.min(minY, pad.y - pad.h / 2); maxY = Math.max(maxY, pad.y + pad.h / 2);
+    }
+    const m = 0.6;
+    out.push(`<rect data-part-id="${escapeXml(part.ref || part.id)}" x="${fmt(minX - m)}" y="${fmt(H - maxY - m)}" `
+      + `width="${fmt(maxX - minX + 2 * m)}" height="${fmt(maxY - minY + 2 * m)}" `
+      + 'fill="transparent" stroke="none" style="cursor:grab"/>');
+  }
+  close();
+
   out.push('</svg>');
   return out.join('');
 }

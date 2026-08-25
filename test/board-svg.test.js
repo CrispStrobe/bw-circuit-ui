@@ -34,7 +34,7 @@ describe('structure', () => {
   });
 
   test('every group class the panel toggles is present', () => {
-    for (const cls of ['substrate', 'pours', 'copper-top', 'copper-bottom', 'pads', 'drills', 'silk', 'labels', 'outline']) {
+    for (const cls of ['substrate', 'pours', 'copper-top', 'copper-bottom', 'pads', 'drills', 'silk', 'labels', 'outline', 'hit']) {
       assert.ok(svg.includes(`class="bw-pcb-${cls}"`), cls);
     }
   });
@@ -77,6 +77,16 @@ describe('the over-approximated pour is visibly labelled', () => {
     board.pours[0].fills = null;
     const outlineOnly = renderBoardSvg(board);
     assert.ok(outlineOnly.includes('stroke-dasharray'), 'over-approximation: dashed');
+  });
+});
+
+describe('hit targets', () => {
+  test('every part gets a transparent data-part-id rect for the editor', () => {
+    const svg = renderBoardSvg(mini());
+    const hit = svg.split('class="bw-pcb-hit"')[1].split('</g>')[0];
+    assert.ok(hit.includes('data-part-id="R1"'));
+    assert.ok(hit.includes('data-part-id="SW1"'));
+    assert.equal((hit.match(/fill="transparent"/g) || []).length, 2);
   });
 });
 

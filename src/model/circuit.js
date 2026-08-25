@@ -97,6 +97,10 @@ export class Circuit {
   constructor(vcc = 5.0) {
     /** @type {number} */
     this.vcc = vcc;
+    // Board overrides (docs/PCB-SUPPORT-PLAN.md phase 6): per-part
+    // {x, y, rotation, package}. Placement only -- the netlist always
+    // wins; nothing in here may say what touches what.
+    this.pcb = null;
 
     /** @type {Function} — the BoardImpl constructor, from the injected engine */
     this._BoardImpl = getEngine().BoardImpl;
@@ -911,6 +915,7 @@ export class Circuit {
       // silently vanished from saves and the restored board stopped
       // conducting through its rails.
       holeWires: this.holeWires(),
+      ...(this.pcb ? { pcb: this.pcb } : {}),
     };
   }
 
@@ -921,6 +926,7 @@ export class Circuit {
    */
   static fromJSON(data) {
     const c = new Circuit(data.vcc);
+    c.pcb = data.pcb ?? null;
     // Legacy files also predate parts carrying their terminal list — every
     // renderer maps over part.terminals, so a missing list was the SECOND
     // way a gallery file crashed the GUI (pure-circuit examples, same day

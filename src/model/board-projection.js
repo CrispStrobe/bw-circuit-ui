@@ -28,6 +28,7 @@
  */
 
 import { getLandPattern } from './land-patterns.js';
+import { extractNetlist } from './netlist.js';
 import { wireEndpoint } from './wire-endpoints.js';
 import { padShape, trackShapes, viaShape, shapeDist } from './pcb-geometry.js';
 import { DEFAULT_CLEARANCE_MM } from './pcb-drc.js';
@@ -98,20 +99,50 @@ export function netsFromCircuit(circuit) {
 
 // ── placement ──────────────────────────────────────────────────────
 
+/** Rotate a pattern's pad/silk offsets by an override rotation (90-step). */
+function orientPattern(pattern, rotation) {
+  const rot = ((rotation % 360) + 360) % 360;
+  if (!rot) return pattern;
+  const th = (rot * Math.PI) / 180;
+  const c = Math.cos(th); const s = Math.sin(th);
+  const rp = ([x, y]) => [x * c - y * s, x * s + y * c];
+  const swap = rot === 90 || rot === 270;
+  return {
+    ...pattern,
+    rotation: rot,
+    pads: pattern.pads.map((pad) => {
+      const [x, y] = rp([pad.x, pad.y]);
+      const padSwap = pad.w !== pad.h && swap;
+      return { ...pad, x, y, w: padSwap ? pad.h : pad.w, h: padSwap ? pad.w : pad.h };
+    }),
+    courtyard: swap
+      ? { w: pattern.courtyard.h, h: pattern.courtyard.w }
+      : pattern.courtyard,
+    silk: (pattern.silk || []).map((el) => {
+      if (el.kind === 'circle') { const [x, y] = rp([el.x, el.y]); return { ...el, x, y }; }
+      // rects rotate about the origin; for 90/270 the corner walks.
+      const corners = [[el.x, el.y], [el.x + el.w, el.y + el.h]].map(rp);
+      const xs = corners.map((q) => q[0]); const ys = corners.map((q) => q[1]);
+      return { kind: 'rect', x: Math.min(...xs), y: Math.min(...ys), w: Math.abs(xs[1] - xs[0]), h: Math.abs(ys[1] - ys[0]) };
+    }),
+  };
+}
+
 function resolvePattern(part, overrides) {
   const o = overrides?.parts?.[part.id] || {};
   if (RAIL_KINDS.has(part.kind)) return null;
-  if (o.package) return getLandPattern(part.kind, o.package);
+  const orient = (pat) => (pat && o.rotation ? orientPattern(pat, o.rotation) : pat);
+  if (o.package) return orient(getLandPattern(part.kind, o.package));
   // Parametric kinds choose their variant from params: a 4-pin header is
   // '1x4', not the default '1x2' — taking the default silently DROPPED
   // two OLED pads on the first full projection and surfaced only as an
   // unfinished-net warning downstream.
   if (part.kind === 'header' && Number.isFinite(part.params?.pins)) {
     const sized = getLandPattern('header', `1x${part.params.pins}`);
-    if (sized) return sized;
+    if (sized) return orient(sized);
     return null; // a 1x40 header has no pattern; unplaced-with-warning is honest
   }
-  return getLandPattern(part.kind, null);
+  return orient(getLandPattern(part.kind, null));
 }
 
 /**
@@ -599,4 +630,28 @@ export function projectBoard(circuit, opts = {}) {
     ignored: [],
   };
   return { board, unplaced, unrouted, warnings };
+}
+
+/**
+ * Project a live Circuit instance: the REAL netlist extractor dissolves
+ * breadboards and rails, so a breadboarded canvas circuit projects the
+ * same board its schematic shows. Overrides default to circuit.pcb.
+ */
+export function projectBoardFromCircuit(circuit, opts = {}) {
+  const netlist = extractNetlist(circuit);
+  const parts = netlist.parts.map((p) => {
+    const src = circuit.parts.find((q) => q.id === p.partId);
+    return { id: p.partId, kind: p.kind, params: src?.params || p.params || {} };
+  });
+  const wires = [];
+  for (const net of netlist.nets) {
+    const nodes = net.nodes;
+    for (let i = 1; i < nodes.length; i++) {
+      wires.push({
+        from: nodes[0].partId, fromTerminal: nodes[0].pin,
+        to: nodes[i].partId, toTerminal: nodes[i].pin,
+      });
+    }
+  }
+  return projectBoard({ parts, wires }, { overrides: circuit.pcb || null, ...opts });
 }
