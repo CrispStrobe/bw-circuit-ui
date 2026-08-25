@@ -65,7 +65,7 @@ if (isMain) {
   for (const a of args) {
     if (statSync(a).isDirectory()) {
       for (const f of readdirSync(a).sort()) {
-        if (/\.(kicad_pcb|json|epcb|epcb2|epru)$/.test(f) && !/manifest|sch|schematic/i.test(f)) {
+        if (/\.(kicad_pcb|json|epcb|epcb2|epru)$/.test(f) && !/manifest|sch|schematic|^_|candidate|pool|results/i.test(f)) {
           files.push(join(a, f));
         }
       }

@@ -44,7 +44,7 @@ const BOARDS = join(import.meta.dirname, 'fixtures', 'boards');
 /** Pinned per-board expectations, measured 2026-08-25. */
 const PINNED = [
   // file, parts, verdict {rule/severity: count} — {} means CLEAN
-  ['dvi-sock.kicad_pcb', 15, { 'clearance/warning': 24 }],
+  ['dvi-sock.kicad_pcb', 15, { 'clearance/warning': 23 }],
   ['otter-front.kicad_pcb', 2, {}],
   ['otter-back.kicad_pcb', 4, {}],
   ['tiny-esp.kicad_pcb', 12, {}],
@@ -58,7 +58,7 @@ const PINNED = [
   // outline-open dangers are REAL ~0.8 mm gaps drawn in the source.
   ['macropad.epcb', 9, { 'clearance/warning': 3 }],
   ['nanohub.epcb', 23, { 'outline-open/danger': 1, 'clearance/warning': 15 }],
-  ['smartcar.epcb', 73, { 'outline-open/danger': 1 }],
+  ['smartcar.epcb', 73, { 'outline-open/danger': 1, 'outline-overlap/info': 1 }],
 ];
 
 const importBoard = (file, text) => (file.endsWith('.kicad_pcb')
@@ -118,7 +118,14 @@ describe('committed corpus, pinned', () => {
 
 // ── gallery boards (examples declaring files.pcb) ──────────────────
 
-const EXAMPLES = [
+// EXAMPLES_DIR overrides the sibling lookup (same contract as
+// schematic-geometry-corpus.test.js): an explicitly selected corpus is
+// never silently replaced, and a missing one is an error, not a skip.
+const EXPLICIT_EXAMPLES = process.env.EXAMPLES_DIR || null;
+if (EXPLICIT_EXAMPLES && !existsSync(join(EXPLICIT_EXAMPLES, 'index.json'))) {
+  throw new Error(`EXAMPLES_DIR=${EXPLICIT_EXAMPLES} has no index.json.`);
+}
+const EXAMPLES = EXPLICIT_EXAMPLES || [
   join(import.meta.dirname, '..', '..', 'sb3-creator', 'examples'),
   join(homedir(), 'code', 'sb3-creator', 'examples'),
 ].find((d) => existsSync(join(d, 'index.json')));

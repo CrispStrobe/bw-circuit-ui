@@ -109,13 +109,14 @@ const LAYER_IDS = {
 };
 const layerIdOf = (name) => LAYER_IDS[name] ?? 12; // everything else: document-ish
 
-function layersOfPad(node) {
+function layersOfPad(node, cuOf) {
   const layers = child(node, 'layers');
   if (!layers) return { through: true, layer: 'through' };
   const names = layers.slice(1).map(String);
   if (names.some((n) => n.startsWith('*.Cu'))) return { through: true, layer: 'through' };
-  if (names.includes('B.Cu')) return { through: false, layer: 'bottom' };
-  if (names.includes('F.Cu')) return { through: false, layer: 'top' };
+  const cu = names.map((n) => cuOf(n)).filter(Boolean);
+  if (cu.length >= 2) return { through: true, layer: 'through' };
+  if (cu.length === 1) return { through: false, layer: cu[0].layer };
   // Mask- or paste-only apertures (QFN stencil windows, cap-touch
   // soldermask-removal pads) carry NO copper. Defaulting them to top
   // copper bridged two cap-sense combs through their shared mask window
@@ -184,6 +185,42 @@ export function importKicadPcb(text) {
   const ignoredCount = new Map();
   const ignore = (t) => ignoredCount.set(t, (ignoredCount.get(t) || 0) + 1);
 
+  // ── the copper table: the file NAMES its own layers ──────────────
+  // (layers (0 "F.Cu" signal) (1 "In1.Cu" signal) … (31 "B.Cu" signal)).
+  // Copper = the entries typed signal/power/mixed; ordinal 0 is the top,
+  // the highest ordinal the bottom, everything between an inner layer —
+  // uniform from v4 through v9 in the corpus. Boards RENAME copper
+  // (C1F/C2/C3/C4B, Front/Back, Top/Bottom: three of fifteen corpus
+  // boards) and 4/6-layer stacks are common; matching the literal string
+  // 'B.Cu' put renamed back copper and every inner plane on the top
+  // layer — one giant multi-net island on a healthy board.
+  const cuTable = new Map(); // name → { layer, layerId }
+  {
+    const layersNode = child(root, 'layers');
+    const entries = (layersNode ? layersNode.slice(1) : []).filter(Array.isArray)
+      .map((e) => ({ ord: num(e[0]), name: String(e[1]), type: String(e[2] ?? '') }))
+      .filter((e) => e.type === 'signal' || e.type === 'power' || e.type === 'mixed')
+      .sort((a, b) => a.ord - b.ord);
+    entries.forEach((e, i) => {
+      cuTable.set(e.name, i === 0 ? { layer: 'top', layerId: 1 }
+        : i === entries.length - 1 ? { layer: 'bottom', layerId: 2 }
+          : { layer: `inner${i}`, layerId: 20 + i });
+    });
+    // Canonical names always resolve, table or no table.
+    if (!cuTable.has('F.Cu')) cuTable.set('F.Cu', { layer: 'top', layerId: 1 });
+    if (!cuTable.has('B.Cu')) cuTable.set('B.Cu', { layer: 'bottom', layerId: 2 });
+  }
+  const unknownCu = new Set();
+  const cuOf = (name) => cuTable.get(name) || null;
+  // For records that are copper BY CONSTRUCTION (segments, track arcs):
+  // an unresolved name falls back to top, said out loud once.
+  const cuOfTrack = (name) => {
+    const cu = cuOf(name);
+    if (cu) return cu;
+    unknownCu.add(name);
+    return { layer: 'top', layerId: 1 };
+  };
+
   // ── raw parse (KiCad frame: mm, Y down) ──────────────────────────
   const raw = {
     parts: [], tracks: [], vias: [], arcs: [], pours: [],
@@ -205,7 +242,7 @@ export function importKicadPcb(text) {
     if (!Array.isArray(node)) continue;
     const tag = node[0];
     if (tag === 'footprint' || tag === 'module') {
-      raw.parts.push(parseFootprint(node, warnings, ignore));
+      raw.parts.push(parseFootprint(node, warnings, ignore, cuOf));
     } else if (tag === 'segment') {
       const s = child(node, 'start'); const e = child(node, 'end');
       raw.tracks.push({
@@ -363,14 +400,20 @@ export function importKicadPcb(text) {
         cornerRadius: pad.cornerRadius || 0,
         x: X(pad.absX), y: Y(pad.absY),
         w: pad.w, h: pad.h,
-        // KiCad file angles are CCW-positive in its Y-down frame; the Y
-        // flip to the model frame negates them (model = CCW-positive Y-up).
-        rotation: -pad.shapeRot,
+        // KiCad file angles carry through to the model UN-negated, both
+        // sides. The position matrix used here (validated by net-matched
+        // track endpoints, 445/652 vs 30/652 on rotated bottom parts) is
+        // rotation by -angle in math convention — i.e. file angles are
+        // CW-positive in the Y-down frame — so the Y flip to the model's
+        // CCW-positive Y-up frame restores +angle. Measured shape-side
+        // too: odd-angle cross-net pad pairs in one footprint overlap
+        // 425/0 (top) and 93/0 (bottom) under -angle vs +angle.
+        rotation: pad.shapeRot,
         drill: pad.drill,
         slotLength: pad.slotLength || 0,
-        // Model slot axis: the pad's file angle negates on the Y flip;
-        // a drill oval taller than wide adds the quarter turn.
-        slotRotation: pad.slotLength ? -(pad.shapeRot || 0) + (pad.slotAlongX ? 0 : 90) : 0,
+        // Model slot axis: same sign rule as the shape angle; a drill
+        // oval taller than wide adds the quarter turn.
+        slotRotation: pad.slotLength ? (pad.shapeRot || 0) + (pad.slotAlongX ? 0 : 90) : 0,
         plated: true,
         through: pad.through, layer: pad.layer,
         // Index-suffixed: KiCad's duplicate pad numbers would collide on
@@ -402,8 +445,7 @@ export function importKicadPcb(text) {
   // copper (measured: one extra near-miss warning appeared on the FIXED
   // board before this chaining).
   model.tracks = chainTracks(raw.tracks).map((t, i) => ({
-    layer: t.layer === 'B.Cu' ? 'bottom' : 'top',
-    layerId: t.layer === 'B.Cu' ? 2 : 1,
+    ...cuOfTrack(t.layer),
     net: nameOfNet(t.net), width: t.width,
     points: t.points.map(([x, y]) => [X(x), Y(y)]), id: `seg${i}`,
   }));
@@ -421,13 +463,16 @@ export function importKicadPcb(text) {
       }
       : { type: 'line', x1: X(a.sx), y1: Y(a.sy), x2: X(a.ex), y2: Y(a.ey) };
     return {
-      layerId: a.layer === 'B.Cu' ? 2 : 1, net: nameOfNet(a.net),
+      layerId: cuOfTrack(a.layer).layerId, net: nameOfNet(a.net),
       width: a.width, segs: [seg], id: `arc${i}`,
     };
   });
-  model.pours = raw.pours.map((z, i) => ({
-    layer: z.layer === 'B.Cu' ? 'bottom' : 'top',
-    layerId: z.layer === 'B.Cu' ? 2 : 1,
+  model.pours = raw.pours.flatMap((z, i) => {
+    const cu = cuOf(z.layer);
+    if (!cu) { ignore(`zone@${z.layer}`); return []; }
+    return [{
+    layer: cu.layer,
+    layerId: cu.layerId,
     net: z.net,
     outline: z.outline.map(([x, y]) => [X(x), Y(y)]),
     clearance: 0, fillStyle: 'solid', thermal: '', keepIsland: '',
@@ -439,7 +484,8 @@ export function importKicadPcb(text) {
     fills: z.fills.length ? [z.fills.map((ring) => ring.map(([x, y]) => [X(x), Y(y)]))] : null,
     fillFromFile: z.fills.length > 0,
     id: `zone${i}`,
-  }));
+    }];
+  });
   model.outline = raw.outlineSegs.map((s) => {
     if (s.type === 'line') {
       return { type: 'line', x1: X(s.x1), y1: Y(s.y1), x2: X(s.x2), y2: Y(s.y2), id: 'edge' };
@@ -473,20 +519,28 @@ export function importKicadPcb(text) {
   const copper = new Set();
   for (const t of model.tracks) copper.add(t.layerId);
   for (const z of model.pours) copper.add(z.layerId);
-  for (const p of model.parts) for (const pad of p.pads) if (!pad.through) copper.add(pad.layer === 'bottom' ? 2 : 1);
+  for (const p of model.parts) {
+    for (const pad of p.pads) {
+      if (pad.through) { copper.add(1); copper.add(2); } else if (pad.layer === 'bottom') copper.add(2);
+      else if (pad.layer) copper.add(1);
+    }
+  }
   model.copperLayers = [...copper].sort((a, b) => a - b);
 
+  if (unknownCu.size) {
+    warnings.push(`Copper record(s) on layer name(s) not in the layers table — taken as top: ${[...unknownCu].join(', ')}.`);
+  }
   model.ignored = [...ignoredCount.entries()].map(([type, count]) => ({ type, count }));
   return model;
 }
 
 let anonSeq = 0;
 
-function parseFootprint(node, warnings, ignore) {
+function parseFootprint(node, warnings, ignore, cuOf) {
   const libName = String(node[1] ?? '');
   const { x, y, rot } = atOf(node);
   const layerNode = child(node, 'layer');
-  const side = String(layerNode?.[1] || 'F.Cu') === 'B.Cu' ? 'bottom' : 'top';
+  const side = cuOf(String(layerNode?.[1] || 'F.Cu'))?.layer === 'bottom' ? 'bottom' : 'top';
 
   let ref = '';
   let value = '';
@@ -549,7 +603,7 @@ function parseFootprint(node, warnings, ignore) {
       holes.push({ x: x + dx, y: y + dy, diameter: drillD || num(size?.[1]) });
       continue;
     }
-    const { through, layer } = layersOfPad(p);
+    const { through, layer } = layersOfPad(p, cuOf);
     if (!through && layer === null) { ignore('pad:mask-or-paste-aperture'); continue; }
     const rratio = padShapeName === 'roundrect'
       ? num(child(p, 'roundrect_rratio')?.[1] ?? 0.25) : 0;

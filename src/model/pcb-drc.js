@@ -226,29 +226,76 @@ function checkOutline(board, findings) {
   }
   // Every segment endpoint must meet another endpoint. Endpoints are
   // matched within 10 µm — EasyEDA writes shared vertices exactly, so the
-  // tolerance only forgives float noise, not real gaps.
+  // tolerance only forgives float noise, not real gaps. "Meets" is a
+  // CLUSTER test, not greedy pairing: duplicated outline segments (drawn
+  // twice, seen in the wild) put three or more ends on one vertex, and
+  // greedy pairing would starve one of them into a phantom loose end.
   const TOL = 0.01;
   const ends = [];
-  for (const seg of board.outline) {
-    ends.push([seg.x1, seg.y1], [seg.x2, seg.y2]);
+  for (let s = 0; s < board.outline.length; s++) {
+    const seg = board.outline[s];
+    ends.push({ p: [seg.x1, seg.y1], seg: s }, { p: [seg.x2, seg.y2], seg: s });
   }
-  const used = new Array(ends.length).fill(false);
+  const near = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) <= TOL;
   const lonely = [];
+  const overlapping = new Set();
   for (let i = 0; i < ends.length; i++) {
-    if (used[i]) continue;
-    let mate = -1;
-    for (let j = 0; j < ends.length; j++) {
-      if (i === j || used[j]) continue;
-      if (Math.hypot(ends[i][0] - ends[j][0], ends[i][1] - ends[j][1]) <= TOL) { mate = j; break; }
-    }
-    if (mate >= 0) { used[i] = used[mate] = true; } else { lonely.push(ends[i]); }
+    if (ends.some((e, j) => j !== i && near(ends[i].p, e.p))) continue;
+    // No mate. The rounded-corner idiom: users draw a CLOSED ring, then
+    // lay corner arcs on top of it — the arc's ends land mid-edge on the
+    // ring, on another segment's body. That outline is closed (the ring
+    // is), so it is an overlap note, not an open outline.
+    const [px, py] = ends[i].p;
+    const onBody = board.outline.some((o, s2) => {
+      if (s2 === ends[i].seg) return false;
+      const dx = o.x2 - o.x1; const dy = o.y2 - o.y1;
+      const L2 = dx * dx + dy * dy;
+      if (!L2) return near([px, py], [o.x1, o.y1]);
+      const t = Math.max(0, Math.min(1, ((px - o.x1) * dx + (py - o.y1) * dy) / L2));
+      return Math.hypot(px - (o.x1 + t * dx), py - (o.y1 + t * dy)) <= TOL;
+    });
+    if (onBody) overlapping.add(ends[i].seg);
+    else lonely.push(ends[i].p);
   }
-  if (lonely.length) {
-    const spots = lonely.map(([x, y]) => `(${x.toFixed(1)}, ${y.toFixed(1)})`).join(', ');
+  // Split the loose ends by gap size: two ends within 0.1 mm of each
+  // other are a HAIRLINE gap (hand-drawn outlines carry tens of µm of
+  // slop; fabs heal those silently) — a warning. Anything wider is a
+  // real hole in the contour — a danger.
+  const HEAL = 0.1;
+  const open = [];
+  const hairline = [];
+  const taken = new Array(lonely.length).fill(false);
+  for (let i = 0; i < lonely.length; i++) {
+    if (taken[i]) continue;
+    let mate = -1; let best = Infinity;
+    for (let j = i + 1; j < lonely.length; j++) {
+      if (taken[j]) continue;
+      const d = Math.hypot(lonely[i][0] - lonely[j][0], lonely[i][1] - lonely[j][1]);
+      if (d <= HEAL && d < best) { best = d; mate = j; }
+    }
+    if (mate >= 0) { taken[i] = taken[mate] = true; hairline.push({ at: lonely[i], gap: best }); }
+    else open.push(lonely[i]);
+  }
+  if (open.length) {
+    const spots = open.map(([x, y]) => `(${x.toFixed(1)}, ${y.toFixed(1)})`).join(', ');
     findings.push(finding('danger', 'outline-open', '',
-      `The board outline is not a closed loop: ${lonely.length} loose end(s) at ${spots} mm. `
+      `The board outline is not a closed loop: ${open.length} loose end(s) at ${spots} mm. `
       + 'A fab rejects an open outline, or mills something you did not mean.',
-      { looseEnds: lonely }));
+      { looseEnds: open }));
+  }
+  if (hairline.length) {
+    const spots = hairline.map((h) => `(${h.at[0].toFixed(1)}, ${h.at[1].toFixed(1)}): ${(h.gap * 1000).toFixed(0)} µm`).join(', ');
+    findings.push(finding('warning', 'outline-gap', '',
+      `The outline has ${hairline.length} hairline gap(s) — ${spots}. Fabs heal gaps this small `
+      + 'automatically, but the contour is not exactly closed as drawn.',
+      { gaps: hairline }));
+  }
+  if (overlapping.size) {
+    findings.push(finding('info', 'outline-overlap', '',
+      `${overlapping.size} outline segment(s) end on the body of another outline segment `
+      + '(the rounded-corner-over-a-closed-ring drawing idiom). The outline is closed, but the fab '
+      + 'sees two contours where these overlap — worth a look before ordering.',
+      { segments: [...overlapping] }));
   }
 }
 
