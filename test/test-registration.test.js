@@ -61,7 +61,27 @@ const NOT_IN_CI = new Map([
   ['test/snapshot-drop.test.js', 'skip guard tests the package, not the browser'],
   ['test/tilevga-face.test.js', 'skip guard tests the package, not the browser'],
   ['test/vdp-keyboard.test.js', 'skip guard tests the package, not the browser'],
+  // These two were inside `test:render`, which this lane wired into CI — and
+  // CI went red on them for exactly the reason recorded above. They were
+  // missed because the detector for "needs a browser" grepped two literal
+  // IMPORT forms, and these reach playwright another way. The list is now
+  // derived from what a file does (`*.launch(`) rather than how it imports,
+  // and the invariant below makes the whole class impossible.
+  ['test/mcu-device-label.test.js', 'launches a browser'],
+  ['test/pendant-attiny88.test.js', 'launches a browser'],
 ]);
+
+/**
+ * Nothing CI runs may launch a browser.
+ *
+ * This is the guard that would have caught the mistake above. `npm install`
+ * installs playwright without downloading browsers, so a launch in CI throws —
+ * and locally, where playwright is absent entirely, the same file skips and
+ * looks healthy. Reading the import line is not enough: a file can reach
+ * playwright several ways, and two did. What cannot be disguised is the
+ * launch itself.
+ */
+const LAUNCHES_BROWSER = /(?:chromium|firefox|webkit|browserType)\s*\.\s*launch\s*\(/;
 
 const scripts = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf-8')).scripts;
 
@@ -142,6 +162,20 @@ describe('every test file is run by something', () => {
       + 'and will rot silently — which is exactly how 5 broken tests survived in this repo. '
       + 'Add each to the `test` script in package.json, or to `test:browser` if it needs a '
       + 'browser, or give it its own CI step.');
+  });
+
+  test('nothing CI runs launches a browser', () => {
+    const offenders = [...ciFiles].filter((f) => {
+      if (f.endsWith('test-registration.test.js')) return false;   // names the pattern, does not launch
+      const full = path.join(ROOT, f);
+      return existsSync(full) && LAUNCHES_BROWSER.test(readFileSync(full, 'utf-8'));
+    }).sort();
+    assert.deepEqual(offenders, [],
+      `${offenders.length} test file(s) reachable from CI launch a browser. CI installs `
+      + 'playwright (a devDependency) WITHOUT downloading browsers, so the launch throws there '
+      + 'while the same file skips silently on a machine that has no playwright at all — which '
+      + 'is how this exact failure reached CI once already. Move them to `test:browser` and add '
+      + 'them to NOT_IN_CI.');
   });
 
   test('the files CI does not run are exactly the ones on the record', () => {

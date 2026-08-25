@@ -15,7 +15,7 @@ count simply omits it and still looks healthy.
 | listed in `npm test` | 105 | yes |
 | `examples-fabric-gate.test.js`, its own CI step | 1 | yes |
 | `test:boards` | 3 | **no — CI never invoked the script** |
-| `test:render` | 6 | **no** |
+| `test:render` | 6 (2 of them launch a browser) | **no** |
 | `test:a2` | 1 | **no** |
 | **in no script and no CI job at all** | **17** | **no** |
 
@@ -98,6 +98,41 @@ devDependency) **without downloading browsers** — so in CI the guard passes,
 the suite runs, and `chromium.launch()` throws. Registering them into
 `npm test` would have turned CI red. Caught by reading the guard rather than
 trusting that it had skipped locally.
+
+## I walked into the trap I had just documented
+
+The section above was written, and then `test:render` was wired into CI and
+**CI went red on exactly that failure**:
+
+```
+Headless render gates
+  browserType.launch: Executable doesn't exist at
+  /home/runner/.cache/ms-playwright/chromium_headless_shell-1228/...
+  # tests 30   # pass 25   # fail 0   # cancelled 5
+```
+
+`mcu-device-label.test.js` and `pendant-attiny88.test.js` live inside
+`test:render` and launch a browser. They were missed because the detector for
+"needs a browser" grepped two literal **import** forms — and these reach
+playwright another way. Locally they skipped (no playwright at all) and the
+script passed, so the local run said nothing.
+
+The lesson is not "check more carefully". It is that **the property to detect
+is what a file DOES, not how it imports**: a launch cannot be disguised, an
+import can. So the list is now derived from `*.launch(`, and there is an
+invariant rather than a list:
+
+> **Nothing reachable from CI may launch a browser.**
+
+`test/test-registration.test.js` asserts it, mutation-proved:
+
+```
+MUTATION — a browser test put back into a CI-run script
+not ok 3 - nothing CI runs launches a browser
+    +   'test/mcu-device-label.test.js'
+```
+
+Local green would not have caught this, and does not now — the invariant does.
 
 ## The structural fix
 
