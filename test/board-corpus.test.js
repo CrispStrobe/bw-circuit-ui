@@ -50,6 +50,15 @@ const PINNED = [
   ['tiny-esp.kicad_pcb', 12, {}],
   ['orpheuspad.kicad_pcb', 16, {}],
   ['atomic14.kicad_pcb', 21, {}],
+  // Session-five promotions, each for a feature the first corpus lacked:
+  // upduino = 4-layer stack + custom (primitives) pads; ef-s = the whole
+  // outline is gr_circle records; usd-extender = renamed Top/Bottom
+  // copper; niubi = a flex PCB routed everywhere at hairline clearances
+  // (the 40 warnings are its normal state, capped by the reporter).
+  ['upduino-v3.kicad_pcb', 113, {}],
+  ['ef-s-lensmount.kicad_pcb', 40, {}],
+  ['usd-extender.kicad_pcb', 3, {}],
+  ['niubi-headphones-flex.kicad_pcb', 35, { 'clearance/warning': 40, 'clearance/info': 1 }],
   ['nanoels-pcb.json', 28, {}],
   ['tuitar-pcb.json', 18, {}],
   // EasyEDA PRO (V2 array style). Components import pad-less by design

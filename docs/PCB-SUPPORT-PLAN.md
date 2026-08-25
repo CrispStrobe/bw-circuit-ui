@@ -44,7 +44,26 @@ components imported pad-less WITH the warning (Pro is
 master/instance; bare documents carry no FOOTPRINT masters — archive
 support is the remaining step). Three MIT Pro boards joined the
 committed corpus; the real V3 production sample lives in the local
-corpus and imports with zero dangers. Measured along the way: the broken calculator's 12 findings
+corpus and imports with zero dangers. Session five ran a 51-board second corpus
+(12 EasyEDA Standard, 12 Pro V2, 15 KiCad v4–v9, 12 stress boards up to
+2.6 MB / 432 footprints / 6 copper layers, licences agent-verified) and
+fixed what it measured: KiCad copper now comes from the file's own
+(layers) table (renamed copper and inner planes had collapsed onto
+top), pad angles carry through un-negated on both sides (90°-step pads
+are sign-blind, which is how the wrong sign survived the first
+corpus), gr_circle outlines, blind/micro via layer spans, custom pads'
+(primitives) polygons, and machine-net-only copper-shorts downgrade to
+warnings (alternate-position pads) while real net-ties stay dangers.
+The Pro reader learned per-island POURED accumulation, thermal spokes
+(2-point fill rings) as copper, named blindVia spans, negative PLANE
+layers as labelled over-approximations, and implicit outline-POLY
+closure. Terminal maps are per-footprint-NAME facts now: the LCSC
+SW-TH_4P tact pairs across the lead span, the bench-measured TS-6645
+same-side — both variants exist and the vendor suffix picks. All 51
+boards live in the local corpus with pinned verdicts; the real defects
+that remain pinned were verified in the raw files (a fill that stops
+0.59 mm short of its pad, a 51 µm track-via overlap, unrouted shield
+holes). Measured along the way: the broken calculator's 12 findings
 (all six dead keys by name), and three REAL hairline shorts the
 manual repair itself introduced on the "fixed" board — vias overlapping
 foreign tracks by 10–17 µm, found by the exact checker, confirmed

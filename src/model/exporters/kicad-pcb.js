@@ -63,7 +63,15 @@ export function exportKicadPcb(board, opts = {}) {
   for (const v of board.vias || []) netOf(v.net);
   for (const z of board.pours || []) netOf(z.net);
 
-  const layerOut = (t) => ((t.layerId === 2 || t.layer === 'bottom') ? 'B.Cu' : 'F.Cu');
+  // Inner copper keeps its identity: layer ids above 2 are inner layers
+  // (importer numbering varies by format — 20+n for KiCad, 15..18 for
+  // Pro), named In1..InN.Cu by stack position. Collapsing them onto
+  // F.Cu welded a 4-layer board's power and ground planes into one
+  // island on re-import (measured, upduino round-trip).
+  const innerIds = [...new Set((board.copperLayers || []).filter((id) => id > 2))].sort((a, b) => a - b);
+  const innerName = new Map(innerIds.map((id, i) => [id, `In${i + 1}.Cu`]));
+  const cuNameOf = (id, layer) => ((id === 2 || layer === 'bottom') ? 'B.Cu' : innerName.get(id) || 'F.Cu');
+  const layerOut = (t) => cuNameOf(t.layerId, t.layer);
 
   const body = [];
 
@@ -133,19 +141,19 @@ export function exportKicadPcb(board, opts = {}) {
     for (const s of a.segs || []) {
       if (s.type !== 'arc') {
         body.push(`(segment (start ${X(s.x1)} ${Y(s.y1)}) (end ${X(s.x2)} ${Y(s.y2)}) `
-          + `(width ${fmt(a.width || 0.254)}) (layer ${q(a.layerId === 2 ? 'B.Cu' : 'F.Cu')}) (net ${netOf(a.net)}))`);
+          + `(width ${fmt(a.width || 0.254)}) (layer ${q(cuNameOf(a.layerId))}) (net ${netOf(a.net)}))`);
         continue;
       }
       const [mx, my] = arcPointAt(s, 0.5);
       body.push(`(arc (start ${X(s.x1)} ${Y(s.y1)}) (mid ${X(mx)} ${Y(my)}) (end ${X(s.x2)} ${Y(s.y2)}) `
-        + `(width ${fmt(a.width || 0.254)}) (layer ${q(a.layerId === 2 ? 'B.Cu' : 'F.Cu')}) (net ${netOf(a.net)}))`);
+        + `(width ${fmt(a.width || 0.254)}) (layer ${q(cuNameOf(a.layerId))}) (net ${netOf(a.net)}))`);
     }
   }
   for (const v of board.vias || []) {
     // A spanned via (blind/micro, v.layers = copper ids) keeps its span:
     // writing it as through-all would manufacture connectivity the source
     // board does not have, and the round-trip oracle would catch it.
-    const lname = (id) => (id === 1 ? 'F.Cu' : id === 2 ? 'B.Cu' : `In${id - 20}.Cu`);
+    const lname = (id) => (id === 1 ? 'F.Cu' : id === 2 ? 'B.Cu' : innerName.get(id) || 'F.Cu');
     const span = v.layers && v.layers.length
       ? `(layers "${lname(v.layers[0])}" "${lname(v.layers[v.layers.length - 1])}")`
       : '(layers "F.Cu" "B.Cu")';
@@ -154,7 +162,7 @@ export function exportKicadPcb(board, opts = {}) {
       + `${span} (net ${netOf(v.net)}))`);
   }
   for (const z of board.pours || []) {
-    const layer = z.layerId === 2 || z.layer === 'bottom' ? 'B.Cu' : 'F.Cu';
+    const layer = cuNameOf(z.layerId, z.layer);
     const ring = (pts) => `(pts ${pts.map(([x, y]) => `(xy ${X(x)} ${Y(y)})`).join(' ')})`;
     const zone = [`(zone (net ${netOf(z.net)}) (net_name ${q(z.net)}) (layer ${q(layer)}) `
       + `(connect_pads (clearance ${fmt(z.clearance || 0.2)})) (min_thickness 0.2)`];
@@ -207,6 +215,7 @@ export function exportKicadPcb(board, opts = {}) {
     `  (title_block (title ${q(opts.title ?? 'brickwright-board')}))`,
     '  (layers',
     '    (0 "F.Cu" signal)',
+    ...innerIds.map((id, i) => `    (${i + 1} "In${i + 1}.Cu" signal)`),
     '    (31 "B.Cu" signal)',
     '    (36 "B.SilkS" user "B.Silkscreen")',
     '    (37 "F.SilkS" user "F.Silkscreen")',

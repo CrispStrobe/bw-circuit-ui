@@ -62,7 +62,12 @@ export function exportEasyEdaPcb(board, opts = {}) {
   let seq = 0;
   const id = (prefix = 'gge') => `${prefix}${++seq}`;
 
-  const layerIdOut = (t) => (t.layerId === 2 || t.layer === 'bottom' ? 2 : 1);
+  // EasyEDA Standard inner copper is layer ids 21..24 (Inner1..4). Model
+  // ids 21+ pass through; Pro's 15..18 renumber by stack position.
+  const innerIds = [...new Set(((board.copperLayers || []).filter((id) => id > 2)))].sort((a, b) => a - b);
+  const innerOut = new Map(innerIds.map((id, i) => [id, 21 + i]));
+  const layerIdOut = (t) => (t.layerId === 2 || t.layer === 'bottom' ? 2
+    : innerOut.get(t.layerId) || 1);
 
   const shape = [];
 
