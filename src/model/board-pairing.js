@@ -48,6 +48,8 @@
  * @module
  */
 
+import { wireEndpoint } from './wire-endpoints.js';
+
 /** Union-find over string keys. */
 class Groups {
   constructor() { this.p = new Map(); }
@@ -86,8 +88,14 @@ export function circuitPartition(circuit) {
   }
   const g = new Groups();
   for (const w of circuit.wires || []) {
-    const a = railIds.get(w.from) || NODE(w.from, w.fromTerminal);
-    const b = railIds.get(w.to) || NODE(w.to, w.toTerminal);
+    // The one endpoint reader (wire-endpoints.js): both wire dialects
+    // handled, and breadboard-hole endpoints — meaningless on a board
+    // diff — come back as non-part and are skipped.
+    const fe = wireEndpoint(w, 'from');
+    const te = wireEndpoint(w, 'to');
+    if (!fe?.part || !te?.part) continue;
+    const a = railIds.get(fe.part) || NODE(fe.part, fe.terminal);
+    const b = railIds.get(te.part) || NODE(te.part, te.terminal);
     g.union(a, b);
   }
   return { groups: g, railIds };

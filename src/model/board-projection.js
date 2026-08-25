@@ -28,6 +28,7 @@
  */
 
 import { getLandPattern } from './land-patterns.js';
+import { wireEndpoint } from './wire-endpoints.js';
 import { padShape, trackShapes, viaShape, shapeDist } from './pcb-geometry.js';
 import { DEFAULT_CLEARANCE_MM } from './pcb-drc.js';
 
@@ -60,8 +61,13 @@ export function netsFromCircuit(circuit) {
   const uf = new UF();
   const key = (part, terminal) => `${part}\t${terminal}`;
   for (const w of circuit.wires) {
-    const a = railName.has(w.from) ? `rail\t${railName.get(w.from)}\t${w.from}` : key(w.from, w.fromTerminal);
-    const b = railName.has(w.to) ? `rail\t${railName.get(w.to)}\t${w.to}` : key(w.to, w.toTerminal);
+    // The one endpoint reader (wire-endpoints.js); breadboard-hole
+    // endpoints have no seat on a bare board and are skipped.
+    const fe = wireEndpoint(w, 'from');
+    const te = wireEndpoint(w, 'to');
+    if (!fe?.part || !te?.part) continue;
+    const a = railName.has(fe.part) ? `rail\t${railName.get(fe.part)}\t${fe.part}` : key(fe.part, fe.terminal);
+    const b = railName.has(te.part) ? `rail\t${railName.get(te.part)}\t${te.part}` : key(te.part, te.terminal);
     uf.union(a, b);
   }
   const groups = new Map();
