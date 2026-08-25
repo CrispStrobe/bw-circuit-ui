@@ -1,0 +1,553 @@
+# Supporting PCBs in BrickWright — the plan, revised
+
+Status: **v2, adopted 2026-08-25 — implementation underway on `fable/pcb-support`.**
+v1 was written the same day, after repairing a real EasyEDA board (a Pico
+calculator, 21 parts, 24 nets) by hand and discovering that the app could not
+have caught any of its four defects. v2 folds in a licence-verified survey of
+what already exists in the open-source world, corrects the docType map, and
+adds the missing half of the story: the EasyEDA user who arrives *with a
+board* and wants to simulate it here.
+
+The one-paragraph version: **a board is a projection of the circuit, exactly
+like the schematic is** — the same pure function of `(parts, nets)`, rendered
+beside the canvas, regenerated on every change, with a thin overrides layer so
+a human can move things without the projection becoming a second source of
+truth. And in the other direction, **a board file carries enough to be lifted
+back into a simulatable circuit**, which is what turns DRC findings into
+behaviour a learner can watch. The genuinely new pieces are a land-pattern
+data layer, a physical DRC, a reader for EasyEDA's `docType 3`, and the lift.
+
+---
+
+## 1. Why bother — the correctness argument
+
+The strongest reason is not rendering. It is that **a board can express faults
+a circuit model cannot**, and those faults are silent everywhere else.
+
+Measured, on the board that prompted this. Six of its seventeen tact switches
+had the GPIO leg and the GND leg on the *same internally-shorted terminal*: on
+a 6x6 tact switch the two legs 4.5 mm apart on one side are one node. Six dead
+keys and six GPIOs tied to ground.
+
+That fault cannot exist in the circuit model. A modelled `button` has two
+terminals, `a` and `b`; the footprint has four pads. The defect lives entirely
+in the mapping between them, so `runDrc` cannot see it, the simulator runs
+happily, and every existing test passes. It is created by the footprint and
+only a board layer can find it.
+
+The same board had three more faults in the same class:
+
+| fault | visible to | how it presents |
+|---|---|---|
+| GPIO+GND on one switch terminal (x6) | board only | six dead keys |
+| battery unconnected at both ends | schematic | EasyEDA's "unfinished nets" |
+| board outline open (two ~39 mm tails) | board only | fab rejects or mills wrong |
+| no pin legend on the OLED header | board only | reversed rails kill the module |
+
+One of four is reachable from the schematic. So a board layer is not a nicer
+picture of what we already check — it is a new class of check.
+
+**And the pedagogical close (promoted from an afterthought in v1):** once the
+board's *copper* can be read back as a netlist, the simulator can be fed the
+board as built instead of the circuit as drawn. Then the learner does not read
+a DRC string about `terminal-short` — they press six keys and nothing happens,
+on screen, before any money goes to a fab. That loop — breadboard → schematic
+→ board → *watch the board actually behave* → back — is the product.
+
+---
+
+## 2. What already exists here
+
+This is the reason the plan is tractable. Current inventory:
+
+```
+src/model/            ~8,000 lines / 40 files
+src/importers/        ~3,700 lines / 10 files   easyeda, eagle, kicad x4, wokwi, sexpr, detect, index
+src/model/exporters/  ~1,300 lines /  7 files   easyeda, easyeda-schematic, eagle, kicad-sch, kicad (.net), spice, download
+src/components/      ~13,600 lines / 30 files
+test/                  137+ files
+bw-board/            ~28,500 lines              incl. mna.js 2,940
+```
+
+Load-bearing pieces this plan consumes rather than replaces:
+
+- **`src/model/netlist.js`** — "neutral netlist extractor … format-agnostic …
+  breadboards and jumpers are dissolved." This is the input to a board
+  projection. It already produces exactly the right thing.
+- **`src/model/schematic-projection.js`** — the architectural precedent. Its
+  header states the contract to copy verbatim: *"A PROJECTION: pure function
+  of (parts, nets), no state of its own, no interaction world. The canvas
+  stays the single editable model."*
+- **`src/model/board-geometry.js`** — already defines
+  `WORLD_UNITS_PER_MM = BREADBOARD_PITCH / 2.54`. The app has a physical scale
+  today. A board layer does not invent one.
+- **`src/data/easyeda-symbols.js`** — carries `kicadFootprint` for **60
+  kinds**. That is a land-pattern registry with the geometry missing, not a
+  blank sheet.
+- **`src/model/drc.js`** (8 rules) — the finding shape
+  `{severity, rule, partId, explanation}` and the whole warning surface behind
+  it: the chip in `BoardCanvas`, `DrcPanel`'s teaching cards, `DrcOverlay`'s
+  per-part badges.
+- **`src/importers/easyeda.js`** — reads schematic documents, and *deliberately
+  rejects* `docType 3`/`4` with a helpful message. The rejection is the hook
+  this plan fills in.
+- **`src/model/exporters/easyeda-schematic.js`** — the writer, and more
+  importantly the **round-trip oracle discipline**: "export → importEasyEda →
+  the electrical partition must equal the source circuit's resolved nets", with
+  hazards removed *by construction* rather than checked afterwards.
+- **`THIRD-PARTY.md`'s "format knowledge, not code" table** — the licence
+  discipline this plan extends. See §9.
+
+Name already taken, worth knowing before someone trips: **`src/model/footprints.js`
+is breadboard hole-spans**, not land patterns. The board layer uses a
+different word — `land-patterns.js` below.
+
+---
+
+## 3. The shape
+
+**A board view is a projection with an overrides layer — and imports run the
+pipe backwards.**
+
+```
+Circuit (the one editable model)
+   │
+   ├─ netlist.js ──────────────► neutral netlist
+   │                                  │
+   │                    ┌─────────────┴─────────────┐
+   │                    ▼                           ▼
+   │        schematic-projection.js        board-projection.js   ← new
+   │         (exists)                       placement + routing
+   │                    │                           │
+   │                    ▼                           ▼
+   │            SchematicPanel.jsx            BoardPanel.jsx      ← new
+   │
+   └─ circuit.pcb {} ──────────────────────────────► overrides    ← new, small
+        per-part {x, y, rotation, side, package}
+        pinned traces, board outline, stackup
+
+Imported PCB_*.json ──► board model ──► copper netlist ──► lifted circuit
+                            │                │                (simulatable)
+                            │                └── net-island DRC, round-trip
+                            │                    oracle, fault injection:
+                            │                    ONE artifact, THREE consumers
+                            └── paired with SCH_*.json → consistency diff
+```
+
+Why a projection and not a second model: the schematic view earned that
+decision already, and the reasons transfer exactly. A second editable model
+means two things that can disagree about what is connected, and reconciling
+them is the bug factory. The overrides layer keeps human placement without
+giving the board authority over connectivity — **the netlist always wins;
+overrides only ever say where something sits, never what it touches.**
+
+That single rule is what makes "editing to a degree" cheap and safe.
+
+---
+
+## 4. Units, coordinates, and the docType map
+
+Decide once, at the start, or pay forever.
+
+- Store PCB geometry in **millimetres**, floating point, origin at the board
+  outline's bottom-left. Fab-native, and every format converts cleanly.
+- Convert at the view boundary with the existing `WORLD_UNITS_PER_MM`.
+- Do **not** adopt EasyEDA's internal unit (10 mil) as the model unit. It is a
+  format detail. Convert on read and write. (1 EasyEDA unit = 10 mil =
+  0.254 mm, and every coordinate in their PCB JSON is in it.)
+- Angles in degrees, 0/90/180/270 only for v1. Arbitrary rotation is a v3
+  problem and mostly a rendering one.
+
+**The docType map, corrected** (v1 had it half right; verified against
+KiCad's dev-docs on the EasyEDA import format):
+
+| docType | meaning |
+|---|---|
+| 1 | a single schematic sheet |
+| 2 | symbol |
+| 3 | **PCB** |
+| 4 | footprint |
+| 5 | schematic **container** (list of sheets) |
+| 14 | **PCB module** — v1 of this plan never mentioned it; a board using modules imports with holes unless the reader at least detects and says so |
+
+A PCB exported on its own may carry no top-level `docType` at all — it is a
+bare `{head, shape}` payload with the type inside `head` (the schematic
+importer already learned this the hard way; the board reader inherits the
+lesson).
+
+**EasyEDA Pro is a silent trap for exactly our target user.** Current EasyEDA
+funnels many users into Pro, whose exports are a different format family
+entirely: `.eprj`/`.epro` ZIP containers or `.eprj3` folders of `.esch2`/
+`.epcb2` JSON, different coordinate scaling, inverted Y axis. **Standard JSON
+only for v1**, and `detect.js` must recognise a Pro file and say so helpfully
+rather than failing weird. If Pro ever matters: EasyEDA publishes an official
+spec (`github.com/easyeda/easyeda-pro-eprj3-format`) and KiCad ≥ 8's importer
+is a reference. No JS parser for Pro exists anywhere — that would be all-new
+work, and it is out of scope.
+
+---
+
+## 5. Phases
+
+Ordered so that each phase is independently useful and the risky ones come
+after the cheap ones have proved the model. **Two ordering changes vs v1:**
+the board→circuit lift is now Phase 0.5 (it was buried inside "simulation
+coupling" at the end, and it is actually the second-cheapest, second-most
+valuable thing on the list), and physical DRC moved **ahead of** the
+projection — the checker must exist before the router it gates.
+
+### Phase 0 — read a board (`docType 3`)
+
+**The cheapest phase and the one that pays for the rest.** ~400–500 lines.
+
+`importers/easyeda-pcb.js`: `LIB`/`PAD`, `TRACK` on copper layers, `VIA`,
+`HOLE`, `ARC`, `COPPERAREA`, board outline on layer 10, silk on 3/4. Produces
+
+```
+{ parts: [{ref, package, x, y, rotation, side,
+           pads: [{num, net, x, y, shape, w, h, drill, layer}]}],
+  freePads, tracks, vias, holes, arcs, pours, outline, silk, stackup,
+  nets, warnings }
+```
+
+Deliverables: `detect.js` recognises docType 3 (and 14, and Pro files, each
+with its own message); the existing "this is a PCB, export the schematic
+instead" rejection becomes "…or open it as a board".
+
+Why first: it gives **loading** immediately, it gives a corpus to test
+everything else against, and it is the half of the round-trip oracle that
+cannot be faked.
+
+Known hard parts, from the v1 prototype (throwaway, read a real 21-part board
+correctly):
+
+- **`COPPERAREA` (pours).** Fatal if skipped: a ground pour is invisible, so
+  "GND is one island" comes out wrong on any board that has one. Parse the
+  outline polygon and net always; connectivity semantics live in Phase 0.5.
+- Copper `ARC` (the sample board's arcs were all silk — hand-author a fixture
+  with a copper arc precisely because the corpus lacks one).
+- `SOLIDREGION`, `SVGNODE`, stackups beyond 2 layers: parse-and-warn, don't
+  silently drop.
+
+### Phase 0.5 — the lift: board → copper netlist → circuit  *(new in v2)*
+
+Two artifacts, both pure functions of the Phase-0 board model:
+
+**(a) The copper netlist.** From pads + tracks + vias + pours, compute the
+actual connectivity partition: which pads are joined by copper. This single
+artifact has **three consumers** — the `net-island` DRC rule (declared net ≠
+copper island), the Phase-5 round-trip oracle's comparator, and Phase 8's
+fault injection. Build it once, first-class, in `src/model/copper-netlist.js`.
+
+Pour semantics, honestly: same-net objects touching the pour's outline polygon
+are connected. That is an over-approximation (the real fill subtracts
+clearances around other nets, which can split an island); v1 ships the
+over-approximation **labelled as such** in the result (`viaPour: true` on the
+joins), and the exact fill lands with the geometry engine (§8, clipper2-wasm)
+if and when a real board is misjudged. An over-approximation that is *known*
+is a tool; one that is silent is a lie — the difference is the label.
+
+**(b) The pairing and the lift.** An EasyEDA user arrives with
+`SCH_*.json` + `PCB_*.json`:
+
+- Both present → import both, **match refdes**, and diff schematic netlist vs
+  copper netlist. This is KiCad's "update PCB from schematic" check, and it
+  is the single check that would have caught the calculator's terminal-short
+  fault on import day one. Findings go out through the standard DRC surface.
+- Board only → lift a circuit from the board itself: pads carry net names,
+  refdes prefixes + package strings map footprints to modelled kinds where we
+  can (`R*`+axial → resistor, `SW*`+6x6 tact → button, …), and unrecognized
+  parts become opaque n-terminal placeholders that the simulator treats as
+  open. Degrade *visibly*: the import report says which parts lifted and
+  which are placeholders.
+
+This phase is what makes "run simulations on an imported PCB" true at all — a
+bare docType 3 has copper, not kinds.
+
+### Phase 1 — land patterns
+
+`src/model/land-patterns.js` + `src/data/land-patterns.js`.
+
+Keyed by `(kind, packageVariant)`, seeded from the 60 `kicadFootprint` strings
+already in `easyeda-symbols.js` — as *names*, not as scraped geometry (see
+§9 for why). Each entry: pad list (number, terminal name, x/y in mm, shape,
+size, drill), courtyard, silk outline, and the **terminal map** — which pads
+are the same electrical terminal.
+
+That last field is not decoration. It is the entire reason Phase 2 can catch
+the tact-switch fault: `button` → `{a: [1,3], b: [2,4]}` states that pads 1
+and 3 are one node. It comes from the part definition, never from geometry
+guessing.
+
+**Sourcing, decided (v1's §8.4, resolved):** hand-author the ~15 kinds the
+gallery actually uses, from datasheet dimensions — pad positions and drill
+sizes are facts and facts are not copyrightable. Parametric generators for
+the families (DIP-n, SIP header-n, axial, radial, 6x6 tact) keep it honest and
+small; tscircuit's `footprinter` (MIT) is the existence proof and a fine
+cross-check oracle. **Do not bundle converted KiCad library data** — their
+libraries are CC-BY-SA-4.0 with an exception that covers *designs made with
+them*, not redistributed conversions; bundled copies would have to stay
+CC-BY-SA in a segregated data package. Later, optionally, for EasyEDA-native
+users: a **user-triggered fetch by LCSC part number** from
+`https://easyeda.com/api/products/{lcsc}/components` (undocumented but
+stable; the endpoint URL is a fact — see the AGPL landmine in §9 about where
+that knowledge may and may not come from).
+
+### Phase 2 — physical DRC  *(moved ahead of the projection: the checker gates the router, so it exists first)*
+
+`src/model/pcb-drc.js`, emitting the **existing** `{severity, rule, partId,
+explanation}` shape so it lands in the chip, panel and overlay with no UI
+work.
+
+Rules, all prototyped and measured against a real board:
+
+| rule | catches |
+|---|---|
+| `net-island` | a net whose pads are not all connected by copper (consumes Phase 0.5's copper netlist) |
+| `unfinished-net` | a net reaching fewer than two pads |
+| `clearance` | pad↔pad, pad↔track, track↔track, hole↔copper, copper↔edge |
+| `outline-open` | board outline not a closed loop |
+| `terminal-short` | two nets on pads that are one internal terminal ← §1, consumes Phase 1's terminal maps |
+| `no-legend` | connector with no silk pin legend |
+| `schematic-mismatch` | *(new, Phase 0.5)* copper partition disagrees with the paired schematic's netlist |
+
+On the sample board this set reported **16 findings, all real**, and 0 on the
+repaired version. Both boards stay out of the repo (they are a private
+design); they drive the **local live test** (§6).
+
+Geometry is exact or it is not a checker: point-to-rotated-rectangle distance
+for rect pads, segment-to-segment for tracks. No inscribed-circle shortcuts
+(§7.1).
+
+### Phase 3 — board projection
+
+`src/model/board-projection.js`, mirroring `schematic-projection.js`.
+
+- **Placement**: rank by net-graph distance from connectors/MCU, grid-snap,
+  respect courtyards. It will not beat a human. Neither does the schematic
+  projection, and its header says so.
+- **Routing**: 45°/90° grid autorouter, two layers, via cost. The v1
+  prototype (~170 lines, A\* with a turn penalty over a 0.5 mm grid) routed
+  nine nets on a real board with zero DRC violations — but only because an
+  exact checker gated it. **Every projection output must pass Phase-2 DRC
+  with zero findings. The router is heuristic; the checker is exact; the
+  checker gates.**
+- Board outline: bounding box + margin for v1; user-supplied later.
+- If the in-house router ever tops out: `@tscircuit/capacity-autorouter`
+  (MIT, maintained) as a dependency, or freerouting (GPL, **process boundary
+  only**) via Specctra DSN/SES once we emit DSN. Neither is v1.
+
+### Phase 4 — rendering
+
+`BoardPanel.jsx`, beside `SchematicPanel.jsx`. Layer toggles (top/bottom
+copper, silk, mask, drill), pan/zoom reusing the existing camera, part hover
+tied to the same selection model the other panels use. Realistic styling
+(mask green, silk white, pads gold) is a solved *visual* problem — tracespace's
+`pcb-stackup` SVG styling and KiCanvas (both MIT) are the quality references;
+the rendering itself stays in-house SVG like `schematic-svg.js`.
+
+Deliberately not in v1: 3D, mask/paste fidelity, ratlines animation.
+
+### Phase 5 — saving
+
+`exporters/easyeda-pcb.js`, symmetric to `easyeda-schematic.js` and built to
+the same "safe by construction" rule.
+
+**Acceptance is the round-trip oracle, not eyeballing**: export → Phase-0
+import → Phase-0.5 copper netlist → the partition must equal the source
+circuit's resolved nets, pad for pad.
+
+Second exporter, cheap and strategic: **`.kicad_pcb` export** (emit-only — we
+only write what we have, which is a fraction of the grammar). It buys the
+**independent DRC oracle**: `kicad-cli pcb drc --format json
+--exit-code-violations` (KiCad 8+, built for CI, GPL irrelevant at process
+boundary). A foreign-authored exact checker gating our router catches rule
+classes nobody here thought to write. The KiCad PCB *importer* stays
+deferred — that grammar is a much bigger job.
+
+Gerber/drill export is a later, separate job. Do not bundle it — EasyEDA can
+produce Gerbers from a board it opens, so Phase 5 already unblocks
+fabrication.
+
+### Phase 6 — editing, to a degree
+
+In dependency order, each shippable alone. **Scope for v1 is items 1–3**
+(v1's §8.1, resolved); 4–5 wait until the router has survived the kicad-cli
+oracle for a while:
+
+1. drag a part → writes `circuit.pcb.parts[id].{x,y}`
+2. rotate / flip to the other side
+3. pick a package variant where a kind has more than one
+4. lock a trace (projection routes everything else around it)
+5. draw the board outline *(the board owns its outline, as an override;
+   derived bounding-box until the user draws one — v1's §8.3, resolved)*
+
+Never editable: which pad is on which net. That comes from the netlist,
+always.
+
+### Phase 7 — examples
+
+`index.json` gains `files.pcb` on existing entries, and `kind: "pcb"` for
+board-only lessons. Gallery tests then judge boards the way they judge
+circuits.
+
+First candidate is real and already exists: `71-calculator-pcb` in
+sb3-creator has the program and circuit today; the board completes it — as a
+**clean-room re-layout by the projection**, not a copy of the private EasyEDA
+design.
+
+### Phase 8 — simulation coupling
+
+**What "simulating a PCB" honestly means:** for v1, *nothing changes*. The
+netlist is the same netlist, so the MNA solve is the same solve. A board adds:
+
+- **Fault injection — the valuable half, and mostly already built by Phase
+  0.5**: feed the simulator the *copper* partition instead of the circuit
+  partition. Six dead keys on screen instead of a working calculator; a DRC
+  finding becomes something a learner can see.
+- **Parasitics** — trace/via resistance as series elements in `mna.js`
+  (bw-board's repo, the only cross-repo touch). Real but tiny at this scale:
+  ~2 mΩ per mm of 0.254 mm 1 oz trace. Matters for a 0.5 A LED matrix, not a
+  calculator. Only if someone asks.
+- **Exact pour fill** — if the Phase-0.5 over-approximation ever misjudges a
+  real board: `clipper2-wasm` (BSL-1.0, active, does booleans *and* the
+  clearance offsetting) is the decided dependency for that day. Not before:
+  this repo runs on three runtime dependencies and stays that way until
+  geometry robustness genuinely demands the fourth.
+
+---
+
+## 6. Test oracles, per phase
+
+The house rule is that a check must be able to fail. Per phase:
+
+- **0** hand-authored `docType 3` fixtures with the partition written down
+  *before* the reader runs, mirroring `test/fixtures/easyeda-*.json`. Include
+  the corpus gaps on purpose: a copper arc, a pour, a bare `{head, shape}`
+  payload, a docType 14, a Pro file (for the detector).
+- **0-live** the real boards in `~/Downloads` (broken calculator + repaired
+  twin + TinyProbe) drive an **optional live test** that reads them from a
+  local path (env var, skips cleanly when absent) — they never enter the
+  repo. Expected: the reader parses all three; the DRC pair oracle below.
+- **0.5** copper netlist on fixtures with the partition hand-computed first;
+  the lift on a board whose kinds are all recognisable, and one where they
+  are not (placeholders must be *reported*, not silent).
+- **1** every land pattern's pads must cover exactly the kind's terminals via
+  the terminal map — a missing or extra pad is a hard error, not a warning.
+  Cross-check a sample against `@tscircuit/footprinter` output (oracle, not
+  dependency).
+- **2** the sample board (16 findings) and its repaired twin (0). Both, live.
+  Fixtures encode one synthetic instance of every rule besides.
+- **3** every projection output passes Phase-2 DRC with zero findings — the
+  gate, in CI, on every gallery circuit that projects.
+- **4** SVG baselines, as `test/docs/schematic-baselines` already does.
+- **5** round-trip: export → import → copper partition equals source nets.
+  Plus, where a KiCad install is present: `kicad-cli pcb drc` on the exported
+  `.kicad_pcb` — zero violations, `--exit-code-violations` in CI when the
+  runner has KiCad, skip-with-notice when not.
+- **7** gallery tests, auto-enrolled via `index.json`.
+
+Differential oracles during development (never dependencies, never ported
+from): KiCad ≥ 8's own EasyEDA importer, and the archived LC2KiCad (LGPL) —
+run them on the same corpus, compare pad counts and net partitions.
+
+---
+
+## 7. What will bite
+
+Written down because each of these already bit once.
+
+1. **An approximate obstacle model in the router is not a checker.** The v1
+   prototype modelled every pad as a disc of `max(w,h)/2` — the *inscribed*
+   circle, which misses a rectangular pad's corners by 0.33 mm and can only
+   produce false negatives. The board came out "clean" by luck of which way
+   the approximation erred. Rect pads need exact point-to-rectangle distance.
+   Approximate generator, exact checker, and never confuse the two.
+
+2. **Counting is not detecting.** A first attempt at "warn on a net with one
+   pin" fired on this repo's own `rc-divider` fixture, whose VCC legitimately
+   feeds one pin. A warning that fires on healthy designs gets tuned out and
+   stops being read. Find the *discriminating* signal, not the correlated one.
+
+3. **Pours change every connectivity answer.** An importer without
+   `COPPERAREA` will confidently report broken ground on a perfectly good
+   board. And the over-approximation in Phase 0.5 must stay *labelled* — see
+   there.
+
+4. **The pad number is not the pin slot.** Fixed upstream in `easyeda.js`
+   (`eade8e3`), and the same trap exists on the PCB side wherever a
+   footprint's pad numbering is assumed to match a symbol's pin ordering. It
+   does not. The terminal map in Phase 1 is the only lawful bridge.
+
+5. **Silk is not free.** Legends over drills get scrubbed by the fab; labels
+   colliding with neighbouring outlines look like a defect. Both happened.
+
+6. **`docType` is not always where you look first** (§4), **modules exist**
+   (docType 14), and **Pro files look like JSON but aren't this format**.
+   Detect all three explicitly; "no components found" is true and unhelpful.
+
+---
+
+## 8. Libraries and oracles — the licence-verified survey (2026-08-25)
+
+Every licence below was verified from the repo's LICENSE file or npm's
+`license` field on 2026-08-25, not assumed. Given this repo's deliberate
+near-zero-dependency posture, the standing decision is: **at most one new
+runtime dependency (clipper2-wasm, and only when exact pour fill is actually
+needed), two process-boundary oracles, everything else reference material**
+logged in `THIRD-PARTY.md`'s format-knowledge table.
+
+| library | licence | role here | note |
+|---|---|---|---|
+| clipper2-wasm | BSL-1.0 | the one sanctioned future dependency | booleans **and** offsets, integer-robust, active. For §8's exact pour fill, not before |
+| kicad-cli (KiCad 8/9) | GPL-3.0 | **oracle, CI** | headless `pcb drc`, JSON output, exit codes. Process boundary, never linked |
+| freerouting | GPL-3.0 | oracle, optional | headless DSN→SES; router benchmark once we emit DSN |
+| tscircuit `easyeda` converter | MIT | reference | its Zod schemas ≈ the only published EasyEDA-JSON grammar; parses *component* payloads only, **not** docType 3/5 documents — it does not replace Phase 0 |
+| tscircuit `footprinter` | MIT | oracle | parametric land patterns; cross-check ours |
+| `@tscircuit/capacity-autorouter` | MIT | escape hatch | a real maintained MIT autorouter if the in-house one tops out |
+| KiCanvas | MIT | reference | best open `.kicad_pcb` parser+renderer in JS; not on npm, alpha APIs — vendor-from-source if ever needed |
+| pcb-stackup / gerber-to-svg | MIT | reference / later | realistic Gerber rendering; project on hiatus, would need vendoring |
+| `@tscircuit/pcb-viewer`, `circuit-to-svg` | MIT / ISC | reference | rendering-quality references |
+| KiCad footprint libraries | CC-BY-SA-4.0 + exception | **do not bundle** | the exception covers *designs*, not redistributed conversions; converted data would stay CC-BY-SA in a segregated package. We hand-author from datasheet facts instead |
+| easyeda2kicad.py | **AGPL-3.0** | **avoid — landmine** | network copyleft, worst case for a web app. Never port code from it. Its *endpoint URLs* are uncopyrightable facts, independently confirmed |
+| LC2KiCad | LGPL-3.0 | differential oracle | archived 2024 (KiCad 8 obsoleted it); reads full docType 3 — run it, don't read-and-port |
+| polygon-clipping | MIT | avoid | no offsetting, dormant, documented precision-loop failure modes |
+| svg-pcb footprint JSONs | GPL-3.0 | avoid | data not separately licensed; provenance of its kicad-components unclear |
+| autorouting-dataset | none stated | avoid | unlicensed; superseded by capacity-autorouter anyway |
+| flatbush / rbush | ISC / MIT | only if profiling says | spatial index; at 21-part scale brute force is fine |
+
+When any of these is first *used* (even as an oracle or format reference), it
+gets its row in `THIRD-PARTY.md` the same day.
+
+---
+
+## 9. Cross-repo split
+
+| repo | slice |
+|---|---|
+| **bw-circuit-ui** | everything above: importer, lift, land patterns, pcb-drc, projection, panel, exporters |
+| **bw-board** | nothing for Phases 0–7. Phase 8 parasitics would touch `mna.js` |
+| **sb3-creator** | `index.json` gains `files.pcb`; example boards (clean-room, via the projection) |
+| **brickwright-lite** | vendor sync only — `scripts/sync-bw-circuit-ui.mjs`, then `integrate.mjs`. Never string-patch the vendored copy |
+
+Claim lanes in `brickwright-lite/LANES.md` before starting; lite pushes are
+serialised through whoever holds the serializer role. This branch
+(`fable/pcb-support`) lives in its own worktree
+(`~/code/wt-fable/bw-circuit-ui-pcb`); parallel sessions never share a tree.
+
+---
+
+## 10. What not to do
+
+- Do not make the board a second editable model of connectivity.
+- Do not ship a router without an exact checker gating it — and build the
+  checker *first* (Phase 2 before Phase 3, changed from v1 for this reason).
+- Do not write a Gerber exporter before Phase 5 — EasyEDA already produces
+  Gerbers from a board it can open, so it is not on the critical path.
+- Do not seed the corpus with a private design. Hand-author fixtures with the
+  expected partition written down first; the real boards stay in a local
+  directory behind an env var and the tests skip cleanly without them.
+- Do not port code from AGPL/GPL readers, however convenient — run them as
+  oracles across a process boundary and record the fact in `THIRD-PARTY.md`.
+- Do not bundle converted KiCad footprint data into MIT-licensed source.
+- Do not let the pour over-approximation lose its label.
