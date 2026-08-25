@@ -469,7 +469,7 @@ export function runDrc(circuit, board) {
     const chipName = mcuPart.params?.device || mcuPart.params?.label || {
       mcu: 'MCU', arduino_uno: 'ATmega328P', arduino_nano: 'ATmega328P',
       arduino_mega: 'ATmega2560', pi_pico: 'RP2040',
-      attiny85: 'ATtiny85', attiny88: 'ATtiny88', attiny13: 'ATtiny13',
+      attiny85: 'ATtiny85', attiny88: 'ATtiny88', attiny13: 'ATtiny13', stm32f030: 'STM32F030',
       attiny2313: 'ATtiny2313', atmega168p: 'ATmega168P',
       atmega328p: 'ATmega328P', atmega2560: 'ATmega2560',
     }[mcuPart.kind] || mcuPart.kind.toUpperCase();

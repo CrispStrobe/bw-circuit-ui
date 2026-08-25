@@ -40,13 +40,17 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
   const device = String(stc.device || '').toLowerCase();
   const controllerKind = device === 'arduino-uno' ? 'arduino_uno'
     : device === 'arduino-nano' ? 'arduino_nano'
-      : device === 'pico' ? 'pi_pico' : 'mcu';
+      : device === 'pico' ? 'pi_pico'
+        : device === 'stm32f030' ? 'stm32f030' : 'mcu';
   const isBoard = controllerKind !== 'mcu';
+  // A bare chip with fixed terminals (stm32f030) names pins like a board
+  // (lowercase `where`) but powers like a chip (vcc/gnd pads, no rail).
+  const isBareChip = controllerKind === 'stm32f030';
   const controllerPin = pin => isBoard
     ? String(pin.where || pin.pin || pin.name || '').toLowerCase()
     : `P${pin.port}.${pin.bit}`;
-  const powerPin = controllerKind === 'pi_pico' ? 'vbus' : isBoard ? '5v' : 'VCC';
-  const groundPin = isBoard ? 'gnd' : 'GND';
+  const powerPin = controllerKind === 'pi_pico' ? 'vbus' : isBareChip ? 'vcc' : isBoard ? '5v' : 'VCC';
+  const groundPin = isBareChip ? 'gnd' : isBoard ? 'gnd' : 'GND';
 
   // ── Place and seat the breadboard + controller ───────────────────
   const bb = circuit.addPart('breadboard', {}, 470, 330);
@@ -71,7 +75,9 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
   const seated = !!(mcu.seat);
 
   // ── Power: battery → rails → MCU ────────────────────────────────
-  const bat = circuit.addPart('vsource', { variant: '9v', volts: 5 }, 120, 150);
+  // The F030 is a 3.3 V part — a 5 V bench rail would exceed abs-max.
+  const benchVolts = controllerKind === 'stm32f030' ? 3.3 : 5;
+  const bat = circuit.addPart('vsource', { variant: '9v', volts: benchVolts }, 120, 150);
   circuit.addTapWire(bat.id, 'pos', bb.id, 't+2', '#e74c3c');
   circuit.addTapWire(bat.id, 'neg', bb.id, 't-2', '#2c3e50');
 

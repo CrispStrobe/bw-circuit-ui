@@ -33,7 +33,7 @@ function genId(prefix) { return `${prefix}_${_nextId++}`; }
 const PASSTHROUGH_KINDS = new Set([
   // MCU boards
   'stc_mcu', 'stc15_mcu', 'at89c2051', 'arduino_nano', 'arduino_uno', 'arduino_mega',
-  'pi_pico', 'attiny85', 'attiny88', 'attiny13', 'attiny2313', 'microbit',
+  'pi_pico', 'attiny85', 'attiny88', 'attiny13', 'attiny2313', 'microbit', 'stm32f030',
   // Retro DIPs (6502 family)
   'w65c02', 'w65c22', 'w65c51',
   // Machine-layer peripherals (bw-board implements them chip-level; the
