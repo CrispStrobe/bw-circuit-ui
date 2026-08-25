@@ -581,8 +581,9 @@ export function importEasyEda(text) {
   if (dt === '3' || dt === '4') {
     return { parts, wires: [], unmapped, ignored,
       warnings: ['This is an EasyEDA PCB/footprint document (docType ' + dt + '). '
-        + 'Export the SCHEMATIC (docType 5) -- a board carries copper and footprints, '
-        + 'the schematic carries the netlist.'] };
+        + 'Open it as a BOARD (the easyeda-pcb importer reads it), or export the '
+        + 'SCHEMATIC (docType 5) for the circuit -- a board carries copper and '
+        + 'footprints, the schematic carries the netlist.'] };
   }
 
   const sheets = easyEdaSheets(doc);

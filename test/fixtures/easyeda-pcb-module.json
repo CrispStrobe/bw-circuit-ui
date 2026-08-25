@@ -1,0 +1,9 @@
+{
+  "editorVersion": "6.5.57",
+  "docType": "14",
+  "head": { "docType": "14", "editorVersion": "6.5.57" },
+  "canvas": "CA~1000~1000~#000000~yes~#FFFFFF~10~1000~1000~line~0.5~mm~1~45~visible~0.5~4000~3050~1~yes",
+  "shape": [
+    "TRACK~2.4~1~OUT~4000 3000 4010 3000~gge_m1~0"
+  ]
+}

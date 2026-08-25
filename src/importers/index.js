@@ -31,6 +31,7 @@ import { importKicadSch } from './kicad-sch.js';
 import { importKicadLegacy } from './kicad-legacy.js';
 import { importKicadNetlist } from './kicad-netlist.js';
 import { importEasyEda } from './easyeda.js';
+import { importEasyEdaPcbAsCircuit, importEasyEdaProStub } from './easyeda-pcb.js';
 import { importWokwi, exportWokwi } from './wokwi.js';
 
 const IMPORTERS = {
@@ -39,6 +40,11 @@ const IMPORTERS = {
   'kicad-legacy':  importKicadLegacy,
   'kicad-netlist': importKicadNetlist,
   'easyeda':       importEasyEda,
+  // A board, not a schematic: the circuit contract is honoured with empty
+  // parts/wires and the board model rides along as `board` (docs/PCB-SUPPORT-PLAN.md).
+  'easyeda-pcb':   importEasyEdaPcbAsCircuit,
+  // Named refusal — EasyEDA Pro is a different format family.
+  'easyeda-pro':   importEasyEdaProStub,
   'wokwi':         importWokwi,
 };
 

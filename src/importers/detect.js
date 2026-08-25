@@ -18,6 +18,7 @@
  */
 
 import { looksLikeEasyEda } from './easyeda.js';
+import { looksLikeEasyEdaPcb, looksLikeEasyEdaPro } from './easyeda-pcb.js';
 
 /**
  * @param {string} text      Raw file content
@@ -41,6 +42,14 @@ export function detectFormat(text, filename = '') {
   // runs before KiCad's: both are JSON and only a key tells them apart. Our
   // own circuit JSON has a top-level `parts` ARRAY and no `editorVersion`,
   // and bin/bwc.mjs checks for that array before it ever calls this.
+  // EasyEDA PRO is a different format family (JSON Lines, other scaling)
+  // and must be NAMED, not mis-parsed: its rows would read as zero shapes
+  // and "no components found" is true and unhelpful.
+  if (looksLikeEasyEdaPro(text)) return 'easyeda-pro';
+  // EasyEDA Standard PCB (docType 3/14). Checked before the schematic rule:
+  // both are tilde-DSL JSON with a `shape` array and only docType tells them
+  // apart — same reason the EAGLE rule runs before KiCad's.
+  if (looksLikeEasyEdaPcb(text)) return 'easyeda-pcb';
   if (looksLikeEasyEda(text)) return 'easyeda';
   if (/\.kicad_sch$/i.test(filename)) return 'kicad-sch';
   if (/\.sch$/i.test(filename)) return 'eagle';
