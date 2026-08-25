@@ -503,10 +503,20 @@ export function readComponents(shape) {
         if (f[1] === 'P') ref = textOf(f);
         else if (f[1] === 'N') value = textOf(f);
       } else if (sub.startsWith('P~')) {
-        const f = sub.split('^^')[0].split('~');
-        const nameSec = sub.split('^^')[3];
+        const secs = sub.split('^^');
+        const f = secs[0].split('~');
+        const nameSec = secs[3];
+        const numSec = secs[4];
+        // secs[0] field 3 is the symbol's internal SLOT index, not the pin
+        // number. They agree for most parts, which is why reading the slot
+        // survives so long, and they diverge exactly where it matters: a
+        // Raspberry Pi Pico symbol carries slots 23..42 for pins 21..40, so
+        // the slot names GND as pin 35 where the footprint pad is 33. The
+        // DISPLAYED number in secs[4] is what a footprint pad is keyed on.
+        // Fall back to the slot when a symbol omits the number text.
+        const shown = numSec ? String(numSec.split('~')[4] ?? '').trim() : '';
         pins.push({
-          num: f[3] ?? '',
+          num: shown || (f[3] ?? ''),
           x: Number(f[4]), y: Number(f[5]),
           name: nameSec ? (nameSec.split('~')[4] ?? '') : '',
         });
@@ -857,6 +867,20 @@ export function importEasyEda(text) {
       + `treats these as crossings, so these connections exist here and not on the board -- at `
       + `${where}${cost}`);
   }
+  const misses = easyEdaNearMisses(text);
+  if (misses.length) {
+    const orphaned = new Map(easyEdaOrphanNets(text).map((o) => [o.name, o.members]));
+    const shown = misses.slice(0, 8).map((m) => {
+      const reach = orphaned.get(m.label);
+      return `${m.label} (a wire corners ${m.dist.toFixed(1)} away at ${m.x},${m.y}`
+        + (reach ? `, and ${m.label} reaches ${reach.length ? reach.join(' ') : 'nothing'}` : '')
+        + ')';
+    }).join('; ');
+    warnings.push(`${misses.length} wire(s) stop just short of a net label and do NOT join it: `
+      + `${shown}${misses.length > 8 ? ' ...' : ''}. A net flag is drawn outwards from its pin, `
+      + 'so a wire ending a few units past it lies on the GRAPHIC and looks connected at every '
+      + 'zoom level. This is what EasyEDA later calls an unfinished net.');
+  }
   warnings.push(`geometry: ${attached}/${pinCount} mapped pins landed on a net `
     + `(${nets} nets, ${labels} labels)`);
   if (floating) warnings.push(`${floating} pin(s) touch no wire, junction or label`);
@@ -892,38 +916,60 @@ export function importEasyEda(text) {
  * @returns {string[]} one sorted "REF/PIN|REF/PIN|..." string per net with
  *                     two or more nodes, itself sorted.
  */
+/**
+ * Solve one sheet's connectivity, and hand back the pieces both readers need.
+ *
+ * Extracted so easyEdaPartition and easyEdaOrphanNets cannot drift into
+ * disagreeing about what is connected -- the same reason this module borrows
+ * kicad-common's NetSolver instead of growing a second union-find.
+ */
+function solveSheet(sheet, sheetIx, opts = {}) {
+  const net = new NetSolver();
+  const scope = (n) => `s${sheetIx}:${n}`;
+  const dots = new Set();
+  const names = new Set();
+  const anchors = [];
+  const verts = [];
+  for (const raw of sheet.shape) {
+    const s = String(raw); const f = s.split('~');
+    if (f[0] === 'W') {
+      const pts = polyline(f[1]);
+      for (const pt of pts) verts.push(pt);
+      for (let i = 0; i + 1 < pts.length; i++) net.addSegment(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+    } else if (f[0] === 'BE') {
+      const n = [f[2], f[3], f[4], f[5]].map(Number);
+      if (n.every(Number.isFinite)) net.addSegment(n[0], n[1], n[2], n[3]);
+    } else if (f[0] === 'J') {
+      if (Number.isFinite(Number(f[1]))) {
+        dots.add(ptKey(Number(f[1]), Number(f[2])));
+        net.addPoint(Number(f[1]), Number(f[2]));
+      }
+    } else if (f[0] === 'N') {
+      if (f[5] && Number.isFinite(Number(f[1]))) {
+        names.add(f[5]); anchors.push({ name: f[5], x: Number(f[1]), y: Number(f[2]) });
+        net.addName(Number(f[1]), Number(f[2]), scope(f[5]));
+      }
+    } else if (f[0] === 'F') {
+      const secs = s.split('^^');
+      const name = secs[2] ? secs[2].split('~')[0] : '';
+      if (name && Number.isFinite(Number(f[2]))) {
+        names.add(name); anchors.push({ name, x: Number(f[2]), y: Number(f[3]) });
+        net.addName(Number(f[2]), Number(f[3]), scope(name));
+      }
+    }
+  }
+  const comps = readComponents(sheet.shape);
+  for (const c of comps) for (const p of c.pins) net.addPoint(p.x, p.y);
+  net.solve(opts.strict ? { foldTeeAt: (k) => dots.has(k) } : {});
+  return { net, comps, names, scope, anchors, verts };
+}
+
 export function easyEdaPartition(text, opts = {}) {
   let doc;
   try { doc = JSON.parse(text); } catch { return []; }
   const out = [];
   easyEdaSheets(doc).forEach((sheet, sheetIx) => {
-    const net = new NetSolver();
-    const scope = (n) => `s${sheetIx}:${n}`;
-    const dots = new Set();
-    for (const raw of sheet.shape) {
-      const s = String(raw); const f = s.split('~');
-      if (f[0] === 'W') {
-        const pts = polyline(f[1]);
-        for (let i = 0; i + 1 < pts.length; i++) net.addSegment(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
-      } else if (f[0] === 'BE') {
-        const n = [f[2], f[3], f[4], f[5]].map(Number);
-        if (n.every(Number.isFinite)) net.addSegment(n[0], n[1], n[2], n[3]);
-      } else if (f[0] === 'J') {
-        if (Number.isFinite(Number(f[1]))) {
-          dots.add(ptKey(Number(f[1]), Number(f[2])));
-          net.addPoint(Number(f[1]), Number(f[2]));
-        }
-      } else if (f[0] === 'N') {
-        if (f[5] && Number.isFinite(Number(f[1]))) net.addName(Number(f[1]), Number(f[2]), scope(f[5]));
-      } else if (f[0] === 'F') {
-        const secs = s.split('^^');
-        const name = secs[2] ? secs[2].split('~')[0] : '';
-        if (name && Number.isFinite(Number(f[2]))) net.addName(Number(f[2]), Number(f[3]), scope(name));
-      }
-    }
-    const comps = readComponents(sheet.shape);
-    for (const c of comps) for (const p of c.pins) net.addPoint(p.x, p.y);
-    net.solve(opts.strict ? { foldTeeAt: (k) => dots.has(k) } : {});
+    const { net, comps } = solveSheet(sheet, sheetIx, opts);
     const byNet = new Map();
     for (const c of comps) {
       if (!c.ref) continue;
@@ -936,4 +982,105 @@ export function easyEdaPartition(text, opts = {}) {
     for (const s of byNet.values()) if (s.size > 1) out.push([...s].sort().join('|'));
   });
   return out.sort();
+}
+
+/**
+ * Wire corners that ALMOST land on a net label, and miss.
+ *
+ * The defect this exists for: a wire drawn to a net flag can stop on the
+ * flag's GRAPHIC instead of its connection point. The flag symbol is drawn
+ * from its pin outwards, so a wire ending a few units past the pin lies on
+ * top of the glyph, looks joined at every zoom level, and conducts nothing.
+ * Measured on a real board: a 3xAA pack's + wire cornered five units above a
+ * VCC flag's pin; VCC then reached one pin, the battery reached none, and the
+ * partition was otherwise perfect. EasyEDA itself only says "there are some
+ * unfinished nets" once you open the board.
+ *
+ * Counting a net's pins does NOT find this -- a rail that legitimately feeds
+ * one component pin looks identical, and warning on those trains the reader
+ * to ignore the warning. The discriminating signal is geometric: a wire
+ * corner sitting inside `tol` of a label anchor while resolving to a
+ * DIFFERENT net. Nothing legitimate does that; a wire meant for the label
+ * would be ON it.
+ *
+ * @param {string} text
+ * @param {{strict?: boolean, tol?: number}} [opts] `tol` defaults to one grid
+ *   step (10). Raise it to catch sloppier misses, at the cost of flagging
+ *   wires that merely pass close by.
+ * @returns {Array<{label: string, sheet: number, x: number, y: number, dist: number}>}
+ */
+export function easyEdaNearMisses(text, opts = {}) {
+  let doc;
+  const tol = opts.tol ?? 10;
+  try { doc = JSON.parse(text); } catch { return []; }
+  const out = [];
+  easyEdaSheets(doc).forEach((sheet, sheetIx) => {
+    const { net, scope, anchors, verts } = solveSheet(sheet, sheetIx, opts);
+    for (const a of anchors) {
+      const target = net.netOfName(scope(a.name));
+      let best = null;
+      for (const [vx, vy] of verts) {
+        const d = Math.hypot(vx - a.x, vy - a.y);
+        if (d === 0 || d > tol) continue;
+        if (net.netAt(vx, vy) === target) continue;
+        if (!best || d < best.dist) best = { dist: d, x: vx, y: vy };
+      }
+      if (best) out.push({ label: a.name, sheet: sheetIx, x: best.x, y: best.y, dist: best.dist });
+    }
+  });
+  return out.sort((a, b) => (a.sheet - b.sheet) || a.label.localeCompare(b.label));
+}
+
+/**
+ * Named nets that reach fewer than two pins.
+ *
+ * This is EasyEDA's own "There are some unfinished nets, do you want to check
+ * the nets first?" condition, and it is the quietest defect the format has: a
+ * wire drawn to a net flag can end on the flag's GRAPHIC rather than on its
+ * connection point, which looks joined at any zoom level and is not. The net
+ * then reaches one pin, or none.
+ *
+ * easyEdaPartition deliberately reports only nets with two or more nodes -- a
+ * one-node net is not a connection -- so on its own it answers "clean sheet"
+ * to exactly this fault. Measured on a real board: a 3xAA pack whose + wire
+ * stopped five units above the VCC flag's pin left VCC holding a single pin,
+ * and the partition was otherwise perfect.
+ *
+ * An UNNAMED lone pin is not reported here: that is a floating pin, which the
+ * importer already counts separately.
+ *
+ * This is a FACT, not a verdict, and it is deliberately not warned about on
+ * its own. A supply rail that feeds exactly one component pin is ordinary and
+ * correct -- the rc-divider fixture in this repo has one -- so a warning keyed
+ * on the count alone fires on healthy sheets and gets tuned out. Use it to
+ * explain a near-miss (see easyEdaNearMisses), or to answer "which rails go
+ * nowhere" when something else already said the sheet is suspect.
+ *
+ * @param {string} text
+ * @param {{strict?: boolean}} [opts]
+ * @returns {Array<{name: string, sheet: number, members: string[]}>} sorted
+ */
+export function easyEdaOrphanNets(text, opts = {}) {
+  let doc;
+  try { doc = JSON.parse(text); } catch { return []; }
+  const out = [];
+  easyEdaSheets(doc).forEach((sheet, sheetIx) => {
+    const { net, comps, names, scope } = solveSheet(sheet, sheetIx, opts);
+    const byRoot = new Map();
+    for (const c of comps) {
+      if (!c.ref) continue;
+      for (const p of c.pins) {
+        const id = net.netAt(p.x, p.y);
+        if (!byRoot.has(id)) byRoot.set(id, new Set());
+        byRoot.get(id).add(`${c.ref}/${p.num}`);
+      }
+    }
+    for (const name of names) {
+      const members = byRoot.get(net.netOfName(scope(name))) ?? new Set();
+      if (members.size < 2) {
+        out.push({ name, sheet: sheetIx, members: [...members].sort() });
+      }
+    }
+  });
+  return out.sort((a, b) => (a.sheet - b.sheet) || a.name.localeCompare(b.name));
 }
