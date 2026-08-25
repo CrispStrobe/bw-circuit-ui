@@ -96,8 +96,8 @@ describe('package recognition (strings measured on real boards)', () => {
     ['R_AXIAL-0.4', 'resistor', 'axial-0.4'],
     ['0.96OLED_4P', 'header', '1x4'],
     ['HDR-1X8', 'header', '1x8'],
-    ['RASPBERRY PI PICO/ RASPBERRY PI PICO W', 'pi_pico', null],
-    ['BAT-TH_BH-AA-A1AJ029', 'battery_aa', null],
+    ['RASPBERRY PI PICO/ RASPBERRY PI PICO W', 'pi_pico', 'module-dip40'],
+    ['BAT-TH_BH-AA-A1AJ029', 'battery_aa', 'bh-aa'],
     ['LED-TH-5MM', 'led', 'tht-5mm'],
   ];
   for (const [pkg, kind, variant] of cases) {

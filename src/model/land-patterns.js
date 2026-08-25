@@ -10,7 +10,7 @@
  * @module
  */
 
-import { LAND_PATTERNS, PACKAGE_KIND_RULES } from '../data/land-patterns.js';
+import { LAND_PATTERNS, PACKAGE_KIND_RULES, PAD_TERMINALS } from '../data/land-patterns.js';
 import { terminalsForKind } from './circuit.js';
 
 /** Default variant = the first one declared for the kind. */
@@ -66,7 +66,13 @@ export function validateLandPattern(kind, variant, params = undefined) {
  */
 export function validatePattern(pattern, kind, params = undefined) {
   const problems = [];
-  const wanted = new Set(terminalsForKind(kind, params) || []);
+  // Module kinds (pi_pico) carry their own pin-order table; asking
+  // terminalsForKind for a dynamic kind without a live engine returns the
+  // ['a','b'] fallback, which would flunk every real module pattern.
+  const table = PAD_TERMINALS[kind];
+  const wanted = table
+    ? new Set(Array.isArray(table) ? table : Object.values(table))
+    : new Set(terminalsForKind(kind, params) || []);
   const covered = new Set();
   const nums = new Set();
   for (const pad of pattern.pads) {

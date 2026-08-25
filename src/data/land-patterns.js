@@ -58,6 +58,13 @@ function header1xN(n) {
 /**
  * kind -> variant -> pattern. The FIRST variant listed is the default.
  */
+const PAD_TERMINALS_PICO = [
+  'gp0', 'gp1', 'gnd_1', 'gp2', 'gp3', 'gp4', 'gp5', 'gnd_2', 'gp6', 'gp7',
+  'gp8', 'gp9', 'gnd_3', 'gp10', 'gp11', 'gp12', 'gp13', 'gnd_4', 'gp14', 'gp15',
+  'gp16', 'gp17', 'gnd_7', 'gp18', 'gp19', 'gp20', 'gp21', 'gnd_6', 'gp22', 'run',
+  'gp26', 'gp27', 'agnd', 'gp28', 'adc_vref', '3v3', '3v3_en', 'gnd_5', 'vsys', 'vbus',
+];
+
 export const LAND_PATTERNS = {
   resistor: {
     'axial-0.4': {
@@ -135,6 +142,43 @@ export const LAND_PATTERNS = {
       silk: [{ kind: 'rect', x: -6.35, y: -3, w: 12.7, h: 6 }],
     },
   },
+  battery_aa: {
+    'bh-aa': {
+      // MEASURED on the live board (BAT-TH_BH-AA-A1AJ029, 2026-08-25):
+      // two pads on the long axis, 15 mm apart, 1.6 mm pad, 1.0 mm drill.
+      // Pad 1 carried GND there — the spring end is the negative pole.
+      description: 'BH-AA single AA battery holder, THT, 15 mm pin span',
+      pads: [
+        tht(1, 'neg', 0, 7.5, { pad: 1.6, drill: 1.0 }),
+        tht(2, 'pos', 0, -7.5, { pad: 1.6, drill: 1.0 }),
+      ],
+      courtyard: { w: 18, h: 58 },
+      silk: [{ kind: 'rect', x: -8.5, y: -28.5, w: 17, h: 57 }],
+    },
+  },
+  pi_pico: {
+    'module-dip40': (() => {
+      // The Pico as a through-hole module: two 1x20 rows, 2.54 mm pitch,
+      // rows 17.78 mm apart (7 x 2.54 — the official carrier footprint).
+      // Pin 1 top-left, 1..20 down the left, 21..40 up the right, matching
+      // PAD_TERMINALS.pi_pico. Board datasheet facts, no library copied.
+      const T = PAD_TERMINALS_PICO;
+      const pads = [];
+      for (let i = 0; i < 20; i++) {
+        pads.push(tht(i + 1, T[i], -8.89, 24.13 - i * 2.54, { pad: 1.7, drill: 1.0 }));
+      }
+      for (let i = 20; i < 40; i++) {
+        pads.push(tht(i + 1, T[i], 8.89, -24.13 + (i - 20) * 2.54, { pad: 1.7, drill: 1.0 }));
+      }
+      return {
+        description: 'Raspberry Pi Pico module, 2x20 THT, 2.54 mm pitch',
+        pads,
+        courtyard: { w: 22, h: 52 },
+        silk: [{ kind: 'rect', x: -10.5, y: -25.5, w: 21, h: 51 }],
+        pin1: { x: -8.89, y: 24.13 },
+      };
+    })(),
+  },
   stm32f030: {
     'tssop-20': (() => {
       // TSSOP-20: 0.65 mm pitch, 6.4 mm lead span (IPC-7351 nominal lands
@@ -183,13 +227,9 @@ export const LAND_PATTERNS = {
  * whose terminals are listed in exactly this order. battery_aa follows the
  * BH-AA holder measured on the live board: pad 1 carried GND.
  */
+
 export const PAD_TERMINALS = {
-  pi_pico: [
-    'gp0', 'gp1', 'gnd_1', 'gp2', 'gp3', 'gp4', 'gp5', 'gnd_2', 'gp6', 'gp7',
-    'gp8', 'gp9', 'gnd_3', 'gp10', 'gp11', 'gp12', 'gp13', 'gnd_4', 'gp14', 'gp15',
-    'gp16', 'gp17', 'gnd_7', 'gp18', 'gp19', 'gp20', 'gp21', 'gnd_6', 'gp22', 'run',
-    'gp26', 'gp27', 'agnd', 'gp28', 'adc_vref', '3v3', '3v3_en', 'gnd_5', 'vsys', 'vbus',
-  ],
+  pi_pico: PAD_TERMINALS_PICO,
   battery_aa: { 1: 'neg', 2: 'pos' },
 };
 
@@ -205,6 +245,6 @@ export const PACKAGE_KIND_RULES = [
   { match: /OLED_4P|^HDR-1X4$|PinHeader_1x0?4(?!\d)/i, kind: 'header', variant: '1x4', params: { pins: 4 } },
   { match: /^HDR-1X(\d+)|PinHeader_1x0?(\d+)/i, kind: 'header', variantFromMatch: (m) => `1x${Number(m[1] || m[2])}`, paramsFromMatch: (m) => ({ pins: Number(m[1] || m[2]) }) },
   { match: /STM32F030|TSSOP-?20_L6\.5-W4\.4|^TSSOP-?20$/i, kind: 'stm32f030', variant: 'tssop-20' },
-  { match: /RASPBERRY PI PICO/i, kind: 'pi_pico', variant: null },
-  { match: /^BAT-TH/i, kind: 'battery_aa', variant: null },
+  { match: /RASPBERRY PI PICO/i, kind: 'pi_pico', variant: 'module-dip40' },
+  { match: /^BAT-TH/i, kind: 'battery_aa', variant: 'bh-aa' },
 ];
