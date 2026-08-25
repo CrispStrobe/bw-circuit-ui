@@ -6,6 +6,15 @@
  *   ?debug=paused    — external board, halted, skewNs=0 (frozen sim)
  *   ?debug=snapshot  — external board, halted, skewNs=4.2s (stale)
  *   ?debug=hardware  — simulationOnly=false (live hardware, no sim values)
+ *   ?examples=none   — omit the curriculum `examples` prop, so CircuitDesigner
+ *                      falls back to InferPanel and its numbered presets
+ *                      (01 Blink … 09 Shift Reg, 04 Brightness). Those presets
+ *                      are what the browser render tests assert engine values
+ *                      against — the active-low LED at ~14.5% beside the
+ *                      active-high one at under 1%, which is the comparison
+ *                      the simulator exists to make. Adding three curriculum
+ *                      examples to this harness displaced that panel, and the
+ *                      tests had no way back to it.
  *   (default)        — standalone demo mode
  */
 
@@ -85,11 +94,13 @@ function App() {
             { name: 'led1', port: 1, bit: 0, direction: 'output', activeLow: true },
           ],
         }}
-        examples={[
-          { id: 'ex-blink', title: { en: 'Blink LED' }, category: 'basics', difficulty: 1 },
-          { id: 'ex-button', title: { en: 'Button' }, category: 'basics', difficulty: 1 },
-          { id: 'ex-pot', title: { en: 'Potentiometer' }, category: 'analog', difficulty: 2 },
-        ]}
+        {...(new URLSearchParams(location.search).get('examples') === 'none' ? {} : {
+          examples: [
+            { id: 'ex-blink', title: { en: 'Blink LED' }, category: 'basics', difficulty: 1 },
+            { id: 'ex-button', title: { en: 'Button' }, category: 'basics', difficulty: 1 },
+            { id: 'ex-pot', title: { en: 'Potentiometer' }, category: 'analog', difficulty: 2 },
+          ],
+        })}
         onLoadExample={(ex) => { console.log('load example', ex.id); }}
         {...(circuitData ? { circuitData } : {})}
         {...debugProps}

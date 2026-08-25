@@ -13,29 +13,52 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { startDevServer } from './_dev-server.js';
 
+let server;
 let browser, page;
 const pageErrors = [];
 
+/**
+ * Simulation mode no longer implies power. The toolbar has an explicit power
+ * control ("Power off — all rails de-energised… In Build mode power is always
+ * off"), so entering Sim solves nothing until it is switched on — no node
+ * voltages, no LED brightness. Without this the engine assertions look like
+ * missing features.
+ *
+ * @param {import('playwright').Page} page
+ */
+async function powerOn (page) {
+  const on = page.locator('[title^="Power on"]');
+  if (await on.count()) {
+    await on.first().click();
+    await page.waitForTimeout(1500);
+  }
+}
+
+
 before(async () => {
+  server = await startDevServer('rendering');
   browser = await chromium.launch();
   page = await browser.newPage({ viewport: { width: 1400, height: 760 } });
   page.on('pageerror', e => pageErrors.push(String(e)));
 });
 
 after(async () => {
+  if (server) server.stop();
   if (browser) await browser.close();
 });
 
 describe('rendering: active-low LED preset', () => {
   it('loads preset, enters sim, shows correct engine values', async () => {
-    await page.goto('http://localhost:3100', { waitUntil: 'networkidle' });
+    await page.goto(`${server.url}/?examples=none`, { waitUntil: 'networkidle' });
 
     // Load the active-low LED preset
     await page.getByText('01 Blink').click();
 
     // Switch to simulate mode
-    await page.getByText('Sim', { exact: true }).click();
+    await page.locator('[title="Simulation mode"]').first().click();
+    await powerOn(page);
 
     // Wait for simulation to run a few ticks
     await page.waitForTimeout(1500);
@@ -72,13 +95,14 @@ describe('rendering: active-low LED preset', () => {
 describe('rendering: 04-brightness comparison preset', () => {
   it('loads brightness preset — both LEDs render, no page errors', async () => {
     pageErrors.length = 0;
-    await page.goto('http://localhost:3100', { waitUntil: 'networkidle' });
+    await page.goto(`${server.url}/?examples=none`, { waitUntil: 'networkidle' });
 
     // Load the brightness comparison preset (active-low + active-high)
     await page.getByRole('button', { name: /04 Brightness/ }).click();
 
     // Switch to simulate mode
-    await page.getByText('Sim', { exact: true }).click();
+    await page.locator('[title="Simulation mode"]').first().click();
+    await powerOn(page);
     await page.waitForTimeout(1500);
 
     const text = await page.locator('body').innerText();
@@ -97,43 +121,60 @@ describe('rendering: 04-brightness comparison preset', () => {
 describe('rendering: no page errors on fresh load', () => {
   it('blank page loads without JS errors', async () => {
     pageErrors.length = 0;
-    await page.goto('http://localhost:3100', { waitUntil: 'networkidle' });
+    await page.goto(`${server.url}/?examples=none`, { waitUntil: 'networkidle' });
 
     await page.waitForTimeout(500);
 
     assert.deepEqual(pageErrors, [],
       `fresh load should have no JS errors: ${pageErrors.join('; ')}`);
 
-    // Should show the UI structure
+    // Should show the UI structure.
+    //
+    // `Controls` used to be a panel HEADING and is now a toolbar of icon
+    // buttons — build/sim, power, view, undo/redo, the overflow menu. Asserting
+    // the old word would either fail forever or have to be deleted; asserting
+    // the buttons keeps the test's actual subject, which is "the chrome came
+    // up", and states it in the vocabulary the UI now uses.
     const text = await page.locator('body').innerText();
     assert.ok(text.includes('Parts'), 'should show Parts palette');
-    assert.ok(text.includes('Controls'), 'should show Controls panel');
     assert.ok(text.includes('Multimeter'), 'should show Multimeter');
+    for (const title of ['Build mode', 'Simulation mode', 'Undo (Ctrl+Z)', 'Redo (Ctrl+Y)']) {
+      assert.equal(await page.locator(`[title="${title}"]`).count(), 1,
+        `should show the ${title} control`);
+    }
   });
 });
 
 describe('rendering: UI controls work', () => {
   it('undo/redo buttons exist and help text is present', async () => {
     pageErrors.length = 0;
-    await page.goto('http://localhost:3100', { waitUntil: 'networkidle' });
+    await page.goto(`${server.url}/?examples=none`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(500);
 
-    const text = await page.locator('body').innerText();
-    assert.ok(text.includes('Undo'), 'should show Undo button');
-    assert.ok(text.includes('Redo'), 'should show Redo button');
-    assert.ok(text.includes('Save'), 'should show Save button');
-    assert.ok(text.includes('Load'), 'should show Load button');
-    assert.ok(text.includes('Ctrl+Z'), 'should show Ctrl+Z shortcut hint');
+    // Undo/Redo are icon buttons now and Save/Load moved into the ⋯ overflow
+    // menu ("Consolidate file actions into the ⋯ menu"). The shortcut hint
+    // that used to be visible text is the button's `title`. Same claims,
+    // asserted where the UI puts them: the controls exist and advertise their
+    // shortcut.
+    assert.equal(await page.locator('[title="Undo (Ctrl+Z)"]').count(), 1, 'should show Undo button');
+    assert.equal(await page.locator('[title="Redo (Ctrl+Y)"]').count(), 1, 'should show Redo button');
+    const more = page.locator('[title^="More circuit controls"]');
+    assert.equal(await more.count(), 1, 'should show the file-actions menu');
+    await more.first().click();
+    await page.waitForTimeout(300);
+    const menu = await page.locator('body').innerText();
+    assert.ok(menu.includes('Save'), 'the ⋯ menu should offer Save');
 
     assert.deepEqual(pageErrors, []);
   });
 
   it('screenshot captures the active-low sim state', async () => {
     pageErrors.length = 0;
-    await page.goto('http://localhost:3100', { waitUntil: 'networkidle' });
+    await page.goto(`${server.url}/?examples=none`, { waitUntil: 'networkidle' });
 
     await page.getByText('01 Blink').click();
-    await page.getByText('Sim', { exact: true }).click();
+    await page.locator('[title="Simulation mode"]').first().click();
+    await powerOn(page);
     await page.waitForTimeout(1500);
 
     // Capture screenshot for visual regression (saved to /tmp)

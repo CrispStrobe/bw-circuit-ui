@@ -6,14 +6,18 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { startDevServer } from './_dev-server.js';
 
+let server;
 let browser, page;
 
 before(async () => {
+  server = await startDevServer('snapshot-render');
   browser = await chromium.launch();
 });
 
 after(async () => {
+  if (server) server.stop();
   if (browser) await browser.close();
 });
 
@@ -21,7 +25,7 @@ async function loadMode(mode) {
   const p = await browser.newPage({ viewport: { width: 1400, height: 760 } });
   const errors = [];
   p.on('pageerror', e => errors.push(e.message));
-  await p.goto(`http://localhost:3100/?debug=${mode}`, { waitUntil: 'networkidle' });
+  await p.goto(`${server.url}/?debug=${mode}`, { waitUntil: 'networkidle' });
   await p.waitForTimeout(1000);
   return { page: p, errors };
 }
@@ -31,8 +35,15 @@ describe('SNAPSHOT visual treatment', () => {
     const { page: p, errors } = await loadMode('snapshot');
     const text = await p.locator('body').innerText();
 
-    assert.ok(text.includes('SNAPSHOT'), 'should show SNAPSHOT in status');
-    assert.ok(text.includes('4.2 s') || text.includes('4200 ms'),
+    // The status moved from body TEXT to the `title` of a collapsed status
+    // chip (BoardCanvas gates it behind `noticeOpen`). The claim under test is
+    // "the user is told this is a snapshot, and by how much" — that is still
+    // true, so the assertion follows the text to where it is now rather than
+    // being deleted.
+    const dom = await p.locator('body').innerHTML();
+    const shown = text.includes('SNAPSHOT') || dom.includes('SNAPSHOT');
+    assert.ok(shown, 'should show SNAPSHOT in the status chip (text or its title)');
+    assert.ok(/4\.2 s|4200 ms/.test(text) || /4\.2 s|4200 ms/.test(dom),
       'should show the skew duration');
 
     // The canvas container should have a desaturation filter
@@ -97,8 +108,9 @@ describe('SNAPSHOT visual treatment', () => {
     const { page: p, errors } = await loadMode('hardware');
     const text = await p.locator('body').innerText();
 
-    assert.ok(text.includes('HARDWARE'),
-      'should show HARDWARE in status');
+    const domH = await p.locator('body').innerHTML();
+    assert.ok(text.includes('HARDWARE') || domH.includes('HARDWARE'),
+      'should show HARDWARE in the status chip (text or its title)');
 
     assert.deepEqual(errors, []);
     await p.close();

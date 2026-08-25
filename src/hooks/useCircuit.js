@@ -151,9 +151,24 @@ export function useCircuit(vcc = 5.0) {
    * Replaces all parts and wires with the inferred ones.
    */
   const loadInferred = useCallback((parts, nets) => {
-    // Clear existing
+    // Clear existing.
+    //
+    // The BREADBOARDS have to go too, and used not to. A breadboard is not in
+    // `parts`, so clearing parts and wires left the previous circuit's board
+    // behind — and its strips go on resolving nets that name the parts just
+    // deleted. `_syncNetlist` then emits nets like
+    // `breadboard_1:n-col-b1 references unknown part "led_13"`, the engine
+    // refuses the whole netlist, and the canvas shows `netlist-rejected` with
+    // the board inactive: loading an example killed the simulation.
+    //
+    // handleClear in CircuitDesigner.jsx has always done this (`circuit
+    // .breadboards = new Map()`); this path simply never did. Found by the
+    // browser render test asserting the LED junction voltage — the value was
+    // missing because nothing was solved at all. That test had never run: see
+    // docs/TEST-REGISTRATION.md.
     circuit.parts.length = 0;
     circuit.wires.length = 0;
+    circuit.breadboards = new Map();
 
     // Add inferred parts (they already have x, y from inference.js)
     for (const p of parts) {

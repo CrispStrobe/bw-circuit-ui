@@ -4,16 +4,20 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { startDevServer } from './_dev-server.js';
 
+let server;
 let browser;
 
-before(async () => { browser = await chromium.launch(); });
-after(async () => { if (browser) await browser.close(); });
+before(async () => {
+  server = await startDevServer('debug-status'); browser = await chromium.launch(); });
+after(async () => {
+  if (server) server.stop(); if (browser) await browser.close(); });
 
 describe('DebugStatus rendering', () => {
   it('shows HALTED with halt reason for snapshot mode', async () => {
     const p = await browser.newPage({ viewport: { width: 1400, height: 760 } });
-    await p.goto('http://localhost:3100/?debug=snapshot', { waitUntil: 'networkidle' });
+    await p.goto(`${server.url}/?debug=snapshot`, { waitUntil: 'networkidle' });
     await p.waitForTimeout(500);
     // Note: debugState in main.jsx snapshot mode has halted:true but no haltReason/tasks
     // The DebugStatus should still show HALTED
@@ -23,7 +27,7 @@ describe('DebugStatus rendering', () => {
 
   it('paused mode shows HALTED', async () => {
     const p = await browser.newPage({ viewport: { width: 1400, height: 760 } });
-    await p.goto('http://localhost:3100/?debug=paused', { waitUntil: 'networkidle' });
+    await p.goto(`${server.url}/?debug=paused`, { waitUntil: 'networkidle' });
     await p.waitForTimeout(500);
     const text = await p.locator('body').innerText();
     assert.ok(text.includes('PAUSED') || text.includes('HALTED'),
@@ -33,7 +37,7 @@ describe('DebugStatus rendering', () => {
 
   it('live mode shows RUNNING (no debugState → no DebugStatus)', async () => {
     const p = await browser.newPage({ viewport: { width: 1400, height: 760 } });
-    await p.goto('http://localhost:3100/?debug=live', { waitUntil: 'networkidle' });
+    await p.goto(`${server.url}/?debug=live`, { waitUntil: 'networkidle' });
     await p.waitForTimeout(500);
     const text = await p.locator('body').innerText();
     // Live mode has an external board but no debugState halted

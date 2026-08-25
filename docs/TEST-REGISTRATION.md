@@ -193,3 +193,88 @@ before this lane, and it now runs on every build.
 
 (CI's `npm test` count is lower than the local 1,776 because several suites
 register tests only when a local-only fixture is present.)
+
+---
+
+# The browser suite, run for the first time
+
+`npm run test:browser` had never been executed: this checkout had no
+`node_modules` at all, and the files were outside every script. Installing
+devDependencies and a matching chromium made it runnable, and it reported
+**40 tests, 21 pass, 19 fail** — not the 5 the orphan census had counted,
+which was only ever the two browser files the census could attempt.
+
+## 19 → 0, in four causes
+
+**1. Nineteen failures, one missing server (19 → 11).** `debug-status`, `e2e`,
+`rendering` and `snapshot-render` navigate to a hardcoded `localhost:3100` and
+start nothing — they assume a human has `npm run dev` open. Run unattended
+every one fails `ERR_CONNECTION_REFUSED`, which reads like nineteen broken
+features and is one missing server. They now use `test/_dev-server.js`.
+
+While writing it: `serial-console` and `pendant-attiny88` both claimed port
+**3195**. `node --test` runs files concurrently and vite is started with
+`--strictPort`, so the loser dies rather than falling back — a flake waiting
+for an unlucky schedule. Ports live in one table now, uniqueness is asserted at
+import, and `test/test-registration.test.js` checks the table against the files
+**in CI**, where the browser suite itself never runs.
+
+**2. The UI moved (11 → 6).** Controls became icon buttons (`title="Simulation
+mode"`, `"Undo (Ctrl+Z)"`), Save moved into the ⋯ overflow menu, the palette
+gained a search box and labels its parts by value (`Resistor 1kΩ`), the
+multimeter hides behind a `⌁ Meter` toggle, and the SNAPSHOT/HARDWARE status
+became the `title` of a collapsed chip. Each assertion was pointed at the
+surface the UI now uses rather than deleted — the claims are unchanged.
+
+**3. The harness had lost its presets (6 → 2).** `CircuitDesigner` renders
+`InferPanel` only when no `examples` prop is given, and the dev harness gained
+three curriculum examples, which displaced the numbered presets the render
+tests assert engine values against. `?examples=none` gives the tests a way
+back to them; nothing about the app changed.
+
+**4. A real product defect (2 → 0).** See below.
+
+## The defect the browser tests existed to catch
+
+The last two failures were `should show 2.1V junction` — and the reason was
+not the test. Loading a preset produced:
+
+```
+netlist-rejected
+Invalid netlist:
+  - Net "breadboard_1:n-col-b1" references unknown part "led_13"
+  - Net "breadboard_1:n-col-b1" references unknown part "mcu_2"
+  … 46 nets
+```
+
+`useCircuit.loadInferred` cleared `circuit.parts` and `circuit.wires` — **but
+not `circuit.breadboards`.** A breadboard is not a part, so the previous
+circuit's board survived, its strips went on resolving nets naming the parts
+just deleted, the engine refused the whole netlist, and the board went
+inactive. In the app: **load an example, simulation dead.**
+
+`handleClear` in `CircuitDesigner.jsx` had always cleared them. The repo knew
+the rule; one path missed it. One line.
+
+With it fixed, and power switched on (Simulation mode no longer implies power),
+the circuit solves and the assertion is satisfied by the real thing:
+
+```
+volts: 2.1V 5.0V     percents: 14%
+```
+
+which is the comparison the simulator exists to make — the active-low LED at
+~14.5 %.
+
+Mutation-proved: reverting that one line brings `netlist-rejected` straight
+back. And because the browser suite may never run in CI,
+`test/load-clears-breadboards.test.js` gates the same invariant headlessly —
+including a test asserting that the *reproduction still reproduces*, so the
+gate cannot quietly go vacuous.
+
+## Counts
+
+| | before | after |
+|---|---|---|
+| `npm run test:browser` | 40 tests, **19 fail** (and unrunnable before that) | **40 pass, 0 fail** |
+| `npm test` | 1,776 | **1,778**, 0 fail |

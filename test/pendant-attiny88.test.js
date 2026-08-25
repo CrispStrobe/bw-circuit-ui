@@ -20,7 +20,11 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 let chromium, browser, server;
 try { ({ chromium } = await import('playwright')); } catch {}
 
-const PORT = 3195;
+// 3196, not 3195: serial-console.test.js also used 3195 and `node --test`
+// runs files concurrently, so with --strictPort the loser dies rather than
+// falling back. Ports are reserved in test/_dev-server.js, which asserts they
+// are unique; this file still spawns its own server, so keep the two in step.
+const PORT = 3196;
 
 // Locate pendant circuit in sibling sb3-creator checkout
 const CANDIDATES = [

@@ -178,6 +178,64 @@ describe('every test file is run by something', () => {
       + 'them to NOT_IN_CI.');
   });
 
+  test('every browser test has its own port, and the table matches the files', () => {
+    // The browser suite is outside CI by design, so nothing else here would
+    // ever notice these drifting. This check does not launch anything — it
+    // reads the port table and the files — so it runs on every build.
+    //
+    // It exists because two files (serial-console, pendant-attiny88) both
+    // claimed 3195, and `node --test` runs files concurrently while vite is
+    // started with --strictPort: the loser dies rather than falling back. That
+    // was a flake waiting for an unlucky schedule, invisible while the suite
+    // could not run at all.
+    const table = readFileSync(path.join(ROOT, 'test/_dev-server.js'), 'utf-8');
+    const reserved = new Map(
+      [...table.matchAll(/'([\w-]+)':\s*(\d+),/g)].map((m) => [m[1], Number(m[2])]));
+    assert.ok(reserved.size >= 10, `only ${reserved.size} ports reserved — table not parsed`);
+
+    const byPort = new Map();
+    for (const [name, port] of reserved) {
+      assert.ok(!byPort.has(port),
+        `${name} and ${byPort.get(port)} both reserve port ${port} in test/_dev-server.js`);
+      byPort.set(port, name);
+    }
+
+    // A file that spawns its own vite must use the port reserved for it.
+    const mismatched = [];
+    for (const f of readdirSync(path.join(ROOT, 'test')).filter((x) => x.endsWith('.test.js'))) {
+      const body = readFileSync(path.join(ROOT, 'test', f), 'utf-8');
+      const own = /const PORT = (\d+);/.exec(body);
+      if (!own) continue;
+      const name = f.replace(/\.test\.js$/, '');
+      if (reserved.get(name) !== Number(own[1])) {
+        mismatched.push(`${name} uses ${own[1]}, reserved ${reserved.get(name) ?? 'nothing'}`);
+      }
+    }
+    assert.deepEqual(mismatched, [],
+      'a browser test spawns vite on a port other than the one reserved for it in '
+      + 'test/_dev-server.js. Keep the two in step, or move the file onto startDevServer().');
+  });
+
+  test('no browser test navigates to a server it did not start', () => {
+    // Four files (debug-status, e2e, rendering, snapshot-render) navigated to
+    // a hardcoded localhost:3100 and started nothing, so run unattended they
+    // produced 19 failures — every one ERR_CONNECTION_REFUSED, which reads as
+    // nineteen broken features and is one missing server.
+    const offenders = [];
+    for (const f of readdirSync(path.join(ROOT, 'test')).filter((x) => x.endsWith('.test.js'))) {
+      const body = readFileSync(path.join(ROOT, 'test', f), 'utf-8');
+      if (!LAUNCHES_BROWSER.test(body)) continue;
+      const startsOne = body.includes('startDevServer') || /spawn\(\s*'npx'/.test(body);
+      const hardcoded = /localhost:\d+/.test(body) && !body.includes('${PORT}')
+        && !body.includes('server.url');
+      if (!startsOne || hardcoded) offenders.push(f);
+    }
+    assert.deepEqual(offenders, [],
+      'a browser test navigates to a URL it does not serve. It then passes only when someone '
+      + 'happens to have `npm run dev` open, and fails as ERR_CONNECTION_REFUSED otherwise — '
+      + 'which looks like broken features rather than a missing server.');
+  });
+
   test('the files CI does not run are exactly the ones on the record', () => {
     const missed = onDisk.filter((f) => !ciFiles.has(f));
     assert.deepEqual(missed.sort(), [...NOT_IN_CI.keys()].sort(),
