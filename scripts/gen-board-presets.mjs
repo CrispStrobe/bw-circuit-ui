@@ -9,7 +9,7 @@
  * Boards:
  *   YL-39   minimum-system STC89C52: 74HC595→4-digit 7-seg, 8 LEDs,
  *           4 buttons, buzzer, pot
- *   (PRECHIN A2 — future)
+ *   PRECHIN A2 learning board (bench-verified 2026-08-25)
  */
 
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -164,22 +164,24 @@ function genYL39() {
 
 // ── PRECHIN A2 learning board ────────────────────────────────────────
 //
-// Full learning board: every peripheral a student encounters in a
-// typical 8051 curriculum. STC89C52RC DIP-40 with:
+// This wiring was measured on the physical board, rather than copied from
+// the differently-routed schematic revision found on the vendor DVD:
 //
-//   8×8 LED matrix:   2× 74HC595 daisy-chained (SER=P3.4, SRCLK=P3.6,
-//                     RCLK=P3.5). SR1 drives rows, SR2 columns.
-//   4×4 keypad:       via 74C922 encoder (rows Y1-Y4, columns X1-X4).
-//                     Encoded output A-D → P1.0-P1.3, DA → P3.2 (INT0).
-//   DS1302 RTC:       3-wire: CE=P1.4, IO=P1.5, SCLK=P1.6
-//   DS18B20 temp:     1-wire: DQ=P1.7 (4.7kΩ pull-up)
+//   8×8 LED matrix:   one 74HC595 drives rows (SER=P3.4, SRCLK=P3.6,
+//                     RCLK=P3.5); P0 drives active-low columns. J24 selects
+//                     OE→GND (matrix) or OE→VCC (LCD/no matrix).
+//   4×4 keypad:       direct matrix on P1.7..P1.0, no 74C922.
+//   DS1302 RTC:       3-wire: IO=P3.4, CE=P3.5, SCLK=P3.6
+//   DS18B20 temp:     1-wire: DQ=P3.7 (J12 fitted)
 //   AT24C02 EEPROM:   I2C: SDA=P2.0, SCL=P2.1 (4.7kΩ pull-ups)
-//   LCD1602:          8-bit data on P0, RS=P2.6, RW=P2.5, E=P2.7
-//   IR receiver:      OUT=P3.3 (INT1)
-//   Buzzer:           P2.2 (active low)
+//   LCD1602:          4-bit D4-D7=P0.4-P0.7, RS=P2.6, RW=P2.5, E=P2.7
+//   IR receiver:      OUT=P3.2 (INT0)
+//   Buzzer:           P2.5 (shared with LCD RW and LED D6)
+//   ET/XPT2046 ADC:   DIN/CS/DCLK/DOUT=P3.4/P3.5/P3.6/P3.7
+//   independent keys: K1..K4=P3.1/P3.0/P3.2/P3.3 (active-low)
 //
-// XPT2046 touch controller is an optional header-connected module on
-// these boards — omitted here to avoid pin conflicts on a 40-pin MCU.
+// Several nets deliberately have more than one function. That conflict is
+// the board's central lesson, not a modelling error.
 
 function genPrechinA2() {
   const parts = [
@@ -187,14 +189,13 @@ function genPrechinA2() {
     part('gnd1', 'gnd'),
     part('mcu', 'stc_mcu'),
 
-    // 8×8 LED matrix: 2× 74HC595 daisy-chained
+    // 8×8 LED matrix: one 74HC595 for rows, P0 for columns
     part('sr1', '74hc595'),   // row driver
-    part('sr2', '74hc595'),   // column driver (cascaded)
-    part('matrix', 'led_matrix', { size: '8x8' }),
+    part('matrix', 'matrix8x8', { colActiveHigh: false, rowActiveHigh: true }),
+    part('j24', 'slide_switch', { position: 'b' }), // B=OE high: LCD position
 
-    // 4×4 keypad + 74C922 encoder
+    // Direct-wired 4×4 keypad
     part('keypad', 'keypad_4x4'),
-    part('kpenc', '74c922'),
 
     // Peripherals
     part('rtc', 'ds1302'),
@@ -203,11 +204,20 @@ function genPrechinA2() {
     part('lcd', 'char_lcd'),
     part('ir', 'ir_receiver'),
     part('buz', 'buzzer'),
+    part('adc', 'xpt2046', { vbatDivider: false }),
+    part('pot_a0', 'potentiometer', { ohms: 5000, position: 0.5 }),
+    part('ntc_a1', 'ntc', { ohms: 10000 }),
+    part('ldr_a2', 'ldr', { ohms: 10000 }),
+  part('sevenseg', 'sevenseg8'),
+    part('leds', 'ledbank8', { activeLow: true }),
+    ...Array.from({ length: 4 }, (_, i) => part(`key${i + 1}`, 'button')),
 
     // Pull-up resistors
     part('r_dq', 'resistor', { ohms: 4700 }),    // DS18B20 pull-up
     part('r_sda', 'resistor', { ohms: 4700 }),   // I2C SDA pull-up
     part('r_scl', 'resistor', { ohms: 4700 }),   // I2C SCL pull-up
+    part('r_ntc', 'resistor', { ohms: 10000 }),  // A1 divider
+    part('r_ldr', 'resistor', { ohms: 10000 }),  // A2 divider
     part('r_bl', 'resistor', { ohms: 100 }),      // LCD backlight
   ];
 
@@ -215,14 +225,15 @@ function genPrechinA2() {
     // ── Power ───────────────────────────────────────────────────────
     ...powerMcu('vcc1', 'gnd1', 'mcu'),
     ...powerChipStd('vcc1', 'gnd1', 'sr1'),
-    ...powerChipStd('vcc1', 'gnd1', 'sr2'),
-    // 74C922: vcc/vss
-    wire('vcc1', 'vcc', 'kpenc', 'vcc'),
-    wire('gnd1', 'gnd', 'kpenc', 'vss'),
-    // DS1302: vcc/gnd + battery backup
+    // J24: OE is switchable between GND (matrix enabled) and VCC (disabled).
+    // The generated preset starts in the LCD-safe OE→VCC position.
+    wire('gnd1', 'gnd', 'j24', 'a'),
+    wire('vcc1', 'vcc', 'j24', 'b'),
+    wire('j24', 'com', 'sr1', 'oe'),
+    // DS1302: vcc/gnd. VCC1 is intentionally left unpowered: the tested
+    // board did not retain valid/counting registers after main power loss.
     wire('vcc1', 'vcc', 'rtc', 'vcc'),
     wire('gnd1', 'gnd', 'rtc', 'gnd'),
-    wire('vcc1', 'vcc', 'rtc', 'vcc1'),  // backup battery (tied to VCC)
     // DS18B20
     wire('vcc1', 'vcc', 'temp', 'vcc'),
     wire('gnd1', 'gnd', 'temp', 'gnd'),
@@ -230,62 +241,36 @@ function genPrechinA2() {
     wire('vcc1', 'vcc', 'eeprom', 'vcc'),
     wire('gnd1', 'gnd', 'eeprom', 'gnd'),
     // LCD1602
-    wire('vcc1', 'vcc', 'lcd', 'vdd'),
-    wire('gnd1', 'gnd', 'lcd', 'vss'),
+    wire('vcc1', 'vcc', 'lcd', 'vcc'),
+    wire('gnd1', 'gnd', 'lcd', 'gnd'),
     // IR receiver
     wire('vcc1', 'vcc', 'ir', 'vcc'),
     wire('gnd1', 'gnd', 'ir', 'gnd'),
 
-    // ── 8×8 LED matrix (2× 74HC595 daisy-chain) ────────────────────
-    // SR1 (rows): SER=P3.4, SRCLK=P3.6, RCLK=P3.5
+    // ── 8×8 LED matrix ─────────────────────────────────────────────
     wire('mcu', 'P3.4', 'sr1', 'ser'),
     wire('mcu', 'P3.6', 'sr1', 'srclk'),
     wire('mcu', 'P3.5', 'sr1', 'rclk'),
-    tieLow('gnd1', 'sr1', 'oe'),
     tieHigh('vcc1', 'sr1', 'srclr'),
-    // SR2 (columns): cascaded from SR1's serial out, shared clocks
-    wire('sr1', 'qh_s', 'sr2', 'ser'),
-    wire('mcu', 'P3.6', 'sr2', 'srclk'),
-    wire('mcu', 'P3.5', 'sr2', 'rclk'),
-    tieLow('gnd1', 'sr2', 'oe'),
-    tieHigh('vcc1', 'sr2', 'srclr'),
-    // SR1/SR2 outputs → LED matrix (abstract: 2-terminal display)
-    wire('sr1', 'qa', 'matrix', 'a'),
-    wire('gnd1', 'gnd', 'matrix', 'b'),
+    ...Array.from({ length: 8 }, (_, i) =>
+      wire('mcu', `P0.${7 - i}`, 'matrix', `col${i}`)),
+    ...Array.from({ length: 8 }, (_, i) =>
+      wire('sr1', ['qh', 'qg', 'qf', 'qe', 'qd', 'qc', 'qb', 'qa'][i], 'matrix', `row${i}`)),
 
-    // ── 4×4 keypad → 74C922 encoder ────────────────────────────────
-    // Keypad rows → 74C922 row inputs
-    wire('keypad', 'r0', 'kpenc', 'y1'),
-    wire('keypad', 'r1', 'kpenc', 'y2'),
-    wire('keypad', 'r2', 'kpenc', 'y3'),
-    wire('keypad', 'r3', 'kpenc', 'y4'),
-    // Keypad columns → 74C922 column inputs
-    wire('keypad', 'c0', 'kpenc', 'x1'),
-    wire('keypad', 'c1', 'kpenc', 'x2'),
-    wire('keypad', 'c2', 'kpenc', 'x3'),
-    // X4 unused (keypad_4x4 has only 3 columns); tie to VCC
-    tieHigh('vcc1', 'kpenc', 'x4'),
-    // 74C922 encoded output → MCU P1.0-P1.3
-    wire('kpenc', 'a', 'mcu', 'P1.0'),
-    wire('kpenc', 'b', 'mcu', 'P1.1'),
-    wire('kpenc', 'c', 'mcu', 'P1.2'),
-    wire('kpenc', 'd', 'mcu', 'P1.3'),
-    // DA (data available) → P3.2 (INT0)
-    wire('kpenc', 'da', 'mcu', 'P3.2'),
-    // OEB tied low (outputs always enabled)
-    tieLow('gnd1', 'kpenc', 'oeb'),
-    // OSC and KBM: timing caps (simplified: tie to GND)
-    tieLow('gnd1', 'kpenc', 'osc'),
-    tieLow('gnd1', 'kpenc', 'kbm'),
+    // ── Direct 4×4 keypad ──────────────────────────────────────────
+    ...Array.from({ length: 4 }, (_, i) =>
+      wire('mcu', `P1.${7 - i}`, 'keypad', `r${i}`)),
+    ...Array.from({ length: 4 }, (_, i) =>
+      wire('mcu', `P1.${3 - i}`, 'keypad', `c${i}`)),
 
     // ── DS1302 RTC (3-wire) ─────────────────────────────────────────
-    wire('mcu', 'P1.4', 'rtc', 'ce'),
-    wire('mcu', 'P1.5', 'rtc', 'io'),
-    wire('mcu', 'P1.6', 'rtc', 'sclk'),
+    wire('mcu', 'P3.4', 'rtc', 'io'),
+    wire('mcu', 'P3.5', 'rtc', 'ce'),
+    wire('mcu', 'P3.6', 'rtc', 'sclk'),
     // X1, X2: crystal oscillator (artwork-only, no wire needed)
 
     // ── DS18B20 temperature sensor (1-wire) ─────────────────────────
-    wire('mcu', 'P1.7', 'temp', 'dq'),
+    wire('mcu', 'P3.7', 'temp', 'dq'),
     // 4.7kΩ pull-up on DQ line
     wire('temp', 'dq', 'r_dq', 'a'),
     wire('r_dq', 'b', 'vcc1', 'vcc'),
@@ -305,27 +290,55 @@ function genPrechinA2() {
     wire('mcu', 'P2.1', 'r_scl', 'a'),
     wire('r_scl', 'b', 'vcc1', 'vcc'),
 
-    // ── LCD1602 (8-bit mode) ────────────────────────────────────────
-    // Data bus: P0.0-P0.7 → D0-D7
-    ...Array.from({ length: 8 }, (_, i) =>
-      wire('mcu', `P0.${i}`, 'lcd', `d${i}`)),
+    // ── LCD1602 (vendor example 18: 4-bit mode) ─────────────────────
+    ...Array.from({ length: 4 }, (_, i) =>
+      wire('mcu', `P0.${i + 4}`, 'lcd', `d${i + 4}`)),
     // Control: RS=P2.6, RW=P2.5, E=P2.7
     wire('mcu', 'P2.6', 'lcd', 'rs'),
     wire('mcu', 'P2.5', 'lcd', 'rw'),
     wire('mcu', 'P2.7', 'lcd', 'e'),
     // V0 (contrast) tied to GND (max contrast)
-    wire('gnd1', 'gnd', 'lcd', 'v0'),
+    wire('gnd1', 'gnd', 'lcd', 'vo'),
     // Backlight: A → resistor → VCC; K → GND
-    wire('lcd', 'a', 'r_bl', 'a'),
+    wire('lcd', 'bl_a', 'r_bl', 'a'),
     wire('r_bl', 'b', 'vcc1', 'vcc'),
-    wire('gnd1', 'gnd', 'lcd', 'k'),
+    wire('gnd1', 'gnd', 'lcd', 'bl_k'),
 
     // ── IR receiver ─────────────────────────────────────────────────
-    wire('ir', 'out', 'mcu', 'P3.3'),
+    wire('ir', 'out', 'mcu', 'P3.2'),
 
-    // ── Buzzer on P2.2 (active low) ─────────────────────────────────
-    wire('mcu', 'P2.2', 'buz', 'a'),
+    // ── Buzzer on P2.5 (shared with LCD RW and LED D6) ──────────────
+    wire('mcu', 'P2.5', 'buz', 'a'),
     wire('gnd1', 'gnd', 'buz', 'b'),
+
+    // ── ET/XPT2046 ADC and its three onboard sources ────────────────
+    ...powerChipStd('vcc1', 'gnd1', 'adc'),
+    wire('mcu', 'P3.4', 'adc', 'din'),
+    wire('mcu', 'P3.5', 'adc', 'csb'),
+    wire('mcu', 'P3.6', 'adc', 'dclk'),
+    wire('adc', 'dout', 'mcu', 'P3.7'),
+    wire('vcc1', 'vcc', 'pot_a0', 'a'), wire('gnd1', 'gnd', 'pot_a0', 'b'),
+    wire('pot_a0', 'wiper', 'adc', 'yp'),
+    wire('vcc1', 'vcc', 'ntc_a1', 'a'), wire('ntc_a1', 'b', 'adc', 'vbat'),
+    wire('adc', 'vbat', 'r_ntc', 'a'), wire('r_ntc', 'b', 'gnd1', 'gnd'),
+    wire('vcc1', 'vcc', 'ldr_a2', 'a'), wire('ldr_a2', 'b', 'adc', 'xp'),
+    wire('adc', 'xp', 'r_ldr', 'a'), wire('r_ldr', 'b', 'gnd1', 'gnd'),
+
+    // ── Two 4-digit displays and the active-low D1-D8 row ───────────
+    wire('vcc1', 'vcc', 'sevenseg', 'vcc'), wire('gnd1', 'gnd', 'sevenseg', 'gnd'),
+    ...['seg_a', 'seg_b', 'seg_c', 'seg_d', 'seg_e', 'seg_f', 'seg_g', 'seg_dp']
+      .map((terminal, i) => wire('mcu', `P0.${i}`, 'sevenseg', terminal)),
+    wire('mcu', 'P2.2', 'sevenseg', 'sel_a'),
+    wire('mcu', 'P2.3', 'sevenseg', 'sel_b'),
+    wire('mcu', 'P2.4', 'sevenseg', 'sel_c'),
+    wire('vcc1', 'vcc', 'leds', 'vcc'), wire('gnd1', 'gnd', 'leds', 'gnd'),
+    ...Array.from({ length: 8 }, (_, i) => wire('mcu', `P2.${i}`, 'leds', `d${i}`)),
+
+    // ── Independent keys (P5 UART shunts must be removed for K1/K2) ─
+    ...[[1, 1], [2, 0], [3, 2], [4, 3]].map(([key, bit]) => [
+      wire('mcu', `P3.${bit}`, `key${key}`, 'a'),
+      wire(`key${key}`, 'b', 'gnd1', 'gnd'),
+    ]).flat(),
   ];
 
   return {
@@ -333,7 +346,7 @@ function genPrechinA2() {
     _board: 'PRECHIN-A2',
     _title: 'PRECHIN A2 learning board',
     _device: 'stc89c52rc',
-    _description: 'PRECHIN A2 full learning board: STC89C52RC with 8×8 LED matrix (2× 74HC595), 4×4 keypad (74C922 encoder), DS1302 RTC, DS18B20 temp sensor, AT24C02 I2C EEPROM, LCD1602, IR receiver, and buzzer. Every peripheral a student encounters in a typical 8051 curriculum.',
+    _description: 'Bench-verified PRECHIN A2: STC89C52RC, one-74HC595 8×8 matrix, direct P1 keypad, 8-digit 7-segment display, active-low LED row, ET/XPT2046 ADC, DS1302, DS18B20, AT24C02, 4-bit LCD1602, IR, keys, and P2.5 buzzer. Shared nets and jumper-dependent conflicts are represented deliberately.',
   };
 }
 

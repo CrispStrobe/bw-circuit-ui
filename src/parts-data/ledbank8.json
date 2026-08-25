@@ -1,0 +1,36 @@
+{
+  "kind": "ledbank8",
+  "w": 80,
+  "h": 30,
+  "terminals": [
+    { "name": "d0",  "x": 8,  "y": 30, "functions": [] },
+    { "name": "d1",  "x": 16, "y": 30, "functions": [] },
+    { "name": "d2",  "x": 24, "y": 30, "functions": [] },
+    { "name": "d3",  "x": 32, "y": 30, "functions": [] },
+    { "name": "d4",  "x": 40, "y": 30, "functions": [] },
+    { "name": "d5",  "x": 48, "y": 30, "functions": [] },
+    { "name": "d6",  "x": 56, "y": 30, "functions": [] },
+    { "name": "d7",  "x": 64, "y": 30, "functions": [] },
+    { "name": "vcc", "x": 72, "y": 0,  "functions": [] },
+    { "name": "gnd", "x": 80, "y": 0,  "functions": [] }
+  ],
+  "variants": [
+    { "param": "activeLow", "values": [true, false] }
+  ],
+  "_note": "8 discrete LEDs in a row, port-driven. Default active-low (A2 board: LED on when port bit is LOW, common anode at VCC via resistors). d0-d7 map to port bits 0-7. On the Prechin A2, the 8 LEDs share P2 with the 7-seg digit select — scanning the tubes flickers the LEDs (documented conflict, compile WARNING). Params: activeLow (default true for A2 wiring).",
+  "footprint": {
+    "refTerminal": "d0",
+    "leads": {
+      "d0":  { "dRow": 0, "dCol": 0 },
+      "d1":  { "dRow": 0, "dCol": 1 },
+      "d2":  { "dRow": 0, "dCol": 2 },
+      "d3":  { "dRow": 0, "dCol": 3 },
+      "d4":  { "dRow": 0, "dCol": 4 },
+      "d5":  { "dRow": 0, "dCol": 5 },
+      "d6":  { "dRow": 0, "dCol": 6 },
+      "d7":  { "dRow": 0, "dCol": 7 },
+      "vcc": { "dRow": 0, "dCol": 8 },
+      "gnd": { "dRow": 0, "dCol": 9 }
+    }
+  }
+}
