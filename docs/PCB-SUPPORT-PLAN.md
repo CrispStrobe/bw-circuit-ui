@@ -1,6 +1,21 @@
 # Supporting PCBs in BrickWright — the plan, revised
 
-Status: **v2, adopted 2026-08-25 — implementation underway on `fable/pcb-support`.**
+Status: **v2, adopted AND SUBSTANTIALLY BUILT 2026-08-25 on `fable/pcb-support`.**
+Landed with tests, in one session: Phase 0 (the docType-3 reader),
+Phase 0.5 (copper netlist, the lift, SCH/PCB pairing), Phase 1 (land
+patterns for 10 kinds incl. Pico module and stm32f030 TSSOP-20),
+Phase 2 (physical DRC, 8 rules), Phase 3 (projection: placement + a
+DRC-gated router), Phase 4 (SVG renderer + BoardPanel component),
+Phase 5 (the EasyEDA writer, round-trip-oracle verified). Open:
+mounting BoardPanel in CircuitDesigner's view switcher (shared UI
+surface, deliberate follow-up), Phase 6 editing gestures (the
+overrides MODEL is built and tested; the drag UI is not), Phase 7
+gallery examples, the `.kicad_pcb` export + kicad-cli CI oracle, and
+Phase 8. Measured along the way: the broken calculator's 12 findings
+(all six dead keys by name), and three REAL hairline shorts the
+manual repair itself introduced on the "fixed" board — vias overlapping
+foreign tracks by 10–17 µm, found by the exact checker, confirmed
+against the raw files by an independent sweep.
 v1 was written the same day, after repairing a real EasyEDA board (a Pico
 calculator, 21 parts, 24 nets) by hand and discovering that the app could not
 have caught any of its four defects. v2 folds in a licence-verified survey of
