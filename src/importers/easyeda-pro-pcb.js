@@ -69,7 +69,7 @@ export function looksLikeEasyEdaProPcb(text) {
 function makeCollector() {
   return {
     lines: [], arcs: [], vias: [], pads: [], polys: [], fills: [],
-    pours: new Map(), poured: new Map(), strings: [],
+    pours: new Map(), poured: new Map(), blindVia: new Map(), layerKinds: new Map(), strings: [],
     components: new Map(), attrs: [], padNets: [],
   };
 }
@@ -186,11 +186,27 @@ function parseV2(text, col, warnings, ignore) {
     if (!Array.isArray(row)) { ignore('(non-array row)'); continue; }
     const tag = row[0];
     switch (tag) {
-      case 'DOCTYPE': case 'HEAD': case 'CANVAS': case 'LAYER': case 'LAYER_PHYS':
+      case 'LAYER':
+        // ["LAYER", id, kind, title, …] — kind "PLANE" marks a NEGATIVE
+        // inner plane: drawn shapes there are splits, and the body FILL
+        // is the whole plane, with anti-pads computed only at Gerber
+        // time. That matters below.
+        if (typeof row[2] === 'string') col.layerKinds.set(Number(row[1]), row[2]);
+        break;
+      case 'DOCTYPE': case 'HEAD': case 'CANVAS': case 'LAYER_PHYS':
       case 'ACTIVE_LAYER': case 'SILK_OPTS': case 'PREFERENCE': case 'NET':
-      case 'RULE': case 'RULE_TEMPLATE': case 'RULE_SELECTOR': case 'ITEM_ORDER':
+      case 'RULE_TEMPLATE': case 'RULE_SELECTOR': case 'ITEM_ORDER':
       case 'PANELIZE': case 'PANELIZE_STAMP': case 'PANELIZE_SIDE':
         break; // metadata
+      case 'RULE':
+        // ["RULE","4","blindVia",1,[[name, fromLayer, toLayer]…]] — the
+        // named via spans a 6-layer board's blind vias refer to by name.
+        if (row[2] === 'blindVia' && Array.isArray(row[4])) {
+          for (const e of row[4]) {
+            if (Array.isArray(e) && e.length >= 3) col.blindVia.set(String(e[0]), [Number(e[1]), Number(e[2])]);
+          }
+        }
+        break;
       case 'LINE':
         col.lines.push({ id: row[1], net: row[3] || '', layer: Number(row[4]), x1: row[5], y1: row[6], x2: row[7], y2: row[8], width: row[9] });
         break;
@@ -199,7 +215,11 @@ function parseV2(text, col, warnings, ignore) {
         col.arcs.push({ id: row[1], net: row[3] || '', layer: Number(row[4]), width: row[5], ring: row[6] });
         break;
       case 'VIA':
-        col.vias.push({ id: row[1], net: row[3] || '', x: row[5], y: row[6], drill: row[7], diameter: row[8] });
+        // field 4 names a blind-via span from the RULE table; '' = through.
+        col.vias.push({
+          id: row[1], net: row[3] || '', x: row[5], y: row[6], drill: row[7], diameter: row[8],
+          spanName: typeof row[4] === 'string' ? row[4] : '',
+        });
         break;
       case 'PAD': {
         const hole = Array.isArray(row[9]) ? row[9] : null;
@@ -225,9 +245,16 @@ function parseV2(text, col, warnings, ignore) {
         });
         break;
       case 'POURED':
-        // ["POURED", id, pourId, ?, bool, [rings]] — the computed fill,
-        // at 1/10 scale like V3's.
-        if (Array.isArray(row[5])) col.poured.set(row[2], row[5]);
+        // ["POURED", id, pourId, ?, bool, [rings]] — ONE computed fill
+        // ISLAND of its pour, at 1/10 scale like V3's. A pour has one
+        // POURED record PER ISLAND (113 and 184 on one real board);
+        // keeping only the last record threw away the whole plane and
+        // left a sliver (measured, sil0074-dp: GND read as 25 islands).
+        // Each record's rings are one even-odd group (outer + holes).
+        if (Array.isArray(row[5])) {
+          if (!col.poured.has(row[2])) col.poured.set(row[2], []);
+          col.poured.get(row[2]).push(row[5]);
+        }
         break;
       case 'STRING':
         col.strings.push({ id: row[1], layer: Number(row[3]), x: row[4], y: row[5], text: String(row[6] ?? '') });
@@ -326,11 +353,15 @@ function parseV3(text, col, warnings, ignore) {
         col.pours.set(id, { id, net: data.netName || '', layer: Number(data.layerId), rings: normalizeRings(data.path) });
         break;
       case 'POURED': {
-        // id is a stringified ["POURED", pourId]; fills are at 1/10 scale.
+        // id is a stringified ["POURED", pourId]; fills are at 1/10
+        // scale. One record per fill island, accumulated like V2's.
         let pourId = data.targetId;
         try { const arr = JSON.parse(id); if (Array.isArray(arr)) pourId = arr[1]; } catch { /* keep */ }
         const rings = (data.pourFill || []).flatMap((f) => f.path || []);
-        col.poured.set(pourId, rings);
+        if (rings.length) {
+          if (!col.poured.has(pourId)) col.poured.set(pourId, []);
+          col.poured.get(pourId).push(rings);
+        }
         break;
       }
       case 'STRING':
@@ -495,20 +526,47 @@ export function importEasyEdaProPcb(text, opts = {}) {
       net: p.net, width: L(p.width), points: pts, id: `pro-${p.id}`,
     });
   }
+  let planeWarned = false;
   for (const f of col.fills) {
     if (!COPPER_LAYERS.has(f.layer)) { ignore(`FILL@layer${f.layer}`); continue; }
     const rings = f.rings.map((r) => proRingToPoints(r, warnings).map(([x, y]) => [X(x), Y(y)]))
       .filter((r) => r.length >= 3);
     if (!rings.length) continue;
+    // A FILL on a NEGATIVE plane layer is the plane BODY: its anti-pads
+    // around other nets' through-holes exist only at Gerber time, so as
+    // exact copper it would weld every through pad on the board to the
+    // plane net (measured, a real 6-layer board's 36-net island). It
+    // goes through the labelled outline-only over-approximation instead.
+    const negative = col.layerKinds.get(f.layer) === 'PLANE';
+    if (negative && !planeWarned) {
+      planeWarned = true;
+      warnings.push('Negative plane layer(s) present: plane copper is over-approximated by its border '
+        + '(same-net joins only, labelled) — anti-pads are not in the file.');
+    }
     model.pours.push({
       layer: layerName(f.layer), layerId: copperId(f.layer), net: f.net,
       outline: rings[0], clearance: 0, fillStyle: 'solid', thermal: '', keepIsland: '',
-      fills: [rings], fillFromFile: true, id: `pro-${f.id}`,
+      fills: negative ? null : [rings], fillFromFile: !negative, id: `pro-${f.id}`,
     });
   }
-  model.vias = col.vias.map((v) => ({
-    x: X(v.x), y: Y(v.y), diameter: L(v.diameter), drill: L(v.drill), net: v.net, id: `pro-${v.id}`,
-  }));
+  // Pro copper stack order by layer id: 1 (top), 15..18 (Inner1..4), 2
+  // (bottom). A blind via's named span from the RULE table expands to
+  // the contiguous slice of that stack — treating it as through-all
+  // shorted a bottom track against a top→Inner2 via right under it
+  // (measured, a real 6-layer V2 board).
+  const PRO_STACK = [1, 15, 16, 17, 18, 2];
+  model.vias = col.vias.map((v) => {
+    let layers = null;
+    const span = v.spanName ? col.blindVia.get(v.spanName) : null;
+    if (span) {
+      const i0 = PRO_STACK.indexOf(span[0]); const i1 = PRO_STACK.indexOf(span[1]);
+      if (i0 >= 0 && i1 >= 0) layers = PRO_STACK.slice(Math.min(i0, i1), Math.max(i0, i1) + 1);
+    }
+    return {
+      x: X(v.x), y: Y(v.y), diameter: L(v.diameter), drill: L(v.drill), net: v.net, id: `pro-${v.id}`,
+      ...(layers ? { layers } : {}),
+    };
+  });
 
   // Pours: POURED (×10 scale) is exact; a bare POUR border is the
   // labelled over-approximation this model already knows how to carry.
@@ -519,10 +577,28 @@ export function importEasyEdaProPcb(text, opts = {}) {
       : [];
     let fills = null;
     if (pouredRings && pouredRings.length) {
-      const scaled = pouredRings
-        .map((r) => proRingToPoints(r, warnings).map(([x, y]) => [X(x * 10), Y(y * 10)]))
-        .filter((r) => r.length >= 3);
-      if (scaled.length) fills = [scaled];
+      // pouredRings = one entry PER ISLAND; each entry's rings are one
+      // even-odd group (outer boundary + its carve-out holes). TWO-POINT
+      // entries mixed in are the THERMAL SPOKES bridging a pad's anti-pad
+      // gap (10 mil stubs on a real board) — as degenerate regions they
+      // vanished and every relieved pad read as its own island. They are
+      // copper segments: emitted as same-net tracks.
+      const groups = [];
+      for (const group of pouredRings) {
+        const rings = [];
+        for (const r of group) {
+          const pts = proRingToPoints(r, warnings).map(([x, y]) => [X(x * 10), Y(y * 10)]);
+          if (pts.length >= 3) rings.push(pts);
+          else if (pts.length === 2) {
+            model.tracks.push({
+              layer: layerName(pour.layer), layerId: copperId(pour.layer), net: pour.net,
+              width: 0.2, points: pts, id: `pro-${id}-spoke${model.tracks.length}`,
+            });
+          }
+        }
+        if (rings.length) groups.push(rings);
+      }
+      if (groups.length) fills = groups;
     }
     model.pours.push({
       layer: layerName(pour.layer), layerId: copperId(pour.layer), net: pour.net,
@@ -541,6 +617,13 @@ export function importEasyEdaProPcb(text, opts = {}) {
         type: 'line',
         x1: X(ring[i][0]), y1: Y(ring[i][1]), x2: X(ring[i + 1][0]), y2: Y(ring[i + 1][1]), id: 'edge',
       });
+    }
+    // A POLY is a POLYGON: the closing edge from last back to first is
+    // implied, not drawn (a real board's straight left edge existed only
+    // as this implicit edge). Emit it when the ring is not already closed.
+    const [fx, fy] = ring[0]; const [lx, ly] = ring[ring.length - 1];
+    if (ring.length >= 3 && Math.hypot(fx - lx, fy - ly) > 1e-9) {
+      model.outline.push({ type: 'line', x1: X(lx), y1: Y(ly), x2: X(fx), y2: Y(fy), id: 'edge' });
     }
   }
 

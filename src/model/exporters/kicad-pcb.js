@@ -142,8 +142,16 @@ export function exportKicadPcb(board, opts = {}) {
     }
   }
   for (const v of board.vias || []) {
-    body.push(`(via (at ${X(v.x)} ${Y(v.y)}) (size ${fmt(v.diameter)}) (drill ${fmt(v.drill)}) `
-      + `(layers "F.Cu" "B.Cu") (net ${netOf(v.net)}))`);
+    // A spanned via (blind/micro, v.layers = copper ids) keeps its span:
+    // writing it as through-all would manufacture connectivity the source
+    // board does not have, and the round-trip oracle would catch it.
+    const lname = (id) => (id === 1 ? 'F.Cu' : id === 2 ? 'B.Cu' : `In${id - 20}.Cu`);
+    const span = v.layers && v.layers.length
+      ? `(layers "${lname(v.layers[0])}" "${lname(v.layers[v.layers.length - 1])}")`
+      : '(layers "F.Cu" "B.Cu")';
+    const kind = v.layers && v.layers.length ? 'blind ' : '';
+    body.push(`(via ${kind}(at ${X(v.x)} ${Y(v.y)}) (size ${fmt(v.diameter)}) (drill ${fmt(v.drill)}) `
+      + `${span} (net ${netOf(v.net)}))`);
   }
   for (const z of board.pours || []) {
     const layer = z.layerId === 2 || z.layer === 'bottom' ? 'B.Cu' : 'F.Cu';

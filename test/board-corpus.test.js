@@ -55,10 +55,13 @@ const PINNED = [
   // EasyEDA PRO (V2 array style). Components import pad-less by design
   // (master/instance; bare documents carry no FOOTPRINT masters), so
   // `parts` counts components and the verdicts judge the copper. The
-  // outline-open dangers are REAL ~0.8 mm gaps drawn in the source.
+  // "0.8 mm outline gaps" first pinned here were a misreading: a POLY on
+  // the outline layer is a polygon, its closing edge implied, and the
+  // reader now closes it (nanohub healed). smartcar's remaining open
+  // outline is real even after closure.
   ['macropad.epcb', 9, { 'clearance/warning': 3 }],
-  ['nanohub.epcb', 23, { 'outline-open/danger': 1, 'clearance/warning': 15 }],
-  ['smartcar.epcb', 73, { 'outline-open/danger': 1, 'outline-overlap/info': 1 }],
+  ['nanohub.epcb', 23, { 'clearance/warning': 15 }],
+  ['smartcar.epcb', 73, { 'outline-open/danger': 1 }],
 ];
 
 const importBoard = (file, text) => (file.endsWith('.kicad_pcb')

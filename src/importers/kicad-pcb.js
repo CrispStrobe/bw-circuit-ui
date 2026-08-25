@@ -202,13 +202,13 @@ export function importKicadPcb(text) {
       .filter((e) => e.type === 'signal' || e.type === 'power' || e.type === 'mixed')
       .sort((a, b) => a.ord - b.ord);
     entries.forEach((e, i) => {
-      cuTable.set(e.name, i === 0 ? { layer: 'top', layerId: 1 }
-        : i === entries.length - 1 ? { layer: 'bottom', layerId: 2 }
-          : { layer: `inner${i}`, layerId: 20 + i });
+      cuTable.set(e.name, i === 0 ? { layer: 'top', layerId: 1, ord: e.ord }
+        : i === entries.length - 1 ? { layer: 'bottom', layerId: 2, ord: e.ord }
+          : { layer: `inner${i}`, layerId: 20 + i, ord: e.ord });
     });
     // Canonical names always resolve, table or no table.
-    if (!cuTable.has('F.Cu')) cuTable.set('F.Cu', { layer: 'top', layerId: 1 });
-    if (!cuTable.has('B.Cu')) cuTable.set('B.Cu', { layer: 'bottom', layerId: 2 });
+    if (!cuTable.has('F.Cu')) cuTable.set('F.Cu', { layer: 'top', layerId: 1, ord: 0 });
+    if (!cuTable.has('B.Cu')) cuTable.set('B.Cu', { layer: 'bottom', layerId: 2, ord: 31 });
   }
   const unknownCu = new Set();
   const cuOf = (name) => cuTable.get(name) || null;
@@ -253,11 +253,29 @@ export function importKicadPcb(text) {
       });
     } else if (tag === 'via') {
       const { x, y } = atOf(node);
+      // Blind/micro vias ((via micro …), (via blind …)) span only the
+      // copper between the two names in their (layers A B) — treating
+      // them as through-all shorted a bottom-side pad against a top→inner
+      // microvia tucked under it (measured, fomu-pvt). A through via's
+      // (layers F.Cu B.Cu) expands to every copper layer, so the same
+      // expansion serves both; absent layers = through (older files).
+      const partial = node[1] === 'micro' || node[1] === 'blind';
+      let span = null;
+      const vl = child(node, 'layers');
+      if (partial && vl) {
+        const ords = vl.slice(1).map((n) => cuTable.get(String(n))?.ord).filter((o) => o !== undefined);
+        if (ords.length === 2) {
+          const [lo, hi] = [Math.min(...ords), Math.max(...ords)];
+          span = [...cuTable.values()].filter((e) => e.ord >= lo && e.ord <= hi).map((e) => e.layerId);
+          span = [...new Set(span)].sort((a, b) => a - b);
+        }
+      }
       raw.vias.push({
         x, y,
         size: num(child(node, 'size')?.[1]),
         drill: num(child(node, 'drill')?.[1]),
         net: num(child(node, 'net')?.[1]),
+        span,
       });
     } else if (tag === 'arc') { // track arc
       const s = child(node, 'start'); const m = child(node, 'mid'); const e = child(node, 'end');
@@ -340,6 +358,24 @@ export function importKicadPcb(text) {
         const [ex2, ey2] = rotAbout(ax, ay, sweep);
         raw.outlineSegs.push({ type: 'arc', sx: ax, sy: ay, mx: mx2, my: my2, ex: ex2, ey: ey2 });
       } else ignore('gr_arc@Edge.Cuts(malformed)');
+    } else if (tag === 'gr_circle') {
+      const c = child(node, 'center'); const e = child(node, 'end');
+      const layer = String(child(node, 'layer')?.[1] || '');
+      if (c && e && layer === 'Edge.Cuts') {
+        // A circular board outline (or a round cutout) as ONE record.
+        // Two half-circle arcs: a closed ring for the closure check, and
+        // endpoints the renderer's arc path can actually draw (a single
+        // full-circle arc would have coincident endpoints — degenerate).
+        const cx = num(c[1]); const cy = num(c[2]);
+        const r = Math.hypot(num(e[1]) - cx, num(e[2]) - cy);
+        raw.outlineSegs.push(
+          { type: 'arc', sx: cx + r, sy: cy, mx: cx, my: cy + r, ex: cx - r, ey: cy },
+          { type: 'arc', sx: cx - r, sy: cy, mx: cx, my: cy - r, ex: cx + r, ey: cy },
+        );
+      } else if (c && e && layer.includes('Silk')) {
+        const cx = num(c[1]); const cy = num(c[2]);
+        raw.circles.push({ cx, cy, r: Math.hypot(num(e[1]) - cx, num(e[2]) - cy) });
+      } else ignore(`gr_circle@${layer}`);
     } else if (tag === 'gr_text') {
       const t = String(node[1] ?? '');
       const { x, y, rot } = atOf(node);
@@ -418,7 +454,13 @@ export function importKicadPcb(text) {
         through: pad.through, layer: pad.layer,
         // Index-suffixed: KiCad's duplicate pad numbers would collide on
         // a num-keyed id, and the internal-terminal merge keys on pad ids.
-        points: null, id: `${p.ref || p.id}-${pad.num}-${padIdx}`,
+        points: pad.primLocal
+          ? pad.primLocal.map(([px, py]) => {
+            const [rx, ry] = rot2(px, py, pad.shapeRot || 0);
+            return [X(pad.absX + rx), Y(pad.absY + ry)];
+          })
+          : null,
+        id: `${p.ref || p.id}-${pad.num}-${padIdx}`,
       })),
       silk: {
         tracks: p.silkLines.map((l) => ({
@@ -451,6 +493,7 @@ export function importKicadPcb(text) {
   }));
   model.vias = raw.vias.map((v, i) => ({
     x: X(v.x), y: Y(v.y), diameter: v.size, drill: v.drill, net: nameOfNet(v.net), id: `via${i}`,
+    ...(v.span ? { layers: v.span } : {}),
   }));
   model.arcs = raw.arcs.map((a, i) => {
     const arc = threePointArc(a.sx, a.sy, a.mx, a.my, a.ex, a.ey);
@@ -497,6 +540,9 @@ export function importKicadPcb(text) {
       rx: arc.rx, ry: arc.ry, rot: 0, largeArc: arc.largeArc, sweep: arc.sweep ? 0 : 1, id: 'edge',
     };
   });
+  model.silk.circles = raw.circles.map((c, i) => ({
+    cx: X(c.cx), cy: Y(c.cy), r: c.r, layerId: 3, id: `gcirc${i}`,
+  }));
   model.silk.tracks = raw.silkTracks.map((l, i) => ({
     layer: l.layer.startsWith('B') ? 'bottom' : 'top', layerId: layerIdOf(l.layer), net: '',
     width: l.width || 0.12, points: [[X(l.x1), Y(l.y1)], [X(l.x2), Y(l.y2)]], id: `silk${i}`,
@@ -596,6 +642,21 @@ function parseFootprint(node, warnings, ignore, cuOf) {
         [offX, offY] = rot2(num(off[1]), num(off[2]), at.rot || 0);
       }
     }
+    // A custom pad's copper is its (primitives …) polygon, in the pad's
+    // own frame like the drill offset. Without it the pad imports as its
+    // anchor — often a 0.01 mm dot — and the pour that really joins it
+    // reads as a separate island (measured, bitaxe Q1.5 on /5V).
+    let primLocal = null;
+    if (padShapeName === 'custom') {
+      const prims = child(p, 'primitives');
+      if (prims) {
+        const polys = children(prims, 'gr_poly').map((g) => ptsOf(g)).filter((r) => r.length >= 3);
+        if (polys.length) {
+          primLocal = polys[0];
+          if (polys.length > 1) warnings.push('custom pad with several polygons: first one taken');
+        }
+      }
+    }
     const [dx, dy] = rot2(at.x, at.y, rot);
     if (padType === 'np_thru_hole') {
       // An unplated hole is a HOLE, not copper — KiCad just spells
@@ -625,6 +686,7 @@ function parseFootprint(node, warnings, ignore, cuOf) {
       slotAlongX,
       through, layer,
       net: num(child(p, 'net')?.[1]),
+      primLocal,
     });
     if (PAD_SHAPES[padShapeName] === undefined) {
       warnings.push(`pad ${padNum} of ${ref || libName}: shape "${padShapeName}" read as rect.`);

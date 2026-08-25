@@ -107,7 +107,7 @@ describe('mini fixture — the partition, in millimetres, computed first', () =>
 
   test('two parts with refs read from their P texts', () => {
     assert.deepEqual(m.parts.map((p) => p.ref), ['R1', 'SW1']);
-    assert.deepEqual(m.parts.map((p) => p.package), ['R_AXIAL-0.4', 'SW-TH_4P-L6.0-W6.0']);
+    assert.deepEqual(m.parts.map((p) => p.package), ['R_AXIAL-0.4', 'SW-TH_4P-L6.0-W6.0-TS-6645DD6X6X6.0']);
     assert.deepEqual(m.parts.map((p) => p.side), ['top', 'top']);
   });
 

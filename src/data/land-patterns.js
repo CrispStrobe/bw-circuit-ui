@@ -126,6 +126,22 @@ export const LAND_PATTERNS = {
       courtyard: { w: 7.5, h: 7.5 },
       silk: [{ kind: 'rect', x: -3, y: -3, w: 6, h: 6 }, { kind: 'circle', x: 0, y: 0, r: 1.75 }],
     },
+    'tact-6x6-lcsc': {
+      // MEASURED on a published board (OpenCore0, SW-TH_4P-L6.0-W6.0-
+      // P4.50-LS6.5, 2026-08-25): same 6x6 body, but the LCSC numbering
+      // pairs ACROSS the 6.5 mm lead span — pads 1&2 (top row) are one
+      // internal node, 3&4 the other; its own netting proves it (GND on
+      // 1,2 / signal on 3,4 across sixteen switches). Both mechanical
+      // classes exist; the terminal map belongs to the FOOTPRINT NAME,
+      // never to "6 mm tact" in general.
+      description: '6x6 mm THT tact switch, LCSC SW-TH_4P numbering',
+      pads: [
+        tht(1, 'a', -3.25, 2.25), tht(2, 'a', 3.25, 2.25),
+        tht(3, 'b', -3.25, -2.25), tht(4, 'b', 3.25, -2.25),
+      ],
+      courtyard: { w: 7.5, h: 7.5 },
+      silk: [{ kind: 'rect', x: -3, y: -3, w: 6, h: 6 }, { kind: 'circle', x: 0, y: 0, r: 1.75 }],
+    },
   },
   slide_switch: {
     'ss-12d10': {
@@ -251,7 +267,11 @@ export const PAD_TERMINALS = {
 };
 
 export const PACKAGE_KIND_RULES = [
-  { match: /^SW-TH_4P.*6\.0|TS-66|SW_PUSH_6mm|SW_Push_6mm/i, kind: 'button', variant: 'tact-6x6' },
+  // Order matters: the live board's TS-6645 carries the LCSC prefix TOO
+  // (SW-TH_4P-L6.0-W6.0-TS-6645DD6X6X6.0) — the vendor suffix names the
+  // measured same-side class, so it must win over the generic prefix.
+  { match: /TS-66|SW_PUSH_6mm|SW_Push_6mm/i, kind: 'button', variant: 'tact-6x6' },
+  { match: /^SW-TH_4P.*6\.0/i, kind: 'button', variant: 'tact-6x6-lcsc' },
   { match: /^SW-TH_SS-12D|SS-12D10/i, kind: 'slide_switch', variant: 'ss-12d10' },
   // KiCad library spellings recognise too: the lift reads KiCad boards now.
   { match: /^R_AXIAL|^RES-TH|:R_Axial_DIN/i, kind: 'resistor', variant: 'axial-0.4' },

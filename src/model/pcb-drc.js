@@ -46,6 +46,9 @@ export const DEFAULT_CLEARANCE_MM = 0.152;
 const finding = (severity, rule, partId, explanation, extra = {}) =>
   ({ severity, rule, partId, explanation, ...extra });
 
+/** KiCad's machine-generated single-pad net names — no drawn intent. */
+const isMachineNet = (net) => /^(Net-|unconnected-)\(.+\)$/.test(net);
+
 // ── rule 1: terminal-short ─────────────────────────────────────────
 
 function checkTerminalShorts(board, findings) {
@@ -118,9 +121,20 @@ function checkCopper(board, copper, findings) {
         byNet.get(p.net).push(`${p.ref || '?'}.${p.num}`);
       }
       const detail = [...byNet.entries()].map(([net, pads]) => `${net} (${pads.join(', ')})`).join(' — ');
-      findings.push(finding('danger', 'copper-short', island.pads[0]?.ref || '',
+      // A machine-named net is a pad nothing was DRAWN to. When at most
+      // one net on the island is real, the pattern is an alternate-
+      // position footprint pad (a TRRS jack's two orientations) or a
+      // test pad sitting on live copper — deliberately coincident on
+      // shipped boards. That stays a warning; two REAL nets on one
+      // copper stays a danger.
+      const realNets = island.nets.filter((n) => !isMachineNet(n));
+      const sev = realNets.length >= 2 ? 'danger' : 'warning';
+      findings.push(finding(sev, 'copper-short', island.pads[0]?.ref || '',
         `One piece of copper joins ${island.nets.length} nets: ${detail}. `
-        + 'Somewhere along it, copper of different nets touches.',
+        + (sev === 'danger'
+          ? 'Somewhere along it, copper of different nets touches.'
+          : 'Only one is a drawn net; the rest are auto-named pads sitting on its copper '
+            + '(an alternate-position footprint pad, or a test pad) — deliberate on most boards, but look once.'),
         { nets: island.nets }));
     }
   }
@@ -175,7 +189,10 @@ function copperItems(board) {
     }
   }
   for (const v of board.vias) {
-    items.push({ shape: viaShape(v), net: v.net, layer: 0, label: `via ${v.id}`, partId: '' });
+    items.push({
+      shape: viaShape(v), net: v.net, layer: 0, layers: v.layers || null,
+      label: `via ${v.id}`, partId: '',
+    });
   }
   return items;
 }
@@ -191,7 +208,10 @@ function checkClearance(board, clearance, findings) {
     for (let j = i + 1; j < items.length; j++) {
       const a = items[i]; const b = items[j];
       if (!a.net || !b.net || a.net === b.net) continue;
-      if (a.layer && b.layer && a.layer !== b.layer) continue;
+      if (a.layers && b.layers ? !a.layers.some((l) => b.layers.includes(l))
+        : a.layers ? (b.layer && !a.layers.includes(b.layer))
+          : b.layers ? (a.layer && !b.layers.includes(a.layer))
+            : (a.layer && b.layer && a.layer !== b.layer)) continue;
       const d = shapeDist(a.shape, b.shape);
       if (d >= clearance) continue;
       const pairKey = [a.label, b.label].sort().join('~');

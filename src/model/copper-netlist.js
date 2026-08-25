@@ -100,7 +100,9 @@ export function computeCopperNetlist(board, opts = {}) {
     addNode({ type: 'arc', layer: a.layerId, net: a.net, shapes: trackShapes(arcToTracks(a)) });
   }
   for (const v of board.vias) {
-    addNode({ type: 'via', layer: WILDCARD_LAYER, net: v.net, shapes: [viaShape(v)] });
+    // A blind/micro via (v.layers = the copper ids it spans) exists only
+    // on those layers; a through via (no v.layers) on every layer.
+    addNode({ type: 'via', layer: WILDCARD_LAYER, layers: v.layers || null, net: v.net, shapes: [viaShape(v)] });
   }
   for (const c of board.pours) {
     const exact = !!c.fillFromFile;
@@ -116,8 +118,13 @@ export function computeCopperNetlist(board, opts = {}) {
 
   // ── edges ────────────────────────────────────────────────────────
   const uf = new UnionFind(nodes.length);
-  const sameLayer = (a, b) =>
-    a.layer === WILDCARD_LAYER || b.layer === WILDCARD_LAYER || a.layer === b.layer;
+  const sameLayer = (a, b) => {
+    const A = a.layers; const B = b.layers; // explicit span (blind vias)
+    if (A && B) return A.some((l) => B.includes(l));
+    if (A) return b.layer === WILDCARD_LAYER || A.includes(b.layer);
+    if (B) return a.layer === WILDCARD_LAYER || B.includes(a.layer);
+    return a.layer === WILDCARD_LAYER || b.layer === WILDCARD_LAYER || a.layer === b.layer;
+  };
 
   // Cheap bbox prefilter so the pairwise pass stays honest but not slow.
   const bboxOf = (n) => {
