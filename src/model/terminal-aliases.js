@@ -45,6 +45,13 @@ export const KIND_ALIASES = {
 
 /** @type {Record<string, Record<string, string>>} */
 export const TERMINAL_ALIASES = {
+  // attiny88 pin 22: the PDIP-28 does not bond out port A (PA0-PA3 reach a pad
+  // only on the 32-pin QFN), so pin 22 is a SECOND GND that somebody needed a
+  // name for. Renamed `pa0` -> `gnd2` in bw-board e1bda3f, which owns terminal
+  // names. 135 shipped circuits carry `pa0` in seat.leadMap and migrate here.
+  // PA0-PA3 still exist in bw-board's ATTINY88_PINS — those are the DIE's
+  // registers, which the package simply cannot reach.
+  attiny88: { pa0: 'gnd2' },
   '555': {
     trig: 'trigger',
     out: 'output',
