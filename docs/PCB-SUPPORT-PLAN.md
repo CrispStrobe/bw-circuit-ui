@@ -32,8 +32,19 @@ vocabulary plus pin-1 legends (the fault demo caught terminal rules
 silently skipping every projected board); and exporters/gerber.js
 writes the full fab set (RS-274X copper/mask/silk/outline + Excellon
 drills, pour holes plotted LPC, rotated pads as exact regions).
-Still open, honestly: silk TEXT stroking in Gerber, slot drills,
-EasyEDA-Pro. Measured along the way: the broken calculator's 12 findings
+Session four
+closed the honest remainder: silk text STROKES into the Gerbers
+(hand-authored single-stroke font, same centre anchor as the SVG
+renderer), slot drills exist end to end (importers carry slotLength +
+axis, Excellon routs G85, both writers round-trip them), and EasyEDA
+PRO reads — both generations (V2 array-lines, the common bare .epcb;
+V3 log-lines with ticket dedupe and per-document isolation), 1 mil
+units, Y already up, pour fills at 1/10 scale, inner layers intact,
+components imported pad-less WITH the warning (Pro is
+master/instance; bare documents carry no FOOTPRINT masters — archive
+support is the remaining step). Three MIT Pro boards joined the
+committed corpus; the real V3 production sample lives in the local
+corpus and imports with zero dangers. Measured along the way: the broken calculator's 12 findings
 (all six dead keys by name), and three REAL hairline shorts the
 manual repair itself introduced on the "fixed" board — vias overlapping
 foreign tracks by 10–17 µm, found by the exact checker, confirmed

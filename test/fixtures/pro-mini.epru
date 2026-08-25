@@ -1,0 +1,13 @@
+{"type":"DOCHEAD","ticket":1}||{"docType":"FOOTPRINT","uuid":"fp1","client":"c1"}|
+{"type":"PAD","ticket":1,"id":"e1"}||{"num":"1","layerId":1,"centerX":0,"centerY":0,"padAngle":0,"hole":null,"defaultPad":{"padType":"ELLIPSE","width":30,"height":30}}|
+{"type":"DOCHEAD","ticket":2}||{"docType":"PCB","uuid":"pcb1","client":"c1"}|
+{"type":"CANVAS","ticket":1,"id":"CANVAS"}||{"originX":0,"originY":0,"unit":"mil"}|
+{"type":"POLY","ticket":1,"id":"o1"}||{"netName":"","layerId":11,"width":4,"path":[0,0,"L",800,0,800,400,0,400,0,0],"polyType":"NORMAL"}|
+{"type":"LINE","ticket":1,"id":"t1"}||{"netName":"A","layerId":1,"startX":9999,"startY":9999,"endX":9999,"endY":9999,"width":10}|
+{"type":"LINE","ticket":5,"id":"t1"}||{"netName":"A","layerId":1,"startX":100,"startY":200,"endX":500,"endY":200,"width":10}|
+{"type":"VIA","ticket":1,"id":"v1"}||{"netName":"A","centerX":500,"centerY":200,"holeDiameter":12,"viaDiameter":24}|
+{"type":"PAD","ticket":1,"id":"p1"}||{"netName":"A","num":"1","layerId":12,"centerX":100,"centerY":200,"padAngle":0,"hole":{"holeType":"ROUND","diameter":20},"defaultPad":{"padType":"ELLIPSE","width":40,"height":40}}|
+{"type":"PAD","ticket":1,"id":"p2"}||{"netName":"A","num":"2","layerId":12,"centerX":500,"centerY":200,"padAngle":0,"hole":{"holeType":"ROUND","diameter":20},"defaultPad":{"padType":"ELLIPSE","width":40,"height":40}}|
+{"type":"POUR","ticket":1,"id":"z1"}||{"netName":"GND","layerId":2,"width":2,"path":[[100,50,"L",700,50,700,150,100,150]],"pourType":{"pourType":"SOLID"}}|
+{"type":"POURED","ticket":1,"id":"[\"POURED\",\"z1\"]"}||{"pourFill":[{"path":[[12,6,"L",68,6,68,14,12,14]]}]}|
+{"type":"ARC","ticket":1,"id":"a1"}||{"netName":"A","layerId":1,"startX":500,"startY":200,"endX":600,"endY":300,"angle":90,"width":10}|

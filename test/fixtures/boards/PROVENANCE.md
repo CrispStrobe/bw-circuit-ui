@@ -22,6 +22,15 @@ and skips cleanly when not, exactly like the `~/Downloads` live boards.
 | atomic14.kicad_pcb | [basic-esp32s3-dev-board](https://github.com/atomic14/basic-esp32s3-dev-board) (atomic14) | MIT | raw.githubusercontent.com/atomic14/basic-esp32s3-dev-board/main/dev-board.kicad_pcb | 70df526cee6d24d4 |
 | nanoels-pcb/-sch.json | [NanoEls](https://github.com/kachurovskiy/nanoels) LCD board (kachurovskiy) | MIT | raw.githubusercontent.com/kachurovskiy/nanoels/main/h2/EasyEDA/NanoElsLcd/ | d28e035c32c648a6 / ec7273f61c9b0d85 |
 | tuitar-pcb/-sch.json | [tuitar](https://github.com/orhun/tuitar) (orhun) | MIT OR Apache-2.0 | raw.githubusercontent.com/orhun/tuitar/main/hardware/ | 8c9661ebf38e4f5f / 1fd0dd171f9baa1d |
+| macropad.epcb | [macropad](https://github.com/anirudh12032008/macropad) (anirudh12032008) | MIT (GitHub licence detection; LICENSE present) | raw.githubusercontent.com/anirudh12032008/macropad/main/PCB/PCB1.epcb | 26455ef7be9c5397 |
+| nanohub.epcb | [Nano_Hub](https://github.com/Irtaza2009/Nano_Hub) (Irtaza2009) | MIT (GitHub licence detection; LICENSE present) | raw.githubusercontent.com/Irtaza2009/Nano_Hub/main/pcb/PCB1.epcb | 2b1546a865ee2af6 |
+| smartcar.epcb | [smart_car](https://github.com/paper-tei/smart_car) (paper-tei) | MIT (GitHub licence detection; LICENSE present) | raw.githubusercontent.com/paper-tei/smart_car (v7 board) | bf3d183864c45d14 |
+
+The three `.epcb` files are **EasyEDA PRO V2** bare PCB documents (array
+JSON-lines) — the Pro generation GitHub actually carries. Pro's only real
+V3 sample (KiCad's QA `.epru`, "provided for QA testing", no standard
+licence) lives in the local corpus as `ls2k0300-v3.epru`, alongside the
+MIT OpenSTM archive's main PCB (`openstm-main.epcb`).
 
 Coverage the set was chosen for: KiCad v4 (tiny-esp), v5 (otter, with the
 centre/angle arc spelling and 16 decorative Edge.Cuts arcs), v6-dev

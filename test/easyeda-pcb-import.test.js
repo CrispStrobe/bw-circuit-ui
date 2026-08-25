@@ -247,11 +247,13 @@ describe('detection', () => {
     assert.equal(looksLikeEasyEdaPro(read('easyeda-pcb-mini.json')), false);
   });
 
-  test('an EasyEDA Pro document is named for what it is', () => {
-    const pro = '["DOCTYPE","PCB","2.0"]\n["CANVAS",1,2,3]';
-    assert.equal(looksLikeEasyEdaPro(pro), true);
-    assert.equal(detectFormat(pro), 'easyeda-pro');
-    const r = importCircuit('easyeda-pro', pro);
+  test('an EasyEDA Pro PCB routes to its reader; other Pro docs stay named', () => {
+    const proPcb = '["DOCTYPE","PCB","2.0"]\n["CANVAS",1,2,3]';
+    assert.equal(detectFormat(proPcb), 'easyeda-pro-pcb');
+    const proSch = '["DOCTYPE","SCH","2.0"]\n["CANVAS",1,2,3]';
+    assert.equal(looksLikeEasyEdaPro(proSch), true);
+    assert.equal(detectFormat(proSch), 'easyeda-pro');
+    const r = importCircuit('easyeda-pro', proSch);
     assert.equal(r.parts.length, 0);
     assert.ok(r.warnings.some((w) => /Pro/.test(w)));
   });

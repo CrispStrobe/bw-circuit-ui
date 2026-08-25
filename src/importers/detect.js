@@ -20,6 +20,7 @@
 import { looksLikeEasyEda } from './easyeda.js';
 import { looksLikeEasyEdaPcb, looksLikeEasyEdaPro } from './easyeda-pcb.js';
 import { looksLikeKicadPcb } from './kicad-pcb.js';
+import { looksLikeEasyEdaProPcb } from './easyeda-pro-pcb.js';
 
 /**
  * @param {string} text      Raw file content
@@ -45,9 +46,10 @@ export function detectFormat(text, filename = '') {
   // runs before KiCad's: both are JSON and only a key tells them apart. Our
   // own circuit JSON has a top-level `parts` ARRAY and no `editorVersion`,
   // and bin/bwc.mjs checks for that array before it ever calls this.
-  // EasyEDA PRO is a different format family (JSON Lines, other scaling)
-  // and must be NAMED, not mis-parsed: its rows would read as zero shapes
-  // and "no components found" is true and unhelpful.
+  // EasyEDA PRO PCB documents (both generations: V2 array-lines and V3
+  // log-lines) have a real reader now; other Pro documents are still
+  // NAMED rather than mis-parsed.
+  if (looksLikeEasyEdaProPcb(text)) return 'easyeda-pro-pcb';
   if (looksLikeEasyEdaPro(text)) return 'easyeda-pro';
   // EasyEDA Standard PCB (docType 3/14). Checked before the schematic rule:
   // both are tilde-DSL JSON with a `shape` array and only docType tells them

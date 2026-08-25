@@ -24,6 +24,8 @@ copyrightable; an implementation is, and none was copied.
 | KiCad file-format documentation (dev-docs.kicad.org) | CC-BY-SA 4.0 (docs) | the `.kicad_sch` and legacy EESchema grammars |
 | [KiCadFiles](https://github.com/ImpulseAdventure/KiCadFiles) | MIT | schema knowledge for `.kicad_sch` tokens |
 | KiCad dev-docs, EasyEDA import format (dev-docs.kicad.org/en/import-formats/easyeda) | CC-BY-SA 4.0 (docs) | the `docType` MAP only (1 sheet, 2 symbol, 3 PCB, 4 footprint, 5 container, 14 module) — a fact table, no code read |
+| EasyEDA Pro file-format docs (github.com/easyeda/easyeda-pro-file-format, prodocs.easyeda.com) | none stated (docs quoted as facts, not vendored) | the record vocabulary of both Pro generations; several fields were found WRONG vs real files and re-decoded by measurement |
+| KiCad source `pcbnew/pcb_io/easyedapro` | GPL-3.0 (read for FACTS only, no code ported) | three load-bearing facts cross-checked: 1 unit = 1 mil, POURED fills at 1/10 scale, the fixed Pro layer table |
 | EasyEDA Standard PCB `.json` (docType 3) | — | the PCB half of the tilde DSL, decoded by MEASURING three real boards (2026-08-25); no reader's source was read while writing `src/importers/easyeda-pcb.js` |
 | EasyEDA Standard `.json` documents | — | the tilde-delimited shape DSL, decoded by MEASURING published schematics; no reader's source was read while writing `src/importers/easyeda.js` |
 

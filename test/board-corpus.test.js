@@ -31,6 +31,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { importKicadPcb } from '../src/importers/kicad-pcb.js';
 import { importEasyEdaPcb } from '../src/importers/easyeda-pcb.js';
+import { importEasyEdaProPcb } from '../src/importers/easyeda-pro-pcb.js';
 import { detectFormat } from '../src/importers/detect.js';
 import { computeCopperNetlist } from '../src/model/copper-netlist.js';
 import { runPcbDrc } from '../src/model/pcb-drc.js';
@@ -51,10 +52,19 @@ const PINNED = [
   ['atomic14.kicad_pcb', 21, {}],
   ['nanoels-pcb.json', 28, {}],
   ['tuitar-pcb.json', 18, {}],
+  // EasyEDA PRO (V2 array style). Components import pad-less by design
+  // (master/instance; bare documents carry no FOOTPRINT masters), so
+  // `parts` counts components and the verdicts judge the copper. The
+  // outline-open dangers are REAL ~0.8 mm gaps drawn in the source.
+  ['macropad.epcb', 9, { 'clearance/warning': 3 }],
+  ['nanohub.epcb', 23, { 'outline-open/danger': 1, 'clearance/warning': 15 }],
+  ['smartcar.epcb', 73, { 'outline-open/danger': 1 }],
 ];
 
 const importBoard = (file, text) => (file.endsWith('.kicad_pcb')
-  ? importKicadPcb(text) : importEasyEdaPcb(text));
+  ? importKicadPcb(text)
+  : /\.(epcb|epcb2|epru)$/.test(file) ? importEasyEdaProPcb(text)
+    : importEasyEdaPcb(text));
 
 const verdictOf = (findings) => {
   const counts = {};
@@ -77,7 +87,9 @@ describe('committed corpus, pinned', () => {
       const board = importBoard(file, text);
 
       test('detects and imports to the pinned shape', () => {
-        assert.equal(detectFormat(text), file.endsWith('.kicad_pcb') ? 'kicad-pcb' : 'easyeda-pcb');
+        const expected = file.endsWith('.kicad_pcb') ? 'kicad-pcb'
+          : file.endsWith('.epcb') ? 'easyeda-pro-pcb' : 'easyeda-pcb';
+        assert.equal(detectFormat(text), expected);
         assert.equal(board.parts.length, parts);
         assert.ok(board.outline.length > 0, 'has an outline');
         assert.ok(board.bbox.w > 5 && board.bbox.h > 5, 'sane size');
@@ -93,7 +105,7 @@ describe('committed corpus, pinned', () => {
         assert.ok(svg.length > 1000);
       });
 
-      test('cross-exports hold the partition (EasyEDA and KiCad writers)', () => {
+      test('cross-exports hold the partition (EasyEDA and KiCad writers)', { skip: file.endsWith('.epcb') }, () => {
         const p0 = partition(board);
         const viaEda = importEasyEdaPcb(exportEasyEdaPcb(board));
         assert.deepEqual(partition(viaEda), p0, 'via the EasyEDA writer');
