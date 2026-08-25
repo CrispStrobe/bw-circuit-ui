@@ -127,7 +127,14 @@ export function renderBoardSvg(board, opts = {}) {
   // ── drills ───────────────────────────────────────────────────────
   open('bw-pcb-drills');
   for (const pad of allPads) {
-    if (pad.drill > 0) {
+    if (!(pad.drill > 0)) continue;
+    if (pad.slotLength > pad.drill) {
+      const half = (pad.slotLength - pad.drill) / 2;
+      const th = ((pad.slotRotation ?? pad.rotation ?? 0) * Math.PI) / 180;
+      const dx = half * Math.cos(th); const dy = half * Math.sin(th);
+      out.push(`<line x1="${X(pad.x - dx)}" y1="${Y(pad.y - dy)}" x2="${X(pad.x + dx)}" y2="${Y(pad.y + dy)}" `
+        + `stroke="${T.drill}" stroke-width="${fmt(pad.drill)}" stroke-linecap="round"/>`);
+    } else {
       out.push(`<circle cx="${X(pad.x)}" cy="${Y(pad.y)}" r="${fmt(pad.drill / 2)}" fill="${T.drill}"/>`);
     }
   }

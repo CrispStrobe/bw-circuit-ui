@@ -173,7 +173,8 @@ function padShapeString(pad, fx, fy, fl, id) {
   const layer = pad.through ? 11 : (pad.layer === 'bottom' ? 2 : 1);
   const holeR = pad.drill ? fl(pad.drill / 2) : '0';
   const points = effPoints ? effPoints.map(([x, y]) => `${fx(x)} ${fy(y)}`).join(' ') : '';
-  return `PAD~${name}~${fx(pad.x)}~${fy(pad.y)}~${fl(pad.w)}~${fl(pad.h)}~${layer}~${sanitize(pad.net)}~${sanitize(pad.num)}~${holeR}~${points}~${fmt(pad.rotation || 0)}~${id()}~0~~${pad.plated === false ? 'N' : 'Y'}~0~0~0.2~${fx(pad.x)},${fy(pad.y)}`;
+  const holeLen = pad.slotLength > 0 ? fl(pad.slotLength) : '0';
+  return `PAD~${name}~${fx(pad.x)}~${fy(pad.y)}~${fl(pad.w)}~${fl(pad.h)}~${layer}~${sanitize(pad.net)}~${sanitize(pad.num)}~${holeR}~${points}~${fmt(pad.rotation || 0)}~${id()}~${holeLen}~~${pad.plated === false ? 'N' : 'Y'}~0~0~0.2~${fx(pad.x)},${fy(pad.y)}`;
 }
 
 function arcShape(a, layerId, net, fx, fy, fl, id) {

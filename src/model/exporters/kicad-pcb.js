@@ -231,7 +231,16 @@ function padOut(pad, part, netIds, warnings) {
   const type = pad.through ? 'thru_hole' : 'smd';
   const layers = pad.through ? '"*.Cu" "*.Mask"'
     : pad.layer === 'bottom' ? '"B.Cu" "B.Paste" "B.Mask"' : '"F.Cu" "F.Paste" "F.Mask"';
-  const drill = pad.through && pad.drill ? ` (drill ${fmt(pad.drill)})` : '';
+  let drill = pad.through && pad.drill ? ` (drill ${fmt(pad.drill)})` : '';
+  if (pad.through && pad.slotLength > pad.drill) {
+    // A slot: (drill oval W H) in the pad's own frame. The slot axis
+    // relative to the pad angle decides which dimension is which.
+    const alongX = (((pad.slotRotation ?? 0) - (pad.rotation ?? 0)) % 180 + 180) % 180 < 45
+      || (((pad.slotRotation ?? 0) - (pad.rotation ?? 0)) % 180 + 180) % 180 > 135;
+    drill = alongX
+      ? ` (drill oval ${fmt(pad.slotLength)} ${fmt(pad.drill)})`
+      : ` (drill oval ${fmt(pad.drill)} ${fmt(pad.slotLength)})`;
+  }
   const netId = netIds.get(pad.net || '') ?? 0;
   const net = pad.net ? ` (net ${netId} "${String(pad.net).replace(/"/g, '')}")` : '';
   // Model pad rotation is the EasyEDA raw angle (padShape negates it in the
