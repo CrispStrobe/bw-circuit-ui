@@ -168,7 +168,16 @@ const KNOWN_UNCONNECTED_PINS = new Map([
 const KNOWN_UNUSED_LEADS = new Map([
   // 70-calculator-simple's `pwr` is wired com + a: the second throw is spare,
   // and the SPDT drawing shows it, which is the point of drawing an SPDT.
-  ['slide_switch', 24],
+  //
+  // 24 -> 25 on 2026-08-25 when the corpus gained `71-calculator-pcb`
+  // (2,099 -> 2,100 files). This is a "may only shrink" ratchet, so raising it
+  // is a decision that needs evidence, not a bump to get green: the new
+  // instance was checked part-by-part and is the SAME honest shape — `pwr`,
+  // `com` + `a` wired, second throw spare, drawn with its artwork
+  // (`generic: false`). Q2 is a census of honest drawings, not a defect count,
+  // so a new circuit of a recorded shape legitimately adds one. A new KIND, or
+  // an instance that is not this shape, still fails.
+  ['slide_switch', 25],
   // 74-ammeter / 76-multimeter / the two 555 benches wire the pot as a
   // RHEOSTAT — `a` and `wiper`, with `b` open.
   ['potentiometer', 18],
