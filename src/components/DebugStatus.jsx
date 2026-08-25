@@ -41,7 +41,12 @@ export function DebugStatus({ debugState, capabilities, onStep, onStepOver, onSt
   }, [wpAddr, onAddWatchpoint]);
 
   return (
-    <div style={{
+    // `data-debug-status` so a test can scope to THIS surface. Without it the
+    // only handle is body text, and the simulation-controls panel beside it
+    // renders the same ⏭/↩ glyphs — an assertion on bare text passes in `live`
+    // mode, where this component returns null and renders nothing at all.
+    // Same idiom as `data-meter-module` on the multimeter.
+    <div data-debug-status style={{
       background: '#16213e',
       border: `1px solid ${halted ? '#f39c12' : '#2ecc71'}`,
       borderRadius: '4px',

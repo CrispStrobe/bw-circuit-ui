@@ -278,3 +278,78 @@ gate cannot quietly go vacuous.
 |---|---|---|
 | `npm run test:browser` | 40 tests, **19 fail** (and unrunnable before that) | **40 pass, 0 fail** |
 | `npm test` | 1,776 | **1,778**, 0 fail |
+
+---
+
+# The three vacuous tests
+
+`test/debug-status.test.js` had three tests. One navigated, waited 500 ms and
+closed the page **without asserting anything**, under a comment explaining what
+should have happened:
+
+```js
+await p.goto(`${server.url}/?debug=snapshot`, …);
+await p.waitForTimeout(500);
+// Note: debugState in main.jsx snapshot mode has halted:true but no
+// haltReason/tasks — The DebugStatus should still show HALTED
+await p.close();
+```
+
+It reported green for as long as it existed, because there was nothing in it to
+fail. The comment was also wrong: `main.jsx` passes `haltReason: 'user'`,
+`bwMs` and tasks for snapshot mode. **A vacuous test is worse than a missing
+one** — it occupies the slot the real check would go in and reports success
+from it.
+
+## Why the surface was invisible
+
+`DebugStatus` docks inside the instruments panel, which is collapsed by
+default, so nothing it renders reaches `body.innerText` until the panel is
+opened. That is presumably why the assertions were never written.
+
+It also has no test handle, and body text is not a usable substitute: the
+simulation-controls panel beside it renders the same ⏭/↩ glyphs, so a
+text-based assertion passes even in `live` mode — where `DebugStatus` returns
+`null` and renders nothing at all. It now carries `data-debug-status`, the same
+idiom as `data-meter-module` on the multimeter, and every assertion is scoped
+to it.
+
+## What they assert now
+
+The component exists for one distinction — *"a non-zero skew turns this from a
+frozen world into a SNAPSHOT of one that kept moving"* — so the tests turn on
+exactly that. `paused` and `snapshot` are **both HALTED** and differ only in
+the wall-time line:
+
+| mode | mounted | says | wall-time line |
+|---|---|---|---|
+| `snapshot` | yes | HALTED, "by user", `1250.7 ms`, frozen | **`+4.2 s ahead (board kept running)`** |
+| `paused` | yes | HALTED, "Hit breakpoint", `82.3 ms`, frozen | **absent — the board froze with the program** |
+| `live` | **no** (`!debugState → null`) | the chip still reports LIVE | — |
+
+A test that only checked "says HALTED" would pass on either and could not tell
+a pause from a snapshot, which is the falsehood the surface exists to prevent.
+
+## Mutation-proved three ways
+
+```
+1. snapshot's skewNs → 0n  (a snapshot posing as a pause)
+   not ok 1 — 'a non-zero skew must be reported as wall time ahead — without it a
+              snapshot is indistinguishable from a frozen world…'
+
+2. paused given skewNs 3 s  (a pause posing as a snapshot)
+   not ok 2 — 'skewNs is 0, so there is no wall-time skew to report. If this line
+              appears the surface is showing a snapshot where there is only a pause.'
+
+3. live given a debugState  (the surface must not mount)
+   not ok 3 — 'with no debugState the debugger surface must not mount…'
+```
+
+Each fails for its own reason and the other two stay green — so the three tests
+are independent, not one assertion written three times.
+
+| | before | after |
+|---|---|---|
+| `debug-status.test.js` | 3 tests, **1 asserting nothing**, 0 discriminating | 3 tests, **3 mutation-proved** |
+| `npm test` | 1,778 | **1,781**, 0 fail |
+| `npm run test:browser` | 40 pass | **40 pass** |
