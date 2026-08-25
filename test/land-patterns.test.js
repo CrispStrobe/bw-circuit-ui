@@ -94,7 +94,7 @@ describe('package recognition (strings measured on real boards)', () => {
   const cases = [
     ['SW-TH_4P-L6.0-W6.0-TS-6645DD6X6X6.0', 'button', 'tact-6x6'],
     ['R_AXIAL-0.4', 'resistor', 'axial-0.4'],
-    ['0.96OLED_4P', 'header', '1x4'],
+    ['0.96OLED_4P', 'ssd1306', 'module-4p'],
     ['HDR-1X8', 'header', '1x8'],
     ['RASPBERRY PI PICO/ RASPBERRY PI PICO W', 'pi_pico', 'module-dip40'],
     ['BAT-TH_BH-AA-A1AJ029', 'battery_aa', 'bh-aa'],

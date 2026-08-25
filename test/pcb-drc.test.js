@@ -7,7 +7,7 @@
  *
  * The live corpus assertions are the full measured verdicts:
  *
- *   BROKEN calculator — 12 findings, all real, all four §1 fault classes:
+ *   BROKEN calculator — 11 findings, all real, all four §1 fault classes:
  *     terminal-short x6  the six dead keys: SW5, SW8, SW11, SW13, SW14,
  *                        SW16, each with a GPIO and GND on one internal
  *                        terminal. THE founding fault of the plan.
@@ -15,7 +15,6 @@
  *     outline-open x1    8 loose ends (the two ~39 mm tails and friends).
  *     unfinished x2      BAT1_2 and VCC reach one pad each.
  *     sch-split x1       R2 exists only in the schematic.
- *     sch-vocabulary x1  the OLED (ssd1306 vs header footprint).
  *
  *   REPAIRED board — 9 findings without the schematic, 11 with: the
  *     repair introduced three hairline via-track overlaps (clearance
@@ -165,7 +164,7 @@ describe('live corpus (skips without the local boards)', { skip: !haveLive }, ()
   test('the broken calculator: 12 findings, all four fault classes of plan §1', () => {
     const f = runPcbDrc(importEasyEdaPcb(load(files.broken)),
       { schematic: importEasyEda(load(files.brokenSch)) });
-    assert.equal(f.length, 12, rules(f).join(','));
+    assert.equal(f.length, 11, rules(f).join(','));
     // THE finding: six dead keys, by name.
     const shorts = byRule(f, 'terminal-short');
     assert.deepEqual(shorts.map((x) => x.partId).sort(),

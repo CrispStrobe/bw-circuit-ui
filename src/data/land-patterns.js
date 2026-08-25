@@ -156,6 +156,23 @@ export const LAND_PATTERNS = {
       silk: [{ kind: 'rect', x: -8.5, y: -28.5, w: 17, h: 57 }],
     },
   },
+  ssd1306: {
+    'module-4p': {
+      // The 0.96" OLED module on its 1x4 2.54 mm header. Pin ORDER was
+      // measured on the live pair (the pairing diff matched pad 1 to the
+      // schematic's sda, 2 to scl, 3 to gnd, 4 to vcc), not assumed —
+      // module vendors ship both GND-first and VCC-first pinouts.
+      description: '0.96 inch OLED module header, 1x4, 2.54 mm pitch',
+      pads: [
+        tht(1, 'sda', -3.81, 0), tht(2, 'scl', -1.27, 0),
+        tht(3, 'gnd', 1.27, 0), tht(4, 'vcc', 3.81, 0),
+      ],
+      partial: true, // the kind models the panel too; the header is 4 pins
+      courtyard: { w: 28, h: 28 },
+      silk: [{ kind: 'rect', x: -13.5, y: -13, w: 27, h: 26 }],
+      pin1: { x: -3.81, y: 0 },
+    },
+  },
   pi_pico: {
     'module-dip40': (() => {
       // The Pico as a through-hole module: two 1x20 rows, 2.54 mm pitch,
@@ -243,7 +260,8 @@ export const PACKAGE_KIND_RULES = [
   { match: /^CAP-TH|^C_Disc|RAD-2\.5/i, kind: 'capacitor', variant: 'radial-2.5' },
   { match: /^LED-TH-5|^LED5|^LED_TH|:LED_D5\.0mm/i, kind: 'led', variant: 'tht-5mm' },
   { match: /^DO-41|^DIODE-TH/i, kind: 'diode', variant: 'do-41' },
-  { match: /OLED_4P|^HDR-1X4$|PinHeader_1x0?4(?!\d)/i, kind: 'header', variant: '1x4', params: { pins: 4 } },
+  { match: /OLED_4P/i, kind: 'ssd1306', variant: 'module-4p' },
+  { match: /^HDR-1X4$|PinHeader_1x0?4(?!\d)/i, kind: 'header', variant: '1x4', params: { pins: 4 } },
   { match: /^HDR-1X(\d+)|PinHeader_1x0?(\d+)/i, kind: 'header', variantFromMatch: (m) => `1x${Number(m[1] || m[2])}`, paramsFromMatch: (m) => ({ pins: Number(m[1] || m[2]) }) },
   { match: /STM32F030|TSSOP-?20_L6\.5-W4\.4|^TSSOP-?20$/i, kind: 'stm32f030', variant: 'tssop-20' },
   { match: /RASPBERRY PI PICO/i, kind: 'pi_pico', variant: 'module-dip40' },

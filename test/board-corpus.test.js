@@ -104,6 +104,36 @@ describe('committed corpus, pinned', () => {
   }
 });
 
+// ── gallery boards (examples declaring files.pcb) ──────────────────
+
+const EXAMPLES = [
+  join(import.meta.dirname, '..', '..', 'sb3-creator', 'examples'),
+  join(homedir(), 'code', 'sb3-creator', 'examples'),
+].find((d) => existsSync(join(d, 'index.json')));
+
+describe('gallery boards (skips without the sibling corpus)', { skip: !EXAMPLES }, () => {
+  const entries = EXAMPLES
+    ? JSON.parse(readFileSync(join(EXAMPLES, 'index.json'), 'utf8'))
+      .filter((e) => e.files && e.files.pcb)
+    : [];
+
+  test('at least one example ships a board (the gate can fail)', () => {
+    assert.ok(entries.length >= 1, 'no gallery entry declares files.pcb');
+  });
+
+  for (const entry of entries) {
+    test(`${entry.id}: the shipped board is clean and detects`, () => {
+      const text = readFileSync(join(EXAMPLES, entry.files.pcb), 'utf8');
+      const board = importBoard(entry.files.pcb, text);
+      assert.ok(board.parts.length > 0);
+      assert.deepEqual(board.warnings, []);
+      assert.deepEqual(runPcbDrc(board), [],
+        `${entry.id}: a SHIPPED gallery board must be defect-free`);
+      renderBoardSvg(board);
+    });
+  }
+});
+
 // ── local-only corpus (redistribution-restricted designs) ──────────
 
 const LOCAL = process.env.BW_PCB_CORPUS || join(homedir(), 'code', 'pcb-corpus-local');

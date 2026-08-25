@@ -68,8 +68,9 @@ describe('live corpus (skips without the local boards)', { skip: !haveLive }, ()
     const kinds = {};
     for (const p of lift.parts) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
     // Seventeen tact switches — the plan's own count — plus the power
-    // slide switch, the OLED header, the battery holder, and the Pico.
-    assert.deepEqual(kinds, { button: 17, slide_switch: 1, header: 1, battery_aa: 1, pi_pico: 1 });
+    // slide switch, the OLED module (a real ssd1306 since its pattern
+    // carries the measured pin order), the battery holder, and the Pico.
+    assert.deepEqual(kinds, { button: 17, slide_switch: 1, ssd1306: 1, battery_aa: 1, pi_pico: 1 });
   });
 
   test('the lifted circuit is the board as built: the battery is an island', () => {

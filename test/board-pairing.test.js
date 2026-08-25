@@ -16,9 +16,10 @@
  *   {SW14,SW15} and {SW2,SW16,SW17}. The pairing diff sees them because
  *   the schematic keeps those columns apart and the copper does not.
  *
- *   Both pairs: OLED1 is a vocabulary mismatch (ssd1306 vs header), and
- *   on FIXED, D1 too — the 1N5817 sits in a resistor footprint on the
- *   board. The diff refuses to guess across that gap and says so.
+ *   FIXED also reports ONE vocabulary mismatch: D1, a 1N5817 sitting in
+ *   a resistor footprint on the board. (The OLED used to be a second one
+ *   until its module land pattern — with the pin order MEASURED via this
+ *   very diff — let it lift to the ssd1306 kind the schematic reads.)
  */
 
 import './_setup.js';
@@ -141,7 +142,9 @@ describe('live pair (skips without the local boards)', { skip: !haveLive }, () =
     const d = diffPair(pairs.broken);
     assert.deepEqual(d.splits, []);
     assert.deepEqual(d.bridges.filter((b) => b.severity === 'error'), []);
-    assert.deepEqual(d.vocabularyMismatch.map((v) => v.ref), ['OLED1']);
+    // Nothing unmatched any more: the ssd1306 land pattern (measured pin
+    // order) lets the OLED lift to the same kind the schematic reads.
+    assert.deepEqual(d.vocabularyMismatch, []);
     assert.ok(d.onlyBoard.includes('BAT1'), 'the battery is board-only (unmapped in the schematic)');
   });
 
@@ -152,6 +155,6 @@ describe('live pair (skips without the local boards)', { skip: !haveLive }, () =
     const groups = errors.map((b) => b.nets.flat().filter((n) => /^SW/.test(n)).sort().join(' ')).sort();
     assert.deepEqual(groups, ['SW14.a SW15.a', 'SW16.a SW17.a SW2.a']);
     assert.deepEqual(d.splits, []);
-    assert.deepEqual(d.vocabularyMismatch.map((v) => v.ref), ['D1', 'OLED1']);
+    assert.deepEqual(d.vocabularyMismatch.map((v) => v.ref), ['D1']);
   });
 });
