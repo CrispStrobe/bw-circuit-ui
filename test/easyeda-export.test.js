@@ -26,7 +26,10 @@ import './_setup.js';
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = dirname(fileURLToPath(import.meta.url));
 import { Circuit } from '../src/model/circuit.js';
 import { toEasyEdaSchematic, exportEasyEdaJson } from '../src/model/exporters/easyeda-schematic.js';
 import { importEasyEda, looksLikeEasyEda, easyEdaSheets } from '../src/importers/easyeda.js';
@@ -255,8 +258,25 @@ describe('document refusals — empty-but-valid is the worst output', () => {
 
 // ── 3. the corpus the owner named ───────────────────────────────────
 
-const EXAMPLES = join(process.env.HOME || '', 'code', 'lego', 'brickwright-lite',
-    'overlay', 'scratch-gui', 'examples');
+// Resolved the way EVERY other corpus gate in this directory resolves it.
+//
+// This was a single hardcoded `$HOME/code/lego/brickwright-lite/overlay/
+// scratch-gui/examples`. That path exists on no machine this suite runs on --
+// not this VPS (the repo lives under /mnt/volume1), not CI (HOME is
+// /home/runner and the clone is a sibling) -- so `haveExamples` was false
+// everywhere and BOTH corpus blocks below skipped, silently, forever. The
+// 2,098-circuit export/re-import round trip they contain had never executed
+// anywhere, and docs/SCHEMATIC-AUDIT.md cited it as evidence. Combined with
+// the file being absent from `npm test` (see scripts/check-test-registration
+// and the gate in test/test-registration.test.js), it was invisible twice
+// over.
+const CORPUS_ROOTS = process.env.EXAMPLES_DIR ? [process.env.EXAMPLES_DIR] : [
+    join(here, '..', '..', 'sb3-creator', 'examples'),
+    join(here, '..', '..', 'lego', 'brickwright-lite', 'overlay', 'scratch-gui', 'examples'),
+    join(process.env.HOME || '', 'code', 'sb3-creator', 'examples'),
+    join(process.env.HOME || '', 'code', 'lego', 'brickwright-lite',
+        'overlay', 'scratch-gui', 'examples'),
+];
 const CORPUS = ['78-a2-calculator/circuit.json',
     '70-calculator/circuit.json', '70-calculator-simple/circuit.json',
     // The two mega variants that shorted (escape leg landed on a lane):
@@ -264,6 +284,8 @@ const CORPUS = ['78-a2-calculator/circuit.json',
     // sweep's enumeration ever regresses.
     '60-retro-console/circuit-flat.arduino-mega.json',
     '61-console-pong/circuit-flat.arduino-mega.json'];
+const EXAMPLES = CORPUS_ROOTS.find((r) => existsSync(join(r, CORPUS[0])))
+    || CORPUS_ROOTS.find((r) => existsSync(r)) || CORPUS_ROOTS[0];
 const haveExamples = existsSync(join(EXAMPLES, CORPUS[0]));
 
 describe('the calculator corpus (read in place from lite)',

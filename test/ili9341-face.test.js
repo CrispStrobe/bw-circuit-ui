@@ -42,11 +42,24 @@ test('all ili9341 variants in deviceStates gathering', () => {
   assert.ok(gatherer.includes("p.kind === 'ili9341_parallel'"), 'ili9341_parallel in deviceStates');
 });
 
+/** A function's body, by brace balance — not by a byte count that rots. */
+function functionBody(source, signature) {
+  const start = source.indexOf(signature);
+  if (start < 0) return '';
+  let depth = 0;
+  for (let i = source.indexOf('{', start); i < source.length; i++) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}' && --depth === 0) return source.slice(start, i + 1);
+  }
+  return source.slice(start);
+}
+
 test('parallel variants have terminal offsets', () => {
-  const offsets = src.slice(
-    src.indexOf('function terminalOffsetsForPart'),
-    src.indexOf('function terminalOffsetsForPart') + 5000,
-  );
+  // Was `indexOf(...) + 5000`; the case sits at offset 5394, so this failed on
+  // correct code because the function grew. See the same repair in
+  // controller-faces.test.js — both were invisible, being outside `npm test`.
+  const offsets = functionBody(src, 'function terminalOffsetsForPart');
+  assert.ok(offsets, 'terminalOffsetsForPart is defined');
   assert.ok(offsets.includes("case 'ili9341_par':"), 'ili9341_par in offsets');
   assert.ok(offsets.includes("'wr'"), 'WR pin defined (parallel-specific)');
   assert.ok(offsets.includes("'d0'"), 'D0 data bus pin defined');

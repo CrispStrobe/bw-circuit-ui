@@ -102,8 +102,43 @@ describe('6502 pedagogy ladder — extractor verification', () => {
 
     const extractedChips = result.chips.sort((a, b) => a.at - b.at);
     const presetChips = EATER6502.chips.sort((a, b) => a.at - b.at);
-    assert.deepEqual(extractedChips, presetChips,
+    // Compare the fields the preset actually DEFINES. `span` is compared
+    // separately by the sentinel below, because the two sides disagree about
+    // it in a way that is not this repo's to settle -- and folding it into a
+    // deepEqual here would either hide the disagreement or fail forever.
+    const contractual = (c) => ({ kind: c.kind, name: c.name, at: c.at });
+    assert.deepEqual(extractedChips.map(contractual), presetChips.map(contractual),
       'extracted chip map equals EATER6502 preset');
+  });
+
+  /**
+   * OPEN DEFECT (bw-board): the extractor and the preset disagree about how
+   * wide a chip's decode window is, and they are the same repo's two answers
+   * to one question.
+   *
+   *   m6502-extract.js  gives via1 span 8192 and acia1 span 4096, read off the
+   *                     board's actual address decoding
+   *   EATER6502 preset  omits span, and m6502-machine.js:184 then defaults it
+   *                     to `regs` -- the chip's register count, 16
+   *
+   * That is not a missing field, it is different EMULATED BEHAVIOUR. On Ben
+   * Eater's board the decode uses the high address lines, so the VIA is
+   * selected across $6000-$7FFF and mirrors every 16 bytes; a program reading
+   * $6010 finds the VIA on real hardware and on the extracted config, and
+   * finds nothing on the preset config. The extractor is the faithful one.
+   *
+   * Recorded rather than reconciled: bw-board owns both sides and this repo
+   * may not edit a sibling. WHEN THIS TEST GOES RED, bw-board has settled it
+   * -- delete this sentinel and fold `span` back into the deepEqual above.
+   */
+  it('OPEN DEFECT: extractor reports a decode span the preset does not carry', () => {
+    const circuit = loadStage('e6');
+    const result = extract6502Machine(circuit);
+    const spans = Object.fromEntries(result.chips.map(c => [c.name, c.span]));
+    assert.deepEqual(spans, { via1: 8192, acia1: 4096 },
+      'the extractor still reads these decode windows off the board');
+    assert.ok(EATER6502.chips.every(c => c.span === undefined),
+      'the EATER6502 preset still omits span, so bw-board still has two answers');
   });
 });
 

@@ -177,8 +177,19 @@ test('SvgParts receives onSetPartParam prop', () => {
 });
 
 test('onSetPartParam is threaded from SvgParts call site', () => {
-  const callSite = boardSrc.slice(boardSrc.indexOf('<SvgParts'), boardSrc.indexOf('<SvgParts') + 2000);
-  assert.ok(callSite.includes('onSetPartParam={onSetPartParam}'), 'onSetPartParam passed to SvgParts');
+  // The JSX ELEMENT, not a fixed byte window. This slice used to be
+  // `indexOf('<SvgParts') + 2000`, and the prop sat at offset 2321 — so the
+  // assertion failed on code that was present and correct, purely because the
+  // element grew. A window that has to be widened every time a component gains
+  // a prop is not testing what it claims to test; it is testing the file's
+  // length. Nobody noticed because this file is not in `npm test`.
+  const start = boardSrc.indexOf('<SvgParts');
+  assert.ok(start >= 0, 'SvgParts is rendered somewhere');
+  const end = boardSrc.indexOf('/>', start);
+  assert.ok(end > start, 'the SvgParts element is self-closing and terminated');
+  const callSite = boardSrc.slice(start, end);
+  assert.ok(callSite.includes('onSetPartParam={onSetPartParam}'),
+    'onSetPartParam passed to SvgParts');
 });
 
 test('BoardCanvas accepts onSetPartParam prop', () => {

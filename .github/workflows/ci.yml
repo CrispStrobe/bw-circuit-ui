@@ -35,3 +35,17 @@ jobs:
       # Designer-side examples gate: breadboard-fabric circuits
       - name: Fabric examples gate
         run: node --test test/examples-fabric-gate.test.js
+
+      # These three scripts existed and CI never invoked them, so ten test
+      # files were gated only by someone remembering to run them by hand.
+      # test:render no longer contains rendering.test.js, which hard-imports
+      # playwright; the browser suite is `npm run test:browser` and is
+      # deliberately not here (see test/test-registration.test.js).
+      - name: Board presets and geometry
+        run: npm run test:boards
+
+      - name: Headless render gates
+        run: npm run test:render
+
+      - name: A2 board preset
+        run: npm run test:a2
