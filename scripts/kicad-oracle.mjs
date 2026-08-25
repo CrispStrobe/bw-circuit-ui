@@ -19,8 +19,8 @@
  * 0.2 mm default.
  */
 
-import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import '../test/_setup.js';
@@ -71,7 +71,15 @@ if (!haveKicad) {
   console.log('kicad-cli not found — oracle SKIPPED (the CI job runs it with KiCad installed).');
   process.exit(0);
 }
-console.log(`kicad-cli ${which.stdout.trim()}`);
+const version = which.stdout.trim();
+console.log(`kicad-cli ${version}`);
+if (Number(version.split('.')[0]) < 8) {
+  // `kicad-cli pcb drc` arrived in KiCad 8; a 7.x install cannot oracle.
+  // Found the hard way: ubuntu-latest's apt ships 7.0.11 and the missing
+  // subcommand surfaced as a missing report file, not as a message.
+  console.log(`kicad-cli ${version} has no 'pcb drc' — oracle SKIPPED (needs KiCad 8+).`);
+  process.exit(0);
+}
 
 const dir = mkdtempSync(join(tmpdir(), 'bw-kicad-oracle-'));
 let failed = false;
@@ -106,13 +114,15 @@ for (const [name, circuit] of CASES) {
     },
   }));
   const report = join(dir, `${name}.drc.json`);
-  try {
-    execFileSync('kicad-cli', ['pcb', 'drc', '--format', 'json', '--output', report,
-      '--severity-error', '--severity-warning', pcbPath], { encoding: 'utf8' });
-  } catch (e) {
-    // kicad-cli exits non-zero with --exit-code-violations only; a crash
-    // here is a real failure.
-    if (!e.stdout && !e.stderr) throw e;
+  const run = spawnSync('kicad-cli', ['pcb', 'drc', '--format', 'json', '--output', report,
+    '--severity-error', '--severity-warning', pcbPath], { encoding: 'utf8' });
+  if (!existsSync(report)) {
+    // Swallowing the exec error here once hid "no such subcommand" behind
+    // an ENOENT on the report — fail with kicad's own words instead.
+    console.error(`${name}: kicad-cli produced no report (exit ${run.status}).`);
+    console.error(run.stdout || ''); console.error(run.stderr || '');
+    failed = true;
+    continue;
   }
   const drc = JSON.parse(readFileSync(report, 'utf8'));
   const violations = (drc.violations || []).filter((v) => GATING.has(v.type));
