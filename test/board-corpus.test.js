@@ -156,20 +156,45 @@ const LOCAL = process.env.BW_PCB_CORPUS || join(homedir(), 'code', 'pcb-corpus-l
 const haveLocal = existsSync(LOCAL);
 
 describe('local corpus (skips without the directory)', { skip: !haveLocal }, () => {
+  const manifest = haveLocal && existsSync(join(LOCAL, 'manifest.json'))
+    ? JSON.parse(readFileSync(join(LOCAL, 'manifest.json'), 'utf8'))
+    : { boards: {} };
   const files = haveLocal
-    ? readdirSync(LOCAL).filter((f) => /\.(kicad_pcb|json)$/.test(f) && !/sch/i.test(f))
+    ? readdirSync(LOCAL).filter((f) => /\.(kicad_pcb|json|epcb|epcb2|epru)$/.test(f)
+      && !/manifest|sch/i.test(f))
     : [];
 
-  test('every local board completes the pipeline without a throw', () => {
+  test('every local board completes the pipeline and meets its expectation', () => {
     assert.ok(files.length > 0, 'local corpus present but empty');
+    const failures = [];
     for (const f of files) {
-      const board = importBoard(f, readFileSync(join(LOCAL, f), 'utf8'));
-      const findings = runPcbDrc(board);
-      renderBoardSvg(board);
-      // The strong claim is bounded to what was measured: no DANGER
-      // findings on any of these working, fabbed boards.
-      const dangers = findings.filter((x) => x.severity === 'danger');
-      assert.deepEqual(dangers, [], `${f}: ${dangers.map((d) => d.rule).join(',')}`);
+      let findings;
+      try {
+        const board = importBoard(f, readFileSync(join(LOCAL, f), 'utf8'));
+        findings = runPcbDrc(board);
+        renderBoardSvg(board);
+      } catch (e) {
+        failures.push(`${f}: THREW ${e.message}`);
+        continue;
+      }
+      const entry = manifest.boards?.[f];
+      if (entry?.expected) {
+        // A pinned verdict: drift EITHER way fails — a known defect may
+        // neither heal silently nor spread.
+        const verdict = {};
+        for (const x of findings) {
+          const k = `${x.rule}/${x.severity}`;
+          verdict[k] = (verdict[k] || 0) + 1;
+        }
+        try { assert.deepEqual(verdict, entry.expected); } catch {
+          failures.push(`${f}: verdict ${JSON.stringify(verdict)} != pinned ${JSON.stringify(entry.expected)}`);
+        }
+      } else {
+        // Default expectation for a working, fabbed board: no dangers.
+        const dangers = findings.filter((x) => x.severity === 'danger');
+        if (dangers.length) failures.push(`${f}: dangers ${dangers.map((d) => d.rule).join(',')}`);
+      }
     }
+    assert.deepEqual(failures, []);
   });
 });
