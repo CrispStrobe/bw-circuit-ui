@@ -117,7 +117,8 @@ import { analyse, discover, wireThroughForeignPinOf, crossingsOf, foreignContact
   parallelMergeOf, missingPinsOf, segmentRefsOf, labelLeaderContactOf,
   orphanPinsOf, orphanLeadsOf, fatJunctionsOf, symbolContactOf,
   pinNetDisagreementOf, offPageOf, pinNameCollisionsOf,
-  labelTextOnForeignCopperOf, textRunsOf, TEXT_MODEL } from '../scripts/schematic-audit.mjs';
+  labelTextOnForeignCopperOf, textRunsOf, TEXT_MODEL,
+  labelTextOnBodyOf } from '../scripts/schematic-audit.mjs';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { projectSchematic } from '../src/model/schematic-projection.js';
 
@@ -190,26 +191,21 @@ const KNOWN_UNUSED_LEADS = new Map([
  *
  * MAY ONLY SHRINK.
  */
-const TEXT_RATCHET = { pinNameCollisions: 0, labelTextOnCopper: 8 };
+const TEXT_RATCHET = { pinNameCollisions: 0, labelTextOnCopper: 0 };
 
 /**
- * The eight W remainders, named rather than tolerated.
+ * Class X — a net label's text over a symbol BODY. The mirror of W, and the
+ * reason a W fix cannot be graded on W alone: the escape from a wire is to
+ * move, and where a label can move to is over a chip.
  *
- * All eight are ONE example directory — `arduino-04-read-ascii-string`, four
- * MCU variants times the two rail labels — and all eight are the same shape:
- * a foreign trunk parked in the column occupies the ENTIRE strip the label
- * can reach, at every one of the seven leader lengths and every one of the
- * five perpendicular nudges. There is no clear position to move the text to,
- * so `labelPin` keeps the leader rule's answer (which is the one that carries
- * connectivity) and the text overlaps.
- *
- * The lever that is left, and deliberately not pulled here: flip the label to
- * the pin's OTHER side. That puts the text over the symbol body, which needs
- * the body boxes in the clearance test and a rule for which of two bad
- * placements is worse — a bigger change than eight occurrences in one
- * directory earns, and one that would churn every labelled drawing.
+ * Measured BEFORE the side-flip landed and unchanged by it. Both entries are
+ * wide symbols whose own pin rows put their labels there; neither is caused
+ * by label placement. MAY ONLY SHRINK.
  */
-const W_REMAINDER_DIR = 'arduino-04-read-ascii-string';
+const KNOWN_LABEL_ON_BODY = new Map([
+  ['char_lcd_i2c', 6],
+  ['lm358', 2],
+]);
 
 describe('schematic geometry across the whole shipped corpus', () => {
   const files = examplesRoot ? discover(examplesRoot) : null;
@@ -474,24 +470,54 @@ describe('schematic geometry across the whole shipped corpus', () => {
       + 'shrinks each symbol\'s pin-name font (pinNameSize) until its widest row fits, never '
       + 'below PIN_NAME_MIN. A non-zero here means a part needs MORE than the floor allows, and '
       + 'the answer is to widen that box, not to raise the ratchet.');
-    assert.ok(wTotal <= TEXT_RATCHET.labelTextOnCopper,
-      `${wTotal} net-label texts lying on a foreign net's conductor, ratcheted at `
-      + `${TEXT_RATCHET.labelTextOnCopper}. Class P forbids the label's LEADER from touching `
-      + 'foreign copper; the text is the other four fifths of the same mark and is the half a '
-      + 'reader actually reads. "Same text = same net" is the whole contract when routing falls '
-      + 'back to labels. This ratchet may only shrink.');
-    // Every W remainder must be the ONE named shape, so a new one cannot hide
-    // inside the allowance.
-    const wDirs = [...new Set(w.map(r => r.id.split('/')[0]))];
-    assert.deepEqual(wDirs.filter(d => d !== W_REMAINDER_DIR), [],
-      `a net-label text overlaps foreign copper outside ${W_REMAINDER_DIR}. The eight known ones `
-      + 'are a trunk occupying the whole strip a label can reach; a NEW directory means a '
-      + 'different cause, which must be diagnosed rather than absorbed by the count.');
+    assert.equal(wTotal, 0,
+      `${wTotal} net-label texts lying on a foreign net's conductor. Class P forbids the label's `
+      + 'LEADER from touching foreign copper; the text is the other four fifths of the same mark '
+      + 'and is the half a reader actually reads — "same text = same net" is the whole contract '
+      + 'when routing falls back to labels. labelPin searches the pin\'s own side, then the '
+      + 'other three sides around the pin, at seven leader lengths and five nudges; any '
+      + 'direction that is not the pin\'s own must also clear every symbol BODY, so a label can '
+      + 'never escape a wire by landing on a chip.');
     if (vTotal < TEXT_RATCHET.pinNameCollisions || wTotal < TEXT_RATCHET.labelTextOnCopper) {
       assert.fail(`the drawing improved (V ${vTotal}/${TEXT_RATCHET.pinNameCollisions}, `
         + `W ${wTotal}/${TEXT_RATCHET.labelTextOnCopper}) — lower TEXT_RATCHET to lock it in. `
         + 'A ratchet left above the measurement stops being a ratchet.');
     }
+  });
+
+
+  test('X: the label placer never escapes a wire by landing on a chip', () => {
+    const x = report('X net label TEXT over a symbol body', r => r.labelTextOnBody);
+    const byKind = new Map();
+    for (const r of x) for (const o of r.labelTextOnBody) byKind.set(o.kind, (byKind.get(o.kind) || 0) + 1);
+    for (const [kind, n] of byKind) {
+      assert.ok(KNOWN_LABEL_ON_BODY.has(kind),
+        `${kind} draws ${n} net-label text(s) over its body and is not in KNOWN_LABEL_ON_BODY. `
+        + 'This is the trade W could be "fixed" by making: a label that escapes another net\'s '
+        + 'wire by landing on a chip is not an improvement. Any direction other than the pin\'s '
+        + 'own must clear every symbol body — see labelPin.');
+      assert.equal(n, KNOWN_LABEL_ON_BODY.get(kind),
+        `${kind} now has ${n} label texts over its body, recorded as ${KNOWN_LABEL_ON_BODY.get(kind)}`);
+    }
+    for (const kind of KNOWN_LABEL_ON_BODY.keys()) {
+      assert.ok(byKind.has(kind), `${kind} no longer draws a label over its body — delete the entry`);
+    }
+  });
+
+  test('ANTI-VACUITY: the corpus actually exercises a non-primary label direction', () => {
+    const dirs = rows.reduce((acc, r) => {
+      acc.primary += r.labelDirections.primary;
+      acc.flipped += r.labelDirections.flipped;
+      acc.perpendicular += r.labelDirections.perpendicular;
+      return acc;
+    }, {primary: 0, flipped: 0, perpendicular: 0});
+    console.log(`\n  label directions: ${dirs.primary} primary, ${dirs.flipped} flipped, `
+      + `${dirs.perpendicular} perpendicular`);
+    assert.ok(dirs.primary > 10000, `only ${dirs.primary} labels on their pin's own side`);
+    assert.ok(dirs.flipped + dirs.perpendicular > 0,
+      'NO label in the whole corpus uses a direction other than its pin\'s own side. Then the '
+      + 'side search in labelPin is dead code, and W being zero says nothing about it — the '
+      + 'eight cases it was written for would be passing for some other reason.');
   });
 
   // ── Mutation proofs for the detector this gate exists for ────────────

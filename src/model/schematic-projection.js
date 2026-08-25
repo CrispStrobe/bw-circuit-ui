@@ -418,28 +418,65 @@ export function projectSchematic(parts, nets) {
       left: [-1, 0, 'end'], right: [1, 0, 'start'],
       top: [0, -1, 'middle'], bottom: [0, 1, 'middle'],
     };
-    const [dx, dy, anchor] = vectors[pin.side] || vectors.right;
+    const primary = vectors[pin.side] || vectors.right;
+    // The pin's OTHER side, as a last resort. A pin points AWAY from its
+    // symbol, so the flip points the label back INTO it — which is why the
+    // flipped candidates carry a clearance test the primary ones never
+    // needed: the leader and the text must clear every symbol BODY as well as
+    // foreign copper. Without that, flipping would trade a label lying on
+    // another net's wire for a label lying across a chip, and call it
+    // progress. (Label text over a body is its own defect and measured
+    // separately: 8 occurrences across the corpus before this change, in
+    // char_lcd_i2c and lm358, none of them caused here.)
+    const flipped = [-primary[0], -primary[1],
+      primary[2] === 'end' ? 'start' : primary[2] === 'start' ? 'end' : primary[2]];
+    // Measured: for the eight cases this exists for, the straight flip NEVER
+    // lands. The pin is 30px from its symbol centre and the body reaches 26,
+    // so a flipped leader crosses the body at every length but the shortest,
+    // and at the shortest the TEXT lands on the body instead. So the search
+    // also goes round the pin rather than only through it: up and down are
+    // the other two sides available, they are already in `vectors`, and they
+    // clear the body by leaving the row entirely. Same rule as the flip —
+    // any direction that is not the pin's own must clear the body.
+    const AROUND = [flipped, vectors.top, vectors.bottom];
+    const crossesAnyBody = (a, b) => symbols.some(sym => segmentCrossesBody(a, b, bodyBounds(sym)));
+    const boxCrossesAnyBody = (bx) => symbols.some(sym => {
+      const box = bodyBounds(sym);
+      return bx.x1 < box.right && box.left < bx.x2 && bx.y1 < box.bottom && box.top < bx.y2;
+    });
+    const [dx, dy, anchor] = primary;
     // The drawn text box, for a given leader length and perpendicular nudge.
     // Mirrors what both renderers emit: monospace at LABEL_TEXT_SIZE, the
     // anchor deciding which edge `x` is, and 0.7em of cap height above the
     // baseline.
-    const textBox = (len, nudge) => {
-      const tx = pin.x + dx * (len + 3) + (dy === 0 ? 0 : nudge);
-      const ty = pin.y + dy * (len + 3) + (dy === 0 ? 2.5 + nudge : (dy < 0 ? -2 : 7));
+    const textBox = (len, nudge, [vx, vy, va]) => {
+      const tx = pin.x + vx * (len + 3) + (vy === 0 ? 0 : nudge);
+      const ty = pin.y + vy * (len + 3) + (vy === 0 ? 2.5 + nudge : (vy < 0 ? -2 : 7));
       const w = TEXT_ADVANCE * LABEL_TEXT_SIZE * String(text).length;
       const h = 0.7 * LABEL_TEXT_SIZE;
-      const x1 = anchor === 'end' ? tx - w : anchor === 'middle' ? tx - w / 2 : tx;
+      const x1 = va === 'end' ? tx - w : va === 'middle' ? tx - w / 2 : tx;
       return {x: tx, y: ty, x1, x2: x1 + w, y1: ty - h, y2: ty};
     };
+    // Primary direction first and unchanged, so every drawing that already
+    // had a clear position renders byte-identically; the flip is reached only
+    // where no length and no nudge on the pin's own side is clear.
     let chosen = null;
-    for (const nudge of LABEL_NUDGES) {
-      for (const l of LEADER_LENGTHS) {
-        if (segmentTouchesForeignConductor(
-          {x: pin.x, y: pin.y}, {x: pin.x + dx * l, y: pin.y + dy * l}, r.netId)) continue;
-        const b = textBox(l, nudge);
-        if (boxTouchesForeignConductor(b.x1, b.y1, b.x2, b.y2, r.netId)) continue;
-        chosen = {len: l, box: b};
-        break;
+    for (const dir of [primary, ...AROUND]) {
+      const isFlip = dir !== primary;
+      const [vx, vy] = dir;
+      for (const nudge of LABEL_NUDGES) {
+        for (const l of LEADER_LENGTHS) {
+          const a = {x: pin.x, y: pin.y};
+          const b2 = {x: pin.x + vx * l, y: pin.y + vy * l};
+          if (segmentTouchesForeignConductor(a, b2, r.netId)) continue;
+          if (isFlip && crossesAnyBody(a, b2)) continue;
+          const b = textBox(l, nudge, dir);
+          if (boxTouchesForeignConductor(b.x1, b.y1, b.x2, b.y2, r.netId)) continue;
+          if (isFlip && boxCrossesAnyBody(b)) continue;
+          chosen = {len: l, box: b, dir};
+          break;
+        }
+        if (chosen) break;
       }
       if (chosen) break;
     }
@@ -448,13 +485,14 @@ export function projectSchematic(parts, nets) {
     if (!chosen) {
       const l = LEADER_LENGTHS.find(len => !segmentTouchesForeignConductor(
         {x: pin.x, y: pin.y}, {x: pin.x + dx * len, y: pin.y + dy * len}, r.netId)) ?? 13;
-      chosen = {len: l, box: textBox(l, 0)};
+      chosen = {len: l, box: textBox(l, 0, primary), dir: primary};
     }
-    const x2 = pin.x + dx * chosen.len, y2 = pin.y + dy * chosen.len;
+    const [cx, cy, canchor] = chosen.dir;
+    const x2 = pin.x + cx * chosen.len, y2 = pin.y + cy * chosen.len;
     netLabels.push({netId: r.netId, text,
       x1: pin.x, y1: pin.y, x2, y2,
       x: chosen.box.x, y: chosen.box.y,
-      anchor});
+      anchor: canchor});
     registerConductor({x: pin.x, y: pin.y}, {x: x2, y: y2}, r.netId);
     labelBoxes.push({netId: r.netId, left: chosen.box.x1, right: chosen.box.x2,
       top: chosen.box.y1, bottom: chosen.box.y2});

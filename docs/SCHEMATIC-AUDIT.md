@@ -1499,3 +1499,113 @@ M 0  N 0  O 0  P 0  Q 0  Q2 44  R 0  S 0  T 0  U 0  V 0  W 8
 
 C (6 pins over 2 circuits) and Q2 (44) are the standing named ratchets; W is
 the new one at 8. Everything else is zero.
+
+---
+
+# Sixth pass — the side flip, and what it actually did
+
+The fifth pass left 8 net-label texts on foreign copper and recorded the
+unpulled lever: *flip the label to the pin's other side*. This is that lever,
+pulled — and the honest headline is that **the flip itself never lands**.
+
+**Rig.** bw-circuit-ui `ac49da0` (branch point), bw-board `1dac64c`,
+sb3-creator `09c6753` — 2,099 circuit files. The corpus moved a second time
+mid-lane (`1d846130d` → `09c6753`, which swapped the baselined
+`78-a2-calculator`'s `sevenseg8` for two `seven_seg_4` and added 11 wires);
+the attribution below separates that from this change.
+
+## 24. The flip cannot land, and the measurement says so
+
+A pin points AWAY from its symbol, so flipping the label points it back INTO
+one. It was implemented exactly as recorded — the reversed vector, with a
+clearance test the primary direction never needed: the flipped leader and the
+flipped text must clear every symbol BODY as well as foreign copper.
+
+It then cleared **none** of the eight. Instrumented rather than reasoned:
+
+```
+flip len 13 nudge 0 REJECT leader crosses body
+flip len 10 nudge 0 REJECT leader crosses body
+flip len  8 nudge 0 REJECT leader crosses body
+flip len  6 nudge 0 REJECT leader crosses body
+flip len  4 nudge 0 REJECT text over body
+flip len 18 nudge 0 REJECT leader crosses body
+flip len 22 nudge 0 REJECT leader crosses body
+   ... and the same at every nudge
+```
+
+The geometry is not close: a pin sits 30px from its symbol centre and the body
+reaches 26, so a flipped leader crosses the body at every length but the
+shortest, and at the shortest the TEXT lands on the body instead. There is no
+gap to aim at.
+
+**So the search went round the pin instead of through it.** Up and down are
+the other two sides available, they were already in `labelPin`'s `vectors`
+table, and they clear the body by leaving the row entirely. The same rule
+applies to all of them: any direction that is not the pin's own must clear the
+body.
+
+**W: 8 → 0 across all 2,099.**
+
+### The census, which is the point
+
+Every label in the corpus, by the direction it ended up pointing:
+
+| direction | labels |
+|---|---|
+| the pin's own side | **22,354** |
+| flipped | **0** |
+| perpendicular (up or down) | **8** |
+
+The flip is used zero times. It is kept because it costs nothing, is tried
+before the perpendiculars, and would be the right answer for a pin that is far
+from its symbol — but calling this change "the side flip" would be describing
+the lever, not the thing that moved. The gate asserts
+`flipped + perpendicular > 0`, so if the search ever goes dead the zero it
+produces stops being evidence.
+
+## 25. Class X — measured first, so the fix could not cheat
+
+W says a label must not sit on another net's wire. The escape from a wire is
+to move, and where a label can move to is over a chip. **Grading a W fix on W
+alone therefore rewards trading one defect for another**, so class X — a net
+label's text over a symbol BODY — was measured BEFORE writing the flip:
+
+```
+X label text over a symbol body: 8 / 2099 circuits, 8 occurrences
+       6  char_lcd_i2c
+       2  lm358
+```
+
+Both are wide symbols whose own pin rows put their labels there; neither is
+caused by label placement, and neither is mine. After the change: **still
+exactly 8, same two kinds.** It is now a ratchet by kind, and the flip is
+required to leave it untouched.
+
+## 26. Cost, and two corpus moves
+
+Routing is untouched — segments 20,366, trunks 2,106, detours 4,161, all
+identical either side.
+
+**0 of 32 baselines differ with the change applied, and 0 with it reverted.**
+The eight cases live in `arduino-04-read-ascii-string`, which is not
+baselined, so this change moves no reviewed drawing at all.
+
+The corpus moving twice in one lane is worth recording, because the naive
+reading of the raw totals is wrong: drawn pins went 35,222 → 35,238 and
+symbols 14,850 → 14,851 across this work, and **none of that is this change**
+— it is `09c6753` replacing one `sevenseg8` with two `seven_seg_4` in the
+calculator. Confirmed by rendering that circuit from BOTH corpus revisions:
+34,874 bytes at `1d846130d`, 41,043 at `09c6753`, and the committed baseline
+matches the latter. A total that spans a corpus move is not a measurement of
+the change that happened during it.
+
+## 27. All twenty-five classes, at the current sha
+
+```
+A 0  B 0  C 6  D 0  E 0  F 0  G 0  H 0  I 0  J 0  K 0  L 0  M 0
+N 0  O 0  P 0  Q 0  Q2 44  R 0  S 0  T 0  U 0  V 0  W 0  X 8
+```
+
+C (6), Q2 (44) and X (8) are the standing named ratchets. Everything else is
+zero. Corpus gate: **40 tests, 40 pass.**

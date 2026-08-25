@@ -802,6 +802,71 @@ export function labelTextOnForeignCopperOf (projection) { return labelTextOnFore
 export function textRunsOf (projection) { return textRuns(projection); }
 export const TEXT_MODEL = { advance: TEXT_ADVANCE, cap: TEXT_CAP };
 
+
+/**
+ * CLASS X — a net label's TEXT lying over a symbol's BODY.
+ *
+ * The mirror of W. W says a label must not sit on another net's wire; the
+ * escape from a wire is to move, and the place a label can move to is over a
+ * chip — so measuring only W would let a fix trade one defect for another and
+ * call it progress. Measured BEFORE the side-flip landed: 8 occurrences,
+ * `char_lcd_i2c` ×6 and `lm358` ×2, none of them caused by label placement —
+ * those are wide symbols whose own pins put their labels there. It is a
+ * ratchet at that figure, and the flip is required to leave it untouched.
+ */
+function labelTextOnBody (projection) {
+    const labels = textRuns(projection).filter((t) => t.kind === 'netlabel');
+    const out = [];
+    for (const t of labels) {
+        for (const sym of projection.symbols || []) {
+            if (INFRA_KINDS.has(sym.kind)) continue;
+            const b = bodyBoxOf(sym);
+            if (t.x1 < b.right && b.left < t.x2 && t.y1 < b.bottom && b.top < t.y2) {
+                out.push({text: t.s, sym: sym.id, kind: sym.kind});
+                break;
+            }
+        }
+    }
+    return out;
+}
+
+/** The body box both renderers draw, mirroring bodyBounds in the projection. */
+function bodyBoxOf (sym) {
+    const art = sym.generic ? null : shapeFor(sym.kind, sym.params || {});
+    if (art) return {left: sym.x - 25, right: sym.x + 25, top: sym.y - 22, bottom: sym.y + 22};
+    const halfH = Math.max(20, ((Math.max(1, sym.pinsPerSide) - 1) * 18) / 2 + 16);
+    return {left: sym.x - 26, right: sym.x + 26, top: sym.y - halfH, bottom: sym.y + halfH};
+}
+
+/**
+ * Which way each net label points, relative to its pin's own side.
+ *
+ * `labelPin` tries the pin's own side first and only then the other three
+ * directions around it. If NO label in the whole corpus uses a non-primary
+ * direction, that search is dead code and the zero it produces means nothing —
+ * so the gate asserts this is non-empty.
+ */
+function labelDirections (projection) {
+    const pinAt = new Map();
+    for (const sym of projection.symbols || []) {
+        for (const pin of sym.pins || []) pinAt.set(`${Math.round(pin.x)},${Math.round(pin.y)}`, pin.side);
+    }
+    const out = {primary: 0, flipped: 0, perpendicular: 0};
+    for (const l of projection.netLabels || []) {
+        const side = pinAt.get(`${Math.round(l.x1)},${Math.round(l.y1)}`);
+        if (!side) continue;
+        const dx = l.x2 - l.x1, dy = l.y2 - l.y1;
+        const want = {left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1]}[side] || [1, 0];
+        if (Math.sign(dx) === want[0] && Math.sign(dy) === want[1]) out.primary++;
+        else if (Math.sign(dx) === -want[0] && Math.sign(dy) === -want[1]) out.flipped++;
+        else out.perpendicular++;
+    }
+    return out;
+}
+
+export function labelTextOnBodyOf (projection) { return labelTextOnBody(projection); }
+export function labelDirectionsOf (projection) { return labelDirections(projection); }
+
 // ── per-circuit analysis ──────────────────────────────────────────────────
 
 export function analyse (file) {
@@ -870,6 +935,8 @@ export function analyse (file) {
         offPage: offPage(proj),
         pinNameCollisions: pinNameCollisions(proj),
         labelTextOnCopper: labelTextOnForeignCopper(proj),
+        labelTextOnBody: labelTextOnBody(proj),
+        labelDirections: labelDirections(proj),
         textRuns: textRuns(proj).length,
         drops, invents, unresolvedPins, droppedParts, undrawnNets,
         foreignCrossWithDot: geo.foreignCrossWithDot,
@@ -941,7 +1008,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         ['T drawn pin netId disagrees with the solver', (r) => r.pinNetDisagreement.length],
         ['U drawn geometry outside the viewBox', (r) => r.offPage.length],
         ['V two pin NAMES overlapping (ratchet)', (r) => r.pinNameCollisions.length],
-        ['W a net label TEXT on foreign copper (ratchet)', (r) => r.labelTextOnCopper.length],
+        ['W a net label TEXT on foreign copper', (r) => r.labelTextOnCopper.length],
+        ['X a net label TEXT over a symbol body (ratchet)', (r) => r.labelTextOnBody.length],
     ];
     if (process.argv.includes('--json')) {
         console.log(JSON.stringify({ root, discovered: files.length, errored, rows }, null, 1));
