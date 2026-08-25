@@ -353,3 +353,74 @@ are independent, not one assertion written three times.
 | `debug-status.test.js` | 3 tests, **1 asserting nothing**, 0 discriminating | 3 tests, **3 mutation-proved** |
 | `npm test` | 1,778 | **1,781**, 0 fail |
 | `npm run test:browser` | 40 pass | **40 pass** |
+
+---
+
+# The sweep: every test that asserts nothing
+
+`debug-status` raised the obvious question — how many others? Swept all 138
+test files: every `test()` / `it()` whose body contains no assertion **and** no
+call to a local helper that asserts on its behalf.
+
+## The detector needed correcting three times, and that is the finding
+
+| version | reported | why it was wrong |
+|---|---|---|
+| v1 | **29** | looked for the next `{` after the test name, so an arrow with an EXPRESSION body (`() => assert.ok(x)`, no braces) was matched against some object literal further down the file |
+| v2 | **5** | scanned raw source, so the words *"must sit BEFORE it (inside the svg)"* in a **comment** matched `it(` and accused `z-contract-order.test.js` |
+| v3 | **4** | scanned with comments stripped but strings kept, so `"N test(s) contain no assertion"` in **the gate's own error message** matched `test(` and it accused itself |
+
+29 → 5 → 4. All three are one mistake in different clothes: **reading text that
+merely looks like code.** The shipped detector locates calls in a copy with
+comments blanked *and string contents blanked*, then reads names back from a
+copy that keeps the strings — offsets preserved in both.
+
+It carries six controls, and the four false-positive traps are the ones that
+matter: a helper-delegating test, an arrow expression body, a message
+containing `test(s)`, and prose containing `it (`. All four read clean; the two
+genuinely empty ones are flagged.
+
+## The four, and what each became
+
+| test | was | now |
+|---|---|---|
+| `interaction.test.js` — *empty circuit, no crashes on advanceTo* | the throw was the only check, and implicit | explicit `doesNotThrow`, plus a postcondition: still no parts, no wires, no nets — the difference between "did not crash" and "did the nothing it was meant to" |
+| `presets.test.js` — *loads into Circuit without crash* | same, and a preset inferring **zero parts** sailed through it | asserts parts were inferred and all reached the circuit, that advancing does not throw, and that no resolved net names a part the circuit lacks (the `netlist-rejected` shape) |
+| `serialiser-roundtrip.test.js` — *summary: report all losses* | `console.log` only; losses could triple in silence | ratchet at **33 losses across 11 files**, plus a floor of 200 files so a summary over nothing cannot report "no losses" |
+| `terminal-crosscheck.test.js` — *summary: two populations* | `console.log` only | ratchets at **162** naming diffs and **4** coverage gaps, counted apart so a real gap cannot hide inside naming churn |
+
+Each ratchet fails in **both** directions: above it is a regression, below it
+means the ratchet has stopped ratcheting and must be lowered in the same
+commit.
+
+Mutation-proved:
+
+```
+serialiser ratchet 33 → 32   not ok — '33 serialiser losses across 11 files, ratcheted at 32…'
+crosscheck gaps    4 → 3     not ok — '4 kinds the engine does not model (ads1115, max6675,
+                                       microbit_arcade, seven_seg_8), ratcheted at 3…'
+presets: infer no parts      not ok — '01-blink: inferred no parts at all, so "loads without
+                                       crash" is vacuous'
+```
+
+## The gate
+
+`test/test-registration.test.js` now asserts **no test file contains a test
+that asserts nothing** — with an empty allowance list, so there is nowhere to
+hide a new one. Mutation-proved by adding a vacuous test (flagged) and one
+whose only `assert` is inside a comment (also flagged).
+
+## An upstream note, not this lane's work
+
+`docs/schematic-baselines/78-a2-calculator.svg` is regenerated here and the
+change is **not mine**: sb3-creator moved a third time today
+(`09c6753` → `d7f2c3c`) and **reverted** that circuit — `seven_seg_4` ×2 back
+to `sevenseg8` ×1, wires 66 → 55. The new render is byte-identical (34,874 B)
+to the one taken at `1d846130d`, i.e. the drawing is exactly where it was
+before the earlier swap. Reviewed as 417 → 350 elements, consistent with two
+4-digit displays collapsing into one 8-digit module.
+
+**Worth someone's attention:** that circuit has now been swapped, swapped back,
+and re-baselined three times in one day, and the baseline gate records no
+corpus sha — so the churn is invisible until the gate fails, and it fails for
+whoever pushes next rather than for whoever moved the corpus.

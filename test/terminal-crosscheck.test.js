@@ -154,6 +154,14 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
     });
   }
 
+  /**
+   * The two populations, as they stand. Naming diffs are a CONVENTION
+   * difference (sidecar vs engine spelling); coverage gaps are a PRODUCT fact
+   * (a kind the engine does not model). Counted apart on purpose — merging
+   * them would let a real gap hide inside a naming churn. MAY ONLY SHRINK.
+   */
+  const KNOWN = { namingDiffs: 162, gapKinds: 4, minChecked: 240 };
+
   it('summary: two populations counted separately', () => {
     const gapKinds = [...new Set(coverageGaps)];
     console.log(`  Cross-check: ${checked} kinds checked, ${skipped} skipped`);
@@ -163,6 +171,22 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
     if (namingDiffs.length > 0) {
       console.log(`  Naming diffs:`);
       for (const m of namingDiffs) console.log(`    - ${m}`);
+    }
+
+    // Previously this printed and asserted NOTHING, so either population could
+    // grow without limit and the suite stayed green while printing the bigger
+    // number. Found by sweeping every test() for a body with no assertion.
+    assert.ok(checked >= KNOWN.minChecked,
+      `only ${checked} kinds cross-checked — a summary over nothing reports "no diffs" and `
+      + 'means nothing');
+    assert.ok(gapKinds.length <= KNOWN.gapKinds,
+      `${gapKinds.length} kinds the engine does not model (${gapKinds.join(', ')}), ratcheted `
+      + `at ${KNOWN.gapKinds}. A new gap is a product regression, not a naming quibble.`);
+    assert.ok(namingDiffs.length <= KNOWN.namingDiffs,
+      `${namingDiffs.length} naming differences, ratcheted at ${KNOWN.namingDiffs}`);
+    if (gapKinds.length < KNOWN.gapKinds || namingDiffs.length < KNOWN.namingDiffs) {
+      assert.fail(`the populations shrank (${namingDiffs.length} naming, ${gapKinds.length} `
+        + `gaps vs ${KNOWN.namingDiffs}/${KNOWN.gapKinds}) — lower KNOWN to lock it in.`);
     }
   });
 

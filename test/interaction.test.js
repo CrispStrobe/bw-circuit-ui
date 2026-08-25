@@ -264,10 +264,18 @@ describe('serialization preserves interactive state', () => {
 });
 
 describe('edge cases', () => {
-  it('empty circuit — no crashes on advanceTo', () => {
+  it('empty circuit — advanceTo is a no-op, not a crash', () => {
     const c = new Circuit(5.0);
-    c.advanceTo(1n * MS);
-    // No parts, no wires — should not throw
+    // The throw WAS the whole check, and an implicit one: if advanceTo threw,
+    // the test failed; if it silently did something wrong, nothing noticed.
+    // Made explicit, and given a postcondition — an empty circuit must still
+    // be empty and its clock must have moved, which is the difference between
+    // "did not crash" and "did the nothing it was supposed to do".
+    assert.doesNotThrow(() => c.advanceTo(1n * MS),
+      'advancing an empty circuit must be a no-op, not an error');
+    assert.equal(c.parts.length, 0, 'advancing must not conjure parts');
+    assert.equal(c.wires.length, 0, 'advancing must not conjure wires');
+    assert.deepEqual(c.resolvedNets ?? [], [], 'an empty circuit has no nets to resolve');
   });
 
   it('parts with no wires — engine has parts but no nets', () => {

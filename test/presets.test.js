@@ -133,8 +133,27 @@ describe('all presets produce valid circuits', () => {
         }
       }
       c._syncNetlist();
-      // Should not throw
-      c.advanceTo(1_000_000n);
+
+      // "Should not throw" was the entire check, and it was implicit. A preset
+      // that inferred ZERO parts, or whose nets resolved to nothing, sailed
+      // through it — the test could not tell "loaded" from "loaded nothing".
+      assert.ok(c.parts.length > 0,
+        `${preset.name}: inferred no parts at all, so "loads without crash" is vacuous`);
+      assert.deepEqual(c.parts.length, parts.length,
+        `${preset.name}: every inferred part must reach the circuit`);
+      assert.doesNotThrow(() => c.advanceTo(1_000_000n),
+        `${preset.name}: advancing the loaded circuit must not throw`);
+
+      // And the netlist the engine will be handed must not name parts that are
+      // not there — the exact shape that made the app show `netlist-rejected`
+      // when a load path left a stale breadboard behind (see
+      // test/load-clears-breadboards.test.js).
+      const present = new Set(c.parts.map((x) => x.id));
+      const dangling = (c.resolvedNets ?? []).flatMap((n) => (n.terminals ?? [])
+        .map((t) => t.part || t.partId)
+        .filter((id) => id && !String(id).startsWith('@bb:') && !present.has(id)));
+      assert.deepEqual([...new Set(dangling)], [],
+        `${preset.name}: resolved nets reference parts the circuit does not have`);
     });
   }
 });

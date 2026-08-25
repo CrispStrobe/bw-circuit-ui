@@ -187,6 +187,13 @@ describe('serialiser round-trip over gallery corpus', () => {
     });
   }
 
+  /**
+   * What the serialiser is known to lose today. MAY ONLY SHRINK: if a fix
+   * lands, this comes down in the same commit, and the assertion below fails
+   * loudly rather than letting the improvement go unrecorded.
+   */
+  const KNOWN_LOSSES = { total: 33, files: 11 };
+
   it('summary: report all losses across corpus', () => {
     console.log(`  Serialiser round-trip: ${filesChecked} files checked`);
     if (allLosses.length === 0) {
@@ -199,9 +206,31 @@ describe('serialiser round-trip over gallery corpus', () => {
         if (losses.length > 5) console.log(`      ... and ${losses.length - 5} more`);
       }
     }
-    // The interesting number:
+    // The interesting number — and now a RATCHET, not just a print.
+    //
+    // This test reported these figures and asserted nothing, so it passed
+    // whatever they were: losses could triple and the suite would stay green
+    // while cheerfully printing the larger number. A reporter that cannot fail
+    // occupies the slot the check would go in. Same shape as the three vacuous
+    // debug-status tests; found by sweeping every test() in the repo for a body
+    // with no assertion (docs/TEST-REGISTRATION.md).
     const totalLosses = allLosses.reduce((s, f) => s + f.losses.length, 0);
     console.log(`  Total losses: ${totalLosses} across ${allLosses.length} files`);
+
+    assert.ok(filesChecked >= 200,
+      `only ${filesChecked} files round-tripped — a summary over nothing reports "no losses" `
+      + 'and means nothing. The corpus is ~204 files.');
+    assert.ok(totalLosses <= KNOWN_LOSSES.total,
+      `${totalLosses} serialiser losses across ${allLosses.length} files, ratcheted at `
+      + `${KNOWN_LOSSES.total} across ${KNOWN_LOSSES.files}. A loss is a field that does not `
+      + 'survive load→serialise; the list is printed above. MAY ONLY SHRINK.');
+    assert.ok(allLosses.length <= KNOWN_LOSSES.files,
+      `${allLosses.length} files with losses, ratcheted at ${KNOWN_LOSSES.files}`);
+    if (totalLosses < KNOWN_LOSSES.total || allLosses.length < KNOWN_LOSSES.files) {
+      assert.fail(`the serialiser improved (${totalLosses}/${allLosses.length} vs `
+        + `${KNOWN_LOSSES.total}/${KNOWN_LOSSES.files}) — lower KNOWN_LOSSES to lock it in. `
+        + 'A ratchet left above the measurement has stopped ratcheting.');
+    }
   });
 });
 

@@ -29,6 +29,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { vacuousTests } from './_vacuity.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -234,6 +235,28 @@ describe('every test file is run by something', () => {
       'a browser test navigates to a URL it does not serve. It then passes only when someone '
       + 'happens to have `npm run dev` open, and fails as ERR_CONNECTION_REFUSED otherwise — '
       + 'which looks like broken features rather than a missing server.');
+  });
+
+  test('no test asserts nothing', () => {
+    // A test with no assertion cannot fail. It reports green from the slot the
+    // real check would occupy, which is strictly worse than not existing:
+    // test/debug-status.test.js had one that navigated, waited 500 ms and
+    // closed the page, under a comment explaining what should have happened.
+    //
+    // Swept across every test file 2026-08-25: four, all now fixed — two
+    // `no crashes` smoke tests where the throw was the only (implicit) check,
+    // and two `summary:` reporters that printed numbers and could not fail.
+    // The list is EMPTY on purpose; there is no allowance to hide a new one in.
+    const offenders = [];
+    for (const f of readdirSync(path.join(ROOT, 'test')).filter((x) => /\.test\.(js|mjs)$/.test(x))) {
+      for (const v of vacuousTests(readFileSync(path.join(ROOT, 'test', f), 'utf-8'))) {
+        offenders.push(`${f}:${v.line} — ${v.name}`);
+      }
+    }
+    assert.deepEqual(offenders, [],
+      `${offenders.length} test(s) contain no assertion and call no helper that asserts. Give `
+      + 'each one a real check, or delete it. A reporter that only console.logs should assert '
+      + 'a ratchet on the number it prints, so the number cannot move in silence.');
   });
 
   test('the files CI does not run are exactly the ones on the record', () => {
