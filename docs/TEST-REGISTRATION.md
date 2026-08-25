@@ -175,3 +175,21 @@ registrations are kept. The
 baseline was re-measured on unmodified master rather than remembered — a
 figure carried from an earlier session would have been 1,005 and wrong, the
 suite having grown under this lane.
+
+## CI evidence
+
+[run 32854558234](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/32854558234)
+at `efbafb5`, all five steps green:
+
+```
+  corpus census: 2099 files — 2097 full, 2 partial (named skips),
+                 0 not loadable as circuits, 0 MISMATCHED
+  138 test files on disk, 137 reachable from an npm script, 127 reachable from CI
+# tests 1097   # pass 1083   # fail 0   # skipped 14
+```
+
+The corpus census line is the point: that gate had never executed anywhere
+before this lane, and it now runs on every build.
+
+(CI's `npm test` count is lower than the local 1,776 because several suites
+register tests only when a local-only fixture is present.)
