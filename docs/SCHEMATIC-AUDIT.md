@@ -1359,3 +1359,130 @@ they can only shrink from here.
 | " | " | 2,098 exports read both ways, 0 disagreements, with a floor on nets read so two empty readings cannot agree trivially |
 
 Corpus gate: **33 tests, 33 pass**. Junction-rule gate: **8 tests, 8 pass**.
+
+---
+
+# Fifth pass — the two text ratchets, closed
+
+The fourth pass measured text for the first time and left two ratchets rather
+than zeros, because fixing them meant a collision-aware placer. This is that
+placer.
+
+**Rig.** bw-circuit-ui `29f6da6` (branch point), bw-board `1dac64c`,
+sb3-creator `1d846130d64f88e18ff7747af5cf4ba908b75fcc` — **2,099** circuit
+files. The corpus moved again mid-pass (`553a639` → `1d846130d`, 94 files,
+2,098 → 2,099); every number below is at the new sha, and the attribution
+check below shows the move changed no baselined drawing.
+
+| | class | before | after |
+|---|---|---|---|
+| **V** | two pin NAMES whose text boxes overlap | 105 | **0** |
+| **W** | a net label's TEXT on a foreign net's conductor | 172 | **8**, all one shape |
+
+## 20. V — the box cannot grow, so the names shrink
+
+All 105 were three kinds: **555 ×57, rgb_led ×28, relay ×20**. A labelled box
+is 52px wide (±26) with names drawn inward from ±22, left-anchored on the left
+and right-anchored on the right, so two long names facing each other across
+one row meet in the middle.
+
+**Widening the box is the conventional answer and was not available.** The
+worst pair — `trigger` + `discharge`, sixteen characters — needs an inset of
+**31.2px** while the PINS sit at 30. A box wide enough to hold the names would
+swallow its own pins, and pushing the pins out moves the routing band that
+`COL_W`, `PIN_HALF` and `BAND` are all derived from.
+
+So the names shrink instead: `pinNameSize(pins)` in the projection, per
+symbol, only as far as that symbol's widest row needs and never below
+`PIN_NAME_MIN = 4.5`. Both renderers read `s.pinNameSize ?? 6.5`. At the floor
+a row holds 44/(0.6·4.5) ≈ 16 characters, which covers the widest pair in the
+corpus. Most symbols need much less: the 555 lands at **5.12px**, not at the
+floor, and a symbol with no facing pair keeps 6.5 exactly.
+
+**The audit had to be corrected too, and that is the interesting part.** Its
+`textRuns` modelled pin names at a hard-coded 6.5, so after the fix it was
+measuring a drawing nobody renders — and it still reported 3 collisions in
+`pc65-555-metronom` that were no longer drawn. It now reads
+`sym.pinNameSize ?? 6.5`, exactly as the renderers do. A detector that models
+the OLD drawing is the same failure as a detector that reads the wrong half of
+the drawing; it just fails in the safe direction.
+
+The gate asserts **V = 0**, not a ratchet: a non-zero means a part needs more
+than the floor allows, and the answer is to widen that box, never to raise the
+number.
+
+## 21. W — the leader was cleared and the text was not
+
+`labelPin` already shortened the leader until it cleared foreign copper
+(class P, 0/2098 since the second pass). The **text** — four fifths of the
+same mark, and the half a reader actually reads — was never checked. Three
+things were wrong and each fixed a share:
+
+1. **The text box was not a candidate.** `labelPin` now searches
+   `LEADER_LENGTHS × LABEL_NUDGES` and requires the leader AND the drawn text
+   box to be clear. Zero nudge is tried first, so a drawing that needs none
+   renders byte-identically. `172 → 43`.
+2. **A label's text was not an obstacle.** Labels are placed *during* routing,
+   so a route committed later could land on a text already drawn — the leader
+   never had this problem because it is registered as a conductor. Label text
+   boxes now accumulate in `labelBoxes` and the router treats a foreign net's
+   text like a symbol body: something to route around, not through. `43 → …`
+3. **The reachable strip was too short.** In `arduino-04-read-ascii-string` a
+   foreign trunk parked ~17px out sits inside the reach of *every* short
+   leader length, and a vertical nudge cannot help because the trunk spans the
+   whole column. Two long candidates (18, 22) were appended — tried last, so
+   nothing else moves — which reach PAST the trunk and put the text in clear
+   space. The leader then crosses that trunk, which is a legal X crossing and
+   what the contact rule has always allowed. `→ 8`.
+
+### The 8 remainders, named
+
+All eight are one example directory (`arduino-04-read-ascii-string`, four MCU
+variants × the two rail labels) and all eight are the same shape: a foreign
+trunk occupies the **entire** strip the label can reach, at all seven lengths
+and all five nudges. `labelPin` then keeps the leader rule's answer — the one
+that carries connectivity — and the text overlaps.
+
+The lever left unpulled: flip the label to the pin's OTHER side. That puts the
+text over the symbol body, which needs the body boxes in the clearance test
+and a rule for which of two bad placements is worse — a bigger change than
+eight occurrences in one directory earns, and one that would churn every
+labelled drawing. The gate ratchets at 8 **and asserts they are all in that
+directory**, so a new one cannot hide inside the allowance.
+
+## 22. Cost, and the attribution that makes it readable
+
+Routing is untouched — identical before and after:
+
+| | before | after |
+|---|---|---|
+| drawn segments | 20,366 | 20,366 |
+| trunk routes | 2,106 | 2,106 |
+| detour routes | 4,161 | 4,161 |
+| net labels | 22,346 | 22,346 |
+
+**15 of the 32 baselines moved, and all 15 are mine.** Rendered with the
+change reverted against the current corpus: **0 of 32 differ** — so the
+upstream corpus move, which included `78-a2-calculator/circuit.json` (a
+baselined circuit), changed no baselined drawing, and every diff here is
+attributable. Reviewed rather than accepted:
+
+| baseline | element count | what moved |
+|---|---|---|
+| `disp-sevenseg.svg` | 121 → 121 | label leaders shortened, texts repositioned |
+| `arduino-05-arrays.svg` | 137 → 137 | one label text nudged 7px up — one `LABEL_NUDGE` exactly |
+| `74-ammeter.svg` | 63 → 63 | one detour moved x=213 → x=235, around a label box |
+
+Every count is unchanged, and classes A and B (a dropped connection, an
+invented one) are 0 across all 2,099, which is the guarantee the element
+counts only hint at.
+
+## 23. All twenty-four classes, at the current sha
+
+```
+A 0  B 0  C 6  D 0  E 0  F 0  G 0  H 0  I 0  J 0  K 0  L 0
+M 0  N 0  O 0  P 0  Q 0  Q2 44  R 0  S 0  T 0  U 0  V 0  W 8
+```
+
+C (6 pins over 2 circuits) and Q2 (44) are the standing named ratchets; W is
+the new one at 8. Everything else is zero.

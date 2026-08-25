@@ -699,8 +699,14 @@ function textRuns (projection) {
             const pins = sym.pins || [];
             const perSide = Math.max(1, sym.pinsPerSide || Math.ceil(pins.length / 2));
             const halfH = Math.max(20, ((perSide - 1) * 18) / 2 + 16);
+            // The renderers draw pin names at `sym.pinNameSize` (both read
+            // `s.pinNameSize ?? 6.5`), which the projection shrinks per symbol
+            // so that two names facing each other across one row cannot meet.
+            // Modelling 6.5 here regardless would measure a drawing nobody
+            // renders — the mistake this class exists to catch, one level up.
+            const nameSize = sym.pinNameSize ?? 6.5;
             for (const pin of pins) {
-                push(sym.x + (pin.side === 'left' ? -22 : 22), pin.y + 2.5, pin.name, 6.5,
+                push(sym.x + (pin.side === 'left' ? -22 : 22), pin.y + 2.5, pin.name, nameSize,
                     pin.side === 'left' ? 'start' : 'end', 'pinname');
             }
             push(sym.x, sym.y - halfH + 9, String(sym.kind).slice(0, 9), 7, 'middle', 'kindname');

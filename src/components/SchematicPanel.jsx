@@ -78,7 +78,8 @@ function Symbol({ s }) {
           <circle cx={pin.x - s.x} cy={py} r={1.6} fill={STROKE} stroke="none" />
           <text x={pin.side === 'left' ? -22 : 22} y={py + 2.5}
             textAnchor={pin.side === 'left' ? 'start' : 'end'}
-            fill={LABEL} fontSize={6.5} fontFamily="monospace" stroke="none">{pin.name}</text>
+            fill={LABEL} fontSize={s.pinNameSize ?? 6.5} fontFamily="monospace"
+            stroke="none">{pin.name}</text>
         </g>
       );
     })}

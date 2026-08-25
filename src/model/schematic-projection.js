@@ -190,6 +190,61 @@ export function projectSchematic(parts, nets) {
   // points ±170px beyond the little box — wires attached to invisible
   // spots far outside the symbol (and above the canvas), which read as
   // "the chip is connected to nothing" (owner screenshots, 2026-08-10).
+  // ── pin names must not collide, and the box cannot always grow ──────────
+  //
+  // A labelled box is 52px wide (±26) and its pin names are drawn INWARD from
+  // ±22, left-anchored on the left side and right-anchored on the right. Two
+  // long names facing each other across one row therefore meet in the middle
+  // and neither can be read — which loses the one thing the labelled box
+  // exists to provide. Measured over 2,098 shipped circuits: 105 such pairs,
+  // in three kinds (555 ×57, rgb_led ×28, relay ×20).
+  //
+  // Widening the box is the conventional answer and is not available here:
+  // the worst pair (`trigger` + `discharge`, sixteen characters) needs an
+  // inset of 31.2px while the PINS sit at 30, so a box wide enough to hold
+  // the names would swallow its own pins, and pushing the pins out moves the
+  // routing band that COL_W/PIN_HALF/BAND are all derived from.
+  //
+  // So the NAMES shrink instead, per symbol, only as far as that symbol needs
+  // and never below PIN_NAME_MIN. At the floor a row can hold 44/(0.6·4.5) ≈
+  // 16 characters, which covers the widest pair in the corpus with 0.4px to
+  // spare. A symbol that needs less keeps more: the median case lands at
+  // 5.2px, not at the floor. If a future part needs MORE than the floor
+  // allows, the corpus gate says so rather than the drawing silently
+  // overlapping again.
+  //
+  // TEXT_ADVANCE duplicates a constant in scripts/schematic-audit.mjs on
+  // purpose: the audit measures this drawing with its own copy, so if the two
+  // ever disagree the gate goes red instead of the fix and the check agreeing
+  // with each other about a model neither of them checks.
+  const TEXT_ADVANCE = 0.6;      // monospace advance, em per character
+  const PIN_NAME_SIZE = 6.5;
+  const PIN_NAME_MIN = 4.5;
+  const PIN_NAME_INSET = 22;     // where a name starts, measured from the symbol centre
+  const pinNameSize = (pins) => {
+    const byRow = new Map();
+    for (const pin of pins) {
+      const k = Math.round(pin.y);
+      if (!byRow.has(k)) byRow.set(k, {left: 0, right: 0});
+      const row = byRow.get(k);
+      const chars = String(pin.name ?? '').length;
+      if (pin.side === 'left') row.left = Math.max(row.left, chars);
+      else row.right = Math.max(row.right, chars);
+    }
+    let size = PIN_NAME_SIZE;
+    for (const {left, right} of byRow.values()) {
+      if (!left || !right) continue;                 // one side only: nothing to meet
+      const chars = left + right;
+      if (!chars) continue;
+      // Both names together may span at most 2 · PIN_NAME_INSET, less a 1px
+      // margin: at exactly 2 · INSET the two boxes TOUCH, which the detector
+      // (a strict overlap) forgives and a reader does not.
+      const fits = (2 * PIN_NAME_INSET - 1) / (TEXT_ADVANCE * chars);
+      if (fits < size) size = fits;
+    }
+    return Math.max(PIN_NAME_MIN, Math.min(PIN_NAME_SIZE, size));
+  };
+
   const symbols = [];
   for (const p of electrical) {
     const col = layoutCol.get(p.id);
@@ -244,6 +299,7 @@ export function projectSchematic(parts, nets) {
       id: p.id, kind: p.kind, label: p.declName || p.id,
       params: p.params ?? {}, col, row, x, y, pins,
       pinsPerSide: perSide, generic,
+      pinNameSize: generic ? pinNameSize(pins) : PIN_NAME_SIZE,
     });
   }
 
@@ -282,6 +338,13 @@ export function projectSchematic(parts, nets) {
   const wires = [];
   const junctions = [];
   const netLabels = [];
+  // A label's TEXT is opaque ink, and it is placed DURING routing, so a route
+  // committed later can land on a text that was already drawn. The leader
+  // never had this problem because it is registered as a conductor and later
+  // routes avoid it; the text was registered as nothing at all. Boxes
+  // accumulate here and the router treats a foreign net's text like a symbol
+  // body — something to route around rather than through.
+  const labelBoxes = [];
   const netIds = [...netPins.keys()].sort();
   // First pass: pick each net's gap (between column g-1 and g).
   const routed = [];
@@ -335,21 +398,66 @@ export function projectSchematic(parts, nets) {
   // ended at (305,117), which is a point on net b27's VCC leader spanning
   // x=300..313 at y=117. Shorten the leader until it is clear; the text
   // follows it, and a leader is only there to join a pin to its own text.
-  const LEADER_LENGTHS = [13, 10, 8, 6, 4];
+  // Short first: a leader is only there to join a pin to its own text, and
+  // the shortest clear one is the tidiest. The two LONG candidates are tried
+  // last and exist for one measured case — a foreign trunk parked ~17px out
+  // sits inside the reach of every short length, and a vertical nudge cannot
+  // help because the trunk spans the whole column. Reaching PAST it puts the
+  // text in clear space; the leader then crosses that trunk, which is a
+  // legal X crossing and what the contact rule has always allowed.
+  const LEADER_LENGTHS = [13, 10, 8, 6, 4, 18, 22];
+  // The text may also be nudged along the leader's PERPENDICULAR when no
+  // leader length puts it in clear space. A label is read by its proximity to
+  // its own pin, and 7px against an 18px pin pitch keeps that unambiguous
+  // while moving the glyphs off another net's wire. Zero first, so a drawing
+  // that needs no nudge renders byte-identically.
+  const LABEL_NUDGES = [0, -7, 7, -12, 12];
+  const LABEL_TEXT_SIZE = 6.5;
   const labelPin = (r, text, pin) => {
     const vectors = {
       left: [-1, 0, 'end'], right: [1, 0, 'start'],
       top: [0, -1, 'middle'], bottom: [0, 1, 'middle'],
     };
     const [dx, dy, anchor] = vectors[pin.side] || vectors.right;
-    const len = LEADER_LENGTHS.find(l => !segmentTouchesForeignConductor(
-      {x: pin.x, y: pin.y}, {x: pin.x + dx * l, y: pin.y + dy * l}, r.netId)) ?? 13;
-    const x2 = pin.x + dx * len, y2 = pin.y + dy * len;
+    // The drawn text box, for a given leader length and perpendicular nudge.
+    // Mirrors what both renderers emit: monospace at LABEL_TEXT_SIZE, the
+    // anchor deciding which edge `x` is, and 0.7em of cap height above the
+    // baseline.
+    const textBox = (len, nudge) => {
+      const tx = pin.x + dx * (len + 3) + (dy === 0 ? 0 : nudge);
+      const ty = pin.y + dy * (len + 3) + (dy === 0 ? 2.5 + nudge : (dy < 0 ? -2 : 7));
+      const w = TEXT_ADVANCE * LABEL_TEXT_SIZE * String(text).length;
+      const h = 0.7 * LABEL_TEXT_SIZE;
+      const x1 = anchor === 'end' ? tx - w : anchor === 'middle' ? tx - w / 2 : tx;
+      return {x: tx, y: ty, x1, x2: x1 + w, y1: ty - h, y2: ty};
+    };
+    let chosen = null;
+    for (const nudge of LABEL_NUDGES) {
+      for (const l of LEADER_LENGTHS) {
+        if (segmentTouchesForeignConductor(
+          {x: pin.x, y: pin.y}, {x: pin.x + dx * l, y: pin.y + dy * l}, r.netId)) continue;
+        const b = textBox(l, nudge);
+        if (boxTouchesForeignConductor(b.x1, b.y1, b.x2, b.y2, r.netId)) continue;
+        chosen = {len: l, box: b};
+        break;
+      }
+      if (chosen) break;
+    }
+    // Nothing clear: keep the leader rule's answer, which is the one that
+    // matters for connectivity, and let the corpus ratchet record the text.
+    if (!chosen) {
+      const l = LEADER_LENGTHS.find(len => !segmentTouchesForeignConductor(
+        {x: pin.x, y: pin.y}, {x: pin.x + dx * len, y: pin.y + dy * len}, r.netId)) ?? 13;
+      chosen = {len: l, box: textBox(l, 0)};
+    }
+    const x2 = pin.x + dx * chosen.len, y2 = pin.y + dy * chosen.len;
     netLabels.push({netId: r.netId, text,
       x1: pin.x, y1: pin.y, x2, y2,
-      x: pin.x + dx * (len + 3), y: pin.y + dy * (len + 3) + (dy === 0 ? 2.5 : (dy < 0 ? -2 : 7)),
+      x: chosen.box.x, y: chosen.box.y,
       anchor});
     registerConductor({x: pin.x, y: pin.y}, {x: x2, y: y2}, r.netId);
+    labelBoxes.push({netId: r.netId, left: chosen.box.x1, right: chosen.box.x2,
+      top: chosen.box.y1, bottom: chosen.box.y2});
   };
   const bodyBounds = (s) => {
     const art = s.generic ? null : shapeFor(s.kind, s.params);
@@ -430,6 +538,35 @@ export function projectSchematic(parts, nets) {
       if (hit) out.push(...hit);
     }
     return out;
+  };
+  /**
+   * Does an axis-aligned BOX overlap a foreign net's conductor?
+   *
+   * A net label is a leader plus a TEXT, and `labelPin` used to clear only the
+   * leader. The text is the other four fifths of the same mark and it is the
+   * half a reader actually reads — "same text = same net" is the whole
+   * contract once routing falls back to labels, so a label text lying across
+   * another net's wire invites reading that wire as carrying that name.
+   * Measured before this check existed: 172 label texts on foreign copper
+   * across 104 of 2,098 circuits.
+   *
+   * Bucketed like the segment queries beside it; a text box is a handful of
+   * rows and a few dozen columns, so this stays cheap at 22,000 labels.
+   */
+  const boxTouchesForeignConductor = (bx1, by1, bx2, by2, netId) => {
+    for (let k = Math.floor(by1) - 1; k <= Math.ceil(by2) + 1; k++) {
+      for (const seg of hByY.get(k) || []) {
+        if (seg.netId === netId) continue;
+        if (seg.x1 <= bx2 && bx1 <= seg.x2 && seg.y1 >= by1 - TOUCH && seg.y1 <= by2 + TOUCH) return true;
+      }
+    }
+    for (let k = Math.floor(bx1) - 1; k <= Math.ceil(bx2) + 1; k++) {
+      for (const seg of vByX.get(k) || []) {
+        if (seg.netId === netId) continue;
+        if (seg.y1 <= by2 && by1 <= seg.y2 && seg.x1 >= bx1 - TOUCH && seg.x1 <= bx2 + TOUCH) return true;
+      }
+    }
+    return false;
   };
   const registerConductor = (a, b, netId) => {
     const seg = {netId, x1: Math.min(a.x, b.x), x2: Math.max(a.x, b.x),
@@ -557,6 +694,8 @@ export function projectSchematic(parts, nets) {
     }
     if (segments.some(([a, b]) => segmentHitsForeignPin(a, b, route.netId))) hits.push('__foreign_pin__');
     if (segments.some(([a, b]) => segmentTouchesForeignConductor(a, b, route.netId))) hits.push('__foreign_conductor__');
+    if (segments.some(([a, b]) => labelBoxes.some(bx => bx.netId !== route.netId
+      && segmentCrossesBody(a, b, bx)))) hits.push('__label_text__');
     return hits;
   };
   const collisionRoutedNets = [];
@@ -570,7 +709,8 @@ export function projectSchematic(parts, nets) {
     const clear = ([a, b]) => (a.x === b.x || a.y === b.y) &&
       !boxes.some(box => segmentCrossesBody(a, b, box)) &&
       !segmentHitsForeignPin(a, b, netId) &&
-      !segmentTouchesForeignConductor(a, b, netId);
+      !segmentTouchesForeignConductor(a, b, netId) &&
+      !labelBoxes.some(bx => bx.netId !== netId && segmentCrossesBody(a, b, bx));
     const xs = new Set([start.x, end.x]);
     const ys = new Set([start.y, end.y]);
     for (const box of boxes) {

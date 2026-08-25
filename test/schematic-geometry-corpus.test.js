@@ -190,7 +190,26 @@ const KNOWN_UNUSED_LEADS = new Map([
  *
  * MAY ONLY SHRINK.
  */
-const TEXT_RATCHET = { pinNameCollisions: 105, labelTextOnCopper: 172 };
+const TEXT_RATCHET = { pinNameCollisions: 0, labelTextOnCopper: 8 };
+
+/**
+ * The eight W remainders, named rather than tolerated.
+ *
+ * All eight are ONE example directory — `arduino-04-read-ascii-string`, four
+ * MCU variants times the two rail labels — and all eight are the same shape:
+ * a foreign trunk parked in the column occupies the ENTIRE strip the label
+ * can reach, at every one of the seven leader lengths and every one of the
+ * five perpendicular nudges. There is no clear position to move the text to,
+ * so `labelPin` keeps the leader rule's answer (which is the one that carries
+ * connectivity) and the text overlaps.
+ *
+ * The lever that is left, and deliberately not pulled here: flip the label to
+ * the pin's OTHER side. That puts the text over the symbol body, which needs
+ * the body boxes in the clearance test and a rule for which of two bad
+ * placements is worse — a bigger change than eight occurrences in one
+ * directory earns, and one that would churn every labelled drawing.
+ */
+const W_REMAINDER_DIR = 'arduino-04-read-ascii-string';
 
 describe('schematic geometry across the whole shipped corpus', () => {
   const files = examplesRoot ? discover(examplesRoot) : null;
@@ -448,17 +467,26 @@ describe('schematic geometry across the whole shipped corpus', () => {
     const w = report('W net label TEXT on foreign copper', r => r.labelTextOnCopper);
     const vTotal = totalOf(r => r.pinNameCollisions);
     const wTotal = totalOf(r => r.labelTextOnCopper);
-    assert.ok(vTotal <= TEXT_RATCHET.pinNameCollisions,
-      `${vTotal} overlapping pin-name pairs, ratcheted at ${TEXT_RATCHET.pinNameCollisions}. A `
-      + 'generic box is 52px wide and its names are drawn inward from ±22, so two long names on '
-      + 'opposite sides collide and NEITHER can be read — the reader loses the one thing the '
-      + 'labelled box exists to provide. This ratchet may only shrink.');
+    assert.equal(vTotal, 0,
+      `${vTotal} overlapping pin-name pairs. A labelled box is 52px wide and its names are drawn `
+      + 'inward from ±22, so two long names on opposite sides collide and NEITHER can be read — '
+      + 'the reader loses the one thing the labelled box exists to provide. The projection '
+      + 'shrinks each symbol\'s pin-name font (pinNameSize) until its widest row fits, never '
+      + 'below PIN_NAME_MIN. A non-zero here means a part needs MORE than the floor allows, and '
+      + 'the answer is to widen that box, not to raise the ratchet.');
     assert.ok(wTotal <= TEXT_RATCHET.labelTextOnCopper,
       `${wTotal} net-label texts lying on a foreign net's conductor, ratcheted at `
       + `${TEXT_RATCHET.labelTextOnCopper}. Class P forbids the label's LEADER from touching `
       + 'foreign copper; the text is the other four fifths of the same mark and is the half a '
       + 'reader actually reads. "Same text = same net" is the whole contract when routing falls '
       + 'back to labels. This ratchet may only shrink.');
+    // Every W remainder must be the ONE named shape, so a new one cannot hide
+    // inside the allowance.
+    const wDirs = [...new Set(w.map(r => r.id.split('/')[0]))];
+    assert.deepEqual(wDirs.filter(d => d !== W_REMAINDER_DIR), [],
+      `a net-label text overlaps foreign copper outside ${W_REMAINDER_DIR}. The eight known ones `
+      + 'are a trunk occupying the whole strip a label can reach; a NEW directory means a '
+      + 'different cause, which must be diagnosed rather than absorbed by the count.');
     if (vTotal < TEXT_RATCHET.pinNameCollisions || wTotal < TEXT_RATCHET.labelTextOnCopper) {
       assert.fail(`the drawing improved (V ${vTotal}/${TEXT_RATCHET.pinNameCollisions}, `
         + `W ${wTotal}/${TEXT_RATCHET.labelTextOnCopper}) — lower TEXT_RATCHET to lock it in. `

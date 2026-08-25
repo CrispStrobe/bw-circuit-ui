@@ -198,7 +198,8 @@ export function renderSchematicSvg({ parts = [], wires = [], nets = null }, opts
         bits.push('<path d="M ' + edgeX + ' ' + py + ' L ' + (pin.x - s.x) + ' ' + py + '" stroke-width="1.2"/>');
         bits.push('<text x="' + (pin.side === 'left' ? -22 : 22) + '" y="' + (py + 2.5)
           + '" text-anchor="' + (pin.side === 'left' ? 'start' : 'end')
-          + '" font-size="6.5" font-family="monospace" fill="' + LABEL + '" stroke="none">'
+          + '" font-size="' + (s.pinNameSize ?? 6.5) + '" font-family="monospace" fill="'
+          + LABEL + '" stroke="none">'
           + esc(pin.name) + '</text>');
       }
       bits.push('<text x="0" y="' + (-halfH + 9) + '" text-anchor="middle" font-size="7" '
