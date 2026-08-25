@@ -366,7 +366,12 @@ export function importKicadPcb(text) {
         // KiCad file angles are CCW-positive in its Y-down frame; the Y
         // flip to the model frame negates them (model = CCW-positive Y-up).
         rotation: -pad.shapeRot,
-        drill: pad.drill, slotLength: 0, plated: true,
+        drill: pad.drill,
+        slotLength: pad.slotLength || 0,
+        // Model slot axis: the pad's file angle negates on the Y flip;
+        // a drill oval taller than wide adds the quarter turn.
+        slotRotation: pad.slotLength ? -(pad.shapeRot || 0) + (pad.slotAlongX ? 0 : 90) : 0,
+        plated: true,
         through: pad.through, layer: pad.layer,
         // Index-suffixed: KiCad's duplicate pad numbers would collide on
         // a num-keyed id, and the internal-terminal merge keys on pad ids.
@@ -519,10 +524,15 @@ function parseFootprint(node, warnings, ignore) {
     // put a castellated connector's copper 0.7 mm from where the fab
     // plates it, and a GND stitching via appeared to short a signal pad
     // on a working board (dvi-sock, measured).
-    let drillD = 0; let offX = 0; let offY = 0;
+    let drillD = 0; let offX = 0; let offY = 0; let slotLength = 0; let slotAlongX = true;
     if (drillNode) {
-      if (String(drillNode[1]) === 'oval') drillD = Math.min(num(drillNode[2]), num(drillNode[3] ?? drillNode[2]));
-      else drillD = num(drillNode[1]);
+      if (String(drillNode[1]) === 'oval') {
+        // (drill oval W H): a SLOT — width is the rout diameter, the long
+        // dimension the rout length, its axis in the pad's own frame.
+        const ow = num(drillNode[2]); const oh = num(drillNode[3] ?? drillNode[2]);
+        drillD = Math.min(ow, oh);
+        if (Math.max(ow, oh) > drillD) { slotLength = Math.max(ow, oh); slotAlongX = ow >= oh; }
+      } else drillD = num(drillNode[1]);
       const off = child(drillNode, 'offset');
       if (off) {
         // The offset lives in the PAD's own frame and the pad's file angle
@@ -557,6 +567,8 @@ function parseFootprint(node, warnings, ignore) {
       // neighbouring capacitor (measured, fpx J1.S1 x C1.1).
       shapeRot: at.rot || 0,
       drill: drillD,
+      slotLength,
+      slotAlongX,
       through, layer,
       net: num(child(p, 'net')?.[1]),
     });

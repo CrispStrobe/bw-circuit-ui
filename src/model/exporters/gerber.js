@@ -20,15 +20,17 @@
  *     groups and KiCad fills both put the outer boundary first).
  *   - outline arcs are emitted segmented (24 chords) rather than as
  *     G02/G03 — accepted by every fab, immune to centre-format quirks.
- *   - silk TEXT is not emitted (Gerber has no text; stroking fonts is a
- *     later fidelity step) — reported in warnings, never swallowed.
+ *   - silk TEXT plots as single-stroke polylines (stroke-font.js), on the
+ *     same centre anchor the SVG renderer uses — screen and silk agree.
  *   - drills: round PTH + NPTH in one Excellon file (METRIC, 3.3); slot
- *     pads are reported in warnings for now.
+ *     pads become G85 routs between their end centres, the tool being
+ *     the slot width.
  *
  * @module
  */
 
 import { padShape, padOutlinePolygon, arcPointAt } from '../pcb-geometry.js';
+import { strokeText } from '../stroke-text.js';
 
 const XY = (x, y) => `X${Math.round(x * 1e6)}Y${Math.round(y * 1e6)}`;
 
@@ -217,7 +219,6 @@ export function exportGerbers(board, opts = {}) {
   ]) {
     const tracks = [];
     const circles = [];
-    let texts = 0;
     const eatSilk = (silk) => {
       for (const t of silk?.tracks || []) if ((t.layerId ?? 3) === layerId) tracks.push(t);
       for (const rc of silk?.rects || []) {
@@ -227,11 +228,17 @@ export function exportGerbers(board, opts = {}) {
         ] });
       }
       for (const c of silk?.circles || []) if ((c.layerId ?? 3) === layerId) circles.push({ cx: c.cx, cy: c.cy, r: c.r, strokeWidth: 0.15 });
-      texts += (silk?.texts || []).filter((t) => t.display !== false && t.text && (t.layerId ?? 3) === layerId).length;
+      // Text plots as SINGLE-STROKE polylines (stroke-font.js): the same
+      // centre anchor the SVG renderer uses, so screen and silk agree.
+      for (const t of silk?.texts || []) {
+        if (t.display === false || !t.text || (t.layerId ?? 3) !== layerId) continue;
+        for (const stroke of strokeText(t.text, { x: t.x, y: t.y, size: 1.2, rotation: t.rotation || 0 })) {
+          tracks.push({ width: 0.15, points: stroke });
+        }
+      }
     };
     eatSilk(board.silk);
     for (const part of board.parts || []) eatSilk(part.silk);
-    if (texts) warnings.push(`${texts} silk text(s) on ${side} not plotted (Gerber has no text; font stroking is a later step).`);
     const ap = new Apertures();
     files[file] = gerberFile(name, drawLayer({ tracks, circles }, ap, warnings), ap);
   }
@@ -263,26 +270,40 @@ export function exportGerbers(board, opts = {}) {
       if (!hits.has(key)) hits.set(key, { dia, plated, points: [] });
       hits.get(key).points.push([x, y]);
     };
-    for (const part of board.parts || []) {
-      for (const pad of part.pads) {
-        if (pad.drill > 0) {
-          if (pad.slotLength > 0) warnings.push(`pad ${pad.id || pad.num}: slot drill not emitted (round hole of the short axis instead).`);
-          add(pad.drill, pad.x, pad.y, pad.plated !== false);
-        }
-      }
-    }
-    for (const pad of board.freePads || []) if (pad.drill > 0) add(pad.drill, pad.x, pad.y, pad.plated !== false);
+    const slots = new Map(); // like hits, but [x1,y1,x2,y2] rout pairs
+    const addSlot = (pad) => {
+      const key = `${fmtMm(pad.drill)}|${pad.plated === false ? 'N' : 'P'}`;
+      if (!slots.has(key)) slots.set(key, { dia: pad.drill, plated: pad.plated !== false, spans: [] });
+      const half = (pad.slotLength - pad.drill) / 2;
+      const th = ((pad.slotRotation ?? pad.rotation ?? 0) * Math.PI) / 180;
+      const dx = half * Math.cos(th); const dy = half * Math.sin(th);
+      slots.get(key).spans.push([pad.x - dx, pad.y - dy, pad.x + dx, pad.y + dy]);
+    };
+    const eat = (pad) => {
+      if (!(pad.drill > 0)) return;
+      if (pad.slotLength > pad.drill) addSlot(pad);
+      else add(pad.drill, pad.x, pad.y, pad.plated !== false);
+    };
+    for (const part of board.parts || []) for (const pad of part.pads) eat(pad);
+    for (const pad of board.freePads || []) eat(pad);
     for (const v of board.vias || []) add(v.drill, v.x, v.y, true);
     for (const h of board.holes || []) add(h.diameter, h.x, h.y, false);
 
-    const tools = [...hits.values()].sort((a, b) => a.dia - b.dia);
+    const tools = [
+      ...[...hits.values()].map((t) => ({ ...t, spans: null })),
+      ...[...slots.values()].map((t) => ({ ...t, points: null })),
+    ].sort((a, b) => a.dia - b.dia);
     const lines = ['M48', 'METRIC,TZ'];
     tools.forEach((t, i) => lines.push(`T${i + 1}C${fmtMm(t.dia)}`));
     lines.push('%', 'G90', 'G05');
+    const co = (v) => (Math.round(v * 1000) / 1000).toFixed(3);
     tools.forEach((t, i) => {
       lines.push(`T${i + 1}`);
-      for (const [x, y] of t.points) {
-        lines.push(`X${(Math.round(x * 1000) / 1000).toFixed(3)}Y${(Math.round(y * 1000) / 1000).toFixed(3)}`);
+      for (const [x, y] of t.points || []) lines.push(`X${co(x)}Y${co(y)}`);
+      // A slot is one G85 rout between its two end centres — the tool's
+      // diameter is the slot width.
+      for (const [x1, y1, x2, y2] of t.spans || []) {
+        lines.push(`X${co(x1)}Y${co(y1)}G85X${co(x2)}Y${co(y2)}`);
       }
     });
     lines.push('T0', 'M30');

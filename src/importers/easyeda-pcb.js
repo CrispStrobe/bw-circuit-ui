@@ -500,6 +500,9 @@ export function importEasyEdaPcb(text) {
     rotation: p.rotation,
     drill: p.holeRadius ? mmLen(p.holeRadius) * 2 : 0,
     slotLength: p.slotLength ? mmLen(p.slotLength) : 0,
+    // EasyEDA slots run along the pad's LONG axis; angles are
+    // model-positive as stored (the kusba measurement).
+    slotRotation: p.slotLength ? (p.rotation || 0) + (p.w >= p.h ? 0 : 90) : 0,
     plated: p.plated,
     through: p.layerId === THROUGH_LAYER,
     layer: p.layerId === THROUGH_LAYER ? 'through' : (p.layerId === 2 ? 'bottom' : 'top'),

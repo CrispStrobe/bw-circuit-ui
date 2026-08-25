@@ -87,8 +87,27 @@ describe('mini fixture', () => {
     assert.equal((gko.match(/D01\*/g) || []).length, 4);
   });
 
-  test('silk text loss is REPORTED, never silent', () => {
-    assert.ok(warnings.some((w) => /silk text/.test(w)), warnings.join('; '));
+  test('silk text PLOTS as strokes — the label is on the board, not in a warning', () => {
+    assert.ok(!warnings.some((w) => /silk text/.test(w)), 'no loss warning any more');
+    const silk = files['silk-top.gto'];
+    // The free label "mini" plus R1/SW1 refdes: dozens of stroke draws
+    // through the 0.15 mm silk aperture.
+    assert.match(silk, /%ADD\d+C,0\.15\*%/);
+    assert.ok((silk.match(/D01\*/g) || []).length > 20, 'glyph strokes present');
+  });
+
+  test('a slot pad routs as G85 between its end centres', () => {
+    const board = mini();
+    // Plant a 1.0 mm wide, 2.6 mm long slot on the free M3 position,
+    // horizontal: ends at ±0.8 mm around the centre.
+    board.freePads.push({
+      num: 'S1', net: '', shape: 'oval', x: 10, y: 10, w: 1.6, h: 3.2, rotation: 0,
+      drill: 1.0, slotLength: 2.6, slotRotation: 0, plated: true, through: true,
+      layer: 'through', points: null, id: 'slot1',
+    });
+    const drl = exportGerbers(board).files['drill.drl'];
+    assert.ok(drl.includes('X9.200Y10.000G85X10.800Y10.000'), drl.split('\n').filter((l) => l.includes('G85')).join('|'));
+    assert.ok(drl.includes('C1'), 'the slot tool is the 1.0 mm width');
   });
 
   test('deterministic: exporting twice is byte-identical', () => {
