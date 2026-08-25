@@ -111,6 +111,12 @@ export function validatePattern(pattern, kind, params = undefined) {
  */
 export function recognizePackage(pkg, ref = '') {
   const s = String(pkg || '');
+  // Our own spelling first: `kind:variant` is what the projection stamps,
+  // and it is exact — no pattern matching to mis-fire.
+  const own = /^([a-z0-9_]+):(.+)$/.exec(s);
+  if (own && LAND_PATTERNS[own[1]] && LAND_PATTERNS[own[1]][own[2]]) {
+    return { kind: own[1], variant: own[2], params: undefined };
+  }
   for (const rule of PACKAGE_KIND_RULES) {
     const m = s.match(rule.match);
     if (!m) continue;

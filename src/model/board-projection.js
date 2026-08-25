@@ -118,6 +118,7 @@ function orientPattern(pattern, rotation) {
     courtyard: swap
       ? { w: pattern.courtyard.h, h: pattern.courtyard.w }
       : pattern.courtyard,
+    pin1: pattern.pin1 ? (() => { const [x, y] = rp([pattern.pin1.x, pattern.pin1.y]); return { x, y }; })() : undefined,
     silk: (pattern.silk || []).map((el) => {
       if (el.kind === 'circle') { const [x, y] = rp([el.x, el.y]); return { ...el, x, y }; }
       // rects rotate about the origin; for 90/270 the corner walks.
@@ -527,7 +528,13 @@ export function projectBoard(circuit, opts = {}) {
 
   // Board parts in model space (origin bottom-left of outline).
   const modelParts = placed.map((p) => ({
-    id: p.id, ref: p.id, name: p.kind, package: p.pattern.variant, attrs: {},
+    id: p.id, ref: p.id, name: p.kind,
+    // kind:variant — our own package vocabulary, recognised by
+    // recognizePackage, so a PROJECTED board lifts and DRCs (terminal
+    // maps!) exactly like an imported one. A bare variant name was
+    // unrecognisable and silently disabled terminal-short on every
+    // projected board (found by the MNA fault demo).
+    package: `${p.kind}:${p.pattern.variant}`, attrs: {},
     x: p.x - ox, y: p.y - oy, rotation: 0, side: 'top',
     pads: p.pattern.pads.map((pad) => ({
       num: pad.num,
@@ -541,7 +548,16 @@ export function projectBoard(circuit, opts = {}) {
     })),
     silk: {
       tracks: [], arcs: [],
-      texts: [{ kind: 'P', x: p.x - ox, y: p.y + p.pattern.courtyard.h / 2 + 1 - oy, rotation: 0, mirror: false, layerId: 3, text: p.id, display: true, id: `${p.id}-ref` }],
+      texts: [
+        { kind: 'P', x: p.x - ox, y: p.y + p.pattern.courtyard.h / 2 + 1 - oy, rotation: 0, mirror: false, layerId: 3, text: p.id, display: true, id: `${p.id}-ref` },
+        // A connector without a pin legend earns a DRC warning for good
+        // reason (a reversed rail kills the module) — so the projection
+        // marks pin 1 wherever the pattern declares one.
+        ...(p.pattern.pin1 ? [{
+          kind: 'L', x: p.x + p.pattern.pin1.x - ox, y: p.y + p.pattern.pin1.y - 1.7 - oy,
+          rotation: 0, mirror: false, layerId: 3, text: '1', display: true, id: `${p.id}-pin1`,
+        }] : []),
+      ],
       circles: (p.pattern.silk || []).filter((s) => s.kind === 'circle')
         .map((s, i) => ({ cx: p.x + s.x - ox, cy: p.y + s.y - oy, r: s.r, layerId: 3, id: `${p.id}-sc${i}` })),
       rects: (p.pattern.silk || []).filter((s) => s.kind === 'rect')
@@ -652,6 +668,40 @@ export function projectBoardFromCircuit(circuit, opts = {}) {
         to: nodes[i].partId, toTerminal: nodes[i].pin,
       });
     }
+  }
+  // The canvas powers circuits through rail SYMBOLS; a board needs the
+  // connector those rails stand for. Two recoveries here, both measured
+  // as losses before the fix: (a) extractNetlist strips rail NODES from
+  // its nets, so rail-to-part edges come from the raw wires instead;
+  // (b) one power header is synthesized, pin 1 = VCC, then one pin per
+  // further rail, so the power nets have a physical landing.
+  const rails = circuit.parts.filter((q) => q.kind === 'vcc' || q.kind === 'gnd');
+  const railIds = new Set(rails.map((q) => q.id));
+  for (const w of circuit.wires || []) {
+    const fe = wireEndpoint(w, 'from');
+    const te = wireEndpoint(w, 'to');
+    if (!fe?.part || !te?.part) continue;
+    const railEnd = railIds.has(fe.part) ? fe : railIds.has(te.part) ? te : null;
+    const other = railEnd === fe ? te : fe;
+    if (!railEnd || railIds.has(other.part)) continue;
+    wires.push({ from: railEnd.part, fromTerminal: railEnd.terminal, to: other.part, toTerminal: other.terminal });
+  }
+  if (rails.length && !parts.some((q) => q.id === 'J_PWR')) {
+    const seen = new Set();
+    const railPins = [];
+    for (const rail of rails.sort((a, b) => (a.kind === 'vcc' ? -1 : 1))) {
+      if (seen.has(rail.kind)) continue;
+      seen.add(rail.kind);
+      railPins.push(rail);
+    }
+    parts.push({ id: 'J_PWR', kind: 'header', params: { pins: Math.max(2, railPins.length) } });
+    railPins.forEach((rail, i) => {
+      // The rail marker parts ride along so netsFromCircuit can dissolve
+      // them into their NAMED nets (the netlist extractor had already
+      // stripped them from `parts`).
+      parts.push({ id: rail.id, kind: rail.kind, params: {} });
+      wires.push({ from: rail.id, fromTerminal: rail.kind, to: 'J_PWR', toTerminal: `p${i + 1}` });
+    });
   }
   return projectBoard({ parts, wires }, { overrides: circuit.pcb || null, ...opts });
 }

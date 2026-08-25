@@ -18,8 +18,22 @@ exist with the kicad-cli DRC oracle in CI, Phase 8's core is proven
 keys sit on the ground node after lifting, and the repair frees
 them), and a THIRTEEN-BOARD real-world corpus (eight committed under
 verified permissive licences, see test/fixtures/boards/PROVENANCE.md)
-pinned eight reader bugs the first sweep surfaced. Still open: a
-real MNA-level fault demo lesson, Gerber export, EasyEDA-Pro. Measured along the way: the broken calculator's 12 findings
+pinned eight reader bugs the first sweep surfaced. Session three
+finished those too: the MNA-level fault demo exists twice — as a test
+(board-fault-sim: the planted terminal-short lights the LED with
+nobody touching the key, solved by bw-board's real engine) and as a
+GALLERY LESSON (sb3-creator 72-soldered-key, its planted verdict
+pinned in index.json via pcbExpectedFindings and enforced exactly by
+the gallery gate); rail-fed canvas circuits now project complete
+boards (the vcc/gnd symbols materialise as a power header, and the
+rail edges the netlist extractor strips are recovered from the raw
+wires); projected boards carry a recognisable kind:variant package
+vocabulary plus pin-1 legends (the fault demo caught terminal rules
+silently skipping every projected board); and exporters/gerber.js
+writes the full fab set (RS-274X copper/mask/silk/outline + Excellon
+drills, pour holes plotted LPC, rotated pads as exact regions).
+Still open, honestly: silk TEXT stroking in Gerber, slot drills,
+EasyEDA-Pro. Measured along the way: the broken calculator's 12 findings
 (all six dead keys by name), and three REAL hairline shorts the
 manual repair itself introduced on the "fixed" board — vias overlapping
 foreign tracks by 10–17 µm, found by the exact checker, confirmed

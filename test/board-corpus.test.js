@@ -122,13 +122,17 @@ describe('gallery boards (skips without the sibling corpus)', { skip: !EXAMPLES 
   });
 
   for (const entry of entries) {
-    test(`${entry.id}: the shipped board is clean and detects`, () => {
+    test(`${entry.id}: the shipped board carries exactly its declared verdict`, () => {
       const text = readFileSync(join(EXAMPLES, entry.files.pcb), 'utf8');
       const board = importBoard(entry.files.pcb, text);
       assert.ok(board.parts.length > 0);
       assert.deepEqual(board.warnings, []);
-      assert.deepEqual(runPcbDrc(board), [],
-        `${entry.id}: a SHIPPED gallery board must be defect-free`);
+      // Default: defect-free. A TEACHING board declares its planted
+      // faults in pcbExpectedFindings ({rule/severity: count}), and the
+      // gate then pins the verdict EXACTLY — gaining or losing a finding
+      // both fail, so a lesson's fault can neither heal nor spread.
+      assert.deepEqual(verdictOf(runPcbDrc(board)), entry.pcbExpectedFindings || {},
+        `${entry.id}: the shipped board's verdict must match its declaration`);
       renderBoardSvg(board);
     });
   }
