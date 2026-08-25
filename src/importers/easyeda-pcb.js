@@ -43,6 +43,7 @@
 
 // parseLibAttrs is the schematic importer's; one backtick parser, not two.
 import { parseLibAttrs } from './easyeda.js';
+import { liftBoardToCircuit } from '../model/board-lift.js';
 
 // 1 EasyEDA unit = 10 mil = 0.254 mm.
 export const MM_PER_UNIT = 0.254;
@@ -610,10 +611,9 @@ export function importEasyEdaPcb(text) {
 /**
  * The importCircuit-contract wrapper: `{parts, wires, warnings, unmapped}`
  * like every other importer, with the board model riding along as `board`.
- * The schematic canvas gets NOTHING from copper — lifting a board back into
- * a simulatable circuit is Phase 0.5's job, not a side effect of opening a
- * file. Until the lift exists, parts/wires stay empty and the warning says
- * where the content went.
+ * parts/wires come from the Phase-0.5 LIFT: kinds recognised from package
+ * strings, wires from the COPPER netlist — the circuit the board actually
+ * implements, shorts and all. `report` carries the lift's accounting.
  */
 export function importEasyEdaPcbAsCircuit(text) {
   const board = importEasyEdaPcb(text);
@@ -621,11 +621,13 @@ export function importEasyEdaPcbAsCircuit(text) {
     ? `Opened as a board: ${board.parts.length} footprints, ${board.nets.length} nets, ` +
       `${board.tracks.length} tracks on ${board.copperLayers.length} copper layers.`
     : 'Opened as a board, but it contained no footprints.';
+  const lift = liftBoardToCircuit(board);
   return {
-    parts: [], wires: [],
-    warnings: [summary, ...board.warnings],
-    unmapped: [],
+    parts: lift.parts, wires: lift.wires,
+    warnings: [summary, ...board.warnings, ...lift.warnings],
+    unmapped: lift.unmapped,
     board,
+    report: lift.report,
   };
 }
 

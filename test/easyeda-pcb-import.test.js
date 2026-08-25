@@ -256,10 +256,11 @@ describe('detection', () => {
     assert.ok(r.warnings.some((w) => /Pro/.test(w)));
   });
 
-  test('importCircuit easyeda-pcb keeps the circuit contract and carries the board', () => {
+  test('importCircuit easyeda-pcb lifts the board into a circuit', () => {
     const r = importCircuit('easyeda-pcb', read('easyeda-pcb-mini.json'));
-    assert.deepEqual(r.parts, []);
-    assert.deepEqual(r.wires, []);
+    // The lift is tested for real in board-lift.test.js; here only the
+    // contract: recognised parts arrive, the board rides along.
+    assert.deepEqual(r.parts.map((p) => p.kind).sort(), ['button', 'resistor']);
     assert.ok(Array.isArray(r.unmapped));
     assert.equal(r.board.parts.length, 2);
     assert.ok(r.warnings.some((w) => /board/i.test(w)));
