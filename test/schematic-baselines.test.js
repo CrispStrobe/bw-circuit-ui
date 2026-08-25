@@ -23,7 +23,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { BASELINE_CASES, CLASS_I_WORST, CONTACT_WORST, ART_FIT_WORST,
   SYMBOL_CONTACT_EXEMPLAR, MISSING_PIN_EXEMPLAR,
-  BASELINE_DIR, renderCircuitFile } from '../scripts/render-schematic.mjs';
+  BASELINE_DIR, renderCircuitFile,
+  sourceHash, corpusSha, readCorpusStamp } from '../scripts/render-schematic.mjs';
 import { discover, analyse } from '../scripts/schematic-audit.mjs';
 
 const EXPLICIT_ROOT = process.env.EXAMPLES_DIR || null;
@@ -64,16 +65,62 @@ describe('reviewed schematic baselines', () => {
       + 'this gate claims.');
   });
 
+  test('the corpus these baselines were reviewed against is recorded', () => {
+    // A baseline is a picture of ANOTHER repository's tree, and that tree
+    // moves: 78-a2-calculator/circuit.json was held back and released again
+    // three times on 2026-08-25. Without a stamp the gate can only say
+    // "X.svg changed", which lands on whoever pushes next and reads like a
+    // rendering regression when it is an upstream edit.
+    const stamp = readCorpusStamp();
+    assert.ok(stamp, 'docs/schematic-baselines/CORPUS.json is missing. Regenerate the '
+      + 'baselines (node scripts/render-schematic.mjs --baselines), which writes it in the '
+      + 'same act — a stamp written separately is a stamp that drifts.');
+
+    const missing = BASELINE_CASES.map(([rel]) => rel).filter((rel) => !(rel in stamp.sources));
+    assert.deepEqual(missing, [],
+      'a baselined circuit has no recorded source hash — the baseline set grew without the '
+      + 'stamp being rewritten, so the gate cannot tell an upstream change from a rendering one '
+      + 'for those cases.');
+
+    const now = corpusSha(examplesRoot);
+    if (now && stamp.corpusSha && now !== stamp.corpusSha) {
+      // NOT a failure: the corpus moving is normal, and most moves touch
+      // nothing these baselines draw. It is worth SAYING, so the next reader
+      // is not surprised by which sha they are looking at.
+      console.log(`\n  corpus has moved since the baselines were stamped: `
+        + `${stamp.corpusSha.slice(0, 7)} -> ${now.slice(0, 7)}`);
+    }
+  });
+
   test('each baseline renders byte-for-byte as reviewed', () => {
+    const stamp = readCorpusStamp() || { sources: {} };
+    const upstream = [];   // the SOURCE moved: not this repo's change
+    const ours = [];       // source identical, drawing different: ours
     for (const [rel, name] of BASELINE_CASES) {
       const reviewedPath = path.join(BASELINE_DIR, name);
       assert.ok(existsSync(reviewedPath), `${name} has no reviewed baseline on disk`);
       const actual = renderCircuitFile(path.join(examplesRoot, rel));
       const reviewed = readFileSync(reviewedPath, 'utf-8');
-      assert.equal(actual, reviewed,
-        `${name} changed. Render it and LOOK at it before accepting: `
-        + `node scripts/render-schematic.mjs --circuit ${rel} --out /tmp/x`);
+      if (actual === reviewed) continue;
+      const before = stamp.sources[rel];
+      const after = sourceHash(path.join(examplesRoot, rel));
+      (before && after && before !== after ? upstream : ours).push({ rel, name, before, after });
     }
+
+    // Report the upstream ones FIRST and separately: they are somebody else's
+    // edit arriving, and conflating them with a rendering regression is how a
+    // corpus move gets blamed on whoever pushed next.
+    assert.deepEqual(upstream.map((u) => u.name), [],
+      'THE CORPUS MOVED under these baselines — the source circuit changed upstream, so this '
+      + 'is not a rendering regression:\n'
+      + upstream.map((u) => `    ${u.rel}  ${u.before} -> ${u.after}  (${u.name})`).join('\n')
+      + '\n  Look at the new drawing, then re-stamp with '
+      + '`EXAMPLES_DIR=... node scripts/render-schematic.mjs --baselines`.');
+
+    assert.deepEqual(ours.map((o) => o.name), [],
+      'the drawing changed while every source circuit stayed byte-identical, so this IS a '
+      + 'rendering change in this repo. Render it and LOOK at it before accepting: '
+      + `node scripts/render-schematic.mjs --circuit ${ours[0]?.rel ?? '<case>'} --out /tmp/x`);
   });
 
   test('rendering twice gives the same bytes (no id or ordering leak)', () => {

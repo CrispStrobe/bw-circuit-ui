@@ -424,3 +424,79 @@ before the earlier swap. Reviewed as 417 → 350 elements, consistent with two
 and re-baselined three times in one day, and the baseline gate records no
 corpus sha — so the churn is invisible until the gate fails, and it fails for
 whoever pushes next rather than for whoever moved the corpus.
+
+---
+
+# Pinning the corpus in the baseline gate
+
+The previous section flagged it: the baseline gate recorded no corpus sha, so
+when sb3-creator moved under it the failure said only `X.svg changed` and
+landed on whoever pushed next — reading like a rendering regression when it was
+an upstream edit. `78-a2-calculator` moved **five times on 2026-08-25**, and
+the history shows why it was not thrash but a deliberate hold:
+
+```
+b627b0d  A2 rescue: land the crashed session's work…
+86cc6cb  Hold 78-a2-calculator back: its new display kind has no part in bw-circuit-ui
+818557c  cui pin 410f8ce -> af5cc08, and 78-a2-calculator comes off the shelf
+```
+
+## What is recorded, and why not just the sha
+
+`docs/schematic-baselines/CORPUS.json`, written by
+`render-schematic.mjs --baselines` **in the same act that writes the SVGs** —
+a stamp written separately is a stamp that drifts:
+
+```json
+{ "corpusSha": "42c6b241…",
+  "sources": { "74-ammeter/circuit.json": "6d08fed1b68d4de0", … 32 entries } }
+```
+
+A per-file **content hash**, not just the git sha. The sha says the tree moved;
+the hashes say whether it moved anything *these baselines actually draw* — and
+they still work where the corpus is a copy, a tarball, or a shallow clone with
+no useful history. The sha is informational only.
+
+## The gate now names the cause
+
+When a baseline differs, the source hash decides which of two very different
+things happened:
+
+| source hash | verdict |
+|---|---|
+| **changed** | `THE CORPUS MOVED under these baselines … so this is not a rendering regression`, naming the file and both hashes |
+| **identical** | `the drawing changed while every source circuit stayed byte-identical, so this IS a rendering change in this repo` |
+
+A corpus move that touches nothing these baselines draw is **not** a failure —
+it prints a line and passes:
+
+```
+corpus has moved since the baselines were stamped: 42c6b24 -> 23a16d4
+```
+
+which happened, unprompted, during the verification run for this very change.
+
+## Mutation-proved four ways
+
+```
+1. a baselined SOURCE changes upstream (a corpus COPY, sibling never touched)
+   not ok 4 — THE CORPUS MOVED under these baselines …
+              74-ammeter/circuit.json  6d08fed1b68d4de0 -> 1e80dc72c3cec988
+
+2. the PROJECTION changes, sources byte-identical (MARGIN_X 70 -> 72)
+   not ok 4 — the drawing changed while every source circuit stayed
+              byte-identical, so this IS a rendering change in this repo
+
+3. a baseline added without re-stamping
+   not ok 3 — a baselined circuit has no recorded source hash …
+
+4. the stamp deleted
+   not ok 3 — docs/schematic-baselines/CORPUS.json is missing …
+```
+
+Note the first proof: the corpus is a read-only sibling, so the "upstream
+change" was made in a **copy** pointed at by `EXAMPLES_DIR`, never in the
+mirror. The first attempt at it also failed to reproduce — moving a part's
+`x` changes nothing, because the schematic computes its own layout — so the
+edit had to be something the drawing actually reads (a resistor's `ohms`,
+which is rendered as its value label).

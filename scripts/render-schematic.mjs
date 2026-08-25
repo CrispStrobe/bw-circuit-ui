@@ -12,7 +12,9 @@
  *   node scripts/render-schematic.mjs --circuit <file.json> [--out DIR] [--name NAME.svg]
  *   node scripts/render-schematic.mjs --baselines            # rewrite every baseline
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -104,6 +106,41 @@ export const BASELINE_CASES = [...CLASS_I_WORST, ...CONTACT_WORST, ...ART_FIT_WO
 
 export const BASELINE_DIR = path.join(ROOT, 'docs', 'schematic-baselines');
 
+/**
+ * The corpus each baseline was reviewed against.
+ *
+ * Baselines are a picture of ANOTHER repository's tree, and that tree moves.
+ * `78-a2-calculator/circuit.json` was swapped, swapped back and re-baselined
+ * three times on 2026-08-25 alone. Without this file the gate can only say
+ * "X.svg changed", which lands on whoever pushes next rather than on whoever
+ * moved the corpus — and reads like a rendering regression when it is not one.
+ *
+ * A per-file CONTENT hash, not just the corpus git sha: the sha says the tree
+ * moved, the hashes say whether it moved anything THESE baselines depend on,
+ * and they still work where the corpus is a copy, a tarball or a shallow
+ * clone with no useful history.
+ */
+export const CORPUS_STAMP = path.join(BASELINE_DIR, 'CORPUS.json');
+
+/** sha256 of a file's bytes, or null if it is not there. */
+export function sourceHash (file) {
+    if (!existsSync(file)) return null;
+    return createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 16);
+}
+
+/** The corpus's git sha, when it happens to be a checkout. Informational. */
+export function corpusSha (examples) {
+    try {
+        return execFileSync('git', ['-C', examples, 'rev-parse', 'HEAD'],
+            { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    } catch { return null; }
+}
+
+/** Read the recorded stamp, or null when there is none yet. */
+export function readCorpusStamp () {
+    try { return JSON.parse(readFileSync(CORPUS_STAMP, 'utf-8')); } catch { return null; }
+}
+
 /** Render one circuit file to an SVG string, deterministically. */
 export function renderCircuitFile (file) {
     // resetIds() first: generated part/wire ids leak into the output otherwise
@@ -126,10 +163,19 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const examples = process.env.EXAMPLES_DIR;
         if (!examples) { console.error('set EXAMPLES_DIR'); process.exit(2); }
         mkdirSync(BASELINE_DIR, { recursive: true });
+        const sources = {};
         for (const [rel, name] of BASELINE_CASES) {
             writeFileSync(path.join(BASELINE_DIR, name), renderCircuitFile(path.join(examples, rel)));
+            sources[rel] = sourceHash(path.join(examples, rel));
             console.log('wrote', name);
         }
+        // Stamp what they were reviewed against, in the same act that writes
+        // them — a stamp written separately is a stamp that drifts.
+        const stamp = { corpusSha: corpusSha(examples), sources };
+        writeFileSync(CORPUS_STAMP, `${JSON.stringify(stamp, null, 2)}\n`);
+        console.log('wrote CORPUS.json', stamp.corpusSha
+            ? `(corpus ${stamp.corpusSha.slice(0, 7)}, ${Object.keys(sources).length} sources)`
+            : `(${Object.keys(sources).length} sources; corpus is not a git checkout)`);
     } else {
         const circuit = value('--circuit');
         if (!circuit) { console.error('usage: --circuit <file.json> [--out DIR] [--name N.svg]'); process.exit(2); }
