@@ -49,3 +49,21 @@ jobs:
 
       - name: A2 board preset
         run: npm run test:a2
+
+  kicad-oracle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # The independent DRC oracle: our router's output judged by a
+      # checker nobody here wrote. kicad-cli 8+ has `pcb drc --format json`.
+      - name: Install kicad-cli
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends kicad
+      - name: Clone bw-board (engine sibling, needed by test/_setup.js)
+        run: git clone --depth 1 https://github.com/CrispStrobe/bw-board.git ../bw-board
+      - name: Run the oracle
+        run: node scripts/kicad-oracle.mjs
