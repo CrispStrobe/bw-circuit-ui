@@ -1379,6 +1379,19 @@ check below shows the move changed no baselined drawing.
 | **V** | two pin NAMES whose text boxes overlap | 105 | **0** |
 | **W** | a net label's TEXT on a foreign net's conductor | 172 | **8**, all one shape |
 
+**CI evidence** —
+[run 32843838543](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/32843838543)
+at `ef7d924`, against freshly cloned siblings:
+
+```
+  discovered 2099, analysed 2099, failed 0
+  U drawn geometry outside the viewBox               0 / 2099 circuits, 0 occurrences
+  57689 text runs inspected — no class before this one read any of them
+  V two pin NAMES overlapping                        0 / 2099 circuits, 0 occurrences
+  W net label TEXT on foreign copper                 4 / 2099 circuits, 8 occurrences
+# tests 994   # pass 980   # fail 0   # skipped 14
+```
+
 ## 20. V — the box cannot grow, so the names shrink
 
 All 105 were three kinds: **555 ×57, rgb_led ×28, relay ×20**. A labelled box
