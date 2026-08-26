@@ -1,7 +1,7 @@
 # The ladders — gates to a computer, one verified rung at a time
 
-Two teaching sequences live in `gallery/`, and they are one arc: `l0..l9`
-starts at a single AND gate and ends at a calculator; `c0..c10` starts at a
+Two teaching sequences live in `gallery/`, and they are one arc: `l0..l10`
+starts at a single AND gate and ends at a keypad you can type into; `c0..c10` starts at a
 555 ticking and ends at a machine that runs a program. Every rung is a real
 circuit made of parts you can buy, containing no CPU and no firmware, and
 every rung is **simulated and asserted** — see §4, which is the part that
@@ -12,7 +12,7 @@ They are published twice, deliberately:
 | where | what it is | who reads it |
 |---|---|---|
 | `gallery/l*.json`, `gallery/c*.json` | wire-level, `x/y` all zero | the test corpus; the electrical truth |
-| `sb3-creator` `examples/pc90..pc110` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
+| `sb3-creator` `examples/pc90..pc111` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
 
 `scripts/gen-logic-ladder.mjs` and `scripts/gen-computer-ladder.mjs` write the
 first; `scripts/gen-logic-examples.mjs --out <sb3-creator checkout>` seats them
@@ -20,7 +20,7 @@ and writes the second. **Edit the generators, never the JSON.**
 
 ---
 
-## 1. The logic ladder — `l0..l9`
+## 1. The logic ladder — `l0..l10`
 
 | rung | chips | the idea |
 |---|---|---|
