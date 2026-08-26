@@ -1338,16 +1338,38 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         );
 
       case 'ps2': {
-        // PS/2 keyboard connector — 2 terminals (data + clock), not a DIP.
-        const bw = 40, bh = 25;
+        // A real, clickable keyboard face. Every cap sends a Code Set 2
+        // make/break pair through the PS/2 device and VIA capture chain.
+        const rows = [
+          [['Esc','escape'],['F1','f1'],['F2','f2'],['F3','f3'],['F4','f4'],['F5','f5'],['F6','f6'],['F7','f7'],['F8','f8'],['F9','f9'],['F10','f10'],['F11','f11'],['F12','f12']],
+          [['`','backtick'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['6','6'],['7','7'],['8','8'],['9','9'],['0','0'],['-','minus'],['=','equals'],['⌫','backspace']],
+          [['Tab','tab'],['Q','q'],['W','w'],['E','e'],['R','r'],['T','t'],['Y','y'],['U','u'],['I','i'],['O','o'],['P','p'],['[','lbracket'],[']','rbracket'],['\\','backslash']],
+          [['Caps','capslock'],['A','a'],['S','s'],['D','d'],['F','f'],['G','g'],['H','h'],['J','j'],['K','k'],['L','l'],[';','semicolon'],["'",'quote'],['Enter','enter']],
+          [['Shift','lshift'],['Z','z'],['X','x'],['C','c'],['V','v'],['B','b'],['N','n'],['M','m'],[',','comma'],['.','period'],['/','slash'],['Shift','rshift']],
+          [['Ctrl','lctrl'],['Alt','lalt'],['Space','space'],['←','left'],['↑','up'],['↓','down'],['→','right']],
+        ];
+        const bw = 190, bh = 84, keyW = 12, keyH = 9;
         return (
           <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
             <rect x={-bw / 2} y={-bh / 2} width={bw} height={bh} rx={4}
               fill="#2c2c3e" stroke={selStroke || '#6a5acd'} strokeWidth={isSelected ? 3 : 1.5} />
-            <text x={0} y={-2} textAnchor="middle" fill="#b0b8ff" fontSize={7}
-              fontFamily="monospace" fontWeight="bold">PS/2</text>
-            <text x={0} y={8} textAnchor="middle" fill="#666" fontSize={5}
-              fontFamily="monospace">KBD</text>
+            {rows.map((row, ry) => {
+              const gap = 1.5;
+              const total = row.length * keyW + (row.length - 1) * gap;
+              return row.map(([label, code], rx) => {
+                const x = -total / 2 + rx * (keyW + gap) + keyW / 2;
+                const y = -bh / 2 + 9 + ry * 11;
+                return <g key={code} data-ps2-key={code}
+                  onPointerDown={simulate && onKeypadKey ? (e) => { e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); onKeypadKey(id, {ps2: code, down: true}); } : undefined}
+                  onPointerUp={simulate && onKeypadKey ? (e) => { e.stopPropagation(); onKeypadKey(id, {ps2: code, down: false}); } : undefined}
+                  onPointerCancel={simulate && onKeypadKey ? () => onKeypadKey(id, {ps2: code, down: false}) : undefined}>
+                  <rect x={x-keyW/2} y={y-keyH/2} width={keyW} height={keyH} rx={1} fill="#161625" stroke="#667" strokeWidth={0.4}/>
+                  <text x={x} y={y+1.5} textAnchor="middle" fill="#dbeafe" fontSize={3.4} fontFamily="monospace">{label}</text>
+                </g>;
+              });
+            })}
+            <text x={0} y={bh / 2 - 4} textAnchor="middle" fill="#b0b8ff" fontSize={5}
+              fontFamily="monospace" fontWeight="bold">PS/2 · CODE SET 2 · 74 KEYS</text>
             <text x={0} y={bh / 2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>

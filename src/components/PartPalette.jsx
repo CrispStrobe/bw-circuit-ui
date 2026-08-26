@@ -180,6 +180,8 @@ const CATEGORIES = [
         tooltip: '10-segment LED bar — 20 pins (a0-a9 anodes, k0-k9 cathodes), DIP straddle' },
       { kind: 'simplevga_card', label: 'SimpleVGA Card', params: {}, color: '#6a5acd',
         tooltip: 'gfoot SimpleVGA6502 VGA card — machine-level video (vcc, gnd, bus)' },
+      { kind: 'ps2', label: 'PS/2 Keyboard', params: {}, color: '#4338ca',
+        tooltip: 'Clickable 74-key Code Set 2 keyboard — d0-d7 parallel capture + DA strobe' },
     ],
   },
   {
