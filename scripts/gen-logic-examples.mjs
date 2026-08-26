@@ -393,6 +393,27 @@ const LADDER = [
       ['cell 3', 'data 5 (0101)'], ['after 3 cycles', 'OUT shows 10'], ['cell 1 -> SUB', 'OUT shows 0']],
     cols: ['memory', 'contents'],
   },
+  {
+    src: 'l10-diode-keypad', id: 'pc111-diode-keypad', difficulty: 4,
+    en: { title: 'A decimal keypad made of diodes',
+      teaches: 'diode-OR encoding, the forward drop, why priority encoders exist' },
+    de: { title: 'Eine Dezimaltastatur aus Dioden',
+      desc: 'Zehn Tasten, vier Leitungen, fünfzehn Dioden, kein einziger Chip. Jede Taste ist über Dioden auf '
+        + 'genau die Bitleitungen verodert, die ihre Zahl nennt — drücke 5, und sie treibt die Einer- und die '
+        + 'Vierer-Leitung, denn 5 ist 0101. Das ist der Teil, der aus einer Binärmaschine eine macht, in die '
+        + 'man dezimal tippen kann. '
+        + 'Zwei Dinge fallen auf, beide echt. Eine aktive Leitung liegt bei etwa 4,3 V statt 5 V, weil jedes '
+        + 'Signal hier durch eine Diode läuft und eine Diode 0,7 V kostet — du siehst die Flussspannung in den '
+        + 'LEDs. Und zwei gleichzeitig gedrückte Tasten ergeben die ODER-Verknüpfung ihrer Codes statt einer '
+        + 'der beiden Zahlen: 1 und 2 zusammen lesen sich als 3. Eine Diodenmatrix hat keine Meinung dazu, '
+        + 'welche Taste zuerst kam — genau deshalb sitzt hinter echten Tastaturen ein PRIORITÄTS-Encoder. '
+        + 'Taste 0 hat gar keine Diode, also sehen „Null gedrückt" und „nichts gedrückt" gleich aus. Auch dafür '
+        + 'haben echte Encoder eine eigene Leitung, die meldet, dass überhaupt eine Taste unten ist.',
+      teaches: 'Dioden-ODER-Kodierung, Flussspannung, warum es Prioritäts-Encoder gibt' },
+    table: [['1', '0001'], ['5', '0101'], ['9', '1001'], ['1 and 2 together', '0011 — a digit nobody pressed'],
+      ['0 / nothing', 'both 0000']],
+    cols: ['key', 'bit lines'],
+  },
 ];
 
 const mdTable = (cols, rows) => [

@@ -34,6 +34,7 @@ and writes the second. **Edit the generators, never the JSON.**
 | l7 calculator | '283 CD4511 | set A, set B, read a decimal digit |
 | l8 add/subtract | '283 '86 | one mode switch to the XOR bank *and* the carry-in |
 | l9 BCD calculator | '283 ×2 '08 '32 CD4511 ×2 | add six when the sum leaves the decimal range |
+| l10 diode keypad | 15 diodes, no chip | decimal IN: diode-OR encoding, and why priority encoders exist |
 
 **Why l7 blanks above 9 and l9 does not.** A BCD decoder knows ten digits, so
 a sum of 12 has nothing to show — l7 says so in its intro rather than

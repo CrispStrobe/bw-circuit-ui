@@ -90,8 +90,8 @@ function sweep2(b, sw, read) {
 describe('the logic ladder — no CPU, nothing to program', () => {
   const files = readdirSync(GALLERY).filter((f) => /^l\d+-.*\.json$/.test(f));
 
-  it('is present: ten rungs, l0 through l9', () => {
-    assert.equal(files.length, 10, `expected 10 logic examples, found ${files.join(', ')}`);
+  it('is present: eleven rungs, l0 through l10', () => {
+    assert.equal(files.length, 11, `expected 11 logic examples, found ${files.join(', ')}`);
   });
 
   it('contains no CPU and no MCU — that is the point of it', () => {
@@ -286,5 +286,47 @@ describe('L9 — two digits, no giving up at nine', () => {
     b.set('swb', 1); b.settle();
     assert.equal(b.segments('disp_tens'), FONT[1], '9+1 must carry');
     assert.equal(b.segments('disp_ones'), FONT[0]);
+  });
+});
+
+describe('L10 — a decimal keypad made of diodes', () => {
+  /** Press exactly one key: banks hold keys 0-3, 4-7, 8-9. */
+  function press(b, key) {
+    ['k03', 'k47', 'k89'].forEach((bank, i) => {
+      const inBank = key !== null && Math.floor(key / 4) === i;
+      b.set(bank, inBank ? (1 << (key % 4)) : 0);
+    });
+    b.settle();
+  }
+  const code = (b) => [0, 1, 2, 3].reduce((a, i) => a + (b.lit(`led_b${i}`) ? 1 << i : 0), 0);
+
+  it('every digit 0..9 encodes to its own binary code', () => {
+    const b = bench('l10-diode-keypad');
+    for (let key = 0; key <= 9; key++) {
+      press(b, key);
+      assert.equal(code(b), key, `key ${key}`);
+    }
+  });
+
+  it('two keys at once give the OR of their codes, not either number', () => {
+    // The honest limitation of a diode matrix, and the reason real
+    // keypads put a PRIORITY encoder after one. 1 (0001) with 2 (0010)
+    // reads as 3 — a digit nobody pressed.
+    const b = bench('l10-diode-keypad');
+    b.set('k03', (1 << 1) | (1 << 2));   // keys 1 and 2 together
+    b.set('k47', 0); b.set('k89', 0);
+    b.settle();
+    assert.equal(code(b), 3, 'the matrix ORs the codes rather than choosing');
+  });
+
+  it('zero and nothing-pressed are indistinguishable', () => {
+    // Key 0 owns no diodes, so it cannot assert anything. Real encoders
+    // carry a separate "a key is down" line for exactly this reason.
+    const b = bench('l10-diode-keypad');
+    press(b, 0);
+    const zero = code(b);
+    press(b, null);
+    assert.equal(zero, 0);
+    assert.equal(code(b), 0, 'no key pressed reads the same as key 0');
   });
 });

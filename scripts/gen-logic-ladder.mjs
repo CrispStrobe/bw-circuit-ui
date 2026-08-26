@@ -1,5 +1,5 @@
 /**
- * Generate the LOGIC ladder — gallery/l0..l9, 74-series gates on a
+ * Generate the LOGIC ladder — gallery/l0..l10, 74-series gates on a
  * breadboard, no CPU and no MCU anywhere.
  *
  * The gallery had fifteen CPU builds, three MCU boards and one 555. Every
@@ -457,6 +457,65 @@ const done = [];
       + 'Three gates spot the overflow (Cout, or S3 with S2, or S3 with S1), a second 74HC283 adds the six, and '
       + 'that same carry lights the tens digit. Set each bank to a decimal digit 0-9 and read the answer, 0 to 18.',
     _category: 'logic', _difficulty: 5, _stage: 'L9',
+  }));
+}
+
+// ── L10: a decimal keypad, out of diodes ───────────────────────────
+
+{
+  // Ten keys, four wires, fifteen diodes and no chip at all. Each key
+  // is diode-OR'd onto the bit lines its number names: key 5 drives the
+  // ones line and the fours line, because 5 is 0101.
+  //
+  // This is the piece that makes a calculator DECIMAL IN as well as
+  // decimal out, and it is worth building from diodes rather than
+  // dropping in an encoder chip precisely because you can trace it: put
+  // a finger on key 7 and follow three diodes to three lines.
+  const parts = [...rails()];
+  const wires = [];
+  const banks = ['k03', 'k47', 'k89'];
+  banks.forEach((b, i) => {
+    // keys 0-3, 4-7, 8-9 (the last bank uses two of its four positions)
+    parts.push(part(b, 'dip_switch_spst', { switches: i === 0 ? 0b0010 : 0 }));
+    for (let pos = 1; pos <= 4; pos++) wires.push(wire('vcc1', 'vcc', b, `${pos}a`));
+  });
+  // four bit lines, each held down so "no key" reads as a real zero
+  for (let bit = 0; bit < 4; bit++) {
+    const r = `rb${bit}`;
+    parts.push(part(r, 'resistor', { ohms: PULLDOWN_OHMS }));
+    wires.push(wire(r, 'b', 'gnd1', 'gnd'));
+    const led = outputLed(r, 'a', `led_b${bit}`, `rl${bit}`, bit === 3 ? 'red' : 'green');
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+  // one diode per set bit: 15 of them for the digits 0..9
+  let diodes = 0;
+  for (let key = 0; key <= 9; key++) {
+    const bank = banks[Math.floor(key / 4)];
+    const pos = (key % 4) + 1;
+    for (let bit = 0; bit < 4; bit++) {
+      if (!((key >> bit) & 1)) continue;
+      const d = `d${key}_${bit}`;
+      parts.push(part(d, 'diode'));
+      wires.push(wire(bank, `${pos}b`, d, 'anode'));
+      wires.push(wire(d, 'cathode', `rb${bit}`, 'a'));
+      diodes += 1;
+    }
+  }
+  if (diodes !== 15) throw new Error(`expected 15 diodes for 0..9, built ${diodes}`);
+  done.push(emit('l10-diode-keypad', {
+    vcc: 5, parts, wires,
+    _title: 'A decimal keypad made of diodes',
+    _description: 'Ten keys, four wires, fifteen diodes, no chip. Each key is diode-OR-ed onto the bit lines '
+      + 'its number names — press 5 and it drives the ones line and the fours line, because 5 is 0101. This is '
+      + 'what turns a binary machine into one you can type decimal into. '
+      + 'Two things to notice, both real. A lit line reads about 4.3 V rather than 5, because every signal here '
+      + 'passes through a diode and a diode costs you 0.7 V — you are seeing the forward drop in the LEDs. '
+      + 'And pressing two keys at once gives you the OR of their codes rather than either number: 1 and 2 '
+      + 'together read as 3. A diode matrix has no opinion about which key came first, which is exactly why '
+      + 'real keypads put a PRIORITY encoder after one. '
+      + 'Key 0 has no diodes at all, so "zero pressed" and "nothing pressed" look identical — the reason real '
+      + 'encoders also carry a separate "a key is down" line.',
+    _category: 'logic', _difficulty: 4, _stage: 'L10',
   }));
 }
 

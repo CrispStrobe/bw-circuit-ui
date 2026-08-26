@@ -1,0 +1,618 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "k03",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 2
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "k47",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 0
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "k89",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 0
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rb0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_b0",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rb1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_b1",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rb2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_b2",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rb3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_b3",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d1_0",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d2_1",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d3_0",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d3_1",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d4_2",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d5_0",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d5_2",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d6_1",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d6_2",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d7_0",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d7_1",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d7_2",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d8_3",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d9_0",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "d9_3",
+      "kind": "diode",
+      "params": {},
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k03",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k03",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k03",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k03",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k47",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k47",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k47",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k47",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k89",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k89",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k89",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "k89",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "rb0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rb0",
+      "fromTerminal": "a",
+      "to": "led_b0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_b0",
+      "fromTerminal": "cathode",
+      "to": "rl0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rb1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rb1",
+      "fromTerminal": "a",
+      "to": "led_b1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_b1",
+      "fromTerminal": "cathode",
+      "to": "rl1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rb2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rb2",
+      "fromTerminal": "a",
+      "to": "led_b2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_b2",
+      "fromTerminal": "cathode",
+      "to": "rl2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rb3",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rb3",
+      "fromTerminal": "a",
+      "to": "led_b3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_b3",
+      "fromTerminal": "cathode",
+      "to": "rl3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl3",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "k03",
+      "fromTerminal": "2b",
+      "to": "d1_0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d1_0",
+      "fromTerminal": "cathode",
+      "to": "rb0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k03",
+      "fromTerminal": "3b",
+      "to": "d2_1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d2_1",
+      "fromTerminal": "cathode",
+      "to": "rb1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k03",
+      "fromTerminal": "4b",
+      "to": "d3_0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d3_0",
+      "fromTerminal": "cathode",
+      "to": "rb0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k03",
+      "fromTerminal": "4b",
+      "to": "d3_1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d3_1",
+      "fromTerminal": "cathode",
+      "to": "rb1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k47",
+      "fromTerminal": "1b",
+      "to": "d4_2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d4_2",
+      "fromTerminal": "cathode",
+      "to": "rb2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k47",
+      "fromTerminal": "2b",
+      "to": "d5_0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d5_0",
+      "fromTerminal": "cathode",
+      "to": "rb0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k47",
+      "fromTerminal": "2b",
+      "to": "d5_2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d5_2",
+      "fromTerminal": "cathode",
+      "to": "rb2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k47",
+      "fromTerminal": "3b",
+      "to": "d6_1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d6_1",
+      "fromTerminal": "cathode",
+      "to": "rb1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k47",
+      "fromTerminal": "3b",
+      "to": "d6_2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d6_2",
+      "fromTerminal": "cathode",
+      "to": "rb2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k47",
+      "fromTerminal": "4b",
+      "to": "d7_0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d7_0",
+      "fromTerminal": "cathode",
+      "to": "rb0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k47",
+      "fromTerminal": "4b",
+      "to": "d7_1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d7_1",
+      "fromTerminal": "cathode",
+      "to": "rb1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k47",
+      "fromTerminal": "4b",
+      "to": "d7_2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d7_2",
+      "fromTerminal": "cathode",
+      "to": "rb2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k89",
+      "fromTerminal": "1b",
+      "to": "d8_3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d8_3",
+      "fromTerminal": "cathode",
+      "to": "rb3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k89",
+      "fromTerminal": "2b",
+      "to": "d9_0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d9_0",
+      "fromTerminal": "cathode",
+      "to": "rb0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "k89",
+      "fromTerminal": "2b",
+      "to": "d9_3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "d9_3",
+      "fromTerminal": "cathode",
+      "to": "rb3",
+      "toTerminal": "a"
+    }
+  ],
+  "_title": "A decimal keypad made of diodes",
+  "_description": "Ten keys, four wires, fifteen diodes, no chip. Each key is diode-OR-ed onto the bit lines its number names — press 5 and it drives the ones line and the fours line, because 5 is 0101. This is what turns a binary machine into one you can type decimal into. Two things to notice, both real. A lit line reads about 4.3 V rather than 5, because every signal here passes through a diode and a diode costs you 0.7 V — you are seeing the forward drop in the LEDs. And pressing two keys at once gives you the OR of their codes rather than either number: 1 and 2 together read as 3. A diode matrix has no opinion about which key came first, which is exactly why real keypads put a PRIORITY encoder after one. Key 0 has no diodes at all, so \"zero pressed\" and \"nothing pressed\" look identical — the reason real encoders also carry a separate \"a key is down\" line.",
+  "_category": "logic",
+  "_difficulty": 4,
+  "_stage": "L10"
+}
