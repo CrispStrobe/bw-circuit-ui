@@ -896,7 +896,11 @@ function activeLowLed(driver, terminal, lid, rid, color = 'red') {
       + 'An instruction is two bits of opcode and two bits of address, so the program and its data live in the '
       + 'first four cells. Write LDA 3, ADD 3, OUT, and 5 into cells 0 to 3 and the output lands on ten. '
       + 'Five different things can drive the bus here and exactly one ever does — that single rule, held by '
-      + 'the control matrix, is what separates a computer from a pile of registers.',
+      + 'the control matrix, is what separates a computer from a pile of registers. '
+      + 'Keep clocking past OUT and the answer garbles, which is not a fault: a two-bit opcode has room for '
+      + 'exactly four instructions and all four are spent, so there is no HALT. The counter runs on into cell 3, '
+      + 'reads the DATA there as though it were an instruction, and obeys it. Every real machine needs either a '
+      + 'halt or a jump for this reason, and neither fits in two bits.',
     _category: 'computer', _difficulty: 5, _stage: 'C10',
   }));
 }

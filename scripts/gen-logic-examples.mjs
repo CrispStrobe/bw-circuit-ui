@@ -382,7 +382,11 @@ const LADDER = [
         + 'Idee des gespeicherten Programms. '
         + 'Fünf verschiedene Dinge könnten diesen Bus treiben, und immer treibt ihn genau eines. Diese eine '
         + 'Regel, aufrechterhalten von der Steuermatrix, unterscheidet einen Computer von einem Haufen '
-        + 'Register.',
+        + 'Register. '
+        + 'Taktet man über OUT hinaus weiter, wird das Ergebnis zerstört — das ist kein Fehler: Ein Zwei-Bit-'
+        + 'Opcode hat Platz für genau vier Befehle, und alle vier sind vergeben, also gibt es kein HALT. Der '
+        + 'Zähler läuft in Zelle 3 weiter, liest die DATEN dort als Befehl und führt sie aus. Genau deshalb '
+        + 'braucht jede echte Maschine ein Halt oder einen Sprung — und keines von beiden passt in zwei Bit.',
       teaches: 'Das gespeicherte Programm, Busdisziplin, Holen und Ausführen von Anfang bis Ende' },
     table: [['cell 0', 'LDA 3 (0011)'], ['cell 1', 'ADD 3 (0111)'], ['cell 2', 'OUT (1100)'],
       ['cell 3', 'data 5 (0101)'], ['after 3 cycles', 'OUT shows 10'], ['cell 1 -> SUB', 'OUT shows 0']],
