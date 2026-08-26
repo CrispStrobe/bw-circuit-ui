@@ -1,0 +1,591 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "swa",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 5
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "swb",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 2
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "u1",
+      "kind": "74hc283",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "u2",
+      "kind": "cd4511",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "disp",
+      "kind": "seven_segment",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ra3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rb0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rb1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rb2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rb3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rs_a",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rs_b",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rs_c",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rs_d",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rs_e",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rs_f",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rs_g",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_carry",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_carry",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "u1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "u1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "u2",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "u2",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "u1",
+      "toTerminal": "cin"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "u2",
+      "toTerminal": "lt"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "u2",
+      "toTerminal": "bl"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "u2",
+      "toTerminal": "le"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swa",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "swa",
+      "fromTerminal": "1b",
+      "to": "ra0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swa",
+      "fromTerminal": "1b",
+      "to": "u1",
+      "toTerminal": "a0"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swa",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "swa",
+      "fromTerminal": "2b",
+      "to": "ra1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swa",
+      "fromTerminal": "2b",
+      "to": "u1",
+      "toTerminal": "a1"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swa",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "swa",
+      "fromTerminal": "3b",
+      "to": "ra2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swa",
+      "fromTerminal": "3b",
+      "to": "u1",
+      "toTerminal": "a2"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swa",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "swa",
+      "fromTerminal": "4b",
+      "to": "ra3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "ra3",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swa",
+      "fromTerminal": "4b",
+      "to": "u1",
+      "toTerminal": "a3"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swb",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "swb",
+      "fromTerminal": "1b",
+      "to": "rb0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rb0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swb",
+      "fromTerminal": "1b",
+      "to": "u1",
+      "toTerminal": "b0"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swb",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "swb",
+      "fromTerminal": "2b",
+      "to": "rb1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rb1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swb",
+      "fromTerminal": "2b",
+      "to": "u1",
+      "toTerminal": "b1"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swb",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "swb",
+      "fromTerminal": "3b",
+      "to": "rb2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rb2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swb",
+      "fromTerminal": "3b",
+      "to": "u1",
+      "toTerminal": "b2"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swb",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "swb",
+      "fromTerminal": "4b",
+      "to": "rb3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rb3",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swb",
+      "fromTerminal": "4b",
+      "to": "u1",
+      "toTerminal": "b3"
+    },
+    {
+      "from": "u1",
+      "fromTerminal": "s0",
+      "to": "u2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "u1",
+      "fromTerminal": "s1",
+      "to": "u2",
+      "toTerminal": "b"
+    },
+    {
+      "from": "u1",
+      "fromTerminal": "s2",
+      "to": "u2",
+      "toTerminal": "c"
+    },
+    {
+      "from": "u1",
+      "fromTerminal": "s3",
+      "to": "u2",
+      "toTerminal": "d"
+    },
+    {
+      "from": "u2",
+      "fromTerminal": "qa",
+      "to": "rs_a",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rs_a",
+      "fromTerminal": "b",
+      "to": "disp",
+      "toTerminal": "a"
+    },
+    {
+      "from": "u2",
+      "fromTerminal": "qb",
+      "to": "rs_b",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rs_b",
+      "fromTerminal": "b",
+      "to": "disp",
+      "toTerminal": "b"
+    },
+    {
+      "from": "u2",
+      "fromTerminal": "qc",
+      "to": "rs_c",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rs_c",
+      "fromTerminal": "b",
+      "to": "disp",
+      "toTerminal": "c"
+    },
+    {
+      "from": "u2",
+      "fromTerminal": "qd",
+      "to": "rs_d",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rs_d",
+      "fromTerminal": "b",
+      "to": "disp",
+      "toTerminal": "d"
+    },
+    {
+      "from": "u2",
+      "fromTerminal": "qe",
+      "to": "rs_e",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rs_e",
+      "fromTerminal": "b",
+      "to": "disp",
+      "toTerminal": "e"
+    },
+    {
+      "from": "u2",
+      "fromTerminal": "qf",
+      "to": "rs_f",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rs_f",
+      "fromTerminal": "b",
+      "to": "disp",
+      "toTerminal": "f"
+    },
+    {
+      "from": "u2",
+      "fromTerminal": "qg",
+      "to": "rs_g",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rs_g",
+      "fromTerminal": "b",
+      "to": "disp",
+      "toTerminal": "g"
+    },
+    {
+      "from": "disp",
+      "fromTerminal": "common",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "u1",
+      "fromTerminal": "cout",
+      "to": "led_carry",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_carry",
+      "fromTerminal": "cathode",
+      "to": "r_carry",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_carry",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    }
+  ],
+  "_title": "A calculator with no computer in it",
+  "_description": "Set A on one switch bank and B on the other; the 74HC283 adds them and the CD4511 turns the 4-bit answer into a decimal digit on the display. There is no CPU, no firmware and nothing to program — the answer is the wiring. Sums of 10 to 15 blank the display: a BCD decoder only knows 0-9, and that honest limit is the reason real adders carry a \"decimal adjust\" stage.",
+  "_category": "logic",
+  "_difficulty": 5,
+  "_stage": "L7"
+}
