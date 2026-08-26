@@ -7,6 +7,7 @@ import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { terminalsForKind } from '../src/model/circuit.js';
+import { getSidecar } from '../src/model/parts-registry.js';
 
 describe('display parts — terminal parity', () => {
   it('bargraph terminals match the engine model (20 pins: a0-a9, k0-k9)', () => {
@@ -21,12 +22,21 @@ describe('display parts — terminal parity', () => {
     }
   });
 
-  it('simplevga_card terminals match its sidecar (3 pins: vcc, gnd, bus)', () => {
-    const terms = terminalsForKind('simplevga_card', {});
-    assert.equal(terms.length, 3, `expected 3, got ${terms.length}`);
-    assert.ok(terms.includes('vcc'), 'has vcc');
-    assert.ok(terms.includes('gnd'), 'has gnd');
-    assert.ok(terms.includes('bus'), 'has bus');
+  it('simplevga_card terminals match its sidecar', () => {
+    // Asserted against the SIDECAR rather than a hardcoded count. The
+    // count was 3 until the card grew a `bank` pin; engine and sidecar
+    // both moved to 4 together and only this expectation stayed behind,
+    // which reads as a parts defect when it is a stale number. Comparing
+    // the two sources keeps the real claim — they must not drift — and
+    // survives the next pin.
+    const terms = new Set(terminalsForKind('simplevga_card', {}));
+    const sidecar = new Set(getSidecar('simplevga_card').terminals.map((t) => t.name));
+    const onlyModel = [...terms].filter((t) => !sidecar.has(t));
+    const onlySidecar = [...sidecar].filter((t) => !terms.has(t));
+    assert.deepEqual(onlyModel, [], `model-only terminals: ${onlyModel}`);
+    assert.deepEqual(onlySidecar, [], `sidecar-only terminals: ${onlySidecar}`);
+    // The three the video face cannot work without.
+    for (const pin of ['vcc', 'gnd', 'bus']) assert.ok(terms.has(pin), `has ${pin}`);
   });
 
   it('bargraph sidecar terminals match engine terminals exactly', () => {
