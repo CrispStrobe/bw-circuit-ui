@@ -124,6 +124,19 @@ on a bench.
   10 the adder recomputes 10+5. The latched value is correct; the lamp shows
   the adder still working after the capture.
 
+- **A real 74-series chip has NO propagation delay in this engine.**
+  `chip-composer.js` models logic levels; only the abstract `gate_*` kinds
+  honour `params.tpdNs`. So a timing lesson cannot be built from buyable
+  parts — an adder made of 74HC08s settles instantly however deep its carry
+  chain runs. This is why there is no "carry look-ahead" rung, and why the
+  comparison lives in `test/gate-delay.test.js` instead, where the delay is
+  real and countable. Measured there, the result is not the textbook one:
+  look-ahead assembled from 2-input packages buys **1.33x the speed for 2.1x
+  the gates**, a bad trade, and only reaches the textbook **2x** when the
+  gates are WIDE. Which is the actual lesson — carry look-ahead ships as
+  dedicated silicon (the 74182 uses 5-input gates) precisely because you
+  cannot get it out of a bag of quad-gate chips.
+
 ---
 
 ## 4. How they are proven
