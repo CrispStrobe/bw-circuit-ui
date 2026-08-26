@@ -1,7 +1,7 @@
 /**
  * The logic ladder is PROVEN, not drawn.
  *
- * gallery/l0..l7 teach 74-series logic with no CPU and no MCU. An example
+ * gallery/l0..l9 teach 74-series logic with no CPU and no MCU. An example
  * that merely loads is worth very little: a mis-numbered gate input or a
  * pin name the engine spells differently produces a circuit that renders
  * beautifully and computes nothing. So every rung here is simulated
@@ -90,8 +90,8 @@ function sweep2(b, sw, read) {
 describe('the logic ladder — no CPU, nothing to program', () => {
   const files = readdirSync(GALLERY).filter((f) => /^l\d+-.*\.json$/.test(f));
 
-  it('is present: eight rungs, l0 through l7', () => {
-    assert.equal(files.length, 8, `expected 8 logic examples, found ${files.join(', ')}`);
+  it('is present: ten rungs, l0 through l9', () => {
+    assert.equal(files.length, 10, `expected 10 logic examples, found ${files.join(', ')}`);
   });
 
   it('contains no CPU and no MCU — that is the point of it', () => {
@@ -237,5 +237,54 @@ describe('L7 — a calculator with no computer in it', () => {
   it('the carry LED still tells the truth when the digit cannot', () => {
     b.set('swa', 15); b.set('swb', 15); b.settle();
     assert.equal(b.lit('led_carry'), true, '15 + 15 = 30 sets the carry');
+  });
+});
+
+describe('L8 — subtraction is the same circuit', () => {
+  it('adds with the mode switch open and subtracts with it closed, all 256 pairs each way', () => {
+    const b = bench('l8-add-subtract');
+    const readOut = () => {
+      const bits = [0, 1, 2, 3].map((i) => (b.lit(`led${i}`) ? 1 : 0));
+      return { sum: bits[0] + 2 * bits[1] + 4 * bits[2] + 8 * bits[3], carry: b.lit('led4') };
+    };
+    for (let a = 0; a < 16; a++) {
+      for (let bb = 0; bb < 16; bb++) {
+        b.set('swa', a); b.set('swb', bb);
+        b.set('swm', 0); b.settle();
+        const add = readOut();
+        assert.equal(add.sum, (a + bb) & 0xF, `${a} + ${bb} sum`);
+        assert.equal(add.carry, a + bb > 15, `${a} + ${bb} carry`);
+        b.set('swm', 1); b.settle();
+        const sub = readOut();
+        assert.equal(sub.sum, (a - bb) & 0xF, `${a} - ${bb} result`);
+        // In two's complement the carry-out is the NOT-borrow flag.
+        assert.equal(sub.carry, a >= bb, `${a} - ${bb}: carry means "no borrow"`);
+      }
+    }
+  });
+});
+
+describe('L9 — two digits, no giving up at nine', () => {
+  const FONT = ['abcdef', 'bc', 'abdeg', 'abcdg', 'bcfg', 'acdfg', 'acdefg', 'abc', 'abcdefg', 'abcdfg'];
+  it('shows every decimal sum 0..18 across two digits', () => {
+    const b = bench('l9-bcd-calculator');
+    for (let a = 0; a <= 9; a++) {
+      for (let bb = 0; bb <= 9; bb++) {
+        b.set('swa', a); b.set('swb', bb); b.settle();
+        const total = a + bb;
+        assert.equal(b.segments('disp_ones'), FONT[total % 10], `${a}+${bb}: ones digit`);
+        assert.equal(b.segments('disp_tens'), FONT[Math.floor(total / 10)], `${a}+${bb}: tens digit`);
+      }
+    }
+  });
+
+  it('the correction only fires when it must — 9+0 stays 09, 9+1 becomes 10', () => {
+    const b = bench('l9-bcd-calculator');
+    b.set('swa', 9); b.set('swb', 0); b.settle();
+    assert.equal(b.segments('disp_tens'), FONT[0], '9+0 must not carry');
+    assert.equal(b.segments('disp_ones'), FONT[9]);
+    b.set('swb', 1); b.settle();
+    assert.equal(b.segments('disp_tens'), FONT[1], '9+1 must carry');
+    assert.equal(b.segments('disp_ones'), FONT[0]);
   });
 });

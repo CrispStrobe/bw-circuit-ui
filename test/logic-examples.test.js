@@ -129,3 +129,29 @@ describe('seated logic examples (skips without the sb3-creator checkout)', { ski
     assert.equal(b.segments('disp'), '', 'ten still blanks rather than lying');
   });
 });
+
+describe('seated pc98/pc99 (skips without the sb3-creator checkout)', { skip: !EXAMPLES || !existsSync(join(EXAMPLES, 'pc98-adder-subtractor', 'circuit.json')) }, () => {
+  it('pc98 still subtracts once seated', () => {
+    const b = bench('pc98-adder-subtractor');
+    const val = () => [0, 1, 2, 3].reduce((a, i) => a + (b.lit(`led${i}`) ? 1 << i : 0), 0);
+    for (const [a, bb] of [[7, 2], [2, 7], [9, 4], [15, 1], [0, 1]]) {
+      b.set('swa', a); b.set('swb', bb);
+      b.set('swm', 0); b.settle();
+      assert.equal(val(), (a + bb) & 0xF, `seated ${a}+${bb}`);
+      b.set('swm', 1); b.settle();
+      assert.equal(val(), (a - bb) & 0xF, `seated ${a}-${bb}`);
+      assert.equal(b.lit('led4'), a >= bb, `seated ${a}-${bb}: no-borrow flag`);
+    }
+  });
+
+  it('pc99 still shows two decimal digits once seated', () => {
+    const FONT = ['abcdef', 'bc', 'abdeg', 'abcdg', 'bcfg', 'acdfg', 'acdefg', 'abc', 'abcdefg', 'abcdfg'];
+    const b = bench('pc99-bcd-two-digit-calculator');
+    for (const [a, bb] of [[3, 4], [9, 0], [9, 1], [7, 6], [9, 9]]) {
+      b.set('swa', a); b.set('swb', bb); b.settle();
+      const t = a + bb;
+      assert.equal(b.segments('disp_ones'), FONT[t % 10], `seated ${a}+${bb} ones`);
+      assert.equal(b.segments('disp_tens'), FONT[Math.floor(t / 10)], `seated ${a}+${bb} tens`);
+    }
+  });
+});

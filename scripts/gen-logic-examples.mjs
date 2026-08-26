@@ -185,6 +185,34 @@ const LADDER = [
     table: [['0', '0', '0'], ['5', '3', '8'], ['4', '5', '9'], ['9', '1', 'blank (10)'], ['15', '15', 'blank, carry lit']],
     cols: ['A', 'B', 'display'],
   },
+  {
+    src: 'l8-add-subtract', id: 'pc98-adder-subtractor', difficulty: 4,
+    en: { title: 'Subtraction is the same circuit',
+      teaches: "two's complement, XOR as a controlled inverter, the borrow flag" },
+    de: { title: 'Subtraktion ist dieselbe Schaltung',
+      desc: 'Ein einziger zusätzlicher 74HC86 macht aus dem Addierer einen Addierer-Subtrahierer. Der Modus-Schalter '
+        + 'geht gleichzeitig an die XOR-Bank UND an den Übertragseingang: offen rechnet die Schaltung A + B, '
+        + 'geschlossen kippt jedes B-Bit und unten kommt eine 1 herein — das ist das Zweierkomplement. '
+        + 'Die rote LED bedeutet jetzt „kein Borgen": sie leuchtet, wenn A größer oder gleich B ist.',
+      teaches: 'Zweierkomplement, XOR als steuerbarer Inverter, das Borge-Flag' },
+    table: [['+', '7', '2', '9'], ['−', '7', '2', '5, carry lit (no borrow)'],
+      ['−', '2', '7', '11, carry dark (borrowed)'], ['+', '15', '1', '0, carry lit']],
+    cols: ['mode', 'A', 'B', 'result'],
+  },
+  {
+    src: 'l9-bcd-calculator', id: 'pc99-bcd-two-digit-calculator', difficulty: 5,
+    en: { title: 'Two digits: the calculator that does not give up at nine',
+      teaches: 'BCD correction (add six), decimal carry, driving two displays' },
+    de: { title: 'Zwei Ziffern: der Rechner, der bei neun nicht aufgibt',
+      desc: 'L7 blieb über 9 dunkel, weil ein BCD-Dekoder nur zehn Ziffern kennt. Das hier ist die richtige Lösung, '
+        + 'und jeder Dezimaladdierer macht es so: verlässt die Summe den Dezimalbereich, ADDIERE SECHS und trage '
+        + 'einen Zehner weiter. Drei Gatter erkennen den Überlauf (Cout, oder S3 mit S2, oder S3 mit S1), ein '
+        + 'zweiter 74HC283 addiert die Sechs, und derselbe Übertrag lässt die Zehnerstelle leuchten. '
+        + 'Stelle beide Bänke auf eine Dezimalziffer 0–9 und lies das Ergebnis, 0 bis 18.',
+      teaches: 'BCD-Korrektur (plus sechs), Dezimalübertrag, zwei Anzeigen ansteuern' },
+    table: [['3', '4', '07'], ['9', '0', '09'], ['9', '1', '10'], ['7', '6', '13'], ['9', '9', '18']],
+    cols: ['A', 'B', 'display'],
+  },
 ];
 
 const mdTable = (cols, rows) => [

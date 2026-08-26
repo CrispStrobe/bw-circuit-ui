@@ -1,5 +1,5 @@
 /**
- * Generate the LOGIC ladder — gallery/l0..l8, 74-series gates on a
+ * Generate the LOGIC ladder — gallery/l0..l9, 74-series gates on a
  * breadboard, no CPU and no MCU anywhere.
  *
  * The gallery had fifteen CPU builds, three MCU boards and one 555. Every
@@ -346,6 +346,117 @@ const done = [];
       + 'Sums of 10 to 15 blank the display: a BCD decoder only knows 0-9, and that honest limit is the '
       + 'reason real adders carry a "decimal adjust" stage.',
     _category: 'logic', _difficulty: 5, _stage: 'L7',
+  }));
+}
+
+// ── L8: subtraction, from the adder you already have ───────────────
+
+{
+  // A + (B XOR mode) + mode. With mode LOW that is A + B; with mode HIGH
+  // every B bit inverts and the carry-in arrives as 1, which is two's
+  // complement — so the SAME adder subtracts. Nothing else changes.
+  const parts = [...rails(),
+    part('swa', 'dip_switch_spst', { switches: 0b0111 }),
+    part('swb', 'dip_switch_spst', { switches: 0b0010 }),
+    part('swm', 'dip_switch_spst', { switches: 0b0000 }),
+    part('u1', '74hc283'), part('u2', '74hc86')];
+  const wires = [...powerChip('u1'), ...powerChip('u2')];
+  const M = switchInput('swm', 1, 'rm');
+  parts.push(...M.parts); wires.push(...M.wires);
+  // The mode line goes to BOTH the XOR bank and the carry-in. That single
+  // shared wire is the whole trick.
+  wires.push(wire('swm', '1b', 'u1', 'cin'));
+  for (let g = 1; g <= 4; g++) wires.push(wire('swm', '1b', 'u2', `${g}b`));
+  ['a0', 'a1', 'a2', 'a3'].forEach((pin, i) => {
+    const inp = switchInput('swa', i + 1, `ra${i}`);
+    parts.push(...inp.parts); wires.push(...inp.wires);
+    wires.push(wire('swa', `${i + 1}b`, 'u1', pin));
+  });
+  [0, 1, 2, 3].forEach((i) => {
+    const inp = switchInput('swb', i + 1, `rb${i}`);
+    parts.push(...inp.parts); wires.push(...inp.wires);
+    wires.push(wire('swb', `${i + 1}b`, 'u2', `${i + 1}a`));
+    wires.push(wire('u2', `${i + 1}y`, 'u1', `b${i}`));
+  });
+  ['s0', 's1', 's2', 's3', 'cout'].forEach((o, i) => {
+    const led = outputLed('u1', o, `led${i}`, `rl${i}`, o === 'cout' ? 'red' : 'green');
+    parts.push(...led.parts); wires.push(...led.wires);
+  });
+  done.push(emit('l8-add-subtract', {
+    vcc: 5, parts, wires,
+    _title: 'Subtraction is the same circuit',
+    _description: 'One extra 74HC86 turns the adder into an adder-subtractor. The mode switch feeds the XOR bank '
+      + 'AND the carry-in at once: with it open you get A + B, with it closed every B bit flips and a 1 enters '
+      + 'the bottom, which is two’s complement — so the machine subtracts without a single new adder. '
+      + 'The red LED now means "no borrow": it lights when A is greater than or equal to B.',
+    _category: 'logic', _difficulty: 4, _stage: 'L8',
+  }));
+}
+
+// ── L9: two decimal digits, the honest fix for L7 ──────────────────
+
+{
+  // The BCD adder. A second '283 adds six whenever the first sum leaves
+  // the decimal range, and the detector that decides is three gates:
+  //   carry = Cout + S3.S2 + S3.S1
+  // Inputs are decimal digits 0..9, which is what makes ONE correction
+  // stage exactly right (0..9 + 0..9 = 0..18).
+  const parts = [...rails(),
+    part('swa', 'dip_switch_spst', { switches: 0b0111 }),
+    part('swb', 'dip_switch_spst', { switches: 0b0110 }),
+    part('u1', '74hc283'), part('u2', '74hc283'),
+    part('u3', '74hc08'), part('u4', '74hc32'),
+    part('d1', 'cd4511'), part('d2', 'cd4511'),
+    part('disp_ones', 'seven_segment'), part('disp_tens', 'seven_segment')];
+  const wires = [...powerChip('u1'), ...powerChip('u2'), ...powerChip('u3'), ...powerChip('u4'),
+    ...powerChip('d1'), ...powerChip('d2'),
+    wire('gnd1', 'gnd', 'u1', 'cin'), wire('gnd1', 'gnd', 'u2', 'cin')];
+  for (const d of ['d1', 'd2']) {
+    wires.push(wire('vcc1', 'vcc', d, 'lt'), wire('vcc1', 'vcc', d, 'bl'), wire('gnd1', 'gnd', d, 'le'));
+  }
+  ['a0', 'a1', 'a2', 'a3'].forEach((pin, i) => {
+    const inp = switchInput('swa', i + 1, `ra${i}`);
+    parts.push(...inp.parts); wires.push(...inp.wires);
+    wires.push(wire('swa', `${i + 1}b`, 'u1', pin));
+  });
+  ['b0', 'b1', 'b2', 'b3'].forEach((pin, i) => {
+    const inp = switchInput('swb', i + 1, `rb${i}`);
+    parts.push(...inp.parts); wires.push(...inp.wires);
+    wires.push(wire('swb', `${i + 1}b`, 'u1', pin));
+  });
+  // greater-than-nine detector, and the raw sum forwarded to the corrector
+  wires.push(wire('u1', 's3', 'u3', '1a'), wire('u1', 's3', 'u3', '2a'), wire('u1', 's3', 'u2', 'a3'));
+  wires.push(wire('u1', 's2', 'u3', '1b'), wire('u1', 's2', 'u2', 'a2'));
+  wires.push(wire('u1', 's1', 'u3', '2b'), wire('u1', 's1', 'u2', 'a1'));
+  wires.push(wire('u1', 's0', 'u2', 'a0'));
+  wires.push(wire('u3', '1y', 'u4', '1a'), wire('u3', '2y', 'u4', '1b'));
+  wires.push(wire('u4', '1y', 'u4', '2a'), wire('u1', 'cout', 'u4', '2b'));
+  // that carry IS the tens digit, and it also gates the +6 (binary 0110)
+  wires.push(wire('u4', '2y', 'u2', 'b1'), wire('u4', '2y', 'u2', 'b2'));
+  wires.push(wire('gnd1', 'gnd', 'u2', 'b0'), wire('gnd1', 'gnd', 'u2', 'b3'));
+  wires.push(wire('u4', '2y', 'd2', 'a'));
+  for (const p of ['b', 'c', 'd']) wires.push(wire('gnd1', 'gnd', 'd2', p));
+  for (const g of [3, 4]) {
+    wires.push(wire('gnd1', 'gnd', 'u3', `${g}a`), wire('gnd1', 'gnd', 'u3', `${g}b`));
+    wires.push(wire('gnd1', 'gnd', 'u4', `${g}a`), wire('gnd1', 'gnd', 'u4', `${g}b`));
+  }
+  [['s0', 'a'], ['s1', 'b'], ['s2', 'c'], ['s3', 'd']].forEach(([s, d]) => wires.push(wire('u2', s, 'd1', d)));
+  for (const [dec, disp, tag] of [['d1', 'disp_ones', 'o'], ['d2', 'disp_tens', 't']]) {
+    for (const seg of ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
+      const rid = `rs_${tag}_${seg}`;
+      parts.push(part(rid, 'resistor', { ohms: LED_OHMS }));
+      wires.push(wire(dec, `q${seg}`, rid, 'a'), wire(rid, 'b', disp, seg));
+    }
+    wires.push(wire(disp, 'common', 'gnd1', 'gnd'));
+  }
+  done.push(emit('l9-bcd-calculator', {
+    vcc: 5, parts, wires,
+    _title: 'Two digits: the calculator that does not give up at nine',
+    _description: 'L7 blanked above 9 because a BCD decoder only knows ten digits. This is the real fix, and it is '
+      + 'what every decimal adder does: if the sum leaves the decimal range, ADD SIX to it and carry a ten. '
+      + 'Three gates spot the overflow (Cout, or S3 with S2, or S3 with S1), a second 74HC283 adds the six, and '
+      + 'that same carry lights the tens digit. Set each bank to a decimal digit 0-9 and read the answer, 0 to 18.',
+    _category: 'logic', _difficulty: 5, _stage: 'L9',
   }));
 }
 
