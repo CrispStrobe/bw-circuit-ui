@@ -256,6 +256,42 @@ describe('document refusals — empty-but-valid is the worst output', () => {
     });
 });
 
+// ── 2b. our own writer's spelling must survive our own reader ──────
+//
+// A byName chip emits the ENGINE terminal, uppercased. For most parts
+// that equals the datasheet name, but every ACTIVE-LOW pin carries a
+// trailing `b` in the engine (`y0b`, `g2ab`) where a vendor library
+// writes the bare name (`Y0`, `G2A`) — so the importer's 74HC138 map was
+// built around the vendor spelling and silently dropped ours. The export
+// drew the wire, the geometry was correct, and the connection was simply
+// absent on re-import. This is the smallest circuit that shows it.
+
+describe('a writer must round-trip its own spelling', () => {
+    test('wires to ACTIVE-LOW pins survive (74HC138, both edges)', () => {
+        for (const pin of ['y0b', 'g2ab', 'g2bb', 'y7b', 'g1', 'a']) {
+            const c = Circuit.fromJSON({
+                vcc: 5,
+                parts: [
+                    { id: 'vcc1', kind: 'vcc', params: {}, x: 40, y: 40 },
+                    { id: 'gnd1', kind: 'gnd', params: {}, x: 40, y: 300 },
+                    { id: 'u1', kind: '74hc138', params: {}, x: 300, y: 150 },
+                    { id: 'led1', kind: 'led', params: {}, x: 220, y: 80 },
+                ],
+                wires: [
+                    { from: 'vcc1', fromTerminal: 'vcc', to: 'u1', toTerminal: 'vcc' },
+                    { from: 'gnd1', fromTerminal: 'gnd', to: 'u1', toTerminal: 'gnd' },
+                    { from: 'led1', fromTerminal: 'cathode', to: 'u1', toTerminal: pin },
+                    { from: 'led1', fromTerminal: 'anode', to: 'vcc1', toTerminal: 'vcc' },
+                ],
+            });
+            const r = importEasyEda(toEasyEdaSchematic(c, { title: pin }).text);
+            const joined = r.wires.some((w) => (w.from === 'led1' && w.to === 'u1' && w.toTerminal === pin)
+                || (w.to === 'led1' && w.from === 'u1' && w.fromTerminal === pin));
+            assert.ok(joined, `u1.${pin} lost its wire on re-import — a drawn connection that does not conduct`);
+        }
+    });
+});
+
 // ── 3. the corpus the owner named ───────────────────────────────────
 
 // Resolved the way EVERY other corpus gate in this directory resolves it.

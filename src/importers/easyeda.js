@@ -162,6 +162,16 @@ const PINS_74HC138 = {
   Y4: 'y4b', Y5: 'y5b', Y6: 'y6b', Y7: 'y7b',
   VCC: 'vcc', GND: 'gnd',
 };
+// ...and the ENGINE spelling too, because OUR OWN writer emits it. A byName
+// pin carries the engine terminal uppercased, so a document this app exported
+// says `Y0B`/`G2AB` where a vendor library says `Y0`/`G2A`. Accepting only the
+// vendor spelling made every wire to an active-low '138 pin resolve to nothing
+// and vanish on re-import — the export drew it, the geometry was correct, and
+// the connection was simply not there afterwards. Round-tripping our own
+// output is the least a reader owes its writer.
+for (const engineName of Object.values(PINS_74HC138)) {
+  PINS_74HC138[engineName.toUpperCase()] = engineName;
+}
 
 /**
  * Part-number rules, matched against a component's DESCRIPTOR.
