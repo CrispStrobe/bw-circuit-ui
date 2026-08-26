@@ -3,69 +3,364 @@
   "w": 70,
   "h": 81,
   "terminals": [
-    { "name": "pc6", "x": 0, "y": 8, "functions": ["reset"] },
-    { "name": "pd0", "x": 0, "y": 13, "functions": ["gpio"] },
-    { "name": "pd1", "x": 0, "y": 18, "functions": ["gpio"] },
-    { "name": "pd2", "x": 0, "y": 23, "functions": ["gpio", "int0"] },
-    { "name": "pd3", "x": 0, "y": 28, "functions": ["gpio", "int1"] },
-    { "name": "pd4", "x": 0, "y": 33, "functions": ["gpio", "t0"] },
-    { "name": "vcc", "x": 0, "y": 38, "functions": [] },
-    { "name": "gnd", "x": 0, "y": 43, "functions": [] },
-    { "name": "pb6", "x": 0, "y": 48, "functions": ["gpio", "xtal1"] },
-    { "name": "pb7", "x": 0, "y": 53, "functions": ["gpio", "xtal2"] },
-    { "name": "pd5", "x": 0, "y": 58, "functions": ["gpio", "t1"] },
-    { "name": "pd6", "x": 0, "y": 63, "functions": ["gpio"] },
-    { "name": "pd7", "x": 0, "y": 68, "functions": ["gpio"] },
-    { "name": "pb0", "x": 0, "y": 73, "functions": ["gpio", "icp1"] },
-    { "name": "pc5", "x": 70, "y": 8, "functions": ["gpio", "adc5", "scl"] },
-    { "name": "pc4", "x": 70, "y": 13, "functions": ["gpio", "adc4", "sda"] },
-    { "name": "pc3", "x": 70, "y": 18, "functions": ["gpio", "adc3"] },
-    { "name": "pc2", "x": 70, "y": 23, "functions": ["gpio", "adc2"] },
-    { "name": "pc1", "x": 70, "y": 28, "functions": ["gpio", "adc1"] },
-    { "name": "pc0", "x": 70, "y": 33, "functions": ["gpio", "adc0"] },
-    { "name": "pa0", "x": 70, "y": 38, "functions": ["gpio"] },
-    { "name": "pc7", "x": 70, "y": 43, "functions": ["gpio"] },
-    { "name": "avcc", "x": 70, "y": 48, "functions": [] },
-    { "name": "pb5", "x": 70, "y": 53, "functions": ["gpio", "sck"] },
-    { "name": "pb4", "x": 70, "y": 58, "functions": ["gpio", "miso"] },
-    { "name": "pb3", "x": 70, "y": 63, "functions": ["gpio", "mosi", "oc1"] },
-    { "name": "pb2", "x": 70, "y": 68, "functions": ["gpio", "ss"] },
-    { "name": "pb1", "x": 70, "y": 73, "functions": ["gpio", "oc1a"] }
+    {
+      "name": "pc6",
+      "x": 0,
+      "y": 8,
+      "functions": [
+        "reset"
+      ]
+    },
+    {
+      "name": "pd0",
+      "x": 0,
+      "y": 13,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pd1",
+      "x": 0,
+      "y": 18,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pd2",
+      "x": 0,
+      "y": 23,
+      "functions": [
+        "gpio",
+        "int0"
+      ]
+    },
+    {
+      "name": "pd3",
+      "x": 0,
+      "y": 28,
+      "functions": [
+        "gpio",
+        "int1"
+      ]
+    },
+    {
+      "name": "pd4",
+      "x": 0,
+      "y": 33,
+      "functions": [
+        "gpio",
+        "t0"
+      ]
+    },
+    {
+      "name": "vcc",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "pb6",
+      "x": 0,
+      "y": 48,
+      "functions": [
+        "gpio",
+        "xtal1"
+      ]
+    },
+    {
+      "name": "pb7",
+      "x": 0,
+      "y": 53,
+      "functions": [
+        "gpio",
+        "xtal2"
+      ]
+    },
+    {
+      "name": "pd5",
+      "x": 0,
+      "y": 58,
+      "functions": [
+        "gpio",
+        "t1"
+      ]
+    },
+    {
+      "name": "pd6",
+      "x": 0,
+      "y": 63,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pd7",
+      "x": 0,
+      "y": 68,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pb0",
+      "x": 0,
+      "y": 73,
+      "functions": [
+        "gpio",
+        "icp1"
+      ]
+    },
+    {
+      "name": "pc5",
+      "x": 70,
+      "y": 8,
+      "functions": [
+        "gpio",
+        "adc5",
+        "scl"
+      ]
+    },
+    {
+      "name": "pc4",
+      "x": 70,
+      "y": 13,
+      "functions": [
+        "gpio",
+        "adc4",
+        "sda"
+      ]
+    },
+    {
+      "name": "pc3",
+      "x": 70,
+      "y": 18,
+      "functions": [
+        "gpio",
+        "adc3"
+      ]
+    },
+    {
+      "name": "pc2",
+      "x": 70,
+      "y": 23,
+      "functions": [
+        "gpio",
+        "adc2"
+      ]
+    },
+    {
+      "name": "pc1",
+      "x": 70,
+      "y": 28,
+      "functions": [
+        "gpio",
+        "adc1"
+      ]
+    },
+    {
+      "name": "pc0",
+      "x": 70,
+      "y": 33,
+      "functions": [
+        "gpio",
+        "adc0"
+      ]
+    },
+    {
+      "name": "gnd2",
+      "x": 70,
+      "y": 38,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "pc7",
+      "x": 70,
+      "y": 43,
+      "functions": [
+        "gpio"
+      ]
+    },
+    {
+      "name": "avcc",
+      "x": 70,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "pb5",
+      "x": 70,
+      "y": 53,
+      "functions": [
+        "gpio",
+        "sck"
+      ]
+    },
+    {
+      "name": "pb4",
+      "x": 70,
+      "y": 58,
+      "functions": [
+        "gpio",
+        "miso"
+      ]
+    },
+    {
+      "name": "pb3",
+      "x": 70,
+      "y": 63,
+      "functions": [
+        "gpio",
+        "mosi",
+        "oc1"
+      ]
+    },
+    {
+      "name": "pb2",
+      "x": 70,
+      "y": 68,
+      "functions": [
+        "gpio",
+        "ss"
+      ]
+    },
+    {
+      "name": "pb1",
+      "x": 70,
+      "y": 73,
+      "functions": [
+        "gpio",
+        "oc1a"
+      ]
+    }
   ],
   "variants": null,
-  "_note": "ATtiny88 8-bit AVR MCU, PDIP-28. Pin ORDER re-audited against Microchip ATtiny88 datasheet (DS40002178) on 2026-08-24. A DIP counts 1..14 along one row then crosses and counts 15..28 back along the other, so at column c the bottom row is pin c+1 and the top row is pin 28-c:\n  bottom (pins 1-14):  PC6 PD0 PD1 PD2 PD3 PD4 VCC GND PB6 PB7 PD5 PD6 PD7 PB0\n  top    (pins 28-15): PC5 PC4 PC3 PC2 PC1 PC0 [22] PC7 AVCC PB5 PB4 PB3 PB2 PB1\nFIXED HERE: PC7 IS PIN 21 and sat at pin 28's column; the whole top row was misordered (8 of 14 columns wrong in this file, 14 of 14 in the built-in table in src/model/footprints.js, which is the one seating actually uses).\nNOT FIXED HERE, and it is a real defect: the pin-22 lead is still called `pa0`. THE PDIP-28 HAS NO PA0 \u2014 port A is bonded out only on the 32-pin QFN \u2014 and pin 22 is a SECOND GND that somebody needed a name for. It keeps the wrong name because bw-board's ATTINY88_TERMINALS is the AUTHORITY for terminal names (circuit.js consults engineTerminals() first) and the canvas looks positions up BY NAME out of this file; renaming here alone would render the engine's `pa0` at the part origin. The rename is sequenced in PLAN.md: bw-board first, then this file and bw-parts, then a corpus re-seat. Port A registers (PA0-PA3 at 0x2C-0x2E) do exist on the die and in bw-board's ATTINY88_PINS; they are simply not reachable through this package.\nPC6 = RESET (active low). PB6/PB7 = XTAL1/XTAL2. No UART, no analog comparator pins.\nPART FACTS (unchanged): 8 KB flash, 512 B SRAM, 64 B EEPROM, 8 MHz internal RC. Timer0 simplified (CS bits in TCCR0A, no OC0A/OC0B). Pin names match bw-board avr-chips.js ATTINY88_PINS. The Blinkenrocket congress badge uses PB=columns, PD=rows, PC3=BTN_RIGHT, PC7=BTN_LEFT and PA0=modem input \u2014 note that its PA0 use is only reachable on the QFN-32, not on this PDIP-28.",
+  "_note": "ATtiny88 8-bit AVR MCU, PDIP-28. Pin ORDER re-audited against Microchip ATtiny88 datasheet (DS40002178) on 2026-08-24. A DIP counts 1..14 along one row then crosses and counts 15..28 back along the other, so at column c the bottom row is pin c+1 and the top row is pin 28-c:\n  bottom (pins 1-14):  PC6 PD0 PD1 PD2 PD3 PD4 VCC GND PB6 PB7 PD5 PD6 PD7 PB0\n  top    (pins 28-15): PC5 PC4 PC3 PC2 PC1 PC0 [22] PC7 AVCC PB5 PB4 PB3 PB2 PB1\nFIXED HERE: PC7 IS PIN 21 and sat at pin 28's column; the whole top row was misordered (8 of 14 columns wrong in this file, 14 of 14 in the built-in table in src/model/footprints.js, which is the one seating actually uses).\nFIXED 2026-08-25 (bw-board e1bda3f first, then here): the pin-22 lead is now `gnd2`. THE PDIP-28 HAS NO PA0 \u2014 port A is bonded out only on the 32-pin QFN \u2014 and pin 22 is a SECOND GND that somebody needed a name for. It had the wrong name because bw-board's ATTINY88_TERMINALS is the AUTHORITY for terminal names (circuit.js consults engineTerminals() first) and the canvas looks positions up BY NAME out of this file, so renaming here alone would have rendered the engine's `pa0` at the part origin. Sequenced per PLAN.md: bw-board e1bda3f, then this file and bw-parts, then the corpus re-seat. Saved circuits naming `pa0` migrate through TERMINAL_ALIASES. Port A registers (PA0-PA3 at 0x2C-0x2E) do exist on the die and in bw-board's ATTINY88_PINS; they are simply not reachable through this package.\nPC6 = RESET (active low). PB6/PB7 = XTAL1/XTAL2. No UART, no analog comparator pins.\nPART FACTS (unchanged): 8 KB flash, 512 B SRAM, 64 B EEPROM, 8 MHz internal RC. Timer0 simplified (CS bits in TCCR0A, no OC0A/OC0B). Pin names match bw-board avr-chips.js ATTINY88_PINS. The Blinkenrocket congress badge uses PB=columns, PD=rows, PC3=BTN_RIGHT, PC7=BTN_LEFT and PA0=modem input \u2014 note that its PA0 use is only reachable on the QFN-32, not on this PDIP-28.",
   "footprint": {
     "refTerminal": "pc5",
     "straddlesGutter": true,
     "leads": {
-      "pc6": { "dRow": 5, "dCol": 0 },
-      "pd0": { "dRow": 5, "dCol": 1 },
-      "pd1": { "dRow": 5, "dCol": 2 },
-      "pd2": { "dRow": 5, "dCol": 3 },
-      "pd3": { "dRow": 5, "dCol": 4 },
-      "pd4": { "dRow": 5, "dCol": 5 },
-      "vcc": { "dRow": 5, "dCol": 6 },
-      "gnd": { "dRow": 5, "dCol": 7 },
-      "pb6": { "dRow": 5, "dCol": 8 },
-      "pb7": { "dRow": 5, "dCol": 9 },
-      "pd5": { "dRow": 5, "dCol": 10 },
-      "pd6": { "dRow": 5, "dCol": 11 },
-      "pd7": { "dRow": 5, "dCol": 12 },
-      "pb0": { "dRow": 5, "dCol": 13 },
-      "pc5": { "dRow": 0, "dCol": 0 },
-      "pc4": { "dRow": 0, "dCol": 1 },
-      "pc3": { "dRow": 0, "dCol": 2 },
-      "pc2": { "dRow": 0, "dCol": 3 },
-      "pc1": { "dRow": 0, "dCol": 4 },
-      "pc0": { "dRow": 0, "dCol": 5 },
-      "pa0": { "dRow": 0, "dCol": 6 },
-      "pc7": { "dRow": 0, "dCol": 7 },
-      "avcc": { "dRow": 0, "dCol": 8 },
-      "pb5": { "dRow": 0, "dCol": 9 },
-      "pb4": { "dRow": 0, "dCol": 10 },
-      "pb3": { "dRow": 0, "dCol": 11 },
-      "pb2": { "dRow": 0, "dCol": 12 },
-      "pb1": { "dRow": 0, "dCol": 13 }
+      "pc6": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "pd0": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "pd1": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "pd2": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "pd3": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "pd4": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "vcc": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "gnd": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "pb6": {
+        "dRow": 5,
+        "dCol": 8
+      },
+      "pb7": {
+        "dRow": 5,
+        "dCol": 9
+      },
+      "pd5": {
+        "dRow": 5,
+        "dCol": 10
+      },
+      "pd6": {
+        "dRow": 5,
+        "dCol": 11
+      },
+      "pd7": {
+        "dRow": 5,
+        "dCol": 12
+      },
+      "pb0": {
+        "dRow": 5,
+        "dCol": 13
+      },
+      "pc5": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "pc4": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "pc3": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "pc2": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "pc1": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "pc0": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "pa0": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "pc7": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "avcc": {
+        "dRow": 0,
+        "dCol": 8
+      },
+      "pb5": {
+        "dRow": 0,
+        "dCol": 9
+      },
+      "pb4": {
+        "dRow": 0,
+        "dCol": 10
+      },
+      "pb3": {
+        "dRow": 0,
+        "dCol": 11
+      },
+      "pb2": {
+        "dRow": 0,
+        "dCol": 12
+      },
+      "pb1": {
+        "dRow": 0,
+        "dCol": 13
+      }
     }
   }
 }

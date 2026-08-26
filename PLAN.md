@@ -240,7 +240,7 @@ and consults the sidecar only as a fallback.** So for attiny88 — and for 53
 other kinds — the sidecar footprint was never read by seating. Fixing only the
 JSON, which is what this task originally described, would have changed nothing.
 
-### NOT fixed: pin 22 is still called `pa0`, and that is a real defect
+### FIXED 2026-08-25: pin 22 is `gnd2` (was `pa0`)
 
 The PDIP-28 does not bond out port A; pin 22 is a SECOND GND. It keeps the wrong
 name because **bw-board is the authority for terminal names** — `circuit.js`'s
@@ -248,22 +248,58 @@ name because **bw-board is the authority for terminal names** — `circuit.js`'s
 terminal POSITIONS up by name out of the sidecar. Renaming here alone would leave
 the engine's `pa0` with no position and render it at the part origin.
 
-Ordering, which cannot be shortened:
+Landed in the recorded order, which could not be shortened:
 
-1. **bw-board** — `src/devices/board-kinds.js`, `ATTINY88_TERMINALS`: `'pa0'` →
-   `'gnd2'`. Its own comment already says the spellings must match the sidecar.
-   **Blocked on bw-board** (sibling; a sibling agent is active there).
-2. **bw-circuit-ui** — this repo: rename in `src/parts-data/attiny88.json` and
-   `src/model/footprints.js`. One line each, already located.
-3. **bw-parts** — `parts/attiny88.json`, same rename. **Blocked on bw-parts.**
-4. **sb3-creator** — re-seat, see below.
+1. **bw-board `e1bda3f`** — `ATTINY88_TERMINALS`: `'pa0'` → `'gnd2'`. CI green.
+2. **bw-circuit-ui `be6361d`** — sidecar, footprint, the alias, and the
+   migration below.
+3. **bw-parts `6eb8706`** — same rename, and it turned out to be a REGRESSION
+   TRAP: this repo's `src/parts-data/` is vendored from there, and bw-parts
+   still carried the pre-audit attiny88 (9 terminal coordinates from the old
+   top-row order, and a sidecar footprint whose rows were swapped against it —
+   all 28 leads). `npm run sync:parts` would have silently undone `d422426`.
+4. **sb3-creator** — the re-seat, still outstanding. Measured below.
+
+**The migration nobody had written.** A `leadMap` key is a terminal name, so a
+rename is a data migration there exactly as it is for a wire endpoint — and
+only the wire path had one. 70 of the 135 attiny88 circuits seat the chip and
+every one names pin 22 in `seat.leadMap`; without migration the hole stays
+occupied and the strip conducts while the leg belongs to a terminal the part no
+longer declares. It resolves against the PACKAGE's terminal list, not the
+part's DECLARED one: a seated MCU commonly declares only the pin an explicit
+wire names (`01-blink/circuit.attiny88.json` declares `["pb0"]` and seats 28
+legs), and `resolveTerminal` only accepts an alias whose target is in the list
+it is given — passing the declared list migrated 50 of 70 and left 20 holding
+`pa0`.
+
+**The rename is electrically NEUTRAL**, measured either side over all 135
+attiny88 circuits: 135 solved, 0 refused, 2,430 resolved nets, identical.
+Ground comes from a `gnd` PART kind, not a terminal name, so pin 22 does not
+become a reference node — the leg sits in the same hole and joins the same
+strip, correctly named. That is why this could land ahead of the re-seat.
 
 `gnd2` is the name to use: `arduino_uno`, `arduino_nano` and `arduino_mega`
 already spell a primary `gnd` plus numbered extras exactly that way. (`l293d`
 uses `gnd1..gnd4` with no bare `gnd`; `pi_pico` uses `gnd_1..gnd_7`. The arduino
 form is the one that fits "one primary, one extra".)
 
-### NOT done: the corpus re-seat
+### NOT done: the corpus re-seat — and here is its size
+
+Measured 2026-08-25 against the audited footprint, holding one lead fixed and
+asking where the corrected table puts the rest:
+
+| anchor | circuits needing a re-seat | legs |
+|---|---|---|
+| pin 1 (`pc6`) | **70 of 70 seated** | 980 (14 per circuit) |
+| the footprint's own `refTerminal` (`pc5`) | 70 of 70 | 1,890 (27 per circuit) |
+
+Both are correct at their anchor, and the anchor is the whole difference — the
+earlier note's "13 of 28 legs, the whole top row" was the pin-1 figure. Quote
+one without the other and the number means nothing.
+
+`scripts/gen-device-benches.mjs seat` in sb3-creator seats only UNSEATED
+benches, so these 70 need their seats dropped first. That is sb3-creator's
+corpus to regenerate, per rule 5, and it is now a number rather than a debt.
 
 135 shipped circuits seat an attiny88. Correcting the column order moves **13 of
 28 legs** — the whole top row — into different breadboard columns, which changes
