@@ -2,7 +2,7 @@
  * The computer ladder is proven the same way the logic ladder is — by
  * running it — but it needs a different kind of assertion.
  *
- * l0..l9 are combinational: set the inputs, read the answer. c0..c3 have
+ * l0..l9 are combinational: set the inputs, read the answer. c0..c5 have
  * STATE, so what has to be checked is a SEQUENCE. A register that always
  * reads 5 passes any single-value check and is still broken; the useful
  * questions are "did it change when it was clocked" and, just as
@@ -47,8 +47,8 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: four rungs, c0 through c3', () => {
-    assert.equal(files.length, 4, `found ${files.join(', ')}`);
+  it('is present: six rungs, c0 through c5', () => {
+    assert.equal(files.length, 6, `found ${files.join(', ')}`);
   });
 
   it('contains no CPU — the point is building one, not using one', () => {
@@ -155,5 +155,54 @@ describe('C3 — the accumulator', () => {
     assert.equal(b.nibble('led'), held, 'no clock, no change');
     b.set('swv', 0); b.settle();
     assert.equal(b.nibble('led'), held, 'still no change');
+  });
+});
+
+describe('C4 — the ring counter', () => {
+  it('is one-hot and wraps after six: T1..T6, then T1 again', () => {
+    const b = bench('c4-ring-counter');
+    b.settle();
+    const state = () => [1, 2, 3, 4, 5, 6].map((n) => (b.lit(`led_t${n}`) ? 1 : 0));
+    const oneHot = (s) => s.reduce((a, x) => a + x, 0) === 1;
+    let s = state();
+    assert.ok(oneHot(s), `reset must leave exactly one state active, got ${s.join('')}`);
+    assert.equal(s[0], 1, 'and it must be T1');
+    // Two full laps: a ring that wraps once by luck fails on the second.
+    for (let lap = 0; lap < 2; lap++) {
+      for (let step = 1; step <= 6; step++) {
+        b.tick();
+        s = state();
+        assert.ok(oneHot(s), `lap ${lap} step ${step}: one-hot, got ${s.join('')}`);
+        assert.equal(s[step % 6], 1, `lap ${lap}: after ${step} clocks T${(step % 6) + 1} is active`);
+      }
+    }
+  });
+});
+
+describe('C5 — the instruction decoder', () => {
+  const OPCODES = [
+    [0b0000, 'lda'], [0b0001, 'add'], [0b0010, 'sub'],
+    [0b1110, 'out'], [0b1111, 'hlt'],
+  ];
+  it('lights exactly the named instruction, and nothing else', () => {
+    const b = bench('c5-instruction-decoder');
+    const names = ['lda', 'add', 'sub', 'out', 'hlt'];
+    for (const [code, want] of OPCODES) {
+      b.set('swi', code); b.settle();
+      for (const n of names) {
+        assert.equal(b.lit(`led_${n}`), n === want,
+          `opcode ${code.toString(2).padStart(4, '0')}: ${n} should be ${n === want ? 'lit' : 'dark'}`);
+      }
+    }
+  });
+
+  it('an unused opcode decodes to nothing rather than to something wrong', () => {
+    // 0111 is not a SAP-1 instruction. A decoder that quietly picks the
+    // nearest match would be worse than one that stays dark.
+    const b = bench('c5-instruction-decoder');
+    b.set('swi', 0b0111); b.settle();
+    for (const n of ['lda', 'add', 'sub', 'out', 'hlt']) {
+      assert.equal(b.lit(`led_${n}`), false, `0111 must not decode as ${n}`);
+    }
   });
 });

@@ -1,0 +1,309 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ring",
+      "kind": "decade_counter",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "swc",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 0
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rck",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_t1",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlt0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_t2",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlt1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_t3",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlt2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_t4",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlt3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_t5",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlt4",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_t6",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlt5",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swc",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "1b",
+      "to": "rck",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rck",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "1b",
+      "to": "ring",
+      "toTerminal": "clk"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "ring",
+      "toTerminal": "en"
+    },
+    {
+      "from": "ring",
+      "fromTerminal": "q6",
+      "to": "ring",
+      "toTerminal": "rst"
+    },
+    {
+      "from": "ring",
+      "fromTerminal": "q0",
+      "to": "led_t1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_t1",
+      "fromTerminal": "cathode",
+      "to": "rlt0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlt0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "ring",
+      "fromTerminal": "q1",
+      "to": "led_t2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_t2",
+      "fromTerminal": "cathode",
+      "to": "rlt1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlt1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "ring",
+      "fromTerminal": "q2",
+      "to": "led_t3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_t3",
+      "fromTerminal": "cathode",
+      "to": "rlt2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlt2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "ring",
+      "fromTerminal": "q3",
+      "to": "led_t4",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_t4",
+      "fromTerminal": "cathode",
+      "to": "rlt3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlt3",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "ring",
+      "fromTerminal": "q4",
+      "to": "led_t5",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_t5",
+      "fromTerminal": "cathode",
+      "to": "rlt4",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlt4",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "ring",
+      "fromTerminal": "q5",
+      "to": "led_t6",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_t6",
+      "fromTerminal": "cathode",
+      "to": "rlt5",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlt5",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    }
+  ],
+  "_title": "The ring counter — six beats to every instruction",
+  "_description": "A SAP-1 does not do an instruction in one go: it takes six timing states, T1 to T6, and exactly one is active at any moment. T1-T3 are the same for every instruction (fetch: put the address out, read memory, advance the counter); T4-T6 are what makes LDA different from ADD. A CD4017 is one-hot by construction, and wiring its seventh output back to its own RESET makes it wrap after six — a six-state ring counter from one chip and one wire.",
+  "_category": "computer",
+  "_difficulty": 4,
+  "_stage": "C4"
+}

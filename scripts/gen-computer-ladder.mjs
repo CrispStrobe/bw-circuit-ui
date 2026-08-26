@@ -1,5 +1,5 @@
 /**
- * Generate the COMPUTER ladder — gallery/c0..c3, the four pieces a
+ * Generate the COMPUTER ladder — gallery/c0..c5, the pieces a
  * stored-program machine is made of, each one running on its own.
  *
  * The logic ladder (l0..l9) ends at arithmetic that is entirely
@@ -230,6 +230,89 @@ const done = [];
       + 'register out, through logic, back into register in — is the shape of every processor ever built. '
       + 'MR clears it back to zero.',
     _category: 'computer', _difficulty: 5, _stage: 'C3',
+  }));
+}
+
+/** An LED on an ACTIVE-LOW output: VCC → R → LED → output, lit when LOW. */
+function activeLowLed(driver, terminal, lid, rid, color = 'red') {
+  return {
+    parts: [part(lid, 'led', { vf: 2.0, color }), part(rid, 'resistor', { ohms: LED_R })],
+    wires: [wire('vcc1', 'vcc', rid, 'a'), wire(rid, 'b', lid, 'anode'),
+      wire(lid, 'cathode', driver, terminal)],
+  };
+}
+
+// ── C4: the ring counter — the machine's six beats ─────────────────
+
+{
+  // A SAP-1 executes every instruction in six timing states, T1..T6, and
+  // exactly one is active at a time. A CD4017 is a one-hot counter by
+  // construction; feeding its SEVENTH output back into its own reset
+  // makes it wrap after six, which is the whole trick.
+  const parts = [...rails(),
+    part('ring', 'decade_counter'),
+    part('swc', 'dip_switch_spst', { switches: 0 })];
+  const wires = [];
+  const CK = switchInput('swc', 1, 'rck');
+  parts.push(...CK.parts); wires.push(...CK.wires);
+  wires.push(wire('swc', '1b', 'ring', 'clk'));
+  wires.push(wire('gnd1', 'gnd', 'ring', 'en'));       // enable is active LOW on this model
+  wires.push(wire('ring', 'q6', 'ring', 'rst'));       // wrap after six states
+  for (let i = 0; i < 6; i++) {
+    const led = outputLed('ring', `q${i}`, `led_t${i + 1}`, `rlt${i}`, i === 0 ? 'yellow' : 'green');
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+  done.push(emit('c4-ring-counter', {
+    vcc: 5, parts, wires,
+    _title: 'The ring counter — six beats to every instruction',
+    _description: 'A SAP-1 does not do an instruction in one go: it takes six timing states, T1 to T6, and '
+      + 'exactly one is active at any moment. T1-T3 are the same for every instruction (fetch: put the address '
+      + 'out, read memory, advance the counter); T4-T6 are what makes LDA different from ADD. '
+      + 'A CD4017 is one-hot by construction, and wiring its seventh output back to its own RESET makes it '
+      + 'wrap after six — a six-state ring counter from one chip and one wire.',
+    _category: 'computer', _difficulty: 4, _stage: 'C4',
+  }));
+}
+
+// ── C5: the instruction decoder ────────────────────────────────────
+
+{
+  // Opcode bits l4..l7 (l4 is the LSB) name the instruction:
+  //   0000 LDA   0001 ADD   0010 SUB   1110 OUT   1111 HLT
+  // Two 74HC138s split on the top bit: one decodes while l7 is low, the
+  // other while it is high. Their outputs are ACTIVE LOW, which is what
+  // a real decoder gives you and what the control matrix expects.
+  const parts = [...rails(),
+    part('u1', '74hc138'), part('u2', '74hc138'),
+    part('swi', 'dip_switch_spst', { switches: 0b0000 })];
+  const wires = [...powerChip('u1'), ...powerChip('u2')];
+  ['a', 'b', 'c'].forEach((pin, i) => {
+    const s = switchInput('swi', i + 1, `ri${i}`);
+    parts.push(...s.parts); wires.push(...s.wires);
+    wires.push(wire('swi', `${i + 1}b`, 'u1', pin), wire('swi', `${i + 1}b`, 'u2', pin));
+  });
+  const top = switchInput('swi', 4, 'ri3');               // l7, the top opcode bit
+  parts.push(...top.parts); wires.push(...top.wires);
+  // U1 runs when l7 is LOW: G1 tied high, G2A driven by l7 (active low).
+  wires.push(wire('vcc1', 'vcc', 'u1', 'g1'), wire('swi', '4b', 'u1', 'g2ab'),
+    wire('gnd1', 'gnd', 'u1', 'g2bb'));
+  // U2 runs when l7 is HIGH: l7 drives G1 directly, both G2 tied low.
+  wires.push(wire('swi', '4b', 'u2', 'g1'), wire('gnd1', 'gnd', 'u2', 'g2ab'),
+    wire('gnd1', 'gnd', 'u2', 'g2bb'));
+  for (const [chip, out, name, color] of [['u1', 'y0b', 'lda', 'green'], ['u1', 'y1b', 'add', 'green'],
+    ['u1', 'y2b', 'sub', 'green'], ['u2', 'y6b', 'out', 'yellow'], ['u2', 'y7b', 'hlt', 'red']]) {
+    const led = activeLowLed(chip, out, `led_${name}`, `rl_${name}`, color);
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+  done.push(emit('c5-instruction-decoder', {
+    vcc: 5, parts, wires,
+    _title: 'The instruction decoder — turning a number into a meaning',
+    _description: 'Four switches are the opcode; five LEDs are the instructions. 0000 is LDA, 0001 ADD, '
+      + '0010 SUB, 1110 OUT, 1111 HLT. Two 74HC138 decoders split on the top bit — one is enabled while it '
+      + 'is low, the other while it is high — which is what those three enable pins on a decoder are FOR. '
+      + 'The outputs are ACTIVE LOW, so each LED is wired from +5 V down INTO the chip and lights when its '
+      + 'line goes low. That is not a quirk to work around; it is how decoders and control lines really talk.',
+    _category: 'computer', _difficulty: 5, _stage: 'C5',
   }));
 }
 

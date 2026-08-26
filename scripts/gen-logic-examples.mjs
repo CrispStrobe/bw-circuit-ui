@@ -267,6 +267,35 @@ const LADDER = [
     table: [['+3, clock 1', '3'], ['clock 2', '6'], ['clock 3', '9'], ['no clock', 'unchanged'], ['MR', '0']],
     cols: ['action', 'total'],
   },
+  {
+    src: 'c4-ring-counter', id: 'pc104-ring-counter', difficulty: 4,
+    en: { title: 'The ring counter — six beats to every instruction',
+      teaches: 'one-hot counting, timing states, self-resetting a counter' },
+    de: { title: 'Der Ringzähler — sechs Takte für jeden Befehl',
+      desc: 'Ein SAP-1 erledigt einen Befehl nicht in einem Rutsch: er braucht sechs Zeitschritte, T1 bis T6, '
+        + 'und genau einer ist jeweils aktiv. T1–T3 sind für jeden Befehl gleich (Adresse ausgeben, Speicher '
+        + 'lesen, Zähler weiterschalten); T4–T6 machen den Unterschied zwischen LDA und ADD. '
+        + 'Ein CD4017 ist von Haus aus one-hot, und wenn man seinen siebten Ausgang auf den eigenen RESET '
+        + 'zurückführt, springt er nach sechs Schritten um — ein Sechs-Schritt-Ringzähler aus einem Chip '
+        + 'und einem Draht.',
+      teaches: 'One-hot-Zählen, Zeitschritte, einen Zähler sich selbst zurücksetzen lassen' },
+    table: [['0', 'T1'], ['1', 'T2'], ['5', 'T6'], ['6', 'T1 again']],
+    cols: ['clocks', 'active state'],
+  },
+  {
+    src: 'c5-instruction-decoder', id: 'pc105-instruction-decoder', difficulty: 5,
+    en: { title: 'The instruction decoder — a number becomes a meaning',
+      teaches: 'decoders, enable pins, active-low outputs' },
+    de: { title: 'Der Befehlsdekoder — aus einer Zahl wird eine Bedeutung',
+      desc: 'Vier Schalter sind der Opcode, fünf LEDs sind die Befehle: 0000 ist LDA, 0001 ADD, 0010 SUB, '
+        + '1110 OUT, 1111 HLT. Zwei 74HC138-Dekoder teilen sich nach dem obersten Bit auf — einer ist '
+        + 'freigegeben, solange es LOW ist, der andere, solange es HIGH ist. Genau dafür sind die drei '
+        + 'Freigabe-Pins eines Dekoders da. Die Ausgänge sind LOW-AKTIV, deshalb hängt jede LED von +5 V '
+        + 'nach unten IN den Chip hinein und leuchtet, wenn ihre Leitung auf LOW geht.',
+      teaches: 'Dekoder, Freigabe-Pins, Low-aktive Ausgänge' },
+    table: [['0000', 'LDA'], ['0001', 'ADD'], ['0010', 'SUB'], ['1110', 'OUT'], ['1111', 'HLT'], ['0111', 'nothing — not an instruction']],
+    cols: ['opcode', 'decoded'],
+  },
 ];
 
 const mdTable = (cols, rows) => [
