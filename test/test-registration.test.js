@@ -29,7 +29,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { vacuousTests } from './_vacuity.js';
+import { vacuousTests, tautologicalTests } from './_vacuity.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -237,6 +237,26 @@ describe('every test file is run by something', () => {
       + 'which looks like broken features rather than a missing server.');
   });
 
+/**
+ * Files whose individual tests deliberately COLLECT rather than assert, with
+ * the reason. Each names a summary test that does the asserting.
+ *
+ * The pattern is legitimate — 251 per-kind cross-checks that each fail
+ * separately would bury the one number that matters — but it must be declared,
+ * because until 2026-08-26 it was exempted by ACCIDENT. assertingHelpers()
+ * treats a helper as asserting if any `assert` appears within 40 lines of its
+ * definition, and in terminal-crosscheck an unrelated assert.ok(true) in a
+ * skip branch happened to land inside that window for terminalsForKind(). Take
+ * the unrelated line away and 251 tests turn out to assert nothing. An
+ * exemption that depends on where a coincidence sits is not an exemption.
+ */
+const COLLECTORS = new Map([
+  ['serialiser-roundtrip.test.js',
+    'per-file tests push into allLosses; "summary: report all losses across corpus" asserts the ratchet'],
+  ['terminal-crosscheck.test.js',
+    'per-kind tests push into namingDiffs/coverageGaps; the two summary tests assert the populations'],
+]);
+
   test('no test asserts nothing', () => {
     // A test with no assertion cannot fail. It reports green from the slot the
     // real check would occupy, which is strictly worse than not existing:
@@ -248,15 +268,46 @@ describe('every test file is run by something', () => {
     // and two `summary:` reporters that printed numbers and could not fail.
     // The list is EMPTY on purpose; there is no allowance to hide a new one in.
     const offenders = [];
+    const collectorsSeen = new Set();
     for (const f of readdirSync(path.join(ROOT, 'test')).filter((x) => /\.test\.(js|mjs)$/.test(x))) {
-      for (const v of vacuousTests(readFileSync(path.join(ROOT, 'test', f), 'utf-8'))) {
-        offenders.push(`${f}:${v.line} — ${v.name}`);
+      const found = vacuousTests(readFileSync(path.join(ROOT, 'test', f), 'utf-8'));
+      if (COLLECTORS.has(f)) {
+        if (found.length) collectorsSeen.add(f);
+        continue;
       }
+      for (const v of found) offenders.push(`${f}:${v.line} — ${v.name}`);
     }
+    // A stale allowance is as bad as a missing one: if a collector starts
+    // asserting, it must leave the record rather than sit there excusing
+    // nothing.
+    assert.deepEqual([...collectorsSeen].sort(), [...COLLECTORS.keys()].sort(),
+      'a file on the COLLECTORS record no longer has a collecting test — remove it from the '
+      + 'record, or it will excuse a real vacuous test added there later.');
     assert.deepEqual(offenders, [],
       `${offenders.length} test(s) contain no assertion and call no helper that asserts. Give `
       + 'each one a real check, or delete it. A reporter that only console.logs should assert '
       + 'a ratchet on the number it prints, so the number cannot move in silence.');
+  });
+
+  test('no test asserts only things that are true by construction', () => {
+    // The sibling gate above asks whether a test asserts AT ALL, so
+    // assert.ok(true) satisfies it. That is precisely the shape a
+    // missing-prerequisite branch reaches for, and five files had one:
+    // `it('SKIP: <thing> not available', () => assert.ok(true))` reports a
+    // green TICK, not a skip, so a suite that checked nothing was
+    // indistinguishable from one that passed. A real `{ skip: reason }` says
+    // so in the summary; a tautology hides it.
+    const offenders = [];
+    for (const f of readdirSync(path.join(ROOT, 'test')).filter((x) => /\.test\.(js|mjs)$/.test(x))) {
+      for (const t of tautologicalTests(readFileSync(path.join(ROOT, 'test', f), 'utf-8'))) {
+        offenders.push(`${f}:${t.line} — ${t.name}`);
+      }
+    }
+    assert.deepEqual(offenders, [],
+      `${offenders.length} test(s) assert only tautologies (assert.ok(true), assert.equal(1, 1)) `
+      + 'and cannot fail. If the point is to skip, use `it(name, { skip: reason }, () => {})` so '
+      + 'it is COUNTED as a skip. If the point is to record a limitation, assert the limitation '
+      + 'itself, so the note goes red when it stops being true.');
   });
 
   test('the files CI does not run are exactly the ones on the record', () => {

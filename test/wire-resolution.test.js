@@ -62,9 +62,7 @@ describe('gallery circuit.json: every wire terminal resolves', () => {
     : [];
 
   if (exampleDirs.length === 0) {
-    it('SKIP: no gallery circuit.json files found', () => {
-      assert.ok(true);
-    });
+    it('needs gallery circuit.json files', { skip: 'no gallery circuit.json files found' }, () => {});
     return;
   }
 

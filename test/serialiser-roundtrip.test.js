@@ -65,7 +65,7 @@ function loadGalleryCircuit(filePath) {
 
 describe('serialiser round-trip over gallery corpus', () => {
   if (!existsSync(examplesDir)) {
-    it('SKIP: gallery not available at ' + examplesDir, () => assert.ok(true));
+    it('needs the gallery corpus', { skip: `gallery not available at ${examplesDir}` }, () => {});
     return;
   }
 

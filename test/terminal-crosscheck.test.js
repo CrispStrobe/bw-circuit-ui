@@ -71,9 +71,7 @@ const KNOWN_DIFFS = new Map();
 
 describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
   if (!sidecars) {
-    it('SKIP: bw-parts checkout not available at ' + bwPartsDir, () => {
-      assert.ok(true, 'bw-parts not found — skipping cross-check');
-    });
+    it('needs a bw-parts checkout', { skip: `bw-parts not found at ${bwPartsDir}` }, () => {});
     return;
   }
 

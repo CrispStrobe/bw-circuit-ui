@@ -93,7 +93,8 @@ function verifyBoard(kind, vcc, gpioPin, enginePinName) {
   describe(`${kind}: breadboard seating`, () => {
     const sc = getSidecar(kind);
     if (!sc || !sc.footprint || !sc.footprint.straddlesGutter) {
-      it('SKIP: no gutter-straddling footprint', () => assert.ok(true));
+      it('needs a gutter-straddling footprint', { skip: 'sidecar has no straddling footprint' },
+        () => {});
       return;
     }
 
@@ -166,7 +167,8 @@ function verifyDIP(kind, vcc, testPin) {
   describe(`${kind}: breadboard seating`, () => {
     const sc = getSidecar(kind);
     if (!sc || !sc.footprint || !sc.footprint.straddlesGutter) {
-      it('SKIP: no gutter-straddling footprint', () => assert.ok(true));
+      it('needs a gutter-straddling footprint', { skip: 'sidecar has no straddling footprint' },
+        () => {});
       return;
     }
 

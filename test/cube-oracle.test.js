@@ -15,7 +15,7 @@ import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateTrace, verifyTrace } from '../../bw-board/test/golden/cube-oracle.js';
-import { computeCubeVoxels, BW_CUBE_ACTIVE_HIGH } from '../src/model/ledcube.js';
+import { computeCubeVoxels, BW_CUBE_ACTIVE_HIGH, VOXEL_MAP } from '../src/model/ledcube.js';
 
 describe('cube-trace oracle (category 3)', () => {
   it('reference trace passes all invariants', () => {
@@ -69,8 +69,16 @@ describe('cube-trace oracle (category 3)', () => {
     assert.equal(dark.length, 32, `expected 32 dark voxels, got ${dark.length}`);
   });
 
-  it('states its own limits', () => {
-    // This test exists so a passing suite does not read as "the cube works"
+  it('states its own limits, and holds them to it', () => {
+    // This test exists so a passing suite does not read as "the cube works".
+    // It used to say so with assert.ok(true, '...long note...'), which cannot
+    // fail — so the day the map IS measured, the note would keep announcing an
+    // empty one. Assert the limit instead: when someone fills VOXEL_MAP from a
+    // real cube this goes red and the text above has to be rewritten.
+    const mapped = VOXEL_MAP.flat().filter((v) => v !== null);
+    assert.equal(mapped.length, 0,
+      `${mapped.length} voxel(s) are now mapped — the cube has been measured, so this test's `
+      + 'LIMITS note is out of date. Update it and lower this expectation.');
     assert.ok(true,
       'LIMITS: voxel map is EMPTY (no (select,bit)→(x,y,z) mapping), ' +
       'polarity unverified (BW_CUBE_ACTIVE_HIGH=' + BW_CUBE_ACTIVE_HIGH + '), ' +

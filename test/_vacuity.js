@@ -92,6 +92,22 @@ function assertingHelpers (src) {
 }
 
 /**
+ * Does this test declare `{ skip: ... }`?
+ *
+ * Only the options region counts — everything before the callback — so a body
+ * that merely mentions the word does not exempt itself. A skipped test has no
+ * business asserting, and after the tautology sweep the skipped ones have
+ * empty bodies on purpose.
+ * @param {string} call the test call, parens included
+ */
+function isSkipped (call) {
+  const afterName = call.replace(/^\(\s*(['"`])(?:[^\\]|\\.)*?\1/, '');
+  const cb = afterName.search(/=>|\bfunction\b/);
+  const opts = cb < 0 ? afterName : afterName.slice(0, cb);
+  return /\bskip\s*:/.test(opts);
+}
+
+/**
  * @param {string} raw a test file's source
  * @returns {Array<{line: number, name: string}>} tests that cannot fail
  */
@@ -104,10 +120,88 @@ export function vacuousTests (raw) {
     const call = callAt(src, m.index + m[0].length - 1);
     if (!call) continue;
     const body = call.replace(/^\(\s*(['"`])(?:[^\\]|\\.)*?\1/, '');
+    if (isSkipped(call)) continue;   // a skipped test is not asked to assert
     if (ASSERTY.test(body)) continue;
     if ([...helpers].some((h) => new RegExp(`\\b${h}\\s*\\(`).test(body))) continue;
     const name = (/^\(\s*(['"`])([\s\S]*?)\1/.exec(call) || [])[2] || '(computed name)';
     out.push({ line: src.slice(0, m.index).split('\n').length, name });
+  }
+  return out;
+}
+
+/** A literal: nothing here can differ between runs. */
+function isLiteral (s) {
+  return /^(true|false|null|undefined|-?\d+(\.\d+)?|'[^']*'|"[^"]*"|`[^`${]*`|\[\s*\]|\{\s*\})$/.test(s.trim());
+}
+
+/** Split on top-level commas, ignoring nesting and quotes. */
+function splitArgs (inner) {
+  const out = []; let d = 0; let q = null; let cur = '';
+  for (let i = 0; i < inner.length; i++) {
+    const c = inner[i];
+    if (q) { cur += c; if (c === '\\') { cur += inner[++i] ?? ''; continue; } if (c === q) q = null; continue; }
+    if (c === "'" || c === '"' || c === '`') { q = c; cur += c; continue; }
+    if ('([{'.includes(c)) d++;
+    else if (')]}'.includes(c)) d--;
+    if (c === ',' && d === 0) { out.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  if (cur.trim()) out.push(cur);
+  return out.map((s) => s.trim());
+}
+
+/**
+ * An assertion that holds no matter what the code does.
+ * @param {string} method the assert method, '' for a bare `assert(...)`
+ * @param {string} call the parenthesised argument list, parens included
+ */
+function isTautology (method, call) {
+  const args = splitArgs(call.slice(1, -1));
+  if (method === '' || method === 'ok') {
+    return args.length >= 1 && /^(true|1|!0)$/.test(args[0]);
+  }
+  if (/^(equal|strictEqual|deepEqual|deepStrictEqual)$/.test(method)) {
+    return args.length >= 2 && args[0] === args[1] && isLiteral(args[0]);
+  }
+  return false;
+}
+
+/**
+ * Tests whose every assertion is trivially true.
+ *
+ * vacuousTests() asks whether a test asserts at all, so `assert.ok(true)`
+ * satisfies it — the token is there. That is the shape a skipped-prerequisite
+ * branch reaches for: safety-lesson-canary.test.js registered
+ * `it('SKIP: canary file not available', () => assert.ok(true))`, so a gate
+ * reading nothing reported a green TICK rather than a skip, which is the one
+ * outcome nobody reviewing the output can notice. An assertion that cannot
+ * fail is the same defect as no assertion wearing its clothes.
+ *
+ * @param {string} raw a test file's source
+ * @returns {Array<{line: number, name: string}>}
+ */
+export function tautologicalTests (raw) {
+  const src = stripComments(raw);
+  const scan = stripComments(raw, true);
+  const out = [];
+  for (const m of scan.matchAll(/(?<![.\w])(test|it)\s*\(/g)) {
+    const call = callAt(src, m.index + m[0].length - 1);
+    if (!call) continue;
+    const body = call.replace(/^\(\s*(['"`])(?:[^\\]|\\.)*?\1/, '');
+    if (!ASSERTY.test(body)) continue;                 // vacuousTests owns that case
+
+    const scanBody = scan.slice(m.index, m.index + call.length);
+    let asserts = 0; let trivial = 0;
+    for (const a of scanBody.matchAll(/(?<![.\w])assert(?:\.([A-Za-z]+))?\s*\(/g)) {
+      const argCall = callAt(src, m.index + a.index + a[0].length - 1);
+      if (!argCall) continue;
+      asserts++;
+      if (isTautology(a[1] || '', argCall)) trivial++;
+    }
+    if (asserts > 0 && asserts === trivial) {
+      const name = (/^\(\s*(['"`])([\s\S]*?)\1/.exec(call) || [])[2] || '(computed name)';
+      out.push({ line: src.slice(0, m.index).split('\n').length, name });
+    }
   }
   return out;
 }
