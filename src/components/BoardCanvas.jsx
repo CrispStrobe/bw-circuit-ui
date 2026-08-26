@@ -1346,7 +1346,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           [['Tab','tab'],['Q','q'],['W','w'],['E','e'],['R','r'],['T','t'],['Y','y'],['U','u'],['I','i'],['O','o'],['P','p'],['[','lbracket'],[']','rbracket'],['\\','backslash']],
           [['Caps','capslock'],['A','a'],['S','s'],['D','d'],['F','f'],['G','g'],['H','h'],['J','j'],['K','k'],['L','l'],[';','semicolon'],["'",'quote'],['Enter','enter']],
           [['Shift','lshift'],['Z','z'],['X','x'],['C','c'],['V','v'],['B','b'],['N','n'],['M','m'],[',','comma'],['.','period'],['/','slash'],['Shift','rshift']],
-          [['Ctrl','lctrl'],['Alt','lalt'],['Space','space'],['←','left'],['↑','up'],['↓','down'],['→','right']],
+          [['Ctrl','lctrl'],['Alt','lalt'],['Space','space'],['Ctrl','rctrl'],['←','left'],['↑','up'],['↓','down'],['→','right']],
         ];
         const bw = 190, bh = 84, keyW = 12, keyH = 9;
         return (
