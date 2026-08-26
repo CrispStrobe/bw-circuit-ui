@@ -51,20 +51,36 @@ describe('resolveTerminal', () => {
   });
 });
 
+// Resolved the way every other corpus suite does. This read ONE path,
+// ../../bw-cfront/sb3-creator/examples, which exists on no machine and cannot
+// exist on CI, where sb3-creator is cloned beside the repo — so this gate had
+// never run anywhere. Absence is a failure, not a skip: CI provides the
+// corpus, so not finding it means a broken checkout.
+const EXPLICIT_ROOT = process.env.EXAMPLES_DIR || null;
+const CORPUS_ROOTS = EXPLICIT_ROOT ? [EXPLICIT_ROOT] : [
+  path.resolve(here, '../../sb3-creator/examples'),
+  path.resolve(here, '../../bw-cfront/sb3-creator/examples'),
+  path.join(process.env.HOME || '', 'code', 'sb3-creator', 'examples'),
+];
+
 describe('gallery circuit.json: every wire terminal resolves', () => {
-  // Check gallery files from bw-cfront
-  const cfrontExamples = path.join(here, '../../bw-cfront/sb3-creator/examples');
-  const exampleDirs = existsSync(cfrontExamples)
+  const cfrontExamples = CORPUS_ROOTS.find((r) => existsSync(r)) || null;
+  const exampleDirs = cfrontExamples
     ? readdirSync(cfrontExamples).filter(d => {
         const circuitPath = path.join(cfrontExamples, d, 'circuit.json');
         return existsSync(circuitPath);
       })
     : [];
 
-  if (exampleDirs.length === 0) {
-    it('needs gallery circuit.json files', { skip: 'no gallery circuit.json files found' }, () => {});
-    return;
-  }
+  // Registered BEFORE the early return, which is the whole point: the
+  // non-vacuity guard at the foot of this file asserts >= 5 circuits, and it
+  // sat AFTER a `return` that fired whenever the corpus was missing. A guard
+  // against checking nothing is worthless if not checking anything skips it.
+  it('the gallery corpus is present', () => {
+    assert.ok(exampleDirs.length > 0,
+      `No gallery circuit.json found. Tried:\n  ${CORPUS_ROOTS.join('\n  ')}`);
+  });
+  if (exampleDirs.length === 0) return;
 
   for (const dir of exampleDirs) {
     it(`${dir}: all wire terminals resolve to real part terminals`, () => {

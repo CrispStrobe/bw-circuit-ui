@@ -30,7 +30,18 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const examplesDir = path.join(here, '../../bw-cfront/sb3-creator/examples');
+// Resolved the way every other corpus suite does. This read ONE path,
+// ../../bw-cfront/sb3-creator/examples, which exists on no machine and cannot
+// exist on CI, where sb3-creator is cloned beside the repo — so this gate had
+// never run anywhere. Absence is a failure, not a skip: CI provides the
+// corpus, so not finding it means a broken checkout.
+const EXPLICIT_ROOT = process.env.EXAMPLES_DIR || null;
+const CORPUS_ROOTS = EXPLICIT_ROOT ? [EXPLICIT_ROOT] : [
+  path.resolve(here, '../../sb3-creator/examples'),
+  path.resolve(here, '../../bw-cfront/sb3-creator/examples'),
+  path.join(process.env.HOME || '', 'code', 'sb3-creator', 'examples'),
+];
+const examplesDir = CORPUS_ROOTS.find((r) => existsSync(r)) || null;
 
 function loadGalleryCircuit(filePath) {
   const raw = JSON.parse(readFileSync(filePath, 'utf-8'));
@@ -44,9 +55,16 @@ function loadGalleryCircuit(filePath) {
     idMap.set(p.id, part.id);
   }
 
+  // Wires this harness cannot represent. A gallery wire may terminate on a
+  // BREADBOARD HOLE — `to` is {board, hole}, not a part id — and idMap.get()
+  // on an object is undefined, so it is skipped. That is a limit of this
+  // part-to-part loader, NOT a serialiser loss, and counting it as one is what
+  // made this gate report 2432 losses the day it started running again.
+  let unattached = 0;
   for (const w of raw.wires || []) {
     const fromId = idMap.get(w.from);
     const toId = idMap.get(w.to);
+    if (!fromId || !toId) unattached++;
     if (fromId && toId) {
       const fromPart = c.parts.find(p => p.id === fromId);
       const toPart = c.parts.find(p => p.id === toId);
@@ -60,14 +78,16 @@ function loadGalleryCircuit(filePath) {
     }
   }
 
-  return { circuit: c, raw, idMap };
+  return { circuit: c, raw, idMap, unattached };
 }
 
 describe('serialiser round-trip over gallery corpus', () => {
-  if (!existsSync(examplesDir)) {
-    it('needs the gallery corpus', { skip: `gallery not available at ${examplesDir}` }, () => {});
-    return;
-  }
+  it('the gallery corpus is present', () => {
+    assert.notEqual(examplesDir, null,
+      `Corpus absent. Tried:\n  ${CORPUS_ROOTS.join('\n  ')}\nA round-trip gate that loads `
+      + 'nothing must not report green.');
+  });
+  if (!examplesDir) return;
 
   const dirs = readdirSync(examplesDir).filter(d => {
     return existsSync(path.join(examplesDir, d, 'circuit.json'));
@@ -80,12 +100,13 @@ describe('serialiser round-trip over gallery corpus', () => {
   // Track losses across all files
   const allLosses = [];
   let filesChecked = 0;
+  let totalUnattached = 0;
 
   for (const dir of dirs) {
     it(`${dir}: load → save preserves content`, () => {
       const filePath = path.join(examplesDir, dir, 'circuit.json');
       const raw = JSON.parse(readFileSync(filePath, 'utf-8'));
-      const { circuit, idMap } = loadGalleryCircuit(filePath);
+      const { circuit, idMap, unattached } = loadGalleryCircuit(filePath);
       const saved = circuit.toJSON();
       const losses = [];
 
@@ -129,13 +150,22 @@ describe('serialiser round-trip over gallery corpus', () => {
       }
 
       // ── Check wire count ─────────────────────────────────────
-      if (saved.wires.length !== (raw.wires || []).length) {
-        losses.push(`wire count: ${(raw.wires || []).length} → ${saved.wires.length}`);
+      // Against what the loader could actually take, not the raw file: the
+      // difference is hole-terminated wires, which never reached the circuit
+      // and so cannot have been lost by serialising it.
+      totalUnattached += unattached;
+      if (saved.wires.length !== (raw.wires || []).length - unattached) {
+        losses.push(`wire count: ${(raw.wires || []).length - unattached} → ${saved.wires.length}`);
       }
 
       // ── Check each wire's endpoints ──────────────────────────
-      for (let i = 0; i < (raw.wires || []).length; i++) {
-        const origW = raw.wires[i];
+      // Positional comparison only works over the wires the loader actually
+      // took. One skipped hole-terminated wire shifts every index after it, so
+      // comparing raw.wires[i] to saved.wires[i] reports every later wire as
+      // wrong — 2260 of this gate's 2432 "losses" were that shift.
+      const attachable = (raw.wires || []).filter((w) => idMap.get(w.from) && idMap.get(w.to));
+      for (let i = 0; i < attachable.length; i++) {
+        const origW = attachable[i];
         if (i >= saved.wires.length) {
           losses.push(`wire[${i}]: MISSING`);
           continue;
@@ -192,7 +222,15 @@ describe('serialiser round-trip over gallery corpus', () => {
    * lands, this comes down in the same commit, and the assertion below fails
    * loudly rather than letting the improvement go unrecorded.
    */
-  const KNOWN_LOSSES = { total: 33, files: 11 };
+  const KNOWN_LOSSES = { total: 0, files: 0 };
+
+  /**
+   * Wires this harness cannot carry: their endpoint is a breadboard HOLE, not
+   * a part, so a part-to-part loader never attaches them. Not a serialiser
+   * loss — counted separately so the limitation is visible instead of inflating
+   * the number above, which is exactly what it used to do.
+   */
+  const KNOWN_UNATTACHED = 731;
 
   it('summary: report all losses across corpus', () => {
     console.log(`  Serialiser round-trip: ${filesChecked} files checked`);
@@ -217,6 +255,11 @@ describe('serialiser round-trip over gallery corpus', () => {
     const totalLosses = allLosses.reduce((s, f) => s + f.losses.length, 0);
     console.log(`  Total losses: ${totalLosses} across ${allLosses.length} files`);
 
+    console.log(`  Hole-terminated wires this loader cannot carry: ${totalUnattached}`);
+    assert.equal(totalUnattached, KNOWN_UNATTACHED,
+      `${totalUnattached} hole-terminated wires vs ${KNOWN_UNATTACHED} recorded. Not a serialiser `
+      + 'loss — but it moved, so either the corpus changed or the loader learned/forgot how to '
+      + 'seat a wire. Update the number deliberately.');
     assert.ok(filesChecked >= 200,
       `only ${filesChecked} files round-tripped — a summary over nothing reports "no losses" `
       + 'and means nothing. The corpus is ~204 files.');

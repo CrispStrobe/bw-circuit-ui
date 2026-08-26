@@ -74,6 +74,18 @@ function outputLed(driver, terminal, lid, rid, color = 'green') {
   };
 }
 
+// The registry must be populated before terminalsForKind means anything:
+// without _setup.js it answers ['a','b'] for every kind, and a validator built
+// on that cannot fail.
+import '../test/_setup.js';
+import { terminalsForKind } from '../src/model/circuit.js';
+
+/** Kinds whose engine model has real power pins. */
+function hasPowerPins (kind) {
+  const t = terminalsForKind(kind);
+  return t.includes('vcc') && t.includes('gnd');
+}
+
 function emit(name, circuit) {
   const ids = circuit.parts.map((p) => p.id);
   if (new Set(ids).size !== ids.length) throw new Error(`${name}: duplicate part id`);
@@ -81,6 +93,23 @@ function emit(name, circuit) {
   for (const w of circuit.wires) {
     if (!known.has(w.from)) throw new Error(`${name}: wire from unknown part ${w.from}`);
     if (!known.has(w.to)) throw new Error(`${name}: wire to unknown part ${w.to}`);
+  }
+  // Terminals, not just parts. validateNetlist checks a part's DECLARED
+  // terminal list and never the terminals nets reference, so a wire to a pin
+  // the model does not have is accepted by the engine and silently ignored by
+  // the solver. c10 wired vcc/gnd to a decade_counter — which models a CD4017
+  // with no power pins — and it went unnoticed until a corpus round-trip that
+  // had not run in months started dropping the two wires.
+  const kindOf = new Map(circuit.parts.map((p) => [p.id, p.kind]));
+  for (const w of circuit.wires) {
+    for (const [pid, term] of [[w.from, w.fromTerminal], [w.to, w.toTerminal]]) {
+      const kind = kindOf.get(pid);
+      const valid = terminalsForKind(kind);
+      if (!valid.includes(term)) {
+        throw new Error(`${name}: ${pid} (${kind}) has no terminal "${term}" — the engine `
+          + `offers ${valid.join(', ')}`);
+      }
+    }
   }
   writeFileSync(join(outDir, `${name}.json`), `${JSON.stringify(circuit, null, 2)}\n`);
   return `${name}: ${circuit.parts.length} parts, ${circuit.wires.length} wires`;
@@ -755,7 +784,10 @@ function activeLowLed(driver, terminal, lid, rid, color = 'red') {
   // the invariant the control matrix exists to hold.
   const P = [...rails()];
   const W = [];
-  const chip = (id, kind) => { P.push(part(id, kind)); W.push(...powerChip(id)); };
+  const chip = (id, kind) => {
+    P.push(part(id, kind));
+    if (hasPowerPins(kind)) W.push(...powerChip(id));
+  };
   for (const [id, kind] of [
     ['ring', 'decade_counter'], ['pc', '74ls161'], ['ram', '74ls189'],
     ['mar', '74ls173'], ['ir', '74ls173'], ['areg', '74ls173'],

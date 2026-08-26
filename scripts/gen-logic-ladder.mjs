@@ -80,6 +80,12 @@ const powerChip = (id) => [wire('vcc1', 'vcc', id, 'vcc'), wire('gnd1', 'gnd', i
 /** Base parts every circuit in this ladder starts from. */
 const rails = () => [part('vcc1', 'vcc'), part('gnd1', 'gnd')];
 
+// The registry must be populated before terminalsForKind means anything:
+// without _setup.js it answers ['a','b'] for every kind, and a validator built
+// on that cannot fail.
+import '../test/_setup.js';
+import { terminalsForKind } from '../src/model/circuit.js';
+
 function emit(name, circuit) {
   const ids = circuit.parts.map((p) => p.id);
   if (new Set(ids).size !== ids.length) throw new Error(`${name}: duplicate part id`);
@@ -87,6 +93,21 @@ function emit(name, circuit) {
   for (const w of circuit.wires) {
     if (!known.has(w.from)) throw new Error(`${name}: wire from unknown part ${w.from}`);
     if (!known.has(w.to)) throw new Error(`${name}: wire to unknown part ${w.to}`);
+  }
+  // Terminals too. validateNetlist checks a part's DECLARED terminal list and
+  // never the terminals nets reference, so a wire to a pin the model does not
+  // have is accepted and silently ignored by the solver — see the sibling
+  // generator, where vcc/gnd on a decade_counter went unnoticed for months.
+  const kindOf = new Map(circuit.parts.map((p) => [p.id, p.kind]));
+  for (const w of circuit.wires) {
+    for (const [pid, term] of [[w.from, w.fromTerminal], [w.to, w.toTerminal]]) {
+      const kind = kindOf.get(pid);
+      const valid = terminalsForKind(kind);
+      if (!valid.includes(term)) {
+        throw new Error(`${name}: ${pid} (${kind}) has no terminal "${term}" — the engine `
+          + `offers ${valid.join(', ')}`);
+      }
+    }
   }
   writeFileSync(join(outDir, `${name}.json`), `${JSON.stringify(circuit, null, 2)}\n`);
   return `${name}: ${circuit.parts.length} parts, ${circuit.wires.length} wires`;

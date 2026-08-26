@@ -52,6 +52,12 @@ export const TERMINAL_ALIASES = {
   // PA0-PA3 still exist in bw-board's ATTINY88_PINS — those are the DIE's
   // registers, which the package simply cannot reach.
   attiny88: { pa0: 'gnd2' },
+  // A single-digit display's common pin is `common` in the engine, and `com`
+  // on every schematic and datasheet that abbreviates it. 77-keypad-keyshow
+  // ships the short spelling, so its display-to-ground wire landed on nothing
+  // and was dropped at load — invisible until a corpus round-trip that had not
+  // run in months started counting.
+  seven_segment: { com: 'common' },
   '555': {
     trig: 'trigger',
     out: 'output',
