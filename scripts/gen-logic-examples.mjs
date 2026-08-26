@@ -348,6 +348,25 @@ const LADDER = [
     table: [['write 3,9,5,12', 'into cells 0-3'], ['then clock', 'cell 0 shows 3'], ['clock', '9'], ['clock', '5'], ['clock', '12']],
     cols: ['action', 'data LEDs'],
   },
+  {
+    src: 'c9-fetch-cycle', id: 'pc109-fetch-cycle', difficulty: 5,
+    en: { title: 'The fetch cycle — reading an instruction, and knowing what it says',
+      teaches: 'fetch sequencing, latched vs transparent registers, one driver at a time' },
+    de: { title: 'Der Holzyklus — einen Befehl lesen und verstehen',
+      desc: 'Drei Zeitschritte, und am Ende hält die Maschine einen Befehl, den sie versteht. T1: Der '
+        + 'Programmzähler treibt den Bus, das Adressregister übernimmt die Adresse. T2: Der Zähler geht weiter '
+        + '— gefahrlos, denn die Adresse ist schon gesichert. T3: Das RAM treibt den Bus, das Befehlsregister '
+        + 'übernimmt, und der Dekoder macht sofort eine leuchtende Lampe daraus: LDA, ADD, SUB oder OUT. '
+        + 'Ein Befehl ist hier vier Bit breit — die oberen zwei sind der Opcode, die unteren zwei die Adresse, '
+        + 'auf die er wirkt — mehr kann ein Vier-Bit-Bus ehrlicherweise nicht tragen. '
+        + 'Erst mit den Datenschaltern und WRITE ein Programm laden, dann takten und zusehen. '
+        + 'Achte darauf, dass immer nur EIN Treiber aktiv ist: der Zähler bei T1, das RAM bei T3, bei T2 '
+        + 'niemand. Genau diese Regel hält das Steuerwerk aufrecht.',
+      teaches: 'Ablauf des Holzyklus, gelatchte gegen transparente Register, immer nur ein Treiber' },
+    table: [['T1', 'counter drives bus, MAR latches'], ['T2', 'counter advances, bus idle'],
+      ['T3', 'RAM drives bus, IR latches'], ['0111', 'decodes ADD'], ['1100', 'decodes OUT']],
+    cols: ['state', 'what happens'],
+  },
 ];
 
 const mdTable = (cols, rows) => [

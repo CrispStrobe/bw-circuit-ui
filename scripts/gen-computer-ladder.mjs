@@ -1,5 +1,5 @@
 /**
- * Generate the COMPUTER ladder — gallery/c0..c8, the pieces a
+ * Generate the COMPUTER ladder — gallery/c0..c9, the pieces a
  * stored-program machine is made of, each one running on its own.
  *
  * The logic ladder (l0..l9) ends at arithmetic that is entirely
@@ -607,6 +607,130 @@ function activeLowLed(driver, terminal, lid, rid, color = 'red') {
       + 'captured. Latch on the same edge that changes the state and you capture the bus mid-transition. '
       + 'The inverter bank on the RAM outputs is there because the 74LS189 gives its data back inverted.',
     _category: 'computer', _difficulty: 5, _stage: 'C8',
+  }));
+}
+
+// ── C9: the fetch cycle — the machine reads AND understands ────────
+
+{
+  // Everything from C8, now sequenced properly and with an instruction
+  // register on the end of it. Three timing states do the fetch:
+  //
+  //   T1  Ep, Lm   the counter drives the bus; MAR latches the address
+  //   T2  Cp       the counter advances (the address is already safe)
+  //   T3  CE, Li   the RAM drives the bus; IR latches the instruction
+  //
+  // The instruction is four bits: the top two are the opcode and the
+  // bottom two the operand address, which is what a four-bit bus can
+  // honestly carry. 00 LDA, 01 ADD, 10 SUB, 11 OUT.
+  const parts = [...rails(),
+    part('ring', 'decade_counter'),
+    part('pc', '74ls161'), part('buf_pc', '74hc244'),
+    part('mar', '74ls173'), part('ram', '74ls189'),
+    part('inv_a', '74hc04'), part('inv_b', '74hc04'),
+    part('buf_ram', '74hc244'),
+    part('ir', '74ls173'), part('dec', '74hc138'),
+    part('gate', '74hc08'),
+    part('swc', 'dip_switch_spst', { switches: 0 }),        // 1 = clock, 2 = write
+    part('swd', 'dip_switch_spst', { switches: 0 })];        // data to load
+  const wires = [...powerChip('pc'), ...powerChip('buf_pc'), ...powerChip('mar'), ...powerChip('ram'),
+    ...powerChip('inv_a'), ...powerChip('inv_b'), ...powerChip('buf_ram'), ...powerChip('ir'),
+    ...powerChip('dec'), ...powerChip('gate')];
+
+  // ── clock, its inverse, and the three-state ring ────────────────
+  const CK = switchInput('swc', 1, 'rck');
+  parts.push(...CK.parts); wires.push(...CK.wires);
+  wires.push(wire('swc', '1b', 'ring', 'clk'), wire('swc', '1b', 'inv_a', '1a'));
+  wires.push(wire('gnd1', 'gnd', 'ring', 'en'), wire('ring', 'q3', 'ring', 'rst'));
+  const NOTCLK = ['inv_a', '1y'];
+
+  // gated loads: each register latches on the falling clock DURING its state
+  const gated = (gate, tState, target) => {
+    wires.push(wire('ring', tState, 'gate', `${gate}a`), wire(NOTCLK[0], NOTCLK[1], 'gate', `${gate}b`));
+    wires.push(wire('gate', `${gate}y`, target, 'clk'));
+  };
+  gated(1, 'q0', 'mar');      // T1: latch the address
+  gated(2, 'q1', 'pc');       // T2: advance the counter
+  gated(3, 'q2', 'ir');       // T3: latch the instruction
+  wires.push(wire('gnd1', 'gnd', 'gate', '4a'), wire('gnd1', 'gnd', 'gate', '4b'));
+
+  // ── the counter, and its tri-state path onto the bus ────────────
+  for (const t of ['clrb', 'loadb', 'enp', 'ent']) wires.push(wire('vcc1', 'vcc', 'pc', t));
+  for (const t of ['d0', 'd1', 'd2', 'd3']) wires.push(wire('gnd1', 'gnd', 'pc', t));
+  for (let i = 0; i < 4; i++) wires.push(wire('pc', `q${i}`, 'buf_pc', `1a${i}`));
+  wires.push(wire('ring', 'q0', 'inv_a', '2a'), wire('inv_a', '2y', 'buf_pc', '1oeb'));  // Ep = T1
+  wires.push(wire('gnd1', 'gnd', 'buf_pc', '2oeb'));
+
+  // ── the bus ─────────────────────────────────────────────────────
+  for (let i = 0; i < 4; i++) {
+    const rid = `rbus${i}`;
+    parts.push(part(rid, 'resistor', { ohms: 100000 }));
+    wires.push(wire('buf_pc', `1y${i}`, rid, 'a'), wire('buf_ram', `1y${i}`, rid, 'a'),
+      wire(rid, 'b', 'gnd1', 'gnd'));
+    wires.push(wire(rid, 'a', 'mar', `d${i}`), wire(rid, 'a', 'ir', `d${i}`));
+    const led = outputLed(rid, 'a', `led_bus${i}`, `rlb${i}`, 'yellow');
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+
+  // ── address register → RAM ──────────────────────────────────────
+  for (const t of ['g1b', 'g2b', 'oe1b', 'oe2b']) wires.push(wire('gnd1', 'gnd', 'mar', t));
+  wires.push(wire('gnd1', 'gnd', 'mar', 'mr'));
+  for (let i = 0; i < 4; i++) wires.push(wire('mar', `q${i}`, 'ram', `a${i}`));
+  wires.push(wire('gnd1', 'gnd', 'ram', 'csb'));
+
+  // hand-loading the program
+  const WE = switchInputActiveLow('swc', 2, 'rwe');
+  parts.push(...WE.parts); wires.push(...WE.wires);
+  wires.push(wire('swc', '2b', 'ram', 'web'));
+  for (let i = 0; i < 4; i++) {
+    const sw = switchInput('swd', i + 1, `rd${i}`);
+    parts.push(...sw.parts); wires.push(...sw.wires);
+    wires.push(wire('swd', `${i + 1}b`, 'ram', `d${i}`));
+  }
+
+  // ── RAM out (inverted) → inverter bank → tri-state → bus ────────
+  ['2', '3', '4', '5'].forEach((g, i) => {
+    wires.push(wire('ram', `o${i}`, 'inv_b', `${g}a`), wire('inv_b', `${g}y`, 'buf_ram', `1a${i}`));
+  });
+  wires.push(wire('ring', 'q2', 'inv_b', '1a'), wire('inv_b', '1y', 'buf_ram', '1oeb'));  // CE = T3
+  wires.push(wire('gnd1', 'gnd', 'buf_ram', '2oeb'), wire('gnd1', 'gnd', 'inv_b', '6a'));
+  for (const g of ['3', '4', '5', '6']) wires.push(wire('gnd1', 'gnd', 'inv_a', `${g}a`));
+
+  // ── instruction register → decoder ──────────────────────────────
+  for (const t of ['g1b', 'g2b', 'oe1b', 'oe2b']) wires.push(wire('gnd1', 'gnd', 'ir', t));
+  wires.push(wire('gnd1', 'gnd', 'ir', 'mr'));
+  wires.push(wire('ir', 'q2', 'dec', 'a'), wire('ir', 'q3', 'dec', 'b'), wire('gnd1', 'gnd', 'dec', 'c'));
+  wires.push(wire('vcc1', 'vcc', 'dec', 'g1'), wire('gnd1', 'gnd', 'dec', 'g2ab'),
+    wire('gnd1', 'gnd', 'dec', 'g2bb'));
+  for (const [out, name, color] of [['y0b', 'lda', 'green'], ['y1b', 'add', 'green'],
+    ['y2b', 'sub', 'yellow'], ['y3b', 'out', 'red']]) {
+    const led = activeLowLed('dec', out, `led_${name}`, `rl_${name}`, color);
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+  // what the machine is holding and where it is looking
+  for (let i = 0; i < 4; i++) {
+    const a = outputLed('mar', `q${i}`, `led_addr${i}`, `rla${i}`, 'red');
+    const r = outputLed('ir', `q${i}`, `led_ir${i}`, `rli${i}`, 'green');
+    parts.push(...a.parts, ...r.parts); wires.push(...a.wires, ...r.wires);
+  }
+  for (let i = 0; i < 3; i++) {
+    const led = outputLed('ring', `q${i}`, `led_t${i + 1}`, `rlt${i}`, 'yellow');
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+  done.push(emit('c9-fetch-cycle', {
+    vcc: 5, parts, wires,
+    _title: 'The fetch cycle — reading an instruction, and knowing what it says',
+    _description: 'Three timing states, and at the end of them the machine is holding an instruction it '
+      + 'understands. T1: the program counter drives the bus and the address register latches it. T2: the '
+      + 'counter advances — safe now, because the address is already captured. T3: the RAM drives the bus '
+      + 'and the instruction register latches what comes back, which the decoder immediately turns into a '
+      + 'lit lamp: LDA, ADD, SUB or OUT. '
+      + 'An instruction here is four bits — the top two are the opcode, the bottom two the address it works '
+      + 'on — which is what a four-bit bus can honestly carry. '
+      + 'Load a program first with the data switches and WRITE, then clock and watch it fetch each one in turn. '
+      + 'Notice that only ONE driver is ever enabled: the counter at T1, the RAM at T3, nobody at T2. That is '
+      + 'the rule the whole control unit exists to keep.',
+    _category: 'computer', _difficulty: 5, _stage: 'C9',
   }));
 }
 

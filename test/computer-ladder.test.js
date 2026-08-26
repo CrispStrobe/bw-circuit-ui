@@ -47,8 +47,8 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: nine rungs, c0 through c8', () => {
-    assert.equal(files.length, 9, `found ${files.join(', ')}`);
+  it('is present: ten rungs, c0 through c9', () => {
+    assert.equal(files.length, 10, `found ${files.join(', ')}`);
   });
 
   it('contains no CPU — the point is building one, not using one', () => {
@@ -341,5 +341,62 @@ describe('C8 — the machine reads its own memory', () => {
         `tick ${i}: the address register holds what the bus is carrying`);
       b.tick('swc');
     }
+  });
+});
+
+describe('C9 — the fetch cycle', () => {
+  const decoded = (b) => ['lda', 'add', 'sub', 'out'].filter((n) => b.lit(`led_${n}`));
+  const tState = (b) => [1, 2, 3].filter((n) => b.lit(`led_t${n}`));
+
+  it('fetches a stored program and decodes each instruction in turn', () => {
+    const b = bench('c9-fetch-cycle');
+    b.settle();
+    // 0111 = ADD 3, 1100 = OUT, 1011 = SUB 3
+    const PROGRAM = [0b0111, 0b1100, 0b1011];
+    const EXPECT = ['add', 'out', 'sub'];
+    for (let addr = 0; addr < PROGRAM.length; addr++) {
+      assert.deepEqual(tState(b), [1], `writing cell ${addr}: should be sitting in T1`);
+      assert.equal(b.nibble('led_addr'), addr, `MAR points at cell ${addr}`);
+      b.set('swd', PROGRAM[addr]);
+      b.set('swc', 0b0010); b.settle();      // /WE low: store
+      b.set('swc', 0); b.settle();
+      b.tick('swc'); b.tick('swc'); b.tick('swc');
+    }
+    // The counter is four bits; run it round to zero again.
+    for (let i = 0; i < 13 * 3; i++) b.tick('swc');
+    assert.equal(b.nibble('led_addr'), 0, 'back at the first instruction');
+
+    for (let i = 0; i < PROGRAM.length; i++) {
+      assert.deepEqual(tState(b), [1], `instruction ${i}: T1`);
+      assert.equal(b.nibble('led_bus'), i, 'T1: the counter is driving the bus');
+      assert.equal(b.nibble('led_addr'), i, 'T1: MAR latched that address');
+      b.tick('swc');
+      assert.deepEqual(tState(b), [2], `instruction ${i}: T2`);
+      assert.equal(b.nibble('led_bus'), 0,
+        'T2: NOBODY drives the bus — the counter has let go and the RAM has not yet been enabled');
+      b.tick('swc');
+      assert.deepEqual(tState(b), [3], `instruction ${i}: T3`);
+      assert.equal(b.nibble('led_bus'), PROGRAM[i], 'T3: the RAM is driving the bus');
+      assert.equal(b.nibble('led_ir'), PROGRAM[i], 'T3: the instruction register latched it');
+      assert.deepEqual(decoded(b), [EXPECT[i]],
+        `instruction ${i} (${PROGRAM[i].toString(2).padStart(4, '0')}) decodes as ${EXPECT[i]} and nothing else`);
+      b.tick('swc');
+    }
+  });
+
+  it('the instruction register HOLDS across the next fetch until T3 replaces it', () => {
+    // If the IR were transparent rather than latched, it would follow the
+    // bus and show the ADDRESS during T1 — which would look like the
+    // machine forgetting what it is doing.
+    const b = bench('c9-fetch-cycle');
+    b.settle();
+    b.set('swd', 0b1100);                        // OUT at cell 0
+    b.set('swc', 0b0010); b.settle();
+    b.set('swc', 0); b.settle();
+    b.tick('swc'); b.tick('swc');                 // through T2 into T3
+    assert.equal(b.nibble('led_ir'), 0b1100, 'latched at T3');
+    b.tick('swc');                                // T1 of the next fetch
+    assert.equal(b.nibble('led_ir'), 0b1100,
+      'still holding the instruction while the next address goes past on the bus');
   });
 });
