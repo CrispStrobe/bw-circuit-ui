@@ -49,6 +49,7 @@ export { MediaPanel } from './components/MediaPanel.jsx';
 // Panel data functions
 export { runDrc, setExtractors } from './model/drc.js';
 export { generateBom, bomToCsv } from './model/bom.js';
+export { exportGerbers } from './model/exporters/gerber.js';
 
 // Machine extraction (wired-bus → bootable config)
 export { extractMachine } from './model/machine-extract.js';
