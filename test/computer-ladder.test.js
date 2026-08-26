@@ -47,8 +47,8 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: ten rungs, c0 through c9', () => {
-    assert.equal(files.length, 10, `found ${files.join(', ')}`);
+  it('is present: eleven rungs, c0 through c10', () => {
+    assert.equal(files.length, 11, `found ${files.join(', ')}`);
   });
 
   it('contains no CPU — the point is building one, not using one', () => {
@@ -398,5 +398,77 @@ describe('C9 — the fetch cycle', () => {
     b.tick('swc');                                // T1 of the next fetch
     assert.equal(b.nibble('led_ir'), 0b1100,
       'still holding the instruction while the next address goes past on the bus');
+  });
+});
+
+describe('C10 — the whole machine', () => {
+  /** Load a four-cell program, then wind the counter back to zero. */
+  function loaded(program) {
+    const b = bench('c10-the-machine');
+    b.settle();
+    for (let addr = 0; addr < program.length; addr++) {
+      b.set('swd', program[addr]);
+      b.set('swc', 0b0010); b.settle();       // /WE low: store at the current MAR
+      b.set('swc', 0); b.settle();
+      for (let k = 0; k < 6; k++) b.tick('swc');   // one whole instruction cycle
+    }
+    for (let i = 0; i < 12 * 6; i++) b.tick('swc');  // wrap round to cell 0
+    return b;
+  }
+  const run = (b, cycles) => { for (let i = 0; i < cycles * 6; i++) b.tick('swc'); };
+
+  it('LDA 3, ADD 3, OUT — with 5 in cell 3, the answer is ten', () => {
+    // 0011 = LDA 3 · 0111 = ADD 3 · 1100 = OUT · 0101 = the data, 5
+    const b = loaded([0b0011, 0b0111, 0b1100, 0b0101]);
+    run(b, 3);
+    assert.equal(b.nibble('led_a'), 10, 'the accumulator holds 5 + 5');
+    assert.equal(b.nibble('led_out'), 10, 'and OUT copied it to the output register');
+  });
+
+  it('SUB uses the same adder — 5 minus 5 is zero, and the run is otherwise identical', () => {
+    // 0011 = LDA 3 · 1011 = SUB 3 · 1100 = OUT · 0101 = 5
+    const b = loaded([0b0011, 0b1011, 0b1100, 0b0101]);
+    run(b, 3);
+    assert.equal(b.nibble('led_a'), 0, '5 - 5 = 0 through the two\'s-complement path');
+    assert.equal(b.nibble('led_out'), 0);
+  });
+
+  it('a different datum changes the answer and nothing else', () => {
+    // Same program, 3 in cell 3: 3 + 3 = 6. If the machine were somehow
+    // fetching constants from the instruction stream rather than from
+    // memory, this would not move.
+    const b = loaded([0b0011, 0b0111, 0b1100, 0b0011]);
+    run(b, 3);
+    assert.equal(b.nibble('led_out'), 6, '3 + 3');
+  });
+
+  it('exactly one driver ever owns the bus — nobody at T2', () => {
+    // Five things can drive this bus. The control matrix guarantees at
+    // most one does, and T2 is the state where the answer is NONE: the
+    // counter has let go and nothing else is enabled yet.
+    const b = loaded([0b0011, 0b0111, 0b1100, 0b0101]);
+    for (let instr = 0; instr < 3; instr++) {
+      assert.ok(b.lit('led_t1'), `instruction ${instr}: starts in T1`);
+      b.tick('swc');
+      assert.ok(b.lit('led_t2'), `instruction ${instr}: T2`);
+      assert.equal(b.nibble('led_bus'), 0,
+        `instruction ${instr}: at T2 the bus is released by everyone`);
+      for (let k = 0; k < 5; k++) b.tick('swc');
+    }
+  });
+
+  it('the program is in MEMORY, not in the wiring — rewriting cell 1 changes what it does', () => {
+    // The definition of a stored-program machine: same hardware, different
+    // contents, different behaviour.
+    const adder = loaded([0b0011, 0b0111, 0b1100, 0b0101]);
+    run(adder, 3);
+    const withAdd = adder.nibble('led_out');
+    const subber = loaded([0b0011, 0b1011, 0b1100, 0b0101]);
+    run(subber, 3);
+    const withSub = subber.nibble('led_out');
+    assert.notEqual(withAdd, withSub,
+      `only cell 1 differs between these runs, so the results must differ (${withAdd} vs ${withSub})`);
+    assert.equal(withAdd, 10);
+    assert.equal(withSub, 0);
   });
 });

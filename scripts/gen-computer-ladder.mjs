@@ -1,5 +1,5 @@
 /**
- * Generate the COMPUTER ladder — gallery/c0..c9, the pieces a
+ * Generate the COMPUTER ladder — gallery/c0..c10, the pieces a
  * stored-program machine is made of, each one running on its own.
  *
  * The logic ladder (l0..l9) ends at arithmetic that is entirely
@@ -731,6 +731,173 @@ function activeLowLed(driver, terminal, lid, rid, color = 'red') {
       + 'Notice that only ONE driver is ever enabled: the counter at T1, the RAM at T3, nobody at T2. That is '
       + 'the rule the whole control unit exists to keep.',
     _category: 'computer', _difficulty: 5, _stage: 'C9',
+  }));
+}
+
+// ── C10: the whole machine — it runs a program ─────────────────────
+
+{
+  // Everything from c1..c9 on one bus, sequenced by the control matrix
+  // of c6 instead of by hand. Four instructions, two-bit opcode and
+  // two-bit operand: 00 LDA, 01 ADD, 10 SUB, 11 OUT.
+  //
+  //   T1  Ep Lm   counter -> bus -> MAR
+  //   T2  Cp      counter advances
+  //   T3  CE Li   RAM -> bus -> instruction register
+  //   T4  Ei Lm   operand address -> bus -> MAR      (LDA/ADD/SUB)
+  //       Ea Lo   accumulator -> bus -> output reg   (OUT)
+  //   T5  CE La   RAM -> bus -> accumulator          (LDA)
+  //       CE Lb   RAM -> bus -> B register           (ADD/SUB)
+  //   T6  Eu La   adder -> bus -> accumulator        (ADD/SUB)
+  //       + Su    and the adder subtracts            (SUB)
+  //
+  // FIVE things can drive this bus and exactly one ever does. That is
+  // the invariant the control matrix exists to hold.
+  const P = [...rails()];
+  const W = [];
+  const chip = (id, kind) => { P.push(part(id, kind)); W.push(...powerChip(id)); };
+  for (const [id, kind] of [
+    ['ring', 'decade_counter'], ['pc', '74ls161'], ['ram', '74ls189'],
+    ['mar', '74ls173'], ['ir', '74ls173'], ['areg', '74ls173'],
+    ['breg', '74ls173'], ['oreg', '74ls173'],
+    ['buf_pc', '74hc244'], ['buf_ram', '74hc244'], ['buf_ir', '74hc244'],
+    ['buf_a', '74hc244'], ['buf_sum', '74hc244'],
+    ['add', '74hc283'], ['xorb', '74hc86'], ['dec', '74hc138'],
+    ['inv1', '74hc04'], ['inv2', '74hc04'], ['inv3', '74hc04'],
+    ['and1', '74hc08'], ['and2', '74hc08'], ['and3', '74hc08'], ['and4', '74hc08'],
+    ['or1', '74hc32'], ['or2', '74hc32'],
+  ]) chip(id, kind);
+  P.push(part('swc', 'dip_switch_spst', { switches: 0 }));
+  P.push(part('swd', 'dip_switch_spst', { switches: 0 }));
+
+  const CK = switchInput('swc', 1, 'rck');
+  P.push(...CK.parts); W.push(...CK.wires);
+  W.push(wire('swc', '1b', 'ring', 'clk'), wire('swc', '1b', 'inv1', '1a'));
+  W.push(wire('gnd1', 'gnd', 'ring', 'en'), wire('ring', 'q6', 'ring', 'rst'));
+  const NCLK = ['inv1', '1y'];
+  const T = (n) => ['ring', 'q' + (n - 1)];
+
+  // instruction decode -> active-high instruction lines
+  W.push(wire('ir', 'q2', 'dec', 'a'), wire('ir', 'q3', 'dec', 'b'), wire('gnd1', 'gnd', 'dec', 'c'));
+  W.push(wire('vcc1', 'vcc', 'dec', 'g1'), wire('gnd1', 'gnd', 'dec', 'g2ab'), wire('gnd1', 'gnd', 'dec', 'g2bb'));
+  [['y0b', '2'], ['y1b', '3'], ['y2b', '4'], ['y3b', '5']].forEach(([o, g]) => W.push(wire('dec', o, 'inv1', g + 'a')));
+  const LDA = ['inv1', '2y']; const ADDI = ['inv1', '3y'];
+  const SUBI = ['inv1', '4y']; const OUTI = ['inv1', '5y'];
+  W.push(wire('gnd1', 'gnd', 'inv1', '6a'));
+
+  const AND = (c, g, x, y) => { W.push(wire(x[0], x[1], c, g + 'a'), wire(y[0], y[1], c, g + 'b')); return [c, g + 'y']; };
+  const OR = AND;
+  const ADDSUB = OR('or1', '1', ADDI, SUBI);
+  const MEMREF = OR('or1', '2', ADDSUB, LDA);
+  const memT4 = AND('and1', '1', MEMREF, T(4));
+  const memT5 = AND('and1', '2', MEMREF, T(5));
+  const ldaT5 = AND('and1', '3', LDA, T(5));
+  const abT6 = AND('and1', '4', ADDSUB, T(6));
+  const abT5 = AND('and2', '1', ADDSUB, T(5));
+  const subT6 = AND('and2', '2', SUBI, T(6));
+  const outT4 = AND('and2', '3', OUTI, T(4));
+  W.push(wire('gnd1', 'gnd', 'and2', '4a'), wire('gnd1', 'gnd', 'and2', '4b'));
+
+  const Ep = T(1); const Cp = T(2); const Li = T(3);
+  const Lm = OR('or1', '3', T(1), memT4);
+  const CE = OR('or1', '4', T(3), memT5);
+  const La = OR('or2', '1', ldaT5, abT6);
+  const Ei = memT4; const Lb = abT5; const Eu = abT6; const Su = subT6;
+  const Ea = outT4; const Lo = outT4;
+  for (const g of ['2', '3', '4']) W.push(wire('gnd1', 'gnd', 'or2', g + 'a'), wire('gnd1', 'gnd', 'or2', g + 'b'));
+
+  const gclk = (c, g, sig, target) => {
+    W.push(wire(sig[0], sig[1], c, g + 'a'), wire(NCLK[0], NCLK[1], c, g + 'b'));
+    W.push(wire(c, g + 'y', target, 'clk'));
+  };
+  gclk('and3', '1', Lm, 'mar'); gclk('and3', '2', Cp, 'pc'); gclk('and3', '3', Li, 'ir');
+  gclk('and3', '4', La, 'areg'); gclk('and4', '1', Lb, 'breg'); gclk('and4', '2', Lo, 'oreg');
+  for (const g of ['3', '4']) W.push(wire('gnd1', 'gnd', 'and4', g + 'a'), wire('gnd1', 'gnd', 'and4', g + 'b'));
+
+  for (const r of ['mar', 'ir', 'areg', 'breg', 'oreg']) {
+    for (const t of ['g1b', 'g2b', 'oe1b', 'oe2b']) W.push(wire('gnd1', 'gnd', r, t));
+    W.push(wire('gnd1', 'gnd', r, 'mr'));
+  }
+  for (const t of ['clrb', 'loadb', 'enp', 'ent']) W.push(wire('vcc1', 'vcc', 'pc', t));
+  for (const t of ['d0', 'd1', 'd2', 'd3']) W.push(wire('gnd1', 'gnd', 'pc', t));
+
+  // bus drivers: /OE is active low, so each enable goes through inv2
+  const driver = (buf, sig, g) => {
+    W.push(wire(sig[0], sig[1], 'inv2', g + 'a'), wire('inv2', g + 'y', buf, '1oeb'));
+    W.push(wire('gnd1', 'gnd', buf, '2oeb'));
+  };
+  driver('buf_pc', Ep, '1'); driver('buf_ram', CE, '2'); driver('buf_ir', Ei, '3');
+  driver('buf_a', Ea, '4'); driver('buf_sum', Eu, '5');
+  W.push(wire('gnd1', 'gnd', 'inv2', '6a'));
+
+  for (let i = 0; i < 4; i++) {
+    const rid = 'rbus' + i;
+    P.push(part(rid, 'resistor', { ohms: 100000 }));
+    for (const b of ['buf_pc', 'buf_ram', 'buf_ir', 'buf_a', 'buf_sum']) W.push(wire(b, '1y' + i, rid, 'a'));
+    W.push(wire(rid, 'b', 'gnd1', 'gnd'));
+    for (const r of ['mar', 'ir', 'areg', 'breg', 'oreg']) W.push(wire(rid, 'a', r, 'd' + i));
+    const led = outputLed(rid, 'a', 'led_bus' + i, 'rlb' + i, 'yellow');
+    P.push(...led.parts); W.push(...led.wires);
+  }
+
+  for (let i = 0; i < 4; i++) {
+    W.push(wire('pc', 'q' + i, 'buf_pc', '1a' + i));
+    W.push(wire('areg', 'q' + i, 'buf_a', '1a' + i));
+    W.push(wire('mar', 'q' + i, 'ram', 'a' + i));
+  }
+  W.push(wire('ir', 'q0', 'buf_ir', '1a0'), wire('ir', 'q1', 'buf_ir', '1a1'));
+  W.push(wire('gnd1', 'gnd', 'buf_ir', '1a2'), wire('gnd1', 'gnd', 'buf_ir', '1a3'));
+  W.push(wire('gnd1', 'gnd', 'ram', 'csb'));
+  // the 74LS189 hands data back INVERTED: inv3 puts it right
+  for (let i = 0; i < 4; i++) {
+    W.push(wire('ram', 'o' + i, 'inv3', (i + 1) + 'a'), wire('inv3', (i + 1) + 'y', 'buf_ram', '1a' + i));
+  }
+  for (const g of ['5', '6']) W.push(wire('gnd1', 'gnd', 'inv3', g + 'a'));
+
+  // hand-loading the program
+  const WE = switchInputActiveLow('swc', 2, 'rwe');
+  P.push(...WE.parts); W.push(...WE.wires);
+  W.push(wire('swc', '2b', 'ram', 'web'));
+  for (let i = 0; i < 4; i++) {
+    const sw = switchInput('swd', i + 1, 'rd' + i);
+    P.push(...sw.parts); W.push(...sw.wires);
+    W.push(wire('swd', (i + 1) + 'b', 'ram', 'd' + i));
+  }
+
+  // the adder: A + (B xor Su) + Su  — the two's-complement trick from L8
+  for (let i = 0; i < 4; i++) {
+    W.push(wire('areg', 'q' + i, 'add', 'a' + i));
+    W.push(wire('breg', 'q' + i, 'xorb', (i + 1) + 'a'));
+    W.push(wire(Su[0], Su[1], 'xorb', (i + 1) + 'b'));
+    W.push(wire('xorb', (i + 1) + 'y', 'add', 'b' + i));
+    W.push(wire('add', 's' + i, 'buf_sum', '1a' + i));
+  }
+  W.push(wire(Su[0], Su[1], 'add', 'cin'));
+
+  // what a person watches
+  for (let i = 0; i < 4; i++) {
+    for (const [src, t, tag, col] of [['areg', 'q' + i, 'a', 'green'], ['oreg', 'q' + i, 'out', 'red'],
+      ['ir', 'q' + i, 'ir', 'green'], ['mar', 'q' + i, 'addr', 'yellow']]) {
+      const led = outputLed(src, t, 'led_' + tag + i, 'rl_' + tag + i, col);
+      P.push(...led.parts); W.push(...led.wires);
+    }
+  }
+  for (let i = 0; i < 6; i++) {
+    const led = outputLed('ring', 'q' + i, 'led_t' + (i + 1), 'rlt' + i, 'yellow');
+    P.push(...led.parts); W.push(...led.wires);
+  }
+  done.push(emit('c10-the-machine', {
+    vcc: 5, parts: P, wires: W,
+    _title: 'The whole machine — it runs a program',
+    _description: 'Twenty-five chips, one bus, and a program in memory. Load four cells by hand, then do '
+      + 'nothing but clock: the machine fetches each instruction, works out what it means, and moves the data '
+      + 'itself. LDA loads the accumulator from memory, ADD and SUB route through the B register and the '
+      + 'adder, OUT copies the accumulator to the output register. '
+      + 'An instruction is two bits of opcode and two bits of address, so the program and its data live in the '
+      + 'first four cells. Write LDA 3, ADD 3, OUT, and 5 into cells 0 to 3 and the output lands on ten. '
+      + 'Five different things can drive the bus here and exactly one ever does — that single rule, held by '
+      + 'the control matrix, is what separates a computer from a pile of registers.',
+    _category: 'computer', _difficulty: 5, _stage: 'C10',
   }));
 }
 
