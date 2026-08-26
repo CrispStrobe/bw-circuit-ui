@@ -702,3 +702,57 @@ export function importEasyEdaProPcbAsCircuit(text) {
     report: lift.report,
   };
 }
+
+/**
+ * Open an EasyEDA Pro PROJECT ARCHIVE (`.epro`, `.epro2`, `.eprj3`) and
+ * import the PCB document inside it.
+ *
+ * Until now a `.epro` could not be opened at all: only the bare
+ * documents were readable, and the archive is what people actually
+ * export. This finds the board and hands it to the reader above.
+ *
+ * What it deliberately does NOT do yet is apply FOOTPRINT masters to
+ * components. Pro is master/instance, so component pads live in separate
+ * FOOTPRINT documents, and this function reports how many it found — but
+ * how a COMPONENT row names its master is not something I have a real
+ * archive to establish, and inventing that mapping would put pads on a
+ * board at coordinates nobody verified. The count is surfaced so the gap
+ * is visible rather than silent.
+ *
+ * @param {ArrayBuffer|Uint8Array} buf
+ * @returns {Promise<{board: object|null, documents: object[], warnings: string[]}>}
+ */
+export async function importEasyEdaProArchive(buf) {
+  const { readZipText } = await import('./zip.js');
+  const { files, warnings } = await readZipText(buf,
+    (n) => /\.(epcb|epcb2|epru|esch|efoo|esym|json)$/i.test(n) || !/\.\w+$/.test(n));
+
+  const documents = [];
+  for (const [name, text] of Object.entries(files)) {
+    const head = text.slice(0, 400);
+    // Both generations announce themselves in their first record.
+    const v2 = /^\s*\[\s*"DOCTYPE"\s*,\s*"([A-Z_]+)"/.exec(head);
+    const v3 = /"docType"\s*:\s*"([A-Z_]+)"/.exec(head);
+    const docType = (v2 || v3) ? (v2 ? v2[1] : v3[1]) : null;
+    if (docType) documents.push({ name, docType, text });
+  }
+
+  const pcbDoc = documents.find((d) => d.docType === 'PCB');
+  const footprints = documents.filter((d) => d.docType === 'FOOTPRINT');
+  const out = { board: null, documents: documents.map(({ name, docType }) => ({ name, docType })), warnings };
+
+  if (!pcbDoc) {
+    out.warnings.push(documents.length
+      ? `Archive holds ${documents.length} document(s) but no PCB: ${documents.map((d) => d.docType).join(', ')}.`
+      : 'No EasyEDA Pro documents found inside this archive.');
+    return out;
+  }
+  out.board = importEasyEdaProPcb(pcbDoc.text);
+  out.warnings.push(...out.board.warnings);
+  if (footprints.length) {
+    out.warnings.push(`${footprints.length} FOOTPRINT master(s) ship in this archive. Applying them to `
+      + 'components is not implemented — how a COMPONENT row names its master has not been established '
+      + 'against a real archive, so component pads stay absent rather than being placed on a guess.');
+  }
+  return out;
+}

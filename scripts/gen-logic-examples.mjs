@@ -3,7 +3,7 @@
  *
  *   node scripts/gen-logic-examples.mjs --out ~/code/sb3-creator-logic
  *
- * gallery/l0..l7 are the electrical truth — proven rung by rung in
+ * gallery/l0..l9 and c0..c3 are the electrical truth — proven rung by rung in
  * test/logic-ladder.test.js. They are wire-level, which is right for a
  * test corpus and wrong for a learner: the ask was breadboards. This
  * script takes those exact circuits, seats their parts in real holes,
@@ -212,6 +212,60 @@ const LADDER = [
       teaches: 'BCD-Korrektur (plus sechs), Dezimalübertrag, zwei Anzeigen ansteuern' },
     table: [['3', '4', '07'], ['9', '0', '09'], ['9', '1', '10'], ['7', '6', '13'], ['9', '9', '18']],
     cols: ['A', 'B', 'display'],
+  },
+  {
+    src: 'c0-clock', id: 'pc100-555-clock', difficulty: 2,
+    en: { title: 'The clock — a machine needs a heartbeat',
+      teaches: '555 astable, RC timing, why a computer needs a clock' },
+    de: { title: 'Der Takt — eine Maschine braucht einen Herzschlag',
+      desc: 'Ein 555 als astabiler Multivibrator mit etwa 1 Hz und einer LED, damit man ihn sehen kann. '
+        + 'Alles Weitere bewegt sich nur, wenn dieser Pin wechselt. Über den Kondensator wird es schneller '
+        + 'oder langsamer: f = 1,44 / ((R1 + 2·R2)·C). Pin 5 (Control) braucht seine 10-nF-Abblockung — '
+        + 'lässt man ihn offen, ist die Referenz undefiniert und der Timer kippt nie.',
+      teaches: '555-Astabil, RC-Zeitkonstante, warum ein Rechner einen Takt braucht' },
+    table: [['~1 Hz', 'LED blinks'], ['bigger C', 'slower'], ['smaller C', 'faster']],
+    cols: ['setting', 'effect'],
+  },
+  {
+    src: 'c1-program-counter', id: 'pc101-program-counter', difficulty: 3,
+    en: { title: 'The program counter — where the machine is looking',
+      teaches: 'binary counting, active-low control pins, ripple carry' },
+    de: { title: 'Der Programmzähler — wohin die Maschine schaut',
+      desc: 'Ein 74LS161 zählt im Binärsystem von 0 bis 15, ein Schritt pro Takt. Dieses Register sagt, welcher '
+        + 'Befehl als Nächstes kommt — ein Programm ist nichts anderes als diese Zahl, die hochläuft. '
+        + 'Die rote LED ist der Übertrag (RCO), der bei 15 leuchtet und mit dem man Zähler zu breiteren '
+        + 'verkettet. Clear und Load sind LOW-AKTIV und liegen deshalb auf High.',
+      teaches: 'Binärzählen, Low-aktive Steuerpins, Ripple-Carry' },
+    table: [['0', '0000'], ['1', '0001'], ['9', '1001'], ['15', '1111 + RCO lit'], ['16', 'wraps to 0000']],
+    cols: ['clocks', 'LEDs'],
+  },
+  {
+    src: 'c2-memory', id: 'pc102-ram-16x4', difficulty: 4,
+    en: { title: 'Memory — sixteen places to put a number',
+      teaches: 'address vs data, hand-loading a program, the 74LS189 inverted outputs' },
+    de: { title: 'Speicher — sechzehn Plätze für eine Zahl',
+      desc: 'Der Zähler aus C1 treibt jetzt die ADRESS-Pins eines 74LS189, eines 16×4-Bit-RAMs. Gelbe LEDs zeigen, '
+        + 'welche Adresse gerade anliegt, grüne, was dort steht. Daten einstellen, WRITE pulsen, weitertakten — '
+        + 'so wurden die ersten Rechner von Hand programmiert. ACHTUNG: Der 74LS189 hat INVERTIERTE Ausgänge. '
+        + 'Speichere 5 und die LEDs zeigen 10. Das ist der echte Chip, kein Fehler — deshalb sitzt in SAP-1-'
+        + 'Aufbauten hinter dem RAM ein Inverter.',
+      teaches: 'Adresse gegen Daten, Programm von Hand laden, die invertierten Ausgänge des 74LS189' },
+    table: [['store 5', 'LEDs read 10 (inverted!)'], ['store 0', 'LEDs read 15'], ['clock', 'address advances']],
+    cols: ['action', 'what you see'],
+  },
+  {
+    src: 'c3-accumulator', id: 'pc103-accumulator', difficulty: 5,
+    en: { title: 'The accumulator — a circuit with a past',
+      teaches: 'registers, feedback, state that survives between clocks' },
+    de: { title: 'Der Akkumulator — eine Schaltung mit Vergangenheit',
+      desc: 'Ein 74LS173 hält eine laufende Summe, ein 74HC283 addiert den Schalterwert dazu, und die Summe geht '
+        + 'direkt wieder in das Register. Jeder Taktimpuls addiert erneut: stell 1 ein und es zählt, stell 3 ein '
+        + 'und es geht 3, 6, 9. Das ist die erste Schaltung hier, deren Antwort davon abhängt, was vorher war — '
+        + 'und diese Rückkopplung, Register raus, durch Logik, ins Register zurück, ist die Form jedes Prozessors. '
+        + 'MR setzt alles auf null.',
+      teaches: 'Register, Rückkopplung, Zustand der den Takt überdauert' },
+    table: [['+3, clock 1', '3'], ['clock 2', '6'], ['clock 3', '9'], ['no clock', 'unchanged'], ['MR', '0']],
+    cols: ['action', 'total'],
   },
 ];
 

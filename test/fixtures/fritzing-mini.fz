@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module fritzingVersion="0.9.3b" moduleId="mini">
+ <instances>
+  <instance moduleIdRef="ResistorModuleID" modelIndex="1" path="r.fzp">
+   <property name="resistance" value="220"/>
+   <title>R1</title>
+   <views>
+    <breadboardView layer="breadboard"><connectors>
+      <connector connectorId="connector0" layer="breadboard"><connects>
+        <connect connectorId="connector9" modelIndex="99" layer="breadboard"/></connects></connector>
+    </connectors></breadboardView>
+    <schematicView layer="schematic"><connectors>
+      <connector connectorId="connector0" layer="schematic"><connects>
+        <connect connectorId="connector0" modelIndex="3" layer="schematic"/></connects></connector>
+      <connector connectorId="connector1" layer="schematic"><connects>
+        <connect connectorId="connector0" modelIndex="2" layer="schematic"/></connects></connector>
+    </connectors></schematicView>
+   </views>
+  </instance>
+  <instance moduleIdRef="5mmColorLEDModuleID" modelIndex="2" path="led.fzp">
+   <property name="color" value="Red (633nm)"/>
+   <title>LED1</title>
+   <views>
+    <schematicView layer="schematic"><connectors>
+      <connector connectorId="connector0" layer="schematic"><connects>
+        <connect connectorId="connector1" modelIndex="1" layer="schematic"/></connects></connector>
+      <connector connectorId="connector1" layer="schematic"><connects>
+        <connect connectorId="connector1" modelIndex="3" layer="schematic"/></connects></connector>
+    </connectors></schematicView>
+   </views>
+  </instance>
+  <instance moduleIdRef="BatteryModuleID" modelIndex="3" path="bat.fzp">
+   <title>BAT1</title>
+   <views>
+    <schematicView layer="schematic"><connectors>
+      <connector connectorId="connector0" layer="schematic"><connects>
+        <connect connectorId="connector0" modelIndex="1" layer="schematic"/></connects></connector>
+      <connector connectorId="connector1" layer="schematic"><connects>
+        <connect connectorId="connector1" modelIndex="2" layer="schematic"/></connects></connector>
+    </connectors></schematicView>
+   </views>
+  </instance>
+  <instance moduleIdRef="WireModuleID" modelIndex="4" path="w.fzp">
+   <title>Wire1</title>
+   <views><schematicView layer="schematic"><connectors>
+     <connector connectorId="connector0" layer="schematic"><connects/></connector>
+   </connectors></schematicView></views>
+  </instance>
+  <instance moduleIdRef="deadbeefcafe1234deadbeefcafe1234" modelIndex="5" path="u.fzp">
+   <title>U1</title>
+   <views><schematicView layer="schematic"><connectors>
+     <connector connectorId="connector0" layer="schematic"><connects/></connector>
+     <connector connectorId="connector1" layer="schematic"><connects/></connector>
+   </connectors></schematicView></views>
+  </instance>
+ </instances>
+</module>

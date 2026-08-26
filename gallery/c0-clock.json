@@ -1,0 +1,178 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "u1",
+      "kind": "555",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 6800
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 68000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "c1",
+      "kind": "capacitor",
+      "params": {
+        "farads": 0.00001
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "c2",
+      "kind": "capacitor",
+      "params": {
+        "farads": 1e-8
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_clk",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_led",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "u1",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "u1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "u1",
+      "toTerminal": "reset"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "r1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r1",
+      "fromTerminal": "b",
+      "to": "u1",
+      "toTerminal": "discharge"
+    },
+    {
+      "from": "r1",
+      "fromTerminal": "b",
+      "to": "r2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r2",
+      "fromTerminal": "b",
+      "to": "u1",
+      "toTerminal": "threshold"
+    },
+    {
+      "from": "r2",
+      "fromTerminal": "b",
+      "to": "u1",
+      "toTerminal": "trigger"
+    },
+    {
+      "from": "r2",
+      "fromTerminal": "b",
+      "to": "c1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "c1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "u1",
+      "fromTerminal": "control",
+      "to": "c2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "c2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "u1",
+      "fromTerminal": "output",
+      "to": "led_clk",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_clk",
+      "fromTerminal": "cathode",
+      "to": "r_led",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_led",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    }
+  ],
+  "_title": "The clock — a machine needs a heartbeat",
+  "_description": "A 555 wired as an astable, running at about 1 Hz, with an LED so you can see it. Everything after this rung moves only when this pin changes. Slow it down or speed it up by changing the capacitor: f = 1.44 / ((R1 + 2·R2)·C). Watching a computer at one step per second is the whole reason to build one out of chips.",
+  "_category": "computer",
+  "_difficulty": 2,
+  "_stage": "C0"
+}

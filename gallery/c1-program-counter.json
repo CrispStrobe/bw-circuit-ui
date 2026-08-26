@@ -1,0 +1,320 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "pc",
+      "kind": "74ls161",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "swc",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 0
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rck",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led0",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led1",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led2",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led3",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_rco",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_rco",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "pc",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "pc",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swc",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "1b",
+      "to": "rck",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rck",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "1b",
+      "to": "pc",
+      "toTerminal": "clk"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "pc",
+      "toTerminal": "clrb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "pc",
+      "toTerminal": "loadb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "pc",
+      "toTerminal": "enp"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "pc",
+      "toTerminal": "ent"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "pc",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "pc",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "pc",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "pc",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "pc",
+      "fromTerminal": "q0",
+      "to": "led0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led0",
+      "fromTerminal": "cathode",
+      "to": "rl0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "pc",
+      "fromTerminal": "q1",
+      "to": "led1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led1",
+      "fromTerminal": "cathode",
+      "to": "rl1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "pc",
+      "fromTerminal": "q2",
+      "to": "led2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led2",
+      "fromTerminal": "cathode",
+      "to": "rl2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "pc",
+      "fromTerminal": "q3",
+      "to": "led3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led3",
+      "fromTerminal": "cathode",
+      "to": "rl3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl3",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "pc",
+      "fromTerminal": "rco",
+      "to": "led_rco",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_rco",
+      "fromTerminal": "cathode",
+      "to": "rl_rco",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_rco",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    }
+  ],
+  "_title": "The program counter — where the machine is looking",
+  "_description": "A 74LS161 counting 0 to 15 in binary, one step per clock. This is the register that says which instruction comes next; a program is just this number walking upward. The red LED is the ripple carry, which lights on 15 and is how counters are chained into wider ones. Clear and load are ACTIVE LOW, so they are tied high to leave the counter free-running.",
+  "_category": "computer",
+  "_difficulty": 3,
+  "_stage": "C1"
+}

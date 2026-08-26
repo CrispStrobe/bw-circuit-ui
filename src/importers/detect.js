@@ -19,6 +19,7 @@
 
 import { looksLikeEasyEda } from './easyeda.js';
 import { looksLikeEasyEdaPcb, looksLikeEasyEdaPro } from './easyeda-pcb.js';
+import { looksLikeFritzing } from './fritzing.js';
 import { looksLikeKicadPcb } from './kicad-pcb.js';
 import { looksLikeEasyEdaProPcb } from './easyeda-pro-pcb.js';
 
@@ -29,6 +30,9 @@ import { looksLikeEasyEdaProPcb } from './easyeda-pro-pcb.js';
  */
 export function detectFormat(text, filename = '') {
   if (/<eagle\b/i.test(text)) return 'eagle';
+  // Fritzing. XML like EAGLE, so it is checked in the same breath and
+  // separated by its own root/instance markers rather than by extension.
+  if (looksLikeFritzing(text)) return 'fritzing';
   // KiCad 6+ schematic. Checked before the netlist rule: both are
   // s-expressions and only the root tag separates them.
   if (/^\s*\(kicad_sch\b/.test(text)) return 'kicad-sch';

@@ -9,6 +9,7 @@
  *   'kicad-legacy'   - KiCad 4/5 schematic (.sch, EESchema plain text)
  *   'kicad-netlist'  - KiCad .net s-expression or .xml netlist (auto-detected)
  *   'easyeda'        - EasyEDA Standard schematic (.json, tilde-delimited DSL)
+ *   'fritzing'       - Fritzing schematic (.fz / inside .fzz, XML)
  *   'wokwi'          - Wokwi diagram.json
  *
  * The SCHEMATIC importers differ from the netlist one in kind, not in degree:
@@ -34,6 +35,7 @@ import { importEasyEda } from './easyeda.js';
 import { importEasyEdaPcbAsCircuit, importEasyEdaProStub } from './easyeda-pcb.js';
 import { importKicadPcbAsCircuit } from './kicad-pcb.js';
 import { importEasyEdaProPcbAsCircuit } from './easyeda-pro-pcb.js';
+import { importFritzing } from './fritzing.js';
 import { importWokwi, exportWokwi } from './wokwi.js';
 
 const IMPORTERS = {
@@ -51,6 +53,8 @@ const IMPORTERS = {
   'easyeda-pro':   importEasyEdaProStub,
   // KiCad board: same contract as easyeda-pcb — lifted circuit + board.
   'kicad-pcb':     importKicadPcbAsCircuit,
+  // Fritzing (.fz, and the document inside a .fzz archive).
+  'fritzing':      importFritzing,
   'wokwi':         importWokwi,
 };
 
