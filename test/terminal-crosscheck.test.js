@@ -170,14 +170,17 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    * bw-parts, so loadSidecars() returned null and the whole cross-check
    * skipped on CI — 162 had never gated a push, which is why nobody noticed
    * the real count was 163. And it could not be trusted when it did run: the
-   * total is taken across a sibling checkout nobody pins, so an untracked
-   * sidecar in someone's working tree moves it (a local parts/sevenseg8.json
-   * reads 165 here against 163 from a clean clone) and the number alone
-   * cannot say whether that is drift or a colleague mid-edit.
+   * total is taken across TWO sibling checkouts nobody pins, so a stale one
+   * moves it with nothing in this repo or bw-parts having changed. Measured:
+   * against an older bw-board the count reads 165 rather than 163, and the
+   * total alone cannot say whether that is real drift, a stale engine, or a
+   * colleague mid-edit.
    *
    * Per kind, both answers are legible: a changed count NAMES the part, and a
    * kind absent from this map is reported as newly disagreeing rather than
-   * silently folded into a total.
+   * silently folded into a total. That is not hypothetical — run against the
+   * older engine above it reports `attiny88 (+2)`, which is what turned a
+   * wrong guess about the cause into the actual one.
    *
    * MAY ONLY SHRINK. Lower an entry when a name is fixed; never raise one.
    */
