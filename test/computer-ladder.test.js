@@ -47,8 +47,8 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: seven rungs, c0 through c6', () => {
-    assert.equal(files.length, 7, `found ${files.join(', ')}`);
+  it('is present: nine rungs, c0 through c8', () => {
+    assert.equal(files.length, 9, `found ${files.join(', ')}`);
   });
 
   it('contains no CPU — the point is building one, not using one', () => {
@@ -109,7 +109,7 @@ describe('C2 — memory', () => {
     b.settle();
     // Write 5 at address 0: data switches to 5, then pull WE low.
     b.set('swd', 5);
-    b.set('swc', 0b0010); b.settle();      // WE high = write on this part's polarity
+    b.set('swc', 0b0010); b.settle();      // closing the switch pulls /WE LOW — active low
     b.set('swc', 0); b.settle();
     const read = b.nibble('led_data');
     assert.equal(read, (~5) & 0xF,
@@ -256,5 +256,90 @@ describe('C6 — the control matrix', () => {
       seen.push(phase.join(' | '));
     }
     assert.equal(new Set(seen).size, 1, `fetch differs by instruction: ${seen.join(' /// ')}`);
+  });
+});
+
+describe('C7 — the bus', () => {
+  /** Read the bus as levels, keeping "neither" distinct from 0 and 1. */
+  function busLevels(b) {
+    const nets = b.board.getNets();
+    return [0, 1, 2, 3].map((i) => {
+      const net = nets.find((n) => n.terminals?.some((t) => t.part === `rbus${i}` && t.terminal === 'a'));
+      const v = net ? b.board.nodeVoltage(net.id) : NaN;
+      return v > 3.5 ? 1 : v < 1.0 ? 0 : '?';
+    });
+  }
+
+  it('whoever is enabled owns the bus, and nobody enabled means zero', () => {
+    const b = bench('c7-the-bus');
+    b.set('swa', 0b0101); b.set('swb', 0b1010);
+    b.set('swe', 0b0000); b.settle();
+    assert.deepEqual(busLevels(b), [0, 0, 0, 0], 'pull-downs hold the bus low when nobody drives');
+    b.set('swe', 0b0001); b.settle();
+    assert.deepEqual(busLevels(b), [1, 0, 1, 0], 'A drives 0101, LSB first');
+    b.set('swe', 0b0010); b.settle();
+    assert.deepEqual(busLevels(b), [0, 1, 0, 1], 'B drives 1010');
+  });
+
+  it('two drivers at once is CONTENTION, and the bus says so', () => {
+    // The important assertion in this file: with both enabled the bus
+    // must be neither a valid 1 nor a valid 0 on the contested lines.
+    // A simulator that quietly picked a winner would teach the opposite
+    // of the lesson — that contention is survivable.
+    const b = bench('c7-the-bus');
+    b.set('swa', 0b0101); b.set('swb', 0b1010);
+    b.set('swe', 0b0011); b.settle();
+    const levels = busLevels(b);
+    assert.ok(levels.every((l) => l === '?'),
+      `every line is contested (A and B disagree on all four), so none may read as a clean level: got ${levels.join('')}`);
+  });
+
+  it('sources that AGREE do not contend — it is disagreement that hurts', () => {
+    const b = bench('c7-the-bus');
+    b.set('swa', 0b0110); b.set('swb', 0b0110);
+    b.set('swe', 0b0011); b.settle();
+    assert.deepEqual(busLevels(b), [0, 1, 1, 0],
+      'both driving the same value is electrically fine, if still bad practice');
+  });
+});
+
+describe('C8 — the machine reads its own memory', () => {
+  it('walks the addresses it wrote, and gives back what was stored', () => {
+    // Hand-load four cells, wrap the counter round, then let it run:
+    // nothing is touched but the clock, and the stored values must come
+    // back in the order they went in.
+    const b = bench('c8-memory-walker');
+    b.settle();
+    const PROGRAM = [3, 9, 5, 12];
+    for (let addr = 0; addr < 4; addr++) {
+      assert.equal(b.nibble('led_addr'), addr, `about to write cell ${addr}`);
+      b.set('swd', PROGRAM[addr]);
+      b.set('swc', 0b0010); b.settle();          // WRITE
+      b.set('swc', 0); b.settle();
+      b.tick('swc');                              // on to the next address
+    }
+    // The counter is 4-bit, so twelve more ticks bring it back to zero.
+    for (let i = 0; i < 12; i++) b.tick('swc');
+    assert.equal(b.nibble('led_addr'), 0, 'wrapped back to the start');
+    for (let addr = 0; addr < 4; addr++) {
+      assert.equal(b.nibble('led_addr'), addr, `now looking at cell ${addr}`);
+      assert.equal(b.nibble('led_data'), PROGRAM[addr],
+        `cell ${addr} must give back ${PROGRAM[addr]} — the inverter bank undoes the 189's inversion`);
+      b.tick('swc');
+    }
+  });
+
+  it('the address register FOLLOWS the bus rather than the counter directly', () => {
+    // MAR latches what it sees on the bus. If someone rewired it straight
+    // to the counter it would still count, and the bus would have stopped
+    // mattering — so check the two agree, which is what makes the bus the
+    // real path.
+    const b = bench('c8-memory-walker');
+    b.settle();
+    for (let i = 0; i < 6; i++) {
+      assert.equal(b.nibble('led_addr'), b.nibble('led_bus'),
+        `tick ${i}: the address register holds what the bus is carrying`);
+      b.tick('swc');
+    }
   });
 });

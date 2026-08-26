@@ -314,6 +314,40 @@ const LADDER = [
       ['LDA', 'T5', 'CE, La'], ['ADD', 'T6', 'Eu, La'], ['SUB', 'T6', 'Eu, La, Su'], ['OUT', 'T4', 'Ea, Lo']],
     cols: ['instruction', 'state', 'lines asserted'],
   },
+  {
+    src: 'c7-the-bus', id: 'pc107-the-bus', difficulty: 4,
+    en: { title: 'The bus — one set of wires, many talkers',
+      teaches: 'tri-state outputs, bus contention, why a control unit exists' },
+    de: { title: 'Der Bus — eine Leitung, viele Sprecher',
+      desc: 'Zwei Quellen, ein Vier-Bit-Bus. Gib A frei, und der Bus zeigt A; gib B frei, und er zeigt B; gib '
+        + 'keinen frei, und die Pulldowns ziehen ihn auf null. Möglich macht das der Tristate-Treiber im '
+        + '74HC244: sein Ausgang kann HIGH, LOW oder ganz LOSGELASSEN sein — ein drittes Verhalten, das ein '
+        + 'gewöhnliches Gatter nicht hat. '
+        + 'Gib jetzt BEIDE gleichzeitig frei. Ein Chip zieht eine Leitung hoch, während der andere sie '
+        + 'herunterzieht, die Spannung landet in der Mitte, wo sie weder 1 noch 0 ist, und beide Chips werden '
+        + 'warm. Das ist Busklemmung — und sie zu verhindern ist genau der Grund, warum es ein Steuerwerk gibt.',
+      teaches: 'Tristate-Ausgänge, Busklemmung, warum ein Steuerwerk nötig ist' },
+    table: [['neither', '0000'], ['A only', 'shows A'], ['B only', 'shows B'], ['both', 'neither 1 nor 0 — contention']],
+    cols: ['enabled', 'bus'],
+  },
+  {
+    src: 'c8-memory-walker', id: 'pc108-memory-walker', difficulty: 5,
+    en: { title: 'The machine reads its own memory',
+      teaches: 'clock phases, latching on the falling edge, address vs data paths' },
+    de: { title: 'Die Maschine liest ihren eigenen Speicher',
+      desc: 'Hier wird nichts mehr von Hand angefasst außer dem Takt. Der Programmzähler legt eine Adresse auf '
+        + 'den Bus, das Adressregister übernimmt sie, das RAM antwortet mit dem dort Gespeicherten, und die '
+        + 'grünen LEDs zeigen die Antwort — der nächste Takt macht dasselbe eine Adresse weiter. '
+        + 'Erst laden: Daten einstellen, WRITE drücken, weitertakten, wiederholen. Dann nur noch takten und '
+        + 'zusehen, wie die Maschine durch das läuft, was du geschrieben hast. '
+        + 'Das Timing ist die eigentliche Lektion: Die Zustände schalten mit der STEIGENDEN Taktflanke weiter, '
+        + 'die Register übernehmen mit der FALLENDEN — über einen Inverter. So ist der Bus eingeschwungen und '
+        + 'der richtige Treiber aktiv, bevor irgendetwas übernommen wird. '
+        + 'Die Inverterbank am RAM-Ausgang sitzt dort, weil der 74LS189 seine Daten invertiert zurückgibt.',
+      teaches: 'Taktphasen, Übernahme mit der fallenden Flanke, Adress- und Datenpfad' },
+    table: [['write 3,9,5,12', 'into cells 0-3'], ['then clock', 'cell 0 shows 3'], ['clock', '9'], ['clock', '5'], ['clock', '12']],
+    cols: ['action', 'data LEDs'],
+  },
 ];
 
 const mdTable = (cols, rows) => [

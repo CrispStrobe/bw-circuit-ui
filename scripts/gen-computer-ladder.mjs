@@ -1,5 +1,5 @@
 /**
- * Generate the COMPUTER ladder — gallery/c0..c6, the pieces a
+ * Generate the COMPUTER ladder — gallery/c0..c8, the pieces a
  * stored-program machine is made of, each one running on its own.
  *
  * The logic ladder (l0..l9) ends at arithmetic that is entirely
@@ -48,6 +48,21 @@ function switchInput(sw, position, rid) {
     parts: [part(rid, 'resistor', { ohms: PULLDOWN })],
     wires: [wire('vcc1', 'vcc', sw, `${position}a`),
       wire(sw, `${position}b`, rid, 'a'), wire(rid, 'b', 'gnd1', 'gnd')],
+  };
+}
+
+/**
+ * A switch on an ACTIVE-LOW pin: pulled HIGH by a resistor, shorted to
+ * ground when the switch closes. Using the ordinary pull-DOWN helper
+ * here holds the pin asserted permanently — on a RAM's /WE that means it
+ * never stops writing, so every cell ends up holding the last value put
+ * on the data switches. (Measured: c8 gave back 12 from every address.)
+ */
+function switchInputActiveLow(sw, position, rid) {
+  return {
+    parts: [part(rid, 'resistor', { ohms: PULLDOWN })],
+    wires: [wire('vcc1', 'vcc', rid, 'a'), wire(rid, 'b', sw, `${position}b`),
+      wire(sw, `${position}a`, 'gnd1', 'gnd')],
   };
 }
 
@@ -152,10 +167,14 @@ const done = [];
     part('swc', 'dip_switch_spst', { switches: 0 }),        // 1 = clock, 2 = write
     part('swd', 'dip_switch_spst', { switches: 0b0101 })];   // the nibble to store
   const wires = [...powerChip('pc'), ...powerChip('ram')];
-  for (const [pos, rid, target, pin] of [[1, 'rck', 'pc', 'clk'], [2, 'rwe', 'ram', 'web']]) {
-    const s = switchInput('swc', pos, rid);
-    parts.push(...s.parts); wires.push(...s.wires);
-    wires.push(wire('swc', `${pos}b`, target, pin));
+  {
+    const ck = switchInput('swc', 1, 'rck');
+    parts.push(...ck.parts); wires.push(...ck.wires);
+    wires.push(wire('swc', '1b', 'pc', 'clk'));
+    // /WE is ACTIVE LOW: pulled high, and the switch pulls it down to write.
+    const we = switchInputActiveLow('swc', 2, 'rwe');
+    parts.push(...we.parts); wires.push(...we.wires);
+    wires.push(wire('swc', '2b', 'ram', 'web'));
   }
   for (const t of ['clrb', 'loadb', 'enp', 'ent']) wires.push(wire('vcc1', 'vcc', 'pc', t));
   for (const t of ['d0', 'd1', 'd2', 'd3']) wires.push(wire('gnd1', 'gnd', 'pc', t));
@@ -431,6 +450,163 @@ function activeLowLed(driver, terminal, lid, rid, color = 'red') {
       + 'A hardwired control unit is nothing more than that array — this is the piece that makes the '
       + 'registers, the memory and the adder into a computer.',
     _category: 'computer', _difficulty: 5, _stage: 'C6',
+  }));
+}
+
+// ── C7: the bus — how one wire serves everybody ────────────────────
+
+{
+  // Every register in a computer wants to put its value somewhere, and
+  // they all share ONE set of wires. What makes that possible is the
+  // tri-state buffer: a gate whose output can be HIGH, LOW, or
+  // disconnected entirely. Exactly one source drives at a time; the rest
+  // let go.
+  //
+  // The rung also shows what happens when that rule is broken, because
+  // it is the failure the whole control unit exists to prevent.
+  const parts = [...rails(),
+    part('drv_a', '74hc244'), part('drv_b', '74hc244'),
+    part('inv', '74hc04'),
+    part('swa', 'dip_switch_spst', { switches: 0b0101 }),
+    part('swb', 'dip_switch_spst', { switches: 0b1010 }),
+    part('swe', 'dip_switch_spst', { switches: 0b0001 })];
+  const wires = [...powerChip('drv_a'), ...powerChip('drv_b'), ...powerChip('inv'),
+    wire('gnd1', 'gnd', 'drv_a', '2oeb'), wire('gnd1', 'gnd', 'drv_b', '2oeb')];
+  // the two values
+  for (const [sw, drv, tag] of [['swa', 'drv_a', 'a'], ['swb', 'drv_b', 'b']]) {
+    for (let i = 0; i < 4; i++) {
+      const s = switchInput(sw, i + 1, `r${tag}${i}`);
+      parts.push(...s.parts); wires.push(...s.wires);
+      wires.push(wire(sw, `${i + 1}b`, drv, `1a${i}`));
+    }
+  }
+  // enables: /OE is ACTIVE LOW, so an inverter makes "switch closed" mean
+  // "this source drives" — the polarity a learner expects.
+  for (const [pos, rid, gate, drv] of [[1, 're0', 1, 'drv_a'], [2, 're1', 2, 'drv_b']]) {
+    const s = switchInput('swe', pos, rid);
+    parts.push(...s.parts); wires.push(...s.wires);
+    wires.push(wire('swe', `${pos}b`, 'inv', `${gate}a`), wire('inv', `${gate}y`, drv, '1oeb'));
+  }
+  for (const g of [3, 4, 5, 6]) wires.push(wire('gnd1', 'gnd', 'inv', `${g}a`));
+  // the shared bus, with weak pull-downs so "nobody driving" reads as a
+  // real LOW instead of drifting.
+  for (let i = 0; i < 4; i++) {
+    const rid = `rbus${i}`;
+    parts.push(part(rid, 'resistor', { ohms: 100000 }));
+    wires.push(wire('drv_a', `1y${i}`, rid, 'a'), wire('drv_b', `1y${i}`, rid, 'a'),
+      wire(rid, 'b', 'gnd1', 'gnd'));
+    const led = outputLed(rid, 'a', `led_bus${i}`, `rl${i}`, 'yellow');
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+  done.push(emit('c7-the-bus', {
+    vcc: 5, parts, wires,
+    _title: 'The bus — one set of wires, many talkers',
+    _description: 'Two sources, one four-bit bus. Enable A and the bus shows A; enable B and it shows B; '
+      + 'enable neither and the pull-downs bring it to zero. What makes this work is the tri-state buffer '
+      + 'inside the 74HC244: its outputs can be HIGH, LOW, or LET GO of the wire entirely, which is a third '
+      + 'thing a plain gate cannot do. '
+      + 'Now enable BOTH at once. One chip pulls a line up while the other pulls it down, the voltage lands in '
+      + 'the middle where it is neither a 1 nor a 0, and both chips heat up. That is bus contention, and '
+      + 'preventing it is precisely why a control unit exists: of all the things that could drive the bus, it '
+      + 'guarantees exactly one does.',
+    _category: 'computer', _difficulty: 4, _stage: 'C7',
+  }));
+}
+
+// ── C8: the machine reads its own memory ───────────────────────────
+
+{
+  // The first rung where the pieces move data WITHOUT a hand on a
+  // switch. The program counter drives the bus, the address register
+  // latches what it sees, the RAM answers, and the answer appears on the
+  // LEDs — then the clock ticks and it all happens again one address
+  // further on.
+  //
+  // The timing is the part worth studying. The ring of states advances on
+  // the RISING clock edge; registers latch on the FALLING edge, through
+  // an inverter. That half-cycle offset is not decoration: it guarantees
+  // the bus has settled and the right driver is enabled BEFORE anything
+  // latches. Clock both on the same edge and you latch whatever the bus
+  // happened to be doing mid-transition.
+  const parts = [...rails(),
+    part('pc', '74ls161'),
+    part('buf_pc', '74hc244'),
+    part('mar', '74ls173'),
+    part('ram', '74ls189'),
+    part('inv', '74hc04'),
+    part('andg', '74hc08'),
+    part('swc', 'dip_switch_spst', { switches: 0 }),        // 1 = clock, 2 = write, 3 = run
+    part('swd', 'dip_switch_spst', { switches: 0b0101 })];   // data to write
+  const wires = [...powerChip('buf_pc'), ...powerChip('mar'), ...powerChip('ram'),
+    ...powerChip('inv'), ...powerChip('andg'), ...powerChip('pc')];
+
+  // clock, and its inverse for the latches
+  const CK = switchInput('swc', 1, 'rck');
+  parts.push(...CK.parts); wires.push(...CK.wires);
+  wires.push(wire('swc', '1b', 'pc', 'clk'), wire('swc', '1b', 'inv', '1a'));
+  // andg gate 1: latch MAR on (NOT clock) — the falling edge of the clock
+  wires.push(wire('inv', '1y', 'andg', '1a'), wire('vcc1', 'vcc', 'andg', '1b'));
+  wires.push(wire('andg', '1y', 'mar', 'clk'));
+
+  // program counter runs free; its outputs reach the bus through a buffer
+  for (const t of ['clrb', 'loadb', 'enp', 'ent']) wires.push(wire('vcc1', 'vcc', 'pc', t));
+  for (const t of ['d0', 'd1', 'd2', 'd3']) wires.push(wire('gnd1', 'gnd', 'pc', t));
+  wires.push(wire('gnd1', 'gnd', 'buf_pc', '1oeb'), wire('gnd1', 'gnd', 'buf_pc', '2oeb'));
+  for (let i = 0; i < 4; i++) wires.push(wire('pc', `q${i}`, 'buf_pc', `1a${i}`));
+
+  // the bus: buffer output, weak pull-down, and on to the address register
+  for (let i = 0; i < 4; i++) {
+    const rid = `rbus${i}`;
+    parts.push(part(rid, 'resistor', { ohms: 100000 }));
+    wires.push(wire('buf_pc', `1y${i}`, rid, 'a'), wire(rid, 'b', 'gnd1', 'gnd'));
+    wires.push(wire(rid, 'a', 'mar', `d${i}`));
+    const led = outputLed(rid, 'a', `led_bus${i}`, `rlb${i}`, 'yellow');
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+  for (const t of ['g1b', 'g2b', 'oe1b', 'oe2b']) wires.push(wire('gnd1', 'gnd', 'mar', t));
+  wires.push(wire('gnd1', 'gnd', 'mar', 'mr'));
+
+  // the address register drives the RAM's address pins
+  for (let i = 0; i < 4; i++) wires.push(wire('mar', `q${i}`, 'ram', `a${i}`));
+  wires.push(wire('gnd1', 'gnd', 'ram', 'csb'));
+
+  // hand-loading: data switches in, WRITE on switch 2
+  const WE = switchInputActiveLow('swc', 2, 'rwe');
+  parts.push(...WE.parts); wires.push(...WE.wires);
+  wires.push(wire('swc', '2b', 'ram', 'web'));
+  for (let i = 0; i < 4; i++) {
+    const s = switchInput('swd', i + 1, `rd${i}`);
+    parts.push(...s.parts); wires.push(...s.wires);
+    wires.push(wire('swd', `${i + 1}b`, 'ram', `d${i}`));
+  }
+
+  // the RAM's outputs are inverted, so an inverter bank puts them right
+  ['2', '3', '4', '5'].forEach((g, i) => {
+    wires.push(wire('ram', `o${i}`, 'inv', `${g}a`));
+    const led = outputLed('inv', `${g}y`, `led_data${i}`, `rld${i}`, 'green');
+    parts.push(...led.parts); wires.push(...led.wires);
+  });
+  wires.push(wire('gnd1', 'gnd', 'inv', '6a'));
+  for (const g of [2, 3, 4]) wires.push(wire('gnd1', 'gnd', 'andg', `${g}a`), wire('gnd1', 'gnd', 'andg', `${g}b`));
+
+  // the address the machine is currently looking at
+  for (let i = 0; i < 4; i++) {
+    const led = outputLed('mar', `q${i}`, `led_addr${i}`, `rla${i}`, 'red');
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+  done.push(emit('c8-memory-walker', {
+    vcc: 5, parts, wires,
+    _title: 'The machine reads its own memory',
+    _description: 'Nothing here is touched by hand except the clock. The program counter puts an address on the '
+      + 'bus, the address register latches it, the RAM answers with what is stored there, and the green LEDs '
+      + 'show the answer — then the next tick does it again, one address further along. '
+      + 'Load memory first: set the data switches, pulse WRITE, clock on, repeat. Then just clock, and watch '
+      + 'the machine walk through what you wrote. '
+      + 'The timing is the lesson. States advance on the RISING clock edge and registers latch on the FALLING '
+      + 'one, through an inverter, so the bus has settled and the right driver is enabled before anything is '
+      + 'captured. Latch on the same edge that changes the state and you capture the bus mid-transition. '
+      + 'The inverter bank on the RAM outputs is there because the 74LS189 gives its data back inverted.',
+    _category: 'computer', _difficulty: 5, _stage: 'C8',
   }));
 }
 
