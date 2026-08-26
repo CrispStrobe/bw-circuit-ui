@@ -27,7 +27,11 @@ is fabricated.
 - **Servo angle rendering** — decoded from the board model's pin-edge
   analysis, not from block arguments. Undriven shows "no signal".
 - **BOM export** — bill of materials with CSV download.
-- **Examples browser** — 53 gallery circuits loadable via `circuitData` prop.
+- **Examples browser** — gallery circuits loadable via `circuitData` prop.
+- **Teaching ladders** — `gallery/l0..l9` (a single AND gate to a calculator) and
+  `gallery/c0..c10` (a 555 ticking to a machine that runs a program), all 74-series,
+  no CPU and no firmware, every rung simulated and asserted. See
+  [`docs/LADDERS.md`](docs/LADDERS.md).
 - **Multimeter** — voltage, current (with burden-voltage teaching note),
   resistance (refuses on powered board — `requires-power-off` is a feature).
 
