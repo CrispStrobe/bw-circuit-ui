@@ -296,6 +296,24 @@ const LADDER = [
     table: [['0000', 'LDA'], ['0001', 'ADD'], ['0010', 'SUB'], ['1110', 'OUT'], ['1111', 'HLT'], ['0111', 'nothing — not an instruction']],
     cols: ['opcode', 'decoded'],
   },
+  {
+    src: 'c6-control-matrix', id: 'pc106-control-matrix', difficulty: 5,
+    en: { title: 'The control matrix — the part that decides',
+      teaches: 'hardwired control, AND-OR arrays, the fetch-execute cycle' },
+    de: { title: 'Die Steuermatrix — der Teil, der entscheidet',
+      desc: 'Stelle einen Opcode ein, takte dann durch die sechs Zeitschritte und sieh zu, wie die '
+        + 'Steuerleitungen der Reihe nach feuern. T1 legt den Programmzähler auf den Bus (Ep, Lm), T2 zählt '
+        + 'weiter (Cp), T3 holt den Befehl (CE, Li) — so weit ist es für jeden Befehl gleich. Ab T4 übernimmt '
+        + 'der Opcode: LDA lädt den Akku aus dem Speicher, ADD führt über das B-Register und den Addierer, '
+        + 'SUB genauso mit gesetztem Su, OUT kopiert den Akku in das Ausgaberegister. '
+        + 'Jede Lampe hier ist ein UND-Term, verodert mit den anderen, die dieselbe Leitung treiben. Mehr ist '
+        + 'ein fest verdrahtetes Steuerwerk nicht — und genau dieses Teil macht aus Registern, Speicher und '
+        + 'Addierer einen Computer.',
+      teaches: 'Fest verdrahtete Steuerung, UND-ODER-Matrix, der Hol-und-Ausführ-Zyklus' },
+    table: [['any', 'T1', 'Ep, Lm'], ['any', 'T2', 'Cp'], ['any', 'T3', 'CE, Li'],
+      ['LDA', 'T5', 'CE, La'], ['ADD', 'T6', 'Eu, La'], ['SUB', 'T6', 'Eu, La, Su'], ['OUT', 'T4', 'Ea, Lo']],
+    cols: ['instruction', 'state', 'lines asserted'],
+  },
 ];
 
 const mdTable = (cols, rows) => [

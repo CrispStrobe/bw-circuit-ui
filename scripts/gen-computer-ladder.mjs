@@ -1,5 +1,5 @@
 /**
- * Generate the COMPUTER ladder — gallery/c0..c5, the pieces a
+ * Generate the COMPUTER ladder — gallery/c0..c6, the pieces a
  * stored-program machine is made of, each one running on its own.
  *
  * The logic ladder (l0..l9) ends at arithmetic that is entirely
@@ -313,6 +313,124 @@ function activeLowLed(driver, terminal, lid, rid, color = 'red') {
       + 'The outputs are ACTIVE LOW, so each LED is wired from +5 V down INTO the chip and lights when its '
       + 'line goes low. That is not a quirk to work around; it is how decoders and control lines really talk.',
     _category: 'computer', _difficulty: 5, _stage: 'C5',
+  }));
+}
+
+// ── C6: the control matrix — where a machine decides what to do ────
+
+{
+  // The last piece. A ring counter says WHEN (T1..T6), a decoder says
+  // WHAT (LDA/ADD/SUB/OUT), and this AND-OR array turns the pair into
+  // the control lines that actually move data:
+  //
+  //   T1        Ep, Lm      put the program counter on the bus, into MAR
+  //   T2        Cp          advance the counter
+  //   T3        CE, Li      memory onto the bus, into the instruction reg
+  //   T4  LDA/ADD/SUB  Ei, Lm     operand address out of the instruction
+  //       OUT          Ea, Lo     accumulator to the output register
+  //   T5  LDA          CE, La     memory into the accumulator
+  //       ADD/SUB      CE, Lb     memory into the B register
+  //   T6  ADD/SUB      Eu, La     adder result back into the accumulator
+  //       SUB          + Su       and the adder subtracts
+  //
+  // Every line above is one term of an AND, OR'd with the others that
+  // drive the same signal. That is all a hardwired control unit IS.
+  const parts = [...rails(),
+    part('ring', 'decade_counter'),
+    part('dec_lo', '74hc138'), part('dec_hi', '74hc138'),
+    part('inv', '74hc04'),
+    part('and1', '74hc08'), part('and2', '74hc08'),
+    part('or1', '74hc32'), part('or2', '74hc32'),
+    part('swc', 'dip_switch_spst', { switches: 0 }),        // 1 = clock
+    part('swi', 'dip_switch_spst', { switches: 0b0000 })];   // the opcode
+  const wires = [...powerChip('dec_lo'), ...powerChip('dec_hi'), ...powerChip('inv'),
+    ...powerChip('and1'), ...powerChip('and2'), ...powerChip('or1'), ...powerChip('or2')];
+
+  // clock into the ring counter, and the six-state wrap
+  const CK = switchInput('swc', 1, 'rck');
+  parts.push(...CK.parts); wires.push(...CK.wires);
+  wires.push(wire('swc', '1b', 'ring', 'clk'), wire('gnd1', 'gnd', 'ring', 'en'),
+    wire('ring', 'q6', 'ring', 'rst'));
+
+  // opcode into both decoders, split on the top bit
+  ['a', 'b', 'c'].forEach((pin, i) => {
+    const sw = switchInput('swi', i + 1, `ri${i}`);
+    parts.push(...sw.parts); wires.push(...sw.wires);
+    wires.push(wire('swi', `${i + 1}b`, 'dec_lo', pin), wire('swi', `${i + 1}b`, 'dec_hi', pin));
+  });
+  const top = switchInput('swi', 4, 'ri3');
+  parts.push(...top.parts); wires.push(...top.wires);
+  wires.push(wire('vcc1', 'vcc', 'dec_lo', 'g1'), wire('swi', '4b', 'dec_lo', 'g2ab'),
+    wire('gnd1', 'gnd', 'dec_lo', 'g2bb'));
+  wires.push(wire('swi', '4b', 'dec_hi', 'g1'), wire('gnd1', 'gnd', 'dec_hi', 'g2ab'),
+    wire('gnd1', 'gnd', 'dec_hi', 'g2bb'));
+
+  // decoder outputs are ACTIVE LOW; invert them so the matrix can AND them
+  wires.push(wire('dec_lo', 'y0b', 'inv', '1a'));   // 1y = LDA
+  wires.push(wire('dec_lo', 'y1b', 'inv', '2a'));   // 2y = ADD
+  wires.push(wire('dec_lo', 'y2b', 'inv', '3a'));   // 3y = SUB
+  wires.push(wire('dec_hi', 'y6b', 'inv', '4a'));   // 4y = OUT
+  for (const g of [5, 6]) wires.push(wire('gnd1', 'gnd', 'inv', `${g}a`));
+
+  // or1 gate1: ADD or SUB      or1 gate2: (ADD|SUB) or LDA  = any memory-reference instruction
+  wires.push(wire('inv', '2y', 'or1', '1a'), wire('inv', '3y', 'or1', '1b'));
+  wires.push(wire('or1', '1y', 'or1', '2a'), wire('inv', '1y', 'or1', '2b'));
+
+  // AND terms
+  const term = (chip, gate, x, xt, y, yt) => {
+    wires.push(wire(x, xt, chip, `${gate}a`), wire(y, yt, chip, `${gate}b`));
+    return [chip, `${gate}y`];
+  };
+  const mem_T4 = term('and1', 1, 'or1', '2y', 'ring', 'q3');   // any-mem-ref AND T4
+  const mem_T5 = term('and1', 2, 'or1', '2y', 'ring', 'q4');   // any-mem-ref AND T5
+  const lda_T5 = term('and1', 3, 'inv', '1y', 'ring', 'q4');
+  const ab_T6 = term('and1', 4, 'or1', '1y', 'ring', 'q5');    // (ADD|SUB) AND T6
+  const ab_T5 = term('and2', 1, 'or1', '1y', 'ring', 'q4');
+  const sub_T6 = term('and2', 2, 'inv', '3y', 'ring', 'q5');
+  const out_T4 = term('and2', 3, 'inv', '4y', 'ring', 'q3');
+  for (const g of [4]) wires.push(wire('gnd1', 'gnd', 'and2', `${g}a`), wire('gnd1', 'gnd', 'and2', `${g}b`));
+
+  // OR the terms that share a control line
+  wires.push(wire('ring', 'q0', 'or2', '1a'), wire(mem_T4[0], mem_T4[1], 'or2', '1b'));  // Lm = T1 + memref.T4
+  wires.push(wire('ring', 'q2', 'or2', '2a'), wire(mem_T5[0], mem_T5[1], 'or2', '2b'));  // CE = T3 + memref.T5
+  wires.push(wire(lda_T5[0], lda_T5[1], 'or2', '3a'), wire(ab_T6[0], ab_T6[1], 'or2', '3b')); // La
+  for (const g of [4]) wires.push(wire('gnd1', 'gnd', 'or2', `${g}a`), wire('gnd1', 'gnd', 'or2', `${g}b`));
+  for (const g of [3, 4]) wires.push(wire('gnd1', 'gnd', 'or1', `${g}a`), wire('gnd1', 'gnd', 'or1', `${g}b`));
+
+  // the twelve control lines, as LEDs
+  for (const [drv, t, name, color] of [
+    ['ring', 'q0', 'ep', 'yellow'],            // Ep  = T1
+    ['or2', '1y', 'lm', 'yellow'],             // Lm  = T1 + memref.T4
+    ['ring', 'q1', 'cp', 'yellow'],            // Cp  = T2
+    ['or2', '2y', 'ce', 'green'],              // CE  = T3 + memref.T5
+    ['ring', 'q2', 'li', 'green'],             // Li  = T3
+    [mem_T4[0], mem_T4[1], 'ei', 'green'],     // Ei  = memref.T4
+    ['or2', '3y', 'la', 'red'],                // La  = LDA.T5 + (ADD|SUB).T6
+    [ab_T5[0], ab_T5[1], 'lb', 'red'],         // Lb  = (ADD|SUB).T5
+    [ab_T6[0], ab_T6[1], 'eu', 'red'],         // Eu  = (ADD|SUB).T6
+    [sub_T6[0], sub_T6[1], 'su', 'red'],       // Su  = SUB.T6
+    [out_T4[0], out_T4[1], 'ea', 'yellow'],    // Ea  = OUT.T4
+    [out_T4[0], out_T4[1], 'lo', 'yellow'],    // Lo  = OUT.T4 (same term)
+  ]) {
+    const led = outputLed(drv, t, `led_${name}`, `rl_${name}`, color);
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+  for (let i = 0; i < 6; i++) {
+    const led = outputLed('ring', `q${i}`, `led_t${i + 1}`, `rlt${i}`, 'green');
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+  done.push(emit('c6-control-matrix', {
+    vcc: 5, parts, wires,
+    _title: 'The control matrix — the part that decides',
+    _description: 'Set an opcode, then clock through the six timing states and watch the control lines fire in '
+      + 'order. T1 puts the program counter on the bus (Ep, Lm); T2 advances it (Cp); T3 fetches the '
+      + 'instruction (CE, Li) — that much is the same for every instruction. From T4 the opcode takes over: '
+      + 'LDA loads the accumulator from memory, ADD routes through the B register and the adder, SUB does the '
+      + 'same with Su asserted, OUT copies the accumulator to the display. '
+      + 'Every lamp here is one AND term OR-ed with the others that drive the same line. '
+      + 'A hardwired control unit is nothing more than that array — this is the piece that makes the '
+      + 'registers, the memory and the adder into a computer.',
+    _category: 'computer', _difficulty: 5, _stage: 'C6',
   }));
 }
 

@@ -47,8 +47,8 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: six rungs, c0 through c5', () => {
-    assert.equal(files.length, 6, `found ${files.join(', ')}`);
+  it('is present: seven rungs, c0 through c6', () => {
+    assert.equal(files.length, 7, `found ${files.join(', ')}`);
   });
 
   it('contains no CPU — the point is building one, not using one', () => {
@@ -204,5 +204,57 @@ describe('C5 — the instruction decoder', () => {
     for (const n of ['lda', 'add', 'sub', 'out', 'hlt']) {
       assert.equal(b.lit(`led_${n}`), false, `0111 must not decode as ${n}`);
     }
+  });
+});
+
+describe('C6 — the control matrix', () => {
+  // The SAP-1 control table, straight from the architecture: for each
+  // instruction, which lines are asserted in each of the six states.
+  // Anything not listed must be DARK — a control unit that fires a spare
+  // signal is not a smaller bug than one that misses a needed one.
+  const TABLE = {
+    LDA: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ei', 'lm'], ['ce', 'la'], []],
+    ADD: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ei', 'lm'], ['ce', 'lb'], ['eu', 'la']],
+    SUB: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ei', 'lm'], ['ce', 'lb'], ['eu', 'la', 'su']],
+    OUT: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ea', 'lo'], [], []],
+  };
+  const OPCODE = { LDA: 0b0000, ADD: 0b0001, SUB: 0b0010, OUT: 0b1110 };
+  const ALL = ['ep', 'lm', 'cp', 'ce', 'li', 'ei', 'la', 'lb', 'eu', 'su', 'ea', 'lo'];
+
+  for (const [instr, states] of Object.entries(TABLE)) {
+    it(`${instr}: the right lines fire in the right state, and only those`, () => {
+      const b = bench('c6-control-matrix');
+      b.set('swi', OPCODE[instr]);
+      b.settle();
+      for (let t = 0; t < 6; t++) {
+        if (t > 0) b.tick('swc');
+        b.settle();
+        assert.equal(b.lit(`led_t${t + 1}`), true, `${instr}: T${t + 1} must be the active state`);
+        const want = new Set(states[t]);
+        for (const line of ALL) {
+          assert.equal(b.lit(`led_${line}`), want.has(line),
+            `${instr} T${t + 1}: ${line} should be ${want.has(line) ? 'ASSERTED' : 'dark'}`);
+        }
+      }
+    });
+  }
+
+  it('the fetch phase is identical whatever the instruction', () => {
+    // T1-T3 are architecture, not opcode: if they ever differ by
+    // instruction, the machine has stopped being a SAP-1.
+    const seen = [];
+    for (const instr of Object.keys(TABLE)) {
+      const b = bench('c6-control-matrix');
+      b.set('swi', OPCODE[instr]);
+      b.settle();
+      const phase = [];
+      for (let t = 0; t < 3; t++) {
+        if (t > 0) b.tick('swc');
+        b.settle();
+        phase.push(ALL.filter((l) => b.lit(`led_${l}`)).join('+'));
+      }
+      seen.push(phase.join(' | '));
+    }
+    assert.equal(new Set(seen).size, 1, `fetch differs by instruction: ${seen.join(' /// ')}`);
   });
 });
