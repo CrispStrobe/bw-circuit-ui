@@ -35,6 +35,7 @@ import { fileURLToPath } from 'node:url';
 import '../test/_setup.js';
 import { FOOTPRINTS, computeLeadMap } from '../src/model/footprints.js';
 import { BreadboardModel } from '../src/model/breadboard.js';
+import { generateBom } from '../src/model/bom.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GALLERY = join(HERE, '..', 'gallery');
@@ -443,13 +444,31 @@ for (const rung of LADDER) {
       + 'Schlimmeres: er liest, was der Raum gerade macht. Genau das verhindern die 10-kΩ-Pulldowns.',
   };
 
+  // A corpus meant to be BUILT owes the reader a shopping list. Rails are
+  // dropped (vcc/gnd are symbols, not parts you buy) and the switch state
+  // is stripped from the label — `switches=3` is this example's starting
+  // position, not a thing to order.
+  const bom = generateBom(circuit.parts)
+    .filter((l) => l.kind !== 'vcc' && l.kind !== 'gnd')
+    .map((l) => ({ qty: l.qty, label: l.label.replace(/\s*switches=\d+/, '') }));
+  const bomTable = [
+    '| qty | part |', '|---|---|',
+    ...bom.map((l) => `| ${l.qty} | ${l.label} |`),
+  ].join('\n');
+  // decade_counter IS the CD4017, so a prefix test on the slug alone
+  // undercounts it — and the count is quoted in docs/LADDERS.md.
+  const isChip = (k) => /^(74|cd4|555|lm|ne5)/.test(k) || k === 'decade_counter';
+  const chipCount = circuit.parts.filter((p) => isChip(p.kind)).length;
+
   writeFileSync(join(dir, 'intro.md'),
     `# ${rung.en.title}\n\n`
     + `${circuit._description}\n\n`
     + `**Teaches:** ${rung.en.teaches}\n\n`
     + `## What to do\n\nSet the DIP switches and watch the outputs. `
     + `${boardNote.en}\n\n${railNote.en}\n\n`
-    + `## What you should see\n\n${mdTable(rung.cols, rung.table)}\n`);
+    + `## What you should see\n\n${mdTable(rung.cols, rung.table)}\n\n`
+    + `## What to buy\n\n${bomTable}\n\n`
+    + `${chipCount} integrated circuit(s), ${boardCount} breadboard(s), 5 V.\n`);
 
   writeFileSync(join(dir, 'intro.de.md'),
     `# ${rung.de.title}\n\n`
@@ -457,14 +476,18 @@ for (const rung of LADDER) {
     + `**Vermittelt:** ${rung.de.teaches}\n\n`
     + `## Was zu tun ist\n\nStelle die DIP-Schalter und beobachte die Ausgänge. `
     + `${boardNote.de}\n\n${railNote.de}\n\n`
-    + `## Was du sehen solltest\n\n${mdTable(rung.cols, rung.table)}\n`);
+    + `## Was du sehen solltest\n\n${mdTable(rung.cols, rung.table)}\n\n`
+    + `## Was du brauchst\n\n${bomTable}\n\n`
+    + `${chipCount} integrierte Schaltkreis(e), ${boardCount} Steckbrett(er), 5 V.\n`);
 
   writeFileSync(join(dir, 'EXPECTED.md'),
     `# Expected behaviour — ${rung.en.title}\n\n`
     + `${mdTable(rung.cols, rung.table)}\n\n`
     + `Asserted by simulation in bw-circuit-ui's test/logic-ladder.test.js `
     + `(the same circuit, wire for wire) and re-checked seated in test/logic-examples.test.js.\n\n`
-    + `Parts on a board: ${seatedCount}. Off board (rails and parts with no breadboard footprint): ${offBoard}.\n`);
+    + `Parts on a board: ${seatedCount}. Off board (rails and parts with no breadboard footprint): ${offBoard}.\n\n`
+    + `## To build it\n\n${bomTable}\n\n`
+    + `${chipCount} integrated circuit(s), ${boardCount} breadboard(s), 5 V.\n`);
 
   indexEntries.push({
     id: rung.id,

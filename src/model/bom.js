@@ -32,6 +32,19 @@ const PARAM_LABELS = {
 };
 
 const KIND_LABELS = {
+  // Logic and computer ladder parts. Without these a shopping list reads
+  // "74hc283" — the slug, not the thing you buy — so a learner cannot
+  // order the board they just simulated.
+  '74hc138': '74HC138 3-to-8 Decoder',
+  dip_switch_spst: '4-way DIP Switch (SPST)',
+  seven_segment: '7-Segment Display',
+  '74hc244': '74HC244 Octal Tri-State Buffer',
+  '74hc283': '74HC283 4-bit Adder',
+  '74ls161': '74LS161 4-bit Counter',
+  '74ls173': '74LS173 4-bit Register',
+  '74ls189': '74LS189 16x4 RAM',
+  cd4511: 'CD4511 BCD-to-7-Segment Decoder',
+  decade_counter: 'CD4017 Decade Counter',
   vcc: 'VCC Supply',
   gnd: 'Ground',
   resistor: 'Resistor',
