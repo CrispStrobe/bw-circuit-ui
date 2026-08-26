@@ -515,13 +515,17 @@ describe('the 8085 devkit board (read in place, never copied here)',
 
     test('conducting its buses would collapse 43 nets into 25', () => {
       // The measurement the B rule exists for, on a real board rather than a
-      // fixture: a single 63-node net swallowing the whole address bus.
+      // fixture: a single 65-node net swallowing the whole address bus.
+      // 65 and not the 63 counted before pins were named by their displayed
+      // number: U4 (HM6116 SRAM) carries slots 9 and 10 for pins 22 (A9) and
+      // 19 (A10), so both hid as duplicates of pins 9 and 10 (I/O 0, I/O 1),
+      // which are on this same net once the buses conduct.
       const doc = JSON.parse(text);
       doc.schematics[0].dataStr.shape = doc.schematics[0].dataStr.shape
         .map((s) => (s.startsWith('B~') ? `W${s.slice(1)}` : s));
       const p = easyEdaPartition(JSON.stringify(doc));
       assert.equal(p.length, 25);
-      assert.equal(Math.max(...p.map((n) => n.split('|').length)), 63);
+      assert.equal(Math.max(...p.map((n) => n.split('|').length)), 65);
     });
 
     test('pins are absolute across 21 rotated placements', () => {

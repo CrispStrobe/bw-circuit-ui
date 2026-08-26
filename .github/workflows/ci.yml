@@ -25,6 +25,13 @@ jobs:
           # cross-repo adapter test fails with "Cannot find package 'avr8js'".
           npm --prefix ../bw-board install --no-audit --no-fund --ignore-scripts
 
+      # The terminal cross-check reads part sidecars from a sibling bw-parts.
+      # Without this clone loadSidecars() returns null and the whole
+      # cross-check SKIPS — which is how its ratchet sat at a stale 162 while
+      # the real count was 163: the gate had never once run here.
+      - name: Clone bw-parts (sidecar source)
+        run: git clone --depth 1 https://github.com/CrispStrobe/bw-parts.git ../bw-parts
+
       # Fabric gate needs sb3-creator examples
       - name: Clone sb3-creator (examples source)
         run: git clone --depth 1 https://github.com/CrispStrobe/sb3-creator.git ../sb3-creator

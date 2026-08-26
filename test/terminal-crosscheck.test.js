@@ -160,7 +160,53 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    * (a kind the engine does not model). Counted apart on purpose — merging
    * them would let a real gap hide inside a naming churn. MAY ONLY SHRINK.
    */
-  const KNOWN = { namingDiffs: 162, gapKinds: 4, minChecked: 240 };
+  const KNOWN = { gapKinds: 4, minChecked: 240 };
+
+  /**
+   * Naming diffs PER KIND, against a fresh clone of bw-parts main.
+   *
+   * This replaced a single total (162), which could not do the job for two
+   * reasons. It never ran: ci.yml cloned bw-board and sb3-creator but not
+   * bw-parts, so loadSidecars() returned null and the whole cross-check
+   * skipped on CI — 162 had never gated a push, which is why nobody noticed
+   * the real count was 163. And it could not be trusted when it did run: the
+   * total is taken across a sibling checkout nobody pins, so an untracked
+   * sidecar in someone's working tree moves it (a local parts/sevenseg8.json
+   * reads 165 here against 163 from a clean clone) and the number alone
+   * cannot say whether that is drift or a colleague mid-edit.
+   *
+   * Per kind, both answers are legible: a changed count NAMES the part, and a
+   * kind absent from this map is reported as newly disagreeing rather than
+   * silently folded into a total.
+   *
+   * MAY ONLY SHRINK. Lower an entry when a name is fixed; never raise one.
+   */
+  const KNOWN_BY_KIND = {
+    stc15_mcu: 38,
+    '74hc595': 19,
+    cd4511: 16,
+    '74hc93': 12,
+    stepper: 9,
+    '74hc75': 8,
+    char_lcd: 8,
+    '74hc283': 6,
+    gas_sensor: 6,
+    pcf8574: 5,
+    '74hc73': 4,
+    '74hc74': 4,
+    ld1117v33: 4,
+    lm7805: 4,
+    solenoid: 4,
+    ds1302: 3,
+    '74hc20': 2,
+    '74hc21': 2,
+    bmp280: 2,
+    soil_moisture: 2,
+    tmp36: 2,
+    '74hc95': 1,
+    simplevga_card: 1,
+    tcs34725: 1,
+  };
 
   it('summary: two populations counted separately', () => {
     const gapKinds = [...new Set(coverageGaps)];
@@ -182,12 +228,37 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
     assert.ok(gapKinds.length <= KNOWN.gapKinds,
       `${gapKinds.length} kinds the engine does not model (${gapKinds.join(', ')}), ratcheted `
       + `at ${KNOWN.gapKinds}. A new gap is a product regression, not a naming quibble.`);
-    assert.ok(namingDiffs.length <= KNOWN.namingDiffs,
-      `${namingDiffs.length} naming differences, ratcheted at ${KNOWN.namingDiffs}`);
-    if (gapKinds.length < KNOWN.gapKinds || namingDiffs.length < KNOWN.namingDiffs) {
-      assert.fail(`the populations shrank (${namingDiffs.length} naming, ${gapKinds.length} `
-        + `gaps vs ${KNOWN.namingDiffs}/${KNOWN.gapKinds}) — lower KNOWN to lock it in.`);
+    if (gapKinds.length < KNOWN.gapKinds) {
+      assert.fail(`the coverage gaps shrank (${gapKinds.length} vs ${KNOWN.gapKinds}) — lower `
+        + 'KNOWN.gapKinds to lock it in.');
     }
+  });
+
+  it('naming diffs: which kind moved, not just that a number did', () => {
+    const actual = {};
+    for (const m of namingDiffs) {
+      const kind = m.slice(0, m.indexOf(':'));
+      actual[kind] = (actual[kind] ?? 0) + 1;
+    }
+
+    const appeared = [], grew = [], fixed = [];
+    for (const [kind, n] of Object.entries(actual)) {
+      const known = KNOWN_BY_KIND[kind];
+      if (known === undefined) appeared.push(`${kind} (+${n})`);
+      else if (n > known) grew.push(`${kind}: ${known} -> ${n}`);
+      else if (n < known) fixed.push(`${kind}: ${known} -> ${n}`);
+    }
+    for (const kind of Object.keys(KNOWN_BY_KIND)) {
+      if (!(kind in actual)) fixed.push(`${kind}: gone`);
+    }
+
+    assert.equal(appeared.length, 0,
+      `kinds whose sidecar and engine names newly disagree: ${appeared.join(', ')}. Either the `
+      + 'name is wrong on one side, or this is a sidecar the engine has not caught up with.');
+    assert.equal(grew.length, 0, `naming drift grew: ${grew.join(', ')}`);
+    assert.equal(fixed.length, 0,
+      `names agree that did not before (${fixed.join(', ')}) — update KNOWN_BY_KIND to lock the `
+      + 'win in, or it can silently come back.');
   });
 
   it('every sidecar kind is accounted for (checked, gap, or excluded)', () => {
