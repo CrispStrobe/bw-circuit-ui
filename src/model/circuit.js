@@ -97,6 +97,10 @@ export class Circuit {
   constructor(vcc = 5.0) {
     /** @type {number} */
     this.vcc = vcc;
+    // Board overrides (docs/PCB-SUPPORT-PLAN.md phase 6): per-part
+    // {x, y, rotation, package}. Placement only -- the netlist always
+    // wins; nothing in here may say what touches what.
+    this.pcb = null;
 
     /** @type {Function} — the BoardImpl constructor, from the injected engine */
     this._BoardImpl = getEngine().BoardImpl;
@@ -911,6 +915,7 @@ export class Circuit {
       // silently vanished from saves and the restored board stopped
       // conducting through its rails.
       holeWires: this.holeWires(),
+      ...(this.pcb ? { pcb: this.pcb } : {}),
     };
   }
 
@@ -921,6 +926,7 @@ export class Circuit {
    */
   static fromJSON(data) {
     const c = new Circuit(data.vcc);
+    c.pcb = data.pcb ?? null;
     // Legacy files also predate parts carrying their terminal list — every
     // renderer maps over part.terminals, so a missing list was the SECOND
     // way a gallery file crashed the GUI (pure-circuit examples, same day
@@ -1018,6 +1024,32 @@ export class Circuit {
       if (!p.seat) continue;
       const bb = c.breadboards.get(p.seat.boardId);
       if (!bb) { delete p.seat; continue; }
+      // A leadMap key is a TERMINAL NAME, so a rename is a data migration
+      // here exactly as it is for a wire endpoint above — and this path was
+      // missing it. When attiny88's pin 22 went from `pa0` to `gnd2` (the
+      // PDIP-28 bonds out no port A; it is a second GND — bw-board e1bda3f),
+      // 135 shipped circuits carried `pa0` in seat.leadMap. Without this they
+      // would keep seating a lead the part no longer declares: the hole is
+      // occupied, the strip conducts, and the terminal belongs to nothing.
+      // Silent, and invisible to the wire-side alias resolution.
+      // Resolve against the PACKAGE's full terminal list, not the part's
+      // DECLARED one. A seated MCU commonly declares only the terminals an
+      // explicit wire names — `01-blink/circuit.attiny88.json` declares
+      // ["pb0"] while its leadMap drops 28 legs into holes — and
+      // resolveTerminal only accepts an alias whose target is in the list it
+      // is given. Passing the declared list left 20 of the 70 seated attiny88
+      // circuits still holding `pa0`, silently, because `gnd2` was not in
+      // their one-entry declaration. A leadMap key names a LEG, so the
+      // package's terminals are its namespace.
+      const seatTerms = terminalsForKind(p.kind, p.params || {}) || p.terminals || [];
+      for (const term of Object.keys(p.seat.leadMap)) {
+        if (seatTerms.includes(term)) continue;
+        const resolved = resolveTerminal(p.kind, term, seatTerms);
+        if (resolved !== term) {
+          p.seat.leadMap[resolved] = p.seat.leadMap[term];
+          delete p.seat.leadMap[term];
+        }
+      }
       try { bb.occupy(p.id, p.seat.leadMap); } catch { delete p.seat; }
     }
     for (const jw of data.holeWires || []) {

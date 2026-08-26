@@ -51,6 +51,7 @@ import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
 import { SweepPanel } from './SweepPanel.jsx';
 import { SchematicPanel } from './SchematicPanel.jsx';
+import BoardPanel from './BoardPanel.jsx';
 import { useCircuit } from '../hooks/useCircuit.js';
 import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
@@ -87,7 +88,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const projectData = project || stc;
   const {
     parts, wires, powered, rev,
-    addPart, removePart, nudgeSeated, movePart, duplicatePart, rotatePart, flipPart, updateParams,
+    addPart, removePart, nudgeSeated, movePart, duplicatePart, rotatePart, flipPart, updateParams, setPcbOverrides,
     addWire, removeWire, addHoleWire, addTapWire, updateWire,
     setControl, setPartParam, setPin, advanceTo, advanceBy, setPower,
     loadInferred, undo, redo, canUndo, canRedo, saveHistory,
@@ -336,6 +337,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [placingProbe, setPlacingProbe] = useState(null);
   const [placingPart, setPlacingPart] = useState(null); // {kind, params} riding the cursor
   const [showSchematic, setShowSchematic] = useState(false);
+  // Third view: the projected BOARD (docs/PCB-SUPPORT-PLAN.md). Placement
+  // edits land in circuit.pcb through setPcbOverrides, so they bump rev
+  // and ride the same autosave as every structural change.
+  const [showBoard, setShowBoard] = useState(false);
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem('bw-circuit-theme') || 'light'; } catch { return 'light'; }
   });
@@ -1265,15 +1270,25 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           </div>
         )}
         <div data-designer-main style={{ flex: '1 1 auto', width: 'auto', minHeight: 0, minWidth: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-        {showSchematic && (
+        {(showSchematic || showBoard) && (
           <div data-schematic-escape data-circuit-view-switcher style={{display: 'inline-flex', gap: 4, alignItems: 'center', marginBottom: 8}}>
-            <button onClick={() => setShowSchematic(false)} aria-label="Realistic view" aria-pressed={false} title="Realistic view"
+            <button onClick={() => { setShowSchematic(false); setShowBoard(false); }} aria-label="Realistic view" aria-pressed={false} title="Realistic view"
               style={{width: 34, height: 30, cursor: 'pointer', background: '#16213e', color: '#fff', border: '1px solid #3498db', borderRadius: 4}}>◉</button>
-            <button onClick={() => setShowSchematic(true)} aria-label="Schematic view" aria-pressed="true" title="Schematic view"
-              style={{width: 34, height: 30, cursor: 'pointer', background: '#3498db', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>⌁</button>
+            <button onClick={() => { setShowSchematic(true); setShowBoard(false); }} aria-label="Schematic view" aria-pressed={showSchematic && !showBoard} title="Schematic view"
+              style={{width: 34, height: 30, cursor: 'pointer', background: showSchematic && !showBoard ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>⌁</button>
+            <button data-board-view-button onClick={() => { setShowSchematic(false); setShowBoard(true); }} aria-label="Board view" aria-pressed={showBoard} title="Board view (PCB)"
+              style={{width: 34, height: 30, cursor: 'pointer', background: showBoard ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>▦</button>
           </div>
         )}
-        {!showSchematic ? (<>
+        {showBoard ? (
+          <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto', overscrollBehavior: 'contain',
+            background: '#16213e', borderRadius: 8, border: '1px solid #2c3e50', padding: 8, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ color: '#7f8c8d', fontFamily: 'monospace', fontSize: 10, marginBottom: 4 }}>
+              Board — auto-placed and routed from the circuit above. Drag parts to move them; connectivity is edited in Realistic view.
+            </div>
+            <BoardPanel circuit={circuit} overrides={circuit.pcb} onOverridesChange={setPcbOverrides} />
+          </div>
+        ) : !showSchematic ? (<>
         <BoardCanvas
           engineBoard={activeBoard}
           videoFn={debugState && typeof debugState.video === 'function' ? debugState.video : null}
@@ -1434,11 +1449,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           rightOpen={rightOpen}
           lang={lang}
           viewNav={(
-            <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', width: 70, height: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
-              <button data-circuit-toggle-state={!showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={!showSchematic} onClick={() => setShowSchematic(false)} aria-label="Realistic view" title="Realistic view"
-                style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: !showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: 17}}>◉</button>
-              <button data-circuit-toggle-state={showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={showSchematic} onClick={() => setShowSchematic(true)} aria-label="Schematic view" title="Schematic view"
-                style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', fontSize: 17}}>⌁</button>
+            <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', width: 104, height: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
+              <button data-circuit-toggle-state={!showSchematic && !showBoard ? 'selected' : 'unselected'} role="radio" aria-checked={!showSchematic && !showBoard} onClick={() => { setShowSchematic(false); setShowBoard(false); }} aria-label="Realistic view" title="Realistic view"
+                style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: !showSchematic && !showBoard ? '#2563eb' : '#475569', color: '#fff', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: 17}}>◉</button>
+              <button data-circuit-toggle-state={showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={showSchematic} onClick={() => { setShowSchematic(true); setShowBoard(false); }} aria-label="Schematic view" title="Schematic view"
+                style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: 17}}>⌁</button>
+              <button data-circuit-toggle-state={showBoard ? 'selected' : 'unselected'} role="radio" aria-checked={showBoard} onClick={() => { setShowSchematic(false); setShowBoard(true); }} aria-label="Board view" title="Board view (PCB)"
+                style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: showBoard ? '#2563eb' : '#475569', color: '#fff', border: 'none', fontSize: 17}}>▦</button>
             </div>
           )}
         />
