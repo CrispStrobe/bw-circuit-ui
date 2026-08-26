@@ -90,6 +90,34 @@ export function resetIds() { _nextId = 1; }
  * @property {{part: string, terminal: string}} to
  */
 
+/**
+ * Carry a stored terminal list forward to what the engine calls those pins now.
+ *
+ * A saved `terminals` array is a snapshot of the naming at write time, and
+ * bw-board renames pins — attiny88's `pa0` became `gnd2` when the PDIP-28's
+ * second ground needed a name. TERMINAL_ALIASES exists to migrate those files,
+ * but nothing consulted it here: the stored list was taken verbatim, so the old
+ * name reached validateNetlist and the ENTIRE circuit was rejected. It also
+ * disabled the wire-alias pass below, whose guard is
+ * `!p.terminals.includes(e.terminal)` — with the stale name still in the list
+ * that test is false and the endpoint is never rewritten either. 57 shipped
+ * attiny88 circuits loaded to an empty board this way.
+ *
+ * Conservative on purpose: rewrite only a name the engine no longer has AND an
+ * alias resolves to one it does. Anything else is left exactly as stored, so a
+ * kind the engine does not model keeps its list untouched.
+ */
+function migrateTerminals (kind, stored, params) {
+  const live = terminalsForKind(kind, params);
+  if (!Array.isArray(stored)) return live;
+  if (!Array.isArray(live) || live.length === 0) return stored;
+  return stored.map((t) => {
+    if (live.includes(t)) return t;
+    const resolved = resolveTerminal(kind, t, live);
+    return live.includes(resolved) ? resolved : t;
+  });
+}
+
 export class Circuit {
   /**
    * @param {number} [vcc=5.0]
@@ -947,7 +975,7 @@ export class Circuit {
         // shares, so no downstream reader needs to re-learn this.
         params: (p.params && typeof p.params === 'object') ? p.params : {},
         rotation: p.rotation ?? 0,
-        terminals: Array.isArray(p.terminals) ? p.terminals : terminalsForKind(kind, p.params || {}),
+        terminals: migrateTerminals(kind, p.terminals, p.params || {}),
       };
     });
     // Wires arrive in two dialects. Current saves carry endpoint objects
