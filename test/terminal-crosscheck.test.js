@@ -225,7 +225,6 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
     ds1302: 3,
     '74hc20': 2,
     '74hc21': 2,
-    bmp280: 2,
     gas_sensor: 2,
     '74hc95': 1,
   };

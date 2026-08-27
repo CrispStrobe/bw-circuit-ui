@@ -128,8 +128,8 @@ test('EVERY sidecar with an engine device agrees on terminals', () => {
     ['ds1302', 'sidecar carries the crystal pins x1/x2 and the vcc1 backup rail; engine models neither'],
     // pcf8574 came off this list on 2026-08-27: bw-board 0a06873 made the three
     // address straps real, so 0x20 | A2 A1 A0 works and two can share a bus.
-    ['bmp280', 'sidecar is the 6-pin breakout and carries csb/sdo, the SPI chip-select and '
-      + 'address-select straps; the engine models the I2C interface only'],
+    // bmp280 came off this list on 2026-08-27: bw-board 5669572 made SDO the I2C
+    // address select (0x76/0x77) and CSB a real terminal, so both are reachable.
     ['tcs34725', 'the reverse: the engine models the chip\'s INT output, and the 5-pin breakout '
       + 'this sidecar describes (vcc gnd sda scl led) does not bring it out'],
     // (b) different device: an engine change, not a catalog one.
