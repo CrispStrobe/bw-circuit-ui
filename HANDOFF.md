@@ -1,5 +1,54 @@
 # bw-circuit-ui -- handoff for the next session
 
+## 2026-08-27
+
+npm test **2226/0/17** (CI clean, ~6 min). Four repos moved together today —
+bw-circuit-ui, bw-board, bw-parts, sb3-creator — and all four are green.
+
+**The teaching ladders are complete.** `gallery/l0..l10` (AND gate to a diode
+keypad) and `gallery/c0..c17` (a 555 ticking to an eight-bit stored-program
+computer under microcode: control ROM, conditional jumps, an 8-bit ALU deriving
+its own flags, a stack, CALL/RET, the machine again with a ROM where its matrix
+was, then twice as wide). Written by `scripts/gen-*-ladder.mjs` — **edit the
+generators, never the JSON** — and published to sb3-creator as pc90..pc118 by
+`scripts/gen-logic-examples.mjs --out <checkout>`. `docs/LADDERS.md` is the
+document; the README's ranges are now asserted against the gallery.
+
+**Adding a part is FIVE registrations**, learned over four CI rounds: bw-board
+device, bw-parts sidecar **and** art, `src/parts-data` (generated — run
+`scripts/sync-parts-data.mjs`), the importer's `LOGIC_74*` family set, and
+palette coverage. Terminal names come from the ENGINE, and a sidecar's
+`terminals` must match its own `footprint.leads`.
+
+**`sync-parts-data.mjs` is ADD-ONLY** (`--overwrite` to force). Bulk vendoring
+imports bw-parts' datasheet-name drift and un-passes the parity gate. It also
+carries a `NOT_OFFERED` list (sidecars for parts the engine cannot simulate —
+they would become palette entries that empty the board) and `LOCAL_ONLY`
+(designer-only sidecars the stale sweep must not delete; it nearly ate
+stm32f030).
+
+**Cross-check is three populations now**, each ratcheted per kind and mutation-
+proven: 9 unreachable (sidecar pin the engine cannot reach), 9 not-connected
+(legs named `nc` — a package fact, classified from the name), 76 extra
+spellings (engine aliases the sidecar does not list). Down from one
+undifferentiated 163.
+
+**Open, and genuinely a decision:** the 9 unreachable pins are three parts where
+the sidecar and engine describe DIFFERENT DEVICES — `stepper` (bipolar sidecar
+vs unipolar model), `ds1302` (crystal + backup rail), `gas_sensor` (breakout vs
+bare element). Closing one means deciding which device the part is.
+
+**Blocked:** see `BLOCKED.md` — pc115/pc116 cannot publish until sb3-creator's
+sibling pin moves past bw-board `b63a6ec`, and that bump belongs to the attiny88
+re-seat chain.
+
+**Workflow that worked:** push to `fable/pcb-support` first, let GitHub CI run
+the suite on a clean machine (~6 min), then fast-forward master with the same
+SHA. A full local suite measures this box's other processes as much as the code
+— two timing budgets were re-derived today for exactly that reason.
+
+---
+
 npm test 1027/0/3 (CI clean). Pendant Playwright test (test:render suite).
 Parts-data index regenerated: 146 → 213 sidecar entries.
 Lite push freeze in effect — batching lite forwards until coordinator lifts.
