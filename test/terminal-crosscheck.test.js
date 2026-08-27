@@ -306,8 +306,13 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
   const EXTRA_BY_KIND = {
     stc15_mcu: 38,
     '74hc595': 19,
-    simplevga_card: 1,
   };
+  // simplevga_card came off this list on 2026-08-27, and like tcs34725 it was
+  // never an extra SPELLING: `bank` is a real pin — m6502-extract requires it
+  // on the same net as the VIA's PB0, and simplevga.js uses bit 0 to select
+  // between two 32K VRAM banks (the double buffer). bw-parts had DROPPED it,
+  // which is why sync-parts-data held the file back. bw-parts now carries it
+  // again, and both SVGs draw the pad, which neither did.
   // tcs34725 came off this list on 2026-08-27, and it did NOT belong on it:
   // `int` is not an extra spelling for a pin the sidecar already names, it is
   // the threshold-interrupt pin, and the sidecar simply had no pad for it.

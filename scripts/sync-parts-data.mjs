@@ -85,7 +85,10 @@ const HELD_BACK = new Map([
   // terminals to the engine's spelling, so vendoring it no longer renames
   // pins under the PRECHIN-A2 preset. The entry is removed rather than kept
   // "just in case" — a stale hold-back is a lie about what the sync will do.
-  ['simplevga_card.json', 'upstream has dropped the `bank` terminal the engine still has'],
+  // simplevga_card came off this list on 2026-08-27: bw-parts carries `bank`
+  // again, so the two sidecars are byte-identical and vendoring cannot drop a
+  // pin the engine needs. Removed rather than kept "just in case", per the
+  // note above — a stale hold-back is a lie about what the sync will do.
 ]);
 
 const skip = (f) => NOT_OFFERED.has(f) || NOT_OFFERED.has(f.replace(/\.svg$/, '.json'));
