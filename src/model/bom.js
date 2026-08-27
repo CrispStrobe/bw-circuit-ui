@@ -129,6 +129,7 @@ const KIND_LABELS = {
   arduino_uno: 'Arduino Uno',
   arduino_nano: 'Arduino Nano',
   pi_pico: 'Raspberry Pi Pico',
+  pybadge: 'Adafruit PyBadge',
 };
 
 function paramKey(params) {

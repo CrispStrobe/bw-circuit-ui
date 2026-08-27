@@ -98,14 +98,14 @@ export const FOOTPRINTS = {
   // Board values are fallback-only; footprintOf resolves the shared visual
   // geometry first so drawing, auto-fit and pointer hits remain identical.
   arduino_uno: { w: 400, h: 294 }, arduino_nano: { w: 248, h: 98 },
-  arduino_mega: { w: 566, h: 280 }, pi_pico: { w: 281, h: 116 },
+  arduino_mega: { w: 566, h: 280 }, pi_pico: { w: 281, h: 116 }, pybadge: {w: 472, h: 298},
 };
 
 export const DEFAULT_FOOTPRINT = { w: 48, h: 48 };
 
 /** @param {{kind: string}} part */
 export function footprintOf(part) {
-  if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico'].includes(part.kind)) {
+  if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge'].includes(part.kind)) {
     const geometry = boardVisualGeometry(part.kind, getSidecar(part.kind));
     if (geometry) return { w: geometry.w, h: geometry.h };
   }

@@ -1,0 +1,13 @@
+{
+  "kind": "pybadge", "w": 170, "h": 106,
+  "terminals": [
+    {"name":"reset","x":43,"y":28,"functions":[]}, {"name":"3v3","x":43,"y":34,"functions":[]}, {"name":"aref","x":43,"y":40,"functions":["adc_ref"]}, {"name":"gnd","x":43,"y":46,"functions":[]},
+    {"name":"a0","x":43,"y":52,"functions":["gpio","adc","pwm"]}, {"name":"a1","x":43,"y":58,"functions":["gpio","adc","pwm"]}, {"name":"a2","x":43,"y":64,"functions":["gpio","adc","pwm"]}, {"name":"a3","x":43,"y":70,"functions":["gpio","adc","pwm"]}, {"name":"a4","x":43,"y":76,"functions":["gpio","adc","pwm"]}, {"name":"a5","x":43,"y":82,"functions":["gpio","adc"]},
+    {"name":"sck","x":43,"y":88,"functions":["gpio","spi_sck"]}, {"name":"mosi","x":43,"y":94,"functions":["gpio","spi_mosi"]}, {"name":"miso","x":127,"y":94,"functions":["gpio","spi_miso"]}, {"name":"rx","x":127,"y":88,"functions":["gpio","uart_rx"]}, {"name":"tx","x":127,"y":82,"functions":["gpio","uart_tx"]}, {"name":"free","x":127,"y":76,"functions":["gpio"]},
+    {"name":"sda","x":127,"y":70,"functions":["gpio","i2c_sda"]}, {"name":"scl","x":127,"y":64,"functions":["gpio","i2c_scl"]}, {"name":"d5","x":127,"y":58,"functions":["gpio","pwm"]}, {"name":"d6","x":127,"y":52,"functions":["gpio","pwm"]}, {"name":"d9","x":127,"y":46,"functions":["gpio","pwm"]}, {"name":"d10","x":127,"y":40,"functions":["gpio","pwm"]}, {"name":"d11","x":127,"y":34,"functions":["gpio","pwm"]}, {"name":"d12","x":127,"y":28,"functions":["gpio","pwm"]}, {"name":"d13","x":127,"y":22,"functions":["gpio","pwm"]},
+    {"name":"usb","x":127,"y":16,"functions":[]}, {"name":"enable","x":127,"y":10,"functions":[]}, {"name":"battery","x":43,"y":10,"functions":[]},
+    {"name":"stemma_sda","x":79,"y":106,"functions":["i2c_sda"]}, {"name":"stemma_scl","x":91,"y":106,"functions":["i2c_scl"]}, {"name":"d2","x":67,"y":106,"functions":["gpio","adc","pwm"]}, {"name":"d3","x":103,"y":106,"functions":["gpio","adc","pwm"]}
+  ],
+  "variants": null, "footprint": null,
+  "_note": "Code-drawn PyBadge connection model based on Adafruit's PyBadge guide and Feather specification. Internal TFT, buttons, A6 battery sensing, A7 light sensing, D8 NeoPixels and LIS3DH live in the game-console widget. PyBadge LC is not this part: LC has no Feather or STEMMA connectors."
+}
