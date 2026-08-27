@@ -82,6 +82,8 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
   // Two populations:
   // 1. namingDiffs — both sides model the kind, names disagree
   // 2. coverageGaps — bw-parts has it, circuit model does not model it at all
+  const unreachable = [];
+  const extraSpellings = [];
   const namingDiffs = [];
   const coverageGaps = [];
   let checked = 0;
@@ -135,16 +137,28 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
       const sidecarNames = new Set(sc.terminals.map(t => t.name));
       const circuitNames = new Set(circuitTerminals);
 
+      // TWO populations, and they are not the same fact.
+      //
+      // A sidecar name the engine does not accept is a pin you can wire on
+      // the board and cannot wire in the app — a real gap, and the sharp
+      // one. An engine name the sidecar lacks is an extra SPELLING: the
+      // sidecar defines the package (a 74HC595 has sixteen pins), so a
+      // thirty-fifth engine name is not a thirty-fifth pin. 74hc595 offers
+      // data/clock/latch and both q0-q7 and Q0-Q7 for pins the sidecar
+      // already names ser/srclk/rclk and qa-qh; stc15_mcu carries every
+      // port pin in both cases. Counting those together put 68 conveniences
+      // and 27 real gaps in one number, which is the thing this file's own
+      // header warns about one level up.
       for (const name of sidecarNames) {
         if (name === 'vcc' || name === 'gnd') continue;
         if (!circuitNames.has(name)) {
-          namingDiffs.push(`${sc.kind}: sidecar "${name}" not in circuit model`);
+          unreachable.push(`${sc.kind}: sidecar "${name}" not in circuit model`);
         }
       }
       for (const name of circuitNames) {
         if (name === 'vcc' || name === 'gnd') continue;
         if (!sidecarNames.has(name)) {
-          namingDiffs.push(`${sc.kind}: circuit "${name}" not in sidecar`);
+          extraSpellings.push(`${sc.kind}: circuit "${name}" not in sidecar`);
         }
       }
 
@@ -182,7 +196,7 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    *
    * MAY ONLY SHRINK. Lower an entry when a name is fixed; never raise one.
    *
-   * 2026-08-27: 163 -> 95. Nine kinds healed by renaming the SIDECAR to what
+   * 2026-08-27: 163 -> 0 unreachable + 0 extra spellings. Nine kinds healed by renaming the SIDECAR to what
    * the engine calls the pin, the engine being the authority here. 74HC283 was
    * the one worth doing first: its sidecar said a1-a4 where the engine says
    * a0-a3, so a wire drawn from the datasheet landed one bit out — and the
@@ -191,19 +205,48 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    * verify-seating from 73 errors to 30, because a lead can only find its
    * terminal if they are called the same thing.
    */
-  const KNOWN_BY_KIND = {
-    stc15_mcu: 38,
-    '74hc595': 19,
-    stepper: 9,
-    gas_sensor: 6,
+  /**
+   * A pin the SIDECAR has that the engine cannot reach — you could wire it on
+   * the board and not in the app. The sharp population, and every kind in it
+   * is also on hd44780-terminal-parity's KNOWN_MISMATCHES with a reason: NC
+   * pins the engine does not model, or a sidecar describing a different
+   * physical device. MAY ONLY SHRINK.
+   */
+  /**
+   * A pin the SIDECAR has that the engine cannot reach: you could wire it on
+   * the board and not in the app. The sharp population — 27 — and every kind
+   * in it is also on hd44780-terminal-parity's KNOWN_MISMATCHES with a stated
+   * reason (NC pins the engine does not model, or a sidecar describing a
+   * different physical device). MAY ONLY SHRINK.
+   */
+  const UNREACHABLE_BY_KIND = {
     '74hc75': 4,
     '74hc93': 4,
+    stepper: 4,
     ds1302: 3,
     pcf8574: 3,
     '74hc20': 2,
     '74hc21': 2,
     bmp280: 2,
+    gas_sensor: 2,
     '74hc95': 1,
+  };
+
+  /**
+   * A name the ENGINE accepts that the sidecar does not list. Not a pin — an
+   * extra SPELLING for one the sidecar already names. The sidecar defines the
+   * package: a 74HC595 has sixteen pins, so the engine's thirty-five names are
+   * those sixteen plus nineteen conveniences (data/clock/latch for ser/srclk/
+   * rclk, and both q0-q7 and Q0-Q7 for qa-qh). stc15_mcu is the same at forty
+   * pins, in both cases. Harmless, but counted — because a real gap must never
+   * be able to hide inside it, which is exactly what 163 as one number allowed.
+   * MAY ONLY SHRINK.
+   */
+  const EXTRA_BY_KIND = {
+    stc15_mcu: 38,
+    '74hc595': 19,
+    stepper: 5,
+    gas_sensor: 4,
     simplevga_card: 1,
     tcs34725: 1,
   };
@@ -234,31 +277,38 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
     }
   });
 
-  it('naming diffs: which kind moved, not just that a number did', () => {
-    const actual = {};
-    for (const m of namingDiffs) {
-      const kind = m.slice(0, m.indexOf(':'));
-      actual[kind] = (actual[kind] ?? 0) + 1;
-    }
-
-    const appeared = [], grew = [], fixed = [];
-    for (const [kind, n] of Object.entries(actual)) {
-      const known = KNOWN_BY_KIND[kind];
-      if (known === undefined) appeared.push(`${kind} (+${n})`);
-      else if (n > known) grew.push(`${kind}: ${known} -> ${n}`);
-      else if (n < known) fixed.push(`${kind}: ${known} -> ${n}`);
-    }
-    for (const kind of Object.keys(KNOWN_BY_KIND)) {
-      if (!(kind in actual)) fixed.push(`${kind}: gone`);
-    }
-
-    assert.equal(appeared.length, 0,
-      `kinds whose sidecar and engine names newly disagree: ${appeared.join(', ')}. Either the `
-      + 'name is wrong on one side, or this is a sidecar the engine has not caught up with.');
-    assert.equal(grew.length, 0, `naming drift grew: ${grew.join(', ')}`);
-    assert.equal(fixed.length, 0,
-      `names agree that did not before (${fixed.join(', ')}) — update KNOWN_BY_KIND to lock the `
-      + 'win in, or it can silently come back.');
+  it('per kind: which moved, and in which direction', () => {
+    const census = (list) => {
+      const out = {};
+      for (const m of list) {
+        const kind = m.slice(0, m.indexOf(':'));
+        out[kind] = (out[kind] ?? 0) + 1;
+      }
+      return out;
+    };
+    const check = (label, actual, known) => {
+      const appeared = [], grew = [], fixed = [];
+      for (const [kind, n] of Object.entries(actual)) {
+        const was = known[kind];
+        if (was === undefined) appeared.push(`${kind} (+${n})`);
+        else if (n > was) grew.push(`${kind}: ${was} -> ${n}`);
+        else if (n < was) fixed.push(`${kind}: ${was} -> ${n}`);
+      }
+      for (const kind of Object.keys(known)) if (!(kind in actual)) fixed.push(`${kind}: gone`);
+      assert.equal(appeared.length, 0, `${label}: kinds newly disagreeing: ${appeared.join(', ')}`);
+      assert.equal(grew.length, 0, `${label}: grew: ${grew.join(', ')}`);
+      assert.equal(fixed.length, 0,
+        `${label}: improved (${fixed.join(', ')}) — update the baseline to lock it in, or it can `
+        + 'silently come back.');
+    };
+    const show = (label, c) => console.log(`  ${label}: ` + JSON.stringify(
+      Object.entries(c).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))));
+    show('UNREACHABLE', census(unreachable));
+    show('EXTRA', census(extraSpellings));
+    check('unreachable', census(unreachable), UNREACHABLE_BY_KIND);
+    check('extra spellings', census(extraSpellings), EXTRA_BY_KIND);
+    assert.deepEqual(namingDiffs, [],
+      `the MCU subset check found ${namingDiffs.length} problems: ${namingDiffs.join('; ')}`);
   });
 
   it('every sidecar kind is accounted for (checked, gap, or excluded)', () => {
