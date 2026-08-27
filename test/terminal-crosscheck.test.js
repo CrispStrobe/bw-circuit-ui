@@ -182,7 +182,7 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    *
    * MAY ONLY SHRINK. Lower an entry when a name is fixed; never raise one.
    *
-   * 2026-08-27: 163 -> 117. Nine kinds healed by renaming the SIDECAR to what
+   * 2026-08-27: 163 -> 95. Nine kinds healed by renaming the SIDECAR to what
    * the engine calls the pin, the engine being the authority here. 74HC283 was
    * the one worth doing first: its sidecar said a1-a4 where the engine says
    * a0-a3, so a wire drawn from the datasheet landed one bit out — and the
@@ -194,13 +194,12 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
   const KNOWN_BY_KIND = {
     stc15_mcu: 38,
     '74hc595': 19,
-    '74hc93': 12,
     stepper: 9,
-    '74hc75': 8,
-    char_lcd: 8,
     gas_sensor: 6,
-    pcf8574: 5,
+    '74hc75': 4,
+    '74hc93': 4,
     ds1302: 3,
+    pcf8574: 3,
     '74hc20': 2,
     '74hc21': 2,
     bmp280: 2,

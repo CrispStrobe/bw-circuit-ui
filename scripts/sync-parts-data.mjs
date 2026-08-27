@@ -71,8 +71,20 @@ const NOT_OFFERED = new Map([
  */
 const ADD_ONLY = !process.argv.includes('--overwrite');
 
+/**
+ * Sidecars that live HERE and not upstream, which the stale sweep must not
+ * delete. The sweep assumes bw-parts is a superset of this directory, and it
+ * is not: a part can be added to the designer before (or without) being
+ * catalogued upstream. stm32f030 was added on 2026-08-26 and the first
+ * add-only sync silently removed both its files.
+ */
+const LOCAL_ONLY = new Set(['stm32f030.json', 'stm32f030.svg']);
+
 const HELD_BACK = new Map([
-  ['char_lcd.json', 'upstream says vss/vdd/v0/a/k; the engine says gnd/vcc/vo/bl_a/bl_k'],
+  // char_lcd came off this list on 2026-08-27: bw-parts ff2fc7d renamed its
+  // terminals to the engine's spelling, so vendoring it no longer renames
+  // pins under the PRECHIN-A2 preset. The entry is removed rather than kept
+  // "just in case" — a stale hold-back is a lie about what the sync will do.
   ['simplevga_card.json', 'upstream has dropped the `bank` terminal the engine still has'],
 ]);
 
@@ -84,10 +96,10 @@ const upstreamSvgs = new Set(readdirSync(src).filter(f => f.endsWith('.svg') && 
 let deleted = 0;
 if (!check) {
   for (const f of readdirSync(dst).filter(f => f.endsWith('.json'))) {
-    if (!upstreamJsons.has(f)) { unlinkSync(join(dst, f)); deleted++; }
+    if (!upstreamJsons.has(f) && !LOCAL_ONLY.has(f)) { unlinkSync(join(dst, f)); deleted++; }
   }
   for (const f of readdirSync(dst).filter(f => f.endsWith('.svg'))) {
-    if (!upstreamSvgs.has(f)) { unlinkSync(join(dst, f)); deleted++; }
+    if (!upstreamSvgs.has(f) && !LOCAL_ONLY.has(f)) { unlinkSync(join(dst, f)); deleted++; }
   }
 }
 let changed = 0, total = 0;
