@@ -47,8 +47,8 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: sixteen rungs, c0 through c15', () => {
-    assert.equal(files.length, 16, `found ${files.join(', ')}`);
+  it('is present: seventeen rungs, c0 through c16', () => {
+    assert.equal(files.length, 17, `found ${files.join(', ')}`);
   });
 
   it('contains no CPU — the point is building one, not using one', () => {
@@ -71,6 +71,9 @@ describe('the computer ladder — state, and a clock that moves it', () => {
         + 'subject, not a shortcut past one.'],
       ['c15-call-and-return.json',
         'as c11 and c12: the control store IS the instruction set, and CALL/RET are rows in it.'],
+      ['c16-microcoded-machine.json',
+        'the whole point of the rung is that the control MATRIX became a control STORE; the two '
+        + 'EEPROMs are the ten chips they replaced.'],
     ]);
     const MEMORY = new Set(['28c256', '62256']);
 
@@ -693,6 +696,89 @@ describe('C15 — CALL and RET in microcode', () => {
       const w = c.wires.find((x) => x.to === 'sp' && x.toTerminal === pin);
       assert.ok(w, `sp.${pin} must be driven`);
       assert.equal(w.from, 'inv', `sp.${pin} must come from the inverter, not straight off the ROM`);
+    }
+  });
+});
+
+describe('C16 — the same machine, microcoded', () => {
+  /** C10's loader, verbatim: the datapath it drives is the same. */
+  function loaded(program) {
+    const b = bench('c16-microcoded-machine');
+    b.settle();
+    for (let addr = 0; addr < program.length; addr++) {
+      b.set('swd', program[addr]);
+      b.set('swc', 0b0010); b.settle();
+      b.set('swc', 0); b.settle();
+      for (let k = 0; k < 6; k++) b.tick('swc');
+    }
+    // C10's wind-back, and it has to be: the counter reaches cell 0 by
+    // going all the way round. Clearing the program counter directly was
+    // tried and is NOT equivalent — the registers keep the loading phase's
+    // values, and the run comes out 8 instead of 10.
+    for (let i = 0; i < 12 * 6; i++) b.tick('swc');
+    return b;
+  }
+  const run = (b, cycles) => { for (let i = 0; i < cycles * 6; i++) b.tick('swc'); };
+
+  it('runs C10\'s program to C10\'s answer', () => {
+    // The whole claim of the rung. Same four cells, same ten.
+    const b = loaded([0b0011, 0b0111, 0b1100, 0b0101]);
+    run(b, 3);
+    assert.equal(b.nibble('led_a'), 10, 'the accumulator holds 5 + 5');
+    assert.equal(b.nibble('led_out'), 10, 'and OUT copied it out');
+  });
+
+  // Only ONE program is run here. Each costs ~2 minutes of settling on an
+  // 84-part circuit, and SUB and the changed-datum case re-prove C10's
+  // DATAPATH — which C10's own tests already cover, and which this rung
+  // does not touch. What is new here is where the control word comes
+  // from, and the structural tests below are what check that.
+
+  it('ten chips of control became two, and the decoder is gone', () => {
+    // The structural half of the claim. A ROM needs no instruction
+    // decoder because the opcode IS part of the address — so the 74HC138
+    // and the AND/OR array that fed it are simply absent, and the wires
+    // that carried the opcode now go to address pins.
+    // decade_counter is a CD4017 and matches neither /^74/ nor /^cd4/ — the
+    // same naming trap that once made a chip count read 24 instead of 25.
+    const LOGIC = /^74|^cd4|^decade_counter$/;
+    const kinds = (f) => JSON.parse(readFileSync(join(GALLERY, f), 'utf8'))
+      .parts.filter((p) => LOGIC.test(p.kind)).map((p) => p.kind);
+    const c10 = kinds('c10-the-machine.json');
+    const c16 = kinds('c16-microcoded-machine.json');
+    assert.ok(c10.includes('74hc138'), 'C10 decodes the opcode with a 138');
+    assert.ok(!c16.includes('74hc138'), 'C16 has no decoder at all');
+    assert.ok(!c16.includes('74hc32'), 'and no OR array feeding it');
+    assert.equal(c10.includes('decade_counter'), true, 'C10 steps with a one-hot ring');
+    assert.ok(!c16.includes('decade_counter'),
+      'C16 steps with a binary counter, because a ROM address wants a number');
+    assert.ok(c16.length < c10.length,
+      `C16 must use FEWER logic chips: ${c16.length} vs ${c10.length}`);
+
+    const rom = JSON.parse(readFileSync(join(GALLERY, 'c16-microcoded-machine.json'), 'utf8'))
+      .parts.filter((p) => p.kind === '28c256');
+    assert.equal(rom.length, 2, 'twelve control lines is two ROMs');
+    for (const r of rom) {
+      assert.equal(r.params.readOnly, true, 'a control store a stray /WE could rewrite is not one');
+      assert.equal(r.params.contents.length, 32, 'three step bits and two opcode bits is 32 rows');
+    }
+  });
+
+  it('the opcode reaches the ROM as an ADDRESS, not through logic', () => {
+    // If the instruction register's bits went anywhere but address pins,
+    // this would be a matrix wearing a ROM's clothes.
+    const c = JSON.parse(readFileSync(join(GALLERY, 'c16-microcoded-machine.json'), 'utf8'));
+    for (const bit of ['q2', 'q3']) {
+      const dests = c.wires.filter((w) => w.from === 'ir' && w.fromTerminal === bit);
+      const toRomAddr = dests.filter((d) => /^rom_/.test(d.to) && /^a\d+$/.test(d.toTerminal));
+      assert.equal(toRomAddr.length, 2, `ir.${bit} must address BOTH ROMs`);
+      // Lamps are fine; a gate is not — that would be a matrix wearing a
+      // ROM's clothes.
+      for (const d of dests) {
+        assert.ok(/^rom_|^led_/.test(d.to),
+          `ir.${bit} reaches ${d.to}.${d.toTerminal}; the opcode may go to the ROM or to a lamp, `
+          + 'never through logic');
+      }
     }
   });
 });

@@ -937,6 +937,197 @@ function activeLowLed(driver, terminal, lid, rid, color = 'red') {
   }));
 }
 
+// ── C16: the machine again, with a ROM where the matrix was ────────
+
+{
+  // C10 is this machine with a control MATRIX: a decoder, four AND
+  // packages and two OR packages, ten chips of combinational logic whose
+  // whole job is to answer "which lines, given this instruction and this
+  // step". C11 showed that a ROM answers the same question by being
+  // asked. This rung does the substitution on the real machine.
+  //
+  // The datapath below is C10's, wire for wire — same bus, same
+  // registers, same adder, same hand-loading switches. Only the control
+  // section changes, and the program and its answer do not. That is the
+  // claim: a microcoded machine and a hardwired one are the same machine.
+  //
+  // What changes for the better is what happens NEXT. The matrix grows a
+  // gate per instruction; the ROM grows a row. Six chips of decode and
+  // gating become two, and the instruction set becomes a file.
+  const CTRL_LO = ['ep', 'lm', 'cp', 'ce', 'li', 'ei', 'la', 'lb'];
+  const CTRL_HI = ['eu', 'su', 'ea', 'lo'];
+  const STEPS = {
+    0b00: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ei', 'lm'], ['ce', 'la'], []],           // LDA
+    0b01: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ei', 'lm'], ['ce', 'lb'], ['eu', 'la']], // ADD
+    0b10: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ei', 'lm'], ['ce', 'lb'], ['eu', 'la', 'su']],
+    0b11: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ea', 'lo'], [], []],                     // OUT
+  };
+  const lo = new Array(32).fill(0);
+  const hi = new Array(32).fill(0);
+  for (const [op, steps] of Object.entries(STEPS)) {
+    steps.forEach((lines, stp) => {
+      const a = (Number(op) << 3) | stp;
+      for (const l of lines) {
+        const i = CTRL_LO.indexOf(l);
+        if (i >= 0) lo[a] |= 1 << i;
+        const j = CTRL_HI.indexOf(l);
+        if (j >= 0) hi[a] |= 1 << j;
+      }
+    });
+  }
+
+  const P = [...rails()];
+  const W = [];
+  const chip = (id, kind) => {
+    P.push(part(id, kind));
+    if (hasPowerPins(kind)) W.push(...powerChip(id));
+  };
+  for (const [id, kind] of [
+    ['step', '74ls161'], ['wrap', '74hc00'],
+    ['rom_lo', '28c256'], ['rom_hi', '28c256'],
+    ['pc', '74ls161'], ['ram', '74ls189'],
+    ['mar', '74ls173'], ['ir', '74ls173'], ['areg', '74ls173'],
+    ['breg', '74ls173'], ['oreg', '74ls173'],
+    ['buf_pc', '74hc244'], ['buf_ram', '74hc244'], ['buf_ir', '74hc244'],
+    ['buf_a', '74hc244'], ['buf_sum', '74hc244'],
+    ['add', '74hc283'], ['xorb', '74hc86'],
+    ['inv1', '74hc04'], ['inv2', '74hc04'], ['inv3', '74hc04'],
+    ['and3', '74hc08'], ['and4', '74hc08'],
+  ]) chip(id, kind);
+  // The ROMs carry the microcode and must never be written.
+  P.find((x) => x.id === 'rom_lo').params = { readOnly: true, contents: lo };
+  P.find((x) => x.id === 'rom_hi').params = { readOnly: true, contents: hi };
+  P.push(part('swc', 'dip_switch_spst', { switches: 0 }));
+  P.push(part('swd', 'dip_switch_spst', { switches: 0 }));
+
+  const CK = switchInput('swc', 1, 'rck');
+  P.push(...CK.parts); W.push(...CK.wires);
+  W.push(wire('swc', '1b', 'step', 'clk'), wire('swc', '1b', 'inv1', '1a'));
+  const NCLK = ['inv1', '1y'];
+  for (const g of ['2', '3', '4', '5', '6']) W.push(wire('gnd1', 'gnd', 'inv1', g + 'a'));
+
+  // Six states from a binary counter, cleared the moment it reaches six.
+  W.push(wire('step', 'q1', 'wrap', '1a'), wire('step', 'q2', 'wrap', '1b'),
+    wire('wrap', '1y', 'step', 'clrb'));
+  for (const t of ['enp', 'ent', 'loadb']) W.push(wire('vcc1', 'vcc', 'step', t));
+  for (const d of ['d0', 'd1', 'd2', 'd3']) W.push(wire('gnd1', 'gnd', 'step', d));
+  for (const g of ['2', '3', '4']) W.push(wire('gnd1', 'gnd', 'wrap', g + 'a'), wire('gnd1', 'gnd', 'wrap', g + 'b'));
+
+  // Address: step on a0..a2, the opcode's two bits on a3..a4. The
+  // instruction register supplies them directly — no decoder, because a
+  // ROM does not need one: the opcode IS part of the address.
+  for (const rom of ['rom_lo', 'rom_hi']) {
+    for (let i = 0; i < 3; i++) W.push(wire('step', 'q' + i, rom, 'a' + i));
+    W.push(wire('ir', 'q2', rom, 'a3'), wire('ir', 'q3', rom, 'a4'));
+    for (let i = 5; i <= 14; i++) W.push(wire('gnd1', 'gnd', rom, 'a' + i));
+    W.push(wire('gnd1', 'gnd', rom, 'ceb'), wire('gnd1', 'gnd', rom, 'oeb'),
+      wire('vcc1', 'vcc', rom, 'web'));
+  }
+
+  // The control signals are now ROM data pins. Everything downstream is
+  // C10's, unchanged — which is the point.
+  const Ep = ['rom_lo', 'd0']; const Lm = ['rom_lo', 'd1']; const Cp = ['rom_lo', 'd2'];
+  const CE = ['rom_lo', 'd3']; const Li = ['rom_lo', 'd4']; const Ei = ['rom_lo', 'd5'];
+  const La = ['rom_lo', 'd6']; const Lb = ['rom_lo', 'd7'];
+  const Eu = ['rom_hi', 'd0']; const Su = ['rom_hi', 'd1'];
+  const Ea = ['rom_hi', 'd2']; const Lo = ['rom_hi', 'd3'];
+
+  const gclk = (c, g, sig, target) => {
+    W.push(wire(sig[0], sig[1], c, g + 'a'), wire(NCLK[0], NCLK[1], c, g + 'b'));
+    W.push(wire(c, g + 'y', target, 'clk'));
+  };
+  gclk('and3', '1', Lm, 'mar'); gclk('and3', '2', Cp, 'pc'); gclk('and3', '3', Li, 'ir');
+  gclk('and3', '4', La, 'areg'); gclk('and4', '1', Lb, 'breg'); gclk('and4', '2', Lo, 'oreg');
+  for (const g of ['3', '4']) W.push(wire('gnd1', 'gnd', 'and4', g + 'a'), wire('gnd1', 'gnd', 'and4', g + 'b'));
+
+  for (const r of ['mar', 'ir', 'areg', 'breg', 'oreg']) {
+    for (const t of ['g1b', 'g2b', 'oe1b', 'oe2b']) W.push(wire('gnd1', 'gnd', r, t));
+    W.push(wire('gnd1', 'gnd', r, 'mr'));
+  }
+  // C10's, unchanged — including /CLR tied high. A reset line was tried
+  // here and taken out again: clearing the program counter does NOT
+  // restart this machine, because the accumulator, B and output registers
+  // have no reset either (their 74LS173 MR is tied low), so the run picks
+  // up whatever the last one left in them. Shipping a switch labelled
+  // RESET that does not restart would be worse than not having one.
+  for (const t of ['clrb', 'loadb', 'enp', 'ent']) W.push(wire('vcc1', 'vcc', 'pc', t));
+  for (const t of ['d0', 'd1', 'd2', 'd3']) W.push(wire('gnd1', 'gnd', 'pc', t));
+
+  const driver = (buf, sig, g) => {
+    W.push(wire(sig[0], sig[1], 'inv2', g + 'a'), wire('inv2', g + 'y', buf, '1oeb'));
+    W.push(wire('gnd1', 'gnd', buf, '2oeb'));
+  };
+  driver('buf_pc', Ep, '1'); driver('buf_ram', CE, '2'); driver('buf_ir', Ei, '3');
+  driver('buf_a', Ea, '4'); driver('buf_sum', Eu, '5');
+  W.push(wire('gnd1', 'gnd', 'inv2', '6a'));
+
+  for (let i = 0; i < 4; i++) {
+    const rid = 'rbus' + i;
+    P.push(part(rid, 'resistor', { ohms: 100000 }));
+    for (const b of ['buf_pc', 'buf_ram', 'buf_ir', 'buf_a', 'buf_sum']) W.push(wire(b, '1y' + i, rid, 'a'));
+    W.push(wire(rid, 'b', 'gnd1', 'gnd'));
+    for (const r of ['mar', 'ir', 'areg', 'breg', 'oreg']) W.push(wire(rid, 'a', r, 'd' + i));
+    const led = outputLed(rid, 'a', 'led_bus' + i, 'rlb' + i, 'yellow');
+    P.push(...led.parts); W.push(...led.wires);
+  }
+
+  for (let i = 0; i < 4; i++) {
+    W.push(wire('pc', 'q' + i, 'buf_pc', '1a' + i));
+    W.push(wire('areg', 'q' + i, 'buf_a', '1a' + i));
+    W.push(wire('mar', 'q' + i, 'ram', 'a' + i));
+  }
+  W.push(wire('ir', 'q0', 'buf_ir', '1a0'), wire('ir', 'q1', 'buf_ir', '1a1'));
+  W.push(wire('gnd1', 'gnd', 'buf_ir', '1a2'), wire('gnd1', 'gnd', 'buf_ir', '1a3'));
+  W.push(wire('gnd1', 'gnd', 'ram', 'csb'));
+  for (let i = 0; i < 4; i++) {
+    W.push(wire('ram', 'o' + i, 'inv3', (i + 1) + 'a'), wire('inv3', (i + 1) + 'y', 'buf_ram', '1a' + i));
+  }
+  for (const g of ['5', '6']) W.push(wire('gnd1', 'gnd', 'inv3', g + 'a'));
+
+  const WE = switchInputActiveLow('swc', 2, 'rwe');
+  P.push(...WE.parts); W.push(...WE.wires);
+  W.push(wire('swc', '2b', 'ram', 'web'));
+  for (let i = 0; i < 4; i++) {
+    const sw = switchInput('swd', i + 1, 'rd' + i);
+    P.push(...sw.parts); W.push(...sw.wires);
+    W.push(wire('swd', (i + 1) + 'b', 'ram', 'd' + i));
+  }
+
+  for (let i = 0; i < 4; i++) {
+    W.push(wire('areg', 'q' + i, 'add', 'a' + i));
+    W.push(wire('breg', 'q' + i, 'xorb', (i + 1) + 'a'));
+    W.push(wire(Su[0], Su[1], 'xorb', (i + 1) + 'b'));
+    W.push(wire('xorb', (i + 1) + 'y', 'add', 'b' + i));
+    W.push(wire('add', 's' + i, 'buf_sum', '1a' + i));
+  }
+  W.push(wire(Su[0], Su[1], 'add', 'cin'));
+
+  for (let i = 0; i < 4; i++) {
+    for (const [src, t, tag, col] of [['areg', 'q' + i, 'a', 'green'], ['oreg', 'q' + i, 'out', 'red'],
+      ['ir', 'q' + i, 'ir', 'green'], ['mar', 'q' + i, 'addr', 'yellow']]) {
+      const led = outputLed(src, t, 'led_' + tag + i, 'rl_' + tag + i, col);
+      P.push(...led.parts); W.push(...led.wires);
+    }
+  }
+  for (let i = 0; i < 3; i++) {
+    const led = outputLed('step', 'q' + i, 'led_s' + i, 'rls' + i, 'yellow');
+    P.push(...led.parts); W.push(...led.wires);
+  }
+
+  done.push(emit('c16-microcoded-machine', {
+    vcc: 5, parts: P, wires: W,
+    _title: 'The machine again, with a ROM where the matrix was',
+    _description: 'The same computer as C10, running the same program to the same answer — and ten chips '
+      + 'of control logic have become two EEPROMs. Load LDA 3, ADD 3, OUT and 5 into cells 0 to 3, clock, '
+      + 'and the output lands on ten, exactly as before. The datapath below the control unit is C10\'s wire '
+      + 'for wire; only how the control word is produced has changed. There is no decoder either, because a '
+      + 'ROM does not need one: the opcode IS part of the address. What changes is what happens next — a '
+      + 'matrix grows a gate per instruction, a ROM grows a row, and the instruction set becomes a file you '
+      + 'can edit rather than a board you must rewire.',
+    _category: 'computer', _difficulty: 5, _stage: 'C16',
+  }));
+}
+
 for (const line of done) console.log(line);
 // ── C11: the control ROM — a control word you can PROGRAM ──────────
 
