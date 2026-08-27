@@ -1060,4 +1060,132 @@ for (const line of done) console.log(line);
   }));
 }
 
+// ── C12: flags — the same ROM, now with an opinion ─────────────────
+
+{
+  // A conditional jump is where a machine stops being a player piano.
+  // Everything up to here does the same thing every time; JZ does one of
+  // two things depending on what just happened.
+  //
+  // The cost is the point. In C6's gate matrix a conditional means new
+  // gates on every affected control line. Here the flags are simply two
+  // more ADDRESS lines on the control store: the ROM already answers
+  // "given this instruction and this step", and now it answers "given
+  // this instruction, this step, and these flags". Nothing is added to
+  // the data path at all — the store goes from 128 bytes to 512, and the
+  // machine learns to branch.
+  //
+  //   a0..a2  step    a3..a6  opcode    a7  Z flag    a8  C flag
+  //
+  // The flags arrive here on switches. In the whole machine they are the
+  // ALU's zero and carry outputs latched at the moment the result lands,
+  // which is C3's register discipline again and not a new idea; what is
+  // new is where they GO.
+  const CTRL_LO = ['ep', 'lm', 'cp', 'ce', 'li', 'ei', 'la', 'lb'];
+  const CTRL_HI = ['eu', 'su', 'ea', 'lo', 'lp'];
+  const FETCH = [['ep', 'lm'], ['cp'], ['ce', 'li']];
+  const EXEC = {
+    0b0000: () => [['ei', 'lm'], ['ce', 'la'], []],                  // LDA
+    0b0001: () => [['ei', 'lm'], ['ce', 'lb'], ['eu', 'la']],         // ADD
+    0b0010: () => [['ei', 'lm'], ['ce', 'lb'], ['eu', 'la', 'su']],   // SUB
+    0b0011: (z) => [z ? ['ei', 'lp'] : [], [], []],                   // JZ
+    0b0100: (z, c) => [c ? ['ei', 'lp'] : [], [], []],                // JC
+    0b1110: () => [['ea', 'lo'], [], []],                             // OUT
+  };
+
+  const lo = new Array(512).fill(0);
+  const hi = new Array(512).fill(0);
+  const at = (op, stp, z, c) => (c << 8) | (z << 7) | (op << 3) | stp;
+  const put = (a, lines) => {
+    for (const l of lines) {
+      const i = CTRL_LO.indexOf(l);
+      if (i >= 0) lo[a] |= 1 << i;
+      const j = CTRL_HI.indexOf(l);
+      if (j >= 0) hi[a] |= 1 << j;
+    }
+  };
+  for (let op = 0; op < 16; op++) {
+    for (let z = 0; z < 2; z++) {
+      for (let c = 0; c < 2; c++) {
+        // Fetch is written for every opcode AND every flag combination:
+        // reading an instruction cannot depend on the instruction, and it
+        // certainly cannot depend on the result of the last one.
+        FETCH.forEach((lines, stp) => put(at(op, stp, z, c), lines));
+        const exec = EXEC[op];
+        if (exec) exec(z, c).forEach((lines, k) => put(at(op, k + 3, z, c), lines));
+      }
+    }
+  }
+
+  const parts = [...rails(),
+    part('swc', 'dip_switch_spst', { switches: 0 }),
+    part('swi', 'dip_switch_spst', { switches: 0 }),
+    part('swf', 'dip_switch_spst', { switches: 0 }),   // Z on 1, C on 2
+    part('step', '74ls161'),
+    part('wrap', '74hc00'),
+    part('rom_lo', '28c256', { readOnly: true, contents: lo }),
+    part('rom_hi', '28c256', { readOnly: true, contents: hi }),
+  ];
+  const wires = [...powerChip('step'), ...powerChip('wrap'),
+    ...powerChip('rom_lo'), ...powerChip('rom_hi')];
+
+  const clk = switchInput('swc', 1, 'r_swc');
+  parts.push(...clk.parts);
+  wires.push(...clk.wires, wire('swc', '1b', 'step', 'clk'));
+  wires.push(wire('step', 'q1', 'wrap', '1a'), wire('step', 'q2', 'wrap', '1b'),
+    wire('wrap', '1y', 'step', 'clrb'));
+  for (const t of ['enp', 'ent', 'loadb']) wires.push(wire('vcc1', 'vcc', 'step', t));
+  for (const d of ['d0', 'd1', 'd2', 'd3']) wires.push(wire('gnd1', 'gnd', 'step', d));
+
+  for (let i = 0; i < 4; i++) {
+    const sw = switchInput('swi', i + 1, `r_swi${i}`);
+    parts.push(...sw.parts);
+    wires.push(...sw.wires);
+  }
+  for (let i = 0; i < 2; i++) {
+    const sw = switchInput('swf', i + 1, `r_swf${i}`);
+    parts.push(...sw.parts);
+    wires.push(...sw.wires);
+  }
+
+  for (const rom of ['rom_lo', 'rom_hi']) {
+    for (let i = 0; i < 3; i++) wires.push(wire('step', `q${i}`, rom, `a${i}`));
+    for (let i = 0; i < 4; i++) wires.push(wire('swi', `${i + 1}b`, rom, `a${i + 3}`));
+    wires.push(wire('swf', '1b', rom, 'a7'), wire('swf', '2b', rom, 'a8'));
+    for (let i = 9; i <= 14; i++) wires.push(wire('gnd1', 'gnd', rom, `a${i}`));
+    wires.push(wire('gnd1', 'gnd', rom, 'ceb'), wire('gnd1', 'gnd', rom, 'oeb'),
+      wire('vcc1', 'vcc', rom, 'web'));
+  }
+
+  CTRL_LO.forEach((name, i) => {
+    const led = outputLed('rom_lo', `d${i}`, `led_${name}`, `rl_${name}`, 'green');
+    parts.push(...led.parts);
+    wires.push(...led.wires);
+  });
+  CTRL_HI.forEach((name, i) => {
+    const led = outputLed('rom_hi', `d${i}`, `led_${name}`, `rl_${name}`,
+      name === 'lp' ? 'yellow' : 'red');
+    parts.push(...led.parts);
+    wires.push(...led.wires);
+  });
+  for (let i = 0; i < 3; i++) {
+    const led = outputLed('step', `q${i}`, `led_s${i}`, `rls${i}`, 'yellow');
+    parts.push(...led.parts);
+    wires.push(...led.wires);
+  }
+
+  done.push(emit('c12-conditional-jump', {
+    vcc: 5, parts, wires,
+    _title: 'Flags — the same ROM, now with an opinion',
+    _description: 'A conditional jump is where a machine stops being a player piano: JZ does one of two '
+      + 'things depending on what just happened. Set the opcode to 0011 (JZ) and clock to T4. With the Z '
+      + 'switch off, nothing lights. Turn Z on and the same step asserts Ei and Lp — the operand goes to '
+      + 'the program counter and the machine jumps. Not one gate was added: the two flags are simply two '
+      + 'more ADDRESS lines on the control store, which grows from 128 bytes to 512. That is the whole '
+      + 'trade microcode buys you, and it is why adding instructions to a SAP-2 is a programming job '
+      + 'rather than a wiring one.',
+    _category: 'computer', _difficulty: 5, _stage: 'C12',
+  }));
+}
+
 console.log(`\n${done.length} computer examples written to gallery/`);

@@ -1,7 +1,7 @@
 # The ladders — gates to a computer, one verified rung at a time
 
 Two teaching sequences live in `gallery/`, and they are one arc: `l0..l10`
-starts at a single AND gate and ends at a keypad you can type into; `c0..c11` starts at a
+starts at a single AND gate and ends at a keypad you can type into; `c0..c12` starts at a
 555 ticking and ends at a machine that runs a program — and then at the control
 unit every machine after SAP-1 actually uses. Every rung is a real
 circuit made of parts you can buy, containing no CPU and no firmware, and
@@ -13,7 +13,7 @@ They are published twice, deliberately:
 | where | what it is | who reads it |
 |---|---|---|
 | `gallery/l*.json`, `gallery/c*.json` | wire-level, `x/y` all zero | the test corpus; the electrical truth |
-| `sb3-creator` `examples/pc90..pc112` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
+| `sb3-creator` `examples/pc90..pc113` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
 
 `scripts/gen-logic-ladder.mjs` and `scripts/gen-computer-ladder.mjs` write the
 first; `scripts/gen-logic-examples.mjs --out <sb3-creator checkout>` seats them
@@ -49,7 +49,7 @@ changes meaning rather than disappearing — it now reads "no borrow".
 
 ---
 
-## 2. The computer ladder — `c0..c11`
+## 2. The computer ladder — `c0..c12`
 
 | rung | chips | the idea |
 |---|---|---|
@@ -65,6 +65,7 @@ changes meaning rather than disappearing — it now reads "no borrow".
 | c9 fetch cycle | 11 chips | reads an instruction *and knows what it says* |
 | c10 the machine | 25 chips | fetch, decode, **execute** |
 | c11 control ROM | 74LS161, 28C256 ×2 | the control word is FETCHED, not computed |
+| c12 flags | the same chips | a conditional jump, bought with address lines |
 
 **c10's program.** Four cells, then nothing but the clock:
 
@@ -111,6 +112,19 @@ wants a NUMBER, so it becomes a 74LS161 cleared asynchronously the moment q1 and
 q2 are both high — six states, and state 6 never settles. And the fetch words are
 written for all SIXTEEN opcodes, not just the four that decode to something,
 because fetch cannot depend on an instruction the machine has not read yet.
+
+**Why c12 is only bytes.** A conditional jump is where a machine stops being a
+player piano. In C6's gate matrix that means new gates on every affected control
+line; here the two flags are simply two more ADDRESS lines on the store, which
+grows from 128 bytes to 512 and learns to branch. The data path is untouched, and
+`test/computer-ladder.test.js` asserts exactly that: C12 holds no logic chip C11
+does not, and its ROM is 4x the size. It also checks the two things a mis-wired
+address line would break — LDA must behave identically at every flag setting, and
+fetch must, since reading an instruction cannot depend on the result of the last
+one.
+
+The 74LS193 (up/DOWN counter, bw-board b63a6ec) exists now, so a stack pointer
+has a part: CALL and RET are no longer blocked on the engine.
 
 ---
 

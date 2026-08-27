@@ -47,8 +47,8 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: twelve rungs, c0 through c11', () => {
-    assert.equal(files.length, 12, `found ${files.join(', ')}`);
+  it('is present: thirteen rungs, c0 through c12', () => {
+    assert.equal(files.length, 13, `found ${files.join(', ')}`);
   });
 
   it('contains no CPU — the point is building one, not using one', () => {
@@ -66,6 +66,9 @@ describe('the computer ladder — state, and a clock that moves it', () => {
       ['c11-control-rom.json',
         'the two 28c256 ARE the control unit: a microcoded control word is looked up, not '
         + 'computed by gates. That is the rung.'],
+      ['c12-conditional-jump.json',
+        'as c11, with the flags added as two more address lines — the control store is the '
+        + 'subject, not a shortcut past one.'],
     ]);
     const MEMORY = new Set(['28c256', '62256']);
 
@@ -349,6 +352,72 @@ describe('C11 — the control ROM', () => {
     for (let i = 0; i < 13; i++) { seen.push(step(b)); b.tick('swc'); b.settle(); }
     assert.deepEqual(seen, [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0],
       `two full laps of six: got ${seen.join(',')}`);
+  });
+});
+
+describe('C12 — flags and the conditional jump', () => {
+  const ALL = ['ep', 'lm', 'cp', 'ce', 'li', 'ei', 'la', 'lb', 'eu', 'su', 'ea', 'lo', 'lp'];
+  const Z = 0b01;
+  const C = 0b10;
+  const step = (b) => [0, 1, 2].reduce((a, i) => a + (b.lit(`led_s${i}`) ? 1 << i : 0), 0);
+
+  /** Lines asserted at step `t` for this opcode and flag setting. */
+  function linesAt(opcode, flags, t) {
+    const b = bench('c12-conditional-jump');
+    b.set('swi', opcode);
+    b.set('swf', flags);
+    b.settle();
+    let g = 0;
+    while (step(b) !== 0 && g++ < 12) b.tick('swc');
+    for (let k = 0; k < t; k++) b.tick('swc');
+    b.settle();
+    assert.equal(step(b), t, `expected to be at step ${t}`);
+    return ALL.filter((l) => b.lit(`led_${l}`)).sort();
+  }
+
+  it('JZ jumps only when Z is set — and it is the SAME store either way', () => {
+    assert.deepEqual(linesAt(0b0011, 0, 3), [], 'Z clear: T4 does nothing at all');
+    assert.deepEqual(linesAt(0b0011, Z, 3).sort(), ['ei', 'lp'].sort(),
+      'Z set: the operand goes to the program counter');
+  });
+
+  it('JC jumps only when C is set, and ignores Z', () => {
+    assert.deepEqual(linesAt(0b0100, 0, 3), [], 'C clear: nothing');
+    assert.deepEqual(linesAt(0b0100, C, 3).sort(), ['ei', 'lp'].sort(), 'C set: jump');
+    assert.deepEqual(linesAt(0b0100, Z, 3), [],
+      'the ZERO flag must not trigger a carry jump — the two address lines are distinct');
+  });
+
+  it('an unconditional instruction is unmoved by the flags', () => {
+    // The failure this catches is an address line wired to the wrong pin,
+    // which would make every instruction depend on the last result.
+    const none = linesAt(0b0000, 0, 3);
+    for (const f of [Z, C, Z | C]) {
+      assert.deepEqual(linesAt(0b0000, f, 3), none, `LDA T4 changed with flags=${f}`);
+    }
+  });
+
+  it('fetch is unconditional — it cannot depend on the last result', () => {
+    for (const f of [0, Z, C, Z | C]) {
+      assert.deepEqual(linesAt(0b0011, f, 0).sort(), ['ep', 'lm'].sort());
+      assert.deepEqual(linesAt(0b0011, f, 2).sort(), ['ce', 'li'].sort());
+    }
+  });
+
+  it('the jump costs bytes, not gates', () => {
+    // The claim the rung is named for, checked structurally: C12 holds no
+    // more logic than C11 — same two ROMs, same counter, same NAND — and
+    // differs only in what is stored and how many address lines reach it.
+    const logicOf = (f) => JSON.parse(readFileSync(join(GALLERY, f), 'utf8'))
+      .parts.filter((p) => /^74|^cd4/.test(p.kind)).map((p) => p.kind).sort();
+    assert.deepEqual(logicOf('c12-conditional-jump.json'), logicOf('c11-control-rom.json'),
+      'C12 must add no logic chip that C11 does not already have');
+
+    const rom = (f) => JSON.parse(readFileSync(join(GALLERY, f), 'utf8'))
+      .parts.find((p) => p.id === 'rom_lo').params.contents.length;
+    assert.equal(rom('c11-control-rom.json'), 128);
+    assert.equal(rom('c12-conditional-jump.json'), 512,
+      'two flag address lines quadruple the store — that is the price, and it is all of it');
   });
 });
 

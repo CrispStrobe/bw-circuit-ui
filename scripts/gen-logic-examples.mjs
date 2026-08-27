@@ -437,6 +437,29 @@ const LADDER = [
       ['T6 (SUB)', 'Eu, La, Su'], ['unknown opcode', 'fetches, then nothing']],
     cols: ['step', 'control word'],
   },
+  {
+    src: 'c12-conditional-jump', id: 'pc113-conditional-jump', difficulty: 5,
+    en: { title: 'Flags — the same ROM, now with an opinion',
+      teaches: 'conditional execution: flags as ADDRESS lines, so a branch costs bytes not gates' },
+    de: { title: 'Flags — dasselbe ROM, jetzt mit einer Meinung',
+      desc: 'Ein bedingter Sprung ist der Punkt, an dem eine Maschine aufhört, ein Selbstspielklavier zu '
+        + 'sein: JZ tut je nach dem, was gerade passiert ist, das eine oder das andere. '
+        + 'Stelle den Opcode auf 0011 (JZ) und takte bis T4. Ist der Z-Schalter aus, leuchtet nichts. '
+        + 'Schalte Z ein, und derselbe Schritt setzt Ei und Lp — der Operand geht in den Programmzähler, '
+        + 'und die Maschine springt. '
+        + 'Dafür wurde kein einziges Gatter ergänzt. Die beiden Flags sind einfach zwei weitere '
+        + 'ADRESSLEITUNGEN am Steuerspeicher, der dadurch von 128 auf 512 Byte wächst. Genau das kauft man '
+        + 'sich mit Mikrocode ein, und deshalb ist es bei einer SAP-2 eine Programmier- und keine '
+        + 'Verdrahtungsarbeit, Befehle hinzuzufügen. '
+        + 'Zwei Proben lohnen sich: LDA verhält sich bei jeder Flagstellung gleich, und die Holphase auch. '
+        + 'Wäre eine Adressleitung falsch angeschlossen, hinge plötzlich jeder Befehl vom letzten Ergebnis '
+        + 'ab — und das Holen eines Befehls kann unmöglich davon abhängen, was der vorige ergeben hat.',
+      teaches: 'Bedingte Ausführung: Flags als Adressleitungen, ein Sprung kostet Bytes statt Gatter' },
+    table: [['JZ, Z=0', 'nothing at T4'], ['JZ, Z=1', 'Ei + Lp — it jumps'],
+      ['JC, C=0', 'nothing'], ['JC, C=1', 'Ei + Lp'],
+      ['LDA, any flags', 'unchanged'], ['store', '128 bytes -> 512']],
+    cols: ['opcode and flags', 'what T4 does'],
+  },
 ];
 
 const mdTable = (cols, rows) => [
