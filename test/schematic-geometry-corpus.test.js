@@ -145,8 +145,15 @@ const examplesRoot = CORPUS_ROOTS.find(r => existsSync(r)) || null;
  * MAY ONLY SHRINK.
  */
 const KNOWN_UNCONNECTED_PINS = new Map([
-  ['eater6502-full-build/circuit-flat.json', 4],  // kbd d0/d1, bargraph a0/k0 — seated on empty columns
-  ['eater6502-full-build/circuit.json', 2],       // kbd d0/d1
+  // BOTH eater6502-full-build entries came OFF this list on 2026-08-27, the
+  // flat one recorded as 4 —
+  // "kbd d0/d1, bargraph a0/k0, seated on empty columns". sb3-creator 07da7d0
+  // ("Wire the 6502 keyboard instead of displaying ghosts") wired them, and
+  // both entries stopped reproducing. Removed rather than re-numbered, as
+  // the assertion below asks — and the second only surfaced once the first
+  // was gone, which is the masked-list shape the pico01 note below already
+  // describes. The map is EMPTY now: no circuit in the corpus draws a pin
+  // on no net.
   // BOTH pico01-blink entries came OFF this list on 2026-08-24. They were
   // recorded as "ZERO wires: 2 parts, nothing joins them" and "likewise, 3 parts
   // and no wires"; the files now hold 4 parts / 3 wires and 5 parts / 4 wires.
