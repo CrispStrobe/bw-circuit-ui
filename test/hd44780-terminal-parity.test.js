@@ -125,13 +125,22 @@ test('EVERY sidecar with an engine device agrees on terminals', () => {
     ['74hc95', 'sidecar carries the NC pin (13)'],
     // 74hc75 came off this list on 2026-08-27: bw-board bf0b5d0 gave the latch
     // its four inverted outputs, so the pins the sidecar carries are reachable now.
-    ['ds1302', 'sidecar carries the crystal pins x1/x2 and the vcc1 backup rail; engine models neither'],
+    // ds1302 came off this list on 2026-08-27: bw-board d85b08b gave the part
+    // X1/X2 and VCC1 — the oscillator decided by wiring (quartz has no DC
+    // signature, so ctx.netFor is the only thing that can answer), and a
+    // supply that runs from whichever rail is higher and loses its registers
+    // below 2.0 V. It was the last entry that was a missing MODEL rather than
+    // a package fact; what remains here is NC pins, which no model can reach.
     // pcf8574 came off this list on 2026-08-27: bw-board 0a06873 made the three
     // address straps real, so 0x20 | A2 A1 A0 works and two can share a bus.
     // bmp280 came off this list on 2026-08-27: bw-board 5669572 made SDO the I2C
     // address select (0x76/0x77) and CSB a real terminal, so both are reachable.
-    ['tcs34725', 'the reverse: the engine models the chip\'s INT output, and the 5-pin breakout '
-      + 'this sidecar describes (vcc gnd sda scl led) does not bring it out'],
+    // tcs34725 came off this list on 2026-08-27. The old note said the sidecar
+    // described a 5-pin breakout that "does not bring INT out" — but a real
+    // TCS34725 module does, and the pin was missing rather than absent. It
+    // needed the behaviour before the pad: bw-board 7ee292f made the threshold
+    // interrupt real (a window on the clear channel, a latching AINT, an
+    // open-drain pin actually driven), and bw-parts 315f606 drew it.
     // (b) different device: an engine change, not a catalog one.
     ['gas_sensor', 'sidecar is the 4-pin breakout MODULE (vcc gnd aout dout); the engine models the bare MQ element and its heater (a b heater_a heater_b)'],
     ['ir_remote', 'sidecar is art only — it declares NO terminals at all; the engine models the emitting LED (anode cathode)'],
