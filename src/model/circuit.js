@@ -1138,7 +1138,7 @@ const ENGINE_AUTHORITY_EXEMPT = new Set(['header']);
 /** @internal Exported for the contract test only. */
 export function terminalsForKind(kind, params) {
   if (!ENGINE_AUTHORITY_EXEMPT.has(kind)) {
-    const fromEngine = engineTerminals(kind);
+    const fromEngine = engineTerminals(kind, params);
     if (fromEngine) return fromEngine;
   }
   // Sidecar-first: a parts-data JSON with measured terminal positions is the

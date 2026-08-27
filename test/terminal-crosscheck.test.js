@@ -121,7 +121,24 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
 
       let circuitTerminals;
       try {
+        // A sidecar may declare VARIANTS — "this part comes in two wirings" —
+        // and then its terminals describe one of them, not the engine's
+        // default. stepper is the case: the sidecar is the four-wire BIPOLAR
+        // motor, the engine defaults to the five-wire unipolar one, and both
+        // are real motors. Compare against whichever variant the sidecar is
+        // describing; fall back to the default when none matches, so a
+        // genuine mismatch still reports.
         circuitTerminals = terminalsForKind(sc.kind);
+        for (const v of Array.isArray(sc.variants) ? sc.variants : []) {
+          for (const value of v.values || []) {
+            let alt;
+            try { alt = terminalsForKind(sc.kind, { [v.param]: value }); } catch { continue; }
+            const side = new Set(sc.terminals.map((t) => t.name));
+            if (alt.every((n) => n === 'vcc' || n === 'gnd' || side.has(n))) {
+              circuitTerminals = alt;
+            }
+          }
+        }
       } catch {
         coverageGaps.push(sc.kind);
         return;
@@ -232,8 +249,12 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    * shape: the sidecar and the engine describe DIFFERENT DEVICES, so closing
    * one means deciding which device the part is, not renaming anything.
    *
-   *   stepper      sidecar is a 4-wire BIPOLAR motor; the engine models a
-   *                5-wire UNIPOLAR one
+   * stepper came OFF this list on 2026-08-27 and shows what closing one costs:
+   * bw-board 57da9b0 taught the device BOTH wirings behind params.wiring, the
+   * sidecar declares them as variants, and this file now tries a declared
+   * variant before reporting a mismatch. Three changes in three repos for four
+   * pins — which is why the two below are a decision and not a chore.
+   *
    *   ds1302       sidecar carries the crystal pins and the backup rail; the
    *                engine models neither
    *   gas_sensor   sidecar is the 4-pin breakout MODULE; the engine models
@@ -242,7 +263,6 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    * MAY ONLY SHRINK.
    */
   const UNREACHABLE_BY_KIND = {
-    stepper: 4,
     ds1302: 3,
     gas_sensor: 2,
   };
@@ -274,7 +294,6 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
   const EXTRA_BY_KIND = {
     stc15_mcu: 38,
     '74hc595': 19,
-    stepper: 5,
     gas_sensor: 4,
     simplevga_card: 1,
     tcs34725: 1,

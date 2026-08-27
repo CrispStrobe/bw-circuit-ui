@@ -85,9 +85,19 @@ export function engineDevice(kind) {
  * @param {string} kind
  * @returns {string[] | null}
  */
-export function engineTerminals(kind) {
+export function engineTerminals(kind, params) {
   const dev = engineDevice(kind);
-  const terminals = dev && dev.terminals;
+  if (!dev) return null;
+  // A device may compute its terminals PER PART: a gate widened by
+  // params.inputs, a stepper wired unipolar or bipolar. `terminals` is only
+  // the registration-time default, and asking for it while holding the params
+  // that would change it is how the designer came to offer a five-wire
+  // stepper for a four-wire motor — the engine knew, and nobody asked it.
+  if (params && typeof dev.terminalsFor === 'function') {
+    const per = dev.terminalsFor({ params });
+    if (Array.isArray(per) && per.length > 0) return per.slice();
+  }
+  const terminals = dev.terminals;
   if (!Array.isArray(terminals) || terminals.length === 0) return null;
   return terminals.slice();
 }
