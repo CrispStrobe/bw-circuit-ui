@@ -558,7 +558,29 @@ const mdTable = (cols, rows) => [
 const written = [];
 const indexEntries = [];
 
+/**
+ * Rungs whose PART is newer than sb3-creator's pinned siblings.
+ *
+ * sb3-creator's CI checks bw-board and bw-circuit-ui out at exact SHAs, on
+ * purpose — its verdict must not float with another repo's HEAD. Publishing an
+ * example that places a part those pins do not know turns its corpus gate red
+ * ("Unknown part kind 74ls193"), which is what pc115 and pc116 did.
+ *
+ * Bumping the pins is NOT the fix from here: test/fixtures/siblings.json
+ * records that moving past bw-cui2's attiny88 pa0->gnd2 rename inherits a
+ * 135-circuit re-seat, sequenced to happen once and owned by someone else.
+ * So these wait. The gallery rungs c14 and c15 are unaffected — they live in
+ * bw-circuit-ui, whose own CI knows the part.
+ *
+ * Remove an entry here in the commit that bumps the pin past it.
+ */
+const BLOCKED_ON_SIBLING_PIN = new Map([
+  ['pc115-the-stack', '74ls193 — added to bw-board b63a6ec, after the pinned sha'],
+  ['pc116-call-and-return', 'as pc115: the stack pointer is a 74ls193'],
+]);
+
 for (const rung of LADDER) {
+  if (BLOCKED_ON_SIBLING_PIN.has(rung.id)) continue;
   const circuit = JSON.parse(readFileSync(join(GALLERY, `${rung.src}.json`), 'utf8'));
   const { seated, boardCount } = seatAll(circuit.parts);
 
