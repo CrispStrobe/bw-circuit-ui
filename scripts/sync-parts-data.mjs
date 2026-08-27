@@ -23,8 +23,46 @@ if (!existsSync(src)) {
 mkdirSync(dst, { recursive: true });
 // Delete files that no longer exist upstream (handles renames).
 // A sync that only copies forward leaves both old and new names in place.
-const upstreamJsons = new Set(readdirSync(src).filter(f => f.endsWith('.json')));
-const upstreamSvgs = new Set(readdirSync(src).filter(f => f.endsWith('.svg')));
+/**
+ * Sidecars bw-parts carries that the DESIGNER deliberately does not offer.
+ *
+ * A sidecar here becomes a palette entry, and a palette entry with no engine
+ * device empties the board the moment someone seats it — which is what
+ * test/palette-engine-coverage.test.js exists to prevent, and why its
+ * KNOWN_GAPS list is empty rather than a place to park things. bw-parts is
+ * the wider catalogue on purpose: it holds parts that are drawable but not
+ * yet modelled, and PARTS-CATALOG.md marks them so.
+ *
+ * Remove a line here in the same commit that gives the kind an engine device.
+ */
+const NOT_OFFERED = new Map([
+  ['ads1115.json', 'no engine device — 4-channel I2C ADC, drawable only'],
+  ['max6675.json', 'no engine device — thermocouple front end, drawable only'],
+  ['microbit_arcade.json', 'no engine device — a board, not a component'],
+  ['seven_seg_8.json', 'no engine device; the engine models `sevenseg8`, the decoded 13-pin '
+    + 'variant, and this is the raw 16-pin one with eight separate commons'],
+]);
+
+/**
+ * Sidecars the designer DOES offer, but whose upstream terminal NAMES disagree
+ * with the engine. Copying them renames pins under every circuit that uses the
+ * part: taking char_lcd's upstream names broke the PRECHIN-A2 board preset,
+ * which wires lcd.vcc where bw-parts now says vdd. Held at the designer's
+ * copy until someone reconciles engine, sidecar and circuits together — the
+ * same drift test/terminal-crosscheck.test.js counts per kind.
+ *
+ * These stay in the index and are NOT stale-swept; only the copy is skipped.
+ */
+const HELD_BACK = new Map([
+  ['char_lcd.json', 'upstream says vss/vdd/v0/a/k; the engine says gnd/vcc/vo/bl_a/bl_k'],
+  ['simplevga_card.json', 'upstream has dropped the `bank` terminal the engine still has'],
+]);
+
+const skip = (f) => NOT_OFFERED.has(f) || NOT_OFFERED.has(f.replace(/\.svg$/, '.json'));
+const held = (f) => HELD_BACK.has(f);
+
+const upstreamJsons = new Set(readdirSync(src).filter(f => f.endsWith('.json') && !skip(f)));
+const upstreamSvgs = new Set(readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f)));
 let deleted = 0;
 if (!check) {
   for (const f of readdirSync(dst).filter(f => f.endsWith('.json'))) {
@@ -35,8 +73,9 @@ if (!check) {
   }
 }
 let changed = 0, total = 0;
-for (const f of readdirSync(src).filter(f => f.endsWith('.json'))) {
+for (const f of readdirSync(src).filter(f => f.endsWith('.json') && !skip(f))) {
   total++;
+  if (held(f)) continue;
   const body = readFileSync(join(src, f), 'utf8');
   JSON.parse(body); // refuse to vendor broken JSON
   const target = join(dst, f);
@@ -48,7 +87,7 @@ for (const f of readdirSync(src).filter(f => f.endsWith('.json'))) {
 }
 // Also vendor SVG art files — same sync, same check
 let svgChanged = 0, svgTotal = 0;
-for (const f of readdirSync(src).filter(f => f.endsWith('.svg'))) {
+for (const f of readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f))) {
   svgTotal++;
   const body = readFileSync(join(src, f), 'utf8');
   const target = join(dst, f);
