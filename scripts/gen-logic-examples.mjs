@@ -414,6 +414,29 @@ const LADDER = [
       ['0 / nothing', 'both 0000']],
     cols: ['key', 'bit lines'],
   },
+  {
+    src: 'c11-control-rom', id: 'pc112-control-rom', difficulty: 5,
+    en: { title: 'The control ROM — a control word you can program',
+      teaches: 'microcode: the control word is fetched, not computed; why real CPUs are microcoded' },
+    de: { title: 'Das Steuer-ROM — ein Steuerwort, das man programmieren kann',
+      desc: 'Dieselbe Steuertabelle wie in pc106, und kein einziges Gatter berechnet sie. Vier Schalter sind '
+        + 'der Opcode, ein 74LS161 zählt die sechs Schritte, und zusammen ADRESSIEREN sie zwei EEPROMs, deren '
+        + 'Inhalt das Steuerwort IST. '
+        + 'Der Unterschied ist der Punkt der Übung. Die Gattermatrix braucht für jeden neuen Befehl neue '
+        + 'Gatter und wächst wie Befehle mal Zustände; das ROM braucht neue BYTES. Genau deshalb sind SAP-2, '
+        + 'SAP-3 und jede echte CPU danach mikroprogrammiert. '
+        + 'Achte auf den Zähler: Der Ringzähler aus pc104 sagt mit einer leuchtenden Leitung, WELCHER Zustand '
+        + 'gerade gilt — eine ROM-Adresse will aber eine ZAHL. Deshalb steht hier ein Binärzähler. '
+        + 'Zwölf Steuerleitungen passen nicht in ein Byte, also liegen zwei ROMs am selben Adressbus, genau '
+        + 'wie in einem echten Aufbau. Die Holphase steht für alle sechzehn Opcodes im ROM, auch für die, die '
+        + 'nichts bedeuten: Holen kann nicht davon abhängen, welchen Befehl die Maschine noch nicht gelesen '
+        + 'hat. Stelle einen unbekannten Opcode ein, und die Maschine holt ihn ordentlich und tut dann nichts.',
+      teaches: 'Mikrocode: das Steuerwort wird geholt, nicht berechnet — warum echte CPUs mikroprogrammiert sind' },
+    table: [['T1', 'Ep, Lm — every opcode'], ['T2', 'Cp'], ['T3', 'CE, Li'],
+      ['T4 (LDA/ADD/SUB)', 'Ei, Lm'], ['T4 (OUT)', 'Ea, Lo'], ['T5 (ADD)', 'CE, Lb'],
+      ['T6 (SUB)', 'Eu, La, Su'], ['unknown opcode', 'fetches, then nothing']],
+    cols: ['step', 'control word'],
+  },
 ];
 
 const mdTable = (cols, rows) => [

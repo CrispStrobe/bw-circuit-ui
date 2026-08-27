@@ -1,8 +1,9 @@
 # The ladders — gates to a computer, one verified rung at a time
 
 Two teaching sequences live in `gallery/`, and they are one arc: `l0..l10`
-starts at a single AND gate and ends at a keypad you can type into; `c0..c10` starts at a
-555 ticking and ends at a machine that runs a program. Every rung is a real
+starts at a single AND gate and ends at a keypad you can type into; `c0..c11` starts at a
+555 ticking and ends at a machine that runs a program — and then at the control
+unit every machine after SAP-1 actually uses. Every rung is a real
 circuit made of parts you can buy, containing no CPU and no firmware, and
 every rung is **simulated and asserted** — see §4, which is the part that
 matters most.
@@ -12,7 +13,7 @@ They are published twice, deliberately:
 | where | what it is | who reads it |
 |---|---|---|
 | `gallery/l*.json`, `gallery/c*.json` | wire-level, `x/y` all zero | the test corpus; the electrical truth |
-| `sb3-creator` `examples/pc90..pc111` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
+| `sb3-creator` `examples/pc90..pc112` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
 
 `scripts/gen-logic-ladder.mjs` and `scripts/gen-computer-ladder.mjs` write the
 first; `scripts/gen-logic-examples.mjs --out <sb3-creator checkout>` seats them
@@ -48,7 +49,7 @@ changes meaning rather than disappearing — it now reads "no borrow".
 
 ---
 
-## 2. The computer ladder — `c0..c10`
+## 2. The computer ladder — `c0..c11`
 
 | rung | chips | the idea |
 |---|---|---|
@@ -63,6 +64,7 @@ changes meaning rather than disappearing — it now reads "no borrow".
 | c8 memory walker | + '173 '244 | the machine reads its own memory |
 | c9 fetch cycle | 11 chips | reads an instruction *and knows what it says* |
 | c10 the machine | 25 chips | fetch, decode, **execute** |
+| c11 control ROM | 74LS161, 28C256 ×2 | the control word is FETCHED, not computed |
 
 **c10's program.** Four cells, then nothing but the clock:
 
@@ -95,6 +97,20 @@ The control-signal names and the six-state shape were read from
 `wnoyan/SAP-1-Computer-Logisim` (MIT) as a **specification**; the circuits are
 built from real 74-series parts and verified independently. See §5 on why that
 file was read rather than imported.
+
+**Why c11 exists.** c6 computes the control word with an AND-OR array; c11 looks
+it up in a ROM. Both are asserted against the SAME table, which is the claim.
+The difference is what happens when you add an instruction: the matrix needs new
+GATES and grows as (instructions x states), the ROM needs new BYTES. That is why
+SAP-2, SAP-3 and every real CPU after them are microcoded, and it is the gap
+between our ladder and the SAP-2/SAP-3 designs in the wild.
+
+Two details that are the lesson rather than incidental. The step counter stops
+being a CD4017 ring: one-hot says WHICH state as a lit wire, and a ROM address
+wants a NUMBER, so it becomes a 74LS161 cleared asynchronously the moment q1 and
+q2 are both high — six states, and state 6 never settles. And the fetch words are
+written for all SIXTEEN opcodes, not just the four that decode to something,
+because fetch cannot depend on an instruction the machine has not read yet.
 
 ---
 

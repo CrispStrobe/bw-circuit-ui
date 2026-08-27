@@ -938,4 +938,126 @@ function activeLowLed(driver, terminal, lid, rid, color = 'red') {
 }
 
 for (const line of done) console.log(line);
+// ── C11: the control ROM — a control word you can PROGRAM ──────────
+
+{
+  // c6 computes the control word with an AND-OR array of gates. This
+  // rung computes nothing: it LOOKS THE ANSWER UP. Address the ROM with
+  // (opcode, step) and the byte that comes back IS the control word.
+  //
+  // Why that matters more than it looks: c6 needs new GATES for every
+  // instruction you add, and the matrix grows as (instructions x states).
+  // A ROM needs new BYTES. That is the whole reason SAP-2, SAP-3 and
+  // every real CPU after them are microcoded — and it is why the step
+  // counter changes here from the CD4017 ring to a 74LS161. A one-hot
+  // ring says WHICH state as a lit wire; a ROM address wants a NUMBER.
+  //
+  //   a0..a2   step   0..5   from the 74LS161
+  //   a3..a6   opcode 0..15  from the DIP switches
+  //   a7..a14  tied low — 128 bytes is the whole microcode store
+  //
+  // Twelve control lines do not fit in one 8-bit byte, so there are two
+  // ROMs on the same address bus, which is exactly what a real build
+  // does. Both are readOnly: a control store that a stray /WE could
+  // rewrite is not a control store.
+  const CTRL_LO = ['ep', 'lm', 'cp', 'ce', 'li', 'ei', 'la', 'lb'];
+  const CTRL_HI = ['eu', 'su', 'ea', 'lo'];
+  const FETCH = [['ep', 'lm'], ['cp'], ['ce', 'li']];
+  const EXEC = {
+    0b0000: [['ei', 'lm'], ['ce', 'la'], []],                 // LDA
+    0b0001: [['ei', 'lm'], ['ce', 'lb'], ['eu', 'la']],        // ADD
+    0b0010: [['ei', 'lm'], ['ce', 'lb'], ['eu', 'la', 'su']],  // SUB
+    0b1110: [['ea', 'lo'], [], []],                            // OUT
+  };
+
+  const lo = new Array(128).fill(0);
+  const hi = new Array(128).fill(0);
+  const assertLines = (addr, lines) => {
+    for (const l of lines) {
+      const i = CTRL_LO.indexOf(l);
+      if (i >= 0) lo[addr] |= 1 << i;
+      const j = CTRL_HI.indexOf(l);
+      if (j >= 0) hi[addr] |= 1 << j;
+    }
+  };
+  // The fetch phase is written for ALL SIXTEEN opcodes, not just the four
+  // that decode to something. That is not padding: fetch cannot depend on
+  // an instruction the machine has not read yet, and leaving the unknown
+  // opcodes blank would make that property accidentally true only for the
+  // ones we happened to fill in.
+  for (let op = 0; op < 16; op++) {
+    FETCH.forEach((lines, step) => assertLines((op << 3) | step, lines));
+    const exec = EXEC[op];
+    if (exec) exec.forEach((lines, k) => assertLines((op << 3) | (k + 3), lines));
+  }
+
+  const parts = [...rails(),
+    part('swc', 'dip_switch_spst', { switches: 0 }),   // the step clock
+    part('swi', 'dip_switch_spst', { switches: 0 }),   // the opcode
+    part('step', '74ls161'),
+    part('wrap', '74hc00'),
+    part('rom_lo', '28c256', { readOnly: true, contents: lo }),
+    part('rom_hi', '28c256', { readOnly: true, contents: hi }),
+  ];
+  const wires = [...powerChip('step'), ...powerChip('wrap'),
+    ...powerChip('rom_lo'), ...powerChip('rom_hi')];
+
+  // Step counter: free-running, cleared the moment it reaches six.
+  // clrb is ASYNCHRONOUS and active low, so a NAND of q1 and q2 is the
+  // whole wrap circuit — six states, 0..5, and state 6 never settles.
+  wires.push(wire('swc', '1b', 'step', 'clk'));
+  wires.push(...switchInput('swc', 1, 'r_swc').wires);
+  parts.push(...switchInput('swc', 1, 'r_swc').parts);
+  wires.push(wire('step', 'q1', 'wrap', '1a'), wire('step', 'q2', 'wrap', '1b'),
+    wire('wrap', '1y', 'step', 'clrb'));
+  for (const t of ['enp', 'ent', 'loadb']) wires.push(wire('vcc1', 'vcc', 'step', t));
+  for (const d of ['d0', 'd1', 'd2', 'd3']) wires.push(wire('gnd1', 'gnd', 'step', d));
+
+  // Opcode switches -> the ROM's upper address bits.
+  for (let i = 0; i < 4; i++) {
+    const sw = switchInput('swi', i + 1, `r_swi${i}`);
+    parts.push(...sw.parts);
+    wires.push(...sw.wires);
+  }
+
+  // One address bus, two ROMs.
+  for (const rom of ['rom_lo', 'rom_hi']) {
+    for (let i = 0; i < 3; i++) wires.push(wire('step', `q${i}`, rom, `a${i}`));
+    for (let i = 0; i < 4; i++) wires.push(wire('swi', `${i + 1}b`, rom, `a${i + 3}`));
+    for (let i = 7; i <= 14; i++) wires.push(wire('gnd1', 'gnd', rom, `a${i}`));
+    wires.push(wire('gnd1', 'gnd', rom, 'ceb'), wire('gnd1', 'gnd', rom, 'oeb'),
+      wire('vcc1', 'vcc', rom, 'web'));
+  }
+
+  // The control word, one LED per line — same names c6 uses, so the same
+  // table can be asserted against both.
+  CTRL_LO.forEach((name, i) => {
+    const led = outputLed('rom_lo', `d${i}`, `led_${name}`, `rl_${name}`,
+      name === 'cp' ? 'yellow' : 'green');
+    parts.push(...led.parts);
+    wires.push(...led.wires);
+  });
+  CTRL_HI.forEach((name, i) => {
+    const led = outputLed('rom_hi', `d${i}`, `led_${name}`, `rl_${name}`, 'red');
+    parts.push(...led.parts);
+    wires.push(...led.wires);
+  });
+  for (let i = 0; i < 3; i++) {
+    const led = outputLed('step', `q${i}`, `led_s${i}`, `rls${i}`, 'yellow');
+    parts.push(...led.parts);
+    wires.push(...led.wires);
+  }
+
+  done.push(emit('c11-control-rom', {
+    vcc: 5, parts, wires,
+    _title: 'The control ROM — a control word you can program',
+    _description: 'The same control table as C6, and not one gate computes it. Four switches are the '
+      + 'opcode, a 74LS161 counts the six steps, and together they ADDRESS two EEPROMs whose contents ARE '
+      + 'the control word. C6 needs new gates for every instruction and grows as instructions x states; '
+      + 'this needs new bytes. That is why SAP-2, SAP-3 and every real CPU after them are microcoded. Note '
+      + 'the counter: a one-hot ring says which state as a lit wire, and a ROM address wants a number.',
+    _category: 'computer', _difficulty: 5, _stage: 'C11',
+  }));
+}
+
 console.log(`\n${done.length} computer examples written to gallery/`);

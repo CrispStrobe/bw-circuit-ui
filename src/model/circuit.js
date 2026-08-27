@@ -62,9 +62,17 @@ function engineKindFor(kind) {
   // gpioFollowsPinStates drives its GPIO, and readPin works through it.
   // Kinds the engine does not know (older engine builds, machine-class
   // DIPs) keep collapsing to 'mcu' exactly as before.
+  // getDevice, not hasDevice: the engine has never exported a hasDevice, so
+  // `typeof eng.hasDevice === 'function'` was false on every call and EVERY
+  // passthrough kind collapsed to 'mcu' — the exact opposite of what the
+  // paragraph above describes. A 28c256 reached the solver as a generic MCU
+  // surface with no memory behaviour, so its data pins never drove: a control
+  // ROM read back nothing, silently. The discrimination the comment wants is
+  // real and still applies — stc_mcu and attiny13 have no registered model and
+  // still collapse.
   try {
     const eng = getEngine();
-    if (eng && typeof eng.hasDevice === 'function' && eng.hasDevice(kind)) return kind;
+    if (eng && typeof eng.getDevice === 'function' && eng.getDevice(kind)) return kind;
   } catch { /* engine not injected yet — construction-time default below */ }
   return 'mcu';
 }

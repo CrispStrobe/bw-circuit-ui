@@ -47,16 +47,38 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: eleven rungs, c0 through c10', () => {
-    assert.equal(files.length, 11, `found ${files.join(', ')}`);
+  it('is present: twelve rungs, c0 through c11', () => {
+    assert.equal(files.length, 12, `found ${files.join(', ')}`);
   });
 
   it('contains no CPU — the point is building one, not using one', () => {
     const FORBIDDEN = new Set(['mcu', 'w65c02', 'z80', 'eater6502', 'r6507', 'pi_pico',
       'arduino_uno', 'arduino_nano', 'attiny88', 'attiny85', '28c256', '62256']);
+
+    /**
+     * A large memory is forbidden by DEFAULT because 28c256 + 62256 is exactly
+     * the pair a Ben Eater 6502 kit drops in, and a ladder that builds a CPU
+     * must not quietly acquire one. But a memory is not a processor, and a rung
+     * whose SUBJECT is a memory needs one. Named allowances only, with the
+     * reason — CPUs stay forbidden everywhere, with no allowance list at all.
+     */
+    const MEMORY_IS_THE_LESSON = new Map([
+      ['c11-control-rom.json',
+        'the two 28c256 ARE the control unit: a microcoded control word is looked up, not '
+        + 'computed by gates. That is the rung.'],
+    ]);
+    const MEMORY = new Set(['28c256', '62256']);
+
     for (const f of files) {
       const kinds = JSON.parse(readFileSync(join(GALLERY, f), 'utf8')).parts.map((p) => p.kind);
-      assert.deepEqual(kinds.filter((k) => FORBIDDEN.has(k)), [], `${f} smuggles a processor`);
+      const allowed = MEMORY_IS_THE_LESSON.has(f);
+      const smuggled = kinds.filter((k) => FORBIDDEN.has(k) && !(allowed && MEMORY.has(k)));
+      assert.deepEqual(smuggled, [], `${f} smuggles a processor`);
+      if (allowed) {
+        assert.ok(kinds.some((k) => MEMORY.has(k)),
+          `${f} is on the memory allowance list but holds no memory — drop the entry rather `
+          + 'than leaving it to excuse a future one.');
+      }
     }
   });
 });
@@ -256,6 +278,77 @@ describe('C6 — the control matrix', () => {
       seen.push(phase.join(' | '));
     }
     assert.equal(new Set(seen).size, 1, `fetch differs by instruction: ${seen.join(' /// ')}`);
+  });
+});
+
+describe('C11 — the control ROM', () => {
+  // Deliberately the SAME table C6 asserts. That is the rung's whole claim:
+  // identical control word, computed by nothing. If these two ever disagree,
+  // one of them is wrong about what a SAP-1 does, and the microcode image is
+  // the easier of the two to get wrong — it is a byte array written by hand.
+  const TABLE = {
+    LDA: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ei', 'lm'], ['ce', 'la'], []],
+    ADD: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ei', 'lm'], ['ce', 'lb'], ['eu', 'la']],
+    SUB: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ei', 'lm'], ['ce', 'lb'], ['eu', 'la', 'su']],
+    OUT: [['ep', 'lm'], ['cp'], ['ce', 'li'], ['ea', 'lo'], [], []],
+  };
+  const OPCODE = { LDA: 0b0000, ADD: 0b0001, SUB: 0b0010, OUT: 0b1110 };
+  const ALL = ['ep', 'lm', 'cp', 'ce', 'li', 'ei', 'la', 'lb', 'eu', 'su', 'ea', 'lo'];
+  const step = (b) => [0, 1, 2].reduce((a, i) => a + (b.lit(`led_s${i}`) ? 1 << i : 0), 0);
+  /** Clock round to T1 — the counter is free-running and wraps at six. */
+  const toStart = (b) => { let g = 0; while (step(b) !== 0 && g++ < 12) b.tick('swc'); b.settle(); };
+
+  for (const [instr, states] of Object.entries(TABLE)) {
+    it(`${instr}: the ROM gives the same control word C6 computes`, () => {
+      const b = bench('c11-control-rom');
+      b.set('swi', OPCODE[instr]);
+      b.settle();
+      toStart(b);
+      for (let t = 0; t < 6; t++) {
+        if (t > 0) b.tick('swc');
+        b.settle();
+        assert.equal(step(b), t, `${instr}: the step counter must read ${t}`);
+        const want = new Set(states[t]);
+        for (const line of ALL) {
+          assert.equal(b.lit(`led_${line}`), want.has(line),
+            `${instr} T${t + 1}: ${line} should be ${want.has(line) ? 'ASSERTED' : 'dark'}`);
+        }
+      }
+    });
+  }
+
+  it('an opcode with no microcode still fetches', () => {
+    // The fetch words are written for all sixteen opcodes, because fetch
+    // cannot depend on an instruction the machine has not read yet. An
+    // undecoded opcode must therefore still run T1-T3 and then do nothing,
+    // rather than sitting dark from the start.
+    const b = bench('c11-control-rom');
+    b.set('swi', 0b0111);            // no entry in the microcode
+    b.settle();
+    toStart(b);
+    for (const want of [['ep', 'lm'], ['cp'], ['ce', 'li']]) {
+      b.settle();
+      const got = ALL.filter((l) => b.lit(`led_${l}`)).sort();
+      assert.deepEqual(got, [...want].sort(), 'fetch must not depend on the opcode');
+      b.tick('swc');
+    }
+    b.settle();
+    assert.deepEqual(ALL.filter((l) => b.lit(`led_${l}`)), [],
+      'and an instruction the ROM does not know executes nothing at all');
+  });
+
+  it('the step counter wraps at six, not at eight', () => {
+    // A 74LS161 counts to fifteen. Six states come from clearing it the
+    // moment q1 and q2 are both high — asynchronously, so state 6 never
+    // settles. Miss that and the machine gains two dead states per cycle.
+    const b = bench('c11-control-rom');
+    b.set('swi', 0b0000);
+    b.settle();
+    toStart(b);
+    const seen = [];
+    for (let i = 0; i < 13; i++) { seen.push(step(b)); b.tick('swc'); b.settle(); }
+    assert.deepEqual(seen, [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 0],
+      `two full laps of six: got ${seen.join(',')}`);
   });
 });
 
