@@ -261,16 +261,23 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    * bw-board 57da9b0 taught the device BOTH wirings behind params.wiring, the
    * sidecar declares them as variants, and this file now tries a declared
    * variant before reporting a mismatch. Three changes in three repos for four
-   * pins — which is why the two below are a decision and not a chore.
+   * pins — which is why each was a decision and not a chore.
    *
-   *   ds1302       sidecar carries the crystal pins x1/x2 and the vcc1
-   *                battery-backup rail; the engine models neither
+   * The DS1302 was the last, and it closed the way this comment predicted:
+   * not by declaring a variant but by someone writing the behaviour. bw-board
+   * d85b08b gave the part X1/X2 and VCC1 — the oscillator decided by WIRING
+   * via ctx.netFor, because quartz has no DC signature, and a supply that
+   * runs from whichever rail is higher and LOSES the registers below 2.0 V.
+   * Both are the difference the pins exist to make: no crystal, no seconds
+   * even with CH clear; no cell, and a power cut costs you the time.
    *
-   * MAY ONLY SHRINK.
+   * So this list is EMPTY, and staying empty is the claim. Every pin bw-parts
+   * draws is now a pin the engine can reach. A new entry here means a sidecar
+   * gained a leg the engine has no answer for, and that is worth stopping on.
+   *
+   * MAY ONLY SHRINK — and it cannot shrink further.
    */
-  const UNREACHABLE_BY_KIND = {
-    ds1302: 3,
-  };
+  const UNREACHABLE_BY_KIND = {};
 
   /**
    * Pins named `nc`. The package has the leg and the die joins nothing to it,
