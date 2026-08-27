@@ -223,7 +223,6 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
     '74hc93': 4,
     stepper: 4,
     ds1302: 3,
-    pcf8574: 3,
     '74hc20': 2,
     '74hc21': 2,
     bmp280: 2,
