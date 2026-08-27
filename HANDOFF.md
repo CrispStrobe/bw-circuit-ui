@@ -2,7 +2,7 @@
 
 ## 2026-08-27
 
-npm test **2226/0/17** (CI clean, ~6 min). Four repos moved together today —
+npm test **2271/0/6** (CI clean). Four repos moved together today —
 bw-circuit-ui, bw-board, bw-parts, sb3-creator — and all four are green.
 
 **The teaching ladders are complete.** `gallery/l0..l10` (AND gate to a diode
@@ -27,29 +27,84 @@ they would become palette entries that empty the board) and `LOCAL_ONLY`
 (designer-only sidecars the stale sweep must not delete; it nearly ate
 stm32f030).
 
-**Cross-check is three populations now**, each ratcheted per kind and mutation-
-proven: 9 unreachable (sidecar pin the engine cannot reach), 9 not-connected
-(legs named `nc` — a package fact, classified from the name), 76 extra
-spellings (engine aliases the sidecar does not list). Down from one
-undifferentiated 163.
+**Cross-check is three populations**, each ratcheted per kind and mutation-
+proven. From one undifferentiated 163 to: **0 unreachable**, 9 not-connected
+(legs named `nc` — a package fact, classified from the name, and no model can
+or should reach one), 57 extra spellings across two kinds.
 
-**Open, and genuinely a decision:** the 9 unreachable pins are three parts where
-the sidecar and engine describe DIFFERENT DEVICES — `stepper` (bipolar sidecar
-vs unipolar model), `ds1302` (crystal + backup rail), `gas_sensor` (breakout vs
-bare element). Closing one means deciding which device the part is.
+**Unreachable is CLOSED, and staying empty is the claim.** An empty ratchet is
+the shape that quietly stops checking, so it is mutation-proven too: dropping
+a pin from the engine again fails it with `ds1302 (+1)`. A new entry means a
+sidecar gained a leg the engine has no answer for.
+
+The last ones did not close by deciding "which device the part is" — they
+closed by someone writing the behaviour:
+
+- `stepper` and `gas_sensor` WERE that decision, and it turned out to be a
+  false one: both parts are genuinely two things (unipolar/bipolar,
+  bare element/carrier module), so the engine learned both behind a param and
+  the sidecar declares them in `variants`.
+- `ds1302` was not a packaging question at all. X1/X2 and VCC1 were behaviour
+  nobody had modelled — the oscillator (decided by WIRING via `ctx.netFor`,
+  because quartz has no DC signature) and the coin cell (runs from whichever
+  rail is higher, and LOSES the registers below 2.0 V, which is the whole
+  difference the pin buys).
+
+**Two entries in `extra spellings` were misfiled, and both were real pins.**
+That population is for alternate NAMES of pins the sidecar already has. When
+something lands there that is a distinct pin, the fix is the same shape as an
+unreachable one, pointing the other way — and the pad must come SECOND:
+
+- `tcs34725.int` — the model declared it, stamped it so it would not float,
+  and never drove it. Drawing the pad first would have handed the user a pin
+  that does nothing. The threshold interrupt went in first (and surfaced two
+  silent bugs: `STATUS` returned AINT hardcoded SET, and the command byte's
+  TYPE field was discarded so `0xE6` "clear interrupt" masked to `0x06` and
+  overwrote the AIHTL threshold).
+- `simplevga_card.bank` — bw-parts had DROPPED it, which is why the sync held
+  the file back. `m6502-extract` requires it on the same net as the VIA's PB0
+  and `simplevga.js` uses bit 0 to page two 32K VRAM banks.
+
+**Sweeping for inert pins is worth doing BY HAND.** A detector for "terminals a
+device declares but never consults" reported 110 kinds, then 160 after fixing
+it twice — dominated by false positives, because anything driven
+programmatically or backed by a CPU adapter looks inert to a probe, and
+switches only stamp when their params say so. Its only real value was as a
+pointer: it flagged `pcf8574.int`, which reading the code then confirmed —
+and that pin turned out to be the small half. The expander **could not be read
+at all**: its I2C decoder sampled SDA and never drove it, so every input use
+was silently impossible while writes worked fine. Do not act on a list from
+that script without checking each entry.
 
 **Blocked:** see `BLOCKED.md` — pc115/pc116 cannot publish until sb3-creator's
 sibling pin moves past bw-board `b63a6ec`, and that bump belongs to the attiny88
 re-seat chain.
 
 **Workflow that worked:** push to `fable/pcb-support` first, let GitHub CI run
-the suite on a clean machine (~6 min), then fast-forward master with the same
-SHA. A full local suite measures this box's other processes as much as the code
-— two timing budgets were re-derived today for exactly that reason.
+the suite on a clean machine, then fast-forward master with the same SHA. A
+full local suite measures this box's other processes as much as the code — two
+timing budgets were re-derived for exactly that reason. Budget for the queue,
+not the run: the same job took 1 minute and 40 minutes on the same day, because
+the runners are shared with every other repo the fleet is pushing to.
+
+**Run the WHOLE of `npm test` before pushing, not the subset you judge
+relevant.** Two gates are invisible to a targeted run and both fired here:
+
+- `every test file is run by something` compares the test directory against
+  the npm scripts and the workflow steps. A new file in `test/` that no script
+  names is never executed, and a test nothing runs is indistinguishable from a
+  passing one. Add it to a script in the same commit — `test:boards` for
+  anything about parts, seating or geometry.
+- The parity ratchets fail when an entry HEALS, so an engine improvement in a
+  sibling repo breaks a test whose filename mentions neither the part nor the
+  change. There are TWO lists tracking the same drift from different angles —
+  `terminal-crosscheck` counts pins per kind, `hd44780-terminal-parity` names
+  the kinds and why — and updating one is not updating the other. That cost
+  two CI rounds.
 
 ---
 
-npm test 1027/0/3 (CI clean). Pendant Playwright test (test:render suite).
+npm test 2271/0/6 (CI clean). test:boards 22/0. Pendant Playwright test (test:render suite).
 Parts-data index regenerated: 146 → 213 sidecar entries.
 Lite push freeze in effect — batching lite forwards until coordinator lifts.
 VDP keyboard: 4/4. Fabric: 11/11. Capability: 6/6. TileVGA: 3/3.
