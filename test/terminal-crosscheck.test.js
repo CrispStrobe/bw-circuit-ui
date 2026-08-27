@@ -83,6 +83,7 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
   // 1. namingDiffs — both sides model the kind, names disagree
   // 2. coverageGaps — bw-parts has it, circuit model does not model it at all
   const unreachable = [];
+  const notConnected = [];
   const extraSpellings = [];
   const namingDiffs = [];
   const coverageGaps = [];
@@ -151,9 +152,15 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
       // header warns about one level up.
       for (const name of sidecarNames) {
         if (name === 'vcc' || name === 'gnd') continue;
-        if (!circuitNames.has(name)) {
-          unreachable.push(`${sc.kind}: sidecar "${name}" not in circuit model`);
-        }
+        if (circuitNames.has(name)) continue;
+        // A pin NAMED nc is Not Connected: the package has the leg, the die
+        // joins nothing to it, and no model can or should reach it. That is a
+        // package fact, not a modelling gap, and it was a third of the
+        // "unreachable" count. Classified from the NAME rather than a
+        // hand-kept list, because the sidecars already say it — 74HC93 calls
+        // them nc1..nc4, the '20 and '21 nc1/nc2, the '95 plain nc.
+        (/^nc\d*$/.test(name) ? notConnected : unreachable)
+          .push(`${sc.kind}: sidecar "${name}" not in circuit model`);
       }
       for (const name of circuitNames) {
         if (name === 'vcc' || name === 'gnd') continue;
@@ -219,13 +226,38 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    * reason (NC pins the engine does not model, or a sidecar describing a
    * different physical device). MAY ONLY SHRINK.
    */
+  /**
+   * A pin the SIDECAR has that the engine cannot reach — you could wire it on
+   * the board and not in the app. NINE, and all three kinds are the same
+   * shape: the sidecar and the engine describe DIFFERENT DEVICES, so closing
+   * one means deciding which device the part is, not renaming anything.
+   *
+   *   stepper      sidecar is a 4-wire BIPOLAR motor; the engine models a
+   *                5-wire UNIPOLAR one
+   *   ds1302       sidecar carries the crystal pins and the backup rail; the
+   *                engine models neither
+   *   gas_sensor   sidecar is the 4-pin breakout MODULE; the engine models
+   *                the bare MQ element and its heater
+   *
+   * MAY ONLY SHRINK.
+   */
   const UNREACHABLE_BY_KIND = {
-    '74hc93': 4,
     stepper: 4,
     ds1302: 3,
+    gas_sensor: 2,
+  };
+
+  /**
+   * Pins named `nc`. The package has the leg and the die joins nothing to it,
+   * so no model can reach one and none should — a package fact rather than a
+   * gap. Counted anyway: a new one appearing means a sidecar gained a leg,
+   * which is worth seeing. This was a third of the old "unreachable" number
+   * and made nine real questions look like eighteen.
+   */
+  const NOT_CONNECTED_BY_KIND = {
+    '74hc93': 4,
     '74hc20': 2,
     '74hc21': 2,
-    gas_sensor: 2,
     '74hc95': 1,
   };
 
@@ -301,8 +333,10 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
     const show = (label, c) => console.log(`  ${label}: ` + JSON.stringify(
       Object.entries(c).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))));
     show('UNREACHABLE', census(unreachable));
+    show('NOT CONNECTED', census(notConnected));
     show('EXTRA', census(extraSpellings));
     check('unreachable', census(unreachable), UNREACHABLE_BY_KIND);
+    check('not connected', census(notConnected), NOT_CONNECTED_BY_KIND);
     check('extra spellings', census(extraSpellings), EXTRA_BY_KIND);
     assert.deepEqual(namingDiffs, [],
       `the MCU subset check found ${namingDiffs.length} problems: ${namingDiffs.join('; ')}`);
