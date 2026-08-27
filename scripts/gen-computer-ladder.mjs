@@ -1128,6 +1128,228 @@ function activeLowLed(driver, terminal, lid, rid, color = 'red') {
   }));
 }
 
+// ── C17: eight bits wide, and it holds a number C16 cannot ─────────
+
+{
+  // The same machine as C16 with the DATA path widened to eight bits.
+  // Nothing conceptual changes and that is the lesson: two 74LS189s
+  // instead of one, two '283s carry-chained, two '173s per register,
+  // two '244s per bus driver. The microcode is the same table.
+  //
+  // What changes is what the machine can HOLD. C16 runs LDA 3 / ADD 3 /
+  // OUT on a datum of 5 and answers 10, because ten is the largest
+  // interesting number four bits can show. Here the datum is 100 and the
+  // answer is 200 — a number C16 cannot represent at all.
+  //
+  // The ADDRESS path stays four bits. An instruction is four bits of
+  // opcode and four of operand, so sixteen cells is the whole memory,
+  // and a wider program counter would address nothing.
+  const CTRL_LO = ['ep', 'lm', 'cp', 'ce', 'li', 'ei', 'la', 'lb'];
+  const CTRL_HI = ['eu', 'su', 'ea', 'lo'];
+  const FETCH = [['ep', 'lm'], ['cp'], ['ce', 'li']];
+  const EXEC = {
+    0x0: [['ei', 'lm'], ['ce', 'la'], []],                  // LDA
+    0x1: [['ei', 'lm'], ['ce', 'lb'], ['eu', 'la']],         // ADD
+    0x2: [['ei', 'lm'], ['ce', 'lb'], ['eu', 'la', 'su']],   // SUB
+    0x3: [['ea', 'lo'], [], []],                             // OUT
+  };
+  const lo = new Array(128).fill(0);
+  const hi = new Array(128).fill(0);
+  for (let op = 0; op < 16; op++) {
+    const put = (stp, lines) => {
+      const a = (op << 3) | stp;
+      for (const l of lines) {
+        const i = CTRL_LO.indexOf(l);
+        if (i >= 0) lo[a] |= 1 << i;
+        const j = CTRL_HI.indexOf(l);
+        if (j >= 0) hi[a] |= 1 << j;
+      }
+    };
+    FETCH.forEach((lines, stp) => put(stp, lines));
+    if (EXEC[op]) EXEC[op].forEach((lines, k) => put(k + 3, lines));
+  }
+
+  const P = [...rails()];
+  const W = [];
+  const chip = (id, kind) => {
+    P.push(part(id, kind));
+    if (hasPowerPins(kind)) W.push(...powerChip(id));
+  };
+  // Halves: `_l` is bits 0-3, `_h` is bits 4-7.
+  const WIDE = ['ram', 'ir', 'areg', 'breg', 'oreg', 'add', 'xorb',
+    'buf_ram', 'buf_a', 'buf_sum'];
+  for (const [id, kind] of [
+    ['step', '74ls161'], ['wrap', '74hc00'],
+    ['rom_lo', '28c256'], ['rom_hi', '28c256'],
+    ['pc', '74ls161'], ['mar', '74ls173'], ['buf_pc', '74hc244'], ['buf_ir', '74hc244'],
+    ['inv1', '74hc04'], ['inv2', '74hc04'], ['inv3', '74hc04'], ['inv4', '74hc04'],
+    ['and3', '74hc08'], ['and4', '74hc08'],
+  ]) chip(id, kind);
+  const KIND = { ram: '74ls189', ir: '74ls173', areg: '74ls173', breg: '74ls173',
+    oreg: '74ls173', add: '74hc283', xorb: '74hc86', buf_ram: '74hc244',
+    buf_a: '74hc244', buf_sum: '74hc244' };
+  for (const base of WIDE) for (const half of ['l', 'h']) chip(`${base}_${half}`, KIND[base]);
+  P.find((x) => x.id === 'rom_lo').params = { readOnly: true, contents: lo };
+  P.find((x) => x.id === 'rom_hi').params = { readOnly: true, contents: hi };
+  P.push(part('swc', 'dip_switch_spst', { switches: 0 }));
+  P.push(part('swd', 'dip_switch_spst', { switches: 0 }));   // data low nibble
+  P.push(part('swe', 'dip_switch_spst', { switches: 0 }));   // data high nibble
+
+  const CK = switchInput('swc', 1, 'rck');
+  P.push(...CK.parts); W.push(...CK.wires);
+  W.push(wire('swc', '1b', 'step', 'clk'), wire('swc', '1b', 'inv1', '1a'));
+  const NCLK = ['inv1', '1y'];
+  for (const g of ['2', '3', '4', '5', '6']) W.push(wire('gnd1', 'gnd', 'inv1', g + 'a'));
+
+  W.push(wire('step', 'q1', 'wrap', '1a'), wire('step', 'q2', 'wrap', '1b'),
+    wire('wrap', '1y', 'step', 'clrb'));
+  for (const t of ['enp', 'ent', 'loadb']) W.push(wire('vcc1', 'vcc', 'step', t));
+  for (const d of ['d0', 'd1', 'd2', 'd3']) W.push(wire('gnd1', 'gnd', 'step', d));
+  for (const g of ['2', '3', '4']) W.push(wire('gnd1', 'gnd', 'wrap', g + 'a'), wire('gnd1', 'gnd', 'wrap', g + 'b'));
+
+  // Address: step on a0..a2, the opcode's FOUR bits on a3..a6. The opcode
+  // is the instruction register's high nibble, so it comes off ir_h.
+  for (const rom of ['rom_lo', 'rom_hi']) {
+    for (let i = 0; i < 3; i++) W.push(wire('step', 'q' + i, rom, 'a' + i));
+    for (let i = 0; i < 4; i++) W.push(wire('ir_h', 'q' + i, rom, 'a' + (3 + i)));
+    for (let i = 7; i <= 14; i++) W.push(wire('gnd1', 'gnd', rom, 'a' + i));
+    W.push(wire('gnd1', 'gnd', rom, 'ceb'), wire('gnd1', 'gnd', rom, 'oeb'),
+      wire('vcc1', 'vcc', rom, 'web'));
+  }
+
+  const Ep = ['rom_lo', 'd0']; const Lm = ['rom_lo', 'd1']; const Cp = ['rom_lo', 'd2'];
+  const CE = ['rom_lo', 'd3']; const Li = ['rom_lo', 'd4']; const Ei = ['rom_lo', 'd5'];
+  const La = ['rom_lo', 'd6']; const Lb = ['rom_lo', 'd7'];
+  const Eu = ['rom_hi', 'd0']; const Su = ['rom_hi', 'd1'];
+  const Ea = ['rom_hi', 'd2']; const Lo = ['rom_hi', 'd3'];
+
+  const gclk = (c, g, sig, targets) => {
+    W.push(wire(sig[0], sig[1], c, g + 'a'), wire(NCLK[0], NCLK[1], c, g + 'b'));
+    for (const t of targets) W.push(wire(c, g + 'y', t, 'clk'));
+  };
+  gclk('and3', '1', Lm, ['mar']);
+  gclk('and3', '2', Cp, ['pc']);
+  gclk('and3', '3', Li, ['ir_l', 'ir_h']);
+  gclk('and3', '4', La, ['areg_l', 'areg_h']);
+  gclk('and4', '1', Lb, ['breg_l', 'breg_h']);
+  gclk('and4', '2', Lo, ['oreg_l', 'oreg_h']);
+  for (const g of ['3', '4']) W.push(wire('gnd1', 'gnd', 'and4', g + 'a'), wire('gnd1', 'gnd', 'and4', g + 'b'));
+
+  const REGS = ['mar', 'ir_l', 'ir_h', 'areg_l', 'areg_h', 'breg_l', 'breg_h', 'oreg_l', 'oreg_h'];
+  for (const r of REGS) {
+    for (const t of ['g1b', 'g2b', 'oe1b', 'oe2b']) W.push(wire('gnd1', 'gnd', r, t));
+    W.push(wire('gnd1', 'gnd', r, 'mr'));
+  }
+  for (const t of ['clrb', 'loadb', 'enp', 'ent']) W.push(wire('vcc1', 'vcc', 'pc', t));
+  for (const t of ['d0', 'd1', 'd2', 'd3']) W.push(wire('gnd1', 'gnd', 'pc', t));
+
+  // Bus enables. Each 8-bit driver is two '244s sharing one enable.
+  const driver = (bufs, sig, g) => {
+    W.push(wire(sig[0], sig[1], 'inv2', g + 'a'));
+    for (const b of bufs) {
+      W.push(wire('inv2', g + 'y', b, '1oeb'), wire('gnd1', 'gnd', b, '2oeb'));
+    }
+  };
+  driver(['buf_pc'], Ep, '1');
+  driver(['buf_ram_l', 'buf_ram_h'], CE, '2');
+  driver(['buf_ir'], Ei, '3');
+  driver(['buf_a_l', 'buf_a_h'], Ea, '4');
+  driver(['buf_sum_l', 'buf_sum_h'], Eu, '5');
+  W.push(wire('gnd1', 'gnd', 'inv2', '6a'));
+
+  // The eight-bit bus.
+  for (let bit = 0; bit < 8; bit++) {
+    const rid = 'rbus' + bit;
+    const half = bit < 4 ? 'l' : 'h';
+    const k = bit % 4;
+    P.push(part(rid, 'resistor', { ohms: 100000 }));
+    W.push(wire(rid, 'b', 'gnd1', 'gnd'));
+    for (const b of [`buf_ram_${half}`, `buf_a_${half}`, `buf_sum_${half}`]) {
+      W.push(wire(b, '1y' + k, rid, 'a'));
+    }
+    // PC and the IR operand are four bits and drive the LOW half only.
+    if (bit < 4) W.push(wire('buf_pc', '1y' + k, rid, 'a'), wire('buf_ir', '1y' + k, rid, 'a'));
+    for (const r of [`ir_${half}`, `areg_${half}`, `breg_${half}`, `oreg_${half}`]) {
+      W.push(wire(rid, 'a', r, 'd' + k));
+    }
+    if (bit < 4) W.push(wire(rid, 'a', 'mar', 'd' + k));
+    const led = outputLed(rid, 'a', 'led_bus' + bit, 'rlb' + bit, 'yellow');
+    P.push(...led.parts); W.push(...led.wires);
+  }
+
+  for (let i = 0; i < 4; i++) {
+    W.push(wire('pc', 'q' + i, 'buf_pc', '1a' + i));
+    W.push(wire('mar', 'q' + i, 'ram_l', 'a' + i), wire('mar', 'q' + i, 'ram_h', 'a' + i));
+    W.push(wire('ir_l', 'q' + i, 'buf_ir', '1a' + i));      // operand -> bus
+    W.push(wire('areg_l', 'q' + i, 'buf_a_l', '1a' + i));
+    W.push(wire('areg_h', 'q' + i, 'buf_a_h', '1a' + i));
+  }
+  for (const b of ['ram_l', 'ram_h']) W.push(wire('gnd1', 'gnd', b, 'csb'));
+  // The '189 hands data back INVERTED — inv3/inv4 put it right.
+  for (let i = 0; i < 4; i++) {
+    W.push(wire('ram_l', 'o' + i, 'inv3', (i + 1) + 'a'), wire('inv3', (i + 1) + 'y', 'buf_ram_l', '1a' + i));
+    W.push(wire('ram_h', 'o' + i, 'inv4', (i + 1) + 'a'), wire('inv4', (i + 1) + 'y', 'buf_ram_h', '1a' + i));
+  }
+  for (const g of ['5', '6']) {
+    W.push(wire('gnd1', 'gnd', 'inv3', g + 'a'), wire('gnd1', 'gnd', 'inv4', g + 'a'));
+  }
+
+  // Hand-loading: two switch banks now, one nibble each.
+  const WE = switchInputActiveLow('swc', 2, 'rwe');
+  P.push(...WE.parts); W.push(...WE.wires);
+  W.push(wire('swc', '2b', 'ram_l', 'web'), wire('swc', '2b', 'ram_h', 'web'));
+  for (let i = 0; i < 4; i++) {
+    const swl = switchInput('swd', i + 1, 'rdl' + i);
+    const swh = switchInput('swe', i + 1, 'rdh' + i);
+    P.push(...swl.parts, ...swh.parts); W.push(...swl.wires, ...swh.wires);
+    W.push(wire('swd', (i + 1) + 'b', 'ram_l', 'd' + i));
+    W.push(wire('swe', (i + 1) + 'b', 'ram_h', 'd' + i));
+  }
+
+  // Eight-bit adder: the low '283's carry feeds the high one's cin.
+  for (let i = 0; i < 4; i++) {
+    for (const half of ['l', 'h']) {
+      W.push(wire(`areg_${half}`, 'q' + i, `add_${half}`, 'a' + i));
+      W.push(wire(`breg_${half}`, 'q' + i, `xorb_${half}`, (i + 1) + 'a'));
+      W.push(wire(Su[0], Su[1], `xorb_${half}`, (i + 1) + 'b'));
+      W.push(wire(`xorb_${half}`, (i + 1) + 'y', `add_${half}`, 'b' + i));
+      W.push(wire(`add_${half}`, 's' + i, `buf_sum_${half}`, '1a' + i));
+    }
+  }
+  W.push(wire(Su[0], Su[1], 'add_l', 'cin'));
+  W.push(wire('add_l', 'cout', 'add_h', 'cin'));
+
+  for (let bit = 0; bit < 8; bit++) {
+    const half = bit < 4 ? 'l' : 'h';
+    const k = bit % 4;
+    for (const [src, tag, col] of [[`areg_${half}`, 'a', 'green'], [`oreg_${half}`, 'out', 'red']]) {
+      const led = outputLed(src, 'q' + k, 'led_' + tag + bit, 'rl_' + tag + bit, col);
+      P.push(...led.parts); W.push(...led.wires);
+    }
+  }
+  for (let i = 0; i < 4; i++) {
+    const led = outputLed('mar', 'q' + i, 'led_addr' + i, 'rl_addr' + i, 'yellow');
+    P.push(...led.parts); W.push(...led.wires);
+  }
+  for (let i = 0; i < 3; i++) {
+    const led = outputLed('step', 'q' + i, 'led_s' + i, 'rls' + i, 'yellow');
+    P.push(...led.parts); W.push(...led.wires);
+  }
+
+  done.push(emit('c17-eight-bit-machine', {
+    vcc: 5, parts: P, wires: W,
+    _title: 'Eight bits wide, and it holds a number C16 cannot',
+    _description: 'The same machine as C16 with the data path widened: two 74LS189s instead of one, two '
+      + '74HC283s carry-chained, two registers per register. Nothing conceptual changes — the microcode is '
+      + 'the same table — and that is worth seeing once, because widening is the part people expect to be '
+      + 'hard and it is only more of the same. What changes is what the machine can HOLD. Load LDA 3, '
+      + 'ADD 3, OUT and 100, and the output reads 200: a number four bits cannot represent at all. The '
+      + 'ADDRESS path stays four bits on purpose — an instruction is four bits of opcode and four of '
+      + 'operand, so sixteen cells is the whole memory and a wider counter would address nothing.',
+    _category: 'computer', _difficulty: 5, _stage: 'C17',
+  }));
+}
+
 for (const line of done) console.log(line);
 // ── C11: the control ROM — a control word you can PROGRAM ──────────
 

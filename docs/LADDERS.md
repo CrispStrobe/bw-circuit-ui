@@ -1,7 +1,7 @@
 # The ladders — gates to a computer, one verified rung at a time
 
 Two teaching sequences live in `gallery/`, and they are one arc: `l0..l10`
-starts at a single AND gate and ends at a keypad you can type into; `c0..c16` starts at a
+starts at a single AND gate and ends at a keypad you can type into; `c0..c17` starts at a
 555 ticking and ends at a machine that runs a program — and then at the control
 unit every machine after SAP-1 actually uses. Every rung is a real
 circuit made of parts you can buy, containing no CPU and no firmware, and
@@ -13,7 +13,7 @@ They are published twice, deliberately:
 | where | what it is | who reads it |
 |---|---|---|
 | `gallery/l*.json`, `gallery/c*.json` | wire-level, `x/y` all zero | the test corpus; the electrical truth |
-| `sb3-creator` `examples/pc90..pc117` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
+| `sb3-creator` `examples/pc90..pc118` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
 
 `scripts/gen-logic-ladder.mjs` and `scripts/gen-computer-ladder.mjs` write the
 first; `scripts/gen-logic-examples.mjs --out <sb3-creator checkout>` seats them
@@ -49,7 +49,7 @@ changes meaning rather than disappearing — it now reads "no borrow".
 
 ---
 
-## 2. The computer ladder — `c0..c16`
+## 2. The computer ladder — `c0..c17`
 
 | rung | chips | the idea |
 |---|---|---|
@@ -70,6 +70,7 @@ changes meaning rather than disappearing — it now reads "no borrow".
 | c14 the stack | 74LS193, '189, '04 | LIFO, and why pop retreats before it reads |
 | c15 CALL / RET | + 28C256 ×2, '161 | a subroutine call as rows of bytes |
 | c16 microcoded machine | 21 chips | C10's machine, control matrix replaced by a ROM |
+| c17 eight bits | 33 chips | the same machine, twice as wide — and 100 + 100 = 200 |
 
 **c10's program.** Four cells, then nothing but the clock:
 

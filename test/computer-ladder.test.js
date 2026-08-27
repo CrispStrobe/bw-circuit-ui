@@ -47,8 +47,8 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: seventeen rungs, c0 through c16', () => {
-    assert.equal(files.length, 17, `found ${files.join(', ')}`);
+  it('is present: eighteen rungs, c0 through c17', () => {
+    assert.equal(files.length, 18, `found ${files.join(', ')}`);
   });
 
   it('the README names the ranges the gallery actually holds', () => {
@@ -90,6 +90,7 @@ describe('the computer ladder — state, and a clock that moves it', () => {
       ['c16-microcoded-machine.json',
         'the whole point of the rung is that the control MATRIX became a control STORE; the two '
         + 'EEPROMs are the ten chips they replaced.'],
+      ['c17-eight-bit-machine.json', 'as c16, widened — the control store is still the subject.'],
     ]);
     const MEMORY = new Set(['28c256', '62256']);
 
@@ -794,6 +795,74 @@ describe('C16 — the same machine, microcoded', () => {
         assert.ok(/^rom_|^led_/.test(d.to),
           `ir.${bit} reaches ${d.to}.${d.toTerminal}; the opcode may go to the ROM or to a lamp, `
           + 'never through logic');
+      }
+    }
+  });
+});
+
+describe('C17 — eight bits wide', () => {
+  it('holds a number C16 cannot: 100 + 100 is 200', () => {
+    // ONE program run, as in C16 — it costs ~90 s of settling on a 119-part
+    // circuit, and what is new here is the WIDTH, which this one program
+    // demonstrates completely. The datum is the point: 100 does not fit in
+    // the four bits C10 and C16 carry, and 200 fits in neither.
+    const b = bench('c17-eight-bit-machine');
+    b.settle();
+    for (const v of [0x03, 0x13, 0x30, 0x64]) {   // LDA 3 · ADD 3 · OUT · 100
+      b.set('swd', v & 0x0f);
+      b.set('swe', (v >> 4) & 0x0f);
+      b.set('swc', 0b0010); b.settle();
+      b.set('swc', 0); b.settle();
+      for (let k = 0; k < 6; k++) b.tick('swc');
+    }
+    for (let i = 0; i < 12 * 6; i++) b.tick('swc');   // wind the counter to cell 0
+    for (let i = 0; i < 3 * 6; i++) b.tick('swc');    // three instruction cycles
+
+    const byte = (p) => [0, 1, 2, 3, 4, 5, 6, 7]
+      .reduce((a, i) => a + (b.lit(`${p}${i}`) ? 1 << i : 0), 0);
+    assert.equal(byte('led_a'), 200, 'the accumulator holds 100 + 100');
+    assert.equal(byte('led_out'), 200, 'and OUT copied it');
+    assert.ok(200 > 0x0f, 'the answer does not fit in a nibble — that is the rung');
+  });
+
+  it('the DATA path doubled and the ADDRESS path did not', () => {
+    // Widening is mechanical, and the structure should show exactly that:
+    // everything carrying data comes in pairs, everything carrying an
+    // address does not. A wider program counter would address nothing —
+    // four bits of operand is sixteen cells and that is the whole memory.
+    const c = JSON.parse(readFileSync(join(GALLERY, 'c17-eight-bit-machine.json'), 'utf8'));
+    const count = (kind) => c.parts.filter((p) => p.kind === kind).length;
+    const ids = (re) => c.parts.filter((p) => re.test(p.id)).map((p) => p.id).sort();
+
+    assert.equal(count('74ls189'), 2, 'sixteen bytes is two 16x4 RAMs');
+    assert.equal(count('74hc283'), 2, 'eight bits of adder is two');
+    assert.deepEqual(ids(/^areg_/), ['areg_h', 'areg_l'], 'the accumulator is two registers');
+    assert.deepEqual(ids(/^oreg_/), ['oreg_h', 'oreg_l']);
+    assert.deepEqual(ids(/^ir_/), ['ir_h', 'ir_l']);
+
+    assert.equal(count('74ls161'), 2, 'one program counter and one step counter — not four');
+    assert.deepEqual(c.parts.filter((p) => p.id === 'mar').length, 1,
+      'the address register stays four bits wide');
+  });
+
+  it('the adder carries between its halves, or 100 + 100 could not work', () => {
+    // The one wire that makes two 4-bit adders into an 8-bit one. Without it
+    // the low nibble wraps silently and the answer is wrong by 16.
+    const c = JSON.parse(readFileSync(join(GALLERY, 'c17-eight-bit-machine.json'), 'utf8'));
+    const carry = c.wires.find((w) =>
+      w.from === 'add_l' && w.fromTerminal === 'cout' && w.to === 'add_h' && w.toTerminal === 'cin');
+    assert.ok(carry, "add_l's carry out must reach add_h's carry in");
+  });
+
+  it('the opcode is the instruction register\'s HIGH nibble', () => {
+    // Four bits of opcode now, so the ROM takes a3..a6 from ir_h. If it took
+    // them from ir_l the machine would decode its own operand.
+    const c = JSON.parse(readFileSync(join(GALLERY, 'c17-eight-bit-machine.json'), 'utf8'));
+    for (const rom of ['rom_lo', 'rom_hi']) {
+      const addr = c.wires.filter((w) => w.to === rom && /^a[3-6]$/.test(w.toTerminal));
+      assert.equal(addr.length, 4, `${rom} must take four opcode bits`);
+      for (const w of addr) {
+        assert.equal(w.from, 'ir_h', `${rom}.${w.toTerminal} comes from ${w.from}, not ir_h`);
       }
     }
   });

@@ -547,6 +547,29 @@ const LADDER = [
       ['step counter', 'binary, not one-hot'], ['microcode', '32 rows per ROM']],
     cols: ['what', 'value'],
   },
+  {
+    src: 'c17-eight-bit-machine', id: 'pc118-eight-bit-machine', difficulty: 5,
+    en: { title: 'Eight bits wide, and it holds a number the last one cannot',
+      teaches: 'widening is mechanical; what changes is the range, not the idea' },
+    de: { title: 'Acht Bit breit — und es hält eine Zahl, die vorher nicht passte',
+      desc: 'Dieselbe Maschine wie pc117, nur ist der Datenpfad doppelt so breit: zwei 74LS189 statt '
+        + 'einem, zwei carry-verkettete 74HC283, zwei Register pro Register. Konzeptionell ändert sich '
+        + 'nichts — der Mikrocode ist dieselbe Tabelle — und genau das sollte man einmal gesehen haben: '
+        + 'Verbreitern ist der Teil, den man für schwierig hält, und er ist nur mehr vom Gleichen. '
+        + 'Was sich ändert, ist der Wertebereich. Lade LDA 3, ADD 3, OUT und 100, und am Ausgang steht '
+        + '200 — eine Zahl, die vier Bit gar nicht darstellen können. '
+        + 'Der ADRESSPFAD bleibt absichtlich vier Bit breit: Ein Befehl besteht aus vier Bit Opcode und '
+        + 'vier Bit Operand, also sind sechzehn Zellen der ganze Speicher, und ein breiterer Zähler '
+        + 'würde ins Leere zeigen. Achte auf die eine Leitung, die aus zwei Vier-Bit-Addierern einen '
+        + 'Acht-Bit-Addierer macht: Cout des unteren in Cin des oberen. Ohne sie überläuft das untere '
+        + 'Nibble still und das Ergebnis ist um 16 daneben.',
+      teaches: 'Verbreitern ist mechanisch; es ändert den Bereich, nicht die Idee' },
+    table: [['program', 'LDA 3, ADD 3, OUT, data 100'], ['output', '200 — no nibble holds it'],
+      ['RAM', '2 x 74LS189 = 16 bytes'], ['adder', '2 x 74HC283, carry chained'],
+      ['address path', 'still 4 bits — 16 cells is all there is'],
+      ['microcode', 'the same table as pc117']],
+    cols: ['what', 'value'],
+  },
 ];
 
 const mdTable = (cols, rows) => [
