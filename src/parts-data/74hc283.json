@@ -4,37 +4,37 @@
   "h": 51,
   "terminals": [
     {
-      "name": "s2",
+      "name": "s1",
       "x": 0,
       "y": 8,
       "functions": []
     },
     {
-      "name": "b2",
+      "name": "b1",
       "x": 0,
       "y": 13,
       "functions": []
     },
     {
-      "name": "a2",
+      "name": "a1",
       "x": 0,
       "y": 18,
       "functions": []
     },
     {
-      "name": "s1",
+      "name": "s0",
       "x": 0,
       "y": 23,
       "functions": []
     },
     {
-      "name": "a1",
+      "name": "a0",
       "x": 0,
       "y": 28,
       "functions": []
     },
     {
-      "name": "b1",
+      "name": "b0",
       "x": 0,
       "y": 33,
       "functions": []
@@ -58,37 +58,37 @@
       "functions": []
     },
     {
-      "name": "s4",
+      "name": "s3",
       "x": 70,
       "y": 38,
       "functions": []
     },
     {
-      "name": "b4",
+      "name": "b3",
       "x": 70,
       "y": 33,
       "functions": []
     },
     {
-      "name": "a4",
+      "name": "a3",
       "x": 70,
       "y": 28,
       "functions": []
     },
     {
-      "name": "s3",
+      "name": "s2",
       "x": 70,
       "y": 23,
       "functions": []
     },
     {
-      "name": "a3",
+      "name": "a2",
       "x": 70,
       "y": 18,
       "functions": []
     },
     {
-      "name": "b3",
+      "name": "b2",
       "x": 70,
       "y": 13,
       "functions": []

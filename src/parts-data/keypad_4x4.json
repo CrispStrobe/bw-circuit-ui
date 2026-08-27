@@ -53,6 +53,5 @@
     }
   ],
   "variants": null,
-  "_note": "4x4 matrix keypad (membrane style). 8 terminals: 4 rows (r0-r3) + 4 columns (c0-c3). Keys at row/column intersections: scanning drives one row low, reads column inputs. Standard 16-key layout: 1-9, 0, A-D, *, #. A2 board wiring: rows on one port nibble, columns on another.",
   "footprint": null
 }

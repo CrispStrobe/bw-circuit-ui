@@ -126,6 +126,10 @@ test('EVERY sidecar with an engine device agrees on terminals', () => {
     ['74hc75', 'sidecar carries the four inverted outputs 1qn..4qn; the engine latch model has Q only'],
     ['ds1302', 'sidecar carries the crystal pins x1/x2 and the vcc1 backup rail; engine models neither'],
     ['pcf8574', 'sidecar carries a0/a1/a2 address straps; the engine model has no addressing'],
+    ['bmp280', 'sidecar is the 6-pin breakout and carries csb/sdo, the SPI chip-select and '
+      + 'address-select straps; the engine models the I2C interface only'],
+    ['tcs34725', 'the reverse: the engine models the chip\'s INT output, and the 5-pin breakout '
+      + 'this sidecar describes (vcc gnd sda scl led) does not bring it out'],
     // (b) different device: an engine change, not a catalog one.
     ['gas_sensor', 'sidecar is the 4-pin breakout MODULE (vcc gnd aout dout); the engine models the bare MQ element and its heater (a b heater_a heater_b)'],
     ['ir_remote', 'sidecar is art only — it declares NO terminals at all; the engine models the emitting LED (anode cathode)'],

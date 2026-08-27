@@ -80,7 +80,7 @@
     }
   ],
   "variants": null,
-  "_note": "ATtiny85 (8-pin DIP). Pin table audited against Microchip DS40001941C. PB5 is RESET (active low, fuse-selectable) \u2014 polarity handled by bw-board engine, not sidecar. PB0/AIN0 is analog comparator input, NOT ADC channel 0 (ADC0 is on PB5). PB0 has OC0A (PWM Timer0 ch A). PB1 has both OC0B and OC1A. PB2 has SCL (USI-based TWI), INT0, T0.",
+  "_note": "ATtiny85 (8-pin DIP). Pin table audited against Microchip DS40001941C. PB5 is RESET (active low, fuse-selectable) — polarity handled by bw-board engine, not sidecar. PB0/AIN0 is analog comparator input, NOT ADC channel 0 (ADC0 is on PB5). PB0 has OC0A (PWM Timer0 ch A). PB1 has both OC0B and OC1A. PB2 has SCL (USI-based TWI), INT0, T0.",
   "footprint": {
     "refTerminal": "pb5",
     "leads": {

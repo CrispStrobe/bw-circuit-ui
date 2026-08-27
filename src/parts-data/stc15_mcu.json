@@ -625,5 +625,5 @@
     "straddlesGutter": true,
     "minCols": 20
   },
-  "_aliases_source": "bw-board's stc15_mcu device declares all forty PDIP-40 pins TWICE \u2014 datasheet case (P0.0, VCC) and lowercase (p0.0, vcc) \u2014 because the corpus writes both. Each lowercase name is the same leg as the uppercase one above it, so it takes that pin's position exactly. The physical pinout itself is unchanged and still comes from docs/PINOUT-STC15.md."
+  "_aliases_source": "bw-board's stc15_mcu device declares all forty PDIP-40 pins TWICE — datasheet case (P0.0, VCC) and lowercase (p0.0, vcc) — because the corpus writes both. Each lowercase name is the same leg as the uppercase one above it, so it takes that pin's position exactly. The physical pinout itself is unchanged and still comes from docs/PINOUT-STC15.md."
 }

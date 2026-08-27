@@ -53,6 +53,24 @@ const NOT_OFFERED = new Map([
  *
  * These stay in the index and are NOT stale-swept; only the copy is skipped.
  */
+/**
+ * DEFAULT IS ADD-ONLY. Pass --overwrite to replace sidecars that already exist.
+ *
+ * The bulk sync is not a safe routine operation, which took a CI round to
+ * learn. bw-parts has drifted toward DATASHEET terminal names while the
+ * engine kept friendly ones — 74HC283 calls its bits a0-a3 where the sidecar
+ * says a1-a4, cd4511 says bi/e where the engine says bl/qa — and vendoring
+ * that wholesale renames pins under every circuit using those parts. It also
+ * un-passes hd44780-terminal-parity, which is the gate that measures exactly
+ * this. The old vendored copies happened to agree with the engine; the drift
+ * is real and belongs in a pass that can move engine, sidecar and circuits
+ * together (test/terminal-crosscheck.test.js counts it per kind).
+ *
+ * So: bringing in a NEW part is routine and this script does it. Updating an
+ * existing one is a decision, and needs the flag.
+ */
+const ADD_ONLY = !process.argv.includes('--overwrite');
+
 const HELD_BACK = new Map([
   ['char_lcd.json', 'upstream says vss/vdd/v0/a/k; the engine says gnd/vcc/vo/bl_a/bl_k'],
   ['simplevga_card.json', 'upstream has dropped the `bank` terminal the engine still has'],
@@ -76,6 +94,7 @@ let changed = 0, total = 0;
 for (const f of readdirSync(src).filter(f => f.endsWith('.json') && !skip(f))) {
   total++;
   if (held(f)) continue;
+  if (ADD_ONLY && existsSync(join(dst, f))) continue;
   const body = readFileSync(join(src, f), 'utf8');
   JSON.parse(body); // refuse to vendor broken JSON
   const target = join(dst, f);
@@ -88,6 +107,7 @@ for (const f of readdirSync(src).filter(f => f.endsWith('.json') && !skip(f))) {
 // Also vendor SVG art files — same sync, same check
 let svgChanged = 0, svgTotal = 0;
 for (const f of readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f))) {
+  if (ADD_ONLY && existsSync(join(dst, f))) continue;
   svgTotal++;
   const body = readFileSync(join(src, f), 'utf8');
   const target = join(dst, f);

@@ -1,0 +1,255 @@
+{
+ "kind": "stm32f030",
+ "w": 64,
+ "h": 80,
+ "terminals": [
+  {
+   "name": "boot0",
+   "x": 0,
+   "y": 8,
+   "functions": []
+  },
+  {
+   "name": "pf0",
+   "x": 0,
+   "y": 15,
+   "functions": []
+  },
+  {
+   "name": "pf1",
+   "x": 0,
+   "y": 22,
+   "functions": []
+  },
+  {
+   "name": "nrst",
+   "x": 0,
+   "y": 29,
+   "functions": []
+  },
+  {
+   "name": "vcc2",
+   "x": 0,
+   "y": 36,
+   "functions": []
+  },
+  {
+   "name": "pa0",
+   "x": 0,
+   "y": 43,
+   "functions": [
+    "gpio",
+    "adc0"
+   ]
+  },
+  {
+   "name": "pa1",
+   "x": 0,
+   "y": 50,
+   "functions": [
+    "gpio",
+    "adc1"
+   ]
+  },
+  {
+   "name": "pa2",
+   "x": 0,
+   "y": 57,
+   "functions": [
+    "gpio",
+    "adc2",
+    "txd"
+   ]
+  },
+  {
+   "name": "pa3",
+   "x": 0,
+   "y": 64,
+   "functions": [
+    "gpio",
+    "adc3",
+    "rxd"
+   ]
+  },
+  {
+   "name": "pa4",
+   "x": 0,
+   "y": 71,
+   "functions": [
+    "gpio",
+    "adc4"
+   ]
+  },
+  {
+   "name": "pa14",
+   "x": 64,
+   "y": 8,
+   "functions": [
+    "swclk"
+   ]
+  },
+  {
+   "name": "pa13",
+   "x": 64,
+   "y": 15,
+   "functions": [
+    "swdio"
+   ]
+  },
+  {
+   "name": "pa10",
+   "x": 64,
+   "y": 22,
+   "functions": [
+    "gpio",
+    "rxd1"
+   ]
+  },
+  {
+   "name": "pa9",
+   "x": 64,
+   "y": 29,
+   "functions": [
+    "gpio",
+    "txd1"
+   ]
+  },
+  {
+   "name": "vcc",
+   "x": 64,
+   "y": 36,
+   "functions": []
+  },
+  {
+   "name": "gnd",
+   "x": 64,
+   "y": 43,
+   "functions": []
+  },
+  {
+   "name": "pb1",
+   "x": 64,
+   "y": 50,
+   "functions": [
+    "gpio",
+    "pwm_tim3ch4"
+   ]
+  },
+  {
+   "name": "pa7",
+   "x": 64,
+   "y": 57,
+   "functions": [
+    "gpio",
+    "adc7",
+    "pwm_tim3ch2"
+   ]
+  },
+  {
+   "name": "pa6",
+   "x": 64,
+   "y": 64,
+   "functions": [
+    "gpio",
+    "adc6",
+    "pwm_tim3ch1"
+   ]
+  },
+  {
+   "name": "pa5",
+   "x": 64,
+   "y": 71,
+   "functions": [
+    "gpio",
+    "adc5"
+   ]
+  }
+ ],
+ "variants": null,
+ "_note": "STM32F030F4P6, TSSOP20 as the classroom breakout (DIP-20 pin walk). Pin table from ST DS9773 Table 11. vss/vdd are named gnd/vcc (the engine bare-chip convention); vcc2 is VDDA (pin 5), tied to the same 3.3 V rail on the breakout. ADC_IN0-7 on pa0-pa7; TIM3 PWM channels on pa6/pa7/pb1 (AF1); USART1 on pa9/pa10. 3.3 V part \u2014 never wire the 5 V rail to vcc.",
+ "footprint": {
+  "refTerminal": "pa14",
+  "leads": {
+   "boot0": {
+    "dRow": 5,
+    "dCol": 0
+   },
+   "pf0": {
+    "dRow": 5,
+    "dCol": 1
+   },
+   "pf1": {
+    "dRow": 5,
+    "dCol": 2
+   },
+   "nrst": {
+    "dRow": 5,
+    "dCol": 3
+   },
+   "vcc2": {
+    "dRow": 5,
+    "dCol": 4
+   },
+   "pa0": {
+    "dRow": 5,
+    "dCol": 5
+   },
+   "pa1": {
+    "dRow": 5,
+    "dCol": 6
+   },
+   "pa2": {
+    "dRow": 5,
+    "dCol": 7
+   },
+   "pa3": {
+    "dRow": 5,
+    "dCol": 8
+   },
+   "pa4": {
+    "dRow": 5,
+    "dCol": 9
+   },
+   "pa14": {
+    "dRow": 0,
+    "dCol": 0
+   },
+   "pa13": {
+    "dRow": 0,
+    "dCol": 1
+   },
+   "pa10": {
+    "dRow": 0,
+    "dCol": 2
+   },
+   "pa9": {
+    "dRow": 0,
+    "dCol": 3
+   },
+   "vcc": {
+    "dRow": 0,
+    "dCol": 4
+   },
+   "gnd": {
+    "dRow": 0,
+    "dCol": 5
+   },
+   "pb1": {
+    "dRow": 0,
+    "dCol": 6
+   },
+   "pa7": {
+    "dRow": 0,
+    "dCol": 7
+   },
+   "pa6": {
+    "dRow": 0,
+    "dCol": 8
+   },
+   "pa5": {
+    "dRow": 0,
+    "dCol": 9
+   }
+  }
+ }
+}

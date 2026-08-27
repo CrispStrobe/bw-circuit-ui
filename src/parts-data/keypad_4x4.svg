@@ -29,8 +29,8 @@
     <text x="11" y="50">*</text><text x="23" y="50">0</text><text x="35" y="50">#</text><text x="47" y="50">D</text>
   </g>
   <!-- 8-pin ribbon cable connector at bottom -->
-  <rect x="8" y="56" width="44" height="6" rx="1" fill="#666" stroke="#444" stroke-width="0.3"/>
-  <!-- 8 pins (r0-r3, c0-c3) -->
+  <rect x="8" y="56" width="40" height="6" rx="1" fill="#666" stroke="#444" stroke-width="0.3"/>
+  <!-- 8 pins -->
   <line x1="11" y1="62" x2="11" y2="72" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
   <line x1="16.5" y1="62" x2="16.5" y2="72" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
   <line x1="22" y1="62" x2="22" y2="72" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
@@ -38,7 +38,6 @@
   <line x1="33" y1="62" x2="33" y2="72" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
   <line x1="38.5" y1="62" x2="38.5" y2="72" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
   <line x1="44" y1="62" x2="44" y2="72" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
-  <line x1="49.5" y1="62" x2="49.5" y2="72" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
   <circle cx="11" cy="72" r="1.2" fill="#c0c0c0"/>
   <circle cx="16.5" cy="72" r="1.2" fill="#c0c0c0"/>
   <circle cx="22" cy="72" r="1.2" fill="#c0c0c0"/>
@@ -46,5 +45,4 @@
   <circle cx="33" cy="72" r="1.2" fill="#c0c0c0"/>
   <circle cx="38.5" cy="72" r="1.2" fill="#c0c0c0"/>
   <circle cx="44" cy="72" r="1.2" fill="#c0c0c0"/>
-  <circle cx="49.5" cy="72" r="1.2" fill="#c0c0c0"/>
 </svg>

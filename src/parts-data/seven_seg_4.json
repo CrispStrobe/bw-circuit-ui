@@ -53,29 +53,29 @@
     },
     {
       "name": "com0",
-      "x": 8.4,
+      "x": 13.3,
       "y": 0,
       "functions": []
     },
     {
       "name": "com1",
-      "x": 25.1,
+      "x": 33.3,
       "y": 0,
       "functions": []
     },
     {
       "name": "com2",
-      "x": 41.9,
+      "x": 53.3,
       "y": 0,
       "functions": []
     },
     {
       "name": "com3",
-      "x": 58.6,
+      "x": 73.3,
       "y": 0,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "4-digit 0.56-inch 7-segment display block. Common-cathode scanned: shared segment bus (a-g, dp) plus 4 digit-select commons (com0-com3). Derived from seven_seg_3, which is why the commons carried its 3-digit pitch until 2026-08-26."
+  "_note": "3-digit 0.56-inch 7-segment display block (056SMG_3 style). Common-cathode scanned: shared segment bus (a-g, dp) + 3 digit-select commons (com0-com2). No colon \u2014 this is the console score display, not a clock. 11 terminals: 8 segments bottom, 3 commons top. Firmware multiplexes the three digits by cycling com0-com2. Engine decomposes into per-digit virtual LEDs for MNA segment current."
 }

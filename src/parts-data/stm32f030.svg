@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 80" width="64" height="80">
+  <!-- STM32F030F4P6 - TSSOP20 breakout, bench-style -->
+  <rect x="8" y="2" width="48" height="76" rx="2" fill="#303030" stroke="#1a1a1a" stroke-width="1"/>
+  <path d="M29 2 Q32 6 35 2" fill="#303030" stroke="#555" stroke-width="0.8"/>
+  <circle cx="14" cy="8" r="1.5" fill="#b0b0b0"/>
+  <text x="32" y="38" font-family="monospace" font-size="7" fill="#cfcfcf" text-anchor="middle" transform="rotate(90 32 38)">STM32F030</text>
+  <g fill="#b0b0b0">
+    <rect x="0" y="6.5" width="8" height="3"/><rect x="0" y="13.5" width="8" height="3"/><rect x="0" y="20.5" width="8" height="3"/><rect x="0" y="27.5" width="8" height="3"/><rect x="0" y="34.5" width="8" height="3"/><rect x="0" y="41.5" width="8" height="3"/><rect x="0" y="48.5" width="8" height="3"/><rect x="0" y="55.5" width="8" height="3"/><rect x="0" y="62.5" width="8" height="3"/><rect x="0" y="69.5" width="8" height="3"/>
+    <rect x="56" y="6.5" width="8" height="3"/><rect x="56" y="13.5" width="8" height="3"/><rect x="56" y="20.5" width="8" height="3"/><rect x="56" y="27.5" width="8" height="3"/><rect x="56" y="34.5" width="8" height="3"/><rect x="56" y="41.5" width="8" height="3"/><rect x="56" y="48.5" width="8" height="3"/><rect x="56" y="55.5" width="8" height="3"/><rect x="56" y="62.5" width="8" height="3"/><rect x="56" y="69.5" width="8" height="3"/>
+  </g>
+</svg>
