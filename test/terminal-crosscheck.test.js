@@ -307,8 +307,16 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
     stc15_mcu: 38,
     '74hc595': 19,
     simplevga_card: 1,
-    tcs34725: 1,
   };
+  // tcs34725 came off this list on 2026-08-27, and it did NOT belong on it:
+  // `int` is not an extra spelling for a pin the sidecar already names, it is
+  // the threshold-interrupt pin, and the sidecar simply had no pad for it.
+  // Adding the pad alone would have drawn a pin that does nothing, so
+  // bw-board learned the interrupt first — thresholds, a latching AINT, and
+  // an open-drain INT actually driven. Two silent bugs surfaced on the way:
+  // STATUS returned AINT hardcoded SET whenever the part was on, and the
+  // command byte's TYPE field was discarded so the "clear interrupt" special
+  // function (0xE6) masked to 0x06 and overwrote the AIHTL threshold.
 
   it('summary: two populations counted separately', () => {
     const gapKinds = [...new Set(coverageGaps)];
