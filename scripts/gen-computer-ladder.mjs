@@ -1281,4 +1281,96 @@ for (const line of done) console.log(line);
   }));
 }
 
+// ── C14: a stack — the thing CALL and RET are made of ──────────────
+
+{
+  // Every rung so far reads memory at an address something else chose.
+  // A stack chooses its own, and it is the same 16x4 RAM from C2 with a
+  // 74LS193 supplying the address instead of the program counter.
+  //
+  // The 193 is why this rung exists: a 74LS161 counts one way, so a
+  // pointer built from one can push and never pop. That part had to be
+  // added to the engine before this could be wired at all.
+  //
+  // Convention here is EMPTY ASCENDING, the one most 8-bit machines use:
+  //   push   store at [SP], then SP+1
+  //   pop    SP-1, then read [SP]
+  // The order is the whole discipline. Pop that reads before it
+  // decrements returns the empty slot ABOVE the top of the stack — which
+  // is the classic off-by-one, and it looks like memory corruption
+  // rather than like a counter being clocked at the wrong moment.
+  //
+  // The RAM's outputs are inverted (C2's lesson), so a 74HC04 puts the
+  // data back the right way up before it reaches the lamps.
+  const parts = [...rails(),
+    part('swd', 'dip_switch_spst', { switches: 0 }),   // the value being pushed
+    part('swc', 'dip_switch_spst', { switches: 0 }),   // 1 /WE, 2 push, 3 pop, 4 clear
+    part('sp', '74ls193'),
+    part('ram', '74ls189'),
+    part('inv', '74hc04'),
+  ];
+  const wires = [...powerChip('sp'), ...powerChip('ram'), ...powerChip('inv')];
+
+  for (let i = 0; i < 4; i++) {
+    const sw = switchInput('swd', i + 1, `r_swd${i}`);
+    parts.push(...sw.parts);
+    wires.push(...sw.wires);
+    wires.push(wire('swd', `${i + 1}b`, 'ram', `d${i}`));
+  }
+
+  // /WE is active low, so it hangs on a pull-UP and the switch drags it
+  // down. On an ordinary pull-down it would be asserted permanently and
+  // the RAM would never stop writing — measured in C8, where every
+  // address handed back the last value on the data switches.
+  const we = switchInputActiveLow('swc', 1, 'r_we');
+  parts.push(...we.parts);
+  wires.push(...we.wires, wire('swc', '1b', 'ram', 'web'));
+
+  // The 193's two clocks IDLE HIGH — there is no mode pin, and the chip
+  // only counts when the other clock is high. So push and pop hang on
+  // pull-UPS and the switch drags them down, which means the count lands
+  // on RELEASE, not on press. Wired the obvious way round, with pull-
+  // downs, both clocks sit low and the pointer never moves at all: the
+  // stack silently rewrites one cell forever. (Measured here first, then
+  // recognised as the case bw-board's own 74LS193 test already names.)
+  const push = switchInputActiveLow('swc', 2, 'r_push');
+  const pop = switchInputActiveLow('swc', 3, 'r_pop');
+  const clr = switchInput('swc', 4, 'r_clr');
+  parts.push(...push.parts, ...pop.parts, ...clr.parts);
+  wires.push(...push.wires, ...pop.wires, ...clr.wires);
+  wires.push(wire('swc', '2b', 'sp', 'up'));      // push advances the pointer
+  wires.push(wire('swc', '3b', 'sp', 'down'));    // pop retreats it
+  wires.push(wire('swc', '4b', 'sp', 'clr'));     // CLEAR is active HIGH on a 193
+  wires.push(wire('vcc1', 'vcc', 'sp', 'loadb'));
+  for (const d of ['d0', 'd1', 'd2', 'd3']) wires.push(wire('gnd1', 'gnd', 'sp', d));
+
+  wires.push(wire('gnd1', 'gnd', 'ram', 'csb'));
+  for (let i = 0; i < 4; i++) wires.push(wire('sp', `q${i}`, 'ram', `a${i}`));
+
+  // Stack pointer lamps, and the data coming back the right way up.
+  for (let i = 0; i < 4; i++) {
+    const led = outputLed('sp', `q${i}`, `led_sp${i}`, `rlsp${i}`, 'red');
+    parts.push(...led.parts);
+    wires.push(...led.wires);
+    wires.push(wire('ram', `o${i}`, 'inv', `${i + 1}a`));
+    const dled = outputLed('inv', `${i + 1}y`, `led_d${i}`, `rld${i}`, 'green');
+    parts.push(...dled.parts);
+    wires.push(...dled.wires);
+  }
+
+  done.push(emit('c14-the-stack', {
+    vcc: 5, parts, wires,
+    _title: 'A stack — the thing CALL and RET are made of',
+    _description: 'The same 16x4 RAM as C2, with a 74LS193 supplying the address instead of the program '
+      + 'counter — and the 193 is the point, because a 74LS161 counts one way, so a pointer built from one '
+      + 'could push and never pop. Push is: set the switches, pulse /WE to store at [SP], then pulse PUSH '
+      + 'to advance. Pop is: pulse POP to retreat, THEN read. That order is the whole discipline — a pop '
+      + 'that reads before it retreats hands back the empty slot above the top of the stack, which looks '
+      + 'like corrupted memory and is really a counter clocked one moment too late. Push three numbers and '
+      + 'pop them: they come back in the opposite order, which is the property that makes a return address '
+      + 'survive a nested call.',
+    _category: 'computer', _difficulty: 5, _stage: 'C14',
+  }));
+}
+
 console.log(`\n${done.length} computer examples written to gallery/`);

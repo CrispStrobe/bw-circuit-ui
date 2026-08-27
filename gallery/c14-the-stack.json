@@ -1,0 +1,745 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "swd",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 0
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "swc",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 0
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "sp",
+      "kind": "74ls193",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "ram",
+      "kind": "74ls189",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "inv",
+      "kind": "74hc04",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_swd0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_swd1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_swd2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_swd3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_we",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_push",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_pop",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_clr",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_sp0",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlsp0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_d0",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rld0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_sp1",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlsp1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_d1",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rld1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_sp2",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlsp2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_d2",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rld2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_sp3",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlsp3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_d3",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rld3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "sp",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sp",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "ram",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "ram",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "inv",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "inv",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swd",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "swd",
+      "fromTerminal": "1b",
+      "to": "r_swd0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_swd0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swd",
+      "fromTerminal": "1b",
+      "to": "ram",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swd",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "swd",
+      "fromTerminal": "2b",
+      "to": "r_swd1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_swd1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swd",
+      "fromTerminal": "2b",
+      "to": "ram",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swd",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "swd",
+      "fromTerminal": "3b",
+      "to": "r_swd2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_swd2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swd",
+      "fromTerminal": "3b",
+      "to": "ram",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swd",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "swd",
+      "fromTerminal": "4b",
+      "to": "r_swd3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_swd3",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swd",
+      "fromTerminal": "4b",
+      "to": "ram",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "r_we",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_we",
+      "fromTerminal": "b",
+      "to": "swc",
+      "toTerminal": "1b"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "1a",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "1b",
+      "to": "ram",
+      "toTerminal": "web"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "r_push",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_push",
+      "fromTerminal": "b",
+      "to": "swc",
+      "toTerminal": "2b"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "2a",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "r_pop",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_pop",
+      "fromTerminal": "b",
+      "to": "swc",
+      "toTerminal": "3b"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "3a",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swc",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "4b",
+      "to": "r_clr",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_clr",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "2b",
+      "to": "sp",
+      "toTerminal": "up"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "3b",
+      "to": "sp",
+      "toTerminal": "down"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "4b",
+      "to": "sp",
+      "toTerminal": "clr"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "sp",
+      "toTerminal": "loadb"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sp",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sp",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sp",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sp",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "ram",
+      "toTerminal": "csb"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q0",
+      "to": "ram",
+      "toTerminal": "a0"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q1",
+      "to": "ram",
+      "toTerminal": "a1"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q2",
+      "to": "ram",
+      "toTerminal": "a2"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q3",
+      "to": "ram",
+      "toTerminal": "a3"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q0",
+      "to": "led_sp0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_sp0",
+      "fromTerminal": "cathode",
+      "to": "rlsp0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlsp0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "ram",
+      "fromTerminal": "o0",
+      "to": "inv",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "inv",
+      "fromTerminal": "1y",
+      "to": "led_d0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_d0",
+      "fromTerminal": "cathode",
+      "to": "rld0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rld0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q1",
+      "to": "led_sp1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_sp1",
+      "fromTerminal": "cathode",
+      "to": "rlsp1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlsp1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "ram",
+      "fromTerminal": "o1",
+      "to": "inv",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "inv",
+      "fromTerminal": "2y",
+      "to": "led_d1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_d1",
+      "fromTerminal": "cathode",
+      "to": "rld1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rld1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q2",
+      "to": "led_sp2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_sp2",
+      "fromTerminal": "cathode",
+      "to": "rlsp2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlsp2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "ram",
+      "fromTerminal": "o2",
+      "to": "inv",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "inv",
+      "fromTerminal": "3y",
+      "to": "led_d2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_d2",
+      "fromTerminal": "cathode",
+      "to": "rld2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rld2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q3",
+      "to": "led_sp3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_sp3",
+      "fromTerminal": "cathode",
+      "to": "rlsp3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlsp3",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "ram",
+      "fromTerminal": "o3",
+      "to": "inv",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "inv",
+      "fromTerminal": "4y",
+      "to": "led_d3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_d3",
+      "fromTerminal": "cathode",
+      "to": "rld3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rld3",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    }
+  ],
+  "_title": "A stack — the thing CALL and RET are made of",
+  "_description": "The same 16x4 RAM as C2, with a 74LS193 supplying the address instead of the program counter — and the 193 is the point, because a 74LS161 counts one way, so a pointer built from one could push and never pop. Push is: set the switches, pulse /WE to store at [SP], then pulse PUSH to advance. Pop is: pulse POP to retreat, THEN read. That order is the whole discipline — a pop that reads before it retreats hands back the empty slot above the top of the stack, which looks like corrupted memory and is really a counter clocked one moment too late. Push three numbers and pop them: they come back in the opposite order, which is the property that makes a return address survive a nested call.",
+  "_category": "computer",
+  "_difficulty": 5,
+  "_stage": "C14"
+}

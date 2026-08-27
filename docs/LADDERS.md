@@ -1,7 +1,7 @@
 # The ladders — gates to a computer, one verified rung at a time
 
 Two teaching sequences live in `gallery/`, and they are one arc: `l0..l10`
-starts at a single AND gate and ends at a keypad you can type into; `c0..c13` starts at a
+starts at a single AND gate and ends at a keypad you can type into; `c0..c14` starts at a
 555 ticking and ends at a machine that runs a program — and then at the control
 unit every machine after SAP-1 actually uses. Every rung is a real
 circuit made of parts you can buy, containing no CPU and no firmware, and
@@ -13,7 +13,7 @@ They are published twice, deliberately:
 | where | what it is | who reads it |
 |---|---|---|
 | `gallery/l*.json`, `gallery/c*.json` | wire-level, `x/y` all zero | the test corpus; the electrical truth |
-| `sb3-creator` `examples/pc90..pc114` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
+| `sb3-creator` `examples/pc90..pc115` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
 
 `scripts/gen-logic-ladder.mjs` and `scripts/gen-computer-ladder.mjs` write the
 first; `scripts/gen-logic-examples.mjs --out <sb3-creator checkout>` seats them
@@ -49,7 +49,7 @@ changes meaning rather than disappearing — it now reads "no borrow".
 
 ---
 
-## 2. The computer ladder — `c0..c13`
+## 2. The computer ladder — `c0..c14`
 
 | rung | chips | the idea |
 |---|---|---|
@@ -67,6 +67,7 @@ changes meaning rather than disappearing — it now reads "no borrow".
 | c11 control ROM | 74LS161, 28C256 ×2 | the control word is FETCHED, not computed |
 | c12 flags | the same chips | a conditional jump, bought with address lines |
 | c13 8-bit ALU | '283 ×2, '86 ×2, '688 | eight bits, and flags it derives itself |
+| c14 the stack | 74LS193, '189, '04 | LIFO, and why pop retreats before it reads |
 
 **c10's program.** Four cells, then nothing but the clock:
 
@@ -138,8 +139,21 @@ together longer than the rest of CI. The values kept are the ones that can fail
 (the nibble carry at 15/16/17, the byte carry, and 85/170 so no dead comparator
 input can hide).
 
-The 74LS193 (up/DOWN counter, bw-board b63a6ec) exists now, so a stack pointer
-has a part: CALL and RET are no longer blocked on the engine.
+**c14 is what the 74LS193 was for.** A 74LS161 counts one way, so a pointer built
+from one can push and never pop; the part had to be added to bw-board (b63a6ec)
+before this rung could be wired at all. Convention is empty-ascending — push
+stores at [SP] then advances, pop retreats then reads — and that order is the
+whole discipline: a pop that reads first hands back the empty slot above the top
+of the stack, which presents as corrupted memory rather than as a counter clocked
+a moment too late.
+
+Two things it refuses to hide. The pointer is four bits and there is no depth
+check anywhere, so sixteen pushes wrap to zero and quietly overwrite the bottom —
+which is why real machines add the check. And the 193's two clocks IDLE HIGH: they
+hang on pull-ups and count on RELEASE. Wired the obvious way, with pull-downs,
+both clocks sit low, the pointer never moves, and the stack silently rewrites one
+cell forever. That cost a debugging round here even though bw-board's own 74LS193
+test already names the case.
 
 ---
 

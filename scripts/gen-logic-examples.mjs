@@ -483,6 +483,28 @@ const LADDER = [
       ['zero detect', '74HC688 with Q tied low'], ['adder', 'two 74HC283, carry chained']],
     cols: ['input', 'result'],
   },
+  {
+    src: 'c14-the-stack', id: 'pc115-the-stack', difficulty: 5,
+    en: { title: 'A stack — the thing CALL and RET are made of',
+      teaches: 'LIFO from a RAM and an up/down counter; why pop must retreat before it reads' },
+    de: { title: 'Ein Stapel — das, woraus CALL und RET gemacht sind',
+      desc: 'Dasselbe 16x4-RAM wie in pc102, nur liefert die Adresse jetzt ein 74LS193 statt des '
+        + 'Programmzählers — und genau darum geht es: Ein 74LS161 zählt nur in eine Richtung, ein daraus '
+        + 'gebauter Zeiger könnte ablegen und nie zurückholen. '
+        + 'Ablegen heißt: Schalter stellen, /WE pulsen (Wert nach [SP]), dann PUSH pulsen (Zeiger weiter). '
+        + 'Zurückholen heißt: erst POP pulsen (Zeiger zurück), DANN lesen. Diese Reihenfolge ist die ganze '
+        + 'Disziplin — wer vor dem Zurücksetzen liest, bekommt die leere Zelle ÜBER dem Stapel und hält '
+        + 'das für zerstörten Speicher, obwohl nur ein Zähler einen Moment zu spät getaktet wurde. '
+        + 'Lege drei Zahlen ab und hole sie zurück: Sie kommen in umgekehrter Reihenfolge — die '
+        + 'Eigenschaft, die eine Rücksprungadresse einen verschachtelten Aufruf überleben lässt. '
+        + 'Beachte die Taster: Die beiden Takteingänge des 193 ruhen HIGH, hängen also an Pull-ups, und '
+        + 'gezählt wird beim LOSLASSEN. Verdrahtet man sie andersherum, bewegt sich der Zeiger nie und '
+        + 'der Stapel überschreibt still immer dieselbe Zelle.',
+      teaches: 'LIFO aus RAM und Auf-/Ab-Zähler; warum POP erst zurücksetzen und dann lesen muss' },
+    table: [['push 3, 7, 12', 'SP goes 0 -> 3'], ['pop', '12'], ['pop', '7'], ['pop', '3'],
+      ['16 pushes', 'SP wraps to 0 — no depth check'], ['clocks', 'idle HIGH, count on release']],
+    cols: ['action', 'what happens'],
+  },
 ];
 
 const mdTable = (cols, rows) => [

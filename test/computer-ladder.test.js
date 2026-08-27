@@ -47,8 +47,8 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: fourteen rungs, c0 through c13', () => {
-    assert.equal(files.length, 14, `found ${files.join(', ')}`);
+  it('is present: fifteen rungs, c0 through c14', () => {
+    assert.equal(files.length, 15, `found ${files.join(', ')}`);
   });
 
   it('contains no CPU — the point is building one, not using one', () => {
@@ -506,6 +506,87 @@ describe('C13 — eight bits, and flags it works out for itself', () => {
       w.to === cmp.id && /^q[0-7]$/.test(w.toTerminal) && w.from === 'gnd1');
     assert.equal(grounded.length, 8, 'all eight Q inputs tied low — that is what makes it a zero test');
     assert.equal(c.parts.filter((p) => p.kind === '74hc283').length, 2, 'eight bits is two adders');
+  });
+});
+
+describe('C14 — the stack', () => {
+  const WE = 0, PUSH = 1, POP = 2, CLR = 3;   // switch positions, zero-based
+
+  function stack() {
+    const b = bench('c14-the-stack');
+    let bits = 0;
+    const setc = (m) => { bits = m; b.set('swc', m); b.settle(); };
+    const press = (i) => setc(bits | (1 << i));
+    const release = (i) => setc(bits & ~(1 << i));
+    const pulse = (i) => { press(i); release(i); };
+    const api = {
+      sp: () => [0, 1, 2, 3].reduce((a, i) => a + (b.lit(`led_sp${i}`) ? 1 << i : 0), 0),
+      data: () => [0, 1, 2, 3].reduce((a, i) => a + (b.lit(`led_d${i}`) ? 1 << i : 0), 0),
+      clear: () => { pulse(CLR); return api; },
+      push(v) { b.set('swd', v & 15); b.settle(); pulse(WE); pulse(PUSH); return api; },
+      pop() { pulse(POP); return api.data(); },
+      readWithoutPopping: () => api.data(),
+    };
+    return api.clear();
+  }
+
+  it('what goes in last comes out first', () => {
+    const s = stack();
+    s.push(3); s.push(7); s.push(12);
+    assert.equal(s.sp(), 3, 'three pushes moved the pointer three cells');
+    assert.deepEqual([s.pop(), s.pop(), s.pop()], [12, 7, 3]);
+    assert.equal(s.sp(), 0, 'and it is back where it started');
+  });
+
+  it('survives interleaving — it is a stack, not a shift register', () => {
+    // A shift register passes the simple push-push-push/pop-pop-pop test.
+    // Interleaving is what separates them: the value pushed between two
+    // pops must come back before the one pushed before them.
+    const s = stack();
+    s.push(5);
+    s.push(9);
+    assert.equal(s.pop(), 9);
+    s.push(2);
+    assert.equal(s.pop(), 2, 'the most recent push wins, whenever it happened');
+    assert.equal(s.pop(), 5, 'and the oldest is still underneath, untouched');
+    assert.equal(s.sp(), 0);
+  });
+
+  it('pop must retreat BEFORE it reads', () => {
+    // The classic off-by-one. Reading at [SP] without decrementing hands
+    // back the empty slot ABOVE the top of the stack, which presents as
+    // corrupted memory rather than as a counter clocked a moment too late.
+    const s = stack();
+    s.push(6);
+    const peeked = s.readWithoutPopping();
+    const popped = s.pop();
+    assert.equal(popped, 6, 'the value is at [SP-1], not [SP]');
+    assert.notEqual(peeked, popped,
+      'reading before retreating must NOT give the same answer, or this rung teaches nothing');
+  });
+
+  it('the pointer wraps rather than trapping — sixteen cells, no more', () => {
+    // Four bits of stack pointer is sixteen cells and there is no depth
+    // check anywhere: overflowing wraps to zero and quietly overwrites the
+    // bottom of the stack. Real machines add that check; this one shows
+    // why they have to.
+    const s = stack();
+    for (let i = 0; i < 16; i++) s.push(i & 15);
+    assert.equal(s.sp(), 0, 'sixteen pushes and the pointer is back at zero');
+  });
+
+  it('both clocks idle HIGH, which is why they hang on pull-ups', () => {
+    // Structural, and it cost a debugging round to learn: the 74LS193 has
+    // no mode pin and only counts while the OTHER clock is high. Wired the
+    // obvious way, with pull-downs, both clocks sit low, the pointer never
+    // moves, and the stack silently rewrites one cell forever.
+    const c = JSON.parse(readFileSync(join(GALLERY, 'c14-the-stack.json'), 'utf8'));
+    for (const r of ['r_push', 'r_pop']) {
+      const pulledUp = c.wires.some((w) => w.from === 'vcc1' && w.to === r);
+      assert.ok(pulledUp, `${r} must be a pull-UP; a pull-down holds the clock low forever`);
+    }
+    const clrPulledDown = c.wires.some((w) => w.from === 'r_clr' && w.to === 'gnd1');
+    assert.ok(clrPulledDown, "CLEAR is active HIGH on a 193, so it is the one that idles low");
   });
 });
 
