@@ -54,8 +54,24 @@ const PASSTHROUGH_KINDS = new Set([
   // Parallel display variant
   'ili9341_parallel',
 ]);
+
+// These registered models are deliberately only passive electrical pin
+// surfaces. The machine adapters execute the actual CPU/VIA/UART and drive
+// those pins through the generic MCU boundary. Keeping the passive model in
+// the same Board adds dozens of 1 MOhm loads to every bus solve; a 6502 boot
+// that normally paints its displays in seconds then takes longer than a
+// browser acceptance timeout. The placed part keeps its real kind and real
+// terminal list, so rendering and machine extraction remain exact. Only the
+// engine-facing duplicate is collapsed.
+const MACHINE_PIN_SURFACE_KINDS = new Set([
+  'w65c02', 'w65c22', 'w65c51',
+  'r6507', 'mos6532',
+  'z80', 'mc6850', 'tms9918', 'mc6845', 'ns16c550',
+]);
+
 function engineKindFor(kind) {
   if (!PASSTHROUGH_KINDS.has(kind)) return kind;
+  if (MACHINE_PIN_SURFACE_KINDS.has(kind)) return 'mcu';
   // A kind the engine has a REGISTERED device model for keeps its identity:
   // the model is strictly more truthful than the generic 'mcu' surface —
   // its power pins actually source (a Mega's 5v pin fed nothing as 'mcu'),

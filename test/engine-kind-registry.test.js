@@ -40,6 +40,40 @@ test('registered board kind keeps its identity in the engine netlist', () => {
   }
 });
 
+test('machine-executed DIP keeps its real circuit identity without a duplicate electrical model', () => {
+  setEngine({ BoardImpl, inferNetlist, checkWiring, getDevice });
+  try {
+    const c = new Circuit(5.0);
+    const cpu = c.addPart('w65c02', 100, 100);
+    const via = c.addPart('w65c22', 200, 100);
+    c.addWire({ part: cpu.id, terminal: 'd0' }, { part: via.id, terminal: 'd0' });
+
+    assert.equal(c.parts.find(part => part.id === cpu.id).kind, 'w65c02',
+      'the authored circuit still identifies the CPU for rendering and extraction');
+    assert.equal(c.parts.find(part => part.id === via.id).kind, 'w65c22');
+
+    const kinds = Object.fromEntries(c.board.getParts().map(part => [part.id, part.kind]));
+    assert.equal(kinds[cpu.id], 'mcu', 'the machine adapter, not the passive DIP shell, executes the CPU');
+    assert.equal(kinds[via.id], 'mcu', 'the machine adapter, not the passive DIP shell, executes the VIA');
+  } finally {
+    setEngine(prev);
+  }
+});
+
+test('functional registered memory still reaches the electrical engine', () => {
+  setEngine({ BoardImpl, inferNetlist, checkWiring, getDevice });
+  try {
+    const c = new Circuit(5.0);
+    const rom = c.addPart('28c256', 100, 100);
+    const led = c.addPart('led', 200, 100);
+    c.addWire({ part: rom.id, terminal: 'd0' }, { part: led.id, terminal: 'anode' });
+    const kinds = Object.fromEntries(c.board.getParts().map(part => [part.id, part.kind]));
+    assert.equal(kinds[rom.id], '28c256', 'a functional memory model must not collapse to a passive surface');
+  } finally {
+    setEngine(prev);
+  }
+});
+
 test('without hasDevice the kind collapses to mcu (old-engine compatibility)', () => {
   setEngine({ BoardImpl, inferNetlist, checkWiring });
   try {
