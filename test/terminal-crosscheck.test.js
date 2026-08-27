@@ -220,7 +220,6 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    * different physical device). MAY ONLY SHRINK.
    */
   const UNREACHABLE_BY_KIND = {
-    '74hc75': 4,
     '74hc93': 4,
     stepper: 4,
     ds1302: 3,

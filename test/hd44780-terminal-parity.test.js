@@ -123,7 +123,8 @@ test('EVERY sidecar with an engine device agrees on terminals', () => {
     ['74hc21', 'sidecar carries the two NC pins (3, 11); engine models none'],
     ['74hc93', 'sidecar carries the four NC pins (2, 3, 4, 13)'],
     ['74hc95', 'sidecar carries the NC pin (13)'],
-    ['74hc75', 'sidecar carries the four inverted outputs 1qn..4qn; the engine latch model has Q only'],
+    // 74hc75 came off this list on 2026-08-27: bw-board bf0b5d0 gave the latch
+    // its four inverted outputs, so the pins the sidecar carries are reachable now.
     ['ds1302', 'sidecar carries the crystal pins x1/x2 and the vcc1 backup rail; engine models neither'],
     ['pcf8574', 'sidecar carries a0/a1/a2 address straps; the engine model has no addressing'],
     ['bmp280', 'sidecar is the 6-pin breakout and carries csb/sdo, the SPI chip-select and '
