@@ -1060,6 +1060,25 @@ export class Circuit {
       if (!p.seat) continue;
       const bb = c.breadboards.get(p.seat.boardId);
       if (!bb) { delete p.seat; continue; }
+      // A kind with NO FOOTPRINT cannot be seated, and a seat claiming
+      // otherwise is stale data rather than a layout. Uno and Mega have
+      // female headers and standoff feet — they float beside the board and
+      // connect by explicit wires — so their builtin stubs were deleted
+      // (see footprints.js, "Development boards: NO builtin entries").
+      // 61 shipped circuit-flat.json files kept the seats those stubs had
+      // stamped, with the stubs' uppercase D0..D13 legs.
+      //
+      // The stale seat was NOT inert, which is why it had to be migrated
+      // and not merely ignored: bb.occupy SUCCEEDS whenever the holes are
+      // free, so fourteen legs belonging to no terminal occupied a3..a16
+      // and the strips conducted through them — the same silent failure the
+      // attiny88 note below describes, plus the holes were denied to real
+      // parts. Visually it also tripped BOTH of the renderer's
+      // seat-conditioned suppressions at once (a Wokwi face draws its own
+      // headers so the pin rects are skipped; seated legs go into holes so
+      // the lead stubs are skipped), leaving wire ends floating over the
+      // artwork with nothing joining them — the owner's screenshot.
+      if (!BB_FOOTPRINTS_FOR_ROTATE[p.kind]) { delete p.seat; continue; }
       // A leadMap key is a TERMINAL NAME, so a rename is a data migration
       // here exactly as it is for a wire endpoint above — and this path was
       // missing it. When attiny88's pin 22 went from `pa0` to `gnd2` (the
