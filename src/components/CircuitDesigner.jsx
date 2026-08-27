@@ -57,6 +57,7 @@ import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
 import { generatePartName, circuitToDeclarations } from '../model/declarations.js';
 import { circuitSignature } from '../model/circuit-signature.js';
+import { footprintOf } from '../interaction/hittest.js';
 import { flatWire, isLegacyFlatWire, wireEndpoint } from '../model/wire-endpoints.js';
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
@@ -651,9 +652,39 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
   // ── Part placement — find empty space ────────────────────────────
   const handleAddPart = useCallback((kind, params) => {
-    // Find a position that doesn't overlap existing parts
-    const occupied = parts.map(p => ({ x: p.x, y: p.y }));
-    let x = 200, y = 200;
+    // Find a position whose BODY does not overlap an existing body and does
+    // not hang off the canvas.
+    //
+    // This used to compare centre points with a fixed 60x50 clearance and
+    // clamp the CENTRE to the working area. Both are size-blind, and a
+    // controller board is 400x294: an Uno's centre at the (40, 40) corner
+    // spans x -160..240, so most of the board sat outside the canvas, and
+    // "not within 60px of another centre" called a spot free that the board
+    // then completely covered — the other part's wires still running to it
+    // underneath. Small parts never showed it because 60x50 is about their
+    // size; every dev board did.
+    //
+    // footprintOf is the canvas's OWN sizer — it is what hit-testing and the
+    // placement ghost already use, and it knows that a dev board's size comes
+    // from boardVisualGeometry rather than its sidecar (an Uno's sidecar says
+    // 180x120, which is not what gets drawn). Adding a fourth opinion about
+    // how big a part is would be how these drift apart again.
+    const AREA = { left: 40, top: 40, right: 660, bottom: 460 };
+    const GAP = 20;
+    const size = footprintOf({ kind });
+    const boxes = parts.map(p => ({ x: p.x, y: p.y, ...footprintOf(p) }));
+    // Clamp so the BODY fits the area. A part wider than the area cannot,
+    // so it centres instead of being pushed to an edge it overhangs anyway.
+    const span = (lo, hi, extent) => {
+      const a = lo + extent / 2;
+      const b = hi - extent / 2;
+      return a <= b ? [a, b] : [(lo + hi) / 2, (lo + hi) / 2];
+    };
+    const [minX, maxX] = span(AREA.left, AREA.right, size.w);
+    const [minY, maxY] = span(AREA.top, AREA.bottom, size.h);
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+    let x = clamp(200, minX, maxX), y = clamp(200, minY, maxY);
     const spacing = 80;
     let found = false;
     // Spiral outward from center to find empty spot
@@ -663,11 +694,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           if (Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue; // only border
           const cx = snapToGrid(200 + dx * spacing);
           const cy = snapToGrid(200 + dy * spacing);
-          if (cx < 40 || cy < 40 || cx > 600 || cy > 440) continue;
-          const tooClose = occupied.some(o =>
-            Math.abs(o.x - cx) < 60 && Math.abs(o.y - cy) < 50
+          if (cx < minX || cy < minY || cx > maxX || cy > maxY) continue;
+          const overlaps = boxes.some(o =>
+            Math.abs(o.x - cx) < (o.w + size.w) / 2 + GAP &&
+            Math.abs(o.y - cy) < (o.h + size.h) / 2 + GAP
           );
-          if (!tooClose) { x = cx; y = cy; found = true; }
+          if (!overlaps) { x = cx; y = cy; found = true; }
         }
       }
     }
