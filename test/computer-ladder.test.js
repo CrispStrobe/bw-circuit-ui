@@ -47,8 +47,8 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: thirteen rungs, c0 through c12', () => {
-    assert.equal(files.length, 13, `found ${files.join(', ')}`);
+  it('is present: fourteen rungs, c0 through c13', () => {
+    assert.equal(files.length, 14, `found ${files.join(', ')}`);
   });
 
   it('contains no CPU — the point is building one, not using one', () => {
@@ -418,6 +418,94 @@ describe('C12 — flags and the conditional jump', () => {
     assert.equal(rom('c11-control-rom.json'), 128);
     assert.equal(rom('c12-conditional-jump.json'), 512,
       'two flag address lines quadruple the store — that is the price, and it is all of it');
+  });
+});
+
+describe('C13 — eight bits, and flags it works out for itself', () => {
+  /** Set A, B and the mode; read the sum and both flags. */
+  function alu(b, a, bb, sub) {
+    b.set('a_lo', a & 15); b.set('a_hi', (a >> 4) & 15);
+    b.set('b_lo', bb & 15); b.set('b_hi', (bb >> 4) & 15);
+    b.set('swm', sub ? 1 : 0);
+    b.settle();
+    return {
+      sum: [0, 1, 2, 3, 4, 5, 6, 7].reduce((acc, i) => acc + (b.lit(`led_s${i}`) ? 1 << i : 0), 0),
+      carry: b.lit('led_carry'),
+      zero: b.lit('led_zero'),
+    };
+  }
+
+  // Chosen values, not a full sweep. Each case costs ~0.7 s of simulated
+  // settling, so all 256 ran for 78 s and the self-subtract for 181 s —
+  // together more than the entire rest of CI. What can actually fail is
+  // concentrated at the boundaries: the nibble carry between the two
+  // 74HC283s (15->16), the byte carry (255->0), and the halfway bit. The
+  // middle of each run adds seconds and catches nothing the ends do not.
+  const EDGES = [
+    0, 1, 2, 7, 8, 14, 15, 16, 17, 18,        // the nibble carry, either side
+    31, 32, 63, 64, 127, 128, 129,            // every other bit boundary
+    200, 253, 254, 255,                       // the byte carry
+  ];
+
+  it('adds across every carry boundary, flags included', () => {
+    // A wrong carry chain between the two adders shows up at 16, not only
+    // at 256 — which is exactly why 15, 16 and 17 are all in the list.
+    const b = bench('c13-alu-flags');
+    for (const a of EDGES) {
+      const r = alu(b, a, 1, false);
+      assert.equal(r.sum, (a + 1) & 255, `${a} + 1`);
+      assert.equal(r.carry, a + 1 > 255, `${a} + 1 carry`);
+      assert.equal(r.zero, ((a + 1) & 255) === 0, `${a} + 1 zero`);
+    }
+  });
+
+  it('a number minus itself is zero, across every bit pattern that matters', () => {
+    // The zero flag's whole job. A comparator input stuck low would still
+    // report zero for a==0, so the values below light every bit at least
+    // once: a single dead Q line cannot survive 85 (01010101) and 170
+    // (10101010) both reading zero.
+    const b = bench('c13-alu-flags');
+    for (const a of [...EDGES, 85, 170, 240, 15]) {
+      const r = alu(b, a, a, true);
+      assert.equal(r.sum, 0, `${a} - ${a}`);
+      assert.equal(r.zero, true, `${a} - ${a} must set zero`);
+      assert.equal(r.carry, true, `${a} - ${a} must show no borrow`);
+    }
+  });
+
+  it('in subtract mode the carry lamp means "no borrow"', () => {
+    const b = bench('c13-alu-flags');
+    for (const [x, y] of [[10, 3], [3, 10], [0, 1], [255, 0], [0, 0], [128, 129]]) {
+      const r = alu(b, x, y, true);
+      assert.equal(r.sum, (x - y) & 255, `${x} - ${y}`);
+      assert.equal(r.carry, x >= y, `${x} - ${y}: carry is set when NO borrow was needed`);
+    }
+  });
+
+  it('zero and carry are independent, and can both be true', () => {
+    // 255 + 1 overflows to zero: a design that derived one flag from the
+    // other, or shared a lamp, gets this wrong and nothing else catches it.
+    const b = bench('c13-alu-flags');
+    const r = alu(b, 255, 1, false);
+    assert.equal(r.sum, 0);
+    assert.equal(r.carry, true, 'it overflowed');
+    assert.equal(r.zero, true, 'and the answer really is zero');
+
+    const t = alu(b, 200, 100, false);
+    assert.equal(t.carry, true, 'carry without zero');
+    assert.equal(t.zero, false);
+  });
+
+  it('the zero flag is bought as a comparator, not wished for', () => {
+    // Structural, because the lesson is the shopping: an 8-input NOR is
+    // not a part you can buy, so the sum is compared against ground.
+    const c = JSON.parse(readFileSync(join(GALLERY, 'c13-alu-flags.json'), 'utf8'));
+    const cmp = c.parts.find((p) => p.kind === '74hc688');
+    assert.ok(cmp, 'a magnitude comparator does the zero detect');
+    const grounded = c.wires.filter((w) =>
+      w.to === cmp.id && /^q[0-7]$/.test(w.toTerminal) && w.from === 'gnd1');
+    assert.equal(grounded.length, 8, 'all eight Q inputs tied low — that is what makes it a zero test');
+    assert.equal(c.parts.filter((p) => p.kind === '74hc283').length, 2, 'eight bits is two adders');
   });
 });
 

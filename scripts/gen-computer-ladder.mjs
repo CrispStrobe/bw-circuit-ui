@@ -1188,4 +1188,97 @@ for (const line of done) console.log(line);
   }));
 }
 
+// ── C13: eight bits, and flags the machine works out for itself ────
+
+{
+  // C12 took its flags from two switches and said they would come from
+  // the ALU in the whole machine. This is that ALU, and it is eight bits
+  // wide, which is the other half of the step toward a SAP-2.
+  //
+  // Widening is the boring part and that is worth seeing: two 74HC283s
+  // with the carry of the low one feeding the cin of the high one, and
+  // the four-bit adder from C3 is now an eight-bit adder. No new idea.
+  //
+  // The flags are the new idea, and neither is free.
+  //   CARRY is just the top adder's cout — one wire, already there.
+  //   ZERO is not. "All eight sum bits low" needs a wide gate nobody
+  //   sells, so this uses a 74HC688 magnitude comparator with its Q side
+  //   tied to ground: it asserts P=Q when the sum equals zero, which is
+  //   exactly a zero flag, and it is active LOW like every comparator
+  //   output. That is how you buy an 8-input NOR in a shop.
+  const A = ['a_lo', 'a_hi'];
+  const B = ['b_lo', 'b_hi'];
+  const parts = [...rails(),
+    part('a_lo', 'dip_switch_spst', { switches: 0 }),
+    part('a_hi', 'dip_switch_spst', { switches: 0 }),
+    part('b_lo', 'dip_switch_spst', { switches: 0 }),
+    part('b_hi', 'dip_switch_spst', { switches: 0 }),
+    part('swm', 'dip_switch_spst', { switches: 0 }),      // subtract on 1
+    part('add_lo', '74hc283'), part('add_hi', '74hc283'),
+    part('xor_lo', '74hc86'), part('xor_hi', '74hc86'),
+    part('zero', '74hc688'),
+  ];
+  const wires = [...powerChip('add_lo'), ...powerChip('add_hi'),
+    ...powerChip('xor_lo'), ...powerChip('xor_hi'), ...powerChip('zero')];
+
+  for (const bank of [...A, ...B]) {
+    for (let i = 0; i < 4; i++) {
+      const sw = switchInput(bank, i + 1, `r_${bank}${i}`);
+      parts.push(...sw.parts);
+      wires.push(...sw.wires);
+    }
+  }
+  const mode = switchInput('swm', 1, 'r_swm');
+  parts.push(...mode.parts);
+  wires.push(...mode.wires);
+
+  // A goes straight in. B goes through the XOR bank, whose other input is
+  // the mode line — the same trick as L8, just twice as wide: mode high
+  // inverts every B bit AND enters a 1 at the bottom, which is two's
+  // complement, which is subtraction.
+  for (let bit = 0; bit < 8; bit++) {
+    const adder = bit < 4 ? 'add_lo' : 'add_hi';
+    const k = bit % 4;
+    wires.push(wire(bit < 4 ? 'a_lo' : 'a_hi', `${k + 1}b`, adder, `a${k}`));
+    const xchip = bit < 4 ? 'xor_lo' : 'xor_hi';
+    wires.push(wire(bit < 4 ? 'b_lo' : 'b_hi', `${k + 1}b`, xchip, `${k + 1}a`));
+    wires.push(wire('swm', '1b', xchip, `${k + 1}b`));
+    wires.push(wire(xchip, `${k + 1}y`, adder, `b${k}`));
+  }
+  wires.push(wire('swm', '1b', 'add_lo', 'cin'));
+  wires.push(wire('add_lo', 'cout', 'add_hi', 'cin'));
+
+  // Sum out: eight LEDs, and the same eight bits into the comparator.
+  for (let bit = 0; bit < 8; bit++) {
+    const adder = bit < 4 ? 'add_lo' : 'add_hi';
+    const k = bit % 4;
+    const led = outputLed(adder, `s${k}`, `led_s${bit}`, `rls${bit}`, 'yellow');
+    parts.push(...led.parts);
+    wires.push(...led.wires);
+    wires.push(wire(adder, `s${k}`, 'zero', `p${bit}`));
+    wires.push(wire('gnd1', 'gnd', 'zero', `q${bit}`));
+  }
+  wires.push(wire('gnd1', 'gnd', 'zero', 'gb'));          // comparator enabled
+
+  const carry = outputLed('add_hi', 'cout', 'led_carry', 'rl_carry', 'red');
+  parts.push(...carry.parts);
+  wires.push(...carry.wires);
+  const zf = activeLowLed('zero', 'pqb', 'led_zero', 'rl_zero', 'green');
+  parts.push(...zf.parts);
+  wires.push(...zf.wires);
+
+  done.push(emit('c13-alu-flags', {
+    vcc: 5, parts, wires,
+    _title: 'Eight bits, and flags the machine works out for itself',
+    _description: 'C12 took its flags from two switches. This is where they actually come from. Two '
+      + '74HC283s chained carry-to-carry make an eight-bit adder — widening is mechanical, and that is '
+      + 'worth seeing once. The flags are not. CARRY is the top adder\'s cout, one wire that was already '
+      + 'there. ZERO needs every one of eight sum bits to be low, and nobody sells an 8-input NOR, so a '
+      + '74HC688 magnitude comparator has its Q side tied to ground: it asserts P=Q exactly when the sum '
+      + 'is zero. Set the mode switch and the XOR bank inverts B while a 1 enters at the bottom — two\'s '
+      + 'complement, so the same hardware subtracts, and the carry lamp now means "no borrow".',
+    _category: 'computer', _difficulty: 5, _stage: 'C13',
+  }));
+}
+
 console.log(`\n${done.length} computer examples written to gallery/`);

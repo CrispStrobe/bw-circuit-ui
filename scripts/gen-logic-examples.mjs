@@ -460,6 +460,29 @@ const LADDER = [
       ['LDA, any flags', 'unchanged'], ['store', '128 bytes -> 512']],
     cols: ['opcode and flags', 'what T4 does'],
   },
+  {
+    src: 'c13-alu-flags', id: 'pc114-alu-flags', difficulty: 5,
+    en: { title: 'Eight bits, and flags the machine works out for itself',
+      teaches: 'widening is mechanical; a zero flag is a comparator you can buy, an 8-input NOR is not' },
+    de: { title: 'Acht Bit, und Flags, die die Maschine selbst ermittelt',
+      desc: 'In pc113 kamen die Flags von zwei Schaltern. Hier kommen sie tatsächlich her. '
+        + 'Zwei 74HC283 hintereinander — der Übertrag des unteren geht in den Carry-Eingang des oberen — '
+        + 'ergeben einen Acht-Bit-Addierer. Das Verbreitern ist der langweilige Teil, und genau das sollte '
+        + 'man einmal gesehen haben: keine neue Idee, nur doppelt so viel davon. '
+        + 'Die Flags sind die neue Idee, und beide sind unterschiedlich teuer. CARRY ist einfach der '
+        + 'Cout des oberen Addierers — eine Leitung, die ohnehin schon da war. ZERO nicht: Dafür müssen '
+        + 'alle acht Summenbits gleichzeitig Low sein, und ein NOR mit acht Eingängen verkauft niemand. '
+        + 'Deshalb liegt hier ein 74HC688-Komparator, dessen Q-Seite auf Masse gelegt ist: Er meldet '
+        + 'P=Q genau dann, wenn die Summe null ist — und das ist ein Zero-Flag. So kauft man ein '
+        + 'Acht-Eingang-NOR im Laden. '
+        + 'Der Modus-Schalter invertiert über die XOR-Bank jedes B-Bit und schiebt unten eine Eins hinein: '
+        + 'Zweierkomplement, dieselbe Hardware subtrahiert. Die Carry-Lampe bedeutet dann "kein Borgen".',
+      teaches: 'Verbreitern ist mechanisch; ein Zero-Flag ist ein Komparator, den man kaufen kann' },
+    table: [['200 + 100', 'sum 44, carry'], ['255 + 1', 'sum 0, carry AND zero'],
+      ['0 - 1', 'sum 255, carry clear = borrow'], ['5 - 5', 'sum 0, zero, no borrow'],
+      ['zero detect', '74HC688 with Q tied low'], ['adder', 'two 74HC283, carry chained']],
+    cols: ['input', 'result'],
+  },
 ];
 
 const mdTable = (cols, rows) => [

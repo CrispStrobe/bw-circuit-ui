@@ -1,7 +1,7 @@
 # The ladders — gates to a computer, one verified rung at a time
 
 Two teaching sequences live in `gallery/`, and they are one arc: `l0..l10`
-starts at a single AND gate and ends at a keypad you can type into; `c0..c12` starts at a
+starts at a single AND gate and ends at a keypad you can type into; `c0..c13` starts at a
 555 ticking and ends at a machine that runs a program — and then at the control
 unit every machine after SAP-1 actually uses. Every rung is a real
 circuit made of parts you can buy, containing no CPU and no firmware, and
@@ -13,7 +13,7 @@ They are published twice, deliberately:
 | where | what it is | who reads it |
 |---|---|---|
 | `gallery/l*.json`, `gallery/c*.json` | wire-level, `x/y` all zero | the test corpus; the electrical truth |
-| `sb3-creator` `examples/pc90..pc113` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
+| `sb3-creator` `examples/pc90..pc114` | the same circuits **seated in breadboard holes**, EN/DE intros | learners, through the app's example browser |
 
 `scripts/gen-logic-ladder.mjs` and `scripts/gen-computer-ladder.mjs` write the
 first; `scripts/gen-logic-examples.mjs --out <sb3-creator checkout>` seats them
@@ -49,7 +49,7 @@ changes meaning rather than disappearing — it now reads "no borrow".
 
 ---
 
-## 2. The computer ladder — `c0..c12`
+## 2. The computer ladder — `c0..c13`
 
 | rung | chips | the idea |
 |---|---|---|
@@ -66,6 +66,7 @@ changes meaning rather than disappearing — it now reads "no borrow".
 | c10 the machine | 25 chips | fetch, decode, **execute** |
 | c11 control ROM | 74LS161, 28C256 ×2 | the control word is FETCHED, not computed |
 | c12 flags | the same chips | a conditional jump, bought with address lines |
+| c13 8-bit ALU | '283 ×2, '86 ×2, '688 | eight bits, and flags it derives itself |
 
 **c10's program.** Four cells, then nothing but the clock:
 
@@ -122,6 +123,20 @@ does not, and its ROM is 4x the size. It also checks the two things a mis-wired
 address line would break — LDA must behave identically at every flag setting, and
 fetch must, since reading an instruction cannot depend on the result of the last
 one.
+
+**Why c13 buys its zero flag.** Widening to eight bits is mechanical — two
+74HC283s, carry to carry — and seeing that it is mechanical is the point. The
+flags are not symmetrical, though. CARRY is the top adder's cout, a wire that was
+already there. ZERO needs all eight sum bits low at once, and **an 8-input NOR is
+not a part you can buy**, so a 74HC688 magnitude comparator has its Q side tied to
+ground and asserts P=Q exactly when the sum is zero. The test checks that
+structurally, because the shopping IS the lesson.
+
+Its sweeps are deliberately boundary-shaped rather than exhaustive: each case
+costs ~0.7 s of settling, so all 256 values ran 78 s and the self-subtract 181 s —
+together longer than the rest of CI. The values kept are the ones that can fail
+(the nibble carry at 15/16/17, the byte carry, and 85/170 so no dead comparator
+input can hide).
 
 The 74LS193 (up/DOWN counter, bw-board b63a6ec) exists now, so a stack pointer
 has a part: CALL and RET are no longer blocked on the engine.
