@@ -29,11 +29,11 @@ is fabricated.
 - **BOM export** — bill of materials with CSV download.
 - **Examples browser** — gallery circuits loadable via `circuitData` prop.
 - **Teaching ladders** — `gallery/l0..l10` (a single AND gate to a keypad you can
-  type into) and `gallery/c0..c16` (a 555 ticking to a microcoded computer: a
-  control ROM, conditional jumps, an 8-bit ALU that derives its own flags, a
-  stack, CALL/RET, and the whole machine again with a ROM where its control
-  matrix was). All 74-series, no CPU and no firmware, every rung simulated and
-  asserted. See [`docs/LADDERS.md`](docs/LADDERS.md).
+  type into) and `gallery/c0..c17` (a 555 ticking to an eight-bit computer under
+  microcode: a control ROM, conditional jumps, an 8-bit ALU that derives its own
+  flags, a stack, CALL/RET, the whole machine again with a ROM where its control
+  matrix was, and then that machine twice as wide). All 74-series, no CPU and no
+  firmware, every rung simulated and asserted. See [`docs/LADDERS.md`](docs/LADDERS.md).
 - **Multimeter** — voltage, current (with burden-voltage teaching note),
   resistance (refuses on powered board — `requires-power-off` is a feature).
 
