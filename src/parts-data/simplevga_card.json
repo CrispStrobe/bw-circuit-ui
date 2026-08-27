@@ -5,7 +5,8 @@
   "terminals": [
     { "name": "vcc", "x": 40, "y": 70, "functions": [] },
     { "name": "gnd", "x": 56, "y": 70, "functions": [] },
-    { "name": "bus", "x": 72, "y": 70, "functions": [] }
+    { "name": "bus", "x": 72, "y": 70, "functions": [] },
+    { "name": "bank", "x": 88, "y": 70, "functions": [] }
   ],
   "variants": null,
   "_note": "SimpleVGA6502 VGA card (gfoot, Unlicense). Machine-level video card: VGA connector + counter/sync logic + character ROM + resistor DAC. Art-first part; bus terminal is a placeholder for machine-level wiring. Based on gfoot's simplevga6502 project.",
@@ -14,7 +15,8 @@
     "leads": {
       "vcc": { "dRow": 0, "dCol": 0 },
       "gnd": { "dRow": 0, "dCol": 2 },
-      "bus": { "dRow": 0, "dCol": 4 }
+      "bus": { "dRow": 0, "dCol": 4 },
+      "bank": { "dRow": 0, "dCol": 6 }
     }
   }
 }
