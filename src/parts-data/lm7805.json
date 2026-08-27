@@ -4,7 +4,7 @@
   "h": 48,
   "terminals": [
     {
-      "name": "in",
+      "name": "vin",
       "x": 12,
       "y": 48,
       "functions": []
@@ -16,7 +16,7 @@
       "functions": []
     },
     {
-      "name": "out",
+      "name": "vout",
       "x": 32,
       "y": 48,
       "functions": []

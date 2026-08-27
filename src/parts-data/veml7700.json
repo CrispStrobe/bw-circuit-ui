@@ -1,0 +1,22 @@
+{
+  "kind": "veml7700",
+  "w": 40,
+  "h": 36,
+  "terminals": [
+    { "name": "vcc", "x": 8,  "y": 36, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 36, "functions": [] },
+    { "name": "sda", "x": 24, "y": 36, "functions": ["sda"] },
+    { "name": "scl", "x": 32, "y": 36, "functions": ["scl"] }
+  ],
+  "variants": null,
+  "_note": "VEML7700 high-accuracy ambient light sensor module (Vishay). I2C interface, fixed address 0x10. 4-pin breakout: VCC, GND, SDA, SCL. 16-bit resolution, 0-120000 lux range. Programmable gain (1x, 2x, 1/8x, 1/4x) and integration time (25-800 ms). Spectral response close to human eye (photopic). Filtron photodiode technology.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "sda": { "dRow": 0, "dCol": 2 },
+      "scl": { "dRow": 0, "dCol": 3 }
+    }
+  }
+}

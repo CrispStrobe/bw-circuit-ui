@@ -1,0 +1,26 @@
+{
+  "kind": "bmp280",
+  "w": 40,
+  "h": 36,
+  "terminals": [
+    { "name": "vcc", "x": 8,  "y": 36, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 36, "functions": [] },
+    { "name": "sda", "x": 24, "y": 36, "functions": ["sda"] },
+    { "name": "scl", "x": 32, "y": 36, "functions": ["scl"] },
+    { "name": "csb", "x": 8,  "y": 0,  "functions": [] },
+    { "name": "sdo", "x": 16, "y": 0,  "functions": [] }
+  ],
+  "variants": null,
+  "_note": "BMP280 barometric pressure + temperature sensor module (Bosch). I2C interface (default), SPI via CSB/SDO. 6-pin breakout: VCC, GND, SDA, SCL on bottom; CSB (chip select, active low, pull high for I2C), SDO (I2C address select: low=0x76, high=0x77) on top. Pressure 300-1100 hPa, temperature -40 to +85C. BME280 (adds humidity) is pin-compatible — same sidecar works.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "sda": { "dRow": 0, "dCol": 2 },
+      "scl": { "dRow": 0, "dCol": 3 },
+      "csb": { "dRow": 0, "dCol": 4 },
+      "sdo": { "dRow": 0, "dCol": 5 }
+    }
+  }
+}

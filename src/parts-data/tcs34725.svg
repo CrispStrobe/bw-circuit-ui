@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 36" width="40" height="36">
+  <!-- TCS34725 RGB Color Sensor Module — bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="4" width="36" height="24" rx="2" fill="#1a6b1a" stroke="#0d4d0d" stroke-width="0.8"/>
+  <!-- Sensor chip (clear window) -->
+  <rect x="12" y="7" width="10" height="8" rx="1" fill="#222" stroke="#444" stroke-width="0.5"/>
+  <!-- Clear aperture window -->
+  <rect x="14" y="9" width="6" height="4" rx="0.5" fill="#334" stroke="#556" stroke-width="0.3"/>
+  <!-- White illumination LED -->
+  <circle cx="30" cy="11" r="3" fill="#e8e8d0" stroke="#ccc" stroke-width="0.4" opacity="0.8"/>
+  <circle cx="30" cy="10.5" r="1.5" fill="#fff" opacity="0.3"/>
+  <!-- Labels -->
+  <text x="20" y="22" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#ccc">TCS34725</text>
+  <!-- Bottom pins: VCC, GND, SDA, SCL -->
+  <line x1="8" y1="28" x2="8" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="8" cy="36" r="1.2" fill="#c0c0c0"/>
+  <line x1="16" y1="28" x2="16" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="16" cy="36" r="1.2" fill="#c0c0c0"/>
+  <line x1="24" y1="28" x2="24" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="24" cy="36" r="1.2" fill="#c0c0c0"/>
+  <line x1="32" y1="28" x2="32" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="32" cy="36" r="1.2" fill="#c0c0c0"/>
+  <!-- Top pin: LED -->
+  <line x1="8" y1="4" x2="8" y2="0" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="8" cy="0" r="1.2" fill="#c0c0c0"/>
+</svg>

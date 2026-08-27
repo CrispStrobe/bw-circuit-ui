@@ -1,0 +1,105 @@
+{
+  "kind": "74ls193",
+  "w": 70,
+  "h": 46,
+  "terminals": [
+    {
+      "name": "d1",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "q1",
+      "x": 0,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "q0",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "down",
+      "x": 0,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "up",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "q2",
+      "x": 0,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "q3",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 70,
+      "y": 43,
+      "functions": []
+    },
+    {
+      "name": "d0",
+      "x": 70,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "clr",
+      "x": 70,
+      "y": 33,
+      "functions": []
+    },
+    {
+      "name": "bob",
+      "x": 70,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "cob",
+      "x": 70,
+      "y": 23,
+      "functions": []
+    },
+    {
+      "name": "loadb",
+      "x": 70,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "d2",
+      "x": 70,
+      "y": 13,
+      "functions": []
+    },
+    {
+      "name": "d3",
+      "x": 70,
+      "y": 8,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Clean-room from the TI SN74LS193 datasheet pinout: 4-bit synchronous up/down binary counter, DIP16. Two clocks (UP pin 5, DOWN pin 4) and no mode pin; hold the idle one high. /LOAD is ASYNCHRONOUS unlike the 74LS161. CLEAR is active HIGH. Terminal names follow the engine model (d0-d3, q0-q3) so the family reads the same way, not the datasheet A-D/QA-QD."
+}

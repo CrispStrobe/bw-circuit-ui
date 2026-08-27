@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 36" width="40" height="36">
+  <!-- VEML7700 Ambient Light Sensor Module — bench-style -->
+  <!-- PCB -->
+  <rect x="2" y="4" width="36" height="24" rx="2" fill="#1a3a6b" stroke="#0d2a4d" stroke-width="0.8"/>
+  <!-- VEML7700 sensor (tiny clear-top package) -->
+  <rect x="14" y="8" width="10" height="6" rx="0.8" fill="#444" stroke="#333" stroke-width="0.4"/>
+  <!-- Clear optical window -->
+  <rect x="15.5" y="9" width="7" height="4" rx="0.5" fill="#556" stroke="#667" stroke-width="0.3"/>
+  <!-- Light rays indicator -->
+  <line x1="19" y1="6" x2="19" y2="3" stroke="#ffcc44" stroke-width="0.4" opacity="0.6"/>
+  <line x1="16" y1="7" x2="14" y2="4" stroke="#ffcc44" stroke-width="0.4" opacity="0.4"/>
+  <line x1="22" y1="7" x2="24" y2="4" stroke="#ffcc44" stroke-width="0.4" opacity="0.4"/>
+  <!-- Labels -->
+  <text x="20" y="20" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#ccc">VEML7700</text>
+  <text x="20" y="24" text-anchor="middle" font-family="monospace" font-size="2" fill="#888">Lux sensor</text>
+  <!-- Decoupling cap -->
+  <rect x="28" y="10" width="4" height="2" rx="0.5" fill="#c89632" stroke="#8a6a20" stroke-width="0.3"/>
+  <!-- Bottom pins: VCC, GND, SDA, SCL -->
+  <line x1="8" y1="28" x2="8" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="8" cy="36" r="1.2" fill="#c0c0c0"/>
+  <line x1="16" y1="28" x2="16" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="16" cy="36" r="1.2" fill="#c0c0c0"/>
+  <line x1="24" y1="28" x2="24" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="24" cy="36" r="1.2" fill="#c0c0c0"/>
+  <line x1="32" y1="28" x2="32" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="32" cy="36" r="1.2" fill="#c0c0c0"/>
+</svg>

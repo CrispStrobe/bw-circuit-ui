@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 36" width="40" height="36">
+  <!-- AS5600 Magnetic Rotary Position Sensor Module — bench-style -->
+  <!-- PCB (green, typical breakout) -->
+  <rect x="2" y="4" width="36" height="24" rx="2" fill="#2a5a2a" stroke="#1a3a1a" stroke-width="0.8"/>
+  <!-- AS5600 SOIC chip -->
+  <rect x="12" y="8" width="12" height="8" rx="1" fill="#303030" stroke="#222" stroke-width="0.5"/>
+  <text x="18" y="13.5" text-anchor="middle" font-family="monospace" font-size="2.2" fill="#aaa">AS5600</text>
+  <!-- Magnet position indicator (circle with arrow = rotation) -->
+  <circle cx="30" cy="12" r="4" fill="none" stroke="#cc4444" stroke-width="0.6" opacity="0.7"/>
+  <path d="M30 8 L31 10 L29 10 Z" fill="#cc4444" opacity="0.7"/>
+  <!-- Magnet mounting hole -->
+  <circle cx="18" cy="22" r="3" fill="none" stroke="#888" stroke-width="0.5" stroke-dasharray="1,1"/>
+  <circle cx="18" cy="22" r="1" fill="#666"/>
+  <!-- Labels -->
+  <text x="30" y="22" text-anchor="middle" font-family="monospace" font-size="2" fill="#888">12-bit</text>
+  <text x="30" y="26" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#666">angle</text>
+  <!-- Bottom pins: VCC, GND, SDA, SCL -->
+  <line x1="8" y1="28" x2="8" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="8" cy="36" r="1.2" fill="#c0c0c0"/>
+  <line x1="16" y1="28" x2="16" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="16" cy="36" r="1.2" fill="#c0c0c0"/>
+  <line x1="24" y1="28" x2="24" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="24" cy="36" r="1.2" fill="#c0c0c0"/>
+  <line x1="32" y1="28" x2="32" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="32" cy="36" r="1.2" fill="#c0c0c0"/>
+  <!-- Top pins: OUT, DIR -->
+  <line x1="8" y1="4" x2="8" y2="0" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="8" cy="0" r="1.2" fill="#c0c0c0"/>
+  <line x1="16" y1="4" x2="16" y2="0" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="16" cy="0" r="1.2" fill="#c0c0c0"/>
+</svg>

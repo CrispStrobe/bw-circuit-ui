@@ -380,7 +380,7 @@
       "functions": []
     }
   ],
-  "_pinmap_source": "stc/docs/PINOUT.md — STC12C5A60S2 PDIP-40 pin map, official datasheet (STC MCU Limited, rev 2011-07-15). P0 runs DESCENDING: pin 32=P0.7 down to pin 39=P0.0. Pin names are port designators, not generic 8051 functional aliases — that exact substitution trap is documented in the lab notes.",
+  "_pinmap_source": "stc/docs/PINOUT.md \u2014 STC12C5A60S2 PDIP-40 pin map, official datasheet (STC MCU Limited, rev 2011-07-15). P0 runs DESCENDING: pin 32=P0.7 down to pin 39=P0.0. Pin names are port designators, not generic 8051 functional aliases \u2014 that exact substitution trap is documented in the lab notes.",
   "footprint": {
     "refTerminal": "P1.0",
     "leads": {

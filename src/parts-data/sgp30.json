@@ -1,0 +1,22 @@
+{
+  "kind": "sgp30",
+  "w": 40,
+  "h": 36,
+  "terminals": [
+    { "name": "vcc", "x": 8,  "y": 36, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 36, "functions": [] },
+    { "name": "sda", "x": 24, "y": 36, "functions": ["sda"] },
+    { "name": "scl", "x": 32, "y": 36, "functions": ["scl"] }
+  ],
+  "variants": null,
+  "_note": "SGP30 multi-pixel gas sensor module (Sensirion). I2C interface, fixed address 0x58. 4-pin breakout: VCC, GND, SDA, SCL. Measures eCO2 (400-60000 ppm) and TVOC (0-60000 ppb). On-chip humidity compensation. 15-second warm-up, 1 Hz measurement rate. Adafruit-style breakout with onboard regulator and level shifting.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "sda": { "dRow": 0, "dCol": 2 },
+      "scl": { "dRow": 0, "dCol": 3 }
+    }
+  }
+}

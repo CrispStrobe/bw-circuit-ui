@@ -1,7 +1,7 @@
 {
   "kind": "at24c64",
   "w": 60,
-  "h": 31,
+  "h": 48,
   "terminals": [
     {
       "name": "a0",
@@ -12,25 +12,25 @@
     {
       "name": "a1",
       "x": 0,
-      "y": 13,
+      "y": 18,
       "functions": []
     },
     {
       "name": "a2",
       "x": 0,
-      "y": 18,
+      "y": 28,
       "functions": []
     },
     {
       "name": "gnd",
       "x": 0,
-      "y": 23,
+      "y": 38,
       "functions": []
     },
     {
       "name": "sda",
       "x": 60,
-      "y": 23,
+      "y": 38,
       "functions": [
         "sda"
       ]
@@ -38,7 +38,7 @@
     {
       "name": "scl",
       "x": 60,
-      "y": 18,
+      "y": 28,
       "functions": [
         "scl"
       ]
@@ -46,7 +46,7 @@
     {
       "name": "wp",
       "x": 60,
-      "y": 13,
+      "y": 18,
       "functions": []
     },
     {
@@ -57,7 +57,7 @@
     }
   ],
   "variants": null,
-  "_note": "AT24C64 / 24C64 8-Kbit (8192 x 8) serial I2C EEPROM, DIP-8 — pin-for-pin the AT24C02's package: A0/A1/A2 (pins 1-3, address straps, sampled electrically to form the bus address 0b1010|A2A1A0), GND (4), SDA (5), SCL (6), WP (7, write protect), VCC (8). It was already in BoardCanvas's DIP_CHIP_LABELS with no sidecar behind it, so all eight pins rendered stacked at the part origin (2026-08-20).",
+  "_note": "AT24C64 64-Kbit (8192 x 8) serial I2C EEPROM. Pin table from Microchip AT24C64 datasheet (DS20006128). DIP-8 package, pin-compatible with AT24C02. A0/A1/A2 (pins 1-3, address straps), GND (pin 4), SDA (pin 5), SCL (pin 6), WP (pin 7, write protect), VCC (pin 8). Engine model in bw-board board-ics.js: 8 KB, 32-byte page writes, I2C address 0b1010|A2A1A0.",
   "footprint": {
     "refTerminal": "a0",
     "leads": {

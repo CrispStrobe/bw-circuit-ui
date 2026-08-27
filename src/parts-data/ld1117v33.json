@@ -10,13 +10,13 @@
       "functions": []
     },
     {
-      "name": "out",
+      "name": "vout",
       "x": 22,
       "y": 48,
       "functions": []
     },
     {
-      "name": "in",
+      "name": "vin",
       "x": 32,
       "y": 48,
       "functions": []

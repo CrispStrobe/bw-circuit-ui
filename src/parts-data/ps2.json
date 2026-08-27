@@ -1,0 +1,34 @@
+{
+  "kind": "ps2",
+  "w": 70,
+  "h": 50,
+  "terminals": [
+    { "name": "d0", "x": 0, "y": 8, "functions": ["data"] },
+    { "name": "d1", "x": 0, "y": 13, "functions": ["data"] },
+    { "name": "d2", "x": 0, "y": 18, "functions": ["data"] },
+    { "name": "d3", "x": 0, "y": 23, "functions": ["data"] },
+    { "name": "d4", "x": 0, "y": 28, "functions": ["data"] },
+    { "name": "d5", "x": 0, "y": 33, "functions": ["data"] },
+    { "name": "d6", "x": 0, "y": 38, "functions": ["data"] },
+    { "name": "d7", "x": 0, "y": 43, "functions": ["data"] },
+    { "name": "da", "x": 70, "y": 25, "functions": ["strobe"] }
+  ],
+  "variants": null,
+  "_note": "PS/2 keyboard interface peripheral. 8-bit parallel data bus (d0-d7) + data-available strobe (da). Machine-side device: the board part holds a PS2Keyboard whose keyDown/keyUp queue scan codes. Protocol delivery (paced frames, DA strobe, odd parity) runs on the machine side through PS2Capture + ps2OnVia. Terminals exist for the designer's wiring display — actual data flows through the machine adapter, not the MNA. Wires to VIA PA0-PA7 or PB0-PB7, DA to CA1/CA2/CB1/CB2. Engine source: ps2-device.js.",
+  "footprint": {
+    "refTerminal": "d0",
+    "leads": {
+      "d0": { "dRow": 0, "dCol": 0 },
+      "d1": { "dRow": 0, "dCol": 1 },
+      "d2": { "dRow": 0, "dCol": 2 },
+      "d3": { "dRow": 0, "dCol": 3 },
+      "d4": { "dRow": 0, "dCol": 4 },
+      "d5": { "dRow": 0, "dCol": 5 },
+      "d6": { "dRow": 0, "dCol": 6 },
+      "d7": { "dRow": 0, "dCol": 7 },
+      "da": { "dRow": 5, "dCol": 4 }
+    },
+    "straddlesGutter": true,
+    "minCols": 8
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "kind": "tcs34725",
+  "w": 40,
+  "h": 36,
+  "terminals": [
+    { "name": "vcc", "x": 8,  "y": 36, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 36, "functions": [] },
+    { "name": "sda", "x": 24, "y": 36, "functions": ["sda"] },
+    { "name": "scl", "x": 32, "y": 36, "functions": ["scl"] },
+    { "name": "led", "x": 8,  "y": 0,  "functions": [] }
+  ],
+  "variants": null,
+  "_note": "TCS34725 RGB color sensor module (ams/TAOS). I2C interface, fixed address 0x29. 5-pin breakout: VCC, GND, SDA, SCL on bottom; LED (white illumination LED enable, active high) on top. Reports RGBC (red, green, blue, clear) 16-bit counts. Integration time and gain configurable. Adafruit-style breakout with onboard 3.3V regulator and level shifting.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "sda": { "dRow": 0, "dCol": 2 },
+      "scl": { "dRow": 0, "dCol": 3 },
+      "led": { "dRow": 0, "dCol": 4 }
+    }
+  }
+}

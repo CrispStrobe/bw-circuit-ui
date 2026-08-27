@@ -22,7 +22,7 @@
       "functions": []
     },
     {
-      "name": "bl",
+      "name": "bi",
       "x": 0,
       "y": 23,
       "functions": []
@@ -52,43 +52,43 @@
       "functions": []
     },
     {
-      "name": "qe",
+      "name": "e",
       "x": 70,
       "y": 43,
       "functions": []
     },
     {
-      "name": "qd",
+      "name": "d_out",
       "x": 70,
       "y": 38,
       "functions": []
     },
     {
-      "name": "qc",
+      "name": "c_out",
       "x": 70,
       "y": 33,
       "functions": []
     },
     {
-      "name": "qb",
+      "name": "b_out",
       "x": 70,
       "y": 28,
       "functions": []
     },
     {
-      "name": "qa",
+      "name": "a_out",
       "x": 70,
       "y": 23,
       "functions": []
     },
     {
-      "name": "qg",
+      "name": "g",
       "x": 70,
       "y": 18,
       "functions": []
     },
     {
-      "name": "qf",
+      "name": "f",
       "x": 70,
       "y": 13,
       "functions": []

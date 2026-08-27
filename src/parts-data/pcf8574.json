@@ -54,7 +54,7 @@
       ]
     },
     {
-      "name": "gnd",
+      "name": "vss",
       "x": 0,
       "y": 43,
       "functions": []
@@ -114,7 +114,7 @@
       ]
     },
     {
-      "name": "vcc",
+      "name": "vdd",
       "x": 70,
       "y": 8,
       "functions": []

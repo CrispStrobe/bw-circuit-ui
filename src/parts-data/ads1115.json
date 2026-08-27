@@ -1,0 +1,34 @@
+{
+  "kind": "ads1115",
+  "w": 50,
+  "h": 44,
+  "terminals": [
+    { "name": "vcc",  "x": 8,  "y": 44, "functions": [] },
+    { "name": "gnd",  "x": 16, "y": 44, "functions": [] },
+    { "name": "sda",  "x": 24, "y": 44, "functions": ["sda"] },
+    { "name": "scl",  "x": 32, "y": 44, "functions": ["scl"] },
+    { "name": "addr", "x": 40, "y": 44, "functions": [] },
+    { "name": "alrt", "x": 8,  "y": 0,  "functions": [] },
+    { "name": "a0",   "x": 16, "y": 0,  "functions": ["adc"] },
+    { "name": "a1",   "x": 24, "y": 0,  "functions": ["adc"] },
+    { "name": "a2",   "x": 32, "y": 0,  "functions": ["adc"] },
+    { "name": "a3",   "x": 40, "y": 0,  "functions": ["adc"] }
+  ],
+  "variants": null,
+  "_note": "ADS1115 16-bit 4-channel I2C ADC module (TI). 10-pin breakout: VCC, GND, SDA, SCL, ADDR (I2C address select: GND=0x48, VCC=0x49, SDA=0x4A, SCL=0x4B) on bottom; ALRT (comparator alert/data-ready, open-drain), A0-A3 (analog inputs) on top. 16-bit resolution, programmable gain (2/3x to 16x), 8-860 SPS. Supports single-ended (4 ch) or differential (2 ch) modes.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc":  { "dRow": 0, "dCol": 0 },
+      "gnd":  { "dRow": 0, "dCol": 1 },
+      "sda":  { "dRow": 0, "dCol": 2 },
+      "scl":  { "dRow": 0, "dCol": 3 },
+      "addr": { "dRow": 0, "dCol": 4 },
+      "alrt": { "dRow": 0, "dCol": 5 },
+      "a0":   { "dRow": 0, "dCol": 6 },
+      "a1":   { "dRow": 0, "dCol": 7 },
+      "a2":   { "dRow": 0, "dCol": 8 },
+      "a3":   { "dRow": 0, "dCol": 9 }
+    }
+  }
+}

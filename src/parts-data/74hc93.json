@@ -4,7 +4,7 @@
   "h": 46,
   "terminals": [
     {
-      "name": "clk_a",
+      "name": "cka",
       "x": 0,
       "y": 8,
       "functions": []
@@ -34,13 +34,13 @@
       "functions": []
     },
     {
-      "name": "r0_1",
+      "name": "r0a",
       "x": 0,
       "y": 33,
       "functions": []
     },
     {
-      "name": "r0_2",
+      "name": "r0b",
       "x": 0,
       "y": 38,
       "functions": []
@@ -82,7 +82,7 @@
       "functions": []
     },
     {
-      "name": "clk_b",
+      "name": "ckb",
       "x": 70,
       "y": 8,
       "functions": []

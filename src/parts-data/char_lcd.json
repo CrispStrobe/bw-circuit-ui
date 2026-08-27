@@ -4,19 +4,19 @@
   "h": 70,
   "terminals": [
     {
-      "name": "gnd",
+      "name": "vss",
       "x": 12,
       "y": 70,
       "functions": []
     },
     {
-      "name": "vcc",
+      "name": "vdd",
       "x": 20,
       "y": 70,
       "functions": []
     },
     {
-      "name": "vo",
+      "name": "v0",
       "x": 28,
       "y": 70,
       "functions": []
@@ -88,13 +88,13 @@
       "functions": []
     },
     {
-      "name": "bl_a",
+      "name": "a",
       "x": 124,
       "y": 70,
       "functions": []
     },
     {
-      "name": "bl_k",
+      "name": "k",
       "x": 132,
       "y": 70,
       "functions": []

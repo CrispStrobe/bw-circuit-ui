@@ -1,0 +1,26 @@
+{
+  "kind": "as5600",
+  "w": 40,
+  "h": 36,
+  "terminals": [
+    { "name": "vcc", "x": 8,  "y": 36, "functions": [] },
+    { "name": "gnd", "x": 16, "y": 36, "functions": [] },
+    { "name": "sda", "x": 24, "y": 36, "functions": ["sda"] },
+    { "name": "scl", "x": 32, "y": 36, "functions": ["scl"] },
+    { "name": "out", "x": 8,  "y": 0,  "functions": ["pwm"] },
+    { "name": "dir", "x": 16, "y": 0,  "functions": [] }
+  ],
+  "variants": null,
+  "_note": "AS5600 12-bit magnetic rotary position sensor module (ams-OSRAM). I2C interface, fixed address 0x36. 6-pin breakout: VCC, GND, SDA, SCL on bottom; OUT (analog/PWM output, configurable), DIR (direction select: GND=CW increasing, VCC=CCW increasing) on top. 12-bit angle resolution (0.087 deg), contactless Hall effect sensing via diametrically magnetized magnet above the IC. Programmable start/stop angles, hysteresis, and output mode (analog 0-100% VCC or PWM).",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": { "dRow": 0, "dCol": 0 },
+      "gnd": { "dRow": 0, "dCol": 1 },
+      "sda": { "dRow": 0, "dCol": 2 },
+      "scl": { "dRow": 0, "dCol": 3 },
+      "out": { "dRow": 0, "dCol": 4 },
+      "dir": { "dRow": 0, "dCol": 5 }
+    }
+  }
+}
