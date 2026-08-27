@@ -181,29 +181,29 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    * wrong guess about the cause into the actual one.
    *
    * MAY ONLY SHRINK. Lower an entry when a name is fixed; never raise one.
+   *
+   * 2026-08-27: 163 -> 117. Nine kinds healed by renaming the SIDECAR to what
+   * the engine calls the pin, the engine being the authority here. 74HC283 was
+   * the one worth doing first: its sidecar said a1-a4 where the engine says
+   * a0-a3, so a wire drawn from the datasheet landed one bit out — and the
+   * sidecar's own footprint.leads already said a0-a3, so it disagreed with
+   * itself. That pattern held: the same nine renames took bw-parts'
+   * verify-seating from 73 errors to 30, because a lead can only find its
+   * terminal if they are called the same thing.
    */
   const KNOWN_BY_KIND = {
     stc15_mcu: 38,
     '74hc595': 19,
-    cd4511: 16,
     '74hc93': 12,
     stepper: 9,
     '74hc75': 8,
     char_lcd: 8,
-    '74hc283': 6,
     gas_sensor: 6,
     pcf8574: 5,
-    '74hc73': 4,
-    '74hc74': 4,
-    ld1117v33: 4,
-    lm7805: 4,
-    solenoid: 4,
     ds1302: 3,
     '74hc20': 2,
     '74hc21': 2,
     bmp280: 2,
-    soil_moisture: 2,
-    tmp36: 2,
     '74hc95': 1,
     simplevga_card: 1,
     tcs34725: 1,
