@@ -33,19 +33,20 @@ const port = portArg > 0 ? Number(process.argv[portArg + 1]) : 3179;
 
 // A bench with a Wokwi-faced board and wires that run to its headers, so a
 // displaced face shows up as wires ending in space.
-const FIXTURE = {
+// EVERY Wokwi-faced board, not just the Uno. A sweep across both engines put
+// the Mega at 21% differing pixels and the Nano at 4.8% when the bug was
+// present — they share the code path, so a guard that checked one board would
+// have called the others fine. pi_pico is code-rendered, not Wokwi-faced, and
+// is included as the control: it is unaffected either way.
+const KINDS = ['arduino_uno', 'arduino_nano', 'arduino_mega'];
+const fixtureFor = kind => ({
   vcc: 5,
   parts: [
     { id: 'bb1', kind: 'breadboard', x: 470, y: 330, params: { size: 'full' }, terminals: [] },
-    { id: 'uno1', kind: 'arduino_uno', x: 392, y: 150, params: {}, terminals: ['d13', '5v', 'gnd2'] },
-    { id: 'led1', kind: 'led', x: 120, y: 150, params: { color: 'red' } },
+    { id: 'b1', kind, x: 392, y: 150, params: {}, terminals: [] },
   ],
-  wires: [
-    { id: 'w1', from: { part: 'uno1', terminal: 'd13' }, to: { part: 'led1', terminal: 'anode' } },
-    { id: 'w2', from: { part: 'uno1', terminal: 'gnd2' }, to: { part: 'led1', terminal: 'cathode' } },
-  ],
-  holeWires: [], fileOnly: true,
-};
+  wires: [], holeWires: [], fileOnly: true,
+});
 
 const server = spawn('node_modules/.bin/vite', ['--port', String(port), '--strictPort'],
   { cwd: join(here, '..'), stdio: 'ignore' });
@@ -61,20 +62,20 @@ for (let i = 0; i < 90; i++) {
 }
 
 /** Render the fixture and return a PNG of the board's own rectangle. */
-async function shot(engine) {
+async function shot(engine, kind) {
   const browser = await engine.launch();
   try {
     const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
     await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
     await page.waitForFunction(() => typeof window.__setCircuitData === 'function');
-    await page.evaluate(d => window.__setCircuitData(d), FIXTURE);
-    await page.waitForSelector('g[data-board-face="arduino_uno"]');
+    await page.evaluate(d => window.__setCircuitData(d), fixtureFor(kind));
+    await page.waitForSelector(`g[data-board-face="${kind}"]`);
     await page.waitForTimeout(1200);
-    const box = await page.evaluate(() => {
-      const r = document.querySelector('g[data-board-face="arduino_uno"] > rect');
+    const box = await page.evaluate(k => {
+      const r = document.querySelector(`g[data-board-face="${k}"] > rect`);
       const b = r.getBoundingClientRect();
       return { x: Math.round(b.x), y: Math.round(b.y), width: Math.round(b.width), height: Math.round(b.height) };
-    });
+    }, kind);
     return { png: await page.screenshot({ clip: box }), box };
   } finally { await browser.close(); }
 }
@@ -148,33 +149,29 @@ function patch(png, fx, fy, n = 12) {
   return [Math.round(r / count), Math.round(g / count), Math.round(b / count)];
 }
 
-const a = await shot(chromium);
-const b = await shot(webkit);
-stop();
-
-console.log(`chromium board rect: ${JSON.stringify(a.box)}`);
-console.log(`webkit   board rect: ${JSON.stringify(b.box)}`);
-const dx = Math.abs(a.box.x - b.box.x), dy = Math.abs(a.box.y - b.box.y);
-if (dx > 2 || dy > 2) { console.error(`FAIL: board rect differs (dx=${dx} dy=${dy})`); process.exit(1); }
-
-// Five points inside the board's OWN rectangle. If the face paints where it
-// belongs, every one of them lands on the PCB in both engines; a displaced
-// face leaves them on the dark canvas.
 const POINTS = [[0.5,0.5],[0.25,0.3],[0.75,0.3],[0.25,0.7],[0.75,0.7]];
-const pa = decodePng(a.png), pb = decodePng(b.png);
-let worst = 0, bad = 0;
-for (const [fx, fy] of POINTS) {
-  const ca = patch(pa, fx, fy), cb = patch(pb, fx, fy);
-  const d = Math.max(Math.abs(ca[0]-cb[0]), Math.abs(ca[1]-cb[1]), Math.abs(ca[2]-cb[2]));
-  worst = Math.max(worst, d);
-  const flag = d > 40 ? '  <== DIFFERS' : '';
-  if (d > 40) bad++;
-  console.log(`  (${fx},${fy})  chromium rgb(${ca})  webkit rgb(${cb})  delta=${d}${flag}`);
+let failures = 0;
+for (const kind of KINDS) {
+  const a = await shot(chromium, kind);
+  const b = await shot(webkit, kind);
+  const dx = Math.abs(a.box.x - b.box.x), dy = Math.abs(a.box.y - b.box.y);
+  if (dx > 2 || dy > 2) { console.error(`${kind}: FAIL board rect differs (dx=${dx} dy=${dy})`); failures++; continue; }
+  const pa = decodePng(a.png), pb = decodePng(b.png);
+  let worst = 0, bad = 0;
+  for (const [fx, fy] of POINTS) {
+    const ca = patch(pa, fx, fy), cb = patch(pb, fx, fy);
+    const d = Math.max(Math.abs(ca[0]-cb[0]), Math.abs(ca[1]-cb[1]), Math.abs(ca[2]-cb[2]));
+    worst = Math.max(worst, d);
+    if (d > 40) bad++;
+  }
+  if (bad) { console.error(`${kind}: FAIL — ${bad}/${POINTS.length} points inside the board rect painted differently`); failures++; }
+  else console.log(`${kind}: ok (worst delta ${worst})`);
 }
-if (bad) {
-  console.error(`FAIL: ${bad}/${POINTS.length} points inside the board rect are painted`);
-  console.error('      differently by the two engines — the licensed face is landing');
-  console.error('      outside its own outline in one of them.');
+stop();
+if (failures) {
+  console.error('\nThe licensed face is landing outside its own outline in one engine.');
+  console.error('Chromium drops a parent <g> around transformed foreignObject content;');
+  console.error('WebKit mispaints a CSS-transformed child. `zoom` satisfies both.');
   process.exit(1);
 }
-console.log(`OK: the face paints inside its rectangle in both engines (worst delta ${worst}).`);
+console.log('OK: every licensed board face paints inside its rectangle in both engines.');
