@@ -41,6 +41,7 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
   const controllerKind = device === 'arduino-uno' ? 'arduino_uno'
     : device === 'arduino-nano' ? 'arduino_nano'
       : device === 'pico' ? 'pi_pico'
+        : device === 'pybadge' ? 'pybadge'
         : device === 'stm32f030' ? 'stm32f030' : 'mcu';
   const isBoard = controllerKind !== 'mcu';
   // A bare chip with fixed terminals (stm32f030) names pins like a board
@@ -49,7 +50,7 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
   const controllerPin = pin => isBoard
     ? String(pin.where || pin.pin || pin.name || '').toLowerCase()
     : `P${pin.port}.${pin.bit}`;
-  const powerPin = controllerKind === 'pi_pico' ? 'vbus' : isBareChip ? 'vcc' : isBoard ? '5v' : 'VCC';
+  const powerPin = controllerKind === 'pi_pico' ? 'vbus' : controllerKind === 'pybadge' ? '3v3' : isBareChip ? 'vcc' : isBoard ? '5v' : 'VCC';
   const groundPin = isBareChip ? 'gnd' : isBoard ? 'gnd' : 'GND';
 
   // ── Place and seat the breadboard + controller ───────────────────

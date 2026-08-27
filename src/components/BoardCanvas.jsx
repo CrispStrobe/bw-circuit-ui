@@ -230,7 +230,8 @@ function terminalOffsetsForPart(part) {
     case 'arduino_uno':
     case 'arduino_nano':
     case 'arduino_mega':
-    case 'pi_pico': {
+    case 'pi_pico':
+    case 'pybadge': {
       const sc = getSidecar(part.kind);
       const offsets = boardTerminalOffsets(part.kind, sc);
       if (Object.keys(offsets).length) {
@@ -454,14 +455,15 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       case 'arduino_uno':
       case 'arduino_nano':
       case 'arduino_mega':
-      case 'pi_pico': {
+      case 'pi_pico':
+      case 'pybadge': {
         const sc = getSidecar(kind);
         const geometry = boardVisualGeometry(kind, sc);
         const W = geometry?.w ?? 400;
         const H = geometry?.h ?? 150;
-        const boardColor = kind === 'pi_pico' ? '#7b2cbf' : '#087ea4';
-        const title = kind === 'arduino_uno' ? 'ARDUINO UNO' : kind === 'arduino_nano' ? 'ARDUINO NANO' : kind === 'arduino_mega' ? 'ARDUINO MEGA' : 'RASPBERRY PI PICO';
-        const subtitle = kind === 'pi_pico' ? 'RP2040 · 3V3' : kind === 'arduino_mega' ? 'ATmega2560 · 5V' : 'ATmega328P · 5V';
+        const boardColor = kind === 'pybadge' ? '#512da8' : kind === 'pi_pico' ? '#7b2cbf' : '#087ea4';
+        const title = kind === 'pybadge' ? 'ADAFRUIT PYBADGE' : kind === 'arduino_uno' ? 'ARDUINO UNO' : kind === 'arduino_nano' ? 'ARDUINO NANO' : kind === 'arduino_mega' ? 'ARDUINO MEGA' : 'RASPBERRY PI PICO';
+        const subtitle = kind === 'pybadge' ? 'SAMD51 · 160×128 · 3V3' : kind === 'pi_pico' ? 'RP2040 · 3V3' : kind === 'arduino_mega' ? 'ATmega2560 · 5V' : 'ATmega328P · 5V';
         const offsets = boardTerminalOffsets(kind, sc);
         const WokwiFace = kind === 'arduino_uno' ? WokwiArduinoUno
           : kind === 'arduino_nano' ? WokwiArduinoNano
@@ -495,6 +497,16 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             {!WokwiFace && <>
               <rect x={-W / 2 + 8} y={-H / 2 + 8} width={Math.max(20, W - 16)} height={Math.max(20, H - 16)}
                 rx={3} fill="#0b6b8a" opacity={0.35} />
+              {kind === 'pybadge' && <>
+                <rect x={-W * 0.22} y={-H * 0.39} width={W * 0.44} height={H * 0.42}
+                  rx={4} fill="#06111f" stroke="#b39ddb" strokeWidth={2} />
+                <path d={`M ${-W * 0.35} ${H * 0.17} h ${W * 0.16} M ${-W * 0.27} ${H * 0.09} v ${H * 0.16}`}
+                  stroke="#e2e8f0" strokeWidth={6} strokeLinecap="round" />
+                <circle cx={W * 0.29} cy={H * 0.15} r={H * 0.055} fill="#e91e63" />
+                <circle cx={W * 0.37} cy={H * 0.27} r={H * 0.055} fill="#e91e63" />
+                {[ -2, -1, 0, 1, 2 ].map(n => <circle key={n} cx={n * W * 0.045}
+                  cy={H * 0.12} r={H * 0.018} fill="#19d3ae" />)}
+              </>}
               <text x={0} y={-4} textAnchor="middle"
               fill="#dff6ff" fontSize={kind === 'pi_pico' ? 5.5 : 7} fontFamily="monospace" fontWeight="bold">
                 {title}

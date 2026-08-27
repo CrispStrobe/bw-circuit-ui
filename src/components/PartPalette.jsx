@@ -32,6 +32,9 @@ const CATEGORIES = [
       { kind: 'pi_pico', label: 'Raspberry Pi Pico', params: {}, color: '#7b2cbf',
         capability: 'RP2040 simulation',
         tooltip: 'RP2040 board — 3.3 V logic, GPIO simulation; do not connect 5 V signals' },
+      { kind: 'pybadge', label: 'Adafruit PyBadge', params: {}, color: '#512da8',
+        capability: 'Arcade controls + wiring',
+        tooltip: 'ATSAMD51J19 game board — 160×128 TFT, controls, Feather and STEMMA connections; 3.3 V only' },
     ],
   },
   {

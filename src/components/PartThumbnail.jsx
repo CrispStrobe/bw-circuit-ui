@@ -9,6 +9,7 @@ import React from 'react';
 import { getSidecar, resolveArtSlug } from '../model/parts-registry.js';
 import { boardVisualGeometry } from '../model/board-geometry.js';
 import { WokwiArduinoUno, WokwiArduinoNano, WokwiArduinoMega } from '../wokwi-wrappers/index.js';
+import pybadgeArt from '../parts-data/pybadge.svg';
 
 const S = 48; // internal coordinate space
 
@@ -31,6 +32,10 @@ export function PartThumbnail({ kind, color, params, displaySize }) {
   const w = displaySize || S;
   const h = displaySize || S;
   const cx = S / 2, cy = S / 2;
+
+  if (kind === 'pybadge') {
+    return <img src={pybadgeArt} width={w} height={h} alt="Adafruit PyBadge" style={{objectFit: 'contain'}} />;
+  }
 
   // Board thumbnails share the same MIT Wokwi faces as the canvas. This is
   // deliberately before the Vite-only SVG lookup: BrickWright Lite is built

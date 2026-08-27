@@ -61,6 +61,7 @@ export const WOKWI_BOARD_SPECS = Object.freeze({
 // introduces no third-party artwork or restrictive asset licence.
 const CODE_BOARD_SPECS = Object.freeze({
   pi_pico: { mmW: 51, mmH: 21, transpose: true },
+  pybadge: { mmW: 85.6, mmH: 54, transpose: false },
 });
 
 /** Dimensions in circuit-world units, before part rotation. */
@@ -164,7 +165,7 @@ export function layoutFloatingParts(parts, sidecarForKind, options = {}) {
   const sizeOf = part => {
     const sidecar = sidecarForKind(part.kind);
     if (part.kind === 'vcc' || part.kind === 'gnd') return { w: 36, h: 40 };
-    if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico'].includes(part.kind)) {
+    if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge'].includes(part.kind)) {
       const board = boardVisualGeometry(part.kind, sidecar);
       if (board) return { w: board.w, h: board.h };
     }

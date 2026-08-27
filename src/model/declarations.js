@@ -293,7 +293,7 @@ function reachesViaNets(partId, terminal, targetKind, idx) {
  */
 const BOARD_TO_DEVICE = {
   arduino_uno: 'arduino-uno', arduino_nano: 'arduino-nano',
-  arduino_mega: 'arduino-mega', pi_pico: 'pico',
+  arduino_mega: 'arduino-mega', pi_pico: 'pico', pybadge: 'pybadge',
 };
 const MCU_KINDS = new Set(['mcu', ...Object.keys(BOARD_TO_DEVICE)]);
 

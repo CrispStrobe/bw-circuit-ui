@@ -568,7 +568,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       return;
     }
 
-    const mcu = parts.find(p => ['mcu', 'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico'].includes(p.kind));
+    const mcu = parts.find(p => ['mcu', 'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge'].includes(p.kind));
     // No MCU is NOT "no simulation": pure circuits (battery+LED, FG+scope,
     // RC charge) need the clock just as much. Only the demo pin script
     // below is MCU-conditional.
@@ -989,7 +989,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // floating off the breadboard; this is the leveraged fix rather than
     // re-authoring 200 circuits.
     try {
-      const mcuKinds = new Set(['mcu', 'stc_mcu', 'arduino_nano', 'arduino_uno', 'pi_pico', 'attiny85', 'attiny88', 'attiny13', 'attiny2313']);
+      const mcuKinds = new Set(['mcu', 'stc_mcu', 'arduino_nano', 'arduino_uno', 'pi_pico', 'pybadge', 'attiny85', 'attiny88', 'attiny13', 'attiny2313']);
       const bb = circuit.parts.find(p => p.kind === 'breadboard');
       const unseatMcu = circuit.parts.find(p => mcuKinds.has(p.kind) && !p.seat);
       if (bb && unseatMcu && BB_FOOTPRINTS[unseatMcu.kind]) {
@@ -1568,7 +1568,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             Build Machine, then the ASM tab. */}
         {debuggerOn && (!stc || !stc.pins || !stc.pins.length) && !hasRetroCpu && (() => {
           const mcuPart = parts.find(p =>
-            p.kind === 'mcu' || p.kind === 'arduino_uno' || p.kind === 'arduino_nano' || p.kind === 'arduino_mega' || p.kind === 'pi_pico');
+            p.kind === 'mcu' || p.kind === 'arduino_uno' || p.kind === 'arduino_nano' || p.kind === 'arduino_mega' || p.kind === 'pi_pico' || p.kind === 'pybadge');
           if (!mcuPart) return null;
           const chipName = mcuPart.kind === 'pi_pico' ? 'Pico (RP2040)'
             : mcuPart.kind === 'arduino_nano' ? 'Arduino Nano'
