@@ -249,22 +249,27 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
    * shape: the sidecar and the engine describe DIFFERENT DEVICES, so closing
    * one means deciding which device the part is, not renaming anything.
    *
-   * stepper came OFF this list on 2026-08-27 and shows what closing one costs:
+   * stepper and gas_sensor both came OFF this list on 2026-08-27, and both by
+   * the same route — the engine learned the SECOND thing the part can be
+   * (bipolar as well as unipolar, module as well as bare element), the sidecar
+   * declared it in `variants`, and this file tries a declared variant before
+   * reporting a mismatch. What is left is not that shape: a DS1302's crystal
+   * is not another packaging of the same device, it is behaviour nobody has
+   * modelled. That is why it is the last one.
+   *
+   * Closing one costs:
    * bw-board 57da9b0 taught the device BOTH wirings behind params.wiring, the
    * sidecar declares them as variants, and this file now tries a declared
    * variant before reporting a mismatch. Three changes in three repos for four
    * pins — which is why the two below are a decision and not a chore.
    *
-   *   ds1302       sidecar carries the crystal pins and the backup rail; the
-   *                engine models neither
-   *   gas_sensor   sidecar is the 4-pin breakout MODULE; the engine models
-   *                the bare MQ element and its heater
+   *   ds1302       sidecar carries the crystal pins x1/x2 and the vcc1
+   *                battery-backup rail; the engine models neither
    *
    * MAY ONLY SHRINK.
    */
   const UNREACHABLE_BY_KIND = {
     ds1302: 3,
-    gas_sensor: 2,
   };
 
   /**
@@ -294,7 +299,6 @@ describe('terminal cross-check: bw-parts sidecars vs circuit model', () => {
   const EXTRA_BY_KIND = {
     stc15_mcu: 38,
     '74hc595': 19,
-    gas_sensor: 4,
     simplevga_card: 1,
     tcs34725: 1,
   };
