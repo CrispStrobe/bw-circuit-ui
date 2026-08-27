@@ -51,6 +51,22 @@ describe('the computer ladder — state, and a clock that moves it', () => {
     assert.equal(files.length, 17, `found ${files.join(', ')}`);
   });
 
+  it('the README names the ranges the gallery actually holds', () => {
+    // A doc that undersells the work is a doc nobody trusts, and this one had
+    // drifted to l0..l9 / c0..c10 while the gallery held l0..l10 and c0..c16.
+    // Nothing checked it, so nothing noticed for seven rungs.
+    const readme = readFileSync(join(GALLERY, '..', 'README.md'), 'utf8');
+    const top = (prefix) => Math.max(...readdirSync(GALLERY)
+      .map((f) => new RegExp(`^${prefix}(\\d+)-`).exec(f))
+      .filter(Boolean).map((m) => Number(m[1])));
+    for (const [prefix, label] of [['l', 'logic'], ['c', 'computer']]) {
+      const range = `${prefix}0..${prefix}${top(prefix)}`;
+      assert.ok(readme.includes(range),
+        `README must name the ${label} ladder as ${range}; it does not. Update the `
+        + 'bullet, or a reader is told there is less here than there is.');
+    }
+  });
+
   it('contains no CPU — the point is building one, not using one', () => {
     const FORBIDDEN = new Set(['mcu', 'w65c02', 'z80', 'eater6502', 'r6507', 'pi_pico',
       'arduino_uno', 'arduino_nano', 'attiny88', 'attiny85', '28c256', '62256']);

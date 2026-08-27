@@ -28,16 +28,21 @@ is fabricated.
   analysis, not from block arguments. Undriven shows "no signal".
 - **BOM export** — bill of materials with CSV download.
 - **Examples browser** — gallery circuits loadable via `circuitData` prop.
-- **Teaching ladders** — `gallery/l0..l9` (a single AND gate to a calculator) and
-  `gallery/c0..c10` (a 555 ticking to a machine that runs a program), all 74-series,
-  no CPU and no firmware, every rung simulated and asserted. See
-  [`docs/LADDERS.md`](docs/LADDERS.md).
+- **Teaching ladders** — `gallery/l0..l10` (a single AND gate to a keypad you can
+  type into) and `gallery/c0..c16` (a 555 ticking to a microcoded computer: a
+  control ROM, conditional jumps, an 8-bit ALU that derives its own flags, a
+  stack, CALL/RET, and the whole machine again with a ROM where its control
+  matrix was). All 74-series, no CPU and no firmware, every rung simulated and
+  asserted. See [`docs/LADDERS.md`](docs/LADDERS.md).
 - **Multimeter** — voltage, current (with burden-voltage teaching note),
   resistance (refuses on powered board — `requires-power-off` is a feature).
 
 ## Verification
 
-621 tests, 0 failures. Gate: `npm run verify:interaction` (12 scenarios).
+2,226 tests, 0 failures on CI (2026-08-27). Gate: `npm run verify:interaction`
+(12 scenarios). The ladder RANGES above are asserted against the gallery by
+`test/computer-ladder.test.js` — they had drifted to `l0..l9`/`c0..c10` before
+anything checked them.
 
 **Nothing in this campaign has run on real silicon.** All cross-model claims
 are category 2b (same-source agreement) at best. Categories per
