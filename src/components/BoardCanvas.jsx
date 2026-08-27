@@ -478,13 +478,28 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                  transformed HTML inside foreignObject. Anchor the licensed
                  face in world coordinates directly; its outline, pins and
                  hit box now share the same (x,y,W,H) contract. */
+              /* `zoom`, not `transform: scale()`, and no parent <g>.
+                 Each engine breaks a different one of those two:
+                   - Chromium drops a parent <g> translation when laying out
+                     transformed HTML inside a foreignObject, so the face must
+                     be anchored in world coordinates here;
+                   - WebKit lays a CSS-transformed child out correctly and then
+                     PAINTS it elsewhere — in Safari the board appeared up and
+                     left of its own outline and cropped, so the pins the wires
+                     ran to sat in empty space and the art floated above them
+                     (owner report, 2026-08-28).
+                 getBoundingClientRect returns the right box in BOTH cases, for
+                 the foreignObject, the div, the element and its shadow svg, so
+                 nothing measurable catches the WebKit one; only pixels do, and
+                 scripts/verify-board-face-webkit.mjs compares them.
+                 zoom scales layout rather than paint, so both engines agree. */
               <foreignObject x={x - W / 2} y={y - H / 2} width={W} height={H}
                 transform={faceTransform}
                 data-board-face={kind} data-board-face-license="MIT"
                 style={{pointerEvents: 'none', overflow: 'hidden'}}>
                 <div xmlns="http://www.w3.org/1999/xhtml" style={{
                   width: geometry.nativeW, height: geometry.nativeH,
-                  transform: `scale(${geometry.wokwiScale})`, transformOrigin: '0 0',
+                  zoom: geometry.wokwiScale,
                 }}>
                   <WokwiFace style={{display: 'block'}} />
                 </div>
