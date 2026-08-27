@@ -47,8 +47,8 @@ function bench(name) {
 describe('the computer ladder — state, and a clock that moves it', () => {
   const files = readdirSync(GALLERY).filter((f) => /^c\d+-.*\.json$/.test(f));
 
-  it('is present: fifteen rungs, c0 through c14', () => {
-    assert.equal(files.length, 15, `found ${files.join(', ')}`);
+  it('is present: sixteen rungs, c0 through c15', () => {
+    assert.equal(files.length, 16, `found ${files.join(', ')}`);
   });
 
   it('contains no CPU — the point is building one, not using one', () => {
@@ -69,6 +69,8 @@ describe('the computer ladder — state, and a clock that moves it', () => {
       ['c12-conditional-jump.json',
         'as c11, with the flags added as two more address lines — the control store is the '
         + 'subject, not a shortcut past one.'],
+      ['c15-call-and-return.json',
+        'as c11 and c12: the control store IS the instruction set, and CALL/RET are rows in it.'],
     ]);
     const MEMORY = new Set(['28c256', '62256']);
 
@@ -587,6 +589,111 @@ describe('C14 — the stack', () => {
     }
     const clrPulledDown = c.wires.some((w) => w.from === 'r_clr' && w.to === 'gnd1');
     assert.ok(clrPulledDown, "CLEAR is active HIGH on a 193, so it is the one that idles low");
+  });
+});
+
+describe('C15 — CALL and RET in microcode', () => {
+  const ALL = ['ep', 'lm', 'cp', 'ce', 'li', 'ei', 'la', 'lb',
+    'eu', 'su', 'ea', 'lo', 'lp', 'spd', 'spu', 'esp'];
+  const CALL = 0b0101;
+  const RET = 0b0110;
+  const step = (b) => [0, 1, 2].reduce((a, i) => a + (b.lit(`led_s${i}`) ? 1 << i : 0), 0);
+  const sp = (b) => [0, 1, 2, 3].reduce((a, i) => a + (b.lit(`led_sp${i}`) ? 1 << i : 0), 0);
+
+  function machine() {
+    const b = bench('c15-call-and-return');
+    b.set('swf', 0b100); b.settle();     // SP clear is position 3 of the flag bank
+    b.set('swf', 0b000); b.settle();
+    const api = {
+      b,
+      sp: () => sp(b),
+      /** Run one instruction through all six steps; return what each asserted. */
+      run(op) {
+        b.set('swi', op); b.settle();
+        let g = 0;
+        while (step(b) !== 0 && g++ < 12) b.tick('swc');
+        b.settle();
+        const seq = [];
+        for (let t = 0; t < 6; t++) {
+          if (t > 0) b.tick('swc');
+          b.settle();
+          seq.push(ALL.filter((l) => b.lit(`led_${l}`)).sort());
+        }
+        b.tick('swc');                    // release the last step's lines
+        b.settle();
+        return seq;
+      },
+    };
+    return api;
+  }
+
+  it('CALL addresses the slot, puts the return address up, then moves and jumps', () => {
+    const m = machine();
+    const seq = m.run(CALL);
+    assert.deepEqual(seq[3], ['esp', 'lm'].sort(), 'T4 points the address bus at the stack');
+    assert.deepEqual(seq[4], ['ep'], 'T5 puts the program counter on the bus to be stored');
+    assert.deepEqual(seq[5], ['ei', 'lp', 'spd'].sort(), 'T6 moves the pointer and jumps');
+  });
+
+  it('RET is CALL backwards, and moves the pointer FIRST', () => {
+    // The ordering is the whole correctness argument. CALL stores THEN
+    // moves, so the write lands in the slot the pointer is resting on;
+    // RET moves THEN reads, because the value it wants is below. Swap
+    // either and the return address is read from an untouched cell.
+    const m = machine();
+    const seq = m.run(RET);
+    assert.deepEqual(seq[3], ['spu'], 'T4 retreats before anything is read');
+    assert.deepEqual(seq[4], ['esp', 'lm'].sort(), 'T5 then points at that slot');
+    assert.deepEqual(seq[5], ['ce', 'lp'].sort(), 'T6 reads it into the program counter');
+    assert.ok(seq[3].includes('spu') && !seq[5].includes('spu'),
+      'RET moves at the START; CALL moves at the END. They are not symmetric in time.');
+  });
+
+  it('the pointer actually moves — this is hardware, not lamps', () => {
+    const m = machine();
+    assert.equal(m.sp(), 0);
+    m.run(CALL);
+    assert.equal(m.sp(), 15, 'a full-descending stack: from 0 the first push wraps to the top');
+    m.run(RET);
+    assert.equal(m.sp(), 0, 'and RET puts it back');
+  });
+
+  it('nests — which is the only reason a stack beats one saved register', () => {
+    const m = machine();
+    m.run(CALL); m.run(CALL); m.run(CALL);
+    assert.equal(m.sp(), 13, 'three calls deep');
+    m.run(RET); m.run(RET);
+    assert.equal(m.sp(), 15, 'two returns');
+    m.run(RET);
+    assert.equal(m.sp(), 0, 'and back to the top');
+  });
+
+  it('an instruction that is not CALL leaves the pointer alone', () => {
+    // Spd or Spu set in the wrong microcode row would corrupt the stack on
+    // every unrelated instruction, and nothing else here would notice.
+    const m = machine();
+    for (const op of [0b0000, 0b0001, 0b0010, 0b1110, 0b0111]) {
+      const before = m.sp();
+      const seq = m.run(op);
+      assert.equal(m.sp(), before, `opcode ${op.toString(2)} moved the stack pointer`);
+      for (const s2 of seq) {
+        assert.ok(!s2.includes('spd') && !s2.includes('spu'),
+          `opcode ${op.toString(2)} asserted a stack line`);
+      }
+    }
+  });
+
+  it('the stack lines reach the counter through an inverter, and must', () => {
+    // A control line idles LOW; the 74LS193's two clocks idle HIGH and it
+    // only counts while the other is high. Wire Spd straight to `down` and
+    // both clocks sit low, the pointer never moves, and CALL silently
+    // becomes a jump that forgets where it came from.
+    const c = JSON.parse(readFileSync(join(GALLERY, 'c15-call-and-return.json'), 'utf8'));
+    for (const pin of ['down', 'up']) {
+      const w = c.wires.find((x) => x.to === 'sp' && x.toTerminal === pin);
+      assert.ok(w, `sp.${pin} must be driven`);
+      assert.equal(w.from, 'inv', `sp.${pin} must come from the inverter, not straight off the ROM`);
+    }
   });
 });
 

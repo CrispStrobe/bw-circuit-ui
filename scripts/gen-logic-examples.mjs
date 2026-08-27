@@ -505,6 +505,28 @@ const LADDER = [
       ['16 pushes', 'SP wraps to 0 — no depth check'], ['clocks', 'idle HIGH, count on release']],
     cols: ['action', 'what happens'],
   },
+  {
+    src: 'c15-call-and-return', id: 'pc116-call-and-return', difficulty: 5,
+    en: { title: 'CALL and RET — the microcode moves the pointer',
+      teaches: 'a subroutine call as rows of bytes; why CALL stores then moves and RET moves then reads' },
+    de: { title: 'CALL und RET — der Mikrocode bewegt den Zeiger',
+      desc: 'In pc115 wurde der Stapel von Hand bedient. Hier macht das der Steuerspeicher: zwei weitere '
+        + 'Ausgangsbits, Spd und Spu, und CALL und RET sind einfach Bytezeilen wie jeder andere Befehl. '
+        + 'Opcode 0101 einstellen und durchtakten — die Stapelzelle wird adressiert, die Rücksprungadresse '
+        + 'kommt auf den Bus, und im letzten Schritt bewegt sich der Zeiger und die Maschine springt. '
+        + '0110 ist dasselbe rückwärts, und dort bewegt sich der Zeiger ZUERST, denn die gesuchte Zelle '
+        + 'liegt unter der, auf der er ruht. Diese Reihenfolge ist das ganze Korrektheitsargument: '
+        + 'vertauscht man sie auf einer der beiden Seiten, wird die Rücksprungadresse aus einer nie '
+        + 'beschriebenen Zelle gelesen. '
+        + 'Und der Inverter ist kein Beiwerk: Eine Steuerleitung ruht LOW, die beiden Takteingänge des '
+        + '74LS193 ruhen HIGH. Ohne ihn lägen beide Takte dauerhaft low, der Zeiger bewegte sich nie, und '
+        + 'CALL wäre still ein Sprung, der vergisst, woher er kam.',
+      teaches: 'Ein Unterprogrammaufruf als Bytezeilen; warum CALL erst speichert und RET erst zurückgeht' },
+    table: [['CALL T4', 'Esp + Lm — address the slot'], ['CALL T5', 'Ep — return address on the bus'],
+      ['CALL T6', 'Spd + Ei + Lp — move and jump'], ['RET T4', 'Spu — move FIRST'],
+      ['RET T5', 'Esp + Lm'], ['RET T6', 'CE + Lp — read it back']],
+    cols: ['step', 'control word'],
+  },
 ];
 
 const mdTable = (cols, rows) => [

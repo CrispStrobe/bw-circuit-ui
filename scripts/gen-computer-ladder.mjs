@@ -1373,4 +1373,147 @@ for (const line of done) console.log(line);
   }));
 }
 
+// ── C15: CALL and RET — the microcode moves the pointer ────────────
+
+{
+  // C14 worked the stack by hand: press /WE, press PUSH, press POP. This
+  // rung takes the buttons away. The control store gets two more output
+  // bits, Spd and Spu, and CALL and RET become what every instruction
+  // already is here — a row of bytes.
+  //
+  // Sixteen control lines is exactly two ROMs, which is why the line list
+  // stops where it does. Esp (stack pointer onto the address bus) earns
+  // its place because both instructions need it; the memory WRITE itself
+  // rides the path C8 already built and is not re-wired here.
+  //
+  // The 193's clocks idle HIGH, so Spd and Spu cannot drive them
+  // directly: a control line idles LOW, both clocks would sit low, and
+  // the counter would never move. They go through a 74HC04 first, which
+  // means the pointer steps when the control line RELEASES — the same
+  // "count on release" C14 met with its buttons, arriving here as a
+  // property of the microcode's timing rather than of a finger.
+  const CTRL_LO = ['ep', 'lm', 'cp', 'ce', 'li', 'ei', 'la', 'lb'];
+  const CTRL_HI = ['eu', 'su', 'ea', 'lo', 'lp', 'spd', 'spu', 'esp'];
+  const FETCH = [['ep', 'lm'], ['cp'], ['ce', 'li']];
+  const EXEC = {
+    0b0000: () => [['ei', 'lm'], ['ce', 'la'], []],                  // LDA
+    0b0001: () => [['ei', 'lm'], ['ce', 'lb'], ['eu', 'la']],         // ADD
+    0b0010: () => [['ei', 'lm'], ['ce', 'lb'], ['eu', 'la', 'su']],   // SUB
+    0b0011: (z) => [z ? ['ei', 'lp'] : [], [], []],                   // JZ
+    0b0100: (z, c) => [c ? ['ei', 'lp'] : [], [], []],                // JC
+    // CALL: address the stack slot, put the return address on the bus,
+    // then move the pointer and jump — in that order, because the write
+    // has to land before the slot stops being the current one.
+    0b0101: () => [['esp', 'lm'], ['ep'], ['spd', 'ei', 'lp']],       // CALL
+    // RET is CALL backwards, and the pointer moves FIRST: the slot you
+    // want is the one below where the pointer is resting.
+    0b0110: () => [['spu'], ['esp', 'lm'], ['ce', 'lp']],             // RET
+    0b1110: () => [['ea', 'lo'], [], []],                             // OUT
+  };
+
+  const lo = new Array(512).fill(0);
+  const hi = new Array(512).fill(0);
+  const at = (op, stp, z, c) => (c << 8) | (z << 7) | (op << 3) | stp;
+  const put = (a, lines) => {
+    for (const l of lines) {
+      const i = CTRL_LO.indexOf(l);
+      if (i >= 0) lo[a] |= 1 << i;
+      const j = CTRL_HI.indexOf(l);
+      if (j >= 0) hi[a] |= 1 << j;
+    }
+  };
+  for (let op = 0; op < 16; op++) {
+    for (let z = 0; z < 2; z++) {
+      for (let c = 0; c < 2; c++) {
+        FETCH.forEach((lines, stp) => put(at(op, stp, z, c), lines));
+        const exec = EXEC[op];
+        if (exec) exec(z, c).forEach((lines, k) => put(at(op, k + 3, z, c), lines));
+      }
+    }
+  }
+
+  const parts = [...rails(),
+    part('swc', 'dip_switch_spst', { switches: 0 }),
+    part('swi', 'dip_switch_spst', { switches: 0 }),
+    part('swf', 'dip_switch_spst', { switches: 0 }),
+    part('step', '74ls161'),
+    part('wrap', '74hc00'),
+    part('rom_lo', '28c256', { readOnly: true, contents: lo }),
+    part('rom_hi', '28c256', { readOnly: true, contents: hi }),
+    part('sp', '74ls193'),
+    part('inv', '74hc04'),
+  ];
+  const wires = [...powerChip('step'), ...powerChip('wrap'), ...powerChip('rom_lo'),
+    ...powerChip('rom_hi'), ...powerChip('sp'), ...powerChip('inv')];
+
+  const clk = switchInput('swc', 1, 'r_swc');
+  parts.push(...clk.parts);
+  wires.push(...clk.wires, wire('swc', '1b', 'step', 'clk'));
+  wires.push(wire('step', 'q1', 'wrap', '1a'), wire('step', 'q2', 'wrap', '1b'),
+    wire('wrap', '1y', 'step', 'clrb'));
+  for (const t of ['enp', 'ent', 'loadb']) wires.push(wire('vcc1', 'vcc', 'step', t));
+  for (const d of ['d0', 'd1', 'd2', 'd3']) wires.push(wire('gnd1', 'gnd', 'step', d));
+
+  for (let i = 0; i < 4; i++) {
+    const sw = switchInput('swi', i + 1, `r_swi${i}`);
+    parts.push(...sw.parts); wires.push(...sw.wires);
+  }
+  for (let i = 0; i < 2; i++) {
+    const sw = switchInput('swf', i + 1, `r_swf${i}`);
+    parts.push(...sw.parts); wires.push(...sw.wires);
+  }
+  // The stack-pointer reset shares the flag bank's spare position.
+  const spclr = switchInput('swf', 3, 'r_spclr');
+  parts.push(...spclr.parts);
+  wires.push(...spclr.wires, wire('swf', '3b', 'sp', 'clr'));
+
+  for (const rom of ['rom_lo', 'rom_hi']) {
+    for (let i = 0; i < 3; i++) wires.push(wire('step', `q${i}`, rom, `a${i}`));
+    for (let i = 0; i < 4; i++) wires.push(wire('swi', `${i + 1}b`, rom, `a${i + 3}`));
+    wires.push(wire('swf', '1b', rom, 'a7'), wire('swf', '2b', rom, 'a8'));
+    for (let i = 9; i <= 14; i++) wires.push(wire('gnd1', 'gnd', rom, `a${i}`));
+    wires.push(wire('gnd1', 'gnd', rom, 'ceb'), wire('gnd1', 'gnd', rom, 'oeb'),
+      wire('vcc1', 'vcc', rom, 'web'));
+  }
+
+  CTRL_LO.forEach((name, i) => {
+    const led = outputLed('rom_lo', `d${i}`, `led_${name}`, `rl_${name}`, 'green');
+    parts.push(...led.parts); wires.push(...led.wires);
+  });
+  CTRL_HI.forEach((name, i) => {
+    const led = outputLed('rom_hi', `d${i}`, `led_${name}`, `rl_${name}`,
+      /^sp/.test(name) ? 'yellow' : 'red');
+    parts.push(...led.parts); wires.push(...led.wires);
+  });
+  // Spd -> /down, Spu -> /up. The inverter is what makes an idle-low
+  // control line safe to hand a chip whose clocks idle high.
+  wires.push(wire('rom_hi', 'd5', 'inv', '1a'), wire('inv', '1y', 'sp', 'down'));
+  wires.push(wire('rom_hi', 'd6', 'inv', '2a'), wire('inv', '2y', 'sp', 'up'));
+  wires.push(wire('vcc1', 'vcc', 'sp', 'loadb'));
+  for (const d of ['d0', 'd1', 'd2', 'd3']) wires.push(wire('gnd1', 'gnd', 'sp', d));
+
+  for (let i = 0; i < 3; i++) {
+    const led = outputLed('step', `q${i}`, `led_s${i}`, `rls${i}`, 'yellow');
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+  for (let i = 0; i < 4; i++) {
+    const led = outputLed('sp', `q${i}`, `led_sp${i}`, `rlsp${i}`, 'red');
+    parts.push(...led.parts); wires.push(...led.wires);
+  }
+
+  done.push(emit('c15-call-and-return', {
+    vcc: 5, parts, wires,
+    _title: 'CALL and RET — the microcode moves the pointer',
+    _description: 'C14 worked the stack by hand. Here the control store does it: two more output bits, '
+      + 'Spd and Spu, and CALL and RET are just rows of bytes like every other instruction. Set the opcode '
+      + 'to 0101 and clock through — the stack slot is addressed, the return address goes on the bus, and '
+      + 'on the last step the pointer moves and the machine jumps. 0110 is the same thing backwards, and '
+      + 'the pointer moves FIRST because the slot you want is below where it is resting. Watch the '
+      + 'inverter: a control line idles LOW and the 74LS193\'s clocks idle HIGH, so without it both clocks '
+      + 'would sit low and the pointer would never move at all — which is C14\'s lesson arriving as a '
+      + 'property of the microcode\'s timing instead of a finger on a button.',
+    _category: 'computer', _difficulty: 5, _stage: 'C15',
+  }));
+}
+
 console.log(`\n${done.length} computer examples written to gallery/`);

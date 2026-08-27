@@ -1,0 +1,2608 @@
+{
+  "vcc": 5,
+  "parts": [
+    {
+      "id": "vcc1",
+      "kind": "vcc",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "gnd1",
+      "kind": "gnd",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "swc",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 0
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "swi",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 0
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "swf",
+      "kind": "dip_switch_spst",
+      "params": {
+        "switches": 0
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "step",
+      "kind": "74ls161",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "wrap",
+      "kind": "74hc00",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rom_lo",
+      "kind": "28c256",
+      "params": {
+        "readOnly": true,
+        "contents": [
+          3,
+          4,
+          24,
+          34,
+          72,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          34,
+          136,
+          64,
+          0,
+          0,
+          3,
+          4,
+          24,
+          34,
+          136,
+          64,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          2,
+          1,
+          32,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          2,
+          8,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          34,
+          72,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          34,
+          136,
+          64,
+          0,
+          0,
+          3,
+          4,
+          24,
+          34,
+          136,
+          64,
+          0,
+          0,
+          3,
+          4,
+          24,
+          32,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          2,
+          1,
+          32,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          2,
+          8,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          34,
+          72,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          34,
+          136,
+          64,
+          0,
+          0,
+          3,
+          4,
+          24,
+          34,
+          136,
+          64,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          32,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          2,
+          1,
+          32,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          2,
+          8,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          34,
+          72,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          34,
+          136,
+          64,
+          0,
+          0,
+          3,
+          4,
+          24,
+          34,
+          136,
+          64,
+          0,
+          0,
+          3,
+          4,
+          24,
+          32,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          32,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          2,
+          1,
+          32,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          2,
+          8,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          4,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rom_hi",
+      "kind": "28c256",
+      "params": {
+        "readOnly": true,
+        "contents": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          128,
+          0,
+          48,
+          0,
+          0,
+          0,
+          0,
+          0,
+          64,
+          128,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          12,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          128,
+          0,
+          48,
+          0,
+          0,
+          0,
+          0,
+          0,
+          64,
+          128,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          12,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          128,
+          0,
+          48,
+          0,
+          0,
+          0,
+          0,
+          0,
+          64,
+          128,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          12,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          0,
+          0,
+          0,
+          0,
+          0,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          128,
+          0,
+          48,
+          0,
+          0,
+          0,
+          0,
+          0,
+          64,
+          128,
+          16,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          12,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "sp",
+      "kind": "74ls193",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "inv",
+      "kind": "74hc04",
+      "params": {},
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_swc",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_swi0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_swi1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_swi2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_swi3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_swf0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_swf1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "r_spclr",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_ep",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_ep",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_lm",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_lm",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_cp",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_cp",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_ce",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_ce",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_li",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_li",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_ei",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_ei",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_la",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_la",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_lb",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "green"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_lb",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_eu",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_eu",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_su",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_su",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_ea",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_ea",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_lo",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_lo",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_lp",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_lp",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_spd",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_spd",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_spu",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_spu",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_esp",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rl_esp",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_s0",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rls0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_s1",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rls1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_s2",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "yellow"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rls2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_sp0",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlsp0",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_sp1",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlsp1",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_sp2",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlsp2",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "led_sp3",
+      "kind": "led",
+      "params": {
+        "vf": 2,
+        "color": "red"
+      },
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "rlsp3",
+      "kind": "resistor",
+      "params": {
+        "ohms": 330
+      },
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "wires": [
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "step",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "step",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "wrap",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "wrap",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rom_lo",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_lo",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rom_hi",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_hi",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "sp",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sp",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "inv",
+      "toTerminal": "vcc"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "inv",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swc",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "1b",
+      "to": "r_swc",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_swc",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swc",
+      "fromTerminal": "1b",
+      "to": "step",
+      "toTerminal": "clk"
+    },
+    {
+      "from": "step",
+      "fromTerminal": "q1",
+      "to": "wrap",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "step",
+      "fromTerminal": "q2",
+      "to": "wrap",
+      "toTerminal": "1b"
+    },
+    {
+      "from": "wrap",
+      "fromTerminal": "1y",
+      "to": "step",
+      "toTerminal": "clrb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "step",
+      "toTerminal": "enp"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "step",
+      "toTerminal": "ent"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "step",
+      "toTerminal": "loadb"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "step",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "step",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "step",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "step",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swi",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "1b",
+      "to": "r_swi0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_swi0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swi",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "2b",
+      "to": "r_swi1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_swi1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swi",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "3b",
+      "to": "r_swi2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_swi2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swi",
+      "toTerminal": "4a"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "4b",
+      "to": "r_swi3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_swi3",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swf",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "swf",
+      "fromTerminal": "1b",
+      "to": "r_swf0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_swf0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swf",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "swf",
+      "fromTerminal": "2b",
+      "to": "r_swf1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_swf1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "swf",
+      "toTerminal": "3a"
+    },
+    {
+      "from": "swf",
+      "fromTerminal": "3b",
+      "to": "r_spclr",
+      "toTerminal": "a"
+    },
+    {
+      "from": "r_spclr",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "swf",
+      "fromTerminal": "3b",
+      "to": "sp",
+      "toTerminal": "clr"
+    },
+    {
+      "from": "step",
+      "fromTerminal": "q0",
+      "to": "rom_lo",
+      "toTerminal": "a0"
+    },
+    {
+      "from": "step",
+      "fromTerminal": "q1",
+      "to": "rom_lo",
+      "toTerminal": "a1"
+    },
+    {
+      "from": "step",
+      "fromTerminal": "q2",
+      "to": "rom_lo",
+      "toTerminal": "a2"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "1b",
+      "to": "rom_lo",
+      "toTerminal": "a3"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "2b",
+      "to": "rom_lo",
+      "toTerminal": "a4"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "3b",
+      "to": "rom_lo",
+      "toTerminal": "a5"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "4b",
+      "to": "rom_lo",
+      "toTerminal": "a6"
+    },
+    {
+      "from": "swf",
+      "fromTerminal": "1b",
+      "to": "rom_lo",
+      "toTerminal": "a7"
+    },
+    {
+      "from": "swf",
+      "fromTerminal": "2b",
+      "to": "rom_lo",
+      "toTerminal": "a8"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_lo",
+      "toTerminal": "a9"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_lo",
+      "toTerminal": "a10"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_lo",
+      "toTerminal": "a11"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_lo",
+      "toTerminal": "a12"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_lo",
+      "toTerminal": "a13"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_lo",
+      "toTerminal": "a14"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_lo",
+      "toTerminal": "ceb"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_lo",
+      "toTerminal": "oeb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rom_lo",
+      "toTerminal": "web"
+    },
+    {
+      "from": "step",
+      "fromTerminal": "q0",
+      "to": "rom_hi",
+      "toTerminal": "a0"
+    },
+    {
+      "from": "step",
+      "fromTerminal": "q1",
+      "to": "rom_hi",
+      "toTerminal": "a1"
+    },
+    {
+      "from": "step",
+      "fromTerminal": "q2",
+      "to": "rom_hi",
+      "toTerminal": "a2"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "1b",
+      "to": "rom_hi",
+      "toTerminal": "a3"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "2b",
+      "to": "rom_hi",
+      "toTerminal": "a4"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "3b",
+      "to": "rom_hi",
+      "toTerminal": "a5"
+    },
+    {
+      "from": "swi",
+      "fromTerminal": "4b",
+      "to": "rom_hi",
+      "toTerminal": "a6"
+    },
+    {
+      "from": "swf",
+      "fromTerminal": "1b",
+      "to": "rom_hi",
+      "toTerminal": "a7"
+    },
+    {
+      "from": "swf",
+      "fromTerminal": "2b",
+      "to": "rom_hi",
+      "toTerminal": "a8"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_hi",
+      "toTerminal": "a9"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_hi",
+      "toTerminal": "a10"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_hi",
+      "toTerminal": "a11"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_hi",
+      "toTerminal": "a12"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_hi",
+      "toTerminal": "a13"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_hi",
+      "toTerminal": "a14"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_hi",
+      "toTerminal": "ceb"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "rom_hi",
+      "toTerminal": "oeb"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "rom_hi",
+      "toTerminal": "web"
+    },
+    {
+      "from": "rom_lo",
+      "fromTerminal": "d0",
+      "to": "led_ep",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_ep",
+      "fromTerminal": "cathode",
+      "to": "rl_ep",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_ep",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_lo",
+      "fromTerminal": "d1",
+      "to": "led_lm",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_lm",
+      "fromTerminal": "cathode",
+      "to": "rl_lm",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_lm",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_lo",
+      "fromTerminal": "d2",
+      "to": "led_cp",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_cp",
+      "fromTerminal": "cathode",
+      "to": "rl_cp",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_cp",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_lo",
+      "fromTerminal": "d3",
+      "to": "led_ce",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_ce",
+      "fromTerminal": "cathode",
+      "to": "rl_ce",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_ce",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_lo",
+      "fromTerminal": "d4",
+      "to": "led_li",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_li",
+      "fromTerminal": "cathode",
+      "to": "rl_li",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_li",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_lo",
+      "fromTerminal": "d5",
+      "to": "led_ei",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_ei",
+      "fromTerminal": "cathode",
+      "to": "rl_ei",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_ei",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_lo",
+      "fromTerminal": "d6",
+      "to": "led_la",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_la",
+      "fromTerminal": "cathode",
+      "to": "rl_la",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_la",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_lo",
+      "fromTerminal": "d7",
+      "to": "led_lb",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_lb",
+      "fromTerminal": "cathode",
+      "to": "rl_lb",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_lb",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_hi",
+      "fromTerminal": "d0",
+      "to": "led_eu",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_eu",
+      "fromTerminal": "cathode",
+      "to": "rl_eu",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_eu",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_hi",
+      "fromTerminal": "d1",
+      "to": "led_su",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_su",
+      "fromTerminal": "cathode",
+      "to": "rl_su",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_su",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_hi",
+      "fromTerminal": "d2",
+      "to": "led_ea",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_ea",
+      "fromTerminal": "cathode",
+      "to": "rl_ea",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_ea",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_hi",
+      "fromTerminal": "d3",
+      "to": "led_lo",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_lo",
+      "fromTerminal": "cathode",
+      "to": "rl_lo",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_lo",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_hi",
+      "fromTerminal": "d4",
+      "to": "led_lp",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_lp",
+      "fromTerminal": "cathode",
+      "to": "rl_lp",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_lp",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_hi",
+      "fromTerminal": "d5",
+      "to": "led_spd",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_spd",
+      "fromTerminal": "cathode",
+      "to": "rl_spd",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_spd",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_hi",
+      "fromTerminal": "d6",
+      "to": "led_spu",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_spu",
+      "fromTerminal": "cathode",
+      "to": "rl_spu",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_spu",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_hi",
+      "fromTerminal": "d7",
+      "to": "led_esp",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_esp",
+      "fromTerminal": "cathode",
+      "to": "rl_esp",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rl_esp",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "rom_hi",
+      "fromTerminal": "d5",
+      "to": "inv",
+      "toTerminal": "1a"
+    },
+    {
+      "from": "inv",
+      "fromTerminal": "1y",
+      "to": "sp",
+      "toTerminal": "down"
+    },
+    {
+      "from": "rom_hi",
+      "fromTerminal": "d6",
+      "to": "inv",
+      "toTerminal": "2a"
+    },
+    {
+      "from": "inv",
+      "fromTerminal": "2y",
+      "to": "sp",
+      "toTerminal": "up"
+    },
+    {
+      "from": "vcc1",
+      "fromTerminal": "vcc",
+      "to": "sp",
+      "toTerminal": "loadb"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sp",
+      "toTerminal": "d0"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sp",
+      "toTerminal": "d1"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sp",
+      "toTerminal": "d2"
+    },
+    {
+      "from": "gnd1",
+      "fromTerminal": "gnd",
+      "to": "sp",
+      "toTerminal": "d3"
+    },
+    {
+      "from": "step",
+      "fromTerminal": "q0",
+      "to": "led_s0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_s0",
+      "fromTerminal": "cathode",
+      "to": "rls0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rls0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "step",
+      "fromTerminal": "q1",
+      "to": "led_s1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_s1",
+      "fromTerminal": "cathode",
+      "to": "rls1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rls1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "step",
+      "fromTerminal": "q2",
+      "to": "led_s2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_s2",
+      "fromTerminal": "cathode",
+      "to": "rls2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rls2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q0",
+      "to": "led_sp0",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_sp0",
+      "fromTerminal": "cathode",
+      "to": "rlsp0",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlsp0",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q1",
+      "to": "led_sp1",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_sp1",
+      "fromTerminal": "cathode",
+      "to": "rlsp1",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlsp1",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q2",
+      "to": "led_sp2",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_sp2",
+      "fromTerminal": "cathode",
+      "to": "rlsp2",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlsp2",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    },
+    {
+      "from": "sp",
+      "fromTerminal": "q3",
+      "to": "led_sp3",
+      "toTerminal": "anode"
+    },
+    {
+      "from": "led_sp3",
+      "fromTerminal": "cathode",
+      "to": "rlsp3",
+      "toTerminal": "a"
+    },
+    {
+      "from": "rlsp3",
+      "fromTerminal": "b",
+      "to": "gnd1",
+      "toTerminal": "gnd"
+    }
+  ],
+  "_title": "CALL and RET — the microcode moves the pointer",
+  "_description": "C14 worked the stack by hand. Here the control store does it: two more output bits, Spd and Spu, and CALL and RET are just rows of bytes like every other instruction. Set the opcode to 0101 and clock through — the stack slot is addressed, the return address goes on the bus, and on the last step the pointer moves and the machine jumps. 0110 is the same thing backwards, and the pointer moves FIRST because the slot you want is below where it is resting. Watch the inverter: a control line idles LOW and the 74LS193's clocks idle HIGH, so without it both clocks would sit low and the pointer would never move at all — which is C14's lesson arriving as a property of the microcode's timing instead of a finger on a button.",
+  "_category": "computer",
+  "_difficulty": 5,
+  "_stage": "C15"
+}
