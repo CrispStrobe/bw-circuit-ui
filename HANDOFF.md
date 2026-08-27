@@ -76,6 +76,34 @@ at all**: its I2C decoder sampled SDA and never drove it, so every input use
 was silently impossible while writes worked fine. Do not act on a list from
 that script without checking each entry.
 
+**TEST THE RENDERING IN WEBKIT, NOT ONLY CHROMIUM.** The owner opened a bench
+in Safari and got the Arduino floating above its own pins with the wires running
+into empty space. It does not reproduce in Chromium, and every check in this repo
+was Chromium-only, so nothing saw it for as long as it existed.
+
+The cause: a Wokwi face is HTML inside a `<foreignObject>`, and the scale was a
+CSS `transform`. WebKit lays that out correctly and PAINTS it elsewhere. The
+pins, the outline and the hit box are plain SVG and stayed put, so the art
+separated from everything that refers to it.
+
+**No measurement can catch this.** `getBoundingClientRect` returned the correct
+box in WebKit for the foreignObject, the div, the custom element AND its
+shadow-root svg — dx, dy, dw all 0.0 — while the screenshot plainly showed the
+board somewhere else. A right layout tree with a wrong paint is invisible to
+every query. Only pixels see it, which is what `npm run verify:board-face`
+compares, across both engines, mutation-proven.
+
+The two engines break in OPPOSITE directions and a fix must satisfy both:
+Chromium drops a parent `<g>` translation around transformed foreignObject
+content (so the face is anchored in world coordinates, no wrapping `<g>`);
+WebKit mispaints a CSS-transformed child (so the scale is `zoom`, which scales
+layout rather than paint). A first fix used a parent `<g>` and traded one
+engine's bug for the other's.
+
+Only the BOARD faces are affected. The component faces — LED, resistor, button,
+seven-segment, LCD — are plain absolutely-positioned HTML in an overlay layer,
+not inside a foreignObject, and render correctly in both.
+
 **Blocked:** see `BLOCKED.md` — pc115/pc116 cannot publish until sb3-creator's
 sibling pin moves past bw-board `b63a6ec`, and that bump belongs to the attiny88
 re-seat chain.
