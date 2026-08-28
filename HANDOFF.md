@@ -104,6 +104,30 @@ Only the BOARD faces are affected. The component faces — LED, resistor, button
 seven-segment, LCD — are plain absolutely-positioned HTML in an overlay layer,
 not inside a foreignObject, and render correctly in both.
 
+**THE SAME CIRCUIT MUST GIVE THE SAME BOARD IN EVERY BROWSER.** Sweeping the
+three circuit views across both engines flagged the Board view: the trace
+COLOURS were swapped, and the colour is the copper layer, so the same circuit
+produced a different board depending on the browser — and the board view feeds
+the PCB exporters, so this reached something you might send to a fab.
+
+Narrowed rather than guessed: deterministic WITHIN Chromium across three runs,
+so not random; trace GEOMETRY byte-identical between engines, so the router
+found the same routes and only the LAYER differed; and the router is A* with a
+cost built from `Math.hypot`.
+
+`Math.hypot` is not required by the spec to be correctly rounded, so V8 and
+JavaScriptCore may differ in the last bits — enough to flip a near-tie and send
+a net to the other layer. `Math.sqrt` IS correctly rounded per IEEE-754.
+
+So **anywhere a distance becomes a VERDICT or a FILE, use `dist()` from
+`model/exact-hypot.js`.** Twenty-two calls across eight modules do: the DRC
+(whose four comparisons are all `hypot(...) <= TOL`, exactly the shape where one
+ULP flips whether a board is reported shorted), PCB geometry, the EasyEDA PCB
+exporter, the schematic projection and symbols, and the KiCad/EasyEDA importers.
+Transient UI maths — hit-testing, drag feedback — deliberately stays on
+`Math.hypot`, and `test/exact-hypot.test.js` asserts that exclusion rather than
+leaving it accidental. The guard is a may-only-shrink list, mutation-proven.
+
 **Blocked:** see `BLOCKED.md` — pc115/pc116 cannot publish until sb3-creator's
 sibling pin moves past bw-board `b63a6ec`, and that bump belongs to the attiny88
 re-seat chain.
