@@ -44,6 +44,7 @@
 // parseLibAttrs is the schematic importer's; one backtick parser, not two.
 import { parseLibAttrs } from './easyeda.js';
 import { liftBoardToCircuit } from '../model/board-lift.js';
+import { dist } from '../model/exact-hypot.js';
 
 // 1 EasyEDA unit = 10 mil = 0.254 mm.
 export const MM_PER_UNIT = 0.254;
@@ -171,7 +172,7 @@ function sampleArc(a, steps) {
   const cy = sinP * cxp + cosP * cyp + (y1 + y2) / 2;
   const ang = (ux, uy, vx, vy) => {
     const dot = ux * vx + uy * vy;
-    const len = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+    const len = dist(ux, uy) * dist(vx, vy);
     let th = Math.acos(Math.min(1, Math.max(-1, dot / len)));
     if (ux * vy - uy * vx < 0) th = -th;
     return th;

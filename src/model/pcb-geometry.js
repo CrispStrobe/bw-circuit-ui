@@ -1,3 +1,4 @@
+import { dist } from './exact-hypot.js';
 /**
  * Exact 2-D distance primitives for the PCB layer.
  *
@@ -33,10 +34,10 @@ const sq = (v) => v * v;
 export function pointSegDist(px, py, x1, y1, x2, y2) {
   const dx = x2 - x1; const dy = y2 - y1;
   const len2 = dx * dx + dy * dy;
-  if (len2 === 0) return Math.hypot(px - x1, py - y1);
+  if (len2 === 0) return dist(px - x1, py - y1);
   let t = ((px - x1) * dx + (py - y1) * dy) / len2;
   t = Math.max(0, Math.min(1, t));
-  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+  return dist(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
 /** Do segments (p1,p2) and (p3,p4) properly intersect or touch? Exact. */
@@ -211,7 +212,7 @@ function regionRegionDist(a, b) {
 /** Core-to-core distance for the four core kinds. */
 function coreDist(a, b) {
   const A = a.kind; const B = b.kind;
-  if (A === 'point' && B === 'point') return Math.hypot(a.x - b.x, a.y - b.y);
+  if (A === 'point' && B === 'point') return dist(a.x - b.x, a.y - b.y);
   if (A === 'point' && B === 'seg') return pointSegDist(a.x, a.y, b.x1, b.y1, b.x2, b.y2);
   if (A === 'seg' && B === 'point') return coreDist(b, a);
   if (A === 'seg' && B === 'seg') return segSegDist(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1, b.x2, b.y2);
@@ -354,7 +355,7 @@ export function arcPointAt(a, t) {
   const cy = sinP * cxp + cosP * cyp + (y1 + y2) / 2;
   const ang = (ux, uy, vx, vy) => {
     const dot = ux * vx + uy * vy;
-    const len = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+    const len = dist(ux, uy) * dist(vx, vy);
     let th = Math.acos(Math.min(1, Math.max(-1, dot / len)));
     if (ux * vy - uy * vx < 0) th = -th;
     return th;

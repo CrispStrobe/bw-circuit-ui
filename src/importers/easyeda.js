@@ -52,6 +52,7 @@
 
 import { NetSolver, wiresFromNets, makeId, terminalFor, classifyPower, ptKey } from './kicad-common.js';
 import { parseEagleValue } from './eagle.js';
+import { dist } from '../model/exact-hypot.js';
 
 // ── the shape DSL ──────────────────────────────────────────────────
 
@@ -1035,7 +1036,7 @@ export function easyEdaNearMisses(text, opts = {}) {
       const target = net.netOfName(scope(a.name));
       let best = null;
       for (const [vx, vy] of verts) {
-        const d = Math.hypot(vx - a.x, vy - a.y);
+        const d = dist(vx - a.x, vy - a.y);
         if (d === 0 || d > tol) continue;
         if (net.netAt(vx, vy) === target) continue;
         if (!best || d < best.dist) best = { dist: d, x: vx, y: vy };

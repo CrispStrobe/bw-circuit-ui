@@ -39,6 +39,7 @@ import { recognizePackage, getLandPattern, padTerminal } from './land-patterns.j
 import { liftBoardToCircuit } from './board-lift.js';
 import { diffBoardAgainstSchematic } from './board-pairing.js';
 import { padShape, trackShapes, viaShape, shapeDist } from './pcb-geometry.js';
+import { dist } from './exact-hypot.js';
 
 /** EasyEDA's own default clearance (routerRule.trackClearance), in mm. */
 export const DEFAULT_CLEARANCE_MM = 0.152;
@@ -256,7 +257,7 @@ function checkOutline(board, findings) {
     const seg = board.outline[s];
     ends.push({ p: [seg.x1, seg.y1], seg: s }, { p: [seg.x2, seg.y2], seg: s });
   }
-  const near = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) <= TOL;
+  const near = (a, b) => dist(a[0] - b[0], a[1] - b[1]) <= TOL;
   const lonely = [];
   const overlapping = new Set();
   for (let i = 0; i < ends.length; i++) {
@@ -272,7 +273,7 @@ function checkOutline(board, findings) {
       const L2 = dx * dx + dy * dy;
       if (!L2) return near([px, py], [o.x1, o.y1]);
       const t = Math.max(0, Math.min(1, ((px - o.x1) * dx + (py - o.y1) * dy) / L2));
-      return Math.hypot(px - (o.x1 + t * dx), py - (o.y1 + t * dy)) <= TOL;
+      return dist(px - (o.x1 + t * dx), py - (o.y1 + t * dy)) <= TOL;
     });
     if (onBody) overlapping.add(ends[i].seg);
     else lonely.push(ends[i].p);
@@ -290,7 +291,7 @@ function checkOutline(board, findings) {
     let mate = -1; let best = Infinity;
     for (let j = i + 1; j < lonely.length; j++) {
       if (taken[j]) continue;
-      const d = Math.hypot(lonely[i][0] - lonely[j][0], lonely[i][1] - lonely[j][1]);
+      const d = dist(lonely[i][0] - lonely[j][0], lonely[i][1] - lonely[j][1]);
       if (d <= HEAL && d < best) { best = d; mate = j; }
     }
     if (mate >= 0) { taken[i] = taken[mate] = true; hairline.push({ at: lonely[i], gap: best }); }
@@ -330,7 +331,7 @@ function checkLegends(board, findings) {
     // "GND", a "1". The refdes alone does not say which pin is which.
     const own = part.silk.texts.filter((t) => t.display && t.kind === 'L' && t.text.trim());
     const near = board.silk.texts.filter((t) => t.display && t.text.trim()
-      && Math.hypot(t.x - part.x, t.y - part.y) < 10);
+      && dist(t.x - part.x, t.y - part.y) < 10);
     if (own.length + near.length === 0) {
       findings.push(finding('warning', 'no-legend', part.ref || part.id,
         `${part.ref || part.id}: a ${part.pads.length}-pin connector with no pin legend on the silk. `

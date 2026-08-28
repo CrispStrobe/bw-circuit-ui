@@ -1,3 +1,4 @@
+import { dist } from './exact-hypot.js';
 /**
  * Schematic symbol geometry, as DATA.
  *
@@ -415,7 +416,7 @@ function pointToSegment (px, py, a, b) {
   const dx = b.x - a.x; const dy = b.y - a.y;
   const L = dx * dx + dy * dy;
   const t = L === 0 ? 0 : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / L));
-  return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
+  return dist(px - (a.x + t * dx), py - (a.y + t * dy));
 }
 
 /**

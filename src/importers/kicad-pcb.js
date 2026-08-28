@@ -35,6 +35,7 @@
 
 import { parseSexpr } from './sexpr.js';
 import { liftBoardToCircuit } from '../model/board-lift.js';
+import { dist } from '../model/exact-hypot.js';
 
 /** Cheap gate for detect.js. */
 export function looksLikeKicadPcb(text) {
@@ -88,7 +89,7 @@ function sampleThreePointArc(sx, sy, mx, my, ex, ey, steps) {
   const s2 = sx * sx + sy * sy; const m2 = mx * mx + my * my; const e2 = ex * ex + ey * ey;
   const cx = (s2 * (my - ey) + m2 * (ey - sy) + e2 * (sy - my)) / d;
   const cy = (s2 * (ex - mx) + m2 * (sx - ex) + e2 * (mx - sx)) / d;
-  const r = Math.hypot(sx - cx, sy - cy);
+  const r = dist(sx - cx, sy - cy);
   const a0 = Math.atan2(sy - cy, sx - cx);
   const a1 = Math.atan2(my - cy, mx - cx);
   const a2 = Math.atan2(ey - cy, ex - cx);
@@ -144,7 +145,7 @@ function threePointArc(sx, sy, mx, my, ex, ey) {
   const s2 = sx * sx + sy * sy; const m2 = mx * mx + my * my; const e2 = ex * ex + ey * ey;
   const cx = (s2 * (my - ey) + m2 * (ey - sy) + e2 * (sy - my)) / d;
   const cy = (s2 * (ex - mx) + m2 * (sx - ex) + e2 * (mx - sx)) / d;
-  const r = Math.hypot(sx - cx, sy - cy);
+  const r = dist(sx - cx, sy - cy);
   const a0 = Math.atan2(sy - cy, sx - cx);
   const a1 = Math.atan2(my - cy, mx - cx);
   const a2 = Math.atan2(ey - cy, ex - cx);
@@ -367,14 +368,14 @@ export function importKicadPcb(text) {
         // endpoints the renderer's arc path can actually draw (a single
         // full-circle arc would have coincident endpoints — degenerate).
         const cx = num(c[1]); const cy = num(c[2]);
-        const r = Math.hypot(num(e[1]) - cx, num(e[2]) - cy);
+        const r = dist(num(e[1]) - cx, num(e[2]) - cy);
         raw.outlineSegs.push(
           { type: 'arc', sx: cx + r, sy: cy, mx: cx, my: cy + r, ex: cx - r, ey: cy },
           { type: 'arc', sx: cx - r, sy: cy, mx: cx, my: cy - r, ex: cx + r, ey: cy },
         );
       } else if (c && e && layer.includes('Silk')) {
         const cx = num(c[1]); const cy = num(c[2]);
-        raw.circles.push({ cx, cy, r: Math.hypot(num(e[1]) - cx, num(e[2]) - cy) });
+        raw.circles.push({ cx, cy, r: dist(num(e[1]) - cx, num(e[2]) - cy) });
       } else ignore(`gr_circle@${layer}`);
     } else if (tag === 'gr_text') {
       const t = String(node[1] ?? '');
@@ -713,7 +714,7 @@ function parseFootprint(node, warnings, ignore, cuOf) {
     const layerName = String(child(fc, 'layer')?.[1] || '');
     if (!c || !e || !layerName.includes('Silk')) { ignore(`fp_circle@${layerName}`); continue; }
     const [cx, cy] = rot2(num(c[1]), num(c[2]), rot);
-    silkCircles.push({ cx: x + cx, cy: y + cy, r: Math.hypot(num(e[1]) - num(c[1]), num(e[2]) - num(c[2])) });
+    silkCircles.push({ cx: x + cx, cy: y + cy, r: dist(num(e[1]) - num(c[1]), num(e[2]) - num(c[2])) });
   }
 
   return {
@@ -764,7 +765,7 @@ function chainTracks(segments) {
         for (let i = 0; i < remaining.length; i++) {
           const [a, b] = remaining[i];
           const head = chain[0]; const tail = chain[chain.length - 1];
-          const eq = (p, r) => Math.hypot(p[0] - r[0], p[1] - r[1]) <= TOL;
+          const eq = (p, r) => dist(p[0] - r[0], p[1] - r[1]) <= TOL;
           if (eq(tail, a)) { chain.push(b); remaining.splice(i, 1); grew = true; break; }
           if (eq(tail, b)) { chain.push(a); remaining.splice(i, 1); grew = true; break; }
           if (eq(head, a)) { chain.unshift(b); remaining.splice(i, 1); grew = true; break; }

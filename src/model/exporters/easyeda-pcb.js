@@ -22,6 +22,7 @@
  */
 
 import { padOutlinePolygon } from '../pcb-geometry.js';
+import { dist } from '../exact-hypot.js';
 
 const U = 0.254; // mm per EasyEDA unit
 const OX = 4000; // canvas origin, file units
@@ -210,7 +211,7 @@ function chainSegments(segs) {
       for (let i = 0; i < remaining.length; i++) {
         const [a, b] = remaining[i];
         const head = chain[0]; const tail = chain[chain.length - 1];
-        const eq = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) <= TOL;
+        const eq = (p, q) => dist(p[0] - q[0], p[1] - q[1]) <= TOL;
         if (eq(tail, a)) { chain.push(b); remaining.splice(i, 1); grew = true; break; }
         if (eq(tail, b)) { chain.push(a); remaining.splice(i, 1); grew = true; break; }
         if (eq(head, a)) { chain.unshift(b); remaining.splice(i, 1); grew = true; break; }

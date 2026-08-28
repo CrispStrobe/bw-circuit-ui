@@ -16,6 +16,7 @@
  */
 
 import { shapeFor, artReachesPins, artCopper } from './schematic-symbols.js';
+import { dist } from './exact-hypot.js';
 
 const COL_W = 150;
 const ROW_H = 110;
@@ -644,7 +645,7 @@ export function projectSchematic(parts, nets) {
       if (!outside(a) && !outside(b)) return;
       let netId = SYMBOL_NET;
       for (const pin of s.pins) {
-        if (Math.hypot(pin.x - a.x, pin.y - a.y) <= 1.5 || Math.hypot(pin.x - b.x, pin.y - b.y) <= 1.5) {
+        if (dist(pin.x - a.x, pin.y - a.y) <= 1.5 || dist(pin.x - b.x, pin.y - b.y) <= 1.5) {
           netId = pin.netId || SYMBOL_NET;
           break;
         }
