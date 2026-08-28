@@ -1,25 +1,43 @@
 #!/usr/bin/env node
+/**
+ * Interaction and layout regressions, in BOTH engines.
+ *
+ * KNOWN BLIND SPOT, stated because this file's own "Arduino face aligns with
+ * its outline" check ran green through the whole life of a bug that made the
+ * board unusable in Safari: every assertion here reads getBoundingClientRect,
+ * and WebKit can lay a foreignObject child out correctly and PAINT it
+ * somewhere else. The layout tree was right and the paint was wrong, so no
+ * measurement in this file could see it. Pixels can, and that is
+ * scripts/verify-board-face-webkit.mjs -- run both.
+ *
+ * Running this suite in WebKit as well still earns its keep: it catches
+ * everything that IS a layout or hit-testing difference between the engines,
+ * which is most of what this file asserts.
+ */
 import { spawn } from 'node:child_process';
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
 
 const port = 3150;
 const server = spawn('npx', ['vite', '--port', String(port), '--strictPort'], { stdio: 'ignore' });
 const stop = () => { try { server.kill('SIGTERM'); } catch { /* already stopped */ } };
 process.on('exit', stop);
 
-for (let attempt = 0; attempt < 60; attempt++) {
+// localhost, NOT 127.0.0.1: vite binds ::1 here, so polling the IPv4 literal
+// reports "Vite did not start" forever and the script never ran at all.
+for (let attempt = 0; attempt < 90; attempt++) {
   try {
-    const response = await fetch(`http://127.0.0.1:${port}/`);
+    const response = await fetch(`http://localhost:${port}/`);
     if (response.ok) break;
   } catch { /* server is starting */ }
-  if (attempt === 59) throw new Error('Vite did not start');
+  if (attempt === 89) throw new Error('Vite did not start');
   await new Promise(resolve => setTimeout(resolve, 250));
 }
 
-const browser = await chromium.launch();
+async function run (engineName, engine) {
+const browser = await engine.launch();
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'networkidle' });
+  await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => typeof window.__setCircuitData === 'function');
 
   const load = async parts => {
@@ -93,12 +111,17 @@ try {
   await page.waitForTimeout(80);
   if (!await page.locator('[data-selection-actions]').count()) throw new Error('ATtiny13 body was not selectable over breadboard');
 
-  console.log('✔ Arduino face aligns with its outline and hit geometry');
-  console.log('✔ full breadboard renders 63 consecutive terminal and rail holes');
-  console.log('✔ half/mini placement previews use their dropped dimensions');
-  console.log('✔ ATtiny13 selects above a breadboard');
-  console.log('✔ instruments start collapsed');
+  console.log(`[${engineName}] ✔ Arduino face aligns with its outline and hit geometry`);
+  console.log(`[${engineName}] ✔ full breadboard renders 63 consecutive terminal and rail holes`);
+  console.log(`[${engineName}] ✔ half/mini placement previews use their dropped dimensions`);
+  console.log(`[${engineName}] ✔ ATtiny13 selects above a breadboard`);
+  console.log(`[${engineName}] ✔ instruments start collapsed`);
 } finally {
   await browser.close();
-  stop();
 }
+}
+
+for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
+  await run(name, engine);
+}
+stop();

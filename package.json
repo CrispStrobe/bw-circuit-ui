@@ -23,7 +23,8 @@
     "verify:deployed": "node scripts/deployed-probes.mjs",
     "sync:parts": "node scripts/sync-parts-data.mjs",
     "acceptance": "node scripts/deployed-acceptance/run-all.mjs",
-    "verify:board-face": "node scripts/verify-board-face-webkit.mjs"
+    "verify:board-face": "node scripts/verify-board-face-webkit.mjs",
+    "verify:render": "node scripts/verify-rendering-regressions.mjs"
   },
   "author": "CrispStrobe <cze+github@mailbox.org>",
   "license": "MIT",
