@@ -304,7 +304,7 @@ function route(startPt, targets, net, obstacles, bounds, opts) {
   }
   const h = (x, y) => {
     let best = Infinity;
-    for (const t of targets) best = Math.min(best, Math.hypot(t.x - x, t.y - y));
+    for (const t of targets) best = Math.min(best, Math.sqrt((t.x - x)*(t.x - x)+(t.y - y)*(t.y - y)));
     return best;
   };
   const startIx = Math.round((startPt[0] - minX) / GRID);
@@ -342,7 +342,7 @@ function route(startPt, targets, net, obstacles, bounds, opts) {
         if (ix < 0 || iy < 0 || ix >= cols) continue;
         const [x, y] = toXY(ix, iy);
         if (!obstacles.clear(x, y, layer, net, r)) continue;
-        const d = Math.hypot(x - startPt[0], y - startPt[1]);
+        const d = Math.sqrt((x - startPt[0])*(x - startPt[0])+(y - startPt[1])*(y - startPt[1]));
         if (d > GRID * 2.2) continue;
         // The stitch from the (off-lattice) pad centre is itself copper.
         if (!obstacles.clearSeg(startPt[0], startPt[1], x, y, layer, net, r)) continue;
@@ -371,7 +371,7 @@ function route(startPt, targets, net, obstacles, bounds, opts) {
       for (const t of targets) {
         if (t.layers !== 0 && t.layers !== cur.layer) continue;
         const tx = t.x; const ty = t.y;
-        if (Math.hypot(tx - cx, ty - cy) <= GRID * 2.2
+        if (Math.sqrt((tx - cx)*(tx - cx)+(ty - cy)*(ty - cy)) <= GRID * 2.2
             && obstacles.clearSeg(cx, cy, tx, ty, cur.layer, net, r)) {
           const path = [];
           let n = cur;
@@ -389,7 +389,7 @@ function route(startPt, targets, net, obstacles, bounds, opts) {
       const [nx, ny] = toXY(ix, iy);
       if (nx < minX || nx > maxX || ny < minY || ny > maxY) continue;
       if (!obstacles.clearSeg(cx, cy, nx, ny, cur.layer, net, r)) continue;
-      const step = Math.hypot(dx, dy) * GRID;
+      const step = Math.sqrt((dx)*(dx)+(dy)*(dy)) * GRID;
       const turn = cur.dir >= 0 && cur.dir !== d ? 0.05 : 0;
       const g = cur.g + step + turn;
       const nk = keyOf(ix, iy, cur.layer);
@@ -501,7 +501,7 @@ export function projectBoard(circuit, opts = {}) {
       let best = null;
       for (const pad of part.pattern.pads) {
         if (pad.terminal !== m.terminal) continue;
-        const d = Math.hypot(part.x + pad.x - centroid[0], part.y + pad.y - centroid[1]);
+        const d = Math.sqrt((part.x + pad.x - centroid[0])*(part.x + pad.x - centroid[0])+(part.y + pad.y - centroid[1])*(part.y + pad.y - centroid[1]));
         if (!best || d < best.d) best = { pad, d };
       }
       if (!best) continue;
@@ -591,8 +591,8 @@ export function projectBoard(circuit, opts = {}) {
     let failed = false;
     while (todo.length) {
       todo.sort((a, b) => {
-        const da = Math.min(...done.map((q) => Math.hypot(a.x - q.x, a.y - q.y)));
-        const db = Math.min(...done.map((q) => Math.hypot(b.x - q.x, b.y - q.y)));
+        const da = Math.min(...done.map((q) => Math.sqrt((a.x - q.x)*(a.x - q.x)+(a.y - q.y)*(a.y - q.y))));
+        const db = Math.min(...done.map((q) => Math.sqrt((b.x - q.x)*(b.x - q.x)+(b.y - q.y)*(b.y - q.y))));
         return da - db;
       });
       const next = todo.shift();
