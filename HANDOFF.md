@@ -79,10 +79,34 @@ were wrong with the gate itself, none of them regressions:
    panel. They are guarded on the panel's presence now.
 
 The gate prints its own count (`N scenarios · P passed · F failed`), because
-"it was green" is not a result if it silently ran fewer than last time. Four new
-scenarios were added for the four defects above (meter probes leave the board
-intact, per-channel V/div, the spectrum names its peak, the sweep reports
-progress and the canvas still drags) — the count goes UP.
+"it was green" is not a result if it silently ran fewer than last time. Six new
+outcomes were added for the four defects above — the count goes UP.
+
+**Measured, both halves under the same load, same script:**
+
+| | origin/master | this branch |
+| --- | --- | --- |
+| | 30 outcomes · 17 passed · 13 failed | 30 outcomes · **22 passed** · 8 failed |
+| meter probes | ✖ `wiring a meter emptied the board: 6 → 0 parts` | ✔ `6 → 7 engine parts` |
+| per-channel V/div | ✖ `controls missing (0 + 0)` | ✔ `spans 100×` |
+| spectrum | ✖ `showed nothing at all` / `neither peaked nor refused` | ✔ `peaks at 1000.0 Hz on a 1000 Hz generator` |
+| sweep progress | ✖ `no per-point progress: "▶ Sweep"` | ✔ `"… 26/60"` |
+| canvas during sweep | ✔ (vacuously — base REFUSES the sweep, so nothing was running) | ✔ `140 px` |
+
+The base column IS the mutation proof for the new scenarios, and its meter line
+is D21 reproducing inside the gate itself.
+
+Eight failures remain on this branch and every one of them is the box or a
+pre-existing gate wart, not the branch: `wheel did not pan`, `no scope panel in
+the sidebar` (after scenarios 1–4, and only there — scenario 6, which reloads
+first, passes) and `pin chooser did not open` all reproduce at origin/master,
+and the transport bar's four come and go with load — they PASSED in the run
+before this one, at load 13, and failed at load 22.
+
+**`dev/sweep-worker.js` is outside `src/` on purpose.** lite vendors this
+library by walking `src/` and skipping only `main.jsx`; from
+`lib/bw-circuit-ui/`, `../../bw-board` resolves to nothing. A second harness
+file under `src/` would have needed a second entry on that skip list.
 
 ## 2026-08-27
 
