@@ -92,6 +92,13 @@ const STRINGS = {
   scopeNet:            { en: 'net\u2026', de: 'Netz\u2026' },
   scopeAddChannel:     { en: '+ channel', de: '+ Kanal' },
   scopeFooter:         { en: 'engine samples only \u00b7 capture resets when the circuit is edited', de: 'nur Simulatordaten \u00b7 Aufnahme wird bei Schaltungsänderung zurückgesetzt' },
+  scopeViewTime:       { en: 'Time', de: 'Zeit' },
+  scopeViewSpectrum:   { en: 'Spectrum', de: 'Spektrum' },
+  scopeWindow:         { en: 'window', de: 'Fenster' },
+  scopePeak:           { en: 'peak', de: 'Spitze' },
+  scopeThd:            { en: 'THD', de: 'THD' },
+  scopeSpectrumCsv:    { en: '⧉ spectrum as CSV', de: '⧉ Spektrum als CSV' },
+  scopeSpectrumFoot:   { en: 'peak volts per component · second tap, a true sample series — not the drawing envelope', de: 'Spitzenspannung je Komponente · zweiter Abgriff, echte Abtastreihe — nicht die Zeichen-Hüllkurve' },
 
   // ── SchematicPanel ────────────────────────────────────────────────
   schematicEmpty:      { en: 'the schematic mirrors the canvas — add parts to see it', de: 'der Schaltplan spiegelt die Arbeitsfläche — Bauteile hinzufügen' },

@@ -23,6 +23,25 @@
  * The engine rebuilds on every netlist edit (board identity changes), which
  * discards capture history. The panel re-attaches its channels to the new
  * board and says so in the status line rather than pretending continuity.
+ *
+ * Two more things the header used to claim by omission (both 2026-08-29):
+ *
+ * D31 — "display scale" was ONE setting for the instrument, so a bench with a
+ * 5 V rail on CH1 and a 50 mV shunt drop on CH2 could show one of them or
+ * neither, and in auto it was worse than a shared manual setting: the range
+ * was taken across ALL channels at once, so the small trace drew as a line on
+ * the axis, which is what a dead net looks like. Vertical scale is per channel
+ * now (`model/scope-scale.js`), and each channel PRINTS the span it is using,
+ * because a scale nobody can read is a scale nobody can reason about.
+ *
+ * D24 — the spectrum view is a SECOND TAP on the same nets, not a transform of
+ * the trace above it. The ring drawn above is a (min, max) envelope: its two
+ * numbers are two different instants reported as one, so an FFT over it
+ * describes a waveform that never existed and would look plausible doing it.
+ * The spectrum channels are opened with `capture: 'sample'` (bw-board), live
+ * only while the view is open, and carry their own capture rate — a sample
+ * channel puts a solve point on every sample instant, so the rate is a bill
+ * the learner chooses, labelled by the bandwidth it buys.
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -35,10 +54,19 @@ import {
 import {
   SCOPE_DEPTH, SCOPE_RATES, formatSeconds, rateLabel, recordSeconds,
 } from '../model/scope-timebase.js';
+import {
+  VOLTS_PER_DIV, channelRange, defaultScale, scaleLabel,
+} from '../model/scope-scale.js';
+import {
+  formatHz, peakBin, seriesFromScopeData, spectrum, spectrumToCsv, thd,
+} from '../model/fft.js';
 
 const CHANNEL_COLORS = ['#2ecc71', '#3498db'];
 const W = 260;
 const H = 120;
+/** How often the spectrum is recomputed, in ms. An 8192-point transform per
+ *  channel per animation frame would be 60 of them a second to look at four. */
+const SPECTRUM_PERIOD_MS = 250;
 
 export function ScopePanel({ board, nets = [], lang = 'en' }) {
   const canvasRef = useRef(null);
@@ -51,14 +79,35 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
   // rather than pretending the old samples belong to the new cadence.
   const [sampleRateHz, setSampleRateHz] = useState(SCOPE_RATES[0]);
   const [pickNet, setPickNet] = useState('');
-  const [voltsPerDiv, setVoltsPerDiv] = useState('auto');
-  const [verticalCenter, setVerticalCenter] = useState(2.5);
+  // Vertical scale is PER CHANNEL (D31) and lives on the channel record, so a
+  // 5 V rail and a 50 mV shunt drop can both be on screen and both be legible.
   const [triggerMode, setTriggerMode] = useState('off');
   const [triggerLevel, setTriggerLevel] = useState(2.5);
   const [cursorA, setCursorA] = useState(0.25);
   const [cursorB, setCursorB] = useState(0.75);
   const [triggered, setTriggered] = useState(false);
   const triggeredRef = useRef(false);
+  // The spectrum view (D24). It is a SECOND tap on the same nets, not a
+  // transform of the trace above: the drawing ring stores a (min,max) envelope,
+  // whose two numbers are two different instants, and an FFT over that
+  // describes a waveform that never existed. These channels are opened with
+  // capture:'sample' and live only while the view is open.
+  const [view, setView] = useState('time'); // 'time' | 'spectrum'
+  const [fftWindow, setFftWindow] = useState('hann');
+  // The spectrum tap has its OWN capture rate, and the default is deliberately
+  // not the time view's. A sample-series channel makes the engine put a solve
+  // point on every sample instant (that is what makes the samples exact), so
+  // the rate is a bill: at 10 kHz the step is 100 µs, which is the fidelity
+  // floor the integrator was already using and therefore costs nothing extra;
+  // at 100 kHz it is 10 µs and the whole simulation runs about five times
+  // slower. Measured in a real browser at 100 kHz, the page stopped responding
+  // to clicks for over 30 s. 10 kHz gives 5 kHz of bandwidth and 1.2 Hz bins,
+  // which covers every tone the curriculum's function generator makes.
+  const [specRateHz, setSpecRateHz] = useState(10_000);
+  const [specChannels, setSpecChannels] = useState([]); // [{netId, handle}]
+  const [spectra, setSpectra] = useState([]); // [{netId, spec}|{netId, reason}]
+  const [specCopied, setSpecCopied] = useState('');
+  const specCanvasRef = useRef(null);
 
   // (Re)attach channels whenever the board instance changes — an edit
   // rebuilds the engine and the old handles die with it — OR when the capture
@@ -86,8 +135,14 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
     const handle = board.addScopeChannel({
       type: 'voltage', netId: pickNet, sampleRateHz, depth: SCOPE_DEPTH,
     });
-    setChannels(cs => [...cs, { netId: pickNet, handle }]);
+    setChannels(cs => [...cs, { netId: pickNet, handle, scale: defaultScale() }]);
   }, [board, pickNet, channels, sampleRateHz]);
+
+  /** Change one channel's vertical setting, leaving the other alone. */
+  const setChannelScale = useCallback((netId, patch) => {
+    setChannels(cs => cs.map(c => c.netId === netId
+      ? { ...c, scale: { ...(c.scale || defaultScale()), ...patch } } : c));
+  }, []);
 
   const removeChannel = useCallback((netId) => {
     setChannels(cs => {
@@ -97,9 +152,96 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
     });
   }, [board]);
 
+  // The second tap. Opened when the spectrum view is, closed when it is not —
+  // a sample-series channel makes the transient integrator step at the capture
+  // cadence, so leaving one open on a bench nobody is transforming would be a
+  // cost with no reading behind it.
+  const netKey = channels.map(c => c.netId).join('|');
+  useEffect(() => {
+    if (view !== 'spectrum' || !board || !board.addScopeChannel) { setSpecChannels([]); return undefined; }
+    const opened = channels.map(c => ({
+      netId: c.netId,
+      handle: board.addScopeChannel({
+        type: 'voltage', netId: c.netId, sampleRateHz: specRateHz, depth: SCOPE_DEPTH, capture: 'sample',
+      }),
+    }));
+    setSpecChannels(opened);
+    return () => {
+      setSpecChannels([]);
+      for (const c of opened) {
+        try { board.removeScopeChannel(c.handle); } catch { /* board gone */ }
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board, view, specRateHz, netKey]);
+
+  // Recompute the spectra on a slow clock, into state, so the table and the
+  // plot and the CSV are all reading the same numbers.
+  useEffect(() => {
+    if (view !== 'spectrum' || specChannels.length === 0) { setSpectra([]); return undefined; }
+    const tick = () => {
+      if (!running) return;
+      setSpectra(specChannels.map((c) => {
+        let data = null;
+        try { data = board.getScopeData(c.handle); } catch { data = null; }
+        const series = seriesFromScopeData(data);
+        if (!series.ok) return { netId: c.netId, reason: series.reason };
+        const spec = spectrum(series.values, series.sampleRateHz, { window: fftWindow });
+        return spec.ok ? { netId: c.netId, spec } : { netId: c.netId, reason: spec.reason };
+      }));
+    };
+    tick();
+    const id = setInterval(tick, SPECTRUM_PERIOD_MS);
+    return () => clearInterval(id);
+  }, [view, specChannels, board, fftWindow, running]);
+
+  // Draw the spectra: log frequency axis, dBV vertical, one trace per channel.
+  useEffect(() => {
+    if (view !== 'spectrum') return;
+    const canvas = specCanvasRef.current;
+    if (!canvas) return;
+    const g = canvas.getContext('2d');
+    g.fillStyle = '#0d1420';
+    g.fillRect(0, 0, W, H);
+    g.strokeStyle = '#1e2d3d';
+    g.lineWidth = 1;
+    for (let i = 1; i < 5; i++) { g.beginPath(); g.moveTo(0, (H / 5) * i); g.lineTo(W, (H / 5) * i); g.stroke(); }
+    for (let i = 1; i < 6; i++) { g.beginPath(); g.moveTo((W / 6) * i, 0); g.lineTo((W / 6) * i, H); g.stroke(); }
+    const ready = spectra.filter(s => s.spec);
+    if (!ready.length) return;
+    // One shared axis, because two channels' spectra are only comparable on
+    // one. Bottom of the frequency axis is the first bin above DC.
+    const fLo = Math.max(ready[0].spec.binHz, 1);
+    const fHi = ready[0].spec.sampleRateHz / 2;
+    const dbHi = 20, dbLo = -80;
+    const x = (f) => ((Math.log10(Math.max(f, fLo)) - Math.log10(fLo)) / (Math.log10(fHi) - Math.log10(fLo))) * (W - 6) + 3;
+    const y = (db) => 3 + ((dbHi - Math.min(dbHi, Math.max(dbLo, db))) / (dbHi - dbLo)) * (H - 14);
+    ready.forEach((s, ci) => {
+      g.strokeStyle = CHANNEL_COLORS[ci % CHANNEL_COLORS.length];
+      g.lineWidth = 1;
+      g.beginPath();
+      let started = false;
+      for (let k = 1; k < s.spec.freqs.length; k++) {
+        const px = x(s.spec.freqs[k]), py = y(s.spec.magDb[k]);
+        if (!started) { g.moveTo(px, py); started = true; } else g.lineTo(px, py);
+      }
+      g.stroke();
+    });
+    // The axis, labelled. A spectrum plot with no frequency axis is the exact
+    // thing D3 fixed on the Bode plot; repeating it here would be a choice.
+    g.fillStyle = '#5d6d7e';
+    g.font = '8px monospace';
+    g.fillText(`${dbHi} dBV`, 3, 9);
+    g.fillText(`${dbLo} dBV`, 3, H - 12);
+    g.fillText(formatHz(fLo), 3, H - 3);
+    g.textAlign = 'right';
+    g.fillText(formatHz(fHi), W - 3, H - 3);
+    g.textAlign = 'left';
+  }, [view, spectra]);
+
   // Draw loop: envelope fill between min and max per pixel column.
   useEffect(() => {
-    if (!running || channels.length === 0) return undefined;
+    if (!running || channels.length === 0 || view !== 'time') return undefined;
     let raf;
     const draw = () => {
       const canvas = canvasRef.current;
@@ -117,32 +259,23 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
         g.beginPath(); g.moveTo((W / 10) * i, 0); g.lineTo((W / 10) * i, H); g.stroke();
       }
 
-      // Auto-range across all channels' windows, or use the learner's
-      // explicit volts/div and vertical-position settings.
-      let vLo = 0, vHi = 5;
+      // One range PER CHANNEL, from that channel's own setting and its own
+      // samples (D31). The frame's corner labels can no longer name "the"
+      // scale, so each channel labels its own edge in its own colour — CH1
+      // left, CH2 right — and the readout under the canvas states both.
       const chData = channels.map((c) => {
         try { return board.getScopeData(c.handle); } catch { return null; }
       });
-      if (voltsPerDiv === 'auto') {
-        for (const data of chData) {
-          if (!data) continue;
-          for (let i = 0; i < data.samples.length; i += 2) {
-            const mn = data.samples[i], mx = data.samples[i + 1];
-            if (!Number.isNaN(mn) && mn < vLo) vLo = mn;
-            if (!Number.isNaN(mx) && mx > vHi) vHi = mx;
-          }
-        }
-        const pad = (vHi - vLo) * 0.08 || 0.5;
-        vLo -= pad; vHi += pad;
-      } else {
-        const span = Number(voltsPerDiv) * 5;
-        vLo = verticalCenter - span / 2;
-        vHi = verticalCenter + span / 2;
-      }
-      g.fillStyle = '#5d6d7e';
+      const ranges = channels.map((c, ci) => channelRange(c.scale, chData[ci]));
       g.font = '8px monospace';
-      g.fillText(`${vHi.toFixed(1)}V`, 3, 9);
-      g.fillText(`${vLo.toFixed(1)}V`, 3, H - 3);
+      ranges.forEach((r, ci) => {
+        g.fillStyle = CHANNEL_COLORS[ci];
+        g.textAlign = ci === 0 ? 'left' : 'right';
+        const x = ci === 0 ? 3 : W - 3;
+        g.fillText(`${r.vHi.toFixed(2)}V`, x, 9);
+        g.fillText(`${r.vLo.toFixed(2)}V`, x, H - 3);
+      });
+      g.textAlign = 'left';
 
       const triggerIndex = chData[0] ? findTriggerIndex(chData[0], triggerMode, triggerLevel) : null;
       const nextTriggered = triggerMode !== 'off' && triggerIndex !== null;
@@ -153,6 +286,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       channels.forEach((c, ci) => {
         const data = chData[ci];
         if (!data) return;
+        const { vLo, vHi } = ranges[ci];
         const { samples } = data;
         const depth = samples.length / 2;
         const win = Math.max(16, Math.floor(depth * windowFrac));
@@ -187,8 +321,20 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [running, channels, board, windowFrac, voltsPerDiv, verticalCenter,
+  }, [running, channels, board, windowFrac, view,
     triggerMode, triggerLevel, cursorA, cursorB]);
+
+  const copySpectrumCsv = useCallback(() => {
+    const parts = spectra.filter(s => s.spec)
+      .map(s => `# net=${s.netId}\n${spectrumToCsv(s.spec)}`);
+    if (!parts.length) return;
+    const csv = parts.join('\n');
+    const done = () => setSpecCopied(lang === 'de' ? '✓ kopiert' : '✓ copied');
+    try {
+      if (navigator?.clipboard?.writeText) navigator.clipboard.writeText(csv).then(done, () => setSpecCopied(csv));
+      else setSpecCopied(csv);
+    } catch { setSpecCopied(csv); }
+  }, [spectra, lang]);
 
   const timeLabel = (() => {
     if (!board || channels.length === 0) return '';
@@ -246,6 +392,22 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
         </select>
       </div>
 
+      {/* Time or spectrum (D24). The two are different taps on the same nets,
+          not two drawings of one buffer — see the second-tap effect above. */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: '6px' }} data-testid="bw-scope-view">
+        {['time', 'spectrum'].map(v => (
+          <button key={v} onClick={() => setView(v)} data-testid={`bw-scope-view-${v}`}
+            style={{
+              flex: 1, padding: '2px 4px', fontFamily: 'monospace', fontSize: 9,
+              background: view === v ? '#2c3e50' : '#0d1420',
+              border: '1px solid #2c3e50', borderRadius: 3,
+              color: view === v ? '#ecf0f1' : '#7f8c8d', cursor: 'pointer',
+            }}>
+            {v === 'time' ? t('scopeViewTime', lang) : t('scopeViewSpectrum', lang)}
+          </button>
+        ))}
+      </div>
+
       {/* What is on screen, in seconds, so "it does not fit" is a reading
           rather than a guess. */}
       <div data-testid="bw-scope-span" style={{ color: '#5d6d7e', fontFamily: 'monospace', fontSize: '8px', marginBottom: '4px' }}>
@@ -254,21 +416,78 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
           : `record ${formatSeconds(recordSeconds(sampleRateHz))} · showing ${formatSeconds(recordSeconds(sampleRateHz) * windowFrac)}`}
       </div>
 
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <label>{t('scopeScale', lang)}{' '}
-          <select value={voltsPerDiv} onChange={e => setVoltsPerDiv(e.target.value)}
-            style={{ background: '#1a1a2e', color: '#bdc3c7', border: '1px solid #2c3e50', fontSize: '9px' }}>
-            <option value="auto">{t('scopeAuto', lang)}</option>
-            <option value="0.5">0.5</option><option value="1">1</option>
-            <option value="2">2</option><option value="5">5</option>
-          </select>
-        </label>
-        <label>{t('scopeCenter', lang)}{' '}
-          <input type="number" value={verticalCenter} step="0.5" onChange={e => setVerticalCenter(Number(e.target.value))}
-            disabled={voltsPerDiv === 'auto'} style={{ width: 48, background: '#1a1a2e', color: '#bdc3c7', border: '1px solid #2c3e50', fontSize: '9px' }} />
-        </label>
-      </div>
+      {/* One vertical control set PER CHANNEL (D31). A single V/div could show
+          a 5 V rail or a 50 mV shunt drop, never both; and in auto it ranged
+          across all channels at once, so the small signal drew as a flat line
+          on the axis — present, wrong, and identical to a dead net. The span
+          each channel is actually using is printed beside its knobs, because a
+          scale nobody can read is a scale nobody can reason about (the D4
+          lesson). */}
+      {view === 'time' && channels.map((c, ci) => {
+        const scale = c.scale || defaultScale();
+        let data = null;
+        try { data = board && board.getScopeData ? board.getScopeData(c.handle) : null; } catch { data = null; }
+        const range = channelRange(scale, data);
+        return (
+          <div key={`scale-${c.netId}`} data-testid={`bw-scope-scale-${ci}`}
+            style={{ display: 'flex', gap: '4px', marginBottom: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ color: CHANNEL_COLORS[ci], minWidth: 46, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.netId}</span>
+            <label>{t('scopeScale', lang)}{' '}
+              <select value={scale.mode === 'auto' ? 'auto' : String(scale.voltsPerDiv)}
+                data-testid={`bw-scope-vdiv-${ci}`}
+                onChange={e => setChannelScale(c.netId, e.target.value === 'auto'
+                  ? { mode: 'auto' }
+                  : { mode: 'manual', voltsPerDiv: Number(e.target.value) })}
+                style={{ background: '#1a1a2e', color: '#bdc3c7', border: '1px solid #2c3e50', fontSize: '9px' }}>
+                <option value="auto">{t('scopeAuto', lang)}</option>
+                {VOLTS_PER_DIV.map(v => <option key={v} value={String(v)}>{v}</option>)}
+              </select>
+            </label>
+            <label>{t('scopeCenter', lang)}{' '}
+              <input type="number" value={scale.center} step="0.5"
+                data-testid={`bw-scope-center-${ci}`}
+                onChange={e => setChannelScale(c.netId, { center: Number(e.target.value) })}
+                disabled={scale.mode === 'auto'}
+                style={{ width: 48, background: '#1a1a2e', color: '#bdc3c7', border: '1px solid #2c3e50', fontSize: '9px' }} />
+            </label>
+            <span data-testid={`bw-scope-span-${ci}`} style={{ color: '#5d6d7e', fontSize: '8px' }}>
+              {scaleLabel(range)}{range.auto ? ' (auto)' : ''}
+            </span>
+          </div>
+        );
+      })}
 
+      {view === 'spectrum' && (
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <label>{t('scopeWindow', lang)}{' '}
+            <select value={fftWindow} onChange={e => setFftWindow(e.target.value)}
+              data-testid="bw-scope-fft-window"
+              style={{ background: '#1a1a2e', color: '#bdc3c7', border: '1px solid #2c3e50', fontSize: '9px' }}>
+              <option value="hann">Hann</option>
+              <option value="rect">rectangular</option>
+            </select>
+          </label>
+          {/* Labelled by the BANDWIDTH it buys, not the rate, for the same
+              reason the record control is labelled by length: "will the tone I
+              am looking for be on the axis" is the question, and a sample rate
+              does not answer it. Faster costs solver steps — see the state's
+              comment — so the title says so. */}
+          <label>{lang === 'de' ? 'Bandbreite' : 'span'}{' '}
+            <select value={specRateHz} onChange={e => setSpecRateHz(Number(e.target.value))}
+              data-testid="bw-scope-fft-rate"
+              title={lang === 'de'
+                ? 'Nyquist-Bandbreite. Schneller heißt feinere Solver-Schritte und eine langsamere Simulation.'
+                : 'Nyquist bandwidth. Faster means finer solver steps and a slower simulation.'}
+              style={{ background: '#1a1a2e', color: '#bdc3c7', border: '1px solid #2c3e50', fontSize: '9px' }}>
+              {SCOPE_RATES.map(hz => (
+                <option key={hz} value={hz}>{`DC…${formatHz(hz / 2)}`}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
+      {view === 'time' && (
       <div style={{ display: 'flex', gap: '4px', marginBottom: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
         <label>{t('scopeTrigger', lang)}{' '}
           <select value={triggerMode} onChange={e => setTriggerMode(e.target.value)}
@@ -286,8 +505,52 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
           {triggered ? t('scopeTriggered', lang) : t('scopeWaiting', lang)}
         </strong>}
       </div>
+      )}
 
-      {channels.length === 0 ? (
+      {view === 'spectrum' ? (
+        <div data-testid="bw-scope-spectrum">
+          {channels.length === 0 ? (
+            <div style={{
+              width: W, height: H, background: '#0d1420', borderRadius: '4px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>{t('scopeEmpty', lang)}</div>
+          ) : (
+            <canvas ref={specCanvasRef} width={W} height={H}
+              style={{ borderRadius: '4px', width: '100%', height: 'auto', display: 'block' }} />
+          )}
+          {/* The numbers. A spectrum drawn without them is the same picture-
+              instead-of-a-reading failure D3 closed on the Bode plot. Every
+              refusal is printed in full, because "the trace is incomplete" is
+              a measurement result and silence is not. */}
+          {spectra.map((s, ci) => (
+            <div key={`spec-${s.netId}`} data-testid={`bw-scope-spectrum-${ci}`}
+              style={{ marginTop: 4, fontSize: 9, color: CHANNEL_COLORS[ci % CHANNEL_COLORS.length] }}>
+              <strong>{s.netId}</strong>{' '}
+              {s.reason ? (
+                <span style={{ color: '#f39c12' }}>{s.reason}</span>
+              ) : (() => {
+                const p = peakBin(s.spec);
+                const d = thd(s.spec);
+                return (
+                  <span style={{ color: '#aab' }}>
+                    {t('scopePeak', lang)} {formatHz(p ? p.fInterp : NaN)} @ {p ? p.amplitude.toFixed(4) : '—'} V
+                    {d ? ` · ${t('scopeThd', lang)} ${d.thdPercent.toFixed(2)} %` : ''}
+                    {` · ${s.spec.windowName}, ${s.spec.points} pts, ${s.spec.binHz.toFixed(3)} Hz/bin`}
+                  </span>
+                );
+              })()}
+            </div>
+          ))}
+          {spectra.some(s => s.spec) && (
+            <button onClick={copySpectrumCsv} data-testid="bw-scope-spectrum-csv" style={{
+              marginTop: 5, padding: '3px 6px', background: '#0d1420', border: '1px solid #2c3e50',
+              borderRadius: 3, color: '#5d6d7e', fontFamily: 'monospace', fontSize: 9, cursor: 'pointer',
+            }}>{t('scopeSpectrumCsv', lang)}</button>
+          )}
+          {specCopied && <div style={{ color: '#5d6d7e', fontSize: 8, whiteSpace: 'pre-wrap', maxHeight: 80, overflowY: 'auto' }}>{specCopied}</div>}
+          <div style={{ marginTop: 4, color: '#556', fontSize: 8 }}>{t('scopeSpectrumFoot', lang)}</div>
+        </div>
+      ) : channels.length === 0 ? (
         <div style={{
           width: W, height: H, background: '#0d1420', borderRadius: '4px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -328,7 +591,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
         )}
         <span style={{ marginLeft: 'auto' }}>{timeLabel}</span>
       </div>
-      <div style={{ marginTop: '5px' }}>
+      {view === 'time' && <div style={{ marginTop: '5px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>{t('scopeCursors', lang)}</span>
           <strong style={{ color: '#f1c40f' }}>Δt {cursorLabel || '—'}</strong>
@@ -337,7 +600,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
           onChange={e => setCursorA(Number(e.target.value))} style={{ width: '100%', accentColor: '#f1c40f' }} />
         <input aria-label="Cursor B" type="range" min="0" max="1" step="0.01" value={cursorB}
           onChange={e => setCursorB(Number(e.target.value))} style={{ width: '100%', accentColor: '#e67e22' }} />
-      </div>
+      </div>}
       <div style={{ marginTop: '4px', color: '#556' }}>
         {t('scopeFooter', lang)}
       </div>
