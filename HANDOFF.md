@@ -54,7 +54,7 @@ was impossible**: the engine arrives through `setEngine` as live JS objects and
 a class is not structured-cloneable, so what crosses the boundary is a NETLIST
 (`model/sweep-protocol.js`) and the host supplies the worker
 (`setEngine({createSweepWorker})`, reference implementation in
-`src/dev-sweep-worker.js`). Without one the same points run chunked on this
+`dev/sweep-worker.js`). Without one the same points run chunked on this
 thread; the panel's status line says which path produced the numbers.
 **The dev harness never injected `runDcSweep`/`runAcSweep`/`logSpace` at all**,
 so `SweepPanel` refused every run there and no browser scenario could reach it.

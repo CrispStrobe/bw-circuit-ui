@@ -257,7 +257,7 @@ this library through `setEngine` as LIVE JS OBJECTS, and a class is not
 structured-cloneable — only the host knows where its engine module is, so only the
 host can build the worker. So: `sweep-protocol.js` sends a NETLIST across the
 boundary and exports `sweepWorkerHandler` for the worker side;
-`setEngine({createSweepWorker})` is the optional hook; `src/dev-sweep-worker.js` is
+`setEngine({createSweepWorker})` is the optional hook; `dev/sweep-worker.js` is
 the reference implementation and the dev harness wires it. Without the hook the same
 points run chunked on the main thread, one per macrotask — worse (one slow POINT
 still blocks) but real, and the panel's status line says WHICH path produced the

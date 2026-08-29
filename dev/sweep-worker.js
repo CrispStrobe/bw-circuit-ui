@@ -2,9 +2,16 @@
  * The dev harness's sweep worker — and the reference implementation of the one
  * a host has to write.
  *
- * This file is the ONLY place in the library that imports bw-board by path,
- * apart from `main.jsx`, and for the same reason: both are the harness, not the
- * library. The library itself receives the engine through `setEngine`, and a
+ * It lives in `dev/`, NOT in `src/`, and that is load-bearing: brickwright-lite
+ * vendors this library by walking `src/` and copying everything except
+ * `main.jsx` into `scratch-gui/src/lib/bw-circuit-ui/`, where `../../bw-board`
+ * resolves to nothing (lite's engine is one level up, at `lib/bw-board`). A
+ * file under `src/` that imports the engine by path therefore breaks the host's
+ * build, which is exactly why main.jsx is on that skip list. One skip list is
+ * enough; the second harness file stays out of the vendored tree instead.
+ *
+ * This and `main.jsx` are the only places that import bw-board by path, and for
+ * the same reason: both are the harness, not the library. The library itself receives the engine through `setEngine`, and a
  * live `BoardImpl` class cannot be cloned into a worker — so the worker has to
  * import an engine of its own, and only the host knows where its engine module
  * is. What crosses the thread boundary is a netlist (see `sweep-protocol.js`).
@@ -26,7 +33,7 @@
 import { BoardImpl } from '../../bw-board/src/board.js';
 import { runDcSweep, runAcSweep, logSpace } from '../../bw-board/src/sweep.js';
 import { registerAllDevices } from '../../bw-board/src/register-all.js';
-import { sweepWorkerHandler } from './model/sweep-protocol.js';
+import { sweepWorkerHandler } from '../src/model/sweep-protocol.js';
 
 // The same registration main.jsx does: without it every registered kind
 // (keypad_4x4, at24c02, …) rejects the netlist and the offline board the sweep

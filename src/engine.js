@@ -10,7 +10,7 @@
  * that speaks `model/sweep-protocol.js`. The engine arrives here as live JS
  * objects and a class is not structured-cloneable, so the library cannot build
  * that worker itself: only the host knows where its engine module lives.
- * `src/dev-sweep-worker.js` is the reference implementation, and the dev
+ * `dev/sweep-worker.js` is the reference implementation, and the dev
  * harness wires it. Without the factory `SweepPanel` runs the same points
  * chunked on the main thread — still repainting between them, but one slow
  * POINT still blocks. See X2.6 / D9.

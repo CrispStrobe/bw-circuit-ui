@@ -651,7 +651,9 @@ try {
     // and a spectrum of an isolated 0 V net peaks in bin 1 and proves nothing.
     const fgNet = await page.evaluate(() => {
       const c = window.__circuit;
-      const src = (c?.parts || []).find(p => p.kind === 'vsource');
+      // The LAST vsource: the demo board this harness starts from may already
+      // carry one, and the first match is then not the generator just placed.
+      const src = (c?.parts || []).filter(p => p.kind === 'vsource').at(-1);
       if (!src) return null;
       const n = (c.board.getNets() || []).find(net =>
         (net.terminals || []).some(t => t.part === src.id && t.terminal === 'pos'));
@@ -698,7 +700,8 @@ try {
       const hz = parseFloat(peak[1]) * (/k/i.test(peak[2]) ? 1000 : 1);
       (Math.abs(hz - 1000) < 50)
         ? pass(`spectrum peaks at ${hz.toFixed(1)} Hz on a 1000 Hz generator`)
-        : fail(`spectrum peaks at ${hz.toFixed(1)} Hz, generator is 1000 Hz`);
+        : fail(`spectrum peaks at ${hz.toFixed(1)} Hz, generator is 1000 Hz `
+          + `(ch1 net ${fgNet}, offered ${offered.length}) — ${specText.replace(/\n/g, ' | ')}`);
     } else if (/incomplete|never written|samples|capture/i.test(specText)) {
       pass(`spectrum refuses honestly while the series fills: "${specText.slice(0, 90)}"`);
     } else {

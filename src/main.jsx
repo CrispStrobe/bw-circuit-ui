@@ -49,7 +49,7 @@ setEngine({
   BoardImpl, inferNetlist, checkWiring, getDevice,
   runDcSweep, runAcSweep, logSpace,
   createSweepWorker: () =>
-    new Worker(new URL('./dev-sweep-worker.js', import.meta.url), { type: 'module' }),
+    new Worker(new URL('../dev/sweep-worker.js', import.meta.url), { type: 'module' }),
 });
 
 import { CircuitDesigner } from './components/CircuitDesigner.jsx';
