@@ -720,12 +720,6 @@ const selectionCount = async () =>
   await page.goto(`http://localhost:${PORT}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.__circuit && window.__circuit.parts.some(q => q.kind === 'mcu'), { timeout: 30000 });
   await page.waitForTimeout(400);
-  const pts = await page.evaluate(() => {
-    const c = window.__circuit;
-    const bb = c.parts.find(q => q.kind === 'breadboard');
-    const mcu = c.parts.find(q => q.kind === 'mcu');
-    return { bb: { x: bb.x, y: bb.y }, mcu: { x: mcu.x, y: mcu.y } };
-  });
   // world -> screen through the canvas's OWN world layer, found BY NAME.
   // The old form — "the first div whose inline transform contains scale(" —
   // silently started matching a palette thumbnail, so this gesture was drawn
@@ -737,37 +731,68 @@ const selectionCount = async () =>
     failAll(['pin-chooser-opens', 'pin-chooser-wires'],
       `no unique [data-wokwi-layer] world layer to aim through (found ${await layer.count()}) — the hook BoardCanvas.jsx names was removed or duplicated`);
   } else {
-    const toScreen = async (wx, wy) => page.evaluate(({ wx, wy }) => {
+    // The wire has to START on a hole that is actually there. The old aim was
+    // arithmetic — `bb.x - (62*14)/2 + 19*14`, a column count and a pitch and
+    // a row offset all written down once and never checked against the board
+    // being drawn. A full-size breadboard has 63 columns, so that expression
+    // was half a pitch out and the press landed between holes. Ask the DOM
+    // instead: every hole renders as a circle carrying its own id, and a hole
+    // that hit-tests to itself is one no part body is sitting on.
+    const aim = await page.evaluate(() => {
+      const c = window.__circuit;
+      const mcu = c.parts.find(q => q.kind === 'mcu');
+      if (!mcu) return { err: 'no mcu on the demo board' };
       const el = document.querySelector('[data-wokwi-layer]');
       const m2 = new DOMMatrixReadOnly(getComputedStyle(el).transform);
-      const r = el.parentElement.getBoundingClientRect();
-      return { x: r.x + wx * m2.a + m2.e, y: r.y + wy * m2.d + m2.f };
-    }, { wx, wy });
-    const from = await toScreen(pts.bb.x - (62 * 14) / 2 + 19 * 14, pts.bb.y - 128);
-    const to = await toScreen(pts.mcu.x, pts.mcu.y);
-    await page.mouse.move(from.x, from.y); await page.mouse.down();
-    await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 4 });
-    await page.mouse.move(to.x, to.y, { steps: 4 }); await page.mouse.up();
-    await page.waitForTimeout(700);
-    const open = await page.getByText('Which pin of', { exact: false }).count();
-    verdict('pin-chooser-opens', !!open,
-      'pin chooser opens on chip-body release',
-      `pin chooser did not open (drag ${from.x.toFixed(0)},${from.y.toFixed(0)} → ${to.x.toFixed(0)},${to.y.toFixed(0)})`);
-    if (open) {
-      await clickOrFail(page.locator('button', { hasText: 'P1.5' }).first(), 'pin-chooser-wires', 'P1.5 button unclickable', { timeout: 10000 });
-      await page.waitForTimeout(400);
-      if (!reported.has('pin-chooser-wires')) {
-        const wired = await page.evaluate(() => {
-          const m = window.__circuit.parts.find(q => q.kind === 'mcu');
-          return window.__circuit.wires.some(w =>
-            (w.from.part === m.id && w.from.terminal === 'P1.5') || (w.to.part === m.id && w.to.terminal === 'P1.5'));
-        });
-        verdict('pin-chooser-wires', wired,
-          'chosen pin completes the tap wire',
-          'chooser click produced no wire');
+      const pr = el.parentElement.getBoundingClientRect();
+      const chip = { x: pr.x + mcu.x * m2.a + m2.e, y: pr.y + mcu.y * m2.d + m2.f };
+      const holes = [...document.querySelectorAll('[data-hole]')];
+      const free = [];
+      for (const h of holes) {
+        const id = h.getAttribute('data-hole');
+        if (!/^[a-j]\d+$/.test(id)) continue;          // terminal rows only, not the rails
+        const r = h.getBoundingClientRect();
+        const x = r.x + r.width / 2, y = r.y + r.height / 2;
+        if (x < pr.x + 4 || x > pr.x + pr.width - 4 || y < pr.y + 4 || y > pr.y + pr.height - 4) continue;
+        if (Math.hypot(x - chip.x, y - chip.y) < 90) continue;  // far enough to be a real drag
+        const hit = document.elementFromPoint(x, y);
+        if (hit === h || (hit && hit.closest && hit.closest('[data-hole]') === h)) free.push({ id, x, y });
       }
+      const over = document.elementFromPoint(chip.x, chip.y);
+      return { chip, free: free.slice(0, 3), holes: holes.length,
+        chipCovered: over ? (over.tagName + (over.getAttribute('data-hole') ? `[data-hole=${over.getAttribute('data-hole')}]` : '')) : 'nothing' };
+    });
+    if (aim.err || !aim.free || aim.free.length === 0) {
+      failAll(['pin-chooser-opens', 'pin-chooser-wires'],
+        `no free breadboard hole to start the tap wire from (${aim.err ?? `${aim.holes} holes drawn, none free and clear of the chip`})`);
     } else {
-      fail('pin-chooser-wires', 'chosen pin completes the tap wire: not attempted (the chooser never opened)');
+      const from = aim.free[0];
+      const to = aim.chip;
+      await page.mouse.move(from.x, from.y); await page.mouse.down();
+      await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 4 });
+      await page.mouse.move(to.x, to.y, { steps: 4 }); await page.mouse.up();
+      await page.waitForTimeout(700);
+      const open = await page.getByText('Which pin of', { exact: false }).count();
+      verdict('pin-chooser-opens', !!open,
+        `pin chooser opens on chip-body release (hole ${from.id} → chip)`,
+        `pin chooser did not open (hole ${from.id} at ${from.x.toFixed(0)},${from.y.toFixed(0)} → chip at `
+          + `${to.x.toFixed(0)},${to.y.toFixed(0)}, which covers ${aim.chipCovered})`);
+      if (open) {
+        await clickOrFail(page.locator('button', { hasText: 'P1.5' }).first(), 'pin-chooser-wires', 'P1.5 button unclickable', { timeout: 10000 });
+        await page.waitForTimeout(400);
+        if (!reported.has('pin-chooser-wires')) {
+          const wired = await page.evaluate(() => {
+            const m = window.__circuit.parts.find(q => q.kind === 'mcu');
+            return window.__circuit.wires.some(w =>
+              (w.from.part === m.id && w.from.terminal === 'P1.5') || (w.to.part === m.id && w.to.terminal === 'P1.5'));
+          });
+          verdict('pin-chooser-wires', wired,
+            'chosen pin completes the tap wire',
+            'chooser click produced no wire');
+        }
+      } else {
+        fail('pin-chooser-wires', 'chosen pin completes the tap wire: not attempted (the chooser never opened)');
+      }
     }
   }
 }
@@ -974,22 +999,33 @@ try {
   if (await swp.count() !== 1) {
     failAll(['sweep-progress', 'sweep-canvas-live'], `no sweep panel after toggling it on (found ${await swp.count()})`);
   } else {
+    // RECORD the run button's label instead of sampling it. Polling every
+    // 500 ms and asking "does it say N/60 right now" races a sweep that may
+    // be over in under a second on a quiet runner: the sweep ran, reported
+    // every point, finished, and the poll saw only "▶ Sweep" at both ends and
+    // called that "no per-point progress". A MutationObserver installed
+    // BEFORE the run cannot miss a label the button ever wore.
+    await page.evaluate(() => {
+      window.__sweepLabels = [];
+      const read = () => (document.querySelector('[data-testid=bw-sweep-run]')?.innerText || '').trim();
+      const push = () => {
+        const t = read();
+        if (t && window.__sweepLabels[window.__sweepLabels.length - 1] !== t) window.__sweepLabels.push(t);
+      };
+      push();
+      const panel = document.querySelector('[data-testid=bw-sweep-panel]');
+      window.__sweepObs = new MutationObserver(push);
+      window.__sweepObs.observe(panel, { childList: true, subtree: true, characterData: true });
+    });
     await clickOrFail(swp.locator('[data-testid=bw-sweep-run]'), 'sweep-progress', 'sweep run unclickable', { timeout: 30000 });
-    // Poll for the progress readout rather than sleeping a guess: a host that
-    // supplies a worker pays for its first boot here, and on a loaded box that
-    // is seconds. What is being asserted is that progress EXISTS, not when.
-    let label = '';
-    for (let i = 0; i < 60; i++) {
-      label = (await swp.locator('[data-testid=bw-sweep-run]').innerText()).trim();
-      if (/\d+\s*\/\s*\d+/.test(label)) break;
-      if (await swp.locator('[data-testid=bw-sweep-stop]').count() === 0 && i > 4) break; // finished
-      await page.waitForTimeout(500);
-    }
-    if (!reported.has('sweep-progress')) {
-      verdict('sweep-progress', /\d+\s*\/\s*\d+/.test(label),
-        `sweep reports progress while running: "${label}"`,
-        `sweep showed no per-point progress: "${label}"`);
-    }
+
+    // The drag goes FIRST, immediately, while the sweep is still working —
+    // that is the whole claim of X2.6 and the reason this scenario exists.
+    // Whether it was still running is recorded, not assumed: a drag that
+    // happens after the sweep has finished proves nothing about the sweep,
+    // and this scenario says so rather than passing on it.
+    const running = async () => await swp.locator('[data-testid=bw-sweep-stop]').count() > 0;
+    const runningBefore = await running();
     const rb = await page.locator('wokwi-resistor').first().boundingBox();
     const x0 = rb.x;
     await page.mouse.move(rb.x + rb.width / 2, rb.y + rb.height / 2);
@@ -1002,9 +1038,30 @@ try {
     await page.waitForTimeout(300);
     const rb2 = await page.locator('wokwi-resistor').first().boundingBox();
     const moved = rb2.x - x0;
-    verdict('sweep-canvas-live', moved > 60,
-      `canvas dragged ${moved.toFixed(0)} px DURING a running sweep`,
-      `canvas froze during the sweep (moved ${moved.toFixed(0)} px)`);
+    if (!runningBefore) {
+      fail('sweep-canvas-live',
+        `the sweep was not running when the canvas was dragged (moved ${moved.toFixed(0)} px) — `
+        + 'a drag against an idle page proves nothing about a sweep off the critical path');
+    } else {
+      verdict('sweep-canvas-live', moved > 60,
+        `canvas dragged ${moved.toFixed(0)} px DURING a running sweep`,
+        `canvas froze during the sweep (moved ${moved.toFixed(0)} px)`);
+    }
+
+    // Let it finish (or give up saying so), then read what the button wore.
+    for (let i = 0; i < 60 && await running(); i++) await page.waitForTimeout(500);
+    const labels = await page.evaluate(() => {
+      try { window.__sweepObs.disconnect(); } catch { /* already gone */ }
+      return window.__sweepLabels || [];
+    });
+    const rowCount = await swp.locator('[data-testid=bw-sweep-readout]').count();
+    if (!reported.has('sweep-progress')) {
+      verdict('sweep-progress', labels.some(l => /\d+\s*\/\s*\d+/.test(l)),
+        `sweep reports progress while running: ${labels.filter(l => /\d+\s*\/\s*\d+/.test(l)).length} `
+          + `per-point labels, last "${labels.filter(l => /\d+\s*\/\s*\d+/.test(l)).at(-1)}"`,
+        `sweep showed no per-point progress — the run button only ever read `
+          + `${JSON.stringify(labels)} (readout panels: ${rowCount}, still running: ${await running()})`);
+    }
     // Leave nothing running into the page-error check.
     const stop = page.locator('[data-testid=bw-sweep-stop]');
     if (await stop.count()) { try { await stop.click({ timeout: 2000 }); } catch { /* finished already */ } }
