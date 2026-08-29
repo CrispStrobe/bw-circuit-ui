@@ -39,10 +39,49 @@ is fabricated.
 
 ## Verification
 
-2,226 tests, 0 failures on CI (2026-08-27). Gate: `npm run verify:interaction`
-(12 scenarios). The ladder RANGES above are asserted against the gallery by
-`test/computer-ladder.test.js` — they had drifted to `l0..l9`/`c0..c10` before
-anything checked them.
+2,226 tests, 0 failures on CI (2026-08-27). The ladder RANGES above are
+asserted against the gallery by `test/computer-ladder.test.js` — they had
+drifted to `l0..l9`/`c0..c10` before anything checked them.
+
+### The real-browser interaction gate
+
+`npm run verify:interaction` drives a real Chromium through **31 scenarios**
+with real pointer sequences against real WOKWI parts — click-select, part
+drag, terminal-to-terminal wiring, breadboard placement and seating,
+hole-to-hole jumpers, wheel pan (and that a plain wheel does NOT zoom),
+opening the instruments column, the scope panel and a live channel, a
+function generator's waveform on that scope, the simulation transport
+(pause freezes board time, step advances exactly one 50 ms tick, resume
+flows), schematic projection, the no-MCU starter entering Sim, body-beats-hole
+on a seated part, the pin chooser completing a tap wire, the selectors column
+collapsing and restoring, a multimeter that does not empty the board it
+measures, per-channel V/div, the spectrum view's 1 kHz peak, a sweep that
+reports per-point progress while the canvas still drags, and zero page errors.
+
+**It runs in CI** (`.github/workflows/ci.yml`, job `interaction-gate`), which
+it did not for most of its life — and three of its scenarios had been red the
+whole time with nobody watching. It installs Chromium, clones the sibling
+`bw-board` the dev harness imports, and fails the build on any scenario
+failure.
+
+The **count is asserted, not printed**. Every scenario reports exactly one
+outcome under its own id and the script holds the full `EXPECTED` list: a
+missing id, an unexpected id, or a pass arriving after a fail fails the run
+and names it. "It was green" is not a result if it silently ran fewer than
+last time. The last line of the run is:
+
+```
+31 scenarios · 31 passed · 0 failed
+roll-call: 31/31 expected scenarios reported an outcome
+```
+
+Two DOM hooks exist for it and are asserted by it: `data-canvas-svg` (the one
+svg whose viewBox is the camera — the container also holds a button icon's
+svg, and reading that ornament's constant viewBox is how "wheel did not pan"
+was reported for months) and `data-wokwi-layer` (the world→screen matrix —
+found by "the first div with scale() in its transform" until palette
+thumbnails started scaling and the pin-chooser gesture was drawn inside the
+parts palette). Remove either and the gate fails by name.
 
 **Nothing in this campaign has run on real silicon.** All cross-model claims
 are category 2b (same-source agreement) at best. Categories per
@@ -70,7 +109,7 @@ See `CLOSE-OUT.md` for the full ledger, defects found, and bench-blocked items.
 npm install
 npm run dev              # Vite dev server on port 3100
 npm test                 # 621 unit/integration tests
-npm run verify:interaction  # 12 Playwright interaction scenarios
+npm run verify:interaction  # 31 real-browser scenarios (also runs in CI)
 npm run test:render      # rendering tests (needs dev server)
 npm run sync:parts       # re-vendor bw-parts sidecars into src/parts-data/
 npm run verify:deployed  # deployed-page probes against GH Pages (see below)

@@ -1,5 +1,67 @@
 # bw-circuit-ui -- handoff for the next session
 
+## 2026-08-29 (later) — the browser gate is in CI, and it is green
+
+`npm run verify:interaction` now runs as the `interaction-gate` job in
+`.github/workflows/ci.yml`: it clones the sibling `bw-board` the dev harness
+imports, installs Chromium with its system libraries, and fails the build on
+any scenario failure. **31 scenarios, 31 passed, 0 failed** on a clean runner
+(run `33278054707`). Everything the section below records as red was the PROBE,
+not the app — the three "pre-existing defects" and the four "load-sensitive"
+transport scenarios all had probe-layer causes, and every one of them is fixed
+at the layer that was actually wrong.
+
+**wheel-pan** read `[data-canvas] svg` `.first()`, which is the fit-to-parts
+button's 18×18 icon; its viewBox is the constant `0 0 24 24`, so comparing it
+before and after a wheel measured nothing. The camera svg now carries
+`data-canvas-svg`. Measured: viewBox origin `-15, 4.7 → 51.2, 54.4` with the
+width term unmoved. The app had always panned.
+
+**pin-chooser** aimed through "the first div whose inline transform contains
+`scale(`". Palette thumbnails scale themselves and come first in document
+order, so the gesture was drawn at x≈135 — inside the parts palette, while the
+canvas begins at x≈214. The world layer now carries `data-wokwi-layer`. Two
+further wrong aims surfaced once that was fixed and are worth keeping: the
+start hole was chosen by arithmetic (`bb.x - (62*14)/2 + 19*14`, and a
+full-size breadboard has **63** columns, so the press landed between holes),
+and the first correction picked a hole 91 px from the chip centre which is
+*under* a DIP-40 — body beats hole, so the press dragged the chip. Start hole
+and release point are now both read off the rendered lattice: occupancy from
+`__circuit.breadboards.get(id).occupantOf(hole)` (the DOM cannot answer that —
+the canvas hit-tests pointers in WORLD space, so `elementFromPoint` over the
+board returns the one big svg, never a hole circle), position from
+`[data-hole]`, and the chip's centre from averaging the screen positions of
+the holes its own `leadMap` names.
+
+**scope-panel** asked for a Scope button inside the instruments column, which
+is COLLAPSED in this harness — `rightOpen` seeds from `debuggerOn||benchOpen`
+and the dev page passes neither, so `getByRole('button', {name:/Scope/i})`
+matched zero elements. Opening the column by its own labelled control is now
+scenario `instruments-expand`, and it has to run after every reload: the
+column is React state while the scope toggle inside it is localStorage, so a
+reload leaves the panel "shown" inside a column nobody has opened. That
+mismatch also explains why scenario 6 (which reloads first) looked different.
+
+**The transport four were never load-sensitive.** A Playwright click will not
+fire until the element holds still across consecutive animation frames, and
+the sidebar re-renders on every 50 ms sim tick; that wait, not the app, is
+what reported reachable buttons as "unclickable" — and when the instruments
+column was collapsed the same locators found nothing at all. They are now
+aimed pointer presses whose target is verified against `elementFromPoint`
+BEFORE the press, so a mis-aim is reported rather than silently missed, and
+every assertion reads the board clock rather than pixels.
+
+**The count is asserted.** `EXPECTED` lists all 31 scenario ids; each reports
+exactly one outcome; a missing id, an unexpected id, or a pass after a fail
+fails the run and names it. Mutation-proven — see `scripts/verify-interaction.mjs`.
+
+**`sweep-canvas-live` no longer passes vacuously.** The drag now happens
+immediately after the run press and records whether the sweep was still
+working; a drag against an idle page fails with that as the reason.
+`sweep-progress` records every label the run button wears (MutationObserver)
+instead of polling for one, because a sweep that finishes in under a second
+did report all 60 points and the poll saw none of them.
+
 ## 2026-08-29 — the instruments (D21, D31, D24/X2.2, D9/X2.6)
 
 Four defects off `brickwright-lite/docs/WAVE-OPEN-DEFECTS.md`, all of them the
