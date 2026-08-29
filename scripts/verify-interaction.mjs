@@ -731,40 +731,55 @@ const selectionCount = async () =>
     failAll(['pin-chooser-opens', 'pin-chooser-wires'],
       `no unique [data-wokwi-layer] world layer to aim through (found ${await layer.count()}) — the hook BoardCanvas.jsx names was removed or duplicated`);
   } else {
-    // The wire has to START on a hole that is actually there. The old aim was
-    // arithmetic — `bb.x - (62*14)/2 + 19*14`, a column count and a pitch and
-    // a row offset all written down once and never checked against the board
-    // being drawn. A full-size breadboard has 63 columns, so that expression
-    // was half a pitch out and the press landed between holes. Ask the DOM
-    // instead: every hole renders as a circle carrying its own id, and a hole
-    // that hit-tests to itself is one no part body is sitting on.
+    // The wire has to START on a hole that is actually there and actually
+    // free. The old aim was arithmetic — `bb.x - (62*14)/2 + 19*14`, a column
+    // count and a pitch and a row offset written down once and never checked
+    // against the board being drawn. A full-size breadboard has 63 columns,
+    // so that expression is half a pitch out and the press landed between
+    // holes: no wire ever started, nothing was ever released on the chip, and
+    // the scenario reported the pin chooser broken.
+    //
+    // Two sources of truth, each used for what it knows. The MODEL
+    // (`__circuit.breadboards.get(id).occupantOf(hole)`) says which holes a
+    // leg or jumper already owns — asking the DOM that question fails,
+    // because the canvas hit-tests pointers in WORLD space and the element
+    // under the cursor is the one big svg, never the hole circle. The DOM
+    // (`[data-hole]`, which every hole carries) says where that hole is on
+    // screen, which no amount of arithmetic can get wrong.
     const aim = await page.evaluate(() => {
       const c = window.__circuit;
       const mcu = c.parts.find(q => q.kind === 'mcu');
       if (!mcu) return { err: 'no mcu on the demo board' };
+      const bbPart = c.parts.find(q => q.kind === 'breadboard');
+      const bb = bbPart && c.breadboards ? c.breadboards.get(bbPart.id) : null;
+      if (!bb) return { err: 'no breadboard model on the demo board' };
       const el = document.querySelector('[data-wokwi-layer]');
       const m2 = new DOMMatrixReadOnly(getComputedStyle(el).transform);
       const pr = el.parentElement.getBoundingClientRect();
       const chip = { x: pr.x + mcu.x * m2.a + m2.e, y: pr.y + mcu.y * m2.d + m2.f };
       const holes = [...document.querySelectorAll('[data-hole]')];
+      let occupied = 0, offscreen = 0, tooClose = 0;
       const free = [];
       for (const h of holes) {
         const id = h.getAttribute('data-hole');
         if (!/^[a-j]\d+$/.test(id)) continue;          // terminal rows only, not the rails
+        if (bb.occupantOf(id)) { occupied++; continue; }
         const r = h.getBoundingClientRect();
         const x = r.x + r.width / 2, y = r.y + r.height / 2;
-        if (x < pr.x + 4 || x > pr.x + pr.width - 4 || y < pr.y + 4 || y > pr.y + pr.height - 4) continue;
-        if (Math.hypot(x - chip.x, y - chip.y) < 90) continue;  // far enough to be a real drag
-        const hit = document.elementFromPoint(x, y);
-        if (hit === h || (hit && hit.closest && hit.closest('[data-hole]') === h)) free.push({ id, x, y });
+        if (x < pr.x + 6 || x > pr.x + pr.width - 6 || y < pr.y + 6 || y > pr.y + pr.height - 6) { offscreen++; continue; }
+        const d = Math.hypot(x - chip.x, y - chip.y);
+        if (d < 90) { tooClose++; continue; }          // far enough to be a real drag
+        free.push({ id, x, y, d });
       }
+      free.sort((a, b) => a.d - b.d);                  // the shortest honest drag
       const over = document.elementFromPoint(chip.x, chip.y);
-      return { chip, free: free.slice(0, 3), holes: holes.length,
-        chipCovered: over ? (over.tagName + (over.getAttribute('data-hole') ? `[data-hole=${over.getAttribute('data-hole')}]` : '')) : 'nothing' };
+      return { chip, free: free.slice(0, 3), holes: holes.length, occupied, offscreen, tooClose,
+        chipCovered: over ? over.tagName : 'nothing' };
     });
     if (aim.err || !aim.free || aim.free.length === 0) {
       failAll(['pin-chooser-opens', 'pin-chooser-wires'],
-        `no free breadboard hole to start the tap wire from (${aim.err ?? `${aim.holes} holes drawn, none free and clear of the chip`})`);
+        `no free breadboard hole to start the tap wire from (${aim.err
+          ?? `${aim.holes} holes drawn, ${aim.occupied} occupied, ${aim.offscreen} off-canvas, ${aim.tooClose} too close to the chip`})`);
     } else {
       const from = aim.free[0];
       const to = aim.chip;
