@@ -274,11 +274,16 @@ const selectionCount = async () =>
   // unconditional click would close it — which is exactly what "FG circuit
   // produced no nets to scope" was, once the click above started working.
   const showScope = async () => {
-    if (await page.locator('[data-scope-panel], [data-scope-module]').count()) return;
+    const panelSel = '[data-scope-panel], [data-scope-module]';
+    if (await page.locator(panelSel).count()) return;
     const btn = page.getByRole('button', { name: /Scope/i }).first();
     if (await btn.count()) {
       await clickOrFail(btn, 'scope show/hide unclickable', { timeout: 20000 });
-      await page.waitForTimeout(300);
+      // Readiness is a CONDITION, not a sleep — this file says so in its own
+      // header and then waited 300 ms for React to mount a panel. On a loaded
+      // box it does not, and the scenario then reported the panel missing.
+      await page.locator(panelSel).first()
+        .waitFor({ state: 'attached', timeout: 15000 }).catch(() => { /* reported below */ });
     }
   };
   await showScope();
@@ -358,7 +363,8 @@ const selectionCount = async () =>
     const scopeShowBtn = page.getByRole('button', { name: /Scope/i }).first();
     if (await scopeShowBtn.count()) {
       await clickOrFail(scopeShowBtn, 'scope show/hide unclickable', { timeout: 20000 });
-      await page.waitForTimeout(300);
+      await page.locator('[data-scope-panel], [data-scope-module]').first()
+        .waitFor({ state: 'attached', timeout: 15000 }).catch(() => { /* reported below */ });
     }
   }
   const scope = page.locator('[data-scope-panel], [data-scope-module]');
@@ -628,7 +634,8 @@ try {
   if (await page.locator('[data-scope-panel]').count() === 0) {
     await clickOrFail(page.getByRole('button', { name: /Scope/i }).first(),
       'scope toggle unclickable', { timeout: 20000 });
-    await page.waitForTimeout(500);
+    await page.locator('[data-scope-panel]')
+      .waitFor({ state: 'attached', timeout: 15000 }).catch(() => { /* reported below */ });
   }
   const sp = page.locator('[data-scope-panel]');
   if (await sp.count() !== 1) {
@@ -639,11 +646,18 @@ try {
   } else {
     const netSel = () => sp.locator('select').last();
     const offered = await netSel().locator('option').evaluateAll(os => os.map(o => o.value).filter(Boolean));
-    // Channel 1 must be the net the FG wiring created — the breadboard's own
-    // column nets are electrically dead and a spectrum of nothing proves
-    // nothing. The wire nets are the `net_*` ids; the newest is the FG's.
-    const wireNets = offered.filter(v => /^net_/.test(v));
-    const pick = [wireNets.at(-1), offered.find(v => v !== wireNets.at(-1))].filter(Boolean);
+    // Channel 1 must be the net the GENERATOR drives, asked for by name rather
+    // than guessed: "the newest net_*" picked the meter's own probe wire here,
+    // and a spectrum of an isolated 0 V net peaks in bin 1 and proves nothing.
+    const fgNet = await page.evaluate(() => {
+      const c = window.__circuit;
+      const src = (c?.parts || []).find(p => p.kind === 'vsource');
+      if (!src) return null;
+      const n = (c.board.getNets() || []).find(net =>
+        (net.terminals || []).some(t => t.part === src.id && t.terminal === 'pos'));
+      return n ? n.id : null;
+    });
+    const pick = [fgNet, offered.find(v => v !== fgNet)].filter(v => v && offered.includes(v));
     for (const v of pick) {
       await netSel().selectOption(v);
       await clickOrFail(sp.getByText('+ channel'), 'scope + channel unclickable', { timeout: 20000 });
@@ -669,7 +683,7 @@ try {
     }
 
     // 14. D24 — the spectrum view of the generator's own 1 kHz tone.
-    await clickOrFail(page.locator('[data-testid=bw-scope-view-spectrum]'), 'spectrum toggle unclickable');
+    await clickOrFail(page.locator('[data-testid=bw-scope-view-spectrum]'), 'spectrum toggle unclickable', { timeout: 20000 });
     await page.waitForTimeout(6000);
     const specBox = page.locator('[data-testid=bw-scope-spectrum]');
     const specText = (await specBox.count()) ? (await specBox.innerText()).trim() : '';
@@ -707,7 +721,8 @@ try {
   }
   if (await page.locator('[data-testid=bw-sweep-panel]').count() === 0) {
     await clickOrFail(page.locator('[data-testid=bw-sweep-toggle]'), 'sweep toggle unclickable', { timeout: 20000 });
-    await page.waitForTimeout(400);
+    await page.locator('[data-testid=bw-sweep-panel]')
+      .waitFor({ state: 'attached', timeout: 15000 }).catch(() => { /* reported below */ });
   }
   const swp = page.locator('[data-testid=bw-sweep-panel]');
   if (await swp.count() !== 1) {
