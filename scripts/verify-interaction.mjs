@@ -247,28 +247,43 @@ const transportBtn = (name) => page.getByRole('button', { name });
  *
  * @returns {Promise<{ok: boolean, why?: string}>}
  */
-const pressTransport = async (locator) => {
+const aimedPress = async (locator) => {
+  let info;
   try {
     await locator.first().waitFor({ state: 'visible', timeout: 20000 });
+    // Measure and hit-test inside the page, in one shot, against the element
+    // itself — not "is there a button here", which cannot describe a radio,
+    // a label or a div with a role.
+    info = await locator.first().evaluate((el) => {
+      el.scrollIntoView({ block: 'center', inline: 'center' });
+      const r = el.getBoundingClientRect();
+      const x = r.x + r.width / 2, y = r.y + r.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return {
+        x, y, empty: r.width < 1 || r.height < 1,
+        onTarget: !!hit && (hit === el || el.contains(hit)),
+        hitDesc: hit ? hit.tagName + (hit.getAttribute('role') ? `[role=${hit.getAttribute('role')}]` : '') : 'nothing',
+        text: (el.innerText || el.getAttribute('aria-label') || '').trim().slice(0, 40),
+      };
+    });
   } catch (e) {
     return { ok: false, why: `never became visible: ${String(e).split('\n')[0]}` };
   }
-  try { await locator.first().scrollIntoViewIfNeeded({ timeout: 5000 }); } catch { /* box below still measures */ }
-  const b = await locator.first().boundingBox();
-  if (!b) return { ok: false, why: 'no bounding box' };
-  const cx = b.x + b.width / 2, cy = b.y + b.height / 2;
-  const hit = await page.evaluate(({ x, y }) => {
-    const el = document.elementFromPoint(x, y);
-    if (!el) return { over: 'nothing' };
-    const btn = el.closest('button');
-    return { over: btn ? 'button' : (el.tagName + (el.className && typeof el.className === 'string' ? '.' + el.className : '')),
-      text: btn ? (btn.innerText || '').trim() : '' };
-  }, { x: cx, y: cy });
-  if (hit.over !== 'button') return { ok: false, why: `something else covers it at (${cx.toFixed(0)},${cy.toFixed(0)}): ${hit.over}` };
-  await page.mouse.move(cx, cy);
+  if (info.empty) return { ok: false, why: 'the control has no size on screen' };
+  if (!info.onTarget) {
+    return { ok: false, why: `something else covers it at (${info.x.toFixed(0)},${info.y.toFixed(0)}): ${info.hitDesc}` };
+  }
+  await page.mouse.move(info.x, info.y);
   await page.mouse.down();
   await page.mouse.up();
-  return { ok: true, why: hit.text };
+  return { ok: true, why: info.text };
+};
+
+/** aimedPress, reporting a failure under a scenario id the way clickOrFail does. */
+const pressOrFail = async (locator, id, what) => {
+  const r = await aimedPress(locator);
+  if (!r.ok) fail(id, `${what}: ${r.why}`);
+  return r.ok;
 };
 
 // `domcontentloaded`, not `networkidle`: the house probe traps say the load
@@ -644,7 +659,7 @@ const selectionCount = async () =>
     };
     await dragWire(fgTop, rA);
     await dragWire(fgBot, rB);
-    await clickOrFail(page.getByRole('radio', { name: /Sim/i }).first(), 'fg-waveform', 'Sim toggle unclickable', { timeout: 20000 });
+    await pressOrFail(page.getByRole('radio', { name: /Sim/i }).first(), 'fg-waveform', 'Sim toggle unreachable');
     await page.waitForTimeout(300);
     // Show scope panel if hidden (the toggle keeps it behind a button)
     if (await page.locator('[data-scope-panel], [data-scope-module]').count() === 0) {
@@ -664,7 +679,7 @@ const selectionCount = async () =>
       const values = await sel.locator('option').evaluateAll(os => os.map(o => o.value));
       const wireNets = values.filter(v => v.startsWith('net_'));
       await sel.selectOption(wireNets.length ? wireNets[wireNets.length - 1] : { index: optCount - 1 });
-      await clickOrFail(scope.getByText('+ channel'), 'fg-waveform', 'scope + channel unclickable', { timeout: 20000 });
+      await pressOrFail(scope.getByText('+ channel'), 'fg-waveform', 'scope + channel unreachable');
       await page.waitForTimeout(1500); // ~30 sim ticks of 50 ms
       const spread = await page.evaluate(() => {
         const cv = document.querySelector('[data-scope-panel] canvas');
@@ -701,14 +716,14 @@ const selectionCount = async () =>
 //     exactly one 50 ms tick; resume flows again.
 //
 //     The four assertions here read the BOARD CLOCK, not the screen. The
-//     presses are aimed pointer presses (see pressTransport) rather than
+//     presses are aimed pointer presses (see aimedPress) rather than
 //     Playwright clicks, because a Playwright click waits for the sidebar to
 //     stop moving and the sidebar is re-rendering on every 50 ms tick — that
 //     wait, not the app, is what used to report these four as "unclickable".
 {
   const t = async () => await page.evaluate(() => String(window.__board?.getTime?.() ?? 'none'));
   await openInstruments();
-  const pauseRes = await pressTransport(transportBtn(/Pause simulation/i));
+  const pauseRes = await aimedPress(transportBtn(/Pause simulation/i));
   await page.waitForTimeout(300);
   const t1 = await t();
   await page.waitForTimeout(400);
@@ -720,7 +735,7 @@ const selectionCount = async () =>
   } else fail('transport-pause', `pause button unreachable: ${pauseRes.why}`);
 
   let stepRes = { ok: false, why: 'not attempted — the simulation never paused' };
-  if (pauseRes.ok) stepRes = await pressTransport(transportBtn(/Step one tick|Advance one 50/i));
+  if (pauseRes.ok) stepRes = await aimedPress(transportBtn(/Step one tick|Advance one 50/i));
   await page.waitForTimeout(250);
   const t3 = await t();
   if (stepRes.ok) {
@@ -731,7 +746,7 @@ const selectionCount = async () =>
   } else fail('transport-step', `step button unreachable: ${stepRes.why}`);
 
   let resumeRes = { ok: false, why: 'not attempted — the simulation never paused' };
-  if (pauseRes.ok) resumeRes = await pressTransport(transportBtn(/Resume simulation/i));
+  if (pauseRes.ok) resumeRes = await aimedPress(transportBtn(/Resume simulation/i));
   await page.waitForTimeout(500);
   const t4 = await t();
   if (resumeRes.ok) {
@@ -744,8 +759,8 @@ const selectionCount = async () =>
 // 7. Schematic projection: toggle it on — standard symbols render beside
 //    the canvas, one per electrical part, and the canvas stays interactive.
 {
-  const ok = await clickOrFail(page.getByRole('radio', { name: /Schematic/i }).first(),
-    'schematic-render', 'Schematic toggle unclickable', { timeout: 20000 });
+  const ok = await pressOrFail(page.getByRole('radio', { name: /Schematic/i }).first(),
+    'schematic-render', 'Schematic toggle unreachable');
   if (ok) {
     await page.waitForTimeout(500);
     const symCount = await page.evaluate(() =>
@@ -763,8 +778,8 @@ const selectionCount = async () =>
   if (!await readyOrFailRest(() => window.__circuit && window.__circuit.parts.length > 0,
     60000, 'the no-MCU starter never mounted')) await rollCall();
   await page.waitForTimeout(400);
-  const ok = await clickOrFail(page.getByRole('radio', { name: /Sim/i }).first(),
-    'nomcu-sim', 'Sim toggle unclickable', { timeout: 20000 });
+  const ok = await pressOrFail(page.getByRole('radio', { name: /Sim/i }).first(),
+    'nomcu-sim', 'Sim toggle unreachable');
   if (ok) {
     await page.waitForTimeout(700);
     const mode = await page.evaluate(() => document.querySelector('[data-sim-mode]')?.getAttribute('data-sim-mode'));
@@ -1041,7 +1056,7 @@ try {
   };
   await wire3(nb3(fg3, -24, 32), nb3(r3, -34, 0));
   await wire3(nb3(fg3, 24, 32), nb3(r3, 34, 0));
-  await clickOrFail(page.getByRole('radio', { name: /Sim/i }).first(), 'meter-board-intact', 'Sim toggle unclickable', { timeout: 20000 });
+  await pressOrFail(page.getByRole('radio', { name: /Sim/i }).first(), 'meter-board-intact', 'Sim toggle unreachable');
   await page.waitForTimeout(400);
 
   // 12. D21 — a placed multimeter must not destroy the board it measures.
@@ -1095,7 +1110,7 @@ try {
     const pick = [fgNet, offered.find(v => v !== fgNet)].filter(v => v && offered.includes(v));
     for (const v of pick) {
       await netSel().selectOption(v);
-      try { await sp.getByText('+ channel').click({ timeout: 20000 }); } catch { /* reported below */ }
+      await aimedPress(sp.getByText('+ channel'));   // a miss shows up as a missing channel below
       await page.waitForTimeout(400);
     }
     const v0 = page.locator('[data-testid=bw-scope-vdiv-0]');
