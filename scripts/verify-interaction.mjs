@@ -276,11 +276,12 @@ const pressTransport = async (locator) => {
 // inside 30 s and the gate died before its first scenario. Readiness here has
 // always been a CONDITION rather than a load event, so nothing is lost.
 //
-// The FIRST navigation carries a larger budget than the rest, and for a
-// reason that is not "sometimes it is slow": it is the one that pays for the
-// dev server's cold transform of the whole application. Every later goto in
-// this file hits a warm server and keeps the ordinary budget.
-const FIRST_NAV_MS = 120000;
+// Navigation carries a larger budget than Playwright's default, for a reason
+// that is not "sometimes it is slow": a Vite dev server transforms modules on
+// demand, so the first request for the app and the first request for a NEW
+// entry URL (`?nopins=1`) each pay for a compile. This is the harness's
+// patience for a compile, not a ceiling on anything the product promises.
+const NAV_MS = 120000;
 
 /**
  * Navigate, and turn a navigation that cannot happen into REPORTED failures.
@@ -293,10 +294,21 @@ const FIRST_NAV_MS = 120000;
  */
 const gotoOrFailRest = async (url, opts = {}) => {
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', ...opts });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: NAV_MS, ...opts });
     return true;
   } catch (e) {
     failAll(EXPECTED, `could not load ${url}: ${String(e).split('\n')[0]}`);
+    return false;
+  }
+};
+
+/** Reload, and fail every not-yet-reported scenario by name if it will not. */
+const reloadOrFailRest = async () => {
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: NAV_MS });
+    return true;
+  } catch (e) {
+    failAll(EXPECTED, `could not reload the page: ${String(e).split('\n')[0]}`);
     return false;
   }
 };
@@ -312,7 +324,7 @@ const readyOrFailRest = async (fn, timeout = 30000, what = 'the app never became
   }
 };
 
-let alive = await gotoOrFailRest(`http://localhost:${PORT}`, { timeout: FIRST_NAV_MS });
+let alive = await gotoOrFailRest(`http://localhost:${PORT}`);
 // Readiness is a condition, not a sleep: the circuit is populated and the
 // first solve has landed when parts exist and a wokwi element is attached.
 if (alive) {
@@ -583,9 +595,9 @@ const selectionCount = async () =>
 {
   // Fresh page: this scenario is an end-to-end circuit of its own, and the
   // accumulated clutter of earlier scenarios only obscures its failures.
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0,
-    { timeout: 30000 });
+  if (!await reloadOrFailRest()) await rollCall();
+  if (!await readyOrFailRest(() => window.__circuit && window.__circuit.parts.length > 0,
+    60000, 'the circuit never remounted after the reload')) await rollCall();
   await page.waitForTimeout(800);
   // A reload closes the instruments column again (React state, not storage).
   await openInstruments();
@@ -747,8 +759,9 @@ const selectionCount = async () =>
 // 8. Pure-circuit Sim: the no-declarations starter must SIMULATE without
 //    crashing (the tap-wire/no-MCU landing is production's first screen).
 {
-  await page.goto(`http://localhost:${PORT}/?nopins=1`, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0, { timeout: 30000 });
+  if (!await gotoOrFailRest(`http://localhost:${PORT}/?nopins=1`)) await rollCall();
+  if (!await readyOrFailRest(() => window.__circuit && window.__circuit.parts.length > 0,
+    60000, 'the no-MCU starter never mounted')) await rollCall();
   await page.waitForTimeout(400);
   const ok = await clickOrFail(page.getByRole('radio', { name: /Sim/i }).first(),
     'nomcu-sim', 'Sim toggle unclickable', { timeout: 20000 });
@@ -771,8 +784,9 @@ const selectionCount = async () =>
 // never start a jumper wire from a free hole hiding under the body. This
 // was the potentiometer complaint: selected, dragged, and wires appeared.
 {
-  await page.goto(`http://localhost:${PORT}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0 && document.querySelector('wokwi-led'), { timeout: 30000 });
+  if (!await gotoOrFailRest(`http://localhost:${PORT}`)) await rollCall();
+  if (!await readyOrFailRest(() => window.__circuit && window.__circuit.parts.length > 0
+    && document.querySelector('wokwi-led'), 60000, 'the demo circuit never remounted')) await rollCall();
   await page.waitForTimeout(400);
   const before = await page.evaluate(() => {
     const led = window.__circuit.parts.find(q => q.kind === 'led' && q.seat);
@@ -806,8 +820,9 @@ const selectionCount = async () =>
 // dialog, and choosing completes the wire — buttons must receive their
 // clicks through the canvas pointer machine (they once silently did not).
 {
-  await page.goto(`http://localhost:${PORT}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.__circuit && window.__circuit.parts.some(q => q.kind === 'mcu'), { timeout: 30000 });
+  if (!await gotoOrFailRest(`http://localhost:${PORT}`)) await rollCall();
+  if (!await readyOrFailRest(() => window.__circuit && window.__circuit.parts.some(q => q.kind === 'mcu'),
+    60000, 'the demo board never brought up its mcu')) await rollCall();
   await page.waitForTimeout(400);
   // world -> screen through the canvas's OWN world layer, found BY NAME.
   // The old form — "the first div whose inline transform contains scale(" —
@@ -989,8 +1004,9 @@ const selectionCount = async () =>
 const INSTRUMENT_IDS = ['meter-board-intact', 'scope-vdiv-per-channel', 'spectrum-answers', 'spectrum-peak',
   'sweep-progress', 'sweep-canvas-live'];
 try {
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0, { timeout: 30000 });
+  if (!await reloadOrFailRest()) await rollCall();
+  if (!await readyOrFailRest(() => window.__circuit && window.__circuit.parts.length > 0,
+    60000, 'the instrument bench never remounted')) await rollCall();
   await page.waitForTimeout(800);
   await openInstruments();
   const cb3 = await page.locator('[data-canvas]').boundingBox();
