@@ -119,11 +119,46 @@ export const TERMINAL_ALIASES = {
 };
 
 /**
+ * Aliases that exist only because the ENGINE once had no model for the source
+ * kind. When the engine DOES have one, the alias is a downgrade and must not
+ * fire — the same discrimination `engineKindFor` makes for passthrough kinds,
+ * for the same reason: a registered model is strictly more truthful than the
+ * generic surface it would collapse to.
+ *
+ * `74hc595` is the case that motivated this. bw-board registers a full 74HC595
+ * (src/devices/tier3-parts.js) declaring `vcc`, `gnd`, `srclr`, the `qh_s`
+ * cascade output and BOTH q-namespaces; the built-in `shift_register` it was
+ * aliased to declares twelve abstract terminals and NO POWER PINS AT ALL. Nine
+ * seated variants of 08-led-chaser-595 wire the chip's vcc and gnd into real
+ * nets — eighteen wires that landed on terminals the collapsed part does not
+ * have and were dropped at load, silently, because a dropped wire renders as a
+ * gap rather than an error. TERMINAL_ALIASES could not rescue them either:
+ * there is nothing on the target to map `vcc` and `gnd` TO.
+ *
+ * The alias itself is NOT removed. A file saved before bw-board registered the
+ * 74hc595 model, loaded against an engine that still lacks it, must keep
+ * collapsing exactly as it did — that is what an alias map is for. This set
+ * only says "ask the engine first".
+ *
+ * @type {Set<string>}
+ */
+export const ENGINE_MODEL_WINS = new Set(['74hc595']);
+
+/**
  * Resolve a kind name, applying aliases.
+ *
  * @param {string} kind
+ * @param {(kind: string) => boolean} [engineHasModel] — asked only for kinds in
+ *   ENGINE_MODEL_WINS. Omitted (or throwing) means "no engine opinion", and the
+ *   alias applies as it always did, so every existing caller is unchanged.
  * @returns {string}
  */
-export function resolveKind(kind) {
+export function resolveKind(kind, engineHasModel) {
+  if (ENGINE_MODEL_WINS.has(kind) && typeof engineHasModel === 'function') {
+    try {
+      if (engineHasModel(kind)) return kind;
+    } catch { /* engine not injected — fall through to the alias */ }
+  }
   return KIND_ALIASES[kind] || kind;
 }
 

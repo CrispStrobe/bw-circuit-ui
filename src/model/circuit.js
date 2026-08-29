@@ -8,7 +8,7 @@
  * This module is the testable core — no React, no DOM, no browser APIs.
  */
 
-import { getEngine, engineTerminals } from '../engine.js';
+import { getEngine, engineTerminals, engineDevice } from '../engine.js';
 import { History } from './history.js';
 import { mergeNets } from './merge-nets.js';
 import { BreadboardModel } from './breadboard.js';
@@ -995,6 +995,11 @@ export class Circuit {
    */
   static fromJSON(data) {
     const c = new Circuit(data.vcc);
+    // Ask the engine before collapsing a kind onto an alias target. See
+    // ENGINE_MODEL_WINS in terminal-aliases.js: `74hc595` was aliased to the
+    // power-less built-in `shift_register`, so every vcc/gnd wire on a real
+    // 595 was dropped at load.
+    const engineHasModel = (k) => Boolean(engineDevice(k));
     c.pcb = data.pcb ?? null;
     // Legacy files also predate parts carrying their terminal list — every
     // renderer maps over part.terminals, so a missing list was the SECOND
@@ -1003,7 +1008,7 @@ export class Circuit {
     // Legacy kind names the engine never had: 'battery' is a vsource with
     // pos/neg terminals and a volts param — same physics, older word.
     c.parts = data.parts.map(p => {
-      const kind = resolveKind(p.kind);
+      const kind = resolveKind(p.kind, engineHasModel);
       return {
         ...p,
         kind,
