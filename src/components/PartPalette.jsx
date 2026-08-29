@@ -217,7 +217,11 @@ const CATEGORIES = [
   {
     name: 'Instruments',
     parts: [
-      { kind: 'meter', label: 'Multimeter', params: { mode: 'voltage' }, color: '#f1c40f' },
+      // inputOhms rides in params so the inspector edits it: a 10 MΩ meter is
+      // invisible on a 1 kΩ divider and moves a 1 MΩ one by 4.76 %, and a
+      // lesson that wants the error large dials the meter down (D21).
+      { kind: 'meter', label: 'Multimeter', params: { mode: 'voltage', inputOhms: 10e6 }, color: '#f1c40f',
+        tooltip: 'V / A / Ω probe. In V mode it loads the circuit through inputOhms (10 MΩ default)' },
       { kind: 'vsource', label: 'Function Gen', color: '#2ecc71',
         params: { wave: 'sine', freq: 1000, amplitude: 2, offset: 2.5 },
         tooltip: 'Waveform source - sine, square, triangle, pulse, dc; edit params after placing' },

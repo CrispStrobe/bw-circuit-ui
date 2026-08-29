@@ -18,6 +18,7 @@ import { wireEndpoint } from './wire-endpoints.js';
 import { sidecarTerminals } from './parts-registry.js';
 import { computeLeadMap, rotateFootprint, FOOTPRINTS as BB_FOOTPRINTS_FOR_ROTATE } from './footprints.js';
 import { getSidecar } from './parts-registry.js';
+import { applyMeterLoads } from './meter-load.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -762,8 +763,10 @@ export class Circuit {
    * then call board.setNetlist(). This is called after every mutation.
    */
   _syncNetlist() {
-    // Parts for the engine (strip layout fields, exclude UI-only parts like meters)
+    // Parts for the engine (strip layout fields, exclude layout-only parts).
     // Board-level MCU kinds (arduino_nano, pi_pico, etc.) map to 'mcu' for the engine.
+    // Meters are held back HERE and folded in by applyMeterLoads below, once
+    // the nets exist and it is known which probes are wired — see meter-load.js.
     const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
       kind: engineKindFor(p.kind),
@@ -878,12 +881,21 @@ export class Circuit {
     // seated benches) need; keep it accessible after the sync.
     this.resolvedNets = engineNets;
 
+    // A placed meter is a real thing with real impedance (D21). It becomes a
+    // resistor between its probes, and its probe terminals are renamed in the
+    // nets to match. A meter that does not load is stripped OUT of the nets
+    // instead, because a net that names a part the engine never got rejects the
+    // whole netlist and leaves the board empty.
+    const folded = applyMeterLoads(this.parts, engineParts, engineNets);
+    this.loadingMeters = folded.loaded;
+    this._warnDroppedTerminals(folded.dropped);
+
     // Snapshot engine state before rebuilding (preserves cap voltages, etc.)
     const prevSnap = this.board.snapshot ? this.board.snapshot() : null;
 
     this.board = new this._BoardImpl(this.vcc);
     try {
-      this.board.setNetlist(engineParts, engineNets);
+      this.board.setNetlist(folded.parts, folded.nets);
       // Restore engine state if possible (surviving parts keep their state)
       if (prevSnap && this.board.restore) {
         this.board.restore(prevSnap);
@@ -906,6 +918,23 @@ export class Circuit {
   }
 
   /**
+   * A net naming a part the engine was never given used to reject the WHOLE
+   * netlist and leave the board empty — that is D21's second half, and the
+   * shape of it is worth keeping audible. The terminal is dropped now instead,
+   * so one bad reference cannot take the board down, but dropping it silently
+   * would trade a loud bug for a quiet one. Warned once per distinct set.
+   * @param {string[]} dropped
+   */
+  _warnDroppedTerminals(dropped) {
+    if (!dropped || !dropped.length) return;
+    const key = dropped.slice().sort().join(',');
+    if (key === this._warnedDropped) return;
+    this._warnedDropped = key;
+    console.warn('[circuit] nets referenced parts the engine was not given; '
+      + 'those terminals were dropped rather than rejecting the netlist:', key);
+  }
+
+  /**
    * Sync the engine with externally-provided nets (e.g. from the breadboard model).
    * Uses the same parts filtering as _syncNetlist but replaces wire-derived nets.
    * @param {Array<{id: string, terminals: Array<{part: string, terminal: string}>}>} nets
@@ -920,10 +949,14 @@ export class Circuit {
 
     this.resolvedNets = nets;
 
+    const folded = applyMeterLoads(this.parts, engineParts, nets);
+    this.loadingMeters = folded.loaded;
+    this._warnDroppedTerminals(folded.dropped);
+
     const prevSnap = this.board.snapshot ? this.board.snapshot() : null;
     this.board = new this._BoardImpl(this.vcc);
     try {
-      this.board.setNetlist(engineParts, nets);
+      this.board.setNetlist(folded.parts, folded.nets);
       if (prevSnap && this.board.restore) this.board.restore(prevSnap);
       this.netlistError = null;
     } catch (e) {

@@ -5,6 +5,18 @@
  * depends on where the probes are wired and the meter's mode (V/A/Ω).
  */
 import { wireEndpoint } from './wire-endpoints.js';
+import { meterInputOhms } from './meter-load.js';
+
+/** Human label for an ohms value: 10 MΩ, 470 kΩ, 100 Ω. */
+export function ohmsLabel(ohms) {
+  if (!Number.isFinite(ohms)) return '—';
+  if (ohms >= 1e6) return `${trimZeros(ohms / 1e6)} MΩ`;
+  if (ohms >= 1e3) return `${trimZeros(ohms / 1e3)} kΩ`;
+  return `${trimZeros(ohms)} Ω`;
+}
+function trimZeros(n) {
+  return String(Number(n.toFixed(3)));
+}
 
 /**
  * Get the reading for a meter part.
@@ -27,16 +39,25 @@ export function getMeterReading(meter, wires, circuit) {
 
   switch (mode) {
     case 'voltage': {
-      if (!probeANet || !probeBNet) return { value: '---', unit: 'V', note: 'Wire both probes' };
+      // The input impedance is part of the reading, not a footnote: on a 1 kΩ
+      // divider 10 MΩ is invisible and on a 1 MΩ one it moves the answer by
+      // 4.76 %. A learner cannot tell those apart from the number alone, so the
+      // face states the figure that decides it (D21).
+      const spec = ohmsLabel(meterInputOhms(meter));
+      if (!probeANet || !probeBNet) return { value: '---', unit: 'V', note: 'Wire both probes', spec };
       try {
         const vA = circuit.nodeVoltage(probeANet);
         const vB = circuit.nodeVoltage(probeBNet);
         const diff = vA - vB;
-        if (Math.abs(diff) < 0.01) return { value: '0', unit: 'V', note: null };
-        if (Math.abs(diff) < 1) return { value: (diff * 1000).toFixed(0), unit: 'mV', note: null };
-        return { value: diff.toFixed(1), unit: 'V', note: null };
+        // Three decimals on volts, one on millivolts. One decimal — what this
+        // showed until 2026-08-29 — renders the loaded and unloaded readings of
+        // a 100 kΩ divider as the same string, which is the one comparison the
+        // impedance above exists to make.
+        if (Math.abs(diff) < 0.001) return { value: '0', unit: 'V', note: null, spec };
+        if (Math.abs(diff) < 1) return { value: (diff * 1000).toFixed(1), unit: 'mV', note: null, spec };
+        return { value: diff.toFixed(3), unit: 'V', note: null, spec };
       } catch {
-        return { value: '---', unit: 'V', note: null };
+        return { value: '---', unit: 'V', note: null, spec };
       }
     }
 
@@ -83,9 +104,10 @@ export function getMeterReading(meter, wires, circuit) {
 }
 
 function findProbeNet(meterId, probeTerminal, wires) {
-  // The meter is filtered from the engine netlist, so its wire's netId
-  // may not exist in the engine. Follow the wire to the OTHER end's
-  // part+terminal, then find what engine net THAT terminal is on.
+  // Follow the wire to the OTHER end's part+terminal, then find what engine
+  // net THAT terminal is on. Since D21 a loading meter is IN the netlist (as a
+  // resistor, probe_a/probe_b renamed to a/b), so its own wire's net exists too
+  // — but a non-loading meter's does not, and this path serves both.
   for (const w of wires) {
     const f = wireEndpoint(w, 'from');
     const t = wireEndpoint(w, 'to');

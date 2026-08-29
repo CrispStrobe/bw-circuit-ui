@@ -2648,9 +2648,11 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
                 fontSize={11} fontFamily="monospace" fontWeight="bold">
                 {mr.note || `${mr.value} ${mr.unit}`}
               </text>
+              {/* The mode, and — in V — the input impedance that decides
+                  whether this reading loaded the circuit (D21). */}
               <text x={35} y={34} textAnchor="middle" fill="#f1c40f"
-                fontSize={8} fontFamily="monospace">
-                {mode === 'voltage' ? 'V' : mode === 'current' ? 'A' : 'Ω'}
+                fontSize={8} fontFamily="monospace" data-meter-spec={id}>
+                {mode === 'voltage' ? `V · ${mr.spec || ''}`.trim() : mode === 'current' ? 'A' : 'Ω'}
               </text>
               <circle cx={20} cy={49} r={3} fill="#e74c3c" stroke="#c0392b" strokeWidth={1} />
               <text x={20} y={53} textAnchor="middle" fill="#e74c3c" fontSize={5}>A</text>
