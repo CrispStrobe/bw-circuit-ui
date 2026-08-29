@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master, 'fable/**']
+    branches: [master, 'fable/**', 'fab/**']
   pull_request:
     branches: [master]
 
@@ -56,6 +56,47 @@ jobs:
 
       - name: A2 board preset
         run: npm run test:a2
+
+  # The real-browser interaction gate. It existed since the designer's first
+  # week and CI never ran it, so its scenarios reported failures to nobody:
+  # three of them had been red for as long as anyone had bothered to look
+  # (wheel-pan measuring a button icon's constant viewBox, pin-chooser
+  # dragging inside the parts palette, scope-panel asking for a control inside
+  # a collapsed column). A gate nobody runs is not a gate — this job runs it,
+  # and the script's own roll-call fails the build if a scenario silently goes
+  # missing, so "green" cannot mean "ran fewer".
+  interaction-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # src/main.jsx (the dev harness this gate drives) imports the engine
+      # from ../../bw-board — the SIBLING checkout, exactly as the unit tests
+      # do. Without it Vite cannot resolve the import and the page never
+      # mounts, which would read as "every scenario failed" rather than
+      # "the engine is missing".
+      - name: Clone bw-board (engine sibling — the dev harness imports it)
+        run: |
+          git clone --depth 1 https://github.com/CrispStrobe/bw-board.git ../bw-board
+          npm --prefix ../bw-board install --no-audit --no-fund --ignore-scripts
+
+      - run: npm install
+
+      # --with-deps: a bare `playwright install` downloads the browser but not
+      # the shared libraries a headless Chromium needs on a clean runner, and
+      # the launch then dies with a linker error nobody can read.
+      - name: Install Playwright Chromium (+ system libraries)
+        run: npx playwright install --with-deps chromium
+
+      # Fails the build on ANY scenario failure, on a missing scenario, and on
+      # a duplicate one. The last line of its output is the count:
+      #     N scenarios · P passed · F failed
+      - name: Real-browser interaction gate (npm run verify:interaction)
+        run: npm run verify:interaction
 
   kicad-oracle:
     runs-on: ubuntu-latest

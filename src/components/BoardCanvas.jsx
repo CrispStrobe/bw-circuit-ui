@@ -4165,7 +4165,14 @@ export function BoardCanvas({
               style={{width: 30, height: 30, cursor: 'pointer', color: '#b91c1c'}}>✕</button>
           </div>
         )}
+        {/* data-canvas-svg: the ONE svg whose viewBox is the camera. The
+            container also holds the fit-to-parts button's 18x18 icon svg,
+            which comes FIRST in document order — so `[data-canvas] svg` and
+            `.first()` selected a 24x24 icon whose viewBox is a constant, and
+            a probe asking "did the wheel pan?" read that constant and said
+            no. Named, the camera cannot be confused with an ornament. */}
         <svg
+          data-canvas-svg
           width="100%"
           height="100%"
           viewBox={`${pan.x} ${pan.y} ${containerSize.w / zoom} ${containerSize.h / zoom}`}
@@ -4665,8 +4672,15 @@ export function BoardCanvas({
           )}
         </svg>
 
-        {/* Wokwi element layer — transformed to match SVG viewBox */}
-        <div style={{
+        {/* Wokwi element layer — transformed to match SVG viewBox.
+            data-wokwi-layer names it because it is also the world->screen
+            MATRIX any probe needs to aim at a world coordinate. Finding it by
+            "the first div whose inline transform contains scale(" used to
+            work and silently stopped: palette thumbnails scale themselves and
+            come first in document order, so a probe aiming at the chip body
+            aimed into the parts palette instead and reported the pin chooser
+            broken. */}
+        <div data-wokwi-layer style={{
           position: 'absolute',
           top: 0,
           left: 0,
