@@ -62,6 +62,35 @@ working; a drag against an idle page fails with that as the reason.
 instead of polling for one, because a sweep that finishes in under a second
 did report all 60 points and the poll saw none of them.
 
+**Every exit reaches the count line.** The roll-call is a function, and all
+six navigations (four gotos, two reloads) report a failure to load as named
+scenario failures before running it. This was not theoretical: a local run
+died at `goto(?nopins=1)` with a stack trace and no count, because a Vite dev
+server compiles on demand and a new entry URL pays for a transform like the
+first request did. `NAV_MS` is the harness's patience for that compile — not a
+ceiling on anything the product promises.
+
+**Evidence.**
+
+| | run |
+| --- | --- |
+| green, master tip `6fc9f67` | `33279469194` — 31 scenarios · 31 passed · 0 failed (all three jobs) |
+| green, local, load **17** on four cores | `31 scenarios · 31 passed · 0 failed` (build lock held, per `wt/BUILD-LOCK-PROTOCOL.md`) |
+| RED — all three defects reintroduced | `33278282918` — 24 passed, 7 failed: `wheel-pan`/`wheel-no-zoom` (`no unique [data-canvas-svg]`), `pin-chooser-opens`/`-wires` (`no unique [data-wokwi-layer]`), `instruments-expand` + `scope-panel` + `scope-channel` |
+| RED — one scenario silently reports nothing | `33278397665` — **30 passed, 0 failed, red anyway**: `ROLL-CALL FAILED: 1 scenario(s) never reported: selectors-restore` |
+
+The second red run is the house-rule-4 proof: nothing failed, and the gate
+failed the build regardless, because 30 outcomes is not 31.
+
+**Found, not fixed.** The instruments column is collapsed by default in the
+standalone designer (`rightOpen = debuggerOn || benchOpen`, and the dev
+harness passes neither), so the scope, the meter, the sweep and the whole
+simulation transport sit behind one `‹` chevron with no visible label. That is
+app behaviour and it is reachable — the gate opens it through the same control
+a user has, and asserts that the control works — but whether a first-time user
+finds four instruments behind that chevron is an owner question, not a probe
+question.
+
 ## 2026-08-29 — the instruments (D21, D31, D24/X2.2, D9/X2.6)
 
 Four defects off `brickwright-lite/docs/WAVE-OPEN-DEFECTS.md`, all of them the
