@@ -78,12 +78,19 @@ describe('scope timebase', () => {
     assert.match(src, /from '\.\.\/model\/scope-timebase\.js'/);
     assert.match(src, /data-testid="bw-scope-record"/, 'the record control is rendered');
     assert.match(src, /data-testid="bw-scope-span"/, 'the record length is stated on screen');
-    // Both creation sites carry the rate — the initial attach and Add Channel.
+    // EVERY creation site carries a rate and a depth — that is the claim, and
+    // the count is here so a new site cannot arrive without being looked at.
     // Anchored on `board.` because the header comment quotes the OLD call shape
     // (`addScopeChannel({type, netId})`) to say what was wrong with it, and an
-    // unanchored match counted that as a third call site.
+    // unanchored match counted that as another call site.
+    //
+    // Three since 2026-08-29: the initial re-attach, Add Channel, and D24's
+    // spectrum tap, which opens `capture: 'sample'` channels on the same nets
+    // while the spectrum view is open. That one carries its OWN rate
+    // (`specRateHz`), because a sample-series channel puts a solve point on
+    // every sample instant and the rate is therefore a bill.
     const calls = [...src.matchAll(/board\.addScopeChannel\(\{[\s\S]*?\}\)/g)].map(m => m[0]);
-    assert.equal(calls.length, 2, `expected two addScopeChannel call sites, found ${calls.length}`);
+    assert.equal(calls.length, 3, `expected three addScopeChannel call sites, found ${calls.length}`);
     for (const c of calls) {
       assert.match(c, /sampleRateHz/, `a channel is still created without a rate: ${c}`);
       assert.match(c, /depth: SCOPE_DEPTH/, `a channel is still created without a depth: ${c}`);

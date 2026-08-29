@@ -1,5 +1,89 @@
 # bw-circuit-ui -- handoff for the next session
 
+## 2026-08-29 — the instruments (D21, D31, D24/X2.2, D9/X2.6)
+
+Four defects off `brickwright-lite/docs/WAVE-OPEN-DEFECTS.md`, all of them the
+same shape the ledger names: *a readout gap on top of an engine that computes
+the right answer*. Each landed with its oracle, and every one of the six
+mutations tried bites.
+
+**D21 was two defects, and the second was not on the ledger.** The row says the
+meter is filtered out of the netlist so it "cannot load anything". True — and
+the probe terminals stayed IN the nets after the part came out, so bw-board's
+validator (which has refused a net naming an unknown part since `4bd9bb2`,
+2026-08-08) rejected the WHOLE netlist. Measured on a VCC → 1 k → LED → pin
+bench: **5 engine parts before the probes were wired, 0 after**, and the meter
+then read a fabricated `0 V` off the empty board. `test/meter-reading.test.js`'s
+"reads difference between two nets" had been green over that empty board.
+A placed meter now becomes a resistor of `params.inputOhms` (10 MΩ default,
+editable in the inspector, printed on the meter face). Hand-computed oracle,
+R1 = R2 = 1 MΩ: **Vmid = 5·Rm/(R + 2·Rm) = 50/21 = 2.380952380952 V**, engine
+agrees to 1e-9; the same meter on a 1 kΩ divider reads 2.4998750062, i.e.
+invisible. Ω and A modes do NOT load, each for a stated reason.
+
+**D31** — vertical scale is per channel (`model/scope-scale.js`) and each channel
+PRINTS its span. The old auto was worse than a shared manual setting: it ranged
+across all channels at once, so a 50 mV trace beside a 5 V rail drew as a line
+on the axis, which is what a dead net looks like. Verified in a real browser:
+`-10.000 … 15.000 V · 5.000 V/div` beside `2.375 … 2.625 V · 0.050 V/div`.
+
+**D24 / X2.2** — there is a spectrum view, and it is a SECOND TAP, not a
+transform of the trace above it. The drawing ring is a (min, max) envelope whose
+two numbers are two different instants, so an FFT over it describes a waveform
+that never existed. bw-board grew `addScopeChannel({capture: 'sample'})` whose
+sample instants are **solve points** (`9441e4f`, `825b019`); `model/fft.js`
+refuses an envelope buffer BY NAME. Measured in the browser on the harness's own
+1 kHz function generator: `peak 1.000 kHz @ 2.0000 V · THD 0.00 %`.
+
+Two things the ROADMAP's acceptance got wrong before anyone measured, both now
+recorded there: "> 40 dB to the next bin" is a rectangular-window claim (a Hann
+mainlobe is four bins wide by construction), and amplitudes must come from the
+lobe's ENERGY, not its tallest bin — scalloping made a square wave's harmonics
+read 0.322/0.180/0.127 against the series' 0.333/0.200/0.143.
+
+**The spectrum tap costs solver steps, and the rate is where you pay.** A sample
+channel puts a solve point on every sample instant. At 10 kHz (the default) that
+is a 100 µs step, which is the fidelity floor the integrator already used, so it
+costs nothing; at 100 kHz it is 10 µs and the whole simulation runs ~5× slower —
+measured in a browser, the page stopped answering clicks for 30 s. The control
+is labelled by the bandwidth it buys.
+
+**X2.6 / D9 (cui half)** — the sweep yields between points. Rows are
+`assert.equal`-identical to the synchronous path, not close. **A worker alone
+was impossible**: the engine arrives through `setEngine` as live JS objects and
+a class is not structured-cloneable, so what crosses the boundary is a NETLIST
+(`model/sweep-protocol.js`) and the host supplies the worker
+(`setEngine({createSweepWorker})`, reference implementation in
+`src/dev-sweep-worker.js`). Without one the same points run chunked on this
+thread; the panel's status line says which path produced the numbers.
+**The dev harness never injected `runDcSweep`/`runAcSweep`/`logSpace` at all**,
+so `SweepPanel` refused every run there and no browser scenario could reach it.
+
+### The browser gate, and why its count moved
+
+`npm run verify:interaction` is **red at origin/master on this box** — measured,
+byte-identical failure lists on a base worktree and on this branch. Three things
+were wrong with the gate itself, none of them regressions:
+
+1. **It aborted on the first unclickable button.** On a loaded box (load 22 on
+   four cores) the transport bar's live clock re-lays-out faster than
+   Playwright's stability check settles, so `⏸ Pause` never became "stable" and
+   the run died at 6b with five scenarios never attempted. `clickOrFail` turns
+   that into a reported failure; the failure still fails.
+2. **Scenario 5 asked for the scope panel by TEXT.** `getByText('Scope').first()`
+   matches every ancestor whose text contains "Scope", and ancestors come first
+   in document order — so it clicked a container div and then reported "no scope
+   panel in the sidebar" about a panel it had never asked for. By role now.
+3. **The instrument toggles are not idempotent** — they remember themselves in
+   localStorage, so after scenario 6's reload an unconditional click CLOSES the
+   panel. They are guarded on the panel's presence now.
+
+The gate prints its own count (`N scenarios · P passed · F failed`), because
+"it was green" is not a result if it silently ran fewer than last time. Four new
+scenarios were added for the four defects above (meter probes leave the board
+intact, per-channel V/div, the spectrum names its peak, the sweep reports
+progress and the canvas still drags) — the count goes UP.
+
 ## 2026-08-27
 
 npm test **2271/0/6** (CI clean). Four repos moved together today —

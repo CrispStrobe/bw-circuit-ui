@@ -26,15 +26,48 @@ const waitForServer = async () => {
   throw new Error('dev server did not come up');
 };
 
-const fail = (msg) => { console.error(`✖ ${msg}`); process.exitCode = 1; };
-const pass = (msg) => console.log(`✔ ${msg}`);
+// The scenario count is part of the gate: "run it and it was green" is not a
+// result if it silently ran fewer scenarios than last time. Counted here so
+// the number is printed rather than eyeballed off the scrollback.
+let passes = 0, fails = 0;
+const fail = (msg) => { fails++; console.error(`✖ ${msg}`); process.exitCode = 1; };
+const pass = (msg) => { passes++; console.log(`✔ ${msg}`); };
+
+/**
+ * Click, and turn a click that cannot happen into a REPORTED failure instead
+ * of an uncaught exception.
+ *
+ * A gate that aborts on the first unclickable button hides every scenario
+ * after it: on a loaded box (load 22 on four cores, 2026-08-29) the transport
+ * bar's live clock re-lays-out faster than Playwright's stability check can
+ * settle, `⏸ Pause simulation` never becomes "stable", and the run died at
+ * scenario 6b with five scenarios never attempted — and the same at
+ * origin/master, so the abort was hiding the health of the rest from anyone
+ * running it here. The failure still fails; it just stops being fatal.
+ *
+ * @returns {Promise<boolean>} whether the click landed
+ */
+const clickOrFail = async (locator, what, opts = {}) => {
+  try {
+    await locator.click({ timeout: 5000, ...opts });
+    return true;
+  } catch (e) {
+    fail(`${what}: ${String(e).split('\n')[0]}`);
+    return false;
+  }
+};
 
 await waitForServer();
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1400, height: 800 } });
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
-await page.goto(`http://localhost:${PORT}`, { waitUntil: 'networkidle' });
+// `domcontentloaded`, not `networkidle`: the house probe traps say the load
+// event can hang, and on a loaded box (load 26 on four cores, 2026-08-29) a
+// Vite dev server never went idle inside 30 s and the gate died before its
+// first scenario. Readiness here has always been a CONDITION rather than a
+// load event, so nothing is lost by not waiting for one.
+await page.goto(`http://localhost:${PORT}`, { waitUntil: 'domcontentloaded' });
 // Readiness is a condition, not a sleep: the circuit is populated and the
 // first solve has landed when parts exist and a wokwi element is attached.
 await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0
@@ -227,12 +260,28 @@ const selectionCount = async () =>
 
 // 5. Oscilloscope panel: toggle scope visibility, add a channel on a real net.
 {
-  // Lite's UI has a "Scope" button in the instruments column to show/hide.
-  const scopeBtn = page.getByText('Scope', { exact: false }).first();
-  if (await scopeBtn.count()) {
-    try { await scopeBtn.click({ timeout: 3000 }); } catch { /* already open */ }
-    await page.waitForTimeout(300);
-  }
+  // The "▣ Scope" button in the instruments column shows/hides the panel.
+  //
+  // By ROLE, not by text. `getByText('Scope').first()` matches every element
+  // whose text CONTAINS "Scope" — including the button's ancestors, which come
+  // first in document order — so `.first()` clicked a container div whose
+  // centre is not the button, the panel never opened, and the scenario
+  // reported "no scope panel in the sidebar" while the panel was merely never
+  // asked for. It failed identically at origin/master, so it was not a
+  // regression; it was a selector that had stopped meaning what it says.
+  // …and only when it is CLOSED. The toggle remembers itself in localStorage,
+  // so after the reload in scenario 6 the panel is already open and an
+  // unconditional click would close it — which is exactly what "FG circuit
+  // produced no nets to scope" was, once the click above started working.
+  const showScope = async () => {
+    if (await page.locator('[data-scope-panel], [data-scope-module]').count()) return;
+    const btn = page.getByRole('button', { name: /Scope/i }).first();
+    if (await btn.count()) {
+      await clickOrFail(btn, 'scope show/hide unclickable', { timeout: 20000 });
+      await page.waitForTimeout(300);
+    }
+  };
+  await showScope();
   const panel = page.locator('[data-scope-panel], [data-scope-module]');
   if (await panel.count() === 0) { fail('no scope panel in the sidebar'); }
   else {
@@ -256,7 +305,9 @@ const selectionCount = async () =>
 {
   // Fresh page: this scenario is an end-to-end circuit of its own, and the
   // accumulated clutter of earlier scenarios only obscures its failures.
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0,
+    { timeout: 30000 });
   await page.waitForTimeout(800);
   const canvasBox2 = await page.locator('[data-canvas]').boundingBox();
   const dropAt = async (label, x, y) => {
@@ -300,13 +351,15 @@ const selectionCount = async () =>
   };
   await dragWire(fgTop, rA);
   await dragWire(fgBot, rB);
-  await page.getByRole('radio', { name: /Sim/i }).first().click();
+  await clickOrFail(page.getByRole('radio', { name: /Sim/i }).first(), 'Sim toggle unclickable', { timeout: 20000 });
   await page.waitForTimeout(300);
   // Show scope panel if hidden (lite keeps it behind a button)
-  const scopeShowBtn = page.getByText('Scope', { exact: false }).first();
-  if (await scopeShowBtn.count()) {
-    try { await scopeShowBtn.click({ timeout: 3000 }); } catch { /* already open */ }
-    await page.waitForTimeout(300);
+  if (await page.locator('[data-scope-panel], [data-scope-module]').count() === 0) {
+    const scopeShowBtn = page.getByRole('button', { name: /Scope/i }).first();
+    if (await scopeShowBtn.count()) {
+      await clickOrFail(scopeShowBtn, 'scope show/hide unclickable', { timeout: 20000 });
+      await page.waitForTimeout(300);
+    }
   }
   const scope = page.locator('[data-scope-panel], [data-scope-module]');
   const sel = scope.locator('select').last();
@@ -317,7 +370,7 @@ const selectionCount = async () =>
     const values = await sel.locator('option').evaluateAll(os => os.map(o => o.value));
     const wireNets = values.filter(v => v.startsWith('net_'));
     await sel.selectOption(wireNets.length ? wireNets[wireNets.length - 1] : { index: optCount - 1 });
-    await scope.getByText('+ channel').click();
+    await clickOrFail(scope.getByText('+ channel'), 'scope + channel unclickable', { timeout: 20000 });
     await page.waitForTimeout(1500); // ~30 sim ticks of 50 ms
     const spread = await page.evaluate(() => {
       const cv = document.querySelector('[data-scope-panel] canvas');
@@ -348,29 +401,35 @@ const selectionCount = async () =>
 //     exactly one 50 ms tick; resume flows again.
 {
   const t = async () => await page.evaluate(() => String(window.__board?.getTime?.() ?? 'none'));
-  await page.getByText(/Pause/i).first().click({ timeout: 5000 });
+  const paused = await clickOrFail(page.getByText(/Pause/i).first(), 'pause button unclickable');
   await page.waitForTimeout(300);
   const t1 = await t();
   await page.waitForTimeout(400);
   const t2 = await t();
-  (t1 === t2 && t1 !== 'none') ? pass('pause freezes board time')
-    : fail(`pause leaked time: ${t1} -> ${t2}`);
-  await page.getByText(/Step/i).first().click({ timeout: 5000 });
+  if (paused) {
+    (t1 === t2 && t1 !== 'none') ? pass('pause freezes board time')
+      : fail(`pause leaked time: ${t1} -> ${t2}`);
+  } else fail('pause freezes board time: not attempted');
+  const stepped = paused && await clickOrFail(page.getByText(/Step/i).first(), 'step button unclickable');
   await page.waitForTimeout(200);
   const t3 = await t();
-  (BigInt(t3) - BigInt(t2) === 50000000n) ? pass('step advances exactly one 50 ms tick')
-    : fail(`step advanced ${BigInt(t3) - BigInt(t2)} ns`);
-  await page.getByText(/Resume/i).first().click({ timeout: 5000 });
+  if (stepped) {
+    (BigInt(t3) - BigInt(t2) === 50000000n) ? pass('step advances exactly one 50 ms tick')
+      : fail(`step advanced ${BigInt(t3) - BigInt(t2)} ns`);
+  } else fail('step advances exactly one 50 ms tick: not attempted');
+  const resumed = paused && await clickOrFail(page.getByText(/Resume/i).first(), 'resume button unclickable');
   await page.waitForTimeout(400);
   const t4 = await t();
-  (BigInt(t4) > BigInt(t3)) ? pass('resume: time flows again')
-    : fail('resume did not restart the clock');
+  if (resumed) {
+    (BigInt(t4) > BigInt(t3)) ? pass('resume: time flows again')
+      : fail('resume did not restart the clock');
+  } else fail('resume: time flows again: not attempted');
 }
 
 // 7. Schematic projection: toggle it on — standard symbols render beside
 //    the canvas, one per electrical part, and the canvas stays interactive.
 {
-  await page.getByRole('radio', { name: /Schematic/i }).first().click();
+  await clickOrFail(page.getByRole('radio', { name: /Schematic/i }).first(), 'Schematic toggle unclickable', { timeout: 20000 });
   await page.waitForTimeout(400);
   const symCount = await page.evaluate(() =>
     document.querySelectorAll('[data-schematic] g > text').length);
@@ -381,10 +440,10 @@ const selectionCount = async () =>
 // 8. Pure-circuit Sim: the no-declarations starter must SIMULATE without
 //    crashing (the tap-wire/no-MCU landing is production's first screen).
 {
-  await page.goto(`http://localhost:${PORT}/?nopins=1`, { waitUntil: 'networkidle' });
+  await page.goto(`http://localhost:${PORT}/?nopins=1`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0, { timeout: 20000 });
   await page.waitForTimeout(400);
-  await page.getByRole('radio', { name: /Sim/i }).first().click();
+  await clickOrFail(page.getByRole('radio', { name: /Sim/i }).first(), 'Sim toggle unclickable', { timeout: 20000 });
   await page.waitForTimeout(700);
   const mode = await page.evaluate(() => document.querySelector('[data-sim-mode]')?.getAttribute('data-sim-mode'));
   mode === 'simulate' ? pass('no-MCU starter enters Sim without crashing')
@@ -400,7 +459,7 @@ const selectionCount = async () =>
 // never start a jumper wire from a free hole hiding under the body. This
 // was the potentiometer complaint: selected, dragged, and wires appeared.
 {
-  await page.goto(`http://localhost:${PORT}`, { waitUntil: 'networkidle' });
+  await page.goto(`http://localhost:${PORT}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0 && document.querySelector('wokwi-led'), { timeout: 20000 });
   await page.waitForTimeout(400);
   const before = await page.evaluate(() => {
@@ -434,7 +493,7 @@ const selectionCount = async () =>
 // dialog, and choosing completes the wire — buttons must receive their
 // clicks through the canvas pointer machine (they once silently did not).
 {
-  await page.goto(`http://localhost:${PORT}`, { waitUntil: 'networkidle' });
+  await page.goto(`http://localhost:${PORT}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.__circuit && window.__circuit.parts.some(q => q.kind === 'mcu'), { timeout: 20000 });
   await page.waitForTimeout(400);
   const pts = await page.evaluate(() => {
@@ -501,8 +560,204 @@ const selectionCount = async () =>
   }
 }
 
+// ── 12–15. The instruments (D21, D31, D24, X2.6) ─────────────────────────
+// One bench for all four: a 1 kHz function generator across a resistor, in
+// Sim. Built fresh, because these scenarios are about READINGS and the
+// accumulated clutter of eleven earlier scenarios only obscures them.
+try {
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0, { timeout: 30000 });
+  await page.waitForTimeout(800);
+  const cb3 = await page.locator('[data-canvas]').boundingBox();
+  const place = async (label, x, y) => {
+    const el = page.getByText(label, { exact: false }).first();
+    // A palette that is still re-rendering never becomes "stable", and on a
+    // loaded box that is a 2 s timeout for a scroll the click would have done
+    // anyway. Not fatal, and never silently skipped — the placement that
+    // follows either works or the scenario below says what it could not find.
+    try { await el.scrollIntoViewIfNeeded({ timeout: 10000 }); } catch { /* click scrolls too */ }
+    await el.click({ timeout: 20000 });
+    await page.waitForTimeout(200);
+    await page.mouse.move(x, y, { steps: 4 });
+    await page.mouse.click(x, y);
+    await page.waitForTimeout(250);
+  };
+  const gx = cb3.x + cb3.width * 0.25, gy = cb3.y + cb3.height * 0.75;
+  await place('Function Gen', gx, gy);
+  await place('Resistor 1kΩ', gx + 140, gy);
+  const freeDots = async () => await page.evaluate(() => [...document.querySelectorAll('svg circle')]
+    .filter(el => el.getAttribute('stroke') === '#e74c3c' && el.getAttribute('r') === '8')
+    .map(el => { const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }));
+  const dots3 = await freeDots();
+  const near3 = (px, py) => dots3.slice().sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py))[0];
+  const fg3 = await page.locator('div').filter({ hasText: /^.*1000 Hz.*$/ }).last().boundingBox();
+  const r3 = await page.locator('wokwi-resistor').last().boundingBox();
+  const nb3 = (bx, dx, dy) => near3(bx.x + bx.width / 2 + dx, bx.y + bx.height / 2 + dy);
+  const wire3 = async (a, b) => {
+    await page.mouse.move(a.x, a.y); await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 6 }); await page.mouse.up();
+    await page.waitForTimeout(200);
+  };
+  await wire3(nb3(fg3, -24, 32), nb3(r3, -34, 0));
+  await wire3(nb3(fg3, 24, 32), nb3(r3, 34, 0));
+  await clickOrFail(page.getByRole('radio', { name: /Sim/i }).first(), 'Sim toggle unclickable', { timeout: 20000 });
+  await page.waitForTimeout(400);
+
+  // 12. D21 — a placed multimeter must not destroy the board it measures.
+  //     Until 2026-08-29 the meter was filtered out of the netlist while its
+  //     probe terminals stayed in the nets, so bw-board's validator rejected
+  //     the WHOLE netlist and the engine went to zero parts. Measured before
+  //     the fix on a five-part bench: 5 engine parts before the probes were
+  //     wired, 0 after, and the meter then read a fabricated 0 V.
+  {
+    const enginePartsBefore = await page.evaluate(() => window.__circuit?.board?.parts?.length ?? -1);
+    await place('Multimeter', gx + 60, gy - 140);
+    const meterDots = (await freeDots()).filter(d => Math.abs(d.y - (gy - 140)) < 90);
+    const target = (await freeDots()).sort((a, b) => Math.hypot(a.x - gx - 140, a.y - gy) - Math.hypot(b.x - gx - 140, b.y - gy))[0];
+    if (meterDots.length && target) await wire3(meterDots[0], target);
+    const after = await page.evaluate(() => ({
+      parts: window.__circuit?.board?.parts?.length ?? -1,
+      err: window.__circuit?.netlistError ?? null,
+    }));
+    (after.parts >= enginePartsBefore && !after.err)
+      ? pass(`meter probes leave the board intact (${enginePartsBefore} → ${after.parts} engine parts)`)
+      : fail(`wiring a meter emptied the board: ${enginePartsBefore} → ${after.parts} parts, ${after.err}`);
+  }
+
+  // 13. D31 — two channels, two INDEPENDENT vertical scales, both stated.
+  if (await page.locator('[data-scope-panel]').count() === 0) {
+    await clickOrFail(page.getByRole('button', { name: /Scope/i }).first(),
+      'scope toggle unclickable', { timeout: 20000 });
+    await page.waitForTimeout(500);
+  }
+  const sp = page.locator('[data-scope-panel]');
+  if (await sp.count() !== 1) {
+    fail('no scope panel for the instrument scenarios');
+    fail('per-channel V/div: not attempted');
+    fail('spectrum view: not attempted');
+    fail('spectrum names its peak: not attempted');
+  } else {
+    const netSel = () => sp.locator('select').last();
+    const offered = await netSel().locator('option').evaluateAll(os => os.map(o => o.value).filter(Boolean));
+    // Channel 1 must be the net the FG wiring created — the breadboard's own
+    // column nets are electrically dead and a spectrum of nothing proves
+    // nothing. The wire nets are the `net_*` ids; the newest is the FG's.
+    const wireNets = offered.filter(v => /^net_/.test(v));
+    const pick = [wireNets.at(-1), offered.find(v => v !== wireNets.at(-1))].filter(Boolean);
+    for (const v of pick) {
+      await netSel().selectOption(v);
+      await clickOrFail(sp.getByText('+ channel'), 'scope + channel unclickable', { timeout: 20000 });
+      await page.waitForTimeout(400);
+    }
+    const v0 = page.locator('[data-testid=bw-scope-vdiv-0]');
+    const v1 = page.locator('[data-testid=bw-scope-vdiv-1]');
+    if (await v0.count() === 1 && await v1.count() === 1) {
+      await v0.selectOption('5');
+      await v1.selectOption('0.05');
+      await page.waitForTimeout(300);
+      const s0 = (await page.locator('[data-testid=bw-scope-span-0]').innerText()).trim();
+      const s1 = (await page.locator('[data-testid=bw-scope-span-1]').innerText()).trim();
+      // 5 V/div against 0.05 V/div: a hundredfold difference, which under one
+      // global setting could not exist. Both are STATED, which is the other
+      // half — a scale nobody can read is a scale nobody can reason about.
+      const span = (s) => { const m = s.match(/(-?[\d.]+)\s*…\s*(-?[\d.]+)/); return m ? Math.abs(+m[2] - +m[1]) : NaN; };
+      (Math.abs(span(s0) / span(s1) - 100) < 1 && /\/div/.test(s0) && /\/div/.test(s1))
+        ? pass(`per-channel V/div: ch1 "${s0}" spans ${(span(s0) / span(s1)).toFixed(0)}× ch2 "${s1}"`)
+        : fail(`the two channels do not scale independently: "${s0}" vs "${s1}"`);
+    } else {
+      fail(`per-channel V/div controls missing (${await v0.count()} + ${await v1.count()})`);
+    }
+
+    // 14. D24 — the spectrum view of the generator's own 1 kHz tone.
+    await clickOrFail(page.locator('[data-testid=bw-scope-view-spectrum]'), 'spectrum toggle unclickable');
+    await page.waitForTimeout(6000);
+    const specBox = page.locator('[data-testid=bw-scope-spectrum]');
+    const specText = (await specBox.count()) ? (await specBox.innerText()).trim() : '';
+    specText.length > 0
+      ? pass('spectrum view states a result or a refusal, never a blank plot')
+      : fail('spectrum view showed nothing at all');
+    // The generator is 1 kHz. Accept the peak anywhere within ±5 %, and accept
+    // an HONEST refusal ("the trace is incomplete") on a box too slow to have
+    // filled the ring — what is refused is a SILENT wrong answer.
+    const peak = specText.match(/peak\s+([\d.]+)\s*(kHz|Hz)/i);
+    if (peak) {
+      const hz = parseFloat(peak[1]) * (/k/i.test(peak[2]) ? 1000 : 1);
+      (Math.abs(hz - 1000) < 50)
+        ? pass(`spectrum peaks at ${hz.toFixed(1)} Hz on a 1000 Hz generator`)
+        : fail(`spectrum peaks at ${hz.toFixed(1)} Hz, generator is 1000 Hz`);
+    } else if (/incomplete|never written|samples|capture/i.test(specText)) {
+      pass(`spectrum refuses honestly while the series fills: "${specText.slice(0, 90)}"`);
+    } else {
+      fail(`spectrum neither peaked nor refused: "${specText.slice(0, 120)}"`);
+    }
+  }
+
+  // 15. X2.6 — the sweep runs off the critical path: progress is a number and
+  //     the canvas still drags while it runs. The old synchronous call left no
+  //     moment at which either could happen.
+  //
+  //     Back to the time view first, and not to be tidy: a spectrum tap puts a
+  //     solve point on every sample instant, so leaving it open costs the sim
+  //     ~30 000 solves per simulated second and the page has no time left to
+  //     answer a click. That is the honest cost of the second tap and the
+  //     reason it exists only while the view is open.
+  if (await page.locator('[data-testid=bw-scope-view-time]').count()) {
+    await clickOrFail(page.locator('[data-testid=bw-scope-view-time]'), 'time view unclickable');
+    await page.waitForTimeout(600);
+  }
+  if (await page.locator('[data-testid=bw-sweep-panel]').count() === 0) {
+    await clickOrFail(page.locator('[data-testid=bw-sweep-toggle]'), 'sweep toggle unclickable', { timeout: 20000 });
+    await page.waitForTimeout(400);
+  }
+  const swp = page.locator('[data-testid=bw-sweep-panel]');
+  if (await swp.count() !== 1) {
+    fail('no sweep panel after toggling it on');
+    fail('canvas interactive during a sweep: not attempted');
+  } else {
+    await clickOrFail(swp.locator('[data-testid=bw-sweep-run]'), 'sweep run unclickable', { timeout: 30000 });
+    // Poll for the progress readout rather than sleeping a guess: a host that
+    // supplies a worker pays for its first boot here, and on a loaded box that
+    // is seconds. What is being asserted is that progress EXISTS, not when.
+    let label = '';
+    for (let i = 0; i < 60; i++) {
+      label = (await swp.locator('[data-testid=bw-sweep-run]').innerText()).trim();
+      if (/\d+\s*\/\s*\d+/.test(label)) break;
+      if (await swp.locator('[data-testid=bw-sweep-stop]').count() === 0 && i > 4) break; // finished
+      await page.waitForTimeout(500);
+    }
+    /\d+\s*\/\s*\d+/.test(label)
+      ? pass(`sweep reports progress while running: "${label}"`)
+      : fail(`sweep showed no per-point progress: "${label}"`);
+    const rb = await page.locator('wokwi-resistor').first().boundingBox();
+    const x0 = rb.x;
+    await page.mouse.move(rb.x + rb.width / 2, rb.y + rb.height / 2);
+    await page.mouse.down();
+    for (let s = 1; s <= 8; s++) {
+      await page.mouse.move(rb.x + rb.width / 2 + s * 15, rb.y + rb.height / 2);
+      await page.waitForTimeout(20);
+    }
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+    const rb2 = await page.locator('wokwi-resistor').first().boundingBox();
+    const moved = rb2.x - x0;
+    (moved > 60)
+      ? pass(`canvas dragged ${moved.toFixed(0)} px DURING a running sweep`)
+      : fail(`canvas froze during the sweep (moved ${moved.toFixed(0)} px)`);
+    // Leave nothing running into the page-error check.
+    const stop = page.locator('[data-testid=bw-sweep-stop]');
+    if (await stop.count()) { try { await stop.click({ timeout: 2000 }); } catch { /* finished already */ } }
+    await page.waitForTimeout(500);
+  }
+} catch (e) {
+  // Whatever else, the run reaches its count line. An aborted block is a
+  // FAILURE, named — the same rule as clickOrFail, one level up.
+  fail(`the instrument scenarios could not be set up: ${String(e).split('\n')[0]}`);
+}
+
 if (errors.length) fail(`page errors: ${errors.join(' | ')}`);
 else pass('zero page errors');
+
+console.log(`\n${passes + fails} scenarios · ${passes} passed · ${fails} failed`);
 
 await browser.close();
 kill();

@@ -179,6 +179,37 @@ same pattern as today). The time-domain correlation path stays available behind 
 agree, which is itself a lesson. Acceptance: RC corner reads −3 dB/−45° at the
 analytic frequency; sweep of a 50-net board completes < 200 ms end-to-end.
 
+### X2.2 FFT / THD / trace export — **SHIPPED 2026-08-29** (`model/fft.js`, `ScopePanel`)
+This item's first line was wrong, and finding out was the work. It said "pure
+post-processing over the existing scope ring buffers"; the existing ring buffers are
+a (min, max) ENVELOPE, whose two numbers are two different instants reported as one,
+so a transform over them describes a waveform that never existed — and it would look
+plausible. So the engine grew a second capture mode (`addScopeChannel({capture:
+'sample'})`, bw-board `9441e4f` + `825b019`) whose sample instants are SOLVE POINTS,
+and the spectrum view is a second tap rather than a redrawing of the first.
+`seriesFromScopeData` refuses an envelope buffer BY NAME.
+
+Two things also differ from the acceptance below, both because it was written before
+anyone measured:
+
+- **"> 40 dB to the next bin" is a rectangular-window, bin-aligned claim.** A Hann
+  mainlobe is four bins wide by construction, so the bin next to the peak is
+  supposed to be about −6 dB. The measurable form of the same requirement is the
+  distance to everything OUTSIDE the mainlobe, and that is what the test asserts.
+- **Amplitudes come from the lobe's ENERGY, not its tallest bin.** A tone off bin
+  centre loses up to 1.42 dB to scalloping: reading the peak bin gave a square wave's
+  harmonics as 0.322/0.180/0.127 against the series' 0.333/0.200/0.143 and THD as
+  40.46 % against 42.88 %. The energy in the lobe is invariant to sub-bin offset and
+  reproduces all of them to four decimals.
+
+The spectrum tap carries its own capture rate, labelled by the bandwidth it buys,
+because a sample-series channel puts a solve point on every sample instant: 10 kHz
+costs nothing (100 µs is the floor the integrator already used), 100 kHz makes the
+whole simulation ~5× slower — measured in a real browser, the page stopped answering
+clicks for 30 s. The default is 10 kHz.
+
+Original scope, for the record:
+
 ### X2.2 FFT / THD / trace export — new `model/fft.js`, `components/ScopePanel.jsx`
 Pure post-processing over the existing scope ring buffers (the curriculum already
 promises FFT lessons). Scope: radix-2 real FFT (own implementation, ~100 lines —
@@ -212,6 +243,36 @@ resistors matches 3 individual sweeps.
 Digital channels (transition-list capture) rendered as timing lanes under the
 scope; shares timebase and cursors with `model/scope-tools.js`. Blocked on the
 engine's scheduled-events work; do not fake it with sampled analog channels.
+
+### X2.6 Sweeps off the main thread — **SHIPPED 2026-08-29** (`model/sweep-protocol.js`, `model/sweep-session.js`, `SweepPanel`)
+The sweep ran synchronously inside a `setTimeout(…, 20)` whose only job was to let
+the button repaint BEFORE the freeze. Both acceptance criteria hold: the rows are
+`assert.equal`-identical to the synchronous path (not close — `runDcSweep` and
+`runAcSweep` are loops over points against one board with monotonic time, so one
+point per call in the same order is the same sequence of operations), and the canvas
+drags while a sweep runs.
+
+**It could not be a worker alone, and the reason is structural.** The engine reaches
+this library through `setEngine` as LIVE JS OBJECTS, and a class is not
+structured-cloneable — only the host knows where its engine module is, so only the
+host can build the worker. So: `sweep-protocol.js` sends a NETLIST across the
+boundary and exports `sweepWorkerHandler` for the worker side;
+`setEngine({createSweepWorker})` is the optional hook; `src/dev-sweep-worker.js` is
+the reference implementation and the dev harness wires it. Without the hook the same
+points run chunked on the main thread, one per macrotask — worse (one slow POINT
+still blocks) but real, and the panel's status line says WHICH path produced the
+numbers rather than leaving it a guess.
+
+While wiring it: the dev harness never injected `runDcSweep`/`runAcSweep`/`logSpace`
+at all, so `SweepPanel` refused every run there and no browser scenario could reach
+it. Fixed in `main.jsx` — an export nobody calls is a bug, and so is a panel nobody
+can reach.
+
+Still open, and NOT this item: the D9 engine half — a Bode point costs 10/f seconds
+of simulated time (6 settle + 4 measure cycles). Moving the cost off the main thread
+is not removing it; `runAcSweep`'s semantics are bw-board's to change.
+
+Original scope, for the record:
 
 ### X2.6 Sweeps off the main thread — `components/SweepPanel.jsx:113-127`
 Today's sweep runs synchronously inside a `setTimeout(…, 20)` so the button can
