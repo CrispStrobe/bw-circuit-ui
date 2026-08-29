@@ -17,7 +17,8 @@
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { getEngine } from '../engine.js';
-import { listSweepSources, netOfTerminal, runKennlinie, runBode } from '../model/sweep-runner.js';
+import { listSweepSources, netOfTerminal } from '../model/sweep-runner.js';
+import { runSweepAsync } from '../model/sweep-session.js';
 import { bodeAxisLabels, formatHz, sweepRowsToCsv, thinRows } from '../model/sweep-readout.js';
 
 const W = 260;
@@ -109,6 +110,10 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
   // disagree with the curve beside it.
   const [rows, setRows] = useState([]);
   const [copied, setCopied] = useState('');
+  // Progress is a READING, not a spinner: "17 / 41 points" answers "is it
+  // stuck or is it slow", which a spinner never does.
+  const [progress, setProgress] = useState(null);
+  const cancelRef = useRef(null);
 
   const sources = listSweepSources(board);
   useEffect(() => {
@@ -121,27 +126,53 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
     }
   }, [board, sourceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // X2.6 / D9. This used to be one synchronous call inside a `setTimeout(…, 20)`
+  // whose only job was to let the button repaint BEFORE the freeze: a Bode
+  // point costs 10/f seconds of simulated time, a sweep is dozens of them, and
+  // the tab did not paint again until the last one. Now the run yields between
+  // points — to a worker when the host supplied one, otherwise to the event
+  // loop — so the canvas stays draggable, progress is a number, and Stop stops
+  // the machine rather than only the listener.
   const run = useCallback(() => {
     setBusy(true);
     setStatus('');
-    // Let the button repaint before the synchronous sweep.
-    setTimeout(() => {
-      try {
-        const engine = typeof getEngine === 'function' ? getEngine() : {};
-        const result = mode === 'vi'
-          ? runKennlinie(engine, board, { sourceId, from: Number(vFrom), to: Number(vTo) })
-          : runBode(engine, board, { sourceId, inNet, outNet, fFrom: Number(fFrom), fTo: Number(fTo) });
-        if (!result.ok) { setStatus(result.reason); setRows([]); return; }
-        const canvas = canvasRef.current;
-        if (canvas) (mode === 'vi' ? drawKennlinie : drawBode)(canvas, result.rows);
-        setRows(result.rows);
-        setCopied('');
-        setStatus(`${result.rows.length} ${de ? 'Punkte' : 'points'}`);
-      } finally {
-        setBusy(false);
-      }
-    }, 20);
+    setProgress(null);
+    const token = { cancelled: false };
+    cancelRef.current = token;
+    const engine = typeof getEngine === 'function' ? getEngine() : {};
+    const params = mode === 'vi'
+      ? { sourceId, from: Number(vFrom), to: Number(vTo) }
+      : { sourceId, inNet, outNet, fFrom: Number(fFrom), fTo: Number(fTo) };
+    runSweepAsync({
+      engine, board, mode, params, token,
+      onProgress: (p) => setProgress({ index: p.index, total: p.total }),
+    }).then((result) => {
+      if (cancelRef.current !== token) return; // superseded by a newer run
+      if (!result.ok) { setStatus(result.reason); setRows([]); return; }
+      const canvas = canvasRef.current;
+      if (canvas) (mode === 'vi' ? drawKennlinie : drawBode)(canvas, result.rows);
+      setRows(result.rows);
+      setCopied('');
+      const via = result.via === 'worker'
+        ? (de ? 'im Worker' : 'in a worker')
+        : (de ? 'im Haupt-Thread, stückweise' : 'chunked on this thread');
+      setStatus(`${result.rows.length} ${de ? 'Punkte' : 'points'}`
+        + `${result.cancelled ? (de ? ' (abgebrochen)' : ' (stopped)') : ''} · ${via}`);
+    }).catch((e) => {
+      if (cancelRef.current !== token) return;
+      setStatus((e && e.message) || String(e));
+      setRows([]);
+    }).finally(() => {
+      if (cancelRef.current !== token) return;
+      cancelRef.current = null;
+      setProgress(null);
+      setBusy(false);
+    });
   }, [board, mode, sourceId, vFrom, vTo, fFrom, fTo, inNet, outNet, de]);
+
+  const stop = useCallback(() => {
+    if (cancelRef.current) cancelRef.current.cancelled = true;
+  }, []);
 
   // Export. A model comparison that starts from the DISPLAY rounding is
   // measuring the formatter, so the CSV carries full precision while the table
@@ -211,9 +242,20 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
         </>
       )}
 
-      <button onClick={run} disabled={busy || !board} style={{ padding: '4px 6px', background: busy ? '#0d1420' : '#2c3e50', border: '1px solid #9b59b6', borderRadius: 4, color: '#c39bd3', fontFamily: 'monospace', fontSize: 11 }} data-testid="bw-sweep-run">
-        {busy ? (de ? '… misst' : '… sweeping') : (de ? '▶ Messen' : '▶ Sweep')}
-      </button>
+      <div style={{ display: 'flex', gap: 4 }}>
+        <button onClick={run} disabled={busy || !board} style={{ flex: 1, padding: '4px 6px', background: busy ? '#0d1420' : '#2c3e50', border: '1px solid #9b59b6', borderRadius: 4, color: '#c39bd3', fontFamily: 'monospace', fontSize: 11 }} data-testid="bw-sweep-run">
+          {busy
+            ? (progress
+              ? `… ${progress.index}/${progress.total}`
+              : (de ? '… misst' : '… sweeping'))
+            : (de ? '▶ Messen' : '▶ Sweep')}
+        </button>
+        {busy && (
+          <button onClick={stop} data-testid="bw-sweep-stop" style={{ padding: '4px 8px', background: '#2c3e50', border: '1px solid #e67e22', borderRadius: 4, color: '#e67e22', fontFamily: 'monospace', fontSize: 11 }}>
+            {de ? '■ Stopp' : '■ Stop'}
+          </button>
+        )}
+      </div>
 
       <canvas ref={canvasRef} width={W} height={H} style={{ width: '100%', imageRendering: 'pixelated', background: '#0d1420', borderRadius: 3 }} />
 

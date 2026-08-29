@@ -6,6 +6,15 @@
  * inferNetlist, checkWiring }. The Vite dev harness does this at boot
  * with the local copy; brickwright-lite does it with its vendored copy.
  *
+ * OPTIONAL: `createSweepWorker` — a zero-argument factory returning a `Worker`
+ * that speaks `model/sweep-protocol.js`. The engine arrives here as live JS
+ * objects and a class is not structured-cloneable, so the library cannot build
+ * that worker itself: only the host knows where its engine module lives.
+ * `src/dev-sweep-worker.js` is the reference implementation, and the dev
+ * harness wires it. Without the factory `SweepPanel` runs the same points
+ * chunked on the main thread — still repainting between them, but one slow
+ * POINT still blocks. See X2.6 / D9.
+ *
  * OPTIONAL: `getDevice` — bw-board's device-registry accessor. When the
  * host injects it, the engine's registered device model becomes the
  * AUTHORITY for terminal NAMES (see terminalsForKind in model/circuit.js).
