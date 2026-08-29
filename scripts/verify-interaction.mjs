@@ -37,11 +37,19 @@ const waitForServer = async () => {
   for (let i = 0; i < 120; i++) {
     try {
       const r = await fetch(`http://localhost:${PORT}/`);
-      if (r.ok) return;
+      if (r.ok) break;
     } catch { /* not up yet */ }
     await new Promise(res => setTimeout(res, 500));
+    if (i === 119) throw new Error('dev server did not come up');
   }
-  throw new Error('dev server did not come up');
+  // Serving index.html is not the same as being ready to serve the APP. Vite
+  // transforms every module on first request, and this app is a large one:
+  // on a box with six other agents on it that first compile ran past a 30 s
+  // navigation budget and the run died before scenario 1, with no count line
+  // — the exact abort this gate was rewritten to stop having. Paying for the
+  // entry module here makes the wait honest work rather than a bigger number,
+  // and the first goto below still carries a budget that says why.
+  try { await fetch(`http://localhost:${PORT}/src/main.jsx`); } catch { /* the goto reports it */ }
 };
 
 // ── The roll-call ────────────────────────────────────────────────────────
@@ -120,6 +128,44 @@ const verdict = (id, ok, okMsg, badMsg) => (ok ? pass(id, okMsg) : fail(id, badM
 /** Report every scenario in `ids` as failed for one shared reason. */
 const failAll = (ids, why) => { for (const id of ids) if (!reported.has(id)) fail(id, why); };
 
+// ── Roll-call: the count is asserted, not admired ────────────────────────
+// Declared up here because EVERY exit runs it, including the early ones. A
+// run that cannot reach its count line has reported nothing, and "the harness
+// crashed with a stack trace" is the one outcome this gate must never produce.
+let browserRef = null;
+const rollCall = async () => {
+  for (const s of CI_SKIPS) {
+    if (isCI && !reported.has(s.id)) record(s.id, 'skip', `${s.id} IS NOT RUN IN CI — ${s.reason}`);
+  }
+  const missing = EXPECTED.filter(id => !reported.has(id));
+  const unexpected = [...reported.keys()].filter(id => !EXPECTED.includes(id));
+
+  console.log(`\n${reported.size} scenarios · ${passes} passed · ${fails} failed`
+    + (skips ? ` · ${skips} skipped` : ''));
+  console.log(`roll-call: ${reported.size}/${EXPECTED.length} expected scenarios reported an outcome`);
+
+  if (missing.length) {
+    console.error(`\n✖ ROLL-CALL FAILED: ${missing.length} scenario(s) never reported: ${missing.join(', ')}`);
+    console.error('  A run that silently ran fewer scenarios than it declares is not a green run.');
+    process.exitCode = 1;
+  }
+  if (unexpected.length) {
+    console.error(`\n✖ ROLL-CALL FAILED: outcome(s) for scenario id(s) not in EXPECTED: ${unexpected.join(', ')}`);
+    process.exitCode = 1;
+  }
+  for (const p of protocolErrors) {
+    console.error(`\n✖ ROLL-CALL FAILED: ${p}`);
+    process.exitCode = 1;
+  }
+  if (skips) {
+    console.error(`\n⚠ ${skips} scenario(s) were SKIPPED IN CI and prove nothing today:`);
+    for (const s of CI_SKIPS) console.error(`    - ${s.id}: ${s.reason}`);
+  }
+  if (browserRef) { try { await browserRef.close(); } catch { /* already gone */ } }
+  kill();
+  process.exit(process.exitCode ?? 0);
+};
+
 /**
  * Click, and turn a click that cannot happen into a REPORTED failure instead
  * of an uncaught exception.
@@ -144,6 +190,7 @@ const clickOrFail = async (locator, id, what, opts = {}) => {
 
 await waitForServer();
 const browser = await chromium.launch();
+browserRef = browser;
 const page = await browser.newPage({ viewport: { width: 1400, height: 800 } });
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
@@ -228,11 +275,53 @@ const pressTransport = async (locator) => {
 // event can hang, and on a loaded box a Vite dev server never went idle
 // inside 30 s and the gate died before its first scenario. Readiness here has
 // always been a CONDITION rather than a load event, so nothing is lost.
-await page.goto(`http://localhost:${PORT}`, { waitUntil: 'domcontentloaded' });
+//
+// The FIRST navigation carries a larger budget than the rest, and for a
+// reason that is not "sometimes it is slow": it is the one that pays for the
+// dev server's cold transform of the whole application. Every later goto in
+// this file hits a warm server and keeps the ordinary budget.
+const FIRST_NAV_MS = 120000;
+
+/**
+ * Navigate, and turn a navigation that cannot happen into REPORTED failures.
+ *
+ * Whatever else, the run reaches its roll-call. A goto that throws used to
+ * kill the process with a stack trace and no count line — the same abort the
+ * rest of this file was rewritten to stop having, one level further out.
+ *
+ * @returns {Promise<boolean>} whether the page is there
+ */
+const gotoOrFailRest = async (url, opts = {}) => {
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded', ...opts });
+    return true;
+  } catch (e) {
+    failAll(EXPECTED, `could not load ${url}: ${String(e).split('\n')[0]}`);
+    return false;
+  }
+};
+
+/** Wait for the app to be alive, and fail the rest by name if it never is. */
+const readyOrFailRest = async (fn, timeout = 30000, what = 'the app never became ready') => {
+  try {
+    await page.waitForFunction(fn, { timeout });
+    return true;
+  } catch (e) {
+    failAll(EXPECTED, `${what}: ${String(e).split('\n')[0]}`);
+    return false;
+  }
+};
+
+let alive = await gotoOrFailRest(`http://localhost:${PORT}`, { timeout: FIRST_NAV_MS });
 // Readiness is a condition, not a sleep: the circuit is populated and the
 // first solve has landed when parts exist and a wokwi element is attached.
-await page.waitForFunction(() => window.__circuit && window.__circuit.parts.length > 0
-  && document.querySelector('wokwi-led'), { timeout: 30000 });
+if (alive) {
+  alive = await readyOrFailRest(() => window.__circuit && window.__circuit.parts.length > 0
+    && document.querySelector('wokwi-led'), 60000, 'the demo circuit never mounted');
+}
+// Nothing below can mean anything without a page. Every scenario is already
+// failed by name at this point; go straight to the count line.
+if (!alive) await rollCall();
 await page.waitForTimeout(400); // one settle frame for the wokwi layer
 
 
@@ -1142,35 +1231,4 @@ verdict('zero-page-errors', errors.length === 0,
   'zero page errors',
   `page errors: ${errors.join(' | ')}`);
 
-// ── Roll-call: the count is asserted, not admired ────────────────────────
-for (const s of CI_SKIPS) {
-  if (isCI && !reported.has(s.id)) record(s.id, 'skip', `${s.id} IS NOT RUN IN CI — ${s.reason}`);
-}
-const missing = EXPECTED.filter(id => !reported.has(id));
-const unexpected = [...reported.keys()].filter(id => !EXPECTED.includes(id));
-
-console.log(`\n${reported.size} scenarios · ${passes} passed · ${fails} failed`
-  + (skips ? ` · ${skips} skipped` : ''));
-console.log(`roll-call: ${reported.size}/${EXPECTED.length} expected scenarios reported an outcome`);
-
-if (missing.length) {
-  console.error(`\n✖ ROLL-CALL FAILED: ${missing.length} scenario(s) never reported: ${missing.join(', ')}`);
-  console.error('  A run that silently ran fewer scenarios than it declares is not a green run.');
-  process.exitCode = 1;
-}
-if (unexpected.length) {
-  console.error(`\n✖ ROLL-CALL FAILED: outcome(s) for scenario id(s) not in EXPECTED: ${unexpected.join(', ')}`);
-  process.exitCode = 1;
-}
-for (const p of protocolErrors) {
-  console.error(`\n✖ ROLL-CALL FAILED: ${p}`);
-  process.exitCode = 1;
-}
-if (skips) {
-  console.error(`\n⚠ ${skips} scenario(s) were SKIPPED IN CI and prove nothing today:`);
-  for (const s of CI_SKIPS) console.error(`    - ${s.id}: ${s.reason}`);
-}
-
-await browser.close();
-kill();
-process.exit(process.exitCode ?? 0);
+await rollCall();
