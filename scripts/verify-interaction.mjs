@@ -757,13 +757,30 @@ const selectionCount = async () =>
       const m2 = new DOMMatrixReadOnly(getComputedStyle(el).transform);
       const pr = el.parentElement.getBoundingClientRect();
       const chip = { x: pr.x + mcu.x * m2.a + m2.e, y: pr.y + mcu.y * m2.d + m2.f };
+      // BODY BEATS HOLE (scenario 9 is the law): a press on a hole that lies
+      // under a seated part's BODY drags that part instead of starting a
+      // wire. A DIP-40 is twenty columns long, so "90 px from the chip
+      // centre" picked hole i35 — squarely under the chip — and the gesture
+      // dragged the chip rather than pulling a wire off the board. Every
+      // seated part's leadMap names the COLUMNS it stands on; stay two clear
+      // of all of them.
+      const spans = [];
+      for (const p of c.parts) {
+        if (!p.seat || !p.seat.leadMap) continue;
+        const cols = Object.values(p.seat.leadMap)
+          .map(h => parseInt(String(h).replace(/^[^0-9]+/, ''), 10)).filter(n => Number.isFinite(n));
+        if (cols.length) spans.push({ id: p.id, min: Math.min(...cols), max: Math.max(...cols) });
+      }
+      const clearOfBodies = (col) => spans.every(s => col < s.min - 2 || col > s.max + 2);
       const holes = [...document.querySelectorAll('[data-hole]')];
-      let occupied = 0, offscreen = 0, tooClose = 0;
+      let occupied = 0, offscreen = 0, tooClose = 0, underABody = 0;
       const free = [];
       for (const h of holes) {
         const id = h.getAttribute('data-hole');
-        if (!/^[a-j]\d+$/.test(id)) continue;          // terminal rows only, not the rails
+        const m = /^([a-j])(\d+)$/.exec(id);           // terminal rows only, not the rails
+        if (!m) continue;
         if (bb.occupantOf(id)) { occupied++; continue; }
+        if (!clearOfBodies(Number(m[2]))) { underABody++; continue; }
         const r = h.getBoundingClientRect();
         const x = r.x + r.width / 2, y = r.y + r.height / 2;
         if (x < pr.x + 6 || x > pr.x + pr.width - 6 || y < pr.y + 6 || y > pr.y + pr.height - 6) { offscreen++; continue; }
@@ -773,13 +790,15 @@ const selectionCount = async () =>
       }
       free.sort((a, b) => a.d - b.d);                  // the shortest honest drag
       const over = document.elementFromPoint(chip.x, chip.y);
-      return { chip, free: free.slice(0, 3), holes: holes.length, occupied, offscreen, tooClose,
+      return { chip, free: free.slice(0, 3), holes: holes.length, occupied, offscreen, tooClose, underABody,
+        spans: spans.map(s => `${s.id}:${s.min}-${s.max}`).join(' '),
         chipCovered: over ? over.tagName : 'nothing' };
     });
     if (aim.err || !aim.free || aim.free.length === 0) {
       failAll(['pin-chooser-opens', 'pin-chooser-wires'],
         `no free breadboard hole to start the tap wire from (${aim.err
-          ?? `${aim.holes} holes drawn, ${aim.occupied} occupied, ${aim.offscreen} off-canvas, ${aim.tooClose} too close to the chip`})`);
+          ?? `${aim.holes} holes drawn, ${aim.occupied} occupied, ${aim.underABody} under a seated body `
+             + `(columns ${aim.spans}), ${aim.offscreen} off-canvas, ${aim.tooClose} too close to the chip`})`);
     } else {
       const from = aim.free[0];
       const to = aim.chip;
