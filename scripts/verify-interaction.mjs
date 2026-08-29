@@ -754,44 +754,55 @@ const selectionCount = async () =>
       const bb = bbPart && c.breadboards ? c.breadboards.get(bbPart.id) : null;
       if (!bb) return { err: 'no breadboard model on the demo board' };
       const el = document.querySelector('[data-wokwi-layer]');
-      const m2 = new DOMMatrixReadOnly(getComputedStyle(el).transform);
       const pr = el.parentElement.getBoundingClientRect();
-      const chip = { x: pr.x + mcu.x * m2.a + m2.e, y: pr.y + mcu.y * m2.d + m2.f };
-      // BODY BEATS HOLE (scenario 9 is the law): a press on a hole that lies
-      // under a seated part's BODY drags that part instead of starting a
-      // wire. A DIP-40 is twenty columns long, so "90 px from the chip
-      // centre" picked hole i35 — squarely under the chip — and the gesture
-      // dragged the chip rather than pulling a wire off the board. Every
-      // seated part's leadMap names the COLUMNS it stands on; stay two clear
-      // of all of them.
-      const spans = [];
+      const holes = [...document.querySelectorAll('[data-hole]')];
+      const holeAt = new Map();
+      for (const h of holes) {
+        const r = h.getBoundingClientRect();
+        holeAt.set(h.getAttribute('data-hole'), { x: r.x + r.width / 2, y: r.y + r.height / 2 });
+      }
+      // WHERE THE CHIP IS, measured — not `mcu.x, mcu.y` through a matrix.
+      // A seated chip stands in named holes; averaging the screen positions
+      // of the holes its own leadMap names puts the release point in the DIP
+      // channel, dead centre of the body, wherever the camera happens to be.
+      const legs = mcu.seat && mcu.seat.leadMap ? Object.values(mcu.seat.leadMap) : [];
+      const legPts = legs.map(h => holeAt.get(h)).filter(Boolean);
+      if (legPts.length < 2) return { err: `the mcu is not seated in nameable holes (${legs.length} legs, ${legPts.length} located)` };
+      const chip = { x: legPts.reduce((s, p) => s + p.x, 0) / legPts.length,
+        y: legPts.reduce((s, p) => s + p.y, 0) / legPts.length };
+      // BODY BEATS HOLE (scenario 9 is the law): a press on a hole under a
+      // seated part's BODY drags that part instead of starting a wire. So the
+      // start hole must sit outside every seated part's leg box, measured in
+      // the same screen pixels, plus a margin.
+      const boxes = [];
       for (const p of c.parts) {
         if (!p.seat || !p.seat.leadMap) continue;
-        const cols = Object.values(p.seat.leadMap)
-          .map(h => parseInt(String(h).replace(/^[^0-9]+/, ''), 10)).filter(n => Number.isFinite(n));
-        if (cols.length) spans.push({ id: p.id, min: Math.min(...cols), max: Math.max(...cols) });
+        const pts = Object.values(p.seat.leadMap).map(h => holeAt.get(h)).filter(Boolean);
+        if (!pts.length) continue;
+        boxes.push({ id: p.id,
+          x0: Math.min(...pts.map(q => q.x)), x1: Math.max(...pts.map(q => q.x)),
+          y0: Math.min(...pts.map(q => q.y)), y1: Math.max(...pts.map(q => q.y)) });
       }
-      const clearOfBodies = (col) => spans.every(s => col < s.min - 2 || col > s.max + 2);
-      const holes = [...document.querySelectorAll('[data-hole]')];
+      const M = 34; // margin: a seated body overhangs the holes it stands in
+      const clearOfBodies = (x, y) => boxes.every(b => x < b.x0 - M || x > b.x1 + M || y < b.y0 - M || y > b.y1 + M);
       let occupied = 0, offscreen = 0, tooClose = 0, underABody = 0;
       const free = [];
       for (const h of holes) {
         const id = h.getAttribute('data-hole');
-        const m = /^([a-j])(\d+)$/.exec(id);           // terminal rows only, not the rails
-        if (!m) continue;
+        if (!/^[a-j]\d+$/.test(id)) continue;          // terminal rows only, not the rails
         if (bb.occupantOf(id)) { occupied++; continue; }
-        if (!clearOfBodies(Number(m[2]))) { underABody++; continue; }
-        const r = h.getBoundingClientRect();
-        const x = r.x + r.width / 2, y = r.y + r.height / 2;
+        const { x, y } = holeAt.get(id);
         if (x < pr.x + 6 || x > pr.x + pr.width - 6 || y < pr.y + 6 || y > pr.y + pr.height - 6) { offscreen++; continue; }
+        if (!clearOfBodies(x, y)) { underABody++; continue; }
         const d = Math.hypot(x - chip.x, y - chip.y);
-        if (d < 90) { tooClose++; continue; }          // far enough to be a real drag
+        if (d < 60) { tooClose++; continue; }          // far enough to be a real drag
         free.push({ id, x, y, d });
       }
       free.sort((a, b) => a.d - b.d);                  // the shortest honest drag
       const over = document.elementFromPoint(chip.x, chip.y);
       return { chip, free: free.slice(0, 3), holes: holes.length, occupied, offscreen, tooClose, underABody,
-        spans: spans.map(s => `${s.id}:${s.min}-${s.max}`).join(' '),
+        spans: boxes.map(b => `${b.id}:${b.x0.toFixed(0)}-${b.x1.toFixed(0)}x${b.y0.toFixed(0)}-${b.y1.toFixed(0)}`).join(' '),
+        legs: legs.length,
         chipCovered: over ? over.tagName : 'nothing' };
     });
     if (aim.err || !aim.free || aim.free.length === 0) {
@@ -802,15 +813,32 @@ const selectionCount = async () =>
     } else {
       const from = aim.free[0];
       const to = aim.chip;
+      const snap = async () => await page.evaluate(() => {
+        const c = window.__circuit;
+        const m = c.parts.find(q => q.kind === 'mcu');
+        return { wires: c.wires.length, jumpers: c.holeWires().length, mcuX: m?.x, mcuY: m?.y };
+      });
+      const beforeDrag = await snap();
       await page.mouse.move(from.x, from.y); await page.mouse.down();
       await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 4 });
       await page.mouse.move(to.x, to.y, { steps: 4 }); await page.mouse.up();
       await page.waitForTimeout(700);
       const open = await page.getByText('Which pin of', { exact: false }).count();
+      const afterDrag = await snap();
+      // What the gesture DID, when it did not do this. A drag that made a
+      // jumper released on another hole; one that made a wire found a
+      // terminal; one that moved the chip pressed on its body. Each of those
+      // is a different wrong aim, and naming which saves the next reader a
+      // round trip.
+      const did = afterDrag.jumpers > beforeDrag.jumpers ? 'made a JUMPER (released on another hole)'
+        : afterDrag.wires > beforeDrag.wires ? 'made a WIRE directly (released on a terminal, not the body)'
+        : (Math.abs(afterDrag.mcuX - beforeDrag.mcuX) > 4 || Math.abs(afterDrag.mcuY - beforeDrag.mcuY) > 4)
+          ? `MOVED THE CHIP (${beforeDrag.mcuX},${beforeDrag.mcuY} → ${afterDrag.mcuX},${afterDrag.mcuY}) — the press was on its body`
+          : 'nothing at all';
       verdict('pin-chooser-opens', !!open,
         `pin chooser opens on chip-body release (hole ${from.id} → chip)`,
-        `pin chooser did not open (hole ${from.id} at ${from.x.toFixed(0)},${from.y.toFixed(0)} → chip at `
-          + `${to.x.toFixed(0)},${to.y.toFixed(0)}, which covers ${aim.chipCovered})`);
+        `pin chooser did not open: the drag ${did}. Hole ${from.id} at ${from.x.toFixed(0)},${from.y.toFixed(0)} → chip at `
+          + `${to.x.toFixed(0)},${to.y.toFixed(0)} (covered by ${aim.chipCovered}); chip legs ${aim.legs}, seat boxes ${aim.spans}`);
       if (open) {
         await clickOrFail(page.locator('button', { hasText: 'P1.5' }).first(), 'pin-chooser-wires', 'P1.5 button unclickable', { timeout: 10000 });
         await page.waitForTimeout(400);
