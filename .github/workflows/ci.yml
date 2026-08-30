@@ -36,6 +36,16 @@ jobs:
       - name: Clone sb3-creator (examples source)
         run: git clone --depth 1 https://github.com/CrispStrobe/sb3-creator.git ../sb3-creator
 
+      # test/spice-corpus.test.js reads the 410 published decks the ngspice
+      # PACKAGE installs, in place, and skips when they are absent. A skip
+      # that reads as a pass is how the interaction gate sat red for months,
+      # so the corpus is installed here rather than left to skip.
+      - name: Install ngspice (its example decks are the SPICE import corpus)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends ngspice
+          test -d /usr/share/doc/ngspice/examples || { echo "::error::ngspice example decks missing"; exit 1; }
+
       - run: npm install
       - run: npm test
 
