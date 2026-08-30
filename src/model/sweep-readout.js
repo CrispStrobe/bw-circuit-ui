@@ -105,6 +105,11 @@ export function sweepRowsToCsv(rows, mode = 'bode') {
     const head = 'v,i_amps';
     return [head, ...(rows || []).map(r => `${r.v},${r.i}`)].join('\n');
   }
-  const head = 'f_hz,mag_db,phase_deg';
-  return [head, ...(rows || []).map(r => `${r.f},${r.magDb},${r.phaseDeg}`)].join('\n');
+  const head = 'f_hz,mag_db,phase_deg,linearization_region';
+  return [head, ...(rows || []).map(r => `${r.f},${r.magDb},${r.phaseDeg},${regionSummary(r)}`)].join('\n');
+}
+
+/** Machine-readable summary of nonlinear devices outside their linear region. */
+export function regionSummary(row) {
+  return (row?.outOfLinear || []).map(x => `${x.part}:${x.region}`).join(';');
 }

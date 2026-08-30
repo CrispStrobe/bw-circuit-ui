@@ -237,7 +237,8 @@ describe('X2.6: what crosses a worker boundary', () => {
 describe('X2.6: refusals name what is missing on OUR side', () => {
   it('a build with no sweep functions blames the build, not the circuit', () => {
     assert.match(refuseSweep({}, { mode: 'vi', params: { sourceId: 'V1' } }), /host must inject runDcSweep/);
-    assert.match(refuseSweep({}, { mode: 'bode', params: { sourceId: 'V1', inNet: 'a', outNet: 'b' } }), /runAcSweep/);
+    assert.match(refuseSweep({}, { mode: 'bode', params: { sourceId: 'V1', inNet: 'a', outNet: 'b' } }), /BoardImpl.*runAc/);
+    assert.match(refuseSweep({}, { mode: 'bode', params: { sourceId: 'V1', inNet: 'a', outNet: 'b', method: 'scope' } }), /runAcSweep/);
   });
 
   it('a missing source or net is named exactly', () => {

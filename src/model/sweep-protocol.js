@@ -102,9 +102,11 @@ export function refuseSweep(engine, request) {
     return null;
   }
   if (mode === 'bode') {
-    if (!engine?.runAcSweep || !engine?.logSpace) return 'this build has no AC sweep wired — the host must inject runAcSweep and logSpace via setEngine';
+    const method = params.method ?? 'analytic';
     if (!params.sourceId) return 'no vsource selected — the Bode sweep drives a voltage source';
     if (!params.inNet || !params.outNet) return 'pick an input and an output net — the sweep measures the transfer between them';
+    if (method === 'scope' && (!engine?.runAcSweep || !engine?.logSpace)) return 'this build has no scope-measured AC sweep wired — the host must inject runAcSweep and logSpace via setEngine';
+    if (method !== 'scope' && !engine?.BoardImpl?.prototype?.runAc) return 'this build has no analytical AC sweep wired — the injected BoardImpl must provide runAc';
     return null;
   }
   return `unknown sweep mode "${mode}"`;
@@ -140,11 +142,42 @@ export function createSweepRun(engine, request) {
 
   const {
     inNet, outNet, fFrom = 10, fTo = 100000, pointsPerDecade = 8, amplitude = 1,
+    method = 'analytic',
   } = params;
-  const board = buildBoardFromNetlist(engine, netlist, {
-    sourceId,
-    sourceParams: { wave: 'sine', amplitude, offset: 0, freq: fFrom },
-  });
+  // Analytical AC supplies its own unit phasor and MUST retain the source's DC
+  // value: that bias decides whether an op-amp is linear, railed, or limited.
+  const board = buildBoardFromNetlist(engine, netlist, method === 'scope' ? {
+    sourceId, sourceParams: { wave: 'sine', amplitude, offset: 0, freq: fFrom },
+  } : {});
+  if (method !== 'scope') {
+    const measured = board.runAc({
+      sourceId, from: fFrom, to: fTo, pointsPerDecade, probes: [inNet, outNet],
+    }).map((point) => {
+      const input = point.results.get(inNet);
+      const output = point.results.get(outNet);
+      if (!input || !output) throw new Error('analytical AC sweep did not return both selected probe nets');
+      if (!(input.mag > 0)) throw new Error('analytical AC sweep input magnitude is zero — transfer is undefined');
+      let phaseDeg = output.phaseDeg - input.phaseDeg;
+      while (phaseDeg > 180) phaseDeg -= 360;
+      while (phaseDeg <= -180) phaseDeg += 360;
+      return {
+        f: point.hz,
+        magDb: 20 * Math.log10(output.mag / input.mag),
+        phaseDeg,
+        ...(point.outOfLinear?.length ? { outOfLinear: point.outOfLinear } : {}),
+      };
+    });
+    let k = 0;
+    return {
+      total: measured.length,
+      next() {
+        if (k >= measured.length) return { done: true };
+        const row = measured[k++];
+        return { done: false, row, index: k, total: measured.length };
+      },
+    };
+  }
+
   const freqs = engine.logSpace(fFrom, fTo, pointsPerDecade);
   let k = 0;
   return {

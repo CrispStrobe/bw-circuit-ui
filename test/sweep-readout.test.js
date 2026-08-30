@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  formatHz, bodeAxisLabels, thinRows, sweepRowsToCsv,
+  formatHz, bodeAxisLabels, regionSummary, thinRows, sweepRowsToCsv,
 } from '../src/model/sweep-readout.js';
 
 // The pc50-two-stage-rc response, measured through bw-board and quoted by
@@ -77,14 +77,17 @@ describe('sweep readout', () => {
   it('exports FULL precision, not the display rounding', () => {
     const csv = sweepRowsToCsv(PC50, 'bode');
     const lines = csv.split('\n');
-    assert.equal(lines[0], 'f_hz,mag_db,phase_deg');
+    assert.equal(lines[0], 'f_hz,mag_db,phase_deg,linearization_region');
     assert.equal(lines.length, PC50.length + 1);
-    assert.equal(lines[5], '1591.549,-40.738,-161.98');
+    assert.equal(lines[5], '1591.549,-40.738,-161.98,');
     // The point of the export: a residual analysis that starts from three
     // significant figures is measuring the formatter, not the circuit.
     const precise = sweepRowsToCsv([{ f: 1 / 3, magDb: -1 / 7, phaseDeg: -1 / 9 }]);
     assert.match(precise, /0\.3333333333333333,-0\.14285714285714285,-0\.1111111111111111/);
     assert.equal(sweepRowsToCsv([{ v: 1.5, i: 0.0025 }], 'vi'), 'v,i_amps\n1.5,0.0025');
+    const warned = { ...PC50[0], outOfLinear: [{ part: 'U1', region: 'high' }, { part: 'E1', region: 'current-low' }] };
+    assert.equal(regionSummary(warned), 'U1:high;E1:current-low');
+    assert.match(sweepRowsToCsv([warned]), /,U1:high;E1:current-low$/);
   });
 
   it('the panel actually uses it — the readout, the axis and the export', () => {
@@ -97,6 +100,8 @@ describe('sweep readout', () => {
     assert.match(src, /data-testid="bw-sweep-readout"/, 'the numeric table is rendered');
     assert.match(src, /data-testid="bw-sweep-csv"/, 'the export is reachable');
     assert.match(src, /setRows\(result\.rows\)/, 'the measured rows are kept, not discarded after drawing');
+    assert.match(src, /data-testid="bw-sweep-scope-method"/, 'the scope-measured comparison remains reachable');
+    assert.match(src, /data-testid="bw-sweep-region-warning"/, 'nonlinear operating regions reach a visible warning');
     // And the old rounding is gone rather than merely joined.
     assert.ok(!/dbHi\.toFixed\(0\)/.test(src) && !/dbLo\.toFixed\(0\)/.test(src),
       'whole-decibel labels still present — they collapse -3.010 dB onto -3.5 dB');

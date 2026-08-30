@@ -87,23 +87,35 @@ export function runKennlinie(engine, board, { sourceId, from = 0, to = 5, steps 
 export function runBode(engine, board, {
   sourceId, inNet, outNet,
   fFrom = 10, fTo = 100000, pointsPerDecade = 8,
-  amplitude = 1,
+  amplitude = 1, method = 'analytic',
 } = {}) {
-  if (!engine?.runAcSweep || !engine?.logSpace) {
-    return { ok: false, reason: 'this build has no AC sweep wired — the host must inject runAcSweep and logSpace via setEngine' };
-  }
   if (!sourceId) return { ok: false, reason: 'no vsource selected — the Bode sweep drives a voltage source' };
   if (!inNet || !outNet) return { ok: false, reason: 'pick an input and an output net — the sweep measures the transfer between them' };
+  if (method === 'scope' && (!engine?.runAcSweep || !engine?.logSpace)) {
+    return { ok: false, reason: 'this build has no scope-measured AC sweep wired — the host must inject runAcSweep and logSpace via setEngine' };
+  }
+  if (method !== 'scope' && !engine?.BoardImpl?.prototype?.runAc) {
+    return { ok: false, reason: 'this build has no analytical AC sweep wired — the injected BoardImpl must provide runAc' };
+  }
   try {
-    const fresh = buildSweepBoard(engine, board, {
-      sourceId,
-      sourceParams: { wave: 'sine', amplitude, offset: 0, freq: fFrom },
-    });
-    const rows = engine.runAcSweep(fresh, {
-      sourceId,
-      freqs: engine.logSpace(fFrom, fTo, pointsPerDecade),
-      inNet, outNet,
-    });
+    const fresh = buildSweepBoard(engine, board, method === 'scope' ? {
+      sourceId, sourceParams: { wave: 'sine', amplitude, offset: 0, freq: fFrom },
+    } : {});
+    const rows = method === 'scope'
+      ? engine.runAcSweep(fresh, {
+        sourceId, freqs: engine.logSpace(fFrom, fTo, pointsPerDecade), inNet, outNet,
+      })
+      : fresh.runAc({ sourceId, from: fFrom, to: fTo, pointsPerDecade, probes: [inNet, outNet] }).map(point => {
+        const input = point.results.get(inNet);
+        const output = point.results.get(outNet);
+        if (!input || !output) throw new Error('analytical AC sweep did not return both selected probe nets');
+        if (!(input.mag > 0)) throw new Error('analytical AC sweep input magnitude is zero — transfer is undefined');
+        let phaseDeg = output.phaseDeg - input.phaseDeg;
+        while (phaseDeg > 180) phaseDeg -= 360;
+        while (phaseDeg <= -180) phaseDeg += 360;
+        return { f: point.hz, magDb: 20 * Math.log10(output.mag / input.mag), phaseDeg,
+          ...(point.outOfLinear?.length ? { outOfLinear: point.outOfLinear } : {}) };
+      });
     return { ok: true, rows };
   } catch (e) {
     return { ok: false, reason: (e && e.message) || String(e) };

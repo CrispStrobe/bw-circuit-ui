@@ -19,7 +19,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { getEngine } from '../engine.js';
 import { listSweepSources, netOfTerminal } from '../model/sweep-runner.js';
 import { runSweepAsync } from '../model/sweep-session.js';
-import { bodeAxisLabels, formatHz, sweepRowsToCsv, thinRows } from '../model/sweep-readout.js';
+import { bodeAxisLabels, formatHz, regionSummary, sweepRowsToCsv, thinRows } from '../model/sweep-readout.js';
 
 const W = 260;
 const H = 140;
@@ -103,6 +103,7 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
   const [fTo, setFTo] = useState(100000);
   const [inNet, setInNet] = useState('');
   const [outNet, setOutNet] = useState('');
+  const [bodeMethod, setBodeMethod] = useState('analytic');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   // The measured points, kept rather than discarded after drawing. Every number
@@ -142,7 +143,7 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
     const engine = typeof getEngine === 'function' ? getEngine() : {};
     const params = mode === 'vi'
       ? { sourceId, from: Number(vFrom), to: Number(vTo) }
-      : { sourceId, inNet, outNet, fFrom: Number(fFrom), fTo: Number(fTo) };
+      : { sourceId, inNet, outNet, fFrom: Number(fFrom), fTo: Number(fTo), method: bodeMethod };
     runSweepAsync({
       engine, board, mode, params, token,
       onProgress: (p) => setProgress({ index: p.index, total: p.total }),
@@ -168,7 +169,7 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
       setProgress(null);
       setBusy(false);
     });
-  }, [board, mode, sourceId, vFrom, vTo, fFrom, fTo, inNet, outNet, de]);
+  }, [board, mode, sourceId, vFrom, vTo, fFrom, fTo, inNet, outNet, bodeMethod, de]);
 
   const stop = useCallback(() => {
     if (cancelRef.current) cancelRef.current.cancelled = true;
@@ -239,6 +240,10 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
               </select>
             </div>
           </div>
+          <label style={{ ...lbl, display: 'flex', gap: 5, alignItems: 'center' }}>
+            <input type="checkbox" checked={bodeMethod === 'scope'} onChange={e => setBodeMethod(e.target.checked ? 'scope' : 'analytic')} data-testid="bw-sweep-scope-method" />
+            {de ? 'Wie mit dem Oszilloskop messen (langsamer)' : 'Measure like a scope would (slower)'}
+          </label>
         </>
       )}
 
@@ -283,6 +288,13 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {mode === 'bode' && rows.some(r => regionSummary(r)) && (
+        <div data-testid="bw-sweep-region-warning" style={{ color: '#f39c12', border: '1px solid #f39c12', borderRadius: 3, padding: 4, fontFamily: 'monospace', fontSize: 9 }}>
+          {de ? '⚠ Kleinsignalmodell außerhalb des linearen Bereichs: ' : '⚠ Small-signal model outside the linear region: '}
+          {[...new Set(rows.flatMap(r => regionSummary(r).split(';').filter(Boolean)))].join(', ')}
         </div>
       )}
 
