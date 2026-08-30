@@ -49,3 +49,24 @@ here. Some carry no licence at all. Everything under `test/fixtures/` that
 concerns KiCad was written for this repository, which is also why its
 expected net partitions can be derived by hand rather than asserted from
 whatever the importer happened to produce.
+
+## External tools used as ORACLES (never bundled, never linked)
+
+Two checkers nobody here wrote judge output nobody here can grade fairly.
+Both are development and CI dependencies only: they are invoked as external
+processes, no code from either is vendored, linked, or shipped, and neither
+appears in `package.json`. Where the tool is absent the script says so
+loudly and the CI job installs it.
+
+| Tool | Licence | Used by | What it judges |
+|---|---|---|---|
+| KiCad `kicad-cli` 8+ | GPL-3.0 | `scripts/kicad-oracle.mjs` | our PCB router's copper, via `pcb drc` |
+| [ngspice](https://ngspice.sourceforge.io/) 42+ | BSD-3-Clause core; the distributed package also carries GPL-2+, LGPL-2 and CC-BY-SA-4.0 files (build tooling, docs, one solver) — checked against `/usr/share/doc/ngspice/copyright` for 42+ds-3build1, not assumed | `scripts/spice-oracle.mjs` | our SPICE exporter: the deck must PARSE and RUN, and its operating point must match the engine's own solve |
+
+ngspice has the same standing here that `ucsim` has for the 8051 in the
+wider project: a differential-execution oracle, run in CI, never bundled
+into the application. The SPICE netlist LANGUAGE itself — element letters,
+node 0 as the reference, `.model`/`.op`/`.tran` cards, the case-insensitive
+value suffixes and `MEG` vs `M`-as-milli — is a published format described
+in the ngspice manual and in every SPICE textbook; it is a fact table, and
+no simulator's source was read while writing `src/model/exporters/spice.js`.

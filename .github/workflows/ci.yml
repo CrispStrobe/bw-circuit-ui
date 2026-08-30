@@ -116,3 +116,33 @@ jobs:
         run: git clone --depth 1 https://github.com/CrispStrobe/bw-board.git ../bw-board
       - name: Run the oracle
         run: node scripts/kicad-oracle.mjs
+
+  # The SPICE oracle: a real simulator judges our exporter (ROADMAP X0.1).
+  # The defect was not "slightly wrong numbers" — no deck we had ever
+  # exported could RUN (no node 0, no source, no analysis directive), and no
+  # test that reads our own output back can see that. Only a foreign parser
+  # can. ngspice is GPL: a DEV/CI ORACLE ONLY, never bundled, never linked —
+  # the same standing ucsim has for the 8051.
+  spice-oracle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install ngspice (the foreign parser)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends ngspice
+          ngspice --version | head -3
+      - name: Clone bw-board (engine sibling, needed by test/_setup.js)
+        run: git clone --depth 1 https://github.com/CrispStrobe/bw-board.git ../bw-board
+      # The script exits 0 with a loud SKIPPED banner where ngspice is absent,
+      # so this step asserts it actually RAN. A skip that reads as a pass is
+      # how the interaction gate sat red for months.
+      - name: Run the oracle
+        run: |
+          set -o pipefail
+          npm run oracle:spice 2>&1 | tee /tmp/spice-oracle.log
+          tail -1 /tmp/spice-oracle.log | grep -qE '^[0-9]+ decks simulated - [0-9]+ passed - 0 failed$' \
+            || { echo "::error::spice oracle did not report a clean run (skipped or failed)"; exit 1; }
