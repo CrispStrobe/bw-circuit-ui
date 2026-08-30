@@ -22,6 +22,7 @@ import { looksLikeEasyEdaPcb, looksLikeEasyEdaPro } from './easyeda-pcb.js';
 import { looksLikeFritzing } from './fritzing.js';
 import { looksLikeKicadPcb } from './kicad-pcb.js';
 import { looksLikeEasyEdaProPcb } from './easyeda-pro-pcb.js';
+import { looksLikeSpice } from './spice.js';
 
 /**
  * @param {string} text      Raw file content
@@ -60,8 +61,15 @@ export function detectFormat(text, filename = '') {
   // apart — same reason the EAGLE rule runs before KiCad's.
   if (looksLikeEasyEdaPcb(text)) return 'easyeda-pcb';
   if (looksLikeEasyEda(text)) return 'easyeda';
+  // SPICE, LAST among the content rules and before any extension fallback.
+  // A deck has no magic first line — line one is free-text by definition — so
+  // it can only be recognised by the shape of its body, and every structured
+  // format above must get its chance first. `.net` in particular is claimed
+  // by KiCad's netlist, whose `(export` root is checked well above this.
+  if (looksLikeSpice(text)) return 'spice';
   if (/\.kicad_sch$/i.test(filename)) return 'kicad-sch';
   if (/\.sch$/i.test(filename)) return 'eagle';
   if (/\.net$/i.test(filename)) return 'kicad-netlist';
+  if (/\.(cir|sp|spi|ckt)$/i.test(filename)) return 'spice';
   return null;
 }

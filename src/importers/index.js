@@ -11,6 +11,7 @@
  *   'easyeda'        - EasyEDA Standard schematic (.json, tilde-delimited DSL)
  *   'fritzing'       - Fritzing schematic (.fz / inside .fzz, XML)
  *   'wokwi'          - Wokwi diagram.json
+ *   'spice'          - SPICE netlist (.cir/.sp), any dialect's export
  *
  * The SCHEMATIC importers differ from the netlist one in kind, not in degree:
  * a netlist states its connections, a schematic states GEOMETRY and the
@@ -37,6 +38,7 @@ import { importKicadPcbAsCircuit } from './kicad-pcb.js';
 import { importEasyEdaProPcbAsCircuit } from './easyeda-pro-pcb.js';
 import { importFritzing } from './fritzing.js';
 import { importWokwi, exportWokwi } from './wokwi.js';
+import { importSpice } from './spice.js';
 
 const IMPORTERS = {
   'eagle':         importEagle,
@@ -56,6 +58,9 @@ const IMPORTERS = {
   // Fritzing (.fz, and the document inside a .fzz archive).
   'fritzing':      importFritzing,
   'wokwi':         importWokwi,
+  // SPICE netlist — the universal bridge: every schematic tool exports one,
+  // including the ones whose native formats are closed (ROADMAP X1.1).
+  'spice':         importSpice,
 };
 
 /**
@@ -93,6 +98,8 @@ export const IMPORT_FORMATS = [
     labelDe: 'Steckbrett-Dokument (.fz)', accept: '.fz,.fzz' },
   { id: 'wokwi', label: 'Diagram (diagram.json)', labelDe: 'Diagramm (diagram.json)',
     accept: '.json' },
+  { id: 'spice', label: 'SPICE netlist (.cir/.sp/.net)',
+    labelDe: 'SPICE-Netzliste (.cir/.sp/.net)', accept: '.cir,.sp,.spi,.ckt,.net' },
 ];
 
 /**

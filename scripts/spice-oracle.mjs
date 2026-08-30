@@ -34,13 +34,15 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import '../test/_setup.js';
 import { Circuit } from '../src/model/circuit.js';
 import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice } from '../src/model/exporters/spice.js';
+import { importSpice } from '../src/importers/spice.js';
 
 /** Agreement required between ngspice and the engine on a shared node. */
 const V_TOL_ABS = 5e-3;      // volts
@@ -49,6 +51,9 @@ const V_TOL_REL = 0.01;      // 1 %
 const I_TOL_REL = 0.02;      // 2 %
 
 const KEEP = process.argv.includes('--keep');
+
+/** Hand-written decks in spellings our exporter never emits. */
+const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), '../test/fixtures/spice');
 
 // ── Cases ────────────────────────────────────────────────────────────
 // Deterministic, self-contained, and each one exercises a different piece
@@ -314,6 +319,113 @@ export function judgeCase(name, json, dir) {
   return { name, ok, lines };
 }
 
+// ── Round trip through our own importer, judged by ngspice ───────────
+//
+// ROADMAP X1.1's acceptance: our exporter's output re-imports with an
+// identical net partition. test/spice-import.test.js compares the partition
+// symbolically; this compares what a SIMULATOR makes of both decks, which
+// catches what a partition cannot — a value that survived the trip as a
+// different number, a diode model that came back as a different curve, a
+// source that lost its polarity. The node NAMES differ between the two decks
+// (the second is written from imported refdes), so the comparison is the
+// sorted multiset of node voltages: name-independent, and equal if and only
+// if the two decks are the same circuit.
+function judgeRoundTrip(name, json, dir) {
+  const lines = [];
+  const circuit = Circuit.fromJSON(json);
+  circuit.setPower(true);
+  if (json.settleNs) circuit.advanceTo(json.settleNs);
+
+  const deckA = toSpice(extractNetlist(circuit), `${name} (exported)`).text;
+  const back = importSpice(deckA);
+  if (back.unmapped.length) {
+    lines.push(`  re-import left ${back.unmapped.length} unmapped: `
+      + back.unmapped.map(u => `${u.ref} (${u.libsource})`).join('; '));
+    return { name, ok: false, lines };
+  }
+
+  const rebuilt = Circuit.fromJSON({ parts: back.parts, wires: back.wires });
+  rebuilt.setPower(true);
+  const deckB = toSpice(extractNetlist(rebuilt), `${name} (re-exported)`).text;
+
+  const runA = runNgspice(deckA, dir, `${name}-rt-a`);
+  const runB = runNgspice(deckB, dir, `${name}-rt-b`);
+  if (runA.error || runB.error) {
+    lines.push(`  ngspice refused a deck: A=${runA.error || 'ok'} B=${runB.error || 'ok'}`);
+    if (runB.error) lines.push(...deckB.split('\n').map(l => `    | ${l}`));
+    return { name, ok: false, lines };
+  }
+
+  const spectrum = (run) => Object.values(run.nodes)
+    .map(v => Number(v.toFixed(6))).sort((a, b) => a - b);
+  const a = spectrum(runA);
+  const b = spectrum(runB);
+  lines.push(`  exported  ${a.map(v => v.toFixed(6)).join(' ')}`);
+  lines.push(`  re-exported ${b.map(v => v.toFixed(6)).join(' ')}`);
+
+  let ok = a.length === b.length;
+  if (ok) for (let i = 0; i < a.length; i++) if (!agree(a[i], b[i])) ok = false;
+  if (!ok) lines.push('  the two decks are not the same circuit');
+  return { name, ok, lines };
+}
+
+// ── Foreign decks: the round trip that is not symmetric ──────────────
+//
+// judgeRoundTrip above runs a deck WE wrote through a reader WE wrote, and
+// that pairing has a blind spot it cannot see past: a symmetric error is
+// invisible to it. Measured, by mutation — reintroducing X0.2's mega/milli
+// bug on the READ side left all six self round-trips green, because our
+// exporter never writes a bare `M` for mega and so never asks the question.
+//
+// test/fixtures/spice/*.cir are written in spellings our exporter does not
+// use: bare `M` beside `MEG`, units trailing the scale letter, scientific
+// notation, a `.model` in another house's capitalisation, a two-instance
+// subcircuit. Each is simulated AS AUTHORED, then read by our importer,
+// written back by our exporter, and simulated again. The two operating
+// points must match — which is only possible if the reader understood the
+// foreign spelling.
+function judgeForeign(file, dir) {
+  const lines = [];
+  const name = file.replace(/\.cir$/, '');
+  const original = readFileSync(join(FIXTURES, file), 'utf-8');
+
+  const runOriginal = runNgspice(original, dir, `${name}-orig`);
+  if (runOriginal.error) {
+    lines.push(`  ngspice refused the FIXTURE itself: ${runOriginal.error}`);
+    return { name, ok: false, lines };
+  }
+
+  const back = importSpice(original);
+  if (back.unmapped.length) {
+    lines.push(`  our importer refused ${back.unmapped.length}: `
+      + back.unmapped.map(u => `${u.ref} (${u.libsource})`).join('; '));
+    return { name, ok: false, lines };
+  }
+
+  const rebuilt = Circuit.fromJSON({ parts: back.parts, wires: back.wires });
+  rebuilt.setPower(true);
+  const ours = toSpice(extractNetlist(rebuilt), `${name} (through us)`).text;
+  const runOurs = runNgspice(ours, dir, `${name}-ours`);
+  if (runOurs.error) {
+    lines.push(`  ngspice refused OUR re-export: ${runOurs.error}`);
+    lines.push(...ours.split('\n').map(l => `    | ${l}`));
+    return { name, ok: false, lines };
+  }
+
+  const spectrum = (run) => Object.values(run.nodes)
+    .map(v => Number(v.toFixed(6))).sort((a, b) => a - b);
+  const a = spectrum(runOriginal);
+  const b = spectrum(runOurs);
+  lines.push(`  as authored  ${a.map(v => v.toFixed(6)).join(' ')}`);
+  lines.push(`  through us   ${b.map(v => v.toFixed(6)).join(' ')}`);
+
+  let ok = a.length === b.length;
+  if (!ok) lines.push(`  node count differs: ${a.length} vs ${b.length}`);
+  if (ok) for (let i = 0; i < a.length; i++) if (!agree(a[i], b[i])) ok = false;
+  if (!ok) lines.push('  our reader did not understand this deck');
+  return { name, ok, lines };
+}
+
 // ── The measured PWL-vs-Shockley gap, stated rather than hidden ──────
 //
 // The shipped default LED model is piecewise. A deck cannot express it, so
@@ -375,6 +487,42 @@ function main() {
     if (res.ok) passed++; else failed++;
   }
 
+  console.log('Round trip (X1.1): export -> our importer -> re-export, both decks');
+  console.log('simulated and compared by their node-voltage spectra.');
+  console.log('');
+  let rtPassed = 0; let rtFailed = 0;
+  for (const [name, json] of CASES) {
+    let res;
+    try { res = judgeRoundTrip(name, json, dir); }
+    catch (e) { res = { name, ok: false, lines: [`  threw: ${e && e.stack || e}`] }; }
+    console.log(`${res.ok ? 'PASS' : 'FAIL'}  round-trip ${name}`);
+    for (const l of res.lines) console.log(l);
+    if (res.ok) rtPassed++; else rtFailed++;
+  }
+  console.log('');
+  failed += rtFailed;
+  passed += rtPassed;
+
+  const foreignFiles = existsSync(FIXTURES)
+    ? readdirSync(FIXTURES).filter(f => f.endsWith('.cir')).sort() : [];
+  console.log('Foreign decks: written in spellings our exporter does not use,');
+  console.log('simulated as authored and again after our importer read them.');
+  console.log('');
+  for (const file of foreignFiles) {
+    let res;
+    try { res = judgeForeign(file, dir); }
+    catch (e) { res = { name: file, ok: false, lines: [`  threw: ${e && e.stack || e}`] }; }
+    console.log(`${res.ok ? 'PASS' : 'FAIL'}  foreign ${res.name}`);
+    for (const l of res.lines) console.log(l);
+    if (res.ok) passed++; else failed++;
+  }
+  if (!foreignFiles.length) {
+    console.log('  NO FOREIGN FIXTURES FOUND — the asymmetric half of the round');
+    console.log('  trip did not run. That is not a pass.');
+    failed++;
+  }
+  console.log('');
+
   const gap = modelGap();
   console.log('Model note (not a gate): the shipped piecewise LED model and the');
   console.log('Shockley model the deck carries differ on the canonical bench by');
@@ -387,8 +535,9 @@ function main() {
   else console.log(`decks kept in ${dir}`);
 
   // The count line, last, so a log tail always shows it.
-  console.log(`${CASES.length} decks simulated - ${passed} passed - ${failed} failed`);
-  if (failed > 0 || passed !== CASES.length) process.exit(1);
+  const total = CASES.length * 2 + foreignFiles.length;
+  console.log(`${total} decks simulated - ${passed} passed - ${failed} failed`);
+  if (failed > 0 || passed !== total) process.exit(1);
 }
 
 if (process.argv[1] && process.argv[1].endsWith('spice-oracle.mjs')) main();

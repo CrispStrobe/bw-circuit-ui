@@ -1,0 +1,11 @@
+Foreign subcircuit: two instances whose internal nodes must stay apart
+.subckt rcpair a b
+RA a mid 1k
+RB mid b 2k
+.ends
+V1 in 0 DC 6
+X1 in 0 rcpair
+X2 in 0 rcpair
+RL in 0 100k
+.op
+.end

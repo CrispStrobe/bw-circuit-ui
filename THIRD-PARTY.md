@@ -28,6 +28,7 @@ copyrightable; an implementation is, and none was copied.
 | KiCad source `pcbnew/pcb_io/easyedapro` | GPL-3.0 (read for FACTS only, no code ported) | three load-bearing facts cross-checked: 1 unit = 1 mil, POURED fills at 1/10 scale, the fixed Pro layer table |
 | EasyEDA Standard PCB `.json` (docType 3) | — | the PCB half of the tilde DSL, decoded by MEASURING three real boards (2026-08-25); no reader's source was read while writing `src/importers/easyeda-pcb.js` |
 | EasyEDA Standard `.json` documents | — | the tilde-delimited shape DSL, decoded by MEASURING published schematics; no reader's source was read while writing `src/importers/easyeda.js` |
+| SPICE netlist language (ngspice manual, and every SPICE textbook) | the language is a published format, not a work | element letters and their node counts, node 0 as the reference, `.model`/`.subckt`/`.control`, and the scale factors. The suffix table was CHECKED against ngspice 42 rather than trusted: a deck of six resistors read back out of its own device table gives `1M` = 1e-3, `1MEG` = 1e6, `1MIL` = 2.54e-5, `1F` = 1e-15. No simulator's source was read while writing `src/importers/spice.js` or `src/model/exporters/spice.js` |
 
 EasyEDA publishes no grammar, so that one was worked out from the files: field
 positions confirmed by counting, and the load-bearing claims (pins are already
@@ -62,6 +63,15 @@ loudly and the CI job installs it.
 |---|---|---|---|
 | KiCad `kicad-cli` 8+ | GPL-3.0 | `scripts/kicad-oracle.mjs` | our PCB router's copper, via `pcb drc` |
 | [ngspice](https://ngspice.sourceforge.io/) 42+ | BSD-3-Clause core; the distributed package also carries GPL-2+, LGPL-2 and CC-BY-SA-4.0 files (build tooling, docs, one solver) — checked against `/usr/share/doc/ngspice/copyright` for 42+ds-3build1, not assumed | `scripts/spice-oracle.mjs` | our SPICE exporter: the deck must PARSE and RUN, and its operating point must match the engine's own solve |
+
+The 410 example decks the ngspice package installs under
+`/usr/share/doc/ngspice/examples` are the SPICE importer's published-deck
+corpus (`test/spice-corpus.test.js`). They are READ IN PLACE and never
+committed, the same rule the KiCad and EasyEDA corpora follow, and the test
+skips loudly where ngspice is not installed. The decks under
+`test/fixtures/spice/` are hand-written HERE, in foreign spellings our own
+exporter does not emit, precisely so the round trip has something asymmetric
+to prove itself against; nothing in that directory is anyone else's work.
 
 ngspice has the same standing here that `ucsim` has for the 8051 in the
 wider project: a differential-execution oracle, run in CI, never bundled

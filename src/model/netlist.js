@@ -47,6 +47,11 @@ function deriveValue(kind, params) {
   if (params.henrys != null) return formatSi(params.henrys);
   if (params.voltage != null) return formatSi(params.voltage);
   if (params.vz != null) return formatSi(params.vz) + 'V';
+  // `volts` is what the ENGINE reads (mna.js sourceVoltage); `v` was the only
+  // spelling checked here, so a source authored the way bw-board expects
+  // exported with an empty value and the deck fell back to a guess.
+  if (params.volts != null) return formatSi(params.volts);
+  if (params.amps != null) return formatSi(params.amps);
   if (kind === 'vsource' && params.v != null) return formatSi(params.v);
   return '';
 }
@@ -65,7 +70,7 @@ function deriveValue(kind, params) {
  */
 function deriveValueNumber(kind, params) {
   if (!params) return null;
-  for (const k of ['ohms', 'farads', 'henrys', 'voltage', 'vz']) {
+  for (const k of ['ohms', 'farads', 'henrys', 'voltage', 'vz', 'volts', 'amps']) {
     if (typeof params[k] === 'number' && isFinite(params[k])) return params[k];
   }
   if (kind === 'vsource' && typeof params.v === 'number') return params.v;

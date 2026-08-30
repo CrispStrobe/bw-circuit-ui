@@ -29,6 +29,7 @@ each gate. X0.4 (schematic as a document) is untouched and still open.
 | X0.5 dead import-menu entry | confirmed, fixed | `1397493` | `test/import-reachability.test.js` |
 | X0.6 silent part substitutions | confirmed, fixed | `1397493` | `test/import-reachability.test.js` |
 | X0.7 console-only instructions | confirmed, and worse than scoped | `1397493` | `test/transfer-report.test.js` |
+| X1.1 SPICE netlist importer | landed (X0 was clean) | see below | `test/spice-import.test.js`, `test/spice-corpus.test.js`, the oracle's foreign phase |
 
 Numbers worth keeping:
 
@@ -184,9 +185,49 @@ implementations** of these formats. New format knowledge sources get a row in
 
 ### X1.1 SPICE netlist importer — new `importers/spice.js`
 
-**Prerequisite met:** the X0 half is landed and green, and `toSpice` now emits
-decks a real simulator runs, so the round-trip acceptance has something real to
-round-trip against. Not started.
+**LANDED.** `src/importers/spice.js`, registered as the `spice` format and
+detected in `detect.js` (last among the content rules — a deck has no magic
+first line, since line one is free text by definition).
+
+Scope delivered: title line, `+` continuations, `*`/`$`/`;` comments;
+R C L V I D Q M mapped, E and G mapped as `vcvs`/`vccs`; `.model` cards mapped
+onto part params with a diode's Vf RECOVERED at the rated 20 mA (the exact
+inverse of the exporter's calibration, which is what makes the round trip
+close); `.subckt`/`.ends` flattened one level with dotted refdes and per-instance
+internal nets; node `0`/`gnd`/`GND` to a single `gnd` part; analyses recognised
+and reported, never executed; star wiring, no placement.
+
+**Two re-measurements changed the plan.** The ROADMAP said E/F/G/H import as
+`unmapped[]` until bw-board E3.5 lands. Measured at bw-board `6571648`: E3.5a
+(vcvs/vccs) IS landed, so E and G map for real; E3.5b (cccs/ccvs) is deferred by
+ruling, so F and H are refused by name and cite the deferral. And the SPICE
+MOSFET has four terminals to the engine's three, so `M` maps with its bulk node
+dropped and named.
+
+Acceptance, all three parts:
+- Round trip: `test/spice-import.test.js` compares NET PARTITIONS over four
+  circuits. It is netlist -> deck -> netlist, not circuit -> deck -> circuit,
+  because `extractNetlist` deliberately reassigns refdes (LED1 becomes D1).
+- Corpus: the ngspice package installs **410** published decks; they are read in
+  place and never committed (`test/spice-corpus.test.js`). Zero silent drops is
+  asserted as an ACCOUNTING — every card becomes a part, a named refusal, an
+  ignored card or a reported analysis. That gate found a real bug on its first
+  run: subcircuit bodies and `.control` script lines were being dropped
+  unrecorded, in **86 of 410** decks. Fixed; 408/410 balance and the last two
+  were a duplicate `.model` redeclaration, also fixed. 180/410 map with zero
+  refusals.
+- The duplicate-suffix trap has its own test, with ngspice's semantics measured
+  rather than assumed: `1M` = 1e-3, `1MEG` = 1e6, `1MIL` = 2.54e-5, `1F` = 1e-15.
+
+**The oracle grew a third phase, because the second one had a blind spot.**
+Round-tripping our exporter through our importer cannot see a SYMMETRIC error:
+reintroducing X0.2's mega/milli bug on the READ side left all six self
+round-trips green, since our exporter never writes a bare `M` for mega and so
+never asks the question. `test/fixtures/spice/*.cir` are hand-written in
+spellings our exporter does not emit; each is simulated as authored, read by our
+importer, written back out, and simulated again. That phase fails 2/4 under the
+same mutation. 16 decks now run in the oracle: 6 exports, 6 self round-trips,
+4 foreign.
 The universal bridge: the closed schematic tools all export SPICE netlists even
 though their native formats are closed or undocumented — one importer covers them
 all without naming any of them. Scope (v1): title line, continuation `+` lines,

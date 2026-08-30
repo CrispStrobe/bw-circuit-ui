@@ -1,0 +1,10 @@
+Foreign divider: the M / MEG trap, as a live circuit
+* A bare M is MILLI. R2 written as 1MEG and RS as 10M differ by 10^9, and a
+* reader that confuses them puts this node at 5 V instead of 4.99 mV.
+VIN in 0 DC 5
+R1 in mid 1MEG
+R2 mid 0 1MEG
+RS mid out 10M
+RL out 0 10M
+.op
+.end

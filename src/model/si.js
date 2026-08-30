@@ -81,3 +81,49 @@ export function formatSpiceValue(val) {
   if (a >= 1e-12) return sign + mant(a * 1e12) + 'p';
   return sign + mant(a * 1e15) + 'f';
 }
+
+/**
+ * SPICE scale factors, longest first — the order IS the semantics.
+ *
+ * Measured against ngspice 42 rather than assumed (a deck of six resistors,
+ * `.op`, values read back out of its own device table):
+ *
+ *     1M    -> 0.001        milli, NOT mega
+ *     1MEG  -> 1e6          mega
+ *     1MIL  -> 2.54e-05     thousandths of an inch
+ *     1F    -> 1e-15        femto, NOT farads
+ *
+ * `MEG` and `MIL` must be tried before `M` or both parse as milli, and the
+ * 1M/1MEG pair is the whole reason X0.2 existed. Letters after a recognised
+ * factor are units and are ignored, which is why `4.7kOhm`, `100nF` and
+ * `1uF` all work.
+ */
+const SPICE_SCALES = [
+  ['MEG', 1e6], ['MIL', 25.4e-6],
+  ['T', 1e12], ['G', 1e9], ['K', 1e3],
+  ['M', 1e-3], ['U', 1e-6], ['N', 1e-9], ['P', 1e-12], ['F', 1e-15],
+];
+
+/**
+ * Parse a SPICE value string to a number. The inverse of formatSpiceValue.
+ *
+ * @param {string} str
+ * @returns {number} NaN when the field is not a number at all
+ */
+export function parseSpiceValue(str) {
+  const s = String(str).trim();
+  // number, optional exponent, then whatever letters follow
+  const m = s.match(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*([A-Za-z]*)$/);
+  if (!m) return NaN;
+  const num = parseFloat(m[1]);
+  const tail = m[2].toUpperCase();
+  if (!tail) return num;
+  for (const [suffix, mult] of SPICE_SCALES) {
+    // Round to 12 significant digits: 100 * 1e-9 is 1.0000000000000001e-7 in
+    // IEEE754, and a round-trip test comparing that to 100e-9 fails for a
+    // reason that has nothing to do with SPICE.
+    if (tail.startsWith(suffix)) return Number((num * mult).toPrecision(12));
+  }
+  // Trailing letters that are not a scale factor are a unit: 1V, 10Ohm.
+  return num;
+}
