@@ -18,14 +18,14 @@ referenced where a UI item depends on one.
 **Status 2026-08-30 — X0.1, X0.2, X0.3, X0.5, X0.6, X0.7 LANDED.** Every claim
 below was re-measured against the code as it stood at `77ab613` before anything
 was touched; the measurements are in the commit messages and in the header of
-each gate. X0.4 (schematic as a document) is untouched and still open.
+each gate. **X0.4 landed 2026-08-30** (`e4046d0`), so X0 is complete.
 
 | item | verdict | landed | gate |
 |---|---|---|---|
 | X0.1 SPICE decks unsimulatable | confirmed, fixed | `ee0d108` | `scripts/spice-oracle.mjs` (CI job `spice-oracle`, ngspice 42) + `test/spice-deck.test.js` |
 | X0.2 mega/milli suffix | confirmed, fixed | `ee0d108` | `test/spice-deck.test.js` (incl. a corpus sweep property) |
 | X0.3 dead exporters | confirmed — and **seven**, not three | `1397493` | `test/export-reachability.test.js` |
-| X0.4 schematic as a document | **not started** | — | — |
+| X0.4 schematic as a document | landed | `e4046d0` | `test/schematic-document.test.js` + gate scenario `schematic-svg-save` |
 | X0.5 dead import-menu entry | confirmed, fixed | `1397493` | `test/import-reachability.test.js` |
 | X0.6 silent part substitutions | confirmed, fixed | `1397493` | `test/import-reachability.test.js` |
 | X0.7 console-only instructions | confirmed, and worse than scoped | `1397493` | `test/transfer-report.test.js` |
@@ -119,6 +119,43 @@ unmapped kinds — unmapped kinds go to a `skipped[]` list surfaced in the UI, m
 the import-side refusal policy. Acceptance: each menu entry downloads a file; the
 schematic export re-imports through our own importer with an identical net partition
 (the existing partition-oracle pattern); a golden-file test per exporter.
+
+### X0.4 Schematic as a document — **LANDED `e4046d0`**
+
+Both saves are in the panel and both are registry entries, so the file menu offers
+them and the reachability gate covers them. What they save is NOT the panel's own
+element: that one carries a camera, so serializing it would hand the user whatever
+happened to be in the viewport. Both go through `renderSchematicSvg` at the
+projection's own bounds, and `test/schematic-document.test.js` asserts that every
+symbol is drawn at the projection's own coordinates — the document path cannot
+become a drifting second renderer.
+
+The standalone claim is asserted on the BYTES, not trusted: the namespace is there,
+nothing references a stylesheet, a class, a font, an image or a script, every `<text>`
+names its own fill/font-family/font-size, only generic font families appear, the
+symbol count equals the projection's and every label is in the file.
+
+Both faults named in the original scope were real. The style inlining the comment
+promised never happened — the loop only cleared `pointerEvents` — and it matters
+because a rasterised SVG is loaded through `new Image()` from a blob URL, which sees
+none of the page's stylesheets; the presentation properties are now copied from
+`getComputedStyle` of the live element. The hardcoded `#16213e` background put a dark
+slab under every light-theme export; it comes from the element's own computed
+background now, and the schematic document paints its own and asks for none.
+
+Also landed beyond the scope: the report names what the drawing could NOT do —
+parts it could only box, and any geometric invariant it had to break. A picture that
+quietly omits its compromises is the multimeter that lies in another medium.
+
+Browser gate scenario `schematic-svg-save` clicks Save SVG, takes the download,
+parses it with the browser's own SVG parser and requires the symbol count in the FILE
+to equal the count on SCREEN — the check a well-formed but empty SVG, or an SVG of the
+camera's view, would fail. Measured in CI at `e4046d0`: 5268 bytes, 7 symbols against
+7 on screen, 21 labels, zero CSS-dependent nodes. NOT done: the PDF print stylesheet,
+and the 246-example batch smoke test (the geometry corpus already sweeps the
+projection those drawings come from).
+
+Original scope, for the record:
 
 ### X0.4 Schematic as a document — `components/SchematicPanel.jsx`, `model/schematic-svg.js`
 `renderSchematicSvg()` already produces a complete schematic SVG headlessly; the
@@ -309,6 +346,60 @@ version; netlist importer behaviour unchanged on its fixture corpus after the me
 
 ## X2 — Instruments and post-processing
 
+### X2.1 True AC sweep UI — **LANDED `a05967e`+`a3b5f81` (the path), `1b1bf5d` (what it says)**
+
+`runBode` reaches `BoardImpl.runAc` on an offline board, and the correlation path
+stays. What the second half of this item turned out to be is not "add a toggle" but
+three things the toggle by itself made worse, because the analytical path became the
+DEFAULT while nothing in the panel said so.
+
+**It is not a speed setting.** The control was one checkbox reading "measure like a
+scope would (slower)": it named one side, left the default unlabelled, and described
+the difference as speed. They are two different measurements — one linearises the
+circuit around its DC operating point and solves the complex network per frequency,
+the other drives a real sine into the real nonlinear circuit and correlates the
+response. A learner told only "slower" picks the fast one and never finds out that
+the two disagree exactly where the interesting circuits live. Both are named for what
+they are now, both carry a sentence saying it, and the status line names which one
+produced the numbers.
+
+**fab-cond's region honesty reaches the screen.** bw-board reports `outOfLinear` per
+point (`spec-updates/ac-operating-region.md`); the panel had one aggregate banner of
+region codes. Every ROW carries its own verdict as a sentence now — "not in its linear
+region at this point: U1 (output sitting at the positive rail) — the small-signal
+number here is not the stage's gain" — the row is coloured, the point is ringed on the
+curve, and the curve BREAKS there rather than being drawn through a number nothing
+measured. Which surfaced a defect: a railed output's transfer is exactly zero, so its
+dB is −Infinity, and that was setting the plot's lower bound — every plotted y NaN and
+an axis label reading "-Infinity dB". Such a point no longer sets the scale.
+
+**Progress and Stop were theatre.** `createSweepRun` computed the whole analytical
+sweep in one synchronous `runAc` and then handed out rows that already existed: the
+freeze X2.6 removed, moved one function inwards. It is one frequency per engine call
+now, and `runBode` takes the same route, so the synchronous and the chunked answers
+are equal by construction rather than by assertion. The engine's batched call is
+faster (it reuses one factorization across a sweep, `ac.js`) and is NOT bit-identical
+to asking point by point — two of nine points differ by one ulp on an RC bench — so
+the product has ONE route and the residual is measured and bounded in the test rather
+than assumed small.
+
+Acceptance, hand-computed (`test/sweep-small-signal.test.js`):
+
+| bench | oracle | measured |
+|---|---|---|
+| RC 10 kΩ/100 nF at 1/(2πRC) = 159.15494309189535 Hz | −3.0102999566398125 dB = 20 log₁₀(1/√2), −45.000° | within 4.3e-8 dB — the solver's 1e-12 gmin against this node's 1e-4 S, a 1e-8 relative perturbation |
+| the decade above it | 10 log₁₀(10001/101) = 19.95722 dB — NOT the slogan's 20 | within 1e-6 dB |
+| op-amp open loop, 1 µV bias | 20 log₁₀(1e6) = 120.000 dB, no flag at all | within 1e-6 dB |
+| the same op-amp, 1 V bias | railed high; transfer exactly zero; flagged by name | −∞ dB, `U1:high` |
+
+Browser gate scenarios `sweep-ac-method` and `sweep-ac-region`, on a railed op-amp
+bench injected through the harness's real `circuitData` door. NOT measured: the
+"50-net board in < 200 ms" budget — point-at-a-time re-solves the operating point per
+point and trades exactly that number for a Stop button that works, so the old figure
+would be measuring a path the product no longer takes.
+
+Original scope, for the record:
+
 ### X2.1 True AC sweep UI — `components/SweepPanel.jsx`, `model/sweep-runner.js`
 When bw-board E2.1 lands, `runBode` switches to the engine's `runAc` (offline board,
 same pattern as today). The time-domain correlation path stays available behind a
@@ -427,6 +518,7 @@ interactive; results identical to the synchronous path on fixtures.
    then **X1.2** breadboard format, **X1.3** applet text, **X1.4** LaTeX.
 3. **X2.2 FFT/CSV** (no engine dependency) any time; **X2.6/X2.3/X2.4** once
    bw-board E1.5 confirms worker-safety; **X2.1** when E2.1 lands; **X2.5** last.
+   X0.4, X2.2, X2.6 and X2.1 have all landed; X2.3/X2.4/X2.5 remain.
 
 Cross-repo: engine items in `../bw-board/ROADMAP.md`; brickwright-lite re-vendors
 via `sync:circuitui` after each landing and carries the attribution/disclaimer
