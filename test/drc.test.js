@@ -379,6 +379,65 @@ describe('DRC: aggregate-current', () => {
       'must explain the sum is a lower bound');
   });
 
+  it('names the contributor sitting EXACTLY on the listing floor', () => {
+    // The bug this pins: the consumers list was gated on `rating > 0.005`,
+    // and `ir_receiver` is rated at EXACTLY 5 mA — the only kind of the 133
+    // in the rating table on that boundary. 25 of them sum to 125 mA, trip
+    // the 120 mA danger, and the warning then named nobody at all:
+    // "Largest consumers: ." — the parts that CAUSED the warning were the
+    // only parts it could not mention. Screenshot-proven on lite's bench 2.
+    const c = setup();
+    c.addPart('vcc', {}, 0, 0);
+    c.addPart('gnd', {}, 0, 0);
+    c.addPart('mcu', { pins: ['P1.0'] }, 0, 0);
+    for (let i = 0; i < 25; i++) c.addPart('ir_receiver', {}, 0, 0);
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'aggregate-current');
+    assert.equal(hits.length, 1, '25 x 5 mA = 125 mA must trip the 120 mA danger');
+    assert.equal(hits[0].severity, 'danger');
+    assert.match(hits[0].explanation, /Total circuit current is 125 mA/);
+    // The point of the test: the list is not empty, and it names the part
+    // and its measured-in-milliamps size.
+    assert.match(hits[0].explanation, /Largest consumers: ir_receiver \(5 mA\)/,
+      'a contributor exactly at the floor must be listed, not silently dropped');
+    assert.doesNotMatch(hits[0].explanation, /Largest consumers: \./,
+      'the empty-list rendering is the regression');
+  });
+
+  it('keeps sub-floor contributors out of the list', () => {
+    // The anti-vacuity control for the test above: `>=` must not have become
+    // `>= 0`. Two LEDs through 10 ohm draw 66.7 mA each (measured, 133 mA
+    // total) and fill only TWO of the three "largest consumers" slots, so a
+    // dropped floor is visible: soil_moisture is rated 0.05 mA and would take
+    // the third slot, rendering as the useless "soil_moisture (0 mA)".
+    const c = setup();
+    const vcc = c.addPart('vcc', {}, 0, 0);
+    const gnd = c.addPart('gnd', {}, 0, 0);
+    const mcu = c.addPart('mcu', { pins: ['P2.0', 'P2.1', 'P2.2'] }, 0, 0);
+    for (let i = 0; i < 2; i++) {
+      const r = c.addPart('resistor', { ohms: 10 }, 0, 0);
+      const led = c.addPart('led', { vf: 2.0 }, 0, 0);
+      c.addWire(mcu.id, `P2.${i}`, r.id, 'a');
+      c.addWire(r.id, 'b', led.id, 'anode');
+      c.addWire(led.id, 'cathode', gnd.id, 'gnd');
+    }
+    const soil = c.addPart('soil_moisture', {}, 0, 0);
+    c.addWire(soil.id, 'vcc', vcc.id, 'vcc');
+    c.addWire(soil.id, 'gnd', gnd.id, 'gnd');
+    c.addWire(soil.id, 'out', mcu.id, 'P2.2');
+    for (let i = 0; i < 2; i++) c.board.setPin(`P2.${i}`, 'pushpull', true);
+    c.advanceTo(25n * MS);
+
+    const w = runDrc(c, c.board);
+    const hits = findRule(w, 'aggregate-current');
+    assert.equal(hits.length, 1, '2 x 66.7 mA = 133 mA must trip the danger');
+    assert.match(hits[0].explanation, /Largest consumers: led \(67 mA\), led \(67 mA\)\./,
+      'exactly the two above-floor parts, and nothing else');
+    assert.doesNotMatch(hits[0].explanation, /soil_moisture/,
+      'a 0.05 mA part is below the listing floor and must stay out of it');
+  });
+
   it('safe circuit: 3 LEDs through 1kΩ shows NO aggregate warning', () => {
     const c = setup();
     const vcc = c.addPart('vcc', {}, 0, 0);

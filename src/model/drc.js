@@ -57,6 +57,16 @@ function getCurrentRatings() {
 // Thresholds are read at call time from the engine, not at import time,
 // so the engine can be injected after this module loads.
 
+/**
+ * Floor for naming a part under "Largest consumers" in the aggregate-current
+ * warning — INCLUSIVE. It was `> 0.005` and an `ir_receiver`, whose datasheet
+ * rating is EXACTLY 5 mA, is the only kind in the whole 133-kind rating table
+ * that sits on the boundary. A bench of 25 of them sums to 125 mA, trips the
+ * 120 mA danger, and then named nobody: "Largest consumers: ." The part that
+ * caused the warning was the one part the warning could not mention.
+ */
+export const CONSUMER_LIST_FLOOR_A = 0.005;
+
 // Retro-bench bus extractors — optional. In lite these resolve against
 // the sibling bw-board vendor tree; in standalone bw-circuit-ui they are
 // absent and the extractor DRC rules simply do not run. Injected via
@@ -488,7 +498,7 @@ export function runDrc(circuit, board) {
       const measured = board && board.ledCurrents ? board.ledCurrents.get(part.id) : undefined;
       if (measured !== undefined && measured > 0) {
         totalA += measured;
-        if (measured > 0.005) {
+        if (measured >= CONSUMER_LIST_FLOOR_A) {
           contributors.push({ id: part.id, kind: part.kind, mA: (measured * 1000).toFixed(0) });
         }
         continue;
@@ -499,7 +509,7 @@ export function runDrc(circuit, board) {
         if (!unratedKinds.includes(part.kind)) unratedKinds.push(part.kind);
       } else {
         totalA += rating;
-        if (rating > 0.005) { // only list significant contributors
+        if (rating >= CONSUMER_LIST_FLOOR_A) { // only list significant contributors
           contributors.push({ id: part.id, kind: part.kind, mA: (rating * 1000).toFixed(0) });
         }
       }
