@@ -86,6 +86,97 @@ export function dcPoints({ from = 0, to = 5, steps = 60 } = {}) {
 }
 
 /**
+ * The small-signal sweep's own frequency list — the same formula `BoardImpl.runAc`
+ * uses internally, reproduced here for the same reason `dcPoints` reproduces
+ * `runDcSweep`'s: the run has to know its points BEFORE it computes any of them,
+ * or it cannot hand them out one at a time.
+ *
+ * The values must be bit-identical to the ones a single batched `runAc` would
+ * choose, because a per-point run that lands on slightly different frequencies
+ * is a different measurement wearing the same label.
+ * `sweep-protocol.test.js` asserts that against the engine's own list.
+ *
+ * @param {{fFrom?: number, fTo?: number, pointsPerDecade?: number}} opts
+ * @returns {number[]} hertz, ascending
+ */
+export function acPoints({ fFrom = 10, fTo = 100000, pointsPerDecade = 8 } = {}) {
+  if (!(fFrom > 0)) throw new Error('AC sweep: the start frequency must be above zero');
+  // One frequency is a legitimate request (a lesson reads a single Bode point)
+  // and `runAc` refuses `to === from`, so it is answered here rather than by
+  // nudging the end of the range and hoping the first row is the wanted one.
+  if (fTo === fFrom) return [fFrom];
+  if (!(fTo > fFrom)) throw new Error('AC sweep: the end frequency must be above the start');
+  const decades = Math.log10(fTo / fFrom);
+  const n = Math.max(2, Math.round(decades * pointsPerDecade) + 1);
+  return Array.from({ length: n }, (_, i) => fFrom * Math.pow(10, (i * decades) / (n - 1)));
+}
+
+/**
+ * ONE small-signal point, measured on `board` — the single route by which a
+ * Bode row is produced, whether the caller wants the whole sweep at once
+ * (`runBode`) or one point at a time (`createSweepRun`).
+ *
+ * It is one route on purpose. `BoardImpl.runAc` can compute a whole range in a
+ * single call, and that call is FASTER — it reuses one symbolic factorization
+ * across the sweep. It is also uninterruptible, and the moment the analytical
+ * method became the default it made the panel's progress readout and its Stop
+ * button into theatre over rows that had already been computed. Point-at-a-time
+ * makes both real, at the cost of re-solving the operating point per point.
+ *
+ * The two are NOT bit-identical — reusing a factorization is a different
+ * floating-point route to the same answer, and on an RC bench two of nine
+ * points differ in the last unit in the last place. Rather than loosen the
+ * bit-equality invariant that X2.6's whole test rests on, the product has one
+ * route and `sweep-protocol.test.js` measures the engine's batched answer
+ * against it explicitly, with the difference bounded and its cause named.
+ *
+ * @param {object} board — an offline board with `runAc`
+ * @param {{sourceId: string, f: number, pointsPerDecade?: number, inNet: string, outNet: string}} opts
+ * @returns {{f: number, magDb: number, phaseDeg: number, outOfLinear?: Array}}
+ */
+export function acRowAt(board, { sourceId, f, pointsPerDecade = 8, inNet, outNet }) {
+  // `runAc` insists on to > from, so one frequency is asked for as the
+  // narrowest range that still satisfies it, and the first row taken.
+  const point = board.runAc({
+    sourceId, from: f, to: f * (1 + Number.EPSILON * 8), pointsPerDecade,
+    probes: [inNet, outNet],
+  })[0];
+  return acRow(point, inNet, outNet);
+}
+
+/**
+ * One small-signal point as a Bode row: the transfer OUT/IN, in dB and degrees,
+ * carrying the engine's operating-region verdict when there is one.
+ *
+ * `outOfLinear` is bw-board's honesty about the linearization itself: a stage
+ * sitting at a rail cannot move its output and a current-limited one cannot
+ * move its current, so the small-signal answer at that bias is not the stage's
+ * gain — it is the gain of a model that does not apply. Carrying the flag on
+ * the ROW rather than only on the sweep is what lets a reader see WHICH points
+ * are unreliable instead of being told the whole curve might be.
+ *
+ * @param {{hz: number, results: Map, outOfLinear?: Array}} point
+ * @param {string} inNet
+ * @param {string} outNet
+ * @returns {{f: number, magDb: number, phaseDeg: number, outOfLinear?: Array}}
+ */
+export function acRow(point, inNet, outNet) {
+  const input = point.results.get(inNet);
+  const output = point.results.get(outNet);
+  if (!input || !output) throw new Error('analytical AC sweep did not return both selected probe nets');
+  if (!(input.mag > 0)) throw new Error('analytical AC sweep input magnitude is zero — transfer is undefined');
+  let phaseDeg = output.phaseDeg - input.phaseDeg;
+  while (phaseDeg > 180) phaseDeg -= 360;
+  while (phaseDeg <= -180) phaseDeg += 360;
+  return {
+    f: point.hz,
+    magDb: 20 * Math.log10(output.mag / input.mag),
+    phaseDeg,
+    ...(point.outOfLinear?.length ? { outOfLinear: point.outOfLinear } : {}),
+  };
+}
+
+/**
  * A request, validated. Returns the refusal string the panel should show, or
  * null when the request can run. Refusals name what is missing on OUR side —
  * never a message that blames the circuit for a missing engine function.
@@ -150,33 +241,28 @@ export function createSweepRun(engine, request) {
     sourceId, sourceParams: { wave: 'sine', amplitude, offset: 0, freq: fFrom },
   } : {});
   if (method !== 'scope') {
-    const onePoint = fTo === fFrom;
-    const acTo = onePoint ? fFrom * (1 + Number.EPSILON * 8) : fTo;
-    const analyticPoints = board.runAc({
-      sourceId, from: fFrom, to: acTo, pointsPerDecade, probes: [inNet, outNet],
-    });
-    const measured = (onePoint ? analyticPoints.slice(0, 1) : analyticPoints).map((point) => {
-      const input = point.results.get(inNet);
-      const output = point.results.get(outNet);
-      if (!input || !output) throw new Error('analytical AC sweep did not return both selected probe nets');
-      if (!(input.mag > 0)) throw new Error('analytical AC sweep input magnitude is zero — transfer is undefined');
-      let phaseDeg = output.phaseDeg - input.phaseDeg;
-      while (phaseDeg > 180) phaseDeg -= 360;
-      while (phaseDeg <= -180) phaseDeg += 360;
-      return {
-        f: point.hz,
-        magDb: 20 * Math.log10(output.mag / input.mag),
-        phaseDeg,
-        ...(point.outOfLinear?.length ? { outOfLinear: point.outOfLinear } : {}),
-      };
-    });
+    // ONE FREQUENCY PER CALL, not one batched `runAc` dribbled out afterwards.
+    // The first version of this did the latter: the whole small-signal sweep
+    // ran inside `createSweepRun`, synchronously, and the "chunked" run then
+    // handed out rows that were already computed. That yields between rows a
+    // reader can no longer wait for, which is the freeze X2.6 removed, moved
+    // one function inwards — and it became the DEFAULT path the moment the
+    // analytical method did.
+    //
+    // Each call re-solves the DC operating point. That is the cost, and it is
+    // paid deliberately: the board is not mutated by `runAc`, so every point
+    // linearises around the SAME bias and the rows come out bit-identical to
+    // the batched call. `sweep-session.test.js` asserts that equality rather
+    // than assuming it.
+    const freqs = acPoints({ fFrom, fTo, pointsPerDecade });
     let k = 0;
     return {
-      total: measured.length,
+      total: freqs.length,
       next() {
-        if (k >= measured.length) return { done: true };
-        const row = measured[k++];
-        return { done: false, row, index: k, total: measured.length };
+        if (k >= freqs.length) return { done: true };
+        const f = freqs[k++];
+        const row = acRowAt(board, { sourceId, f, pointsPerDecade, inNet, outNet });
+        return { done: false, row, index: k, total: freqs.length };
       },
     };
   }

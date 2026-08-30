@@ -19,7 +19,48 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { getEngine } from '../engine.js';
 import { listSweepSources, netOfTerminal } from '../model/sweep-runner.js';
 import { runSweepAsync } from '../model/sweep-session.js';
-import { bodeAxisLabels, formatHz, regionSummary, sweepRowsToCsv, thinRows } from '../model/sweep-readout.js';
+import { bodeAxisLabels, formatDb, formatHz, regionPhrase, regionSummary, rowIsLinear, sweepRowsToCsv, thinRows } from '../model/sweep-readout.js';
+
+/**
+ * The two ways to answer "what does this circuit do to a sine", named for what
+ * they ARE rather than for which one is slower.
+ *
+ * They are not two implementations of one measurement. `runAc` linearises the
+ * circuit around its DC operating point and solves the complex network once
+ * per frequency: exact for the linearised circuit, and silent about the fact
+ * that the linearisation may not apply — which is what `outOfLinear` is for.
+ * `runAcSweep` drives a real sine into the real, nonlinear circuit and
+ * correlates the response, the way a scope and a lock-in would: it measures
+ * whatever the circuit actually does, distortion and slew included, at ~10
+ * full transient integrations per point.
+ *
+ * A learner who is told only "slower" will pick the fast one and never find
+ * out that the two disagree exactly where the interesting circuits live.
+ */
+const BODE_METHODS = [
+  {
+    id: 'analytic',
+    testid: 'bw-sweep-smallsignal-method',
+    label: { en: 'Small-signal', de: 'Kleinsignal' },
+    what: {
+      en: 'linearised around the operating point, solved once per frequency — '
+        + 'exact for the linearised circuit, and it says when that model does not apply',
+      de: 'um den Arbeitspunkt linearisiert, pro Frequenz einmal gelöst — exakt für die '
+        + 'linearisierte Schaltung, und sagt, wenn dieses Modell nicht gilt',
+    },
+  },
+  {
+    id: 'scope',
+    testid: 'bw-sweep-scope-method',
+    label: { en: 'Correlated', de: 'Korreliert' },
+    what: {
+      en: 'a real sine driven in and correlated out, the way a scope would measure it — '
+        + 'the real nonlinear circuit, and much slower',
+      de: 'echter Sinus hinein, herauskorreliert, wie am Oszilloskop gemessen — '
+        + 'die echte nichtlineare Schaltung, und viel langsamer',
+    },
+  },
+];
 
 const W = 260;
 const H = 140;
@@ -61,20 +102,47 @@ function drawBode(canvas, rows) {
   if (!rows.length) return;
   const lf = rows.map(r => Math.log10(r.f));
   const fLo = Math.min(...lf), fHi = Math.max(...lf);
-  const dbLo = Math.min(-3, ...rows.map(r => r.magDb)), dbHi = Math.max(1, ...rows.map(r => r.magDb));
+  // A railed output cannot move: its magnitude is exactly zero and its dB is
+  // −Infinity. Real answer, useless axis bound — it is excluded from the
+  // scale and drawn at the floor, marked, rather than turning every plotted y
+  // into NaN (which is what including it did).
+  const finite = rows.map(r => r.magDb).filter(Number.isFinite);
+  const dbLo = Math.min(-3, ...finite), dbHi = Math.max(1, ...finite);
   const x = (f) => ((Math.log10(f) - fLo) / (fHi - fLo || 1)) * (W - 8) + 4;
-  const yDb = (db) => 4 + ((dbHi - db) / (dbHi - dbLo || 1)) * (H - 8);
+  const yDb = (db) => (Number.isFinite(db)
+    ? 4 + ((dbHi - db) / (dbHi - dbLo || 1)) * (H - 8)
+    : H - 4);
   const yPh = (p) => 4 + ((180 - p) / 360) * (H - 8);
   g.strokeStyle = '#2ecc71';
   g.lineWidth = 1.5;
   g.beginPath();
-  rows.forEach((r, k) => { k ? g.lineTo(x(r.f), yDb(r.magDb)) : g.moveTo(x(r.f), yDb(r.magDb)); });
+  // The curve BREAKS at a point that has no magnitude, rather than being drawn
+  // through it: joining a real point to a floored one draws a slope nothing
+  // measured.
+  let pen = false;
+  for (const r of rows) {
+    if (!Number.isFinite(r.magDb)) { pen = false; continue; }
+    if (pen) g.lineTo(x(r.f), yDb(r.magDb)); else g.moveTo(x(r.f), yDb(r.magDb));
+    pen = true;
+  }
   g.stroke();
   g.strokeStyle = '#3498db';
   g.lineWidth = 1;
   g.beginPath();
   rows.forEach((r, k) => { k ? g.lineTo(x(r.f), yPh(r.phaseDeg)) : g.moveTo(x(r.f), yPh(r.phaseDeg)); });
   g.stroke();
+  // Points the small-signal model does not actually cover are MARKED on the
+  // curve, not only mentioned underneath it. An amber ring says "this number
+  // is drawn but is not the stage's gain"; a smooth green line through a
+  // railed stage's ideal gain is precisely the plausible wrong plot.
+  g.strokeStyle = '#f39c12';
+  g.lineWidth = 1.2;
+  for (const r of rows) {
+    if (rowIsLinear(r)) continue;
+    g.beginPath();
+    g.arc(x(r.f), yDb(r.magDb), 2.6, 0, Math.PI * 2);
+    g.stroke();
+  }
   // The axis. Until 2026-08-25 this plot had no frequency axis at all and its
   // dB labels were rounded to WHOLE decibels, which collapses -3.010 dB and
   // -3.5 dB — two different answers to "where is the corner" — onto one string.
@@ -157,8 +225,14 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
       const via = result.via === 'worker'
         ? (de ? 'im Worker' : 'in a worker')
         : (de ? 'im Haupt-Thread, stückweise' : 'chunked on this thread');
+      // WHICH MEASUREMENT produced these numbers, beside which thread did.
+      // "41 points, in a worker" does not say whether they came from a
+      // linearised model or from a driven sine, and those are two answers.
+      const how = mode === 'bode'
+        ? ` · ${BODE_METHODS.find(m => m.id === bodeMethod).label[de ? 'de' : 'en']}`
+        : '';
       setStatus(`${result.rows.length} ${de ? 'Punkte' : 'points'}`
-        + `${result.cancelled ? (de ? ' (abgebrochen)' : ' (stopped)') : ''} · ${via}`);
+        + `${result.cancelled ? (de ? ' (abgebrochen)' : ' (stopped)') : ''}${how} · ${via}`);
     }).catch((e) => {
       if (cancelRef.current !== token) return;
       setStatus((e && e.message) || String(e));
@@ -240,10 +314,32 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
               </select>
             </div>
           </div>
-          <label style={{ ...lbl, display: 'flex', gap: 5, alignItems: 'center' }}>
-            <input type="checkbox" checked={bodeMethod === 'scope'} onChange={e => setBodeMethod(e.target.checked ? 'scope' : 'analytic')} data-testid="bw-sweep-scope-method" />
-            {de ? 'Wie mit dem Oszilloskop messen (langsamer)' : 'Measure like a scope would (slower)'}
-          </label>
+          {/* WHAT THEY ARE, not which is slower. The old control was a single
+              checkbox reading "measure like a scope would (slower)", which
+              named one side and left the other — the DEFAULT, and the one
+              whose model can silently not apply — with no label at all. */}
+          <div role="radiogroup" aria-label={de ? 'Messverfahren' : 'Measurement method'}
+            data-testid="bw-sweep-method" style={{ display: 'flex', gap: 4 }}>
+            {BODE_METHODS.map(m => (
+              <button key={m.id} type="button" role="radio" aria-checked={bodeMethod === m.id}
+                data-testid={m.testid} data-selected={bodeMethod === m.id ? 'yes' : 'no'}
+                onClick={() => setBodeMethod(m.id)}
+                title={de ? m.what.de : m.what.en}
+                style={{
+                  flex: 1, padding: '3px 4px', borderRadius: 3,
+                  background: bodeMethod === m.id ? '#2c3e50' : '#0d1420',
+                  border: `1px solid ${bodeMethod === m.id ? '#9b59b6' : '#2c3e50'}`,
+                  color: bodeMethod === m.id ? '#c39bd3' : '#5d6d7e',
+                  fontFamily: 'monospace', fontSize: 10,
+                }}>
+                {de ? m.label.de : m.label.en}
+              </button>
+            ))}
+          </div>
+          <div data-testid="bw-sweep-method-what" style={{ ...lbl, fontSize: 8, lineHeight: 1.3 }}>
+            {de ? BODE_METHODS.find(m => m.id === bodeMethod).what.de
+              : BODE_METHODS.find(m => m.id === bodeMethod).what.en}
+          </div>
         </>
       )}
 
@@ -275,26 +371,47 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
               <tr style={{ color: '#5d6d7e' }}>
                 {mode === 'vi'
                   ? <><th style={{ textAlign: 'right', padding: '1px 4px' }}>V</th><th style={{ textAlign: 'right', padding: '1px 4px' }}>mA</th></>
-                  : <><th style={{ textAlign: 'right', padding: '1px 4px' }}>f</th><th style={{ textAlign: 'right', padding: '1px 4px' }}>dB</th><th style={{ textAlign: 'right', padding: '1px 4px' }}>°</th></>}
+                  : <><th style={{ textAlign: 'right', padding: '1px 4px' }}>f</th><th style={{ textAlign: 'right', padding: '1px 4px' }}>dB</th><th style={{ textAlign: 'right', padding: '1px 4px' }}>°</th><th style={{ textAlign: 'left', padding: '1px 4px' }}>{de ? 'Modell' : 'model'}</th></>}
               </tr>
             </thead>
             <tbody>
-              {thinRows(rows, 12).map((r, k) => (
-                <tr key={k}>
+              {thinRows(rows, 12).map((r, k) => {
+                // THE POINT, per point. A row whose stage is railed or current
+                // limited carries the small-signal number the model produced,
+                // and the model does not apply there — so the row SAYS so
+                // instead of sitting in the table looking like a measurement.
+                const phrase = mode === 'bode' ? regionPhrase(r, de) : '';
+                return (
+                <tr key={k} data-testid={phrase ? 'bw-sweep-row-nonlinear' : 'bw-sweep-row'}
+                  style={phrase ? { color: '#f39c12' } : undefined}>
                   {mode === 'vi'
                     ? <><td style={{ textAlign: 'right', padding: '1px 4px' }}>{r.v.toFixed(3)}</td><td style={{ textAlign: 'right', padding: '1px 4px' }}>{(r.i * 1000).toFixed(3)}</td></>
-                    : <><td style={{ textAlign: 'right', padding: '1px 4px' }}>{formatHz(r.f)}</td><td style={{ textAlign: 'right', padding: '1px 4px' }}>{r.magDb.toFixed(3)}</td><td style={{ textAlign: 'right', padding: '1px 4px' }}>{r.phaseDeg.toFixed(2)}</td></>}
+                    : <><td style={{ textAlign: 'right', padding: '1px 4px' }}>{formatHz(r.f)}</td><td style={{ textAlign: 'right', padding: '1px 4px' }}>{formatDb(r.magDb)}</td><td style={{ textAlign: 'right', padding: '1px 4px' }}>{r.phaseDeg.toFixed(2)}</td>
+                      <td style={{ textAlign: 'left', padding: '1px 4px', whiteSpace: 'nowrap' }} title={phrase}>
+                        {phrase ? `⚠ ${regionSummary(r)}` : (de ? 'linear' : 'linear')}
+                      </td></>}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      {mode === 'bode' && rows.some(r => regionSummary(r)) && (
+      {mode === 'bode' && rows.some(r => !rowIsLinear(r)) && (
         <div data-testid="bw-sweep-region-warning" style={{ color: '#f39c12', border: '1px solid #f39c12', borderRadius: 3, padding: 4, fontFamily: 'monospace', fontSize: 9 }}>
-          {de ? '⚠ Kleinsignalmodell außerhalb des linearen Bereichs: ' : '⚠ Small-signal model outside the linear region: '}
-          {[...new Set(rows.flatMap(r => regionSummary(r).split(';').filter(Boolean)))].join(', ')}
+          {'⚠ '}
+          {(() => {
+            const bad = rows.filter(r => !rowIsLinear(r));
+            const where = bad.length === rows.length
+              ? (de ? `alle ${rows.length} Punkte` : `all ${rows.length} points`)
+              : `${bad.length} ${de ? `von ${rows.length} Punkten` : `of ${rows.length} points`}`;
+            // The banner is the SUMMARY; the table above marks WHICH rows, and
+            // each marked row carries the same sentence as its tooltip.
+            return de
+              ? `${where}: nicht im linearen Bereich — ${regionSummary(bad[0])}`
+              : `${where}: not in its linear region at this point — ${regionSummary(bad[0])}`;
+          })()}
         </div>
       )}
 
@@ -305,11 +422,11 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
       )}
       {copied && <div style={{ color: '#5d6d7e', fontFamily: 'monospace', fontSize: 8, whiteSpace: 'pre-wrap', maxHeight: 80, overflowY: 'auto' }}>{copied}</div>}
 
-      {status && <div style={{ color: '#f39c12', fontFamily: 'monospace', fontSize: 9, whiteSpace: 'pre-wrap' }}>{status}</div>}
+      {status && <div data-testid="bw-sweep-status" style={{ color: '#f39c12', fontFamily: 'monospace', fontSize: 9, whiteSpace: 'pre-wrap' }}>{status}</div>}
       <div style={{ ...lbl, fontSize: 8 }}>
         {mode === 'vi'
           ? (de ? 'Läuft auf einer Offline-Kopie — die laufende Schaltung bleibt unberührt.' : 'Runs on an offline copy — the live circuit is untouched.')
-          : (de ? 'Grün: Betrag (dB), Blau: Phase (°). Log-Frequenzachse; die Tabelle zeigt bis zu zwölf Punkte, das CSV alle.' : 'Green: magnitude (dB), blue: phase (°). Log frequency axis; the table shows up to twelve points, the CSV all of them.')}
+          : (de ? 'Grün: Betrag (dB), Blau: Phase (°), bernsteinfarbener Ring: Punkt außerhalb des linearen Bereichs. Log-Frequenzachse; die Tabelle zeigt bis zu zwölf Punkte, das CSV alle.' : 'Green: magnitude (dB), blue: phase (°), amber ring: a point outside the linear region. Log frequency axis; the table shows up to twelve points, the CSV all of them.')}
       </div>
     </div>
   );

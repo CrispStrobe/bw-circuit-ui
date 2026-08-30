@@ -40,6 +40,23 @@ export function formatHz(f) {
   return `${f.toExponential(2)} Hz`;
 }
 
+/**
+ * A magnitude in decibels, for a table cell.
+ *
+ * `-Infinity` is a real answer here — an output pinned to a rail cannot move,
+ * so the transfer is exactly zero — and `(-Infinity).toFixed(3)` renders as
+ * "-Infinity", which reads like a crash rather than like a measurement.
+ *
+ * @param {number} db
+ * @returns {string}
+ */
+export function formatDb(db) {
+  if (Number.isFinite(db)) return db.toFixed(3);
+  if (db === -Infinity) return '−∞';
+  if (db === Infinity) return '+∞';
+  return '—';
+}
+
 /** Three significant figures without exponent notation for ordinary magnitudes. */
 function sig3(v) {
   const a = Math.abs(v);
@@ -61,7 +78,12 @@ function sig3(v) {
 export function bodeAxisLabels(rows) {
   if (!rows || !rows.length) return null;
   const fs = rows.map(r => r.f);
-  const dbs = rows.map(r => r.magDb);
+  // A RAILED stage's output cannot move at all, so its magnitude is exactly
+  // zero and its dB is −Infinity. That is the correct answer and it is not an
+  // axis bound: including it made dbLo −Infinity, every plotted y NaN, and the
+  // label read "-Infinity dB". The point is still drawn (marked, at the floor)
+  // — it just does not get to decide the scale for the points that have one.
+  const dbs = rows.map(r => r.magDb).filter(Number.isFinite);
   return {
     fLo: formatHz(Math.min(...fs)),
     fHi: formatHz(Math.max(...fs)),
@@ -112,4 +134,53 @@ export function sweepRowsToCsv(rows, mode = 'bode') {
 /** Machine-readable summary of nonlinear devices outside their linear region. */
 export function regionSummary(row) {
   return (row?.outOfLinear || []).map(x => `${x.part}:${x.region}`).join(';');
+}
+
+/**
+ * What each of bw-board's operating regions MEANS, in a sentence.
+ *
+ * The engine's vocabulary is `linear | high | low | ilim+ | ilim-`, settled by
+ * the NR loop at the DC bias (mna.js). A reader shown `U1:ilim+` beside a Bode
+ * point learns nothing; the point of surfacing the region at all is that the
+ * number next to it is NOT the stage's gain, and that has to be readable.
+ *
+ * Rails and current limits are DIFFERENT failures of the same model and are
+ * kept apart here for the reason spec-updates/ac-operating-region.md gives:
+ * a railed stage cannot move its output VOLTAGE, a limited one cannot move its
+ * output CURRENT, and collapsing the two is how a plausible wrong Bode plot
+ * gets made.
+ */
+export const REGION_MEANING = {
+  high: { en: 'output sitting at the positive rail', de: 'Ausgang an der oberen Versorgungsgrenze' },
+  low: { en: 'output sitting at the negative rail', de: 'Ausgang an der unteren Versorgungsgrenze' },
+  'ilim+': { en: 'output at its current limit, sinking', de: 'Ausgang an der Stromgrenze, senkend' },
+  'ilim-': { en: 'output at its current limit, sourcing', de: 'Ausgang an der Stromgrenze, treibend' },
+};
+
+/**
+ * One sweep point's region honesty, as a sentence a learner can act on.
+ *
+ * Empty string when every stage is linear — so the caller can render on truth
+ * rather than on a placeholder.
+ *
+ * @param {{outOfLinear?: Array<{part: string, kind?: string, region: string}>}} row
+ * @param {boolean} [de]
+ * @returns {string}
+ */
+export function regionPhrase(row, de = false) {
+  const flagged = row?.outOfLinear || [];
+  if (!flagged.length) return '';
+  const parts = flagged.map((x) => {
+    const meaning = REGION_MEANING[x.region];
+    const why = meaning ? (de ? meaning.de : meaning.en) : x.region;
+    return `${x.part} (${why})`;
+  }).join(', ');
+  return de
+    ? `nicht im linearen Bereich an diesem Punkt: ${parts} — die Kleinsignalzahl ist hier nicht die Verstärkung der Stufe`
+    : `not in its linear region at this point: ${parts} — the small-signal number here is not the stage's gain`;
+}
+
+/** Whether a row's number is a small-signal answer the model actually supports. */
+export function rowIsLinear(row) {
+  return !(row?.outOfLinear || []).length;
 }

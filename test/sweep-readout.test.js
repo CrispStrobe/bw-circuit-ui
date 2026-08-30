@@ -100,8 +100,21 @@ describe('sweep readout', () => {
     assert.match(src, /data-testid="bw-sweep-readout"/, 'the numeric table is rendered');
     assert.match(src, /data-testid="bw-sweep-csv"/, 'the export is reachable');
     assert.match(src, /setRows\(result\.rows\)/, 'the measured rows are kept, not discarded after drawing');
-    assert.match(src, /data-testid="bw-sweep-scope-method"/, 'the scope-measured comparison remains reachable');
+    // Both Bode methods are OFFERED and both are NAMED for what they are.
+    // The control used to be one checkbox reading "measure like a scope would
+    // (slower)": it named one side, left the default — the linearised one,
+    // whose model can silently not apply — unlabelled, and described the
+    // difference as speed.
+    assert.match(src, /testid: 'bw-sweep-scope-method'/, 'the scope-measured comparison remains reachable');
+    assert.match(src, /testid: 'bw-sweep-smallsignal-method'/, 'the small-signal path is a named choice, not an unlabelled default');
+    assert.match(src, /data-testid={m\.testid}/, 'both method buttons carry their id into the DOM');
+    assert.match(src, /operating point/, 'the small-signal method says what it linearises around');
+    assert.match(src, /correlated/i, 'the scope method says it correlates a driven sine');
+    assert.ok(!/Measure like a scope would \(slower\)/.test(src),
+      'the speed-only label is gone — "slower" is not what distinguishes them');
     assert.match(src, /data-testid="bw-sweep-region-warning"/, 'nonlinear operating regions reach a visible warning');
+    assert.match(src, /regionPhrase\(r, de\)/, 'each ROW carries its own region verdict, not just the sweep');
+    assert.match(src, /bw-sweep-row-nonlinear/, 'a point outside the linear region is marked in the table');
     // And the old rounding is gone rather than merely joined.
     assert.ok(!/dbHi\.toFixed\(0\)/.test(src) && !/dbLo\.toFixed\(0\)/.test(src),
       'whole-decibel labels still present — they collapse -3.010 dB onto -3.5 dB');

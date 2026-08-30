@@ -59,7 +59,7 @@ export {
   CIRCUIT_EXPORTS, BOARD_EXPORTS, ALL_EXPORTS, runExport,
 } from './model/exporters/registry.js';
 export { downloadText, downloadBlob } from './model/exporters/download.js';
-export { svgToPngBlob, exportSvgAsPng } from './model/export-png.js';
+export { svgToPngBlob, svgStringToPngBlob, serializeSvgStandalone, exportSvgAsPng } from './model/export-png.js';
 export { IMPORT_FORMATS, importCircuit, getSupportedFormats } from './importers/index.js';
 
 // Machine extraction (wired-bus → bootable config)

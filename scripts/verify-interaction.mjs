@@ -92,6 +92,8 @@ const EXPECTED = [
   'spectrum-peak',
   'sweep-progress',
   'sweep-canvas-live',
+  'sweep-ac-method',
+  'sweep-ac-region',
   'zero-page-errors',
 ];
 
@@ -1313,6 +1315,157 @@ try {
   // than left unreported, so the roll-call below stays a count assertion
   // instead of collapsing into "the harness crashed".
   failAll(INSTRUMENT_IDS, `the instrument scenarios could not be set up: ${String(e).split('\n')[0]}`);
+}
+
+// ── 16–17. X2.1: the small-signal path, and its region honesty ───────────
+// The Bode sweep has two methods and they are two different MEASUREMENTS:
+// `runAc` linearises the circuit at its DC operating point, `runAcSweep`
+// drives a real sine in and correlates it out. The panel used to offer one
+// checkbox reading "measure like a scope would (slower)", which named one side
+// and described the difference as speed.
+//
+// The bench is chosen so the second scenario can fail: an op-amp open loop
+// with a 1 V bias on its + input. Its default gain is 1e6, so the ideal output
+// is 1e6 V and the stage sits ON its rail. Its small-signal transfer is then
+// exactly zero — the output cannot move — and reporting that as a smooth
+// −∞-free curve is precisely the plausible wrong answer this exists to catch.
+// (That the flag is ABSENT on a linear bench is asserted in
+// test/sweep-small-signal.test.js, where the same op-amp with a 1 µV bias
+// reports its 120 dB open-loop gain and carries no flag at all.)
+const AC_IDS = ['sweep-ac-method', 'sweep-ac-region'];
+const RAILED_BENCH = {
+  vcc: 5.0,
+  parts: [
+    { id: 'GND1', kind: 'gnd', params: {}, x: 120, y: 300 },
+    { id: 'V1', kind: 'vsource', params: { volts: 1 }, x: 120, y: 180 },
+    { id: 'U1', kind: 'opamp', params: {}, x: 300, y: 180 },
+    { id: 'RL1', kind: 'resistor', params: { ohms: 10000 }, x: 460, y: 240 },
+  ],
+  wires: [
+    { from: 'V1', fromTerminal: 'pos', to: 'U1', toTerminal: 'inp' },
+    { from: 'U1', fromTerminal: 'inn', to: 'GND1', toTerminal: 'gnd' },
+    { from: 'V1', fromTerminal: 'neg', to: 'GND1', toTerminal: 'gnd' },
+    { from: 'U1', fromTerminal: 'out', to: 'RL1', toTerminal: 'a' },
+    { from: 'RL1', fromTerminal: 'b', to: 'GND1', toTerminal: 'gnd' },
+  ],
+};
+try {
+  if (!await reloadOrFailRest()) await rollCall();
+  if (!await readyOrFailRest(() => typeof window.__setCircuitData === 'function',
+    60000, 'the dev harness never exposed its circuit-load hook')) await rollCall();
+  // Through the REAL circuitData path, the same door verify-a2-sim.mjs uses —
+  // not a side entrance that skips the loader this bench has to survive.
+  await page.evaluate((d) => window.__setCircuitData(d), RAILED_BENCH);
+  await page.waitForTimeout(1200);
+  const bench = await page.evaluate(() => {
+    const c = window.__circuit;
+    const nets = c?.board?.getNets?.() || [];
+    const netOf = (part, terminal) => nets.find(n =>
+      (n.terminals || []).some(t => t.part === part && t.terminal === terminal))?.id ?? null;
+    return {
+      err: c?.netlistError ? String(c.netlistError).slice(0, 140) : null,
+      parts: (c?.parts || []).length,
+      inNet: netOf('V1', 'pos'),
+      outNet: netOf('U1', 'out'),
+    };
+  });
+  if (bench.err || !bench.inNet || !bench.outNet) {
+    failAll(AC_IDS, `the railed op-amp bench did not load: err=${bench.err} `
+      + `parts=${bench.parts} in=${bench.inNet} out=${bench.outNet}`);
+  } else {
+    await openInstruments();
+    if (await page.locator('[data-testid=bw-sweep-panel]').count() === 0) {
+      await clickOrFail(page.locator('[data-testid=bw-sweep-toggle]'), 'sweep-ac-method',
+        'sweep toggle unclickable', { timeout: 20000 });
+      await page.locator('[data-testid=bw-sweep-panel]')
+        .waitFor({ state: 'attached', timeout: 20000 }).catch(() => { /* reported below */ });
+    }
+    const swp = page.locator('[data-testid=bw-sweep-panel]');
+    if (await swp.count() !== 1) {
+      failAll(AC_IDS, `no sweep panel for the AC scenarios (found ${await swp.count()})`);
+    } else {
+      await clickOrFail(swp.getByRole('button', { name: /^Bode$/ }), 'sweep-ac-method',
+        'the Bode mode button is unclickable', { timeout: 20000 });
+      await page.waitForTimeout(300);
+
+      // 16. Both methods are OFFERED and both are NAMED for what they are.
+      const small = swp.locator('[data-testid=bw-sweep-smallsignal-method]');
+      const scope = swp.locator('[data-testid=bw-sweep-scope-method]');
+      const what = swp.locator('[data-testid=bw-sweep-method-what]');
+      const methods = {
+        small: await small.count(), scope: await scope.count(),
+        selected: await small.count() ? await small.getAttribute('data-selected') : 'absent',
+        smallTitle: await small.count() ? (await small.getAttribute('title')) || '' : '',
+        scopeTitle: await scope.count() ? (await scope.getAttribute('title')) || '' : '',
+        blurb: await what.count() ? (await what.innerText()).trim() : '',
+      };
+      verdict('sweep-ac-method',
+        methods.small === 1 && methods.scope === 1 && methods.selected === 'yes'
+          && /operating point/i.test(methods.smallTitle)
+          && /correlat/i.test(methods.scopeTitle)
+          && methods.blurb.length > 20,
+        `both AC methods offered and named: small-signal selected, "${methods.blurb.slice(0, 60)}…"`,
+        `the AC methods are not honestly offered: ${JSON.stringify(methods)}`);
+
+      // 17. A sweep at a bias that saturates the stage SAYS SO, per point.
+      const selects = swp.locator('select');
+      if (await selects.count() < 3) {
+        fail('sweep-ac-region', `the Bode net choosers are missing (${await selects.count()} selects)`);
+      } else {
+        await selects.nth(1).selectOption(bench.inNet);
+        await selects.nth(2).selectOption(bench.outNet);
+        // A short range: this scenario is about the VERDICT, not the sweep.
+        const nums = swp.locator('input[type=number]');
+        await nums.nth(0).fill('1000');
+        await nums.nth(1).fill('10000');
+        await page.waitForTimeout(200);
+        await clickOrFail(swp.locator('[data-testid=bw-sweep-run]'), 'sweep-ac-region',
+          'sweep run unclickable', { timeout: 30000 });
+        for (let i = 0; i < 60 && await swp.locator('[data-testid=bw-sweep-stop]').count(); i++) {
+          await page.waitForTimeout(500);
+        }
+        const warn = swp.locator('[data-testid=bw-sweep-region-warning]');
+        const flagged = swp.locator('[data-testid=bw-sweep-row-nonlinear]');
+        const seen = {
+          warning: await warn.count() ? (await warn.innerText()).replace(/\s+/g, ' ').trim() : '',
+          // The PER-POINT sentence, off the row itself — the banner is only a
+          // summary, and "the sweep might be unreliable somewhere" is the
+          // thing this replaced.
+          rowSays: await flagged.count()
+            ? (await flagged.first().locator('td').last().getAttribute('title')) || ''
+            : '',
+          flaggedRows: await flagged.count(),
+          plainRows: await swp.locator('[data-testid=bw-sweep-row]').count(),
+          table: await swp.locator('[data-testid=bw-sweep-readout]').count()
+            ? (await swp.locator('[data-testid=bw-sweep-readout]').innerText()).replace(/\s+/g, ' ').trim()
+            : '',
+          // The STATUS LINE specifically, not the panel's whole text: the
+          // method buttons are in that text too, so asking the panel would
+          // pass whether or not the status said which method it used.
+          status: await swp.locator('[data-testid=bw-sweep-status]').count()
+            ? (await swp.locator('[data-testid=bw-sweep-status]').innerText()).replace(/\s+/g, ' ').trim()
+            : '',
+        };
+        verdict('sweep-ac-region',
+          /not in its linear region at this point/.test(seen.warning)
+            && /U1:high/.test(seen.warning)
+            && /not in its linear region at this point/.test(seen.rowSays)
+            && /positive rail/.test(seen.rowSays)
+            && /not the stage's gain/.test(seen.rowSays)
+            && seen.flaggedRows >= 1 && seen.plainRows === 0
+            && /U1:high/.test(seen.table) && /−∞/.test(seen.table)
+            && /Small-signal/.test(seen.status) && /points/.test(seen.status),
+          `a railed stage is reported as one: ${seen.flaggedRows} flagged rows, `
+            + `"${seen.warning.slice(0, 80)}" / row says "${seen.rowSays.slice(0, 80)}"`,
+          `the railed stage produced a silent ideal number: flagged=${seen.flaggedRows} `
+            + `plain=${seen.plainRows} warning="${seen.warning.slice(0, 120)}" `
+            + `table="${seen.table.slice(0, 100)}" row="${seen.rowSays.slice(0, 80)}" `
+            + `status="${seen.status.slice(0, 60)}"`);
+      }
+    }
+  }
+} catch (e) {
+  failAll(AC_IDS, `the AC scenarios could not be set up: ${String(e).split('\n')[0]}`);
 }
 
 verdict('zero-page-errors', errors.length === 0,

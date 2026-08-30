@@ -14,6 +14,8 @@
  * a message that blames the circuit.
  */
 
+import { acPoints, acRowAt } from './sweep-protocol.js';
+
 /**
  * List the sweepable sources on a board: vsource parts, id + params.
  * @param {object} board - live engine board
@@ -105,22 +107,17 @@ export function runBode(engine, board, {
       ? engine.runAcSweep(fresh, {
         sourceId, freqs: engine.logSpace(fFrom, fTo, pointsPerDecade), inNet, outNet,
       })
-      : (() => {
-        const onePoint = fTo === fFrom;
-        const acTo = onePoint ? fFrom * (1 + Number.EPSILON * 8) : fTo;
-        const points = fresh.runAc({ sourceId, from: fFrom, to: acTo, pointsPerDecade, probes: [inNet, outNet] });
-        return (onePoint ? points.slice(0, 1) : points).map(point => {
-        const input = point.results.get(inNet);
-        const output = point.results.get(outNet);
-        if (!input || !output) throw new Error('analytical AC sweep did not return both selected probe nets');
-        if (!(input.mag > 0)) throw new Error('analytical AC sweep input magnitude is zero — transfer is undefined');
-        let phaseDeg = output.phaseDeg - input.phaseDeg;
-        while (phaseDeg > 180) phaseDeg -= 360;
-        while (phaseDeg <= -180) phaseDeg += 360;
-        return { f: point.hz, magDb: 20 * Math.log10(output.mag / input.mag), phaseDeg,
-          ...(point.outOfLinear?.length ? { outOfLinear: point.outOfLinear } : {}) };
-        });
-      })();
+      // POINT AT A TIME, through the same `acRowAt` the chunked run uses.
+      // `runAc` will happily compute the whole range in one call and it is the
+      // faster way to ask — it reuses one symbolic factorization across the
+      // sweep. It is also uninterruptible, and this is the DEFAULT method, so
+      // the panel's progress readout and its Stop button would have been
+      // theatre over rows already computed. One route means the synchronous
+      // and the chunked answers are equal by construction rather than by
+      // assertion; the engine's batched answer is compared against this one,
+      // and bounded, in test/sweep-protocol.test.js.
+      : acPoints({ fFrom, fTo, pointsPerDecade })
+        .map(f => acRowAt(fresh, { sourceId, f, pointsPerDecade, inNet, outNet }));
     return { ok: true, rows };
   } catch (e) {
     return { ok: false, reason: (e && e.message) || String(e) };
