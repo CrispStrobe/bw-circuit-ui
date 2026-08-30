@@ -110,4 +110,21 @@ describe('sweep-runner', () => {
     assert.equal(r.rows[0].phaseDeg, 20, 'phase subtraction wraps to the principal range');
     assert.deepEqual(r.rows[0].outOfLinear, [{ part: 'U1', kind: 'opamp', region: 'high' }]);
   });
+
+  it('preserves the historical one-frequency Bode contract', () => {
+    class AcBoard extends StubBoard {
+      runAc(opts) {
+        assert.ok(opts.to > opts.from, 'the BoardImpl contract remains strict');
+        return [opts.from, opts.to].map(hz => ({ hz, results: new Map([
+          ['n_in', { mag: 1, phaseDeg: 0 }], ['n_g', { mag: 0.5, phaseDeg: -45 }],
+        ]) }));
+      }
+    }
+    const r = runBode({ BoardImpl: AcBoard }, fakeLiveBoard(), {
+      sourceId: 'vs', inNet: 'n_in', outNet: 'n_g', fFrom: 159.155, fTo: 159.155,
+    });
+    assert.equal(r.ok, true, r.reason);
+    assert.equal(r.rows.length, 1);
+    assert.equal(r.rows[0].f, 159.155);
+  });
 });

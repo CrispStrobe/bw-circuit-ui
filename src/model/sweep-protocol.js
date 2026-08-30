@@ -150,9 +150,12 @@ export function createSweepRun(engine, request) {
     sourceId, sourceParams: { wave: 'sine', amplitude, offset: 0, freq: fFrom },
   } : {});
   if (method !== 'scope') {
-    const measured = board.runAc({
-      sourceId, from: fFrom, to: fTo, pointsPerDecade, probes: [inNet, outNet],
-    }).map((point) => {
+    const onePoint = fTo === fFrom;
+    const acTo = onePoint ? fFrom * (1 + Number.EPSILON * 8) : fTo;
+    const analyticPoints = board.runAc({
+      sourceId, from: fFrom, to: acTo, pointsPerDecade, probes: [inNet, outNet],
+    });
+    const measured = (onePoint ? analyticPoints.slice(0, 1) : analyticPoints).map((point) => {
       const input = point.results.get(inNet);
       const output = point.results.get(outNet);
       if (!input || !output) throw new Error('analytical AC sweep did not return both selected probe nets');

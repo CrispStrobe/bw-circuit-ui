@@ -105,7 +105,11 @@ export function runBode(engine, board, {
       ? engine.runAcSweep(fresh, {
         sourceId, freqs: engine.logSpace(fFrom, fTo, pointsPerDecade), inNet, outNet,
       })
-      : fresh.runAc({ sourceId, from: fFrom, to: fTo, pointsPerDecade, probes: [inNet, outNet] }).map(point => {
+      : (() => {
+        const onePoint = fTo === fFrom;
+        const acTo = onePoint ? fFrom * (1 + Number.EPSILON * 8) : fTo;
+        const points = fresh.runAc({ sourceId, from: fFrom, to: acTo, pointsPerDecade, probes: [inNet, outNet] });
+        return (onePoint ? points.slice(0, 1) : points).map(point => {
         const input = point.results.get(inNet);
         const output = point.results.get(outNet);
         if (!input || !output) throw new Error('analytical AC sweep did not return both selected probe nets');
@@ -115,7 +119,8 @@ export function runBode(engine, board, {
         while (phaseDeg <= -180) phaseDeg += 360;
         return { f: point.hz, magDb: 20 * Math.log10(output.mag / input.mag), phaseDeg,
           ...(point.outOfLinear?.length ? { outOfLinear: point.outOfLinear } : {}) };
-      });
+        });
+      })();
     return { ok: true, rows };
   } catch (e) {
     return { ok: false, reason: (e && e.message) || String(e) };
