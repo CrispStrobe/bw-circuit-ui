@@ -11,6 +11,9 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { projectSchematic } from '../model/schematic-projection.js';
 import { shapeFor } from '../model/schematic-symbols.js';
 import { classifyWheel } from '../interaction/transform.js';
+import { renderSchematicSvg } from '../model/schematic-svg.js';
+import { downloadText, downloadBlob } from '../model/exporters/download.js';
+import { t } from '../i18n/strings.js';
 
 const STROKE = '#9ab0c4';
 const LABEL = '#6b8299';
@@ -100,13 +103,16 @@ function fmtFarads(v) {
   return `${(v * 1e12).toFixed(0)}pF`;
 }
 
-export function SchematicPanel({ parts, nets }) {
+export function SchematicPanel({ parts, nets, lang = 'en' }) {
   const proj = projectSchematic(parts, nets);
   // A read-only view still needs a CAMERA: wheel/two-finger pans, pinch or
   // ctrl+wheel zooms at the cursor, drag pans, double-click resets to fit.
   // cam = null means "fit the drawing", recomputed whenever the projection
   // grows beyond the current view.
   const [cam, setCam] = useState(null); // {x, y, k} in drawing units
+  // What the last save produced, or why it could not — a download is invisible
+  // otherwise, and "nothing happened" is indistinguishable from "it failed".
+  const [saveNote, setSaveNote] = useState('');
   const hostRef = useRef(null);
   const dragRef = useRef(null);
   const [viewport, setViewport] = useState({ width: 1, height: 1 });
@@ -179,14 +185,67 @@ export function SchematicPanel({ parts, nets }) {
     return () => el.removeEventListener('wheel', onWheel);
   }, [onWheel]);
 
+  // X0.4 — the schematic as a DOCUMENT. What gets saved is NOT this element:
+  // this one carries a camera, so serializing it would hand the user whatever
+  // happened to be in the viewport at the moment they clicked. The headless
+  // renderer draws the whole projection at its own bounds, and it is the same
+  // renderer, from the same shapeFor() artwork, so the file is the drawing on
+  // screen rather than a second implementation of it.
+  const saveSvg = useCallback((e) => {
+    e.stopPropagation();
+    setSaveNote('');
+    try {
+      const { svg, generic, genericKinds } = renderSchematicSvg({ parts, nets });
+      downloadText(svg, 'schematic.svg', 'image/svg+xml');
+      setSaveNote(generic > 0
+        ? t('schematicSavedGeneric', lang, { n: generic, kinds: [...new Set(genericKinds)].join(', ') })
+        : t('schematicSaved', lang));
+    } catch (err) { setSaveNote((err && err.message) || String(err)); }
+  }, [parts, nets, lang]);
+
+  const savePng = useCallback(async (e) => {
+    e.stopPropagation();
+    setSaveNote('');
+    try {
+      const { svg, width, height } = renderSchematicSvg({ parts, nets });
+      const { svgStringToPngBlob } = await import('../model/export-png.js');
+      downloadBlob(await svgStringToPngBlob(svg, { scale: 2, width, height }), 'schematic.png');
+      setSaveNote(t('schematicSavedPng', lang, { w: width * 2, h: height * 2 }));
+    } catch (err) { setSaveNote((err && err.message) || String(err)); }
+  }, [parts, nets, lang]);
+
   if (proj.symbols.length === 0) {
     return (
       <div style={{ padding: 16, color: '#556', fontFamily: 'monospace', fontSize: 11 }}>
-        the schematic mirrors the canvas — add parts to see it
+        {t('schematicEmpty', lang)}
       </div>
     );
   }
+  const saveBtn = {
+    background: '#16213eee', border: '1px solid #2c3e50', borderRadius: 3,
+    color: '#9ab0c4', fontFamily: 'monospace', fontSize: 9, padding: '2px 6px',
+    cursor: 'pointer',
+  };
   return (
+    <div style={{ position: 'relative', height: '100%', minHeight: 240 }}>
+      <div style={{ position: 'absolute', zIndex: 2, top: 4, right: 4, display: 'flex', gap: 4 }}
+        onPointerDown={e => e.stopPropagation()}>
+        <button type="button" style={saveBtn} data-testid="bw-schematic-save-svg"
+          onClick={saveSvg} title={t('schematicSaveSvgTitle', lang)}>
+          {t('schematicSaveSvg', lang)}
+        </button>
+        <button type="button" style={saveBtn} data-testid="bw-schematic-save-png"
+          onClick={savePng} title={t('schematicSavePngTitle', lang)}>
+          {t('schematicSavePng', lang)}
+        </button>
+      </div>
+      {saveNote && (
+        <div data-testid="bw-schematic-save-note" style={{
+          position: 'absolute', zIndex: 2, top: 26, right: 4, maxWidth: 260,
+          background: '#16213eee', border: '1px solid #2c3e50', borderRadius: 3,
+          color: '#f39c12', fontFamily: 'monospace', fontSize: 8, padding: '2px 6px',
+        }}>{saveNote}</div>
+      )}
     <svg data-schematic width="100%" height="100%" ref={hostRef}
       viewBox={`${view.x} ${view.y} ${vw} ${vh}`}
       preserveAspectRatio="xMidYMid meet"
@@ -233,5 +292,6 @@ export function SchematicPanel({ parts, nets }) {
       ))}
       {proj.symbols.map(s => <Symbol key={s.id} s={s} />)}
     </svg>
+    </div>
   );
 }

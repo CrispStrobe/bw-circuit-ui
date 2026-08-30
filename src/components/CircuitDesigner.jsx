@@ -1496,7 +1496,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             <div style={{ color: '#7f8c8d', fontFamily: 'monospace', fontSize: 10, marginBottom: 4 }}>
               Schematic — read-only projection of the circuit above. Edit in Realistic view.
             </div>
-            <SchematicPanel parts={parts}
+            <SchematicPanel parts={parts} lang={lang}
               nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets() : []} />
           </div>
         )}

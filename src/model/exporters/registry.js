@@ -50,6 +50,37 @@ import { exportKicadPcb } from './kicad-pcb.js';
 import { exportEasyEdaPcb } from './easyeda-pcb.js';
 import { exportGerbers } from './gerber.js';
 import { exportWokwi } from '../../importers/wokwi.js';
+import { renderSchematicSvg } from '../schematic-svg.js';
+
+/**
+ * The schematic as a document — X0.4.
+ *
+ * `renderSchematicSvg` has always produced a COMPLETE drawing headlessly; the
+ * panel simply offered no way to keep one. Its output is self-contained by
+ * construction: every colour, stroke width, font family and anchor is an
+ * attribute on the element that uses it, there is no `<style>` block, no
+ * `class`, and no external reference, so the file opens in an image viewer,
+ * a browser or Inkscape with nothing else present. `test/schematic-document.test.js`
+ * asserts that rather than trusting it.
+ *
+ * The report says what the drawing could NOT do: parts the projection fell
+ * back to a generic box for, and any geometric invariant it had to break.
+ * A picture that quietly omits its own compromises is the multimeter that
+ * lies, in another medium.
+ */
+function schematicDocument(circuit) {
+  const r = renderSchematicSvg({ parts: circuit.parts, wires: circuit.wires });
+  const warnings = [];
+  if (r.generic > 0) {
+    warnings.push(`${r.generic} part(s) drawn as a labelled box rather than a `
+      + `standard symbol: ${[...new Set(r.genericKinds)].join(', ')}`);
+  }
+  for (const c of r.wireSymbolCrossings) {
+    warnings.push(`net ${c.netId} is routed across symbol ${c.symbol}`);
+  }
+  for (const [a, b] of r.symbolOverlaps) warnings.push(`symbols ${a} and ${b} overlap`);
+  return { render: r, warnings };
+}
 
 /** Formats that describe the CIRCUIT (schematic, netlist, picture). */
 export const CIRCUIT_EXPORTS = [
@@ -151,6 +182,39 @@ export const CIRCUIT_EXPORTS = [
           skipped: skipped.map(s => `${s.id} (${s.kind}): no diagram type for this kind`),
           warnings: substituted.map(s => `${s.id}: ${s.note}`),
         },
+      };
+    },
+  },
+  {
+    id: 'schematic-svg',
+    label: 'Schematic drawing (.svg)', labelDe: 'Schaltplan-Zeichnung (.svg)',
+    needs: 'circuit',
+    run: ({ circuit }) => {
+      const { render, warnings } = schematicDocument(circuit);
+      return {
+        files: [{ name: 'schematic.svg', text: render.svg, mime: 'image/svg+xml' }],
+        report: { warnings },
+      };
+    },
+  },
+  {
+    id: 'schematic-png',
+    label: 'Schematic drawing (.png)', labelDe: 'Schaltplan-Zeichnung (.png)',
+    // The schematic document, rasterised at 2x. Browser only for the same
+    // reason as the canvas PNG below: rasterising needs Canvas 2D.
+    needs: 'circuit',
+    browserOnly: true,
+    run: async ({ circuit }) => {
+      const { render, warnings } = schematicDocument(circuit);
+      const { svgStringToPngBlob } = await import('../export-png.js');
+      return {
+        files: [{
+          name: 'schematic.png',
+          blob: await svgStringToPngBlob(render.svg, {
+            scale: 2, width: render.width, height: render.height,
+          }),
+        }],
+        report: { warnings },
       };
     },
   },

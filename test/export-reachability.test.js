@@ -144,7 +144,11 @@ describe('every registry entry produces a file', () => {
         // Rasterising needs Canvas 2D. Assert the shape instead of the bytes:
         // the point of the gate is that the entry EXISTS and is wired.
         assert.equal(typeof entry.run, 'function');
-        assert.equal(entry.needs, 'svg');
+        // 'svg' rasterises the live canvas element; 'circuit' rasterises a
+        // document this library renders headlessly (the schematic). Both are
+        // browser-only for the same reason and neither may be a netlist.
+        assert.ok(['svg', 'circuit'].includes(entry.needs),
+          `${entry.id} is browserOnly but needs='${entry.needs}'`);
         return;
       }
       const { files, report } = await runExport(entry, { circuit, board });

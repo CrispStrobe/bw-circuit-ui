@@ -24,6 +24,7 @@
 // they cannot drift again. Removing either makes this gate fail BY NAME —
 // that is the regression test, and it is mutation-proven.
 import { spawn } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const PORT = Number(process.env.BW_GATE_PORT || 3142);
@@ -76,6 +77,7 @@ const EXPECTED = [
   'transport-step',
   'transport-resume',
   'schematic-render',
+  'schematic-svg-save',
   'nomcu-sim',
   'nomcu-clock',
   'seated-no-wires',
@@ -768,6 +770,61 @@ const selectionCount = async () =>
     verdict('schematic-render', symCount >= 3,
       `schematic beside the canvas (${symCount} symbols)`,
       `schematic did not render (symbols=${symCount})`);
+  }
+}
+
+// 7b. X0.4 — the schematic as a DOCUMENT. The panel drew a complete schematic
+//     and offered no way to keep one. "Save SVG" must produce a real file:
+//     non-empty, parseable as SVG by an SVG parser (not by a regex), and
+//     carrying the SAME NUMBER OF SYMBOLS the panel is showing. That last
+//     check is the one that matters — a well-formed SVG with nothing in it
+//     would pass every other test here, and an SVG of the CAMERA'S VIEW would
+//     pass all of them but this one whenever the drawing is larger than the
+//     viewport.
+{
+  const btn = page.locator('[data-testid=bw-schematic-save-svg]');
+  if (await btn.count() === 0) {
+    fail('schematic-svg-save', 'the schematic panel offers no Save SVG control');
+  } else {
+    const onScreen = await page.evaluate(() =>
+      document.querySelectorAll('[data-schematic] > g[transform^="translate("]').length);
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 30000 }).catch(e => ({ err: String(e).split('\n')[0] })),
+      btn.first().click({ timeout: 20000 }).catch(e => { errors.push(`save-svg click: ${e}`); }),
+    ]);
+    if (!download || download.err) {
+      fail('schematic-svg-save', `clicking Save SVG produced no download (${download?.err ?? 'no event'})`);
+    } else {
+      const name = download.suggestedFilename();
+      const file = await download.path();
+      const text = file ? await readFile(file, 'utf8') : '';
+      // Parsed by the browser's own SVG parser: "it looks like XML" is not
+      // the claim, "a viewer can open it" is.
+      const parsed = await page.evaluate((svgText) => {
+        const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+        const bad = doc.querySelector('parsererror');
+        return {
+          error: bad ? bad.textContent.replace(/\s+/g, ' ').slice(0, 120) : null,
+          root: doc.documentElement.nodeName,
+          ns: doc.documentElement.namespaceURI,
+          symbols: doc.querySelectorAll('svg > g[transform^="translate("]').length,
+          texts: doc.querySelectorAll('text').length,
+          // A file that needs the app's CSS is a file that opens blank.
+          styled: doc.querySelectorAll('[class], style, script, image').length,
+        };
+      }, text);
+      const ok = text.length > 500 && !parsed.error
+        && parsed.root === 'svg' && parsed.ns === 'http://www.w3.org/2000/svg'
+        && parsed.styled === 0 && parsed.texts > 0
+        && onScreen > 0 && parsed.symbols === onScreen;
+      verdict('schematic-svg-save', ok,
+        `Save SVG wrote ${name} — ${text.length} bytes, ${parsed.symbols} symbols `
+          + `(panel shows ${onScreen}), ${parsed.texts} labels, no CSS dependency`,
+        `Save SVG produced an unusable file: ${text.length} bytes, root <${parsed.root}> `
+          + `ns=${parsed.ns}, symbols=${parsed.symbols} vs ${onScreen} on screen, `
+          + `texts=${parsed.texts}, css-dependent nodes=${parsed.styled}`
+          + (parsed.error ? `, parse error: ${parsed.error}` : ''));
+    }
   }
 }
 

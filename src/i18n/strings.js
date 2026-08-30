@@ -102,6 +102,13 @@ const STRINGS = {
 
   // ── SchematicPanel ────────────────────────────────────────────────
   schematicEmpty:      { en: 'the schematic mirrors the canvas — add parts to see it', de: 'der Schaltplan spiegelt die Arbeitsfläche — Bauteile hinzufügen' },
+  schematicSaveSvg:    { en: '⤓ SVG', de: '⤓ SVG' },
+  schematicSavePng:    { en: '⤓ PNG', de: '⤓ PNG' },
+  schematicSaveSvgTitle: { en: 'Save the whole schematic as a standalone SVG drawing (not the current view)', de: 'Den ganzen Schaltplan als eigenständige SVG-Zeichnung speichern (nicht den Ausschnitt)' },
+  schematicSavePngTitle: { en: 'Save the whole schematic as a 2× PNG image (not the current view)', de: 'Den ganzen Schaltplan als 2×-PNG speichern (nicht den Ausschnitt)' },
+  schematicSaved:      { en: 'saved schematic.svg — the whole drawing, every symbol drawn', de: 'schematic.svg gespeichert — die ganze Zeichnung, jedes Symbol gezeichnet' },
+  schematicSavedGeneric: { en: 'saved schematic.svg — {n} part(s) drawn as a labelled box: {kinds}', de: 'schematic.svg gespeichert — {n} Bauteil(e) als beschriftetes Kästchen: {kinds}' },
+  schematicSavedPng:   { en: 'saved schematic.png at {w}×{h}', de: 'schematic.png mit {w}×{h} gespeichert' },
 
   // ── PartPalette ───────────────────────────────────────────────────
   searchParts:         { en: 'search...', de: 'suchen...' },
