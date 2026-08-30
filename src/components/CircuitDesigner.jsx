@@ -43,7 +43,6 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { BoardCanvas } from './BoardCanvas.jsx';
 import { PartPalette } from './PartPalette.jsx';
 import { InferPanel } from './InferPanel.jsx';
-import { ImportCircuitMenu } from './ImportCircuitMenu.jsx';
 import { ExamplesBrowser } from './ExamplesBrowser.jsx';
 import { CodexBrowser } from './CodexBrowser.jsx';
 import { t } from '../i18n/strings.js';

@@ -19,6 +19,8 @@ import { projectBoard, projectBoardFromCircuit } from '../model/board-projection
 import { renderBoardSvg } from '../model/board-svg.js';
 import { runPcbDrc } from '../model/pcb-drc.js';
 import { listVariants } from '../model/land-patterns.js';
+import { BOARD_EXPORTS, runExport } from '../model/exporters/registry.js';
+import TransferReport from './TransferReport.jsx';
 
 const LAYERS = [
   ['copper-top', 'Top'],
@@ -34,10 +36,12 @@ const SEVERITY_COLOR = { danger: '#e74c3c', warning: '#f39c12', info: '#3498db' 
 
 export default function BoardPanel({
   circuit = null, parts = [], wires = [], board = null,
-  overrides = null, onOverridesChange = null,
+  overrides = null, onOverridesChange = null, lang = 'en',
 }) {
   const [hidden, setHidden] = useState(() => new Set());
   const [showFindings, setShowFindings] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [report, setReport] = useState(null);
   const [selected, setSelected] = useState(null);
   const [localOverrides, setLocalOverrides] = useState(null);
   const containerRef = useRef(null);
@@ -137,6 +141,29 @@ export default function BoardPanel({
   }, [selected, circuit, parts]);
   const variants = selectedKind ? listVariants(selectedKind) : [];
 
+  // The three board writers — KiCad .kicad_pcb, EasyEDA board JSON, Gerber +
+  // drill — existed with no way to invoke them: measured 2026-08-30, zero
+  // call sites in src/ between them, and this panel, the only place a board
+  // is on screen, offered no save at all. See model/exporters/registry.js.
+  const doExport = useCallback(async (entry) => {
+    setExportOpen(false);
+    try {
+      const { downloadText } = await import('../model/exporters/download.js');
+      const out = await runExport(entry, { board: projected.board });
+      for (const f of out.files) downloadText(f.text, f.name, f.mime);
+      const warnings = (out.report.warnings || []).map(String);
+      setReport({
+        kind: 'export',
+        title: out.files.length === 1 ? out.files[0].name : `${out.files.length} files`,
+        summary: out.files.map((f) => f.name).join(', '),
+        warnings,
+        instructions: out.report.instructions || null,
+      });
+    } catch (err) {
+      setReport({ kind: 'export', title: entry.label, error: String((err && err.message) || err) });
+    }
+  }, [projected]);
+
   const toggle = (key) => setHidden((prev) => {
     const next = new Set(prev);
     if (next.has(key)) next.delete(key); else next.add(key);
@@ -186,6 +213,29 @@ export default function BoardPanel({
             {projected.unrouted.length} net(s) unrouted
           </span>
         )}
+        <span style={{ position: 'relative', display: 'inline-block' }}>
+          <button data-board-export onClick={() => setExportOpen((v) => !v)}
+            title={/^de/i.test(lang) ? 'Platine exportieren' : 'Export board'}
+            aria-label={/^de/i.test(lang) ? 'Platine exportieren' : 'Export board'}
+            aria-expanded={exportOpen}
+            style={{ background: '#1e293b', color: '#9ab0c4', border: '1px solid #475569', borderRadius: 4, fontSize: 11, cursor: 'pointer', padding: '1px 8px' }}>
+            ⤓
+          </button>
+          {exportOpen && (
+            <div data-board-export-menu style={{ position: 'absolute', top: '100%', right: 0, zIndex: 70, marginTop: 4, minWidth: 210, background: '#0f172a', border: '1px solid #475569', borderRadius: 5, padding: 3, boxShadow: '0 4px 14px rgba(0,0,0,.45)' }}>
+              {BOARD_EXPORTS.map((entry) => (
+                <button key={entry.id} data-board-export-format={entry.id}
+                  onClick={() => doExport(entry)}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '5px 8px', background: 'none', border: 0, color: '#cbd5e1', fontFamily: 'monospace', fontSize: 11, cursor: 'pointer' }}>
+                  {/^de/i.test(lang) ? entry.labelDe : entry.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </span>
+      </div>
+      <div style={{ position: 'relative' }}>
+        <TransferReport report={report} lang={lang} onClose={() => setReport(null)} />
       </div>
       {showFindings && findings.length > 0 && (
         <div data-board-findings style={{ maxHeight: 140, overflowY: 'auto', background: '#0f172a', border: '1px solid #2c3e50', borderRadius: 6, padding: 6 }}>

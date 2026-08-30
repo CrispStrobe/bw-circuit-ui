@@ -51,6 +51,17 @@ export { runDrc, setExtractors } from './model/drc.js';
 export { generateBom, bomToCsv } from './model/bom.js';
 export { exportGerbers } from './model/exporters/gerber.js';
 
+// Every writer we ship, and the only list a menu may render from. Exporting
+// the REGISTRY rather than eleven functions is the point: a host that adds a
+// format to its own menu by hand is how three of ours went dark.
+// (model/exporters/registry.js carries the measurement.)
+export {
+  CIRCUIT_EXPORTS, BOARD_EXPORTS, ALL_EXPORTS, runExport,
+} from './model/exporters/registry.js';
+export { downloadText, downloadBlob } from './model/exporters/download.js';
+export { svgToPngBlob, exportSvgAsPng } from './model/export-png.js';
+export { IMPORT_FORMATS, importCircuit, getSupportedFormats } from './importers/index.js';
+
 // Machine extraction (wired-bus → bootable config)
 export { extractMachine } from './model/machine-extract.js';
 

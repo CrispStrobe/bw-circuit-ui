@@ -9,13 +9,17 @@
  */
 
 /**
- * Export an SVG element as a PNG download.
+ * Render an SVG element to a PNG Blob.
+ *
+ * Split out of exportSvgAsPng so the export registry has ONE download path
+ * (download.js) rather than one writer that downloads itself and six that
+ * hand back bytes. Browser-only: it needs Canvas 2D and Blob.
+ *
  * @param {SVGElement} svgElement — the canvas SVG
- * @param {string} [filename='circuit.png']
  * @param {number} [scale=2] — resolution multiplier (2 = retina)
- * @returns {Promise<void>}
+ * @returns {Promise<Blob>}
  */
-export async function exportSvgAsPng(svgElement, filename = 'circuit.png', scale = 2) {
+export async function svgToPngBlob(svgElement, scale = 2) {
   const svgClone = svgElement.cloneNode(true);
 
   // Inline computed styles for elements that rely on CSS
@@ -59,12 +63,7 @@ export async function exportSvgAsPng(svgElement, filename = 'circuit.png', scale
       URL.revokeObjectURL(url);
       canvas.toBlob((blob) => {
         if (!blob) { reject(new Error('Failed to create PNG blob')); return; }
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(a.href);
-        resolve();
+        resolve(blob);
       }, 'image/png');
     };
     img.onerror = () => {
@@ -73,4 +72,18 @@ export async function exportSvgAsPng(svgElement, filename = 'circuit.png', scale
     };
     img.src = url;
   });
+}
+
+/**
+ * Render an SVG element to PNG and download it.
+ *
+ * @param {SVGElement} svgElement — the canvas SVG
+ * @param {string} [filename='circuit.png']
+ * @param {number} [scale=2] — resolution multiplier (2 = retina)
+ * @returns {Promise<void>}
+ */
+export async function exportSvgAsPng(svgElement, filename = 'circuit.png', scale = 2) {
+  const blob = await svgToPngBlob(svgElement, scale);
+  const { downloadBlob } = await import('./exporters/download.js');
+  downloadBlob(blob, filename);
 }

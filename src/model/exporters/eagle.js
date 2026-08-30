@@ -101,7 +101,7 @@ const headerFor = (part) => {
  * one — `key(w.from, w.fromTerminal)` on a nested wire keys on
  * "[object Object] undefined", so every endpoint of every wire collapsed
  * into ONE union-find root and the emitted <nets> section came out EMPTY.
- * ExportNetlistMenu passes `circuit.wires`, which Circuit.fromJSON has
+ * The export registry passes `circuit.wires`, which Circuit.fromJSON has
  * already normalized to the NESTED dialect — so "Export → EAGLE" from the
  * running app wrote a schematic with every part floating, silently, for
  * every circuit. Read through the canonical accessor.

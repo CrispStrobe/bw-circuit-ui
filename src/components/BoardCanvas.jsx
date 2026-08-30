@@ -27,8 +27,9 @@ import { DrcOverlay } from './DrcOverlay.jsx';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver, WokwiArduinoUno, WokwiArduinoNano, WokwiArduinoMega } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
-import ExportNetlistMenu from './ExportNetlistMenu.jsx';
-import ImportCircuitMenu from './ImportCircuitMenu.jsx';
+import TransferReport from './TransferReport.jsx';
+import { CIRCUIT_EXPORTS, runExport } from '../model/exporters/registry.js';
+import { IMPORT_FORMATS, importCircuit } from '../importers/index.js';
 
 // DIP chip kinds that get a generic IC body renderer (not a custom SVG).
 // These are discrete retro/logic ICs placed on breadboards — without a
@@ -2723,8 +2724,17 @@ function BreadboardSubstrate({ part }) {
 // Four top-level actions: Load, Save, Import ▸, Export ▸.
 // Format variants live on 2nd-level submenus, never top level.
 // Clear is a destructive op, kept separate at the bottom.
+//
+// Both submenus render from a REGISTRY (CIRCUIT_EXPORTS, IMPORT_FORMATS),
+// never from a list typed here. The hand-typed lists were how three writers
+// went dark and how the "Diagram (.json)" entry came to force a format id
+// that no importer answers to — a button that did nothing, silently, for its
+// whole life. See src/model/exporters/registry.js for the measurement.
+//
+// Everything either path can SAY goes to onReport, which draws it where the
+// user is (TransferReport). Nothing in here writes to the console.
 
-function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, fileAction, onFileActionDone }) {
+function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, onReport, fileAction, onFileActionDone }) {
   const [sub, setSub] = useState(null); // 'import' | 'export' | null
 
   // Respond to main-menu File/ events: open the right submenu
@@ -2744,6 +2754,8 @@ function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, fi
   const fileRef = useRef(null);
   const pendingFormat = useRef(null);
 
+  const say = useCallback((r) => { if (onReport) onReport(r); }, [onReport]);
+
   const handleImportFile = useCallback(async (e) => {
     // Capture the input BEFORE any await: this React pools synthetic
     // events, so past the first await `e.target` is null and the old
@@ -2751,66 +2763,115 @@ function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, fi
     // a pageerror per import; the import itself had already landed, so
     // it looked like a working feature with a crash in the console).
     const input = e.target;
-    const file = input.files?.[0];
-    if (!file || !onImport) return;
-    let text;
-    try { text = await file.text(); } catch { return; }
-    // Auto-detect or use the forced format
-    const { detectFormat } = await import('../importers/detect.js');
-    const { importCircuit } = await import('../importers/index.js');
-    const format = pendingFormat.current || detectFormat(text, file.name);
-    if (!format) return;
-    const r = importCircuit(format, text);
-    if (r.parts.length) onImport({ parts: r.parts, wires: r.wires });
-    // Reset the input BEFORE onDone unmounts the menu (and the input).
-    try { input.value = ''; } catch (err) { /* already unmounted */ }
-    if (onDone) onDone();
-  }, [onImport, onDone]);
+    const picked = [...(input.files || [])];
+    const done = () => {
+      try { input.value = ''; } catch (err) { /* already unmounted */ }
+      if (onDone) onDone();
+    };
+    if (!picked.length || !onImport) { done(); return; }
 
-  const pickImport = (formatId) => {
-    pendingFormat.current = formatId || null;
+    // A .lib is never the thing being imported; it is the symbol library a
+    // KiCad 4/5 schematic needs and does not contain. Without it that
+    // import is every part and not one connection.
+    const libFiles = picked.filter((f) => /\.lib$/i.test(f.name));
+    const file = picked.find((f) => !/\.lib$/i.test(f.name));
+    if (!file) {
+      say({ kind: 'import', title: picked[0].name,
+        error: de ? 'Nur eine Bibliothek gewählt — bitte auch den Schaltplan wählen.'
+          : 'That is only a symbol library — pick the schematic too.' });
+      done(); return;
+    }
+
+    let text; let libs;
+    try {
+      text = await file.text();
+      libs = await Promise.all(libFiles.map((f) => f.text()));
+    } catch (err) {
+      say({ kind: 'import', title: file.name, error: String((err && err.message) || err) });
+      done(); return;
+    }
+
+    // detectFormat stays lazy (it is only needed on the auto-detect path);
+    // importCircuit does not, because IMPORT_FORMATS already pulls its
+    // module in statically and the dynamic import bought a second chunk
+    // reference for nothing.
+    const { detectFormat } = await import('../importers/detect.js');
+    const format = pendingFormat.current || detectFormat(text, file.name);
+    if (!format) {
+      // The silent no-op, made audible. detectFormat returning null used to
+      // end the function with no trace at all.
+      say({ kind: 'import', title: file.name,
+        error: de ? 'Format nicht erkannt — bitte oben ein Format auswählen.'
+          : 'Could not recognise this file — pick a format from the menu instead.' });
+      done(); return;
+    }
+
+    const r = importCircuit(format, text, libs.length ? { lib: libs } : {});
+    // Load even when some components were unmapped: a partial import is
+    // useful as long as the gap is stated. Nothing is loaded if NOTHING
+    // mapped, because that is a failed import wearing a success's clothes.
+    if (r.parts.length) onImport({ parts: r.parts, wires: r.wires });
+    say({
+      kind: 'import',
+      title: file.name,
+      summary: de
+        ? `${r.parts.length} Bauteile, ${r.wires.length} Verbindungen (${format})`
+        : `${r.parts.length} parts, ${r.wires.length} connections (${format})`,
+      error: r.parts.length ? null
+        : (de ? 'Nichts importiert.' : 'Nothing was imported.'),
+      skipped: (r.unmapped || []).map((u) => `${u.ref}: ${u.libsource || u.value || '?'}`),
+      warnings: r.warnings || [],
+      instructions: r.needsLibrary
+        ? (de ? 'Ohne die -cache.lib des Projekts konnten keine Verbindungen '
+            + 'aufgelöst werden — bitte .sch und .lib zusammen wählen.'
+          : 'Without the project\'s -cache.lib no connections could be resolved '
+            + '— pick the .sch and the .lib together.')
+        : null,
+    });
+    done();
+  }, [onImport, onDone, say, de]);
+
+  const pickImport = (fmt) => {
+    pendingFormat.current = fmt.id || null;
     if (fileRef.current) {
-      fileRef.current.accept = formatId
-        ? { eagle: '.sch', kicad: '.net,.xml', json: '.json' }[formatId] || '*'
-        : '.sch,.net,.xml,.json';
+      fileRef.current.accept = fmt.accept || '*';
+      fileRef.current.multiple = !!fmt.lib;
       fileRef.current.click();
     }
   };
 
-  // Export uses the existing logic from ExportNetlistMenu.
-  const handleExport = useCallback(async (formatId) => {
+  const handleExport = useCallback(async (entry) => {
     if (!circuit) return;
-    const { extractNetlist } = await import('../model/netlist.js');
-    const { downloadText } = await import('../model/exporters/download.js');
-    const netlist = extractNetlist(circuit);
-    switch (formatId) {
-      case 'spice': {
-        const { toSpice } = await import('../model/exporters/spice.js');
-        const { text } = toSpice(netlist);
-        downloadText(text, 'circuit.cir');
-        break;
+    // The registry is already here (CIRCUIT_EXPORTS renders the menu); only
+    // the DOM-touching download helpers are worth deferring.
+    const { downloadText, downloadBlob } = await import('../model/exporters/download.js');
+    try {
+      const { files, report } = await runExport(entry, {
+        circuit,
+        svgElement: document.querySelector('[data-canvas] svg'),
+      });
+      for (const f of files) {
+        if (f.blob) downloadBlob(f.blob, f.name);
+        else downloadText(f.text, f.name, f.mime);
       }
-      case 'kicad': {
-        const { toKicadNet } = await import('../model/exporters/kicad.js');
-        downloadText(toKicadNet(netlist), 'circuit.net');
-        break;
+      const skipped = (report.skipped || []).map(String);
+      const warnings = (report.warnings || []).map(String);
+      // Only speak when there is something to say — a clean export of a
+      // clean circuit should not make the user dismiss a panel.
+      if (skipped.length || warnings.length || report.instructions) {
+        say({
+          kind: 'export',
+          title: files.map((f) => f.name).join(', '),
+          summary: de ? `${files.length} Datei(en) gespeichert` : `${files.length} file(s) saved`,
+          skipped, warnings,
+          instructions: report.instructions || null,
+        });
       }
-      case 'easyeda': {
-        const { toEasyEDA } = await import('../model/exporters/easyeda.js');
-        const { text } = toEasyEDA(netlist);
-        downloadText(text, 'circuit-for-easyeda.net');
-        break;
-      }
-      case 'easyeda-native': {
-        const { toEasyEdaSchematic } = await import('../model/exporters/easyeda-schematic.js');
-        const out = toEasyEdaSchematic(circuit);
-        if (out.report.skipped.length) console.warn('EasyEDA export omissions:', out.report.skipped);
-        downloadText(out.text, 'circuit.easyeda.json');
-        break;
-      }
+    } catch (err) {
+      say({ kind: 'export', title: entry.label, error: String((err && err.message) || err) });
     }
     if (onDone) onDone();
-  }, [circuit, onDone]);
+  }, [circuit, onDone, say, de]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -2836,19 +2897,19 @@ function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, fi
             <span style={{ fontSize: 10, color: '#64748b' }}>{sub === 'import' ? '▾' : '▸'}</span>
           </button>
           {sub === 'import' && (
-            <div>
-              <button onClick={() => pickImport(null)} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
-                {de ? 'Datei (automatisch)' : 'File (auto-detect)'}
-              </button>
-              <button onClick={() => pickImport('eagle')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
-                EAGLE schematic (.sch)
-              </button>
-              <button onClick={() => pickImport('kicad')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
-                KiCad netlist (.net/.xml)
-              </button>
-              <button onClick={() => pickImport('json')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
-                Diagram (.json)
-              </button>
+            <div data-import-formats>
+              {IMPORT_FORMATS.map((fmt) => (
+                <button key={fmt.id || 'auto'} data-import-format={fmt.id || 'auto'}
+                  onClick={() => pickImport(fmt)} onMouseEnter={itemHover} onMouseLeave={itemLeave}
+                  style={{ ...subStyle, display: 'block' }}>
+                  {de ? fmt.labelDe : fmt.label}
+                  {fmt.hint && (
+                    <span style={{ display: 'block', fontSize: 10, color: '#64748b' }}>
+                      {de ? fmt.hintDe : fmt.hint}
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
           )}
         </>
@@ -2862,23 +2923,18 @@ function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, fi
             <span style={{ fontSize: 10, color: '#64748b' }}>{sub === 'export' ? '▾' : '▸'}</span>
           </button>
           {sub === 'export' && (
-            <div>
-              <button onClick={() => handleExport('spice')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
-                SPICE (.cir)
-              </button>
-              <button onClick={() => handleExport('kicad')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
-                KiCad Netlist (.net)
-              </button>
-              {/* The NATIVE exporter existed as a handleExport case with no
-                  button reaching it — the round-tripped, thrice-oracled
-                  format was unreachable from the UI while the lossier
-                  via-KiCad path had an entry (owner audit, 2026-08-25). */}
-              <button onClick={() => handleExport('easyeda-native')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
-                {de ? 'EasyEDA-Schaltplan (.json)' : 'EasyEDA schematic (.json)'}
-              </button>
-              <button onClick={() => handleExport('easyeda')} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={subStyle}>
-                {de ? 'EasyEDA (via KiCad-Netzliste)' : 'EasyEDA (via KiCad)'}
-              </button>
+            <div data-export-formats>
+              {/* One button per registry entry, always. The previous version
+                  was a switch with four cases; the NATIVE EasyEDA writer had
+                  a case and no button (owner audit, 2026-08-25) and three
+                  more writers had neither. */}
+              {CIRCUIT_EXPORTS.map((entry) => (
+                <button key={entry.id} data-export-format={entry.id}
+                  onClick={() => handleExport(entry)} onMouseEnter={itemHover} onMouseLeave={itemLeave}
+                  style={{ ...subStyle, display: 'block' }}>
+                  {de ? entry.labelDe : entry.label}
+                </button>
+              ))}
             </div>
           )}
         </>
@@ -2960,6 +3016,10 @@ export function BoardCanvas({
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
+  // What the last import or export had to say. Held HERE, not in FileMenu,
+  // because the ⋯ popover unmounts the menu the moment an action runs and a
+  // report drawn inside it would vanish in the same frame.
+  const [transferReport, setTransferReport] = useState(null);
   // Auto-open the ⋯ menu when a File/ action arrives from the main menu
   React.useEffect(() => {
     if (fileAction) setToolbarMoreOpen(true);
@@ -4046,6 +4106,7 @@ export function BoardCanvas({
               onLoad={onLoadCircuit} onSave={onSaveCircuit}
               onImport={onImport} onClear={onClearCircuit}
               fileAction={fileAction} onFileActionDone={onFileActionDone}
+              onReport={setTransferReport}
               onDone={() => setToolbarMoreOpen(false)}
             />
             <span style={{display: 'block', height: 1, background: '#334155', margin: '4px 0'}} />
@@ -4062,6 +4123,7 @@ export function BoardCanvas({
         data-canvas
         style={{
           position: 'relative',
+          // (the transfer report anchors to this box — see below)
           // A true flex child. The old 'max(100%, 900px)' floor demanded
           // more width than the row could give beside the 190px rail, so
           // the container slid UNDER the rail (87px of every bench hidden
@@ -4671,6 +4733,14 @@ export function BoardCanvas({
             <DrcOverlay warnings={drcWarnings} parts={parts} />
           )}
         </svg>
+
+        {/* What the last import or export had to say, drawn over the canvas
+            because that is where the user is. Before this, an export's
+            skipped-part list and its import instructions went to
+            console.log, and an unrecognised import file produced no trace
+            at all (ROADMAP X0.5 / X0.6 / X0.7). */}
+        <TransferReport report={transferReport} lang={lang}
+          onClose={() => setTransferReport(null)} />
 
         {/* Wokwi element layer — transformed to match SVG viewBox.
             data-wokwi-layer names it because it is also the world->screen

@@ -190,7 +190,8 @@ describe('Wokwi exporter', () => {
         { from: 'r1', fromTerminal: 'b', to: 'led1', toTerminal: 'anode' },
       ],
     };
-    const json = exportWokwi(circuit);
+    const { text: json, skipped } = exportWokwi(circuit);
+    assert.deepEqual(skipped, [], 'both kinds map');
     const parsed = JSON.parse(json);
     assert.equal(parsed.version, 1);
     assert.equal(parsed.parts.length, 2);
@@ -254,7 +255,8 @@ describe('Acceptance: Wokwi multi-part circuit', () => {
   it('round-trips through export and re-import', () => {
     const first = importWokwi(WOKWI_FULL);
     const exported = exportWokwi(first);
-    const second = importWokwi(exported);
+    assert.deepEqual(exported.skipped, [], 'every imported kind maps back');
+    const second = importWokwi(exported.text);
     assert.equal(second.parts.length, first.parts.length);
     assert.equal(second.wires.length, first.wires.length);
     assert.equal(second.unmapped.length, 0);

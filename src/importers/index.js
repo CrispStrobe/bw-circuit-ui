@@ -59,6 +59,57 @@ const IMPORTERS = {
 };
 
 /**
+ * The import menu's entries, in one list.
+ *
+ * The menu used to hold hand-typed format ids, and one of them —
+ * "Diagram (.json)", forcing `pendingFormat = 'json'` — was not a key in
+ * IMPORTERS at all. importCircuit returned `{parts: [], warnings: [...]}`,
+ * the caller checked `r.parts.length` and did nothing, and the entry was a
+ * button that silently did nothing for its whole life (ROADMAP X0.5).
+ *
+ * Rendering the menu from THIS list, whose ids are checked against IMPORTERS
+ * by test/import-reachability.test.js, is why that cannot recur.
+ *
+ * `id: null` means auto-detect. `lib: true` means the format needs a second
+ * file picked alongside (a KiCad 4/5 .sch keeps its pin geometry in a
+ * -cache.lib and cannot be wired without it).
+ */
+export const IMPORT_FORMATS = [
+  { id: null, label: 'File (auto-detect)', labelDe: 'Datei (automatisch)',
+    accept: '.sch,.net,.xml,.json,.kicad_sch,.fz,.fzz,.lib' },
+  { id: 'eagle', label: 'EAGLE schematic (.sch)', labelDe: 'EAGLE-Schaltplan (.sch)',
+    accept: '.sch,.xml' },
+  { id: 'kicad-sch', label: 'KiCad 6+ schematic (.kicad_sch)',
+    labelDe: 'KiCad-6+-Schaltplan (.kicad_sch)', accept: '.kicad_sch' },
+  { id: 'kicad-legacy', label: 'KiCad 4/5 schematic (.sch + -cache.lib)',
+    labelDe: 'KiCad-4/5-Schaltplan (.sch + -cache.lib)', accept: '.sch,.lib', lib: true,
+    hint: 'pick the .sch AND its -cache.lib together',
+    hintDe: 'die .sch UND die -cache.lib zusammen wählen' },
+  { id: 'kicad-netlist', label: 'KiCad netlist (.net/.xml)',
+    labelDe: 'KiCad-Netzliste (.net/.xml)', accept: '.net,.xml' },
+  { id: 'easyeda', label: 'EasyEDA schematic (.json)',
+    labelDe: 'EasyEDA-Schaltplan (.json)', accept: '.json' },
+  { id: 'fritzing', label: 'Breadboard document (.fz)',
+    labelDe: 'Steckbrett-Dokument (.fz)', accept: '.fz,.fzz' },
+  { id: 'wokwi', label: 'Diagram (diagram.json)', labelDe: 'Diagramm (diagram.json)',
+    accept: '.json' },
+];
+
+/**
+ * Registered importers the menu deliberately does NOT offer, each with the
+ * reason. A key leaving this map must gain an IMPORT_FORMATS entry.
+ */
+export const NOT_OFFERED = new Map([
+  ['easyeda-pcb', 'a BOARD document: it returns an empty circuit with a board '
+    + 'model riding along, and the circuit-import callback has nowhere to put '
+    + 'copper. Reached by auto-detect, not chosen from the menu.'],
+  ['easyeda-pro-pcb', 'same: a board, not a schematic.'],
+  ['kicad-pcb', 'same: a board, not a schematic.'],
+  ['easyeda-pro', 'a named refusal for the rest of the Pro family — something '
+    + 'auto-detect resolves to in order to say so, never something to pick.'],
+]);
+
+/**
  * Import a circuit from a foreign format.
  *
  * @param {string} format  One of the registered format keys

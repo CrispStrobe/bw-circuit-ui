@@ -64,9 +64,49 @@ const WOKWI_TO_KIND = {
   'wokwi-breadboard':     'breadboard',
 };
 
+/**
+ * The entries above that are APPROXIMATIONS, not translations.
+ *
+ * Every other importer in this repo states what it could not do faithfully;
+ * this one did the substitutions silently, which is the worse failure. A
+ * diagram naming a DS1307 came back as a DS1302 with no trace, and a
+ * humidity reading taken from a DHT22 came back as a DHT11's — a different
+ * resolution and a different range, presented as the user's own file.
+ *
+ * A substitution here is not a refusal: the part IS placed and the circuit
+ * IS usable. It is a NAMED substitution, so the person who imported the file
+ * knows which of their parts is now standing in for another.
+ */
+const APPROXIMATIONS = {
+  'wokwi-ds1307': {
+    note: 'DS1307 real-time clock imported as a DS1302: the engine models the '
+      + 'DS1302 and the two are not pin- or protocol-compatible (I2C vs 3-wire).',
+  },
+  'wokwi-dht22': {
+    note: 'DHT22 imported as a DHT11: same one-wire interface, different '
+      + 'resolution and range (DHT22 reads -40..80 C at 0.1 C, DHT11 0..50 C at 1 C).',
+  },
+  'wokwi-slide-potentiometer': {
+    note: 'Slide potentiometer imported as a rotary potentiometer: electrically '
+      + 'the same three-terminal divider, drawn and operated differently.',
+  },
+  'wokwi-biaxial-stepper': {
+    note: 'Biaxial stepper imported as a single-shaft stepper: the second axis '
+      + 'has no model here, so only one is simulated.',
+  },
+};
+
+// Two export maps, because a substitution is not a translation and the
+// difference has to survive the trip back out. EXACT wins: `potentiometer`
+// exports as `wokwi-potentiometer`, never as the slide variant that also
+// imports to it. A kind that has ONLY an approximate spelling (dht11 — the
+// element library has no wokwi-dht11, only the DHT22 part both resolutions
+// are drawn with) still exports, and says so in the report.
 const KIND_TO_WOKWI = {};
+const KIND_TO_WOKWI_APPROX = {};
 for (const [wk, kind] of Object.entries(WOKWI_TO_KIND)) {
-  if (!KIND_TO_WOKWI[kind]) KIND_TO_WOKWI[kind] = wk;
+  const target = APPROXIMATIONS[wk] ? KIND_TO_WOKWI_APPROX : KIND_TO_WOKWI;
+  if (!target[kind]) target[kind] = wk;
 }
 
 // ── Wokwi pin name → engine terminal name ────────────────────────
@@ -152,6 +192,16 @@ export function importWokwi(text) {
       if (wp.attrs.color) params.color = wp.attrs.color;
     }
 
+    // A deliberate approximation travels WITH the part (so it survives into
+    // the saved circuit and can be shown next to the part) and is announced
+    // in the import report (so it is seen once, at the moment it happens).
+    const approx = APPROXIMATIONS[wp.type];
+    if (approx) {
+      params._note = approx.note;
+      params._substituted = wp.type;
+      warnings.push(`${wp.id}: ${approx.note}`);
+    }
+
     parts.push({
       id: partId,
       kind,
@@ -204,20 +254,44 @@ function splitWokwiRef(ref) {
 /**
  * Export a circuit to Wokwi diagram.json format.
  *
+ * A kind with no mapping is SKIPPED and named, never invented. The old
+ * exporter wrote `wokwi-${kind.replace(/_/g,'-')}` for anything unmapped,
+ * which produced plausible-looking type names — `wokwi-max232`,
+ * `wokwi-tilevga-card` — that no reader has ever heard of. The import side
+ * of this same file refuses unmapped types loudly; a producer that invents
+ * where its consumer refuses is the asymmetry, and it made the export look
+ * complete when it was not.
+ *
  * @param {{ parts: Array, wires: Array }} circuit
- * @returns {string} JSON string
+ * @returns {{ text: string, skipped: Array<{id: string, kind: string}>,
+ *             substituted: Array<{id: string, kind: string, type: string, note: string}> }}
  */
 export function exportWokwi(circuit) {
-  const parts = (circuit.parts || []).map(p => {
-    const wokwiType = KIND_TO_WOKWI[p.kind] || `wokwi-${p.kind.replace(/_/g, '-')}`;
-    return {
+  const skipped = [];
+  const substituted = [];
+  const kept = new Set();
+  const parts = [];
+  for (const p of (circuit.parts || [])) {
+    const wokwiType = KIND_TO_WOKWI[p.kind] || KIND_TO_WOKWI_APPROX[p.kind];
+    if (!wokwiType) {
+      skipped.push({ id: p.id, kind: p.kind });
+      continue;
+    }
+    if (!KIND_TO_WOKWI[p.kind]) {
+      substituted.push({
+        id: p.id, kind: p.kind, type: wokwiType,
+        note: APPROXIMATIONS[wokwiType].note,
+      });
+    }
+    kept.add(p.id);
+    parts.push({
       type: wokwiType,
       id: p.id,
       top: p.y || 0,
       left: p.x || 0,
       attrs: p.params && Object.keys(p.params).length ? p.params : {},
-    };
-  });
+    });
+  }
 
   // Endpoints through the canonical accessor: the live app holds NESTED
   // wires (Circuit.fromJSON normalizes them), and reading `w.from` raw
@@ -227,6 +301,10 @@ export function exportWokwi(circuit) {
     const f = wireEndpoint(w, 'from');
     const t = wireEndpoint(w, 'to');
     if (!f || !t || isBoardEndpoint(f) || isBoardEndpoint(t)) return [];
+    // A wire onto a part that was skipped would name a part the file does
+    // not contain — a diagram that refuses to load rather than one that is
+    // merely incomplete.
+    if (!kept.has(f.part) || !kept.has(t.part)) return [];
     return [[
       `${f.part}:${f.terminal}`,
       `${t.part}:${t.terminal}`,
@@ -235,5 +313,9 @@ export function exportWokwi(circuit) {
     ]];
   });
 
-  return JSON.stringify({ version: 1, parts, connections }, null, 2);
+  return {
+    text: JSON.stringify({ version: 1, parts, connections }, null, 2),
+    skipped,
+    substituted,
+  };
 }
