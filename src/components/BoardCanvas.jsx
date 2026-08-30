@@ -785,7 +785,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         const W = 48, H = 28;
         const seatK = part.seat ? (3 * BB_PITCH) / W : 1;
         return (
-          <g key={id} transform={xform + (seatK !== 1 ? ` scale(${seatK.toFixed(3)})` : '')} onClick={handleClick} style={{ cursor: 'pointer' }}>
+          <g key={id} data-part-face={kind}
+            transform={xform + (seatK !== 1 ? ` scale(${seatK.toFixed(3)})` : '')}
+            onClick={handleClick} style={{ cursor: 'pointer' }}>
             {/* PCB body */}
             <rect x={-W/2 - 2} y={-H/2 - 2} width={W + 4} height={H + 14} rx={3}
               fill="#0a0a1e" stroke={selStroke || '#3498db'} strokeWidth={1.5} />

@@ -22,6 +22,21 @@ const svgPartsBlock = boardSrc.slice(
   boardSrc.indexOf('function WokwiParts'),
 );
 
+describe('SSD1306 display parity', () => {
+  const start = svgPartsBlock.indexOf("case 'ssd1306':");
+  const block = svgPartsBlock.slice(start, start + 3000);
+
+  test('physical OLED renderer exposes the browser-facing part marker', () => {
+    assert.ok(start >= 0, 'ssd1306 render case');
+    assert.ok(block.includes('data-part-face={kind}'), 'face marker survives rendering');
+  });
+
+  test('physical OLED renderer decodes device framebuffer pixels', () => {
+    assert.ok(block.includes('ds.fb[page * FW + col]'), 'reads live GDDRAM');
+    assert.ok(block.includes('putImageData'), 'paints decoded pixels');
+  });
+});
+
 // ── Bargraph ──────────────────────────────────────────────────────────
 
 describe('bargraph display parity', () => {
