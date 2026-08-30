@@ -196,6 +196,8 @@ const CATEGORIES = [
       { kind: '74hc08', label: '74HC08 AND', params: {}, color: '#9b59b6', tooltip: 'Quad 2-input AND — DIP-14' },
       { kind: '74hc32', label: '74HC32 OR', params: {}, color: '#9b59b6', tooltip: 'Quad 2-input OR — DIP-14' },
       { kind: '74hc86', label: '74HC86 XOR', params: {}, color: '#9b59b6', tooltip: 'Quad 2-input XOR — DIP-14' },
+      { kind: '74c922', label: '74C922 Keypad Encoder', params: {}, color: '#9b59b6',
+        tooltip: '16-key matrix encoder — DIP-18, 4-bit output + data-available strobe' },
       { kind: 'cd4093', label: 'CD4093 NAND', params: {}, color: '#8e44ad', tooltip: 'Quad 2-input Schmitt NAND — CMOS DIP-14' },
     ],
   },

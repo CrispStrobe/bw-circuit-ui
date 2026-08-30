@@ -859,7 +859,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               const ky = -30 + row * (KS + KG);
               const isPressed = pressed === i;
               return (
-                <g key={i}>
+                <g key={i} data-key-index={i}>
                   <rect
                     x={kx} y={ky} width={KS} height={KS} rx={2}
                     fill={isPressed ? '#f39c12' : '#ddd'}
@@ -1422,7 +1422,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             const { w: bodyW, h: bodyH } = dipPackageGeometry(sc);
             return (
               <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
-                data-dip-body={kind} data-dip-label={dipLabel}>
+                data-part-face={kind} data-dip-body={kind} data-dip-label={dipLabel}>
                 {/* DIP package body */}
                 <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={3}
                   fill="#1a1a1a" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.5} />
@@ -2140,7 +2140,7 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             {KP_LABELS.map((lbl, k) => {
               const down = kpPressed === k;
               return (
-                <div key={k}
+                <div key={k} data-key-index={k}
                   // Pointer capture: the press survives the re-render the
                   // engine bump triggers (a mouseleave-based release fired on
                   // React's redraw and released the key instantly — found by

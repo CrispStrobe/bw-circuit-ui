@@ -54,6 +54,12 @@ test('keypad face supports interactive key presses in simulate mode', () => {
   assert.ok(block.includes('simulate'), 'gates interaction on simulate mode');
 });
 
+test('both keypad renderers expose a stable key-index selector', () => {
+  const hooks = boardSrc.match(/data-key-index=\{(?:i|k)\}/g) || [];
+  assert.equal(hooks.length, 2,
+    'SVG keypad and Wokwi keypad each expose their row-major key index');
+});
+
 test('keypad is included in the SvgParts deviceStates gathering', () => {
   const gatherer = boardSrc.slice(boardSrc.indexOf('<SvgParts'));
   assert.ok(gatherer.includes("p.kind === 'keypad'"), 'keypad in deviceStates filter');

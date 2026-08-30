@@ -57,6 +57,15 @@ test('palette placement controls are keyboard-accessible buttons', () => {
   assert.match(paletteSource, /event\.key !== 'Enter' && event\.key !== ' '/);
 });
 
+test('74C922 is placeable and its generic DIP face is browser-addressable', () => {
+  assert.match(paletteSource,
+    /kind: '74c922', label: '74C922 Keypad Encoder'/,
+    'the existing engine-backed sidecar is available from the Logic palette');
+  assert.match(canvasSource,
+    /data-part-face=\{kind\} data-dip-body=\{kind\}/,
+    'generic sidecar-backed DIP faces expose the same stable marker as dedicated faces');
+});
+
 test('owner default keeps instruments collapsed unless debugger or bench needs them', () => {
   assert.match(designerSource, /useState\(!!debuggerOn \|\| !!benchOpen\)/);
   assert.match(designerSource, /if \(debuggerOn \|\| benchOpen\) setRightOpen\(true\)/);
