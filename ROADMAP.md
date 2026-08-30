@@ -15,7 +15,57 @@ referenced where a UI item depends on one.
 
 ## X0 — Fix the exporters we ship (days; do these first)
 
+**Status 2026-08-30 — X0.1, X0.2, X0.3, X0.5, X0.6, X0.7 LANDED.** Every claim
+below was re-measured against the code as it stood at `77ab613` before anything
+was touched; the measurements are in the commit messages and in the header of
+each gate. X0.4 (schematic as a document) is untouched and still open.
+
+| item | verdict | landed | gate |
+|---|---|---|---|
+| X0.1 SPICE decks unsimulatable | confirmed, fixed | `ee0d108` | `scripts/spice-oracle.mjs` (CI job `spice-oracle`, ngspice 42) + `test/spice-deck.test.js` |
+| X0.2 mega/milli suffix | confirmed, fixed | `ee0d108` | `test/spice-deck.test.js` (incl. a corpus sweep property) |
+| X0.3 dead exporters | confirmed — and **seven**, not three | `1397493` | `test/export-reachability.test.js` |
+| X0.4 schematic as a document | **not started** | — | — |
+| X0.5 dead import-menu entry | confirmed, fixed | `1397493` | `test/import-reachability.test.js` |
+| X0.6 silent part substitutions | confirmed, fixed | `1397493` | `test/import-reachability.test.js` |
+| X0.7 console-only instructions | confirmed, and worse than scoped | `1397493` | `test/transfer-report.test.js` |
+
+Numbers worth keeping:
+
+- The VCC/GND rename in `netlist.js` tested `net.id` for the substrings
+  `vcc`/`gnd`. Real engine ids are `net-lgc-2`, `n-bb1-row-12`, `net-7` and can
+  contain neither, so it fired on **zero** circuits. Nets are named by rail
+  **part membership** now.
+- `formatSi` writes 1 MOhm as `1M`; SPICE reads a bare `M` as milli.
+  **19 values** in the shipped corpus (5124 electrical values scanned across
+  `gallery/`, `test/fixtures/` and `../sb3-creator/examples/`) sat at or above
+  1e6 and exported 10^9x too small — all 1 MOhm resistors, in five distinct
+  examples (`arduino-06-knock` across 14 device variants, `pc50-two-stage-rc`,
+  `pc51-series-capacitors`, `pc66-555-langzeit`).
+- Dead writers found by walking `src/` for call sites: `toKicadSch`,
+  `exportWokwi`, `exportSvgAsPng`, `toEagleSch`, `exportGerbers`,
+  `exportKicadPcb`, `exportEasyEdaPcb` — **seven of eleven**. Two whole
+  components, `ExportNetlistMenu.jsx` and `ImportCircuitMenu.jsx`, were
+  imported and never rendered; both are deleted.
+- The oracle's own blind spot, found by mutation: ngspice aliases a node named
+  `gnd` to node 0 as a courtesy, so **removing the ground->0 mapping still
+  passed every numeric comparison**. That is now a structural assertion about
+  the deck rather than a question about what one simulator tolerates.
+
 ### X0.1 SPICE decks are structurally unsimulatable — `src/model/exporters/spice.js`, `src/model/netlist.js`
+
+**LANDED `ee0d108`.** All five scope points done. The deck maps ground to node
+`0` (falling back to the first vsource's negative net, the rule the engine
+itself falls back to), synthesizes `V…_SUPPLY <rail> 0 DC <circuit.vcc>` per
+rail, emits `.op` plus a `.tran` template sized from the lowest declared source
+frequency (10 ms otherwise), names rails by rail-part membership, and splits the
+potentiometer into the two resistors the engine stamps. Each junction gets its
+own `.model` derived from that part's Vf with bw-board's Shockley calibration,
+so the deck carries the same device equations the engine solves.
+`scripts/spice-oracle.mjs` runs six decks through ngspice and compares node by
+node: **6/6, largest disagreement 0.057 %** on a two-junction string. The
+PWL-vs-Shockley gap the deck cannot express is printed every run rather than
+hidden in a tolerance: 2.970 mA vs 3.120 mA on the canonical bench, 4.804 %.
 `extractNetlist` strips `vcc`/`gnd` parts (`POWER_RAILS`, netlist.js:22,100), so the
 deck has **no node 0, no ground, no source, and no analysis directive** — it loads
 and cannot run. Scope:
@@ -35,12 +85,29 @@ tolerance; a deck with no rail parts still exports with a warning naming what is
 missing.
 
 ### X0.2 Mega/milli suffix bug — `src/model/si.js`, netlist value path
+
+**LANDED `ee0d108`.** `formatSpiceValue` lives beside `formatSi`; display
+formatting still says `M` for mega and only the deck path uses the new one.
+`netlist.js` carries `valueNumber` so a serializer never re-parses a
+human-formatted string. Corpus impact measured, not assumed: 19 of 5124.
 `formatSi` emits `M` for 1e6; SPICE reads `M` as milli — a silent 10⁹× error on any
 part ≥ 1 MΩ/1 MH. Emit `MEG` in the SPICE value path (display formatting elsewhere
 keeps `M`). Acceptance: 1 MΩ exports as `1MEG`; 1 mΩ as `1m`; round-trip through the
 oracle simulator's parser confirms magnitudes.
 
 ### X0.3 Wire up the three dead exporters
+
+**LANDED `1397493` — there were seven, not three.** Fixed at the layer that
+makes it un-reopenable rather than by adding menu entries:
+`src/model/exporters/registry.js` is the one list, menus render from it
+(`BoardCanvas` for circuit writers, `BoardPanel` for the three board writers,
+which had no save affordance at all), and it is exported from the package
+barrel so a host cannot hand-maintain a second list either.
+`test/export-reachability.test.js` enumerates the writer modules from the
+FILESYSTEM, so a new file cannot slip past a hand-written list.
+`exportWokwi` no longer invents type names: unmapped kinds are skipped and
+named, a kind whose only spelling is approximate exports and says so, and
+wires onto skipped parts are dropped rather than left dangling.
 `toKicadSch` (`model/exporters/kicad-sch.js` — the only writer producing an openable
 schematic, with lib_symbols, per-rail power symbols, deterministic UUIDs),
 `exportWokwi` (`importers/wokwi.js:208`), and `exportSvgAsPng`
@@ -63,6 +130,15 @@ intact (no CSS-dependent invisibility); PNG matches at 2× scale; both work for 
 246-example corpus via a batch smoke test.
 
 ### X0.5 Import-menu dead entry — `components/BoardCanvas.jsx:2748`
+
+**LANDED `1397493`.** The submenu renders from `IMPORT_FORMATS` in
+`importers/index.js`, whose ids are checked against `IMPORTERS` by
+`test/import-reachability.test.js`; every registered importer is either offered
+or listed in `NOT_OFFERED` with a reason. An unrecognised file, a library
+picked without its schematic, and an import that mapped nothing are all named
+refusals in the report now. The KiCad 4/5 `.sch` + `-cache.lib` pairing, which
+only ever existed in the never-rendered `ImportCircuitMenu`, works from the
+real menu.
 The "Diagram (.json)" entry forces `pendingFormat='json'`, which is not a key in
 `IMPORTERS` — the click silently does nothing. Fix: route the entry through
 `detectFormat` (it resolves the placement-preserving diagram JSON vs the vendor JSON
@@ -71,12 +147,28 @@ no-op. Acceptance: importing a diagram JSON via the explicit menu entry works; a
 garbage `.json` shows the message.
 
 ### X0.6 Silent part substitutions in the diagram-JSON importer — `importers/wokwi.js:24-63`
+
+**LANDED `1397493`.** All four approximations carry a `_note` naming both
+sides plus `_substituted` (the original type), and each raises a warning the
+report shows. A faithful mapping carries no note, so the notice means
+something. The gate reads the `APPROXIMATIONS` table out of the source and
+requires every entry in it to produce a note — a new one cannot be added
+silently.
 Deliberate approximations (RTC chip, humidity sensor, slide pot, stepper variant)
 carry no `_note`/warning, violating the policy every other importer follows. Add
 `_note` params and warnings for every approximating map entry. Acceptance: importing
 a file containing each substituted type yields a visible warning naming both sides.
 
 ### X0.7 Instructions that never reach the user — `model/exporters/easyeda.js`, `ExportNetlistMenu.jsx:86`
+
+**LANDED `1397493`.** Worse than scoped: besides the EasyEDA instructions,
+SPICE's skipped-part list, EAGLE's warnings and the native-EasyEDA omissions
+all went to the console, and `BoardCanvas`'s own handler did not even
+destructure `instructions`. `components/TransferReport.jsx` draws all of it
+over the canvas — deliberately outside the `⋯` popover, which unmounts the
+menu the moment an action runs. `test/transfer-report.test.js` forbids
+`console.log`/`console.warn` anywhere under `src/importers/` or
+`src/model/exporters/`, which is the grep-able acceptance the item asked for.
 The via-netlist export's import instructions go to `console.log`. Show them in the
 UI (post-export dialog or expandable note). Acceptance: instructions render; no
 console-only user guidance remains in the export paths (grep-able).
@@ -91,6 +183,10 @@ implementations** of these formats. New format knowledge sources get a row in
 `THIRD-PARTY.md` in the same commit.
 
 ### X1.1 SPICE netlist importer — new `importers/spice.js`
+
+**Prerequisite met:** the X0 half is landed and green, and `toSpice` now emits
+decks a real simulator runs, so the round-trip acceptance has something real to
+round-trip against. Not started.
 The universal bridge: the closed schematic tools all export SPICE netlists even
 though their native formats are closed or undocumented — one importer covers them
 all without naming any of them. Scope (v1): title line, continuation `+` lines,
