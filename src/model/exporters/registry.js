@@ -51,6 +51,7 @@ import { exportEasyEdaPcb } from './easyeda-pcb.js';
 import { exportGerbers } from './gerber.js';
 import { exportWokwi } from '../../importers/wokwi.js';
 import { renderSchematicSvg } from '../schematic-svg.js';
+import { toCircuitikz } from './circuitikz.js';
 
 /**
  * The schematic as a document — X0.4.
@@ -84,6 +85,18 @@ function schematicDocument(circuit) {
 
 /** Formats that describe the CIRCUIT (schematic, netlist, picture). */
 export const CIRCUIT_EXPORTS = [
+  {
+    id: 'circuitikz',
+    label: 'LaTeX schematic (.tex)', labelDe: 'LaTeX-Schaltplan (.tex)',
+    needs: 'circuit',
+    run: ({ circuit }) => {
+      const {text, warnings, substituted, unsupported} = toCircuitikz(circuit);
+      return {
+        files: [{name: 'schematic.tex', text, mime: 'text/x-tex'}],
+        report: {warnings, substituted, skipped: unsupported},
+      };
+    },
+  },
   {
     id: 'spice',
     label: 'SPICE deck (.cir)', labelDe: 'SPICE-Netzliste (.cir)',

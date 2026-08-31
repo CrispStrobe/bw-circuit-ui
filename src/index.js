@@ -50,6 +50,7 @@ export { MediaPanel } from './components/MediaPanel.jsx';
 export { runDrc, setExtractors } from './model/drc.js';
 export { generateBom, bomToCsv } from './model/bom.js';
 export { exportGerbers } from './model/exporters/gerber.js';
+export { toCircuitikz, escapeTex } from './model/exporters/circuitikz.js';
 
 // Every writer we ship, and the only list a menu may render from. Exporting
 // the REGISTRY rather than eleven functions is the point: a host that adds a
