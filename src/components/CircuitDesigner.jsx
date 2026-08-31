@@ -40,7 +40,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { BoardCanvas } from './BoardCanvas.jsx';
+import { BoardCanvas, FileMenu } from './BoardCanvas.jsx';
 import { PartPalette } from './PartPalette.jsx';
 import { InferPanel } from './InferPanel.jsx';
 import { ExamplesBrowser } from './ExamplesBrowser.jsx';
@@ -51,6 +51,7 @@ import { ScopePanel } from './ScopePanel.jsx';
 import { SweepPanel } from './SweepPanel.jsx';
 import { SchematicPanel } from './SchematicPanel.jsx';
 import BoardPanel from './BoardPanel.jsx';
+import TransferReport from './TransferReport.jsx';
 import { useCircuit } from '../hooks/useCircuit.js';
 import { useBoard } from '../hooks/useBoard.js';
 import { inferCircuit } from '../model/inference.js';
@@ -1036,6 +1037,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // For import/export, set fileAction state so BoardCanvas opens the
   // format-picker submenu.
   const [fileAction, setFileAction] = useState(null);
+  const [hostTransferReport, setHostTransferReport] = useState(null);
   useEffect(() => {
     const handler = (e) => {
       const action = e.detail?.action;
@@ -1460,8 +1462,6 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onSaveCircuit={handleSave}
           onClearCircuit={handleClear}
           onImport={handleLoad}
-          fileAction={fileAction}
-          onFileActionDone={() => setFileAction(null)}
           onLoadCircuit={() => {
             const input = document.createElement('input');
             input.type = 'file';
@@ -1506,6 +1506,29 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             The bottom triangle is gone — all findings surface in the top-row
             count-badged chip with its popover listing. */}
       </div>
+
+      {/* Host File-menu commands must outlive the selected circuit view.
+          BoardCanvas is absent in Schematic and Board view, so keeping this
+          picker inside it made an export event a silent, deferred no-op. */}
+      {fileAction && (
+        <div data-host-file-command role="dialog" aria-label="Circuit file formats"
+          onPointerDown={e => { if (e.target === e.currentTarget) setFileAction(null); }}
+          style={{position: 'fixed', inset: 0, zIndex: 1000, display: 'grid', placeItems: 'center',
+            background: 'rgba(2,6,23,.62)'}}>
+          <div data-export-formats style={{minWidth: 280, maxHeight: '80vh', overflowY: 'auto',
+            padding: 8, border: '1px solid #64748b', borderRadius: 6,
+            background: '#0f172a', boxShadow: '0 12px 36px rgba(0,0,0,.5)'}}>
+            <FileMenu circuit={circuit} lang={lang}
+              onLoad={handleLoad} onSave={handleSave} onImport={handleLoad}
+              onClear={handleClear} fileAction={fileAction}
+              onFileActionDone={() => {}}
+              onReport={setHostTransferReport}
+              onDone={() => setFileAction(null)} />
+          </div>
+        </div>
+      )}
+      <TransferReport report={hostTransferReport} lang={lang}
+        onClose={() => setHostTransferReport(null)} />
 
       {/* Right sidebar — collapsible */}
       {rightOpen ? (

@@ -2736,7 +2736,7 @@ function BreadboardSubstrate({ part }) {
 // Everything either path can SAY goes to onReport, which draws it where the
 // user is (TransferReport). Nothing in here writes to the console.
 
-function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, onReport, fileAction, onFileActionDone }) {
+export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onDone, onReport, fileAction, onFileActionDone }) {
   const [sub, setSub] = useState(null); // 'import' | 'export' | null
 
   // Respond to main-menu File/ events: open the right submenu
