@@ -60,6 +60,8 @@ import {
 import {
   formatHz, peakBin, seriesFromScopeData, spectrum, spectrumToCsv, thd,
 } from '../model/fft.js';
+import { scopeTracesToCsv } from '../model/scope-csv.js';
+import { downloadText } from '../model/exporters/download.js';
 
 const CHANNEL_COLORS = ['#2ecc71', '#3498db'];
 const W = 260;
@@ -336,6 +338,24 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
     } catch { setSpecCopied(csv); }
   }, [spectra, lang]);
 
+  const spectrumCsv = useCallback(() => spectra.filter(s => s.spec)
+    .map(s => `# net=${s.netId}\n${spectrumToCsv(s.spec)}`).join('\n'), [spectra]);
+
+  const downloadSpectrumCsv = useCallback(() => {
+    const csv = spectrumCsv();
+    if (csv) downloadText(csv, 'scope-spectrum.csv', 'text/csv');
+  }, [spectrumCsv]);
+
+  const downloadTraceCsv = useCallback(() => {
+    if (!board) return;
+    const traces = channels.map(c => {
+      try { return { netId: c.netId, data: board.getScopeData(c.handle) }; }
+      catch { return { netId: c.netId, data: null }; }
+    });
+    const csv = scopeTracesToCsv(traces);
+    if (csv) downloadText(csv, 'scope-trace.csv', 'text/csv');
+  }, [board, channels]);
+
   const timeLabel = (() => {
     if (!board || channels.length === 0) return '';
     try {
@@ -542,10 +562,16 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
             </div>
           ))}
           {spectra.some(s => s.spec) && (
-            <button onClick={copySpectrumCsv} data-testid="bw-scope-spectrum-csv" style={{
-              marginTop: 5, padding: '3px 6px', background: '#0d1420', border: '1px solid #2c3e50',
-              borderRadius: 3, color: '#5d6d7e', fontFamily: 'monospace', fontSize: 9, cursor: 'pointer',
-            }}>{t('scopeSpectrumCsv', lang)}</button>
+            <div style={{ display: 'flex', gap: 4, marginTop: 5 }}>
+              <button onClick={copySpectrumCsv} data-testid="bw-scope-spectrum-csv" style={{
+                flex: 1, padding: '3px 6px', background: '#0d1420', border: '1px solid #2c3e50',
+                borderRadius: 3, color: '#5d6d7e', fontFamily: 'monospace', fontSize: 9, cursor: 'pointer',
+              }}>{t('scopeSpectrumCsv', lang)}</button>
+              <button onClick={downloadSpectrumCsv} data-testid="bw-scope-spectrum-csv-download" style={{
+                flex: 1, padding: '3px 6px', background: '#0d1420', border: '1px solid #2c3e50',
+                borderRadius: 3, color: '#5d6d7e', fontFamily: 'monospace', fontSize: 9, cursor: 'pointer',
+              }}>{lang === 'de' ? '⇩ CSV speichern' : '⇩ Download CSV'}</button>
+            </div>
           )}
           {specCopied && <div style={{ color: '#5d6d7e', fontSize: 8, whiteSpace: 'pre-wrap', maxHeight: 80, overflowY: 'auto' }}>{specCopied}</div>}
           <div style={{ marginTop: 4, color: '#556', fontSize: 8 }}>{t('scopeSpectrumFoot', lang)}</div>
@@ -591,6 +617,13 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
         )}
         <span style={{ marginLeft: 'auto' }}>{timeLabel}</span>
       </div>
+      {view === 'time' && channels.length > 0 && (
+        <button onClick={downloadTraceCsv} data-testid="bw-scope-trace-csv-download" style={{
+          width: '100%', marginTop: 5, padding: '3px 6px', background: '#0d1420',
+          border: '1px solid #2c3e50', borderRadius: 3, color: '#5d6d7e',
+          fontFamily: 'monospace', fontSize: 9, cursor: 'pointer',
+        }}>{lang === 'de' ? '⇩ Kurvendaten als CSV' : '⇩ Download trace CSV'}</button>
+      )}
       {view === 'time' && <div style={{ marginTop: '5px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>{t('scopeCursors', lang)}</span>

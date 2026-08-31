@@ -20,6 +20,7 @@ import { getEngine } from '../engine.js';
 import { listSweepSources, netOfTerminal } from '../model/sweep-runner.js';
 import { runSweepAsync } from '../model/sweep-session.js';
 import { bodeAxisLabels, formatDb, formatHz, regionPhrase, regionSummary, rowIsLinear, sweepRowsToCsv, thinRows } from '../model/sweep-readout.js';
+import { downloadText } from '../model/exporters/download.js';
 
 /**
  * The two ways to answer "what does this circuit do to a sine", named for what
@@ -261,6 +262,11 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
     } catch { setCopied(csv); }
   }, [rows, mode, de]);
 
+  const downloadCsv = useCallback(() => {
+    downloadText(sweepRowsToCsv(rows, mode),
+      mode === 'vi' ? 'sweep-vi.csv' : 'sweep-bode.csv', 'text/csv');
+  }, [rows, mode]);
+
   const sel = { width: '100%', background: '#0d1420', color: '#aab', border: '1px solid #2c3e50', borderRadius: 3, fontFamily: 'monospace', fontSize: 10, padding: 2 };
   const num = { ...sel, width: 60 };
   const lbl = { color: '#5d6d7e', fontFamily: 'monospace', fontSize: 9 };
@@ -416,9 +422,14 @@ export function SweepPanel({ board, nets = [], lang = 'en' }) {
       )}
 
       {rows.length > 0 && (
-        <button onClick={copyCsv} style={{ padding: '3px 6px', background: '#0d1420', border: '1px solid #2c3e50', borderRadius: 3, color: '#5d6d7e', fontFamily: 'monospace', fontSize: 9 }} data-testid="bw-sweep-csv">
-          {de ? `⧉ Alle ${rows.length} Punkte als CSV` : `⧉ All ${rows.length} points as CSV`}
-        </button>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={copyCsv} style={{ flex: 1, padding: '3px 6px', background: '#0d1420', border: '1px solid #2c3e50', borderRadius: 3, color: '#5d6d7e', fontFamily: 'monospace', fontSize: 9 }} data-testid="bw-sweep-csv">
+            {de ? `⧉ ${rows.length} Punkte kopieren` : `⧉ Copy ${rows.length} points`}
+          </button>
+          <button onClick={downloadCsv} style={{ flex: 1, padding: '3px 6px', background: '#0d1420', border: '1px solid #2c3e50', borderRadius: 3, color: '#5d6d7e', fontFamily: 'monospace', fontSize: 9 }} data-testid="bw-sweep-csv-download">
+            {de ? '⇩ CSV speichern' : '⇩ Download CSV'}
+          </button>
+        </div>
       )}
       {copied && <div style={{ color: '#5d6d7e', fontFamily: 'monospace', fontSize: 8, whiteSpace: 'pre-wrap', maxHeight: 80, overflowY: 'auto' }}>{copied}</div>}
 

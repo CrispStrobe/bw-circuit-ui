@@ -18,6 +18,7 @@ import { join } from 'node:path';
 import {
   formatHz, bodeAxisLabels, regionSummary, thinRows, sweepRowsToCsv,
 } from '../src/model/sweep-readout.js';
+import { downloadText } from '../src/model/exporters/download.js';
 
 // The pc50-two-stage-rc response, measured through bw-board and quoted by
 // signals-bode-sweep. Used as the fixture because it is what a learner reads.
@@ -30,6 +31,36 @@ const PC50 = [
 ];
 
 describe('sweep readout', () => {
+  it('the shared path downloads exact UTF-8 CSV bytes under the requested name', async () => {
+    const oldDocument = globalThis.document;
+    const oldUrl = globalThis.URL;
+    const calls = [];
+    const anchor = { click: () => calls.push('click') };
+    globalThis.document = {
+      createElement: tag => { assert.equal(tag, 'a'); return anchor; },
+      body: {
+        appendChild: value => { assert.equal(value, anchor); calls.push('append'); },
+        removeChild: value => { assert.equal(value, anchor); calls.push('remove'); },
+      },
+    };
+    let blob;
+    globalThis.URL = {
+      createObjectURL: value => { blob = value; return 'blob:csv-proof'; },
+      revokeObjectURL: value => calls.push(`revoke:${value}`),
+    };
+    try {
+      downloadText('f_hz,mag_db\n⅓,-0.14285714285714285', 'sweep-bode.csv', 'text/csv');
+      assert.equal(anchor.href, 'blob:csv-proof');
+      assert.equal(anchor.download, 'sweep-bode.csv');
+      assert.equal(blob.type, 'text/csv;charset=utf-8');
+      assert.equal(await blob.text(), 'f_hz,mag_db\n⅓,-0.14285714285714285');
+      assert.deepEqual(calls, ['append', 'click', 'remove', 'revoke:blob:csv-proof']);
+    } finally {
+      globalThis.document = oldDocument;
+      globalThis.URL = oldUrl;
+    }
+  });
+
   it('says a frequency in the unit a reader would say it in', () => {
     assert.equal(formatHz(0.159155), '159 mHz');
     assert.equal(formatHz(15.9155), '15.9 Hz');
@@ -99,6 +130,9 @@ describe('sweep readout', () => {
     assert.match(src, /bodeAxisLabels\(rows\)/, 'drawBode labels its axis from the measured rows');
     assert.match(src, /data-testid="bw-sweep-readout"/, 'the numeric table is rendered');
     assert.match(src, /data-testid="bw-sweep-csv"/, 'the export is reachable');
+    assert.match(src, /data-testid="bw-sweep-csv-download"/, 'the CSV is downloadable, not clipboard-only');
+    assert.match(src, /downloadText\(sweepRowsToCsv\(rows, mode\)/,
+      'the download must use the same full-precision rows as copy and the table');
     assert.match(src, /setRows\(result\.rows\)/, 'the measured rows are kept, not discarded after drawing');
     // Both Bode methods are OFFERED and both are NAMED for what they are.
     // The control used to be one checkbox reading "measure like a scope would

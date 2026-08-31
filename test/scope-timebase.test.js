@@ -26,8 +26,29 @@ import { join } from 'node:path';
 import {
   SCOPE_DEPTH, SCOPE_RATES, formatSeconds, rateLabel, rateForSpan, recordSeconds,
 } from '../src/model/scope-timebase.js';
+import { scopeTraceToCsv, scopeTracesToCsv } from '../src/model/scope-csv.js';
 
 describe('scope timebase', () => {
+  it('exports wrapped rings oldest-first and names envelope versus sample truthfully', () => {
+    const envelope = scopeTraceToCsv({
+      samples: Float64Array.from([30, 31, 40, 41, 10, 11, 20, 21]),
+      count: 4, writeIndex: 2, sampleIntervalNs: 250_000, capture: 'envelope',
+    }, 'rail\nunsafe');
+    assert.equal(envelope,
+      '# net=rail unsafe capture=envelope sampleIntervalNs=250000 points=4\n' +
+      'elapsed_seconds,min_volts,max_volts\n' +
+      '0,10,11\n0.00025,20,21\n0.0005,30,31\n0.00075,40,41');
+
+    const sampled = scopeTraceToCsv({
+      samples: Float64Array.from([1 / 3, 1 / 3, NaN, NaN]),
+      count: 2, writeIndex: 0, sampleIntervalNs: 1_000_000, capture: 'sample',
+    }, 'sense');
+    assert.match(sampled, /capture=sample/);
+    assert.match(sampled, /elapsed_seconds,volts\n0,0\.3333333333333333\n0\.001,NaN$/);
+    assert.ok(!sampled.includes('min_volts'), 'a sampled series must not claim envelope extrema');
+    assert.equal(scopeTracesToCsv([{ netId: 'a', data: null }]), '');
+  });
+
   it('a rate and a depth give a record length', () => {
     assert.equal(recordSeconds(100_000, 8192), 8192 / 100_000);
     assert.equal(recordSeconds(1_000, 8192), 8.192);
@@ -99,5 +120,11 @@ describe('scope timebase', () => {
     // rebuild them. Without this the control would move the label and nothing else.
     assert.match(src, /\}, \[board, sampleRateHz\]\);/,
         'the re-attach effect does not depend on the rate');
+    assert.match(src, /data-testid="bw-scope-trace-csv-download"/,
+      'the time-domain trace has no real download control');
+    assert.match(src, /data-testid="bw-scope-spectrum-csv-download"/,
+      'the spectrum has no real download control');
+    assert.match(src, /downloadText\(csv, 'scope-trace\.csv', 'text\/csv'\)/,
+      'the trace button does not download the measured CSV');
   });
 });
