@@ -70,6 +70,7 @@ const NOT_IN_CI = new Map([
   // and the invariant below makes the whole class impossible.
   ['test/mcu-device-label.test.js', 'launches a browser'],
   ['test/pendant-attiny88.test.js', 'launches a browser'],
+  ['test/export-views.test.js', 'launches a browser'],
 ]);
 
 /**

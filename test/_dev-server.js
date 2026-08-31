@@ -43,6 +43,7 @@ export const PORTS = {
   'mcu-device-label': 3194,
   'serial-console': 3195,
   'pendant-attiny88': 3196,
+  'export-views': 3197,
 };
 
 {

@@ -16,7 +16,7 @@
     "test:a2": "node --test test/a2-board-preset.test.mjs",
     "test:boards": "node --test test/file-command-owner.test.js test/pybadge-board.test.js test/board-face-license.test.js test/board-geometry.test.js test/seat-example-boards.test.js test/controller-seat-migration.test.js test/part-placement-size.test.js",
     "test:render": "node --test test/interaction-rendering-regressions.test.js test/schematic-electrical-correspondence.test.js test/schematic-rendered-netlist.test.js",
-    "test:browser": "node --test test/debug-status.test.js test/e2e.test.js test/rendering.test.js test/snapshot-render.test.js test/faces.test.js test/serial-console.test.js test/snapshot-drop.test.js test/tilevga-face.test.js test/vdp-keyboard.test.js test/mcu-device-label.test.js test/pendant-attiny88.test.js",
+    "test:browser": "node --test test/debug-status.test.js test/e2e.test.js test/rendering.test.js test/snapshot-render.test.js test/faces.test.js test/serial-console.test.js test/snapshot-drop.test.js test/tilevga-face.test.js test/vdp-keyboard.test.js test/mcu-device-label.test.js test/pendant-attiny88.test.js test/export-views.test.js",
     "test:all": "npm run test:a2 && npm run test:boards && npm test && npm run test:render",
     "verify:interaction": "node scripts/verify-interaction.mjs",
     "verify:rendering": "node scripts/verify-rendering-regressions.mjs",
