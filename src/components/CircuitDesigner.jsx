@@ -260,7 +260,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [loaderNote, setLoaderNote] = useState(null); // Machine Loader feedback line
 
   // Detect retro CPU on the board for the Build Machine action
-  const hasRetroCpu = parts.some(p => p.kind === 'w65c02' || p.kind === 'z80');
+  const hasRetroCpu = parts.some(p => p.kind === 'w65c02' || p.kind === 'z80'
+    || p.kind === 'i8086' || p.kind === '8086' || p.kind === 'i8088' || p.kind === '8088');
   useEffect(() => {
     // Machine-class examples need Build Machine and their program loader,
     // both of which live in Instruments. This is a contextual exception to
@@ -286,6 +287,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const extractors = {
       extract6502Machine: eng.extract6502Machine,
       extractZ80Machine: eng.extractZ80Machine,
+      extract8086Machine: eng.extract8086Machine,
     };
 
     const result = extractMachine(flatCircuit, extractors);

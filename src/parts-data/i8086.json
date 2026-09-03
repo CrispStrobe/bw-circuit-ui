@@ -1,0 +1,209 @@
+{
+  "kind": "i8086",
+  "w": 80,
+  "h": 111,
+  "terminals": [
+    {
+      "name": "a0",
+      "x": 0,
+      "y": 8
+    },
+    {
+      "name": "a1",
+      "x": 0,
+      "y": 13
+    },
+    {
+      "name": "a2",
+      "x": 0,
+      "y": 18
+    },
+    {
+      "name": "a3",
+      "x": 0,
+      "y": 23
+    },
+    {
+      "name": "a4",
+      "x": 0,
+      "y": 28
+    },
+    {
+      "name": "a5",
+      "x": 0,
+      "y": 33
+    },
+    {
+      "name": "a6",
+      "x": 0,
+      "y": 38
+    },
+    {
+      "name": "a7",
+      "x": 0,
+      "y": 43
+    },
+    {
+      "name": "a8",
+      "x": 0,
+      "y": 48
+    },
+    {
+      "name": "a9",
+      "x": 0,
+      "y": 53
+    },
+    {
+      "name": "a10",
+      "x": 0,
+      "y": 58
+    },
+    {
+      "name": "a11",
+      "x": 0,
+      "y": 63
+    },
+    {
+      "name": "a12",
+      "x": 0,
+      "y": 68
+    },
+    {
+      "name": "a13",
+      "x": 0,
+      "y": 73
+    },
+    {
+      "name": "a14",
+      "x": 0,
+      "y": 78
+    },
+    {
+      "name": "a15",
+      "x": 0,
+      "y": 83
+    },
+    {
+      "name": "a16",
+      "x": 0,
+      "y": 88
+    },
+    {
+      "name": "a17",
+      "x": 0,
+      "y": 93
+    },
+    {
+      "name": "a18",
+      "x": 0,
+      "y": 98
+    },
+    {
+      "name": "a19",
+      "x": 0,
+      "y": 103
+    },
+    {
+      "name": "d0",
+      "x": 80,
+      "y": 103
+    },
+    {
+      "name": "d1",
+      "x": 80,
+      "y": 98
+    },
+    {
+      "name": "d2",
+      "x": 80,
+      "y": 93
+    },
+    {
+      "name": "d3",
+      "x": 80,
+      "y": 88
+    },
+    {
+      "name": "d4",
+      "x": 80,
+      "y": 83
+    },
+    {
+      "name": "d5",
+      "x": 80,
+      "y": 78
+    },
+    {
+      "name": "d6",
+      "x": 80,
+      "y": 73
+    },
+    {
+      "name": "d7",
+      "x": 80,
+      "y": 68
+    },
+    {
+      "name": "mio",
+      "x": 80,
+      "y": 63
+    },
+    {
+      "name": "rdb",
+      "x": 80,
+      "y": 58
+    },
+    {
+      "name": "wrb",
+      "x": 80,
+      "y": 53
+    },
+    {
+      "name": "ale",
+      "x": 80,
+      "y": 48
+    },
+    {
+      "name": "clk",
+      "x": 80,
+      "y": 43
+    },
+    {
+      "name": "reset",
+      "x": 80,
+      "y": 38
+    },
+    {
+      "name": "ready",
+      "x": 80,
+      "y": 33
+    },
+    {
+      "name": "intr",
+      "x": 80,
+      "y": 28
+    },
+    {
+      "name": "nmi",
+      "x": 80,
+      "y": 23
+    },
+    {
+      "name": "intab",
+      "x": 80,
+      "y": 18
+    },
+    {
+      "name": "gnd",
+      "x": 80,
+      "y": 13
+    },
+    {
+      "name": "vcc",
+      "x": 80,
+      "y": 8
+    }
+  ],
+  "variants": null,
+  "_note": "Intel 8086 CPU. DIP-40. SIMPLIFIED TEACHING PART presenting de-multiplexed address a0-a19 and M/IO# (mio) — the extractor reads exactly these. The real 8086 multiplexes AD0-AD15/A16-A19 behind ALE and needs a 74LS373 latch; that realism is a bw-board E6 roadmap lesson, not this part. d0-d7 shown as the wiring data stub."
+}
