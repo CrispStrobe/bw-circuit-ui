@@ -262,7 +262,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [loaderNote, setLoaderNote] = useState(null); // Machine Loader feedback line
 
   // Detect retro CPU on the board for the Build Machine action
-  const hasRetroCpu = parts.some(p => p.kind === 'w65c02' || p.kind === 'z80');
+  const hasRetroCpu = parts.some(p => p.kind === 'w65c02' || p.kind === 'z80'
+    || p.kind === 'i8086' || p.kind === '8086' || p.kind === 'i8088' || p.kind === '8088');
   useEffect(() => {
     // Machine-class examples need Build Machine and their program loader,
     // both of which live in Instruments. This is a contextual exception to
@@ -288,6 +289,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const extractors = {
       extract6502Machine: eng.extract6502Machine,
       extractZ80Machine: eng.extractZ80Machine,
+      extract8086Machine: eng.extract8086Machine,
     };
 
     const result = extractMachine(flatCircuit, extractors);
@@ -1690,7 +1692,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
               // W65C02 bench — matching only '6502' here left the 6502 loader
               // with zero presets on deploy (owner report, 2038790).
               const kind = (machineResult.kind === 'eater6502' || machineResult.kind === '6502') ? 'eater6502'
-                : machineResult.kind === 'z80' ? 'z80' : null;
+                : machineResult.kind === 'z80' ? 'z80'
+                : machineResult.kind === 'i8086' ? 'i8086' : null;
               // Each preset names its SLOT (machine-media routing) and its
               // boot PROFILE — the machine shape the image was built for.
               // Tali Forth is a py65mon build and MS BASIC an Eater-map/ACIA
@@ -1717,12 +1720,47 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                 // actually wires.
                 { id: 'mirror', label: 'Switch Mirror', rom: 'z80-mirror.bin', slot: 'rom',
                   hint: 'Mirrors the DIP switches onto the LEDs through the 244/374 pair — flip a switch, watch the LED' },
+              ] : kind === 'i8086' ? [
+                // An 8086 ROM image sits at the TOP of the 1M space (reset
+                // vector at FFFF0h is INSIDE it), so these load high, not at 0
+                // — romAt is computed from the image length at load time. Each
+                // is a whole self-booting board's firmware, not a program fed
+                // to the drawn bench: the serial monitor needs a 16550 at 10h,
+                // the CGA demo a CGA card + the B800 text page. On a bench that
+                // lacks them the ROM runs into open bus — the hint says which.
+                { id: 'serialmon', label: 'Serial Shell', rom: 'i8086-serial-monitor.bin', slot: 'rom', profile: 'serialshell',
+                  hint: 'Banner + echo over a 16550 at port 10h (SERIALSHELL8086 map) — type in the Serial console' },
+                { id: 'cgademo', label: 'CGA Text Demo', rom: 'i8086-cga-demo.bin', slot: 'rom', profile: 'cgademo',
+                  hint: 'Writes a message to the CGA text page at B800 (CGADEMO8086 map) — shows in the Display widget' },
+                { id: 'cgagfx', label: 'CGA Graphics', rom: 'i8086-cga-gfx-demo.bin', slot: 'rom', profile: 'cgademo',
+                  hint: 'CGA mode 4 (320x200x4) colour bars, drawn bare-metal into B800 (CGADEMO8086 map) — the Display widget in graphics mode' },
+                { id: 'vgademo', label: 'VGA 256-colour', rom: 'i8086-vga-demo.bin', slot: 'rom', profile: 'vgademo',
+                  hint: 'VGA mode 13h (320x200x256) colour bands, drawn bare-metal into A000 (VGADEMO8086 map) — the Display widget in 256 colours' },
+                { id: 'hercdemo', label: 'Hercules Mono', rom: 'i8086-hercules-demo.bin', slot: 'rom', profile: 'hercdemo',
+                  hint: 'Hercules 720x348 mono graphics, drawn bare-metal into B000 (HERCDEMO8086 map) — the Display widget in monochrome, four-bank interleave' },
+                { id: 'egademo', label: 'EGA 16-colour', rom: 'i8086-ega-demo.bin', slot: 'rom', profile: 'egademo',
+                  hint: 'EGA planar 16-colour graphics, drawn bare-metal across four bit planes at A000 (EGADEMO8086 map) — the Display widget in planar EGA' },
+                { id: 'kbddemo', label: 'Keyboard Echo', rom: 'i8086-keyboard-demo.bin', slot: 'rom', profile: 'kbddemo',
+                  hint: 'Type and it echoes: INT 09h reads the 8255 scancode, translates set-1 to ASCII, writes to the CGA screen (KBDDEMO8086) — the Keyboard widget through a real IRQ1' },
+                { id: 'deskdemo', label: 'Timer + Keyboard', rom: 'i8086-desk-demo.bin', slot: 'rom', profile: 'deskdemo',
+                  hint: 'Two interrupts at once: a live clock ticks at the top-right (IRQ0) while what you type echoes below (IRQ1), the 8259 arbitrating both (DESKDEMO8086) — the capstone' },
+                { id: 'blink', label: 'Blink (GPIO)', rom: 'i8086-blink-demo.bin', slot: 'rom', profile: 'blink',
+                  hint: 'The minimal GPIO board: walks a bit across the LEDs on 8255 port B and mirrors an active-low switch from port C (BLINK8086) — drives the LED and switch panels; needs an 8255 at 60h' },
+                { id: 'timerdemo', label: 'Timer Tick', rom: 'i8086-timer-demo.bin', slot: 'rom', profile: 'timerdemo',
+                  hint: 'Hooks INT 8, paints a live counter on each 8254 tick (TIMERDEMO8086 map: PIC+PIT+CGA) — the interrupt path end to end' },
               ] : [];
+              // An 8086 ROM image is mapped so its last byte is at FFFFFh — the
+              // reset far-jump at FFFF0h then falls inside it. So the load
+              // address is 1M minus the image length (a 32K image → F8000h, a
+              // 64K BIOS → F0000h). For the other CPUs the ROM sits at 0 and
+              // there is no load address to carry.
+              const loadAddrFor = (bytes) => kind === 'i8086' ? (0x100000 - bytes.length) : undefined;
               const dispatchLoad = (slotId, bytes, profile, name) => {
                 window.dispatchEvent(new CustomEvent('bw-machine-media-load', {
-                  detail: { slotId, bytes, kind, profile, name },
+                  detail: { slotId, bytes, kind, profile, name, romAt: loadAddrFor(bytes) },
                 }));
               };
+              const hex = (n) => n === undefined ? '' : ` @ ${n.toString(16).toUpperCase()}h`;
               const loadPreset = async (p) => {
                 try {
                   setLoaderNote(`fetching ${p.rom}…`);
@@ -1731,16 +1769,16 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                   if (!res.ok) throw new Error(`HTTP ${res.status}`);
                   const bytes = new Uint8Array(await res.arrayBuffer());
                   dispatchLoad(p.slot, bytes, p.profile, p.rom);
-                  setLoaderNote(`${p.rom} (${bytes.length} bytes) → bench`);
+                  setLoaderNote(`${p.rom} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} → bench`);
                 } catch (e) {
                   setLoaderNote(`✗ ${p.rom}: ${e.message}`);
                 }
               };
               const loadFile = async (file) => {
                 const bytes = new Uint8Array(await file.arrayBuffer());
-                const slot = /\.com$/i.test(file.name) ? 'com' : 'rom';
+                const slot = kind === 'i8086' ? 'rom' : (/\.com$/i.test(file.name) ? 'com' : 'rom');
                 dispatchLoad(slot, bytes, slot === 'com' ? 'cpm' : null, file.name);
-                setLoaderNote(`${file.name} (${bytes.length} bytes) → bench`);
+                setLoaderNote(`${file.name} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} → bench`);
               };
               return (
                 <div style={{marginTop: 8, padding: 6, borderRadius: 4, background: '#1e293b', border: '1px solid #334155'}}>

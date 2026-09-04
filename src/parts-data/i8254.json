@@ -1,0 +1,129 @@
+{
+  "kind": "i8254",
+  "w": 80,
+  "h": 71,
+  "terminals": [
+    {
+      "name": "d7",
+      "x": 0,
+      "y": 8
+    },
+    {
+      "name": "d6",
+      "x": 0,
+      "y": 13
+    },
+    {
+      "name": "d5",
+      "x": 0,
+      "y": 18
+    },
+    {
+      "name": "d4",
+      "x": 0,
+      "y": 23
+    },
+    {
+      "name": "d3",
+      "x": 0,
+      "y": 28
+    },
+    {
+      "name": "d2",
+      "x": 0,
+      "y": 33
+    },
+    {
+      "name": "d1",
+      "x": 0,
+      "y": 38
+    },
+    {
+      "name": "d0",
+      "x": 0,
+      "y": 43
+    },
+    {
+      "name": "clk0",
+      "x": 0,
+      "y": 48
+    },
+    {
+      "name": "out0",
+      "x": 0,
+      "y": 53
+    },
+    {
+      "name": "gate0",
+      "x": 0,
+      "y": 58
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 63
+    },
+    {
+      "name": "out1",
+      "x": 80,
+      "y": 63
+    },
+    {
+      "name": "gate1",
+      "x": 80,
+      "y": 58
+    },
+    {
+      "name": "clk1",
+      "x": 80,
+      "y": 53
+    },
+    {
+      "name": "gate2",
+      "x": 80,
+      "y": 48
+    },
+    {
+      "name": "out2",
+      "x": 80,
+      "y": 43
+    },
+    {
+      "name": "clk2",
+      "x": 80,
+      "y": 38
+    },
+    {
+      "name": "a0",
+      "x": 80,
+      "y": 33
+    },
+    {
+      "name": "a1",
+      "x": 80,
+      "y": 28
+    },
+    {
+      "name": "csb",
+      "x": 80,
+      "y": 23
+    },
+    {
+      "name": "rdb",
+      "x": 80,
+      "y": 18
+    },
+    {
+      "name": "wrb",
+      "x": 80,
+      "y": 13
+    },
+    {
+      "name": "vcc",
+      "x": 80,
+      "y": 8
+    }
+  ],
+  "variants": null,
+  "_note": "Intel 8254 Programmable Interval Timer. DIP-24. Extractor reads csb (pin 21), a0 (pin 19), a1 (pin 20). Three 16-bit counters, each with clk/gate/out. Pinout audited against Intel 8254 datasheet (order 231164)."
+}

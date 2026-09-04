@@ -46,6 +46,8 @@ const PASSTHROUGH_KINDS = new Set([
   'r6507', 'mos6532',
   // Z80 family
   'z80', 'mc6850',
+  // Intel 8086/8088 family (machine-class, bw-board has the full tier)
+  'i8086', 'i8088', 'i8255', 'i8254', 'i8259', 'i8251', 'i8284',
   // Video / retro DIPs (machine-class, engine has device models)
   'tms9918', 'mc6845', 'ns16c550',
   // Board / module variants

@@ -1,0 +1,149 @@
+{
+  "kind": "i8259",
+  "w": 80,
+  "h": 81,
+  "terminals": [
+    {
+      "name": "csb",
+      "x": 0,
+      "y": 8
+    },
+    {
+      "name": "wrb",
+      "x": 0,
+      "y": 13
+    },
+    {
+      "name": "rdb",
+      "x": 0,
+      "y": 18
+    },
+    {
+      "name": "d7",
+      "x": 0,
+      "y": 23
+    },
+    {
+      "name": "d6",
+      "x": 0,
+      "y": 28
+    },
+    {
+      "name": "d5",
+      "x": 0,
+      "y": 33
+    },
+    {
+      "name": "d4",
+      "x": 0,
+      "y": 38
+    },
+    {
+      "name": "d3",
+      "x": 0,
+      "y": 43
+    },
+    {
+      "name": "d2",
+      "x": 0,
+      "y": 48
+    },
+    {
+      "name": "d1",
+      "x": 0,
+      "y": 53
+    },
+    {
+      "name": "d0",
+      "x": 0,
+      "y": 58
+    },
+    {
+      "name": "cas0",
+      "x": 0,
+      "y": 63
+    },
+    {
+      "name": "cas1",
+      "x": 0,
+      "y": 68
+    },
+    {
+      "name": "cas2",
+      "x": 0,
+      "y": 73
+    },
+    {
+      "name": "gnd",
+      "x": 80,
+      "y": 73
+    },
+    {
+      "name": "sp_enb",
+      "x": 80,
+      "y": 68
+    },
+    {
+      "name": "intr",
+      "x": 80,
+      "y": 63
+    },
+    {
+      "name": "ir7",
+      "x": 80,
+      "y": 58
+    },
+    {
+      "name": "ir6",
+      "x": 80,
+      "y": 53
+    },
+    {
+      "name": "ir5",
+      "x": 80,
+      "y": 48
+    },
+    {
+      "name": "ir4",
+      "x": 80,
+      "y": 43
+    },
+    {
+      "name": "ir3",
+      "x": 80,
+      "y": 38
+    },
+    {
+      "name": "ir2",
+      "x": 80,
+      "y": 33
+    },
+    {
+      "name": "ir1",
+      "x": 80,
+      "y": 28
+    },
+    {
+      "name": "ir0",
+      "x": 80,
+      "y": 23
+    },
+    {
+      "name": "a0",
+      "x": 80,
+      "y": 18
+    },
+    {
+      "name": "intab",
+      "x": 80,
+      "y": 13
+    },
+    {
+      "name": "vcc",
+      "x": 80,
+      "y": 8
+    }
+  ],
+  "variants": null,
+  "_note": "Intel 8259A Programmable Interrupt Controller. DIP-28. Extractor reads csb (pin 1), a0 (pin 26). Eight IR inputs, INT out (to the CPU intr pin), /INTA in. Pinout audited against Intel 8259A datasheet."
+}

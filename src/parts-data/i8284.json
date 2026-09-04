@@ -1,0 +1,99 @@
+{
+  "kind": "i8284",
+  "w": 70,
+  "h": 56,
+  "terminals": [
+    {
+      "name": "csync",
+      "x": 0,
+      "y": 8
+    },
+    {
+      "name": "pclk",
+      "x": 0,
+      "y": 13
+    },
+    {
+      "name": "aen1b",
+      "x": 0,
+      "y": 18
+    },
+    {
+      "name": "rdy1",
+      "x": 0,
+      "y": 23
+    },
+    {
+      "name": "ready",
+      "x": 0,
+      "y": 28
+    },
+    {
+      "name": "rdy2",
+      "x": 0,
+      "y": 33
+    },
+    {
+      "name": "aen2b",
+      "x": 0,
+      "y": 38
+    },
+    {
+      "name": "clk",
+      "x": 0,
+      "y": 43
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 48
+    },
+    {
+      "name": "fcb",
+      "x": 70,
+      "y": 48
+    },
+    {
+      "name": "efi",
+      "x": 70,
+      "y": 43
+    },
+    {
+      "name": "asyncb",
+      "x": 70,
+      "y": 38
+    },
+    {
+      "name": "resb",
+      "x": 70,
+      "y": 33
+    },
+    {
+      "name": "reset",
+      "x": 70,
+      "y": 28
+    },
+    {
+      "name": "osc",
+      "x": 70,
+      "y": 23
+    },
+    {
+      "name": "x2",
+      "x": 70,
+      "y": 18
+    },
+    {
+      "name": "x1",
+      "x": 70,
+      "y": 13
+    },
+    {
+      "name": "vcc",
+      "x": 70,
+      "y": 8
+    }
+  ],
+  "variants": null,
+  "_note": "Intel 8284A clock generator. DIP-18. Drawable only; the extractor does not decode it. Divides the crystal by three to CLK, and synchronises RESET and READY for the CPU. Pinout audited against Intel 8284A datasheet."
+}
