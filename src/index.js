@@ -45,6 +45,8 @@ export { AsmDebugPanel } from './components/AsmDebugPanel.jsx';
 export { ArchitectureFace } from './components/ArchitectureFace.jsx';
 export { FramebufferFace } from './components/FramebufferFace.jsx';
 export { MediaPanel } from './components/MediaPanel.jsx';
+export { PortLeds } from './components/PortLeds.jsx';
+export { SwitchPanel } from './components/SwitchPanel.jsx';
 
 // Panel data functions
 export { runDrc, setExtractors } from './model/drc.js';
@@ -65,6 +67,7 @@ export { IMPORT_FORMATS, importCircuit, getSupportedFormats } from './importers/
 
 // Machine extraction (wired-bus → bootable config)
 export { extractMachine } from './model/machine-extract.js';
+export { reseatOnto8086 } from './model/reseat.js';
 
 // Audio — share the host's AudioContext so circuit buzzers and Scratch
 // sound blocks don't fight over the browser's audio thread.
