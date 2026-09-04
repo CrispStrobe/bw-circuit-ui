@@ -56,12 +56,23 @@ but does not run" as the failure mode; behaviour is what separates those two.
    `extract6502Machine` + the STEP ZERO program; 8086 via `BLINK8086`); step 2
    replaces the 8086 hand-build with the SUBSTITUTION's output.
 2. **Build the substitution that makes the gate pass for that ONE pair.**
-   ← NEXT. In bw-circuit-ui: transform e4-via-blink's circuit (lift the CPU
-   subsystem, re-terminate the LED nets onto the 8086/8255 per the pin
-   declarations, contract #4/#5), extract THAT, and feed it to the gate in
-   place of the hand-built `BLINK8086`.
+   ✅ **DONE (2026-09-04).** `bw-circuit-ui/src/model/reseatOnto8086` lifts
+   e4-via-blink's 6502 subsystem (boundary inferred, #4) and drops in an
+   8086/8255, re-terminating the LED nets by NET IDENTITY (#5).
+   `scripts/gen-reseated-8086.mjs` emits `gallery/e4-reseated-8086.json` and a
+   wrong-port variant; `test/reseat.test.mjs` proves the transform standalone.
+   The gate (`bw-board/test/reseat-gate.test.mjs`) now EXTRACTS the reseated
+   circuit and runs the program on it — GREEN off the transformed circuit, and
+   RED off the wrong-port one (observable derived from the schematic, so a port
+   mismatch is caught). Prerequisite added: an i8255 DIP-40 schematic part
+   (`bw-board/src/devices/retro-dips.js`) — see the resolved blocker below.
 3. **Then generalise.** A general reseat that has never made one specific
    example run is exactly the thing this repo keeps finding and regretting.
+   ← NEXT. The transform hardcodes the 6502→8086 direction and the e4 board's
+   shape; generalising means other originals (Nano/Pico/STC) and inferring the
+   pin declaration rather than passing it. Also OPEN: generate the 8086 program
+   from pseudocode (option 3) so the program equivalence is generated, not
+   asserted — unblocked now that `buildPseudocode8086` lowers whole-port writes.
 
 ## Program equivalence — the axis the gate does NOT close yet (be honest)
 
@@ -100,7 +111,14 @@ and reaches into the scratch-gui overlay, so coordinate before wiring it.
 Writing a 6502 back end (option 1) is correct but its own project, not a step
 inside this gate.
 
-## STEP 2 BLOCKER (found 2026-09-04): the i8255 has no SCHEMATIC part
+## STEP 2 BLOCKER — RESOLVED (2026-09-04): the i8255 now has a schematic part
+
+*Resolved:* an i8255 DIP-40 was registered in `bw-board/src/devices/retro-dips.js`
+(alongside the W65C22), with the real 8255A pinout — port A split across both
+ends, port C upper nibble before lower, `reset` ACTIVE HIGH (not `resb`). The
+substitution now re-terminates LED nets onto `ppi86.pb0..pb7`, and the gate
+detects a wrong port from the schematic. The original finding, kept for the
+record:
 
 The substitution must re-terminate the LED nets onto the 8255's port-B pins, and
 the gate must be able to tell — FROM THE SCHEMATIC — which port the LEDs landed
