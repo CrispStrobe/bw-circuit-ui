@@ -1651,6 +1651,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                   hint: 'Banner + echo over a 16550 at port 10h (SERIALSHELL8086 map) — type in the Serial console' },
                 { id: 'cgademo', label: 'CGA Text Demo', rom: 'i8086-cga-demo.bin', slot: 'rom', profile: 'cgademo',
                   hint: 'Writes a message to the CGA text page at B800 (CGADEMO8086 map) — shows in the Display widget' },
+                { id: 'cgagfx', label: 'CGA Graphics', rom: 'i8086-cga-gfx-demo.bin', slot: 'rom', profile: 'cgademo',
+                  hint: 'CGA mode 4 (320x200x4) colour bars, drawn bare-metal into B800 (CGADEMO8086 map) — the Display widget in graphics mode' },
                 { id: 'timerdemo', label: 'Timer Tick', rom: 'i8086-timer-demo.bin', slot: 'rom', profile: 'timerdemo',
                   hint: 'Hooks INT 8, paints a live counter on each 8254 tick (TIMERDEMO8086 map: PIC+PIT+CGA) — the interrupt path end to end' },
               ] : [];
