@@ -63,6 +63,43 @@ but does not run" as the failure mode; behaviour is what separates those two.
 3. **Then generalise.** A general reseat that has never made one specific
    example run is exactly the thing this repo keeps finding and regretting.
 
+## Program equivalence — the axis the gate does NOT close yet (be honest)
+
+A circuit reseat transforms the SCHEMATIC; it cannot carry object code across.
+The E4 walking-bit program is 6502 machine code; the reseated board runs an
+8086, so its ROM is a SEPARATE program. The gate compares the two boards'
+behaviour — but whether the 8086 program is *equivalent* to the 6502 one is a
+second axis, and right now that equivalence is **asserted, not generated**: both
+ROMs are hand-written to the same walking-bit intent. If the 8086 ROM happened
+to walk a bit for a different reason, the gate would be green and the claim
+hollow (lego-47's catch, 2026-09-04).
+
+The clean fix is that both ends compile from ONE pseudocode source (`PIN led =
+P1.0 OUTPUT` + a walking loop) through a 6502 back end and an 8086 back end;
+then "only the DEVICE line changed" is literally true and equivalence is
+generated. **But only the 8086 back end exists today** —
+`overlay/scratch-gui/src/lib/bw-asm/pseudocode-8086.js`,
+`buildPseudocode8086({project, source}, seams) → {bytes, format, asm}`. A grep
+across every repo for a 6502 / Z80 / STC code generator finds nothing; the 6502
+DEVICE *parses* (pin vocab `PA0-7`, `PB0-7`) but has no emitter. So no pair can
+have both ends generated now.
+
+**Current honest scope (option 2):** the gate proves the circuit transform
+preserves observable behaviour GIVEN an independently-written equivalent 8086
+program. That is real and worth having — it fails for a missing chip, a wrong
+port map, a decode overlap. It does NOT yet certify that the two programs are
+the same program.
+
+**The near-term improvement (option 3), when someone drives it:** generate the
+8086 end from a walking-bit pin program via `buildPseudocode8086`, so the RESEAT
+TARGET's program is lowered rather than hand-written. That makes one end
+generated and structures the gate for full both-ends equivalence the day a
+second back end lands — no rebuild needed. It needs the pin-program syntax for a
+walking bit (lego-47's DSL; a keypad lowers today, a blink loop's syntax is TBD)
+and reaches into the scratch-gui overlay, so coordinate before wiring it.
+Writing a 6502 back end (option 1) is correct but its own project, not a step
+inside this gate.
+
 ## The one invariant the substitution MUST keep
 
 The program-half promise is `P1/P2/P3 -> 8255 ports A/B/C`. **The circuit
@@ -184,12 +221,15 @@ Distinct values in order of first appearance:
 **Eyeball reading (the artifact the gate is allowed to trust):**
 - A clean 8-position walking bit on port B, one LED at a time, wrapping cleanly.
 - The leading `0x00` is REAL, not noise: configuring port B as output (DDRB write)
-  drives all eight pins before the first ORB pattern write, so there is one
-  all-dark edge. A reseat that omits it (e.g. sets the direction and the first
-  pattern in one indistinguishable step) is a defensible EQUIVALENT, not a match
-  — the SHAPE the gate defends is the walking `0x01..0x80` sequence and its wrap,
-  not the exact leading edge. Compare shape by default; require the leading edge
-  only when timing-strict.
+  drives all eight pins before the first ORB pattern write, so this raw capture
+  (via `onPinChange`) shows one all-dark edge. **The gate excludes it, and for a
+  named cause:** its capture treats the observable as un-live until the port's
+  direction becomes output, so the all-dark value at the direction write is the
+  baseline, not an edge — not a rule that keys off "a leading zero" (which would
+  one day swallow a program whose first real data write is genuinely `0x00`).
+  The SHAPE the gate defends is the walking `0x01..0x80` sequence and its wrap.
 - Cadence is uniform: 516 steps per position at this delay constant. The gate
-  compares the EDGE SEQUENCE (order of distinct values), not step counts, unless
-  run timing-strict — the 8086 end will not share this cycle budget.
+  compares the EDGE SEQUENCE (order of distinct values), not step counts — the
+  8086 end walks at ~8199 steps/position and will never share this cycle budget.
+  Rate is REPORTED in the gate result (mean inter-edge interval), not part of
+  the verdict; a caller with a shared time base can assert on it.
