@@ -105,19 +105,19 @@ function subsystem8086(gndId, vccId) {
     for (let i = 0; i < 15; i++) { wires.push(w('cpu86', `a${i}`, 'ram86', `a${i}`), w('cpu86', `a${i}`, 'rom86', `a${i}`)); }
     // PPI register selects ride A0/A1
     wires.push(w('cpu86', 'a0', 'ppi86', 'a0'), w('cpu86', 'a1', 'ppi86', 'a1'));
-    // Memory decoder: A=A17 B=A18 C=A19, E1B=E2B=GND, E3=M/IO
+    // Memory decoder: A=A17 B=A18 C=A19, G2A/G2B=GND, G1=M/IO (datasheet pins).
     wires.push(
-        w(gndId, 'gnd', 'decm', 'e1b'), w(gndId, 'gnd', 'decm', 'e2b'), w('cpu86', 'mio', 'decm', 'e3'),
+        w(gndId, 'gnd', 'decm', 'g2ab'), w(gndId, 'gnd', 'decm', 'g2bb'), w('cpu86', 'mio', 'decm', 'g1'),
         w('cpu86', 'a17', 'decm', 'a'), w('cpu86', 'a18', 'decm', 'b'), w('cpu86', 'a19', 'decm', 'c'),
-        w('decm', 'y0', 'ram86', 'csb'),   // RAM $00000-$1FFFF
-        w('decm', 'y7', 'rom86', 'ceb'),   // ROM $E0000-$FFFFF (reset vector)
+        w('decm', 'y0b', 'ram86', 'csb'),   // RAM $00000-$1FFFF
+        w('decm', 'y7b', 'rom86', 'ceb'),   // ROM $E0000-$FFFFF (reset vector)
     );
-    // I/O decoder: A=A5 B=A6 C=A7, E3 = ~M/IO, E1B=E2B=GND; y3 selects A7A6A5=011
+    // I/O decoder: A=A5 B=A6 C=A7, G1 = ~M/IO, G2A/G2B=GND; y3 selects A7A6A5=011
     wires.push(
-        w('cpu86', 'mio', 'inv86', '1a'), w('inv86', '1y', 'deci', 'e3'),
-        w(gndId, 'gnd', 'deci', 'e1b'), w(gndId, 'gnd', 'deci', 'e2b'),
+        w('cpu86', 'mio', 'inv86', '1a'), w('inv86', '1y', 'deci', 'g1'),
+        w(gndId, 'gnd', 'deci', 'g2ab'), w(gndId, 'gnd', 'deci', 'g2bb'),
         w('cpu86', 'a5', 'deci', 'a'), w('cpu86', 'a6', 'deci', 'b'), w('cpu86', 'a7', 'deci', 'c'),
-        w('deci', 'y3', 'ppi86', 'csb'),   // PPI $60-$7F (base 0x60)
+        w('deci', 'y3b', 'ppi86', 'csb'),   // PPI $60-$7F (base 0x60)
     );
     // Power rails to every new chip
     for (const id of ['cpu86', 'ram86', 'rom86', 'ppi86', 'decm', 'deci', 'inv86']) {
@@ -145,7 +145,7 @@ function memTerminals() {
     for (let i = 0; i < 8; i++) t.push(`d${i}`);
     return [...t, 'csb', 'ceb', 'oeb', 'web', 'vcc', 'gnd'];
 }
-function dec138Terminals() { return ['a', 'b', 'c', 'e1b', 'e2b', 'e3', 'y0', 'y1', 'y2', 'y3', 'y4', 'y5', 'y6', 'y7', 'vcc', 'gnd']; }
+function dec138Terminals() { return ['a', 'b', 'c', 'g1', 'g2ab', 'g2bb', 'y0b', 'y1b', 'y2b', 'y3b', 'y4b', 'y5b', 'y6b', 'y7b', 'vcc', 'gnd']; }
 function inv04Terminals() { return ['1a', '1y', '2a', '2y', '3a', '3y', '4y', '4a', '5y', '5a', '6y', '6a', 'vcc', 'gnd']; }
 
 /**

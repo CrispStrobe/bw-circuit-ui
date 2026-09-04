@@ -343,17 +343,17 @@
         "a",
         "b",
         "c",
-        "e1b",
-        "e2b",
-        "e3",
-        "y0",
-        "y1",
-        "y2",
-        "y3",
-        "y4",
-        "y5",
-        "y6",
-        "y7",
+        "g1",
+        "g2ab",
+        "g2bb",
+        "y0b",
+        "y1b",
+        "y2b",
+        "y3b",
+        "y4b",
+        "y5b",
+        "y6b",
+        "y7b",
         "vcc",
         "gnd"
       ]
@@ -368,17 +368,17 @@
         "a",
         "b",
         "c",
-        "e1b",
-        "e2b",
-        "e3",
-        "y0",
-        "y1",
-        "y2",
-        "y3",
-        "y4",
-        "y5",
-        "y6",
-        "y7",
+        "g1",
+        "g2ab",
+        "g2bb",
+        "y0b",
+        "y1b",
+        "y2b",
+        "y3b",
+        "y4b",
+        "y5b",
+        "y6b",
+        "y7b",
         "vcc",
         "gnd"
       ]
@@ -700,19 +700,19 @@
       "from": "gnd1",
       "fromTerminal": "gnd",
       "to": "decm",
-      "toTerminal": "e1b"
+      "toTerminal": "g2ab"
     },
     {
       "from": "gnd1",
       "fromTerminal": "gnd",
       "to": "decm",
-      "toTerminal": "e2b"
+      "toTerminal": "g2bb"
     },
     {
       "from": "cpu86",
       "fromTerminal": "mio",
       "to": "decm",
-      "toTerminal": "e3"
+      "toTerminal": "g1"
     },
     {
       "from": "cpu86",
@@ -734,13 +734,13 @@
     },
     {
       "from": "decm",
-      "fromTerminal": "y0",
+      "fromTerminal": "y0b",
       "to": "ram86",
       "toTerminal": "csb"
     },
     {
       "from": "decm",
-      "fromTerminal": "y7",
+      "fromTerminal": "y7b",
       "to": "rom86",
       "toTerminal": "ceb"
     },
@@ -754,19 +754,19 @@
       "from": "inv86",
       "fromTerminal": "1y",
       "to": "deci",
-      "toTerminal": "e3"
+      "toTerminal": "g1"
     },
     {
       "from": "gnd1",
       "fromTerminal": "gnd",
       "to": "deci",
-      "toTerminal": "e1b"
+      "toTerminal": "g2ab"
     },
     {
       "from": "gnd1",
       "fromTerminal": "gnd",
       "to": "deci",
-      "toTerminal": "e2b"
+      "toTerminal": "g2bb"
     },
     {
       "from": "cpu86",
@@ -788,7 +788,7 @@
     },
     {
       "from": "deci",
-      "fromTerminal": "y3",
+      "fromTerminal": "y3b",
       "to": "ppi86",
       "toTerminal": "csb"
     },
