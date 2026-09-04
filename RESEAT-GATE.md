@@ -45,7 +45,21 @@ but does not run" as the failure mode; behaviour is what separates those two.
 ## Order of work (lego-47's, and it is the repo's recurring lesson)
 
 1. **Write the gate** for one pair — the behaviour comparison above.
+   ✅ **DONE (2026-09-04).** `bw-board/src/reseat-gate.js` +
+   `test/reseat-gate.test.mjs`. Family-agnostic (caller supplies `buildMachine`
+   + a `read()` for the observable byte); compares the change-sampled edge
+   sequence, SHAPE by default. GREEN: e4-via-blink (6502) and BLINK8086 (8086)
+   walk the same `0x01..0x80` → MATCH. RED: LEDs mis-wired to port A while the
+   program drives B → nothing lights → DIFFER. The discipline is satisfied — the
+   gate is known to fail for the reason that matters BEFORE any substitution
+   exists. NB the GREEN case currently hand-builds each machine (6502 via
+   `extract6502Machine` + the STEP ZERO program; 8086 via `BLINK8086`); step 2
+   replaces the 8086 hand-build with the SUBSTITUTION's output.
 2. **Build the substitution that makes the gate pass for that ONE pair.**
+   ← NEXT. In bw-circuit-ui: transform e4-via-blink's circuit (lift the CPU
+   subsystem, re-terminate the LED nets onto the 8086/8255 per the pin
+   declarations, contract #4/#5), extract THAT, and feed it to the gate in
+   place of the hand-built `BLINK8086`.
 3. **Then generalise.** A general reseat that has never made one specific
    example run is exactly the thing this repo keeps finding and regretting.
 
