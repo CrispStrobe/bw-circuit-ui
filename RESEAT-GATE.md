@@ -100,6 +100,44 @@ and reaches into the scratch-gui overlay, so coordinate before wiring it.
 Writing a 6502 back end (option 1) is correct but its own project, not a step
 inside this gate.
 
+## STEP 2 BLOCKER (found 2026-09-04): the i8255 has no SCHEMATIC part
+
+The substitution must re-terminate the LED nets onto the 8255's port-B pins, and
+the gate must be able to tell — FROM THE SCHEMATIC — which port the LEDs landed
+on, so a port mismatch fails (the invariant below). That needs an i8255 part
+whose port pins (`pb0..pb7`) are terminals you can wire. **No such part exists
+anywhere:**
+
+- No `i8255.json` sidecar in bw-circuit-ui (only `i8086.json`); `terminalsForKind`
+  falls back to `[a,b]` for it.
+- No i8255 DIP in bw-board `src/devices/retro-dips.js` / `board-kinds.js` (the
+  W65C22 IS there — that is why e4-via-blink can wire LEDs to `via1.pb0`).
+- No `registerDevice('i8255')` in bw-board's device REGISTRY, so
+  `getDevice('i8255')` is undefined — the injected engine gives no terminals
+  either.
+- The extractor recognises kind `i8255` but reads only `csb`, `a0`, `a1`
+  (`i8086-extract.js` IO_SELECT/RS_PINS); it NEVER references port pins. Port B
+  is a pure register in the runtime model (`i8255.js` `outB`/`dirB`), which
+  declares no schematic terminals. The `decode138Circuit` extractor test wires
+  the PPI with only those three pins.
+
+So an 8086/8255 GPIO board like e4-via-blink has never been drawable, and the
+port-B re-termination has no target terminals. **This is the blocker for the
+circuit half.** The two halves are independent:
+
+- **Program half — UNBLOCKED (lego-47, 2026-09-04).** `PORT leds = P2 OUTPUT` +
+  a walking loop lowers via `buildPseudocode8086({project, source}) →
+  {bytes, format, chips, asm}` and runs on `createI8086DosBench({bytes, format,
+  chips})` (the ▶-button path — call THAT, not `emitI8086Asm`). Verified output
+  `0x00 0x01 0x02 .. 0x80` — the SAME shape as STEP ZERO. This closes option 3
+  for the 8086 program.
+- **Circuit half — BLOCKED here.** Needs an i8255 schematic part with port pins
+  before the substitution can re-terminate onto them. The fix: register an i8255
+  device pinout (DIP-40: `pa0-7 pb0-7 pc0-7 d0-7 rdb wrb csb a0 a1 reset vcc
+  gnd`) in bw-board's device model (the terminal authority the extractor already
+  agrees with on `csb/a0/a1`), plus a bw-circuit-ui sidecar for rendering.
+  Coordinating whose lane that part is before adding it to the shared tree.
+
 ## The one invariant the substitution MUST keep
 
 The program-half promise is `P1/P2/P3 -> 8255 ports A/B/C`. **The circuit
