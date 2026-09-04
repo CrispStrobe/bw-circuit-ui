@@ -3,10 +3,10 @@
  * consumes (ROADMAP §3.8.3). Runs the SUBSTITUTION (src/model/reseat.js) on the
  * shipped e4-via-blink 6502 board and writes two gallery artifacts:
  *
- *   gallery/e4-reseated-8086.json           — LED nets re-terminated onto the
+ *   gallery/reseat/e4-reseated-8086.json           — LED nets re-terminated onto the
  *       8255's PORT B (the port the program drives). The gate proves this runs
  *       the same walking bit as the 6502 original.
- *   gallery/e4-reseated-8086-wrongport.json — the SAME transform but the pin
+ *   gallery/reseat/e4-reseated-8086-wrongport.json — the SAME transform but the pin
  *       declaration lands the LED nets on PORT A. The program still drives port
  *       B, so nothing lights: the gate must go RED on this. It is the §5
  *       invariant ("a port mismatch MUST fail") made concrete — a board that
@@ -32,6 +32,6 @@ const correct = reseatOnto8086(original, { cpuId: 'cpu', pinMap: portMap('pb') }
 const wrong = reseatOnto8086(original, { cpuId: 'cpu', pinMap: portMap('pa') });
 wrong._title = (original._title || '') + ' (reseated → 8086, LEDs mis-wired to PORT A)';
 
-writeFileSync(join(gallery, 'e4-reseated-8086.json'), JSON.stringify(correct, null, 2) + '\n');
-writeFileSync(join(gallery, 'e4-reseated-8086-wrongport.json'), JSON.stringify(wrong, null, 2) + '\n');
-console.log('wrote gallery/e4-reseated-8086.json and gallery/e4-reseated-8086-wrongport.json');
+writeFileSync(join(gallery, 'reseat', 'e4-reseated-8086.json'), JSON.stringify(correct, null, 2) + '\n');
+writeFileSync(join(gallery, 'reseat', 'e4-reseated-8086-wrongport.json'), JSON.stringify(wrong, null, 2) + '\n');
+console.log('wrote gallery/reseat/e4-reseated-8086.json and gallery/reseat/e4-reseated-8086-wrongport.json');

@@ -1,6 +1,9 @@
 /**
  * reseat.js — the CIRCUIT substitution (the bw-circuit-ui half of the reseat
- * gate, ROADMAP §3.8.3). A pure function, no model dependencies, operating on
+ * gate, ROADMAP §3.8.3). A near-pure function — its only dependency is the
+ * canonical wire-endpoint reader (src/model/wire-endpoints.js), the single
+ * sanctioned place that reads the {from, fromTerminal} vs {from:{part,terminal}}
+ * dialect. It otherwise operates on
  * plain { parts, wires }: it lifts the CPU subsystem of a 6502 board and drops
  * in an 8086/8255 subsystem, PRESERVING the net identity of the LED nets.
  *
@@ -20,6 +23,8 @@
  *     program-logical-pin → net; a port mismatch is then impossible to express
  *     silently — it shows up as the LED net landing on the wrong 8255 port.
  */
+
+import { wireEndpoint } from './wire-endpoints.js';
 
 // Parts that never join the lifted subsystem: two-terminal passives and the
 // fixtures a board's OUTPUT is read from. Growth stops here — that is the cut.
@@ -43,9 +48,11 @@ function buildNets(wires) {
     const add = (k) => { if (!parent.has(k)) parent.set(k, k); };
     const endpoints = []; // { part, terminal, k }  (k = key)
     for (const w of wires) {
-        const a = key(w.from, w.fromTerminal), b = key(w.to, w.toTerminal);
+        const ef = wireEndpoint(w, 'from'), et = wireEndpoint(w, 'to');
+        if (!ef?.terminal || !et?.terminal) continue; // skip board-hole / malformed endpoints
+        const a = key(ef.part, ef.terminal), b = key(et.part, et.terminal);
         add(a); add(b); parent.set(find(a), find(b));
-        endpoints.push({ part: w.from, terminal: w.fromTerminal, k: a }, { part: w.to, terminal: w.toTerminal, k: b });
+        endpoints.push({ part: ef.part, terminal: ef.terminal, k: a }, { part: et.part, terminal: et.terminal, k: b });
     }
     // root -> [{part, terminal}]
     const netMembers = new Map();
@@ -189,7 +196,10 @@ export function reseatOnto8086(circuit, { cpuId, pinMap }) {
 
     // Drop the lifted parts and every wire touching them.
     const keptParts = parts.filter((p) => !lifted.has(p.id)).map((p) => ({ ...p }));
-    const keptWires = wires.filter((w) => !lifted.has(w.from) && !lifted.has(w.to)).map((w) => ({ ...w }));
+    const keptWires = wires.filter((w) => {
+        const ef = wireEndpoint(w, 'from'), et = wireEndpoint(w, 'to');
+        return ef && et && !lifted.has(ef.part) && !lifted.has(et.part);
+    }).map((w) => ({ ...w }));
 
     // Add the 8086/8255 subsystem.
     const sub = subsystem8086(gnd.id, vcc.id);

@@ -84,6 +84,6 @@ test('a WRONG pin declaration lands the LED nets on PORT A (the gate must catch 
 
 test('golden: the committed artifacts match a fresh transform (drift guard)', () => {
     const freshCorrect = JSON.stringify(reseatOnto8086(original, { cpuId: 'cpu', pinMap: portMap('pb') }), null, 2) + '\n';
-    const committed = readFileSync(join(gallery, 'e4-reseated-8086.json'), 'utf8');
-    assert.equal(freshCorrect, committed, 'gallery/e4-reseated-8086.json is stale — rerun scripts/gen-reseated-8086.mjs');
+    const committed = readFileSync(join(gallery, 'reseat', 'e4-reseated-8086.json'), 'utf8');
+    assert.equal(freshCorrect, committed, 'gallery/reseat/e4-reseated-8086.json is stale — rerun scripts/gen-reseated-8086.mjs');
 });
