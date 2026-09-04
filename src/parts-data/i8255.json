@@ -1,0 +1,209 @@
+{
+  "kind": "i8255",
+  "w": 80,
+  "h": 111,
+  "terminals": [
+    {
+      "name": "pa3",
+      "x": 0,
+      "y": 8
+    },
+    {
+      "name": "pa2",
+      "x": 0,
+      "y": 13
+    },
+    {
+      "name": "pa1",
+      "x": 0,
+      "y": 18
+    },
+    {
+      "name": "pa0",
+      "x": 0,
+      "y": 23
+    },
+    {
+      "name": "rdb",
+      "x": 0,
+      "y": 28
+    },
+    {
+      "name": "csb",
+      "x": 0,
+      "y": 33
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 38
+    },
+    {
+      "name": "a1",
+      "x": 0,
+      "y": 43
+    },
+    {
+      "name": "a0",
+      "x": 0,
+      "y": 48
+    },
+    {
+      "name": "pc7",
+      "x": 0,
+      "y": 53
+    },
+    {
+      "name": "pc6",
+      "x": 0,
+      "y": 58
+    },
+    {
+      "name": "pc5",
+      "x": 0,
+      "y": 63
+    },
+    {
+      "name": "pc4",
+      "x": 0,
+      "y": 68
+    },
+    {
+      "name": "pc0",
+      "x": 0,
+      "y": 73
+    },
+    {
+      "name": "pc1",
+      "x": 0,
+      "y": 78
+    },
+    {
+      "name": "pc2",
+      "x": 0,
+      "y": 83
+    },
+    {
+      "name": "pc3",
+      "x": 0,
+      "y": 88
+    },
+    {
+      "name": "pb0",
+      "x": 0,
+      "y": 93
+    },
+    {
+      "name": "pb1",
+      "x": 0,
+      "y": 98
+    },
+    {
+      "name": "pb2",
+      "x": 0,
+      "y": 103
+    },
+    {
+      "name": "pb3",
+      "x": 80,
+      "y": 103
+    },
+    {
+      "name": "pb4",
+      "x": 80,
+      "y": 98
+    },
+    {
+      "name": "pb5",
+      "x": 80,
+      "y": 93
+    },
+    {
+      "name": "pb6",
+      "x": 80,
+      "y": 88
+    },
+    {
+      "name": "pb7",
+      "x": 80,
+      "y": 83
+    },
+    {
+      "name": "vcc",
+      "x": 80,
+      "y": 78
+    },
+    {
+      "name": "d7",
+      "x": 80,
+      "y": 73
+    },
+    {
+      "name": "d6",
+      "x": 80,
+      "y": 68
+    },
+    {
+      "name": "d5",
+      "x": 80,
+      "y": 63
+    },
+    {
+      "name": "d4",
+      "x": 80,
+      "y": 58
+    },
+    {
+      "name": "d3",
+      "x": 80,
+      "y": 53
+    },
+    {
+      "name": "d2",
+      "x": 80,
+      "y": 48
+    },
+    {
+      "name": "d1",
+      "x": 80,
+      "y": 43
+    },
+    {
+      "name": "d0",
+      "x": 80,
+      "y": 38
+    },
+    {
+      "name": "reset",
+      "x": 80,
+      "y": 33
+    },
+    {
+      "name": "wrb",
+      "x": 80,
+      "y": 28
+    },
+    {
+      "name": "pa4",
+      "x": 80,
+      "y": 23
+    },
+    {
+      "name": "pa5",
+      "x": 80,
+      "y": 18
+    },
+    {
+      "name": "pa6",
+      "x": 80,
+      "y": 13
+    },
+    {
+      "name": "pa7",
+      "x": 80,
+      "y": 8
+    }
+  ],
+  "variants": null,
+  "_note": "Intel 8255A Programmable Peripheral Interface. DIP-40. Extractor reads csb (pin 6), a0 (pin 9), a1 (pin 8). Three 8-bit ports PA/PB/PC; port C is two independently-directioned nibbles. /RD pin 5, /WR pin 36, RESET pin 35 (active HIGH). Pinout audited against Intel 8255A datasheet."
+}

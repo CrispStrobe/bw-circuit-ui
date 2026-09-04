@@ -1,0 +1,149 @@
+{
+  "kind": "i8251",
+  "w": 80,
+  "h": 81,
+  "terminals": [
+    {
+      "name": "d2",
+      "x": 0,
+      "y": 8
+    },
+    {
+      "name": "d3",
+      "x": 0,
+      "y": 13
+    },
+    {
+      "name": "rxd",
+      "x": 0,
+      "y": 18
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 23
+    },
+    {
+      "name": "d4",
+      "x": 0,
+      "y": 28
+    },
+    {
+      "name": "d5",
+      "x": 0,
+      "y": 33
+    },
+    {
+      "name": "d6",
+      "x": 0,
+      "y": 38
+    },
+    {
+      "name": "d7",
+      "x": 0,
+      "y": 43
+    },
+    {
+      "name": "txc",
+      "x": 0,
+      "y": 48
+    },
+    {
+      "name": "wrb",
+      "x": 0,
+      "y": 53
+    },
+    {
+      "name": "csb",
+      "x": 0,
+      "y": 58
+    },
+    {
+      "name": "cd",
+      "x": 0,
+      "y": 63
+    },
+    {
+      "name": "rdb",
+      "x": 0,
+      "y": 68
+    },
+    {
+      "name": "rxrdy",
+      "x": 0,
+      "y": 73
+    },
+    {
+      "name": "txrdy",
+      "x": 80,
+      "y": 73
+    },
+    {
+      "name": "syndet",
+      "x": 80,
+      "y": 68
+    },
+    {
+      "name": "ctsb",
+      "x": 80,
+      "y": 63
+    },
+    {
+      "name": "txempty",
+      "x": 80,
+      "y": 58
+    },
+    {
+      "name": "txd",
+      "x": 80,
+      "y": 53
+    },
+    {
+      "name": "clk",
+      "x": 80,
+      "y": 48
+    },
+    {
+      "name": "reset",
+      "x": 80,
+      "y": 43
+    },
+    {
+      "name": "dsrb",
+      "x": 80,
+      "y": 38
+    },
+    {
+      "name": "rtsb",
+      "x": 80,
+      "y": 33
+    },
+    {
+      "name": "dtrb",
+      "x": 80,
+      "y": 28
+    },
+    {
+      "name": "rxc",
+      "x": 80,
+      "y": 23
+    },
+    {
+      "name": "vcc",
+      "x": 80,
+      "y": 18
+    },
+    {
+      "name": "d0",
+      "x": 80,
+      "y": 13
+    },
+    {
+      "name": "d1",
+      "x": 80,
+      "y": 8
+    }
+  ],
+  "variants": null,
+  "_note": "Intel 8251A USART. DIP-28. Extractor reads csb (pin 11), cd (C/D#, pin 12). C/D# selects data vs control/status. Data bus is scattered: D0 pin 27, D1 pin 28, D2 pin 1, D3 pin 2, D4-D7 pins 5-8. Pinout audited against Intel 8251A datasheet."
+}
