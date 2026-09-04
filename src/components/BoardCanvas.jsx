@@ -2164,10 +2164,9 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         );
       }
       case 'potentiometer': {
-        // When seated, scale and position the Wokwi element so its three
-        // drawn pin graphics land exactly on the seat's three holes.
-        // The Wokwi pot element is ~60px wide with pins at ~10/30/50px.
-        // Seat holes are at BB_PITCH intervals (14px): cols 0/2/4 = 0/28/56px.
+        // When seated, size and position the knob above its occupied row.
+        // The separate seated-leg layer connects its three electrical holes,
+        // including imported benches whose hole spacing is unusually wide.
         const potSeated = part.seat && part._seatTerminals;
         let potLeft = x - 30, potTop = y - 30, potScale;
         if (potSeated) {
@@ -2175,24 +2174,40 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           const bPos = part._seatTerminals.b;
           if (aPos && bPos) {
             const seatSpan = Math.abs(bPos.x - aPos.x);
-            // The Wokwi element's internal pin span is ~40px (10px to 50px in a 60px body)
-            potScale = seatSpan / 40;
+            // Use the renderer's 40 px logical pin span; exact hole-to-face
+            // connections are drawn independently by the seated-leg layer.
+            // Some imported benches space the three electrical holes much
+            // farther apart than the face itself. Do not inflate the knob
+            // over neighbouring controls to chase those remote holes: the
+            // separate leg layer already shows the physical connections.
+            potScale = Math.min(seatSpan / 40, 1.4);
             const cx = (aPos.x + bPos.x) / 2;
             const cy = aPos.y;
             potLeft = cx - 30 * potScale;
-            potTop = cy - 50 * potScale; // pins are near the bottom of the 60px body
+            potTop = cy - 60 * potScale; // keep the whole control above its occupied row
           }
         }
         return (
           <div key={id}
+            data-pot-control={id}
             style={{ ...baseStyle, left: potLeft, top: potTop,
               ...(potScale ? { transform: `scale(${potScale})`, transformOrigin: 'top left' } : {}),
               cursor: simulate ? 'pointer' : 'move',
-              pointerEvents: simulate ? 'auto' : 'none' }}
+              pointerEvents: simulate ? 'auto' : 'none',
+              width: 60, height: 60 }}
             onClick={simulate ? (e) => e.stopPropagation() : (e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
+            onPointerDown={simulate ? (e) => e.stopPropagation() : undefined}
+            onPointerMove={simulate ? (e) => e.stopPropagation() : undefined}
+            onPointerUp={simulate ? (e) => e.stopPropagation() : undefined}
+            onPointerCancel={simulate ? (e) => e.stopPropagation() : undefined}
             onContextMenu={simulate ? (e) => e.preventDefault() : undefined}>
             <WokwiPotentiometer
-              min={0} max={1} step={0.01} value={controlValues?.get(id) ?? 0.5}
+              // Wokwi fixes this SVG at 20 mm (75.59 CSS px). Scale that
+              // intrinsic face into our declared 60 px pot footprint; width
+              // and height on the custom-element host alone do not resize
+              // the fixed-size SVG inside its shadow root.
+              style={{ display: 'block', transform: 'scale(0.79375)', transformOrigin: 'top left' }}
+              min={0} max={1} step={0.01} value={controlValues?.get(id) ?? part.params?.position ?? 0.5}
               onInput={(e) => {
                 const val = parseFloat(e.target.value);
                 if (!isNaN(val)) onControlChange(id, val);

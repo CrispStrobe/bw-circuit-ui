@@ -547,8 +547,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const BEEPER_ID = '__spectrum_beeper';
     let raf;
     const poll = () => {
-      const tone = debugState.audio();
-      updateBuzzerAudio(BEEPER_ID, tone);
+      // The machine audio contract is per-voice. The board's single beeper can
+      // render the first voice; multi-voice mixing belongs in readAudio rather
+      // than in this one-oscillator helper.
+      const voices = debugState.audio() || [];
+      const list = Array.isArray(voices) ? voices : [voices];
+      updateBuzzerAudio(BEEPER_ID, list[0] || null);
       raf = requestAnimationFrame(poll);
     };
     raf = requestAnimationFrame(poll);
@@ -1567,7 +1571,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           />
         )}
         {debugState && typeof debugState.video === 'function' && (
-          <VdpScreen videoFn={debugState.video} setButtonsFn={debugState.setButtons} setKeysFn={debugState.setKeys} loadSnapshotFn={debugState.loadSnapshot} lang={lang} />
+          <VdpScreen videoFn={debugState.video} setButtonsFn={debugState.setButtons} setKeysFn={debugState.setKeys} sendScancodeFn={debugState.sendScancode} loadSnapshotFn={debugState.loadSnapshot} lang={lang} />
         )}
         {debugState && typeof debugState.onSerial === 'function' && (
           <section style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box'}}>

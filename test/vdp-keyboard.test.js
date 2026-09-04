@@ -134,6 +134,25 @@ describe('VdpScreen keyboard input', { skip: !chromium && 'playwright not availa
     await page.close();
   });
 
+  it('routes PC set-1 make/break codes and releases held modifiers on blur', async () => {
+    const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
+    await page.goto(`http://localhost:${PORT}/test/vdp-keyboard.html?scancodes`, { waitUntil: 'networkidle' });
+    await page.waitForFunction(() => window.__vdpReady === true, { timeout: 15000 });
+    await page.locator('canvas').first().click();
+    await page.evaluate(() => { window.__scancodeCalls = []; window.__buttonCalls = []; });
+
+    await page.keyboard.down('a');
+    await page.keyboard.up('a');
+    assert.deepEqual(await page.evaluate(() => window.__scancodeCalls), [0x1e, 0x9e]);
+    assert.deepEqual(await page.evaluate(() => window.__buttonCalls), [], 'scancodes take priority over pad input');
+
+    await page.evaluate(() => { window.__scancodeCalls = []; });
+    await page.keyboard.down('Shift');
+    await page.evaluate(() => document.activeElement?.blur());
+    assert.deepEqual(await page.evaluate(() => window.__scancodeCalls), [0x2a, 0xaa], 'blur sends the held key break code');
+    await page.close();
+  });
+
   it('click-to-play hint visible before first interaction', async () => {
     const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
     await page.goto(`http://localhost:${PORT}/test/vdp-keyboard.html`, { waitUntil: 'networkidle' });

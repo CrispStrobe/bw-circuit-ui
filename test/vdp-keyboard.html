@@ -16,9 +16,13 @@ const videoFn = () => ({ width: 256, height: 192, rgba, frame: frame++, signal: 
 // Track setButtons calls
 window.__buttonCalls = [];
 const setButtonsFn = (mask) => { window.__buttonCalls.push(mask); };
+window.__scancodeCalls = [];
+const sendScancodeFn = (code) => { window.__scancodeCalls.push(code); };
+const useScancodes = new URLSearchParams(location.search).has('scancodes');
 
 const root = createRoot(document.getElementById('root'));
-root.render(React.createElement(VdpScreen, { videoFn, setButtonsFn }));
+root.render(React.createElement(VdpScreen, { videoFn, setButtonsFn,
+  sendScancodeFn: useScancodes ? sendScancodeFn : undefined }));
 window.__vdpReady = true;
 </script>
 </body>
