@@ -1659,6 +1659,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                   hint: 'Hercules 720x348 mono graphics, drawn bare-metal into B000 (HERCDEMO8086 map) — the Display widget in monochrome, four-bank interleave' },
                 { id: 'egademo', label: 'EGA 16-colour', rom: 'i8086-ega-demo.bin', slot: 'rom', profile: 'egademo',
                   hint: 'EGA planar 16-colour graphics, drawn bare-metal across four bit planes at A000 (EGADEMO8086 map) — the Display widget in planar EGA' },
+                { id: 'kbddemo', label: 'Keyboard Echo', rom: 'i8086-keyboard-demo.bin', slot: 'rom', profile: 'kbddemo',
+                  hint: 'Type and it echoes: INT 09h reads the 8255 scancode, translates set-1 to ASCII, writes to the CGA screen (KBDDEMO8086) — the Keyboard widget through a real IRQ1' },
                 { id: 'timerdemo', label: 'Timer Tick', rom: 'i8086-timer-demo.bin', slot: 'rom', profile: 'timerdemo',
                   hint: 'Hooks INT 8, paints a live counter on each 8254 tick (TIMERDEMO8086 map: PIC+PIT+CGA) — the interrupt path end to end' },
               ] : [];
