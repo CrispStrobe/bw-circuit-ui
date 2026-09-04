@@ -332,7 +332,7 @@ describe('edge cases', () => {
 
 // ── Fit-to-parts view math (the Circuit Designer's "fit all parts" button,
 //    the F shortcut, and auto-fit-on-load all frame a circuit through this).
-import { computeFitView } from '../src/interaction/transform.js';
+import { computeFitView, retainEqualPan } from '../src/interaction/transform.js';
 
 describe('computeFitView — frame all parts in the viewport', () => {
   // screen = (world − pan) · zoom  (the canvas's screenToCanvas inverse)
@@ -376,5 +376,20 @@ describe('computeFitView — frame all parts in the viewport', () => {
       { minX: 60, maxX: 100, minY: 0, maxY: 100 },
     ], { w: 800, h: 600 });
     assert.deepEqual(split, single); // identical overall bbox → identical view
+  });
+});
+
+describe('retainEqualPan — idempotent fit retries', () => {
+  it('retains the current reference when both coordinates are exactly equal', () => {
+    const current = { x: -12.5, y: 33.25 };
+    assert.equal(retainEqualPan(current, { x: -12.5, y: 33.25 }), current);
+  });
+
+  it('accepts the recomputed pan when either coordinate changed', () => {
+    const current = { x: 1, y: 2 };
+    const movedX = { x: 1.01, y: 2 };
+    const movedY = { x: 1, y: 2.01 };
+    assert.equal(retainEqualPan(current, movedX), movedX);
+    assert.equal(retainEqualPan(current, movedY), movedY);
   });
 });

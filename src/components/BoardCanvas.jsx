@@ -11,10 +11,11 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { t } from '../i18n/strings.js';
 import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
-import { classifyWheel, computeFitView } from '../interaction/transform.js';
+import { classifyWheel, computeFitView, retainEqualPan } from '../interaction/transform.js';
 import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
 import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
@@ -3124,8 +3125,13 @@ export function BoardCanvas({
     });
     const v = computeFitView(boundsList, fitSizeRef.current);
     if (!v) return;
-    setZoom(v.zoom);
-    setPan(v.pan);
+    // A fit is one camera move. Lite embeds this package under React 16, so
+    // effect/rAF callers need an explicit batch to avoid rendering the heavy
+    // canvas once for zoom and once again for pan.
+    ReactDOM.unstable_batchedUpdates(() => {
+      setZoom(v.zoom);
+      setPan(previous => retainEqualPan(previous, v.pan));
+    });
   }, []);
   React.useEffect(() => {
     if (parts.length === 0) return;

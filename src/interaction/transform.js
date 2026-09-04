@@ -136,3 +136,12 @@ export function computeFitView(boundsList, viewport, opts = {}) {
     },
   };
 }
+
+/** Keep React camera state referentially stable when a fit recomputes the
+ * exact same pan. This makes the deliberate post-layout fit retry a no-op
+ * when layout did not actually move. */
+export function retainEqualPan(previous, next) {
+  return previous && next && previous.x === next.x && previous.y === next.y
+    ? previous
+    : next;
+}
