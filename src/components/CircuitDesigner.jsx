@@ -1611,7 +1611,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
               // W65C02 bench — matching only '6502' here left the 6502 loader
               // with zero presets on deploy (owner report, 2038790).
               const kind = (machineResult.kind === 'eater6502' || machineResult.kind === '6502') ? 'eater6502'
-                : machineResult.kind === 'z80' ? 'z80' : null;
+                : machineResult.kind === 'z80' ? 'z80'
+                : machineResult.kind === 'i8086' ? 'i8086' : null;
               // Each preset names its SLOT (machine-media routing) and its
               // boot PROFILE — the machine shape the image was built for.
               // Tali Forth is a py65mon build and MS BASIC an Eater-map/ACIA
@@ -1638,12 +1639,31 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                 // actually wires.
                 { id: 'mirror', label: 'Switch Mirror', rom: 'z80-mirror.bin', slot: 'rom',
                   hint: 'Mirrors the DIP switches onto the LEDs through the 244/374 pair — flip a switch, watch the LED' },
+              ] : kind === 'i8086' ? [
+                // An 8086 ROM image sits at the TOP of the 1M space (reset
+                // vector at FFFF0h is INSIDE it), so these load high, not at 0
+                // — romAt is computed from the image length at load time. Each
+                // is a whole self-booting board's firmware, not a program fed
+                // to the drawn bench: the serial monitor needs a 16550 at 10h,
+                // the CGA demo a CGA card + the B800 text page. On a bench that
+                // lacks them the ROM runs into open bus — the hint says which.
+                { id: 'serialmon', label: 'Serial Shell', rom: 'i8086-serial-monitor.bin', slot: 'rom', profile: 'serialshell',
+                  hint: 'Banner + echo over a 16550 at port 10h (SERIALSHELL8086 map) — type in the Serial console' },
+                { id: 'cgademo', label: 'CGA Text Demo', rom: 'i8086-cga-demo.bin', slot: 'rom', profile: 'cgademo',
+                  hint: 'Writes a message to the CGA text page at B800 (CGADEMO8086 map) — shows in the Display widget' },
               ] : [];
+              // An 8086 ROM image is mapped so its last byte is at FFFFFh — the
+              // reset far-jump at FFFF0h then falls inside it. So the load
+              // address is 1M minus the image length (a 32K image → F8000h, a
+              // 64K BIOS → F0000h). For the other CPUs the ROM sits at 0 and
+              // there is no load address to carry.
+              const loadAddrFor = (bytes) => kind === 'i8086' ? (0x100000 - bytes.length) : undefined;
               const dispatchLoad = (slotId, bytes, profile, name) => {
                 window.dispatchEvent(new CustomEvent('bw-machine-media-load', {
-                  detail: { slotId, bytes, kind, profile, name },
+                  detail: { slotId, bytes, kind, profile, name, romAt: loadAddrFor(bytes) },
                 }));
               };
+              const hex = (n) => n === undefined ? '' : ` @ ${n.toString(16).toUpperCase()}h`;
               const loadPreset = async (p) => {
                 try {
                   setLoaderNote(`fetching ${p.rom}…`);
@@ -1652,16 +1672,16 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                   if (!res.ok) throw new Error(`HTTP ${res.status}`);
                   const bytes = new Uint8Array(await res.arrayBuffer());
                   dispatchLoad(p.slot, bytes, p.profile, p.rom);
-                  setLoaderNote(`${p.rom} (${bytes.length} bytes) → bench`);
+                  setLoaderNote(`${p.rom} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} → bench`);
                 } catch (e) {
                   setLoaderNote(`✗ ${p.rom}: ${e.message}`);
                 }
               };
               const loadFile = async (file) => {
                 const bytes = new Uint8Array(await file.arrayBuffer());
-                const slot = /\.com$/i.test(file.name) ? 'com' : 'rom';
+                const slot = kind === 'i8086' ? 'rom' : (/\.com$/i.test(file.name) ? 'com' : 'rom');
                 dispatchLoad(slot, bytes, slot === 'com' ? 'cpm' : null, file.name);
-                setLoaderNote(`${file.name} (${bytes.length} bytes) → bench`);
+                setLoaderNote(`${file.name} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} → bench`);
               };
               return (
                 <div style={{marginTop: 8, padding: 6, borderRadius: 4, background: '#1e293b', border: '1px solid #334155'}}>
