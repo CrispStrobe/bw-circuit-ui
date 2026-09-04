@@ -40,6 +40,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { BoardCanvas, FileMenu } from './BoardCanvas.jsx';
 import { PartPalette } from './PartPalette.jsx';
 import { InferPanel } from './InferPanel.jsx';
@@ -1010,13 +1011,19 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         return;
       } catch { /* fall through: load the file as-is */ }
     }
-    handleLoad(circuitData);
-    // The file's canvas is CLEAN: annotations from a previous inference
-    // run must not survive onto it (the pendant showed the curated
-    // build with the inferred bench's '8 of 18 pins' notes still
-    // underneath — owner screenshot; they are SVG text, which even the
-    // deployed verifier's innerText probe could not see).
-    setAnnotations([]);
+    // This effect runs outside a React event. Lite still embeds this package
+    // under React 16, where the four handleLoad state updates plus this
+    // annotation clear would otherwise flush as separate full-designer
+    // commits. They describe one atomic file load, so commit them together.
+    ReactDOM.unstable_batchedUpdates(() => {
+      handleLoad(circuitData);
+      // The file's canvas is CLEAN: annotations from a previous inference
+      // run must not survive onto it (the pendant showed the curated
+      // build with the inferred bench's '8 of 18 pins' notes still
+      // underneath — owner screenshot; they are SVG text, which even the
+      // deployed verifier's innerText probe could not see).
+      setAnnotations([]);
+    });
     // A file is now on the canvas: the pin-inference effect must not
     // rebuild over it when the example's program load ripples new pins
     // through projectData a tick later (the pendant race).

@@ -11,9 +11,36 @@
 import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 
+const designerSource = readFileSync(new URL(
+  '../src/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
+
+const circuitDataEffect = () => {
+  const effect = /const prevCircuitDataRef = useRef\(null\);[\s\S]*?useEffect\(\(\) => \{([\s\S]*?)\n  \}, \[circuitData, handleLoad, projectData, circuit\]\);/.exec(designerSource);
+  assert.ok(effect, 'the circuitData load effect remains identifiable');
+  return effect[1];
+};
+
 describe('load precedence: model-level behavior', () => {
+  it('commits a declarative file load as one React 16 update batch', () => {
+    assert.match(designerSource, /import ReactDOM from 'react-dom';/);
+    const batch = /ReactDOM\.unstable_batchedUpdates\(\(\) => \{([\s\S]*?)\n    \}\);/.exec(circuitDataEffect());
+    assert.ok(batch, 'the common circuitData load must use the React 16 batching boundary');
+    assert.match(batch[1], /handleLoad\(circuitData\);[\s\S]*setAnnotations\(\[\]\);/,
+      'load UI state and annotation cleanup are one visual transaction');
+  });
+
+  it('keeps declarative-load precedence bookkeeping around the batch', () => {
+    const effect = circuitDataEffect();
+    assert.ok(effect.indexOf('prevCircuitDataRef.current = circuitData;') <
+      effect.indexOf('ReactDOM.unstable_batchedUpdates'));
+    assert.ok(effect.indexOf('ReactDOM.unstable_batchedUpdates') <
+      effect.indexOf('fileLoadedRef.current = true;'));
+    assert.match(effect, /localStorage\.setItem\('bw-circuit-file-loaded', '1'\)/);
+  });
+
   it('circuitData load replaces existing parts (example beats autosave)', () => {
     resetIds();
     const c = new Circuit(5.0);
