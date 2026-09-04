@@ -18,7 +18,9 @@ test('potentiometer knob reads controlValues from the engine, not hardcoded 0.5'
   // Use the WokwiParts instance (the second occurrence is inside the render).
   const potStart = src.indexOf("case 'potentiometer': {");
   assert.ok(potStart > 0, 'potentiometer render block found');
-  const potBlock = src.slice(potStart, potStart + 2000);
+  const nextCase = src.indexOf("case '", potStart + "case 'potentiometer': {".length);
+  assert.ok(nextCase > potStart, 'potentiometer render block has a following case boundary');
+  const potBlock = src.slice(potStart, nextCase);
   assert.ok(potBlock.includes('controlValues'), 'pot face must read controlValues');
   assert.ok(
     /value=\{controlValues/.test(potBlock),
