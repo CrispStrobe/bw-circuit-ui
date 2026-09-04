@@ -1663,6 +1663,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                   hint: 'Type and it echoes: INT 09h reads the 8255 scancode, translates set-1 to ASCII, writes to the CGA screen (KBDDEMO8086) — the Keyboard widget through a real IRQ1' },
                 { id: 'deskdemo', label: 'Timer + Keyboard', rom: 'i8086-desk-demo.bin', slot: 'rom', profile: 'deskdemo',
                   hint: 'Two interrupts at once: a live clock ticks at the top-right (IRQ0) while what you type echoes below (IRQ1), the 8259 arbitrating both (DESKDEMO8086) — the capstone' },
+                { id: 'blink', label: 'Blink (GPIO)', rom: 'i8086-blink-demo.bin', slot: 'rom', profile: 'blink',
+                  hint: 'The minimal GPIO board: walks a bit across the LEDs on 8255 port B and mirrors an active-low switch from port C (BLINK8086) — drives the LED and switch panels; needs an 8255 at 60h' },
                 { id: 'timerdemo', label: 'Timer Tick', rom: 'i8086-timer-demo.bin', slot: 'rom', profile: 'timerdemo',
                   hint: 'Hooks INT 8, paints a live counter on each 8254 tick (TIMERDEMO8086 map: PIC+PIT+CGA) — the interrupt path end to end' },
               ] : [];
