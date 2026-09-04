@@ -1657,6 +1657,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                   hint: 'VGA mode 13h (320x200x256) colour bands, drawn bare-metal into A000 (VGADEMO8086 map) — the Display widget in 256 colours' },
                 { id: 'hercdemo', label: 'Hercules Mono', rom: 'i8086-hercules-demo.bin', slot: 'rom', profile: 'hercdemo',
                   hint: 'Hercules 720x348 mono graphics, drawn bare-metal into B000 (HERCDEMO8086 map) — the Display widget in monochrome, four-bank interleave' },
+                { id: 'egademo', label: 'EGA 16-colour', rom: 'i8086-ega-demo.bin', slot: 'rom', profile: 'egademo',
+                  hint: 'EGA planar 16-colour graphics, drawn bare-metal across four bit planes at A000 (EGADEMO8086 map) — the Display widget in planar EGA' },
                 { id: 'timerdemo', label: 'Timer Tick', rom: 'i8086-timer-demo.bin', slot: 'rom', profile: 'timerdemo',
                   hint: 'Hooks INT 8, paints a live counter on each 8254 tick (TIMERDEMO8086 map: PIC+PIT+CGA) — the interrupt path end to end' },
               ] : [];
