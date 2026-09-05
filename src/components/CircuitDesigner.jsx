@@ -80,12 +80,15 @@ import './circuit-theme.css';
 
 const MS = 1_000_000n;
 const GRID = 20;
+const profilePerformanceSubtree = (probe, ReactModule, id, child) => (
+  probe ? probe.profile(ReactModule, id, child) : child
+);
 
 function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange }) {
+export function CircuitDesigner({ project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, performanceProbe = null }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -102,7 +105,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const activeBoard = externalBoard || circuit.board;
 
   // Subscribe to board changes for automatic re-rendering
-  const { renderState, refresh } = useBoard(activeBoard);
+  const { renderState, refresh } = useBoard(activeBoard, performanceProbe);
 
   // Instrument reads follow the ACTIVE board. useCircuit's readers are bound
   // to circuit.board — the designer's own instance — and that is the LAST
@@ -158,9 +161,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const json = JSON.stringify(decls);
     if (json !== lastDeclRef.current) {
       lastDeclRef.current = json;
+      if (performanceProbe) performanceProbe.mark('designer:declaration');
       onDeclarationChange(decls);
     }
-  }, [parts, wires, onDeclarationChange, circuit]);
+  }, [parts, wires, onDeclarationChange, circuit, performanceProbe]);
 
   // ── Tell the host the CIRCUIT changed, as against the declarations ──
   //
@@ -197,9 +201,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // ── Expose the Board to the host (for the circuit extension) ──
   useEffect(() => {
     if (onBoardReady && circuit.board) {
+      if (performanceProbe) performanceProbe.mark('designer:board-ready');
       onBoardReady(circuit.board);
     }
-  }, [circuit.board, onBoardReady, parts, wires]); // re-fire when netlist changes (board rebuilt)
+  }, [circuit.board, onBoardReady, parts, wires, performanceProbe]); // re-fire when netlist changes (board rebuilt)
 
   const [selectedParts, setSelectedParts] = useState(new Set());
   const [selectedWire, setSelectedWire] = useState(null);
@@ -1335,7 +1340,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
             <BoardPanel circuit={circuit} overrides={circuit.pcb} onOverridesChange={setPcbOverrides} />
           </div>
         ) : !showSchematic ? (<>
-        <BoardCanvas
+        {profilePerformanceSubtree(performanceProbe, React, 'BoardCanvas', (<BoardCanvas
+          performanceProbe={performanceProbe}
           engineBoard={activeBoard}
           videoFn={debugState && typeof debugState.video === 'function' ? debugState.video : null}
           fitToken={fitToken}
@@ -1502,7 +1508,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                 style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: showBoard ? '#2563eb' : '#475569', color: '#fff', border: 'none', fontSize: 17}}>▦</button>
             </div>
           )}
-        />
+        />))}
         </>) : (
           <div style={{ flex: 1, minWidth: 0, overflow: 'auto', overscrollBehavior: 'contain',
             background: '#16213e', borderRadius: 8, border: '1px solid #2c3e50', padding: 8 }}>

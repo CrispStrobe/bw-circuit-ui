@@ -2989,6 +2989,7 @@ export function BoardCanvas({
   onSaveCircuit, onLoadCircuit, onClearCircuit, onRewire, onImport,
   fileAction, onFileActionDone,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
+  performanceProbe = null,
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
   // consumed by everything below (partsRef included, so what you see is
@@ -3078,6 +3079,8 @@ export function BoardCanvas({
     return !v;
   });
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const zoomRef = useRef(zoom); zoomRef.current = zoom;
+  const panRef = useRef(pan); panRef.current = pan;
   const selectedPartId = selectedPart || (selectedParts && selectedParts.size === 1 ? [...selectedParts][0] : null);
   const selectedPartModel = selectedPartId ? parts.find(part => part.id === selectedPartId) : null;
 
@@ -3101,19 +3104,23 @@ export function BoardCanvas({
     if (!el || typeof ResizeObserver === 'undefined') return;
     const measure = () => {
       const w = el.clientWidth || CANVAS_W, h = el.clientHeight || CANVAS_H;
+      const previous = fitSizeRef.current;
       fitSizeRef.current = { w, h };
-      setFitSize(prev => (prev.w === w && prev.h === h) ? prev : { w, h });
+      if (previous.w !== w || previous.h !== h) {
+        if (performanceProbe) performanceProbe.mark('resize:fit', { w, h });
+        setFitSize({ w, h });
+      }
     };
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     measure();
     return () => ro.disconnect();
-  }, []);
+  }, [performanceProbe]);
   // The single fit routine — frames all parts, centered, at the current
   // MEASURED container size. Shared by auto-fit-on-load, the F shortcut and
   // the Fit button, via the pure computeFitView helper, so a circuit always
   // frames identically however the fit was triggered.
-  const applyFit = React.useCallback((arr) => {
+  const applyFit = React.useCallback((arr, reason = 'programmatic') => {
     if (!arr || arr.length === 0) return;
     const boundsList = arr.map(p => {
       const b = partBounds(p);
@@ -3125,6 +3132,10 @@ export function BoardCanvas({
     });
     const v = computeFitView(boundsList, fitSizeRef.current);
     if (!v) return;
+    const cameraChanged = zoomRef.current !== v.zoom ||
+      panRef.current.x !== v.pan.x || panRef.current.y !== v.pan.y;
+    if (!cameraChanged) return;
+    if (performanceProbe) performanceProbe.mark(`fit:${reason}`, { zoom: v.zoom, pan: v.pan });
     // A fit is one camera move. Lite embeds this package under React 16, so
     // effect/rAF callers need an explicit batch to avoid rendering the heavy
     // canvas once for zoom and once again for pan.
@@ -3132,7 +3143,7 @@ export function BoardCanvas({
       setZoom(v.zoom);
       setPan(previous => retainEqualPan(previous, v.pan));
     });
-  }, []);
+  }, [performanceProbe]);
   React.useEffect(() => {
     if (parts.length === 0) return;
     // Re-fit on any of the three signals: a file load (fitToken), a
@@ -3150,7 +3161,7 @@ export function BoardCanvas({
     // wide), so multi-board benches auto-fit with their left edges
     // CLIPPED off-screen (owner's 6502 screenshots; confirmed in a
     // self-taken screenshot the same day).
-    applyFit(parts);
+    applyFit(parts, 'auto');
     // A LOAD's fit can race the loaded parts through React's commit
     // ordering — one session fit the stale 4-part starter and left SOS
     // half off-screen while an identical session fit fine. One more fit
@@ -3158,7 +3169,7 @@ export function BoardCanvas({
     // settled parts and the measured container. Idempotent when the
     // first fit was already right.
     if (tokenChanged && typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(() => applyFit(partsRef.current));
+      requestAnimationFrame(() => applyFit(partsRef.current, 'settled-retry'));
     }
   }, [parts.length, fitToken, fitSize.w, fitSize.h]);
   const [panning, setPanning] = useState(false);
@@ -3183,8 +3194,6 @@ export function BoardCanvas({
   const partsRef = useRef(parts); partsRef.current = parts;
   const wiresRef = useRef(wires); wiresRef.current = wires;
   const selectedPartsRef = useRef(null); selectedPartsRef.current = selectedParts || new Set();
-  const zoomRef = useRef(zoom); zoomRef.current = zoom;
-  const panRef = useRef(pan); panRef.current = pan;
   const apiRef = useRef({});
   apiRef.current = { onMovePart, onAddWire, onSelectPart, onSelectWire, onSaveHistory,
     onTerminalClickForProbe, onButtonDown, onButtonUp, onUpdateWire, onDropPart, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, onRewire };
@@ -3464,12 +3473,18 @@ export function BoardCanvas({
     const el = canvasContainerRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => {
+      if (performanceProbe) performanceProbe.mark('resize:viewport-observer', {
+        w: el.clientWidth || CANVAS_W, h: el.clientHeight || CANVAS_H
+      });
       setContainerSize({ w: el.clientWidth || CANVAS_W, h: el.clientHeight || CANVAS_H });
     });
     ro.observe(el);
+    if (performanceProbe) performanceProbe.mark('resize:viewport-initial', {
+      w: el.clientWidth || CANVAS_W, h: el.clientHeight || CANVAS_H
+    });
     setContainerSize({ w: el.clientWidth || CANVAS_W, h: el.clientHeight || CANVAS_H });
     return () => ro.disconnect();
-  }, []);
+  }, [performanceProbe]);
 
   React.useEffect(() => {
     const m = machineRef.current;
@@ -3883,7 +3898,7 @@ export function BoardCanvas({
     }
     // F → fit all parts in view (same framing as auto-fit and the Fit button)
     if (e.key === 'f' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-      applyFit(partsRef.current);
+      applyFit(partsRef.current, 'keyboard');
     }
     // Copy/paste
     if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedParts && selectedParts.size > 0) {
@@ -4217,7 +4232,7 @@ export function BoardCanvas({
         {parts.length > 0 && (
           <button
             data-testid="bw-circuit-fit"
-            onClick={() => applyFit(partsRef.current)}
+            onClick={() => applyFit(partsRef.current, 'button')}
             title={/^de/i.test(lang) ? 'Alle Bauteile einpassen (F)' : 'Fit all parts (F)'}
             aria-label={/^de/i.test(lang) ? 'Alle Bauteile einpassen' : 'Fit all parts'}
             style={{
