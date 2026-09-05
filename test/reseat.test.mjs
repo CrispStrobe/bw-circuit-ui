@@ -116,3 +116,23 @@ test('GENERALISES: e6-full-eater6502 reseats too — boundary lifts an ACIA + 2n
     // the reseat needs the LCD's pins in the pin declaration too.
     assert.ok(!has('lcd1'), 'the LCD (active peripheral, absent from the pin map) is lifted — documented, not accidental');
 });
+
+test('GENERALISES across CPU family AND port: the 6507/RIOT SBC reseats, its port A → 8255 port B', () => {
+    // The strongest case, and the one that proves #5 rather than asserting it: a
+    // DIFFERENT CPU (r6507, not w65c02), a DIFFERENT I/O chip (mos6532 RIOT, not a
+    // VIA), and its LEDs on the RIOT's PORT A — re-terminated onto the 8255's PORT
+    // B, where the 8086 program drives. The LEDs CHANGE PORTS across the reseat.
+    // That only works because the map is logical-pin → NET: riot.pa0's net becomes
+    // the net ppi86.pb0 drives, a move a pin-name match could never make.
+    const e25 = JSON.parse(readFileSync(join(gallery, 'e2.5-6507-sbc.json'), 'utf8'));
+    const pinMap = Array.from({ length: 8 }, (_, i) => ({ source: `riot.pa${i}`, target: `ppi86.pb${i}` }));
+    const out = reseatOnto8086(e25, { cpuId: 'cpu', pinMap });
+    const has = (id) => out.parts.some((p) => p.id === id);
+    for (const gone of ['cpu', 'riot', 'rom', 'inv1']) assert.ok(!has(gone), `${gone} lifted (the 6507 subsystem, not a 6502's)`);
+    for (let i = 0; i < 8; i++) assert.ok(has(`led${i}`) && has(`rl${i}`), `led${i} kept`);
+    assert.ok(out.parts.some((p) => (p.kind || p.type) === 'i8255'), '8086 subsystem added');
+    // The RIOT port-A LED net is now driven by the 8255 port-B pin — the LEDs moved ports.
+    assert.ok(out.wires.some((w) => (w.from === 'ppi86' && w.fromTerminal === 'pb0' && w.to === 'rl0')
+        || (w.to === 'ppi86' && w.toTerminal === 'pb0' && w.from === 'rl0')),
+        'the RIOT port-A LED net re-terminated onto 8255 port B — net identity across a port change');
+});
