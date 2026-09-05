@@ -68,11 +68,27 @@ but does not run" as the failure mode; behaviour is what separates those two.
    (`bw-board/src/devices/retro-dips.js`) — see the resolved blocker below.
 3. **Then generalise.** A general reseat that has never made one specific
    example run is exactly the thing this repo keeps finding and regretting.
-   ← NEXT. The transform hardcodes the 6502→8086 direction and the e4 board's
-   shape; generalising means other originals (Nano/Pico/STC) and inferring the
-   pin declaration rather than passing it. Also OPEN: generate the 8086 program
-   from pseudocode (option 3) so the program equivalence is generated, not
-   asserted — unblocked now that `buildPseudocode8086` lowers whole-port writes.
+   ✅ **DONE (2026-09-05) — with THREE concrete pairs, not an abstraction**
+   (`test/reseat.test.mjs`): e4-via-blink (6502/VIA, port B); e6-full-eater6502
+   (a bigger 6502 subsystem — a W65C51 ACIA and a second decoder, all lifted
+   correctly); and **e2.5-6507-sbc**, the strong one — a DIFFERENT CPU (r6507),
+   a DIFFERENT I/O chip (mos6532 RIOT), and LEDs on the RIOT's PORT A
+   re-terminated onto the 8255's PORT B. The LEDs *change ports* across that
+   reseat, which proves #5 (net identity, not pin identity) rather than
+   asserting it: the map is logical-pin → net, a move no pin-name match makes.
+   STILL OPEN: inferring the pin declaration instead of passing it; other CPU
+   *families* as the reseat TARGET (only 8086 today); and preserving ACTIVE
+   peripherals — the boundary is passive-vs-active, so an LCD wired to the VIA
+   is lifted (dropped), not re-terminated like the LEDs (documented + asserted
+   in the e6 test). A board whose LCD must survive needs its pins in the map.
+   ✅ **Option 3 — DONE (proven).** The 8086 program is now GENERATED from
+   pseudocode (`buildPseudocode8086`), not hand-asserted: a walking-bit PORT
+   program compiles to 8086 code and runs on the reseated CIRCUIT, walking the
+   same `0x01..0x80` as the 6502 baseline. It lives in brickwright-lite (the one
+   place `buildPseudocode8086` and the vendored gate coexist without a dependency
+   cycle — bw-board can't import it). The 6502 end stays hand-written (no 6502
+   back end), so one end generated is the ceiling. Recipe: the lowering emits a
+   `.COM`, loaded at `CS:0100`; PPI_BASE=0x60 aligns with the reseat's PPI decode.
 
 **✅ Behavioural RED — DONE (2026-09-05).** The wrong-port RED case proves the
 gate fails on wrong WIRING; it said nothing about wrong BEHAVIOUR, because shape
