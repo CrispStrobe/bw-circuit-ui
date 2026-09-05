@@ -76,11 +76,20 @@ but does not run" as the failure mode; behaviour is what separates those two.
    re-terminated onto the 8255's PORT B. The LEDs *change ports* across that
    reseat, which proves #5 (net identity, not pin identity) rather than
    asserting it: the map is logical-pin → net, a move no pin-name match makes.
-   STILL OPEN: inferring the pin declaration instead of passing it; other CPU
-   *families* as the reseat TARGET (only 8086 today); and preserving ACTIVE
-   peripherals — the boundary is passive-vs-active, so an LCD wired to the VIA
-   is lifted (dropped), not re-terminated like the LEDs (documented + asserted
-   in the e6 test). A board whose LCD must survive needs its pins in the map.
+   ✅ **The pin declaration is now INFERRED** when no `pinMap` is passed: the
+   transform scans the wires for lifted-chip pins whose net still drives a kept
+   (non-power) part, sorts them by trailing bit index, and maps each to
+   `ppi86.p<ledPort><bit>` — preserving the bit position while allowing the port
+   to change (RIOT PORT A → 8255 PORT B). Inference `deepEqual`s the explicit map
+   on e4 (the golden reseated board was built explicitly, so this is the same
+   transform, not a looser path); a board with no liftable LED driver throws
+   rather than emitting an empty reseat. Passing `pinMap` still overrides for
+   boards the heuristic can't read. STILL OPEN: other CPU *families* as the reseat
+   TARGET (only 8086 today); and preserving ACTIVE peripherals — the boundary is
+   passive-vs-active, so an LCD wired to the VIA is lifted (dropped), not
+   re-terminated like the LEDs (documented + asserted in the e6 test). A board
+   whose LCD must survive needs its pins in the map (inference only recovers the
+   LED chains, not active peripherals).
    ✅ **Option 3 — DONE (proven).** The 8086 program is now GENERATED from
    pseudocode (`buildPseudocode8086`), not hand-asserted: a walking-bit PORT
    program compiles to 8086 code and runs on the reseated CIRCUIT, walking the
