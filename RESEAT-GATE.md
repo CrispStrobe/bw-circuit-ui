@@ -74,6 +74,29 @@ but does not run" as the failure mode; behaviour is what separates those two.
    from pseudocode (option 3) so the program equivalence is generated, not
    asserted — unblocked now that `buildPseudocode8086` lowers whole-port writes.
 
+**✅ Behavioural RED — DONE (2026-09-05).** The wrong-port RED case proves the
+gate fails on wrong WIRING; it said nothing about wrong BEHAVIOUR, because shape
+(the ordered distinct values) is deliberately clock-independent — a reseat that
+lit the right LEDs at a quarter the rate was green. That was contract #1's
+original concern. `bw-board/src/reseat-gate.js` now captures `tMs` per edge and
+`reseatGate` takes an opt-in `{ timing: { tolerance, expectedRatio } }`: once
+shape matches, it requires the reseat's real-time cadence to be `expectedRatio×`
+the original's, flipping MATCH→DIFFER otherwise. The test drives a reseat at a
+4×-too-slow clock (a wrong crystal): the walk is byte-identical (shape MATCH) but
+the timing gate goes RED at ratio ~4, and an equal-rate reseat still passes.
+Shape stays the default across families that don't share a cycle budget;
+`expectedRatio` is the caller's model of "same speed" when they do compare.
+
+**The diagnostic that cost a red master, written down (lego-47).** The gate's
+GREEN case and its RED mutation case read the same fixtures. So: **the green case
+and the red mutation case failing _together_ means the fixture is absent, not
+that the behaviour moved; a real behaviour change moves only one.** A missing
+fixture (or a cross-repo path present only on one box) makes both go red and reads
+as "the reseat behaves differently" — which is exactly how a cross-repo fixture
+path shipped a red master on 2026-09-04. The fixtures are now committed in-repo
+(`bw-board/test/fixtures/reseat/`) with an existence assertion that fails as "the
+fixture is not here", naming the path — never as a behaviour change.
+
 ## Program equivalence — the axis the gate does NOT close yet (be honest)
 
 A circuit reseat transforms the SCHEMATIC; it cannot carry object code across.
