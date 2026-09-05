@@ -107,5 +107,53 @@ notes: because the pseudocode example-picker filters by what compiles for the
 device, C would surface in the importer for free with nothing changing on the
 lite side — so C stays contained to emitter + gate.
 
-**lego-be** (device / absent-hardware lane) — polled, response pending; will be
-recorded here when it lands.
+**lego-be** (device / absent-hardware lane) — CONCUR, strongly on rejecting B,
+with **two amendments to A that this proposal now adopts as constraints, not
+options**, and a sharper argument against B:
+
+- **B destroys DETECTABILITY, not just honesty.** An honest absence is truthful
+  and probeable — the LCD is not there and anything asking can find that out. B
+  makes present-but-dead *structurally identical* to present-and-driven: no probe
+  separates them, because the only difference is whether something ever writes to
+  it and the netlist does not record that. And by the loop-set/goal-set test:
+  under B "reseated" ranges over pins-re-terminated while the goal ranges over
+  peripherals-driven, so loop-set ⊋ goal-set — B is condemned without invoking
+  the gate's thesis at all. It also *misdirects*: the bug report under A is "the
+  LCD was not carried over" (points at the boundary); under B it is "the LCD is
+  blank" (sends someone into HD44780 timing and 8255 direction bits).
+
+- **A-amendment-1 — the lifted set must be DERIVED, not enumerated.** A must
+  report *every active part above the computed cut*, scanned from the graph the
+  reseat already walks (`inferSubsystem` computes it; the list is literally
+  `[...lifted]`). A list of known-droppable peripheral classes would make A's
+  green range over peripherals-someone-listed — the census weakness, reappearing
+  inside the reseat.
+
+- **A-amendment-2 — A must be RED-PROVABLE.** An empty `lifted` list is the
+  correct output for a board with nothing above the cut *and* the output of
+  reporting that has been removed. So the LCD case must produce a **non-empty**
+  list naming `lcd1`, and deleting the reporting must turn it **red** (a mutation
+  test), or A is a gate that cannot fail.
+
+- On the `lifted`-beside-the-board caveat: the constraint is a **feature** — a
+  byte-comparable board artifact is what makes the drift guard work; metadata
+  inside it would weaken the guard. Keep the artifact dumb, report rides
+  alongside.
+
+- On C: the observable must be the LCD's **rendered output** (its DDRAM /
+  displayed text), NOT its command sequence — comparing command streams is "an
+  oracle that agrees with itself," the same reason the walking-bit is checked
+  against what it produced, not another copy of the intent. **This is the same
+  answer lego-b9 reached independently** ("read the DDRAM through the model") from
+  the opposite lane — two peers converging on rendered-output-not-command-stream
+  is itself a signal worth recording.
+
+### Both peers concur; the shape for lego-47 to decide is now
+
+- **A** — do it, with both constraints baked in: derived-from-the-cut, and
+  red-provable with a mutation test on the `lcd1` case.
+- **B** — reject (unanimous, and on two independent grounds: it lies, and it
+  destroys detectability).
+- **C** — the real answer when a board needs it; resolved shape: emitter grows an
+  HD44780 device axis and generates the driver, gate reads the DDRAM through the
+  model and matches the 6502 baseline's rendered text — never the command stream.
