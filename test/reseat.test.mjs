@@ -87,3 +87,32 @@ test('golden: the committed artifacts match a fresh transform (drift guard)', ()
     const committed = readFileSync(join(gallery, 'reseat', 'e4-reseated-8086.json'), 'utf8');
     assert.equal(freshCorrect, committed, 'gallery/reseat/e4-reseated-8086.json is stale — rerun scripts/gen-reseated-8086.mjs');
 });
+
+test('GENERALISES: e6-full-eater6502 reseats too — boundary lifts an ACIA + 2nd decoder, keeps the LEDs', () => {
+    // A second concrete pair, not an abstraction: e6 has the same VIA-port-B LEDs
+    // as e4 but a bigger compute subsystem (a W65C51 ACIA and a SECOND 74HC00),
+    // which proves the boundary inference is not hardcoded to e4's shape.
+    const e6 = JSON.parse(readFileSync(join(gallery, 'e6-full-eater6502.json'), 'utf8'));
+    const out = reseatOnto8086(e6, { cpuId: 'cpu', pinMap: portMap('pb') });
+    const has = (id) => out.parts.some((p) => p.id === id);
+
+    for (const gone of ['cpu', 'via1', 'acia1', 'rom', 'ram', 'nand1', 'nand2']) {
+        assert.ok(!has(gone), `${gone} lifted (the whole 6502 compute subsystem, not just e4's chips)`);
+    }
+    for (let i = 0; i < 8; i++) assert.ok(has(`led${i}`) && has(`rl${i}`), `led${i}/rl${i} kept (the observable)`);
+    for (const need of ['i8086', 'i8255', '74hc138']) {
+        assert.ok(out.parts.some((p) => (p.kind || p.type) === need), `8086 subsystem has ${need}`);
+    }
+    // Net identity survives on the more complex board: rl0's driven side is
+    // re-terminated onto the 8255 port-B pin the pin declaration names.
+    assert.ok(out.wires.some((w) => (w.from === 'ppi86' && w.fromTerminal === 'pb0' && w.to === 'rl0')
+        || (w.to === 'ppi86' && w.toTerminal === 'pb0' && w.from === 'rl0')), 'rl0 driven by ppi86.pb0');
+
+    // KNOWN LIMITATION, asserted so it is a decision and not an accident: the LCD
+    // is an ACTIVE peripheral wired to the VIA, so the boundary — which is
+    // passive-vs-active, not peripheral-vs-compute — LIFTS it. It is dropped from
+    // the reseated board rather than re-terminated like the LEDs. Fine for an
+    // LED-walk reseat (the gate observes the LEDs); a board whose LCD must survive
+    // the reseat needs the LCD's pins in the pin declaration too.
+    assert.ok(!has('lcd1'), 'the LCD (active peripheral, absent from the pin map) is lifted — documented, not accidental');
+});
