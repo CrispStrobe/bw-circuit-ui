@@ -156,23 +156,60 @@ function dec138Terminals() { return ['a', 'b', 'c', 'g1', 'g2ab', 'g2bb', 'y0b',
 function inv04Terminals() { return ['1a', '1y', '2a', '2y', '3a', '3y', '4y', '4a', '5y', '5a', '6y', '6a', 'vcc', 'gnd']; }
 
 /**
+ * Infer the pin declaration when the caller does not pass one: the lifted-chip
+ * pins that drive an LED chain (their net reaches a KEPT, non-power part) are
+ * the sources, each mapped to `ppi86.p<ledPort><n>` where n is the source pin's
+ * trailing bit index. This preserves the bit position while allowing a port
+ * change (`riot.pa3` → `ppi86.pb3`). A source pin with no numeric suffix is
+ * skipped — a control/handshake line, not a bit of the LED port.
+ */
+function inferPinMap(wires, lifted, netMembers, find, key, kindById, ledPort) {
+    const seen = new Set();
+    const sources = [];
+    for (const w of wires) {
+        for (const [part, term] of [[w.from, w.fromTerminal], [w.to, w.toTerminal]]) {
+            if (!lifted.has(part)) continue;
+            const src = `${part}.${term}`;
+            if (seen.has(src)) continue;
+            const root = find(key(part, term));
+            const drivesKept = (netMembers.get(root) || []).some(
+                (m) => !lifted.has(m.part) && !POWER.has(kindById(m.part)),
+            );
+            const idx = /(\d+)$/.exec(term);
+            if (drivesKept && idx) { sources.push({ source: src, bit: Number(idx[1]) }); seen.add(src); }
+        }
+    }
+    if (sources.length === 0) throw new Error('reseat: could not infer a pin declaration — no lifted pin drives a kept LED chain (pass pinMap explicitly)');
+    sources.sort((a, b) => a.bit - b.bit);
+    return sources.map(({ source, bit }) => ({ source, target: `ppi86.p${ledPort}${bit}` }));
+}
+
+/**
  * Reseat a 6502 board onto an 8086/8255, preserving LED-net identity.
  *
  * @param {{parts: object[], wires: object[]}} circuit  the original board.
  * @param {object} opts
  * @param {string} opts.cpuId          the 6502 CPU part id to lift around.
- * @param {Array<{source: string, target: string}>} opts.pinMap  the pin
+ * @param {Array<{source: string, target: string}>} [opts.pinMap]  the pin
  *        declaration: each entry maps an ORIGINAL terminal ('via1.pb0') the
  *        program's logical pin drives to the NEW terminal ('ppi86.pb0') it
  *        drives after the swap. The transform re-terminates the SOURCE's net
- *        onto TARGET — net identity, not a name coincidence.
+ *        onto TARGET — net identity, not a name coincidence. If omitted, it is
+ *        INFERRED (see opts.ledPort).
+ * @param {string} [opts.ledPort='b']   when `pinMap` is omitted, infer it: the
+ *        lifted-chip pins that drive an LED chain become the sources, and each
+ *        maps to `ppi86.p<ledPort><n>` where n is the SOURCE pin's bit index —
+ *        so `riot.pa3` lands on `ppi86.pb3`, preserving the bit position while
+ *        moving ports. The default lands the LEDs on 8255 port B (where the
+ *        walking-bit program drives).
  * @returns {{parts: object[], wires: object[]}} the reseated board.
  */
-export function reseatOnto8086(circuit, { cpuId, pinMap }) {
+export function reseatOnto8086(circuit, { cpuId, pinMap, ledPort = 'b' }) {
     const parts = circuit.parts;
     const wires = circuit.wires;
     const { lifted, find, key, netMembers } = inferSubsystem(parts, wires, cpuId);
     const kindById = (id) => kindOf(parts, id);
+    if (!pinMap) pinMap = inferPinMap(wires, lifted, netMembers, find, key, kindById, ledPort);
 
     // Reuse the board's existing power rails.
     const gnd = parts.find((p) => (p.kind || p.type) === 'gnd');

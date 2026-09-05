@@ -136,3 +136,28 @@ test('GENERALISES across CPU family AND port: the 6507/RIOT SBC reseats, its por
         || (w.to === 'ppi86' && w.toTerminal === 'pb0' && w.from === 'rl0')),
         'the RIOT port-A LED net re-terminated onto 8255 port B — net identity across a port change');
 });
+
+test('the pin declaration is INFERRED when no pinMap is given: the LED-driving pins are found', () => {
+    // e4: inferring reproduces the explicit via1.pb0-7 -> ppi86.pb0-7 map exactly.
+    // The golden reseated board was built with the explicit map, so equality here
+    // means the inference is not a second, looser path — it is the same transform.
+    const inferred = reseatOnto8086(original, { cpuId: 'cpu' }); // no pinMap
+    assert.deepEqual(inferred, reseated, 'inferred pin declaration reproduces the explicit one for e4');
+
+    // e2.5: the RIOT drives its LEDs from port A. Inference must find those pins
+    // and land them on 8255 port B (the default), preserving the bit index across
+    // the port change — with nothing hand-written.
+    const e25 = JSON.parse(readFileSync(join(gallery, 'e2.5-6507-sbc.json'), 'utf8'));
+    const out = reseatOnto8086(e25, { cpuId: 'cpu' }); // inferred, ledPort defaults to 'b'
+    assert.ok(out.wires.some((w) => (w.from === 'ppi86' && w.fromTerminal === 'pb0' && w.to === 'rl0')
+        || (w.to === 'ppi86' && w.toTerminal === 'pb0' && w.from === 'rl0')),
+        'inference alone re-terminates the RIOT port-A LEDs onto 8255 port B');
+});
+
+test('inference REFUSES a board with no liftable LED driver rather than guessing', () => {
+    // A board whose lifted pins drive nothing kept (no LED chain to preserve) has
+    // no pin declaration to infer. The transform must say so, not emit an empty map.
+    const bare = { parts: [{ id: 'cpu', kind: 'cpu' }], wires: [] };
+    assert.throws(() => reseatOnto8086(bare, { cpuId: 'cpu' }), /could not infer|pinMap/i,
+        'no inferable LED driver -> explicit error, not a silent empty reseat');
+});
