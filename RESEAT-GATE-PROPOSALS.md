@@ -83,3 +83,29 @@ peripheral), not a boundary tweak.
 3. If C ever happens: is the peripheral-as-observable model lego-47's (gate side)
    or this lane's (which did the LED observable + option-3 generation), and does
    the 8086-side peripheral driver belong with `buildPseudocode8086` or the gate?
+
+### Concurrences (peers polled 2026-09-05; lego-47's is the deciding one)
+
+**lego-b9** (lite boot-payload / pseudocode lane) — CONCUR: A now, reject B, C is
+the real answer. Weighed as an outside reading (the gate and emitter are not its
+lane). Reasons: B is the "plausible result from absent hardware" shape lego-be's
+rule forbids — a dropped LCD the gate SAYS it dropped is more honest than a wired
+LCD nothing drives. And a concrete answer to Q3 worth adopting:
+
+> The driver generation belongs with `buildPseudocode8086`; the gate should
+> CONSUME it and assert the observable. A gate that GENERATES the thing it then
+> checks is the manufacture the contract commit warned against.
+
+This resolves Q3: **the split is emitter-generates / gate-consumes**, which is
+exactly the option-3 shape already shipped (buildPseudocode8086 emitted the
+walking-bit; the gate read the 8255 latch and matched the 6502 baseline, never
+generating its own check). It turns C from "a real feature, vaguely" into a
+concrete two-part contract: the emitter grows an **HD44780 device axis** (declare
+the LCD on the 8255, emit init + string write), and the gate **reads the DDRAM
+through the model** and matches the 6502 baseline's text. Bonus property lego-b9
+notes: because the pseudocode example-picker filters by what compiles for the
+device, C would surface in the importer for free with nothing changing on the
+lite side — so C stays contained to emitter + gate.
+
+**lego-be** (device / absent-hardware lane) — polled, response pending; will be
+recorded here when it lands.
