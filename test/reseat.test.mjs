@@ -161,3 +161,42 @@ test('inference REFUSES a board with no liftable LED driver rather than guessing
     assert.throws(() => reseatOnto8086(bare, { cpuId: 'cpu' }), /could not infer|pinMap/i,
         'no inferable LED driver -> explicit error, not a silent empty reseat');
 });
+
+test('inference reads BOTH wire dialects — a nested circuit reseats identically', () => {
+    // The app never hands reseat a flat circuit: Circuit.fromJSON has already
+    // normalized every wire to the NESTED {from:{part,terminal}} dialect by the
+    // time a board is on screen. inferPinMap originally read only the flat
+    // shape, so `lifted.has(w.from)` compared a Set of ids against an OBJECT,
+    // matched nothing, and the inference threw "could not infer a pin
+    // declaration" on a board it should have handled — the exact silent-split
+    // defect wire-endpoint-adoption.test.js exists to prevent, on a file whose
+    // own header claims wire-endpoints.js is its only dependency.
+    const nest = (w) => {
+        const o = { ...w };
+        for (const side of ['from', 'to']) {
+            if (typeof w[side] === 'string' && typeof w[`${side}Terminal`] === 'string') {
+                o[side] = { part: w[side], terminal: w[`${side}Terminal`] };
+                delete o[`${side}Terminal`];
+            }
+        }
+        return o;
+    };
+    const nested = { ...original, wires: original.wires.map(nest) };
+
+    // The fixture must actually BE nested, or this test proves nothing.
+    assert.ok(nested.wires.some((w) => w.from && typeof w.from === 'object' && w.from.part),
+        'the nested fixture is not nested — the conversion silently did nothing');
+    assert.ok(!nested.wires.some((w) => typeof w.fromTerminal === 'string'),
+        'the nested fixture still carries flat terminals — the conversion is incomplete');
+
+    const fromNested = reseatOnto8086(nested, { cpuId: 'cpu' });   // inferred
+    const fromFlat = reseatOnto8086(original, { cpuId: 'cpu' });   // inferred
+
+    assert.equal(fromNested.parts.length, fromFlat.parts.length,
+        'the nested dialect yields a different part count — the inference is dialect-sensitive');
+    assert.deepEqual(
+        fromNested.wires.filter((w) => w.from === 'ppi86' || w.to === 'ppi86'),
+        fromFlat.wires.filter((w) => w.from === 'ppi86' || w.to === 'ppi86'),
+        'the re-terminations onto the 8255 differ between dialects — same board, same result',
+    );
+});
