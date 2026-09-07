@@ -20,6 +20,7 @@
  */
 
 import { FOOTPRINTS, computeLeadMap, straddleRefRow } from './footprints.js';
+import { wirableKind } from './declared-part-kind.js';
 
 /**
  * Build the seated circuit for a project's declarations into `circuit`.
@@ -148,7 +149,32 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
     // Free row in the same strip block as the pin
     const pinFreeRow = pinRow && pinRow <= 'e' ? 'a' : 'g';
 
-    if (dir === 'analog') {
+    // WHAT THE AUTHOR CALLED IT, WHERE THAT NAMES A PART THIS PATH CAN WIRE.
+    // `PIN ldr = P1.3 ANALOG` used to become a potentiometer, because only the
+    // direction was consulted and the name was a label. A name that asserts
+    // nothing — `sensor`, `heater`, `btn` — still falls through to the
+    // direction rules below, unchanged.
+    const asserted = wirableKind(pin.name, Object.keys(FOOTPRINTS),
+      dir === 'analog' ? 'analog' : 'output');
+
+    if (dir === 'analog' && asserted) {
+      // A two-terminal resistive sensor takes the same divider the
+      // potentiometer took, with a fixed resistor as the lower leg: sensor from
+      // the + rail to the junction, resistor from the junction to −, and the
+      // pin reads the junction. Same seven columns, same jumper.
+      const sensor = circuit.addPart(asserted, {}, 0, 0, pin.name);
+      const lower = circuit.addPart('resistor', { ohms: 10000 }, 0, 0);
+      circuit.seatPart(sensor.id, bb.id, computeLeadMap(FOOTPRINTS[asserted], `a${col}`));
+      circuit.seatPart(lower.id, bb.id, computeLeadMap(FOOTPRINTS.resistor, `a${col + 2}`));
+      circuit.addHoleWire(bb.id, `b${col}`, `t+${col}`, '#e74c3c');
+      circuit.addHoleWire(bb.id, `b${col + 6}`, `t-${col + 6}`, '#2c3e50');
+      if (seated && pinHole) {
+        circuit.addHoleWire(bb.id, `${pinFreeRow}${pinCol}`, `b${col + 2}`, '#f1c40f');
+      } else {
+        circuit.addTapWire(mcu.id, pinName, bb.id, `b${col + 2}`, '#f1c40f');
+      }
+      notes.push(`${pin.name}: a ${asserted} above a 10k lower leg — the pin reads the junction between them, not a knob.`);
+    } else if (dir === 'analog') {
       const pot = circuit.addPart('potentiometer', { ohms: 10000 }, 0, 0, pin.name);
       circuit.seatPart(pot.id, bb.id, computeLeadMap(FOOTPRINTS.potentiometer, `a${col}`));
       circuit.addHoleWire(bb.id, `b${col}`, `t+${col}`, '#e74c3c');
@@ -169,6 +195,29 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
       }
       circuit.addHoleWire(bb.id, `g${col}`, `b-${col}`, '#2c3e50');
       notes.push(`${pin.name}: the chip's internal pull-up holds the pin HIGH; pressing pulls it LOW.`);
+    } else if (asserted === 'buzzer') {
+      // Driven straight off the pin. A piezo buzzer is not a diode and takes no
+      // series resistor, so the LED branch's resistor would be wrong here — it
+      // is the one output part this path can honestly draw from a name.
+      const buz = circuit.addPart('buzzer', {}, 0, 0, pin.name);
+      circuit.seatPart(buz.id, bb.id, computeLeadMap(FOOTPRINTS.buzzer, `a${col}`));
+      if (activeLow) {
+        circuit.addHoleWire(bb.id, `b${col}`, `t+${col}`, '#e74c3c');
+        if (seated && pinHole) {
+          circuit.addHoleWire(bb.id, `${pinFreeRow}${pinCol}`, `b${col + 2}`, '#f1c40f');
+        } else {
+          circuit.addTapWire(mcu.id, pinName, bb.id, `b${col + 2}`, '#f1c40f');
+        }
+        notes.push(`${pin.name}: wired active-low — the pin SINKS the buzzer current; writing 0 sounds it.`);
+      } else {
+        if (seated && pinHole) {
+          circuit.addHoleWire(bb.id, `${pinFreeRow}${pinCol}`, `b${col}`, '#f1c40f');
+        } else {
+          circuit.addTapWire(mcu.id, pinName, bb.id, `b${col}`, '#f1c40f');
+        }
+        circuit.addHoleWire(bb.id, `b${col + 2}`, `t-${col + 2}`, '#2c3e50');
+        notes.push(`${pin.name}: driven directly, no series resistor — a buzzer is not an LED.`);
+      }
     } else if (activeLow) {
       const r = circuit.addPart('resistor', { ohms: 1000 }, 0, 0);
       const led = circuit.addPart('led', { color: 'red' }, 0, 0, pin.name);
