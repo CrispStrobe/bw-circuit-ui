@@ -167,7 +167,16 @@ function inferPinMap(wires, lifted, netMembers, find, key, kindById, ledPort) {
     const seen = new Set();
     const sources = [];
     for (const w of wires) {
-        for (const [part, term] of [[w.from, w.fromTerminal], [w.to, w.toTerminal]]) {
+        // Read BOTH dialects through the canonical reader, exactly as the
+        // lift (line ~51) and the re-termination scan already do. Hand-rolling
+        // the flat shape here made this function silently blind to a nested
+        // circuit: `w.from` is an object there, `lifted.has(object)` is always
+        // false, every pin is skipped, and the inference throws "could not
+        // infer a pin declaration" on a board it should have handled.
+        for (const ep of [wireEndpoint(w, 'from'), wireEndpoint(w, 'to')]) {
+            // A hole endpoint has no `part`; it is a breadboard node, not a pin.
+            if (!ep || typeof ep.part !== 'string' || typeof ep.terminal !== 'string') continue;
+            const part = ep.part, term = ep.terminal;
             if (!lifted.has(part)) continue;
             const src = `${part}.${term}`;
             if (seen.has(src)) continue;
