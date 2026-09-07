@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { PartThumbnail } from './PartThumbnail.jsx';
+import { summariseSeverities } from './drc-severity.js';
 
 const SEVERITY_COLORS = {
   danger: '#e74c3c',
@@ -64,8 +65,7 @@ export function DrcPanel({ warnings, onSelectPart, onAddFixPart }) {
       }}>
         <span>Circuit Check ({warnings.length})</span>
         <span style={{ color: warnings.some(w => w.severity === 'danger') ? '#e74c3c' : '#f39c12' }}>
-          {warnings.filter(w => w.severity === 'danger').length} problems,{' '}
-          {warnings.filter(w => w.severity === 'warning').length} checks
+          {summariseSeverities(warnings)}
         </span>
       </div>
 
