@@ -9,6 +9,7 @@ import { runDrc } from '../src/model/drc.js';
 const canvasSource = readFileSync(new URL('../src/components/BoardCanvas.jsx', import.meta.url), 'utf8');
 const breadboardSource = readFileSync(new URL('../src/components/BreadboardView.jsx', import.meta.url), 'utf8');
 const designerSource = readFileSync(new URL('../src/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
+const boardHookSource = readFileSync(new URL('../src/hooks/useBoard.js', import.meta.url), 'utf8');
 const paletteSource = readFileSync(new URL('../src/components/PartPalette.jsx', import.meta.url), 'utf8');
 const seatGeneratorSource = readFileSync(new URL('../scripts/seat-examples.mjs', import.meta.url), 'utf8');
 
@@ -70,6 +71,24 @@ test('owner default keeps instruments collapsed unless debugger or bench needs t
   assert.match(designerSource, /useState\(!!debuggerOn \|\| !!benchOpen\)/);
   assert.match(designerSource, /if \(debuggerOn \|\| benchOpen\) setRightOpen\(true\)/);
   assert.match(designerSource, /if \(hasRetroCpu\) setRightOpen\(true\)/);
+});
+
+test('performance attribution stays optional and labels canvas update sources', () => {
+  assert.match(designerSource, /performanceProbe = null/);
+  assert.match(designerSource,
+    /profilePerformanceSubtree\(performanceProbe, React, 'BoardCanvas'/);
+  assert.match(designerSource, /performanceProbe\.mark\('designer:declaration'\)/);
+  assert.match(designerSource, /performanceProbe\.mark\('designer:board-ready'\)/);
+  assert.match(canvasSource, /performanceProbe\.mark\(`fit:\$\{reason\}`/);
+  for (const source of ["'auto'", "'settled-retry'", "'keyboard'", "'button'",
+    'resize:fit', 'resize:viewport-initial', 'resize:viewport-observer']) {
+    assert.ok(canvasSource.includes(source), `BoardCanvas lost ${source}`);
+  }
+  assert.match(canvasSource, /if \(!cameraChanged\) return;/,
+    'idempotent fits must not emit a false update-source mark');
+  assert.match(boardHookSource, /performanceProbe\.mark\(`board-state:\$\{source\}`\)/);
+  assert.match(boardHookSource, /doRefresh\('initial'\)/);
+  assert.match(boardHookSource, /doRefresh\('change'\)/);
 });
 
 test('battery positive directly wired to negative is a supply-short warning', () => {

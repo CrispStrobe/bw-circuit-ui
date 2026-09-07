@@ -21,30 +21,32 @@ const THROTTLE_MS = 100; // 10 Hz max render rate
  * @param {object} board — a BoardImpl instance
  * @returns {{ renderState: object|null, refresh: () => void }}
  */
-export function useBoard(board) {
+export function useBoard(board, performanceProbe = null) {
   const [renderState, setRenderState] = useState(null);
   const pendingRef = useRef(false);
   const timerRef = useRef(null);
 
-  const doRefresh = useCallback(() => {
+  const doRefresh = useCallback((source = 'refresh') => {
     if (!board || !board.getRenderState) return;
     try {
-      setRenderState(board.getRenderState());
+      const next = board.getRenderState();
+      if (performanceProbe) performanceProbe.mark(`board-state:${source}`);
+      setRenderState(next);
     } catch {
       // Board might not have a valid netlist yet
     }
     pendingRef.current = false;
-  }, [board]);
+  }, [board, performanceProbe]);
 
   const refresh = useCallback(() => {
-    doRefresh();
+    doRefresh('refresh');
   }, [doRefresh]);
 
   useEffect(() => {
     if (!board) return;
 
     // Initial render state
-    doRefresh();
+    doRefresh('initial');
 
     // Subscribe to changes if the board supports it
     if (board.onChange) {
@@ -53,7 +55,7 @@ export function useBoard(board) {
         if (!pendingRef.current) {
           pendingRef.current = true;
           timerRef.current = setTimeout(() => {
-            doRefresh();
+            doRefresh('change');
             timerRef.current = null;
           }, THROTTLE_MS);
         }
