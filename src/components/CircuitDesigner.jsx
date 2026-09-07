@@ -47,6 +47,7 @@ import { InferPanel } from './InferPanel.jsx';
 import { ExamplesBrowser } from './ExamplesBrowser.jsx';
 import { CodexBrowser } from './CodexBrowser.jsx';
 import { t } from '../i18n/strings.js';
+import { demoPinScriptApplies } from '../model/simulation.js';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
 import { SweepPanel } from './SweepPanel.jsx';
@@ -582,6 +583,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     }
 
     const mcu = parts.find(p => ['mcu', 'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge'].includes(p.kind));
+    // A project that declares PINs has a program, and the program is the
+    // authority on what those pins do. Its writes arrive through the consumer's
+    // pin blocks onto this same board, so a demo blink on top of them is two
+    // authors on one pin. The rule is a named predicate in model/simulation.js
+    // because inside this effect there is no way to test it but to render the
+    // whole designer.
+    const demoBlinkApplies = demoPinScriptApplies({ hasMcu: !!mcu, stc });
     // No MCU is NOT "no simulation": pure circuits (battery+LED, FG+scope,
     // RC charge) need the clock just as much. Only the demo pin script
     // below is MCU-conditional.
@@ -638,7 +646,20 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       simStep.current++;
       const step = simStep.current;
 
-      if (mcu) {
+      // THE DEMO BLINK IS A PLACEHOLDER AND MUST YIELD TO A REAL PROGRAM. It
+      // drives every pin it classified as an output from ONE shared on/off
+      // value, so it can only ever show one behaviour: all the LEDs together.
+      // For a project with no program that is a friendly sign of life. For a
+      // project that HAS one it is fiction, and it is fiction that looks
+      // convincing — on a single-LED example it is indistinguishable from the
+      // program working, which is why 12-dual-blink is where it was caught:
+      // two LEDs wired to alternate lit in unison instead.
+      //
+      // The pins are still ARMED above, so the nets do not float before the
+      // program's first write, and the clock below still advances for every
+      // circuit — a pure battery-LED or RC bench has no program and still needs
+      // time to pass.
+      if (demoBlinkApplies) {
         // Blink all output pins at 2 Hz of SIM time (500 ms period)
         for (const pin of outputPins) {
           const on = (step % Math.max(1, Math.round(20 / simSpeedRef.current))) <
@@ -651,7 +672,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     }, 50);
 
     return () => { if (simInterval.current) clearInterval(simInterval.current); };
-  }, [mode, parts, wires]);
+  }, [mode, parts, wires, stc]);
 
   // Refs so pause/speed act immediately without restarting the interval.
   const simPausedRef = useRef(false); simPausedRef.current = simPaused;

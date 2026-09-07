@@ -87,3 +87,36 @@ export function runDemoTrace(board) {
 
   return snapshots;
 }
+
+/**
+ * Does the built-in demo pin script apply to this project?
+ *
+ * The designer plays a placeholder animation while a circuit has no program
+ * driving it: it blinks every pin it classified as an output, all of them from
+ * ONE shared on/off value. For a bench with no program that is a friendly sign
+ * of life. For a project that HAS a program it is fiction — and fiction that
+ * looks convincing, because on a single-LED circuit it is indistinguishable
+ * from the program working.
+ *
+ * Consumed by brickwright, where it was caught: a two-LED example whose program
+ * alternates the pins rendered with both LEDs lighting TOGETHER. The program was
+ * running and its pin writes were correct; they simply were not arriving at this
+ * board, so the placeholder kept playing over the top of a real program. The
+ * placeholder standing down is half the fix, and it is the half that belongs
+ * here — a project that declares pins has an author for them, and it is not this
+ * module.
+ *
+ * A predicate rather than an inline condition so it can be tested: the decision
+ * otherwise lives inside a React effect, where the only way to reach it is to
+ * render the whole designer.
+ *
+ * @param {object} opts
+ * @param {boolean} opts.hasMcu — the demo script only ever drove MCU pins
+ * @param {object} [opts.stc] — the project's declarations, if it has any
+ * @returns {boolean} true when the placeholder should play
+ */
+export function demoPinScriptApplies({ hasMcu, stc }) {
+  if (!hasMcu) return false;
+  const declared = stc && Array.isArray(stc.pins) ? stc.pins.length : 0;
+  return declared === 0;
+}
