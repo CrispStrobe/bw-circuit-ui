@@ -49,6 +49,12 @@ const CATEGORIES = [
       { kind: 'at89c2051', label: 'AT89C2051', params: {}, color: '#7f8c8d',
         capability: 'wiring only',
         tooltip: 'DIP-20 8051-core — 2 KB flash, UART, 15 I/O (emu config pending)' },
+      { kind: 'i8086', label: 'Intel 8086', params: {}, color: '#7f8c8d',
+        capability: 'i8086 simulation',
+        tooltip: 'DIP-40 16-bit CPU — no GPIO of its own; I/O goes through an 8255 on the bus' },
+      { kind: 'i8255', label: '8255 PPI', params: {}, color: '#7f8c8d',
+        capability: 'i8086 simulation',
+        tooltip: 'Programmable Peripheral Interface — 24 I/O pins in three ports (A/B/C)' },
     ],
   },
   {
