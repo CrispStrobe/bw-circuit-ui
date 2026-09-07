@@ -302,7 +302,7 @@ function parseV3(text, col, warnings, ignore) {
       continue;
     }
     if (docType !== 'PCB') continue;
-    const key = `${docIndex} ${outer.type} ${outer.id ?? ''}`;
+    const key = `${docIndex}\0${outer.type}\0${outer.id ?? ''}`;
     const prev = latest.get(key);
     if (!prev || (outer.ticket ?? 0) >= (prev.ticket ?? 0)) {
       latest.set(key, { ticket: outer.ticket ?? 0, type: outer.type, id: outer.id, data: inner });
