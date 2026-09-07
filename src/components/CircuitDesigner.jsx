@@ -1826,6 +1826,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                   <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
                     {presets.map(p => (
                       <button key={p.id} onClick={() => loadPreset(p)} title={p.hint}
+                        data-testid={`bw-machine-preset-${p.id}`}
                         style={{padding: '4px 8px', cursor: 'pointer', fontSize: 10,
                           background: '#0f172a', border: '1px solid #475569', borderRadius: 3,
                           color: '#93c5fd', fontFamily: 'monospace', textAlign: 'left'}}>
@@ -1836,7 +1837,17 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                       background: '#0f172a', border: '1px solid #475569', borderRadius: 3,
                       color: '#a5b4fc', fontFamily: 'monospace'}}>
                       📁 Load .hex / .bin file…
+                      {/* The only named way to put an arbitrary ROM image on the
+                          bench, and until now it had no handle a gate could take.
+                          For kind 'i8086' loadFile dispatches slot 'rom' with a null
+                          profile, which is the ONE boot-media branch that reaches a
+                          machine WITH CHIPS: the ASM tab always sends profile 'dos'
+                          (a chipless bench) and the no-media route boots the BIOS,
+                          whose only refusal is pic1's four-step init window. So this
+                          input is where a chip refusal can be produced by a program
+                          at all, and the id is what lets a gate say so. */}
                       <input type="file" accept=".hex,.ihx,.bin,.rom,.com"
+                        data-testid="bw-machine-load-file"
                         style={{display: 'none'}}
                         onChange={e => { if (e.target.files[0]) loadFile(e.target.files[0]); }} />
                     </label>
