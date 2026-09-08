@@ -18,7 +18,7 @@ jobs:
       # Tests import the engine from a sibling bw-board checkout
       - name: Clone bw-board (sibling dependency)
         run: |
-          git clone --depth 1 https://github.com/CrispStrobe/bw-board.git ../bw-board
+          node scripts/checkout-ci-sibling.mjs bw-board ../bw-board
           # bw-board's avr8js-adapter.js imports the `avr8js` runtime dependency;
           # install bw-board's deps so the sibling engine resolves under Node's
           # module resolution (../bw-board/node_modules). Without this the
@@ -30,11 +30,14 @@ jobs:
       # cross-check SKIPS — which is how its ratchet sat at a stale 162 while
       # the real count was 163: the gate had never once run here.
       - name: Clone bw-parts (sidecar source)
-        run: git clone --depth 1 https://github.com/CrispStrobe/bw-parts.git ../bw-parts
+        run: node scripts/checkout-ci-sibling.mjs bw-parts ../bw-parts
 
       # Fabric gate needs sb3-creator examples
       - name: Clone sb3-creator (examples source)
-        run: git clone --depth 1 https://github.com/CrispStrobe/sb3-creator.git ../sb3-creator
+        run: node scripts/checkout-ci-sibling.mjs sb3-creator ../sb3-creator
+
+      - name: CI sibling pin integrity
+        run: node --test scripts/ci-sibling-pins.test.mjs
 
       # test/spice-corpus.test.js reads the 410 published decks the ngspice
       # PACKAGE installs, in place, and skips when they are absent. A skip
@@ -91,7 +94,7 @@ jobs:
       # "the engine is missing".
       - name: Clone bw-board (engine sibling — the dev harness imports it)
         run: |
-          git clone --depth 1 https://github.com/CrispStrobe/bw-board.git ../bw-board
+          node scripts/checkout-ci-sibling.mjs bw-board ../bw-board
           npm --prefix ../bw-board install --no-audit --no-fund --ignore-scripts
 
       - run: npm install
@@ -123,7 +126,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y --no-install-recommends kicad
       - name: Clone bw-board (engine sibling, needed by test/_setup.js)
-        run: git clone --depth 1 https://github.com/CrispStrobe/bw-board.git ../bw-board
+        run: node scripts/checkout-ci-sibling.mjs bw-board ../bw-board
       - name: Run the oracle
         run: node scripts/kicad-oracle.mjs
 
@@ -146,7 +149,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends ngspice
           ngspice --version | head -3
       - name: Clone bw-board (engine sibling, needed by test/_setup.js)
-        run: git clone --depth 1 https://github.com/CrispStrobe/bw-board.git ../bw-board
+        run: node scripts/checkout-ci-sibling.mjs bw-board ../bw-board
       # The script exits 0 with a loud SKIPPED banner where ngspice is absent,
       # so this step asserts it actually RAN. A skip that reads as a pass is
       # how the interaction gate sat red for months.
