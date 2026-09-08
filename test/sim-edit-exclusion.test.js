@@ -20,13 +20,16 @@ test('property editing is enabled only in Build mode', () => {
   assert.deepEqual(policyVerdict(partEditingAllowed), {build: true, simulate: false});
 });
 
-test('BoardCanvas applies the policy at every editor boundary', () => {
+test('BoardCanvas applies the policy through one editor-opening door', () => {
   assert.match(boardSource,
     /const canEditParts = partEditingAllowed\(simulate\);/,
     'the component must derive its decision from the tested policy');
-  const uses = boardSource.match(/\bcanEditParts\b/g) || [];
-  assert.equal(uses.length, 7,
-    'one definition plus stale-state/effect, canvas, adjust-chip, rendered-part and final-render guards');
+  assert.match(boardSource,
+    /const openPartEditor = useCallback[\s\S]*?if \(!canEditParts\) return;[\s\S]*?setInlineEdit\(\{partId, x, y\}\);/,
+    'the shared opening door must enforce the tested policy');
+  const directOpeners = boardSource.match(/setInlineEdit\(\{/g) || [];
+  assert.equal(directOpeners.length, 1,
+    'the shared mode-aware door must be the only code that opens the editor');
 });
 
 test('the policy test catches SIM being permitted', async () => {
@@ -37,9 +40,11 @@ test('the policy test catches SIM being permitted', async () => {
     'the mutation must violate the same two-mode truth table');
 });
 
-test('the wiring gate catches one editor boundary losing the policy', () => {
-  const mutated = boardSource.replace('if (!canEditParts) return;', '');
-  assert.notEqual(mutated, boardSource, 'mutation must remove the canvas guard');
-  const uses = mutated.match(/\bcanEditParts\b/g) || [];
-  assert.notEqual(uses.length, 7, 'a missing boundary must change the expected wiring count');
+test('the wiring gate catches a new entry bypassing the shared door', () => {
+  const mutated = boardSource.replace('openPartEditor(only.id, sx, sy);',
+    'setInlineEdit({partId: only.id, x: sx, y: sy});');
+  assert.notEqual(mutated, boardSource, 'mutation must bypass the shared opening door');
+  const directOpeners = mutated.match(/setInlineEdit\(\{/g) || [];
+  assert.notEqual(directOpeners.length, 1,
+    'a new unguarded entry must change the derived direct-opener denominator');
 });

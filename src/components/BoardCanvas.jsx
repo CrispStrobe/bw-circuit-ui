@@ -3035,6 +3035,12 @@ export function BoardCanvas({
   const [rubberBand, setRubberBand] = useState(null);
   const [inlineEdit, setInlineEdit] = useState(null); // { partId, x, y }
   const canEditParts = partEditingAllowed(simulate);
+  // Every property-editor entry goes through this one mode-aware door. A new
+  // gesture can safely call it without having to remember its own SIM guard.
+  const openPartEditor = useCallback((partId, x, y) => {
+    if (!canEditParts) return;
+    setInlineEdit({partId, x, y});
+  }, [canEditParts]);
   // A properties editor opened in Build mode must not survive a mode switch.
   // Simulation gestures belong to the simulated controls alone.
   React.useEffect(() => {
@@ -4201,10 +4207,9 @@ export function BoardCanvas({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onDoubleClick={(e) => {
-          if (!canEditParts) return;
           const { x, y } = eventToWorld(e);
           const pid = machineRef.current.hit.partAt(x, y);
-          if (pid) setInlineEdit({ partId: pid, x: e.clientX, y: e.clientY });
+          if (pid) openPartEditor(pid, e.clientX, e.clientY);
         }}
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
         onDrop={(e) => {
@@ -4374,7 +4379,7 @@ export function BoardCanvas({
                   const r = el.getBoundingClientRect();
                   const sx = (b.minX + (b.maxX - b.minX) / 2 - panRef.current.x) * zoomRef.current + r.left;
                   const sy = (b.minY - 14 - panRef.current.y) * zoomRef.current + r.top;
-                  setInlineEdit({ partId: only.id, x: sx, y: sy });
+                  openPartEditor(only.id, sx, sy);
                 }}>
                 <rect x={b.minX + (b.maxX - b.minX) / 2 - 24} y={b.minY - 24}
                   width={48} height={15} rx={7}
@@ -4834,8 +4839,7 @@ export function BoardCanvas({
               if (partId) setHoverPos({ x: cx, y: cy });
             }}
             onPartBodyClick={handlePartBodyClick}
-            onDoubleClick={!canEditParts ? undefined :
-              (partId, cx, cy) => setInlineEdit({ partId, x: cx, y: cy })}
+            onDoubleClick={openPartEditor}
             deviceStates={(() => {
               // Active-board rule, same as the SvgParts faces above.
               const eb = (engineBoard && engineBoard.getDeviceState) ? engineBoard
