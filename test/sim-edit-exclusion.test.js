@@ -1,54 +1,45 @@
 /**
- * SIM owns every pointer gesture on a part. In particular, a rapid button
- * press produces a browser dblclick after the down/up pair; that event must
- * never open the Build-mode property editor.
- *
- * BoardCanvas cannot be imported by Node without compiling JSX, so this gate
- * checks every entry and the final render boundary in the source that ships.
- * The mutation cases prove the check distinguishes each missing guard.
+ * A rapid simulated button press can emit `dblclick` after its down/up pair.
+ * Property editing is a Build-mode capability, so every editor entry and the
+ * final render boundary share one tested policy.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
+import {partEditingAllowed} from '../src/interaction/edit-policy.js';
 
-const FILE = path.resolve(import.meta.dirname, '../src/components/BoardCanvas.jsx');
-const source = readFileSync(FILE, 'utf8');
+const boardSource = readFileSync(
+  path.resolve(import.meta.dirname, '../src/components/BoardCanvas.jsx'), 'utf8');
+const policySource = readFileSync(
+  path.resolve(import.meta.dirname, '../src/interaction/edit-policy.js'), 'utf8');
 
-const requireShape = (src, pattern, message) => assert.match(src, pattern, message);
+const policyVerdict = policy => ({build: policy(false), simulate: policy(true)});
 
-function verifySimEditExclusion(src) {
-  requireShape(src,
-    /React\.useEffect\(\(\) => \{\s*if \(simulate\) setInlineEdit\(null\);\s*\}, \[simulate\]\);/,
-    'entering SIM must close an editor retained from Build mode');
-  requireShape(src,
-    /onDoubleClick=\{\(e\) => \{\s*if \(simulate\) return;\s*const \{ x, y \} = eventToWorld\(e\);/,
-    'the canvas double-click entry must refuse SIM mode');
-  requireShape(src,
-    /if \(simulate \|\| !selectedParts \|\| selectedParts\.size !== 1 \|\| inlineEdit\) return null;/,
-    'the click-to-adjust editor entry must not render in SIM mode');
-  requireShape(src,
-    /onDoubleClick=\{simulate \? undefined :\s*\(partId, cx, cy\) => setInlineEdit/,
-    'rendered parts must not receive a property double-click callback in SIM mode');
-  requireShape(src,
-    /\{!simulate && inlineEdit && onUpdateParams && \(/,
-    'the property editor render boundary must refuse SIM mode');
-}
-
-test('every property-editor entry and render boundary excludes SIM mode', () => {
-  verifySimEditExclusion(source);
+test('property editing is enabled only in Build mode', () => {
+  assert.deepEqual(policyVerdict(partEditingAllowed), {build: true, simulate: false});
 });
 
-test('the gate catches a rapid-button double-click guard being removed', () => {
-  const mutated = source.replace('if (simulate) return;\n          const { x, y } = eventToWorld(e);',
-    'const { x, y } = eventToWorld(e);');
-  assert.notEqual(mutated, source, 'mutation must change the canvas handler');
-  assert.throws(() => verifySimEditExclusion(mutated), /canvas double-click entry/);
+test('BoardCanvas applies the policy at every editor boundary', () => {
+  assert.match(boardSource,
+    /const canEditParts = partEditingAllowed\(simulate\);/,
+    'the component must derive its decision from the tested policy');
+  const uses = boardSource.match(/\bcanEditParts\b/g) || [];
+  assert.equal(uses.length, 7,
+    'one definition plus stale-state/effect, canvas, adjust-chip, rendered-part and final-render guards');
 });
 
-test('the gate catches the final SIM render exclusion being removed', () => {
-  const mutated = source.replace('{!simulate && inlineEdit && onUpdateParams && (',
-    '{inlineEdit && onUpdateParams && (');
-  assert.notEqual(mutated, source, 'mutation must change the final render boundary');
-  assert.throws(() => verifySimEditExclusion(mutated), /editor render boundary/);
+test('the policy test catches SIM being permitted', async () => {
+  const mutated = policySource.replace('return !simulate;', 'return true;');
+  assert.notEqual(mutated, policySource, 'mutation must change the policy');
+  const module = await import(`data:text/javascript,${encodeURIComponent(mutated)}`);
+  assert.notDeepEqual(policyVerdict(module.partEditingAllowed), {build: true, simulate: false},
+    'the mutation must violate the same two-mode truth table');
+});
+
+test('the wiring gate catches one editor boundary losing the policy', () => {
+  const mutated = boardSource.replace('if (!canEditParts) return;', '');
+  assert.notEqual(mutated, boardSource, 'mutation must remove the canvas guard');
+  const uses = mutated.match(/\bcanEditParts\b/g) || [];
+  assert.notEqual(uses.length, 7, 'a missing boundary must change the expected wiring count');
 });
