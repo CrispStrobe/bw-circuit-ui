@@ -16,6 +16,7 @@ import { t } from '../i18n/strings.js';
 import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
 import { classifyWheel, computeFitView, retainEqualPan } from '../interaction/transform.js';
+import {partEditingAllowed} from '../interaction/edit-policy.js';
 import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
 import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
@@ -3033,11 +3034,12 @@ export function BoardCanvas({
   const [contextMenu, setContextMenu] = useState(null); // { x, y, type }
   const [rubberBand, setRubberBand] = useState(null);
   const [inlineEdit, setInlineEdit] = useState(null); // { partId, x, y }
+  const canEditParts = partEditingAllowed(simulate);
   // A properties editor opened in Build mode must not survive a mode switch.
   // Simulation gestures belong to the simulated controls alone.
   React.useEffect(() => {
-    if (simulate) setInlineEdit(null);
-  }, [simulate]);
+    if (!canEditParts) setInlineEdit(null);
+  }, [canEditParts]);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
@@ -4199,7 +4201,7 @@ export function BoardCanvas({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onDoubleClick={(e) => {
-          if (simulate) return;
+          if (!canEditParts) return;
           const { x, y } = eventToWorld(e);
           const pid = machineRef.current.hit.partAt(x, y);
           if (pid) setInlineEdit({ partId: pid, x: e.clientX, y: e.clientY });
@@ -4361,7 +4363,7 @@ export function BoardCanvas({
           {/* Click-to-adjust: one selected part with params gets an inline
               chip that opens the editor — the single-click flow users expect */}
           {(() => {
-            if (simulate || !selectedParts || selectedParts.size !== 1 || inlineEdit) return null;
+            if (!canEditParts || !selectedParts || selectedParts.size !== 1 || inlineEdit) return null;
             const only = parts.find(q => selectedParts.has(q.id));
             if (!only || !only.params || Object.keys(only.params).length === 0) return null;
             const b = partBounds(only);
@@ -4832,7 +4834,7 @@ export function BoardCanvas({
               if (partId) setHoverPos({ x: cx, y: cy });
             }}
             onPartBodyClick={handlePartBodyClick}
-            onDoubleClick={simulate ? undefined :
+            onDoubleClick={!canEditParts ? undefined :
               (partId, cx, cy) => setInlineEdit({ partId, x: cx, y: cy })}
             deviceStates={(() => {
               // Active-board rule, same as the SvgParts faces above.
@@ -4868,7 +4870,7 @@ export function BoardCanvas({
         </div>
 
         {/* Inline property editor (double-click) */}
-        {!simulate && inlineEdit && onUpdateParams && (
+        {canEditParts && inlineEdit && onUpdateParams && (
           <InlineEditor
             part={parts.find(p => p.id === inlineEdit.partId)}
             x={inlineEdit.x}
