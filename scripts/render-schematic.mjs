@@ -28,8 +28,11 @@ const { renderSchematicSvg } = await import(path.join(ROOT, 'src', 'model', 'sch
  * The circuits docs/SCHEMATIC-AUDIT.md names as worst, in three named groups
  * because there have now been two audit passes and one exemplar class.
  *
- * CLASS_I_WORST — the first pass's ten worst. Every one drew a conductor
- * through a foreign pin before the router treated pins as obstacles.
+ * CLASS_I_WORST — the surviving four from the first pass's ten worst, plus
+ * six separately reviewed dense drawings. The removed 46-port-overcurrent
+ * per-device circuits ceased to exist when that upstream gallery entry became
+ * deliberately STC-only; the replacements retain the ten-case denominator
+ * and exercise 127–677 visible terminals apiece.
  *
  * CONTACT_WORST — the second pass's ten worst, by L+M+N (a net ending on
  * another net, sharing its corner, or running down the same line). These are
@@ -55,16 +58,16 @@ const { renderSchematicSvg } = await import(path.join(ROOT, 'src', 'model', 'sch
  * corpus gate carries the other 364.
  */
 export const CLASS_I_WORST = [
-    ['46-port-overcurrent/circuit-flat.arduino-mega.json', '46-port-overcurrent-flat.arduino-mega.svg'],
+    ['pc118-eight-bit-machine/circuit.json', 'pc118-eight-bit-machine.svg'],
     ['50-7seg-chase/circuit-flat.stc15f2k60s2.json', '50-7seg-chase-flat.stc15f2k60s2.svg'],
     ['50-7seg-chase/circuit-flat.stc89c52rc.json', '50-7seg-chase-flat.stc89c52rc.svg'],
     ['50-7seg-chase/circuit.stc15f2k60s2.json', '50-7seg-chase.stc15f2k60s2.svg'],
     ['50-7seg-chase/circuit.stc89c52rc.json', '50-7seg-chase.stc89c52rc.svg'],
-    ['46-port-overcurrent/circuit-flat.attiny88.json', '46-port-overcurrent-flat.attiny88.svg'],
-    ['46-port-overcurrent/circuit.attiny88.json', '46-port-overcurrent.attiny88.svg'],
-    ['46-port-overcurrent/circuit-flat.arduino-nano.json', '46-port-overcurrent-flat.arduino-nano.svg'],
-    ['46-port-overcurrent/circuit-flat.arduino-uno.json', '46-port-overcurrent-flat.arduino-uno.svg'],
-    ['46-port-overcurrent/circuit-flat.atmega168p.json', '46-port-overcurrent-flat.atmega168p.svg'],
+    ['pc110-the-machine/circuit.json', 'pc110-the-machine.svg'],
+    ['pc117-microcoded-machine/circuit.json', 'pc117-microcoded-machine.svg'],
+    ['pc109-fetch-cycle/circuit.json', 'pc109-fetch-cycle.svg'],
+    ['z80-pd-bench/circuit-flat.json', 'z80-pd-bench-flat.svg'],
+    ['pc114-alu-flags/circuit.json', 'pc114-alu-flags.svg'],
 ];
 
 export const CONTACT_WORST = [
