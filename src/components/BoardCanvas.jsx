@@ -16,6 +16,7 @@ import { t } from '../i18n/strings.js';
 import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
 import { classifyWheel, computeFitView, retainEqualPan } from '../interaction/transform.js';
+import {partEditingAllowed} from '../interaction/edit-policy.js';
 import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
 import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
@@ -3033,6 +3034,18 @@ export function BoardCanvas({
   const [contextMenu, setContextMenu] = useState(null); // { x, y, type }
   const [rubberBand, setRubberBand] = useState(null);
   const [inlineEdit, setInlineEdit] = useState(null); // { partId, x, y }
+  const canEditParts = partEditingAllowed(simulate);
+  // Every property-editor entry goes through this one mode-aware door. A new
+  // gesture can safely call it without having to remember its own SIM guard.
+  const openPartEditor = useCallback((partId, x, y) => {
+    if (!canEditParts) return;
+    setInlineEdit({partId, x, y});
+  }, [canEditParts]);
+  // A properties editor opened in Build mode must not survive a mode switch.
+  // Simulation gestures belong to the simulated controls alone.
+  React.useEffect(() => {
+    if (!canEditParts) setInlineEdit(null);
+  }, [canEditParts]);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
@@ -4196,7 +4209,7 @@ export function BoardCanvas({
         onDoubleClick={(e) => {
           const { x, y } = eventToWorld(e);
           const pid = machineRef.current.hit.partAt(x, y);
-          if (pid) setInlineEdit({ partId: pid, x: e.clientX, y: e.clientY });
+          if (pid) openPartEditor(pid, e.clientX, e.clientY);
         }}
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
         onDrop={(e) => {
@@ -4355,7 +4368,7 @@ export function BoardCanvas({
           {/* Click-to-adjust: one selected part with params gets an inline
               chip that opens the editor — the single-click flow users expect */}
           {(() => {
-            if (!selectedParts || selectedParts.size !== 1 || inlineEdit) return null;
+            if (!canEditParts || !selectedParts || selectedParts.size !== 1 || inlineEdit) return null;
             const only = parts.find(q => selectedParts.has(q.id));
             if (!only || !only.params || Object.keys(only.params).length === 0) return null;
             const b = partBounds(only);
@@ -4366,7 +4379,7 @@ export function BoardCanvas({
                   const r = el.getBoundingClientRect();
                   const sx = (b.minX + (b.maxX - b.minX) / 2 - panRef.current.x) * zoomRef.current + r.left;
                   const sy = (b.minY - 14 - panRef.current.y) * zoomRef.current + r.top;
-                  setInlineEdit({ partId: only.id, x: sx, y: sy });
+                  openPartEditor(only.id, sx, sy);
                 }}>
                 <rect x={b.minX + (b.maxX - b.minX) / 2 - 24} y={b.minY - 24}
                   width={48} height={15} rx={7}
@@ -4826,7 +4839,7 @@ export function BoardCanvas({
               if (partId) setHoverPos({ x: cx, y: cy });
             }}
             onPartBodyClick={handlePartBodyClick}
-            onDoubleClick={(partId, cx, cy) => setInlineEdit({ partId, x: cx, y: cy })}
+            onDoubleClick={openPartEditor}
             deviceStates={(() => {
               // Active-board rule, same as the SvgParts faces above.
               const eb = (engineBoard && engineBoard.getDeviceState) ? engineBoard
@@ -4861,7 +4874,7 @@ export function BoardCanvas({
         </div>
 
         {/* Inline property editor (double-click) */}
-        {inlineEdit && onUpdateParams && (
+        {canEditParts && inlineEdit && onUpdateParams && (
           <InlineEditor
             part={parts.find(p => p.id === inlineEdit.partId)}
             x={inlineEdit.x}
