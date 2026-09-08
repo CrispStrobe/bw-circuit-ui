@@ -3033,6 +3033,11 @@ export function BoardCanvas({
   const [contextMenu, setContextMenu] = useState(null); // { x, y, type }
   const [rubberBand, setRubberBand] = useState(null);
   const [inlineEdit, setInlineEdit] = useState(null); // { partId, x, y }
+  // A properties editor opened in Build mode must not survive a mode switch.
+  // Simulation gestures belong to the simulated controls alone.
+  React.useEffect(() => {
+    if (simulate) setInlineEdit(null);
+  }, [simulate]);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
@@ -4194,6 +4199,7 @@ export function BoardCanvas({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
         onDoubleClick={(e) => {
+          if (simulate) return;
           const { x, y } = eventToWorld(e);
           const pid = machineRef.current.hit.partAt(x, y);
           if (pid) setInlineEdit({ partId: pid, x: e.clientX, y: e.clientY });
@@ -4355,7 +4361,7 @@ export function BoardCanvas({
           {/* Click-to-adjust: one selected part with params gets an inline
               chip that opens the editor — the single-click flow users expect */}
           {(() => {
-            if (!selectedParts || selectedParts.size !== 1 || inlineEdit) return null;
+            if (simulate || !selectedParts || selectedParts.size !== 1 || inlineEdit) return null;
             const only = parts.find(q => selectedParts.has(q.id));
             if (!only || !only.params || Object.keys(only.params).length === 0) return null;
             const b = partBounds(only);
@@ -4826,7 +4832,8 @@ export function BoardCanvas({
               if (partId) setHoverPos({ x: cx, y: cy });
             }}
             onPartBodyClick={handlePartBodyClick}
-            onDoubleClick={(partId, cx, cy) => setInlineEdit({ partId, x: cx, y: cy })}
+            onDoubleClick={simulate ? undefined :
+              (partId, cx, cy) => setInlineEdit({ partId, x: cx, y: cy })}
             deviceStates={(() => {
               // Active-board rule, same as the SvgParts faces above.
               const eb = (engineBoard && engineBoard.getDeviceState) ? engineBoard
@@ -4861,7 +4868,7 @@ export function BoardCanvas({
         </div>
 
         {/* Inline property editor (double-click) */}
-        {inlineEdit && onUpdateParams && (
+        {!simulate && inlineEdit && onUpdateParams && (
           <InlineEditor
             part={parts.find(p => p.id === inlineEdit.partId)}
             x={inlineEdit.x}
