@@ -40,7 +40,37 @@ const CORPUS_ROOTS = EXPLICIT_ROOT ? [EXPLICIT_ROOT] : [
 ];
 const examplesRoot = CORPUS_ROOTS.find(r => existsSync(r)) || null;
 
+const assertPinnedCorpusCheckout = workflow => {
+  assert.match(workflow, /CORPUS\.json'\)\.corpusSha/,
+    'CI must derive the examples revision from the reviewed corpus receipt');
+  assert.match(workflow, /fetch --depth 1 origin "\$corpus_sha"/,
+    'CI must fetch the exact reviewed examples commit');
+  assert.match(workflow, /checkout --detach FETCH_HEAD/,
+    'CI must detach at the fetched reviewed commit, not follow mutable HEAD');
+  assert.doesNotMatch(workflow,
+    /clone --depth 1 https:\/\/github\.com\/CrispStrobe\/sb3-creator\.git/,
+    'a shallow clone of mutable sb3-creator HEAD makes unrelated branches inherit corpus drift');
+};
+
 describe('reviewed schematic baselines', () => {
+  test('CI renders the exact corpus revision that was reviewed', () => {
+    const workflow = readFileSync(path.join(here, '..', '.github', 'workflows', 'ci.yml'), 'utf8');
+    assertPinnedCorpusCheckout(workflow);
+  });
+
+  test('corpus checkout contract rejects floating and unbound mutations', () => {
+    const good = `corpus_sha=$(node -p "require('./docs/schematic-baselines/CORPUS.json').corpusSha")\n` +
+      `git fetch --depth 1 origin "$corpus_sha"\ncheckout --detach FETCH_HEAD`;
+    assert.doesNotThrow(() => assertPinnedCorpusCheckout(good));
+    assert.throws(() => assertPinnedCorpusCheckout(good.replace(/CORPUS\.json/, 'OTHER.json')),
+      /reviewed corpus receipt/);
+    assert.throws(() => assertPinnedCorpusCheckout(good.replace('"$corpus_sha"', 'master')),
+      /exact reviewed examples commit/);
+    assert.throws(() => assertPinnedCorpusCheckout(
+      good.replace('checkout --detach FETCH_HEAD', 'checkout master')),
+    /detach at the fetched reviewed commit/);
+  });
+
   test('the corpus the baselines were reviewed against is present', () => {
     assert.notEqual(examplesRoot, null,
       `Corpus absent. Tried:\n  ${CORPUS_ROOTS.join('\n  ')}\nA baseline gate that cannot `
