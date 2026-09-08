@@ -24,13 +24,20 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 
 // Extract slugs referenced in code by scanning for quoted kind strings
 // in switch cases, array literals, and Set constructors.
-function extractSlugsFromFile(filePath) {
-  const src = readFileSync(filePath, 'utf-8');
+function extractSlugs(src) {
   const slugs = new Set();
   // Match case 'kind': in switch statements
   for (const m of src.matchAll(/case\s+'([a-z0-9][a-z0-9_]+)'/g)) slugs.add(m[1]);
   // Match .kind comparisons and .includes(loadPart.kind) arrays
   for (const m of src.matchAll(/\.kind\s*===?\s*'([a-z0-9][a-z0-9_]+)'/g)) slugs.add(m[1]);
+  // Match the quoted members of kind arrays and Sets. These are separate
+  // syntax classes from the `.kind` expression that consumes them: scanning
+  // only that expression missed both gearmotor DRC lists in spec-update 006.
+  const quotedMembers = text => {
+    for (const m of text.matchAll(/'([a-z0-9][a-z0-9_]+)'/g)) slugs.add(m[1]);
+  };
+  for (const m of src.matchAll(/\[([^\]]*)\]\.includes\([^)]*\.kind\)/gs)) quotedMembers(m[1]);
+  for (const m of src.matchAll(/new\s+Set\s*\(\s*\[([^\]]*)\]\s*\)/gs)) quotedMembers(m[1]);
   // Exclude terminal names, modes, and other non-kind strings
   const NOT_KINDS = new Set([
     'voltage', 'current', 'resistance', 'anode', 'cathode', 'vcc', 'gnd',
@@ -44,6 +51,10 @@ function extractSlugsFromFile(filePath) {
   ]);
   for (const nk of NOT_KINDS) slugs.delete(nk);
   return slugs;
+}
+
+function extractSlugsFromFile(filePath) {
+  return extractSlugs(readFileSync(filePath, 'utf-8'));
 }
 
 // Slugs that are valid but don't have sidecars — infrastructure, dynamic,
@@ -108,7 +119,12 @@ describe('slug coverage: every code-referenced kind has a sidecar', () => {
     path.join(here, '../src/model/drc.js'),
     path.join(here, '../src/model/wire-router.js'),
     path.join(here, '../src/model/circuit.js'),
+    path.join(here, '../src/components/PartThumbnail.jsx'),
   ];
+
+  const staleSlugs = src => [...extractSlugs(src)].filter(s =>
+    !registered.has(s) && !EXCEPTIONS.has(s) && s.length > 2
+  );
 
   for (const f of files) {
     const basename = path.basename(f);
@@ -121,6 +137,23 @@ describe('slug coverage: every code-referenced kind has a sidecar', () => {
         `stale slugs in ${basename}: ${stale.join(', ')} — ` +
         'these kinds are referenced in code but have no sidecar. ' +
         'If they are aliases, add them to EXCEPTIONS with a reason.');
+    });
+  }
+
+  const oldSlug = 'hobby_gearmotor';
+  const mutations = [
+    ['drc high-current array', '../src/model/drc.js', "'dc_motor', 'gearmotor', 'servo'"],
+    ['drc inductive Set', '../src/model/drc.js', "'dc_motor', 'gearmotor', 'vibration_motor'"],
+    ['circuit terminals switch', '../src/model/circuit.js', "case 'dc_motor': case 'gearmotor': return ['a', 'b'];"],
+    ['wire-router bounds switch', '../src/model/wire-router.js', "case 'dc_motor': case 'gearmotor': return { x: p.x - 22"],
+    ['thumbnail renderer switch', '../src/components/PartThumbnail.jsx', "case 'dc_motor': case 'gearmotor':"]
+  ];
+  for (const [name, relative, needle] of mutations) {
+    it(`mutation: ${name} rejects the retired slug`, () => {
+      const source = readFileSync(path.join(here, relative), 'utf-8');
+      assert.equal(source.split(needle).length, 2, `${name} mutation anchor must be unique`);
+      const mutated = source.replace(needle, needle.replace('gearmotor', oldSlug));
+      assert.deepEqual(staleSlugs(mutated), [oldSlug]);
     });
   }
 });
