@@ -6,9 +6,5 @@
   "bw-parts": {
     "repository": "https://github.com/CrispStrobe/bw-parts.git",
     "sha": "b66457e9554b08b6fa870e712bce2d6e49c93436"
-  },
-  "sb3-creator": {
-    "repository": "https://github.com/CrispStrobe/sb3-creator.git",
-    "sha": "1d7e6c69247eecf5d28343799ce3971599073e1b"
   }
 }

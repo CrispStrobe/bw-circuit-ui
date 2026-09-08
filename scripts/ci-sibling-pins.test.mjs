@@ -5,17 +5,10 @@ import test from 'node:test';
 import { readSiblingPins } from './checkout-ci-sibling.mjs';
 
 const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
-const reviewedCorpus = JSON.parse(
-  readFileSync(new URL('../docs/schematic-baselines/CORPUS.json', import.meta.url), 'utf8'),
-);
-
-function assertReviewedCorpusPin(pins, corpus) {
-  assert.equal(
-    pins['sb3-creator']?.sha,
-    corpus.corpusSha,
-    'recorded CI sibling sb3-creator must match the reviewed schematic corpus',
-  );
-}
+const corpusCheckout = `          corpus_sha=$(node -p "require('./docs/schematic-baselines/CORPUS.json').corpusSha")
+          git clone --filter=blob:none --no-checkout https://github.com/CrispStrobe/sb3-creator.git ../sb3-creator
+          git -C ../sb3-creator fetch --depth 1 origin "$corpus_sha"
+          git -C ../sb3-creator checkout --detach FETCH_HEAD`;
 
 function assertWorkflowMatchesPins(source, pins) {
   for (const name of Object.keys(pins)) {
@@ -33,21 +26,29 @@ function assertWorkflowMatchesPins(source, pins) {
     Object.keys(pins).sort(),
     'workflow CI sibling names must equal the recorded pin names',
   );
-  assert.doesNotMatch(source, /git clone[^\n]*github\.com\/CrispStrobe\//, 'workflow must not clone an unpinned sibling tip');
+  assert.ok(source.includes(corpusCheckout), 'workflow must checkout CI sibling sb3-creator at the reviewed corpus SHA');
+  assert.doesNotMatch(
+    source.replace(corpusCheckout, ''),
+    /git clone[^\n]*github\.com\/CrispStrobe\//,
+    'workflow must not clone an unpinned sibling tip',
+  );
 }
 
 test('CI sibling pins are exact and the workflow uses every recorded pin', () => {
   const pins = readSiblingPins();
-  assert.deepEqual(Object.keys(pins).sort(), ['bw-board', 'bw-parts', 'sb3-creator']);
+  assert.deepEqual(Object.keys(pins).sort(), ['bw-board', 'bw-parts']);
   assertWorkflowMatchesPins(workflow, pins);
-  assertReviewedCorpusPin(pins, reviewedCorpus);
 });
 
-test('CI sibling pin gate fails by dependency name when the reviewed corpus moves alone', () => {
+test('CI sibling pin gate fails by dependency name when the corpus checkout loses its pin', () => {
   const pins = readSiblingPins();
+  const withoutFetch = workflow.replace(
+    '          git -C ../sb3-creator fetch --depth 1 origin "$corpus_sha"\n',
+    '',
+  );
   assert.throws(
-    () => assertReviewedCorpusPin(pins, { corpusSha: '0'.repeat(40) }),
-    /recorded CI sibling sb3-creator must match the reviewed schematic corpus/,
+    () => assertWorkflowMatchesPins(withoutFetch, pins),
+    /workflow must checkout CI sibling sb3-creator at the reviewed corpus SHA/,
   );
 });
 

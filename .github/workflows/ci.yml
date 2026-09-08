@@ -34,7 +34,11 @@ jobs:
 
       # Fabric gate needs sb3-creator examples
       - name: Clone sb3-creator (examples source)
-        run: node scripts/checkout-ci-sibling.mjs sb3-creator ../sb3-creator
+        run: |
+          corpus_sha=$(node -p "require('./docs/schematic-baselines/CORPUS.json').corpusSha")
+          git clone --filter=blob:none --no-checkout https://github.com/CrispStrobe/sb3-creator.git ../sb3-creator
+          git -C ../sb3-creator fetch --depth 1 origin "$corpus_sha"
+          git -C ../sb3-creator checkout --detach FETCH_HEAD
 
       - name: CI sibling pin integrity
         run: node --test scripts/ci-sibling-pins.test.mjs
