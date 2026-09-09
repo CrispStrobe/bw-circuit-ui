@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import {workflowSources, assertCheckoutPins, assertNoRawClones} from './ci-workflow-inputs.mjs';
+
 import { readSiblingPins } from './checkout-ci-sibling.mjs';
 
 const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
@@ -62,4 +64,29 @@ test('CI sibling pin gate fails by dependency name when workflow and record disa
     () => assertWorkflowMatchesPins(withoutBoard, pins),
     /workflow must checkout recorded CI sibling bw-board/,
   );
+});
+
+const workflows = workflowSources(new URL('..', import.meta.url).pathname);
+test('all workflow files reject new unpinned checkout or raw clone sites', () => {
+  assertCheckoutPins(workflows);
+  const remaining = new Map([...workflows].map(([file, source]) => [file,
+    file === '.github/workflows/ci.yml' ? source.replace(corpusCheckout, '') : source]));
+  assertNoRawClones(remaining);
+  for (const [file, source] of workflows) {
+    for (const match of source.matchAll(/node scripts\/checkout-ci-sibling\.mjs ([\w-]+)/g)) {
+      assert.ok(readSiblingPins()[match[1]], `${file}: unrecorded CI sibling ${match[1]}`);
+    }
+  }
+});
+
+test('a clone or checkout in a newly added workflow cannot escape the census', () => {
+  assert.throws(() => assertNoRawClones(new Map([['.github/workflows/new.yml',
+    'steps:\n  - run: git clone https://example.invalid/new.git\n']])), /new.yml: unreviewed raw clone/);
+  const source = 'steps:\n  - uses: actions/checkout@full\n    with:\n      repository: Acme/new\n';
+  assert.throws(() => assertCheckoutPins(new Map([['.github/workflows/new.yml', source]])), /Acme\/new: expected a full/);
+  assert.throws(() => assertCheckoutPins(new Map([['new.yml', source + '      ref: main\n']])), /got main/);
+  assert.equal(assertCheckoutPins(new Map([['new.yml', source + '      ref: ' + 'a'.repeat(40) + '\n']])).length, 1);
+  // A later step's valid pin must not accidentally bless the preceding one.
+  assert.throws(() => assertCheckoutPins(new Map([['new.yml', source +
+    '  - uses: actions/checkout@full\n    with:\n      repository: Acme/pinned\n      ref: ' + 'a'.repeat(40) + '\n']])), /Acme\/new: expected a full/);
 });
