@@ -107,3 +107,14 @@ test('duplicate-ref fixture: a checkout has exactly one ref field', () => {
     assert.equal(assertCheckoutPins(new Map([['duplicate.yml', base]])).length, 1);
     assert.throws(() => assertCheckoutPins(new Map([['duplicate.yml', base + '      ref: ' + 'b'.repeat(40) + '\n']])), /duplicate checkout ref/);
 });
+
+function assertCorpusPin(sha) {
+  assert.match(sha ?? '', /^[a-f0-9]{40}$/, 'sb3-creator corpus must use a full reviewed SHA');
+}
+test('the separate corpus authority is immutable too', () => {
+  const stamp = JSON.parse(readFileSync(new URL('../docs/schematic-baselines/CORPUS.json', import.meta.url), 'utf8'));
+  assertCorpusPin(stamp.corpusSha);
+  for (const bad of [undefined, 'main', stamp.corpusSha.slice(0, 7)]) {
+    assert.throws(() => assertCorpusPin(bad), /sb3-creator corpus must use a full reviewed SHA/);
+  }
+});
