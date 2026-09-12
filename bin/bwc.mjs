@@ -33,6 +33,13 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, '..', 'src');
+/**
+ * The engine's tree: the installed `bw-board` package (the same one the UI
+ * imports by name), or `BW_BOARD=/path/to/checkout` for live work against a
+ * sibling checkout.
+ */
+const engineDir = () => process.env.BW_BOARD
+  || dirname(fileURLToPath(import.meta.resolve('bw-board/package.json')));
 
 const { importCircuit } = await import(join(SRC, 'importers/index.js'));
 const { detectFormat } = await import(join(SRC, 'importers/detect.js'));
@@ -42,7 +49,7 @@ const { renderSchematicSvg, netsFromWires } = await import(join(SRC, 'model/sche
 
 /** The engine is optional: only netlist exports need it. */
 async function loadEngine() {
-  const BWB = process.env.BW_BOARD || join(HERE, '..', '..', 'bw-board');
+  const BWB = engineDir();
   try {
     const { setEngine } = await import(join(SRC, 'engine.js'));
     const eng = await import(join(BWB, 'src/index.js'));
@@ -275,7 +282,7 @@ switch (cmd) {
     const { terminalsForKind } = await import(join(SRC, 'model/circuit.js'));
     let engineKinds = null;
     try {
-      const eng = join(SRC, '..', '..', 'bw-board', 'src');
+      const eng = join(engineDir(), 'src');
       const { registeredKinds } = await import(join(eng, 'devices.js'));
       const { registerAllDevices } = await import(join(eng, 'register-all.js'));
       const { BoardImpl } = await import(join(eng, 'board.js'));

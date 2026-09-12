@@ -7,7 +7,8 @@
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
-    "./components/*": "./src/components/*"
+    "./components/*": "./src/components/*",
+    "./*": "./src/*"
   },
   "scripts": {
     "dev": "vite",
@@ -31,7 +32,8 @@
   "license": "MIT",
   "peerDependencies": {
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "bw-board": "*"
   },
   "dependencies": {
     "@lit/react": "^1.0.8",
@@ -43,7 +45,8 @@
     "playwright": "^1.61.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "vite": "^8.2.1"
+    "vite": "^8.2.1",
+    "bw-board": "github:CrispStrobe/bw-board#d7436dc782dd1c499f0fb29ae5cfaa8ab78ec2d6"
   },
   "bin": {
     "bwc": "bin/bwc.mjs"

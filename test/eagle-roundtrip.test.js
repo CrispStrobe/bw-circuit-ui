@@ -31,7 +31,7 @@ import { toEagleSch } from '../src/model/exporters/eagle.js';
 
 const HERE = import.meta.dirname;
 const CUI = join(HERE, '..');
-const BWB = process.env.BW_BOARD || join(CUI, '..', 'bw-board');
+import { BWB } from './_bw-board-dir.js';
 const available = existsSync(join(BWB, 'src', 'index.js'));
 
 const FIXTURE = readFileSync(join(HERE, 'fixtures', 'eagle-rc-diode.sch'), 'utf8');

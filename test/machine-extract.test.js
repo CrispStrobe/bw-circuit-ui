@@ -12,8 +12,8 @@ import assert from 'node:assert/strict';
 import { extractMachine } from '../src/model/machine-extract.js';
 
 // Import extractors from sibling bw-board checkout
-const { extract6502Machine } = await import('../../bw-board/src/m6502-extract.js');
-const { extractZ80Machine } = await import('../../bw-board/src/z80-extract.js');
+const { extract6502Machine } = await import('bw-board/m6502-extract.js');
+const { extractZ80Machine } = await import('bw-board/z80-extract.js');
 
 const extractors = { extract6502Machine, extractZ80Machine };
 

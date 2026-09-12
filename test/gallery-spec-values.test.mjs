@@ -28,7 +28,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { solveMNA } from '../../bw-board/src/mna.js';
+import { solveMNA } from 'bw-board/mna.js';
 import { Circuit } from '../src/model/circuit.js';
 
 const GALLERY = process.env.EXAMPLES_DIR

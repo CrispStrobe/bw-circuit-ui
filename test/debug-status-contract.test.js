@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const BWB = process.env.BW_BOARD || path.resolve(here, '../../bw-board');
+import { BWB } from './_bw-board-dir.js';
 const PANEL = path.join(here, '../src/components/DebugStatus.jsx');
 
 /** Keys a producer puts on a task entry, read from its source. */

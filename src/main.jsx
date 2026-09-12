@@ -23,11 +23,11 @@ import { createRoot } from 'react-dom/client';
 import './model/sidecar-loader.js';
 
 import { setEngine } from './engine.js';
-import { BoardImpl } from '../../bw-board/src/board.js';
-import { inferNetlist, checkWiring } from '../../bw-board/src/infer-netlist.js';
-import { registerAllDevices } from '../../bw-board/src/register-all.js';
-import { getDevice } from '../../bw-board/src/devices.js';
-import { runDcSweep, runAcSweep, logSpace } from '../../bw-board/src/sweep.js';
+import { BoardImpl } from 'bw-board/board.js';
+import { inferNetlist, checkWiring } from 'bw-board/infer-netlist.js';
+import { registerAllDevices } from 'bw-board/register-all.js';
+import { getDevice } from 'bw-board/devices.js';
+import { runDcSweep, runAcSweep, logSpace } from 'bw-board/sweep.js';
 
 // The dev app must register devices like production (lite) does, or every
 // registered kind (keypad_4x4, at24c02, …) rejects the netlist and the

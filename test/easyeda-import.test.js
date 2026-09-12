@@ -45,7 +45,7 @@ import {
 
 const HERE = import.meta.dirname;
 const CUI = join(HERE, '..');
-const BWB = process.env.BW_BOARD || join(CUI, '..', 'bw-board');
+import { BWB } from './_bw-board-dir.js';
 const FIX = join(HERE, 'fixtures');
 
 const RC = readFileSync(join(FIX, 'easyeda-rc-divider.json'), 'utf8');

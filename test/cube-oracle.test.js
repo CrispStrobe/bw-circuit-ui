@@ -14,7 +14,7 @@
 import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateTrace, verifyTrace } from '../../bw-board/test/golden/cube-oracle.js';
+import { generateTrace, verifyTrace } from 'bw-board/test/golden/cube-oracle.js';
 import { computeCubeVoxels, BW_CUBE_ACTIVE_HIGH, VOXEL_MAP } from '../src/model/ledcube.js';
 
 describe('cube-trace oracle (category 3)', () => {

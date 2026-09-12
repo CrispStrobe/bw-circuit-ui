@@ -13,15 +13,15 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
-import { registerAllDevices } from '../../bw-board/src/register-all.js';
-import { getDevice } from '../../bw-board/src/devices.js';
+import { registerAllDevices } from 'bw-board/register-all.js';
+import { getDevice } from 'bw-board/devices.js';
 
 registerAllDevices();
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 test('model list == engine device terminals == sidecar pins', async () => {
   const { setEngine } = await import('../src/engine.js');
-  const eng = await import('../../bw-board/src/index.js');
+  const eng = await import('bw-board/index.js');
   setEngine({ BoardImpl: eng.BoardImpl, inferNetlist: eng.inferNetlist,
     checkWiring: eng.checkWiring, hasDevice: eng.hasDevice });
   const { Circuit } = await import('../src/model/circuit.js');
@@ -38,7 +38,7 @@ test('model list == engine device terminals == sidecar pins', async () => {
 
 test('old friendly spellings migrate: a saved vcc/vo/bl_a wire still lands', async () => {
   const { setEngine } = await import('../src/engine.js');
-  const eng = await import('../../bw-board/src/index.js');
+  const eng = await import('bw-board/index.js');
   setEngine({ BoardImpl: eng.BoardImpl, inferNetlist: eng.inferNetlist,
     checkWiring: eng.checkWiring, hasDevice: eng.hasDevice });
   const { Circuit } = await import('../src/model/circuit.js');

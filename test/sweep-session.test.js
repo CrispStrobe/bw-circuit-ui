@@ -32,7 +32,7 @@ import {
 } from '../src/model/sweep-protocol.js';
 import { runBode, runKennlinie } from '../src/model/sweep-runner.js';
 import { getEngine } from '../src/engine.js';
-import { runDcSweep, runAcSweep, logSpace } from '../../bw-board/src/sweep.js';
+import { runDcSweep, runAcSweep, logSpace } from 'bw-board/sweep.js';
 
 beforeEach(() => resetIds());
 

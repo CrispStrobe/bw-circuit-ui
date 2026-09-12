@@ -25,7 +25,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { collectLinearCircuits } from './lcapy/collect.mjs';
-import { solveMNA } from '../../bw-board/src/mna.js';
+import { solveMNA } from 'bw-board/mna.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CORPUS = process.env.EAGLE_CORPUS

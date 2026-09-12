@@ -3,8 +3,8 @@
 ## 2026-08-29 (later) — the browser gate is in CI, and it is green
 
 `npm run verify:interaction` now runs as the `interaction-gate` job in
-`.github/workflows/ci.yml`: it clones the sibling `bw-board` the dev harness
-imports, installs Chromium with its system libraries, and fails the build on
+`.github/workflows/ci.yml`: it installs `bw-board` (a git-sha devDependency the dev harness
+imports by name), installs Chromium with its system libraries, and fails the build on
 any scenario failure. **31 scenarios, 31 passed, 0 failed** on a clean runner
 (run `33278054707`). Everything the section below records as red was the PROBE,
 not the app — the three "pre-existing defects" and the four "load-sensitive"

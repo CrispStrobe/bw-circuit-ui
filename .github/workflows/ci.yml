@@ -16,15 +16,6 @@ jobs:
           node-version: 22
 
       # Tests import the engine from a sibling bw-board checkout
-      - name: Clone bw-board (sibling dependency)
-        run: |
-          node scripts/checkout-ci-sibling.mjs bw-board ../bw-board
-          # bw-board's avr8js-adapter.js imports the `avr8js` runtime dependency;
-          # install bw-board's deps so the sibling engine resolves under Node's
-          # module resolution (../bw-board/node_modules). Without this the
-          # cross-repo adapter test fails with "Cannot find package 'avr8js'".
-          npm --prefix ../bw-board install --no-audit --no-fund --ignore-scripts
-
       # The terminal cross-check reads part sidecars from a sibling bw-parts.
       # Without this clone loadSidecars() returns null and the whole
       # cross-check SKIPS — which is how its ratchet sat at a stale 162 while
@@ -91,15 +82,11 @@ jobs:
         with:
           node-version: 22
 
-      # src/main.jsx (the dev harness this gate drives) imports the engine
-      # from ../../bw-board — the SIBLING checkout, exactly as the unit tests
-      # do. Without it Vite cannot resolve the import and the page never
-      # mounts, which would read as "every scenario failed" rather than
-      # "the engine is missing".
-      - name: Clone bw-board (engine sibling — the dev harness imports it)
-        run: |
-          node scripts/checkout-ci-sibling.mjs bw-board ../bw-board
-          npm --prefix ../bw-board install --no-audit --no-fund --ignore-scripts
+      # src/main.jsx (the dev harness this gate drives) imports the engine by
+      # name: `bw-board`, the git-sha devDependency in package.json, exactly
+      # as the unit tests do. The install below is what lets Vite resolve it;
+      # without it the page never mounts, which would read as "every scenario
+      # failed" rather than "the engine is missing".
 
       - run: npm install
 
@@ -129,8 +116,9 @@ jobs:
           sudo add-apt-repository -y ppa:kicad/kicad-8.0-releases
           sudo apt-get update -q
           sudo apt-get install -y --no-install-recommends kicad
-      - name: Clone bw-board (engine sibling, needed by test/_setup.js)
-        run: node scripts/checkout-ci-sibling.mjs bw-board ../bw-board
+      # The engine is the `bw-board` devDependency (a git sha in package.json);
+      # test/_setup.js imports it by name, so the install IS the checkout.
+      - run: npm install --no-audit --no-fund
       - name: Run the oracle
         run: node scripts/kicad-oracle.mjs
 
@@ -152,8 +140,9 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y --no-install-recommends ngspice
           ngspice --version | head -3
-      - name: Clone bw-board (engine sibling, needed by test/_setup.js)
-        run: node scripts/checkout-ci-sibling.mjs bw-board ../bw-board
+      # The engine is the `bw-board` devDependency (a git sha in package.json);
+      # test/_setup.js imports it by name, so the install IS the checkout.
+      - run: npm install --no-audit --no-fund
       # The script exits 0 with a loud SKIPPED banner where ngspice is absent,
       # so this step asserts it actually RAN. A skip that reads as a pass is
       # how the interaction gate sat red for months.

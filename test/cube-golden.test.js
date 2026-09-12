@@ -5,7 +5,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { computeCubeVoxels, BW_CUBE_ACTIVE_HIGH } from '../src/model/ledcube.js';
-import { cubeTrace, expectedBrightness } from '../../bw-board/test/golden/cube-trace.js';
+import { cubeTrace, expectedBrightness } from 'bw-board/test/golden/cube-trace.js';
 
 describe('golden cube trace cross-check', () => {
   it('accumulator agrees with bw-board expected brightness', () => {

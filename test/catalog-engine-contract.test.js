@@ -34,8 +34,9 @@ import { terminalsForKind } from '../src/model/circuit.js';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { registerAllDevices } from '../../bw-board/src/register-all.js';
-import { getDevice, registeredKinds, BUILTIN_KINDS } from '../../bw-board/src/devices.js';
+import { registerAllDevices } from 'bw-board/register-all.js';
+import { BWB } from './_bw-board-dir.js';
+import { getDevice, registeredKinds, BUILTIN_KINDS } from 'bw-board/devices.js';
 
 registerAllDevices();
 
@@ -210,7 +211,7 @@ describe('catalog ↔ engine terminal-name contract', () => {
     // terminals; without it, the engine's fixed p1..p8 silently wins.
     const here = path.dirname(fileURLToPath(import.meta.url));
     const src = JSON.stringify(path.join(here, '..', 'src'));
-    const board = JSON.stringify(path.join(here, '..', '..', 'bw-board', 'src'));
+    const board = JSON.stringify(path.join(BWB, 'src'));
     const script = `
       const { setEngine } = await import(${src} + '/engine.js');
       const eng = await import(${board} + '/index.js');
@@ -375,7 +376,7 @@ describe('placing one part never empties the board', () => {
 describe('setEngine stays backwards compatible', () => {
   it('a host that injects only the three required keys still works', async () => {
     const { setEngine } = await import('../src/engine.js');
-    const eng = await import('../../bw-board/src/index.js');
+    const eng = await import('bw-board/index.js');
     // No getDevice — the pre-2026-08-20 shape that brickwright-lite ships.
     setEngine({ BoardImpl: eng.BoardImpl, inferNetlist: eng.inferNetlist,
       checkWiring: eng.checkWiring });

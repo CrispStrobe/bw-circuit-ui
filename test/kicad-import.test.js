@@ -37,7 +37,7 @@ import { shapeFor } from '../src/model/schematic-symbols.js';
 
 const HERE = import.meta.dirname;
 const CUI = join(HERE, '..');
-const BWB = process.env.BW_BOARD || join(CUI, '..', 'bw-board');
+import { BWB } from './_bw-board-dir.js';
 const engineAvailable = existsSync(join(BWB, 'src', 'index.js'));
 
 const SCH = readFileSync(join(HERE, 'fixtures', 'kicad-divider.kicad_sch'), 'utf8');

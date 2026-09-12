@@ -18,7 +18,7 @@ import { fileURLToPath } from 'url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
-const BOARD = process.env.BW_BOARD_DIR || join(ROOT, '..', 'bw-board');
+const BOARD = process.env.BW_BOARD_DIR || dirname(fileURLToPath(import.meta.resolve('bw-board/package.json')));
 
 // ── 1. Palette kinds ──────────────────────────────────────────────────
 const paletteSrc = readFileSync(join(ROOT, 'src/components/PartPalette.jsx'), 'utf8');

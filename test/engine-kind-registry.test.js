@@ -17,10 +17,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { setEngine, getEngine } from '../src/engine.js';
 import { Circuit } from '../src/model/circuit.js';
-import { BoardImpl } from '../../bw-board/src/board.js';
-import { inferNetlist, checkWiring } from '../../bw-board/src/infer-netlist.js';
-import { getDevice } from '../../bw-board/src/devices.js';
-import { registerAllDevices } from '../../bw-board/src/register-all.js';
+import { BoardImpl } from 'bw-board/board.js';
+import { inferNetlist, checkWiring } from 'bw-board/infer-netlist.js';
+import { getDevice } from 'bw-board/devices.js';
+import { registerAllDevices } from 'bw-board/register-all.js';
 
 registerAllDevices();
 const prev = getEngine();

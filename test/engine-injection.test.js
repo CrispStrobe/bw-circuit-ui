@@ -12,8 +12,8 @@ describe('engine injection', () => {
     const { setEngine, getEngine } = await import('../src/engine.js');
 
     // Set a real engine
-    const { BoardImpl } = await import('../../bw-board/src/board.js');
-    const { inferNetlist, checkWiring } = await import('../../bw-board/src/infer-netlist.js');
+    const { BoardImpl } = await import('bw-board/board.js');
+    const { inferNetlist, checkWiring } = await import('bw-board/infer-netlist.js');
     setEngine({ BoardImpl, inferNetlist, checkWiring });
 
     const engine = getEngine();

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import {workflowSources, assertCheckoutPins, assertNoRawClones, assertInvokedScriptsPinned} from './ci-workflow-inputs.mjs';
@@ -38,7 +40,7 @@ function assertWorkflowMatchesPins(source, pins) {
 
 test('CI sibling pins are exact and the workflow uses every recorded pin', () => {
   const pins = readSiblingPins();
-  assert.deepEqual(Object.keys(pins).sort(), ['bw-board', 'bw-parts']);
+  assert.deepEqual(Object.keys(pins).sort(), ['bw-parts']);
   assertWorkflowMatchesPins(workflow, pins);
 });
 
@@ -56,14 +58,44 @@ test('CI sibling pin gate fails by dependency name when the corpus checkout lose
 
 test('CI sibling pin gate fails by dependency name when workflow and record disagree', () => {
   const pins = readSiblingPins();
-  const withoutBoard = workflow.replaceAll(
-    'node scripts/checkout-ci-sibling.mjs bw-board ../bw-board',
+  const withoutParts = workflow.replaceAll(
+    'node scripts/checkout-ci-sibling.mjs bw-parts ../bw-parts',
     'node scripts/checkout-ci-sibling.mjs sb3-creator ../sb3-creator',
   );
   assert.throws(
-    () => assertWorkflowMatchesPins(withoutBoard, pins),
-    /workflow must checkout recorded CI sibling bw-board/,
+    () => assertWorkflowMatchesPins(withoutParts, pins),
+    /workflow must checkout recorded CI sibling bw-parts/,
   );
+});
+
+// The engine is not a CI sibling any more: it is the `bw-board` package,
+// pinned to a git sha in package.json, and every import names it. A sibling
+// path (two dots up, then the engine dir) resolves only in a clone-beside-clone layout
+// and was the reason CI had to clone the engine four times over.
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const siblingReach = new RegExp(String.raw`['"\`](?:\.\./)+bw` + `-board(?:/|['"\`])`);
+function sourceFiles(dir, out = []) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+    const p = join(dir, e.name);
+    if (e.isDirectory()) sourceFiles(p, out);
+    else if (/\.(m?js|jsx)$/.test(e.name)) out.push(p);
+  }
+  return out;
+}
+test('the engine is the pinned bw-board package, imported by name, never by sibling path', () => {
+  assert.match(pkg.devDependencies['bw-board'] ?? '', /^github:CrispStrobe\/bw-board#[0-9a-f]{40}$/,
+    'devDependencies.bw-board must be an exact 40-hex github sha');
+  assert.equal(pkg.peerDependencies['bw-board'], '*',
+    'the host supplies ONE engine copy; a git spec here would install a second');
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const files = ['src', 'test', 'bin', 'scripts'].flatMap((d) => sourceFiles(join(root, d)));
+  assert.ok(files.length > 100, `only ${files.length} source files scanned`);
+  const offenders = files.filter((f) => siblingReach.test(readFileSync(f, 'utf8'))).map((f) => f.slice(root.length));
+  assert.deepEqual(offenders, []);
+  // The scanner fires at the shape it guards against, and sees the by-name form.
+  assert.ok(siblingReach.test("import { BoardImpl } from '../../bw" + "-board/src/board.js';"));
+  assert.ok(readFileSync(join(root, 'test/_setup.js'), 'utf8').includes("from 'bw-board/board.js'"));
 });
 
 const workflows = workflowSources(new URL('..', import.meta.url).pathname);

@@ -13,8 +13,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 // Simulate the host's imports — these come from wherever the host vendored them
-import { BoardImpl } from '../../bw-board/src/board.js';
-import { inferNetlist, checkWiring } from '../../bw-board/src/infer-netlist.js';
+import { BoardImpl } from 'bw-board/board.js';
+import { inferNetlist, checkWiring } from 'bw-board/infer-netlist.js';
 
 // Import from the model modules, as the engine/model layer works.
 // The full entry point (src/index.js) also exports CircuitDesigner.jsx

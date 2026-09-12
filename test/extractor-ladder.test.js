@@ -26,10 +26,10 @@ const galleryDir = path.join(here, '..', 'gallery');
 // same day in bw-board's stc15-bench-load, where a hardcoded VPS path made it
 // report "found 0 benches" everywhere else. Sibling-relative is how every
 // other test in this directory reaches the engine.
-const { extract6502Machine } = await import('../../bw-board/src/m6502-extract.js');
-const { EATER6502 } = await import('../../bw-board/src/m6502-machine.js');
-const { extractZ80Machine } = await import('../../bw-board/src/z80-extract.js');
-const { SEARLE } = await import('../../bw-board/src/z80-machine.js');
+const { extract6502Machine } = await import('bw-board/m6502-extract.js');
+const { EATER6502 } = await import('bw-board/m6502-machine.js');
+const { extractZ80Machine } = await import('bw-board/z80-extract.js');
+const { SEARLE } = await import('bw-board/z80-machine.js');
 
 function loadStage(prefix) {
   const files = readdirSync(galleryDir).filter(f => f.startsWith(prefix) && f.endsWith('.json'));

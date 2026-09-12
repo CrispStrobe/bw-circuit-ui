@@ -60,8 +60,8 @@ reports per-point progress while the canvas still drags, and zero page errors.
 
 **It runs in CI** (`.github/workflows/ci.yml`, job `interaction-gate`), which
 it did not for most of its life — and three of its scenarios had been red the
-whole time with nobody watching. It installs Chromium, clones the sibling
-`bw-board` the dev harness imports, and fails the build on any scenario
+whole time with nobody watching. It installs Chromium and `bw-board` (a git-sha
+devDependency the dev harness imports by name), and fails the build on any scenario
 failure.
 
 The **count is asserted, not printed**. Every scenario reports exactly one

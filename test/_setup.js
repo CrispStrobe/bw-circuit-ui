@@ -5,11 +5,11 @@
  */
 
 import { setEngine } from '../src/engine.js';
-import { BoardImpl } from '../../bw-board/src/board.js';
-import { inferNetlist, checkWiring } from '../../bw-board/src/infer-netlist.js';
-import { getDevice } from '../../bw-board/src/devices.js';
-import { registerAllDevices } from '../../bw-board/src/register-all.js';
-import { getMaxCurrent, PORT_LIMITS } from '../../bw-board/src/current-ratings.js';
+import { BoardImpl } from 'bw-board/board.js';
+import { inferNetlist, checkWiring } from 'bw-board/infer-netlist.js';
+import { getDevice } from 'bw-board/devices.js';
+import { registerAllDevices } from 'bw-board/register-all.js';
+import { getMaxCurrent, PORT_LIMITS } from 'bw-board/current-ratings.js';
 import { registerSidecar } from '../src/model/parts-registry.js';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

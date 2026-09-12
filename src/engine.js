@@ -23,9 +23,9 @@
  *
  * Usage (host):
  *   import { setEngine } from 'bw-circuit-ui';
- *   import { BoardImpl } from './lib/bw-board/board.js';
- *   import { inferNetlist, checkWiring } from './lib/bw-board/infer-netlist.js';
- *   import { getDevice, registerAllDevices } from './lib/bw-board/index.js';
+ *   import { BoardImpl } from 'bw-board/board.js';
+ *   import { inferNetlist, checkWiring } from 'bw-board/infer-netlist.js';
+ *   import { getDevice, registerAllDevices } from 'bw-board';
  *   registerAllDevices();
  *   setEngine({ BoardImpl, inferNetlist, checkWiring, getDevice });
  *

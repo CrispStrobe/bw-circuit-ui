@@ -18,8 +18,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import { registerAllDevices } from '../../bw-board/src/register-all.js';
-import { getDevice } from '../../bw-board/src/devices.js';
+import { registerAllDevices } from 'bw-board/register-all.js';
+import { getDevice } from 'bw-board/devices.js';
 import { KIND_ALIASES } from '../src/model/terminal-aliases.js';
 
 registerAllDevices();
@@ -102,7 +102,7 @@ test('KNOWN_GAPS only shrinks: healed kinds must leave the ledger', () => {
 
 test('the console bench builds: stc15_mcu collapses to mcu, never rejects', async () => {
   const { setEngine } = await import('../src/engine.js');
-  const eng = await import('../../bw-board/src/index.js');
+  const eng = await import('bw-board/index.js');
   setEngine({ BoardImpl: eng.BoardImpl, inferNetlist: eng.inferNetlist,
     checkWiring: eng.checkWiring, hasDevice: eng.hasDevice });
   const { Circuit } = await import('../src/model/circuit.js');
