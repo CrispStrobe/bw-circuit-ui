@@ -2,6 +2,7 @@ import './_setup.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { createHitTest, partBounds } from '../src/interaction/hittest.js';
 import { runDrc } from '../src/model/drc.js';
@@ -12,6 +13,27 @@ const designerSource = readFileSync(new URL('../src/components/CircuitDesigner.j
 const boardHookSource = readFileSync(new URL('../src/hooks/useBoard.js', import.meta.url), 'utf8');
 const paletteSource = readFileSync(new URL('../src/components/PartPalette.jsx', import.meta.url), 'utf8');
 const seatGeneratorSource = readFileSync(new URL('../scripts/seat-examples.mjs', import.meta.url), 'utf8');
+const interactionGateSource = readFileSync(new URL('../scripts/verify-interaction.mjs', import.meta.url), 'utf8');
+
+test('interaction diagnostic filter retains all 34 default scenarios and mandatory page errors', () => {
+  const declaration=interactionGateSource.match(/const ALL_EXPECTED = \[([\s\S]*?)\];/);
+  assert.ok(declaration);
+  const ids=[...declaration[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
+  assert.equal(ids.length,34);assert.equal(new Set(ids).size,34);
+  assert.ok(ids.includes('sweep-canvas-live'));assert.ok(ids.includes('sweep-progress'));
+  assert.match(interactionGateSource,/requestedScenario \? \[requestedScenario, 'zero-page-errors'\] : ALL_EXPECTED/);
+});
+
+test('interaction diagnostic filter refuses unknown IDs and cannot reduce CI coverage', () => {
+  for(const [scenario,ci,message] of [['sweep-canvas-live-typo','',/must exactly name/],
+    ['sweep-canvas-live','1',/filtering is forbidden in CI/]]) {
+    const result=spawnSync(process.execPath,['scripts/verify-interaction.mjs'],{
+      cwd:new URL('..',import.meta.url),encoding:'utf8',timeout:10000,
+      env:{...process.env,BW_GATE_SCENARIO:scenario,CI:ci}
+    });
+    assert.equal(result.error,undefined);assert.notEqual(result.status,0);assert.match(result.stderr,message);
+  }
+});
 
 test('placement bounds preserve full, half, and mini breadboard dimensions', () => {
   const bounds = size => partBounds({ kind: 'breadboard', x: 0, y: 0, params: { size } });

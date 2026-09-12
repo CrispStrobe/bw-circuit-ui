@@ -24,24 +24,42 @@
 // they cannot drift again. Removing either makes this gate fail BY NAME —
 // that is the regression test, and it is mutation-proven.
 import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
+const INSTRUMENT_IDS = ['meter-board-intact', 'scope-vdiv-per-channel', 'spectrum-answers', 'spectrum-peak',
+  'sweep-progress', 'sweep-canvas-live'];
+// Local diagnosis only: exact IDs, with the entire shared bench setup retained.
+// No filter preserves the complete 34-scenario CI gate; a targeted receipt
+// explicitly declares reduced scope and still requires zero page errors.
+const requestedScenario = process.env.BW_GATE_SCENARIO || null;
+if (requestedScenario && !INSTRUMENT_IDS.includes(requestedScenario)) {
+  throw new Error(`BW_GATE_SCENARIO must exactly name an instrument scenario: ${INSTRUMENT_IDS.join(', ')}`);
+}
+if (process.env.CI && requestedScenario) throw new Error('scenario filtering is forbidden in CI');
+const artifactDirectory = process.env.BW_GATE_ARTIFACT_DIR;
+if(artifactDirectory)await mkdir(artifactDirectory,{recursive:true});
+
 const PORT = Number(process.env.BW_GATE_PORT || 3142);
-const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], {
-  stdio: 'ignore', detached: false,
+const server = spawn(process.execPath, [fileURLToPath(new URL('../node_modules/vite/bin/vite.js', import.meta.url)), '--port', String(PORT), '--strictPort'], {
+  stdio: ['ignore','pipe','pipe'], detached: false,
 });
+let serverLog='';
+for(const stream of [server.stdout,server.stderr])stream.on('data',chunk=>{serverLog=(serverLog+chunk).slice(-16000);});
 const kill = () => { try { server.kill('SIGTERM'); } catch { /* gone */ } };
 process.on('exit', kill);
 
 const waitForServer = async () => {
   for (let i = 0; i < 120; i++) {
+    if(server.exitCode!==null)throw new Error(`dev server exited ${server.exitCode}: ${serverLog}`);
     try {
       const r = await fetch(`http://localhost:${PORT}/`);
       if (r.ok) break;
     } catch { /* not up yet */ }
     await new Promise(res => setTimeout(res, 500));
-    if (i === 119) throw new Error('dev server did not come up');
+    if (i === 119) throw new Error(`dev server did not come up: ${serverLog}`);
   }
   // Serving index.html is not the same as being ready to serve the APP. Vite
   // transforms every module on first request, and this app is a large one:
@@ -60,7 +78,7 @@ const waitForServer = async () => {
 // comparison. Every scenario reports exactly one outcome under its own id;
 // a missing id, a duplicate id, or an id nobody expected FAILS the run, and
 // says which. A gate that cannot fail is not a gate.
-const EXPECTED = [
+const ALL_EXPECTED = [
   'click-select',
   'drag-part',
   'wire-terminals',
@@ -96,6 +114,8 @@ const EXPECTED = [
   'sweep-ac-region',
   'zero-page-errors',
 ];
+const EXPECTED = requestedScenario ? [requestedScenario, 'zero-page-errors'] : ALL_EXPECTED;
+if (requestedScenario) console.log(`TARGETED DIAGNOSTIC ONLY: ${requestedScenario}; default full gate has ${ALL_EXPECTED.length} scenarios`);
 
 // Scenarios a CI runner cannot honestly host. Empty, and meant to stay so:
 // an entry here is printed LOUDLY on every run, by name and with its reason,
@@ -109,6 +129,10 @@ const reported = new Map();          // id -> 'pass' | 'fail' | 'skip'
 const protocolErrors = [];
 
 const record = (id, outcome, msg) => {
+  if (ALL_EXPECTED.includes(id) && !EXPECTED.includes(id)) {
+    console.log(`diagnostic prerequisite [${id}] ${outcome}: ${msg}`);
+    return;
+  }
   if (!EXPECTED.includes(id)) protocolErrors.push(`outcome for unknown scenario id "${id}"`);
   if (reported.has(id)) {
     // First outcome wins. A scenario can abort at several points (its toggle,
@@ -193,7 +217,7 @@ const clickOrFail = async (locator, id, what, opts = {}) => {
 };
 
 await waitForServer();
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.BW_GATE_CHROMIUM ? {executablePath: process.env.BW_GATE_CHROMIUM} : {});
 browserRef = browser;
 const page = await browser.newPage({ viewport: { width: 1400, height: 800 } });
 const errors = [];
@@ -361,6 +385,7 @@ const selectionCount = async () =>
   await page.evaluate(() => document.body.innerText.match(/(\d+)\s*selected/)?.[1] ?? '0');
 
 // 1. Click-select, three times, on the wokwi LED.
+if (!requestedScenario) {
 {
   const b = await box();
   if (!b) { fail('click-select', 'no wokwi LED on the default board'); }
@@ -1071,12 +1096,11 @@ const selectionCount = async () =>
   }
 }
 
+}
 // ── 12–15. The instruments (D21, D31, D24, X2.6) ─────────────────────────
 // One bench for all four: a 1 kHz function generator across a resistor, in
 // Sim. Built fresh, because these scenarios are about READINGS and the
 // accumulated clutter of eleven earlier scenarios only obscures them.
-const INSTRUMENT_IDS = ['meter-board-intact', 'scope-vdiv-per-channel', 'spectrum-answers', 'spectrum-peak',
-  'sweep-progress', 'sweep-canvas-live'];
 try {
   if (!await reloadOrFailRest()) await rollCall();
   if (!await readyOrFailRest(() => window.__circuit && window.__circuit.parts.length > 0,
@@ -1257,6 +1281,24 @@ try {
       const panel = document.querySelector('[data-testid=bw-sweep-panel]');
       window.__sweepObs = new MutationObserver(push);
       window.__sweepObs.observe(panel, { childList: true, subtree: true, characterData: true });
+      // Install diagnostics in this EXISTING pre-run evaluation: an extra
+      // awaited evaluation after the resistor bbox could mask a layout race.
+      const describe = el => el ? `${el.tagName}.${el.className?.baseVal ?? el.className ?? ''} ${el.getAttribute?.('data-testid') ?? ''}`.slice(0,180) : null;
+      window.__sweepDragDiagnostic = {start:performance.now(),events:[],longTasks:[]};
+      for(const type of ['pointerdown','pointermove','pointerup','pointercancel','gotpointercapture','lostpointercapture']) {
+        document.addEventListener(type,event=>{
+          const d=window.__sweepDragDiagnostic;if(d.events.length<128)d.events.push({type,t:performance.now(),x:event.clientX,y:event.clientY,
+            target:describe(event.target),path:event.composedPath().slice(0,5).map(describe),
+            ...(type==='pointerdown'||type==='pointerup'?{
+              hit:describe(document.elementFromPoint(event.clientX,event.clientY)),
+              resistors:(window.__circuit?.parts??[]).filter(p=>p.kind==='resistor').map(p=>({id:p.id,x:p.x,y:p.y,seat:p.seat??null}))
+            }:{})});
+        },{capture:true});
+      }
+      try{const observer=new PerformanceObserver(list=>{
+        const d=window.__sweepDragDiagnostic;
+        for(const entry of list.getEntries())if(d.longTasks.length<128)d.longTasks.push({start:entry.startTime,duration:entry.duration});
+      });observer.observe({entryTypes:['longtask']});}catch{}
     });
     await clickOrFail(swp.locator('[data-testid=bw-sweep-run]'), 'sweep-progress', 'sweep run unclickable', { timeout: 30000 });
 
@@ -1279,6 +1321,12 @@ try {
     await page.waitForTimeout(300);
     const rb2 = await page.locator('wokwi-resistor').first().boundingBox();
     const moved = rb2.x - x0;
+    const diagnostic=await page.evaluate(()=>window.__sweepDragDiagnostic);
+    console.log(`sweep drag diagnostic: ${JSON.stringify({runningBefore,moved,rb,rb2,...diagnostic})}`);
+    if(artifactDirectory){
+      await writeFile(join(artifactDirectory,'sweep-drag.json'),JSON.stringify({runningBefore,moved,rb,rb2,...diagnostic},null,2),{flag:'wx'});
+      await page.screenshot({path:join(artifactDirectory,'sweep-drag.png'),fullPage:true});
+    }
     if (!runningBefore) {
       fail('sweep-canvas-live',
         `the sweep was not running when the canvas was dragged (moved ${moved.toFixed(0)} px) — `
@@ -1332,6 +1380,7 @@ try {
 // (That the flag is ABSENT on a linear bench is asserted in
 // test/sweep-small-signal.test.js, where the same op-amp with a 1 µV bias
 // reports its 120 dB open-loop gain and carries no flag at all.)
+if (!requestedScenario) {
 const AC_IDS = ['sweep-ac-method', 'sweep-ac-region'];
 const RAILED_BENCH = {
   vcc: 5.0,
@@ -1468,6 +1517,7 @@ try {
   failAll(AC_IDS, `the AC scenarios could not be set up: ${String(e).split('\n')[0]}`);
 }
 
+}
 verdict('zero-page-errors', errors.length === 0,
   'zero page errors',
   `page errors: ${errors.join(' | ')}`);
