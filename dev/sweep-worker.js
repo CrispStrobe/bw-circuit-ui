@@ -2,21 +2,20 @@
  * The dev harness's sweep worker — and the reference implementation of the one
  * a host has to write.
  *
- * It lives in `dev/`, NOT in `src/`, and that is load-bearing: brickwright-lite
- * vendors this library by walking `src/` and copying everything except
- * `main.jsx` into `scratch-gui/src/lib/bw-circuit-ui/`, where `../../bw-board`
- * resolves to nothing (lite's engine is one level up, at `lib/bw-board`). A
- * file under `src/` that imports the engine by path therefore breaks the host's
- * build, which is exactly why main.jsx is on that skip list. One skip list is
- * enough; the second harness file stays out of the vendored tree instead.
+ * It lives in `dev/`, NOT in `src/`, and that is load-bearing: a host takes
+ * this library as an npm package and imports what it needs from `src/`; the
+ * worker is the harness's, not the library's, so it stays out of the package
+ * surface the host wires up. The library itself receives the engine through
+ * `setEngine`, and a live `BoardImpl` class cannot be cloned into a worker —
+ * so the worker has to import an engine of its own. Since 2026-09-12 that
+ * engine is the `bw-board` package (a git-sha devDependency here, a peer
+ * dependency for hosts), imported BY NAME; the gate in
+ * scripts/ci-sibling-pins.test.mjs refuses any sibling-path reach in this
+ * file, because a worker is its own module graph and a stale path here
+ * fails silently (the sweep falls back to the main thread). What crosses
+ * the thread boundary is a netlist (see `sweep-protocol.js`).
  *
- * This and `main.jsx` are the only places that import bw-board by path, and for
- * the same reason: both are the harness, not the library. The library itself receives the engine through `setEngine`, and a
- * live `BoardImpl` class cannot be cloned into a worker — so the worker has to
- * import an engine of its own, and only the host knows where its engine module
- * is. What crosses the thread boundary is a netlist (see `sweep-protocol.js`).
- *
- * A host copies this file, points the three imports at its own vendored engine,
+ * A host copies this file (the three engine imports already resolve by name),
  * and hands the panel a factory:
  *
  *     setEngine({
