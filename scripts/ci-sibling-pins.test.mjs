@@ -89,7 +89,11 @@ test('the engine is the pinned bw-board package, imported by name, never by sibl
   assert.equal(pkg.peerDependencies['bw-board'], '*',
     'the host supplies ONE engine copy; a git spec here would install a second');
   const root = fileURLToPath(new URL('..', import.meta.url));
-  const files = ['src', 'test', 'bin', 'scripts'].flatMap((d) => sourceFiles(join(root, d)));
+  // dev/ holds the Vite harness's sweep worker, which is a SEPARATE module graph
+  // (new Worker(new URL(...))) — it reached the engine by sibling path after every
+  // src/ import had moved, failed to load in CI, and the sweep fell back to the main
+  // thread, which the browser gate reported as "canvas froze during the sweep".
+  const files = ['src', 'test', 'bin', 'scripts', 'dev'].flatMap((d) => sourceFiles(join(root, d)));
   assert.ok(files.length > 100, `only ${files.length} source files scanned`);
   const offenders = files.filter((f) => siblingReach.test(readFileSync(f, 'utf8'))).map((f) => f.slice(root.length));
   assert.deepEqual(offenders, []);

@@ -30,9 +30,9 @@
  * survives one slow POINT rather than one slow sweep.
  */
 
-import { BoardImpl } from '../../bw-board/src/board.js';
-import { runDcSweep, runAcSweep, logSpace } from '../../bw-board/src/sweep.js';
-import { registerAllDevices } from '../../bw-board/src/register-all.js';
+import { BoardImpl } from 'bw-board/board.js';
+import { runDcSweep, runAcSweep, logSpace } from 'bw-board/sweep.js';
+import { registerAllDevices } from 'bw-board/register-all.js';
 import { sweepWorkerHandler } from '../src/model/sweep-protocol.js';
 
 // The same registration main.jsx does: without it every registered kind
