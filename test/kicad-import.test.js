@@ -26,6 +26,7 @@ import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { detectFormat } from '../src/importers/detect.js';
 import { importKicadSch, kicadSchPartition, resolveKicadSch } from '../src/importers/kicad-sch.js';
 import { importKicadLegacy, parseLegacyLib } from '../src/importers/kicad-legacy.js';
@@ -309,6 +310,37 @@ describe('KiCad 4/5 legacy schematic', () => {
 
   test('every node lands in the right net', () => {
     assert.deepEqual(imported().nodePartition, EXPECTED);
+  });
+
+  test('a cache-library hidden-name marker is omitted by the schematic reference', () => {
+    // The fixture deliberately says `DEF ~power_+5V`, while both L records say
+    // `power:+5V`. Missing that format rule leaves R1/1 and R3/1 on two
+    // plausible-looking but electrically separate rails.
+    assert.match(LEGACY_LIB, /^DEF ~power_\+5V /m, 'the positive fixture carries the hidden marker');
+    const rail = imported().nodePartition.find((n) => n.includes('R1/1')) || '';
+    assert.match(rail, /R3\/1/, 'the two disconnected +5V symbols merge by name');
+    assert.match(rail, /U9\/8/, 'the explicit power symbol also reaches a chip hidden power pin');
+  });
+
+  test('hidden-name lookup is exact after the marker, never a fuzzy symbol match', () => {
+    const wrongLib = LEGACY_LIB.replace('DEF ~power_+5V ', 'DEF ~power_+5V_OTHER ');
+    assert.notEqual(wrongLib, LEGACY_LIB, 'the negative fixture must change the DEF name');
+    const r = importKicadLegacy(LEGACY, { lib: wrongLib });
+    const rail = r.nodePartition.find((n) => n.includes('R1/1')) || '';
+    assert.doesNotMatch(rail, /R3\/1|U9\/8/,
+      'a similarly prefixed definition must not lend its pins to +5V');
+    assert.equal(r.needsLibrary, true);
+    assert.match(r.warnings.join(' '), /placed symbol\(s\) have no definition/);
+  });
+
+  test('the shipping bwc CLI reaches the hidden-definition rule', () => {
+    const cli = spawnSync(process.execPath,
+      [join(CUI, 'bin', 'bwc.mjs'), 'info', join(HERE, 'fixtures', 'kicad-legacy-divider.sch')],
+      { encoding: 'utf8' });
+    assert.equal(cli.status, 0, cli.stderr || cli.stdout);
+    assert.match(cli.stdout, /\[kicad-legacy\]/);
+    assert.match(cli.stdout, /wires\s+: 8\b/,
+      'the CLI must auto-load the adjacent .lib and retain the connected rails');
   });
 
   test('an invisible power pin reaches its rail with no wire', () => {

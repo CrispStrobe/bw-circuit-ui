@@ -103,7 +103,16 @@ export function parseLegacyLib(text) {
 function lookupLib(libs, libId) {
   const s = String(libId);
   const bare = s.includes(':') ? s.slice(s.indexOf(':') + 1) : s;
-  return libs.get(s.replace(':', '_')) || libs.get(s) || libs.get(bare) || null;
+  const names = [s.replace(':', '_'), s, bare];
+  // Legacy cache libraries may prefix a hidden symbol's DEF name with `~`,
+  // while the schematic's `L` record omits it. This is common for rescued
+  // power symbols: `DEF ~GND-RESCUE-project` is referenced as
+  // `L GND-RESCUE-project #PWR01`. Exact names still win; only then try the
+  // format's one-character hidden-name spelling. Anything broader would risk
+  // borrowing pin geometry from a different symbol and fabricating a net.
+  for (const name of names) if (libs.has(name)) return libs.get(name);
+  for (const name of names) if (libs.has(`~${name}`)) return libs.get(`~${name}`);
+  return null;
 }
 
 /**
