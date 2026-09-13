@@ -175,6 +175,10 @@ switch (cmd) {
       console.log('  UNMAPPED : ' + c.unmapped.length + ' — not imported:');
       for (const u of c.unmapped) console.log('      ' + u.ref + '  ' + u.libsource);
     }
+    if (c.losses && c.losses.length) {
+      console.log('  LOSSES   : ' + c.losses.length + ' — imported with semantics not represented:');
+      for (const loss of c.losses) console.log('      ' + loss.ref + '  ' + loss.reason);
+    }
     break;
   }
 
