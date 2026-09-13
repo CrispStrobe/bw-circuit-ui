@@ -360,6 +360,29 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       .map((p, i) => nodes[i] || `UNCONNECTED_${part.refdes}_${p}`)
       .join(' ');
 
+    // A time-varying source must either retain its complete supported shape
+    // or be refused. Falling through to valueNumber here used to serialize a
+    // waveform as DC while producing a plausible, runnable, different deck.
+    if ((part.kind === 'vsource' || part.kind === 'isource')
+      && part.params?.wave && part.params.wave !== 'dc') {
+      const p = part.params;
+      const allowed = new Set(['wave', 'volts', 'offset', 'amplitude', 'freq', 'phase']);
+      const extra = Object.keys(p).filter(key => !allowed.has(key));
+      const phase = p.phase ?? 0;
+      const validSine = part.kind === 'vsource' && p.wave === 'sine'
+        && [p.offset, p.amplitude, p.freq, phase].every(Number.isFinite)
+        && p.freq > 0 && phase === 0 && extra.length === 0;
+      if (validSine) {
+        lines.push(`${part.refdes} ${nodeFields} SINE(${formatSpiceValue(p.offset)} `
+          + `${formatSpiceValue(p.amplitude)} ${formatSpiceValue(p.freq)})`);
+      } else {
+        const detail = extra.length ? `; unsupported parameter${extra.length > 1 ? 's' : ''} ${extra.join(', ')}` : '';
+        skipped.push(`${part.refdes} (${part.kind}): time-varying ${String(p.wave)} source is not losslessly exportable${detail}`);
+        lines.push(`* ${part.refdes} ${part.kind} — skipped (time-varying source not losslessly exportable${detail})`);
+      }
+      continue;
+    }
+
     if (TWO_TERMINAL.has(card)) {
       let value = part.valueNumber;
       // A CONTROLLED PASSIVE'S VALUE IS THE ENGINE'S TO STATE. Asking bw-board

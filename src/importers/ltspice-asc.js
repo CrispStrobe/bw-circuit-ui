@@ -11,7 +11,9 @@
  *   current.asy d36a9bf0...  PIN (0,0)   +/order 1; (0,80) -/order 2
  *
  * The bounded subset maps only the exact standard `res`, `cap`, `voltage`,
- * and `current` symbols. For current sources, LTspice/SPICE current flows from
+ * and `current` symbols. Voltage sources additionally retain exact
+ * three-argument `SINE(offset amplitude frequency)` values. For current
+ * sources, LTspice/SPICE current flows from
  * SpiceOrder 1 to 2 while the native source injects from `neg` to `pos`, so
  * that pin order deliberately maps to `neg,pos`. Unknown/custom symbols are
  * explicit `unmapped[]` entries; unsupported orientations and non-static
@@ -22,6 +24,7 @@
 
 import { NetSolver, makeId, wiresFromNets } from './kicad-common.js';
 import { parseSpiceValue } from '../model/si.js';
+import { parseStrictSpiceSine } from '../model/spice-source.js';
 
 const SYMBOLS = new Map([
   ['res', {
@@ -117,6 +120,19 @@ function staticValue(raw) {
   return Number.isFinite(value) ? value : null;
 }
 
+/** Strict LTspice Value projection for the bounded source subset. */
+function authoredParams(raw, spec) {
+  const text = String(raw || '').trim();
+  const sine = parseStrictSpiceSine(text, { allowSinAlias: false });
+  if (sine && spec.kind === 'vsource') {
+    return sine.ok ? { params: sine.params, reason: null } : { params: {}, reason: sine.reason };
+  }
+  const value = staticValue(text);
+  return value === null
+    ? { params: {}, reason: `Value "${text}" is not a finite static scalar` }
+    : { params: { [spec.parameter]: value }, reason: null };
+}
+
 export function importLtspiceAsc(text) {
   const parts = [];
   const warnings = [];
@@ -165,11 +181,11 @@ export function importLtspiceAsc(text) {
       continue;
     }
     const id = makeId(ref, used);
-    const value = staticValue(symbol.attrs.value);
-    const params = value === null ? {} : { [spec.parameter]: value };
-    if (value === null) {
+    const authored = authoredParams(symbol.attrs.value, spec);
+    const params = authored.params;
+    if (authored.reason) {
       losses.push({ ref: id, kind: 'unsupported-or-missing-static-value', source: symbol.source,
-        reason: `Value "${symbol.attrs.value || ''}" is not a finite static scalar`, fallback: null });
+        reason: authored.reason, fallback: null });
       warnings.push(`${id}: non-static or missing value is not approximated`);
     }
     for (const [name, authored] of Object.entries(symbol.attrs)) {
