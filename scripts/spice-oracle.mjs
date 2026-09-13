@@ -40,6 +40,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import '../test/_setup.js';
 import { Circuit } from '../src/model/circuit.js';
+import { pinThevenin } from 'bw-board/pin-model.js';
 import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice } from '../src/model/exporters/spice.js';
 import { importSpice } from '../src/importers/spice.js';
@@ -49,6 +50,22 @@ const V_TOL_ABS = 5e-3;      // volts
 const V_TOL_REL = 0.01;      // 1 %
 /** Agreement required on the supply branch current. */
 const I_TOL_REL = 0.02;      // 2 %
+/**
+ * Below this, two answers are both "no current" and a RELATIVE difference
+ * between them is not a measurement.
+ *
+ * Found by the corpus sweep on its first twelve circuits: three idle boards
+ * failed with "relative difference 100.000 %" comparing ngspice's 4.34e-18 A
+ * against the engine's 9.995e-12 A. Four attoamps against ten picoamps — both
+ * are numerical zero, one is ngspice folding an unpowered branch away and the
+ * other is our GMIN leakage, and dividing one by the other yields 1 every time.
+ *
+ * DERIVED, not chosen: the smallest current this corpus meaningfully carries is
+ * a UV LED (vf 3.8) on a 3.3 V rail, 20.21 uA. One nanoamp is 20,000x below
+ * that and six orders above the leakage being compared here, so it separates
+ * "no current" from every real reading without reaching any of them.
+ */
+const I_ZERO_FLOOR = 1e-9;   // amps
 
 const KEEP = process.argv.includes('--keep');
 
@@ -222,16 +239,91 @@ function agree(a, b) {
  * Build, solve, export and judge one case.
  * @returns {{name: string, ok: boolean, lines: string[]}}
  */
-export function judgeCase(name, json, dir) {
+export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true} = {}) {
   const lines = [];
-  const circuit = Circuit.fromJSON(json);
+  // ONE MODEL ON BOTH SIDES, WHICH IS THE WHOLE DISCIPLINE HERE.
+  //
+  // The exporter can only write Shockley -- the designer's DEFAULT piecewise
+  // knee has no SPICE spelling -- while the engine ROUTES per circuit and picks
+  // PWL wherever supply headroom is comfortable. Undriven that never showed,
+  // because nothing conducted. The moment the sweep drove the pins it broke 873
+  // circuits that had "agreed", every one of them the same shape: engine
+  // 1.830918 V against ngspice 1.747075 V on a red LED -- the PWL answer against
+  // the Shockley answer, 2.573 % apart, which is the model gap this file already
+  // prints as a note.
+  //
+  // That is not a solver error and widening the tolerance to swallow it would be
+  // comparing two different devices and calling the difference noise -- the
+  // exact failure this whole lane has been closing. The 16 hand cases already
+  // declare `model: 'shockley'` for this reason; the sweep does the same, so the
+  // comparison tests the SOLVER rather than the routing policy. Routing itself
+  // is tested by junction-routing.test.mjs, which is the right place for it.
+  const forShockley = !drivePins ? json : {
+    ...json,
+    parts: (json.parts || []).map(p => (
+      (p.kind === 'led' || p.kind === 'diode' || p.kind === 'zener')
+        ? { ...p, params: { ...(p.params || {}), model: 'shockley' } }
+        : p)),
+  };
+  const circuit = Circuit.fromJSON(forShockley);
   circuit.setPower(true);
   // Reactive cases need the transient to settle before an operating point
   // means anything (see rc-and-parallel).
   if (json.settleNs) circuit.advanceTo(json.settleNs);
 
   const netlist = extractNetlist(circuit);
-  const { text, warnings } = toSpice(netlist, `oracle: ${name}`);
+
+  // A DRIVEN PIN IS A SOURCE, AND WITHOUT ONE MOST OF THE CORPUS IS UNPOWERED.
+  //
+  // A gallery circuit ships with no program run, so `board.pinStates` is empty
+  // and every MCU pin is high-Z: `168p01-blink` is `gnd, resistor, led,
+  // arduino_uno` with NO vcc part, so nothing supplies it and there is nothing
+  // to oracle. Measured over 2,163 corpus circuits, 127 decks had no source at
+  // all for exactly this reason.
+  //
+  // So the sweep DRIVES. `pinSource` below hands the exporter the same Thevenin
+  // the engine solves with, read from the engine's own pin state rather than
+  // recomputed here — one definition, so the deck and the solve cannot describe
+  // different drivers. Parts the exporter already emitted are excluded by the
+  // exporter itself, which is the only place that knows.
+  let pinSource = null;
+  if (drivePins) {
+    const b = circuit.board;
+    // WHICH PINS, and the rule is narrow on purpose. Drive only a pin that
+    //   (a) belongs to a part the exporter SKIPPED -- driving one it emitted
+    //       would put two sources on one node,
+    //   (b) shares its net with at least one other node, so it reaches the
+    //       analog network at all, and
+    //   (c) is not the part's ground or supply pin. Driving `gnd2` high was the
+    //       first thing this policy did wrong: an Arduino's ground pin took a
+    //       5 V Thevenin, which ngspice solves happily and which is a short
+    //       from the rail to the reference, not the board anyone built. The
+    //       exporter refuses a node that resolves to 0 as a second line of
+    //       defence; this is the first.
+    const probe = toSpice(extractNetlist(circuit), 'probe');
+    const skippedRef = new Set((probe.skipped || []).map(x => String(x).split(' ')[0]));
+    const POWER_PIN = /^(gnd|vss|vcc|vdd|v\+|v-|agnd|avcc|aref|vin|3v3|5v)/i;
+    for (const net of netlist.nets) {
+      if ((net.nodes || []).length < 2) continue;
+      if (net.rail === 'gnd') continue;
+      for (const nd of net.nodes) {
+        if (!skippedRef.has(nd.refdes)) continue;
+        if (POWER_PIN.test(String(nd.pin))) continue;
+        try { circuit.setPin(nd.pin, 'pushpull', driveHigh); } catch { /* not a pin this board knows */ }
+      }
+    }
+    pinSource = (refdes, pin) => {
+      const st = b.getPinState ? b.getPinState(pin) : null;
+      if (!st) return null;
+      const th = pinThevenin(st.mode, st.driveHigh, b.vcc);
+      return (th && th !== 'high-z') ? th : null;   // high-Z contributes no card
+    };
+  }
+
+  // Re-extract after driving: setPin changes the solve, and a netlist taken
+  // before it describes the undriven board.
+  const solved = drivePins ? extractNetlist(circuit) : netlist;
+  const { text, warnings } = toSpice(solved, `oracle: ${name}`, { pinSource });
 
   // Structural floor: these are what "unsimulatable" meant.
   //
@@ -251,27 +343,34 @@ export function judgeCase(name, json, dir) {
   const structural = [];
   if (!/(^|\n)V[^\s]*\s+\S+\s+0\s+DC\s/.test(text)) structural.push('no synthesized supply');
   if (!allTokens.has('0')) structural.push('no node 0 on any element');
-  if (groundNetOf(netlist) && allTokens.has(groundNetOf(netlist))) {
-    structural.push(`ground net is spelled '${groundNetOf(netlist)}' instead of node 0`);
+  if (groundNetOf(solved) && allTokens.has(groundNetOf(solved))) {
+    structural.push(`ground net is spelled '${groundNetOf(solved)}' instead of node 0`);
   }
   if (!/^\.op\s*$/m.test(text)) structural.push('no analysis directive');
   if (!/^\.end\s*$/m.test(text)) structural.push('no .end');
   if (structural.length) {
     lines.push(`  STRUCTURE: ${structural.join('; ')}`);
-    return { name, ok: false, lines };
+    return { name, ok: false, lines, compared: 0, reason: 'structure: ' + structural.join('; ') };
   }
 
   const run = runNgspice(text, dir, name);
   if (run.error) {
     lines.push(`  ngspice REFUSED the deck: ${run.error}`);
     lines.push(...run.raw.split('\n').slice(0, 24).map(l => `    | ${l}`));
-    return { name, ok: false, lines };
+    return { name, ok: false, lines, compared: 0, reason: 'ngspice refused: ' + run.error };
   }
 
   // Node-by-node: the engine's solve for the same net.
   let ok = true;
   let compared = 0;
-  for (const net of netlist.nets) {
+  // STRUCTURED RESULT ALONGSIDE THE PROSE. A corpus sweep has to aggregate
+  // thousands of these, and parsing the human lines to do it would compare a
+  // different thing than the judgement did. Both callers read the same fields.
+  let worstAbs = 0, worstRel = 0, worstAt = null;
+  // `solved`, not `netlist`: the deck was built from the post-drive extraction,
+  // and comparing nets from a different one would judge two circuits against
+  // each other. Identical objects when drivePins is off.
+  for (const net of solved.nets) {
     if (net.name === 'GND' || !net.id) continue;
     const engineV = circuit.nodeVoltage(net.id);
     if (typeof engineV !== 'number' || !isFinite(engineV)) continue;
@@ -279,6 +378,12 @@ export function judgeCase(name, json, dir) {
     if (!(key in run.nodes)) continue;   // ngspice folds unused nodes away
     compared++;
     const spiceV = run.nodes[key];
+    {
+      const d = Math.abs(engineV - spiceV);
+      const rel = Math.max(Math.abs(engineV), Math.abs(spiceV)) > 0
+        ? d / Math.max(Math.abs(engineV), Math.abs(spiceV)) : 0;
+      if (d > worstAbs) { worstAbs = d; worstRel = rel; worstAt = net.name; }
+    }
     if (!agree(engineV, spiceV)) {
       ok = false;
       lines.push(`  V(${net.name}): engine ${engineV.toFixed(6)} V  ngspice `
@@ -299,14 +404,18 @@ export function judgeCase(name, json, dir) {
     const spiceI = Math.abs(branch[1]);
     lines.push(`  I(supply) = ${spiceI.toExponential(6)} A`);
     // Cross-check against the engine by summing what the rail feeds.
-    const supplyNet = netlist.nets.find(n => n.rail === 'vcc');
+    const supplyNet = solved.nets.find(n => n.rail === 'vcc');
     if (supplyNet) {
       let engineI = 0;
       for (const nd of supplyNet.nodes) {
         const i = circuit.branchCurrent(nd.partId, nd.pin);
         if (typeof i === 'number' && isFinite(i)) engineI += i;
       }
-      if (engineI !== 0) {
+      if (Math.max(spiceI, Math.abs(engineI)) < I_ZERO_FLOOR) {
+        lines.push(`    engine draws ${Math.abs(engineI).toExponential(6)} A `
+          + `— both below ${I_ZERO_FLOOR} A, so this branch carries no current in either `
+          + 'solve and there is no ratio to take');
+      } else if (engineI !== 0) {
         const rel = Math.abs(spiceI - Math.abs(engineI)) / Math.max(spiceI, Math.abs(engineI));
         lines.push(`    engine draws ${Math.abs(engineI).toExponential(6)} A `
           + `(relative difference ${(rel * 100).toFixed(3)} %)`);
@@ -316,7 +425,8 @@ export function judgeCase(name, json, dir) {
   }
 
   if (warnings.length) for (const w of warnings) lines.push(`  export warning: ${w}`);
-  return { name, ok, lines };
+  return { name, ok, lines, compared, worstAbs, worstRel, worstAt,
+    reason: ok ? null : (compared === 0 ? 'nothing compared' : `worst ${worstAbs.toExponential(2)} V at ${worstAt}`) };
 }
 
 // ── Round trip through our own importer, judged by ngspice ───────────

@@ -144,7 +144,8 @@ function lowestSourceFrequency(netlist) {
  * @param {string} [title='BrickWright Circuit']
  * @returns {{ text: string, skipped: string[], warnings: string[] }}
  */
-export function toSpice(netlist, title = 'BrickWright Circuit', {modelFor = spiceModelFor} = {}) {
+export function toSpice(netlist, title = 'BrickWright Circuit',
+  {modelFor = spiceModelFor, pinSource = null} = {}) {
   // EVERY `.model` line is derived from the parts library — no literals remain.
   // The last one was `MOSFET`, kept while `cardFor('MOSFET')` could not find the
   // generic card (its key is NMOS_GENERIC) and `spiceModelFor` had no branch for
@@ -222,6 +223,8 @@ export function toSpice(netlist, title = 'BrickWright Circuit', {modelFor = spic
   // ── Elements ─────────────────────────────────────────────────────
   const usedModels = new Set();
   const modelCards = [];
+  /** refdes that became a real element, so the freeze below never double-drives one. */
+  const emitted = new Set();
 
   for (const part of netlist.parts) {
     const sym = PART_SYMBOLS[part.kind];
@@ -232,6 +235,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit', {modelFor = spic
       lines.push(`* ${part.refdes} ${part.kind} — skipped (no simple SPICE card)`);
       continue;
     }
+    emitted.add(part.refdes);
 
     // A potentiometer is three terminals and one element letter. Exported
     // as ONE two-node R at the full value it was neither the wiper the
@@ -331,6 +335,55 @@ export function toSpice(netlist, title = 'BrickWright Circuit', {modelFor = spic
     // Only the models this deck actually references: a .model nothing uses
     // is noise, and some parsers warn on it.
     lines.push(...modelCards, ...shared);
+  }
+
+  // ── Frozen pins: a driven pin is a source behind a resistance ────
+  //
+  // OPT-IN, and off for ordinary exports. A part with no SPICE card is skipped
+  // above and simply vanishes from the deck — which is right for a display and
+  // WRONG for anything that drives current, because the deck then models a
+  // circuit nobody built. Measured on 2,163 corpus circuits: 625 disagreed with
+  // ngspice and every failure shape pointed here — 127 decks had no source at
+  // all because the supply was an MCU pin, and the rest read nodes the engine
+  // drives and the deck leaves floating.
+  //
+  // At a DC operating point such a pin IS a Thevenin source, which is what the
+  // engine itself solves (`bw-board/src/pin-model.js`, `pinThevenin`). The
+  // caller supplies `pinSource(refdes, pin)` because the STATE is the engine's,
+  // not the netlist's; the exporter only knows which refdes it already emitted
+  // and must not drive twice.
+  //
+  // Gated behind the oracle path deliberately. Turning it on for ordinary
+  // exports changes every deck a user has ever downloaded, and that decision
+  // waits until the sweep is green.
+  if (pinSource) {
+    const frozen = [];
+    for (const net of netlist.nets) {
+      if (net.name === groundNetName) continue;
+      for (const nd of net.nodes || []) {
+        if (emitted.has(nd.refdes)) continue;
+        const th = pinSource(nd.refdes, nd.pin);
+        if (!th || typeof th.vTh !== 'number' || typeof th.rTh !== 'number') continue;
+        // `nodeOf` is keyed by refdes:pin, not by net name. Calling it with the
+        // net name returned undefined and produced `R... nth_U1_d13 undefined 25`
+        // -- a deck ngspice parses as a node literally named "undefined", which
+        // simulates and is silently a different circuit.
+        const node = nodeOf(nd.refdes, nd.pin);
+        if (!node) continue;
+        // NEVER DRIVE GROUND. A part's ground pin is on node 0; a Thevenin
+        // source across it is a short from the supply to the reference, which
+        // ngspice solves happily and which is not the circuit anyone built.
+        if (node === '0') continue;
+        const tag = `${nd.refdes}_${nd.pin}`.replace(/[^A-Za-z0-9_]/g, '_');
+        const mid = `nth_${tag}`;
+        frozen.push(`V${tag} ${mid} 0 DC ${formatSpiceValue(th.vTh)}`);
+        frozen.push(`R${tag} ${mid} ${node} ${formatSpiceValue(th.rTh)}`);
+      }
+    }
+    if (frozen.length) {
+      lines.push('* Frozen pins (Thevenin equivalents of driven pins at this operating point)');
+      lines.push(...frozen, '');
+    }
   }
 
   // ── Analysis ─────────────────────────────────────────────────────
