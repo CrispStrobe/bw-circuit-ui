@@ -25,6 +25,7 @@
 import { NetSolver, makeId, wiresFromNets } from './kicad-common.js';
 import { parseSpiceValue } from '../model/si.js';
 import { parseStrictSpiceSine } from '../model/spice-source.js';
+import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 
 const SYMBOLS = new Map([
   ['res', {
@@ -235,6 +236,7 @@ export function importLtspiceAsc(text) {
     parts.push({ id, kind: 'gnd', params: {}, x: 0, y: 0 });
     join(net.netOfName('__LTSPICE_GND__'), id, 'gnd');
   }
+  annotateImportedSingletonTerminals(parts, byNet.values());
   const resolved = wiresFromNets(byNet);
   warnings.push(`geometry: ${attached}/${placements.length * 2} mapped pins landed on a wire or flag `
     + `(${resolved.nets} connected nets, ${drawing.flags.length} flags)`);

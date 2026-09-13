@@ -39,6 +39,7 @@
 
 import { parseSpiceValue } from '../model/si.js';
 import { parseStrictSpiceSine } from '../model/spice-source.js';
+import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 
 /** Nodes that mean "the reference" in every dialect. */
 const GROUND_NODES = new Set(['0', 'gnd', 'gnd!', 'ground', 'vss']);
@@ -533,6 +534,7 @@ export function importSpice(text) {
   }
 
   const singletons = [...nets.entries()].filter(([, m]) => m.length < 2);
+  annotateImportedSingletonTerminals(parts, singletons.map(([, members]) => members));
   for (const [net] of singletons) {
     warnings.push(`Net "${net === '__GND__' ? '0' : net}" has one connection — nothing to wire it to.`);
   }
