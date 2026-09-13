@@ -374,10 +374,30 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
     // agree about what a pin is.
     const drives = (kind) => kind === 'mcu' || !!getDevice(kind)?.gpioFollowsPinStates;
     const kindByRefdes = new Map(netlist.parts.map(p => [p.refdes, p.kind]));
-    const POWER_PIN = /^(gnd|vss|vcc|vdd|v\+|v-|agnd|avcc|aref|vin|3v3|5v)/i;
+    // Second line of defence for a power pin that is NOT on a rail net.
+    const POWER_PIN = /^(gnd|vss|vcc|vdd|vbus|vsys|v\+|v-|agnd|avcc|aref|vin|3v3|5v|vbat)/i;
     for (const net of netlist.nets) {
       if ((net.nodes || []).length < 2) continue;
-      if (net.rail === 'gnd') continue;
+      // NEVER DRIVE A PIN THAT SITS ON A SUPPLY RAIL, either rail.
+      //
+      // The gnd half was here from the start; the vcc half was not, and a name
+      // filter is the wrong instrument for it. A Pico's VBUS is a power pin
+      // whose name matches none of gnd/vss/vcc/vdd/vin/3v3/5v, so it took a
+      // 3.3 V GPIO Thevenin while sitting on the 5 V rail:
+      //
+      //     VU1_vbus nth_U1_vbus 0 DC 3.3
+      //     RU1_vbus nth_U1_vbus VCC 25
+      //
+      // Two stiff sources 1.7 V apart across R_STRONG — (5 - 3.3)/25 = 68 mA of
+      // current that exists in no circuit. Every NODE VOLTAGE still agreed,
+      // because both ends are held by sources, so it showed up only as
+      // I(supply) 6.834e-2 A against the engine's 3.416e-4: a factor of 200,
+      // on 176 Pico circuits.
+      //
+      // Whether a net is a rail is structural and the netlist already says so,
+      // which beats enumerating power-pin spellings — refusal by name needs the
+      // reachable set, and nobody has that for every device's pin naming.
+      if (net.rail) continue;
       for (const nd of net.nodes) {
         if (!skippedRef.has(nd.refdes)) continue;
         if (!drives(kindByRefdes.get(nd.refdes))) continue;
@@ -414,8 +434,40 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
   // The board's LIVE controls, not an empty map: an LDR the bench has set to
   // bright is a 100 Ohm part, and a deck built with the default dark control
   // would be a different circuit by four orders of magnitude.
+  // A PART WITH NO SPICE CARD MUST NOT SIMPLY VANISH.
+  //
+  // 42 kinds present the engine an impedance or a source and have no card, in
+  // 1,250 of the 2,163 corpus circuits. A skipped `74hc595` left eight LED
+  // branches at 0 V in the deck against 1.84 V in the engine; a skipped
+  // `buzzer` left its node at the full 5 V rail against the engine's 4.0
+  // (5 x 100/125). The deck was a different circuit and ngspice answered about
+  // it with total confidence.
+  //
+  // `deviceCompanions` hands back the companions bw-board's final Newton
+  // iteration STAMPED — the same records its own terminal currents are derived
+  // from — so the deck carries the engine's DC linearisation of that device
+  // verbatim while every OTHER element stays independently judged. That makes
+  // these cases `original-adapted`, not `original-direct`.
+  //
+  // `deviceCompanions` returns a SNAPSHOT, not a list: {converged, timeNs,
+  // records}. It reads the board's live solve — the same one nodeVoltage and
+  // branchCurrent report — so it can carry transient state, and a
+  // non-converged solve is an iterate rather than an answer. The judge compares
+  // a bias point, so a non-converged snapshot is refused here rather than
+  // exported and silently oracled against.
+  const partIdOf = new Map(solved.parts.map(p => [p.refdes, p.partId]));
+  const b2 = circuit.board;
+  const companionsFor = b2?.deviceCompanions
+    ? (refdes) => {
+        const id = partIdOf.get(refdes);
+        if (!id) return null;
+        const snap = b2.deviceCompanions(id);
+        if (!snap || snap.converged === false) return null;
+        return snap.records;
+      }
+    : null;
   const { text, warnings } = toSpice(solved, `oracle: ${name}`,
-    { pinSource, controls: circuit.board?.controls ?? new Map() });
+    { pinSource, companionsFor, controls: circuit.board?.controls ?? new Map() });
 
   // Structural floor: these are what "unsimulatable" meant.
   //
@@ -528,6 +580,12 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
       let contributors = 0;
       for (const nd of supplyNet.nodes) {
         const i = circuit.branchCurrent(nd.partId, nd.pin);
+        // DEBUG_SUPPLY=1 names the CONTRIBUTORS, not just their sum. Two
+        // engine defects were found by reading this list and nothing else: a
+        // Pico reporting 34 A on VBUS (a terminal sourced twice) and -3 A on
+        // VSYS (a board fighting an ideal rail). A summed current cannot say
+        // which pin invented it.
+        if (process.env.DEBUG_SUPPLY) console.error(`   [supply] ${nd.partId}.${nd.pin} = ${i}`);
         if (typeof i === 'number' && isFinite(i)) { engineI += i; contributors++; }
       }
       if (contributors === 0) {
