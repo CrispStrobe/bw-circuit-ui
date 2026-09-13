@@ -60,4 +60,20 @@ describe('static operating-point reachability', () => {
     assert.match(r.stderr, /refuses 1 semantic import loss/);
     assert.doesNotMatch(r.stdout, /DC operating point/);
   });
+
+  it('bwc op solves imported ideal E/G and reports the supported controlled domain', () => {
+    const fixture = join(root, 'test', 'fixtures', 'spice-controlled-op.cir');
+    const r = spawnSync(process.execPath, [cli, 'op', fixture], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr || r.stdout);
+    assert.match(r.stdout, /scope\s+: grounded-static-native-r-c-v-i-e-g/);
+    assert.match(r.stdout, /controlled: ideal-explicit-finite-parameters-only/);
+    assert.match(r.stdout, /kinds\s+: .*vcvs, vccs/);
+    const current = terminal => {
+      const match = new RegExp(`${terminal}\\s+([-+0-9.e]+) A`).exec(r.stdout);
+      assert.ok(match, r.stdout);
+      return Number(match[1]);
+    };
+    assert.ok(Math.abs(current('E1\\.outp') + 2e-3) < 5e-12);
+    assert.ok(Math.abs(current('G1\\.outn') - 1e-3) < 1e-12);
+  });
 });

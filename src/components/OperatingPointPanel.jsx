@@ -36,6 +36,8 @@ export function OperatingPointPanel({ board, blockers, lang = 'en' }) {
         <div data-testid="bw-operating-point-result" style={{marginTop: 6, fontSize: 10, color: '#334155'}}>
           <div><strong>{de ? 'Konvergiert' : 'Converged'}</strong> — {result.analysis.scope}</div>
           <div style={label}>C: {result.analysis.capacitors}; {de ? 'Quellen' : 'sources'}: {result.analysis.sources}</div>
+          <div style={label}>{de ? 'Gesteuerte Quellen' : 'controlled sources'}: {result.analysis.controlledSources}</div>
+          <div style={label}>{de ? 'Unterstützte Bauteile' : 'supported kinds'}: {result.analysis.supportedKinds.join(', ')}</div>
           <div style={label}>{result.analysis.currentConvention}</div>
           <div style={{...label, marginTop: 5}}>{de ? 'Knotenspannungen' : 'Node voltages'}</div>
           <div style={{maxHeight: 90, overflow: 'auto', fontFamily: 'monospace'}}>

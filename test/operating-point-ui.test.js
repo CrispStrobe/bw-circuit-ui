@@ -102,5 +102,7 @@ describe('operating-point Instruments action', () => {
     assert.match(panel, /data-testid="bw-operating-point-refusal"/);
     assert.match(panel, /does not change transient simulation state/);
     assert.match(panel, /currentConvention/);
+    assert.match(panel, /controlled sources.*controlledSources/s);
+    assert.match(panel, /supported kinds.*supportedKinds/s);
   });
 });

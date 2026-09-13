@@ -234,6 +234,36 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
   const emitted = new Set();
 
   for (const part of netlist.parts) {
+    if (part.kind === 'vcvs' || part.kind === 'vccs') {
+      const card = part.kind === 'vcvs' ? 'E' : 'G';
+      const parameter = part.kind === 'vcvs' ? 'gain' : 'gm';
+      const nonIdeal = ['railLow', 'railHigh', 'rout', 'iShort', 'iMax']
+        .filter(key => Object.prototype.hasOwnProperty.call(part.params || {}, key));
+      const amount = part.params?.[parameter];
+      if (typeof amount !== 'number' || !Number.isFinite(amount) || nonIdeal.length) {
+        const reason = nonIdeal.length
+          ? `non-ideal parameter${nonIdeal.length > 1 ? 's' : ''} ${nonIdeal.join(', ')} not exported`
+          : `explicit finite ${parameter} is required`;
+        skipped.push(`${part.refdes} (${part.kind}): ${reason}`);
+        lines.push(`* ${part.refdes} ${part.kind} — skipped (${reason})`);
+        continue;
+      }
+
+      const pins = getSpicePins(part.kind);
+      const nodes = pins.map(pin => nodeOf(part.refdes, pin));
+      const floating = pins.filter((pin, i) => !nodes[i]);
+      if (floating.length) {
+        warnings.push(`${part.refdes} (${part.kind}): pin${floating.length > 1 ? 's' : ''} `
+          + `${floating.join(', ')} on no net — left floating in the deck.`);
+      }
+      const nodeFields = pins
+        .map((pin, i) => nodes[i] || `UNCONNECTED_${part.refdes}_${pin}`)
+        .join(' ');
+      emitted.add(part.refdes);
+      lines.push(`${card}${part.refdes.replace(/^[EG]/i, '')} ${nodeFields} ${formatSpiceValue(amount)}`);
+      continue;
+    }
+
     const sym = PART_SYMBOLS[part.kind];
     const card = sym ? sym.spiceCard : null;
 
@@ -451,6 +481,12 @@ function getSpicePins(kind) {
       // SPICE positive I-card current flows first node -> second node, while
       // bw-board positive isource current flows neg -> pos.
       return ['neg', 'pos'];
+    case 'vcvs':
+      return ['outp', 'outn', 'inp', 'inn'];
+    case 'vccs':
+      // SPICE G flows first output node -> second; native positive gm flows
+      // outn -> outp, so this is the inverse of native terminal display order.
+      return ['outn', 'outp', 'inp', 'inn'];
     case 'potentiometer':
       // Handled as two resistors in toSpice; kept for callers that ask.
       return ['a', 'wiper', 'b'];

@@ -231,6 +231,8 @@ switch (cmd) {
     console.log('  converged: yes');
     console.log('  scope    : ' + result.analysis.scope);
     console.log('  sources  : ' + result.analysis.sources);
+    console.log('  controlled: ' + result.analysis.controlledSources);
+    console.log('  kinds    : ' + result.analysis.supportedKinds.join(', '));
     console.log('  capacitors: ' + result.analysis.capacitors);
     console.log('  currents : ' + result.analysis.currentConvention);
     console.log('  nodes:');
