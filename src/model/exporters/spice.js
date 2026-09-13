@@ -152,7 +152,8 @@ function lowestSourceFrequency(netlist) {
  * @returns {{ text: string, skipped: string[], warnings: string[] }}
  */
 export function toSpice(netlist, title = 'BrickWright Circuit',
-  {modelFor = spiceModelFor, pinSource = null, controls = new Map()} = {}) {
+  {modelFor = spiceModelFor, pinSource = null, controls = new Map(),
+   companionsFor = null} = {}) {
   // EVERY `.model` line is derived from the parts library — no literals remain.
   // The last one was `MOSFET`, kept while `cardFor('MOSFET')` could not find the
   // generic card (its key is NMOS_GENERIC) and `spiceModelFor` had no branch for
@@ -238,11 +239,60 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     const card = sym ? sym.spiceCard : null;
 
     if (!card || card === 'X' || card === 'S') {
+      // DECOMPOSE, RATHER THAN VANISH.
+      //
+      // A part with no SPICE card used to leave the deck entirely, and for a
+      // display that is right. For anything that drives current or presents an
+      // impedance it is not: the deck then describes a circuit nobody built,
+      // and ngspice answers a different question with total confidence.
+      // Measured on the corpus — a `74hc595` skipped this way left eight LED
+      // branches at 0 V in the deck against 1.84 V in the engine, and a
+      // `buzzer` skipped this way left its node at the full 5 V rail against
+      // the engine's 4.0 (5 x 100/125, the buzzer being a 100 Ohm load).
+      // 42 kinds are in this state, in 1,250 of 2,163 corpus circuits.
+      //
+      // `companionsFor` hands back the very companions bw-board's final Newton
+      // iteration STAMPED for this part — the same records its own terminal
+      // currents are derived from. So the deck carries the engine's DC
+      // linearisation of the device verbatim, and every OTHER element in the
+      // circuit is still judged by ngspice independently. That is the
+      // `original-adapted` evidence class, not `original-direct`: the device's
+      // internal model is taken as given and says so in the deck.
+      const comps = companionsFor ? companionsFor(part.refdes) : null;
+      if (comps && comps.length) {
+        const emittedCards = emitCompanions(part, comps, nodeOf, warnings);
+        if (emittedCards.length) {
+          lines.push(`* ${part.refdes} ${part.kind} — no SPICE card; `
+            + `${emittedCards.length} companion element(s) from the engine's own stamp`);
+          lines.push(...emittedCards);
+          emitted.add(part.refdes);
+          continue;
+        }
+      }
       skipped.push(`${part.refdes} (${part.kind}): no SPICE model`);
       lines.push(`* ${part.refdes} ${part.kind} — skipped (no simple SPICE card)`);
       continue;
     }
     emitted.add(part.refdes);
+
+    // IN SPICE THE FIRST CHARACTER OF AN ELEMENT NAME IS ITS TYPE.
+    //
+    // The deck wrote the netlist's refdes verbatim, and a refdes is a
+    // SCHEMATIC convention, not a SPICE one. Two of them collide:
+    //
+    //   BT1 (battery_aa)  ->  `BT1 net 0 1.45` is a B card, a BEHAVIOURAL
+    //                         source, not the V card that was meant. All 14
+    //                         `75-battery-tester` circuits had no comparable
+    //                         node at all as a result.
+    //   Q1  (nmos)        ->  `q1 ... MOS` made ngspice refuse the deck with
+    //                         "model type mismatch": a Q card is a BJT, and it
+    //                         was handed a MOS model.
+    //
+    // Both read as a deck problem in someone else's tool rather than as ours.
+    // The name keeps the refdes so a reader can still find the part; only the
+    // type letter is forced.
+    const el = part.refdes.toUpperCase().startsWith(card)
+      ? part.refdes : `${card}${part.refdes}`;
 
     // A potentiometer is three terminals and one element letter. Exported
     // as ONE two-node R at the full value it was neither the wiper the
@@ -300,10 +350,10 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       }
       if (value == null) {
         // No number and no engine default: say so rather than write 1.
-        lines.push(`${part.refdes} ${nodeFields} ${part.value || '1'}`);
+        lines.push(`${el} ${nodeFields} ${part.value || '1'}`);
         warnings.push(`${part.refdes} (${part.kind}): no numeric value — deck value is a guess.`);
       } else {
-        lines.push(`${part.refdes} ${nodeFields} ${formatSpiceValue(value)}`);
+        lines.push(`${el} ${nodeFields} ${formatSpiceValue(value)}`);
       }
     } else if (card === 'D') {
       const modelName = `D_${part.refdes}`;
@@ -313,7 +363,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       modelCards.push(`.model ${modelName} D (Is=${j.is.toExponential(6)} N=${j.n} `
         + `Rs=${j.rs}${extra})  $ Vf=${j.vf} V at 20 mA`);
       usedModels.add(modelName);
-      lines.push(`${part.refdes} ${nodeFields} ${modelName}`);
+      lines.push(`${el} ${nodeFields} ${modelName}`);
     } else if (card === 'Q') {
       // A named part (params.part) is the card's model; a bare class falls back
       // to the symbol table's choice, then to the generic default.
@@ -326,8 +376,15 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         continue;
       }
       usedModels.add(model);
-      lines.push(`${part.refdes} ${nodeFields} ${model}`);
+      lines.push(`${el} ${nodeFields} ${model}`);
     } else if (card === 'M') {
+      // A SPICE M CARD TAKES FOUR NODES: drain gate source BULK. With three,
+      // ngspice refuses the deck outright — "not enough nodes" — which is how
+      // both `pc39-nmos-switch` circuits failed. A discrete MOSFET has its bulk
+      // tied to its source internally, and bw-board's model has no separate
+      // bulk terminal, so the source node is the truthful fourth: writing
+      // anything else would be a body diode the engine does not solve.
+      const bulk = nodes[2] || `UNCONNECTED_${part.refdes}_source`;
       if (!modelLine('MOSFET')) {
         skipped.push(`${part.refdes} (${part.kind}): no \`.model\` line can be produced for `
           + "'MOSFET' — the deck would reference a model it never defines");
@@ -335,7 +392,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         continue;
       }
       usedModels.add('MOSFET');
-      lines.push(`${part.refdes} ${nodeFields} MOSFET`);
+      lines.push(`${el} ${nodeFields} ${bulk} MOSFET`);
     } else {
       skipped.push(`${part.refdes} (${part.kind}): unsupported card '${card}'`);
       lines.push(`* ${part.refdes} ${part.kind} — unsupported`);
@@ -421,6 +478,78 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
   lines.push('.end');
 
   return { text: lines.join('\n') + '\n', skipped, warnings };
+}
+
+/**
+ * Turn one part's stamped companions into SPICE cards.
+ *
+ * The record shapes are bw-board's (`src/mna.js`, `stampDevice`'s `rec`), and
+ * each one has exactly one faithful spelling:
+ *
+ *   cond    {tA, tB, g}        internal current tA -> tB through g
+ *                              ->  R  <netA> <netB> <1/g>
+ *   norton  {t, g, vth}        Thevenin vth behind 1/g, referenced to GROUND
+ *                              ->  V <mid> 0 DC <vth> ; R <mid> <netT> <1/g>
+ *   between {tP, tN, g, vth}   the same, floating: vth raises tP above tN
+ *                              ->  V <mid> <netN> DC <vth> ; R <mid> <netP> <1/g>
+ *   inject  {t, amps}          amps pushed INTO the net at t
+ *                              ->  I 0 <netT> <amps>
+ *
+ * A companion whose terminal is on no net is DROPPED with a warning, not
+ * written against an invented node: the engine did not stamp that leg either
+ * (`stampTwoTerminal` no-ops unless both legs are netted), so dropping it is
+ * what keeps the two circuits the same one.
+ *
+ * A ground terminal has no matrix row in the engine and node 0 in the deck, so
+ * it needs no special case here — `nodeOf` returns '0' and the card is right.
+ *
+ * @param {{refdes: string, kind: string}} part
+ * @param {Array<Record<string, *>>} comps
+ * @param {(refdes: string, pin: string) => string | undefined} nodeOf
+ * @param {string[]} warnings
+ * @returns {string[]}
+ */
+function emitCompanions(part, comps, nodeOf, warnings) {
+  const out = [];
+  const ref = part.refdes.replace(/[^A-Za-z0-9_]/g, '_');
+  const nodeFor = (pin) => nodeOf(part.refdes, pin);
+  let n = 0;
+  for (const c of comps) {
+    n++;
+    const tag = `${ref}_c${n}`;
+    if (c.kind === 'cond') {
+      const a = nodeFor(c.tA), b = nodeFor(c.tB);
+      if (!a || !b) {
+        warnings.push(`${part.refdes} (${part.kind}): companion ${c.tA}-${c.tB} has a leg on no `
+          + 'net, so it is left out of the deck exactly as the engine left it out of the solve.');
+        continue;
+      }
+      if (!(c.g > 0)) continue;
+      out.push(`R${tag} ${a} ${b} ${formatSpiceValue(1 / c.g)}`);
+    } else if (c.kind === 'norton') {
+      const t = nodeFor(c.t);
+      if (!t || !(c.g > 0)) continue;
+      // A source onto node 0 is a short across the reference, not a circuit.
+      if (t === '0') continue;
+      out.push(`V${tag} nth_${tag} 0 DC ${formatSpiceValue(c.vth)}`);
+      out.push(`R${tag} nth_${tag} ${t} ${formatSpiceValue(1 / c.g)}`);
+    } else if (c.kind === 'between') {
+      const p2 = nodeFor(c.tP), nn = nodeFor(c.tN);
+      if (!p2 || !nn || !(c.g > 0)) continue;
+      out.push(`V${tag} nth_${tag} ${nn} DC ${formatSpiceValue(c.vth)}`);
+      out.push(`R${tag} nth_${tag} ${p2} ${formatSpiceValue(1 / c.g)}`);
+    } else if (c.kind === 'inject') {
+      const t = nodeFor(c.t);
+      if (!t || t === '0' || !c.amps) continue;
+      // SPICE I flows from the first node through the source to the second,
+      // so it LEAVES at the second node — which is the terminal being fed.
+      out.push(`I${tag} 0 ${t} DC ${formatSpiceValue(c.amps)}`);
+    } else {
+      warnings.push(`${part.refdes} (${part.kind}): companion kind '${c.kind}' has no SPICE `
+        + 'spelling here, so this part is not fully represented in the deck.');
+    }
+  }
+  return out;
 }
 
 /**
