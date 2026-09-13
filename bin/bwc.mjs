@@ -147,6 +147,21 @@ async function load(path) {
     const r = importCircuit(fmt, text, { lib: libs });
     return { ...r, format: fmt };
   }
+  if (fmt === 'kicad-sch') {
+    // The requested path is the explicit root. Supply only direct sibling
+    // schematics as inert text; Sheetfile strings never trigger a filesystem
+    // read, traversal, or network lookup inside the importer.
+    const dir = dirname(path) || '.';
+    const files = new Map();
+    try {
+      const { readdirSync } = await import('node:fs');
+      for (const entry of readdirSync(dir)) {
+        if (/\.kicad_sch$/i.test(entry)) files.set(entry, readFileSync(join(dir, entry), 'utf8'));
+      }
+    } catch { /* missing children become explicit hierarchy losses */ }
+    const r = importCircuit(fmt, text, { files, rootName: basename(path) });
+    return { ...r, format: fmt };
+  }
   if (!fmt) {
     // THROW, never exit: batch must survive a file it cannot read, and a
     // single unrecognised schematic must not abort a 335-file run.

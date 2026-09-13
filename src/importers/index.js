@@ -29,7 +29,7 @@
  */
 
 import { importEagle } from './eagle.js';
-import { importKicadSch } from './kicad-sch.js';
+import { importKicadSch, pickKicadHierarchyRoot } from './kicad-sch.js';
 import { importKicadLegacy } from './kicad-legacy.js';
 import { importKicadNetlist } from './kicad-netlist.js';
 import { importEasyEda } from './easyeda.js';
@@ -85,7 +85,9 @@ export const IMPORT_FORMATS = [
   { id: 'eagle', label: 'EAGLE schematic (.sch)', labelDe: 'EAGLE-Schaltplan (.sch)',
     accept: '.sch,.xml' },
   { id: 'kicad-sch', label: 'KiCad 6+ schematic (.kicad_sch)',
-    labelDe: 'KiCad-6+-Schaltplan (.kicad_sch)', accept: '.kicad_sch' },
+    labelDe: 'KiCad-6+-Schaltplan (.kicad_sch)', accept: '.kicad_sch', multi: true,
+    hint: 'pick the root and its direct child .kicad_sch files together',
+    hintDe: 'den Hauptschaltplan und seine direkten .kicad_sch-Unterblätter zusammen wählen' },
   { id: 'kicad-legacy', label: 'KiCad 4/5 schematic (.sch + -cache.lib)',
     labelDe: 'KiCad-4/5-Schaltplan (.sch + -cache.lib)', accept: '.sch,.lib', lib: true,
     hint: 'pick the .sch AND its -cache.lib together',
@@ -124,7 +126,8 @@ export const NOT_OFFERED = new Map([
  * @param {object} [opts]  Format-specific extras. 'kicad-legacy' needs
  *                         `{ lib }`: a KiCad 4/5 schematic keeps pin
  *                         positions in a separate .lib and cannot be wired
- *                         without it.
+ *                         without it. 'kicad-sch' accepts `{files, rootName}`
+ *                         for explicit one-level child-sheet resolution.
  * @returns {{ parts: Array, wires: Array, warnings: string[], unmapped: Array }}
  */
 export function importCircuit(format, text, opts = {}) {
@@ -139,7 +142,7 @@ export function importCircuit(format, text, opts = {}) {
   return importer(text, opts);
 }
 
-export { exportWokwi };
+export { exportWokwi, pickKicadHierarchyRoot };
 
 /**
  * List supported import formats.

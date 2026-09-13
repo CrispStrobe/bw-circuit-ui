@@ -1,0 +1,18 @@
+(kicad_sch (version 20231120)
+  (generator "brickwright-self-authored-test")
+  (uuid "child-0000")
+  (lib_symbols
+    (symbol "Device:R"
+      (symbol "R_1_1"
+        (pin passive line (at 0 3.81 270) (name "~") (number "1"))
+        (pin passive line (at 0 -3.81 90) (name "~") (number "2")))))
+  (symbol (lib_id "Device:R") (at 100 50 0) (unit 1)
+    (property "Reference" "R1") (property "Value" "1k"))
+  (symbol (lib_id "Device:R") (at 120 50 0) (unit 1)
+    (property "Reference" "R2") (property "Value" "2k"))
+  (hierarchical_label "P" (at 100 46.19 0))
+  (label "PRIVATE" (at 100 46.19 0))
+  (label "PRIVATE" (at 120 46.19 0))
+  (global_label "COMMON" (at 100 53.81 0))
+  (global_label "COMMON" (at 120 53.81 0))
+  (sheet_instances (path "/" (page "2"))))

@@ -31,7 +31,7 @@ import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiomet
 import { partLabel } from '../model/format.js';
 import TransferReport from './TransferReport.jsx';
 import { CIRCUIT_EXPORTS, runExport } from '../model/exporters/registry.js';
-import { IMPORT_FORMATS, importCircuit } from '../importers/index.js';
+import { IMPORT_FORMATS, importCircuit, pickKicadHierarchyRoot } from '../importers/index.js';
 import { blockersFromImport } from '../model/operating-point-view.js';
 
 // DIP chip kinds that get a generic IC body renderer (not a custom SVG).
@@ -2795,7 +2795,8 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
     // KiCad 4/5 schematic needs and does not contain. Without it that
     // import is every part and not one connection.
     const libFiles = picked.filter((f) => /\.lib$/i.test(f.name));
-    const file = picked.find((f) => !/\.lib$/i.test(f.name));
+    const kicadFiles = picked.filter((f) => /\.kicad_sch$/i.test(f.name));
+    let file = picked.find((f) => !/\.lib$/i.test(f.name));
     if (!file) {
       say({ kind: 'import', title: picked[0].name,
         error: de ? 'Nur eine Bibliothek gewählt — bitte auch den Schaltplan wählen.'
@@ -2803,10 +2804,25 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
       done(); return;
     }
 
-    let text; let libs;
+    let text; let libs; let hierarchyFiles = null;
     try {
-      text = await file.text();
       libs = await Promise.all(libFiles.map((f) => f.text()));
+      if (kicadFiles.length) {
+        hierarchyFiles = new Map();
+        for (const kicadFile of kicadFiles) {
+          if (hierarchyFiles.has(kicadFile.name)) {
+            throw new Error(`Two selected KiCad files have the same basename: ${kicadFile.name}`);
+          }
+          hierarchyFiles.set(kicadFile.name, await kicadFile.text());
+        }
+        const pickedRoot = kicadFiles.length === 1
+          ? { rootName: kicadFiles[0].name } : pickKicadHierarchyRoot(hierarchyFiles);
+        if (pickedRoot.error) throw new Error(pickedRoot.error);
+        file = kicadFiles.find((candidate) => candidate.name === pickedRoot.rootName);
+        text = hierarchyFiles.get(pickedRoot.rootName);
+      } else {
+        text = await file.text();
+      }
     } catch (err) {
       say({ kind: 'import', title: file.name, error: String((err && err.message) || err) });
       done(); return;
@@ -2827,7 +2843,10 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
       done(); return;
     }
 
-    const r = importCircuit(format, text, libs.length ? { lib: libs } : {});
+    const importOpts = hierarchyFiles && format === 'kicad-sch'
+      ? { files: hierarchyFiles, rootName: file.name }
+      : (libs.length ? { lib: libs } : {});
+    const r = importCircuit(format, text, importOpts);
     // Load even when some components were unmapped: a partial import is
     // useful as long as the gap is stated. Nothing is loaded if NOTHING
     // mapped, because that is a failed import wearing a success's clothes.
@@ -2857,7 +2876,7 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
     pendingFormat.current = fmt.id || null;
     if (fileRef.current) {
       fileRef.current.accept = fmt.accept || '*';
-      fileRef.current.multiple = !!fmt.lib;
+      fileRef.current.multiple = !!(fmt.lib || fmt.multi);
       fileRef.current.click();
     }
   };

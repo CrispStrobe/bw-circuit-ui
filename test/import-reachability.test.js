@@ -61,6 +61,16 @@ describe('the import menu offers formats that exist (X0.5)', () => {
       'pickImport must take a registry entry, not a hand-typed id');
   });
 
+  it('modern KiCad offers explicit multi-file hierarchy selection through the shared importer', () => {
+    const fmt = IMPORT_FORMATS.find(f => f.id === 'kicad-sch');
+    assert.equal(fmt.multi, true);
+    assert.match(fmt.hint, /root.*direct child/i);
+    const canvas = readFileSync(path.join(SRC, 'components/BoardCanvas.jsx'), 'utf-8');
+    assert.match(canvas, /pickKicadHierarchyRoot/);
+    assert.match(canvas, /fmt\.lib \|\| fmt\.multi/);
+    assert.match(canvas, /rootName/);
+  });
+
   it('an unknown format is a named refusal, not an empty result', () => {
     const r = importCircuit('json', '{}');
     assert.equal(r.parts.length, 0);
