@@ -10,8 +10,7 @@ import './_setup.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { toSpice, junctionModel } from '../src/model/exporters/spice.js';
-import { spiceModelFor, cardFor, resolveParams, cardIds } from 'bw-board/parts-library.js';
-import { JUNCTION_RD, SILICON_RD } from 'bw-board/mna.js';
+import { spiceModelFor, cardFor, resolveParams, cardIds, classDefaults } from 'bw-board/parts-library.js';
 
 const netlistWith = (parts) => ({
   parts,
@@ -45,13 +44,52 @@ test('perturbing the model source moves the deck — models are derived, not cop
   assert.ok(perturbed.includes('Bf=999999') && !real.includes('Bf=999999'));
 });
 
-test('every card with a Q/D type the exporter emits is derivable, and the library is non-trivial', () => {
+/**
+ * Cards `spiceModelFor` cannot yet turn into a `.model` body. Each one is a
+ * model line this exporter must either leave as a literal or refuse to emit,
+ * so the list is a debt and may only SHRINK: when upstream grows the branch,
+ * delete the row in the same commit.
+ */
+const UNDERIVABLE_CARDS = new Map([
+  ['TIP120', "kind 'tip120' — spiceModelFor branches on npn/pnp, so a placed TIP120 has no model body (reported 2026-09-13)"],
+  ['NMOS_GENERIC', "kind 'nmos' — no branch, and cardFor('MOSFET') misses it because the lookup is by card KEY while the id is MOSFET"],
+]);
+
+test('every card the exporter emits is derivable, or is a ledgered gap; the library is non-trivial', () => {
   const ids = cardIds();
   assert.ok(ids.length >= 5, `only ${ids.length} cards`);
-  for (const id of ids) {
+  const underivable = ids.filter(id => {
     const m = spiceModelFor(id);
-    assert.ok(m && m.body.length > 0, `${id} has no derivable .model`);
-  }
+    return !(m && m.body.length > 0);
+  });
+  const unledgered = underivable.filter(id => !UNDERIVABLE_CARDS.has(id));
+  const healed = [...UNDERIVABLE_CARDS.keys()].filter(id => !underivable.includes(id));
+  assert.deepEqual(unledgered, [],
+    'a card with no derivable .model body: the exporter must keep a literal for it or refuse to '
+    + 'emit the part, and either way it belongs in UNDERIVABLE_CARDS with its reason');
+  assert.deepEqual(healed, [],
+    'a ledgered gap is derivable now — delete its row in this commit (the ledger only shrinks)');
+});
+
+test('a card that cannot be derived is REFUSED by name, never emitted as a dangling reference', () => {
+  // The state this kills: replacing the `.model` literals with derivation made a
+  // `tip120` part export an element line naming `.model TIP120` that the deck
+  // never defined — no warning, `skipped` empty, and a deck that reads as
+  // complete and cannot simulate. Measured 2026-09-13 before the guard existed.
+  const { text, skipped } = toSpice(netlistWith([
+    { refdes: 'Q1', kind: 'tip120', pins: ['collector', 'base', 'emitter'], params: {} },
+  ]));
+  const referenced = [...text.matchAll(/^[QMD]\d+ .* (\S+)$/gm)].map(m => m[1]);
+  const defined = [...text.matchAll(/^\.model (\S+) /gm)].map(m => m[1]);
+  assert.deepEqual(referenced.filter(r => !defined.includes(r)), [],
+    `the deck references a model it never defines:\n${text}`);
+  assert.equal(skipped.length, 1, 'the part must be refused by name, not silently dropped');
+  assert.match(skipped[0], /no `\.model` line can be produced/);
+  // Anti-vacuity: a kind that IS derivable still exports, so the guard is not
+  // simply refusing everything.
+  const ok = toSpice(netlistWith([npn('2N2222')]));
+  assert.equal(ok.skipped.length, 0);
+  assert.match(ok.text, /^\.model 2N2222 NPN \(/m);
 });
 
 test('a named diode takes its junction numbers from the card; a bare one takes the solver\'s class defaults', () => {
@@ -63,8 +101,13 @@ test('a named diode takes its junction numbers from the card; a bare one takes t
   assert.ok(card.params.rs !== 2, 'the card does not happen to equal the old literal, so this is not vacuous');
   const bareLed = junctionModel({ kind: 'led', params: {} });
   const bareDiode = junctionModel({ kind: 'diode', params: {} });
-  assert.equal(bareLed.rs, JUNCTION_RD, 'an un-carded LED uses the solver\'s JUNCTION_RD, not a literal');
-  assert.equal(bareDiode.rs, SILICON_RD, 'an un-carded silicon diode uses the solver\'s SILICON_RD');
+  // classDefaults is the accessor mna.js's junctionOpts reads, so the deck and the
+  // solve share ONE definition. It replaced the piecewise constants here on
+  // 2026-09-13: a deck is the EXPONENTIAL model, and importing the wrong one of
+  // the two is what reddened the spice-oracle job.
+  assert.equal(bareLed.rs, classDefaults('led').rs, 'an un-carded LED uses its class default, not a literal');
+  assert.equal(bareDiode.rs, classDefaults('diode').rs, 'an un-carded silicon diode uses its class default');
+  assert.notEqual(classDefaults('led').rs, classDefaults('diode').rs, 'the two classes differ, so this is not vacuous');
   // An explicit number still wins over the card: a user who typed it meant it.
   assert.equal(junctionModel({ kind: 'diode', params: { part: '1N4148', rs: 3 } }).rs, 3);
 });

@@ -40,7 +40,23 @@ const PALETTE = readFileSync(path.join(here, '..', 'src', 'components', 'PartPal
  * date; fixing one means deleting its line in the same commit.
  */
 const KNOWN_KIND_CARD_CONFLICTS = new Map([
-  ['TIP120', 'bw-board registers a `tip120` Darlington kind (devices/analog-ics.js) while the TIP120 card says kind npn; raised to lego-ac 2026-09-13, ruling pending'],
+  // Emptied 2026-09-13: TIP120 was here while its card said `kind: npn` beside
+  // bw-board's own `tip120` Darlington stamp. Ruled the card's way — the stamp
+  // differs, so it is a kind — and the row was deleted in the commit that took
+  // the fix, which is what shrink-only means.
+]);
+
+/**
+ * Cards that are NOT part numbers. They carry a class's defaults so the
+ * exporter can derive every `.model` line it emits instead of leaving a
+ * literal behind, so "reachable" for them means their KIND is placeable, not
+ * that anything names the card. Listed rather than detected because the
+ * library marks them only in a comment; asked upstream for a `generic: true`
+ * field so this can be derived (2026-09-13).
+ */
+const GENERIC_CARDS = new Map([
+  ['Q_DEFAULT', 'the bare-npn model the exporter emits when no card is named'],
+  ['MOSFET', 'the bare-MOSFET model; card key NMOS_GENERIC, id MOSFET'],
 ]);
 
 /** Electrical keys found in a sidecar's params/defaults — the only places a value could hide. */
@@ -91,9 +107,17 @@ test('3. every card is reachable: a face for its kind, and a palette entry that 
   for (const card of allCards()) {
     const face = existsSync(path.join(PARTS_DATA, `${card.kind}.json`));
     const byPart = PALETTE.includes(`part: '${card.id}'`);
-    const byKind = getDevice(card.id.toLowerCase()) && PALETTE.includes(`kind: '${card.id.toLowerCase()}'`);
+    const byKind = PALETTE.includes(`kind: '${card.kind}'`);
     if (!face) unreachable.push(`${card.id}: no sidecar for kind ${card.kind} — no face`);
-    if (!byPart && !byKind) unreachable.push(`${card.id}: no palette entry names it (params.part) and no kind is spelled like it`);
+    if (GENERIC_CARDS.has(card.id)) {
+      // A generic is reached through its CLASS: the kind must be placeable, and
+      // nothing should name the card — if something does, it is a part number
+      // in disguise and belongs out of this list.
+      if (!byKind) unreachable.push(`${card.id}: generic, but kind '${card.kind}' is not on the palette — the class is unreachable`);
+      if (byPart) unreachable.push(`${card.id}: listed generic but the palette names it — remove it from GENERIC_CARDS`);
+      continue;
+    }
+    if (!byPart && !byKind) unreachable.push(`${card.id}: no palette entry names it (params.part) and its kind is not on the palette`);
   }
   assert.deepEqual(unreachable, [], 'a card nobody can place is a defect that looks like a feature');
   // Driven: the palette scan sees a real entry and refuses a fake one.
@@ -111,6 +135,18 @@ test('4. an engine kind spelled like a card id is that card\'s kind, or a ledger
   const healed = [...KNOWN_KIND_CARD_CONFLICTS.keys()].filter(id => !conflicts.includes(id));
   assert.deepEqual(unledgered, [], 'a kind and a card with the same name and different stamps are two homes');
   assert.deepEqual(healed, [], 'a ledgered conflict no longer exists — delete its line in this commit (the ledger only shrinks)');
-  // The predicate fires: the ledgered case is a real conflict today, not a placeholder.
-  assert.ok(conflicts.length === KNOWN_KIND_CARD_CONFLICTS.size);
+  // Driven at a synthetic conflict, since the real ledger is now empty: a card
+  // whose kind differs from an engine kind spelled like its id must be caught.
+  // The historical case as a fixture: TIP120 is a registered device kind, so a
+  // card claiming a different kind under that name is the collision. (First
+  // attempt used {id:'led'} and drove NOTHING — `led` is stamped in mna.js, not
+  // a registered device, so getDevice returned undefined and the filter yielded
+  // an empty list that read exactly like a passing check.)
+  assert.ok(getDevice('tip120'), 'tip120 must be a registered device for this fixture to mean anything');
+  const fakeConflict = [{id: 'TIP120', kind: 'npn'}]
+    .filter(c => getDevice(c.id.toLowerCase()) && c.id.toLowerCase() !== c.kind);
+  assert.equal(fakeConflict.length, 1, 'the conflict predicate no longer fires on a real collision');
+  // ...and stays silent when the card agrees with the kind, which is today's state.
+  assert.equal([{id: 'TIP120', kind: 'tip120'}]
+    .filter(c => getDevice(c.id.toLowerCase()) && c.id.toLowerCase() !== c.kind).length, 0);
 });

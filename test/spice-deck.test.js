@@ -221,7 +221,9 @@ describe('the exported deck is structurally simulatable (X0.1)', () => {
     assert.equal(models.length, 2,
       `a blue LED and a signal diode need two models, got ${models.length}:\n${text}`);
     assert.ok(models.some(m => /N=1\.8/.test(m)), 'the LED keeps its 1.8 ideality');
-    assert.ok(models.some(m => /N=1(\s|\))/.test(m)), 'the silicon diode keeps 1.0');
+    // N=1.752 is silicon's ideality from bw-board's own 1N4148 reference card
+    // (classDefaults('diode')), not the flat 1.0 this read before 2026-09-13.
+    assert.ok(models.some(m => /N=1\.752(\s|\))/.test(m)), 'the silicon diode carries its class ideality');
     // Every referenced model must be declared: a card naming a model that is
     // not in the deck is exactly the "loads and cannot run" failure.
     for (const line of text.split('\n')) {

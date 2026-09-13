@@ -42,10 +42,13 @@ import { PART_SYMBOLS } from '../../data/easyeda-symbols.js';
 // every named `.model` body is DERIVED from the same numbers the solver uses.
 // Until 2026-09-13 this file kept its own `.model LED ... Rs=5` beside the
 // solver's rd = 10 and the exponential path's rs = 2 — three homes, no authority.
-// The class defaults for an UN-carded part come from the solver's own constants
-// (JUNCTION_RD for LEDs, SILICON_RD for silicon), never from a literal here.
-import { spiceModelFor, resolveParams, cardFor } from 'bw-board/parts-library.js';
-import { JUNCTION_RD, SILICON_RD } from 'bw-board/mna.js';
+// The class defaults for an UN-carded part come from `classDefaults(kind)`, the
+// same accessor `mna.js junctionOpts` reads, so the number the deck is written
+// with and the number the solve uses have ONE definition. (It replaced
+// JUNCTION_RD/SILICON_RD on 2026-09-13: those were the PIECEWISE constants, and
+// a deck is the exponential model — importing the wrong one of the two is how
+// the spice-oracle job reddened.)
+import { spiceModelFor, resolveParams, cardFor, classDefaults } from 'bw-board/parts-library.js';
 import { formatSpiceValue } from '../si.js';
 
 /** SPICE element types that take a simple two-terminal card */
@@ -77,9 +80,10 @@ const VT_25C = 0.02585;
  */
 export function junctionModel(part) {
   const params = resolveParams(part.params || {});
-  const n = Number(params.n ?? (part.kind === 'led' ? 1.8 : 1.0));
-  const rs = Number(params.rs ?? (part.kind === 'led' || part.kind === 'rgb_led' ? JUNCTION_RD : SILICON_RD));
-  const vf = Number(params.vf ?? (part.kind === 'led' || part.kind === 'rgb_led' ? 2.0 : 0.7));
+  const cls = classDefaults(part.kind);
+  const n = Number(params.n ?? cls.n ?? 1.0);
+  const rs = Number(params.rs ?? cls.rs ?? 0);
+  const vf = Number(params.vf ?? cls.vf ?? 0.7);
   const nVt = n * VT_25C;
   let is = params.is;
   if (is === undefined) {
@@ -141,6 +145,25 @@ function lowestSourceFrequency(netlist) {
  * @returns {{ text: string, skipped: string[], warnings: string[] }}
  */
 export function toSpice(netlist, title = 'BrickWright Circuit', {modelFor = spiceModelFor} = {}) {
+  // Named models are DERIVED from the parts library. `MOSFET` is the one
+  // `.model` literal left: its card exists (NMOS_GENERIC, id MOSFET) but
+  // `spiceModelFor` has no branch for kind `nmos`, and `cardFor('MOSFET')`
+  // resolves by the CARD KEY rather than the id, so the name the deck uses
+  // finds nothing. Both are upstream gaps, reported 2026-09-13.
+  //
+  // `modelLine` returns null when a model cannot be produced, and the part loop
+  // REFUSES such a part by name instead of writing an element that references a
+  // `.model` the deck never defines. That silent state is what this shape
+  // produced for `tip120` the moment the literals were replaced by derivation:
+  // a deck that reads as complete, exports without a warning, and cannot
+  // simulate. An export that cannot run is not a feature.
+  const GENERIC_MODELS = {
+    'MOSFET': '.model MOSFET NMOS (Vto=2.0 Kp=20u)',
+  };
+  const modelLine = name => {
+    const m = modelFor(name);
+    return m ? `.model ${m.name} ${m.type} (${m.body})` : (GENERIC_MODELS[name] ?? null);
+  };
   // `modelFor` is injectable ONLY so a test can perturb a card and watch the deck
   // move — the proof that models are derived, not copied. Production callers
   // never pass it.
@@ -280,16 +303,21 @@ export function toSpice(netlist, title = 'BrickWright Circuit', {modelFor = spic
       // to the symbol table's choice, then to the generic default.
       const named = cardFor(part.params?.part);
       const model = (named && named.id) || (sym && sym.spiceModel);
-      if (!model) {
-        // Every Q symbol names a model today; if one ever does not, say so
-        // rather than reference a model no `.model` line defines.
-        skipped.push(`${part.refdes} (${part.kind}): no SPICE model is named for this kind`);
+      if (!model || !modelLine(model)) {
+        skipped.push(`${part.refdes} (${part.kind}): no \`.model\` line can be produced`
+          + `${model ? ` for '${model}'` : ''} — the deck would reference a model it never defines`);
         lines.push(`* ${part.refdes} ${part.kind} — no model`);
         continue;
       }
       usedModels.add(model);
       lines.push(`${part.refdes} ${nodeFields} ${model}`);
     } else if (card === 'M') {
+      if (!modelLine('MOSFET')) {
+        skipped.push(`${part.refdes} (${part.kind}): no \`.model\` line can be produced for `
+          + "'MOSFET' — the deck would reference a model it never defines");
+        lines.push(`* ${part.refdes} ${part.kind} — no model`);
+        continue;
+      }
       usedModels.add('MOSFET');
       lines.push(`${part.refdes} ${nodeFields} MOSFET`);
     } else {
@@ -299,18 +327,6 @@ export function toSpice(netlist, title = 'BrickWright Circuit', {modelFor = spic
   }
 
   // ── Models ───────────────────────────────────────────────────────
-  // Named models are DERIVED from the parts library. The generic MOSFET below
-  // has no card yet (it duplicates a solver default) and is the next
-  // reconciliation; it is the only `.model` literal left in this file.
-  // (Q_DEFAULT was removed 2026-09-13: every Q symbol names a card, so nothing
-  // reached it — a literal nothing reaches is a defect that looks like a feature.)
-  const GENERIC_MODELS = {
-    'MOSFET': '.model MOSFET NMOS (Vto=2.0 Kp=20u)',
-  };
-  const modelLine = name => {
-    const m = modelFor(name);
-    return m ? `.model ${m.name} ${m.type} (${m.body})` : GENERIC_MODELS[name];
-  };
   const shared = [...usedModels].sort().map(modelLine).filter(Boolean);
   if (modelCards.length || shared.length) {
     lines.push('');
