@@ -38,6 +38,7 @@
  */
 
 import { parseSpiceValue } from '../model/si.js';
+import { parseStrictSpiceSine } from '../model/spice-source.js';
 
 /** Nodes that mean "the reference" in every dialect. */
 const GROUND_NODES = new Set(['0', 'gnd', 'gnd!', 'ground', 'vss']);
@@ -154,15 +155,32 @@ function modelParams(rest) {
 /**
  * The DC value of a source card's trailing fields.
  *
- * `V1 1 0 5`, `V1 1 0 DC 5`, `V1 1 0 DC 5 AC 1` and `V1 1 0 PULSE(0 5 …)`
- * all state a bias point; the last is a waveform this reader does not model,
- * so it takes the pulse's initial value and says so.
+ * `V1 1 0 5`, `V1 1 0 DC 5`, and `V1 1 0 DC 5 AC 1` state a bias point.
+ * Exact three-argument voltage SIN/SINE is retained as a native waveform;
+ * other inline waves take their initial value and say so.
  *
- * @returns {{value: number, note: string|null, externalWaveform: boolean}}
+ * @returns {{value: number, note: string|null, externalWaveform: boolean,
+ *   waveformParams?: Record<string,*>, waveformLoss?: string}}
  */
-function sourceValue(fields) {
+function sourceValue(fields, allowSine = false) {
   const joined = fields.join(' ');
   const externalWaveform = /\bwavefile\s*=/i.test(joined);
+  const sine = parseStrictSpiceSine(joined);
+  if (sine) {
+    if (sine.ok && allowSine) {
+      return { value: sine.params.volts, note: null, externalWaveform,
+        waveformParams: sine.params };
+    }
+    const reason = sine.ok
+      ? 'time-varying current sine sources are not modelled'
+      : sine.reason;
+    return {
+      value: sine.ok ? sine.params.volts : sine.fallback,
+      note: `SINE waveform is not modelled here — imported at its initial value ${sine.ok ? sine.params.volts : sine.fallback}.`,
+      externalWaveform,
+      waveformLoss: reason,
+    };
+  }
   const dc = joined.match(/\bDC\b\s+([^\s]+)/i);
   if (dc) return { value: parseSpiceValue(dc[1]), note: null, externalWaveform };
   const wave = joined.match(/\b(PULSE|SIN|SINE|EXP|PWL|SFFM|AM)\b\s*\(([^)]*)\)/i);
@@ -445,9 +463,20 @@ export function importSpice(text) {
       }
       params._model = rest[0] || null;
     } else if (spec.source) {
-      const { value, note, externalWaveform } = sourceValue(rest);
+      const { value, note, externalWaveform, waveformParams, waveformLoss } =
+        sourceValue(rest, spec.source === 'volts');
       params[spec.source] = value;
+      if (waveformParams) Object.assign(params, waveformParams);
       if (note) warnings.push(`${partId}: ${note}`);
+      if (waveformLoss) {
+        losses.push({
+          ref: partId,
+          kind: 'unsupported-inline-waveform',
+          source: item.line,
+          reason: waveformLoss,
+          fallback: { parameter: spec.source, value },
+        });
+      }
       if (externalWaveform) {
         const reason = 'external WAVEFILE waveform is not read or modelled';
         warnings.push(`${partId}: ${reason} — imported as a fixed ${value} `
