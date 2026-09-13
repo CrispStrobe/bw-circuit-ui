@@ -277,21 +277,22 @@ function mapDeviceset(deviceset, value) {
  * Import an EAGLE 6+ schematic.
  *
  * @param {string} text  Raw .sch XML
- * @returns {{parts: Array, wires: Array, warnings: string[], unmapped: Array}}
+ * @returns {{parts: Array, wires: Array, warnings: string[], unmapped: Array, losses: Array}}
  */
 export function importEagle(text) {
   const warnings = [];
   const unmapped = [];
+  const losses = [];                // mapped parts whose authored connectivity was omitted
   const ignored = [];               // drawing artifacts: no electrical model by design
   const parts = [];
   const wires = [];
 
   if (!/<eagle\b/.test(text)) {
-    return { parts, wires, unmapped, ignored, warnings: ['Not an EAGLE file: no <eagle> root element'] };
+    return { parts, wires, unmapped, ignored, losses, warnings: ['Not an EAGLE file: no <eagle> root element'] };
   }
   if (/<board\b/.test(text) && !/<schematic\b/.test(text)) {
     return {
-      parts, wires, unmapped, ignored,
+      parts, wires, unmapped, ignored, losses,
       warnings: ['This is an EAGLE .brd (board layout). Import the matching .sch — '
         + 'the schematic carries the netlist; a board carries copper and footprints.'],
     };
@@ -338,7 +339,15 @@ export function importEagle(text) {
         ?? anyPin.get(a.part)
         ?? (byName.has(a.part) ? normalizeEaglePin(a.pin) : undefined);
       if (!term) {
+        const reason = `Unknown EAGLE pin "${a.pin}" on ${a.part} in net "${netName}" was omitted from connectivity`;
         warnings.push(`Unknown pin "${a.pin}" on ${a.part} in net "${netName}"`);
+        losses.push({
+          ref: a.part,
+          kind: 'unknown-electrical-pin',
+          source: `net ${netName}: pinref part="${a.part}" gate="${a.gate || ''}" pin="${a.pin}"`,
+          reason,
+          fallback: { action: 'omitted-from-connectivity', net: netName },
+        });
         continue;
       }
       const ok = allowed.get(a.part);
@@ -346,7 +355,15 @@ export function importEagle(text) {
         // Emitting it would be worse than dropping it: the engine validates
         // terminals and refuses the ENTIRE netlist, so one extra pin costs the
         // whole board.
+        const reason = `EAGLE pin "${a.pin}" on ${a.part} maps to "${term}" but the engine model has no such terminal; it was omitted from connectivity`;
         warnings.push(`${a.part} pin "${a.pin}" dropped — the engine's model has no "${term}" terminal`);
+        losses.push({
+          ref: a.part,
+          kind: 'unsupported-engine-terminal',
+          source: `net ${netName}: pinref part="${a.part}" gate="${a.gate || ''}" pin="${a.pin}"`,
+          reason,
+          fallback: { action: 'omitted-from-connectivity', net: netName, mappedTerminal: term },
+        });
         continue;
       }
       refs.push({ part: a.part, terminal: term });
@@ -378,5 +395,5 @@ export function importEagle(text) {
 
   if (ignored.length) warnings.push(`${ignored.length} drawing artifact(s) skipped (fiducials, mounting holes, frames, test points) — not components`);
   if (!parts.length) warnings.push('No mappable components found — is this an EAGLE 6+ schematic?');
-  return { parts, wires, warnings, unmapped, ignored };
+  return { parts, wires, warnings, unmapped, losses, ignored };
 }

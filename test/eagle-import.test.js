@@ -188,6 +188,23 @@ describe('74-series part numbers survive the mapping', () => {
     });
 });
 
+describe('EAGLE omitted electrical pins are semantic losses', () => {
+    const fixture = readFileSync(join(import.meta.dirname, 'fixtures', 'eagle-electrical-pin-loss.sch'), 'utf8');
+    const r = importEagle(fixture);
+
+    test('records unknown and engine-narrowed pinrefs without promoting informational warnings', () => {
+        assert.deepEqual(r.losses.map((loss) => loss.kind), [
+            'unknown-electrical-pin', 'unsupported-engine-terminal',
+        ]);
+        assert.deepEqual(r.losses.map((loss) => loss.ref), ['R1', 'U1']);
+        assert.ok(r.losses.every((loss) => loss.fallback.action === 'omitted-from-connectivity'));
+        assert.ok(r.losses.every((loss) => /pinref/.test(loss.source)));
+        assert.equal(r.unmapped.length, 0);
+        assert.ok(r.warnings.some((warning) => /Unknown pin "9"/.test(warning)));
+        assert.ok(r.warnings.some((warning) => /pin "A0" dropped/.test(warning)));
+    });
+});
+
 describe('import format detection', () => {
     test('recognises EAGLE, KiCad and Wokwi from content, not the extension', () => {
         assert.equal(detectFormat(FIXTURE, 'anything.txt'), 'eagle');
