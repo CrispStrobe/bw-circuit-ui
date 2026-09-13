@@ -448,12 +448,22 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
   // from — so the deck carries the engine's DC linearisation of that device
   // verbatim while every OTHER element stays independently judged. That makes
   // these cases `original-adapted`, not `original-direct`.
+  //
+  // `deviceCompanions` returns a SNAPSHOT, not a list: {converged, timeNs,
+  // records}. It reads the board's live solve — the same one nodeVoltage and
+  // branchCurrent report — so it can carry transient state, and a
+  // non-converged solve is an iterate rather than an answer. The judge compares
+  // a bias point, so a non-converged snapshot is refused here rather than
+  // exported and silently oracled against.
   const partIdOf = new Map(solved.parts.map(p => [p.refdes, p.partId]));
   const b2 = circuit.board;
   const companionsFor = b2?.deviceCompanions
     ? (refdes) => {
         const id = partIdOf.get(refdes);
-        return id ? b2.deviceCompanions(id) : null;
+        if (!id) return null;
+        const snap = b2.deviceCompanions(id);
+        if (!snap || snap.converged === false) return null;
+        return snap.records;
       }
     : null;
   const { text, warnings } = toSpice(solved, `oracle: ${name}`,
