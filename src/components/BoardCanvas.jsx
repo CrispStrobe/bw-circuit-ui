@@ -32,6 +32,7 @@ import { partLabel } from '../model/format.js';
 import TransferReport from './TransferReport.jsx';
 import { CIRCUIT_EXPORTS, runExport } from '../model/exporters/registry.js';
 import { IMPORT_FORMATS, importCircuit } from '../importers/index.js';
+import { blockersFromImport } from '../model/operating-point-view.js';
 
 // DIP chip kinds that get a generic IC body renderer (not a custom SVG).
 // These are discrete retro/logic ICs placed on breadboards — without a
@@ -2830,7 +2831,8 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
     // Load even when some components were unmapped: a partial import is
     // useful as long as the gap is stated. Nothing is loaded if NOTHING
     // mapped, because that is a failed import wearing a success's clothes.
-    if (r.parts.length) onImport({ parts: r.parts, wires: r.wires });
+    if (r.parts.length) onImport({ parts: r.parts, wires: r.wires,
+      analysisBlockers: blockersFromImport(r, format, file.name) });
     say({
       kind: 'import',
       title: file.name,

@@ -40,6 +40,7 @@ export { VdpScreen } from './components/VdpScreen.jsx';
 export { OrientationInput } from './components/OrientationInput.jsx';
 export { MidiMonitor } from './components/MidiMonitor.jsx';
 export { StimulusControls } from './components/StimulusControls.jsx';
+export { OperatingPointPanel } from './components/OperatingPointPanel.jsx';
 export { SerialConsole } from './components/SerialConsole.jsx';
 export { AsmDebugPanel } from './components/AsmDebugPanel.jsx';
 export { ArchitectureFace } from './components/ArchitectureFace.jsx';
