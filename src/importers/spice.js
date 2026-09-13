@@ -40,6 +40,7 @@
 import { parseSpiceValue } from '../model/si.js';
 import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-source.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
+import { classifyShockleyThermal, validateExplicitShockley } from '../model/spice-diode.js';
 
 /** Nodes that mean "the reference" in every dialect. */
 const GROUND_NODES = new Set(['0', 'gnd', 'gnd!', 'ground', 'vss']);
@@ -281,6 +282,7 @@ export function importSpice(text) {
   const subckts = new Map();    // name (lower) -> {ports: string[], body: string[]}
 
   const { title, lines } = logicalLines(text);
+  const diodeThermal = classifyShockleyThermal(lines);
 
   // ── pass 1: collect .model and .subckt bodies ────────────────────
   //
@@ -295,12 +297,13 @@ export function importSpice(text) {
   let inControl = false;
   const declareModel = (rest, line) => {
     ignored.push(line.trim());
-    const f = rest.trim().split(/\s+/);
-    const name = (f[0] || '').toLowerCase();
-    const type = (f[1] || '').replace(/\(.*$/, '').toUpperCase();
+    const declaration = rest.trim().match(/^(\S+)\s+([A-Za-z]+)\s*(.*)$/);
+    const name = (declaration?.[1] || '').toLowerCase();
+    const type = (declaration?.[2] || '').toUpperCase();
     models.set(name, {
       type,
-      params: modelParams(rest.slice(rest.indexOf(f[1] || '') + (f[1] || '').length)),
+      params: modelParams(declaration?.[3] || ''),
+      source: line.trim(),
     });
   };
 
@@ -473,13 +476,29 @@ export function importSpice(text) {
       if (!model) {
         warnings.push(`${partId}: model "${rest[0] || '(none)'}" is not declared in this `
           + 'file — engine defaults are used for it.');
+        if (letter === 'D') losses.push({ ref: partId, kind: 'unsupported-diode-model',
+          source: item.line, reason: 'explicit declared D model with IS, N and RS is required' });
       } else {
-        Object.assign(params, mapModel(letter, model, warnings, partId));
+        if (letter === 'D') {
+          const exact = model.type === 'D' ? validateExplicitShockley(model.params)
+            : { ok: false, reason: `model type ${model.type || '(missing)'} is not D` };
+          if (exact.ok && diodeThermal.ok) {
+            Object.assign(params, exact.params);
+            if (!diodeThermal.explicit) warnings.push(`${partId}: omitted SPICE TEMP/TNOM uses bw-board's fixed VT=0.02585 V profile; raw default-temperature source fidelity is not established.`);
+          } else {
+            const reason = exact.ok ? diodeThermal.reason : exact.reason;
+            Object.assign(params, { _spiceBlocked: reason, _spiceModel: model.source,
+              ...(diodeThermal.source.length ? { _spiceTemperature: diodeThermal.source.join('\n') } : {}) });
+            losses.push({ ref: partId, kind: 'unsupported-diode-model',
+              source: [model.source, ...diodeThermal.source].join('\n'),
+              reason });
+          }
+        } else Object.assign(params, mapModel(letter, model, warnings, partId));
         if (letter === 'Q') kind = model.type === 'PNP' ? 'pnp' : 'npn';
         if (letter === 'M') kind = model.type === 'PMOS' ? 'pmos' : 'nmos';
         if (letter === 'D' && model.params.bv) kind = 'zener';
       }
-      params._model = rest[0] || null;
+      if (letter !== 'D' || params.model !== 'shockley') params._model = rest[0] || null;
     } else if (spec.source) {
       const { value, note, externalWaveform, waveformParams, waveformLoss } =
         sourceValue(rest, spec.source === 'volts');

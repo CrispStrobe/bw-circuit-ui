@@ -748,6 +748,9 @@ export class Circuit {
    * @returns {object}
    */
   operatingPoint() {
+    if (this.analysisBlockers?.length) {
+      throw new Error(`operatingPoint: blocked by ${this.analysisBlockers.length} persisted import finding(s)`);
+    }
     if (!this.board || typeof this.board.operatingPoint !== 'function') {
       throw new Error('operatingPoint: the injected bw-board engine does not provide this analysis');
     }

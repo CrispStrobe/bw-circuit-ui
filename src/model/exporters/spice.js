@@ -52,6 +52,7 @@ import { spiceModelFor, resolveParams, cardFor, classDefaults } from 'bw-board/p
 import { formatSpiceValue } from '../si.js';
 import { validateStrictSpicePulseParams } from '../spice-source.js';
 import { controlledResistance } from 'bw-board/mna.js';
+import { isExplicitShockleyPart, SHOCKLEY_FIXED_TEMP_C } from '../spice-diode.js';
 
 /** SPICE element types that take a simple two-terminal card */
 const TWO_TERMINAL = new Set(['R', 'C', 'L', 'V', 'I', 'F']);
@@ -232,6 +233,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
   // ── Elements ─────────────────────────────────────────────────────
   const usedModels = new Set();
   const modelCards = [];
+  let hasExplicitShockley = false;
   /** refdes that became a real element, so the freeze below never double-drives one. */
   const emitted = new Set();
 
@@ -419,7 +421,13 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       }
     } else if (card === 'D') {
       const modelName = `D_${part.refdes}`;
+      if (part.params?.model === 'shockley' && !isExplicitShockleyPart(part)) {
+        skipped.push(`${part.refdes} (diode): explicit Shockley export requires only finite IS, N and RS`);
+        lines.push(`* ${part.refdes} diode — unsupported Shockley parameters`);
+        continue;
+      }
       const j = junctionModel(part);
+      if (isExplicitShockleyPart(part)) hasExplicitShockley = true;
       const extra = part.kind === 'zener' && part.params?.vz
         ? ` BV=${formatSpiceValue(Number(part.params.vz))}` : '';
       modelCards.push(`.model ${modelName} D (Is=${j.is.toExponential(6)} N=${j.n} `
@@ -469,6 +477,11 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     // Only the models this deck actually references: a .model nothing uses
     // is noise, and some parsers warn on it.
     lines.push(...modelCards, ...shared);
+  }
+  if (hasExplicitShockley) {
+    lines.push('', '* Fixed thermal profile matching bw-board VT=0.02585 V');
+    lines.push(`.temp ${SHOCKLEY_FIXED_TEMP_C}`);
+    lines.push(`.options tnom=${SHOCKLEY_FIXED_TEMP_C}`);
   }
 
   // ── Frozen pins: a driven pin is a source behind a resistance ────
