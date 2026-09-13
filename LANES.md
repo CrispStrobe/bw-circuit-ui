@@ -9,7 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-_No active claims._
+| single-element SPICE dispatch | `/root/schematic_corpus_import` (Codex Sol), `/tmp/cui-kicad-assess.Ht5oOH` | `dfa307d` | **CLAIMED 2026-09-13.** Repair only content-based detection of a complete one-element SPICE deck carrying both an analysis/model card and `.end`; preserve genuine KiCad `.net` detection with positive/negative self-authored tests and shipping `bwc info`. No extension-only takeover, SPICE element semantics, solver/MNA, full LTspice ASC, corpus index/schema, or numeric-oracle work. |
 
 ## DONE
 
