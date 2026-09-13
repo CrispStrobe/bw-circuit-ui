@@ -466,8 +466,27 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
         return snap.records;
       }
     : null;
+  // The engine's own stored capacitor voltage, read off its own solve rather
+  // than from a second opinion: V(a) - V(b) on the nets the cap sits between.
+  // See toSpice — `.op` opens a capacitor and the engine holds it, so without
+  // this the two solvers are answering different questions and 27 corpus
+  // circuits scored as disagreements for that reason alone.
+  const netOfPin = new Map();
+  for (const net of solved.nets) {
+    for (const nd of net.nodes || []) netOfPin.set(`${nd.refdes}\u0000${nd.pin}`, net.id);
+  }
+  const capacitorVoltage = (refdes) => {
+    const na = netOfPin.get(`${refdes}\u0000a`);
+    const nb = netOfPin.get(`${refdes}\u0000b`);
+    const va = na ? circuit.nodeVoltage(na) : 0;
+    const vb = nb ? circuit.nodeVoltage(nb) : 0;
+    if (typeof va !== 'number' || typeof vb !== 'number') return null;
+    if (!isFinite(va) || !isFinite(vb)) return null;
+    return va - vb;
+  };
   const { text, warnings } = toSpice(solved, `oracle: ${name}`,
-    { pinSource, companionsFor, controls: circuit.board?.controls ?? new Map() });
+    { pinSource, companionsFor, capacitorVoltage,
+      controls: circuit.board?.controls ?? new Map() });
 
   // Structural floor: these are what "unsimulatable" meant.
   //

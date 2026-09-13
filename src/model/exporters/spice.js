@@ -153,7 +153,7 @@ function lowestSourceFrequency(netlist) {
  */
 export function toSpice(netlist, title = 'BrickWright Circuit',
   {modelFor = spiceModelFor, pinSource = null, controls = new Map(),
-   companionsFor = null} = {}) {
+   companionsFor = null, capacitorVoltage = null} = {}) {
   // EVERY `.model` line is derived from the parts library — no literals remain.
   // The last one was `MOSFET`, kept while `cardFor('MOSFET')` could not find the
   // generic card (its key is NMOS_GENERIC) and `spiceModelFor` had no branch for
@@ -381,6 +381,33 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         lines.push(`* ${part.refdes} ${part.kind} — skipped (time-varying source not losslessly exportable${detail})`);
       }
       continue;
+    }
+
+    // A CAPACITOR IS AN OPEN IN `.op` AND A HELD VOLTAGE IN THE ENGINE'S
+    // INSTANTANEOUS SOLVE. THOSE ARE DIFFERENT QUESTIONS.
+    //
+    // ngspice's `.op` is the DC steady state: the capacitor is fully charged
+    // and carries no current, so it is an open. bw-board's non-transient solve
+    // holds the capacitor at its STORED voltage as a source row — the circuit
+    // at THIS instant, which at t = 0 is an uncharged cap, i.e. a short.
+    //
+    // Neither is wrong; they answer different questions, and comparing them
+    // scored 27 corpus circuits as disagreements. `29-capacitor-charge` is
+    // 5 V -> 10k -> 100uF -> gnd: ngspice says 5 V at the junction (open cap),
+    // the engine says 0 V (uncharged cap), and both are right.
+    //
+    // With `capacitorVoltage` the deck asks the SAME question the engine
+    // answered: the cap becomes a source at the voltage the engine holds it at.
+    // Opt-in, so an ordinary downloaded deck still carries a real C card and
+    // still means "solve the steady state".
+    if (card === 'C' && capacitorVoltage) {
+      const v = capacitorVoltage(part.refdes);
+      if (typeof v === 'number' && isFinite(v)) {
+        lines.push(`* ${part.refdes} ${part.kind} — held at the engine's stored voltage, `
+          + 'because `.op` would open it and solve a different instant');
+        lines.push(`V${part.refdes} ${nodeFields} DC ${formatSpiceValue(v)}`);
+        continue;
+      }
     }
 
     if (TWO_TERMINAL.has(card)) {
