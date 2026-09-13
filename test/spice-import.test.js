@@ -491,6 +491,64 @@ describe('comments, continuations, subcircuits and the title line', () => {
   });
 });
 
+describe('SPICE independent-current polarity contract', () => {
+  const deck = (card) => `current-source polarity\n${card}\nR1 n 0 1k\n.op\n.end\n`;
+
+  function solve(card) {
+    const imported = importSpice(deck(card));
+    assert.deepEqual(imported.unmapped, []);
+    const source = imported.parts.find(p => p.id === 'I1');
+    assert.equal(source.params.amps, 2e-3, 'direction must not be hidden in a negated value');
+    const circuit = Circuit.fromJSON({ vcc: 5, parts: imported.parts, wires: imported.wires });
+    assert.equal(circuit.netlistError, null);
+    circuit.setPower(true);
+    const nodeWire = circuit.wires.find(w =>
+      (w.from.part === 'R1' && w.from.terminal === 'a')
+      || (w.to.part === 'R1' && w.to.terminal === 'a'));
+    assert.ok(nodeWire, 'resistor node must survive import');
+    return { imported, circuit, nodeId: nodeWire.netId };
+  }
+
+  it('preserves positive SPICE current from the first node to the second', () => {
+    const { imported, circuit, nodeId } = solve('I1 n 0 DC 2m');
+    assert.ok(imported.wires.some(w => w.from === 'I1' && w.fromTerminal === 'neg'
+      && w.to === 'R1' && w.toTerminal === 'a'),
+    'the first SPICE node must map to the engine current origin (neg)');
+    assert.ok(Math.abs(circuit.nodeVoltage(nodeId) - (-2)) < 1e-8,
+      `2 mA from n to ground through 1 kOhm must make n=-2 V, got ${circuit.nodeVoltage(nodeId)}`);
+    assert.ok(Math.abs(circuit.branchCurrent('I1', 'neg')
+      + circuit.branchCurrent('R1', 'a')) < 1e-11, 'KCL must hold at the first card node');
+  });
+
+  it('reversing the source card reverses the solved voltage and still satisfies KCL', () => {
+    const { imported, circuit, nodeId } = solve('I1 0 n DC 2m');
+    assert.ok(imported.wires.some(w => w.from === 'I1' && w.fromTerminal === 'pos'
+      && w.to === 'R1' && w.toTerminal === 'a'),
+    'the second SPICE node must map to the engine current destination (pos)');
+    assert.ok(Math.abs(circuit.nodeVoltage(nodeId) - 2) < 1e-8,
+      `2 mA from ground to n through 1 kOhm must make n=+2 V, got ${circuit.nodeVoltage(nodeId)}`);
+    assert.ok(Math.abs(circuit.branchCurrent('I1', 'pos')
+      + circuit.branchCurrent('R1', 'a')) < 1e-11, 'KCL must hold at the second card node');
+  });
+
+  it('exports the engine current origin first and round-trips the same direction', () => {
+    const { circuit } = solve('I1 n 0 DC 2m');
+    const { text } = toSpice(extractNetlist(circuit), 'current direction');
+    const sourceCard = text.split('\n').find(line => /^I\d+\s/.test(line));
+    const resistorCard = text.split('\n').find(line => /^R\d+\s/.test(line));
+    assert.ok(sourceCard && resistorCard, `missing source or resistor card:\n${text}`);
+    const [, sourceFrom, sourceTo, sourceValue] = sourceCard.trim().split(/\s+/);
+    const [, resistorA, resistorB] = resistorCard.trim().split(/\s+/);
+    assert.equal(sourceFrom, resistorA, 'engine neg/current-origin node must be first');
+    assert.equal(sourceTo, resistorB, 'engine pos/current-destination node must be second');
+    assert.equal(parseSpiceValue(sourceValue), 2e-3);
+
+    const back = importSpice(text);
+    assert.equal(back.parts.find(p => p.kind === 'isource').params.amps, 2e-3);
+    assert.equal(partition(back.parts, back.wires), netlistPartition(extractNetlist(circuit)));
+  });
+});
+
 describe('detection', () => {
   it('a deck is detected by its body, since it has no magic first line', () => {
     const deck = 'my circuit\nV1 1 0 DC 5\nR1 1 0 1k\n.op\n.end\n';

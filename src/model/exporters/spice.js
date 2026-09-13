@@ -433,7 +433,9 @@ function getSpicePins(kind) {
     case 'vsource': case 'battery_9v': case 'battery_aa':
       return ['pos', 'neg'];
     case 'isource':
-      return ['pos', 'neg'];
+      // SPICE positive I-card current flows first node -> second node, while
+      // bw-board positive isource current flows neg -> pos.
+      return ['neg', 'pos'];
     case 'potentiometer':
       // Handled as two resistors in toSpice; kept for callers that ask.
       return ['a', 'wiper', 'b'];
