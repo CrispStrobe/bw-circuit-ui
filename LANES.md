@@ -9,7 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-_No active claims._
+| static operating-point GUI visibility | `/root/schematic_corpus_import` (Codex Sol), `/tmp/cui-operating-point-gui.ZarxUv` | `aa78ecf` | Existing Instruments/simulation controls only: preserve import `unmapped[]`/`losses[]` as analysis blockers, show engine-owned operating-point result/refusal without adopting state, and focused UI/model tests. No solver, CLI, exporter, sweep, or broad UI framework changes. |
 
 ## DONE
 
