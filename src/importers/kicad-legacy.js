@@ -116,6 +116,24 @@ function lookupLib(libs, libId) {
 }
 
 /**
+ * KiCad 4/5 renamed rescued symbols `<original>-RESCUE-<project>`. Recover the
+ * built-in resistor meaning only when the supplied library proves the exact
+ * symbol is the ordinary two-pin passive. The name alone is not enough: a
+ * broad suffix strip would turn an unrelated project symbol into a resistor.
+ */
+function isVerifiedRescuedResistor(libId, def, unit) {
+  const s = String(libId);
+  const name = s.includes(':') ? s.slice(s.indexOf(':') + 1) : s;
+  if (!/^R-RESCUE-[A-Za-z0-9][A-Za-z0-9_.+-]*$/i.test(name) || !def) return false;
+  const pins = def.filter((p) => p.unit === 0 || p.unit === unit);
+  return pins.length === 2
+    && pins.every((p) => p.type === 'passive')
+    && new Set(pins.map((p) => p.num)).size === 2
+    && pins.some((p) => p.num === '1')
+    && pins.some((p) => p.num === '2');
+}
+
+/**
  * @param {string} text  Raw legacy .sch content
  * @param {{lib?: string|string[]}} [opts]  `.lib` text (usually the project's
  *        `-cache.lib`), without which no connection can be resolved
@@ -260,7 +278,8 @@ export function importKicadLegacy(text, opts = {}) {
 
     let entry = byRef.get(ref);
     if (entry === undefined) {
-      const hit = mapKicadSymbol(libId, value, isPower);
+      const rescuedResistor = isVerifiedRescuedResistor(libId, def, unit);
+      const hit = mapKicadSymbol(rescuedResistor ? 'R' : libId, value, isPower);
       if (!hit) {
         unmapped.push({ ref, value, libsource: libId });
         warnings.push(`Unmapped component: ${ref} (${libId}${value ? ` = ${value}` : ''})`);
@@ -270,6 +289,11 @@ export function importKicadLegacy(text, opts = {}) {
       if (hit._note) warnings.push(`${ref}: ${hit._note}`);
       const params = { ...hit.params };
       if (value) params._value = value;
+      if (rescuedResistor) {
+        params._libsource = libId;
+        warnings.push(`${ref}: ${libId} resolved as a resistor from its exact two-pin `
+          + 'passive cache-library definition');
+      }
       const id = makeId(ref, used);
       parts.push({ id, kind: hit.kind, params, x: 0, y: 0 });
       entry = { id, hit };

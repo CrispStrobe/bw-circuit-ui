@@ -390,6 +390,23 @@ describe('KiCad 4/5 legacy schematic', () => {
       'SW1:slide_switch', 'SW2:slide_switch',
     ]);
     assert.equal(r.parts.find((p) => p.id === 'R2').params.ohms, 4700);
+    for (const ref of ['R1', 'R2', 'R3', 'R5']) {
+      assert.equal(r.parts.find((p) => p.id === ref).params._libsource,
+        'R-RESCUE-kicad-legacy-divider', `${ref} retains its exact source symbol`);
+    }
+  });
+
+  test('a rescued R with an ambiguous pinout stays unmapped', () => {
+    const needle = 'X ~ 2 0 -150 50 U 50 50 1 1 P\n';
+    const ambiguousLib = LEGACY_LIB.replace(needle,
+      needle + 'X ~ 3 150 0 50 L 50 50 1 1 P\n');
+    assert.notEqual(ambiguousLib, LEGACY_LIB, 'the negative fixture must add a third pin');
+    const r = importKicadLegacy(LEGACY, { lib: ambiguousLib });
+    assert.deepEqual(r.parts.filter((p) => p.kind === 'resistor'), [],
+      'the rescue name alone must not invent four two-terminal resistors');
+    assert.deepEqual(r.unmapped.filter((u) => /^R\d/.test(u.ref)).map((u) => u.ref).sort(),
+      ['R1', 'R2', 'R3', 'R5']);
+    assert.match(r.warnings.join(' '), /Unmapped component: R1/);
   });
 
   test('WITHOUT the library it says so instead of returning a wireless circuit', () => {
@@ -409,7 +426,8 @@ describe('KiCad 4/5 legacy schematic', () => {
     assert.equal(sw.length, 6);
     assert.deepEqual(sw.filter((p) => p.unit === 1).map((p) => p.num), ['1', '2', '3']);
     assert.deepEqual(sw.filter((p) => p.unit === 2).map((p) => p.num), ['4', '5', '6']);
-    assert.deepEqual(lib.get('Device_R').map((p) => [p.num, p.x, p.y]), [['1', 0, 150], ['2', 0, -150]]);
+    assert.deepEqual(lib.get('R-RESCUE-kicad-legacy-divider').map((p) => [p.num, p.x, p.y]),
+      [['1', 0, 150], ['2', 0, -150]]);
   });
 
   test('a file that is not a legacy schematic is refused', () => {

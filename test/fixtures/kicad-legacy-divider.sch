@@ -14,7 +14,7 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L Device:R R1
+L R-RESCUE-kicad-legacy-divider R1
 U 1 1 00000001
 P 2000 1500
 F 0 "R1" H 2070 1546 50  0000 L CNN
@@ -25,7 +25,7 @@ F 3 "~" H 2000 1500 50  0001 C CNN
 	1    0    0    -1
 $EndComp
 $Comp
-L Device:R R2
+L R-RESCUE-kicad-legacy-divider R2
 U 1 1 00000002
 P 2000 2000
 F 0 "R2" H 2070 2046 50  0000 L CNN
@@ -36,7 +36,7 @@ F 3 "~" H 2000 2000 50  0001 C CNN
 	1    0    0    -1
 $EndComp
 $Comp
-L Device:R R3
+L R-RESCUE-kicad-legacy-divider R3
 U 1 1 00000003
 P 3000 1150
 F 0 "R3" V 2793 1150 50  0000 C CNN
@@ -91,7 +91,7 @@ F 3 "" H 2000 2150 50  0001 C CNN
 	1    0    0    -1
 $EndComp
 $Comp
-L Device:R R5
+L R-RESCUE-kicad-legacy-divider R5
 U 1 1 00000008
 P 5000 1150
 F 0 "R5" V 4793 1150 50  0000 C CNN
