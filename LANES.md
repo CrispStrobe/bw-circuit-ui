@@ -9,7 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-| bounded LTspice ASC static importer | `/root/sol_lane_coordination` (Codex Sol), `/mnt/volume1/code/wt/cui-ltspice-asc-sol` | `5958992` | **ACTIVE 2026-09-13.** Owns new `src/importers/ltspice-asc.js`, one new focused LTspice ASC test/fixture namespace, the exact test-registration token in `package.json`, and only the `ltspice-asc` detector/registry entries in `src/importers/detect.js` and `src/importers/index.js`. Initial scope is verified standard R/C/static V/I symbols, WIRE/FLAG ground/names, values and orientation; unknown/missing-symbol-pin constructs and unsupported directives remain explicit losses/unmapped/refusals. No copied external rows, guessed vendor-symbol geometry, KiCad/hierarchy/BoardCanvas/CLI/GUI, Circuit/engine, or generic registry refactor. |
+| bounded LTspice ASC static importer | `/root/sol_lane_coordination` (Codex Sol) | **DONE 2026-09-13.** Added a content-detected `.asc` importer and menu registration for the verified standard resistor/static-voltage slice. Pin coordinates and rotations are provenance-recorded; named nets and ground resolve through the shared `NetSolver`. Mirrors, unknown/custom symbols, non-static values, symbol semantic attributes, and non-`.op` directives remain explicit losses/unmapped entries rather than approximations. | Focused importer/reachability/registration suites pass 30/30; production build passes. Self-authored 6 V / 1 kOhm fixture reaches `Circuit.fromJSON` and solves to 6 mA; external paired-corpus qualification is a separate private lane. |
 
 ## DONE
 

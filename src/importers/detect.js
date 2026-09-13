@@ -23,6 +23,7 @@ import { looksLikeFritzing } from './fritzing.js';
 import { looksLikeKicadPcb } from './kicad-pcb.js';
 import { looksLikeEasyEdaProPcb } from './easyeda-pro-pcb.js';
 import { looksLikeSpice } from './spice.js';
+import { looksLikeLtspiceAsc } from './ltspice-asc.js';
 
 /**
  * @param {string} text      Raw file content
@@ -30,6 +31,9 @@ import { looksLikeSpice } from './spice.js';
  * @returns {string|null}    An importer key, or null if unrecognised
  */
 export function detectFormat(text, filename = '') {
+  // LTspice ASCII schematics have a Version/SHEET header. This must precede
+  // SPICE's heuristic: an ASC TEXT directive may contain netlist-looking text.
+  if (looksLikeLtspiceAsc(text)) return 'ltspice-asc';
   if (/<eagle\b/i.test(text)) return 'eagle';
   // Fritzing. XML like EAGLE, so it is checked in the same breath and
   // separated by its own root/instance markers rather than by extension.
@@ -71,5 +75,6 @@ export function detectFormat(text, filename = '') {
   if (/\.sch$/i.test(filename)) return 'eagle';
   if (/\.net$/i.test(filename)) return 'kicad-netlist';
   if (/\.(cir|sp|spi|ckt)$/i.test(filename)) return 'spice';
+  if (/\.asc$/i.test(filename)) return 'ltspice-asc';
   return null;
 }
