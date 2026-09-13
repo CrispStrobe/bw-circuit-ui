@@ -26,6 +26,7 @@ import { BASELINE_CASES, CLASS_I_WORST, CONTACT_WORST, ART_FIT_WORST,
   BASELINE_DIR, renderCircuitFile,
   sourceHash, corpusSha, readCorpusStamp } from '../scripts/render-schematic.mjs';
 import { discover, analyse } from '../scripts/schematic-audit.mjs';
+import { corpusRoots } from './corpus-root.mjs';
 
 const EXPLICIT_ROOT = process.env.EXAMPLES_DIR || null;
 if (EXPLICIT_ROOT && !existsSync(EXPLICIT_ROOT)) {
@@ -34,10 +35,8 @@ if (EXPLICIT_ROOT && !existsSync(EXPLICIT_ROOT)) {
 }
 const here = path.dirname(new URL(import.meta.url).pathname);
 const CORPUS_ROOTS = EXPLICIT_ROOT ? [EXPLICIT_ROOT] : [
-  path.resolve(here, '../../sb3-creator/examples'),
-  path.resolve(here, '../../lego/brickwright-lite/overlay/scratch-gui/examples'),
-  path.join(process.env.HOME || '', 'code', 'sb3-creator', 'examples'),
-];
+  ...corpusRoots(here),
+  ];
 const examplesRoot = CORPUS_ROOTS.find(r => existsSync(r)) || null;
 
 const assertPinnedCorpusCheckout = workflow => {

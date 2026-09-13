@@ -18,6 +18,7 @@ import { resolveKind } from '../src/model/terminal-aliases.js';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { corpusRoots } from './corpus-root.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -32,10 +33,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const CANARY_REL = '31-no-resistor-led/circuit.json';
 const EXPLICIT_ROOT = process.env.EXAMPLES_DIR || null;
 const CANDIDATES = (EXPLICIT_ROOT ? [EXPLICIT_ROOT] : [
-  path.resolve(here, '../../sb3-creator/examples'),
-  path.resolve(here, '../../bw-cfront/sb3-creator/examples'),
-  path.join(process.env.HOME || '', 'code', 'sb3-creator', 'examples'),
-]).map((root) => path.join(root, CANARY_REL));
+  ...corpusRoots(here),
+  ]).map((root) => path.join(root, CANARY_REL));
 const canaryPath = CANDIDATES.find((c) => existsSync(c)) || null;
 
 describe('safety-lesson canary: 31-no-resistor-led', () => {

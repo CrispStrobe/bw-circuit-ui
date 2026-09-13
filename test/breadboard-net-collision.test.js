@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BreadboardModel } from '../src/model/breadboard.js';
+import { corpusRoots, findCorpus } from './corpus-root.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -60,7 +61,7 @@ describe('breadboard net-id collision', () => {
 // ── Multi-breadboard circuit integration ─────────────────────────────
 
 describe('eater6502 multi-breadboard: no duplicate net ids', () => {
-  const exDir = join(here, '../../sb3-creator/examples');
+  const exDir = findCorpus(here);
   const BENCHES = [
     'eater6502-blink',
     'eater6502-full-build',

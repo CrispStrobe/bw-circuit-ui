@@ -121,21 +121,13 @@ import { analyse, discover, wireThroughForeignPinOf, crossingsOf, foreignContact
   labelTextOnBodyOf } from '../scripts/schematic-audit.mjs';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { projectSchematic } from '../src/model/schematic-projection.js';
+import { corpusRoots } from './corpus-root.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 // An EXPLICIT corpus never falls through to a different one — see the same
 // rule in schematic-rendered-netlist.test.js.
-const EXPLICIT_ROOT = process.env.EXAMPLES_DIR || null;
-if (EXPLICIT_ROOT && !existsSync(EXPLICIT_ROOT)) {
-  throw new Error(`EXAMPLES_DIR=${EXPLICIT_ROOT} does not exist. An explicitly selected `
-    + 'corpus is never silently replaced by another one — fix the path or unset it.');
-}
-const CORPUS_ROOTS = EXPLICIT_ROOT ? [EXPLICIT_ROOT] : [
-  path.resolve(here, '../../sb3-creator/examples'),
-  path.resolve(here, '../../lego/brickwright-lite/overlay/scratch-gui/examples'),
-  path.join(process.env.HOME || '', 'code', 'sb3-creator', 'examples'),
-];
+const CORPUS_ROOTS = corpusRoots(here);
 const examplesRoot = CORPUS_ROOTS.find(r => existsSync(r)) || null;
 
 /**

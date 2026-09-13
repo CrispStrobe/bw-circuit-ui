@@ -46,6 +46,7 @@ import { Circuit, resetIds } from '../src/model/circuit.js';
 import { discover } from '../scripts/schematic-audit.mjs';
 import { easyEdaPartition } from '../src/importers/easyeda.js';
 import { measureDocument, classifyDisagreement } from '../scripts/easyeda-roundtrip.mjs';
+import { corpusRoots } from './corpus-root.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const TEE = /^(\d+) T-joint\(s\) without a junction/;
@@ -53,9 +54,8 @@ const TEE = /^(\d+) T-joint\(s\) without a junction/;
 // Module scope: BOTH describe blocks measure over the corpus, and a root
 // resolved inside one of them is `root is not defined` in the other.
 const CORPUS_ROOTS = process.env.EXAMPLES_DIR ? [process.env.EXAMPLES_DIR] : [
-  path.resolve(here, '../../sb3-creator/examples'),
-  path.resolve(here, '../../lego/brickwright-lite/overlay/scratch-gui/examples'),
-];
+  ...corpusRoots(here),
+  ];
 const root = CORPUS_ROOTS.find((r) => existsSync(r)) || null;
 
 /** The warning's count, or 0 when it does not fire. */

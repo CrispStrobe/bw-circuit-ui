@@ -77,6 +77,7 @@ import { projectSchematic } from '../src/model/schematic-projection.js';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { corpusRoots } from './corpus-root.mjs';
 
 const INFRA_KINDS = new Set([
   'breadboard', 'breadboard_full', 'breadboard_half', 'breadboard_mini', 'meter',
@@ -260,16 +261,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
  * behind it — and reached the same rule: a selected path that does not resolve
  * is an error, because the alternative is measuring what you did not choose.
  */
-const EXPLICIT_ROOT = process.env.EXAMPLES_DIR || null;
-if (EXPLICIT_ROOT && !existsSync(EXPLICIT_ROOT)) {
-  throw new Error(`EXAMPLES_DIR=${EXPLICIT_ROOT} does not exist. An explicitly selected `
-    + 'corpus is never silently replaced by another one — fix the path or unset it.');
-}
-const CORPUS_ROOTS = EXPLICIT_ROOT ? [EXPLICIT_ROOT] : [
-  path.resolve(here, '../../sb3-creator/examples'),
-  path.resolve(here, '../../lego/brickwright-lite/overlay/scratch-gui/examples'),
-  path.join(process.env.HOME || '', 'code', 'sb3-creator', 'examples'),
-];
+const CORPUS_ROOTS = corpusRoots(here);
 
 const examplesRoot = CORPUS_ROOTS.find(r => existsSync(r)) || null;
 

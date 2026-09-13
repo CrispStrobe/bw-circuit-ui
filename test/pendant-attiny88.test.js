@@ -15,6 +15,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { corpusRoots, findCorpus } from './corpus-root.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 let chromium, browser, server;
@@ -27,10 +28,7 @@ try { ({ chromium } = await import('playwright')); } catch {}
 const PORT = 3196;
 
 // Locate pendant circuit in sibling sb3-creator checkout
-const CANDIDATES = [
-  process.env.EXAMPLES_DIR && path.join(process.env.EXAMPLES_DIR, 'blinkenrocket-pendant'),
-  path.join(here, '../../sb3-creator/examples/blinkenrocket-pendant'),
-].filter(Boolean);
+const CANDIDATES = corpusRoots(here).map(r => path.join(r, 'blinkenrocket-pendant'));
 const PENDANT_DIR = CANDIDATES.find(d => existsSync(path.join(d, 'circuit.json')));
 
 describe('pendant example ATtiny88 label', {

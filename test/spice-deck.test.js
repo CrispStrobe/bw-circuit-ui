@@ -30,6 +30,7 @@ import { Circuit } from '../src/model/circuit.js';
 import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice, junctionModel } from '../src/model/exporters/spice.js';
 import { formatSi, formatSpiceValue } from '../src/model/si.js';
+import { corpusRoots } from './corpus-root.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -121,7 +122,7 @@ describe('SPICE value suffixes (X0.2)', () => {
     const roots = [
       path.resolve(here, '../gallery'),
       path.resolve(here, 'fixtures'),
-      path.resolve(here, '../../sb3-creator/examples'),
+      ...corpusRoots(here),
     ].filter(existsSync);
     let scanned = 0;
     const offenders = [];

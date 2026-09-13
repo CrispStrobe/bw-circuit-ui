@@ -22,16 +22,14 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { Circuit } from '../src/model/circuit.js';
+import { corpusRoots, findCorpus } from './corpus-root.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 // Same candidate paths as the engine gate:
 // 1. EXAMPLES_DIR env var
 // 2. sibling sb3-creator checkout
-const CANDIDATES = [
-  process.env.EXAMPLES_DIR,
-  join(here, '../../sb3-creator/examples'),
-].filter(Boolean);
+const CANDIDATES = corpusRoots(here);
 const DIR = CANDIDATES.find(d => existsSync(d));
 
 test('breadboard-fabric examples load and solve through the designer', (t) => {

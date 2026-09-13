@@ -327,8 +327,20 @@ describe('active parts reach the dialect', () => {
     // `not ok` WITHOUT counting it as a failure, so this ran nowhere and the
     // file still reported 12/12/0. A gate that cannot fail.
     // Explicit wins absolutely; absent is a failure, never a skip (ROADMAP §5).
-    const SB3 = process.env.SB3_CREATOR
-        || resolve(dirname(fileURLToPath(import.meta.url)), '../../sb3-creator');
+    // Walk up rather than count levels: `../..` is the repo's sibling in a
+    // checkout and nothing at all in a worktree. Same defect as the corpus
+    // roots, different target — this one wants the sb3-creator REPO, not its
+    // examples directory.
+    const SB3 = process.env.SB3_CREATOR || (() => {
+        let d = dirname(fileURLToPath(import.meta.url));
+        for (;;) {
+            const c = resolve(d, 'sb3-creator');
+            if (existsSync(join(c, 'src/utils/sb3Creator.js'))) return c;
+            const up = dirname(d);
+            if (up === d) return resolve(dirname(fileURLToPath(import.meta.url)), '../../sb3-creator');
+            d = up;
+        }
+    })();
     const genPath = join(SB3, 'src/utils/sb3Creator.js');
     if (!existsSync(genPath)) {
         throw new Error(`sb3-creator not found at ${genPath}. This suite checks that every `

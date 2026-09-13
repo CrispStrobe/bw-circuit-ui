@@ -18,6 +18,7 @@ import { resolveTerminal, resolveKind, TERMINAL_ALIASES } from '../src/model/ter
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { corpusRoots } from './corpus-root.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -56,12 +57,7 @@ describe('resolveTerminal', () => {
 // exist on CI, where sb3-creator is cloned beside the repo — so this gate had
 // never run anywhere. Absence is a failure, not a skip: CI provides the
 // corpus, so not finding it means a broken checkout.
-const EXPLICIT_ROOT = process.env.EXAMPLES_DIR || null;
-const CORPUS_ROOTS = EXPLICIT_ROOT ? [EXPLICIT_ROOT] : [
-  path.resolve(here, '../../sb3-creator/examples'),
-  path.resolve(here, '../../bw-cfront/sb3-creator/examples'),
-  path.join(process.env.HOME || '', 'code', 'sb3-creator', 'examples'),
-];
+const CORPUS_ROOTS = corpusRoots(here);
 
 describe('gallery circuit.json: every wire terminal resolves', () => {
   const cfrontExamples = CORPUS_ROOTS.find((r) => existsSync(r)) || null;
