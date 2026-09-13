@@ -12,6 +12,7 @@
  *   'fritzing'       - Fritzing schematic (.fz / inside .fzz, XML)
  *   'wokwi'          - Wokwi diagram.json
  *   'spice'          - SPICE netlist (.cir/.sp), any dialect's export
+ *   'ltspice-asc'    - LTspice Version 4 ASCII schematic (.asc), bounded subset
  *
  * The SCHEMATIC importers differ from the netlist one in kind, not in degree:
  * a netlist states its connections, a schematic states GEOMETRY and the
@@ -39,6 +40,7 @@ import { importEasyEdaProPcbAsCircuit } from './easyeda-pro-pcb.js';
 import { importFritzing } from './fritzing.js';
 import { importWokwi, exportWokwi } from './wokwi.js';
 import { importSpice } from './spice.js';
+import { importLtspiceAsc } from './ltspice-asc.js';
 
 const IMPORTERS = {
   'eagle':         importEagle,
@@ -61,6 +63,7 @@ const IMPORTERS = {
   // SPICE netlist — the universal bridge: every schematic tool exports one,
   // including the ones whose native formats are closed (ROADMAP X1.1).
   'spice':         importSpice,
+  'ltspice-asc':   importLtspiceAsc,
 };
 
 /**
@@ -81,7 +84,7 @@ const IMPORTERS = {
  */
 export const IMPORT_FORMATS = [
   { id: null, label: 'File (auto-detect)', labelDe: 'Datei (automatisch)',
-    accept: '.sch,.net,.xml,.json,.kicad_sch,.fz,.fzz,.lib' },
+    accept: '.sch,.net,.xml,.json,.kicad_sch,.fz,.fzz,.lib,.asc' },
   { id: 'eagle', label: 'EAGLE schematic (.sch)', labelDe: 'EAGLE-Schaltplan (.sch)',
     accept: '.sch,.xml' },
   { id: 'kicad-sch', label: 'KiCad 6+ schematic (.kicad_sch)',
@@ -102,6 +105,8 @@ export const IMPORT_FORMATS = [
     accept: '.json' },
   { id: 'spice', label: 'SPICE netlist (.cir/.sp/.net)',
     labelDe: 'SPICE-Netzliste (.cir/.sp/.net)', accept: '.cir,.sp,.spi,.ckt,.net' },
+  { id: 'ltspice-asc', label: 'LTspice schematic (.asc)',
+    labelDe: 'LTspice-Schaltplan (.asc)', accept: '.asc' },
 ];
 
 /**
