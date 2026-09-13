@@ -204,7 +204,11 @@ const ELEMENTS = {
   Q: { nodes: 3, terminals: ['collector', 'base', 'emitter'], kind: () => 'npn', model: true },
   M: { nodes: 4, terminals: ['drain', 'gate', 'source', null], kind: () => 'nmos', model: true },
   E: { nodes: 4, terminals: ['outp', 'outn', 'inp', 'inn'], kind: () => 'vcvs', param: 'gain' },
-  G: { nodes: 4, terminals: ['outp', 'outn', 'inp', 'inn'], kind: () => 'vccs', param: 'gm' },
+  // SPICE G-card current flows from its first output node to its second.
+  // bw-board's positive gm instead injects current into outp (from outn), so
+  // output card order maps to outn,outp. Keeping gm positive preserves the
+  // authored polarity without hiding the conversion in a negated parameter.
+  G: { nodes: 4, terminals: ['outn', 'outp', 'inp', 'inn'], kind: () => 'vccs', param: 'gm' },
 };
 
 /** Element letters that are real SPICE and deliberately not mapped. */

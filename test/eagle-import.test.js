@@ -56,9 +56,14 @@ describe('EAGLE value parsing', () => {
         assert.equal(Math.round(parseEagleValue('100n') * 1e12), 100000);
         assert.equal(parseEagleValue('470R'), 470);
     });
+    test('canonical exponent values written by the exporter parse exactly', () => {
+        assert.equal(parseEagleValue('1e-9'), 1e-9);
+        assert.equal(parseEagleValue('2.2E-6'), 2.2e-6);
+    });
     test('unparseable values are null, not silently zero', () => {
         assert.equal(parseEagleValue('1N4148'), null);
         assert.equal(parseEagleValue(''), null);
+        assert.equal(parseEagleValue('1e'), null);
     });
 });
 
@@ -180,6 +185,23 @@ describe('74-series part numbers survive the mapping', () => {
             ['74HCT245', '74hc245'], ['74LS244', '74hc244'], ['74HC374', '74hc374'],
             ['74*245', '74hc245'],   // the corpus really does spell it this way
         ]) assert.equal(kindOf(ds), want, `${ds} should map to ${want}`);
+    });
+});
+
+describe('EAGLE omitted electrical pins are semantic losses', () => {
+    const fixture = readFileSync(join(import.meta.dirname, 'fixtures', 'eagle-electrical-pin-loss.sch'), 'utf8');
+    const r = importEagle(fixture);
+
+    test('records unknown and engine-narrowed pinrefs without promoting informational warnings', () => {
+        assert.deepEqual(r.losses.map((loss) => loss.kind), [
+            'unknown-electrical-pin', 'unsupported-engine-terminal',
+        ]);
+        assert.deepEqual(r.losses.map((loss) => loss.ref), ['R1', 'U1']);
+        assert.ok(r.losses.every((loss) => loss.fallback.action === 'omitted-from-connectivity'));
+        assert.ok(r.losses.every((loss) => /pinref/.test(loss.source)));
+        assert.equal(r.unmapped.length, 0);
+        assert.ok(r.warnings.some((warning) => /Unknown pin "9"/.test(warning)));
+        assert.ok(r.warnings.some((warning) => /pin "A0" dropped/.test(warning)));
     });
 });
 

@@ -331,6 +331,72 @@ describe('the reader states what it will not do', () => {
       ]);
   });
 
+  it('preserves E/G card polarity through import, solve, and export round trip', {
+    skip: spawnSync('ngspice', ['--version'], { encoding: 'utf8' }).status !== 0,
+  }, () => {
+    const source = readFileSync(join(import.meta.dirname, 'fixtures', 'spice-controlled-op.cir'), 'utf8');
+    const imported = importSpice(source);
+    assert.deepEqual(imported.unmapped, []);
+    assert.deepEqual(imported.losses, []);
+
+    const circuit = Circuit.fromJSON({ vcc: 5, parts: imported.parts, wires: imported.wires });
+    circuit.setPower(true);
+    const before = circuit.board.snapshot();
+    const op = circuit.operatingPoint();
+    assert.equal(op.converged, true);
+    assert.equal(op.analysis.controlledSources, 'ideal-explicit-finite-parameters-only');
+    assert.ok(op.analysis.supportedKinds.includes('vcvs'));
+    assert.ok(op.analysis.supportedKinds.includes('vccs'));
+    const netFor = (part, terminal) => circuit.resolvedNets.find(net =>
+      net.terminals.some(item => item.part === part && item.terminal === terminal)).id;
+    assert.ok(Math.abs(op.nodeVoltages.get(netFor('E1', 'outp')) - 2) < 1e-10);
+    assert.ok(Math.abs(op.nodeVoltages.get(netFor('G1', 'outn')) + 1) < 2e-9,
+      'SPICE G1 gout->0 must draw 1 mA from gout, not inject it');
+    assert.ok(Math.abs(op.branchCurrents.get('G1').get('outn') - 1e-3) < 1e-12);
+    assert.ok(Math.abs(op.branchCurrents.get('R2').get('a') + 1e-3) < 2e-12);
+    assert.ok(Math.abs(op.branchCurrents.get('G1').get('outn')
+      + op.branchCurrents.get('R2').get('a')) < 2e-12, 'imported G-card output KCL');
+    assert.deepEqual(circuit.board.snapshot(), before, 'operatingPoint must not adopt the result');
+
+    const oracleDeck = source.replace('.op\n.end',
+      '.control\nset numdgt=15\nop\nprint v(eout) v(gout) @e1[i] @g1[i] @r2[i]\n.endc\n.end');
+    const ng = spawnSync('ngspice', ['-b'], { input: oracleDeck, encoding: 'utf8' });
+    assert.equal(ng.status, 0, ng.stderr || ng.stdout);
+    const read = (expr) => {
+      const match = ng.stdout.match(new RegExp(`${expr}\\s*=\\s*([-+0-9.e]+)`, 'i'));
+      assert.ok(match, ng.stdout);
+      return Number(match[1]);
+    };
+    assert.ok(Math.abs(op.nodeVoltages.get(netFor('E1', 'outp')) - read('v\\(eout\\)')) < 1e-10);
+    assert.ok(Math.abs(op.nodeVoltages.get(netFor('G1', 'outn')) - read('v\\(gout\\)')) < 2e-9);
+    assert.ok(Math.abs(op.branchCurrents.get('E1').get('outp') - read('@e1\\[i\\]')) < 1e-10);
+    assert.ok(Math.abs(op.branchCurrents.get('G1').get('outn') - read('@g1\\[i\\]')) < 1e-10);
+    assert.ok(Math.abs(op.branchCurrents.get('R2').get('a') - read('@r2\\[i\\]')) < 1e-10);
+
+    const exported = toSpice(extractNetlist(circuit), 'controlled round trip');
+    assert.deepEqual(exported.skipped, []);
+    assert.match(exported.text, /^E1\s+\S+\s+0\s+\S+\s+0\s+2$/m);
+    assert.match(exported.text, /^G1\s+\S+\s+0\s+\S+\s+0\s+1m$/m);
+    const back = importSpice(exported.text);
+    assert.deepEqual(back.unmapped, []);
+    assert.equal(back.parts.find(part => part.id === 'E1').params.gain, 2);
+    assert.equal(back.parts.find(part => part.id === 'G1').params.gm, 1e-3);
+    assert.equal(partition(back.parts, back.wires), partition(imported.parts, imported.wires));
+  });
+
+  it('refuses non-ideal or indeterminate E/G export instead of guessing', () => {
+    const source = readFileSync(join(import.meta.dirname, 'fixtures', 'spice-controlled-op.cir'), 'utf8');
+    const imported = importSpice(source);
+    imported.parts.find(part => part.id === 'E1').params.rout = 0;
+    delete imported.parts.find(part => part.id === 'G1').params.gm;
+    const circuit = Circuit.fromJSON({ vcc: 5, parts: imported.parts, wires: imported.wires });
+    const exported = toSpice(extractNetlist(circuit));
+    assert.ok(exported.skipped.some(item => /E1.*rout/.test(item)));
+    assert.ok(exported.skipped.some(item => /G1.*finite gm/.test(item)));
+    assert.doesNotMatch(exported.text, /^E1\s/m);
+    assert.doesNotMatch(exported.text, /^G1\s/m);
+  });
+
   it('does not silently accept stale two-terminal controlled sources', () => {
     const r = importSpice(deck('V1 1 0 DC 1\nE1 3 0 1 0 10\nR1 3 0 1k'));
     const parts = r.parts.map(p => p.id === 'E1' ? { ...p, terminals: ['a', 'b'] } : p);

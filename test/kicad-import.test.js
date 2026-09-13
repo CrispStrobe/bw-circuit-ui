@@ -28,13 +28,16 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { detectFormat } from '../src/importers/detect.js';
-import { importKicadSch, kicadSchPartition, resolveKicadSch } from '../src/importers/kicad-sch.js';
+import { importKicadSch, kicadSchPartition, resolveKicadSch, pickKicadHierarchyRoot }
+  from '../src/importers/kicad-sch.js';
 import { importKicadLegacy, parseLegacyLib } from '../src/importers/kicad-legacy.js';
 import { NetSolver, placePin, mapKicadSymbol } from '../src/importers/kicad-common.js';
 import { importEagle } from '../src/importers/eagle.js';
 import { toEagleSch } from '../src/model/exporters/eagle.js';
 import { toKicadSch } from '../src/model/exporters/kicad-sch.js';
 import { shapeFor } from '../src/model/schematic-symbols.js';
+import { Circuit } from '../src/model/circuit.js';
+import { blockersFromImport } from '../src/model/operating-point-view.js';
 
 const HERE = import.meta.dirname;
 const CUI = join(HERE, '..');
@@ -42,6 +45,10 @@ import { BWB } from './_bw-board-dir.js';
 const engineAvailable = existsSync(join(BWB, 'src', 'index.js'));
 
 const SCH = readFileSync(join(HERE, 'fixtures', 'kicad-divider.kicad_sch'), 'utf8');
+const HIER_ROOT_NAME = 'kicad-hierarchy-root.kicad_sch';
+const HIER_CHILD_NAME = 'kicad-hierarchy-child.kicad_sch';
+const HIER_ROOT = readFileSync(join(HERE, 'fixtures', HIER_ROOT_NAME), 'utf8');
+const HIER_CHILD = readFileSync(join(HERE, 'fixtures', HIER_CHILD_NAME), 'utf8');
 const LEGACY = readFileSync(join(HERE, 'fixtures', 'kicad-legacy-divider.sch'), 'utf8');
 const LEGACY_LIB = readFileSync(join(HERE, 'fixtures', 'kicad-legacy-divider.lib'), 'utf8');
 
@@ -290,6 +297,105 @@ describe('KiCad 6+ schematic: the partition is the hand-computed one', () => {
     const r = importKicadSch('(export (version "E"))');
     assert.equal(r.parts.length, 0);
     assert.match(r.warnings[0], /not \(kicad_sch/);
+  });
+});
+
+// ---------------------------------------------------------------------
+describe('KiCad 6+ one-level hierarchy preserves instance scope', () => {
+  const load = (root = HIER_ROOT, child = HIER_CHILD) => importKicadSch(root, {
+    rootName: HIER_ROOT_NAME,
+    files: new Map([[HIER_CHILD_NAME, child]]),
+  });
+  const EXPECTED = [
+    'Alpha_alphauuid_R1 a|Alpha_alphauuid_R2 a|RROOT b',
+    'Alpha_alphauuid_R1 b|Alpha_alphauuid_R2 b|Beta_betauuid_R1 b|Beta_betauuid_R2 b|RROOT a',
+    'Beta_betauuid_R1 a|Beta_betauuid_R2 a',
+  ];
+
+  test('exact parent port binds one repeated child while global labels bind both', () => {
+    const r = load();
+    assert.deepEqual(r.parts.map((p) => p.id),
+      ['RROOT', 'Alpha_alphauuid_R1', 'Alpha_alphauuid_R2',
+        'Beta_betauuid_R1', 'Beta_betauuid_R2']);
+    assert.deepEqual(partition(r.wires), EXPECTED);
+    assert.deepEqual(r.losses, []);
+    assert.deepEqual(r.hierarchy, {
+      root: HIER_ROOT_NAME, suppliedChildren: 2, referencedChildren: 2, supportedDepth: 1,
+    });
+    assert.notEqual(r.parts.find((p) => p.id === 'Alpha_alphauuid_R1').x,
+      r.parts.find((p) => p.id === 'Beta_betauuid_R1').x,
+      'repeated instances must not render on top of each other');
+  });
+
+  test('same child coordinates/local labels stay isolated through Circuit save/load', () => {
+    const r = load();
+    const restored = Circuit.fromJSON(Circuit.fromJSON(r).toJSON());
+    const flat = restored.wires.map((w) => ({
+      from: w.from.part, fromTerminal: w.from.terminal,
+      to: w.to.part, toTerminal: w.to.terminal,
+    }));
+    assert.deepEqual(partition(flat), EXPECTED);
+    const nets = restored.resolvedNets.map((net) => net.terminals
+      .map((end) => `${end.part} ${end.terminal}`).sort().join('|')).sort();
+    assert.deepEqual(nets, EXPECTED);
+  });
+
+  test('label classes are not interchangeable across sheet boundaries', () => {
+    const localCommon = HIER_CHILD.replaceAll('(global_label "COMMON"', '(label "COMMON"');
+    const withoutGlobal = load(HIER_ROOT, localCommon);
+    assert.equal(withoutGlobal.losses.length, 0);
+    assert.deepEqual(partition(withoutGlobal.wires), [
+      'Alpha_alphauuid_R1 a|Alpha_alphauuid_R2 a|RROOT b',
+      'Alpha_alphauuid_R1 b|Alpha_alphauuid_R2 b',
+      'Beta_betauuid_R1 a|Beta_betauuid_R2 a',
+      'Beta_betauuid_R1 b|Beta_betauuid_R2 b',
+    ]);
+
+    const wrongPort = HIER_ROOT.replace('(pin "P" passive (at 100 53.81 0))',
+      '(pin "WRONG" passive (at 100 53.81 0))');
+    const withoutPort = load(wrongPort);
+    assert.ok(withoutPort.losses.some((loss) => loss.kind === 'unmatched-hierarchical-port'));
+    assert.ok(withoutPort.losses.some((loss) => loss.kind === 'unbound-hierarchical-label'));
+    assert.ok(!partition(withoutPort.wires)
+      .some((net) => /RROOT b.*Alpha_alphauuid_R1 a/.test(net)));
+  });
+
+  test('missing, unsafe, deep and cyclic children are explicit semantic losses', () => {
+    const missing = importKicadSch(HIER_ROOT, { rootName: HIER_ROOT_NAME, files: new Map() });
+    assert.equal(missing.losses.filter((loss) => loss.kind === 'missing-hierarchical-sheet').length, 2);
+    assert.equal(blockersFromImport(missing, 'kicad-sch', HIER_ROOT_NAME).length, 2,
+      'hierarchy losses must make the partially displayed import ineligible for operating point');
+
+    const unsafeRoot = HIER_ROOT.replaceAll(HIER_CHILD_NAME, `../${HIER_CHILD_NAME}`);
+    const unsafe = load(unsafeRoot);
+    assert.equal(unsafe.losses.filter((loss) => loss.kind === 'unsafe-hierarchical-sheet-path').length, 2);
+
+    const nested = HIER_CHILD.replace('(sheet_instances',
+      `(sheet (uuid "nested") (property "Sheetname" "Nested")\n`
+      + `  (property "Sheetfile" "grandchild.kicad_sch"))\n  (sheet_instances`);
+    assert.ok(load(HIER_ROOT, nested).losses.some((loss) => loss.kind === 'unsupported-hierarchy-depth'));
+
+    const cycleRoot = HIER_ROOT.replaceAll(HIER_CHILD_NAME, HIER_ROOT_NAME);
+    assert.equal(load(cycleRoot).losses.filter((loss) => loss.kind === 'cyclic-hierarchical-sheet').length, 2);
+  });
+
+  test('multi-file root selection is deterministic and refuses ambiguity', () => {
+    assert.deepEqual(pickKicadHierarchyRoot(new Map([
+      [HIER_CHILD_NAME, HIER_CHILD], [HIER_ROOT_NAME, HIER_ROOT],
+    ])), { rootName: HIER_ROOT_NAME });
+    assert.match(pickKicadHierarchyRoot(new Map([
+      [HIER_ROOT_NAME, HIER_ROOT], ['unrelated.kicad_sch', SCH],
+      [HIER_CHILD_NAME, HIER_CHILD],
+    ])).error, /2 possible roots/);
+  });
+
+  test('shipping bwc info reads direct sibling children from the requested root', () => {
+    const cli = spawnSync(process.execPath, [join(CUI, 'bin', 'bwc.mjs'), 'info',
+      join(HERE, 'fixtures', HIER_ROOT_NAME)], { encoding: 'utf8' });
+    assert.equal(cli.status, 0, cli.stderr);
+    assert.match(cli.stdout, /parts\s+: 5/);
+    assert.match(cli.stdout, /wires\s+: 7/);
+    assert.doesNotMatch(cli.stdout, /LOSSES/);
   });
 });
 

@@ -35,10 +35,11 @@
  * which is exactly the shape of a `.net` file that KiCad itself exported --
  * so the two can be compared node for node. See test/kicad-import.test.js.
  *
- * Deliberately NOT handled, and reported rather than assumed:
- *   - hierarchical sheets. One file is one sheet; a (sheet ...) reference to
- *     a child file is a boundary this importer cannot cross, because the
- *     importer signature is (text) and the child is a different file.
+ * Hierarchical sheets are handled for one direct child level when the caller
+ * explicitly supplies those child texts.  The parser never reads a path from
+ * the schematic itself.  Local and hierarchical names remain instance-local;
+ * only an exact parent sheet pin or a global/power name crosses a boundary.
+ * Deeper, missing and unsafe references are reported as semantic losses.
  *   - buses and bus entries. Membership is by name-pattern expansion, and
  *     guessing it wrong invents connections rather than losing them.
  *
@@ -61,6 +62,16 @@ function atOf(node) {
 function propOf(node, key) {
   for (const p of findAll(node, 'property')) if (p[1] === key) return p[2];
   return undefined;
+}
+
+const safeChildName = (name) => typeof name === 'string' && name.length > 0
+  && name === name.split(/[\\/]/).pop()
+  && name !== '.' && name !== '..' && !name.includes(':') && !name.includes('\0');
+
+function suppliedFiles(opts) {
+  if (!opts || !opts.files) return new Map();
+  if (opts.files instanceof Map) return new Map(opts.files);
+  return new Map(Object.entries(opts.files));
 }
 
 /**
@@ -112,7 +123,8 @@ function libPins(symNode) {
  *                      unit:number,
  *                      pins:Array<{num:string,name:string,type:string,x:number,y:number}>}>,
  *   net: NetSolver, live: Set<string>,
- *   sheets: number, buses: number, labels: number, noConnects: number
+ *   sheets: number, sheetDefs: Array, globalSignals: Array,
+ *   hierarchicalSignals: Array, buses: number, labels: number, noConnects: number
  * }}
  */
 export function resolveKicadSch(text) {
@@ -138,6 +150,8 @@ export function resolveKicadSch(text) {
   // every pin is trivially a net of its own.
   const net = new NetSolver();
   const anchors = new Set();
+  const globalSignals = [];
+  const hierarchicalSignals = [];
   for (const w of findAll(tree, 'wire')) {
     const pts = findOne(w, 'pts');
     if (!pts) continue;
@@ -178,7 +192,7 @@ export function resolveKicadSch(text) {
 
     let rec = placements.get(ref);
     if (!rec) {
-      rec = { ref, libId, value, isPower: def.isPower, unit, pins: [] };
+      rec = { ref, libId, value, isPower: def.isPower, unit, x: a.x, y: a.y, pins: [] };
       placements.set(ref, rec);
     }
     // A power symbol connects BY NAME and by nothing else -- that is the only
@@ -225,22 +239,50 @@ export function resolveKicadSch(text) {
       // Per PIN, never per symbol: a chip with hidden VCC and GND pins drives
       // two different rails, and an earlier version that applied one rail name
       // to every pin of the symbol shorted them together.
-      if (drives(p)) { const nm = nameOf(p); if (nm) net.addName(x, y, nm); }
+      if (drives(p)) {
+        const nm = nameOf(p);
+        if (nm) { net.addName(x, y, nm); globalSignals.push({ name: nm, x, y }); }
+      }
     }
   }
 
-  // Local, global and hierarchical labels all merge by name here. Within one
-  // sheet KiCad treats them the same; the difference only shows across sheet
-  // boundaries, which this importer does not cross.
+  // All three labels name nets within this sheet.  Their scope differs only
+  // when the hierarchy combiner below crosses a sheet boundary.
   let labels = 0;
   for (const tag of ['label', 'global_label', 'hierarchical_label']) {
     for (const l of findAll(tree, tag)) {
       const a = atOf(l);
       if (!a || l[1] === undefined) continue;
       labels++;
-      net.addName(a.x, a.y, String(l[1]));
+      const name = String(l[1]);
+      net.addName(a.x, a.y, name);
+      if (tag === 'global_label') globalSignals.push({ name, x: a.x, y: a.y });
+      if (tag === 'hierarchical_label') hierarchicalSignals.push({ name, x: a.x, y: a.y });
       anchors.add(ptKey(a.x, a.y));
     }
+  }
+
+  // A parent sheet pin is an electrical endpoint in the parent drawing.  It
+  // binds only to a same-named hierarchical label in that particular child
+  // instance; the hierarchy combiner performs that union after both sheets
+  // have independently solved their geometry.
+  const sheetDefs = [];
+  let sheetAnon = 0;
+  for (const sheet of findAll(tree, 'sheet')) {
+    const file = propOf(sheet, 'Sheetfile');
+    const name = propOf(sheet, 'Sheetname') || file || `sheet-${++sheetAnon}`;
+    const uuidNode = findOne(sheet, 'uuid');
+    const pins = [];
+    for (const pin of findAll(sheet, 'pin')) {
+      const a = atOf(pin);
+      if (!a || pin[1] === undefined) continue;
+      const pinName = String(pin[1]);
+      net.addPoint(a.x, a.y);
+      anchors.add(ptKey(a.x, a.y));
+      pins.push({ name: pinName, x: a.x, y: a.y });
+    }
+    sheetDefs.push({ name: String(name), file: file === undefined ? '' : String(file),
+      uuid: uuidNode ? String(uuidNode[1]) : `sheet-${sheetAnon}`, pins });
   }
 
   net.solve();
@@ -255,7 +297,10 @@ export function resolveKicadSch(text) {
     placements: [...placements.values()],
     net,
     live,
-    sheets: findAll(tree, 'sheet').length,
+    sheets: sheetDefs.length,
+    sheetDefs,
+    globalSignals,
+    hierarchicalSignals,
     buses: findAll(tree, 'bus').length + findAll(tree, 'bus_entry').length,
     labels,
     noConnects,
@@ -300,11 +345,227 @@ export function kicadSchPartition(text) {
     .sort();
 }
 
+class HierarchyNets {
+  constructor() { this.parent = new Map(); }
+  find(key) {
+    if (!this.parent.has(key)) this.parent.set(key, key);
+    let root = key;
+    while (this.parent.get(root) !== root) root = this.parent.get(root);
+    while (this.parent.get(key) !== root) {
+      const next = this.parent.get(key);
+      this.parent.set(key, root);
+      key = next;
+    }
+    return root;
+  }
+  union(a, b) {
+    const ra = this.find(a); const rb = this.find(b);
+    if (ra !== rb) this.parent.set(ra, rb);
+  }
+}
+
+function sheetFilesOf(text) {
+  try {
+    const tree = parseSexpr(text);
+    if (tree[0] !== 'kicad_sch') return [];
+    return findAll(tree, 'sheet').map((sheet) => propOf(sheet, 'Sheetfile'))
+      .filter(Boolean).map(String);
+  } catch { return []; }
+}
+
+/**
+ * Find the unique selected file that no other selected file references.
+ * A browser FileList has no trustworthy "first selected root" convention.
+ *
+ * @param {Map<string,string>|Record<string,string>} files
+ * @returns {{rootName?:string,error?:string}}
+ */
+export function pickKicadHierarchyRoot(files) {
+  const supplied = files instanceof Map ? files : new Map(Object.entries(files || {}));
+  const names = [...supplied.keys()];
+  const referenced = new Set();
+  for (const text of supplied.values()) {
+    for (const name of sheetFilesOf(text)) referenced.add(name);
+  }
+  const roots = names.filter((name) => !referenced.has(name));
+  if (roots.length === 1) return { rootName: roots[0] };
+  return { error: roots.length
+    ? `Selected KiCad files have ${roots.length} possible roots (${roots.join(', ')})`
+    : 'Selected KiCad files contain no unique root (the references may form a cycle)' };
+}
+
+function hierarchyLoss(losses, warnings, ref, kind, reason, source = '') {
+  losses.push({ ref, kind, source, reason });
+  warnings.push(`${ref}: ${reason}; the safe one-level subset was imported, but numeric analysis is blocked.`);
+}
+
+/** Import one root plus explicitly supplied direct children. */
+function importKicadHierarchy(text, opts) {
+  const warnings = []; const losses = []; const unmapped = []; const ignored = []; const parts = [];
+  const supplied = suppliedFiles(opts);
+  const rootName = String(opts.rootName || '<root>');
+  const root = resolveKicadSch(text);
+  if (!root.ok) return { parts, wires: [], unmapped, ignored, warnings: [root.error], losses };
+  if (!root.sheetDefs.length) return importKicadSch(text);
+
+  const sheets = [{ scope: '/', label: rootName, resolved: root, parentDef: null }];
+  const seenScopes = new Set(['/']);
+  root.sheetDefs.forEach((def, index) => {
+    const ref = def.name || `sheet-${index + 1}`;
+    if (!safeChildName(def.file)) {
+      hierarchyLoss(losses, warnings, ref, 'unsafe-hierarchical-sheet-path',
+        `child Sheetfile ${JSON.stringify(def.file)} is not a direct basename`, def.file);
+      return;
+    }
+    if (def.file === rootName) {
+      hierarchyLoss(losses, warnings, ref, 'cyclic-hierarchical-sheet',
+        `child Sheetfile ${JSON.stringify(def.file)} refers back to the root`, def.file);
+      return;
+    }
+    const childText = supplied.get(def.file);
+    if (typeof childText !== 'string') {
+      hierarchyLoss(losses, warnings, ref, 'missing-hierarchical-sheet',
+        `child Sheetfile ${JSON.stringify(def.file)} was not supplied`, def.file);
+      return;
+    }
+    const child = resolveKicadSch(childText);
+    if (!child.ok) {
+      hierarchyLoss(losses, warnings, ref, 'invalid-hierarchical-sheet',
+        `child Sheetfile ${JSON.stringify(def.file)} could not be parsed: ${child.error}`, def.file);
+      return;
+    }
+    const rawScope = String(def.uuid || `sheet-${index + 1}`);
+    let scope = rawScope; let suffix = 2;
+    while (seenScopes.has(scope)) scope = `${rawScope}-${suffix++}`;
+    seenScopes.add(scope);
+    sheets.push({ scope, label: def.name || def.file, file: def.file,
+      resolved: child, parentDef: def });
+
+    for (const nested of child.sheetDefs) {
+      const cycle = nested.file === rootName || nested.file === def.file;
+      hierarchyLoss(losses, warnings, `${ref}/${nested.name || nested.file || 'sheet'}`,
+        cycle ? 'cyclic-hierarchical-sheet' : 'unsupported-hierarchy-depth',
+        cycle
+          ? `nested Sheetfile ${JSON.stringify(nested.file)} forms a cycle`
+          : `nested Sheetfile ${JSON.stringify(nested.file)} exceeds the supported one child level`,
+        nested.file);
+    }
+  });
+
+  const dsu = new HierarchyNets();
+  const keyAt = (sheet, x, y) => `${sheet.scope}\0${sheet.resolved.net.netAt(x, y)}`;
+  const rootSheet = sheets[0];
+
+  // Global labels and power/hidden-power pins cross every sheet instance.
+  const firstGlobal = new Map();
+  for (const sheet of sheets) {
+    for (const signal of sheet.resolved.globalSignals) {
+      const key = keyAt(sheet, signal.x, signal.y);
+      if (firstGlobal.has(signal.name)) dsu.union(firstGlobal.get(signal.name), key);
+      else firstGlobal.set(signal.name, key);
+    }
+  }
+
+  // A hierarchical label crosses exactly one boundary: the parent sheet pin
+  // of this child instance. Same spelling in a sibling is not enough.
+  for (const sheet of sheets.slice(1)) {
+    const parentPins = new Map();
+    for (const pin of sheet.parentDef.pins) {
+      if (!parentPins.has(pin.name)) parentPins.set(pin.name, []);
+      parentPins.get(pin.name).push(pin);
+    }
+    const childLabels = new Map();
+    for (const signal of sheet.resolved.hierarchicalSignals) {
+      if (!childLabels.has(signal.name)) childLabels.set(signal.name, []);
+      childLabels.get(signal.name).push(signal);
+    }
+    for (const [name, pins] of parentPins) {
+      const labels = childLabels.get(name) || [];
+      if (!labels.length) {
+        hierarchyLoss(losses, warnings, `${sheet.label}:${name}`, 'unmatched-hierarchical-port',
+          `parent sheet pin ${JSON.stringify(name)} has no matching child hierarchical label`, sheet.file);
+        continue;
+      }
+      for (const pin of pins) for (const signal of labels) {
+        dsu.union(keyAt(rootSheet, pin.x, pin.y), keyAt(sheet, signal.x, signal.y));
+      }
+    }
+    for (const name of childLabels.keys()) {
+      if (!parentPins.has(name)) hierarchyLoss(losses, warnings, `${sheet.label}:${name}`,
+        'unbound-hierarchical-label',
+        `child hierarchical label ${JSON.stringify(name)} has no matching parent sheet pin`, sheet.file);
+    }
+  }
+
+  const used = new Set(); const byNet = new Map();
+  let attached = 0; let floating = 0; let pinCount = 0; let buses = 0; let noConnects = 0;
+  sheets.forEach((sheet, sheetIndex) => {
+    const resolved = sheet.resolved;
+    buses += resolved.buses; noConnects += resolved.noConnects;
+    for (const placement of resolved.placements) {
+      const name = placement.libId.includes(':')
+        ? placement.libId.slice(placement.libId.indexOf(':') + 1) : placement.libId;
+      const instanceTag = `${sheet.label}_${sheet.scope}`;
+      const scopedRef = sheet.scope === '/' ? placement.ref : `${sheet.label}/${placement.ref}`;
+      const idRef = sheet.scope === '/' ? placement.ref : `${instanceTag}_${placement.ref}`;
+      if (NON_ELECTRICAL.test(name)) {
+        ignored.push({ ref: scopedRef, libsource: placement.libId });
+        continue;
+      }
+      const hit = mapKicadSymbol(placement.libId, placement.value, placement.isPower);
+      if (!hit) {
+        unmapped.push({ ref: scopedRef, value: placement.value, libsource: placement.libId });
+        warnings.push(`Unmapped component: ${scopedRef} (${placement.libId}`
+          + `${placement.value ? ` = ${placement.value}` : ''})`);
+        continue;
+      }
+      if (hit._note) warnings.push(`${scopedRef}: ${hit._note}`);
+      const params = { ...hit.params };
+      if (placement.value) params._value = placement.value;
+      const id = makeId(idRef, used);
+      parts.push({ id, kind: hit.kind, params,
+        x: placement.x + (sheetIndex % 4) * 250,
+        y: placement.y + Math.floor(sheetIndex / 4) * 180 });
+      const allow = hit.terminals ? new Set(hit.terminals) : null;
+      for (const pin of placement.pins) {
+        const terminal = terminalFor(hit, pin.num, pin.name, pin.type);
+        if (!terminal || (allow && !allow.has(terminal))) continue;
+        pinCount++;
+        const localNet = resolved.net.netAt(pin.x, pin.y);
+        const netId = dsu.find(keyAt(sheet, pin.x, pin.y));
+        if (!byNet.has(netId)) byNet.set(netId, []);
+        byNet.get(netId).push({ part: id, terminal });
+        if (resolved.live.has(localNet)) attached++; else floating++;
+      }
+    }
+  });
+
+  const { wires, nets } = wiresFromNets(byNet);
+  warnings.push(`${sheets.length - 1}/${root.sheetDefs.length} direct hierarchical sheet instance(s) read; `
+    + 'local names are instance-scoped, parent ports bind exact child hierarchical labels, and global/power names cross sheets');
+  if (buses) warnings.push(`${buses} bus segment(s)/entries ignored -- bus membership is by name expansion, `
+    + 'and guessing it would invent connections rather than lose them');
+  if (ignored.length) warnings.push(`${ignored.length} drawing artifact(s) skipped (mounting holes, fiducials, `
+    + 'logos, power flags, net ties) -- not components');
+  if (noConnects) warnings.push(`${noConnects} pin(s) marked no-connect by the author`);
+  if (parts.length && !wires.length) warnings.push('No connections resolved: every mapped terminal is isolated.');
+  if (!parts.length) warnings.push('No mappable components found in the supplied hierarchy.');
+  warnings.push(`geometry: ${attached}/${pinCount} mapped pins landed on a net `
+    + `(${nets} nets across ${sheets.length} sheet instance(s))`);
+  if (floating) warnings.push(`${floating} pin(s) touch no wire, junction or label`);
+  return { parts, wires, unmapped, ignored, warnings, losses,
+    hierarchy: { root: rootName, suppliedChildren: sheets.length - 1,
+      referencedChildren: root.sheetDefs.length, supportedDepth: 1 } };
+}
+
 /**
  * @param {string} text  Raw .kicad_sch content
+ * @param {object} [opts] `{files, rootName}` enables one-level hierarchy from
+ *                         explicitly supplied child texts.
  * @returns {{parts: Array, wires: Array, warnings: string[], unmapped: Array, ignored: Array}}
  */
-export function importKicadSch(text) {
+export function importKicadSch(text, opts = {}) {
+  if (opts.files) return importKicadHierarchy(text, opts);
   const warnings = [];
   const unmapped = [];
   const ignored = [];

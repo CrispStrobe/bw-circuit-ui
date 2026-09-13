@@ -32,6 +32,7 @@ const PREFIX_MAP = {
   buzzer: 'LS', dc_motor: 'M', servo: 'M', gearmotor: 'M',
   fuse: 'F', solar_cell: 'BT', battery_9v: 'BT', battery_aa: 'BT',
   battery_coin: 'BT', vsource: 'V', isource: 'I',
+  vcvs: 'E', vccs: 'G',
 };
 
 /**

@@ -1,0 +1,20 @@
+(kicad_sch (version 20231120)
+  (generator "brickwright-self-authored-test")
+  (uuid "root-0000")
+  (lib_symbols
+    (symbol "Device:R"
+      (symbol "R_1_1"
+        (pin passive line (at 0 3.81 270) (name "~") (number "1"))
+        (pin passive line (at 0 -3.81 90) (name "~") (number "2")))))
+  (symbol (lib_id "Device:R") (at 100 50 0) (unit 1)
+    (property "Reference" "RROOT") (property "Value" "10k"))
+  (global_label "COMMON" (at 100 46.19 0))
+  (sheet (at 100 53.81) (size 30 20) (uuid "alpha-uuid")
+    (property "Sheetname" "Alpha")
+    (property "Sheetfile" "kicad-hierarchy-child.kicad_sch")
+    (pin "P" passive (at 100 53.81 0)))
+  (sheet (at 200 100) (size 30 20) (uuid "beta-uuid")
+    (property "Sheetname" "Beta")
+    (property "Sheetfile" "kicad-hierarchy-child.kicad_sch")
+    (pin "P" passive (at 200 100 0)))
+  (sheet_instances (path "/" (page "1"))))

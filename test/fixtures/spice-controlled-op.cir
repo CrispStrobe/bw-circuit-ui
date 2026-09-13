@@ -1,0 +1,8 @@
+Self-authored ideal controlled-source operating point
+V1 ctl 0 DC 1
+E1 eout 0 ctl 0 2
+R1 eout 0 1k
+G1 gout 0 ctl 0 1m
+R2 gout 0 1k
+.op
+.end

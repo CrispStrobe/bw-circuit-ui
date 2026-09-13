@@ -150,6 +150,9 @@ export class Circuit {
     /** @type {Wire[]} */
     this.wires = [];
 
+    /** Import findings that make a numeric analysis of this saved circuit unsafe. */
+    this.analysisBlockers = [];
+
     /** @type {object} */
     this.board = new this._BoardImpl(vcc);
 
@@ -736,6 +739,21 @@ export class Circuit {
   }
 
   /**
+   * Compute an independent DC operating point without adopting it as the
+   * circuit's live transient state. The engine owns the supported-domain,
+   * convergence and current-orientation contract; this is intentionally only
+   * the UI model's public reachability proxy.
+   *
+   * @returns {object}
+   */
+  operatingPoint() {
+    if (!this.board || typeof this.board.operatingPoint !== 'function') {
+      throw new Error('operatingPoint: the injected bw-board engine does not provide this analysis');
+    }
+    return this.board.operatingPoint();
+  }
+
+  /**
    * @param {string} netA
    * @param {string} netB
    * @returns {number|'requires-power-off'}
@@ -986,6 +1004,7 @@ export class Circuit {
       // silently vanished from saves and the restored board stopped
       // conducting through its rails.
       holeWires: this.holeWires(),
+      ...(this.analysisBlockers.length ? { analysisBlockers: this.analysisBlockers.map(b => ({ ...b })) } : {}),
       ...(this.pcb ? { pcb: this.pcb } : {}),
     };
   }
@@ -1003,6 +1022,9 @@ export class Circuit {
     // 595 was dropped at load.
     const engineHasModel = (k) => Boolean(engineDevice(k));
     c.pcb = data.pcb ?? null;
+    c.analysisBlockers = Array.isArray(data.analysisBlockers)
+      ? data.analysisBlockers.filter(b => b && typeof b === 'object').map(b => ({ ...b }))
+      : [];
     // Legacy files also predate parts carrying their terminal list — every
     // renderer maps over part.terminals, so a missing list was the SECOND
     // way a gallery file crashed the GUI (pure-circuit examples, same day

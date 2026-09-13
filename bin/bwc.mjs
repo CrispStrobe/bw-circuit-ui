@@ -9,6 +9,7 @@
  * it behaves across three hundred real boards.
  *
  *   bwc info      <file>                    what is in it, and what did not map
+ *   bwc op        <file>                    independent static DC operating point
  *   bwc convert   <file> --to eagle|kicad-sch|kicad|spice|json [-o out]
  *   bwc render    <file> [-o out.svg] [--dark]
  *   bwc roundtrip <file>                    import -> export -> import, compared
@@ -109,6 +110,7 @@ const die = (m) => { console.error('bwc: ' + m); process.exit(2); };
 const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
+    + '  bwc op      <file>\n'
     + '  bwc convert <file> --to eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
     + '\n  audit <dir> [dir...]        four-layer readiness per part kind'
@@ -123,7 +125,8 @@ async function load(path) {
     try {
       const j = JSON.parse(text);
       if (Array.isArray(j.parts)) {
-        return { parts: j.parts, wires: j.wires || [], unmapped: [], ignored: [], warnings: [], format: 'json' };
+        return { parts: j.parts, wires: j.wires || [], vcc: j.vcc,
+          unmapped: [], ignored: [], warnings: [], losses: [], format: 'json' };
       }
     } catch { /* not our json; fall through to the importers */ }
   }
@@ -142,6 +145,21 @@ async function load(path) {
       }
     } catch { /* no directory listing; the importer will say what is missing */ }
     const r = importCircuit(fmt, text, { lib: libs });
+    return { ...r, format: fmt };
+  }
+  if (fmt === 'kicad-sch') {
+    // The requested path is the explicit root. Supply only direct sibling
+    // schematics as inert text; Sheetfile strings never trigger a filesystem
+    // read, traversal, or network lookup inside the importer.
+    const dir = dirname(path) || '.';
+    const files = new Map();
+    try {
+      const { readdirSync } = await import('node:fs');
+      for (const entry of readdirSync(dir)) {
+        if (/\.kicad_sch$/i.test(entry)) files.set(entry, readFileSync(join(dir, entry), 'utf8'));
+      }
+    } catch { /* missing children become explicit hierarchy losses */ }
+    const r = importCircuit(fmt, text, { files, rootName: basename(path) });
     return { ...r, format: fmt };
   }
   if (!fmt) {
@@ -178,6 +196,56 @@ switch (cmd) {
     if (c.losses && c.losses.length) {
       console.log('  LOSSES   : ' + c.losses.length + ' — imported with semantics not represented:');
       for (const loss of c.losses) console.log('      ' + loss.ref + '  ' + loss.reason);
+    }
+    break;
+  }
+
+  case 'op': {
+    const c = await loadOrDie(file);
+    if (c.unmapped && c.unmapped.length) {
+      die(`op refuses ${c.unmapped.length} unmapped component(s); run \`bwc info ${file}\``);
+    }
+    if (c.losses && c.losses.length) {
+      die(`op refuses ${c.losses.length} semantic import loss(es); run \`bwc info ${file}\``);
+    }
+    if (!c.parts.length) die('op needs at least one imported circuit part');
+
+    const { Circuit, error } = await loadEngine();
+    if (error) die('op needs a bw-board engine with operatingPoint support (' + error + ')');
+    const circ = Circuit.fromJSON({ vcc: Number.isFinite(c.vcc) ? c.vcc : 5,
+      parts: c.parts, wires: c.wires });
+    if (circ.netlistError) die('op could not build an engine netlist (' + circ.netlistError + ')');
+    circ.setPower(true);
+
+    let result;
+    try { result = circ.operatingPoint(); } catch (e) { die(e && e.message ? e.message : String(e)); }
+    if (!result || result.converged !== true) {
+      die('op did not converge' + (result && result.railConflicts && result.railConflicts.length
+        ? ': ' + result.railConflicts.join('; ') : ''));
+    }
+    if (result.railConflicts && result.railConflicts.length) {
+      die('op found rail conflicts: ' + result.railConflicts.join('; '));
+    }
+
+    console.log(basename(file) + '  [' + c.format + ']  DC operating point');
+    console.log('  converged: yes');
+    console.log('  scope    : ' + result.analysis.scope);
+    console.log('  sources  : ' + result.analysis.sources);
+    console.log('  controlled: ' + result.analysis.controlledSources);
+    console.log('  kinds    : ' + result.analysis.supportedKinds.join(', '));
+    console.log('  capacitors: ' + result.analysis.capacitors);
+    console.log('  currents : ' + result.analysis.currentConvention);
+    console.log('  nodes:');
+    for (const [net, volts] of [...result.nodeVoltages].sort(([a], [b]) => a.localeCompare(b))) {
+      console.log('    ' + String(net).padEnd(18) + ' ' + Number(volts).toPrecision(12) + ' V');
+    }
+    console.log('  terminal currents:');
+    const rows = [];
+    for (const [part, terminals] of result.branchCurrents) {
+      for (const [terminal, amps] of terminals) rows.push([`${part}.${terminal}`, amps]);
+    }
+    for (const [terminal, amps] of rows.sort(([a], [b]) => a.localeCompare(b))) {
+      console.log('    ' + terminal.padEnd(18) + ' ' + Number(amps).toPrecision(12) + ' A');
     }
     break;
   }
