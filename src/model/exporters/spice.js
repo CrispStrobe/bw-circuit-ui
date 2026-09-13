@@ -37,6 +37,15 @@
  */
 
 import { PART_SYMBOLS } from '../../data/easyeda-symbols.js';
+// THE CARD IS THE ONLY HOME OF AN ELECTRICAL NUMBER (bw-board parts-library):
+// a part that names `params.part` takes its junction numbers from the card, and
+// every named `.model` body is DERIVED from the same numbers the solver uses.
+// Until 2026-09-13 this file kept its own `.model LED ... Rs=5` beside the
+// solver's rd = 10 and the exponential path's rs = 2 — three homes, no authority.
+// The class defaults for an UN-carded part come from the solver's own constants
+// (JUNCTION_RD for LEDs, SILICON_RD for silicon), never from a literal here.
+import { spiceModelFor, resolveParams, cardFor } from 'bw-board/parts-library.js';
+import { JUNCTION_RD, SILICON_RD } from 'bw-board/mna.js';
 import { formatSpiceValue } from '../si.js';
 
 /** SPICE element types that take a simple two-terminal card */
@@ -67,9 +76,9 @@ const VT_25C = 0.02585;
  * @returns {{is: number, n: number, rs: number, vf: number}}
  */
 export function junctionModel(part) {
-  const params = part.params || {};
+  const params = resolveParams(part.params || {});
   const n = Number(params.n ?? (part.kind === 'led' ? 1.8 : 1.0));
-  const rs = Number(params.rs ?? 2);
+  const rs = Number(params.rs ?? (part.kind === 'led' || part.kind === 'rgb_led' ? JUNCTION_RD : SILICON_RD));
   const vf = Number(params.vf ?? (part.kind === 'led' || part.kind === 'rgb_led' ? 2.0 : 0.7));
   const nVt = n * VT_25C;
   let is = params.is;
@@ -131,7 +140,10 @@ function lowestSourceFrequency(netlist) {
  * @param {string} [title='BrickWright Circuit']
  * @returns {{ text: string, skipped: string[], warnings: string[] }}
  */
-export function toSpice(netlist, title = 'BrickWright Circuit') {
+export function toSpice(netlist, title = 'BrickWright Circuit', {modelFor = spiceModelFor} = {}) {
+  // `modelFor` is injectable ONLY so a test can perturb a card and watch the deck
+  // move — the proof that models are derived, not copied. Production callers
+  // never pass it.
   const skipped = [];
   const warnings = [];
 
@@ -264,7 +276,17 @@ export function toSpice(netlist, title = 'BrickWright Circuit') {
       usedModels.add(modelName);
       lines.push(`${part.refdes} ${nodeFields} ${modelName}`);
     } else if (card === 'Q') {
-      const model = (sym && sym.spiceModel) || 'Q_DEFAULT';
+      // A named part (params.part) is the card's model; a bare class falls back
+      // to the symbol table's choice, then to the generic default.
+      const named = cardFor(part.params?.part);
+      const model = (named && named.id) || (sym && sym.spiceModel);
+      if (!model) {
+        // Every Q symbol names a model today; if one ever does not, say so
+        // rather than reference a model no `.model` line defines.
+        skipped.push(`${part.refdes} (${part.kind}): no SPICE model is named for this kind`);
+        lines.push(`* ${part.refdes} ${part.kind} — no model`);
+        continue;
+      }
       usedModels.add(model);
       lines.push(`${part.refdes} ${nodeFields} ${model}`);
     } else if (card === 'M') {
@@ -277,15 +299,19 @@ export function toSpice(netlist, title = 'BrickWright Circuit') {
   }
 
   // ── Models ───────────────────────────────────────────────────────
-  const SHARED_MODELS = {
-    '2N2222': '.model 2N2222 NPN (Bf=200 Is=1e-14)',
-    '2N2907': '.model 2N2907 PNP (Bf=200 Is=1e-14)',
-    'TIP120': '.model TIP120 NPN (Bf=1000 Is=1e-12)',
-    'Q_DEFAULT': '.model Q_DEFAULT NPN (Bf=100 Is=1e-14)',
+  // Named models are DERIVED from the parts library. The generic MOSFET below
+  // has no card yet (it duplicates a solver default) and is the next
+  // reconciliation; it is the only `.model` literal left in this file.
+  // (Q_DEFAULT was removed 2026-09-13: every Q symbol names a card, so nothing
+  // reached it — a literal nothing reaches is a defect that looks like a feature.)
+  const GENERIC_MODELS = {
     'MOSFET': '.model MOSFET NMOS (Vto=2.0 Kp=20u)',
   };
-  const shared = [...usedModels].filter(m => SHARED_MODELS[m]).sort()
-    .map(m => SHARED_MODELS[m]);
+  const modelLine = name => {
+    const m = modelFor(name);
+    return m ? `.model ${m.name} ${m.type} (${m.body})` : GENERIC_MODELS[name];
+  };
+  const shared = [...usedModels].sort().map(modelLine).filter(Boolean);
   if (modelCards.length || shared.length) {
     lines.push('');
     lines.push('* Device models');
