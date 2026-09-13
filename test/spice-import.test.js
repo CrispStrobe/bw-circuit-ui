@@ -304,7 +304,7 @@ describe('the reader states what it will not do', () => {
     assert.ok(r.parts.some(p => p.id === 'R1'));
   });
 
-  it('E and G map, because bw-board E3.5a landed vcvs and vccs', () => {
+  it('E and G map through Circuit.fromJSON into the engine terminal contract', () => {
     const r = importSpice(deck('V1 1 0 DC 1\nE1 3 0 1 0 10\nG1 4 0 1 0 1m\nR1 3 0 1k\nR2 4 0 1k'));
     assert.deepEqual(r.unmapped, []);
     const e = r.parts.find(p => p.id === 'E1');
@@ -313,6 +313,35 @@ describe('the reader states what it will not do', () => {
     assert.equal(e.params.gain, 10);
     assert.equal(g.kind, 'vccs');
     assert.equal(g.params.gm, 1e-3);
+
+    const circuit = Circuit.fromJSON({ vcc: 5, parts: r.parts, wires: r.wires });
+    assert.deepEqual(circuit.getPart('E1').terminals, ['outp', 'outn', 'inp', 'inn']);
+    assert.deepEqual(circuit.getPart('G1').terminals, ['outp', 'outn', 'inp', 'inn']);
+    assert.equal(circuit.netlistError, null,
+      `controlled sources must reach bw-board validation: ${circuit.netlistError}`);
+    assert.deepEqual(
+      circuit.board.getParts().filter(p => p.kind === 'vcvs' || p.kind === 'vccs')
+        .map(p => [p.kind, p.terminals]),
+      [
+        ['vcvs', ['outp', 'outn', 'inp', 'inn']],
+        ['vccs', ['outp', 'outn', 'inp', 'inn']],
+      ]);
+  });
+
+  it('does not silently accept stale two-terminal controlled sources', () => {
+    const r = importSpice(deck('V1 1 0 DC 1\nE1 3 0 1 0 10\nR1 3 0 1k'));
+    const parts = r.parts.map(p => p.id === 'E1' ? { ...p, terminals: ['a', 'b'] } : p);
+    const originalWarn = console.warn;
+    console.warn = () => {};
+    let circuit;
+    try {
+      circuit = Circuit.fromJSON({ vcc: 5, parts, wires: r.wires });
+    } finally {
+      console.warn = originalWarn;
+    }
+    assert.match(circuit.netlistError, /E1.*vcvs.*unknown terminal "a"/i);
+    assert.equal(circuit.board.getParts().length, 0,
+      'a rejected netlist must not leave a plausible partial board');
   });
 
   it('a MOSFET\'s bulk node is dropped and said out loud', () => {

@@ -9,10 +9,11 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-| controlled-source terminal contract | `/root/sol_lane_coordination` (Codex Sol), `/mnt/volume1/code/wt/bw-circuit-ui-vcvs-sol` | `1b96669` | **CLAIMED 2026-09-13.** Repair only VCVS/VCCS terminal resolution through the existing part authority for `SPICE import -> Circuit.fromJSON -> bw-board`; add focused positive/negative tests and rerun the private PhyChip fixture. No solver equations, parts defaults, exporter sweep, schematic-format work, or arbitrary model expansion. |
+_No active claims._
 
 ## DONE
 
 | lane | owner | result | evidence |
 |---|---|---|---|
 | KiCad legacy hidden-definition lookup | `/root/schematic_corpus_import` (Codex Sol) | **DONE 2026-09-13.** Cache-library lookup now accepts the format's exact leading-`~` hidden-symbol spelling only after exact-name lookup, restoring rescued power-symbol pin geometry without fuzzy symbol matching. | Self-authored connected-rail and near-name negative fixtures plus shipping `bwc info`; focused suites 74/74 pass. Both local PySpice KiCad legacy schematics match their independent KiCad-exported SPICE topology: 2/2 files, 14/14 multi-node partitions. This is import topology evidence only: 0 simulations, and unsupported comparator/rescued resistor mappings remain reported. |
+| controlled-source terminal contract | `/root/sol_lane_coordination` (Codex Sol) | **DONE 2026-09-13.** Core `vcvs`/`vccs` parts now retain bw-board's `outp/outn/inp/inn` contract through SPICE import and `Circuit.fromJSON`; stale `a/b` input remains a loud rejection. No solver or importer-card mapping changed. | Focused Node suite: 105/105 pass. The reviewed private PhyChip case now reaches all three finite comparisons on clean bw-board `838492f`; two agree and the resistor-current observable exposes a separate sign-orientation manifest correction. |
