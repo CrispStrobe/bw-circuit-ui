@@ -21,13 +21,17 @@ TEXT 120 120 Left 2 !.op
 `;
 
 describe('LTspice ASC bounded importer', () => {
-  it('uses the verified standard-symbol pin coordinates in all rotations', () => {
+  it('uses the verified standard-symbol pin coordinates in rotations and mirrors', () => {
     const at = orientation => ({ x: 10, y: 20, orientation });
     assert.deepEqual(placeLtspicePin(16, 96, at('R0')), [26, 116]);
     assert.deepEqual(placeLtspicePin(16, 96, at('R90')), [-86, 36]);
     assert.deepEqual(placeLtspicePin(16, 96, at('R180')), [-6, -76]);
     assert.deepEqual(placeLtspicePin(16, 96, at('R270')), [106, 4]);
-    assert.equal(placeLtspicePin(16, 96, at('M0')), null);
+    assert.deepEqual(placeLtspicePin(16, 96, at('M0')), [-6, 116]);
+    assert.deepEqual(placeLtspicePin(16, 96, at('M90')), [106, 36]);
+    assert.deepEqual(placeLtspicePin(16, 96, at('M180')), [26, -76]);
+    assert.deepEqual(placeLtspicePin(16, 96, at('M270')), [-86, 4]);
+    assert.equal(placeLtspicePin(16, 96, at('M45')), null);
   });
 
   it('detects and imports a non-vacuous static R/V schematic', () => {
@@ -115,13 +119,13 @@ SYMATTR Value 2.2k
     assert.equal(result.parts.find(part => part.id === 'R1').params.ohms, 2200);
   });
 
-  it('does not hide unknown symbols, dynamic directives, or unsupported mirrors', () => {
+  it('does not hide unknown symbols, dynamic directives, or unsupported orientations', () => {
     const text = `Version 4
 SHEET 1 160 160
 SYMBOL Opamps\\UniversalOpAmp 0 0 R0
 SYMATTR InstName U1
 SYMATTR Value level1
-SYMBOL res 80 0 M0
+SYMBOL res 80 0 M45
 SYMATTR InstName R1
 SYMATTR Value 1k
 TEXT 0 120 Left 2 !.tran 1m

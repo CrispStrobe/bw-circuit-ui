@@ -15,8 +15,9 @@
  * SpiceOrder 1 to 2 while the native source injects from `neg` to `pos`, so
  * that pin order deliberately maps to `neg,pos`. Unknown/custom symbols are
  * explicit `unmapped[]` entries; unsupported orientations and non-static
- * values are explicit `losses[]`. No external symbol file is followed and no
- * TEXT directive is executed.
+ * values are explicit `losses[]`. Mirrored transforms use LTspice's Y-down
+ * instance matrices, cross-checked against paired ASC/netlist connectivity.
+ * No external symbol file is followed and no TEXT directive is executed.
  */
 
 import { NetSolver, makeId, wiresFromNets } from './kicad-common.js';
@@ -60,6 +61,10 @@ export function placeLtspicePin(px, py, instance) {
     case 'R90': u = -py; v = px; break;
     case 'R180': u = -px; v = -py; break;
     case 'R270': u = py; v = -px; break;
+    case 'M0': u = -px; v = py; break;
+    case 'M90': u = py; v = px; break;
+    case 'M180': u = px; v = -py; break;
+    case 'M270': u = -py; v = -px; break;
     default: return null;
   }
   return [instance.x + u, instance.y + v];
