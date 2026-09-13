@@ -50,6 +50,7 @@ import { PART_SYMBOLS } from '../../data/easyeda-symbols.js';
 // the spice-oracle job reddened.)
 import { spiceModelFor, resolveParams, cardFor, classDefaults } from 'bw-board/parts-library.js';
 import { formatSpiceValue } from '../si.js';
+import { validateStrictSpicePulseParams } from '../spice-source.js';
 import { controlledResistance } from 'bw-board/mna.js';
 
 /** SPICE element types that take a simple two-terminal card */
@@ -325,6 +326,14 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       if (validSine) {
         lines.push(`${part.refdes} ${nodeFields} SINE(${formatSpiceValue(p.offset)} `
           + `${formatSpiceValue(p.amplitude)} ${formatSpiceValue(p.freq)})`);
+      } else if (part.kind === 'vsource' && p.wave === 'spice-pulse') {
+        const pulse = validateStrictSpicePulseParams(p);
+        if (pulse.ok) {
+          lines.push(`${part.refdes} ${nodeFields} PULSE(${pulse.values.map(formatSpiceValue).join(' ')})`);
+        } else {
+          skipped.push(`${part.refdes} (${part.kind}): time-varying spice-pulse source is not losslessly exportable; ${pulse.reason}`);
+          lines.push(`* ${part.refdes} ${part.kind} — skipped (time-varying source not losslessly exportable; ${pulse.reason})`);
+        }
       } else {
         const detail = extra.length ? `; unsupported parameter${extra.length > 1 ? 's' : ''} ${extra.join(', ')}` : '';
         skipped.push(`${part.refdes} (${part.kind}): time-varying ${String(p.wave)} source is not losslessly exportable${detail}`);
