@@ -1,0 +1,4 @@
+* Self-authored one-element SPICE transient stimulus
+Vstim signal 0 PULSE(0 5 1u 1n 1n 1u 2u)
+.tran 1n 5u
+.end

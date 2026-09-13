@@ -89,7 +89,13 @@ export function looksLikeSpice(text) {
   const hasAnalysisOrModel = /^\s*\.(op|tran|ac|dc|model|subckt)\b/im.test(text);
   // An element card: a letter-prefixed name, then at least two node fields.
   const elementCards = (text.match(/^\s*[RCLVIDQMEFGHKSTWXJZ]\w*\s+\S+\s+\S+/gim) || []).length;
-  return elementCards >= 2 && (hasEnd || hasAnalysisOrModel);
+  // Two elements plus either structural marker remains the broad, established
+  // gate. A one-element deck needs BOTH: this admits legitimate source-only
+  // stimulus decks without letting a lone netlist-looking prose line or an
+  // unterminated fragment seize `.net` from KiCad's extension fallback.
+  return elementCards >= 2
+    ? (hasEnd || hasAnalysisOrModel)
+    : elementCards === 1 && hasEnd && hasAnalysisOrModel;
 }
 
 /**

@@ -22,6 +22,9 @@
 import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { Circuit } from '../src/model/circuit.js';
 import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice } from '../src/model/exporters/spice.js';
@@ -561,6 +564,34 @@ describe('detection', () => {
     circuit.setPower(true);
     const { text } = toSpice(extractNetlist(circuit));
     assert.equal(detectFormat(text, 'circuit.cir'), 'spice');
+  });
+
+  it('a complete one-element stimulus deck wins over the .net extension', () => {
+    const path = join(import.meta.dirname, 'fixtures', 'spice-single-source.net');
+    const text = readFileSync(path, 'utf8');
+    assert.ok(looksLikeSpice(text));
+    assert.equal(detectFormat(text, path), 'spice');
+    const r = importCircuit('spice', text);
+    assert.equal(r.parts.filter((p) => p.kind === 'vsource').length, 1);
+    assert.deepEqual(r.unmapped, []);
+  });
+
+  it('a lone element needs both an analysis/model card and an exact terminator', () => {
+    assert.equal(looksLikeSpice('* fragment\nV1 signal 0 DC 5\n.end\n'), false,
+      'a terminator alone is too weak to claim an otherwise ambiguous file');
+    assert.equal(looksLikeSpice('* fragment\nV1 signal 0 DC 5\n.tran 1n 5u\n'), false,
+      'an unterminated analysis fragment is not a complete one-element deck');
+  });
+
+  it('the shipping bwc CLI dispatches the self-authored .net fixture to SPICE', () => {
+    const path = join(import.meta.dirname, 'fixtures', 'spice-single-source.net');
+    const cli = spawnSync(process.execPath,
+      [join(import.meta.dirname, '..', 'bin', 'bwc.mjs'), 'info', path], { encoding: 'utf8' });
+    assert.equal(cli.status, 0, cli.stderr || cli.stdout);
+    assert.match(cli.stdout, /\[spice\]/);
+    assert.match(cli.stdout, /parts\s+: 2\b/);
+    assert.match(cli.stdout, /wires\s+: 1\b/);
+    assert.doesNotMatch(cli.stdout, /UNMAPPED/);
   });
 
   it('it does not steal the formats it shares an extension with', () => {
