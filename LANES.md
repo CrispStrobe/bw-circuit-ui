@@ -9,7 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-_No active claims._
+| controlled-source slug-coverage CI repair | `/root/sol_lane_coordination` (Codex Sol), `/mnt/volume1/code/wt/bw-circuit-ui-vcvs-sol` | `9ca430e` | **CLAIM 2026-09-13.** Record importer-only engine-native `vcvs`/`vccs` in the existing reasoned slug-coverage exceptions so the broad test no longer misclassifies their deliberate no-sidecar status. Scope: `test/slug-coverage.test.js` and this row only. No sidecar, palette, terminal, importer, exporter or engine behavior changes. |
 
 ## DONE
 
