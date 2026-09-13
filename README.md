@@ -8,6 +8,19 @@ is fabricated.
 
 **Live:** [brickwright-lite.vercel.app](https://brickwright-lite.vercel.app/) → Circuit tab.
 
+## Repository role and adoption
+
+This repository is the source of truth for the circuit model, editor, renderer,
+part placement, and UI-side netlist construction. Reusable fixes to those
+contracts land and pass here first; Brickwright Lite consumes a reviewed exact
+git SHA rather than carrying a private copy of this source.
+
+`bw-board` owns electrical simulation. This repository consumes it from the
+full git SHA in `package.json` and `package-lock.json`; an upstream engine change
+is adopted deliberately by moving both together after the affected contract
+tests pass. Application preferences and packaging stay in Lite. The complete
+cross-repository procedure is in [`docs/UPSTREAM-WIP.md`](docs/UPSTREAM-WIP.md).
+
 ## What is in it
 
 - **Circuit model** — parts, wires, breadboard seating, netlist derivation,
