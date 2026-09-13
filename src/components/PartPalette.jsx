@@ -82,7 +82,13 @@ const CATEGORIES = [
       { kind: 'capacitor', label: 'Capacitor 100µF', params: { farads: 0.0001 }, color: '#34495e' },
       { kind: 'inductor', label: 'Inductor 10mH', params: { henrys: 0.01 }, color: '#9b59b6', tooltip: 'Coil' },
       { kind: 'diode', label: 'Diode', params: { vf: 0.7 }, color: '#95a5a6' },
+      // NAMED PARTS: `params.part` names a card in bw-board's parts library, which is
+      // the only home of the electrical numbers (test/parts-cards.test.js keeps every
+      // card reachable from here and every sidecar free of electrical values).
+      { kind: 'diode', label: '1N4148', params: { part: '1N4148' }, color: '#95a5a6', tooltip: 'Small-signal silicon diode — numbers from the parts library' },
+      { kind: 'diode', label: '1N4001', params: { part: '1N4001' }, color: '#95a5a6', tooltip: 'Rectifier diode — numbers from the parts library' },
       { kind: 'zener', label: 'Zener Diode', params: { vf: 0.7, vz: 5.1 }, color: '#e67e22', tooltip: 'Voltage regulator diode' },
+      { kind: 'zener', label: '1N4733A', params: { part: '1N4733A' }, color: '#e67e22', tooltip: '5.1 V zener — numbers from the parts library' },
       { kind: 'switch', label: 'Switch', params: {}, color: '#bdc3c7' },
       { kind: 'slide_switch', label: 'Slide Switch', params: {}, color: '#bdc3c7', tooltip: 'SPDT' },
       { kind: 'photodiode', label: 'Photodiode', params: { vf: 0.7 }, color: '#f39c12' },
@@ -94,6 +100,7 @@ const CATEGORIES = [
     name: 'Active',
     parts: [
       { kind: 'led', label: 'LED', params: { vf: 2.0, color: 'red' }, color: '#2ecc71', hasColorPicker: true },
+      { kind: 'led', label: 'Red LED (LED_RED)', params: { part: 'LED_RED', color: 'red' }, color: '#2ecc71', tooltip: 'Standard red LED — numbers from the parts library' },
       { kind: 'rgb_led', label: 'RGB LED', params: { vf_r: 2.0, vf_g: 2.2, vf_b: 3.0 }, color: '#e74c3c', tooltip: 'Common cathode' },
       { kind: 'neopixel', label: 'NeoPixel', params: {}, color: '#2ecc71', tooltip: 'WS2812B addressable LED' },
       { kind: 'buzzer', label: 'Buzzer', params: {}, color: '#1abc9c' },
@@ -103,7 +110,9 @@ const CATEGORIES = [
     name: 'Transistors',
     parts: [
       { kind: 'npn', label: 'NPN', params: { beta: 100, vbe: 0.7 }, color: '#8e44ad', tooltip: '2N2222 type' },
+      { kind: 'npn', label: '2N2222', params: { part: '2N2222' }, color: '#8e44ad', tooltip: 'Named NPN — numbers from the parts library' },
       { kind: 'pnp', label: 'PNP', params: { beta: 100, vbe: 0.7 }, color: '#8e44ad', tooltip: '2N2907 type' },
+      { kind: 'pnp', label: '2N2907', params: { part: '2N2907' }, color: '#8e44ad', tooltip: 'Named PNP — numbers from the parts library' },
       { kind: 'nmos', label: 'N-MOSFET', params: { vth: 2.0 }, color: '#27ae60' },
       { kind: 'pmos', label: 'P-MOSFET', params: { vth: 2.0 }, color: '#27ae60' },
       { kind: 'tip120', label: 'TIP120', params: { beta: 1000 }, color: '#8e44ad', tooltip: 'Darlington — high beta, 2× Vbe' },

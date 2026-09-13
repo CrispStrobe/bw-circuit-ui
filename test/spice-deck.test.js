@@ -19,6 +19,7 @@
  * @module
  */
 
+import { JUNCTION_RD } from 'bw-board/mna.js';
 import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -230,13 +231,15 @@ describe('the exported deck is structurally simulatable (X0.1)', () => {
   });
 
   it('calibrates Is the way the engine does: Vf at the rated 20 mA', () => {
-    // Hand-computable: nVt = 1.8 * 0.02585 = 0.04653, Vj(20 mA) = 2.0 - 0.04,
+    // Hand-computable: nVt = 1.8 * 0.02585 = 0.04653, Vj(20 mA) = 2.0 - 0.020 * rs,
     // Is = 0.020 / (exp(1.96/0.04653) - 1).
     const j = junctionModel({ kind: 'led', params: { vf: 2.0 } });
     assert.equal(j.n, 1.8);
-    assert.equal(j.rs, 2);
+    // rs is the solver's class default, imported — a literal here was the third home
+    // of this number (exporter 2, exponential path 2, piecewise 10) until 2026-09-13.
+    assert.equal(j.rs, JUNCTION_RD);
     const nVt = 1.8 * 0.02585;
-    const expected = 0.020 / (Math.exp((2.0 - 0.020 * 2) / nVt) - 1);
+    const expected = 0.020 / (Math.exp((2.0 - 0.020 * JUNCTION_RD) / nVt) - 1);
     assert.ok(Math.abs(j.is - expected) / expected < 1e-12,
       `Is ${j.is} vs hand-computed ${expected}`);
     // And the model reproduces its own premise: at Is/N/Rs, 20 mA drops 2.0 V.
