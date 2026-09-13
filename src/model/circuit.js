@@ -1292,6 +1292,11 @@ export function terminalsForKind(kind, params) {
     case 'breadboard': return [];
     case 'vsource': case 'battery': return ['pos', 'neg'];
     case 'isource': return ['pos', 'neg'];
+    // Core MNA kinds live in bw-board's validation table, not its extensible
+    // device registry, so engineTerminals() deliberately has no entry for
+    // them. Keep this fallback aligned with that core contract: the SPICE
+    // importer already emits these four names in element-card order.
+    case 'vcvs': case 'vccs': return ['outp', 'outn', 'inp', 'inn'];
     case 'timer_555': return ['vcc', 'gnd', 'trigger', 'threshold', 'control', 'discharge', 'output', 'reset'];
     case 'seven_segment': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com'];
     case 'seven_seg_3': return ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'dp', 'com0', 'com1', 'com2'];

@@ -9,9 +9,10 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-| controlled-source terminal contract | `/root/sol_lane_coordination` (Codex Sol), `/mnt/volume1/code/wt/bw-circuit-ui-vcvs-sol` | `1b96669` | **CLAIMED 2026-09-13.** Repair only VCVS/VCCS terminal resolution through the existing part authority for `SPICE import -> Circuit.fromJSON -> bw-board`; add focused positive/negative tests and rerun the private PhyChip fixture. No solver equations, parts defaults, exporter sweep, schematic-format work, or arbitrary model expansion. |
+_No active claims._
 
 ## DONE
 
 | lane | owner | result | evidence |
 |---|---|---|---|
+| controlled-source terminal contract | `/root/sol_lane_coordination` (Codex Sol) | **DONE 2026-09-13.** Core `vcvs`/`vccs` parts now retain bw-board's `outp/outn/inp/inn` contract through SPICE import and `Circuit.fromJSON`; stale `a/b` input remains a loud rejection. No solver or importer-card mapping changed. | Focused Node suite: 105/105 pass. The reviewed private PhyChip case now reaches all three finite comparisons on clean bw-board `838492f`; two agree and the resistor-current observable exposes a separate sign-orientation manifest correction. |
