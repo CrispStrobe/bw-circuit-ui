@@ -12,7 +12,8 @@
  *
  * The bounded subset maps only the exact standard `res`, `cap`, `voltage`,
  * and `current` symbols. Voltage sources additionally retain exact
- * three-argument `SINE(offset amplitude frequency)` values. For current
+ * three-argument `SINE(offset amplitude frequency)` and strict seven-argument
+ * `PULSE(V1 V2 TD TR TF PW PER)` values. For current
  * sources, LTspice/SPICE current flows from
  * SpiceOrder 1 to 2 while the native source injects from `neg` to `pos`, so
  * that pin order deliberately maps to `neg,pos`. Unknown/custom symbols are
@@ -24,7 +25,7 @@
 
 import { NetSolver, makeId, wiresFromNets } from './kicad-common.js';
 import { parseSpiceValue } from '../model/si.js';
-import { parseStrictSpiceSine } from '../model/spice-source.js';
+import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-source.js';
 
 const SYMBOLS = new Map([
   ['res', {
@@ -126,6 +127,13 @@ function authoredParams(raw, spec) {
   const sine = parseStrictSpiceSine(text, { allowSinAlias: false });
   if (sine && spec.kind === 'vsource') {
     return sine.ok ? { params: sine.params, reason: null } : { params: {}, reason: sine.reason };
+  }
+  const pulse = parseStrictSpicePulse(text);
+  if (pulse) {
+    if (pulse.ok && spec.kind === 'vsource') return { params: pulse.params, reason: null };
+    return { params: {}, reason: pulse.ok
+      ? 'time-varying current PULSE sources are not modelled'
+      : pulse.reason };
   }
   const value = staticValue(text);
   return value === null
