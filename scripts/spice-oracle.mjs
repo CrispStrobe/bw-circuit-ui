@@ -42,6 +42,7 @@ import '../test/_setup.js';
 import { Circuit } from '../src/model/circuit.js';
 import { pinThevenin } from 'bw-board/pin-model.js';
 import { getDevice } from 'bw-board';
+import { JUNCTION_ROUTING } from 'bw-board/mna.js';
 import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice } from '../src/model/exporters/spice.js';
 import { importSpice } from '../src/importers/spice.js';
@@ -299,45 +300,32 @@ function withSynthesizedParts(circuit, netlist) {
 
 export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true} = {}) {
   const lines = [];
-  // ONE MODEL ON BOTH SIDES, WHICH IS THE WHOLE DISCIPLINE HERE.
+  // ONE MODEL ON BOTH SIDES, THROUGH THE ENGINE'S OWN SWITCH.
   //
   // The exporter can only write Shockley -- the designer's DEFAULT piecewise
   // knee has no SPICE spelling -- while the engine ROUTES per circuit and picks
-  // PWL wherever supply headroom is comfortable. Undriven that never showed,
-  // because nothing conducted. The moment the sweep drove the pins it broke 873
-  // circuits that had "agreed", every one of them the same shape: engine
-  // 1.830918 V against ngspice 1.747075 V on a red LED -- the PWL answer against
-  // the Shockley answer, 2.573 % apart, which is the model gap this file already
-  // prints as a note.
+  // PWL wherever supply headroom is comfortable. Undriven that never showed
+  // because nothing conducted; the moment the sweep drove the pins it broke 873
+  // circuits that had "agreed", every one the same shape: engine 1.830918 V
+  // against ngspice 1.747075 V on a red LED, the PWL answer against the
+  // Shockley answer, 2.573 % apart. Widening a tolerance to swallow that would
+  // be comparing two devices and calling the difference noise.
   //
-  // That is not a solver error and widening the tolerance to swallow it would be
-  // comparing two different devices and calling the difference noise -- the
-  // exact failure this whole lane has been closing. The 16 hand cases already
-  // declare `model: 'shockley'` for this reason; the sweep does the same, so the
-  // comparison tests the SOLVER rather than the routing policy. Routing itself
-  // is tested by junction-routing.test.mjs, which is the right place for it.
-  const forShockley = !drivePins ? json : {
-    ...json,
-    parts: (json.parts || []).map(p => (
-      (p.kind === 'led' || p.kind === 'diode' || p.kind === 'zener')
-        ? { ...p, params: { ...(p.params || {}), model: 'shockley' } }
-        : p)),
-  };
-  const circuit = Circuit.fromJSON(forShockley);
-  // AND THE SAME FOR PARTS THE BOARD INVENTS AFTER fromJSON. The transform above
-  // rewrites the JSON, but a device synthesizes its own analog parts during
-  // setNetlist -- a Pico's onboard LED and its 1 kOhm -- so those were still
-  // being solved with the piecewise knee while the deck wrote Shockley for them.
-  // Same model gap as the top-level junctions, one level down, and it showed as
-  // the last 0.116 V on `pico1__onboard_mid` after the rest was fixed.
-  if (drivePins && circuit.board && Array.isArray(circuit.board.parts)) {
-    const fromJson = new Set((json.parts || []).map(x => x.id));
-    for (const bp of circuit.board.parts) {
-      if (fromJson.has(bp.id)) continue;
-      if (!['led', 'diode', 'zener'].includes(bp.kind)) continue;
-      bp.params = {...(bp.params || {}), model: 'shockley'};
-    }
-  }
+  // `JUNCTION_ROUTING.mode` is mna.js's documented escape hatch and it covers
+  // EVERY junction, which rewriting `params.model` on the incoming JSON does
+  // not: a device synthesizes its own junctions during setNetlist -- a Pico's
+  // onboard LED -- and those are created after the JSON is read, so they kept
+  // their piecewise routing and left 0.116 V on `pico1__onboard_mid` after
+  // everything else was fixed. Re-running setNetlist to re-stamp them is not
+  // available either; that duplicates the composite (fixed in bw-board, but not
+  // something to lean on from here).
+  //
+  // Restored in a finally, because it is module-global: leaking 'shockley' into
+  // a later caller would silently change what THEY measure.
+  const priorRouting = JUNCTION_ROUTING.mode;
+  if (drivePins) JUNCTION_ROUTING.mode = 'shockley';
+  try {
+  const circuit = Circuit.fromJSON(json);
   circuit.setPower(true);
   // Reactive cases need the transient to settle before an operating point
   // means anything (see rc-and-parallel).
@@ -374,12 +362,25 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
     //       defence; this is the first.
     const probe = toSpice(extractNetlist(circuit), 'probe');
     const skippedRef = new Set((probe.skipped || []).map(x => String(x).split(' ')[0]));
+    // AND IT MUST ACTUALLY BE A DRIVER. "The exporter skipped it" is not the
+    // same claim as "it drives pins": a BUZZER is skipped too, and the first
+    // version of this policy called setPin('a') on one, inventing a GPIO out of
+    // a passive terminal. On 07-buzzer-siren that put the shared node at
+    // 4.000000 V against ngspice's 5.0.
+    //
+    // The MCU surface is not `kind === 'mcu'` — a dev board is its own kind and
+    // declares itself with `gpioFollowsPinStates`, which is what board.js reads
+    // in _syncDeviceGpioDrives. Same predicate here, so the sweep and the engine
+    // agree about what a pin is.
+    const drives = (kind) => kind === 'mcu' || !!getDevice(kind)?.gpioFollowsPinStates;
+    const kindByRefdes = new Map(netlist.parts.map(p => [p.refdes, p.kind]));
     const POWER_PIN = /^(gnd|vss|vcc|vdd|v\+|v-|agnd|avcc|aref|vin|3v3|5v)/i;
     for (const net of netlist.nets) {
       if ((net.nodes || []).length < 2) continue;
       if (net.rail === 'gnd') continue;
       for (const nd of net.nodes) {
         if (!skippedRef.has(nd.refdes)) continue;
+        if (!drives(kindByRefdes.get(nd.refdes))) continue;
         if (POWER_PIN.test(String(nd.pin))) continue;
         try { circuit.setPin(nd.pin, 'pushpull', driveHigh); } catch { /* not a pin this board knows */ }
       }
@@ -514,6 +515,7 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
   if (warnings.length) for (const w of warnings) lines.push(`  export warning: ${w}`);
   return { name, ok, lines, compared, worstAbs, worstRel, worstAt,
     reason: ok ? null : (compared === 0 ? 'nothing compared' : `worst ${worstAbs.toExponential(2)} V at ${worstAt}`) };
+  } finally { JUNCTION_ROUTING.mode = priorRouting; }
 }
 
 // ── Round trip through our own importer, judged by ngspice ───────────
