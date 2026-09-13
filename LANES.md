@@ -9,6 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
+| LTspice ASC instance-record and mirror orientations | `/root/sol_lane_coordination` (Codex Sol), `/mnt/volume1/code/wt/cui-ltspice-mirror-sol` | `991408f` | **ACTIVE 2026-09-13.** Owns only `src/importers/ltspice-asc.js`, focused ASC tests/package registration, and this row. First preserve the active symbol across its `WINDOW` display records; then add provenance-verified `M0/M90/M180/M270` placement for the already-supported standard R/C/static V/I symbols. Unknown symbols, semantic attributes, dynamic values and unsupported directives remain explicit refusals/losses. No solver, GUI, or other importer changes. |
 | bounded LTspice ASC static importer | `/root/sol_lane_coordination` (Codex Sol) | **DONE 2026-09-13.** Added a content-detected `.asc` importer and menu registration for the verified standard resistor/static-voltage slice. Pin coordinates and rotations are provenance-recorded; named nets and ground resolve through the shared `NetSolver`. Mirrors, unknown/custom symbols, non-static values, symbol semantic attributes, and non-`.op` directives remain explicit losses/unmapped entries rather than approximations. | Focused importer/reachability/registration suites pass 30/30; production build passes. Self-authored 6 V / 1 kOhm fixture reaches `Circuit.fromJSON` and solves to 6 mA; external paired-corpus qualification is a separate private lane. |
 
 ## DONE
