@@ -9,7 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-_No active claims._
+| static operating-point CLI reachability | `/root/schematic_corpus_import` (Codex Sol), `/tmp/cui-operating-point.eJ3ia4` | `7777f1f` | Thin `Circuit.operatingPoint()` proxy, `bwc op` import-eligibility gate/output, exact bw-board API pin, and focused self-authored SPICE/negative tests. No solver/exporter/oracle implementation and no GUI files in this lane. |
 
 ## DONE
 
