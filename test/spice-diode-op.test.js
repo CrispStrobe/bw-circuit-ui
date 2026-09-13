@@ -1,6 +1,7 @@
 import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { importSpice } from '../src/importers/spice.js';
 import { Circuit } from '../src/model/circuit.js';
 import { extractNetlist } from '../src/model/netlist.js';
@@ -25,6 +26,14 @@ describe('strict SPICE diode DC contract', () => {
     assert.ok(Math.abs(out - 0.7388682808410284) < 1e-10);
     const diode = op.branchCurrents.get('D1');
     assert.ok(Math.abs(diode.get('anode') + diode.get('cathode')) < 1e-12);
+    const oracle = spawnSync('ngspice', ['-b'], { input: deck().replace('\n.op\n', '\n.op\n.print op v(out) @d1[id]\n'), encoding: 'utf8' });
+    if (!oracle.error) {
+      assert.equal(oracle.status, 0, oracle.stderr);
+      const row = oracle.stdout.match(/\n0\s+([\deE+.-]+)\s+([\deE+.-]+)\s*\n/);
+      assert.ok(row, oracle.stdout);
+      assert.ok(Math.abs(Number(row[1]) - out) < 3e-7);
+      assert.ok(Math.abs(Number(row[2]) - diode.get('anode')) < 3e-8);
+    }
   });
 
   it('keeps unsupported physics as a serialized OP blocker and native-rejected params', () => {
