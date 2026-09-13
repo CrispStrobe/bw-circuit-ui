@@ -10,7 +10,7 @@ import './_setup.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { toSpice, junctionModel } from '../src/model/exporters/spice.js';
-import { spiceModelFor, cardFor, resolveParams, cardIds, classDefaults } from 'bw-board/parts-library.js';
+import { spiceModelFor, cardFor, resolveParams, allCards, cardAliases, classDefaults } from 'bw-board/parts-library.js';
 
 const netlistWith = (parts) => ({
   parts,
@@ -44,49 +44,47 @@ test('perturbing the model source moves the deck — models are derived, not cop
   assert.ok(perturbed.includes('Bf=999999') && !real.includes('Bf=999999'));
 });
 
-/**
- * Cards `spiceModelFor` cannot yet turn into a `.model` body. Each one is a
- * model line this exporter must either leave as a literal or refuse to emit,
- * so the list is a debt and may only SHRINK: when upstream grows the branch,
- * delete the row in the same commit.
- */
-const UNDERIVABLE_CARDS = new Map([
-  ['TIP120', "kind 'tip120' — spiceModelFor branches on npn/pnp, so a placed TIP120 has no model body (reported 2026-09-13)"],
-  ['NMOS_GENERIC', "kind 'nmos' — no branch, and cardFor('MOSFET') misses it because the lookup is by card KEY while the id is MOSFET"],
-]);
-
-test('every card the exporter emits is derivable, or is a ledgered gap; the library is non-trivial', () => {
-  const ids = cardIds();
-  assert.ok(ids.length >= 5, `only ${ids.length} cards`);
-  const underivable = ids.filter(id => {
-    const m = spiceModelFor(id);
+test('every card the exporter emits is derivable — the empty set, stated', () => {
+  // This read as a shrink-only LEDGER of underivable cards while `tip120` and
+  // `nmos` had no branch upstream. Both were fixed on 2026-09-13, the ledger
+  // emptied, and the assertion is now the stronger one: NOTHING is underivable.
+  // Derived from the library, never typed, so a new card with no branch fails
+  // here rather than surfacing as a deck that cannot simulate.
+  const cards = allCards();
+  assert.ok(cards.length >= 5, `only ${cards.length} cards`);
+  const underivable = cards.filter(c => {
+    const m = spiceModelFor(c.id);
     return !(m && m.body.length > 0);
-  });
-  const unledgered = underivable.filter(id => !UNDERIVABLE_CARDS.has(id));
-  const healed = [...UNDERIVABLE_CARDS.keys()].filter(id => !underivable.includes(id));
-  assert.deepEqual(unledgered, [],
-    'a card with no derivable .model body: the exporter must keep a literal for it or refuse to '
-    + 'emit the part, and either way it belongs in UNDERIVABLE_CARDS with its reason');
-  assert.deepEqual(healed, [],
-    'a ledgered gap is derivable now — delete its row in this commit (the ledger only shrinks)');
+  }).map(c => c.id);
+  assert.deepEqual(underivable, [],
+    'a card with no derivable `.model` body: the exporter must refuse to emit such a part, '
+    + 'so this is the set that must stay empty');
+  // Anti-vacuity: the derivation really runs, and both spellings resolve.
+  assert.match(spiceModelFor('MOSFET').body, /Vto=/);
+  assert.match(spiceModelFor('NMOS_GENERIC').body, /Vto=/);
+  assert.ok(cardAliases().includes('MOSFET') && cardAliases().includes('NMOS_GENERIC'),
+    'cardAliases must carry every name that resolves, or a card is invisible to this scan');
 });
 
-test('a card that cannot be derived is REFUSED by name, never emitted as a dangling reference', () => {
+test('a part whose model cannot be produced is REFUSED by name, never left dangling', () => {
   // The state this kills: replacing the `.model` literals with derivation made a
-  // `tip120` part export an element line naming `.model TIP120` that the deck
-  // never defined — no warning, `skipped` empty, and a deck that reads as
-  // complete and cannot simulate. Measured 2026-09-13 before the guard existed.
-  const { text, skipped } = toSpice(netlistWith([
-    { refdes: 'Q1', kind: 'tip120', pins: ['collector', 'base', 'emitter'], params: {} },
-  ]));
+  // `tip120` part export an element naming `.model TIP120` that the deck never
+  // defined — no warning, `skipped` empty, a deck that reads complete and cannot
+  // simulate (measured 2026-09-13).
+  //
+  // It is driven through the injected model source rather than through a really
+  // underivable card, because the library no longer HAS one: pointing this at
+  // `tip120` today would exercise nothing while still passing. The guard must
+  // outlive the gap that revealed it.
+  const { text, skipped } = toSpice(netlistWith([npn('2N2222')]), 'BrickWright Circuit',
+    { modelFor: () => null });
   const referenced = [...text.matchAll(/^[QMD]\d+ .* (\S+)$/gm)].map(m => m[1]);
   const defined = [...text.matchAll(/^\.model (\S+) /gm)].map(m => m[1]);
   assert.deepEqual(referenced.filter(r => !defined.includes(r)), [],
     `the deck references a model it never defines:\n${text}`);
   assert.equal(skipped.length, 1, 'the part must be refused by name, not silently dropped');
   assert.match(skipped[0], /no `\.model` line can be produced/);
-  // Anti-vacuity: a kind that IS derivable still exports, so the guard is not
-  // simply refusing everything.
+  // Anti-vacuity on the other side: with the real library the same part exports.
   const ok = toSpice(netlistWith([npn('2N2222')]));
   assert.equal(ok.skipped.length, 0);
   assert.match(ok.text, /^\.model 2N2222 NPN \(/m);

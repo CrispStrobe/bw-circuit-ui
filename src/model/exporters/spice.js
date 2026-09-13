@@ -145,11 +145,11 @@ function lowestSourceFrequency(netlist) {
  * @returns {{ text: string, skipped: string[], warnings: string[] }}
  */
 export function toSpice(netlist, title = 'BrickWright Circuit', {modelFor = spiceModelFor} = {}) {
-  // Named models are DERIVED from the parts library. `MOSFET` is the one
-  // `.model` literal left: its card exists (NMOS_GENERIC, id MOSFET) but
-  // `spiceModelFor` has no branch for kind `nmos`, and `cardFor('MOSFET')`
-  // resolves by the CARD KEY rather than the id, so the name the deck uses
-  // finds nothing. Both are upstream gaps, reported 2026-09-13.
+  // EVERY `.model` line is derived from the parts library — no literals remain.
+  // The last one was `MOSFET`, kept while `cardFor('MOSFET')` could not find the
+  // generic card (its key is NMOS_GENERIC) and `spiceModelFor` had no branch for
+  // kind `nmos`. Both were fixed upstream on 2026-09-13, so the literal went
+  // with them: a literal nothing reaches is a defect that looks like a feature.
   //
   // `modelLine` returns null when a model cannot be produced, and the part loop
   // REFUSES such a part by name instead of writing an element that references a
@@ -157,12 +157,9 @@ export function toSpice(netlist, title = 'BrickWright Circuit', {modelFor = spic
   // produced for `tip120` the moment the literals were replaced by derivation:
   // a deck that reads as complete, exports without a warning, and cannot
   // simulate. An export that cannot run is not a feature.
-  const GENERIC_MODELS = {
-    'MOSFET': '.model MOSFET NMOS (Vto=2.0 Kp=20u)',
-  };
   const modelLine = name => {
     const m = modelFor(name);
-    return m ? `.model ${m.name} ${m.type} (${m.body})` : (GENERIC_MODELS[name] ?? null);
+    return m ? `.model ${m.name} ${m.type} (${m.body})` : null;
   };
   // `modelFor` is injectable ONLY so a test can perturb a card and watch the deck
   // move — the proof that models are derived, not copied. Production callers

@@ -47,17 +47,13 @@ const KNOWN_KIND_CARD_CONFLICTS = new Map([
 ]);
 
 /**
- * Cards that are NOT part numbers. They carry a class's defaults so the
- * exporter can derive every `.model` line it emits instead of leaving a
- * literal behind, so "reachable" for them means their KIND is placeable, not
- * that anything names the card. Listed rather than detected because the
- * library marks them only in a comment; asked upstream for a `generic: true`
- * field so this can be derived (2026-09-13).
+ * A card that is not a part number carries a class's defaults so the exporter
+ * can derive every `.model` line instead of leaving a literal behind. Upstream
+ * marks them `generic: true` (asked for and added 2026-09-13) — DERIVED here,
+ * never typed, because a typed copy is one more place the two repos can
+ * disagree about which cards are real parts.
  */
-const GENERIC_CARDS = new Map([
-  ['Q_DEFAULT', 'the bare-npn model the exporter emits when no card is named'],
-  ['MOSFET', 'the bare-MOSFET model; card key NMOS_GENERIC, id MOSFET'],
-]);
+const isGeneric = card => card.generic === true;
 
 /** Electrical keys found in a sidecar's params/defaults — the only places a value could hide. */
 export const electricalKeysIn = (sidecar) => {
@@ -108,21 +104,34 @@ test('3. every card is reachable: a face for its kind, and a palette entry that 
     const face = existsSync(path.join(PARTS_DATA, `${card.kind}.json`));
     const byPart = PALETTE.includes(`part: '${card.id}'`);
     const byKind = PALETTE.includes(`kind: '${card.kind}'`);
+    const kindIsThePart = card.kind.toLowerCase() === card.id.toLowerCase();
     if (!face) unreachable.push(`${card.id}: no sidecar for kind ${card.kind} — no face`);
-    if (GENERIC_CARDS.has(card.id)) {
-      // A generic is reached through its CLASS: the kind must be placeable, and
-      // nothing should name the card — if something does, it is a part number
-      // in disguise and belongs out of this list.
-      if (!byKind) unreachable.push(`${card.id}: generic, but kind '${card.kind}' is not on the palette — the class is unreachable`);
-      if (byPart) unreachable.push(`${card.id}: listed generic but the palette names it — remove it from GENERIC_CARDS`);
-      continue;
+    if (isGeneric(card)) {
+      // Reached through its CLASS, so the kind being placeable is enough — and
+      // naming it as well is fine (LED_RED is both). An earlier version here
+      // refused a generic the palette named; that was my rule, not the
+      // library's, and it was wrong the moment LED_RED was marked.
+      if (!byKind && !byPart) unreachable.push(`${card.id}: generic, but neither kind '${card.kind}' nor the card itself is on the palette`);
+    } else if (kindIsThePart) {
+      // The kind IS the part (TIP120 has its own stamp), so placing the kind
+      // places the part.
+      if (!byKind) unreachable.push(`${card.id}: its kind is the part, but '${card.kind}' is not on the palette`);
+    } else {
+      // A part number sharing a class with others can only be selected by name.
+      if (!byPart) unreachable.push(`${card.id}: a part number on the shared '${card.kind}' class must be placeable by name (params.part)`);
     }
-    if (!byPart && !byKind) unreachable.push(`${card.id}: no palette entry names it (params.part) and its kind is not on the palette`);
   }
   assert.deepEqual(unreachable, [], 'a card nobody can place is a defect that looks like a feature');
   // Driven: the palette scan sees a real entry and refuses a fake one.
   assert.ok(PALETTE.includes("part: '2N2222'"));
   assert.ok(!PALETTE.includes("part: 'NOT-A-PART-9999'"));
+  // The generic set is real and derived: if upstream stopped marking them, this
+  // would silently become "every card is a part number" and the rule above
+  // would apply the wrong clause to each.
+  const generics = allCards().filter(isGeneric).map(c => c.id);
+  assert.ok(generics.length >= 2, `only ${generics.length} generic card(s) — is \`generic\` still marked upstream?`);
+  assert.ok(generics.includes('Q_DEFAULT'), 'Q_DEFAULT is a class default, not a part number');
+  assert.ok(!generics.includes('1N4148'), 'a real part number must not be marked generic');
 });
 
 test('4. an engine kind spelled like a card id is that card\'s kind, or a ledgered conflict', () => {
