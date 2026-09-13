@@ -50,6 +50,7 @@ import { PART_SYMBOLS } from '../../data/easyeda-symbols.js';
 // the spice-oracle job reddened.)
 import { spiceModelFor, resolveParams, cardFor, classDefaults } from 'bw-board/parts-library.js';
 import { formatSpiceValue } from '../si.js';
+import { controlledResistance } from 'bw-board/mna.js';
 
 /** SPICE element types that take a simple two-terminal card */
 const TWO_TERMINAL = new Set(['R', 'C', 'L', 'V', 'I', 'F']);
@@ -60,8 +61,14 @@ const TWO_TERMINAL = new Set(['R', 'C', 'L', 'V', 'I', 'F']);
  * serializer wrote `1` for anything valueless, which turned a default
  * 1 kOhm resistor into 1 Ohm — a deck that runs and lies.
  */
+// ldr/ntc are NOT in this table any more. They are resistors whose value is a
+// function of a CONTROL rather than a stored number, so `valueNumber` is null
+// and a fallback here is a second opinion about the device: this said 1000
+// where the engine's own function says 1,000,000 at the default dark control.
+// A thousandfold, and it made all 45 LDR circuits in the corpus disagree with
+// ngspice. They come from `controlledResistance` in bw-board now — see below.
 const ENGINE_DEFAULTS = {
-  resistor: 1000, ldr: 1000, ntc: 1000, fuse: 1000,
+  resistor: 1000, fuse: 1000,
   potentiometer: 10000,
   capacitor: 1e-4, polarized_cap: 1e-4,
   inductor: 1e-3,
@@ -145,7 +152,7 @@ function lowestSourceFrequency(netlist) {
  * @returns {{ text: string, skipped: string[], warnings: string[] }}
  */
 export function toSpice(netlist, title = 'BrickWright Circuit',
-  {modelFor = spiceModelFor, pinSource = null} = {}) {
+  {modelFor = spiceModelFor, pinSource = null, controls = new Map()} = {}) {
   // EVERY `.model` line is derived from the parts library — no literals remain.
   // The last one was `MOSFET`, kept while `cardFor('MOSFET')` could not find the
   // generic card (its key is NMOS_GENERIC) and `spiceModelFor` had no branch for
@@ -275,6 +282,14 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
 
     if (TWO_TERMINAL.has(card)) {
       let value = part.valueNumber;
+      // A CONTROLLED PASSIVE'S VALUE IS THE ENGINE'S TO STATE. Asking bw-board
+      // rather than keeping a default here is what stops the deck describing a
+      // different resistor than the solve.
+      if (value == null) {
+        const controlled = controlledResistance(
+          {id: part.partId, kind: part.kind, params: part.params}, controls);
+        if (controlled != null) value = controlled;
+      }
       if (value == null) {
         const fallback = ENGINE_DEFAULTS[part.kind];
         if (fallback != null) {

@@ -411,7 +411,11 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
   // Re-extract after driving: setPin changes the solve, and a netlist taken
   // before it describes the undriven board.
   const solved = drivePins ? withSynthesizedParts(circuit, extractNetlist(circuit)) : netlist;
-  const { text, warnings } = toSpice(solved, `oracle: ${name}`, { pinSource });
+  // The board's LIVE controls, not an empty map: an LDR the bench has set to
+  // bright is a 100 Ohm part, and a deck built with the default dark control
+  // would be a different circuit by four orders of magnitude.
+  const { text, warnings } = toSpice(solved, `oracle: ${name}`,
+    { pinSource, controls: circuit.board?.controls ?? new Map() });
 
   // Structural floor: these are what "unsimulatable" meant.
   //
@@ -429,7 +433,26 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
   const allTokens = new Set(elementLines.flatMap(tokensOf));
 
   const structural = [];
-  if (!/(^|\n)V[^\s]*\s+\S+\s+0\s+DC\s/.test(text)) structural.push('no synthesized supply');
+  // ANY INDEPENDENT SOURCE, NOT A SYNTHESIZED ONE WITH THE `DC` KEYWORD.
+  //
+  // This demanded `V... <node> 0 DC <v>`, which is the shape the SYNTHESIZED
+  // rail card has. A circuit powered by a `vsource` or a `battery` part emits a
+  // real element instead — `V1 bb1:n-col-t3 0 1` — where `DC` is optional in
+  // SPICE and the exporter does not write it. So a complete, runnable deck was
+  // failed for lacking a spelling:
+  //
+  //     R1 bb1:n-col-t3 0 1k
+  //     V1 bb1:n-col-t3 0 1
+  //     .op
+  //     .end
+  //
+  // 113 corpus circuits, every one of them battery- or vsource-powered rather
+  // than rail-powered. The check's INTENT — "nothing supplies this deck" — is
+  // still worth having and is what it now asserts: at least one independent
+  // source of either kind, however it is spelled.
+  if (!/^[VI]\S*\s+\S+\s+\S+/m.test(text)) {
+    structural.push('no independent source (no V or I element, and no synthesized rail)');
+  }
   if (!allTokens.has('0')) structural.push('no node 0 on any element');
   if (groundNetOf(solved) && allTokens.has(groundNetOf(solved))) {
     structural.push(`ground net is spelled '${groundNetOf(solved)}' instead of node 0`);
@@ -494,12 +517,24 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
     // Cross-check against the engine by summing what the rail feeds.
     const supplyNet = solved.nets.find(n => n.rail === 'vcc');
     if (supplyNet) {
+      // COUNT THE CONTRIBUTORS, NOT JUST THE SUM. A rail's nodes are often
+      // parts whose branch current the engine does not expose — a `vcc` rail is
+      // dissolved into a net name, and an MCU pin reports none — so the sum can
+      // be 0 because NOTHING ANSWERED rather than because no current flows.
+      // Comparing that against ngspice's real reading produced "relative
+      // difference 100.000 %" on 375 circuits whose every NODE VOLTAGE agreed
+      // to between 1e-6 and 1e-3 V. A zero nobody drove is not a measurement.
       let engineI = 0;
+      let contributors = 0;
       for (const nd of supplyNet.nodes) {
         const i = circuit.branchCurrent(nd.partId, nd.pin);
-        if (typeof i === 'number' && isFinite(i)) engineI += i;
+        if (typeof i === 'number' && isFinite(i)) { engineI += i; contributors++; }
       }
-      if (Math.max(spiceI, Math.abs(engineI)) < I_ZERO_FLOOR) {
+      if (contributors === 0) {
+        lines.push('    the engine exposes no branch current on this rail '
+          + `(${supplyNet.nodes.length} node(s), none reporting), so there is nothing to `
+          + 'compare against ngspice here — the node voltages above are the comparison');
+      } else if (Math.max(spiceI, Math.abs(engineI)) < I_ZERO_FLOOR) {
         lines.push(`    engine draws ${Math.abs(engineI).toExponential(6)} A `
           + `— both below ${I_ZERO_FLOOR} A, so this branch carries no current in either `
           + 'solve and there is no ratio to take');
