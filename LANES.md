@@ -9,7 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-_No active claims._
+| SPICE external-waveform semantic loss | `/root/schematic_corpus_import` (Codex Sol), `/tmp/cui-kicad-assess.Ht5oOH` | `56c3b66` | **ACTIVE.** Detect `wavefile=` only on independent source cards, retain a partial zero-valued source but emit an explicit warning plus source-preserving loss metadata, and mark/reject the import as numeric-oracle-ineligible. Scope: `src/importers/spice.js`, focused self-authored fixture/tests, narrow `bwc info` loss reporting, and `scripts/spice-oracle.mjs` eligibility guards. Numeric DC/SINE/PULSE behavior stays unchanged; no waveform decoding, file reads, engine/MNA changes, or corpus/index edits. |
 
 ## DONE
 
