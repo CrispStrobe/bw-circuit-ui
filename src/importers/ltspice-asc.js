@@ -10,10 +10,13 @@
  *   voltage.asy 940d0db2...  PIN (0,16)  +/order 1; (0,96) -/order 2
  *   current.asy d36a9bf0...  PIN (0,0)   +/order 1; (0,80) -/order 2
  *
- * This first slice deliberately maps only the exact standard `res` and
- * `voltage` symbols. Unknown/custom symbols are explicit `unmapped[]` entries;
- * unsupported orientations and non-static values are explicit `losses[]`.
- * No external symbol file is followed and no TEXT directive is executed.
+ * The bounded subset maps only the exact standard `res`, `cap`, `voltage`,
+ * and `current` symbols. For current sources, LTspice/SPICE current flows from
+ * SpiceOrder 1 to 2 while the native source injects from `neg` to `pos`, so
+ * that pin order deliberately maps to `neg,pos`. Unknown/custom symbols are
+ * explicit `unmapped[]` entries; unsupported orientations and non-static
+ * values are explicit `losses[]`. No external symbol file is followed and no
+ * TEXT directive is executed.
  */
 
 import { NetSolver, makeId, wiresFromNets } from './kicad-common.js';
@@ -25,10 +28,20 @@ const SYMBOLS = new Map([
     pins: [[16, 16], [16, 96]],
     sourceSha256: '228e75e841b1b239fbe8cea04c9ae86e84eac492faf88501fa21bbee88d7eb96',
   }],
+  ['cap', {
+    kind: 'capacitor', parameter: 'farads', terminals: ['a', 'b'],
+    pins: [[16, 0], [16, 64]],
+    sourceSha256: 'fcc7190ea1110f612453b86c02facc3ac46441a06f04274054ed021746e79fac',
+  }],
   ['voltage', {
     kind: 'vsource', parameter: 'volts', terminals: ['pos', 'neg'],
     pins: [[0, 16], [0, 96]],
     sourceSha256: '940d0db25631013b23b4fcac00f5d55815616d853036fa1b810c47b7556f36c2',
+  }],
+  ['current', {
+    kind: 'isource', parameter: 'amps', terminals: ['neg', 'pos'],
+    pins: [[0, 0], [0, 80]],
+    sourceSha256: 'd36a9bf0f6b504326a64ac0011986cf7484a57f5499d7ca6faca049076dab74c',
   }],
 ]);
 
