@@ -41,6 +41,7 @@ import { fileURLToPath } from 'node:url';
 import '../test/_setup.js';
 import { Circuit } from '../src/model/circuit.js';
 import { pinThevenin } from 'bw-board/pin-model.js';
+import { getDevice } from 'bw-board';
 import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice } from '../src/model/exporters/spice.js';
 import { importSpice } from '../src/importers/spice.js';
@@ -239,6 +240,63 @@ function agree(a, b) {
  * Build, solve, export and judge one case.
  * @returns {{name: string, ok: boolean, lines: string[]}}
  */
+
+/**
+ * Add the parts the ENGINE synthesized but the netlist never saw.
+ *
+ * `extractNetlist` builds from the UI's part list; the board builds its own,
+ * and for some devices it SYNTHESIZES extra analog parts. A Pico grows
+ * `pico1_onboard_r` (1 kOhm) and `pico1_onboard` (an LED) hanging off gp25,
+ * because the onboard LED is on the PCB whether or not anyone wires it.
+ *
+ * So the engine solves a circuit with a load the deck does not have, and the
+ * comparison is between two different circuits -- the same species as comparing
+ * a PWL knee against a Shockley model. Measured on 01-blink/circuit-flat.pico:
+ * engine 3.226 V against ngspice 4.921 V at gp25, because in the deck that node
+ * drives nothing but the external chain.
+ *
+ * The board is the authority here, so the missing parts are read from it. The
+ * netlist keeps `partId` on every part and node and uses the BOARD's net id as
+ * the net id, which is what makes the two addressable against each other; rails
+ * are the exception, renamed to GND/VCC, and those are already present.
+ *
+ * ORACLE PATH ONLY. extractNetlist feeds the KiCad exporter and the UI too, and
+ * a synthesized part appearing in a user's exported netlist is a different
+ * decision from making a comparison honest.
+ */
+const SYN_LETTER = {resistor: 'R', led: 'D', diode: 'D', zener: 'D', capacitor: 'C',
+  inductor: 'L', npn: 'Q', pnp: 'Q', nmos: 'M', pmos: 'M'};
+
+function withSynthesizedParts(circuit, netlist) {
+  const board = circuit.board;
+  if (!board || !Array.isArray(board.parts)) return netlist;
+  const known = new Set(netlist.parts.map(p => p.partId));
+  const missing = board.parts.filter(p => !known.has(p.id) && SYN_LETTER[p.kind]);
+  if (!missing.length) return netlist;
+
+  const nets = netlist.nets.map(n => ({...n, nodes: [...n.nodes]}));
+  const byId = new Map(nets.map(n => [n.id, n]));
+  const parts = [...netlist.parts];
+  let seq = 900;
+  for (const p of missing) {
+    const refdes = `${SYN_LETTER[p.kind]}${seq++}`;
+    parts.push({partId: p.id, refdes, kind: p.kind, value: '', valueNumber: null,
+      footprint: '', symbol: '', params: {...(p.params || {})}});
+    for (const bn of board.nets || []) {
+      for (const t of bn.terminals || []) {
+        if (t.part !== p.id) continue;
+        let net = byId.get(bn.id);
+        if (!net) {   // a net that exists only inside the device, e.g. the onboard mid-point
+          net = {id: bn.id, name: bn.id, nodes: [], rail: null, railPartId: null};
+          nets.push(net); byId.set(bn.id, net);
+        }
+        net.nodes.push({partId: p.id, refdes, pin: t.terminal});
+      }
+    }
+  }
+  return {...netlist, parts, nets};
+}
+
 export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true} = {}) {
   const lines = [];
   // ONE MODEL ON BOTH SIDES, WHICH IS THE WHOLE DISCIPLINE HERE.
@@ -266,6 +324,20 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
         : p)),
   };
   const circuit = Circuit.fromJSON(forShockley);
+  // AND THE SAME FOR PARTS THE BOARD INVENTS AFTER fromJSON. The transform above
+  // rewrites the JSON, but a device synthesizes its own analog parts during
+  // setNetlist -- a Pico's onboard LED and its 1 kOhm -- so those were still
+  // being solved with the piecewise knee while the deck wrote Shockley for them.
+  // Same model gap as the top-level junctions, one level down, and it showed as
+  // the last 0.116 V on `pico1__onboard_mid` after the rest was fixed.
+  if (drivePins && circuit.board && Array.isArray(circuit.board.parts)) {
+    const fromJson = new Set((json.parts || []).map(x => x.id));
+    for (const bp of circuit.board.parts) {
+      if (fromJson.has(bp.id)) continue;
+      if (!['led', 'diode', 'zener'].includes(bp.kind)) continue;
+      bp.params = {...(bp.params || {}), model: 'shockley'};
+    }
+  }
   circuit.setPower(true);
   // Reactive cases need the transient to settle before an operating point
   // means anything (see rc-and-parallel).
@@ -312,17 +384,32 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
         try { circuit.setPin(nd.pin, 'pushpull', driveHigh); } catch { /* not a pin this board knows */ }
       }
     }
+    // THE DEVICE'S LOGIC LEVEL, NOT THE BOARD'S RAIL. `pinThevenin` takes the
+    // supply the pin drives to, and board.vcc is the wrong one for any part that
+    // is not a 5 V part. A Pico is 3.3 V, and passing 5 V put the deck's pin
+    // 1.7 V above the engine's:
+    //
+    //   engine V(gp25 net) 3.2264 V sourcing 2.944 mA
+    //   3.3 - 0.002944*25 = 3.2264   <- exactly, with R_STRONG
+    //   5.0 - 0.002944*25 = 4.9264   <- what the deck had, and what ngspice returned
+    //
+    // The engine reads it as `getDevice(kind).vcc ?? board.vcc`
+    // (board.js _syncDeviceGpioDrives), so the freeze reads it the same way
+    // rather than keeping a second opinion about how tall a pin is.
+    const kindOf = new Map(netlist.parts.map(p => [p.refdes, p.kind]));
     pinSource = (refdes, pin) => {
       const st = b.getPinState ? b.getPinState(pin) : null;
       if (!st) return null;
-      const th = pinThevenin(st.mode, st.driveHigh, b.vcc);
+      const model = getDevice(kindOf.get(refdes));
+      const vLogic = (model && model.vcc) ?? b.vcc;
+      const th = pinThevenin(st.mode, st.driveHigh, vLogic);
       return (th && th !== 'high-z') ? th : null;   // high-Z contributes no card
     };
   }
 
   // Re-extract after driving: setPin changes the solve, and a netlist taken
   // before it describes the undriven board.
-  const solved = drivePins ? extractNetlist(circuit) : netlist;
+  const solved = drivePins ? withSynthesizedParts(circuit, extractNetlist(circuit)) : netlist;
   const { text, warnings } = toSpice(solved, `oracle: ${name}`, { pinSource });
 
   // Structural floor: these are what "unsimulatable" meant.
