@@ -9,6 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
+| EAGLE unknown electrical-pin semantic-loss guard | `/root/zenodo_access_diagnosis` (Codex Sol), `/mnt/volume1/code/wt/cui-eagle-pin-loss-sol` | `b6159d4` | **ACTIVE 2026-09-13.** Owns only `src/importers/eagle.js`, focused EAGLE importer/CLI/GUI analysis-blocker tests, and this row. Promote actual unknown/dropped pinrefs into structured semantic losses without changing mappings; informational/geometry warnings remain warnings. Prove existing CLI/GUI operating-point paths refuse before engine execution and rerun the fixed 254-case private corpus separately. |
 | bounded LTspice ASC static importer | `/root/sol_lane_coordination` (Codex Sol) | **DONE 2026-09-13.** Added a content-detected `.asc` importer and menu registration for the verified standard resistor/static-voltage slice. Pin coordinates and rotations are provenance-recorded; named nets and ground resolve through the shared `NetSolver`. Mirrors, unknown/custom symbols, non-static values, symbol semantic attributes, and non-`.op` directives remain explicit losses/unmapped entries rather than approximations. | Focused importer/reachability/registration suites pass 30/30; production build passes. Self-authored 6 V / 1 kOhm fixture reaches `Circuit.fromJSON` and solves to 6 mA; external paired-corpus qualification is a separate private lane. |
 
 ## DONE
