@@ -56,9 +56,14 @@ describe('EAGLE value parsing', () => {
         assert.equal(Math.round(parseEagleValue('100n') * 1e12), 100000);
         assert.equal(parseEagleValue('470R'), 470);
     });
+    test('canonical exponent values written by the exporter parse exactly', () => {
+        assert.equal(parseEagleValue('1e-9'), 1e-9);
+        assert.equal(parseEagleValue('2.2E-6'), 2.2e-6);
+    });
     test('unparseable values are null, not silently zero', () => {
         assert.equal(parseEagleValue('1N4148'), null);
         assert.equal(parseEagleValue(''), null);
+        assert.equal(parseEagleValue('1e'), null);
     });
 });
 

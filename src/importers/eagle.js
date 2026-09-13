@@ -40,6 +40,10 @@ export function parseEagleValue(raw) {
   const s = String(raw).trim().replace(/(ohm|Ω|F|farad)s?$/i, '');
   let m = /^(\d+)([pnuµmrRkKMG])(\d+)$/.exec(s);          // 4k7  1u5  470R0
   if (m) return (Number(m[1]) + Number(m[3]) / 10 ** m[3].length) * (SI[m[2]] ?? 1);
+  // The exporter writes canonical numeric params with JavaScript's string
+  // form, which uses an exponent for small values (1e-9, 2.2e-6). Accept the
+  // complete exponent grammar, but not partial strings such as "1e".
+  if (/^(?:\d+(?:\.\d*)?|\.\d+)[eE][+-]?\d+$/.test(s)) return Number(s);
   m = /^(\d*\.?\d+)\s*([pnuµmrRkKMG])?$/.exec(s);          // 10k  100n  470
   if (m) return Number(m[1]) * (m[2] ? SI[m[2]] ?? 1 : 1);
   return null;
