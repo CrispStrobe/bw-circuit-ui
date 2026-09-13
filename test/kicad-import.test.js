@@ -26,6 +26,7 @@ import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { detectFormat } from '../src/importers/detect.js';
 import { importKicadSch, kicadSchPartition, resolveKicadSch } from '../src/importers/kicad-sch.js';
 import { importKicadLegacy, parseLegacyLib } from '../src/importers/kicad-legacy.js';
@@ -311,6 +312,37 @@ describe('KiCad 4/5 legacy schematic', () => {
     assert.deepEqual(imported().nodePartition, EXPECTED);
   });
 
+  test('a cache-library hidden-name marker is omitted by the schematic reference', () => {
+    // The fixture deliberately says `DEF ~power_+5V`, while both L records say
+    // `power:+5V`. Missing that format rule leaves R1/1 and R3/1 on two
+    // plausible-looking but electrically separate rails.
+    assert.match(LEGACY_LIB, /^DEF ~power_\+5V /m, 'the positive fixture carries the hidden marker');
+    const rail = imported().nodePartition.find((n) => n.includes('R1/1')) || '';
+    assert.match(rail, /R3\/1/, 'the two disconnected +5V symbols merge by name');
+    assert.match(rail, /U9\/8/, 'the explicit power symbol also reaches a chip hidden power pin');
+  });
+
+  test('hidden-name lookup is exact after the marker, never a fuzzy symbol match', () => {
+    const wrongLib = LEGACY_LIB.replace('DEF ~power_+5V ', 'DEF ~power_+5V_OTHER ');
+    assert.notEqual(wrongLib, LEGACY_LIB, 'the negative fixture must change the DEF name');
+    const r = importKicadLegacy(LEGACY, { lib: wrongLib });
+    const rail = r.nodePartition.find((n) => n.includes('R1/1')) || '';
+    assert.doesNotMatch(rail, /R3\/1|U9\/8/,
+      'a similarly prefixed definition must not lend its pins to +5V');
+    assert.equal(r.needsLibrary, true);
+    assert.match(r.warnings.join(' '), /placed symbol\(s\) have no definition/);
+  });
+
+  test('the shipping bwc CLI reaches the hidden-definition rule', () => {
+    const cli = spawnSync(process.execPath,
+      [join(CUI, 'bin', 'bwc.mjs'), 'info', join(HERE, 'fixtures', 'kicad-legacy-divider.sch')],
+      { encoding: 'utf8' });
+    assert.equal(cli.status, 0, cli.stderr || cli.stdout);
+    assert.match(cli.stdout, /\[kicad-legacy\]/);
+    assert.match(cli.stdout, /wires\s+: 8\b/,
+      'the CLI must auto-load the adjacent .lib and retain the connected rails');
+  });
+
   test('an invisible power pin reaches its rail with no wire', () => {
     const all = imported().nodePartition;
     assert.ok(all.some((n) => n.includes('U9/8') && n.includes('R1/1')),
@@ -358,6 +390,23 @@ describe('KiCad 4/5 legacy schematic', () => {
       'SW1:slide_switch', 'SW2:slide_switch',
     ]);
     assert.equal(r.parts.find((p) => p.id === 'R2').params.ohms, 4700);
+    for (const ref of ['R1', 'R2', 'R3', 'R5']) {
+      assert.equal(r.parts.find((p) => p.id === ref).params._libsource,
+        'R-RESCUE-kicad-legacy-divider', `${ref} retains its exact source symbol`);
+    }
+  });
+
+  test('a rescued R with an ambiguous pinout stays unmapped', () => {
+    const needle = 'X ~ 2 0 -150 50 U 50 50 1 1 P\n';
+    const ambiguousLib = LEGACY_LIB.replace(needle,
+      needle + 'X ~ 3 150 0 50 L 50 50 1 1 P\n');
+    assert.notEqual(ambiguousLib, LEGACY_LIB, 'the negative fixture must add a third pin');
+    const r = importKicadLegacy(LEGACY, { lib: ambiguousLib });
+    assert.deepEqual(r.parts.filter((p) => p.kind === 'resistor'), [],
+      'the rescue name alone must not invent four two-terminal resistors');
+    assert.deepEqual(r.unmapped.filter((u) => /^R\d/.test(u.ref)).map((u) => u.ref).sort(),
+      ['R1', 'R2', 'R3', 'R5']);
+    assert.match(r.warnings.join(' '), /Unmapped component: R1/);
   });
 
   test('WITHOUT the library it says so instead of returning a wireless circuit', () => {
@@ -377,7 +426,8 @@ describe('KiCad 4/5 legacy schematic', () => {
     assert.equal(sw.length, 6);
     assert.deepEqual(sw.filter((p) => p.unit === 1).map((p) => p.num), ['1', '2', '3']);
     assert.deepEqual(sw.filter((p) => p.unit === 2).map((p) => p.num), ['4', '5', '6']);
-    assert.deepEqual(lib.get('Device_R').map((p) => [p.num, p.x, p.y]), [['1', 0, 150], ['2', 0, -150]]);
+    assert.deepEqual(lib.get('R-RESCUE-kicad-legacy-divider').map((p) => [p.num, p.x, p.y]),
+      [['1', 0, 150], ['2', 0, -150]]);
   });
 
   test('a file that is not a legacy schematic is refused', () => {

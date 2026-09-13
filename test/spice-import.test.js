@@ -304,7 +304,7 @@ describe('the reader states what it will not do', () => {
     assert.ok(r.parts.some(p => p.id === 'R1'));
   });
 
-  it('E and G map, because bw-board E3.5a landed vcvs and vccs', () => {
+  it('E and G map through Circuit.fromJSON into the engine terminal contract', () => {
     const r = importSpice(deck('V1 1 0 DC 1\nE1 3 0 1 0 10\nG1 4 0 1 0 1m\nR1 3 0 1k\nR2 4 0 1k'));
     assert.deepEqual(r.unmapped, []);
     const e = r.parts.find(p => p.id === 'E1');
@@ -313,6 +313,35 @@ describe('the reader states what it will not do', () => {
     assert.equal(e.params.gain, 10);
     assert.equal(g.kind, 'vccs');
     assert.equal(g.params.gm, 1e-3);
+
+    const circuit = Circuit.fromJSON({ vcc: 5, parts: r.parts, wires: r.wires });
+    assert.deepEqual(circuit.getPart('E1').terminals, ['outp', 'outn', 'inp', 'inn']);
+    assert.deepEqual(circuit.getPart('G1').terminals, ['outp', 'outn', 'inp', 'inn']);
+    assert.equal(circuit.netlistError, null,
+      `controlled sources must reach bw-board validation: ${circuit.netlistError}`);
+    assert.deepEqual(
+      circuit.board.getParts().filter(p => p.kind === 'vcvs' || p.kind === 'vccs')
+        .map(p => [p.kind, p.terminals]),
+      [
+        ['vcvs', ['outp', 'outn', 'inp', 'inn']],
+        ['vccs', ['outp', 'outn', 'inp', 'inn']],
+      ]);
+  });
+
+  it('does not silently accept stale two-terminal controlled sources', () => {
+    const r = importSpice(deck('V1 1 0 DC 1\nE1 3 0 1 0 10\nR1 3 0 1k'));
+    const parts = r.parts.map(p => p.id === 'E1' ? { ...p, terminals: ['a', 'b'] } : p);
+    const originalWarn = console.warn;
+    console.warn = () => {};
+    let circuit;
+    try {
+      circuit = Circuit.fromJSON({ vcc: 5, parts, wires: r.wires });
+    } finally {
+      console.warn = originalWarn;
+    }
+    assert.match(circuit.netlistError, /E1.*vcvs.*unknown terminal "a"/i);
+    assert.equal(circuit.board.getParts().length, 0,
+      'a rejected netlist must not leave a plausible partial board');
   });
 
   it('a MOSFET\'s bulk node is dropped and said out loud', () => {
@@ -459,6 +488,64 @@ describe('comments, continuations, subcircuits and the title line', () => {
     assert.equal(r.parts.filter(p => p.kind === 'gnd').length, 1);
     const p = partition(r.parts, r.wires);
     assert.ok(/#GND/.test(p), `ground net missing:\n${p}`);
+  });
+});
+
+describe('SPICE independent-current polarity contract', () => {
+  const deck = (card) => `current-source polarity\n${card}\nR1 n 0 1k\n.op\n.end\n`;
+
+  function solve(card) {
+    const imported = importSpice(deck(card));
+    assert.deepEqual(imported.unmapped, []);
+    const source = imported.parts.find(p => p.id === 'I1');
+    assert.equal(source.params.amps, 2e-3, 'direction must not be hidden in a negated value');
+    const circuit = Circuit.fromJSON({ vcc: 5, parts: imported.parts, wires: imported.wires });
+    assert.equal(circuit.netlistError, null);
+    circuit.setPower(true);
+    const nodeWire = circuit.wires.find(w =>
+      (w.from.part === 'R1' && w.from.terminal === 'a')
+      || (w.to.part === 'R1' && w.to.terminal === 'a'));
+    assert.ok(nodeWire, 'resistor node must survive import');
+    return { imported, circuit, nodeId: nodeWire.netId };
+  }
+
+  it('preserves positive SPICE current from the first node to the second', () => {
+    const { imported, circuit, nodeId } = solve('I1 n 0 DC 2m');
+    assert.ok(imported.wires.some(w => w.from === 'I1' && w.fromTerminal === 'neg'
+      && w.to === 'R1' && w.toTerminal === 'a'),
+    'the first SPICE node must map to the engine current origin (neg)');
+    assert.ok(Math.abs(circuit.nodeVoltage(nodeId) - (-2)) < 1e-8,
+      `2 mA from n to ground through 1 kOhm must make n=-2 V, got ${circuit.nodeVoltage(nodeId)}`);
+    assert.ok(Math.abs(circuit.branchCurrent('I1', 'neg')
+      + circuit.branchCurrent('R1', 'a')) < 1e-11, 'KCL must hold at the first card node');
+  });
+
+  it('reversing the source card reverses the solved voltage and still satisfies KCL', () => {
+    const { imported, circuit, nodeId } = solve('I1 0 n DC 2m');
+    assert.ok(imported.wires.some(w => w.from === 'I1' && w.fromTerminal === 'pos'
+      && w.to === 'R1' && w.toTerminal === 'a'),
+    'the second SPICE node must map to the engine current destination (pos)');
+    assert.ok(Math.abs(circuit.nodeVoltage(nodeId) - 2) < 1e-8,
+      `2 mA from ground to n through 1 kOhm must make n=+2 V, got ${circuit.nodeVoltage(nodeId)}`);
+    assert.ok(Math.abs(circuit.branchCurrent('I1', 'pos')
+      + circuit.branchCurrent('R1', 'a')) < 1e-11, 'KCL must hold at the second card node');
+  });
+
+  it('exports the engine current origin first and round-trips the same direction', () => {
+    const { circuit } = solve('I1 n 0 DC 2m');
+    const { text } = toSpice(extractNetlist(circuit), 'current direction');
+    const sourceCard = text.split('\n').find(line => /^I\d+\s/.test(line));
+    const resistorCard = text.split('\n').find(line => /^R\d+\s/.test(line));
+    assert.ok(sourceCard && resistorCard, `missing source or resistor card:\n${text}`);
+    const [, sourceFrom, sourceTo, sourceValue] = sourceCard.trim().split(/\s+/);
+    const [, resistorA, resistorB] = resistorCard.trim().split(/\s+/);
+    assert.equal(sourceFrom, resistorA, 'engine neg/current-origin node must be first');
+    assert.equal(sourceTo, resistorB, 'engine pos/current-destination node must be second');
+    assert.equal(parseSpiceValue(sourceValue), 2e-3);
+
+    const back = importSpice(text);
+    assert.equal(back.parts.find(p => p.kind === 'isource').params.amps, 2e-3);
+    assert.equal(partition(back.parts, back.wires), netlistPartition(extractNetlist(circuit)));
   });
 });
 

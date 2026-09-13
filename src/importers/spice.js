@@ -180,7 +180,11 @@ const ELEMENTS = {
   C: { nodes: 2, terminals: ['a', 'b'], kind: () => 'capacitor', param: 'farads' },
   L: { nodes: 2, terminals: ['a', 'b'], kind: () => 'inductor', param: 'henrys' },
   V: { nodes: 2, terminals: ['pos', 'neg'], kind: () => 'vsource', source: 'volts' },
-  I: { nodes: 2, terminals: ['pos', 'neg'], kind: () => 'isource', source: 'amps' },
+  // SPICE defines positive I-card current from its first node to its second.
+  // bw-board's isource defines positive current from terminal neg to terminal
+  // pos, so card order maps to neg,pos. Keeping amps positive preserves both
+  // conventions without hiding the direction in a negated parameter.
+  I: { nodes: 2, terminals: ['neg', 'pos'], kind: () => 'isource', source: 'amps' },
   D: { nodes: 2, terminals: ['anode', 'cathode'], kind: () => 'diode', model: true },
   Q: { nodes: 3, terminals: ['collector', 'base', 'emitter'], kind: () => 'npn', model: true },
   M: { nodes: 4, terminals: ['drain', 'gate', 'source', null], kind: () => 'nmos', model: true },
