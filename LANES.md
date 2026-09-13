@@ -9,7 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-_No active claims._
+| KiCad legacy hidden-definition lookup | `/root/schematic_corpus_import` (Codex Sol), `/tmp/cui-kicad-assess.Ht5oOH` | `a75ad7a` | **CLAIMED 2026-09-13.** Repair only KiCad legacy cache-library lookup where `DEF ~NAME` is referenced as `NAME`; add a self-authored positive/negative connectivity fixture and shipping `bwc info` reachability check. No modern KiCad hierarchy/buses, symbol-vocabulary expansion, circuit/solver/MNA paths, corpus index/schema, or oracle-sweep work. |
 
 ## DONE
 
