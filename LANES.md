@@ -9,7 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-_No active claims._
+| SPICE independent-current polarity contract | `/root/sol_lane_coordination` (Codex Sol), `/mnt/volume1/code/wt/bw-circuit-ui-vcvs-sol` | `4c21d28` | **CLAIM 2026-09-13.** Align positive SPICE `I` card flow (first node to second) with bw-board `isource` flow (`neg` to `pos`) at both import and export boundaries. Scope: `src/importers/spice.js`, `src/model/exporters/spice.js`, focused SPICE import/export tests, and this row only. Preserve positive source magnitude, topology, round-trip behavior, V-source semantics and engine code; add reversed-orientation numeric/KCL and negative regression evidence. |
 
 ## DONE
 
