@@ -77,3 +77,32 @@ test('a bare npn is the symbol table\'s card, derived; no generic Q literal rema
   assert.ok(text.includes(`.model ${m.name} ${m.type} (${m.body})`), text);
   assert.ok(!text.includes('Q_DEFAULT'));
 });
+
+test('an IRRELEVANT part in the netlist does not change another part\'s emitted model', () => {
+  // The shape, generalised from a bw-board defect found on 2026-09-13 (see
+  // BLOCKED.md): `_junctionHeadroomV` summed vf over EVERY junction in the
+  // netlist and fed one number to the per-part model chooser, so an unrelated
+  // LED flipped another LED's model and moved its current 13 %. Nothing caught
+  // it because every routing test held one junction, or a deliberate series
+  // string — none held a junction that was simply IRRELEVANT.
+  //
+  // This exporter reads netlist-wide state too (the used-model set, the lowest
+  // source frequency), so it has the same exposure: a part nothing else touches
+  // must not change what is emitted for the parts around it.
+  const alone = toSpice(netlistWith([npn('2N2222')])).text;
+  const withStranger = toSpice(netlistWith([npn('2N2222'), {
+    refdes: 'D9', kind: 'diode', pins: ['anode', 'cathode'], params: { part: '1N4148' },
+  }])).text;
+  const modelLinesFor = (deck, name) => deck.split('\n').filter(l => l.includes(`.model ${name} `));
+  assert.deepEqual(modelLinesFor(withStranger, '2N2222'), modelLinesFor(alone, '2N2222'),
+    'a second, unrelated part changed the first part\'s emitted model');
+  assert.match(withStranger, /^Q1 .* 2N2222$/m, 'the first part still names its own card');
+  // Anti-vacuity, and it earned its place: the first version of this assertion
+  // looked for the card id '1N4148' in the deck and FAILED — a carded diode
+  // emits a per-part `.model D_<refdes>` whose numbers come from the card but
+  // whose NAME does not, so the comparison above had been running on two decks
+  // that differed in nothing at all. Assert the stranger by its refdes instead.
+  assert.ok(!alone.includes('D9 ') && withStranger.includes('D9 '),
+    'the stranger is absent from the second deck: this test was comparing a deck with itself');
+  assert.match(withStranger, /^\.model D_D9 D \(/m, 'the stranger emits its own derived model');
+});
