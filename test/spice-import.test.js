@@ -435,12 +435,15 @@ describe('the reader states what it will not do', () => {
       `no warning: ${JSON.stringify(r.warnings)}`);
   });
 
-  it('a waveform source imports at its initial value and says so', () => {
+  it('a strict seven-argument voltage PULSE retains its waveform', () => {
     const r = importSpice(deck('V1 1 0 PULSE(0 5 0 1n 1n 1m 2m)\nR1 1 0 1k'));
     const v = r.parts.find(p => p.id === 'V1');
-    assert.equal(v.params.volts, 0);
-    assert.ok(r.warnings.some(w => /V1.*PULSE.*not modelled/.test(w)));
-    assert.deepEqual(r.losses, [], 'an inline PULSE has a supported initial-value import path');
+    assert.deepEqual(v.params, {
+      volts: 0, wave: 'spice-pulse', v1: 0, v2: 5, td: 0,
+      tr: 1e-9, tf: 1e-9, pw: 1e-3, per: 2e-3,
+    });
+    assert.ok(!r.warnings.some(w => /V1.*PULSE.*not modelled/.test(w)));
+    assert.deepEqual(r.losses, []);
   });
 
   it('an external WAVEFILE remains importable but records oracle-blocking semantic loss', () => {

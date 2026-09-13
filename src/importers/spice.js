@@ -38,7 +38,7 @@
  */
 
 import { parseSpiceValue } from '../model/si.js';
-import { parseStrictSpiceSine } from '../model/spice-source.js';
+import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-source.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 
 /** Nodes that mean "the reference" in every dialect. */
@@ -157,8 +157,9 @@ function modelParams(rest) {
  * The DC value of a source card's trailing fields.
  *
  * `V1 1 0 5`, `V1 1 0 DC 5`, and `V1 1 0 DC 5 AC 1` state a bias point.
- * Exact three-argument voltage SIN/SINE is retained as a native waveform;
- * other inline waves take their initial value and say so.
+ * Exact three-argument voltage SIN/SINE and strict seven-argument voltage
+ * PULSE are retained as native waveforms; other inline waves take their
+ * initial value and say so.
  *
  * @returns {{value: number, note: string|null, externalWaveform: boolean,
  *   waveformParams?: Record<string,*>, waveformLoss?: string}}
@@ -178,6 +179,22 @@ function sourceValue(fields, allowSine = false) {
     return {
       value: sine.ok ? sine.params.volts : sine.fallback,
       note: `SINE waveform is not modelled here — imported at its initial value ${sine.ok ? sine.params.volts : sine.fallback}.`,
+      externalWaveform,
+      waveformLoss: reason,
+    };
+  }
+  const pulse = parseStrictSpicePulse(joined);
+  if (pulse) {
+    if (pulse.ok && allowSine) {
+      return { value: pulse.params.volts, note: null, externalWaveform,
+        waveformParams: pulse.params };
+    }
+    const reason = pulse.ok
+      ? 'time-varying current PULSE sources are not modelled'
+      : pulse.reason;
+    return {
+      value: pulse.ok ? pulse.params.volts : pulse.fallback,
+      note: `PULSE waveform is not modelled here — imported at its initial value ${pulse.ok ? pulse.params.volts : pulse.fallback}.`,
       externalWaveform,
       waveformLoss: reason,
     };
