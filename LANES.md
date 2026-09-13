@@ -9,7 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-_No active claims._
+| KiCad legacy verified rescued resistors | `/root/schematic_corpus_import` (Codex Sol), `/tmp/cui-kicad-assess.Ht5oOH` | `a14e35a` | **CLAIMED 2026-09-13.** Resolve only `R-RESCUE-<project>` legacy symbols when their exact supplied cache-library definition proves a two-pin passive 1/2 pinout; preserve source identity and add self-authored positive/ambiguous-negative plus shipping CLI checks. No generic suffix stripping, comparator/opamp approximation, modern KiCad work, circuit/solver/MNA paths, corpus index/schema, or numeric-oracle claims. |
 
 ## DONE
 
