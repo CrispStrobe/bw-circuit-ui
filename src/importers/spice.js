@@ -61,6 +61,9 @@ const BENIGN_CARDS = new Set([
  * @property {Array} wires
  * @property {string[]} warnings
  * @property {Array} unmapped   — elements that could not become parts
+ * @property {Array} losses     — mapped elements whose authored semantics
+ *   cannot be represented. Each entry retains the source card and the
+ *   explicit fallback used; numeric oracles must refuse these imports.
  * @property {string[]} ignored — cards that are not themselves components.
  *   `.model` is here because it declares no node; its CONTENT is consumed
  *   into the params of every part naming it. Together with parts[],
@@ -155,12 +158,13 @@ function modelParams(rest) {
  * all state a bias point; the last is a waveform this reader does not model,
  * so it takes the pulse's initial value and says so.
  *
- * @returns {{value: number, note: string|null}}
+ * @returns {{value: number, note: string|null, externalWaveform: boolean}}
  */
 function sourceValue(fields) {
   const joined = fields.join(' ');
+  const externalWaveform = /\bwavefile\s*=/i.test(joined);
   const dc = joined.match(/\bDC\b\s+([^\s]+)/i);
-  if (dc) return { value: parseSpiceValue(dc[1]), note: null };
+  if (dc) return { value: parseSpiceValue(dc[1]), note: null, externalWaveform };
   const wave = joined.match(/\b(PULSE|SIN|SINE|EXP|PWL|SFFM|AM)\b\s*\(([^)]*)\)/i);
   if (wave) {
     const nums = wave[2].trim().split(/[\s,]+/).map(parseSpiceValue);
@@ -168,10 +172,15 @@ function sourceValue(fields) {
       value: isFinite(nums[0]) ? nums[0] : 0,
       note: `${wave[1].toUpperCase()} waveform is not modelled here — imported at its `
         + `initial value ${isFinite(nums[0]) ? nums[0] : 0}.`,
+      externalWaveform,
     };
   }
   const bare = fields.find((f) => isFinite(parseSpiceValue(f)));
-  return { value: bare !== undefined ? parseSpiceValue(bare) : 0, note: null };
+  return {
+    value: bare !== undefined ? parseSpiceValue(bare) : 0,
+    note: null,
+    externalWaveform,
+  };
 }
 
 /**
@@ -225,6 +234,7 @@ const REFUSED = {
 export function importSpice(text) {
   const warnings = [];
   const unmapped = [];
+  const losses = [];
   const ignored = [];
   const analyses = [];
   const models = new Map();     // name (lower) -> {type, params}
@@ -431,9 +441,21 @@ export function importSpice(text) {
       }
       params._model = rest[0] || null;
     } else if (spec.source) {
-      const { value, note } = sourceValue(rest);
+      const { value, note, externalWaveform } = sourceValue(rest);
       params[spec.source] = value;
       if (note) warnings.push(`${partId}: ${note}`);
+      if (externalWaveform) {
+        const reason = 'external WAVEFILE waveform is not read or modelled';
+        warnings.push(`${partId}: ${reason} — imported as a fixed ${value} `
+          + `${spec.source === 'volts' ? 'V' : 'A'} source; numeric oracle comparison is unsafe.`);
+        losses.push({
+          ref: partId,
+          kind: 'unsupported-external-waveform',
+          source: item.line,
+          reason,
+          fallback: { parameter: spec.source, value },
+        });
+      }
     } else if (spec.param) {
       const v = parseSpiceValue(rest[0]);
       if (isFinite(v)) params[spec.param] = v;
@@ -482,7 +504,7 @@ export function importSpice(text) {
     warnings.push(`Net "${net === '__GND__' ? '0' : net}" has one connection — nothing to wire it to.`);
   }
 
-  return { parts, wires, warnings, unmapped, ignored, analyses, title };
+  return { parts, wires, warnings, unmapped, losses, ignored, analyses, title };
 }
 
 /**

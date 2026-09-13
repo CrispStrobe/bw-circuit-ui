@@ -374,6 +374,32 @@ describe('the reader states what it will not do', () => {
     const v = r.parts.find(p => p.id === 'V1');
     assert.equal(v.params.volts, 0);
     assert.ok(r.warnings.some(w => /V1.*PULSE.*not modelled/.test(w)));
+    assert.deepEqual(r.losses, [], 'an inline PULSE has a supported initial-value import path');
+  });
+
+  it('an external WAVEFILE remains importable but records oracle-blocking semantic loss', () => {
+    const path = join(import.meta.dirname, 'fixtures', 'spice-wavefile-source.net');
+    const r = importSpice(readFileSync(path, 'utf8'));
+    const v = r.parts.find(p => p.id === 'Vstim');
+    assert.equal(v.params.volts, 0);
+    assert.deepEqual(r.unmapped, []);
+    assert.ok(r.warnings.some(w => /Vstim.*WAVEFILE.*not read or modelled.*oracle.*unsafe/i.test(w)),
+      `no external-waveform warning: ${JSON.stringify(r.warnings)}`);
+    assert.deepEqual(r.losses, [{
+      ref: 'Vstim',
+      kind: 'unsupported-external-waveform',
+      source: 'Vstim signal 0 wavefile=definitely-not-present.wav chan=0',
+      reason: 'external WAVEFILE waveform is not read or modelled',
+      fallback: { parameter: 'volts', value: 0 },
+    }]);
+  });
+
+  it('numeric DC, SINE, and PULSE sources do not acquire external-waveform loss', () => {
+    for (const value of ['DC 5', 'SINE(1 2 1k)', 'PULSE(0 5 0 1n 1n 1m 2m)']) {
+      const r = importSpice(deck(`V1 1 0 ${value}\nR1 1 0 1k`));
+      assert.deepEqual(r.losses, [], value);
+      assert.ok(!r.warnings.some(w => /WAVEFILE|oracle comparison is unsafe/i.test(w)), value);
+    }
   });
 
   it('analyses are reported, not executed', () => {
@@ -592,6 +618,16 @@ describe('detection', () => {
     assert.match(cli.stdout, /parts\s+: 2\b/);
     assert.match(cli.stdout, /wires\s+: 1\b/);
     assert.doesNotMatch(cli.stdout, /UNMAPPED/);
+  });
+
+  it('the shipping bwc CLI reports external-waveform semantic loss', () => {
+    const path = join(import.meta.dirname, 'fixtures', 'spice-wavefile-source.net');
+    const cli = spawnSync(process.execPath,
+      [join(import.meta.dirname, '..', 'bin', 'bwc.mjs'), 'info', path], { encoding: 'utf8' });
+    assert.equal(cli.status, 0, cli.stderr || cli.stdout);
+    assert.match(cli.stdout, /\[spice\]/);
+    assert.match(cli.stdout, /LOSSES\s+: 1\b/);
+    assert.match(cli.stdout, /Vstim\s+external WAVEFILE waveform is not read or modelled/);
   });
 
   it('it does not steal the formats it shares an extension with', () => {

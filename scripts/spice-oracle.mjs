@@ -542,6 +542,11 @@ function judgeRoundTrip(name, json, dir) {
       + back.unmapped.map(u => `${u.ref} (${u.libsource})`).join('; '));
     return { name, ok: false, lines };
   }
+  if (back.losses.length) {
+    lines.push(`  re-import has ${back.losses.length} semantic loss: `
+      + back.losses.map(loss => `${loss.ref} (${loss.reason})`).join('; '));
+    return { name, ok: false, lines };
+  }
 
   const rebuilt = Circuit.fromJSON({ parts: back.parts, wires: back.wires });
   rebuilt.setPower(true);
@@ -598,6 +603,11 @@ function judgeForeign(file, dir) {
   if (back.unmapped.length) {
     lines.push(`  our importer refused ${back.unmapped.length}: `
       + back.unmapped.map(u => `${u.ref} (${u.libsource})`).join('; '));
+    return { name, ok: false, lines };
+  }
+  if (back.losses.length) {
+    lines.push(`  our importer reported ${back.losses.length} semantic loss: `
+      + back.losses.map(loss => `${loss.ref} (${loss.reason})`).join('; '));
     return { name, ok: false, lines };
   }
 

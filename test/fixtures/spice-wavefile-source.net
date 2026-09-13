@@ -1,0 +1,4 @@
+* Self-authored external-waveform loss fixture
+Vstim signal 0 wavefile=definitely-not-present.wav chan=0
+.tran 1n 5u
+.end
