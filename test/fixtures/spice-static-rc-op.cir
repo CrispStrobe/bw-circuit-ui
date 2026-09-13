@@ -1,0 +1,7 @@
+* self-authored static RC operating-point fixture
+V1 in 0 DC 6
+R1 in out 2k
+R2 out 0 1k
+C1 out 0 10u
+.op
+.end

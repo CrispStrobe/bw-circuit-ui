@@ -736,6 +736,21 @@ export class Circuit {
   }
 
   /**
+   * Compute an independent DC operating point without adopting it as the
+   * circuit's live transient state. The engine owns the supported-domain,
+   * convergence and current-orientation contract; this is intentionally only
+   * the UI model's public reachability proxy.
+   *
+   * @returns {object}
+   */
+  operatingPoint() {
+    if (!this.board || typeof this.board.operatingPoint !== 'function') {
+      throw new Error('operatingPoint: the injected bw-board engine does not provide this analysis');
+    }
+    return this.board.operatingPoint();
+  }
+
+  /**
    * @param {string} netA
    * @param {string} netB
    * @returns {number|'requires-power-off'}
