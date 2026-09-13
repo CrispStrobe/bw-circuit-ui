@@ -55,6 +55,19 @@ import { formatSpiceValue } from '../si.js';
 const TWO_TERMINAL = new Set(['R', 'C', 'L', 'V', 'I', 'F']);
 
 /**
+ * `spiceCard: 'X'` kinds the engine models as a PLAIN DC resistance, and which
+ * are therefore fully described by one number from the parts library.
+ *
+ * Deliberately only the buzzer. `dc_motor` and `relay` also carry an `ohms`
+ * card, and both would be WRONG here: the motor is `theveninBetween(a, b,
+ * kV·omega, R)` — a resistor only at the static operating point where omega is
+ * 0 — and the relay's coil resistance says nothing about its contacts, which
+ * are the circuit on a relay bench. Adding a kind to this set is a claim that
+ * one resistor is the whole device.
+ */
+const DC_LOAD_KINDS = new Set(['buzzer']);
+
+/**
  * Engine defaults for parts whose value param was never set. These are
  * bw-board's own `params.X ?? default` fallbacks (src/mna.js). The old
  * serializer wrote `1` for anything valueless, which turned a default
@@ -230,7 +243,12 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     const sym = PART_SYMBOLS[part.kind];
     const card = sym ? sym.spiceCard : null;
 
-    if (!card || card === 'X' || card === 'S') {
+    // `X` means SPICE has no primitive for this kind. Most stay skipped; the
+    // DC_LOAD_KINDS are the exception, and they are handled in the dispatch
+    // below rather than here — a kind that the engine models as one plain
+    // resistance can be emitted as one, and skipping it sent the deck to
+    // ngspice with the bench's only load missing.
+    if (!card || (card === 'X' && !DC_LOAD_KINDS.has(part.kind)) || card === 'S') {
       skipped.push(`${part.refdes} (${part.kind}): no SPICE model`);
       lines.push(`* ${part.refdes} ${part.kind} — skipped (no simple SPICE card)`);
       continue;
@@ -321,6 +339,26 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       }
       usedModels.add('MOSFET');
       lines.push(`${part.refdes} ${nodeFields} MOSFET`);
+    } else if (card === 'X' && DC_LOAD_KINDS.has(part.kind)) {
+      // A part SPICE has no primitive for, which the engine nonetheless models
+      // as a plain DC resistance. Only kinds fully described by that one number
+      // belong here: `dc_motor` is a back-EMF source in series with its winding
+      // and `relay` is a coil PLUS contacts stamped as switches, so emitting
+      // either as one resistor would agree with ngspice about a simpler device
+      // than the solver runs. They stay skipped until their multi-element emit
+      // exists (bw-board parts-library says so in the cards' own comment).
+      //
+      // The number comes from the card, never from here. It was three homes in
+      // bw-board alone — the stamp, the extraction, and both walkers — before
+      // parts-library took it, and a copy in this file would be the fourth.
+      const ohms = Number(part.params?.ohms ?? classDefaults(part.kind).ohms);
+      if (!Number.isFinite(ohms) || ohms <= 0) {
+        skipped.push(`${part.refdes} (${part.kind}): no DC-equivalent resistance is derivable`
+          + ' — the parts library has no `ohms` for this kind');
+        lines.push(`* ${part.refdes} ${part.kind} — no resistance`);
+        continue;
+      }
+      lines.push(`R${part.refdes} ${nodeFields} ${formatSpiceValue(ohms)}`);
     } else {
       skipped.push(`${part.refdes} (${part.kind}): unsupported card '${card}'`);
       lines.push(`* ${part.refdes} ${part.kind} — unsupported`);
