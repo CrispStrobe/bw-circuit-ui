@@ -9,7 +9,7 @@ lane rather than rebasing a duplicate claim. Existing claims require explicit ta
 
 | lane | owner/session/worktree | base | scope and status |
 |---|---|---|---|
-_No active claims._
+| KiCad one-level hierarchy import | `/root/schematic_corpus_import` (Codex Sol), `/tmp/cui-kicad-hierarchy` | `2500518` | **ACTIVE 2026-09-13.** `src/importers/kicad-sch.js`, focused KiCad fixtures/tests, and only the existing KiCad entry/load plumbing in `src/importers/index.js`, `src/components/BoardCanvas.jsx`, `bin/bwc.mjs`. One direct basename-only child level from an explicit supplied file map; instance-scoped local/hierarchical nets and refs; cross-sheet union only through exact parent ports or global/power names. Missing/unsafe/ambiguous/deep/cyclic children are structured semantic losses. No ASC importer/registry work, solver work, or general hierarchy framework. |
 
 ## DONE
 
