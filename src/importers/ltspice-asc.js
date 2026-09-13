@@ -90,9 +90,14 @@ function parse(text) {
       current.attrs[match[1].toLowerCase()] = match[2];
     } else if ((match = /^TEXT\s+.*?\s!(.*)$/i.exec(line))) {
       directives.push(match[1].trim()); current = null;
-    } else if (/^(?:WINDOW|DATAFLAG)\b/i.test(line)) {
+    } else if (/^WINDOW\b/i.test(line)) {
       ignoredLines.push({ line: index + 1, source: line,
-        reason: 'display/measurement annotation is not part of the bounded circuit projection' });
+        reason: 'symbol display annotation is not part of the bounded circuit projection' });
+      // WINDOW records belong to the active SYMBOL and commonly precede or
+      // separate its SYMATTR records. They do not end the symbol record.
+    } else if (/^DATAFLAG\b/i.test(line)) {
+      ignoredLines.push({ line: index + 1, source: line,
+        reason: 'measurement annotation is not part of the bounded circuit projection' });
       current = null;
     } else {
       unknownLines.push({ line: index + 1, source: line }); current = null;

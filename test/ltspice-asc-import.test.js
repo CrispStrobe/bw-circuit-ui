@@ -68,6 +68,32 @@ SYMATTR ModelFile external.lib
     assert.ok(result.losses.some(loss => /modelfile/.test(loss.reason)));
   });
 
+  it('keeps SYMATTR records attached across consecutive WINDOW display records', () => {
+    const text = `Version 4
+SHEET 1 200 200
+WIRE 16 96 16 120
+FLAG 16 120 0
+SYMBOL res 0 0 R0
+WINDOW 0 32 56 VTop 2
+WINDOW 3 32 96 VBottom 2
+SYMATTR InstName R1
+WINDOW 123 0 0 Left 0
+SYMATTR Value 2.2k
+SYMATTR VendorNote retained
+SYMBOL res 80 0 R0
+SYMATTR InstName R2
+SYMATTR Value 1k
+TEXT 0 160 Left 2 !.op
+`;
+    const result = importCircuit('ltspice-asc', text);
+    assert.deepEqual(result.unmapped, []);
+    assert.equal(result.parts.find(part => part.id === 'R1').params.ohms, 2200);
+    assert.equal(result.parts.find(part => part.id === 'R2').params.ohms, 1000,
+      'the following SYMBOL still starts a fresh attribute record');
+    assert.equal(result.ignored.filter(item => /^WINDOW\b/.test(item.source)).length, 3);
+    assert.deepEqual(result.losses.map(loss => loss.source), ['SYMATTR vendornote retained']);
+  });
+
   it('merges separated coordinates carrying the same named net flag', () => {
     const text = `Version 4
 SHEET 1 240 160
