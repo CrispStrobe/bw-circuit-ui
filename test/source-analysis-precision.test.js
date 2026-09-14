@@ -46,6 +46,20 @@ describe('precision-v1 source-analysis product entrypoints', () => {
     assert.deepEqual(circuit.board.snapshot(), before, 'independent source analysis must not mutate live GUI state');
   });
 
+  it('selects and qualifies interactive-v1 separately on the same source grid', () => {
+    const input = imported();
+    const [interactive] = runSourceAnalyses(input, { format: 'spice',
+      transientProfile: 'interactive-v1' });
+    const [precision] = runSourceAnalyses(input, { format: 'spice',
+      transientProfile: 'precision-v1' });
+    assert.equal(interactive.status, 'pass');
+    assert.equal(interactive.executionProfile.configured.id, 'interactive-v1');
+    assert.equal(interactive.executionProfile.qualification.accuracyMet, true);
+    assert.deepEqual(interactive.observables.axis, precision.observables.axis,
+      'profile comparisons must use the same authored/adapted observation grid');
+    assert.equal(precision.executionProfile.configured.id, 'precision-v1');
+  });
+
   it('persists directives and source-node identities through Circuit JSON', () => {
     const circuit = persistedCircuit();
     const copy = Circuit.fromJSON(circuit.toJSON());

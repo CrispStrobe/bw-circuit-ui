@@ -534,9 +534,9 @@ export function runSourceAnalyses(imported, {
     return descriptors.map(descriptor => integrationGap(descriptor, 'invalid-analysis-budget',
       `${name} must be a positive safe integer no greater than ${ceiling}; received ${String(value)}`));
   }
-  if (transientProfile != null && transientProfile !== 'precision-v1') {
+  if (transientProfile != null && !['interactive-v1', 'precision-v1'].includes(transientProfile)) {
     return descriptors.map(descriptor => integrationGap(descriptor, 'transient-profile-not-allowed',
-      `source analysis may opt into precision-v1; received ${String(transientProfile)}`));
+      `source analysis profile must be interactive-v1 or precision-v1; received ${String(transientProfile)}`));
   }
   if (descriptors.length > maxAnalyses) {
     return descriptors.map(descriptor => integrationGap(descriptor, 'analysis-budget-exceeded',
