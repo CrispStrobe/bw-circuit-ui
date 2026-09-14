@@ -1083,6 +1083,13 @@ function mapModel(letter, model, warnings, partId) {
     // the bulk, which is an instance fact and not a model one.
     if (isFinite(p.gamma)) out.gamma = p.gamma;
     if (isFinite(p.phi)) out.phi = p.phi;
+    // THE BULK JUNCTIONS' SATURATION CURRENT. A SPICE MOSFET's bulk carries a
+    // pn junction to the source and another to the drain, and `IS` is their
+    // saturation current (SPICE's default, 1e-14 A, is the engine's too). It is
+    // called `bulkIs` on the card because a part's bare `is` already means a
+    // diode's own junction, and one name for two junctions is how a value ends
+    // up with two meanings.
+    if (isFinite(p.is)) out.bulkIs = p.is;
     // CHANNEL-LENGTH MODULATION. Level-1 saturation is
     // Id = k*Vov^2*(1 + LAMBDA*Vds), which is LINEAR in Vds — so it needs no
     // second Newton variable: the engine stamps `lambda * Id` as the

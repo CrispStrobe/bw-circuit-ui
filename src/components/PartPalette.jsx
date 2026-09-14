@@ -219,7 +219,14 @@ const CATEGORIES = [
   {
     name: 'ICs',
     parts: [
-      { kind: 'opamp', label: 'Op-Amp', params: { gain: 100000 }, color: '#e67e22', tooltip: 'LM741 type' },
+      // NO `gain` HERE. A palette entry is a KIND, and an electrical value
+      // belongs on a part's card, not in a UI list. This carried 100000
+      // beside an engine default of 1e6, so every placed op-amp solved at a
+      // tenth of the open-loop gain the engine documents -- a restated
+      // default that had drifted from the thing it restated. An LM741's real
+      // 200000 is a PART fact and wants a card; the palette's generic op-amp
+      // takes the engine's own default by saying nothing.
+      { kind: 'opamp', label: 'Op-Amp', params: {}, color: '#e67e22', tooltip: 'generic op-amp' },
       { kind: '555', label: '555 Timer', params: {}, color: '#e74c3c' },
       { kind: 'shift_register', label: '74HC595', params: {}, color: '#8e44ad', tooltip: 'Shift register — 8 outputs' },
       { kind: 'ir_receiver', label: 'IR Receiver', params: {}, color: '#c0392b', tooltip: 'drawable — IrDA' },
