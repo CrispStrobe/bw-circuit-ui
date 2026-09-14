@@ -60,6 +60,16 @@ describe('getMeterReading', () => {
     assert.ok(r.note.includes('simulator'));
   });
 
+  it('current: preserves the raw positive-OUT sign', () => {
+    const meter = { id: 'M1', kind: 'meter', params: { mode: 'current' } };
+    const wires = [{ from: { part: 'M1', terminal: 'probe_a' },
+      to: { part: 'D1', terminal: 'anode' } }];
+    const reading = getMeterReading(meter, wires,
+      { board: {}, branchCurrent: () => -0.002 });
+    assert.equal(reading.value, '-2.0');
+    assert.equal(reading.unit, 'mA');
+  });
+
   it('resistance: refuses on powered board', () => {
     const { c, meter, vcc, r: resistor } = buildCircuitWithMeter();
     meter.params.mode = 'resistance';

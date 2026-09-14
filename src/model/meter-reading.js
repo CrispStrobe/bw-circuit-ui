@@ -85,10 +85,12 @@ export function getMeterReading(meter, wires, circuit) {
       const conn = findProbePartTerminal(meter.id, 'probe_a', wires);
       if (!conn) return { value: '---', unit: 'mA', note: 'Wire probe A in series with a part' };
       try {
+        // Raw/public current is signed positive OUT of the probed part. A
+        // placeable meter must not erase direction while formatting it.
         const i = circuit.branchCurrent(conn.part, conn.terminal);
         const mA = i * 1000;
         return {
-          value: Math.abs(mA).toFixed(1),
+          value: Math.abs(mA) < 0.05 ? '0.0' : mA.toFixed(1),
           unit: 'mA',
           // Teaching note: a real meter changes the circuit it measures
           note: Math.abs(mA) > 0.1 ? 'Real ammeter drops ~0.2V (burden voltage)' : null,

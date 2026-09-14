@@ -75,6 +75,15 @@ describe('multimeter — voltage mode', () => {
 });
 
 describe('multimeter — current mode', () => {
+  it('preserves the raw positive-OUT sign', () => {
+    const meter = createMeterState();
+    meter.mode = 'current';
+    meter.probeA = { netId: null, partId: 'D1', terminal: 'anode' };
+    const reading = readMeter(meter, { board: {}, branchCurrent: () => -0.002 });
+    assert.equal(reading.value, '-2.000');
+    assert.equal(reading.unit, 'mA');
+  });
+
   it('reads branch current through LED', () => {
     const { c, led } = buildTestCircuit();
     const meter = createMeterState();

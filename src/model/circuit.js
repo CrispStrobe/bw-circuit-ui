@@ -758,7 +758,7 @@ export class Circuit {
   /**
    * @param {string} partId
    * @param {string} terminal
-   * @returns {number} amperes
+   * @returns {number} amperes leaving the part through the named terminal
    */
   branchCurrent(partId, terminal) {
     return this.board.branchCurrent(partId, terminal);

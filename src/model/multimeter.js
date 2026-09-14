@@ -74,6 +74,8 @@ export function readMeter(meter, circuit) {
         return { value: '---', unit: 'A', note: 'Place probe A on a part terminal' };
       }
       try {
+        // Raw/public current is signed positive OUT of the probed part. Keep
+        // the sign: reversing the selected terminal must reverse the reading.
         const i = circuit.branchCurrent(probeA.partId, probeA.terminal);
         // Display in mA for readability
         const mA = i * 1000;
