@@ -307,6 +307,19 @@ export const KICAD_RULES = [
     return { kind: 'vsource', params: { volts },
       pins: { 1: 'pos', 2: 'neg', '+': 'pos', '-': 'neg' } };
   }],
+  [/^ISOURCE$|^IDC$|^ISRC$/i, (value) => {
+    const match = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(meg|[tgkmunpfµ]?)$/i
+      .exec(String(value || '').trim());
+    if (!match) return null;
+    const scale = { '': 1, t: 1e12, g: 1e9, meg: 1e6, k: 1e3, m: 1e-3,
+      u: 1e-6, 'µ': 1e-6, n: 1e-9, p: 1e-12, f: 1e-15 }[match[2].toLowerCase()];
+    const amps = Number(match[1]) * scale;
+    if (!Number.isFinite(amps)) return null;
+    // PSpice pin 1 is the card's first node. Native positive current flows
+    // neg -> pos, so this is the same deliberate reversal as importSpice.
+    return { kind: 'isource', params: { amps },
+      pins: { 1: 'neg', 2: 'pos', '+': 'neg', '-': 'pos' } };
+  }],
   [/^AC$/i, () => ({ kind: 'vcc', anyPin: 'vcc',
     _note: 'AC supply symbol imported as a DC rail -- the engine has no AC source' })],
 
@@ -333,7 +346,7 @@ export const KICAD_RULES = [
   [/^C[CTE]{1,2}\d{3,4}[_-]/i, (v, n) => ({ kind: 'capacitor',
     params: { farads: parseEagleValue(v) ?? parseEagleValue(n.split('_')[1]) ?? 1e-7 }, pins: PASSIVE2 })],
   [/^L(_(Small|Core_Ferrite|Core_Iron))?$|^INDUCTOR$|^Ferrite|^Choke/i,
-    (v) => ({ kind: 'inductor', params: { henries: parseEagleValue(v) ?? 1e-3 }, pins: PASSIVE2 })],
+    (v) => ({ kind: 'inductor', params: { henrys: parseEagleValue(v) ?? 1e-3 }, pins: PASSIVE2 })],
   [/^(Poly)?Fuse(_Small)?$|^Polyfuse/i, () => ({ kind: 'fuse', pins: PASSIVE2 })],
   [/^Crystal|^Resonator|^ECS-\d|^XTAL/i, () => ({ kind: 'crystal', pins: PASSIVE2,
     _note: 'crystal has no engine model; imported so the schematic is complete' })],

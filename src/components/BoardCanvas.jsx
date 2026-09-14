@@ -2838,7 +2838,7 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
           if (ltspiceSymbols.has(name)) {
             throw new Error(`Two selected LTspice symbol files have the same basename: ${symbolFile.name}`);
           }
-          ltspiceSymbols.set(name, { text: await symbolFile.text() });
+          ltspiceSymbols.set(name, { text: new Uint8Array(await symbolFile.arrayBuffer()) });
         }
       }
       if (kicadFiles.length) {
@@ -2855,7 +2855,8 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
         file = kicadFiles.find((candidate) => candidate.name === pickedRoot.rootName);
         text = hierarchyFiles.get(pickedRoot.rootName);
       } else {
-        text = await file.text();
+        text = /\.asc$/i.test(file.name) || pendingFormat.current === 'ltspice-asc'
+          ? new Uint8Array(await file.arrayBuffer()) : await file.text();
       }
     } catch (err) {
       say({ kind: 'import', title: file.name, error: String((err && err.message) || err) });
@@ -2887,18 +2888,24 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
     // Load even when some components were unmapped: a partial import is
     // useful as long as the gap is stated. Nothing is loaded if NOTHING
     // mapped, because that is a failed import wearing a success's clothes.
-    if (r.parts.length) onImport({ parts: r.parts, wires: r.wires,
+    const importedSourceDocuments = [
+      ...(r.sourceDocument ? [r.sourceDocument] : []),
+      ...(r.sourceSymbols?.length ? [{ format: 'ltspice-asy', symbols: r.sourceSymbols }] : []),
+    ];
+    const usefulDocument = r.sourceDocument?.records?.length > 0;
+    if (r.parts.length || usefulDocument) onImport({ parts: r.parts, wires: r.wires,
       analysisBlockers: blockersFromImport(r, format, file.name),
-      ...(r.sourceSymbols?.length ? { sourceDocuments: [{
-        format: 'ltspice-asy', symbols: r.sourceSymbols,
-      }] } : {}) });
+      ...(importedSourceDocuments.length ? { sourceDocuments: [
+        ...(r.sourceDocument ? [r.sourceDocument] : []),
+        ...(r.sourceSymbols?.length ? [{ format: 'ltspice-asy', symbols: r.sourceSymbols }] : []),
+      ] } : {}) });
     say({
       kind: 'import',
       title: file.name,
       summary: de
         ? `${r.parts.length} Bauteile, ${r.wires.length} Verbindungen (${format})`
         : `${r.parts.length} parts, ${r.wires.length} connections (${format})`,
-      error: r.parts.length ? null
+      error: r.parts.length || usefulDocument ? null
         : (de ? 'Nichts importiert.' : 'Nothing was imported.'),
       skipped: (r.unmapped || []).map((u) => `${u.ref}: ${u.libsource || u.value || '?'}`),
       warnings: r.warnings || [],
