@@ -2,7 +2,7 @@ import './_setup.js';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { detectFormat } from '../src/importers/detect.js';
-import { getSupportedFormats, importCircuit } from '../src/importers/index.js';
+import { getSupportedFormats, importCircuit, parseLtspiceAsy } from '../src/importers/index.js';
 import { placeLtspicePin } from '../src/importers/ltspice-asc.js';
 import { Circuit } from '../src/model/circuit.js';
 import { runSourceAnalyses } from '../src/model/source-analysis.js';
@@ -191,6 +191,163 @@ TEXT 0 120 Left 2 !.tran 1m
     const result = importCircuit('ltspice-asc', 'not a schematic');
     assert.equal(result.parts.length, 0);
     assert.match(result.warnings[0], /Not an LTspice/);
+  });
+});
+
+const RES_ASY = `Version 4
+SymbolType CELL
+LINE Normal 0 0 80 0
+WINDOW 0 40 -16 Bottom 2
+SYMATTR Prefix R
+SYMATTR Value 1k
+PIN 80 0 RIGHT 8
+PINATTR PinName B
+PINATTR SpiceOrder 2
+PIN 0 0 LEFT 8
+PINATTR PinName A
+PINATTR SpiceOrder 1
+`;
+
+const ASC_WITH_INSTANCE_VALUE = `Version 4
+SHEET 1 880 680
+SYMBOL res 100 100 R0
+SYMATTR InstName R1
+SYMATTR Value 2k
+FLAG 100 100 IN
+FLAG 180 100 0
+TEXT 0 0 Left 2 !.op
+`;
+
+describe('caller-supplied LTspice ASY documents', () => {
+  it('parses attributes, geometry, and explicit SpiceOrder without reordering source records', () => {
+    const parsed = parseLtspiceAsy(RES_ASY);
+    assert.equal(parsed.ok, true);
+    assert.equal(parsed.version, 4);
+    assert.equal(parsed.symbolType, 'CELL');
+    assert.deepEqual(parsed.attrs, { prefix: 'R', value: '1k' });
+    assert.deepEqual(parsed.pins.map(pin => [pin.pinName, pin.spiceOrder, pin.x, pin.y]), [
+      ['B', 2, 80, 0],
+      ['A', 1, 0, 0],
+    ]);
+    assert.deepEqual(parsed.geometry.map(record => record.type), ['LINE', 'WINDOW']);
+  });
+
+  it('uses caller text for verified standard pins and lets instance attributes override ASY defaults', () => {
+    const imported = importCircuit('ltspice-asc', ASC_WITH_INSTANCE_VALUE, {
+      symbols: new Map([['res', { text: RES_ASY, sha256: 'self-authored-res-v1' }]]),
+    });
+    assert.deepEqual(imported.unmapped, []);
+    assert.deepEqual(imported.losses, []);
+    const resistor = imported.parts.find(part => part.id === 'R1');
+    assert.equal(resistor.kind, 'resistor');
+    assert.equal(resistor.params.ohms, 2000, 'instance Value wins over the ASY default 1k');
+    assert.equal(imported.wires.length, 1,
+      'SpiceOrder 1 at (0,0) and order 2 at (80,0) drive the supplied pin placement');
+    assert.deepEqual(imported.netNames.map(net => [net.name,
+      net.terminals.map(terminal => `${terminal.partId}.${terminal.terminal}`).sort()]), [
+      ['IN', ['R1.a']],
+      ['0', ['GND1.gnd', 'R1.b']],
+    ]);
+    assert.equal(imported.sourceSymbols.length, 1);
+    assert.deepEqual({
+      library: imported.sourceSymbols[0].library,
+      status: imported.sourceSymbols[0].status,
+      declaredSha256: imported.sourceSymbols[0].declaredSha256,
+    }, { library: 'res', status: 'parsed', declaredSha256: 'self-authored-res-v1' });
+    assert.equal(imported.sourceSymbols[0].document.geometry.length, 2);
+
+    const withDefault = importCircuit('ltspice-asc',
+      ASC_WITH_INSTANCE_VALUE.replace('SYMATTR Value 2k\n', ''),
+      { symbols: { res: RES_ASY } });
+    assert.equal(withDefault.parts.find(part => part.id === 'R1').params.ohms, 1000,
+      'the ASY Value is used only when the instance does not author one');
+  });
+
+  it('uses a synchronous caller resolver once and preserves unknown document metadata without a fake part', () => {
+    const customAsy = `Version 4
+SymbolType CELL
+RECTANGLE Normal 0 0 64 64
+SYMATTR Prefix X
+SYMATTR Value CUSTOM
+SYMATTR Description Self-authored three pin symbol
+PIN 0 0 LEFT 8
+PINATTR PinName IN
+PINATTR SpiceOrder 1
+PIN 64 0 RIGHT 8
+PINATTR PinName OUT
+PINATTR SpiceOrder 2
+PIN 32 64 BOTTOM 8
+PINATTR PinName COM
+PINATTR SpiceOrder 3
+`;
+    const asc = `Version 4
+SHEET 1 880 680
+SYMBOL lib/custom 10 20 R0
+SYMATTR InstName U1
+SYMBOL lib/custom 100 20 M90
+SYMATTR InstName U2
+SYMATTR Value INSTANCE
+`;
+    const requests = [];
+    const imported = importCircuit('ltspice-asc', asc, {
+      resolveSymbol(request) {
+        requests.push(request);
+        return { text: customAsy, sha256: 'self-authored-custom-v1' };
+      },
+    });
+    assert.deepEqual(requests, [{ name: 'lib/custom', normalizedName: 'lib/custom' }]);
+    assert.deepEqual(imported.parts, [], 'document support must not invent a native solver kind');
+    assert.equal(imported.unmapped.length, 2);
+    assert.equal(imported.unmapped[0].sourceSymbol, 'lib/custom');
+    assert.equal(imported.unmapped[0].value, 'CUSTOM');
+    assert.equal(imported.unmapped[1].value, 'INSTANCE');
+    assert.equal(imported.sourceSymbols[0].document.pins.length, 3);
+    assert.equal(imported.sourceSymbols[0].electricalStatus, 'unmapped-no-native-kind');
+    assert.equal(imported.sourceSymbols[0].document.attrs.description,
+      'Self-authored three pin symbol');
+    assert.deepEqual(imported.sourceSymbols[0].instances, [
+      { ref: 'U1', x: 10, y: 20, orientation: 'R0', attrs: { instname: 'U1' }, line: 3 },
+      { ref: 'U2', x: 100, y: 20, orientation: 'M90',
+        attrs: { instname: 'U2', value: 'INSTANCE' }, line: 5 },
+    ]);
+  });
+
+  it('refuses unsafe names, malformed electrical pin order, and bounded-parser overflow', () => {
+    let resolverCalls = 0;
+    const unsafe = importCircuit('ltspice-asc', `Version 4
+SHEET 1 880 680
+SYMBOL ../res 0 0 R0
+SYMATTR InstName R1
+SYMATTR Value 1k
+`, { resolveSymbol() { resolverCalls++; return RES_ASY; } });
+    assert.equal(resolverCalls, 0, 'an unsafe name is never handed to caller code');
+    assert.equal(unsafe.parts.length, 0);
+    assert.match(unsafe.unmapped[0].libsource, /unsafe symbol library name/);
+
+    const duplicateOrder = RES_ASY.replace('PINATTR SpiceOrder 2', 'PINATTR SpiceOrder 1');
+    const malformed = importCircuit('ltspice-asc', ASC_WITH_INSTANCE_VALUE, {
+      symbols: { res: duplicateOrder },
+    });
+    assert.equal(malformed.parts.filter(part => part.kind !== 'gnd').length, 0);
+    assert.match(malformed.unmapped[0].libsource, /not structurally valid/);
+    assert.equal(malformed.sourceSymbols[0].status, 'refused');
+    assert.ok(malformed.sourceSymbols[0].document.findings.some(
+      item => item.kind === 'duplicate-asy-spice-order'));
+
+    const wrongInstancePrefix = importCircuit('ltspice-asc',
+      ASC_WITH_INSTANCE_VALUE.replace('SYMATTR Value 2k', 'SYMATTR Value 2k\nSYMATTR Prefix X'),
+      { symbols: { res: RES_ASY } });
+    assert.equal(wrongInstancePrefix.parts.filter(part => part.kind !== 'gnd').length, 0);
+    assert.match(wrongInstancePrefix.unmapped[0].libsource, /effective Prefix must be R/);
+
+    const bounded = parseLtspiceAsy(RES_ASY, { limits: { maxPins: 1 } });
+    assert.equal(bounded.ok, false);
+    assert.ok(bounded.findings.some(item => item.kind === 'asy-limit-exceeded'));
+
+    const unsafeNumber = parseLtspiceAsy(
+      RES_ASY.replace('PINATTR SpiceOrder 2', 'PINATTR SpiceOrder 999999999999999999999'));
+    assert.equal(unsafeNumber.ok, false);
+    assert.ok(unsafeNumber.findings.some(item => item.kind === 'invalid-asy-spice-order'));
   });
 });
 

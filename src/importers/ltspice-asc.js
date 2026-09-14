@@ -25,6 +25,11 @@
  * Mirrored transforms use LTspice's Y-down
  * instance matrices, cross-checked against paired ASC/netlist connectivity.
  * No external symbol file is followed and no TEXT directive is executed.
+ * A caller may opt in to supplied ASY text through import options. The ASY
+ * reader is synchronous and bounded; it opens no path or URL. Supplied pin
+ * geometry can replace the built-in geometry only for the same exact standard
+ * electrical symbols. Parsed custom definitions remain document metadata and
+ * an explicit unmapped component, never a manufactured engine model.
  */
 
 import { NetSolver, makeId, wiresFromNets } from './kicad-common.js';
@@ -32,6 +37,7 @@ import { parseSpiceValue } from '../model/si.js';
 import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-source.js';
 import { evaluateConstantExpression, resolveConstantParameters } from '../model/spice-constant.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
+import { normalizeLtspiceSymbolName, parseLtspiceAsy } from './ltspice-asy.js';
 
 const SYMBOLS = new Map([
   ['res', {
@@ -55,6 +61,82 @@ const SYMBOLS = new Map([
     sourceSha256: 'd36a9bf0f6b504326a64ac0011986cf7484a57f5499d7ca6faca049076dab74c',
   }],
 ]);
+
+const STANDARD_PREFIX = Object.freeze({
+  resistor: 'R', capacitor: 'C', inductor: 'L', vsource: 'V', isource: 'I',
+});
+
+function symbolAsset(lib, options, cache) {
+  const normalizedName = normalizeLtspiceSymbolName(lib);
+  if (!normalizedName) return { supplied: true, error: 'unsafe symbol library name' };
+  if (cache.has(normalizedName)) return cache.get(normalizedName);
+  let value;
+  const bundle = options?.symbols;
+  if (bundle instanceof Map) value = bundle.get(normalizedName);
+  else if (bundle && typeof bundle === 'object'
+      && Object.prototype.hasOwnProperty.call(bundle, normalizedName)) value = bundle[normalizedName];
+  if (value == null && typeof options?.resolveSymbol === 'function') {
+    try {
+      value = options.resolveSymbol(Object.freeze({ name: String(lib), normalizedName }));
+    } catch (error) {
+      const resolved = { supplied: true, normalizedName,
+        error: `caller symbol resolver failed: ${String(error?.message || error)}` };
+      cache.set(normalizedName, resolved);
+      return resolved;
+    }
+  }
+  if (value == null) {
+    const resolved = { supplied: false, normalizedName };
+    cache.set(normalizedName, resolved);
+    return resolved;
+  }
+  const text = typeof value === 'string' ? value : value?.text;
+  const declaredSha256 = typeof value === 'object' && value ? value.sha256 : null;
+  if (typeof text !== 'string') {
+    const resolved = { supplied: true, normalizedName,
+      error: 'caller symbol asset must be text or {text, sha256}' };
+    cache.set(normalizedName, resolved);
+    return resolved;
+  }
+  const document = parseLtspiceAsy(text, options?.asy);
+  const resolved = { supplied: true, normalizedName,
+    declaredSha256: declaredSha256 || null, document };
+  cache.set(normalizedName, resolved);
+  return resolved;
+}
+
+function suppliedPins(spec, asset) {
+  if (!asset.supplied) return { pins: spec.pins, defaults: {} };
+  if (asset.error) return { error: asset.error };
+  const document = asset.document;
+  if (!document?.ok) return { error: 'supplied ASY definition is not structurally valid' };
+  if (String(document.symbolType).toUpperCase() !== 'CELL') {
+    return { error: 'supplied ASY SymbolType must be CELL' };
+  }
+  const expectedPrefix = STANDARD_PREFIX[spec.kind];
+  if (!expectedPrefix || String(document.attrs.prefix || '').toUpperCase() !== expectedPrefix) {
+    return { error: `supplied ASY Prefix must be ${expectedPrefix || 'a verified standard prefix'}` };
+  }
+  if (document.pins.length !== spec.terminals.length) {
+    return { error: `supplied ASY definition has ${document.pins.length} pins; ${spec.terminals.length} required` };
+  }
+  const ordered = [...document.pins].sort((a, b) => a.spiceOrder - b.spiceOrder);
+  if (ordered.some((pin, index) => pin.spiceOrder !== index + 1)) {
+    return { error: `supplied ASY SpiceOrder must be exactly 1..${spec.terminals.length}` };
+  }
+  return { pins: ordered.map(pin => [pin.x, pin.y]), defaults: document.attrs };
+}
+
+function sourceSymbolMetadata(asset, requestedName) {
+  return {
+    library: asset.normalizedName || String(requestedName), requestedName: String(requestedName),
+    status: asset.error ? 'refused' : asset.document?.ok ? 'parsed' : 'refused',
+    ...(asset.declaredSha256 ? { declaredSha256: asset.declaredSha256 } : {}),
+    ...(asset.error ? { error: asset.error } : {}),
+    ...(asset.document ? { document: asset.document } : {}),
+    instances: [],
+  };
+}
 
 export function looksLikeLtspiceAsc(text) {
   if (typeof text !== 'string') return false;
@@ -152,7 +234,7 @@ function authoredParams(raw, spec, constants) {
     : { params: { [spec.parameter]: resolved.value }, reason: null };
 }
 
-export function importLtspiceAsc(text) {
+export function importLtspiceAsc(text, options = {}) {
   const parts = [];
   const warnings = [];
   const unmapped = [];
@@ -160,9 +242,12 @@ export function importLtspiceAsc(text) {
   const ignored = [];
   const analyses = [];
   const sourceDirectives = [];
+  const symbolAssets = new Map();
+  const sourceSymbols = [];
+  const sourceSymbolRecords = new Map();
   if (!looksLikeLtspiceAsc(text)) {
     return { parts, wires: [], warnings: ['Not an LTspice Version 4 ASCII schematic.'],
-      unmapped, losses, ignored, analyses, sourceDirectives, netNames: [] };
+      unmapped, losses, ignored, analyses, sourceDirectives, netNames: [], sourceSymbols };
   }
 
   const drawing = parse(text);
@@ -187,37 +272,77 @@ export function importLtspiceAsc(text) {
   for (const symbol of drawing.symbols) {
     const lib = symbol.lib.replace(/\\/g, '/').split('/').at(-1).toLowerCase();
     const spec = SYMBOLS.get(lib);
+    const asset = symbolAsset(symbol.lib, options, symbolAssets);
+    let sourceSymbolRecord = null;
+    if (asset.supplied) {
+      const key = asset.normalizedName || symbol.lib;
+      if (!sourceSymbolRecords.has(key)) {
+        const record = sourceSymbolMetadata(asset, symbol.lib);
+        sourceSymbolRecords.set(key, record);
+        sourceSymbols.push(record);
+      }
+      sourceSymbolRecord = sourceSymbolRecords.get(key);
+      sourceSymbolRecord.instances.push({
+        ref: symbol.attrs.instname || null, x: symbol.x, y: symbol.y,
+        orientation: symbol.orientation, attrs: { ...symbol.attrs }, line: symbol.line,
+      });
+    }
+    const definition = spec ? suppliedPins(spec, asset) : null;
+    if (sourceSymbolRecord) sourceSymbolRecord.electricalStatus = !spec
+      ? 'unmapped-no-native-kind' : definition.error ? 'refused-definition' : 'existing-standard-kind';
+    const effectiveAttrs = {
+      ...(definition?.defaults || (asset.document?.ok ? asset.document.attrs : {})),
+      ...symbol.attrs,
+    };
+    if (!symbol.attrs.instname) delete effectiveAttrs.instname;
     const ref = symbol.attrs.instname || '?';
     if (!spec) {
-      unmapped.push({ ref, value: symbol.attrs.value || '',
-        libsource: `${symbol.lib}: no verified standard-symbol rule in the bounded ASC importer` });
+      unmapped.push({ ref, value: effectiveAttrs.value || '',
+        libsource: `${symbol.lib}: no verified standard-symbol electrical rule in the bounded ASC importer`,
+        ...(asset.supplied ? { sourceSymbol: asset.normalizedName || String(symbol.lib) } : {}) });
       warnings.push(`Unmapped LTspice symbol: ${ref} (${symbol.lib})`);
       continue;
     }
-    const pins = spec.pins.map(([px, py]) => placeLtspicePin(px, py, symbol));
+    if (definition.error) {
+      unmapped.push({ ref, value: effectiveAttrs.value || '',
+        libsource: `${symbol.lib}: ${definition.error}`,
+        ...(asset.supplied ? { sourceSymbol: asset.normalizedName || String(symbol.lib) } : {}) });
+      warnings.push(`${ref}: supplied LTspice symbol definition refused: ${definition.error}`);
+      continue;
+    }
+    const expectedPrefix = STANDARD_PREFIX[spec.kind];
+    if (effectiveAttrs.prefix != null
+        && String(effectiveAttrs.prefix).toUpperCase() !== expectedPrefix) {
+      unmapped.push({ ref, value: effectiveAttrs.value || '',
+        libsource: `${symbol.lib}: effective Prefix must be ${expectedPrefix}; instance attributes take precedence`,
+        ...(asset.supplied ? { sourceSymbol: asset.normalizedName || String(symbol.lib) } : {}) });
+      warnings.push(`${ref}: LTspice Prefix ${effectiveAttrs.prefix} does not match ${expectedPrefix}`);
+      continue;
+    }
+    const pins = definition.pins.map(([px, py]) => placeLtspicePin(px, py, symbol));
     if (pins.some(pin => pin === null)) {
       unmapped.push({ ref, value: symbol.attrs.value || '',
         libsource: `${symbol.lib}: unsupported orientation ${symbol.orientation}` });
       warnings.push(`${ref}: unsupported LTspice orientation ${symbol.orientation}`);
       continue;
     }
-    if (!symbol.attrs.instname) {
-      unmapped.push({ ref, value: symbol.attrs.value || '', libsource: `${symbol.lib}: missing InstName` });
+    if (!effectiveAttrs.instname) {
+      unmapped.push({ ref, value: effectiveAttrs.value || '', libsource: `${symbol.lib}: missing InstName` });
       warnings.push(`${symbol.lib} at line ${symbol.line}: missing InstName`);
       continue;
     }
     const id = makeId(ref, used);
-    const authored = authoredParams(symbol.attrs.value, spec, constantParameters.values);
+    const authored = authoredParams(effectiveAttrs.value, spec, constantParameters.values);
     const params = authored.params;
     if (authored.reason) {
       losses.push({ ref: id, kind: 'unsupported-or-missing-static-value', source: symbol.source,
         reason: authored.reason, fallback: null });
       warnings.push(`${id}: non-static or missing value is not approximated`);
     }
-    for (const [name, authored] of Object.entries(symbol.attrs)) {
-      if (name === 'instname' || name === 'value') continue;
+    for (const [name, authored] of Object.entries(effectiveAttrs)) {
+      if (name === 'instname' || name === 'value' || name === 'prefix') continue;
       losses.push({ ref: id, kind: 'unsupported-symbol-attribute',
-        source: `SYMATTR ${name} ${authored}`,
+        source: `${Object.prototype.hasOwnProperty.call(symbol.attrs, name) ? 'SYMATTR' : 'ASY SYMATTR'} ${name} ${authored}`,
         reason: `the bounded ASC importer does not interpret ${name}`, fallback: null });
       warnings.push(`${id}: unsupported LTspice symbol attribute ${name} is retained as a loss`);
     }
@@ -312,5 +437,5 @@ export function importLtspiceAsc(text) {
   if (floating) warnings.push(`${floating} mapped pin(s) are electrically floating`);
   if (!parts.length) warnings.push('No mappable components found in LTspice ASC schematic.');
   return { parts, wires: resolved.wires, warnings, unmapped, losses, ignored,
-    analyses, sourceDirectives, netNames };
+    analyses, sourceDirectives, netNames, sourceSymbols };
 }
