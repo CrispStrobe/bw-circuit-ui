@@ -54,8 +54,8 @@ test('the fixture is real: both kinds are stamped by the engine and placeable he
   for (const kind of KINDS) {
     resetIds();
     const p = new Circuit(5).addPart(kind, {}, 0, 0);
-    assert.deepEqual([...p.terminals].sort(), [...CONTRACT].sort(),
-      `${kind} does not carry the engine's terminal contract`);
+    assert.deepEqual(p.terminals, CONTRACT,
+      `${kind} does not carry the engine's terminal contract, in its order`);
   }
 });
 
@@ -64,8 +64,14 @@ test('1. each sidecar names exactly the four terminals the engine stamp looks up
     const sc = getSidecar(kind);
     assert.ok(sc, `${kind} has no sidecar — the loader did not pick it up`);
     const names = sc.terminals.map(t => t.name);
-    assert.deepEqual([...names].sort(), [...CONTRACT].sort(),
-      `${kind} sidecar pins ${names.join('/')} do not match the stamp`);
+    // ORDER, not just membership. The sidecar is consulted before circuit.js's
+    // own case, so its order becomes the part's terminal order -- and there is
+    // a landed contract test asserting exactly outp/outn/inp/inn through
+    // Circuit.fromJSON. Authoring this sidecar with the terminals in reading
+    // order (inputs first) broke that test, which is how the coupling was
+    // found. A set comparison here would not have caught it.
+    assert.deepEqual(names, CONTRACT,
+      `${kind} sidecar pins ${names.join('/')} do not match the stamp's contract order`);
     // The engine really does address them by these names, rather than by
     // position: assert the stamp's own source mentions each one.
     for (const n of CONTRACT) {
@@ -75,8 +81,8 @@ test('1. each sidecar names exactly the four terminals the engine stamp looks up
     // ...and the part the designer builds agrees with the sidecar.
     resetIds();
     const placed = new Circuit(5).addPart(kind, {}, 0, 0);
-    assert.deepEqual([...placed.terminals].sort(), [...names].sort(),
-      `${kind}: circuit.js and the sidecar disagree about the pins`);
+    assert.deepEqual(placed.terminals, names,
+      `${kind}: circuit.js and the sidecar disagree about the pins or their order`);
   }
 });
 

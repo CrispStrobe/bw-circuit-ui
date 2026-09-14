@@ -3,10 +3,30 @@
   "w": 64,
   "h": 56,
   "terminals": [
-    { "name": "inp", "x": 0, "y": 18, "functions": [] },
-    { "name": "inn", "x": 0, "y": 38, "functions": [] },
-    { "name": "outp", "x": 64, "y": 18, "functions": [] },
-    { "name": "outn", "x": 64, "y": 38, "functions": [] }
+    {
+      "name": "outp",
+      "x": 64,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "outn",
+      "x": 64,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "inp",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "inn",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    }
   ],
   "variants": null,
   "footprint": null
