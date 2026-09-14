@@ -46,6 +46,7 @@ const { importCircuit } = await import(join(SRC, 'importers/index.js'));
 const { detectFormat } = await import(join(SRC, 'importers/detect.js'));
 const { toEagleSch } = await import(join(SRC, 'model/exporters/eagle.js'));
 const { toKicadSch } = await import(join(SRC, 'model/exporters/kicad-sch.js'));
+const { toLtspiceAsc } = await import(join(SRC, 'model/exporters/ltspice-asc.js'));
 const { renderSchematicSvg, netsFromWires } = await import(join(SRC, 'model/schematic-svg.js'));
 
 /** The engine is optional: only netlist exports need it. */
@@ -111,7 +112,7 @@ const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
     + '  bwc op      <file>\n'
-    + '  bwc convert <file> --to eagle|kicad-sch|kicad|spice|json [-o out]\n'
+    + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
     + '\n  audit <dir> [dir...]        four-layer readiness per part kind'
     + '\nInput: EAGLE .sch, KiCad .kicad_sch, KiCad legacy .sch, KiCad netlist,\n'
@@ -120,12 +121,14 @@ const usage = () => {
 
 /** Read any supported file into {parts, wires, unmapped, ignored, warnings}. */
 async function load(path) {
-  const text = readFileSync(path, 'utf8');
+  const bytes = readFileSync(path);
+  const text = bytes.toString('utf8');
   if (/^\s*\{/.test(text)) {
     try {
       const j = JSON.parse(text);
       if (Array.isArray(j.parts)) {
         return { parts: j.parts, wires: j.wires || [], vcc: j.vcc,
+          sourceDocuments: j.sourceDocuments || [],
           unmapped: [], ignored: [], warnings: [], losses: [], format: 'json' };
       }
     } catch { /* not our json; fall through to the importers */ }
@@ -162,6 +165,31 @@ async function load(path) {
     const r = importCircuit(fmt, text, { files, rootName: basename(path) });
     return { ...r, format: fmt };
   }
+  if (fmt === 'ltspice-asc') {
+    // The explicitly requested ASC's sibling ASYs are caller-owned inputs.
+    // Supplying them is bounded and inert: no library name in the ASC can
+    // make this loader open another path, and SPICE .include remains unfollowed.
+    const dir = dirname(path) || '.';
+    const symbols = new Map();
+    let totalBytes = 0;
+    try {
+      const { readdirSync } = await import('node:fs');
+      const entries = readdirSync(dir).filter(entry => /\.asy$/i.test(entry)).sort();
+      if (entries.length <= 256) {
+        for (const entry of entries) {
+          const asset = readFileSync(join(dir, entry));
+          totalBytes += asset.byteLength;
+          if (asset.byteLength > 1024 * 1024 || totalBytes > 16 * 1024 * 1024) {
+            symbols.clear(); break;
+          }
+          symbols.set(entry.replace(/\.asy$/i, '').toLowerCase(), asset.toString('utf8'));
+        }
+      }
+    } catch { /* unresolved symbols stay explicit document dependencies */ }
+    const r = importCircuit(fmt, bytes, { resolveSymbol: ({ normalizedName }) =>
+      symbols.get(normalizedName.split('/').at(-1)) || null });
+    return { ...r, format: fmt };
+  }
   if (!fmt) {
     // THROW, never exit: batch must survive a file it cannot read, and a
     // single unrecognised schematic must not abort a 335-file run.
@@ -184,6 +212,14 @@ switch (cmd) {
     console.log('  parts    : ' + c.parts.length);
     console.log('  wires    : ' + c.wires.length);
     console.log('  nets     : ' + netsFromWires(c.wires).length);
+    if (c.sourceDocument?.format === 'ltspice-asc') {
+      const stats = c.sourceDocument.stats || {};
+      console.log('  ASC doc  : ' + (stats.records || 0) + ' records, '
+        + (stats.symbols || 0) + ' symbols, ' + (stats.pinsRecovered || 0) + ' pins recovered');
+      console.log('  ASC gaps : ' + (c.sourceDocument.findings || []).length + ' document finding(s), '
+        + (c.sourceDocument.electricalProjection?.refusedInstances || []).length
+        + ' electrical projection refusal(s)');
+    }
     const kinds = {};
     for (const p of c.parts) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
     console.log('  kinds    : ' + Object.entries(kinds).sort((a, b) => b[1] - a[1])
@@ -252,13 +288,18 @@ switch (cmd) {
   }
 
   case 'convert': {
-    const to = opts.to || die('convert needs --to eagle|kicad-sch|kicad|spice|json');
+    const to = opts.to || die('convert needs --to asc|eagle|kicad-sch|kicad|spice|json');
     const c = await loadOrDie(file);
-    let text; let ext;
+    let text; let ext; let companionFiles = [];
     if (to === 'eagle') {
       const r = toEagleSch({ parts: c.parts, wires: c.wires });
       for (const w of r.warnings) console.error('  warning: ' + w);
       text = r.xml; ext = '.sch';
+    } else if (to === 'asc' || to === 'ltspice-asc') {
+      const r = toLtspiceAsc(c);
+      for (const w of r.warnings) console.error('  warning: ' + w);
+      for (const sk of r.skipped) console.error('  skipped: ' + JSON.stringify(sk));
+      text = r.text; ext = '.asc'; companionFiles = r.symbolFiles || [];
     } else if (to === 'kicad-sch') {
       // A .kicad_sch, unlike our EAGLE output, is a file KiCad will open: it
       // carries its own lib_symbols. Connectivity is written as labels, not
@@ -267,7 +308,9 @@ switch (cmd) {
       for (const w of r.warnings) console.error('  warning: ' + w);
       text = r.text; ext = '.kicad_sch';
     } else if (to === 'json') {
-      text = JSON.stringify({ vcc: 5, parts: c.parts, wires: c.wires }, null, 1) + '\n'; ext = '.json';
+      text = JSON.stringify({ vcc: 5, parts: c.parts, wires: c.wires,
+        ...(c.sourceDocument || c.sourceDocuments?.length
+          ? { sourceDocuments: [c.sourceDocument, ...(c.sourceDocuments || [])].filter(Boolean) } : {}) }, null, 1) + '\n'; ext = '.json';
     } else if (to === 'kicad' || to === 'spice') {
       // These serialise a NETLIST, which needs the engine to build a Circuit
       // first. Loud if the engine is not beside us — a half-written netlist
@@ -290,10 +333,15 @@ switch (cmd) {
         text = r.text; ext = '.cir';
       }
     } else {
-      die('unknown --to "' + to + '" (eagle, kicad-sch, kicad, spice, json)');
+      die('unknown --to "' + to + '" (asc, eagle, kicad-sch, kicad, spice, json)');
     }
     const out = opts.o || basename(file, extname(file)) + ext;
     writeFileSync(out, text);
+    for (const companion of companionFiles) {
+      const companionPath = join(dirname(out), companion.name);
+      writeFileSync(companionPath, companion.text);
+      console.log('wrote ' + companionPath + ' (' + companion.text.length + ' bytes)');
+    }
     console.log('wrote ' + out + ' (' + text.length + ' bytes)');
     break;
   }

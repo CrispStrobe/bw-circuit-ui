@@ -4,6 +4,9 @@ import { importLtspiceAsc } from '../src/importers/ltspice-asc.js';
 import { toLtspiceAsc } from '../src/model/exporters/ltspice-asc.js';
 import { CIRCUIT_EXPORTS, runExport } from '../src/model/exporters/registry.js';
 import { wireEndpoint } from '../src/model/wire-endpoints.js';
+import { importKicadSch } from '../src/importers/kicad-sch.js';
+import { toKicadSch } from '../src/model/exporters/kicad-sch.js';
+import { importSpice } from '../src/importers/spice.js';
 
 const terminalPartitions = wires => {
   const parent = new Map();
@@ -43,7 +46,8 @@ describe('bounded LTspice ASC exporter', () => {
     const out = toLtspiceAsc({ parts: [
       { id: 'V1', kind: 'vsource', params: { volts: 2, sineAmplitude: 1 } }, { id: 'D1', kind: 'diode', params: {} },
     ] });
-    assert.deepEqual(out.skipped.map(s => [s.id, s.reason]), [['V1', 'unrepresented parameters: sineAmplitude'], ['D1', 'unsupported kind']]);
+    assert.deepEqual(out.skipped.map(s => [s.id, s.reason]), [['V1', 'unrepresented parameters: sineAmplitude'],
+      ['D1', 'diode needs explicit finite Shockley IS/N/RS parameters']]);
     assert.doesNotMatch(out.text, /SYMBOL/);
   });
 
@@ -51,5 +55,96 @@ describe('bounded LTspice ASC exporter', () => {
     const entry = CIRCUIT_EXPORTS.find(candidate => candidate.id === 'ltspice-asc'); assert.ok(entry);
     const out = await runExport(entry, { circuit });
     assert.equal(out.files[0].name, 'circuit.asc'); assert.match(out.files[0].text, /^Version 4/m); assert.deepEqual(out.report.skipped, []);
+  });
+
+  it('replays an unchanged retained ASC document but refuses to hide later edits', () => {
+    const source = `Version 4.1
+SHEET 1 880 680
+SYMBOL res 100 100 R0
+SYMATTR InstName R1
+SYMATTR Value 2k
+FLAG 116 116 A
+FLAG 116 196 B
+FUTURE_RECORD preserved exactly
+`;
+    const imported = importLtspiceAsc(source);
+    const exact = toLtspiceAsc(imported);
+    assert.equal(exact.text, source);
+    assert.equal(exact.preservedSourceDocument, true);
+    imported.parts[0].params.ohms = 3000;
+    const edited = toLtspiceAsc(imported);
+    assert.equal(edited.preservedSourceDocument, undefined);
+    assert.doesNotMatch(edited.text, /FUTURE_RECORD/);
+    assert.match(edited.text, /SYMATTR Value 3000/);
+    assert.ok(edited.warnings.some(warning => /changed after ASC import/.test(warning)));
+  });
+
+  it('round-trips R/C/L/V/I values and terminal partitions through generated KiCad', () => {
+    const interchange = { parts: [
+      { id: 'R1', kind: 'resistor', params: { ohms: 2000 } },
+      { id: 'C1', kind: 'capacitor', params: { farads: 2e-6 } },
+      { id: 'L1', kind: 'inductor', params: { henrys: 3e-3 } },
+      { id: 'V1', kind: 'vsource', params: { volts: 5 } },
+      { id: 'I1', kind: 'isource', params: { amps: 4e-3 } },
+      { id: 'GND1', kind: 'gnd', params: {} },
+    ], wires: [
+      { from: { part: 'R1', terminal: 'a' }, to: { part: 'V1', terminal: 'pos' } },
+      { from: { part: 'R1', terminal: 'b' }, to: { part: 'C1', terminal: 'a' } },
+      { from: { part: 'C1', terminal: 'b' }, to: { part: 'L1', terminal: 'a' } },
+      { from: { part: 'L1', terminal: 'b' }, to: { part: 'V1', terminal: 'neg' } },
+      { from: { part: 'I1', terminal: 'neg' }, to: { part: 'V1', terminal: 'pos' } },
+      { from: { part: 'I1', terminal: 'pos' }, to: { part: 'V1', terminal: 'neg' } },
+      { from: { part: 'GND1', terminal: 'gnd' }, to: { part: 'V1', terminal: 'neg' } },
+    ] };
+    const kicad = toKicadSch(interchange);
+    assert.deepEqual(kicad.skipped, []);
+    const fromKicad = importKicadSch(kicad.text);
+    assert.equal(fromKicad.unmapped.length, 0);
+    const asc = toLtspiceAsc(fromKicad);
+    assert.deepEqual(asc.skipped, []);
+    const back = importLtspiceAsc(asc.text);
+    assert.deepEqual(back.parts.filter(part => part.kind !== 'gnd').map(part =>
+      [part.id, part.kind, part.params]), [
+      ['R1', 'resistor', { ohms: 2000 }], ['C1', 'capacitor', { farads: 2e-6 }],
+      ['L1', 'inductor', { henrys: 3e-3 }], ['V1', 'vsource', { volts: 5 }],
+      ['I1', 'isource', { amps: 4e-3 }],
+    ]);
+    assert.deepEqual(terminalPartitions(back.wires), terminalPartitions(interchange.wires));
+  });
+
+  it('round-trips supported SPICE R/C/L/D/Q/M/E/G through ASC plus generated ASYs', () => {
+    const spice = `supported device interchange
+V1 supply 0 5
+R1 supply nr 2k
+C1 nr 0 2u
+L1 nr nl 3m
+D1 nl 0 DMOD
+Q1 nq nb 0 QMOD
+M1 nd ng 0 0 MMOD W=20u L=1u
+E1 ne 0 nr 0 2.5
+G1 0 ng nr 0 1m
+.model DMOD D (IS=1e-14 N=1 RS=0.1)
+.model QMOD NPN (IS=2e-14 BF=150 BR=2 NF=1.1)
+.model MMOD NMOS (LEVEL=1 VTO=1 KP=1m LAMBDA=0.01)
+.op
+.end
+`;
+    const original = importSpice(spice);
+    assert.equal(original.unmapped.length, 0);
+    assert.equal(original.losses.length, 0);
+    const asc = toLtspiceAsc(original);
+    assert.deepEqual(asc.skipped, []);
+    assert.deepEqual(asc.symbolFiles.map(file => file.name).sort(),
+      ['bw_nmos.asy', 'bw_npn.asy', 'bw_vccs.asy', 'bw_vcvs.asy']);
+    const symbols = new Map(asc.symbolFiles.map(file => [file.name.replace(/\.asy$/, ''), file.text]));
+    const back = importLtspiceAsc(asc.text, { symbols });
+    assert.equal(back.unmapped.length, 0);
+    assert.deepEqual(back.parts.filter(part => part.kind !== 'gnd').map(part => [part.id, part.kind]),
+      original.parts.filter(part => part.kind !== 'gnd').map(part => [part.id, part.kind]));
+    assert.deepEqual(terminalPartitions(back.wires), terminalPartitions(original.wires));
+    assert.equal(back.parts.find(part => part.id === 'Q1').params.is, 2e-14);
+    assert.equal(back.parts.find(part => part.id === 'Q1').params.beta, 150);
+    assert.equal(back.parts.find(part => part.id === 'M1').params.vth, 1);
+    assert.equal(back.parts.find(part => part.id === 'M1').params.w, 20e-6);
   });
 });

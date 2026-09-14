@@ -215,11 +215,13 @@ function symbolAsset(lib, options, cache) {
     cache.set(normalizedName, resolved);
     return resolved;
   }
-  const text = typeof value === 'string' ? value : value?.text;
+  const text = typeof value === 'string' || value instanceof Uint8Array
+    || (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) ? value : value?.text;
   const declaredSha256 = typeof value === 'object' && value ? value.sha256 : null;
-  if (typeof text !== 'string') {
+  if (!(typeof text === 'string' || text instanceof Uint8Array
+      || (typeof ArrayBuffer !== 'undefined' && text instanceof ArrayBuffer))) {
     const resolved = { supplied: true, normalizedName,
-      error: 'caller symbol asset must be text or {text, sha256}' };
+      error: 'caller symbol asset must be text/bytes or {text, sha256}' };
     cache.set(normalizedName, resolved);
     return resolved;
   }
@@ -502,7 +504,25 @@ function projectableCard(instance, drawing, options) {
   const deck = ['LTspice ASC electrical projection', ...definitions,
     `${instance.ref} ${nodes.join(' ')} ${tail}`, '.end'].join('\n');
   const imported = importSpice(deck, { libraries: options?.libraries || options?.spiceLibraries || [] });
-  return { prefix, nodes, deck, imported };
+  let consumedDefinitions = [];
+  if (prefix === 'Q' || prefix === 'M') {
+    const modelName = value.split(/\s+/, 1)[0].toLowerCase();
+    consumedDefinitions = definitions.filter(source => {
+      const parsed = /^\.model\b(.*)$/is.exec(source);
+      return parsed && parseSpiceModelDeclaration(parsed[1])?.name.toLowerCase() === modelName;
+    });
+  } else if (prefix === 'X') {
+    const subcircuit = value.split(/\s+/, 1)[0].toLowerCase();
+    let keep = false;
+    consumedDefinitions = definitions.filter(source => {
+      const start = /^\.subckt\s+(\S+)/i.exec(source);
+      if (start) keep = start[1].toLowerCase() === subcircuit;
+      const retained = keep;
+      if (/^\.ends\b/i.test(source)) keep = false;
+      return retained;
+    });
+  }
+  return { prefix, nodes, deck, consumedDefinitions, imported };
 }
 
 /** Build format-level connectivity without requiring a bw-board device kind. */
@@ -695,6 +715,7 @@ export function importLtspiceAsc(text, options = {}) {
   const placements = [];
   const projectedMemberships = [];
   const projectedWires = [];
+  const usedProjectionDirectives = new Set();
   const used = new Set();
   for (const [symbolIndex, symbol] of drawing.symbols.entries()) {
     const lib = symbol.lib.replace(/\\/g, '/').split('/').at(-1).toLowerCase();
@@ -744,6 +765,7 @@ export function importLtspiceAsc(text, options = {}) {
             ] } : {}) });
         }
         projectedWires.push(...projected.imported.wires);
+        projected.consumedDefinitions.forEach(source => usedProjectionDirectives.add(source));
         for (const [pinIndex, pin] of instance.pins.entries()) {
           const named = projected.imported.netNames.find(item =>
             item.name.toLowerCase() === projected.nodes[pinIndex].toLowerCase());
@@ -862,6 +884,13 @@ export function importLtspiceAsc(text, options = {}) {
         handling: 'constant-expression' });
       continue;
     }
+    if (usedProjectionDirectives.has(directive)) {
+      sourceDirectives.push({ source: directive,
+        kind: /^\.model\b/i.test(directive) ? 'model-definition' : 'subcircuit-definition',
+        handling: 'shared-spice-projection' });
+      ignored.push({ source: directive, reason: 'consumed by a shared SPICE electrical projection' });
+      continue;
+    }
     if (usedModelDirectiveIndexes.has(directiveIndex)) {
       sourceDirectives.push({ source: directive, kind: 'model-definition',
         handling: blockedModelDirectiveIndexes.has(directiveIndex)
@@ -958,6 +987,7 @@ export function importLtspiceAsc(text, options = {}) {
     + `(${resolved.nets} connected nets, ${drawing.flags.length} flags)`);
   if (floating) warnings.push(`${floating} mapped pin(s) are electrically floating`);
   if (!parts.length) warnings.push('No mappable components found in LTspice ASC schematic.');
+  sourceDocument.projectionSnapshot = JSON.parse(JSON.stringify({ parts, wires: resolved.wires }));
   return { parts, wires: resolved.wires, warnings, unmapped, losses, ignored,
     analyses, sourceDirectives, netNames, sourceSymbols, sourceDocument };
 }
