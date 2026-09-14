@@ -72,11 +72,6 @@ const EXCEPTIONS = new Set([
   'battery',        // → vsource
   'timer_555',      // → 555
   'vsource',        // sidecar exists; also battery alias target
-  // Import-only engine-native primitives. Their explicit terminal contracts
-  // live in circuit.js; they are not palette parts and deliberately have no
-  // UI sidecar/art yet.
-  'vcvs',           // SPICE E card -> bw-board voltage-controlled voltage source
-  'vccs',           // SPICE G card -> bw-board voltage-controlled current source
   // Palette slug ≠ sidecar slug (known mismatches, each needs a kind alias)
   'shift_register', // sidecar: 74hc595
   'motor_encoder',  // sidecar: dc_motor_encoder

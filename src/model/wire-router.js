@@ -104,6 +104,7 @@ export function getPartBBox(p) {
     case 'npn': case 'pnp': return { x: p.x - 22, y: p.y - 22, w: 44, h: 44 };
     case 'nmos': case 'pmos': return { x: p.x - 22, y: p.y - 22, w: 44, h: 44 };
     case 'opamp': return { x: p.x - 20, y: p.y - 18, w: 40, h: 36 };
+    case 'vcvs': case 'vccs': return { x: p.x - 32, y: p.y - 28, w: 64, h: 56 };
     case '555': return { x: p.x - 25, y: p.y - 22, w: 50, h: 44 };
     case 'ldr': return { x: p.x - 20, y: p.y - 14, w: 40, h: 28 };
     case 'ntc': return { x: p.x - 20, y: p.y - 14, w: 40, h: 28 };

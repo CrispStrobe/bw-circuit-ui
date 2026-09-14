@@ -332,6 +332,33 @@ export function PartThumbnail({ kind, color, params, displaySize }) {
           <text x={cx} y={cy + 22} textAnchor="middle" fill="#777" fontSize={7} fontFamily="monospace">{kind}</text>
         </svg>
       );
+    case 'vcvs':
+    case 'vccs':
+      // A diamond is the convention for a DEPENDENT source; the open pair on
+      // the left is the controlling port, which carries no current. The two
+      // kinds differ only in what the body drives, so they differ only in
+      // what is drawn inside it.
+      return (
+        <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>
+          <line x1={2} y1={cy - 8} x2={12} y2={cy - 8} stroke="#999" strokeWidth={1.2} />
+          <line x1={2} y1={cy + 8} x2={12} y2={cy + 8} stroke="#999" strokeWidth={1.2} />
+          <circle cx={13} cy={cy - 8} r={1.6} fill="none" stroke="#999" strokeWidth={0.9} />
+          <circle cx={13} cy={cy + 8} r={1.6} fill="none" stroke="#999" strokeWidth={0.9} />
+          <polygon points={`32,${cy - 11} 42,${cy} 32,${cy + 11} 22,${cy}`}
+            fill="none" stroke={color || '#16a085'} strokeWidth={1.5} />
+          {kind === 'vcvs' ? (
+            <>
+              <text x={32} y={cy - 1} textAnchor="middle" fill="#999" fontSize={7} fontFamily="monospace">+</text>
+              <text x={32} y={cy + 9} textAnchor="middle" fill="#999" fontSize={8} fontFamily="monospace">−</text>
+            </>
+          ) : (
+            <>
+              <line x1={32} y1={cy + 6} x2={32} y2={cy - 4} stroke="#999" strokeWidth={1.2} />
+              <polygon points={`32,${cy - 7} 29.6,${cy - 2} 34.4,${cy - 2}`} fill="#999" />
+            </>
+          )}
+        </svg>
+      );
     case 'opamp':
       return (
         <svg width={w} height={h} viewBox={`0 0 ${S} ${S}`}>

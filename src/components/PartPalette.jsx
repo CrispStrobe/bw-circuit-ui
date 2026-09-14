@@ -242,6 +242,16 @@ const CATEGORIES = [
       { kind: 'vsource', label: 'Function Gen', color: '#2ecc71',
         params: { wave: 'sine', freq: 1000, amplitude: 2, offset: 2.5 },
         tooltip: 'Waveform source - sine, square, triangle, pulse, dc; edit params after placing' },
+      // The two dependent sources. `params` is deliberately EMPTY: bw-board's
+      // stamps already default the gain and the transconductance, and a copy
+      // here would be a second home for an electrical number -- the defect
+      // that had 45 LDR circuits disagreeing with the solver by a factor of
+      // 1,000 earlier in this programme. Place one and edit it; an untouched
+      // part solves at the engine's own default.
+      { kind: 'vcvs', label: 'VCVS (E)', params: {}, color: '#8e6fd8',
+        tooltip: 'Ideal voltage-controlled voltage source — outp/outn follow the voltage across inp/inn times the gain. What a SPICE E card imports as.' },
+      { kind: 'vccs', label: 'VCCS (G)', params: {}, color: '#16a085',
+        tooltip: 'Ideal voltage-controlled current source — drives a current from outn to outp set by the voltage across inp/inn times gm. What a SPICE G card imports as.' },
     ],
   },
 ];

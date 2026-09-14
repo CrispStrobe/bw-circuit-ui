@@ -102,6 +102,32 @@ export function sidecarTerminalPositions(kind) {
 }
 
 /**
+ * Sidecar terminal positions expressed relative to the BODY CENTRE.
+ *
+ * Sidecar coordinates have their origin at the top-left of the viewBox; the
+ * canvas places a part by its anchor, which is the centre of the body. This
+ * is that one conversion, in one place, so a renderer never has to retype a
+ * part's geometry — a second copy is right until the art moves.
+ *
+ * Returns null when the kind has no sidecar, so a caller can fall back
+ * rather than silently placing every terminal at the origin.
+ *
+ * @param {string} kind
+ * @returns {Record<string, {dx: number, dy: number}> | null}
+ */
+export function sidecarCenterOffsets(kind) {
+  const sc = _cache.get(kind);
+  if (!sc) return null;
+  const positions = sidecarTerminalPositions(kind);
+  if (!positions) return null;
+  const out = {};
+  for (const [name, p] of Object.entries(positions)) {
+    out[name] = { dx: p.x - sc.w / 2, dy: p.y - sc.h / 2 };
+  }
+  return out;
+}
+
+/**
  * Alias → physical-twin pairs declared by a kind's sidecar.
  *
  * bw-board registers some devices under two namespaces over one set of
