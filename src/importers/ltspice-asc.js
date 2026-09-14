@@ -12,8 +12,12 @@
  *   ind.asy     9f8b8372...  PIN (16,16) A/order 1; (16,96) B/order 2
  *   diode.asy   a7177f6c...  PIN (16,0)  +/order 1; (16,64) -/order 2
  *
- * The bounded subset maps only the exact standard `res`, `cap`, `voltage`,
- * `current`, `ind`, and `diode` symbols. Voltage sources additionally retain exact
+ * The native fast path maps exact standard R/C/L/V/I/D symbols and a small set
+ * of electrically identical, exact-name LTspice variants. A separate pin-only
+ * contract covers common Q/M/E/G families: those coordinates recover the source
+ * graph but do not assert model support. The shared SPICE importer decides which
+ * instances can become native parts and attaches blockers for unsupported physics.
+ * Voltage sources additionally retain exact
  * three-argument `SINE(offset amplitude frequency)` and strict seven-argument
  * `PULSE(V1 V2 TD TR TF PW PER)` values. For current
  * sources, LTspice/SPICE current flows from
@@ -29,9 +33,10 @@
  * No external symbol file is followed and no TEXT directive is executed.
  * A caller may opt in to supplied ASY text through import options. The ASY
  * reader is synchronous and bounded; it opens no path or URL. Supplied pin
- * geometry can replace the built-in geometry only for the same exact standard
- * electrical symbols. Parsed custom definitions remain document metadata and
- * an explicit unmapped component, never a manufactured engine model.
+ * geometry overrides a built-in contract for that instance. A caller-supplied
+ * custom CELL may project ordinary SPICE R/C/L/V/I/D/Q/M/E/G/X cards only when
+ * its explicit Prefix, contiguous SpiceOrder and local model/subcircuit text are
+ * sufficient; no kind is inferred from geometry or arity.
  */
 
 import { NetSolver, makeId, wiresFromNets } from './kicad-common.js';
@@ -77,6 +82,80 @@ const SYMBOLS = new Map([
     sourceSha256: 'a7177f6cc9730376390e2b0f0a67de1050b6452aba3049351dcd64a68dfd0d70',
   }],
 ]);
+
+// Exact-name aliases whose electrical primitive and terminal order are the same
+// as a native standard symbol. Only pin interfaces are recorded; no vendor
+// drawing or symbol payload is bundled. Nonlinear variants still pass through
+// the strict model validator, so a zener/Schottky/varactor model with unsupported
+// fields remains analysis-blocking instead of becoming an ordinary diode.
+const NATIVE_SYMBOL_ALIASES = new Map([
+  ['polcap', { canonical: 'cap' }],
+  ['ind2', { canonical: 'ind' }],
+  ['schottky', { canonical: 'diode' }],
+  ['zener', { canonical: 'diode' }],
+  ['led', { canonical: 'diode' }],
+  ['varactor', { canonical: 'diode' }],
+  ['tvsdiode', { canonical: 'diode' }],
+  ['misc/europeanresistor', { canonical: 'res' }],
+  ['misc/battery', { canonical: 'voltage' }],
+  ['misc/signal', { canonical: 'voltage' }],
+  ['misc/cell', { canonical: 'voltage', pins: [[0, 0], [0, 64]] }],
+]);
+
+// Common built-in pin contracts, sorted by SpiceOrder. These are deliberately
+// separate from SYMBOLS: knowing where a MOSFET pin lands is not a claim that
+// its .model is within bw-board's equations. Exact pin facts were manually
+// checked against LTspice 26.0.2 and then differentially checked against the
+// fixed paired ASC/SPICE corpus; the vendor symbol drawings are not copied.
+const PIN_ONLY_SYMBOLS = new Map([
+  ['nmos', { family: 'mosfet-implicit-bulk', names: ['drain', 'gate', 'source'],
+    pins: [[48, 0], [0, 80], [48, 96]] }],
+  ['pmos', { family: 'mosfet-implicit-bulk', names: ['drain', 'gate', 'source'],
+    pins: [[48, 0], [0, 80], [48, 96]] }],
+  ['nmos4', { family: 'mosfet-explicit-bulk', names: ['drain', 'gate', 'source', 'bulk'],
+    pins: [[48, 0], [0, 80], [48, 96], [48, 48]] }],
+  ['pmos4', { family: 'mosfet-explicit-bulk', names: ['drain', 'gate', 'source', 'bulk'],
+    pins: [[48, 0], [0, 80], [48, 96], [48, 48]] }],
+  ['npn', { family: 'bjt', names: ['collector', 'base', 'emitter'],
+    pins: [[64, 0], [0, 48], [64, 96]] }],
+  ['pnp', { family: 'bjt', names: ['collector', 'base', 'emitter'],
+    pins: [[64, 0], [0, 48], [64, 96]] }],
+  ['e', { family: 'vcvs', names: ['outp', 'outn', 'inp', 'inn'],
+    pins: [[0, 16], [0, 96], [-48, 32], [-48, 80]] }],
+  ['e2', { family: 'vcvs-reversed-control-drawing', names: ['outp', 'outn', 'inp', 'inn'],
+    pins: [[0, 16], [0, 96], [-48, 80], [-48, 32]] }],
+  ['g', { family: 'vccs', names: ['outn', 'outp', 'inp', 'inn'],
+    pins: [[0, 96], [0, 16], [-48, 32], [-48, 80]] }],
+  ['g2', { family: 'vccs-reversed-control-drawing', names: ['outn', 'outp', 'inp', 'inn'],
+    pins: [[0, 96], [0, 16], [-48, 80], [-48, 32]] }],
+  ['misc/xtal', { family: 'unsupported-crystal', names: ['1', '2'], pins: [[16, 0], [16, 64]] }],
+  ['misc/jumper', { family: 'unsupported-jumper', names: ['1', '2'], pins: [[-32, 64], [32, 64]] }],
+]);
+
+function libraryKeys(name) {
+  const basename = String(name || '').replace(/\\/g, '/').split('/').at(-1).toLowerCase();
+  const normalized = normalizeLtspiceSymbolName(name);
+  return { basename, normalized };
+}
+
+function nativeSymbolSpec(name) {
+  const { basename, normalized } = libraryKeys(name);
+  // A path-qualified symbol is caller/library-owned even when its basename is
+  // `res` or another standard spelling. Only the unqualified LTspice built-in
+  // name may use the native contract without an ASY; reviewed path-qualified
+  // built-ins are listed explicitly below.
+  const direct = normalized === basename ? SYMBOLS.get(basename) : null;
+  if (direct) return direct;
+  const alias = NATIVE_SYMBOL_ALIASES.get(normalized || basename);
+  if (!alias) return null;
+  const canonical = SYMBOLS.get(alias.canonical);
+  return { ...canonical, ...(alias.pins ? { pins: alias.pins } : {}), aliasOf: alias.canonical };
+}
+
+function pinOnlySymbolSpec(name) {
+  const { basename, normalized } = libraryKeys(name);
+  return PIN_ONLY_SYMBOLS.get(normalized || basename) || null;
+}
 
 const STANDARD_PREFIX = Object.freeze({
   resistor: 'R', capacitor: 'C', inductor: 'L', vsource: 'V', isource: 'I', diode: 'D',
@@ -404,8 +483,16 @@ export function parseLtspiceAscDocument(text, options = {}) {
   rawText, records, wires, flags, symbols, texts, directives, findings, unknownLines, ignoredLines };
 }
 
-function documentPinDefinition(symbol, asset, spec) {
-  if (asset.document?.ok && asset.document.pins.length) {
+function documentPinDefinition(symbol, asset, spec, pinOnly) {
+  if (asset.supplied) {
+    if (asset.error) return { status: 'refused', pins: [], reason: asset.error };
+    if (!asset.document?.ok) return { status: 'refused', pins: [],
+      reason: 'caller-supplied ASY is not structurally valid' };
+    if (String(asset.document.symbolType).toUpperCase() !== 'CELL') {
+      return { status: 'refused', pins: [], reason: 'caller-supplied ASY SymbolType must be CELL' };
+    }
+    if (!asset.document.pins.length) return { status: 'refused', pins: [],
+      reason: 'caller-supplied ASY has no electrical pins' };
     return { status: 'supplied', pins: [...asset.document.pins]
       .sort((a, b) => a.spiceOrder - b.spiceOrder)
       .map(pin => ({ x: pin.x, y: pin.y, spiceOrder: pin.spiceOrder,
@@ -413,12 +500,18 @@ function documentPinDefinition(symbol, asset, spec) {
   }
   if (spec) return { status: 'builtin', pins: spec.pins.map(([x, y], index) => ({
     x, y, spiceOrder: index + 1, pinName: spec.terminals[index],
-  })) };
-  return { status: asset.supplied ? 'refused' : 'missing', pins: [] };
+    pinContract: spec.aliasOf ? 'native-alias' : 'native',
+  })), pinContract: spec.aliasOf ? 'native-alias' : 'native' };
+  if (pinOnly) return { status: 'builtin', pins: pinOnly.pins.map(([x, y], index) => ({
+    x, y, spiceOrder: index + 1, pinName: pinOnly.names[index], pinContract: 'pin-only',
+  })), pinContract: 'pin-only', family: pinOnly.family };
+  return { status: 'missing', pins: [], reason: 'no caller-supplied or verified built-in pin definition' };
 }
 
-const SPICE_PROJECTABLE_PREFIXES = new Set(['Q', 'M', 'E', 'G', 'X']);
-const SPICE_PREFIX_PIN_COUNTS = Object.freeze({ Q: 3, M: 4, E: 4, G: 4 });
+const SPICE_PROJECTABLE_PREFIXES = new Set(['R', 'C', 'L', 'V', 'I', 'D', 'Q', 'M', 'E', 'G', 'X']);
+const SPICE_PREFIX_PIN_COUNTS = Object.freeze({
+  R: [2], C: [2], L: [2], V: [2], I: [2], D: [2], Q: [3], M: [3, 4], E: [4], G: [4],
+});
 
 function sourceModelMap(directives) {
   const models = new Map();
@@ -460,7 +553,15 @@ function instanceProjectionLosses(prefix, instance) {
   const extra = [attrs.value2, attrs.spiceline, attrs.spiceline2]
     .filter(value => String(value || '').trim()).join(' ').trim();
   const losses = [];
-  if (prefix === 'M' && instance.pins[3]?.netId !== instance.pins[2]?.netId) {
+  const modelFile = String(attrs.spicemodel || attrs.modelfile || '').trim();
+  if (modelFile) {
+    losses.push({ ref: instance.ref, kind: 'unresolved-symbol-model-file',
+      source: `SYMATTR ${attrs.spicemodel ? 'SpiceModel' : 'ModelFile'} ${modelFile}`,
+      reason: 'symbol model-file attributes are retained as inert dependencies; the importer never opens them implicitly',
+      fallback: null });
+  }
+  if (prefix === 'M' && instance.pins.length === 4
+      && instance.pins[3]?.netId !== instance.pins[2]?.netId) {
     losses.push({ ref: instance.ref, kind: 'unsupported-mosfet-bulk-terminal',
       source: `SYMBOL ${instance.library} ${instance.x} ${instance.y} ${instance.orientation}`,
       reason: 'the native MOSFET has no bulk terminal and source/bulk are on different source nets',
@@ -484,13 +585,20 @@ function projectableCard(instance, drawing, options) {
   if (!instance.ref || instance.ref[0].toUpperCase() !== prefix || !/^\S+$/.test(instance.ref)) {
     return { error: `InstName must be one token beginning with effective Prefix ${prefix}` };
   }
-  const required = SPICE_PREFIX_PIN_COUNTS[prefix];
-  if (required && instance.pins.length !== required) {
-    return { error: `${prefix} projection needs ${required} SpiceOrder pins; definition has ${instance.pins.length}` };
+  const allowedCounts = SPICE_PREFIX_PIN_COUNTS[prefix];
+  if (allowedCounts && !allowedCounts.includes(instance.pins.length)) {
+    return { error: `${prefix} projection needs ${allowedCounts.join(' or ')} SpiceOrder pins; definition has ${instance.pins.length}` };
   }
   if (prefix === 'X' && !instance.pins.length) return { error: 'X projection needs at least one SpiceOrder pin' };
+  if (instance.pins.some((pin, index) => pin.spiceOrder !== index + 1)) {
+    return { error: `${prefix} projection needs contiguous SpiceOrder 1..${instance.pins.length}` };
+  }
   const nodes = instance.pins.map((pin, index) => `__asc_pin_${index + 1}`);
-  const value = String(attrs.spicemodel || attrs.value || '').trim();
+  // A three-pin LTspice MOS symbol has an implicit substrate connection. Its
+  // exported SPICE card appends source as node four; make that explicit only
+  // for the shared SPICE parser while retaining the three authored terminals.
+  const cardNodes = prefix === 'M' && nodes.length === 3 ? [...nodes, nodes[2]] : nodes;
+  const value = String(attrs.value || '').trim();
   const value2 = String(attrs.value2 || '').trim();
   const spiceLine = String(attrs.spiceline || '').trim();
   const spiceLine2 = String(attrs.spiceline2 || '').trim();
@@ -503,7 +611,7 @@ function projectableCard(instance, drawing, options) {
     return inSubcircuit || /^\.(?:model|param|params|func|temp|options?)\b/i.test(source);
   });
   const deck = ['LTspice ASC electrical projection', ...definitions,
-    `${instance.ref} ${nodes.join(' ')} ${tail}`, '.end'].join('\n');
+    `${instance.ref} ${cardNodes.join(' ')} ${tail}`, '.end'].join('\n');
   const imported = importSpice(deck, { libraries: options?.libraries || options?.spiceLibraries || [] });
   let consumedDefinitions = [];
   if (prefix === 'Q' || prefix === 'M') {
@@ -523,7 +631,7 @@ function projectableCard(instance, drawing, options) {
       return retained;
     });
   }
-  return { prefix, nodes, deck, consumedDefinitions, imported };
+  return { prefix, nodes, cardNodes, deck, consumedDefinitions, imported };
 }
 
 /** Build format-level connectivity without requiring a bw-board device kind. */
@@ -537,18 +645,29 @@ function buildSourceDocument(drawing, options, symbolAssets) {
     flag.name === '0' ? '__LTSPICE_GND__' : flag.name.toLowerCase()));
 
   const instances = drawing.symbols.map((symbol, index) => {
-    const library = symbol.lib.replace(/\\/g, '/').split('/').at(-1).toLowerCase();
-    const spec = SYMBOLS.get(library);
+    const spec = nativeSymbolSpec(symbol.lib);
+    const pinOnly = pinOnlySymbolSpec(symbol.lib);
     const asset = symbolAsset(symbol.lib, options, symbolAssets);
-    const definition = documentPinDefinition(symbol, asset, spec);
+    const definition = documentPinDefinition(symbol, asset, spec, pinOnly);
     const effectiveAttrs = { ...(asset.document?.ok ? asset.document.attrs : {}), ...symbol.attrs };
     const normalizedName = asset.normalizedName || normalizeLtspiceSymbolName(symbol.lib) || symbol.lib;
     if (!dependencyKeys.has(normalizedName)) {
       dependencyKeys.add(normalizedName);
       dependencies.push({ kind: 'symbol', name: normalizedName, status: definition.status,
+        ...(definition.pinContract ? { pinContract: definition.pinContract } : {}),
+        ...(definition.family ? { family: definition.family } : {}),
         ...(asset.declaredSha256 ? { declaredSha256: asset.declaredSha256 } : {}),
-        ...(asset.error ? { reason: asset.error } : {}),
+        ...(definition.reason ? { reason: definition.reason } : {}),
         ...(asset.document ? { document: asset.document } : {}) });
+    }
+    for (const field of ['spicemodel', 'modelfile']) {
+      const declared = String(effectiveAttrs[field] || '').trim();
+      if (!declared) continue;
+      const key = `model-file:${declared.toLowerCase()}`;
+      if (dependencyKeys.has(key)) continue;
+      dependencyKeys.add(key);
+      dependencies.push({ kind: 'spice-library', name: declared, declaredBy: `ASY/SYMATTR ${field}`,
+        status: 'not-resolved', reason: 'symbol model-file attributes never trigger path or network reads' });
     }
     const instanceId = `asc-symbol-${index + 1}`;
     const pins = definition.pins.map(pin => {
@@ -562,15 +681,19 @@ function buildSourceDocument(drawing, options, symbolAssets) {
       net.addPoint(absolute[0], absolute[1]);
       return { ...pin, absolute, netId: null };
     });
-    if (!pins.length) findings.push({ kind: 'missing-symbol-pin-definition', line: symbol.line,
+    if (!pins.length) findings.push({ kind: definition.status === 'refused'
+      ? 'refused-symbol-pin-definition' : 'missing-symbol-pin-definition', line: symbol.line,
       ref: symbol.attrs.instname || instanceId,
-      reason: `${normalizedName} has no caller-supplied or verified built-in pin definition` });
+      reason: `${normalizedName}: ${definition.reason || 'no pin definition'}` });
     return { id: instanceId, ref: symbol.attrs.instname || null, library: symbol.lib,
       normalizedLibrary: normalizedName, x: symbol.x, y: symbol.y,
       orientation: symbol.orientation, line: symbol.line, attrs: { ...symbol.attrs },
       effectiveAttrs,
       attributeRecords: symbol.attributeRecords.map(record => ({ ...record })),
-      windows: symbol.windows.map(record => ({ ...record })), definitionStatus: definition.status, pins };
+      windows: symbol.windows.map(record => ({ ...record })), definitionStatus: definition.status,
+      pinStatus: pins.length ? 'recovered' : definition.status,
+      ...(definition.pinContract ? { pinContract: definition.pinContract } : {}),
+      ...(definition.family ? { pinFamily: definition.family } : {}), pins };
   });
   const instanceRefs = new Map();
   for (const instance of instances) {
@@ -687,6 +810,9 @@ export function importLtspiceAsc(text, options = {}) {
   const sourceDocument = buildSourceDocument(drawing, options, symbolAssets);
   sourceDocument.electricalProjection = { mappedInstances: [], refusedInstances: [] };
   if (!drawing.ok) {
+    sourceDocument.electricalProjection.status = 'invalid-source-document';
+    sourceDocument.electricalProjection.numericStatus = 'blocked-before-projection';
+    sourceDocument.instances.forEach(instance => { instance.electricalStatus = 'not-projected-invalid-document'; });
     return { parts, wires: [], warnings: ['Not an LTspice Version 4 ASCII schematic.'],
       unmapped, losses, ignored, analyses, sourceDirectives, netNames: [], sourceSymbols,
       sourceDocument };
@@ -719,8 +845,7 @@ export function importLtspiceAsc(text, options = {}) {
   const usedProjectionDirectives = new Set();
   const used = new Set();
   for (const [symbolIndex, symbol] of drawing.symbols.entries()) {
-    const lib = symbol.lib.replace(/\\/g, '/').split('/').at(-1).toLowerCase();
-    const spec = SYMBOLS.get(lib);
+    const spec = nativeSymbolSpec(symbol.lib);
     const asset = symbolAsset(symbol.lib, options, symbolAssets);
     let sourceSymbolRecord = null;
     if (asset.supplied) {
@@ -782,7 +907,12 @@ export function importLtspiceAsc(text, options = {}) {
         sourceDocument.electricalProjection.mappedInstances.push({ instanceId: instance.id,
           ref: instance.ref, prefix: projected.prefix,
           partIds: projected.imported.parts.map(part => part.id),
-          card: projected.deck.split('\n').at(-2), losses: projectionLosses.length });
+          card: projected.deck.split('\n').at(-2), losses: projectionLosses.length,
+          numericStatus: projectionLosses.length ? 'blocked-model-or-instance-semantics' : 'candidate-native-model' });
+        instance.electricalStatus = projectionLosses.length ? 'mapped-with-analysis-blockers' : 'mapped';
+        instance.nativePartIds = projected.imported.parts.map(part => part.id);
+        if (sourceSymbolRecord) sourceSymbolRecord.electricalStatus = projectionLosses.length
+          ? 'mapped-with-analysis-blockers' : 'mapped-existing-native-kind';
         continue;
       }
       const projectionReason = projected?.error
@@ -795,6 +925,8 @@ export function importLtspiceAsc(text, options = {}) {
       warnings.push(`Unmapped LTspice symbol: ${ref} (${symbol.lib})`);
       sourceDocument.electricalProjection.refusedInstances.push({ instanceId: instance?.id,
         ref: instance?.ref, reason: projectionReason });
+      if (instance) instance.electricalStatus = 'refused';
+      if (sourceSymbolRecord) sourceSymbolRecord.electricalStatus = 'refused-electrical-projection';
       continue;
     }
     if (definition.error) {
@@ -802,6 +934,9 @@ export function importLtspiceAsc(text, options = {}) {
         libsource: `${symbol.lib}: ${definition.error}`,
         ...(asset.supplied ? { sourceSymbol: asset.normalizedName || String(symbol.lib) } : {}) });
       warnings.push(`${ref}: supplied LTspice symbol definition refused: ${definition.error}`);
+      sourceDocument.electricalProjection.refusedInstances.push({
+        instanceId: sourceDocument.instances[symbolIndex]?.id, ref, reason: definition.error });
+      sourceDocument.instances[symbolIndex].electricalStatus = 'refused';
       continue;
     }
     const expectedPrefix = STANDARD_PREFIX[spec.kind];
@@ -811,6 +946,10 @@ export function importLtspiceAsc(text, options = {}) {
         libsource: `${symbol.lib}: effective Prefix must be ${expectedPrefix}; instance attributes take precedence`,
         ...(asset.supplied ? { sourceSymbol: asset.normalizedName || String(symbol.lib) } : {}) });
       warnings.push(`${ref}: LTspice Prefix ${effectiveAttrs.prefix} does not match ${expectedPrefix}`);
+      sourceDocument.electricalProjection.refusedInstances.push({
+        instanceId: sourceDocument.instances[symbolIndex]?.id, ref,
+        reason: `effective Prefix must be ${expectedPrefix}` });
+      sourceDocument.instances[symbolIndex].electricalStatus = 'refused';
       continue;
     }
     const pins = definition.pins.map(([px, py]) => placeLtspicePin(px, py, symbol));
@@ -818,11 +957,18 @@ export function importLtspiceAsc(text, options = {}) {
       unmapped.push({ ref, value: symbol.attrs.value || '',
         libsource: `${symbol.lib}: unsupported orientation ${symbol.orientation}` });
       warnings.push(`${ref}: unsupported LTspice orientation ${symbol.orientation}`);
+      sourceDocument.electricalProjection.refusedInstances.push({
+        instanceId: sourceDocument.instances[symbolIndex]?.id, ref,
+        reason: `unsupported orientation ${symbol.orientation}` });
+      sourceDocument.instances[symbolIndex].electricalStatus = 'refused';
       continue;
     }
     if (!effectiveAttrs.instname) {
       unmapped.push({ ref, value: effectiveAttrs.value || '', libsource: `${symbol.lib}: missing InstName` });
       warnings.push(`${symbol.lib} at line ${symbol.line}: missing InstName`);
+      sourceDocument.electricalProjection.refusedInstances.push({
+        instanceId: sourceDocument.instances[symbolIndex]?.id, ref, reason: 'missing InstName' });
+      sourceDocument.instances[symbolIndex].electricalStatus = 'refused';
       continue;
     }
     const id = makeId(ref, used);
@@ -869,7 +1015,16 @@ export function importLtspiceAsc(text, options = {}) {
       warnings.push(`${id}: unsupported LTspice symbol attribute ${name} is retained as a loss`);
     }
     parts.push({ id, kind: spec.kind, params, x: symbol.x, y: symbol.y,
+      sourceInstance: sourceDocument.instances[symbolIndex]?.id,
       ...(partBlockers.length ? { analysisBlockers: partBlockers } : {}) });
+    sourceDocument.electricalProjection.mappedInstances.push({
+      instanceId: sourceDocument.instances[symbolIndex]?.id, ref, prefix: expectedPrefix,
+      partIds: [id], mapping: spec.aliasOf ? `native-alias:${spec.aliasOf}` : 'native-standard',
+      losses: partBlockers.length,
+      numericStatus: partBlockers.length ? 'blocked-model-or-instance-semantics' : 'candidate-native-model' });
+    sourceDocument.instances[symbolIndex].electricalStatus = partBlockers.length
+      ? 'mapped-with-analysis-blockers' : 'mapped';
+    sourceDocument.instances[symbolIndex].nativePartIds = [id];
     pins.forEach(([x, y], index) => net.addPoint(x, y));
     placements.push({ id, spec, pins });
   }
@@ -988,6 +1143,16 @@ export function importLtspiceAsc(text, options = {}) {
     + `(${resolved.nets} connected nets, ${drawing.flags.length} flags)`);
   if (floating) warnings.push(`${floating} mapped pin(s) are electrically floating`);
   if (!parts.length) warnings.push('No mappable components found in LTspice ASC schematic.');
+  const mappedCount = sourceDocument.electricalProjection.mappedInstances.length;
+  const refusedCount = sourceDocument.electricalProjection.refusedInstances.length;
+  sourceDocument.electricalProjection.status = !mappedCount ? 'no-native-projection'
+    : refusedCount ? 'partial-native-projection'
+      : losses.length ? 'complete-projection-with-analysis-blockers' : 'complete-native-projection';
+  sourceDocument.electricalProjection.numericStatus = !mappedCount ? 'no-native-parts'
+    : (refusedCount || unmapped.length || losses.length) ? 'blocked-import-semantics'
+      : 'candidate-requires-analysis-validation';
+  sourceDocument.electricalProjection.mappedParts = parts.filter(part => part.kind !== 'gnd').length;
+  sourceDocument.electricalProjection.semanticLosses = losses.length;
   sourceDocument.projectionSnapshot = sourceDocumentProjection(parts, resolved.wires);
   return { parts, wires: resolved.wires, warnings, unmapped, losses, ignored,
     analyses, sourceDirectives, netNames, sourceSymbols, sourceDocument };

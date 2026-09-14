@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -46,7 +46,7 @@ UNKNOWN retained
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('bwc converts SPICE to ASC and writes required companion ASYs', () => {
+test('bwc converts SPICE to ASC using standard LTspice symbols without sidecars', () => {
   const dir = mkdtempSync(join(tmpdir(), 'bwc-spice-asc-'));
   try {
     const spicePath = join(dir, 'bench.cir'); const ascPath = join(dir, 'bench.asc');
@@ -58,9 +58,8 @@ E1 out 0 b 0 2
 `);
     execFileSync(process.execPath, [CLI, 'convert', spicePath, '--to', 'asc', '-o', ascPath],
       { encoding: 'utf8' });
-    assert.match(readFileSync(ascPath, 'utf8'), /SYMBOL bw_npn/);
-    assert.equal(existsSync(join(dir, 'bw_npn.asy')), true);
-    assert.equal(existsSync(join(dir, 'bw_vcvs.asy')), true);
+    assert.match(readFileSync(ascPath, 'utf8'), /SYMBOL npn/);
+    assert.match(readFileSync(ascPath, 'utf8'), /SYMBOL e/);
     const info = execFileSync(process.execPath, [CLI, 'info', ascPath], { encoding: 'utf8' });
     assert.match(info, /parts\s+: 3/);
     assert.match(info, /npn×1/);
