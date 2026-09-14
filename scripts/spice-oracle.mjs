@@ -70,6 +70,15 @@ const I_TOL_REL = 0.02;      // 2 %
  */
 const I_ZERO_FLOOR = 1e-9;   // amps
 
+/** Put both external readings on signed current delivered by the VCC supply. */
+export function signedSupplyCurrent(spiceBranchInto, nonRailTerminalCurrentsOut) {
+  const spiceSupplyOut = -spiceBranchInto;
+  const engineSupplyOut = -nonRailTerminalCurrentsOut.reduce((sum, amps) => sum + amps, 0);
+  const scale = Math.max(Math.abs(spiceSupplyOut), Math.abs(engineSupplyOut));
+  return { spiceSupplyOut, engineSupplyOut,
+    relativeDifference: scale ? Math.abs(spiceSupplyOut - engineSupplyOut) / scale : 0 };
+}
+
 const KEEP = process.argv.includes('--keep');
 
 /** Hand-written decks in spellings our exporter never emits. */
@@ -634,13 +643,16 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
     ok = false;
   }
 
-  // Supply branch current: ngspice reports it negative (current INTO the
-  // source's positive terminal), the engine reports it as drawn.
+  // Supply branch current. ngspice's voltage-source branch is positive INTO
+  // the source terminal, while the engine's raw reader is positive OUT of
+  // every part terminal. Convert both to signed current delivered by the
+  // supply; do not compare magnitudes or rely on unlike signs cancelling.
   const branch = Object.entries(run.branches).find(([k]) => k.includes('supply'));
   if (branch) {
-    const spiceI = Math.abs(branch[1]);
-    lines.push(`  I(supply) = ${spiceI.toExponential(6)} A`);
-    // Cross-check against the engine by summing what the rail feeds.
+    const nonRailCurrentsOut = [];
+    // Cross-check by summing only non-rail terminals on the supply net. Their
+    // signed OUT currents negate to the current the rail delivers. Including
+    // the rail terminal itself would merely sum KCL to zero.
     const supplyNet = solved.nets.find(n => n.rail === 'vcc');
     if (supplyNet) {
       // COUNT THE CONTRIBUTORS, NOT JUST THE SUM. A rail's nodes are often
@@ -650,9 +662,10 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
       // Comparing that against ngspice's real reading produced "relative
       // difference 100.000 %" on 375 circuits whose every NODE VOLTAGE agreed
       // to between 1e-6 and 1e-3 V. A zero nobody drove is not a measurement.
-      let engineI = 0;
       let contributors = 0;
+      const kindByPart = new Map(circuit.parts.map(part => [part.id, part.kind]));
       for (const nd of supplyNet.nodes) {
+        if (kindByPart.get(nd.partId) === 'vcc') continue;
         const i = circuit.branchCurrent(nd.partId, nd.pin);
         // DEBUG_SUPPLY=1 names the CONTRIBUTORS, not just their sum. Two
         // engine defects were found by reading this list and nothing else: a
@@ -660,21 +673,23 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
         // VSYS (a board fighting an ideal rail). A summed current cannot say
         // which pin invented it.
         if (process.env.DEBUG_SUPPLY) console.error(`   [supply] ${nd.partId}.${nd.pin} = ${i}`);
-        if (typeof i === 'number' && isFinite(i)) { engineI += i; contributors++; }
+        if (typeof i === 'number' && isFinite(i)) { nonRailCurrentsOut.push(i); contributors++; }
       }
+      const { spiceSupplyOut, engineSupplyOut, relativeDifference } =
+        signedSupplyCurrent(branch[1], nonRailCurrentsOut);
+      lines.push(`  I(supply, OUT) = ${spiceSupplyOut.toExponential(6)} A`);
       if (contributors === 0) {
         lines.push('    the engine exposes no branch current on this rail '
           + `(${supplyNet.nodes.length} node(s), none reporting), so there is nothing to `
           + 'compare against ngspice here — the node voltages above are the comparison');
-      } else if (Math.max(spiceI, Math.abs(engineI)) < I_ZERO_FLOOR) {
-        lines.push(`    engine draws ${Math.abs(engineI).toExponential(6)} A `
+      } else if (Math.max(Math.abs(spiceSupplyOut), Math.abs(engineSupplyOut)) < I_ZERO_FLOOR) {
+        lines.push(`    engine supply OUT ${engineSupplyOut.toExponential(6)} A `
           + `— both below ${I_ZERO_FLOOR} A, so this branch carries no current in either `
           + 'solve and there is no ratio to take');
-      } else if (engineI !== 0) {
-        const rel = Math.abs(spiceI - Math.abs(engineI)) / Math.max(spiceI, Math.abs(engineI));
-        lines.push(`    engine draws ${Math.abs(engineI).toExponential(6)} A `
-          + `(relative difference ${(rel * 100).toFixed(3)} %)`);
-        if (rel > I_TOL_REL) { ok = false; lines.push('    ABOVE TOLERANCE'); }
+      } else {
+        lines.push(`    engine supply OUT ${engineSupplyOut.toExponential(6)} A `
+          + `(relative difference ${(relativeDifference * 100).toFixed(3)} %)`);
+        if (relativeDifference > I_TOL_REL) { ok = false; lines.push('    ABOVE TOLERANCE'); }
       }
     }
   }
@@ -1247,9 +1262,13 @@ function modelGap() {
   });
   const pwl = build(null); pwl.setPower(true);
   const sh = build('shockley'); sh.setPower(true);
-  const a = pwl.branchCurrent('LED1', 'anode');
-  const b = sh.branchCurrent('LED1', 'anode');
-  return { pwl: a, shockley: b, rel: Math.abs(a - b) / Math.max(a, b) };
+  // Raw current is positive OUT. Forward LED current enters the anode, so its
+  // positive model-comparison magnitude is the explicit negative of the raw
+  // anode reading.
+  const a = -pwl.branchCurrent('LED1', 'anode');
+  const b = -sh.branchCurrent('LED1', 'anode');
+  return { pwl: a, shockley: b,
+    rel: Math.abs(a - b) / Math.max(Math.abs(a), Math.abs(b)) };
 }
 
 // ── Main ─────────────────────────────────────────────────────────────

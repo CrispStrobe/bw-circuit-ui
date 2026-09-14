@@ -4577,8 +4577,8 @@ export function BoardCanvas({
               for (const p of parts) {
                 if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge' || p.kind === 'mono_lcd' || p.kind === 'rgb_light') {
                   let ds = eb.getDeviceState(p.id);
-                  // Bargraph: passive device exports no brightness — compute
-                  // from branch current across each anode/cathode pair.
+                  // Bargraph brightness is a magnitude-only visual property;
+                  // raw branch current itself remains signed positive OUT.
                   if (p.kind === 'bargraph' && eb.branchCurrent) {
                     const brightness = new Float64Array(10);
                     for (let i = 0; i < 10; i++) {

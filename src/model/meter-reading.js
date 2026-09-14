@@ -88,6 +88,8 @@ export function getMeterReading(meter, wires, circuit) {
         const i = circuit.branchCurrent(conn.part, conn.terminal);
         const mA = i * 1000;
         return {
+          // This legacy single-lead face promises magnitude only. Direction is
+          // available through the two-probe instrument model and raw API.
           value: Math.abs(mA).toFixed(1),
           unit: 'mA',
           // Teaching note: a real meter changes the circuit it measures
