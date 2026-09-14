@@ -248,25 +248,44 @@ function parseTran(descriptor, limits) {
   const fields = descriptor.normalized.split(' ');
   const uic = fields.at(-1) === 'uic';
   const values = uic ? fields.slice(1, -1) : fields.slice(1);
-  if (!uic) return integrationGap(descriptor, 'tran-initialization-not-implemented',
-    'advanceTo does not adopt the source-declared pre-transient DC operating point; only explicit UIC is wired');
-  if (values.length !== 2) return integrationGap(descriptor, 'tran-form-not-implemented',
-    'only .tran TSTEP TSTOP UIC is currently wired');
-  const stepSec = parseSpiceValue(values[0]);
-  const stopSec = parseSpiceValue(values[1]);
-  if (!finite(stepSec) || !finite(stopSec) || !(stepSec > 0) || !(stopSec >= stepSec)) {
-    return sourceRefusal(descriptor, 'invalid-tran-card', 'transient step and stop must be finite and positive');
-  }
-  const stepNs = stepSec * 1e9;
+  if (values.includes('startup')) return integrationGap(descriptor, 'tran-startup-not-implemented',
+    'LTspice startup ramps independent sources from zero and is not equivalent to ordinary non-UIC initialization');
+  if (values.length !== 1 && values.length !== 2) return integrationGap(descriptor,
+    'tran-form-not-implemented', 'only .tran TSTOP or .tran TSTEP TSTOP, optionally followed by UIC, is currently wired');
+  const stopSec = parseSpiceValue(values.at(-1));
   const stopNs = stopSec * 1e9;
-  if (!Number.isSafeInteger(stepNs) || !Number.isSafeInteger(stopNs) || stopNs % stepNs !== 0) {
-    return integrationGap(descriptor, 'tran-grid-not-representable',
-      'the authored transient grid must map exactly to integer nanoseconds and divide the stop time');
+  if (!finite(stopSec) || !(stopSec > 0) || !Number.isSafeInteger(stopNs)) {
+    return sourceRefusal(descriptor, 'invalid-tran-card', 'transient stop must map to a finite positive integer nanosecond');
   }
-  const points = stopNs / stepNs + 1;
+  let stepSec; let stepNs; let points; let sampleTimesNs; let samplingProfile;
+  if (values.length === 2) {
+    stepSec = parseSpiceValue(values[0]); stepNs = stepSec * 1e9;
+    if (!finite(stepSec) || !(stepSec > 0) || !Number.isSafeInteger(stepNs)
+        || stepNs > stopNs || stopNs % stepNs !== 0) {
+      return integrationGap(descriptor, 'tran-grid-not-representable',
+        'the authored transient grid must map exactly to integer nanoseconds and divide the stop time');
+    }
+    points = stopNs / stepNs + 1;
+    sampleTimesNs = Array.from({ length: points }, (_, index) => index * stepNs);
+    samplingProfile = { id: 'source-tstep-v1', sourceDeclared: true, adapted: false };
+  } else {
+    // LTspice permits `.tran Tstop`: no plot/output step is authored. Sampling
+    // is therefore an explicit observation profile, not a silently invented
+    // simulator timestep. The engine keeps its own adaptive integration.
+    const intervals = Math.min(100, limits.maxPoints - 1, stopNs);
+    if (!Number.isSafeInteger(intervals) || intervals < 1) return integrationGap(descriptor,
+      'analysis-budget-exceeded', 'the bounded observation profile has no available transient samples');
+    sampleTimesNs = [...new Set(Array.from({ length: intervals + 1 }, (_, index) =>
+      Math.round(index * stopNs / intervals)))];
+    points = sampleTimesNs.length;
+    stepSec = null; stepNs = null;
+    samplingProfile = { id: 'bounded-uniform-observation-v1', sourceDeclared: false,
+      adapted: true, targetIntervals: 100 };
+  }
   if (points > limits.maxPoints) return integrationGap(descriptor, 'analysis-budget-exceeded',
     `transient requests ${points} points; adapter limit is ${limits.maxPoints}`);
-  return { stepSec, stopSec, stepNs, stopNs, points, uic: true };
+  return { stepSec, stopSec, stepNs, stopNs, points, uic, sampleTimesNs, samplingProfile,
+    initialization: uic ? 'uic-zero-state' : 'source-declared-dc-operating-point' };
 }
 
 function runTran(imported, descriptor, limits) {
@@ -287,7 +306,9 @@ function runTran(imported, descriptor, limits) {
     let convergenceVerified = typeof circuit.board?.deviceCompanions === 'function'
       && (circuit.parts || []).length > 0;
     let converged = true;
-    for (let timeNs = 0; timeNs <= parsed.stopNs; timeNs += parsed.stepNs) {
+    let initialization = null;
+    if (!parsed.uic) initialization = circuit.initializeTransientFromOperatingPoint();
+    for (const timeNs of parsed.sampleTimesNs) {
       circuit.advanceTo(BigInt(timeNs));
       if (convergenceVerified) {
         const sample = circuit.board.deviceCompanions(circuit.parts[0].id);
@@ -304,12 +325,15 @@ function runTran(imported, descriptor, limits) {
     return {
       analysisId: descriptor.id, ordinal: descriptor.ordinal, kind: 'tran',
       status: convergenceVerified ? 'pass' : 'partial',
-      classification: convergenceVerified ? 'native-original' : 'diagnostic-native',
+      classification: convergenceVerified
+        ? (parsed.samplingProfile.adapted ? 'native-original-adapted-observation-grid' : 'native-original')
+        : 'diagnostic-native',
       ...(!convergenceVerified ? { code: 'transient-convergence-unverified' } : {}),
       conditions: parsed, topology: canonical.cards,
       observables: { axis: { quantity: 'time', unit: 's', values: axis }, nodes },
       convergence: { verified: convergenceVerified, converged: convergenceVerified ? true : null,
         api: convergenceVerified ? 'deviceCompanions' : null },
+      ...(initialization ? { initialization: initialization.analysis } : {}),
     };
   } catch (error) { return solverRefusal(descriptor, error, parsed); }
 }

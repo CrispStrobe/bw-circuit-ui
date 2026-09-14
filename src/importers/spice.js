@@ -589,6 +589,13 @@ export function importSpice(text, opts = {}) {
           + 'it defines is missing from this import.');
         continue;
       }
+      if (card === 'ic' || card === 'nodeset') {
+        ignored.push(line.trim());
+        losses.push({ ref: `.${card}`, kind: 'unsupported-initial-condition', source: line.trim(),
+          reason: `.${card} initial-state semantics are retained but not applied by the native transient adapter`,
+          fallback: null });
+        continue;
+      }
       if (BENIGN_CARDS.has(card)) { ignored.push(line.trim()); continue; }
       ignored.push(line.trim());
       warnings.push(`Unrecognised control card, ignored: ${line.trim()}`);
@@ -863,6 +870,14 @@ export function importSpice(text, opts = {}) {
         const reason = `value ${JSON.stringify(expression)} is not a resolved finite constant: ${resolved.reason}`;
         warnings.push(`${partId}: ${reason}; no engine default is analysis-safe.`);
         losses.push({ ref: partId, kind: 'unsupported-constant-expression',
+          source: item.line, reason, fallback: null });
+        item.analysisBlocker = { type: 'semantic-import-loss', ref: partId,
+          reason, source: item.line, fallback: null };
+      }
+      if ((letter === 'C' || letter === 'L') && rest.length > 1) {
+        const reason = `${letter}-card initial/instance fields ${rest.slice(1).join(' ')} are not applied`;
+        warnings.push(`${partId}: ${reason}`);
+        losses.push({ ref: partId, kind: 'unsupported-reactive-instance-parameter',
           source: item.line, reason, fallback: null });
         item.analysisBlocker = { type: 'semantic-import-loss', ref: partId,
           reason, source: item.line, fallback: null };

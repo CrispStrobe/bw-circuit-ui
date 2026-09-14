@@ -66,14 +66,14 @@ RY y 0 1k
   });
 
   it('separates integration gaps, source errors, importer loss, and solver refusal', () => {
-    const noUic = runSourceAnalyses(imported(`no uic
+    const startup = runSourceAnalyses(imported(`startup is distinct
 V1 1 0 1
 R1 1 0 1k
-.tran 1u 10u
+.tran 10u startup
 .end
 `), { format: 'spice' })[0];
-    assert.deepEqual([noUic.status, noUic.classification, noUic.code],
-      ['not-run', 'integration-gap', 'tran-initialization-not-implemented']);
+    assert.deepEqual([startup.status, startup.classification, startup.code],
+      ['not-run', 'integration-gap', 'tran-startup-not-implemented']);
 
     const invalid = runSourceAnalyses(imported(`bad ac
 V1 1 0 DC 1 AC 1
@@ -165,5 +165,45 @@ C1 out 0 1u
     assert.ok(Math.abs(output[0]) < 1e-6, `expected an uncharged t=0 state, got ${output[0]} V`);
     assert.ok(output[1] > output[0]);
     assert.deepEqual(second.observables, first.observables);
+  });
+
+  it('runs ordinary non-UIC RCL transients from source-declared DC bias', () => {
+    for (const volts of [-4, 4]) {
+      const run = runSourceAnalyses(imported(`non-uic rcl
+V1 in 0 ${volts}
+R1 in mid 1k
+C1 mid 0 1u
+R2 mid coil 2k
+L1 coil 0 3m
+.tran 100u
+.end
+`), { format: 'spice', maxPoints: 11 })[0];
+      assert.equal(run.status, 'pass');
+      assert.equal(run.classification, 'native-original-adapted-observation-grid');
+      assert.deepEqual(run.observables.axis.values,
+        [0, 10e-6, 20e-6, 30e-6, 40e-6, 50e-6, 60e-6, 70e-6, 80e-6, 90e-6, 100e-6]);
+      assert.equal(run.conditions.initialization, 'source-declared-dc-operating-point');
+      assert.deepEqual(run.conditions.samplingProfile,
+        { id: 'bounded-uniform-observation-v1', sourceDeclared: false, adapted: true, targetIntervals: 100 });
+      assert.equal(run.initialization.initialization, 'source-declared-dc-operating-point');
+      const mid = run.observables.nodes.find(node => node.id === 'n1').voltage;
+      assert.equal(Math.sign(mid[0]), Math.sign(volts));
+      assert.ok(mid.every(value => Math.abs(value - mid[0]) < 1e-8));
+    }
+  });
+
+  it('refuses startup and explicit initial-state semantics instead of silently changing initialization', () => {
+    const decks = [
+      `element IC\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1u IC=0.5\n.tran 10u\n.end\n`,
+      `dot IC\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1u\n.ic v(out)=0.5\n.tran 10u\n.end\n`,
+      `nodeset\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1u\n.nodeset v(out)=0.5\n.tran 10u\n.end\n`,
+    ];
+    for (const deck of decks) {
+      const result = imported(deck);
+      assert.ok(result.losses.some(loss => /initial|instance/i.test(`${loss.kind} ${loss.reason}`)));
+      const run = runSourceAnalyses(result, { format: 'spice' })[0];
+      assert.deepEqual([run.status, run.classification, run.code],
+        ['refused', 'import-fidelity', 'semantic-import-blocker']);
+    }
   });
 });
