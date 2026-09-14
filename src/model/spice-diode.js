@@ -52,7 +52,16 @@ const DIODE_NON_PARAMETERS = new Set([
   // LTspice's ideal-diode switch fields. They describe a PIECEWISE device, not
   // this Shockley curve, so a model that leans on them is not the model we
   // solved — noted rather than silently absorbed.
-  'ron', 'roff', 'vfwd', 'vrev', 'epsilon', 'revepsilon',
+  'ron', 'roff', 'vfwd', 'vrev', 'epsilon', 'revepsilon', 'ilimit',
+  // A noise-only flag, carried bare. It changes no bias point, and ngspice
+  // ignores it: `.model DLIMN D(Ron=100k Roff=100Meg Vfwd=1.1 Vrev=-300m
+  // epsilon=.1 noiseless)` and a bare `.model DDEF D` both put 6.924935e-01
+  // on the same 1k divider -- measured, not assumed. So a deck written for
+  // LTspice's piecewise diode is still judgeable: the REFERENCE solves it as a
+  // default Shockley diode, and taking the same defaults answers the same
+  // question. The fields are reported as set aside, so nobody reads the
+  // agreement as our having modelled a piecewise device.
+  'noiseless',
 ]);
 /** Everything ngspice's diode takes that does NOT move a bias point. */
 const DIODE_NON_DC_FIELDS = new Set([
@@ -108,7 +117,8 @@ export function validateExplicitShockley(params, raw = null) {
     if (rest.startsWith('(') && rest.endsWith(')')) rest = rest.slice(1, -1);
     const names = [];
     while (rest.trim()) {
-      const match = rest.match(/^\s*,?\s*([A-Za-z_]\w*)\s*=\s*([^\s,()]+)([\s\S]*)$/);
+      const match = rest.match(/^\s*,?\s*([A-Za-z_]\w*)\s*=\s*([^\s,()]+)([\s\S]*)$/)
+        || rest.match(/^\s*,?\s*([A-Za-z_]\w*)()(?=\s|,|$)([\s\S]*)$/);
       if (!match) return { ok: false, reason: 'diode model contains unparsed or malformed syntax' };
       names.push(match[1].toLowerCase());
       rest = match[3];
@@ -181,9 +191,33 @@ export function validateDiodeForDc(params, raw = null) {
     if (rest.startsWith('(') && rest.endsWith(')')) rest = rest.slice(1, -1);
     const seen = [];
     while (rest.trim()) {
-      const match = rest.match(/^\s*,?\s*([A-Za-z_]\w*)\s*=\s*([^\s,()]+)([\s\S]*)$/);
+      // A VALUELESS FLAG IS VALID MODEL SYNTAX, and reading it as malformed
+      // blamed our parser for a card SPICE accepts. LTspice's `noiseless` is
+      // written bare, and the loop bailed on it before any field had been
+      // classified -- so 4,139 diode models in an 800-deck sample of the
+      // library-resolved corpus were refused as "unparsed or malformed
+      // syntax" when the syntax was fine and the fields were merely ones we
+      // set aside. A reason that names our own parser sends the next reader to
+      // fix the parser.
+      //
+      // The flag is collected by NAME and then judged like any other field, so
+      // a bare token is still not silently dropped: `D(IS=2e-12 N=1.3 RS=4
+      // garbage)` now refuses for naming `garbage`, which is the honest reason.
+      const assigned = rest.match(/^\s*,?\s*([A-Za-z_]\w*)\s*=\s*([^\s,()]+)([\s\S]*)$/);
+      const match = assigned || rest.match(/^\s*,?\s*([A-Za-z_]\w*)()(?=\s|,|$)([\s\S]*)$/);
       if (!match) return { ok: false, reason: 'diode model contains unparsed or malformed syntax' };
-      seen.push(match[1].toLowerCase());
+      const field = match[1].toLowerCase();
+      seen.push(field);
+      // A FLAG STILL HAS TO BE A FIELD WE KNOW. `modelParams` only collects
+      // `key=value`, so a valueless token never reaches `classifyDiodeFields`
+      // and would be admitted as if it were not written -- which is why the
+      // loop used to refuse the whole card. Checking the flag's NAME here
+      // keeps that protection (`D(IS=2e-12 N=1.3 RS=4 garbage)` refuses, and
+      // now says which token) while letting a recognized flag through.
+      if (!assigned && !DIODE_DC_FIELDS.has(field) && !DIODE_MAPPED_FIELDS.has(field)
+          && !DIODE_NON_PARAMETERS.has(field) && !DIODE_NON_DC_FIELDS.has(field)) {
+        return { ok: false, reason: `diode model field "${match[1]}" is not a recognized model field` };
+      }
       rest = match[3];
     }
     if (new Set(seen).size !== seen.length) {

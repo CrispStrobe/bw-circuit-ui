@@ -796,6 +796,50 @@ export function importSpice(text, opts = {}) {
           libsource: 'nested subcircuit: flattening stops at one level' });
         continue;
       }
+      // A SUBCIRCUIT BODY CONTAINS DIRECTIVES, AND THEY ARE NOT ELEMENTS.
+      //
+      // Every `.model`/`.param`/`.ends` line in a body used to be pushed
+      // straight into the element stream, where the parser read the leading
+      // `.` as an element letter and reported `XU1..param: unknown element
+      // letter "."`. Measured on 3,000 library-resolved LTspice decks: 42,912
+      // of those, the largest single unmapped class in the corpus by a factor
+      // of four.
+      //
+      // The `.model` half was not merely mis-described, it was LOST -- and a
+      // vendor subcircuit declares its devices' models inside its own body.
+      // So the flattened diodes referenced a model nothing had registered,
+      // which is the same corpus's 21,930 `undeclared-diode-model` losses.
+      // One cause wearing two reasons, and the second one sent me looking for
+      // a library that already had everything.
+      const bodyDot = body.match(/^\.(\w+)\s*(.*)$/s);
+      if (bodyDot) {
+        const bodyCard = bodyDot[1].toLowerCase();
+        if (bodyCard === 'ends' || bodyCard === 'end') continue;
+        if (bodyCard === 'model') {
+          const decl = parseSpiceModelDeclaration(bodyDot[2]);
+          const modelName = (decl?.name || '').toLowerCase();
+          // SCOPED TO THE INSTANCE, not registered globally. A `.model` inside
+          // a subcircuit is local to it in SPICE, and two vendor subcircuits
+          // in one deck routinely both define `DX` with different numbers.
+          // Registering globally would let whichever flattened first decide
+          // the other's diode -- a wrong answer that no reason line would
+          // ever mention.
+          if (modelName) {
+            models.set(`${inst}.${modelName}`, { type: decl?.type || '',
+              params: decl?.params || {}, body: decl?.body || '',
+              source: body.trim(), fromSubcircuit: inst });
+            continue;
+          }
+        }
+        // Everything else a body can carry -- `.param`, `.func`, `.ic`,
+        // `.lib` -- is recorded as the loss it is, naming the construct and
+        // the instance, rather than as an element with a full stop for a name.
+        losses.push({ ref: `${inst}.${bodyDot[1]}`, kind: 'unsupported-subcircuit-directive',
+          source: body.trim(),
+          reason: `.${bodyCard} inside subcircuit "${subName}" is not applied when the body `
+            + 'is flattened', fallback: null });
+        continue;
+      }
       expanded.push({ line: body, prefix: `${inst}.`, portMap });
     }
   }
@@ -859,7 +903,11 @@ export function importSpice(text, opts = {}) {
     const params = {};
     if (spec.model) {
       const modelName = (rest[0] || '').toLowerCase();
-      const model = models.get(modelName);
+      // Instance scope first, then the file's own. That is SPICE's rule: a
+      // `.model` declared inside a subcircuit shadows a global one of the same
+      // name for the devices in that body, while a body device naming a model
+      // the body does NOT declare still resolves to the deck's.
+      const model = models.get(item.prefix + modelName) ?? models.get(modelName);
       if (!model) {
         warnings.push(`${partId}: model "${rest[0] || '(none)'}" is not declared in this `
           + 'file — engine defaults are used for it.');
@@ -1007,6 +1055,16 @@ export function importSpice(text, opts = {}) {
             // are this.
             params.bulkOnSource = true;
           } else {
+            // AND THE REFUSAL IS RECORDED IN THE PARAMS, not only in a warning.
+            //
+            // The engine defaults a three-terminal MOSFET to bulk-on-source,
+            // because that is what its symbol and its SPICE export both mean.
+            // A deck that ties the bulk to some THIRD node is a device we
+            // decline to model -- and if the decline lives only in a warning,
+            // the part reaches the engine indistinguishable from one that said
+            // nothing, and gets the default: a potential we just said we would
+            // not guess, guessed.
+            params.bulkUnplaced = true;
             warnings.push(`${partId}: bulk node "${bulkField}" is neither ground nor the source, `
               + 'so the body effect is not applied — the engine MOSFET has no bulk terminal and '
               + 'this reader will not guess a potential for it.');
