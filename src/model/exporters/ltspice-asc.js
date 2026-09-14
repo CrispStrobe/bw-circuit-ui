@@ -12,18 +12,20 @@ const SPECS = {
   isource: { lib: 'current', parameter: 'amps', allowed: ['amps'], terminals: { neg: [0, 0], pos: [0, 80] } },
   diode: { lib: 'diode', allowed: ['is', 'n', 'rs', 'vf', 'model', '_model'],
     terminals: { anode: [16, 0], cathode: [16, 64] }, modelType: 'D' },
-  npn: { lib: 'bw_npn', prefix: 'Q', allowed: ['beta', 'is', 'br', 'n', 'model', '_model'],
-    pinList: [['collector', 0, 0], ['base', 0, 32], ['emitter', 0, 64]], modelType: 'NPN' },
-  pnp: { lib: 'bw_pnp', prefix: 'Q', allowed: ['beta', 'is', 'br', 'n', 'model', '_model'],
-    pinList: [['collector', 0, 0], ['base', 0, 32], ['emitter', 0, 64]], modelType: 'PNP' },
-  nmos: { lib: 'bw_nmos', prefix: 'M', allowed: ['vth', 'kp', 'lambda', 'w', 'l', '_model'],
-    pinList: [['drain', 0, 0], ['gate', 0, 24], ['source', 0, 48], ['source', 0, 64]], modelType: 'NMOS' },
-  pmos: { lib: 'bw_pmos', prefix: 'M', allowed: ['vth', 'kp', 'lambda', 'w', 'l', '_model'],
-    pinList: [['drain', 0, 0], ['gate', 0, 24], ['source', 0, 48], ['source', 0, 64]], modelType: 'PMOS' },
-  vcvs: { lib: 'bw_vcvs', prefix: 'E', parameter: 'gain', allowed: ['gain'],
-    pinList: [['outp', 0, 0], ['outn', 0, 24], ['inp', 64, 0], ['inn', 64, 24]] },
-  vccs: { lib: 'bw_vccs', prefix: 'G', parameter: 'gm', allowed: ['gm'],
-    pinList: [['outn', 0, 0], ['outp', 0, 24], ['inp', 64, 0], ['inn', 64, 24]] },
+  npn: { lib: 'npn', prefix: 'Q', allowed: ['beta', 'is', 'br', 'n', 'model', '_model'],
+    pinList: [['collector', 64, 0], ['base', 0, 48], ['emitter', 64, 96]], modelType: 'NPN' },
+  pnp: { lib: 'pnp', prefix: 'Q', allowed: ['beta', 'is', 'br', 'n', 'model', '_model'],
+    pinList: [['collector', 64, 0], ['base', 0, 48], ['emitter', 64, 96]], modelType: 'PNP' },
+  // Standard three-pin MOS symbols make the substrate-to-source connection
+  // internally; the importer reconstructs the repeated fourth SPICE node.
+  nmos: { lib: 'nmos', prefix: 'M', allowed: ['vth', 'kp', 'lambda', 'w', 'l', '_model'],
+    pinList: [['drain', 48, 0], ['gate', 0, 80], ['source', 48, 96]], modelType: 'NMOS' },
+  pmos: { lib: 'pmos', prefix: 'M', allowed: ['vth', 'kp', 'lambda', 'w', 'l', '_model'],
+    pinList: [['drain', 48, 0], ['gate', 0, 80], ['source', 48, 96]], modelType: 'PMOS' },
+  vcvs: { lib: 'e', prefix: 'E', parameter: 'gain', allowed: ['gain'],
+    pinList: [['outp', 0, 16], ['outn', 0, 96], ['inp', -48, 32], ['inn', -48, 80]] },
+  vccs: { lib: 'g', prefix: 'G', parameter: 'gm', allowed: ['gm'],
+    pinList: [['outn', 0, 96], ['outp', 0, 16], ['inp', -48, 32], ['inn', -48, 80]] },
 };
 
 const endpointKey = (part, terminal) => `${part}\u0000${terminal}`;
@@ -91,18 +93,6 @@ function encodedPart(part, spec) {
     directives: [`.model ${modelName} ${spec.modelType} (${fields.join(' ')})`] };
 }
 
-function genericSymbol(spec) {
-  const lines = ['Version 4', 'SymbolType CELL'];
-  const xs = spec.pinList.map(pin => pin[1]); const ys = spec.pinList.map(pin => pin[2]);
-  lines.push(`RECTANGLE Normal ${Math.min(...xs) + 8} ${Math.min(...ys) - 8} ${Math.max(...xs) + 56} ${Math.max(...ys) + 8}`);
-  spec.pinList.forEach(([terminal, x, y], index) => {
-    lines.push(`PIN ${x} ${y} ${x < 32 ? 'LEFT' : 'RIGHT'} 8`,
-      `PINATTR PinName ${terminal}`, `PINATTR SpiceOrder ${index + 1}`);
-  });
-  lines.push(`SYMATTR Prefix ${spec.prefix}`);
-  return `${lines.join('\n')}\n`;
-}
-
 function terminalPoints(spec, terminal) {
   if (spec.pinList) return spec.pinList.filter(pin => pin[0] === terminal).map(pin => [pin[1], pin[2]]);
   return spec.terminals?.[terminal] ? [spec.terminals[terminal]] : [];
@@ -143,7 +133,7 @@ function netGroups(parts, wires, warnings) {
 export function toLtspiceAsc(circuit = {}) {
   const { parts = [], wires = [], analysisBlockers = [] } = circuit;
   const warnings = []; const skipped = []; const emitted = new Map();
-  const modelDirectives = new Set(); const generatedSymbols = new Map();
+  const modelDirectives = new Set();
   const retained = retainedDocument(circuit);
   if (retained && sameProjection({ parts, wires }, retained)) {
     if (retained.findings?.length) warnings.push(`${retained.findings.length} retained source-document finding(s) remain unresolved`);
@@ -178,7 +168,6 @@ export function toLtspiceAsc(circuit = {}) {
     lines.push(`SYMBOL ${spec.lib} ${x} ${y} R0`, `SYMATTR InstName ${part.id}`, `SYMATTR Value ${value}`);
     if (encoding.spiceLine) lines.push(`SYMATTR SpiceLine ${encoding.spiceLine}`);
     for (const directive of encoding.directives) modelDirectives.add(directive);
-    if (spec.pinList) generatedSymbols.set(`${spec.lib}.asy`, genericSymbol(spec));
   }
 
   let netOrdinal = 0;
@@ -194,6 +183,5 @@ export function toLtspiceAsc(circuit = {}) {
   }
   let directiveY = 560;
   for (const directive of modelDirectives) lines.push(`TEXT 32 ${directiveY += 16} Left 2 !${directive}`);
-  return { text: `${lines.join('\n')}\n`, warnings, skipped,
-    symbolFiles: [...generatedSymbols].map(([name, text]) => ({ name, text })) };
+  return { text: `${lines.join('\n')}\n`, warnings, skipped, symbolFiles: [] };
 }
