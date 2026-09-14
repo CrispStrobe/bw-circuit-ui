@@ -643,17 +643,33 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
 // importer keeps the deck's own node names, so there is a shared namespace and
 // no need for the order-independent spectrum the round trip uses.
 //
-// WHAT IT CAN AND CANNOT CLAIM. This is `original-direct` evidence only when
-// the import reports no loss and no unmapped part: then both sides are reading
-// the same circuit and a disagreement is one of the two engines being wrong.
-// With a loss it is not a comparison at all and the case is refused by name,
-// because a deck we partly understood is a different circuit and agreeing with
-// it would be worse than failing.
+// WHAT IT CAN AND CANNOT CLAIM, and the row says which.
 //
-// The deck is run AS WRITTEN except for one addition: `.op`, when it declares
-// no operating point. That is not a semantic change — every analysis card in
-// SPICE is computed from a bias point — but it is recorded, because a deck we
-// edited is a deck we have to say we edited.
+// A comparison happens at all only when the import reports NO loss and NO
+// unmapped part: with either, the case is refused by name, because a deck we
+// partly understood is a different circuit and agreeing with it would be worse
+// than failing.
+//
+// Beyond that, the class depends on whether the ANALYSIS was adapted, and the
+// returned `evidence` field says so:
+//
+//   original-direct    the deck already declared `.op` and carried no sweep,
+//                      so ngspice answered the source's own question
+//   original-adapted   a sweep was commented out and/or `.op` added — an
+//                      adapted bias experiment, valuable but NOT the source's
+//                      original analysis, even though every device card is
+//                      byte-identical
+//
+// I had been calling the whole set `original-direct` on the strength of the
+// bytes being untouched. That was wrong, and not by a little: 10,542 of the
+// 12,471 ADI2005 decks carry a sweep card, so the adaptation covers most of the
+// population. Byte preservation and analysis preservation are independent.
+//
+// `thermal` is reported for the same reason. Our engine solves at a FIXED
+// thermal voltage; a deck declaring no `.options temp` is solved by ngspice at
+// its own default. That mismatch is named rather than silently corrected,
+// because injecting our temperature would change the source's stated
+// conditions.
 //
 // @param {string} name
 // @param {string} deckText   the foreign deck, verbatim
@@ -695,6 +711,30 @@ export function judgeForeignDeck(name, deckText, dir) {
       compared: 0, reason: 'engine-error: ' + e.message };
   }
 
+  // A `.control` BLOCK IS A PROGRAM, AND THIS RUNS AN UNRESTRICTED LAUNCHER.
+  //
+  // ngspice's control language has `shell`, `system` and `source`. A deck is
+  // therefore executable input, and running foreign bytes through `spawnSync`
+  // with no sandbox is a decision, not a default. It was mine, and it was made
+  // on the wrong axis: I had reasoned about it as a LICENSING question, and
+  // security is independent of licensing — a permissively licensed deck can
+  // carry a control block just as easily. (Corpus lane's point; they are right.)
+  //
+  // Refused BY NAME rather than stripped, because stripping a program is a
+  // transformation whose result nobody inspected. Measured on ADI2005 v3:
+  // **0 of 12,471 decks carry a `.control` block**, so this costs that corpus
+  // nothing — and that is a property of the corpus, not of this function, which
+  // is exactly why the guard belongs here before a corpus that does.
+  //
+  // A deck that needs one belongs in the corpus lane's worker, which rebuilds
+  // inert cards under prlimit in a scratch HOME. That is the right tool for it.
+  if (/^\s*\.control\b/im.test(deckText)) {
+    return { name, ok: false, compared: 0,
+      lines: ['  the deck carries a .control block, which is an executable program — '
+        + 'refused rather than run through an unrestricted launcher'],
+      reason: 'control-block: not run unsandboxed' };
+  }
+
   // NGSPICE's answer, on the ORIGINAL BYTES. Only `.op` is added, and only when
   // the deck declares none.
   //
@@ -723,6 +763,28 @@ export function judgeForeignDeck(name, deckText, dir) {
     edits.push('added .op to read the bias point');
   }
   if (edits.length) lines.push(`  (deck edited: ${edits.join('; ')})`);
+
+  // THE EVIDENCE CLASS IS A FIELD, NOT A SENTENCE IN A REPORT.
+  //
+  // Commenting out a sweep and adding `.op` is an ADAPTED BIAS EXPERIMENT even
+  // when every device card stays byte-identical — it is not the source's own
+  // analysis. I had been calling these cases `original-direct` on the strength
+  // of the bytes being untouched, and that was wrong: 10,542 of the 12,471
+  // ADI2005 decks carry a sweep card, so the adaptation covers most of the
+  // population rather than an edge of it. The row now says which it is, so an
+  // aggregate cannot quietly mix them.
+  //
+  // THERMAL is named for the same reason and NOT silently corrected. Our engine
+  // solves at a fixed thermal voltage of 0.02585 V, i.e. 26.826793 C, and a
+  // foreign deck that declares no `.options temp` is solved by ngspice at its
+  // default 27 C. Injecting our temperature would change the source's stated
+  // conditions; leaving it unnamed would hide a systematic offset (a flat
+  // +0.686 mV per junction if only `temp` is set, and the full mismatch if
+  // neither key is). So it is reported, and a caller that wants strict thermal
+  // equality builds a separate native-matched profile.
+  const declaresTemp = /^\s*\.options?\b.*\btemp\s*=/im.test(deckText);
+  const evidence = edits.length ? 'original-adapted' : 'original-direct';
+  const thermal = declaresTemp ? 'deck-declared' : 'native-fixed-vs-oracle-default';
   const run = runNgspice(text, dir, name.replace(/[^A-Za-z0-9_.-]/g, '_'));
   if (run.error) {
     return { name, ok: false, lines: [`  ngspice refused the deck: ${run.error}`], compared: 0,
@@ -772,7 +834,8 @@ export function judgeForeignDeck(name, deckText, dir) {
     return { name, ok: false, lines: ['  no node name is shared between the deck and the '
       + 'imported circuit — nothing was compared'], compared: 0, reason: 'nothing compared' };
   }
-  return { name, ok, lines, compared, worstAbs, worstRel, worstAt,
+  return { name, ok, lines, compared, worstAbs, worstRel, worstAt, evidence, thermal,
+    adapted: edits,
     reason: ok ? null : `worst ${worstAbs.toExponential(2)} V at ${worstAt}` };
 }
 
