@@ -51,7 +51,10 @@ import { optionsCard } from 'bw-board/ngspice.js';
 // the spice-oracle job reddened.)
 import { spiceModelFor, resolveParams, cardFor, classDefaults, allCards } from 'bw-board/parts-library.js';
 import { formatSpiceValue } from '../si.js';
-import { validateStrictSpicePulseParams } from '../spice-source.js';
+import {
+  validateStrictSpiceExpParams, validateStrictSpicePulseParams,
+  validateStrictSpicePwlParams, validateStrictSpiceSineParams,
+} from '../spice-source.js';
 import { controlledResistance } from 'bw-board/mna.js';
 import { isExplicitShockleyPart } from '../spice-diode.js';
 
@@ -368,7 +371,8 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     // Preserve both fields exactly so `.op` still sees the DC bias while an
     // external `.ac` analysis can consume the descriptor.
     if ((part.kind === 'vsource' || part.kind === 'isource')
-      && Object.prototype.hasOwnProperty.call(part.params || {}, 'acMagnitude')) {
+      && Object.prototype.hasOwnProperty.call(part.params || {}, 'acMagnitude')
+      && (!part.params?.wave || part.params.wave === 'dc')) {
       const p = part.params || {};
       const dcKey = part.kind === 'vsource' ? 'volts' : 'amps';
       const allowed = new Set([dcKey, 'acMagnitude', 'acPhase']);
@@ -392,25 +396,42 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     if ((part.kind === 'vsource' || part.kind === 'isource')
       && part.params?.wave && part.params.wave !== 'dc') {
       const p = part.params;
-      const allowed = new Set(['wave', 'volts', 'offset', 'amplitude', 'freq', 'phase']);
-      const extra = Object.keys(p).filter(key => !allowed.has(key));
-      const phase = p.phase ?? 0;
-      const validSine = part.kind === 'vsource' && p.wave === 'sine'
-        && [p.offset, p.amplitude, p.freq, phase].every(Number.isFinite)
-        && p.freq > 0 && phase === 0 && extra.length === 0;
-      if (validSine) {
-        lines.push(`${part.refdes} ${nodeFields} SINE(${formatSpiceValue(p.offset)} `
-          + `${formatSpiceValue(p.amplitude)} ${formatSpiceValue(p.freq)})`);
-      } else if (part.kind === 'vsource' && p.wave === 'spice-pulse') {
+      const dc = p.dcBiasOrigin === 'explicit-dc' && Number.isFinite(p.dcValue)
+        ? `DC ${formatSpiceValue(p.dcValue)} ` : '';
+      const ac = Number.isFinite(p.acMagnitude) && Number.isFinite(p.acPhase ?? 0)
+        ? ` AC ${formatSpiceValue(p.acMagnitude)} ${formatSpiceValue(p.acPhase ?? 0)}` : '';
+      let emittedWave = null;
+      let invalidReason = null;
+      if (p.wave === 'sine') {
+        const allowed = new Set(['wave', 'volts', 'offset', 'amplitude', 'freq', 'phase']);
+        const extra = Object.keys(p).filter(key => !allowed.has(key));
+        const phase = p.phase ?? 0;
+        if ([p.offset, p.amplitude, p.freq, phase].every(Number.isFinite)
+            && p.freq > 0 && phase === 0 && extra.length === 0) {
+          emittedWave = `SINE(${[p.offset, p.amplitude, p.freq].map(formatSpiceValue).join(' ')})`;
+        } else invalidReason = extra.length ? `unsupported parameters ${extra.join(', ')}`
+          : 'native sine requires finite offset/amplitude/frequency and zero phase';
+      } else if (p.wave === 'spice-sine') {
+        const sine = validateStrictSpiceSineParams(p);
+        if (sine.ok) emittedWave = `SINE(${sine.values.map(formatSpiceValue).join(' ')})`;
+        else invalidReason = sine.reason;
+      } else if (p.wave === 'spice-pulse') {
         const pulse = validateStrictSpicePulseParams(p);
-        if (pulse.ok) {
-          lines.push(`${part.refdes} ${nodeFields} PULSE(${pulse.values.map(formatSpiceValue).join(' ')})`);
-        } else {
-          skipped.push(`${part.refdes} (${part.kind}): time-varying spice-pulse source is not losslessly exportable; ${pulse.reason}`);
-          lines.push(`* ${part.refdes} ${part.kind} — skipped (time-varying source not losslessly exportable; ${pulse.reason})`);
-        }
+        if (pulse.ok) emittedWave = `PULSE(${pulse.values.map(formatSpiceValue).join(' ')})`;
+        else invalidReason = pulse.reason;
+      } else if (p.wave === 'spice-pwl') {
+        const pwl = validateStrictSpicePwlParams(p);
+        if (pwl.ok) emittedWave = `PWL(${pwl.points.flat().map(formatSpiceValue).join(' ')})`;
+        else invalidReason = pwl.reason;
+      } else if (p.wave === 'spice-exp') {
+        const exp = validateStrictSpiceExpParams(p);
+        if (exp.ok) emittedWave = `EXP(${exp.values.map(formatSpiceValue).join(' ')})`;
+        else invalidReason = exp.reason;
+      }
+      if (emittedWave) {
+        lines.push(`${part.refdes} ${nodeFields} ${dc}${emittedWave}${ac}`);
       } else {
-        const detail = extra.length ? `; unsupported parameter${extra.length > 1 ? 's' : ''} ${extra.join(', ')}` : '';
+        const detail = invalidReason ? `; ${invalidReason}` : '';
         skipped.push(`${part.refdes} (${part.kind}): time-varying ${String(p.wave)} source is not losslessly exportable${detail}`);
         lines.push(`* ${part.refdes} ${part.kind} — skipped (time-varying source not losslessly exportable${detail})`);
       }

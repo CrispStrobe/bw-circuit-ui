@@ -52,6 +52,7 @@ import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
 import { SweepPanel } from './SweepPanel.jsx';
 import { OperatingPointPanel } from './OperatingPointPanel.jsx';
+import { SourceAnalysisPanel } from './SourceAnalysisPanel.jsx';
 import { SchematicPanel } from './SchematicPanel.jsx';
 import BoardPanel from './BoardPanel.jsx';
 import TransferReport from './TransferReport.jsx';
@@ -904,6 +905,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     loadInferred(inferredParts, inferredNets);
     circuit.analysisBlockers = [];
     circuit.sourceDocuments = [];
+    circuit.sourceAnalysis = null;
     // An EXPLICIT rebuild hands the canvas back to inference: future
     // declaration edits may re-derive again.
     fileLoadedRef.current = false;
@@ -923,6 +925,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     circuit.breadboards = new Map();
     circuit.analysisBlockers = [];
     circuit.sourceDocuments = [];
+    circuit.sourceAnalysis = null;
     circuit._syncNetlist();
     setAnnotations([]);
     setSelectedParts(new Set());
@@ -966,6 +969,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     circuit.breadboards = parsed.breadboards;
     circuit.analysisBlockers = parsed.analysisBlockers;
     circuit.sourceDocuments = parsed.sourceDocuments;
+    circuit.sourceAnalysis = parsed.sourceAnalysis;
     // Generated per-device benches carry {parts, nets} (engine-format nets,
     // no wires). syncWithExternalNets feeds these directly to setNetlist,
     // which is strictly more truthful than the wire→net derivation that
@@ -1036,6 +1040,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         circuit.breadboards = new Map();
         circuit.analysisBlockers = [];
         circuit.sourceDocuments = [];
+        circuit.sourceAnalysis = null;
         const { notes } = buildSeatedFromDeclarations(circuit, projectData);
         circuit._syncNetlist();
         circuit._saveHistory();
@@ -1885,6 +1890,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                 style={{minHeight: 32, padding: '5px 8px', cursor: simPaused ? 'pointer' : 'default'}}>{/^de/i.test(lang) ? '⏭ Ein Takt' : '⏭ Step one tick'}</button>
             </div>
             <OperatingPointPanel board={activeBoard} blockers={circuit.analysisBlockers} lang={lang} />
+            <SourceAnalysisPanel circuit={circuit} lang={lang} />
             <label style={{display: 'grid', gridTemplateColumns: '1fr', gap: 3, marginTop: 7, fontSize: 11, color: '#475569'}}>
               <span>Speed</span>
               <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title="Simulation speed" style={{minHeight: 30}}>

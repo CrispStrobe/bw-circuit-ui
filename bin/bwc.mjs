@@ -10,6 +10,7 @@
  *
  *   bwc info      <file>                    what is in it, and what did not map
  *   bwc op        <file>                    independent static DC operating point
+ *   bwc analyze   <file> --profile precision-v1  source-declared analyses
  *   bwc convert   <file> --to eagle|kicad-sch|kicad|spice|json [-o out]
  *   bwc render    <file> [-o out.svg] [--dark]
  *   bwc roundtrip <file>                    import -> export -> import, compared
@@ -103,7 +104,7 @@ for (let i = 1; i < args.length; i++) {
   // Value-taking flags must be listed, or the value silently becomes a
   // positional and the flag reads as a bare boolean — which is how --render
   // quietly rendered nothing.
-  if (['-o', '--to', '--render'].includes(args[i])) opts[args[i].replace(/^-+/, '')] = args[++i];
+  if (['-o', '--to', '--render', '--profile'].includes(args[i])) opts[args[i].replace(/^-+/, '')] = args[++i];
   else if (args[i].startsWith('--')) opts[args[i].slice(2)] = true;
   else positional.push(args[i]);
 }
@@ -112,6 +113,7 @@ const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
     + '  bwc op      <file>\n'
+    + '  bwc analyze <file> --profile precision-v1 [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
     + '\n  audit <dir> [dir...]        four-layer readiness per part kind'
@@ -129,6 +131,8 @@ async function load(path) {
       if (Array.isArray(j.parts)) {
         return { parts: j.parts, wires: j.wires || [], vcc: j.vcc,
           sourceDocuments: j.sourceDocuments || [],
+          sourceAnalysis: j.sourceAnalysis || null,
+          analysisBlockers: j.analysisBlockers || [],
           unmapped: [], ignored: [], warnings: [], losses: [], format: 'json' };
       }
     } catch { /* not our json; fall through to the importers */ }
@@ -287,6 +291,52 @@ switch (cmd) {
     break;
   }
 
+  case 'analyze': {
+    if (opts.profile !== 'precision-v1') {
+      die('analyze is an explicit high-accuracy action; select --profile precision-v1');
+    }
+    const c = await loadOrDie(file);
+    const source = c.sourceAnalysis || c;
+    if (!Array.isArray(source.analyses) || !source.analyses.length) {
+      die('analyze needs at least one source-declared .op, .ac, or .tran card');
+    }
+    const { error } = await loadEngine();
+    if (error) die('analyze needs a bw-board engine with transient profile support (' + error + ')');
+    const { runSourceAnalyses } = await import(join(SRC, 'model/source-analysis.js'));
+    const results = runSourceAnalyses({
+      ...c, analyses: source.analyses, netNames: source.netNames || [],
+      analysisBlockers: c.analysisBlockers || [],
+    }, { format: source.format || c.format, sourceName: source.sourceName || basename(file),
+      transientProfile: opts.profile });
+    if (opts.json) {
+      console.log(JSON.stringify({ source: basename(file), format: c.format,
+        liveGUIProfile: 'interactive-v1', requestedTransientProfile: opts.profile,
+        results }, null, 2));
+    } else {
+      console.log(`${basename(file)}  [${c.format}]  source analyses`);
+      console.log('  live GUI profile : interactive-v1');
+      console.log('  requested profile: precision-v1 (transient analyses only)');
+      for (const result of results) {
+        const execution = result.executionProfile || result.conditions?.executionProfile;
+        const pass = result.status === 'pass';
+        const atProfile = result.kind === 'tran' ? ' at precision-v1' : '';
+        console.log(`  ${result.kind.toUpperCase()} ${pass ? `engine execution PASS${atProfile}` : `${result.status.toUpperCase()}: ${result.detail || result.code}`}`);
+        console.log(`      evidence: ${result.evidence || result.classification}`);
+        console.log(`      thermal : ${result.thermal || 'not reported by this analysis kind'}`);
+        console.log('      oracle  : not performed; no agreement claim');
+        if (execution) {
+          console.log(`      profile : ${execution.configured?.id || execution.requested}`);
+          console.log(`      qualified local steps: ${execution.qualification?.accuracyMet === true ? 'yes' : 'no'}; not a global output-accuracy guarantee`);
+          if (execution.work) console.log(`      work    : ${execution.work.attempts} attempts, ${execution.work.solves} solves, ${execution.work.advances} advances`);
+        }
+        for (const adapted of result.adapted || []) console.log(`      adapted : ${adapted}`);
+        for (const skipped of result.skipped || []) console.log(`      skipped ${skipped.ref}: ${skipped.consequence}`);
+      }
+    }
+    if (!results.length || results.some(result => result.status !== 'pass')) process.exitCode = 1;
+    break;
+  }
+
   case 'convert': {
     const to = opts.to || die('convert needs --to asc|eagle|kicad-sch|kicad|spice|json');
     const c = await loadOrDie(file);
@@ -309,6 +359,7 @@ switch (cmd) {
       text = r.text; ext = '.kicad_sch';
     } else if (to === 'json') {
       text = JSON.stringify({ vcc: 5, parts: c.parts, wires: c.wires,
+        ...(c.sourceAnalysis ? { sourceAnalysis: c.sourceAnalysis } : {}),
         ...(c.sourceDocument || c.sourceDocuments?.length
           ? { sourceDocuments: [c.sourceDocument, ...(c.sourceDocuments || [])].filter(Boolean) } : {}) }, null, 1) + '\n'; ext = '.json';
     } else if (to === 'kicad' || to === 'spice') {
