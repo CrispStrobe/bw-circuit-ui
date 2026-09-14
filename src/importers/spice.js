@@ -43,6 +43,7 @@ import { evaluateConstantExpression, resolveConstantParameters } from '../model/
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 import { classifyShockleyThermal, validateExplicitShockley, validateDiodeForDc,
   diodeBreakdown } from '../model/spice-diode.js';
+import { parseSpiceModelDeclaration } from '../model/spice-model.js';
 
 /**
  * Nodes the REFERENCE SIMULATOR treats as the reference — measured, not assumed.
@@ -203,16 +204,6 @@ function logicalLines(text, opts = {}) {
     out.push(line.trim());
   }
   return { title, lines: out };
-}
-
-/** Split a `.model` parameter list: `(Is=1e-14 N=1.5)` or bare `Is=1e-14`. */
-function modelParams(rest) {
-  const params = {};
-  const body = rest.replace(/[()]/g, ' ');
-  for (const m of body.matchAll(/([A-Za-z_]\w*)\s*=\s*([^\s=]+)/g)) {
-    params[m[1].toLowerCase()] = parseSpiceValue(m[2]);
-  }
-  return params;
 }
 
 /**
@@ -481,14 +472,14 @@ export function importSpice(text, opts = {}) {
   const libraryNames = { models: new Set(), subckts: new Set() };
   const declareModel = (rest, line) => {
     ignored.push(line.trim());
-    const declaration = rest.trim().match(/^(\S+)\s+([A-Za-z]+)\s*(.*)$/);
-    const name = (declaration?.[1] || '').toLowerCase();
-    const type = (declaration?.[2] || '').toUpperCase();
+    const declaration = parseSpiceModelDeclaration(rest);
+    const name = (declaration?.name || '').toLowerCase();
+    const type = declaration?.type || '';
     const prior = models.get(name);
     const record = {
       type,
-      params: modelParams(declaration?.[3] || ''),
-      body: declaration?.[3] || '',
+      params: declaration?.params || {},
+      body: declaration?.body || '',
       source: line.trim(),
     };
     if (prior && (prior.type === 'D' || type === 'D')) {
@@ -520,11 +511,11 @@ export function importSpice(text, opts = {}) {
         subckts.set(libSub.name, libSub);
         libraryNames.subckts.add(libSub.name);
       } else if (card === 'model') {
-        const decl = d[2].trim().match(/^(\S+)\s+([A-Za-z]+)\s*(.*)$/);
-        const name = (decl?.[1] || '').toLowerCase();
+        const decl = parseSpiceModelDeclaration(d[2]);
+        const name = (decl?.name || '').toLowerCase();
         if (!name) continue;
-        models.set(name, { type: (decl?.[2] || '').toUpperCase(),
-          params: modelParams(decl?.[3] || ''), body: decl?.[3] || '',
+        models.set(name, { type: decl?.type || '',
+          params: decl?.params || {}, body: decl?.body || '',
           source: line.trim(), fromLibrary: true });
         libraryNames.models.add(name);
       }
