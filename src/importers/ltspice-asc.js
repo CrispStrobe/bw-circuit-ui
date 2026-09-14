@@ -140,7 +140,11 @@ function libraryKeys(name) {
 
 function nativeSymbolSpec(name) {
   const { basename, normalized } = libraryKeys(name);
-  const direct = SYMBOLS.get(basename);
+  // A path-qualified symbol is caller/library-owned even when its basename is
+  // `res` or another standard spelling. Only the unqualified LTspice built-in
+  // name may use the native contract without an ASY; reviewed path-qualified
+  // built-ins are listed explicitly below.
+  const direct = normalized === basename ? SYMBOLS.get(basename) : null;
   if (direct) return direct;
   const alias = NATIVE_SYMBOL_ALIASES.get(normalized || basename);
   if (!alias) return null;

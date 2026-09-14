@@ -229,4 +229,17 @@ SYMATTR Value 1k
     assert.ok(result.sourceDocument.findings.some(finding =>
       finding.kind === 'refused-symbol-pin-definition'));
   });
+
+  it('does not basename-map a path-qualified custom symbol as a standard primitive', () => {
+    const result = importLtspiceAsc(`Version 4
+SHEET 1 500 300
+SYMBOL vendor/res 100 100 R0
+SYMATTR InstName R1
+SYMATTR Value 1k
+`);
+    assert.deepEqual(result.parts, []);
+    assert.equal(result.sourceDocument.instances[0].definitionStatus, 'missing');
+    assert.ok(result.sourceDocument.findings.some(finding =>
+      finding.kind === 'missing-symbol-pin-definition'));
+  });
 });
