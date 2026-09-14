@@ -242,16 +242,16 @@ describe('round trip: our deck re-imports with the same net partition', () => {
     assert.equal(byId.C1.params.farads, 100e-9);
   });
 
-  it('a diode\'s forward voltage is recovered from the model card', () => {
+  it('a diode\'s explicit Shockley fields are retained without derived fields', () => {
     const circuit = Circuit.fromJSON(CASES['led-bench']);
     circuit.setPower(true);
     const { text } = toSpice(extractNetlist(circuit));
     const back = importSpice(text);
     const d = back.parts.find(p => p.kind === 'diode' || p.kind === 'led');
     assert.ok(d, `no junction came back:\n${text}`);
-    // The exporter calibrates Is so that Vf drops at 20 mA; the importer
-    // inverts exactly that, so 2.0 V out and 2.0 V back.
-    assert.ok(Math.abs(d.params.vf - 2.0) < 1e-4, `Vf came back as ${d.params.vf}`);
+    assert.equal(d.params.model, 'shockley');
+    assert.ok(Number.isFinite(d.params.is) && d.params.is > 0);
+    assert.equal(d.params.vf, undefined, 'derived Vf would exceed the exact native DC model envelope');
     assert.equal(d.params.n, 1.8);
   });
 });
