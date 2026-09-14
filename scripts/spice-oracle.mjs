@@ -741,42 +741,38 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
       reason: 'empty import' };
   }
 
-  // A BIAS POINT AND AN INSTANT ARE DIFFERENT QUESTIONS, AND THIS ASKS THE
-  // WRONG ONE. MEASURED, DIAGNOSED, AND NOT YET FIXABLE FROM HERE.
+  // A BIAS POINT AND AN INSTANT ARE DIFFERENT QUESTIONS, AND THIS ASKED THE
+  // WRONG ONE. NOW IT ASKS THE RIGHT ONE, THROUGH A KNOB THAT DID NOT EXIST.
   //
-  // `circuit.nodeVoltage` reads the board's LIVE solve, and bw-board documents
-  // what that is: at t = 0 every capacitor is uncharged, and an uncharged
-  // capacitor is stamped as a 0 V source -- so it PINS ITS TWO NETS TOGETHER.
-  // That is right for an instrument looking at a circuit at an instant. It is
-  // not `.op`, where a capacitor is an open.
+  // `circuit.nodeVoltage` reads the board's LIVE solve, and bw-board says what
+  // that is: at t = 0 every capacitor is uncharged, and an uncharged capacitor
+  // is stamped as a 0 V source -- so it PINS ITS TWO NETS TOGETHER. Right for
+  // an instrument at an instant; not `.op`, where a capacitor is an open.
   //
-  // Proven on ADI2005 v3 row 69, a two-stage Miller-compensated op-amp: the
-  // 3 pF between COMP and OUT shorted the compensation node to the output, both
-  // read 1.792744 V, and ngspice has COMP at 2.298037 V with OUT slammed to the
-  // -3.3 V rail because the output PMOS ends 2 mV into cutoff. Delete that one
-  // capacitor from the deck and our 5.09 V error at OUT collapses to 49 mV.
+  // Shown on the smallest circuit that separates: a 10 V divider of two 1k
+  // resistors with a capacitor across the lower leg reads 0.000001 V at the
+  // midpoint on the live solve and 5.000000 V at the bias point.
   //
-  // THE OBVIOUS FIX MAKES IT WORSE, AND THE MEASUREMENT SAYS SO. Filtering the
-  // capacitors out of the netlist handed to the board fixed 31 decks and
-  // REGRESSED 324, taking a 2,000-deck sample from 1,836 agreeing to 1,543.
-  // Two reasons, both real:
+  // Proven on the corpus by ADI2005 v3 row 69, a two-stage Miller-compensated
+  // op-amp: the 3 pF between COMP and OUT pinned the compensation node to the
+  // output, both read 1.792744 V, and ngspice has COMP at 2.298037 V with OUT
+  // on the -3.3 V rail because the output PMOS ends 2 mV into cutoff. A 5.09 V
+  // disagreement from one capacitor being the wrong element.
   //
-  //   * A net whose only terminal was a capacitor's stops existing, because
-  //     `Circuit.fromJSON` builds nets from WIRES and a one-terminal node has
-  //     none. ADI row 5, a high-pass RC of three parts, lost both IN and OUT
-  //     and the judge reported "nothing compared" -- a refusal manufactured by
-  //     the harness. ngspice still prints those nodes.
-  //   * Opening the capacitors EXPOSES floating-node behaviour that shorting
-  //     them had been masking, which is a second defect and not this one.
+  // THE FIRST FIX WAS THE PLAUSIBLE ONE AND IT WAS WRONG, which is why the knob
+  // was worth building. Filtering the capacitors out of the netlist fixed 31
+  // decks and REGRESSED 324, taking a 2,000-deck sample from 1,836 agreeing to
+  // 1,543: a net whose only terminal was a capacitor's STOPS EXISTING, because
+  // `Circuit.fromJSON` builds nets from WIRES and a one-terminal node has none,
+  // so ADI row 5 -- a high-pass RC of three parts -- lost both IN and OUT and
+  // the judge reported "nothing compared", a refusal manufactured by the
+  // harness. The parts have to stay and the SOLVE has to change.
   //
-  // So the capacitor must stay in the netlist and be OPEN in the solve, which
-  // is a knob bw-board does not expose today: `_solveMNA` always passes
-  // `capVoltages`, and mna.js takes the true DC branch ("a capacitor is open")
-  // only when that argument is absent. That is an engine change, in the same
-  // area as the strict-OP initialisation contract under review, and it wants
-  // its own gate over the affected decks before it lands. Recorded here rather
-  // than half-done, because a harness that asks the wrong question and says so
-  // is better than one that asks a different wrong question quietly.
+  // `biasPointVoltages()` is that: the ordinary solve with capacitors open,
+  // non-mutating, reporting its own convergence. Not a second operating-point
+  // API -- `operatingPoint()` is a strict refuse-by-name contract that does not
+  // admit transistors, and widening someone else's contract to serve this
+  // harness would be the wrong repair.
   //
   // Inductors need nothing: outside a transient bw-board already stamps one as
   // a 1 mOhm short, which is what `.op` does.
@@ -959,11 +955,25 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
     if (netId) deckNets.push({ name: dn.name, id: netId });
   }
 
+  // THE BIAS POINT, not the instant. See the note above `Circuit.fromJSON`.
+  // A non-converged bias point is an iterate, and this judge refuses one from
+  // its own engine for the same reason it refuses one from ngspice.
+  let bias = null;
+  if (typeof circuit.board?.biasPointVoltages === 'function') {
+    const bp = circuit.board.biasPointVoltages();
+    if (!bp.converged) {
+      return { name, ok: false, compared: 0, evidence, thermal, adapted: edits,
+        lines: ['  our own bias-point solve did not converge; an iterate is not an answer'],
+        reason: 'engine-non-convergence: bias point' };
+    }
+    bias = bp.nodeVoltages;
+  }
+
   let ok = true, compared = 0, worstAbs = 0, worstRel = 0, worstAt = null;
   for (const net of deckNets) {
     const key = String(net.name || '').toLowerCase();
     if (!key || !(key in run.nodes)) continue;   // ngspice folds unused nodes away
-    const engineV = circuit.nodeVoltage(net.id);
+    const engineV = bias ? bias.get(net.id) : circuit.nodeVoltage(net.id);
     if (typeof engineV !== 'number' || !isFinite(engineV)) continue;
     compared++;
     const spiceV = run.nodes[key];
