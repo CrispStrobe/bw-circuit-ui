@@ -237,4 +237,17 @@ I1 0 out EXP(0 1m 0.5m 0.2m 1.5m 0.3m)
         ['refused', 'import-fidelity', 'semantic-import-blocker']);
     }
   });
+
+  it('refuses long live-waveform runs before their bounded worker deadline', () => {
+    const result = imported(`bounded waveform work
+V1 in 0 SINE(0 1 16k)
+R1 in 0 1k
+.tran 1
+.end
+`);
+    const run = runSourceAnalyses(result, { format: 'spice' })[0];
+    assert.deepEqual([run.status, run.classification, run.code],
+      ['not-run', 'integration-gap', 'analysis-internal-work-budget-exceeded']);
+    assert.match(run.detail, /at least 10000 internal integration steps/);
+  });
 });

@@ -317,6 +317,16 @@ function transientSourceBreakpoints(parts, stopNs, maxPoints) {
   return [...values].sort((a, b) => a - b);
 }
 
+// bw-board keeps a live source waveform on a <=100 us integration horizon so
+// authored edges cannot be stepped over. This lower bound makes long waveform
+// runs a deterministic adapter budget outcome instead of a worker timeout.
+function minimumWaveformIntegrationSteps(parts, stopSec) {
+  const timeVarying = (parts || []).some(part =>
+    (part.kind === 'vsource' || part.kind === 'isource')
+    && part.params?.wave && part.params.wave !== 'dc');
+  return timeVarying ? Math.ceil(stopSec / 1e-4) : 0;
+}
+
 function runTran(imported, descriptor, limits) {
   const parsed = parseTran(descriptor, limits);
   if (parsed.status) return parsed;
@@ -332,6 +342,11 @@ function runTran(imported, descriptor, limits) {
     }
     if (parsed.points > limits.maxPoints) return integrationGap(descriptor, 'analysis-budget-exceeded',
       'authored source breakpoints plus observation points exceed the adapter limit', parsed);
+    const minimumSteps = minimumWaveformIntegrationSteps(imported.parts, parsed.stopSec);
+    if (minimumSteps > limits.maxInternalSteps) return integrationGap(descriptor,
+      'analysis-internal-work-budget-exceeded',
+      `waveform transient needs at least ${minimumSteps} internal integration steps; adapter limit is ${limits.maxInternalSteps}`,
+      parsed);
   } catch (error) {
     return integrationGap(descriptor, 'tran-grid-not-representable', error.message, parsed);
   }
@@ -388,7 +403,7 @@ function runTran(imported, descriptor, limits) {
  */
 export function runSourceAnalyses(imported, {
   format = null, sourceName = null, maxAnalyses = 16, maxPoints = 2048,
-  maxObservations = 16384,
+  maxObservations = 16384, maxInternalSteps = 5000,
 } = {}) {
   const descriptors = sourceAnalysisDescriptors(imported?.analyses || []);
   if (descriptors.length > maxAnalyses) {
@@ -403,7 +418,7 @@ export function runSourceAnalyses(imported, {
       blockerCount: blockers.length,
     }));
   }
-  const limits = { maxPoints, maxObservations };
+  const limits = { maxPoints, maxObservations, maxInternalSteps };
   return descriptors.map(descriptor => {
     if (descriptor.kind === 'op') return runOp(imported, descriptor);
     if (descriptor.kind === 'ac') return runAc(imported, descriptor, limits);
