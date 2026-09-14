@@ -830,7 +830,25 @@ function mapModel(letter, model, warnings, partId) {
     }
     if (isFinite(p.bv)) out.vz = p.bv;
   } else if (letter === 'Q') {
+    // A DECK THAT STATES `Is` IS ASKING FOR EBERS-MOLL, AND WE HAVE IT.
+    //
+    // The engine's default BJT is a piecewise knee, which is right for a
+    // gallery part described by a datasheet `vbe` and has no SPICE spelling.
+    // A FOREIGN deck is the other case entirely: `.model Q NPN (Bf=200
+    // Is=1e-14)` states the saturation current outright, which is exactly what
+    // full Ebers-Moll needs and what the reference simulator will solve with.
+    // Importing that as a knee makes the two sides different devices.
+    //
+    // Same rule the diode branch above already applies — `out.model =
+    // 'shockley'` when Is is stated — and the same per-part escape hatch
+    // `ebersMollParams` reads. `Br` is SPICE's reverse beta, defaulting to 1.
     if (isFinite(p.bf)) out.beta = p.bf;
+    if (isFinite(p.is)) {
+      out.is = p.is;
+      if (isFinite(p.br)) out.br = p.br;
+      if (isFinite(p.nf)) out.n = p.nf;
+      out.model = 'shockley';
+    }
   } else if (letter === 'M') {
     // LEVEL-1 SQUARE LAW: VTO AND KP, AND KP WAS BEING DROPPED.
     //
