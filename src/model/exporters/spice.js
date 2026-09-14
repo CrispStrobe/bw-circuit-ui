@@ -154,6 +154,60 @@ function lowestSourceFrequency(netlist) {
  * @param {string} [title='BrickWright Circuit']
  * @returns {{ text: string, skipped: string[], warnings: string[] }}
  */
+/**
+ * THE INTERNAL RESISTANCE THE ENGINE SOLVES WITH IS NOT ALWAYS ON THE CARD.
+ *
+ * A `battery_aa` in the gallery declares `{volts: 1.45}` and nothing else, and
+ * `bw-board/src/devices/named-parts.js` then stamps it with
+ * `part.params?.rInternal ?? 0.3` -- so 0.3 Ohm is the value that SOLVED, and it
+ * is invisible to anything reading `part.params`. The first version of the
+ * EMF/series-R export read only the card, so `75-battery-tester` kept
+ * disagreeing: engine 1.429559 V against ngspice's 1.450000 V, the EMF again.
+ *
+ * So ASK THE ENGINE, which is the rule this exporter already follows for a
+ * controlled resistance. `companionsFor` returns the companions the final
+ * Newton iteration stamped; a two-terminal source appears as one `between`
+ * record carrying `g` and `vth`, and the resistance is `1/g`.
+ *
+ *     battery_aa {volts: 1.45}
+ *       -> [{kind: 'between', tP: 'pos', tN: 'neg', g: 3.3333333, vth: 1.45}]
+ *       -> 1/g = 0.3 Ohm, EMF = 1.45 V
+ *
+ * An AUTHORED `rInternal` wins over a derived one, because a number a person
+ * wrote is the one they meant. A derived one is reported as a warning and
+ * marked in the deck comment, because taking the engine's linearisation makes
+ * this an `original-adapted` export rather than a straight translation -- the
+ * same distinction the `companionsFor` path below already draws.
+ *
+ * Returns null when there is no internal resistance to export, which is the
+ * ideal-source case and must stay a single bare V card.
+ */
+function internalResistanceOf(part, companionsFor) {
+  const authored = Number(part.params?.rInternal);
+  if (Number.isFinite(authored) && authored > 0) {
+    return { rInt: authored, volts: null, source: 'authored' };
+  }
+  if (!companionsFor) return null;
+  let snap = null;
+  try { snap = companionsFor(part.refdes); } catch { return null; }
+  // A non-converged snapshot is an iterate, not an answer.
+  const records = Array.isArray(snap) ? snap
+    : (snap && snap.converged !== false ? snap.records : null);
+  if (!Array.isArray(records)) return null;
+  const between = records.find(r => r && r.kind === 'between'
+    && ((r.tP === 'pos' && r.tN === 'neg') || (r.tP === 'neg' && r.tN === 'pos')));
+  if (!between) return null;
+  const g = Number(between.g);
+  const vth = Number(between.vth);
+  if (!Number.isFinite(g) || g <= 0) return null;
+  const rInt = 1 / g;
+  // An ideal source stamps a huge conductance; below a milliohm there is
+  // nothing a deck can usefully say and the round-off would dominate.
+  if (!(rInt > 1e-3)) return null;
+  return { rInt, volts: Number.isFinite(vth) ? Math.abs(vth) : null,
+    source: 'engine-companion' };
+}
+
 export function toSpice(netlist, title = 'BrickWright Circuit',
   {modelFor = spiceModelFor, pinSource = null, controls = new Map(),
    companionsFor = null, capacitorVoltage = null} = {}) {
@@ -470,24 +524,36 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     // terminals would show. The series resistor takes its own R card name from
     // the refdes so it cannot collide with a part.
     if (TWO_TERMINAL.has(card) && card === 'V'
-        && Number.isFinite(Number(part.params?.rInternal))
-        && Number(part.params.rInternal) > 0) {
-      const rInt = Number(part.params.rInternal);
+        && internalResistanceOf(part, companionsFor)) {
+      // NAMED `emfVolts`, NOT `emf`. This block briefly had both a destructured
+      // `emf` holding the engine's EMF and a local `const emf` holding the NODE
+      // NAME, and the local shadowed it -- so the V card's DC value became the
+      // string "BT1_EMF" and `formatSpiceValue` rendered it as nothing:
+      // `VBT1 BT1_EMF 0 DC` with no value at all. A deck that parses and means
+      // something else.
+      const { rInt, volts: emfVolts, source: rSource } = internalResistanceOf(part, companionsFor);
       const fields = String(nodeFields).trim().split(/\s+/);
       if (fields.length === 2) {
         const [posNode, negNode] = fields;
-        const emf = `${part.refdes.toUpperCase()}_EMF`;
-        let value = part.valueNumber;
+        let value = emfVolts ?? part.valueNumber;
         if (value == null) value = ENGINE_DEFAULTS[part.kind] ?? null;
         if (value == null) {
           warnings.push(`${part.refdes} (${part.kind}): no numeric value — `
             + 'internal resistance cannot be exported without an EMF.');
         } else {
-          lines.push(`* ${part.refdes} ${part.kind} — EMF at ${emf}, `
-            + `${formatSpiceValue(rInt)} internal resistance in series to ${posNode}`);
-          lines.push(`${el} ${emf} ${negNode} DC ${formatSpiceValue(value)}`);
-          lines.push(`R${part.refdes}_INT ${emf} ${posNode} ${formatSpiceValue(rInt)}`);
+          const emfNode = `${part.refdes.toUpperCase()}_EMF`;
+          lines.push(`* ${part.refdes} ${part.kind} — EMF at ${emfNode}, `
+            + `${formatSpiceValue(rInt)} internal resistance in series to ${posNode}`
+            + (rSource === 'engine-companion'
+              ? ' (resistance read from the engine\'s own stamp, not the card)' : ''));
+          lines.push(`${el} ${emfNode} ${negNode} DC ${formatSpiceValue(value)}`);
+          lines.push(`R${part.refdes}_INT ${emfNode} ${posNode} ${formatSpiceValue(rInt)}`);
           emitted.add(`${part.refdes}_INT`);
+          if (rSource === 'engine-companion') {
+            warnings.push(`${part.refdes} (${part.kind}): internal resistance `
+              + `${formatSpiceValue(rInt)} taken from the engine's stamp; the part `
+              + 'declares none.');
+          }
           continue;
         }
       } else {
