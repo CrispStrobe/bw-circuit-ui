@@ -379,6 +379,9 @@ function runTran(imported, descriptor, limits) {
     if (breakpoints.length) {
       parsed.samplingProfile = { ...parsed.samplingProfile,
         sourceBreakpointsIncluded: true, breakpointCount: breakpoints.length };
+      if (!parsed.uic) {
+        parsed.initialization = 'source-declared-waveform-time-zero-operating-point';
+      }
     }
     if (parsed.points > limits.maxPoints) return integrationGap(descriptor, 'analysis-budget-exceeded',
       'authored source breakpoints plus observation points exceed the adapter limit', parsed);

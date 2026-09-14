@@ -105,6 +105,21 @@ R2 b 0 1k
     }
   });
 
+  it('names non-UIC waveform initialization by its declared time-zero bias semantics', () => {
+    const input = importCircuit('spice', `waveform bias
+V1 in 0 DC 2 PWL(0 0 1u 5)
+R1 in out 1k
+C1 out 0 1n
+.tran 250n 2u
+.end
+`);
+    const [result] = runSourceAnalyses(input, { format: 'spice', transientProfile: 'precision-v1' });
+    assert.equal(result.status, 'pass');
+    assert.equal(result.conditions.initialization,
+      'source-declared-waveform-time-zero-operating-point');
+    assert.equal(result.executionProfile.qualification.accuracyMet, true);
+  });
+
   it('preflights and accounts deterministic total work instead of timing out', () => {
     const input = importCircuit('spice', `bounded precision\nV1 in 0 SINE(0 1 1)\nR1 in 0 1k\n.tran 2\n.end\n`);
     const [preflight] = runSourceAnalyses(input, { format: 'spice', transientProfile: 'precision-v1' });
