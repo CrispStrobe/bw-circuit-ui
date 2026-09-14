@@ -63,4 +63,18 @@ describe('strict SPICE diode DC contract', () => {
     assert.deepEqual(again.parts.find(p => p.kind === 'diode').params,
       { model: 'shockley', is: 2e-12, n: 1.3, rs: 4 });
   });
+
+  it('keeps established native LED and Vf-derived diode exports intact', () => {
+    const parts = [
+      { refdes: 'LED1', kind: 'led', pins: ['anode', 'cathode'], params: { color: 'red', model: 'shockley' } },
+      { refdes: 'D1', kind: 'diode', pins: ['anode', 'cathode'], params: { vf: 0.7, model: 'shockley' } },
+    ];
+    const out = toSpice({ parts, nets: [
+      { name: 'N1', nodes: parts.map(p => ({ refdes: p.refdes, pin: 'anode' })) },
+      { name: 'GND', nodes: parts.map(p => ({ refdes: p.refdes, pin: 'cathode' })) },
+    ] });
+    assert.deepEqual(out.skipped, []);
+    assert.equal((out.text.match(/^D\S*\s/gm) || []).length, 2);
+    assert.equal((out.text.match(/^\.model D_/gm) || []).length, 2);
+  });
 });
