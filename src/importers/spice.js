@@ -316,6 +316,7 @@ function sourceValue(fields, allowSine = false, constants = new Map()) {
       note: `${wave[1].toUpperCase()} waveform is not modelled here — imported at its `
         + `initial value ${isFinite(nums[0]) ? nums[0] : 0}.`,
       externalWaveform,
+      waveformLoss: `${wave[1].toUpperCase()} time-varying waveform is not modelled`,
     };
   }
   // WAVEFILE already carries a dedicated semantic loss and its historical,
