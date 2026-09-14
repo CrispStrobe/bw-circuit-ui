@@ -13,9 +13,15 @@ segments that only cross do not. Named flags are case-insensitive electrically
 and preserve their authored spellings as aliases.
 
 `parts`, `wires`, `unmapped` and `losses` are the narrower bw-board electrical
-projection. Standard R/C/L/V/I/D symbols use verified built-in pin contracts.
-Caller-supplied ASYs can project Q/M/E/G and one-level X subcircuits through
-the shared SPICE importer. Missing definitions, mismatched pin counts,
+projection. Standard R/C/L/V/I/D symbols and electrically identical exact-name
+variants (including polcap, ind2, Schottky/zener/LED/varactor/TVS diode
+drawings and selected Misc sources/resistors) use verified built-in pin
+contracts. Common Q/M/E/G drawings have separate pin-only contracts: their
+geometry and net order are known, while the shared SPICE importer remains
+responsible for deciding whether the authored model is native. Caller-supplied
+CELL ASYs can project R/C/L/V/I/D/Q/M/E/G and one-level X subcircuits only when
+they declare an explicit `Prefix` and contiguous `SpiceOrder` pins. Missing
+definitions, mismatched pin counts,
 unresolved subcircuits, separate MOS source/bulk nets, model families or fields
 outside the native equations, and unimplemented instance tails remain explicit
 refusals or analysis blockers. Document success therefore never implies that a
@@ -31,7 +37,6 @@ always inert dependencies.
 An unchanged imported ASC exports from its retained source document, preserving
 layout and unknown records. Once the projected circuit is edited, export
 switches to a generated electrical-interchange schematic and says so. Generated
-Q/M/E/G schematics include small self-authored companion ASYs; those files must
-remain beside the ASC. Supported SPICE and KiCad conversions are tested by
+Q/M/E/G schematics use the corresponding standard LTspice library symbols and
+therefore need no generated companion ASY. Supported SPICE and KiCad conversions are tested by
 terminal partitions and numeric/model fields, never byte equality.
-

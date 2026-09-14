@@ -48,6 +48,15 @@ function decodeSymbolText(input) {
   let encoding = 'utf-8';
   if (bytes[0] === 0xff && bytes[1] === 0xfe) encoding = 'utf-16le';
   else if (bytes[0] === 0xfe && bytes[1] === 0xff) encoding = 'utf-16be';
+  else {
+    const sample = bytes.subarray(0, Math.min(bytes.length, 256));
+    let evenNuls = 0; let oddNuls = 0;
+    sample.forEach((value, index) => {
+      if (value === 0) { if (index % 2) oddNuls++; else evenNuls++; }
+    });
+    if (oddNuls > sample.length / 8 && evenNuls === 0) encoding = 'utf-16le';
+    else if (evenNuls > sample.length / 8 && oddNuls === 0) encoding = 'utf-16be';
+  }
   try {
     return { text: new TextDecoder(encoding, { fatal: true }).decode(bytes).replace(/^\ufeff/, ''), encoding };
   } catch { return { text: '', encoding, error: `symbol bytes are not valid ${encoding}` }; }
@@ -61,8 +70,7 @@ function setAttribute(target, records, key, value, line, findings, owner) {
   const folded = key.toLowerCase();
   if (Object.prototype.hasOwnProperty.call(target, folded)) {
     findings.push(finding('duplicate-asy-attribute', line,
-      `${owner} repeats SYMATTR/PINATTR ${key}; the electrical meaning is ambiguous`));
-    return;
+      `${owner} repeats SYMATTR/PINATTR ${key}; LTspice's later value is effective`));
   }
   target[folded] = value;
   records.push({ name: key, value, line });
@@ -189,7 +197,7 @@ export function parseLtspiceAsy(text, options = {}) {
 
   const fatalKinds = new Set([
     'invalid-asy-input', 'asy-limit-exceeded', 'duplicate-asy-version',
-    'duplicate-asy-symbol-type', 'duplicate-asy-attribute', 'orphan-asy-pin-attribute',
+    'duplicate-asy-symbol-type', 'orphan-asy-pin-attribute',
     'unsupported-asy-version', 'missing-asy-symbol-type', 'invalid-asy-spice-order',
     'duplicate-asy-spice-order', 'invalid-asy-coordinate',
   ]);

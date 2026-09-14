@@ -136,7 +136,7 @@ FUTURE_RECORD preserved through GUI load
     assert.deepEqual(terminalPartitions(back.wires), terminalPartitions(interchange.wires));
   });
 
-  it('round-trips supported SPICE R/C/L/D/Q/M/E/G through ASC plus generated ASYs', () => {
+  it('round-trips supported SPICE R/C/L/D/Q/M/E/G through standard LTspice symbols', () => {
     const spice = `supported device interchange
 V1 supply 0 5
 R1 supply nr 2k
@@ -159,10 +159,12 @@ G1 0 ng nr 0 1m
     assert.equal(original.losses.length, 0);
     const asc = toLtspiceAsc(original);
     assert.deepEqual(asc.skipped, []);
-    assert.deepEqual(asc.symbolFiles.map(file => file.name).sort(),
-      ['bw_nmos.asy', 'bw_npn.asy', 'bw_vccs.asy', 'bw_vcvs.asy']);
-    const symbols = new Map(asc.symbolFiles.map(file => [file.name.replace(/\.asy$/, ''), file.text]));
-    const back = importLtspiceAsc(asc.text, { symbols });
+    assert.deepEqual(asc.symbolFiles, []);
+    assert.match(asc.text, /SYMBOL npn /);
+    assert.match(asc.text, /SYMBOL nmos /);
+    assert.match(asc.text, /SYMBOL e /);
+    assert.match(asc.text, /SYMBOL g /);
+    const back = importLtspiceAsc(asc.text);
     assert.equal(back.unmapped.length, 0);
     assert.deepEqual(back.parts.filter(part => part.kind !== 'gnd').map(part => [part.id, part.kind]),
       original.parts.filter(part => part.kind !== 'gnd').map(part => [part.id, part.kind]));
