@@ -182,41 +182,95 @@ function runOp(imported, descriptor) {
 
 function parseAc(descriptor, limits) {
   const fields = descriptor.normalized.split(' ');
-  if (fields.length !== 5 || fields[1] !== 'dec') return integrationGap(descriptor,
-    'ac-form-not-implemented', 'only .ac dec N FSTART FSTOP is currently wired');
-  const pointsPerDecade = Number(fields[2]);
+  const sweep = fields[1];
+  if (fields.length !== 5 || !['dec', 'oct', 'lin'].includes(sweep)) return integrationGap(descriptor,
+    'ac-form-not-implemented', 'supported forms are .ac DEC|OCT|LIN N FSTART FSTOP');
+  const density = Number(fields[2]);
   const startHz = parseSpiceValue(fields[3]);
   const stopHz = parseSpiceValue(fields[4]);
-  if (!Number.isSafeInteger(pointsPerDecade) || pointsPerDecade <= 0
+  if (!Number.isSafeInteger(density) || density <= 0
       || !finite(startHz) || !finite(stopHz) || !(startHz > 0) || !(stopHz > startHz)) {
-    return sourceRefusal(descriptor, 'invalid-ac-card', 'AC DEC count and frequency bounds must be finite and positive');
+    return sourceRefusal(descriptor, 'invalid-ac-card',
+      'AC point count must be a positive integer and frequency bounds must satisfy 0 < FSTART < FSTOP');
   }
-  const intervals = Math.log10(stopHz / startHz) * pointsPerDecade;
-  const rounded = Math.round(intervals);
-  if (Math.abs(intervals - rounded) > 1e-10) return integrationGap(descriptor,
-    'ac-grid-not-implemented', 'the native grid is used only when the authored DEC interval count is integral');
-  const points = rounded + 1;
-  if (points < 2 || points > limits.maxPoints) return integrationGap(descriptor,
+  let frequencies;
+  let points;
+  const logStart = Math.log(startHz);
+  const logStop = Math.log(stopHz);
+  if (sweep === 'lin') {
+    if (density === 2) return integrationGap(descriptor, 'ac-grid-not-representable',
+      'ngspice 42 emits only FSTART for LIN 2; the ambiguous missing endpoint is not manufactured');
+    points = density;
+  } else if (sweep === 'oct') {
+    // SPICE OCT advances by the authored points-per-octave ratio and stops
+    // before the first point above FSTOP; a non-grid-aligned endpoint is not
+    // manufactured as an observation.
+    points = Math.floor((logStop - logStart) / Math.LN2 * density + 1e-12) + 1;
+  } else {
+    // ngspice's DEC sweep chooses floor(N*decades)+1 observations and fits
+    // the logarithmic axis to both authored endpoints.  This differs from
+    // OCT's fixed 2^(1/N) progression when the interval is non-integral.
+    points = Math.floor((logStop - logStart) / Math.LN10 * density + 1e-12) + 1;
+    if (points < 2) return integrationGap(descriptor, 'ac-grid-not-representable',
+      'DEC bounds and density produce fewer than two points; no endpoint is manufactured');
+  }
+  if (!Number.isSafeInteger(points) || points < 1 || points > limits.maxPoints) return integrationGap(descriptor,
     'analysis-budget-exceeded', `AC requests ${points} points; adapter limit is ${limits.maxPoints}`);
-  return { pointsPerDecade, startHz, stopHz, points };
+  if (sweep === 'lin') {
+    frequencies = Array.from({ length: points }, (_, index) =>
+      startHz + (stopHz - startHz) * index / Math.max(1, points - 1));
+    if (points > 1) frequencies[points - 1] = stopHz;
+  } else if (sweep === 'oct') {
+    frequencies = Array.from({ length: points }, (_, index) =>
+      Math.exp(logStart + index * Math.LN2 / density));
+    if (Math.abs(frequencies.at(-1) - stopHz) <= stopHz * 1e-12) {
+      frequencies[frequencies.length - 1] = stopHz;
+    }
+  } else {
+    frequencies = Array.from({ length: points }, (_, index) =>
+      Math.exp(logStart + (logStop - logStart) * index / (points - 1)));
+    frequencies[0] = startHz;
+    frequencies[points - 1] = stopHz;
+  }
+  if (frequencies.some((value, index) => !finite(value) || !(value > 0)
+      || (index > 0 && !(value > frequencies[index - 1])))) {
+    return integrationGap(descriptor, 'ac-grid-not-representable',
+      'the authored AC grid cannot be represented as finite strictly increasing frequencies');
+  }
+  return {
+    sourceArguments: { source: descriptor.source, normalized: descriptor.normalized },
+    sweep, density, startHz, stopHz, points, frequencies,
+    ...(sweep === 'dec' ? { pointsPerDecade: density } : {}),
+    ...(sweep === 'oct' ? { pointsPerOctave: density } : {}),
+    ...(sweep === 'lin' ? { pointCount: density } : {}),
+    endpointPolicy: sweep === 'oct' ? 'last-authored-ratio-point-at-or-below-fstop'
+      : 'include-fstart-and-fstop',
+  };
 }
 
 function runAc(imported, descriptor, limits) {
   const parsed = parseAc(descriptor, limits);
   if (parsed.status) return parsed;
+  const unqualifiedLinearizations = (imported.parts || []).filter(part =>
+    ['npn', 'pnp', 'nmos', 'pmos'].includes(part.kind));
+  if (unqualifiedLinearizations.length) return integrationGap(descriptor,
+    'ac-linearization-model-unqualified',
+    `native AC model fidelity is not qualified for ${unqualifiedLinearizations.map(part =>
+      `${part.id}:${part.kind}`).join(', ')}`, parsed);
   const excitations = (imported.parts || []).filter(part =>
     (part.kind === 'vsource' || part.kind === 'isource')
     && Object.prototype.hasOwnProperty.call(part.params || {}, 'acMagnitude'));
-  if (excitations.length !== 1 || excitations[0].kind !== 'vsource') {
-    const kinds = excitations.map(part => part.kind).join(', ') || 'none';
-    return integrationGap(descriptor, 'ac-source-set-not-implemented',
-      `exactly one explicit AC voltage source and no other AC excitation is required; found ${kinds}`, parsed);
+  if (excitations.length === 0) {
+    return sourceRefusal(descriptor, 'missing-ac-source',
+      'at least one explicit independent AC voltage or current source is required', parsed);
   }
-  const source = excitations[0];
-  const amplitude = source.params.acMagnitude;
-  const phaseDeg = source.params.acPhase ?? 0;
-  if (!finite(amplitude) || amplitude < 0 || !finite(phaseDeg)) return sourceRefusal(descriptor,
-    'invalid-ac-source', 'AC magnitude must be finite and non-negative and phase must be finite');
+  const invalidSource = excitations.find(source => {
+    const amplitude = source.params.acMagnitude;
+    const phaseDeg = source.params.acPhase ?? 0;
+    return !finite(amplitude) || amplitude < 0 || !finite(phaseDeg);
+  });
+  if (invalidSource) return sourceRefusal(descriptor, 'invalid-ac-source',
+    `AC source ${invalidSource.id} must have a finite non-negative magnitude and finite phase`, parsed);
   let circuit;
   try { circuit = circuitFor(imported); }
   catch (error) { return mappingGap(descriptor, error, parsed); }
@@ -230,28 +284,78 @@ function runAc(imported, descriptor, limits) {
     if (canonical.nodes.length * parsed.points > limits.maxObservations) return integrationGap(descriptor,
       'analysis-budget-exceeded', 'AC node-point product exceeds the adapter observation limit', parsed);
     const probes = canonical.nodes.map(node => node.netId);
-    const rows = circuit.board.runAc({ sourceId: source.id, from: parsed.startHz,
-      to: parsed.stopHz, pointsPerDecade: parsed.pointsPerDecade, probes });
-    if (rows.length !== parsed.points) return integrationGap(descriptor, 'native-ac-grid-mismatch',
-      `native returned ${rows.length} points for an authored ${parsed.points}-point DEC grid`, parsed);
-    if (rows.some(row => row.outOfLinear?.length)) return solverRefusal(descriptor,
-      'small-signal linearization is outside a proven device region', parsed);
-    const sourceId = canonical.sources.find(entry => entry.partId === source.id)?.id;
-    if (!sourceId) return mappingGap(descriptor, 'canonical AC source mapping is missing', parsed);
-    const nodes = canonical.nodes.map(node => ({
+    const sourceConditions = excitations.map(source => {
+      const canonicalSource = canonical.sources.find(entry => entry.partId === source.id);
+      if (!canonicalSource) throw new Error(`canonical AC source mapping is missing for ${source.id}`);
+      return { id: canonicalSource.id, partId: source.id,
+        kind: source.kind === 'vsource' ? 'voltage' : 'current',
+        amplitude: source.params.acMagnitude, phaseDeg: source.params.acPhase ?? 0 };
+    });
+    const sums = canonical.nodes.map(() => parsed.frequencies.map(() =>
+      ({ real: 0, imaginary: 0, absoluteContributions: 0 })));
+    for (let sourceIndex = 0; sourceIndex < excitations.length; sourceIndex++) {
+      const source = excitations[sourceIndex];
+      const condition = sourceConditions[sourceIndex];
+      const rows = circuit.board.runAc({ sourceId: source.id, frequencies: parsed.frequencies,
+        probes, analysisProfile: 'source-analysis-v1', nodeRegularizationSiemens: 0 });
+      if (rows.length !== parsed.points) return integrationGap(descriptor, 'native-ac-grid-mismatch',
+        `native returned ${rows.length} points for an authored ${parsed.points}-point ${parsed.sweep.toUpperCase()} grid`, parsed);
+      if (rows.some((row, index) => row.hz !== parsed.frequencies[index])) {
+        return integrationGap(descriptor, 'native-ac-grid-mismatch',
+          'native did not preserve the authored AC frequency vector exactly', parsed);
+      }
+      if (rows.some(row => row.profile?.id !== 'source-analysis-v1'
+          || row.profile?.nodeRegularizationSiemens !== 0
+          || row.profile?.sourceBiasPolicy !== 'authored-dc-value-no-interactive-source-controls')) {
+        return integrationGap(descriptor, 'native-ac-profile-mismatch',
+          'native did not report the requested strict AC source-analysis profile', parsed);
+      }
+      if (rows.some(row => row.outOfLinear?.length)) return solverRefusal(descriptor,
+        'small-signal linearization is outside a proven device region', parsed);
+      const sourceAngle = condition.phaseDeg * Math.PI / 180;
+      const sourceReal = condition.amplitude * Math.cos(sourceAngle);
+      const sourceImaginary = condition.amplitude * Math.sin(sourceAngle);
+      for (let nodeIndex = 0; nodeIndex < canonical.nodes.length; nodeIndex++) {
+        const netId = canonical.nodes[nodeIndex].netId;
+        for (let pointIndex = 0; pointIndex < rows.length; pointIndex++) {
+          const response = rows[pointIndex].results.get(netId);
+          if (!finite(response?.mag) || !finite(response?.phaseDeg)) {
+            return solverRefusal(descriptor, 'native AC returned a missing or non-finite observation', parsed);
+          }
+          const responseAngle = response.phaseDeg * Math.PI / 180;
+          const responseReal = response.mag * Math.cos(responseAngle);
+          const responseImaginary = response.mag * Math.sin(responseAngle);
+          const sum = sums[nodeIndex][pointIndex];
+          sum.real += responseReal * sourceReal - responseImaginary * sourceImaginary;
+          sum.imaginary += responseReal * sourceImaginary + responseImaginary * sourceReal;
+          sum.absoluteContributions += response.mag * condition.amplitude;
+        }
+      }
+    }
+    const nodes = canonical.nodes.map((node, nodeIndex) => ({
       id: node.id,
-      magnitude: rows.map(row => row.results.get(node.netId)?.mag * amplitude),
-      phaseDeg: rows.map(row => (row.results.get(node.netId)?.phaseDeg ?? NaN) + phaseDeg),
+      magnitude: sums[nodeIndex].map(value => {
+        const magnitude = Math.hypot(value.real, value.imaginary);
+        return magnitude <= value.absoluteContributions * Number.EPSILON * 32 ? 0 : magnitude;
+      }),
+      phaseDeg: sums[nodeIndex].map(value => {
+        const magnitude = Math.hypot(value.real, value.imaginary);
+        return magnitude <= value.absoluteContributions * Number.EPSILON * 32
+          ? 0 : Math.atan2(value.imaginary, value.real) * 180 / Math.PI;
+      }),
     }));
     if (nodes.some(node => [...node.magnitude, ...node.phaseDeg].some(value => !finite(value)))) {
       return solverRefusal(descriptor, 'native AC returned a missing or non-finite observation', parsed);
     }
+    const { frequencies, ...conditions } = parsed;
     return {
       analysisId: descriptor.id, ordinal: descriptor.ordinal, kind: 'ac', status: 'pass',
       classification: 'native-original',
-      conditions: { ...parsed, sweep: 'dec', sourceId, amplitude, phaseDeg },
+      conditions: { ...conditions, sources: sourceConditions.map(({ partId, ...source }) => source),
+        solverProfile: { id: 'source-analysis-v1', nodeRegularizationSiemens: 0,
+          sourceBiasPolicy: 'authored-dc-value-no-interactive-source-controls' } },
       topology: canonical.cards,
-      observables: { axis: { quantity: 'frequency', unit: 'Hz', values: rows.map(row => row.hz) }, nodes },
+      observables: { axis: { quantity: 'frequency', unit: 'Hz', values: parsed.frequencies }, nodes },
       evidence: 'original-direct', adapted: [],
       thermal: 'native-fixed-26.8267934421C; no oracle comparison performed',
     };

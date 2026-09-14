@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { spawnSync } from 'node:child_process';
 import './_setup.js';
+import { BoardImpl } from 'bw-board/board.js';
 import { importCircuit } from '../src/importers/index.js';
 import { runSourceAnalyses, sourceAnalysisDescriptors } from '../src/model/source-analysis.js';
 
@@ -84,6 +86,15 @@ R1 1 0 1k
     assert.deepEqual([invalid.status, invalid.classification, invalid.code],
       ['refused', 'source-condition', 'invalid-ac-card']);
 
+    const noExcitation = runSourceAnalyses(imported(`missing AC source
+V1 1 0 DC 1
+R1 1 0 1k
+.ac dec 1 10 100
+.end
+`), { format: 'spice' })[0];
+    assert.deepEqual([noExcitation.status, noExcitation.classification, noExcitation.code],
+      ['refused', 'source-condition', 'missing-ac-source']);
+
     const lossy = runSourceAnalyses(imported(`loss
 X1 1 0 unknown
 .op
@@ -113,7 +124,7 @@ R1 1 0 1k
       ['not-run', 'integration-gap', 'canonical-topology-unavailable']);
   });
 
-  it('refuses an authored AC current excitation instead of silently dropping it', () => {
+  it('superposes authored independent voltage and current AC excitations', () => {
     const run = runSourceAnalyses(imported(`two excitations
 V1 in 0 DC 0 AC 1
 I1 out 0 DC 0 AC 2m
@@ -122,9 +133,49 @@ R2 out 0 1k
 .ac dec 1 10 100
 .end
 `), { format: 'spice' })[0];
-    assert.deepEqual([run.status, run.classification, run.code],
-      ['not-run', 'integration-gap', 'ac-source-set-not-implemented']);
-    assert.match(run.detail, /vsource, isource/);
+    assert.equal(run.status, 'pass');
+    assert.deepEqual(run.conditions.sources, [
+      { id: 's0', kind: 'voltage', amplitude: 1, phaseDeg: 0 },
+      { id: 's1', kind: 'current', amplitude: 0.002, phaseDeg: 0 },
+    ]);
+    const input = run.observables.nodes.find(node => node.id === 'n0');
+    const output = run.observables.nodes.find(node => node.id === 'n1');
+    assert.ok(input.magnitude.every(value => Math.abs(value - 1) < 1e-9));
+    assert.ok(input.phaseDeg.every(value => Math.abs(value) < 1e-9));
+    assert.ok(output.magnitude.every(value => Math.abs(value - 0.5) < 1e-9));
+    assert.ok(output.phaseDeg.every(value => Math.abs(Math.abs(value) - 180) < 1e-9));
+  });
+
+  it('matches ngspice for signed voltage/current phasor superposition on the exact LIN grid', {
+    skip: spawnSync('ngspice', ['--version'], { encoding: 'utf8' }).status !== 0,
+  }, () => {
+    const deck = `independent AC superposition
+V1 in 0 DC 0 AC 2 30
+I1 out 0 DC 0 AC 3m -90
+R1 in out 1k
+R2 out 0 2k
+.ac lin 3 10 20
+.end
+`;
+    const native = runSourceAnalyses(imported(deck), { format: 'spice' })[0];
+    assert.equal(native.status, 'pass');
+    const oracleDeck = deck.replace('.end', '.print ac vr(out) vi(out)\n.end');
+    const oracle = spawnSync('ngspice', ['-b'], { input: oracleDeck, encoding: 'utf8' });
+    assert.equal(oracle.status, 0, oracle.stderr);
+    const rows = oracle.stdout.split('\n').flatMap(line => {
+      const match = /^\s*\d+\s+(\S+)\s+(\S+)\s+(\S+)\s*$/.exec(line);
+      return match ? [{ hz: Number(match[1]), real: Number(match[2]), imaginary: Number(match[3]) }] : [];
+    });
+    assert.deepEqual(rows.map(row => row.hz), native.observables.axis.values);
+    const output = native.observables.nodes.find(node => node.id === 'n1');
+    const real = output.magnitude.map((magnitude, index) =>
+      magnitude * Math.cos(output.phaseDeg[index] * Math.PI / 180));
+    const imaginary = output.magnitude.map((magnitude, index) =>
+      magnitude * Math.sin(output.phaseDeg[index] * Math.PI / 180));
+    rows.forEach((row, index) => {
+      assert.ok(Math.abs(real[index] - row.real) < 1e-5);
+      assert.ok(Math.abs(imaginary[index] - row.imaginary) < 1e-5);
+    });
   });
 
   it('runs only an exact integer-nanosecond UIC transient grid', () => {
@@ -353,6 +404,94 @@ L1 coil 0 3m
       const run = runSourceAnalyses(result, { format: 'spice' })[0];
       assert.deepEqual([run.status, run.classification, run.code],
         ['refused', 'import-fidelity', 'semantic-import-blocker']);
+    }
+  });
+
+  it('preserves authored non-integral DEC, OCT, and LIN AC frequency axes', () => {
+    const runs = runSourceAnalyses(imported(`three authored grids
+V1 in 0 DC 0 AC 1
+R1 in out 1k
+C1 out 0 1u
+.ac dec 3 10 700
+.ac oct 3 10 100
+.ac lin 4 10 100
+.end
+`), { format: 'spice', maxPoints: 32 });
+
+    assert.deepEqual(runs.map(run => run.status), ['pass', 'pass', 'pass']);
+    assert.deepEqual(runs[0].observables.axis.values,
+      Array.from({ length: 6 }, (_, index) => index === 5
+        ? 700 : (index === 0 ? 10
+          : Math.exp(Math.log(10) + (Math.log(700) - Math.log(10)) * index / 5))));
+    assert.deepEqual(runs[1].observables.axis.values,
+      Array.from({ length: 10 }, (_, index) => Math.exp(Math.log(10) + index * Math.LN2 / 3)));
+    assert.deepEqual(runs[2].observables.axis.values, [10, 40, 70, 100]);
+    assert.equal(runs[0].conditions.endpointPolicy, 'include-fstart-and-fstop');
+    assert.equal(runs[1].conditions.endpointPolicy,
+      'last-authored-ratio-point-at-or-below-fstop');
+    for (const run of runs) {
+      assert.deepEqual(run.conditions.solverProfile, {
+        id: 'source-analysis-v1', nodeRegularizationSiemens: 0,
+        sourceBiasPolicy: 'authored-dc-value-no-interactive-source-controls',
+      });
+    }
+  });
+
+  it('reports ambiguous one-point DEC and ngspice-42 LIN-2 grids instead of changing them', () => {
+    for (const card of ['.ac dec 3 10 12', '.ac lin 2 10 20']) {
+      const run = runSourceAnalyses(imported(`ambiguous grid
+V1 in 0 AC 1
+R1 in 0 1k
+${card}
+.end
+`), { format: 'spice' })[0];
+      assert.deepEqual([run.status, run.classification, run.code],
+        ['not-run', 'integration-gap', 'ac-grid-not-representable']);
+    }
+    const overBudget = runSourceAnalyses(imported(`bounded grid allocation
+V1 in 0 AC 1
+R1 in 0 1k
+.ac lin 9007199254740991 10 20
+.end
+`), { format: 'spice', maxPoints: 32 })[0];
+    assert.deepEqual([overBudget.status, overBudget.code],
+      ['not-run', 'analysis-budget-exceeded']);
+  });
+
+  it('does not equate a mapped semiconductor with a qualified AC model', () => {
+    const importedModel = imported(`unqualified small-signal model
+V1 supply 0 5
+VIN input 0 AC 1
+Q1 output input 0 QMOD
+R1 supply output 1k
+.model QMOD NPN(IS=1e-14 BF=100 VAF=100)
+.ac dec 10 10 1k
+.end
+`);
+    const run = runSourceAnalyses(importedModel, { format: 'spice' })[0];
+    assert.deepEqual([run.status, run.classification, run.code],
+      ['not-run', 'integration-gap', 'ac-linearization-model-unqualified']);
+    assert.match(run.detail, /Q1:npn/);
+  });
+
+  it('refuses a Board result that does not prove the strict AC execution profile', () => {
+    const original = BoardImpl.prototype.runAc;
+    BoardImpl.prototype.runAc = function mismatchedProfile(options) {
+      return original.call(this, options).map(row => ({
+        ...row, profile: { ...row.profile, id: 'interactive-v1' },
+      }));
+    };
+    try {
+      const run = runSourceAnalyses(imported(`wrong profile
+V1 in 0 AC 1
+R1 in 0 1k
+.ac lin 3 10 20
+.end
+`), { format: 'spice' })[0];
+      assert.deepEqual([run.status, run.classification, run.code],
+        ['not-run', 'integration-gap', 'native-ac-profile-mismatch']);
+    } finally {
+      BoardImpl.prototype.runAc = original;
     }
   });
 });
