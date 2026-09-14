@@ -93,6 +93,19 @@ const GATE_ANCHORS = {
   y: { x: 30, y: 0, side: 'right' },
 };
 
+/**
+ * Controlled-source connections: the sensed pair on the left, the driven
+ * pair on the right. Both bw-board stamps name their terminals this way and
+ * the SPICE E/G importer produces exactly these four, so the symbol can be
+ * anchored by name with no per-kind mapping.
+ */
+const CONTROLLED_SOURCE_ANCHORS = {
+  inp:  { x: -30, y: -10, side: 'left' },
+  inn:  { x: -30, y: 10, side: 'left' },
+  outp: { x: 30, y: -10, side: 'right' },
+  outn: { x: 30, y: 10, side: 'right' },
+};
+
 /** Connection aliases shared by bipolar and field-effect transistors. */
 function transistorAnchors(control, upper, lower) {
   return {
@@ -261,6 +274,21 @@ export const SYMBOLS = {
   header:        headerSym(2),
   opamp:         { paths: ['M -14 -14 L -14 14 L 16 0 Z', 'M -30 -7 L -14 -7 M -30 7 L -14 7 M 16 0 L 30 0'],
     texts: [{ x: -10, y: -3, s: '−', size: 8 }, { x: -10, y: 10, s: '+', size: 8 }] },
+  // Controlled sources. The diamond is the convention that separates a
+  // DEPENDENT source from an independent one, and the controlling port is
+  // drawn open on the left because it carries no current: the engine's
+  // stamp reads a voltage across inp/inn and never a current through them.
+  vcvs:          { anchors: CONTROLLED_SOURCE_ANCHORS,
+    paths: ['M 0 -14 L 12 0 L 0 14 L -12 0 Z',
+      'M -30 -10 L -20 -10 M -30 10 L -20 10',
+      'M 20 -10 L 30 -10 M 20 10 L 30 10 M 20 -10 L 20 -14 M 20 10 L 20 14 M 20 -14 L 0 -14 M 20 14 L 0 14'],
+    texts: [{ x: 0, y: -3, s: '+', size: 7 }, { x: 0, y: 9, s: '−', size: 7 }] },
+  vccs:          { anchors: CONTROLLED_SOURCE_ANCHORS,
+    paths: ['M 0 -14 L 12 0 L 0 14 L -12 0 Z',
+      'M -30 -10 L -20 -10 M -30 10 L -20 10',
+      'M 20 -10 L 30 -10 M 20 10 L 30 10 M 20 -10 L 20 -14 M 20 10 L 20 14 M 20 -14 L 0 -14 M 20 14 L 0 14',
+      // The arrow points outn -> outp: stampVCCS injects +gm*vin INTO outp.
+      'M 0 7 L 0 -5 M -3 -2 L 0 -7 L 3 -2'] },
   gate_and:      { anchors: GATE_ANCHORS, paths: ['M -12 -16 L -12 16 L 0 16 A 16 16 0 0 0 0 -16 Z', 'M -30 -8 L -12 -8 M -30 8 L -12 8 M 16 0 L 30 0'] },
   gate_nand:     { anchors: GATE_ANCHORS, paths: ['M -12 -16 L -12 16 L 0 16 A 16 16 0 0 0 0 -16 Z', 'M -30 -8 L -12 -8 M -30 8 L -12 8 M 16 0 L 30 0'],
     circles: [{ cx: 19, cy: 0, r: 3 }] },

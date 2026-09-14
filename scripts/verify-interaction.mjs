@@ -28,14 +28,64 @@ import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const PORT = Number(process.env.BW_GATE_PORT || 3142);
+/**
+ * Refuse to run if ANYTHING already answers on this port.
+ *
+ * `--strictPort` is not the protection it looks like. A stale dev server may
+ * be bound to `[::1]` only, so ours binds `127.0.0.1`, both live, and
+ * `localhost` resolves to the stranger first. The gate then drives A
+ * DIFFERENT WORKING TREE and reports 36 green scenarios about code that is
+ * not under test.
+ *
+ * Not hypothetical: on 2026-09-14 port 3142 on this box was held by a vite
+ * started fifteen days earlier from /mnt/volume1/code/wt/fab-cui, and every
+ * local run of this gate since had been measuring that tree. It surfaced only
+ * because a scenario asked for a part that exists in the tree under test and
+ * not in the stranger's — the app was fine, the gate was pointed elsewhere.
+ *
+ * A stranger's server is worse than no server, because it is GREEN. So this
+ * asks both stacks, by address rather than by name, before spawning anything.
+ */
+const portIsFree = async () => {
+  for (const host of ['127.0.0.1', '[::1]']) {
+    try {
+      const c = new AbortController();
+      const t = setTimeout(() => c.abort(), 2000);
+      await fetch(`http://${host}:${PORT}/`, { signal: c.signal });
+      clearTimeout(t);
+      return host;              // something answered: the port is NOT free
+    } catch { /* nothing there, which is what we want */ }
+  }
+  return null;
+};
+
+const occupied = await portIsFree();
+if (occupied) {
+  console.error(`\n✖ REFUSING TO RUN: something is already serving ${occupied}:${PORT}.`);
+  console.error('  It is not this gate, and it is very likely another worktree\'s dev server.');
+  console.error('  Driving it would report every scenario against code that is not under test.');
+  console.error(`  Free the port, or run with BW_GATE_PORT=<free port>.`);
+  process.exit(1);
+}
+
 const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], {
   stdio: 'ignore', detached: false,
 });
 const kill = () => { try { server.kill('SIGTERM'); } catch { /* gone */ } };
 process.on('exit', kill);
 
+let serverExited = null;
+server.on('exit', (code, signal) => { serverExited = signal || `code ${code}`; });
+
 const waitForServer = async () => {
   for (let i = 0; i < 120; i++) {
+    if (serverExited) {
+      throw new Error(
+        `our dev server exited (${serverExited}) before it served anything. With --strictPort `
+        + `that means port ${PORT} was ALREADY TAKEN, and anything answering there belongs to `
+        + `another tree — running against it would report scenarios about code that is not `
+        + `under test. Free the port, or set BW_GATE_PORT to one that is.`);
+    }
     try {
       const r = await fetch(`http://localhost:${PORT}/`);
       if (r.ok) break;
@@ -94,6 +144,8 @@ const EXPECTED = [
   'sweep-canvas-live',
   'sweep-ac-method',
   'sweep-ac-region',
+  'controlled-source-place',
+  'controlled-source-terminals',
   'zero-page-errors',
 ];
 
@@ -438,6 +490,64 @@ const selectionCount = async () =>
       'terminal-to-terminal drag created a wire',
       `wiring drag created nothing (paths ${wiresBefore} → ${wiresAfter})`);
   }
+}
+
+// 3a. The two controlled sources place from the palette and show FOUR
+//      separate terminals.
+//
+//      This is here because no other kind of test could have caught what it
+//      catches. `terminalPos` falls back to {dx: 0, dy: 0} for a terminal
+//      whose kind has no geometry, so a four-terminal part draws four dots on
+//      one pixel: the model is right, the netlist is right, every unit test
+//      passes, and the part cannot be wired because there is nothing to aim
+//      at. That was the state of vcvs and vccs for as long as the SPICE E and
+//      G cards have imported. It takes a browser and a count of what is on
+//      the screen to see it.
+try {
+  const cs = await page.locator('[data-canvas]').boundingBox();
+  // Free (unwired) terminal dots, identified the way scenario 12 does: the
+  // red ring at r=8. Positions are rounded so a sub-pixel difference is not
+  // mistaken for two distinct terminals.
+  const freeTerminalDots = async () => await page.evaluate(() =>
+    [...document.querySelectorAll('svg circle')]
+      .filter(el => el.getAttribute('stroke') === '#e74c3c' && el.getAttribute('r') === '8')
+      .map(el => { const r = el.getBoundingClientRect();
+        return `${Math.round(r.x + r.width / 2)},${Math.round(r.y + r.height / 2)}`; }));
+
+  const placeByLabel = async (label, x, y) => {
+    const el = page.getByText(label, { exact: false }).first();
+    try { await el.scrollIntoViewIfNeeded({ timeout: 10000 }); } catch { /* the click scrolls too */ }
+    await el.click({ timeout: 20000 });
+    await page.waitForTimeout(200);
+    await page.mouse.move(x, y, { steps: 4 });
+    await page.mouse.click(x, y);
+    await page.waitForTimeout(400);
+  };
+
+  const results = [];
+  let i = 0;
+  for (const [label, kind] of [['VCVS (E)', 'vcvs'], ['VCCS (G)', 'vccs']]) {
+    const before = new Set(await freeTerminalDots());
+    await placeByLabel(label, cs.x + cs.width * 0.3 + (i++ * 240), cs.y + cs.height * 0.45);
+    const added = [...new Set((await freeTerminalDots()).filter(d => !before.has(d)))];
+    const faces = await page.locator(`[data-part-face="${kind}"]`).count();
+    results.push({ kind, added: added.length, faces });
+  }
+
+  const bodies = results.filter(r => r.faces >= 1).map(r => r.kind);
+  verdict('controlled-source-place', bodies.length === 2,
+    'both controlled sources place from the palette and draw a body',
+    `only ${bodies.length}/2 drew a body: ${JSON.stringify(results)}`);
+
+  // FOUR distinct positions each. Four dots at one point would report as one.
+  const wired = results.filter(r => r.added === 4).map(r => r.kind);
+  verdict('controlled-source-terminals', wired.length === 2,
+    'each controlled source offers four separately wireable terminals',
+    `a controlled source did not show four distinct terminal dots — the stacked-terminal `
+      + `defect: ${JSON.stringify(results)}`);
+} catch (e) {
+  failAll(['controlled-source-place', 'controlled-source-terminals'],
+    `the controlled-source scenarios could not be set up: ${String(e).split('\n')[0]}`);
 }
 
 // 3b. Palette press → drag onto canvas → release places a breadboard, then

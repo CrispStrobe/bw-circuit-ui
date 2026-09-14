@@ -78,7 +78,16 @@ const ADD_ONLY = !process.argv.includes('--overwrite');
  * catalogued upstream. stm32f030 was added on 2026-08-26 and the first
  * add-only sync silently removed both its files.
  */
-const LOCAL_ONLY = new Set(['stm32f030.json', 'stm32f030.svg']);
+const LOCAL_ONLY = new Set([
+  'stm32f030.json', 'stm32f030.svg',
+  // The two controlled sources are schematic abstractions, not orderable
+  // parts: there is no package to photograph and no footprint to seat, so
+  // bw-parts is the wrong home for them. Their geometry exists only so the
+  // designer can place four distinguishable terminals — without a sidecar
+  // `terminalPos` returns {dx:0,dy:0} for every name it has no case for and
+  // all four dots land on one pixel.
+  'vcvs.json', 'vcvs.svg', 'vccs.json', 'vccs.svg',
+]);
 
 const HELD_BACK = new Map([
   // char_lcd came off this list on 2026-08-27: bw-parts ff2fc7d renamed its

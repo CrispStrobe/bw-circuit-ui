@@ -17,6 +17,13 @@
  * @property {number} w — width in the SVG's coordinate space
  * @property {number} h — height
  * @property {Array<{name: string, x: number, y: number}>} terminals
+ *   ORDER IS LOAD-BEARING. A sidecar is consulted before circuit.js's own
+ *   terminalsForKind case, so this array's order becomes the order of
+ *   `part.terminals`, and downstream contracts assert it — bw-board's E/G
+ *   cards are specified as outp/outn/inp/inn and a test holds that through
+ *   Circuit.fromJSON. Authoring a sidecar in reading order instead broke it
+ *   on 2026-09-14, correctly by the author's lights, because nothing here
+ *   said so. Reorder only with the consuming contract in hand.
  * @property {*} variants
  */
 
@@ -99,6 +106,32 @@ export function sidecarTerminalPositions(kind) {
     }
   }
   return pos;
+}
+
+/**
+ * Sidecar terminal positions expressed relative to the BODY CENTRE.
+ *
+ * Sidecar coordinates have their origin at the top-left of the viewBox; the
+ * canvas places a part by its anchor, which is the centre of the body. This
+ * is that one conversion, in one place, so a renderer never has to retype a
+ * part's geometry — a second copy is right until the art moves.
+ *
+ * Returns null when the kind has no sidecar, so a caller can fall back
+ * rather than silently placing every terminal at the origin.
+ *
+ * @param {string} kind
+ * @returns {Record<string, {dx: number, dy: number}> | null}
+ */
+export function sidecarCenterOffsets(kind) {
+  const sc = _cache.get(kind);
+  if (!sc) return null;
+  const positions = sidecarTerminalPositions(kind);
+  if (!positions) return null;
+  const out = {};
+  for (const [name, p] of Object.entries(positions)) {
+    out[name] = { dx: p.x - sc.w / 2, dy: p.y - sc.h / 2 };
+  }
+  return out;
 }
 
 /**
