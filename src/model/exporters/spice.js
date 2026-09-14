@@ -37,6 +37,7 @@
  */
 
 import { PART_SYMBOLS } from '../../data/easyeda-symbols.js';
+import { optionsCard } from 'bw-board/ngspice.js';
 // THE CARD IS THE ONLY HOME OF AN ELECTRICAL NUMBER (bw-board parts-library):
 // a part that names `params.part` takes its junction numbers from the card, and
 // every named `.model` body is DERIVED from the same numbers the solver uses.
@@ -48,7 +49,7 @@ import { PART_SYMBOLS } from '../../data/easyeda-symbols.js';
 // JUNCTION_RD/SILICON_RD on 2026-09-13: those were the PIECEWISE constants, and
 // a deck is the exponential model — importing the wrong one of the two is how
 // the spice-oracle job reddened.)
-import { spiceModelFor, resolveParams, cardFor, classDefaults } from 'bw-board/parts-library.js';
+import { spiceModelFor, resolveParams, cardFor, classDefaults, allCards } from 'bw-board/parts-library.js';
 import { formatSpiceValue } from '../si.js';
 import { validateStrictSpicePulseParams } from '../spice-source.js';
 import { controlledResistance } from 'bw-board/mna.js';
@@ -454,9 +455,25 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       usedModels.add(modelName);
       lines.push(`${el} ${nodeFields} ${modelName}`);
     } else if (card === 'Q') {
-      // A named part (params.part) is the card's model; a bare class falls back
-      // to the symbol table's choice, then to the generic default.
-      const named = cardFor(part.params?.part);
+      // A named part (params.part) is the card's model. A BARE class resolves to
+      // the GENERIC CARD OF ITS KIND, and only then to the symbol table's name.
+      //
+      // The symbol table used to be the whole answer, and it named part
+      // numbers: `2N2222` for npn, `2N2907` for pnp. Both carry Bf = 200, while
+      // bw-board's default for a transistor with no params is 100 — so an
+      // unconfigured transistor was exported as a device the engine does not
+      // solve. Measured on `10-motor-speed`: engine collector 0.912 V (still
+      // active at Bf = 100), ngspice 0.147 V (saturated at Bf = 200), 15.8 % on
+      // supply current across 15 corpus circuits. It read as a model gap until
+      // the two betas were compared.
+      //
+      // Resolved from the LIBRARY rather than by renaming the symbol-table
+      // entry, because that name would then have to exist at every pin this
+      // repo can be built against. `genericCardOf` finds nothing for a kind
+      // with no generic card and the symbol table still answers — which is what
+      // happens for `pnp` before bw-board e175bf4, where `Q_DEFAULT_PNP` does
+      // not yet exist.
+      const named = cardFor(part.params?.part) || genericCardOf(part.kind);
       const model = (named && named.id) || (sym && sym.spiceModel);
       if (!model || !modelLine(model)) {
         skipped.push(`${part.refdes} (${part.kind}): no \`.model\` line can be produced`
@@ -552,6 +569,23 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
   const tranStop = hz ? 10 / hz : 0.01;
   const tranStep = tranStop / 1000;
   lines.push('');
+  // THE DECK MUST NAME THE TEMPERATURE IT WAS CALIBRATED AT, AND BOTH KEYS.
+  //
+  // Every `.model` body in this file is derived from a junction calibration at
+  // the engine's own thermal voltage, 0.02585 V, which is 26.826793 C — not
+  // ngspice's default 27. A deck with no `.options` line is therefore solved at
+  // a temperature its own models were not written for, and 2,163 corpus
+  // comparisons ran that way before this line existed.
+  //
+  // BOTH `temp` AND `tnom` ARE REQUIRED. `temp` alone leaves a flat +0.686 mV
+  // at every current, because Is is rescaled from the TNOM = 27 default through
+  // the bandgap law — a measured offset, not a rounding. `optionsCard` in
+  // bw-board writes both from one constant, so the deck and the solve cannot
+  // name different temperatures.
+  lines.push('* The temperature the models above were calibrated at. Both keys:');
+  lines.push('* temp alone rescales Is from the TNOM default and shifts every junction.');
+  lines.push(optionsCard());
+  lines.push('');
   lines.push('* Analysis. .op is the bias point the designer\'s bench shows.');
   lines.push('.op');
   lines.push(hz
@@ -598,6 +632,22 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
  * @param {string[]} warnings
  * @returns {string[]}
  */
+/**
+ * The generic card for a kind, if the library ships one.
+ *
+ * `generic: true` marks a card that is a CLASS rather than a part number —
+ * `Q_DEFAULT` for npn, `Q_DEFAULT_PNP` for pnp, `NMOS_GENERIC` for nmos. Its
+ * numbers are the ones the solver uses for a part with no params, which is
+ * exactly what an un-carded part must export as.
+ *
+ * Derived from the library each call rather than tabulated here: a table of
+ * kind -> generic id is a second home for a fact the cards already carry, and
+ * it would be wrong the day a kind gains or loses one.
+ */
+function genericCardOf(kind) {
+  return allCards().find(c => c.generic && c.kind === kind) ?? null;
+}
+
 function emitCompanions(part, comps, nodeOf, warnings) {
   const out = [];
   const ref = part.refdes.replace(/[^A-Za-z0-9_]/g, '_');
