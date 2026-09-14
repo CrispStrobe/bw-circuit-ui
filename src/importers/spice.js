@@ -178,7 +178,23 @@ function logicalLines(text, opts = {}) {
   for (let i = start; i < raw.length; i++) {
     let line = raw[i];
     if (/^\s*\*/.test(line)) continue;
-    line = line.replace(/\s+[$;].*$/, '');
+    // END-OF-LINE COMMENTS. The two characters do NOT follow the same rule,
+    // and treating them alike breaks real decks in one direction or the other.
+    // Measured against ngspice 44:
+    //
+    //   R1 a b 1k;nospace   -> b = 3.750000   ';' is a comment with no space
+    //   R1 a b;x  1k        -> "not a valid resistor instance line, ignored"
+    //                          -- so ';' cut the line mid-token, i.e. ANYWHERE
+    //   R1 a b$x 1k         -> node 'b$x' reads 3.750000
+    //                          -- so '$' INSIDE a token is an ordinary char
+    //
+    // So `;` ends the line wherever it appears, while `$` does so only at the
+    // start of a token. That second half is not pedantry: KiCad and Eagle
+    // exports in the corpus carry `U$1 MOUNTINGHOLE2.5` and node names like
+    // `Net-_J202-PadP$3_`, and a blanket `$` rule truncates the refdes and the
+    // net name. The `\s+` the old single rule required was wrong for `;`
+    // (23 corpus decks carry a tight one) and right for `$` by accident.
+    line = line.replace(/;.*$/, '').replace(/(^|\s)\$.*$/, '');
     if (!line.trim()) continue;
     if (/^\s*\+/.test(line)) {
       if (out.length) out[out.length - 1] += ' ' + line.replace(/^\s*\+/, '').trim();
@@ -823,6 +839,36 @@ export function importSpice(text, opts = {}) {
       if (letter === 'M') {
         if (instance.w !== undefined) params.w = instance.w;
         if (instance.l !== undefined) params.l = instance.l;
+        // WHERE THE BULK IS TIED DECIDES WHETHER THE BODY EFFECT APPLIES.
+        //
+        // The engine's nmos/pmos have three terminals, so the bulk node is not
+        // wired — but it is not irrelevant either: a stacked device (a
+        // cascode's upper transistor, a diff pair's tail-connected pair, a
+        // mirror's output leg) has its source above the bulk BY CONSTRUCTION,
+        // and its threshold is then not VTO at all.
+        //
+        // Three cases, and only the first needs anything:
+        //   bulk is node 0 and the source is not  -> Vsb = V(source), shift
+        //   bulk and source are the same node     -> Vsb = 0, no shift
+        //   bulk is some THIRD node               -> left alone, not guessed
+        //
+        // Measured over ADI2005's 15,587 M cards: 11,950 bulk-on-source,
+        // 3,334 bulk-at-ground, 303 a third node. Of 311 numeric
+        // disagreements in a 2,000-deck sample, 107 are decks that state a
+        // non-zero GAMMA and have a source off the bulk.
+        const bulkField = nodeFields[3];
+        const srcField = nodeFields[2];
+        if (bulkField !== undefined && srcField !== undefined) {
+          const bulkIsGround = GROUND_NODES.has(String(bulkField).toLowerCase());
+          const srcIsGround = GROUND_NODES.has(String(srcField).toLowerCase());
+          const sameNode = String(bulkField).toLowerCase() === String(srcField).toLowerCase();
+          if (bulkIsGround && !srcIsGround && !sameNode) params.bulkAtGround = true;
+          else if (!bulkIsGround && !sameNode) {
+            warnings.push(`${partId}: bulk node "${bulkField}" is neither ground nor the source, `
+              + 'so the body effect is not applied — the engine MOSFET has no bulk terminal and '
+              + 'this reader will not guess a potential for it.');
+          }
+        }
         const unsupported = Object.keys(instance).filter(k => k !== 'w' && k !== 'l');
         if (unsupported.length) {
           warnings.push(`${partId}: instance parameter(s) ${unsupported.join(', ')} are not `
@@ -1031,6 +1077,12 @@ function mapModel(letter, model, warnings, partId) {
     // the element line below rather than here.
     if (isFinite(p.vto)) out.vth = p.vto;
     if (isFinite(p.kp)) out.kp = p.kp;
+    // BODY EFFECT. GAMMA defaults to 0 in SPICE, so a model that omits it gets
+    // no shift and this is identity. `bulkAtGround` is set at the ELEMENT below,
+    // because whether the body effect applies depends on where the deck tied
+    // the bulk, which is an instance fact and not a model one.
+    if (isFinite(p.gamma)) out.gamma = p.gamma;
+    if (isFinite(p.phi)) out.phi = p.phi;
     // CHANNEL-LENGTH MODULATION. Level-1 saturation is
     // Id = k*Vov^2*(1 + LAMBDA*Vds), which is LINEAR in Vds — so it needs no
     // second Newton variable: the engine stamps `lambda * Id` as the
