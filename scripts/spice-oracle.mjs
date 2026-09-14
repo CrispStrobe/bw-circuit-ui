@@ -418,6 +418,42 @@ function withSynthesizedParts(circuit, netlist) {
           nets.push(net); byId.set(bn.id, net);
         }
         net.nodes.push({partId: p.id, refdes, pin: t.terminal});
+        // A SYNTHESIZED CHAIN NEEDS ITS GROUND END TIED, OR THE DECK HAS AN
+        // OPEN CIRCUIT WHERE THE ENGINE HAS A CONDUCTING ONE.
+        //
+        // bw-board invents `<part>__onboard_gnd` for a dev board whose ground
+        // pins have no external net, holding a single terminal: the board's own
+        // `gnd_1`. The device model ties that to the reference, so the engine's
+        // onboard LED conducts 1.43 mA. The deck copied the net and the parts
+        // and NOT the bond, so the chain was open: `pico1__onboard_gnd` read
+        // 0.000143 V in the engine against ngspice's 3.157034 V, and the 32 mV
+        // that current also pulls off the external GP25 node disagreed too.
+        // 4 gallery rows, both `pico01-blink` and `pico03-two-tasks`.
+        //
+        // Keyed on the TERMINAL name, not the net name: `gnd_1`/`agnd`/
+        // `swd_gnd` are the device's DECLARED ground pins, so this reads what
+        // the part says about itself rather than sniffing a string we invented.
+        //
+        // READ THE BOARD NET'S OWN TERMINAL LIST, not the synthesized part's.
+        // The first version tested `t.terminal`, which here is the synthesized
+        // LED's `cathode` — the pico's `gnd_1` sits on the same net but the
+        // pico is not in `missing`, so its terminals are never walked in this
+        // loop and the net never got marked. A true test of the wrong terminal.
+        if (!net.rail && (bn.terminals || []).some(
+          (bt) => /^(a|swd_)?gnd(_\d+)?$/i.test(String(bt.terminal)))) {
+          const existing = nets.find(n => n.rail === 'gnd' && n.id !== net.id);
+          if (existing) {
+            // A device's ground pin and the circuit's reference are the same
+            // node, so merge rather than create a second rail.
+            for (const nd of net.nodes) existing.nodes.push(nd);
+            net.nodes.length = 0;
+            byId.set(net.id, existing);
+            net = existing;
+          } else {
+            net.rail = 'gnd';
+            net.railPartId = p.id;
+          }
+        }
       }
     }
   }
@@ -610,9 +646,44 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
     if (!isFinite(va) || !isFinite(vb)) return null;
     return va - vb;
   };
-  const { text, warnings } = toSpice(solved, `oracle: ${name}`,
+  const { text, warnings, skipped: exportSkipped } = toSpice(solved, `oracle: ${name}`,
     { pinSource, companionsFor, capacitorVoltage,
       controls: circuit.board?.controls ?? new Map() });
+
+  /**
+   * PARTS THE DECK HAS NOTHING STANDING IN FOR.
+   *
+   * "The exporter skipped it" is NOT "the comparison is void", and I measured
+   * three versions of that mistake before finding the affordable rule:
+   *
+   *   refuse on any skipped part            1,756 agreeing circuits lost,  10 declared
+   *   + no companions                         761 lost,                     6 declared
+   *   + the engine's pin-driving predicate     161 lost,                     4 declared
+   *   only where the DISAGREEING NODE touches one    0 lost,                 2 declared
+   *
+   * The skipped parts are overwhelmingly MCUs and dev boards, whose PINS are
+   * exported as Thevenin sources — so the part being absent as an element is
+   * not the circuit being different, and `kind === 'mcu' ||
+   * getDevice(kind)?.gpioFollowsPinStates` is the predicate that says so.
+   * Anything with companions is in the deck as its own stamp.
+   *
+   * What is left is a part that is in the circuit, contributes to it, and is
+   * nowhere in the deck: an `opamp` with no card, a `dc_motor` deliberately
+   * outside `DC_LOAD_KINDS`. A node touching one of those is not a shared
+   * question, and the refusal below fires ONLY at such a node and only once it
+   * has already missed tolerance — the same discipline as the unbounded rule,
+   * for the same reason: a filter applied before the tolerance check throws
+   * away agreement.
+   */
+  const unrepresentedRefs = new Set();
+  for (const sk of exportSkipped || []) {
+    const ref = String(sk).split(' ')[0];
+    const comps = companionsFor ? companionsFor(ref) : null;
+    if (comps && comps.length) continue;
+    const kind = solved.parts.find(q => q.refdes === ref)?.kind;
+    if (kind === 'mcu' || getDevice(kind)?.gpioFollowsPinStates) continue;
+    unrepresentedRefs.add(ref);
+  }
 
   // Structural floor: these are what "unsimulatable" meant.
   //
@@ -709,6 +780,23 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
       if (d > worstAbs) { worstAbs = d; worstRel = rel; worstAt = net.name; }
     }
     if (!agree(engineV, spiceV)) {
+      // A NODE TOUCHING A PART THE DECK HAS NOTHING STANDING IN FOR IS NOT A
+      // SHARED QUESTION. See `unrepresentedRefs` above for why this fires here,
+      // after the tolerance check, rather than before it.
+      const missing = unrepresentedRefs.size
+        ? [...new Set((net.nodes || []).map(nd => nd.refdes)
+          .filter(r => unrepresentedRefs.has(r)))]
+        : [];
+      if (missing.length) {
+        return { name, ok: false, compared: 0,
+          lines: [`  V(${net.name}): engine ${engineV.toFixed(6)} V  ngspice `
+            + `${spiceV.toFixed(6)} V  delta ${Math.abs(engineV - spiceV).toExponential(2)}`,
+            `  but this node carries ${missing.join(', ')}, which the deck has nothing`,
+            '  standing in for — no SPICE card, no companion, and not a pin-driving',
+            '  part whose pins are exported. The two sides are not answering about',
+            '  the same circuit at this node.'],
+          reason: `unrepresented-part: ${missing.join(',')} at ${net.name}` };
+      }
       ok = false;
       lines.push(`  V(${net.name}): engine ${engineV.toFixed(6)} V  ngspice `
         + `${spiceV.toFixed(6)} V  delta ${Math.abs(engineV - spiceV).toExponential(2)}`);
