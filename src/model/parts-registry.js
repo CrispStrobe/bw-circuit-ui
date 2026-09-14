@@ -17,6 +17,13 @@
  * @property {number} w — width in the SVG's coordinate space
  * @property {number} h — height
  * @property {Array<{name: string, x: number, y: number}>} terminals
+ *   ORDER IS LOAD-BEARING. A sidecar is consulted before circuit.js's own
+ *   terminalsForKind case, so this array's order becomes the order of
+ *   `part.terminals`, and downstream contracts assert it — bw-board's E/G
+ *   cards are specified as outp/outn/inp/inn and a test holds that through
+ *   Circuit.fromJSON. Authoring a sidecar in reading order instead broke it
+ *   on 2026-09-14, correctly by the author's lights, because nothing here
+ *   said so. Reorder only with the consuming contract in hand.
  * @property {*} variants
  */
 

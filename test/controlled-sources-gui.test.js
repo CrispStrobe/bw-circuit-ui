@@ -150,12 +150,50 @@ test('4. the palette restates no electrical default; the engine keeps both', () 
         `${kind}'s palette entry restates ${field} — the stamp is the only home`);
     }
   }
-  // Driven: the scan does see a restated default where one exists. The opamp
-  // entry carries gain: 100000 beside an engine default of 1e6, which is the
-  // very drift this clause refuses to repeat. Reported, not fixed here — the
-  // opamp is not this lane's part.
-  const opamp = PALETTE.match(/\{ kind: 'opamp',[\s\S]*?\},\n/)[0];
-  assert.match(opamp, /gain: \d/, 'the restated-default scan has stopped seeing a known example');
+  // The scan proved on a FIXTURE, and the claim made about the real palette.
+  //
+  // The first version drew its positive example from the palette itself: the
+  // opamp entry carries gain: 100000 beside an engine default of 1e6, a live
+  // instance of the drift. That is a floor that refuses its own goal state --
+  // the example comes from the set the rule is trying to empty, so emptying it
+  // reds the test and the cheapest way back to green is to restate a default.
+  //
+  // The second version replaced it with an empty-set assertion and PASSED on a
+  // tree where the opamp offender was still sitting there, because the entry
+  // regex never matched a single-line entry. A zero nobody drove reads exactly
+  // like a clean result. So the extractor is now checked against a known count
+  // before its output is believed.
+  const entries = [...PALETTE.matchAll(/\{\s*kind:\s*'([^']+)'[\s\S]*?\},\n/g)];
+  assert.ok(entries.length >= 80,
+    `the entry extractor found only ${entries.length} palette entries — it is not reading the palette`);
+  const stated = entries.map(m => {
+    const params = m[0].match(/params:\s*\{([^}]*)\}/);
+    return { kind: m[1], params: params ? params[1].trim() : null };
+  }).filter(e => e.params && /\b(gain|gm)\s*:/.test(e.params));
+
+  /**
+   * Palette entries that still state an electrical default the engine owns.
+   * Shrink-only; the end state is an empty list and it is reachable, which is
+   * what separates this from the version above.
+   *
+   * opamp: gain 100000 against an engine default of 1e6. Not this lane's part;
+   * the engine/parts-library owner took it on 2026-09-14 and is deleting the
+   * copy rather than correcting it, since an LM741's real 200000 is a part
+   * fact that belongs on a card. Delete this line when that lands.
+   */
+  const KNOWN_STATED_DEFAULTS = ['opamp'];
+  const unledgered = stated.map(e => `${e.kind}: ${e.params}`).filter(e => !KNOWN_STATED_DEFAULTS.some(k => e.startsWith(k + ':')));
+  assert.deepEqual(unledgered, [],
+    'a palette entry states an electrical default the engine already owns');
+  const healed = KNOWN_STATED_DEFAULTS.filter(k => !stated.some(e => e.kind === k));
+  assert.deepEqual(healed, [],
+    'this entry no longer states a default — delete its ledger line in the same commit');
+  // And the pattern really fires, proved on a fixture rather than on the corpus.
+  const planted = "      { kind: 'probe', label: 'Probe', params: { gain: 100000 }, color: '#000' },\n";
+  assert.equal([...planted.matchAll(/\{\s*kind:\s*'([^']+)'[\s\S]*?\},\n/g)].length, 1,
+    'the extractor cannot see a single-line entry — the defect this clause already had once');
+  assert.ok(/params:\s*\{[^}]*\bgain\s*:/.test(planted));
+  assert.ok(!/params:\s*\{[^}]*\b(gain|gm)\s*:/.test("{ kind: 'probe', params: {}, color: '#000' },\n"));
 });
 
 test('5. a deck with an E and a G card imports as two placeable parts', () => {
