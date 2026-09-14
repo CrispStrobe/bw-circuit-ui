@@ -230,4 +230,75 @@ V2 ng 0 2
     assert.deepEqual(ascOk.skipped, [], JSON.stringify(ascOk.skipped));
     assert.match(ascOk.text, /SYMATTR InstName M1/);
   });
+
+  /**
+   * THE BODY-EFFECT PARAMETERS RIDE IN THE MODEL CARD, WHICH IS WHERE SPICE
+   * PUTS THEM.
+   *
+   * 1,296 of the 12,471 ADI v3 decks declare GAMMA and PHI on a level-1 MOS
+   * model. The exporter used to emit LEVEL/VTO/KP/LAMBDA only, so every one of
+   * those MOSFETs was REFUSED -- not for a pin it could not draw, but for a
+   * number the card it was already writing can hold.
+   *
+   * Each field is asserted INDEPENDENTLY of the others, because that is the
+   * claim the emitter makes: `GAMMA=` without `PHI=` is faithful, since SPICE
+   * defaults PHI to 0.6 and so does `mosVth`. A card that omitted GAMMA when
+   * PHI was absent would silently lose the body effect for the one-sided deck.
+   */
+  it('carries GAMMA, PHI and the bulk IS through the model card, each on its own', () => {
+    const deck = (modelFields) => `body effect through the card
+V1 supply 0 5
+R1 supply nd 2k
+Rs ns 0 1k
+M1 nd ng ns ns MMOD W=20u L=1u
+V2 ng 0 2
+.model MMOD NMOS (${modelFields})
+.op
+.end
+`;
+    const roundTrip = (modelFields) => {
+      const imported = importSpice(deck(modelFields));
+      assert.equal(imported.unmapped.length, 0, JSON.stringify(imported.unmapped));
+      const asc = toLtspiceAsc(imported);
+      assert.deepEqual(asc.skipped, [],
+        `a parameter the model card can hold must not refuse the part: ${JSON.stringify(asc.skipped)}`);
+      const back = importLtspiceAsc(asc.text);
+      return { asc, before: imported.parts.find(part => part.id === 'M1').params,
+        after: back.parts.find(part => part.id === 'M1').params };
+    };
+
+    // All three, and the bulk wiring the symbol does represent.
+    const all = roundTrip('LEVEL=1 VTO=1 KP=1m GAMMA=0.5 PHI=0.7 IS=3e-15');
+    assert.equal(all.before.gamma, 0.5, 'the importer must read GAMMA, or this proves nothing');
+    assert.equal(all.before.phi, 0.7);
+    assert.equal(all.before.bulkIs, 3e-15);
+    assert.equal(all.before.bulkOnSource, true);
+    assert.match(all.asc.text, /GAMMA=0\.5/);
+    assert.match(all.asc.text, /PHI=0\.7/);
+    assert.match(all.asc.text, /IS=3e-15/);
+    assert.equal(all.after.gamma, 0.5, 'GAMMA must survive the round trip');
+    assert.equal(all.after.phi, 0.7);
+    assert.equal(all.after.bulkIs, 3e-15);
+    assert.equal(all.after.bulkOnSource, true,
+      'the three-pin symbol ties its bulk to the source, so the read-back must say so');
+
+    // GAMMA alone: emitted, and PHI is NOT invented on either side.
+    const gammaOnly = roundTrip('LEVEL=1 VTO=1 KP=1m GAMMA=0.5');
+    assert.match(gammaOnly.asc.text, /GAMMA=0\.5/);
+    assert.ok(!/PHI=/.test(gammaOnly.asc.text), gammaOnly.asc.text);
+    assert.equal(gammaOnly.after.gamma, 0.5);
+    assert.equal(gammaOnly.after.phi, undefined);
+
+    // PHI alone: same, the other way round.
+    const phiOnly = roundTrip('LEVEL=1 VTO=1 KP=1m PHI=0.7');
+    assert.match(phiOnly.asc.text, /PHI=0\.7/);
+    assert.ok(!/GAMMA=/.test(phiOnly.asc.text), phiOnly.asc.text);
+    assert.equal(phiOnly.after.phi, 0.7);
+    assert.equal(phiOnly.after.gamma, undefined);
+
+    // The CONTROL: a card with none of the three is unchanged by all of this.
+    const plain = roundTrip('LEVEL=1 VTO=1 KP=1m');
+    assert.ok(!/GAMMA=|PHI=|IS=/.test(plain.asc.text), plain.asc.text);
+    assert.equal(plain.after.vth, 1);
+  });
 });
