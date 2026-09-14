@@ -148,18 +148,29 @@ export function looksLikeSpice(text) {
  * @param {string} text
  * @returns {{title: string, lines: string[]}}
  */
-function logicalLines(text) {
+/**
+ * @param {string} text
+ * @param {{titled?: boolean}} [opts]
+ *   `titled: false` for a LIBRARY, which is not a deck and has no title line.
+ *   Applying the title rule to one swallows its first definition: a library
+ *   whose first line is `.model MYD D(...)` registered nothing, and the deck
+ *   using it then reported "model is not declared in this file" — a missing
+ *   model where the real fault was that we ate it.
+ */
+function logicalLines(text, opts = {}) {
   const raw = text.split(/\r?\n/);
   // Line one is the TITLE. Always — a deck whose first line looks like an
   // element card still has that card swallowed as the title, which is why
   // our own exporter writes a `*`-prefixed title line.
   let title = '';
   let start = 0;
-  for (let i = 0; i < raw.length; i++) {
-    if (raw[i].trim() === '') continue;
-    title = raw[i].trim().replace(/^\*+\s*/, '');
-    start = i + 1;
-    break;
+  if (opts.titled !== false) {
+    for (let i = 0; i < raw.length; i++) {
+      if (raw[i].trim() === '') continue;
+      title = raw[i].trim().replace(/^\*+\s*/, '');
+      start = i + 1;
+      break;
+    }
   }
 
   const out = [];
@@ -347,6 +358,27 @@ const ELEMENTS = {
   D: { nodes: 2, terminals: ['anode', 'cathode'], kind: () => 'diode', model: true },
   Q: { nodes: 3, terminals: ['collector', 'base', 'emitter'], kind: () => 'npn', model: true },
   M: { nodes: 4, terminals: ['drain', 'gate', 'source', null], kind: () => 'nmos', model: true },
+  // A LEVEL-1 JFET'S DC STAMP **IS** THE MOSFET SQUARE LAW.
+  //
+  // Shichman-Hodges is the same equation for both: `Id = Beta*Vov^2*(1+Lambda*
+  // Vds)` in saturation, `Beta*Vds*(2*Vov - Vds)*(1+Lambda*Vds)` in the linear
+  // region, with `Vov = Vgs - Vto`. The JFET's Vto is NEGATIVE (depletion mode)
+  // and the engine's nmos already takes `vth` as a parameter, so the sign
+  // carries itself. Beta plays the role of `k` directly — no W/L, no KP/2 —
+  // and `mosK` returns `params.k` untouched when it is given.
+  //
+  // So this is a MAPPING, not a new kind. "A kind exists when the stamp
+  // differs", and at DC in the normal region it does not. What DOES differ is
+  // recorded as a loss at the call site: a JFET's gate-channel junction is a
+  // DIODE, where a MOSFET's gate is insulated, so a forward-biased gate is not
+  // represented. ngspice's JFET also carries RD/RS series resistances, which
+  // this mapping does not.
+  //
+  // Measured on a self-authored bench (VTO=-2 BETA=1e-3 LAMBDA=0.01, 12 V
+  // through 2k into the drain, 470 R on the source) against ngspice: see
+  // test/spice-jfet-import.test.js. 3,349 J-card occurrences in the symbench
+  // corpus had no path at all before this.
+  J: { nodes: 3, terminals: ['drain', 'gate', 'source'], kind: () => 'nmos', model: true },
   E: { nodes: 4, terminals: ['outp', 'outn', 'inp', 'inn'], kind: () => 'vcvs', param: 'gain' },
   // SPICE G-card current flows from its first output node to its second.
   // bw-board's positive gm instead injects current into outp (from outn), so
@@ -366,7 +398,6 @@ const REFUSED = {
   S: 'voltage-controlled switch: no engine kind.',
   W: 'current-controlled switch: no engine kind.',
   T: 'lossless transmission line: no engine kind.',
-  J: 'JFET: no engine kind.',
   Z: 'MESFET: no engine kind.',
   B: 'behavioural source: an arbitrary expression, which this reader will not '
     + 'approximate with a fixed value.',
@@ -379,7 +410,31 @@ const REFUSED = {
  * @param {string} text
  * @returns {SpiceImport}
  */
-export function importSpice(text) {
+/**
+ * @param {string} text  the deck
+ * @param {{libraries?: string[]}} [opts]
+ *   `libraries` is SPICE TEXT, supplied BY THE CALLER, whose `.model` and
+ *   `.subckt` definitions become resolvable for this deck.
+ *
+ *   THE IMPORTER DOES NOT READ FILES, and that is deliberate. `.include` and
+ *   `.lib` name paths, and a parser that follows them is a parser that opens
+ *   whatever a foreign deck points it at — the same axis the corpus lane
+ *   correctly pressed on for the launcher, and security is independent of
+ *   licensing. So the caller resolves the path, decides what it is willing to
+ *   read, and hands over the bytes; `.include` remains recorded as not
+ *   followed.
+ *
+ *   WHY IT IS WORTH HAVING. An X card naming a subcircuit this deck does not
+ *   define is refused, and that refusal is the SOLE blocker on **3,290 decks**
+ *   — 658 of symbench's 6,249 and 2,632 of Si7li's 7,866 — two orders more than
+ *   any missing element. Nothing else in the importer unlocks that many, and
+ *   nothing unlocks any of them until a library can be supplied at all.
+ *
+ *   A deck resolved this way is no longer self-contained, so `usedLibraries`
+ *   comes back naming what was taken from where. Local definitions win over
+ *   library ones, which is SPICE's own precedence.
+ */
+export function importSpice(text, opts = {}) {
   const warnings = [];
   const unmapped = [];
   const losses = [];
@@ -403,6 +458,10 @@ export function importSpice(text) {
   const flat = [];
   let inSub = null;
   let inControl = false;
+  /** Names taken from a caller-supplied library rather than from this deck. */
+  const usedLibraries = [];
+  /** Which names a library supplied; a local declaration removes its own. */
+  const libraryNames = { models: new Set(), subckts: new Set() };
   const declareModel = (rest, line) => {
     ignored.push(line.trim());
     const declaration = rest.trim().match(/^(\S+)\s+([A-Za-z]+)\s*(.*)$/);
@@ -418,7 +477,42 @@ export function importSpice(text) {
     if (prior && (prior.type === 'D' || type === 'D')) {
       models.set(name, { ...record, ambiguous: true, source: `${prior.source}\n${line.trim()}` });
     } else models.set(name, record);
+    libraryNames.models.delete(name);   // see the .subckt note
   };
+
+  // LIBRARIES FIRST, so a local definition of the same name overrides one —
+  // SPICE's own precedence. Only `.model` and `.subckt` are taken from a
+  // library; its element cards are NOT added to the circuit, because a library
+  // is a definition file and adopting its elements would build a circuit the
+  // deck never described.
+  for (const libText of (opts.libraries || [])) {
+    if (typeof libText !== 'string' || !libText.trim()) continue;
+    let libSub = null;
+    for (const line of logicalLines(libText, { titled: false }).lines) {
+      const d = line.match(/^\.(\w+)\s*(.*)$/s);
+      if (libSub) {
+        if (d && d[1].toLowerCase() === 'ends') { libSub = null; continue; }
+        libSub.body.push(line);
+        continue;
+      }
+      if (!d) continue;
+      const card = d[1].toLowerCase();
+      if (card === 'subckt') {
+        const f = d[2].trim().split(/\s+/);
+        libSub = { name: (f[0] || '').toLowerCase(), ports: f.slice(1), body: [] };
+        subckts.set(libSub.name, libSub);
+        libraryNames.subckts.add(libSub.name);
+      } else if (card === 'model') {
+        const decl = d[2].trim().match(/^(\S+)\s+([A-Za-z]+)\s*(.*)$/);
+        const name = (decl?.[1] || '').toLowerCase();
+        if (!name) continue;
+        models.set(name, { type: (decl?.[2] || '').toUpperCase(),
+          params: modelParams(decl?.[3] || ''), body: decl?.[3] || '',
+          source: line.trim(), fromLibrary: true });
+        libraryNames.models.add(name);
+      }
+    }
+  }
 
   for (const line of lines) {
     const dot = line.match(/^\.(\w+)\s*(.*)$/s);
@@ -444,6 +538,11 @@ export function importSpice(text) {
         const f = dot[2].trim().split(/\s+/);
         inSub = { name: (f[0] || '').toLowerCase(), ports: f.slice(1), body: [] };
         subckts.set(inSub.name, inSub);
+        // A LOCAL DEFINITION IS NOT A LIBRARY USE. Without this the deck's own
+        // `.subckt` still counted as taken from the library it shadowed, which
+        // would make `usedLibraries` a false provenance record — the one thing
+        // that field exists to be right about.
+        libraryNames.subckts.delete(inSub.name);
         ignored.push(line.trim());
         continue;
       }
@@ -523,15 +622,34 @@ export function importSpice(text) {
     const f = item.line.split(/\s+/);
     if (!/^X/i.test(f[0])) { expanded.push(item); continue; }
     const inst = f[0];
-    const subName = (f[f.length - 1] || '').toLowerCase();
+    // THE SUBCIRCUIT NAME IS THE LAST TOKEN THAT IS NOT A PARAMETER.
+    //
+    // An X card is `Xname node1 .. nodeN subcktname [param=value ...]`, and
+    // this took `f[f.length - 1]` — the last token full stop. Every call
+    // carrying trailing parameters therefore named a PARAMETER as its
+    // subcircuit and was refused as "undefined subcircuit". Measured on Si7li's
+    // 7,866 LTspice netlists, the top three "undefined subcircuits" were
+    // `rin=500meg` (406), `gbw=10meg` (193) and `bot=1t` (26) — none of which is
+    // a subcircuit at all. That is our parse defect wearing a missing-model
+    // reason, which is worse than a missing model: it sends the reader looking
+    // for a library.
+    //
+    // `params:` is LTspice's optional separator and is dropped with the rest.
+    let tail = f.length - 1;
+    while (tail > 1 && (/=/.test(f[tail]) || /^params:?$/i.test(f[tail]))) tail--;
+    const subName = (f[tail] || '').toLowerCase();
+    const params = f.slice(tail + 1);
     const sub = subckts.get(subName);
+    if (sub && libraryNames.subckts.has(subName)) {
+      usedLibraries.push({ kind: 'subckt', name: subName, ref: inst });
+    }
     if (!sub) {
       unmapped.push({ ref: inst, value: subName,
         libsource: `undefined subcircuit "${subName}" — it is not in this file and `
           + '.include is not followed' });
       continue;
     }
-    const actuals = f.slice(1, f.length - 1);
+    const actuals = f.slice(1, tail);
     if (actuals.length !== sub.ports.length) {
       unmapped.push({ ref: inst, value: subName,
         libsource: `subcircuit "${subName}" takes ${sub.ports.length} nodes, the call gives ${actuals.length}` });
@@ -539,6 +657,13 @@ export function importSpice(text) {
     }
     // Formal port -> actual node. Anything else inside the body is INTERNAL
     // and gets the instance prefix so two instances do not share nets.
+    if (params.length) {
+      // A subcircuit parameter OVERRIDE changes the instance's behaviour, and
+      // flattening the body without applying it would be a different circuit.
+      // Said out loud rather than dropped.
+      warnings.push(`${inst}: subcircuit parameter override(s) ${params.join(' ')} are not `
+        + 'applied — the body is flattened with its own defaults.');
+    }
     const portMap = new Map();
     sub.ports.forEach((p, i) => portMap.set(p.toLowerCase(), actuals[i]));
     for (const body of sub.body) {
@@ -617,6 +742,9 @@ export function importSpice(text) {
         if (letter === 'D') losses.push({ ref: partId, kind: 'unsupported-diode-model',
           source: item.line, reason: 'explicit declared D model with IS, N and RS is required' });
       } else {
+        if (model.fromLibrary) {
+          usedLibraries.push({ kind: 'model', name: modelName, ref: partId });
+        }
         if (letter === 'D') {
           const exact = rest.length !== 1
             ? { ok: false, reason: 'diode instance AREA, M, TEMP and other trailing fields are unsupported' }
@@ -638,6 +766,7 @@ export function importSpice(text) {
         } else Object.assign(params, mapModel(letter, model, warnings, partId));
         if (letter === 'Q') kind = model.type === 'PNP' ? 'pnp' : 'npn';
         if (letter === 'M') kind = model.type === 'PMOS' ? 'pmos' : 'nmos';
+        if (letter === 'J') kind = model.type === 'PJF' ? 'pmos' : 'nmos';
         if (letter === 'D' && model.params.bv) kind = 'zener';
       }
       if (letter !== 'D' || params.model !== 'shockley') params._model = rest[0] || null;
@@ -797,7 +926,8 @@ export function importSpice(text) {
     terminals: members.map(m => ({ partId: m.partId, terminal: m.terminal })),
   }));
 
-  return { parts, wires, warnings, unmapped, losses, ignored, analyses, title, netNames };
+  return { parts, wires, warnings, unmapped, losses, ignored, analyses, title, netNames,
+    usedLibraries };
 }
 
 /**
@@ -870,6 +1000,12 @@ function mapModel(letter, model, warnings, partId) {
     // drain-source conductance beside the VCCS and the two terms reproduce the
     // law exactly. Without it the ADI cascode bench sat 12.5 mV off ngspice
     // after everything else agreed.
+    if (isFinite(p.lambda)) out.lambda = p.lambda;
+  } else if (letter === 'J') {
+    // BETA is the transconductance directly, so it becomes `k` — `mosK` returns
+    // `params.k` untouched and never reaches the KP/2 * W/L path.
+    if (isFinite(p.vto)) out.vth = p.vto;
+    if (isFinite(p.beta)) out.k = p.beta;
     if (isFinite(p.lambda)) out.lambda = p.lambda;
   }
   return out;
