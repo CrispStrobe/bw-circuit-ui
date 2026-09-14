@@ -25,7 +25,7 @@ export function SourceAnalysisPanel({ circuit, liveBoard = circuit?.board, lang 
   const [observationProfile, setObservationProfile] = useState(SOURCE_OBSERVATION_PROFILE);
   useEffect(() => setOutcome(null), [circuit, source]);
 
-  if (!analyses.length) return null;
+  if (!analyses.length && !retainedDirectives.length) return null;
   const run = () => {
     try {
       setOutcome({ results: runPrecisionSourceAnalysis(circuit, { observationProfile }) });
@@ -40,23 +40,27 @@ export function SourceAnalysisPanel({ circuit, liveBoard = circuit?.board, lang 
       <div style={mono} data-testid="bw-live-simulation-profile">
         {de ? 'Live-Simulation' : 'Live simulation'}: {liveProfile}
       </div>
-      <label style={{...mono, display: 'block', marginTop: 4}}>
-        {de ? 'Beobachtungsprofil' : 'Observation profile'}:{' '}
-        <select data-testid="bw-source-analysis-observation-profile"
-          value={observationProfile} onChange={event => setObservationProfile(event.target.value)}>
-          <option value={SOURCE_OBSERVATION_PROFILE}>source-declared-v1</option>
-          <option value={BOUNDED_RESEARCH_OBSERVATION_PROFILE}>bounded-research-v1 (adapted)</option>
-        </select>
-      </label>
-      <button type="button" data-testid="bw-source-analysis-run" onClick={run}
-        style={{width: '100%', minHeight: 32, marginTop: 4, padding: '5px 8px', cursor: 'pointer'}}>
-        {de ? `Quellanalysen mit ${PROFILE} ausführen` : `Run source analyses at ${PROFILE}`}
-      </button>
-      <div style={{...mono, marginTop: 4}}>
-        {de
-          ? 'Opt-in; unabhängiger Lauf. Die Live-Simulation bleibt interactive-v1.'
-          : `Opt-in independent run; live simulation remains ${liveProfile}.`}
-      </div>
+      {analyses.length > 0 ? <>
+        <label style={{...mono, display: 'block', marginTop: 4}}>
+          {de ? 'Beobachtungsprofil' : 'Observation profile'}:{' '}
+          <select data-testid="bw-source-analysis-observation-profile"
+            value={observationProfile} onChange={event => setObservationProfile(event.target.value)}>
+            <option value={SOURCE_OBSERVATION_PROFILE}>source-declared-v1</option>
+            <option value={BOUNDED_RESEARCH_OBSERVATION_PROFILE}>bounded-research-v1 (adapted)</option>
+          </select>
+        </label>
+        <button type="button" data-testid="bw-source-analysis-run" onClick={run}
+          style={{width: '100%', minHeight: 32, marginTop: 4, padding: '5px 8px', cursor: 'pointer'}}>
+          {de ? `Quellanalysen mit ${PROFILE} ausführen` : `Run source analyses at ${PROFILE}`}
+        </button>
+        <div style={{...mono, marginTop: 4}}>
+          {de
+            ? 'Opt-in; unabhängiger Lauf. Die Live-Simulation bleibt interactive-v1.'
+            : `Opt-in independent run; live simulation remains ${liveProfile}.`}
+        </div>
+      </> : <div data-testid="bw-source-analysis-no-analysis" style={{...mono, marginTop: 4}}>
+        {de ? 'Keine unterstützte Quellanalyse angefordert.' : 'No supported source analysis was requested.'}
+      </div>}
       {retainedDirectives.length > 0 && <div data-testid="bw-source-analysis-retained-directives"
         style={{...mono, marginTop: 4}}>
         {retainedDirectives.length} preserved output directive{retainedDirectives.length === 1 ? '' : 's'};

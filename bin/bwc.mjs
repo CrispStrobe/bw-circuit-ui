@@ -302,7 +302,9 @@ switch (cmd) {
     const c = await loadOrDie(file);
     const source = c.sourceAnalysis || c;
     if (!Array.isArray(source.analyses) || !source.analyses.length) {
-      die('analyze needs at least one source-declared .op, .ac, or .tran card');
+      const retainedCount = (source.retainedDirectives || c.retainedDirectives || []).length;
+      die(`analyze needs at least one supported source-declared .op, .ac, .tran, or .dc card${retainedCount
+        ? `; found ${retainedCount} preserved output request(s), which are not analyses` : ''}`);
     }
     const { error } = await loadEngine();
     if (error) die('analyze needs a bw-board engine with transient profile support (' + error + ')');
