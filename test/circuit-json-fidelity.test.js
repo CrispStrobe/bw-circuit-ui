@@ -174,4 +174,22 @@ describe('circuit.json fidelity: toJSON → fromJSON round-trip', () => {
     assert.ok(json.parts.length > 0, 'must have parts');
     assert.ok(json.parts.some(p => Object.keys(p.params).length > 0), 'must have parts with params');
   });
+
+  it('foreign source document metadata survives JSON and is independently cloned', () => {
+    const c = new Circuit(5.0);
+    c.sourceDocuments = [{
+      format: 'ltspice-asy',
+      symbols: [{ library: 'custom', electricalStatus: 'unmapped-no-native-kind',
+        document: { pins: [{ pinName: 'IN', spiceOrder: 1 }], attrs: { prefix: 'X' } } }],
+    }];
+
+    const saved = c.toJSON();
+    const loaded = Circuit.fromJSON(JSON.parse(JSON.stringify(saved)));
+    assert.deepEqual(loaded.sourceDocuments, c.sourceDocuments);
+    loaded.sourceDocuments[0].symbols[0].document.pins[0].pinName = 'CHANGED';
+    assert.equal(c.sourceDocuments[0].symbols[0].document.pins[0].pinName, 'IN',
+      'loaded document metadata must not alias the source circuit');
+    assert.equal(saved.sourceDocuments[0].symbols[0].document.pins[0].pinName, 'IN',
+      'toJSON output must not alias live source-document metadata');
+  });
 });

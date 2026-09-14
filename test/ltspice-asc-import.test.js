@@ -263,6 +263,33 @@ describe('caller-supplied LTspice ASY documents', () => {
       'the ASY Value is used only when the instance does not author one');
   });
 
+  it('persists inherited ASY semantic losses on the mapped part so numeric refusal cannot wash out', () => {
+    const withSpiceLine = RES_ASY.replace(
+      'SYMATTR Value 1k',
+      'SYMATTR Value 1k\nSYMATTR SpiceLine Rser=2');
+    const imported = importCircuit('ltspice-asc', ASC_WITH_INSTANCE_VALUE, {
+      symbols: { res: withSpiceLine },
+    });
+    const resistor = imported.parts.find(part => part.id === 'R1');
+    assert.equal(resistor.kind, 'resistor');
+    assert.ok(imported.losses.some(loss =>
+      loss.kind === 'unsupported-symbol-attribute' && /ASY SYMATTR spiceline Rser=2/.test(loss.source)));
+    assert.ok(resistor.analysisBlockers.some(blocker =>
+      blocker.kind === 'unsupported-symbol-attribute' && /spiceline/.test(blocker.source)));
+
+    // A consumer is allowed to retain only electrical parts and wires. The
+    // per-part blocker must still make that saved circuit ineligible.
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    assert.ok(circuit.analysisBlockers.some(blocker =>
+      blocker.kind === 'unsupported-symbol-attribute'));
+    assert.throws(() => circuit.operatingPoint(), /persisted import finding/);
+
+    const reloaded = Circuit.fromJSON(JSON.parse(JSON.stringify(circuit.toJSON())));
+    assert.ok(reloaded.analysisBlockers.some(blocker =>
+      blocker.kind === 'unsupported-symbol-attribute'));
+    assert.throws(() => reloaded.operatingPoint(), /persisted import finding/);
+  });
+
   it('uses a synchronous caller resolver once and preserves unknown document metadata without a fake part', () => {
     const customAsy = `Version 4
 SymbolType CELL

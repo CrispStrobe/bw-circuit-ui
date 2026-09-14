@@ -100,6 +100,23 @@ describe('History class', () => {
 });
 
 describe('Circuit undo/redo integration', () => {
+  it('undo and redo restore imported document metadata and analysis blockers', () => {
+    const c = new Circuit(5.0);
+    c.sourceDocuments = [{ format: 'ltspice-asy', symbols: [{ library: 'first' }] }];
+    c.analysisBlockers = [{ type: 'semantic-import-loss', reason: 'first' }];
+    c._saveHistory();
+    c.sourceDocuments = [{ format: 'ltspice-asy', symbols: [{ library: 'second' }] }];
+    c.analysisBlockers = [{ type: 'semantic-import-loss', reason: 'second' }];
+    c._saveHistory();
+
+    assert.equal(c.undo(), true);
+    assert.equal(c.sourceDocuments[0].symbols[0].library, 'first');
+    assert.equal(c.analysisBlockers[0].reason, 'first');
+    assert.equal(c.redo(), true);
+    assert.equal(c.sourceDocuments[0].symbols[0].library, 'second');
+    assert.equal(c.analysisBlockers[0].reason, 'second');
+  });
+
   it('undo restores deleted part', () => {
     const c = new Circuit(5.0);
     const vcc = c.addPart('vcc', {}, 0, 0);

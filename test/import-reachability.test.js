@@ -71,6 +71,26 @@ describe('the import menu offers formats that exist (X0.5)', () => {
     assert.match(canvas, /rootName/);
   });
 
+  it('LTspice offers one ASC plus an explicit in-memory ASY symbol bundle', () => {
+    const fmt = IMPORT_FORMATS.find(f => f.id === 'ltspice-asc');
+    assert.equal(fmt.multi, true);
+    assert.equal(fmt.accept, '.asc,.asy');
+    assert.match(fmt.hint, /one \.asc.*\.asy/i);
+    const canvas = readFileSync(path.join(SRC, 'components/BoardCanvas.jsx'), 'utf-8');
+    const start = canvas.indexOf('const handleImportFile');
+    const body = canvas.slice(start, canvas.indexOf('const pickImport', start));
+    assert.match(body, /ltspiceSchematics\.length > 1/);
+    assert.match(body, /ltspiceSymbolFiles\.length > 256/);
+    assert.match(body, /f\.size > 1024 \* 1024/);
+    assert.match(body, /ltspiceSymbolBytes > 16 \* 1024 \* 1024/);
+    assert.match(body, /new Map\(\)/);
+    assert.match(body, /ltspiceSymbols\.has\(name\)/);
+    assert.match(body, /resolveSymbol:[\s\S]*ltspiceSymbols\.get/);
+    assert.match(body, /sourceDocuments:[\s\S]*ltspice-asy/);
+    assert.doesNotMatch(body, /readFileSync|fetch\(/,
+      'the browser bundle is selected file text, never implicit filesystem or network access');
+  });
+
   it('an unknown format is a named refusal, not an empty result', () => {
     const r = importCircuit('json', '{}');
     assert.equal(r.parts.length, 0);

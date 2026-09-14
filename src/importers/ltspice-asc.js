@@ -334,21 +334,25 @@ export function importLtspiceAsc(text, options = {}) {
     const id = makeId(ref, used);
     const authored = authoredParams(effectiveAttrs.value, spec, constantParameters.values);
     const params = authored.params;
+    const partBlockers = [];
     if (authored.reason) {
-      losses.push({ ref: id, kind: 'unsupported-or-missing-static-value', source: symbol.source,
-        reason: authored.reason, fallback: null });
+      const loss = { ref: id, kind: 'unsupported-or-missing-static-value', source: symbol.source,
+        reason: authored.reason, fallback: null };
+      losses.push(loss);
+      partBlockers.push({ type: 'semantic-import-loss', ...loss });
       warnings.push(`${id}: non-static or missing value is not approximated`);
     }
-    for (const [name, authored] of Object.entries(effectiveAttrs)) {
+    for (const [name, attributeValue] of Object.entries(effectiveAttrs)) {
       if (name === 'instname' || name === 'value' || name === 'prefix') continue;
-      losses.push({ ref: id, kind: 'unsupported-symbol-attribute',
-        source: `${Object.prototype.hasOwnProperty.call(symbol.attrs, name) ? 'SYMATTR' : 'ASY SYMATTR'} ${name} ${authored}`,
-        reason: `the bounded ASC importer does not interpret ${name}`, fallback: null });
+      const loss = { ref: id, kind: 'unsupported-symbol-attribute',
+        source: `${Object.prototype.hasOwnProperty.call(symbol.attrs, name) ? 'SYMATTR' : 'ASY SYMATTR'} ${name} ${attributeValue}`,
+        reason: `the bounded ASC importer does not interpret ${name}`, fallback: null };
+      losses.push(loss);
+      partBlockers.push({ type: 'semantic-import-loss', ...loss });
       warnings.push(`${id}: unsupported LTspice symbol attribute ${name} is retained as a loss`);
     }
     parts.push({ id, kind: spec.kind, params, x: symbol.x, y: symbol.y,
-      ...(authored.reason ? { analysisBlockers: [{ type: 'semantic-import-loss', ref: id,
-        reason: authored.reason, source: symbol.source, fallback: null }] } : {}) });
+      ...(partBlockers.length ? { analysisBlockers: partBlockers } : {}) });
     pins.forEach(([x, y], index) => net.addPoint(x, y));
     placements.push({ id, spec, pins });
   }
