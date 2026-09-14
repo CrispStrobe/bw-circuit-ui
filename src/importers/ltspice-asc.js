@@ -18,7 +18,11 @@
  * SpiceOrder 1 to 2 while the native source injects from `neg` to `pos`, so
  * that pin order deliberately maps to `neg,pos`. Unknown/custom symbols are
  * explicit `unmapped[]` entries; unsupported orientations and non-static
- * values are explicit `losses[]`. Mirrored transforms use LTspice's Y-down
+ * values are explicit `losses[]`. Source-declared `.op/.ac/.tran/.dc` cards
+ * are retained separately from parameter, model, and metadata directives;
+ * the shared analysis adapter, not this importer, decides which exact source
+ * conditions it can run. Unsupported directive semantics remain losses.
+ * Mirrored transforms use LTspice's Y-down
  * instance matrices, cross-checked against paired ASC/netlist connectivity.
  * No external symbol file is followed and no TEXT directive is executed.
  */
@@ -155,9 +159,10 @@ export function importLtspiceAsc(text) {
   const losses = [];
   const ignored = [];
   const analyses = [];
+  const sourceDirectives = [];
   if (!looksLikeLtspiceAsc(text)) {
     return { parts, wires: [], warnings: ['Not an LTspice Version 4 ASCII schematic.'],
-      unmapped, losses, ignored, analyses };
+      unmapped, losses, ignored, analyses, sourceDirectives, netNames: [] };
   }
 
   const drawing = parse(text);
@@ -224,12 +229,29 @@ export function importLtspiceAsc(text) {
   }
 
   for (const directive of drawing.directives) {
-    analyses.push(directive);
-    if (/^\.params?\b/i.test(directive)) continue;
+    if (/^\.(?:op|ac|tran|dc)\b/i.test(directive)) {
+      analyses.push(directive);
+      sourceDirectives.push({ source: directive, kind: 'analysis', handling: 'source-analysis' });
+      continue;
+    }
+    if (/^\.params?\b/i.test(directive)) {
+      sourceDirectives.push({ source: directive, kind: 'parameter-definition',
+        handling: 'constant-expression' });
+      continue;
+    }
+    if (/^\.(?:backanno|end)\b/i.test(directive)) {
+      sourceDirectives.push({ source: directive, kind: 'metadata', handling: 'retained-ignored' });
+      ignored.push({ source: directive, reason: 'non-electrical LTspice metadata directive' });
+      continue;
+    }
     if (/^\.func\b/i.test(directive)) {
+      sourceDirectives.push({ source: directive, kind: 'function-definition', handling: 'unsupported' });
       losses.push({ ref: 'TEXT', kind: 'unsupported-constant-function', source: directive,
         reason: '.func definitions are not executed by the constant parameter evaluator', fallback: null });
-    } else if (!/^\.op(?:\s|$)/i.test(directive)) {
+    } else {
+      sourceDirectives.push({ source: directive,
+        kind: /^\.(?:model|include|inc|lib)\b/i.test(directive) ? 'model-definition' : 'unsupported',
+        handling: 'unsupported' });
       losses.push({ ref: 'TEXT', kind: 'unsupported-asc-directive', source: directive,
         reason: 'the bounded ASC importer does not execute or reinterpret this directive', fallback: null });
     }
@@ -262,11 +284,33 @@ export function importLtspiceAsc(text) {
     parts.push({ id, kind: 'gnd', params: {}, x: 0, y: 0 });
     join(net.netOfName('__LTSPICE_GND__'), id, 'gnd');
   }
+  const namesByNet = new Map();
+  for (const flag of drawing.flags) {
+    const netId = net.netAt(flag.x, flag.y);
+    if (netId == null) continue;
+    if (!namesByNet.has(netId)) namesByNet.set(netId, []);
+    namesByNet.get(netId).push(flag.name === '0' ? '0' : flag.name);
+  }
+  const usedNetNames = new Set(drawing.flags.map(flag =>
+    String(flag.name === '0' ? '0' : flag.name).toLowerCase()));
+  let anonymous = 0;
+  const anonymousName = () => {
+    let name;
+    do { name = `$asc$${anonymous++}`; } while (usedNetNames.has(name.toLowerCase()));
+    usedNetNames.add(name.toLowerCase());
+    return name;
+  };
+  const netNames = [...byNet.entries()].map(([netId, members]) => {
+    const authored = namesByNet.get(netId) || [];
+    const name = authored.includes('0') ? '0' : authored[0] || anonymousName();
+    return { name, terminals: members.map(member => ({ partId: member.part, terminal: member.terminal })) };
+  });
   annotateImportedSingletonTerminals(parts, byNet.values());
   const resolved = wiresFromNets(byNet);
   warnings.push(`geometry: ${attached}/${placements.length * 2} mapped pins landed on a wire or flag `
     + `(${resolved.nets} connected nets, ${drawing.flags.length} flags)`);
   if (floating) warnings.push(`${floating} mapped pin(s) are electrically floating`);
   if (!parts.length) warnings.push('No mappable components found in LTspice ASC schematic.');
-  return { parts, wires: resolved.wires, warnings, unmapped, losses, ignored, analyses };
+  return { parts, wires: resolved.wires, warnings, unmapped, losses, ignored,
+    analyses, sourceDirectives, netNames };
 }
