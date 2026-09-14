@@ -970,11 +970,38 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
         + imported.unmapped.slice(0, 4).map(u => u.ref ?? u.kind ?? '?').join(', ')],
       reason: `unmapped ${imported.unmapped.length}` };
   }
-  if (imported.losses.length) {
+  /**
+   * A LOSS OF THE TRANSIENT SHAPE IS NOT A LOSS OF THE BIAS POINT.
+   *
+   * `unsupported-inline-waveform` says the importer could not keep a source's
+   * WAVEFORM. It kept its initial value, and for a `.op` that is the whole
+   * answer -- so refusing the deck answers a question nobody asked here.
+   *
+   * ngspice's `.op` value for a waveform source, measured rather than assumed:
+   *
+   *   V1 a 0 PULSE(1 4 10u 1u 1u 5u 20u)          a = 1.000000   (V1)
+   *   V2 b 0 SINE(2 3 1k)                         b = 2.000000   (the offset)
+   *   V3 c 0 DC 0.5 PULSE(1 4 10u 1u 1u 5u 20u)   c = 0.500000   (DC wins)
+   *
+   * and the importer takes exactly that in all six waveform forms tried --
+   * PULSE at 5 and 7 arguments, SINE at 3 and 5, EXP and PWL all import at the
+   * first value, which is V1 or the offset. So the two sides agree about what
+   * the source is worth at the bias point; only the shape is gone.
+   *
+   * ~180 of the 1,129 losses in the 7,866-deck Si7li corpus are this kind.
+   *
+   * Every OTHER loss still refuses. This is a whitelist of one kind, admitted
+   * on a measurement, not a relaxation of the rule -- and it is recorded in
+   * `adapted` so an agreeing row says the waveform was dropped.
+   */
+  const biasSafeLoss = (l) => l && l.kind === 'unsupported-inline-waveform';
+  const blockingLosses = imported.losses.filter(l => !biasSafeLoss(l));
+  const waveformLosses = imported.losses.length - blockingLosses.length;
+  if (blockingLosses.length) {
     return { name, ok: false, compared: 0,
-      lines: [`  ${imported.losses.length} semantic loss: `
-        + imported.losses.slice(0, 3).map(l => l.reason).join('; ')],
-      reason: `loss: ${imported.losses[0].reason}` };
+      lines: [`  ${blockingLosses.length} semantic loss: `
+        + blockingLosses.slice(0, 3).map(l => l.reason).join('; ')],
+      reason: `loss: ${blockingLosses[0].reason}` };
   }
   if (!imported.parts.length) {
     return { name, ok: false, lines: ['  the import produced no parts'], compared: 0,
@@ -1064,6 +1091,10 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
   // changed.
   let text = deckText;
   const edits = [];
+  if (waveformLosses) {
+    edits.push(`${waveformLosses} source waveform(s) not modelled; compared at the `
+      + 'initial value, which is what ngspice uses for .op');
+  }
 
   // A LIBRARY MUST BE GIVEN TO BOTH SIDES, OR IT IS NOT A COMPARISON.
   //
