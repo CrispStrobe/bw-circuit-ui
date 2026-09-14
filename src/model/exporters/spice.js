@@ -450,7 +450,12 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       const modelName = `D_${part.refdes}`;
       const explicitShockleyFields = ['is', 'n', 'rs'].some(key =>
         Object.prototype.hasOwnProperty.call(part.params || {}, key));
-      if (part.kind === 'diode' && (explicitShockleyFields || part.params?._spiceBlocked)
+      if (part.params?._spiceBlocked) {
+        skipped.push(`${part.refdes} (${part.kind}): blocked imported SPICE model is not reinterpreted`);
+        lines.push(`* ${part.refdes} ${part.kind} — blocked imported SPICE model`);
+        continue;
+      }
+      if (part.kind === 'diode' && explicitShockleyFields
         && !isExplicitShockleyPart(part)) {
         skipped.push(`${part.refdes} (diode): explicit Shockley export requires only finite IS, N and RS`);
         lines.push(`* ${part.refdes} diode — unsupported Shockley parameters`);

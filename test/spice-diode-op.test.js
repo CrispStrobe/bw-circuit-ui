@@ -77,4 +77,13 @@ describe('strict SPICE diode DC contract', () => {
     assert.equal((out.text.match(/^D\S*\s/gm) || []).length, 2);
     assert.equal((out.text.match(/^\.model D_/gm) || []).length, 2);
   });
+
+  it('never reinterprets a blocked imported BV model as a native zener', () => {
+    const imported = importSpice(deck('D(IS=2e-12 N=1.3 RS=4 BV=12)'));
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    const out = toSpice(extractNetlist(circuit));
+    assert.equal(out.skipped.length, 1);
+    assert.match(out.skipped[0], /blocked imported SPICE model/);
+    assert.doesNotMatch(out.text, /^D1\s/m);
+  });
 });
