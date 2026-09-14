@@ -19,6 +19,7 @@ import { sidecarTerminals } from './parts-registry.js';
 import { computeLeadMap, rotateFootprint, FOOTPRINTS as BB_FOOTPRINTS_FOR_ROTATE } from './footprints.js';
 import { getSidecar } from './parts-registry.js';
 import { applyMeterLoads } from './meter-load.js';
+import { withImportedSingletonNets } from './import-singleton-nets.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -896,6 +897,10 @@ export class Circuit {
       }))
       .filter(n => n.terminals.length > 0);
 
+    const enginePartIds = new Set(engineParts.map(part => part.id));
+    engineNets = withImportedSingletonNets(
+      this.parts.filter(part => enginePartIds.has(part.id)), engineNets);
+
     // The resolved view — wires, rows and jumpers unioned into single
     // nodes — is what net-aware consumers (declaration derivation for
     // seated benches) need; keep it accessible after the sync.
@@ -967,9 +972,12 @@ export class Circuit {
       terminals: p.terminals,
     }));
 
-    this.resolvedNets = nets;
+    const enginePartIds = new Set(engineParts.map(part => part.id));
+    const resolvedNets = withImportedSingletonNets(
+      this.parts.filter(part => enginePartIds.has(part.id)), nets);
+    this.resolvedNets = resolvedNets;
 
-    const folded = applyMeterLoads(this.parts, engineParts, nets);
+    const folded = applyMeterLoads(this.parts, engineParts, resolvedNets);
     this.loadingMeters = folded.loaded;
     this._warnDroppedTerminals(folded.dropped);
 
