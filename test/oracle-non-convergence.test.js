@@ -194,3 +194,124 @@ describe('a reading outside the deck\'s own source envelope', () => {
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });
+
+/**
+ * A CRASHED ORACLE MUST NOT READ AS A HARNESS FAULT.
+ *
+ * ngspice announces most deck errors in text and exits 0, so the exit status is
+ * not the signal — but a CRASH does the opposite: `ERROR: fatal error in
+ * ngspice, exit(1)`, with no line the text parser recognised. That pattern was
+ * missing from the refusal list, so a crash arrived at the comparison as an
+ * EMPTY NODE TABLE and the judge reported "nothing compared" — which is its
+ * message for a failure of its OWN namespace join between deck node names and
+ * engine net ids.
+ *
+ * A red that accuses the wrong component. 56 Si7li decks blamed the importer
+ * for a deck ngspice could not get through, and the fix those rows pointed at
+ * was in the wrong file.
+ *
+ * The general guard is the stronger one: an empty node table is the oracle
+ * answering nothing, whatever its exit status, and a `.op` run that printed no
+ * nodes has not produced a bias point.
+ */
+describe('an oracle that produced no table says so', () => {
+  it('reports a crash as a refusal, naming it, not as an empty comparison', async (t) => {
+    if (!HAVE) { t.skip('ngspice not installed'); return; }
+    // THE CAUSE, MEASURED. ngspice exits fatally on a `.model` card carrying
+    // string-valued vendor metadata:
+    //
+    //   .model DM D(Is=2.52n ... mfg=OnSemi type=silicon)
+    //       -> ERROR: fatal error in ngspice, exit(1)
+    //   the same card with mfg= and type= removed
+    //       -> b = 6.532286e-01 V, solved
+    //
+    // My first version of this test guessed the cause was the title rule
+    // eating the deck's only source, and the deck it built solved cleanly --
+    // a true test of a false claim. The metadata is what does it.
+    //
+    // Written into the DECK here rather than a library, because the library
+    // splice now strips these fields; this asserts what happens when the judge
+    // does NOT get to rewrite the card.
+    const deck = [
+      '* a model card carrying manufacturer metadata',
+      'V1 a 0 5',
+      'R1 a b 1k',
+      'D1 b 0 DM',
+      '.model DM D(Is=2.52n Rs=.568 N=1.752 mfg=OnSemi type=silicon)',
+      '.op',
+      '.end',
+    ].join('\n');
+    const dir = mkdtempSync(join(tmpdir(), 'silent-'));
+    try {
+      const r = await judgeForeignDeck('crash.cir', deck, dir, {});
+      assert.equal(r.ok, false);
+      assert.ok(/^ngspice refused/.test(r.reason || ''),
+        `the reason must blame the oracle, not the join: ${r.reason}`);
+      assert.ok(!/nothing compared/.test(r.reason || ''),
+        '"nothing compared" is the message for a namespace-join failure and '
+        + 'must not be used for an oracle that produced no table');
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('and the SAME model without the metadata is judged normally', async (t) => {
+    if (!HAVE) { t.skip('ngspice not installed'); return; }
+    // The separating control: one pair of fields is the whole difference.
+    const deck = [
+      '* the same card, vendor strings removed',
+      'V1 a 0 5', 'R1 a b 1k', 'D1 b 0 DM',
+      '.model DM D(Is=2.52n Rs=.568 N=1.752)',
+      '.op', '.end',
+    ].join('\n');
+    const dir = mkdtempSync(join(tmpdir(), 'silent-'));
+    try {
+      const r = await judgeForeignDeck('nometa.cir', deck, dir, {});
+      assert.ok(r.compared > 0, `must be compared: ${r.reason}`);
+      assert.equal(r.ok, true, JSON.stringify(r.lines));
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('a spliced library model is stripped so the oracle survives it', async (t) => {
+    if (!HAVE) { t.skip('ngspice not installed'); return; }
+    // The remedy, end to end, on a self-authored library. A real manufacturer
+    // library carries exactly this shape on 926 of its diode models.
+    const library = '.model LIBDIO D(Is=2.52n Rs=.568 N=1.752 Iave=200m Vpk=75 '
+      + 'mfg=SomeVendor type=silicon)\n';
+    const deck = ['* resolves its diode against a library it does not ship',
+      'V1 a 0 5', 'R1 a b 1k', 'D1 b 0 LIBDIO', '.op', '.end'].join('\n');
+    const dir = mkdtempSync(join(tmpdir(), 'silent-'));
+    try {
+      const r = await judgeForeignDeck('lib.cir', deck, dir, { libraries: [library] });
+      assert.ok(r.compared > 0, `must be compared, got: ${r.reason}`);
+      assert.equal(r.ok, true, JSON.stringify(r.lines));
+      assert.ok((r.adapted || []).some((e) => /vendor metadata/.test(e)),
+        `the strip must be recorded as an edit: ${JSON.stringify(r.adapted)}`);
+      assert.equal(r.evidence, 'library-resolved');
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('reports an empty node table even when nothing in the text looked fatal', async (t) => {
+    if (!HAVE) { t.skip('ngspice not installed'); return; }
+    // The general form: a deck ngspice accepts but for which it prints no `.op`
+    // table. Driven through runNgspice directly so the assertion is about that
+    // function's contract rather than about one deck's luck.
+    const dir = mkdtempSync(join(tmpdir(), 'silent-'));
+    try {
+      const r = runNgspice('* nothing to solve\n.end\n', dir, 'empty');
+      assert.deepEqual(r.nodes, {});
+      assert.ok(r.error, 'an empty node table must be an error, not a null result');
+      assert.ok(/no node table|refused|fatal/i.test(r.error), r.error);
+      assert.equal(typeof r.status, 'number', 'the exit status is reported beside it');
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('and a deck that DOES produce a table is untouched', async (t) => {
+    if (!HAVE) { t.skip('ngspice not installed'); return; }
+    const dir = mkdtempSync(join(tmpdir(), 'silent-'));
+    try {
+      const r = runNgspice(
+        '* a divider\nV1 a 0 5\nR1 a b 1k\nR2 b 0 1k\n.op\n.end\n', dir, 'fine');
+      assert.equal(r.error, null, `a healthy deck must not be refused: ${r.error}`);
+      assert.ok(Math.abs(r.nodes.b - 2.5) < 1e-6, JSON.stringify(r.nodes));
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});

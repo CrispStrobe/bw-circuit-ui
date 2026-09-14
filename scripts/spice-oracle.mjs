@@ -196,8 +196,17 @@ export function runNgspice(deck, dir, name) {
 
   // ngspice announces a refusal rather than exiting non-zero for most deck
   // errors, so the exit status is not the signal — the text is.
-  const errLine = raw.match(/^\s*(Error on line.*|.*unknown device type.*|.*Simulation interrupted.*)$/mi);
-  const fatal = /Simulation interrupted|unknown device type|no such (?:vector|node)/i.test(raw);
+  const errLine = raw.match(
+    /^\s*(Error on line.*|.*unknown device type.*|.*Simulation interrupted.*|.*fatal error in ngspice.*)$/mi);
+  // `fatal error in ngspice, exit(1)` was NOT in this list, and a crash then
+  // reached the comparison as an EMPTY NODE TABLE -- which the judge reported
+  // as "nothing compared", i.e. as a failure of its own namespace join. A red
+  // that accuses the wrong component: 56 Si7li decks blamed the importer for a
+  // deck ngspice could not get through. The exit status is checked alongside,
+  // because ngspice announces most deck errors in text and exits 0, but a
+  // crash does the opposite.
+  const fatal = /Simulation interrupted|unknown device type|no such (?:vector|node)|fatal error in ngspice/i
+    .test(raw);
 
   // THE ORACLE'S OWN CONVERGENCE, HELD TO THE SAME STANDARD AS OURS.
   //
@@ -254,9 +263,16 @@ export function runNgspice(deck, dir, name) {
       nodes[name] = Number(value);
     }
   }
+  // AN EMPTY NODE TABLE IS THE ORACLE ANSWERING NOTHING, and it must be said
+  // that way rather than left for a downstream check to misattribute. A `.op`
+  // run that printed no nodes has not produced a bias point, whatever its exit
+  // status; the status is reported beside it because the two disagree (text
+  // errors exit 0, crashes exit non-zero with no text the parser knew).
+  const silent = Object.keys(nodes).length === 0;
   return {
-    nodes, branches, raw,
-    error: fatal ? (errLine ? errLine[1] : 'ngspice refused the deck') : null,
+    nodes, branches, raw, status: r.status,
+    error: fatal ? (errLine ? errLine[1] : 'ngspice refused the deck')
+      : silent ? `ngspice printed no node table (exit ${r.status})` : null,
     // Reported separately from `error`: the deck was accepted, the solve was
     // not completed. A caller that wants to score it anyway has to say so.
     nonConverged: nonConvergence ? nonConvergence[1].trim() : null,
@@ -713,6 +729,48 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
 // @param {string} name
 // @param {string} deckText   the foreign deck, verbatim
 // @param {string} dir
+/**
+ * NGSPICE EXITS FATALLY ON A MODEL CARD CARRYING VENDOR METADATA.
+ *
+ * Manufacturer libraries annotate their models with string-valued fields, and
+ * ngspice does not survive them. Measured, both directions, on the smallest
+ * deck that separates:
+ *
+ *   .model DM D(Is=2.52n Rs=.568 N=1.752 Cjo=4p M=.4 tt=20n Iave=200m Vpk=75
+ *               mfg=OnSemi type=silicon)
+ *       -> ERROR: fatal error in ngspice, exit(1)
+ *   the same card with `mfg=` and `type=` removed
+ *       -> b = 6.532286e-01 V, solved
+ *
+ * So splicing a real library definition in verbatim CRASHES the oracle, and
+ * before the crash was detected at all it arrived as an empty node table and
+ * was reported as this harness failing to join two namespaces. 94 diodes in a
+ * 2,000-deck Si7li sample resolve against the LTspice standard library and hit
+ * this.
+ *
+ * Only NON-NUMERIC values are removed. Our own importer already classifies
+ * these fields as not-parameters and ignores them, so after the strip both
+ * sides are working from the same DC numbers -- which is the whole requirement.
+ * A numeric field is never touched, whatever its name: dropping one would
+ * change the device.
+ *
+ * The edit is recorded like every other. A deck we changed is a deck we have
+ * to say we changed.
+ */
+function stripVendorMeta(raw) {
+  let stripped = false;
+  const out = raw.replace(/([A-Za-z_]\w*)\s*=\s*([^\s()]+)/g, (whole, key, value) => {
+    // A SPICE number, with an optional engineering suffix and optional unit
+    // letters after it (1n, 200m, 4p, 75, 1e-14, 2.5k, 10meg).
+    if (/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?(t|g|meg|k|mil|m|u|n|p|f)?[A-Za-z]*$/.test(value)) {
+      return whole;
+    }
+    stripped = true;
+    return '';
+  });
+  return stripped ? out.replace(/\s+\)/, ')') + ' $ STRIPPED' : raw;
+}
+
 export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
   const lines = [];
   let imported;
@@ -863,7 +921,7 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
           keep = sub[1]; picked.push(raw); continue;
         }
         const mod = /^\s*\.model\s+(\S+)/i.exec(line);
-        if (mod && wanted.has(`model:${mod[1].toLowerCase()}`)) picked.push(raw);
+        if (mod && wanted.has(`model:${mod[1].toLowerCase()}`)) picked.push(stripVendorMeta(raw));
         // A continuation belongs to whatever was last kept.
         else if (/^\s*\+/.test(raw) && picked.length) picked.push(raw);
       }
@@ -874,6 +932,10 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
         ? text.replace(/^\s*\.end\s*$/im, `${splice}.end`)
         : `${text}\n${splice}.end\n`;
       edits.push(`spliced ${used.length} library definition(s) in so ngspice sees them too`);
+      if (picked.some(l => /\bSTRIPPED\b/.test(l))) {
+        edits.push('removed non-numeric vendor metadata from the spliced models — '
+          + 'ngspice exits fatally on one');
+      }
     }
   }
   const SWEEP = /^\s*\.(ac|dc|tran|noise|tf|four|disto|pz|sens|sp)\b.*$/gim;

@@ -747,8 +747,17 @@ export function importSpice(text, opts = {}) {
       if (!model) {
         warnings.push(`${partId}: model "${rest[0] || '(none)'}" is not declared in this `
           + 'file — engine defaults are used for it.');
-        if (letter === 'D') losses.push({ ref: partId, kind: 'unsupported-diode-model',
-          source: item.line, reason: 'explicit declared D model with IS, N and RS is required' });
+        // THE REASON MUST NAME THIS CAUSE, not the other one. This said
+        // "explicit declared D model with IS, N and RS is required", which is
+        // the message for a model that IS declared and states the wrong
+        // fields. Here the model is not declared at all -- a different
+        // problem with a different remedy (supply the library), and 122 decks
+        // of a 2,000-deck Si7li sample carry it. A refusal whose reason names
+        // the wrong cause sends the next reader to the wrong fix; it sent me.
+        if (letter === 'D') losses.push({ ref: partId, kind: 'undeclared-diode-model',
+          source: item.line,
+          reason: `diode model "${rest[0] || '(none)'}" is not declared in this file `
+            + 'and no library supplied it' });
       } else {
         if (model.fromLibrary) {
           usedLibraries.push({ kind: 'model', name: modelName, ref: partId });
