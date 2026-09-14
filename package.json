@@ -47,7 +47,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "vite": "^8.2.1",
-    "bw-board": "github:CrispStrobe/bw-board#552405c0ea04101bf7c663bf11c94d4179c3ce98"
+    "bw-board": "github:CrispStrobe/bw-board#7636104adbc0ecb244f59890f987a26e65b8fe73"
   },
   "bin": {
     "bwc": "bin/bwc.mjs"
