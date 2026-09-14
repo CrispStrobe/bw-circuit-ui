@@ -332,7 +332,7 @@ SYMATTR Value INSTANCE
     assert.equal(imported.unmapped[0].value, 'CUSTOM');
     assert.equal(imported.unmapped[1].value, 'INSTANCE');
     assert.equal(imported.sourceSymbols[0].document.pins.length, 3);
-    assert.equal(imported.sourceSymbols[0].electricalStatus, 'unmapped-no-native-kind');
+    assert.equal(imported.sourceSymbols[0].electricalStatus, 'refused-electrical-projection');
     assert.equal(imported.sourceSymbols[0].document.attrs.description,
       'Self-authored three pin symbol');
     assert.deepEqual(imported.sourceSymbols[0].instances, [

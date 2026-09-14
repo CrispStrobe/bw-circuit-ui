@@ -1,4 +1,5 @@
 import './_setup.js';
+import './ltspice-asc-common-symbols.test.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { importCircuit } from '../src/importers/index.js';
@@ -170,9 +171,9 @@ test('projects one R/C/L/D/Q/M/E/G/X document through shared native/SPICE semant
   assert.deepEqual(kinds.sort(),
     ['resistor', 'capacitor', 'inductor', 'diode', 'nmos', 'npn', 'resistor', 'vccs', 'vcvs'].sort());
   assert.equal(result.unmapped.length, 0);
-  assert.equal(result.sourceDocument.electricalProjection.mappedInstances.length, 5);
+  assert.equal(result.sourceDocument.electricalProjection.mappedInstances.length, 9);
   assert.deepEqual(result.sourceDocument.electricalProjection.mappedInstances
-    .map(item => item.prefix), ['Q', 'M', 'E', 'G', 'X']);
+    .map(item => item.prefix), ['Q', 'M', 'E', 'G', 'X', 'R', 'C', 'L', 'D']);
   assert.equal(result.sourceDocument.stats.pinsRecovered, 25);
   assert.ok(result.parts.find(part => part.id === 'Q1').params.is > 0);
   assert.equal(result.parts.find(part => part.id === 'M1').params.vth, 1);
