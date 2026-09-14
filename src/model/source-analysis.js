@@ -258,6 +258,140 @@ function runAc(imported, descriptor, limits) {
   } catch (error) { return solverRefusal(descriptor, error, parsed); }
 }
 
+function dcValues(from, to, step) {
+  if (!finite(from) || !finite(to) || !finite(step) || step === 0) return null;
+  if (from === to) return [from];
+  if (Math.sign(to - from) !== Math.sign(step)) return null;
+  const intervals = (to - from) / step;
+  if (!finite(intervals) || intervals < 0) return null;
+  const count = Math.floor(intervals + 1e-12) + 1;
+  if (!Number.isSafeInteger(count) || count < 1) return null;
+  return Array.from({ length: count }, (_, index) => {
+    const value = from + step * index;
+    return Math.abs(value - to) <= Math.max(1, Math.abs(to)) * 1e-12 ? to : value;
+  });
+}
+
+function parseDc(imported, descriptor, limits) {
+  const fields = descriptor.normalized.split(' ');
+  if (fields.length !== 5 && fields.length !== 9) return integrationGap(descriptor,
+    'dc-form-not-implemented',
+    'supported forms are .dc VSOURCE START STOP INCREMENT with one optional nested voltage-source sweep');
+  const sweeps = [];
+  for (let offset = 1; offset < fields.length; offset += 4) {
+    const requestedRef = fields[offset];
+    const matches = (imported.parts || []).filter(part =>
+      String(part.id || '').toLowerCase() === requestedRef);
+    if (matches.length !== 1) return sourceRefusal(descriptor, 'invalid-dc-source',
+      `.dc source ${requestedRef} must identify exactly one imported part`);
+    const part = matches[0];
+    if (part.kind !== 'vsource') return integrationGap(descriptor,
+      'dc-source-kind-not-implemented',
+      `.dc source ${part.id} maps to ${part.kind}; only independent voltage-source sweeps are wired`);
+    const from = parseSpiceValue(fields[offset + 1]);
+    const to = parseSpiceValue(fields[offset + 2]);
+    const step = parseSpiceValue(fields[offset + 3]);
+    const values = dcValues(from, to, step);
+    if (!values) return sourceRefusal(descriptor, 'invalid-dc-card',
+      `.dc source ${part.id} requires finite bounds and a non-zero increment directed toward its stop`);
+    sweeps.push({ requestedRef: fields[offset], partId: part.id, from, to, step, values });
+  }
+  const points = sweeps.reduce((count, sweep) => count * sweep.values.length, 1);
+  if (!Number.isSafeInteger(points) || points > limits.maxPoints) return integrationGap(descriptor,
+    'analysis-budget-exceeded', `.dc requests ${points} points; adapter limit is ${limits.maxPoints}`,
+    { sourceArguments: { source: descriptor.source, normalized: descriptor.normalized },
+      sweeps: sweeps.map(({ values, ...sweep }) => ({ ...sweep, points: values.length })), points });
+  return { sourceArguments: { source: descriptor.source, normalized: descriptor.normalized },
+    sweeps, points, order: sweeps.length === 1 ? 'single-source'
+      : 'last-source-outer-first-source-fastest' };
+}
+
+function dcCoordinates(sweeps) {
+  if (sweeps.length === 1) return sweeps[0].values.map(value => [value]);
+  const [first, second] = sweeps;
+  return second.values.flatMap(secondValue => first.values.map(firstValue => [firstValue, secondValue]));
+}
+
+function runDc(imported, descriptor, limits) {
+  const parsed = parseDc(imported, descriptor, limits);
+  if (parsed.status) return parsed;
+  let template;
+  try { template = circuitFor(imported); }
+  catch (error) { return mappingGap(descriptor, error, parsed); }
+  if (template.netlistError != null) return mappingGap(descriptor, template.netlistError, parsed);
+  let canonical;
+  try { canonical = canonicalCircuit(imported, template); }
+  catch (error) { return mappingGap(descriptor, error, parsed); }
+  if (canonical.nodes.length * parsed.points > limits.maxObservations) return integrationGap(descriptor,
+    'analysis-budget-exceeded', 'DC node-point product exceeds the adapter observation limit', parsed);
+  const canonicalSources = parsed.sweeps.map(sweep => canonical.sources.find(source =>
+    source.partId === sweep.partId));
+  if (canonicalSources.some(source => !source)) return mappingGap(descriptor,
+    'canonical DC source mapping is missing', parsed);
+
+  const coordinates = dcCoordinates(parsed.sweeps);
+  const nodeValues = new Map(canonical.nodes.map(node => [node.id, []]));
+  const currentValues = new Map(canonical.sources.filter(source => source.currentTerminal)
+    .map(source => [source.id, []]));
+  const unavailableSourceCurrents = canonical.sources.filter(source => !source.currentTerminal)
+    .map(source => source.id);
+  try {
+    for (const coordinate of coordinates) {
+      // Each point is a fresh circuit.  A source-declared DC sweep is a family
+      // of static operating points, not the curve-tracer's transient settling
+      // path and not a stateful continuation from the preceding point.
+      const circuit = circuitFor(imported);
+      for (let index = 0; index < parsed.sweeps.length; index++) {
+        circuit.setControl(parsed.sweeps[index].partId, coordinate[index]);
+      }
+      const point = circuit.operatingPoint({ waveformBias: 'dc-value' });
+      if (!point?.converged) return solverRefusal(descriptor,
+        `DC operating point did not converge at source coordinates ${coordinate.join(', ')}`, parsed);
+      const conflicts = [...(point.conflicts || []), ...(point.railConflicts || [])];
+      if (conflicts.length) return solverRefusal(descriptor,
+        `DC operating point reported ${conflicts.length} conflicting fixed-voltage constraint(s) at source coordinates ${coordinate.join(', ')}`,
+        parsed);
+      for (const node of canonical.nodes) {
+        const voltage = point.nodeVoltages.get(node.netId);
+        if (!finite(voltage)) return solverRefusal(descriptor,
+          `DC operating point returned a non-finite voltage for ${node.id}`, parsed);
+        nodeValues.get(node.id).push(voltage);
+      }
+      for (const source of canonical.sources) {
+        if (!source.currentTerminal) continue;
+        const current = point.branchCurrents.get(source.partId)?.get(source.currentTerminal);
+        if (!finite(current)) return solverRefusal(descriptor,
+          `DC operating point returned a non-finite current for ${source.id}`, parsed);
+        currentValues.get(source.id).push(current);
+      }
+    }
+  } catch (error) { return solverRefusal(descriptor, error, parsed); }
+
+  const sweeps = parsed.sweeps.map((sweep, index) => ({
+    sourceId: canonicalSources[index].id, partKind: 'V', from: sweep.from,
+    to: sweep.to, step: sweep.step, values: sweep.values,
+  }));
+  return {
+    analysisId: descriptor.id, ordinal: descriptor.ordinal, kind: 'dc', status: 'pass',
+    classification: 'native-original',
+    conditions: { sourceArguments: parsed.sourceArguments, sweeps, points: parsed.points,
+      order: parsed.order, initialization: 'independent-static-operating-points' },
+    topology: canonical.cards,
+    observables: {
+      axis: { quantity: 'dc-source', dimensions: sweeps.map(sweep => ({
+        sourceId: sweep.sourceId, unit: 'V', values: sweep.values,
+      })), order: parsed.order, coordinates },
+      nodes: canonical.nodes.map(node => ({ id: node.id, voltage: nodeValues.get(node.id) })),
+      sourceCurrents: canonical.sources.filter(source => source.currentTerminal)
+        .map(source => ({ id: source.id, current: currentValues.get(source.id) })),
+      unavailableSourceCurrents,
+    },
+    convergence: { converged: true, pointCount: parsed.points, conflicts: [] },
+    evidence: 'original-direct', adapted: [],
+    thermal: 'native-fixed-26.8267934421C; no oracle comparison performed',
+  };
+}
+
 function boundedObservationTimes(startNs, stopNs, limits, targetIntervals = 100) {
   const span = stopNs - startNs;
   const intervals = Math.min(targetIntervals, limits.maxPoints - 1, Math.max(1, span));
@@ -480,17 +614,25 @@ function runTran(imported, descriptor, limits) {
     parsed.tmaxHandling = parsed.maxStepSec == null ? 'not-declared'
       : algebraic ? 'not-applicable-algebraic-direct'
         : 'enforced-by-equal-or-stricter-execution-profile';
-    const minimumSolves = algebraic
-      ? parsed.sampleTimesNs.filter(timeNs => timeNs > 0).length
-      : Math.ceil(parsed.stopSec / maxStepSec);
-    parsed.preflight = { minimumSolves, basis: algebraic
-      ? 'algebraic-direct-nonzero-observation-count' : 'ceil(stop/maxStepSec)',
-    integrationMode: profileStatus?.integrationMode || 'adaptive' };
+    const acceptedStepLowerBound = algebraic ? 0 : Math.ceil(parsed.stopSec / maxStepSec);
+    const nonzeroObservationCount = parsed.sampleTimesNs.filter(timeNs => timeNs > 0).length;
+    // The adaptive controller qualifies an accepted step with one full-step
+    // solve plus two half-step solves.  The first backward-Euler seed uses one
+    // solve; every later accepted step therefore has a deterministic minimum
+    // of three.  Retries and method restarts only increase these counts.
+    const minimumAttempts = algebraic ? nonzeroObservationCount : acceptedStepLowerBound;
+    const minimumSolves = algebraic ? nonzeroObservationCount
+      : acceptedStepLowerBound === 0 ? 0 : 1 + 3 * (acceptedStepLowerBound - 1);
+    parsed.preflight = { minimumAttempts, minimumSolves,
+      basis: algebraic ? 'algebraic-direct-nonzero-observation-count'
+        : 'adaptive-be-seed-plus-three-solves-per-later-accepted-step',
+      acceptedStepLowerBound,
+      integrationMode: profileStatus?.integrationMode || 'adaptive' };
     if (limits.ledger.solves + minimumSolves > limits.maxTotalSolves
-        || limits.ledger.attempts + minimumSolves > limits.maxTotalAttempts
+        || limits.ledger.attempts + minimumAttempts > limits.maxTotalAttempts
         || limits.ledger.advances + parsed.sampleTimesNs.length > limits.maxTotalAdvances) {
       return profileGap(descriptor, 'analysis-work-budget-exceeded',
-        `precision preflight needs at least ${minimumSolves} solves and ${parsed.sampleTimesNs.length} advances; remaining total limits are ${limits.maxTotalSolves - limits.ledger.solves} solves, ${limits.maxTotalAttempts - limits.ledger.attempts} attempts, ${limits.maxTotalAdvances - limits.ledger.advances} advances`,
+        `precision preflight needs at least ${minimumAttempts} attempts, ${minimumSolves} solves, and ${parsed.sampleTimesNs.length} advances; remaining total limits are ${limits.maxTotalSolves - limits.ledger.solves} solves, ${limits.maxTotalAttempts - limits.ledger.attempts} attempts, ${limits.maxTotalAdvances - limits.ledger.advances} advances`,
         parsed, limits.transientProfile, profileStatus, limits);
     }
   }
@@ -654,8 +796,7 @@ export function runSourceAnalyses(imported, {
     if (descriptor.kind === 'op') result = runOp(imported, descriptor);
     else if (descriptor.kind === 'ac') result = runAc(imported, descriptor, limits);
     else if (descriptor.kind === 'tran') result = runTran(imported, descriptor, limits);
-    else if (descriptor.kind === 'dc') result = integrationGap(descriptor, 'dc-sweep-not-implemented',
-      'the reusable source-analysis adapter does not yet expose source-declared DC sweeps');
+    else if (descriptor.kind === 'dc') result = runDc(imported, descriptor, limits);
     else result = integrationGap(descriptor, 'analysis-kind-not-implemented',
       `source analysis ${descriptor.kind} has no reusable native adapter`);
     return tag(result);

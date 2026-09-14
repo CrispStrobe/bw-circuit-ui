@@ -231,6 +231,71 @@ C1 in 0 1n
       ['not-run', 'integration-gap', 'tran-tmax-not-honored']);
   });
 
+  it('runs source-declared single and nested DC sweeps as fresh static operating points', () => {
+    const single = runSourceAnalyses(imported(`single DC
+Vs in 0 0
+R1 in out 1k
+R2 out 0 1k
+.dc Vs 0V 1V .5V
+.end
+`), { format: 'spice' })[0];
+    assert.equal(single.status, 'pass');
+    assert.equal(single.classification, 'native-original');
+    assert.equal(single.evidence, 'original-direct');
+    assert.deepEqual(single.conditions.sourceArguments,
+      { source: '.dc Vs 0V 1V .5V', normalized: '.dc vs 0v 1v .5v' });
+    assert.deepEqual(single.observables.axis, {
+      quantity: 'dc-source',
+      dimensions: [{ sourceId: 's0', unit: 'V', values: [0, 0.5, 1] }],
+      order: 'single-source', coordinates: [[0], [0.5], [1]],
+    });
+    assert.ok(single.observables.nodes.find(node => node.id === 'n1').voltage
+      .every((value, index) => Math.abs(value - [0, 0.25, 0.5][index]) < 1e-9));
+    assert.equal(single.convergence.pointCount, 3);
+
+    const nested = runSourceAnalyses(imported(`nested DC
+Vx1 a 0 0
+Vx2 b 0 0
+R1 a b 1k
+.dc Vx1 0 1 1 Vx2 -1 1 2
+.end
+`), { format: 'spice' })[0];
+    assert.equal(nested.status, 'pass');
+    assert.equal(nested.conditions.order, 'last-source-outer-first-source-fastest');
+    assert.deepEqual(nested.observables.axis.coordinates,
+      [[0, -1], [1, -1], [0, 1], [1, 1]]);
+    assert.deepEqual(nested.observables.axis.dimensions.map(dimension => dimension.values),
+      [[0, 1], [-1, 1]]);
+  });
+
+  it('accepts a one-point DC sweep and refuses unsafe DC grids and source kinds', () => {
+    const one = runSourceAnalyses(imported(`one point
+V1 a 0 0
+R1 a 0 1k
+.dc V1 70 70 1
+.end
+`), { format: 'spice' })[0];
+    assert.equal(one.status, 'pass');
+    assert.deepEqual(one.observables.axis.coordinates, [[70]]);
+
+    const tooMany = runSourceAnalyses(imported(`dense DC
+V1 a 0 0
+R1 a 0 1k
+.dc V1 0 10 .1
+.end
+`), { format: 'spice', maxPoints: 50 })[0];
+    assert.deepEqual([tooMany.status, tooMany.code], ['not-run', 'analysis-budget-exceeded']);
+    assert.equal(tooMany.conditions.points, 101);
+
+    const current = runSourceAnalyses(imported(`current sweep
+I1 0 a 0
+R1 a 0 1k
+.dc I1 0 1m .5m
+.end
+`), { format: 'spice' })[0];
+    assert.deepEqual([current.status, current.code], ['not-run', 'dc-source-kind-not-implemented']);
+  });
+
   it('starts each UIC RC transient from a fresh uncharged capacitor state', () => {
     const source = `fresh uic
 V1 in 0 5

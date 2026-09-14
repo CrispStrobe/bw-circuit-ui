@@ -31,6 +31,13 @@ instead of being discarded. Fractional-nanosecond waveform corners stay in
 their authored seconds and are handled by the engine's source-edge barrier;
 they are never rounded into fabricated public nanosecond timestamps.
 
+Source-declared `.dc` supports one independent voltage-source sweep and the
+standard optional nested second sweep. Each coordinate is solved as a fresh
+static operating point, so this is not the stateful transient-settling curve
+tracer. Start-equals-stop is a valid one-point sweep; nested results declare
+their last-source-outer, first-source-fastest ordering and retain each authored
+bound and increment.
+
 `.four`, `.meas`, plotting/probe cards, and the exact LTspice output-compression
 card `.options plotwinsize=0` are retained as typed, unrequested output
 directives. They are shown in source-analysis provenance but are not themselves
@@ -48,9 +55,12 @@ not a global output-error guarantee and is not agreement with an external
 simulator. GUI and CLI results therefore say `oracleComparison: not-performed`.
 
 If the profile cannot meet its qualification, or actual cumulative work
-exceeds a fixed total limit, the analysis is refused. Long runs whose minimum
-work already exceeds the limit are rejected by `ceil(stop/maxStepSec)`
-preflight instead of being abandoned by a wall-clock timeout.
+exceeds a fixed total limit, the analysis is refused. Long adaptive runs whose
+minimum work already exceeds the limit are rejected before execution: attempts
+use the accepted-step lower bound, while solves include the engine's one
+backward-Euler seed plus three solves for each later accepted adaptive step.
+Algebraic-direct circuits instead use their non-zero observation count. This
+preflight replaces a wall-clock timeout without claiming an upper bound.
 
 Before local or CI qualification, `npm run verify:board-provenance` binds the
 full package declaration and lock resolution to the package Node actually

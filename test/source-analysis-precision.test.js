@@ -14,6 +14,7 @@ import { runPrecisionSourceAnalysis } from '../src/model/source-analysis-view.js
 const root = join(import.meta.dirname, '..');
 const fixture = join(root, 'test', 'fixtures', 'spice-precision-analysis.cir');
 const boundedFixture = join(root, 'test', 'fixtures', 'spice-bounded-observation.cir');
+const dcFixture = join(root, 'test', 'fixtures', 'spice-dc-analysis.cir');
 const source = readFileSync(fixture, 'utf8');
 
 function imported() { return importCircuit('spice', source); }
@@ -137,6 +138,10 @@ C1 out 0 1n
     assert.deepEqual([preflight.status, preflight.classification, preflight.code],
       ['not-run', 'integration-gap', 'analysis-work-budget-exceeded']);
     assert.equal(preflight.conditions.preflight.integrationMode, 'adaptive');
+    assert.equal(preflight.conditions.preflight.minimumAttempts, 200000);
+    assert.equal(preflight.conditions.preflight.minimumSolves, 599998);
+    assert.equal(preflight.conditions.preflight.basis,
+      'adaptive-be-seed-plus-three-solves-per-later-accepted-step');
     assert.equal(preflight.conditions.executionProfile.work.attempts, 0);
 
     const [accounted] = runSourceAnalyses(imported(), { format: 'spice',
@@ -200,5 +205,14 @@ C1 out 0 1n
     assert.equal(adaptedReport.results[0].status, 'pass');
     assert.equal(adaptedReport.results[0].evidence, 'original-adapted');
     assert.match(adaptedReport.results[0].adapted[0], /replaced the requested 3001-point/);
+
+    const dcCli = spawnSync(process.execPath,
+      ['bin/bwc.mjs', 'analyze', dcFixture, '--profile', 'precision-v1', '--json'],
+      { cwd: root, encoding: 'utf8', timeout: 20_000 });
+    assert.equal(dcCli.status, 0, dcCli.stderr || dcCli.stdout);
+    const dcReport = JSON.parse(dcCli.stdout);
+    assert.equal(dcReport.results[0].kind, 'dc');
+    assert.equal(dcReport.results[0].status, 'pass');
+    assert.deepEqual(dcReport.results[0].observables.axis.coordinates, [[0], [0.5], [1]]);
   });
 });
