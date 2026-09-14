@@ -25,6 +25,8 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { importSpice } from '../src/importers/spice.js';
+import { Circuit } from '../src/model/circuit.js';
+import { extractNetlist } from '../src/model/netlist.js';
 import { judgeForeignDeck, haveNgspice } from '../scripts/spice-oracle.mjs';
 
 const NG = haveNgspice();
@@ -95,6 +97,56 @@ test('a level-1 MOSFET keeps KP, W, L and LAMBDA', () => {
   assert.equal(m.params.w, 20e-6);
   assert.equal(m.params.l, 1e-6);
   assert.equal(m.params.lambda, 0.005);
+});
+
+test('only the spellings ngspice aliases are ground', () => {
+  // MEASURED against the reference simulator, one deck per name:
+  //
+  //     0        the reference
+  //     gnd      the reference     (aliased; it vanishes from the .op table)
+  //     gnd!     2.5 V — an ordinary node
+  //     ground   2.5 V — an ordinary node
+  //     vss      2.5 V — an ordinary node
+  //
+  // Aliasing a node the simulator does not alias does not make our answer
+  // approximate, it makes it an answer about a DIFFERENT CIRCUIT. `vss` was the
+  // expensive one: in an analogue deck it is the NEGATIVE SUPPLY, and
+  // collapsing it to 0 deleted the rail. 876 of 12,471 ADI2005 decks name it,
+  // all 876 drive it with a source, and none rely on it as their only ground.
+  const split = importSpice('*t\nVDD VDD 0 DC 15\nVSS VSS 0 DC -15\n'
+    + 'R1 VDD N 10k\nR2 N VSS 10k\n.op\n.end');
+  const names = split.netNames.map(n => n.name.toLowerCase()).sort();
+  assert.ok(names.includes('vss'),
+    `VSS was swallowed by ground: ${JSON.stringify(names)}`);
+  const c = Circuit.fromJSON({ parts: split.parts, wires: split.wires });
+  c.setPower(true);
+  const idOf = (name) => {
+    const dn = split.netNames.find(x => x.name.toLowerCase() === name);
+    const nl = extractNetlist(c);
+    for (const net of nl.nets) {
+      for (const nd of net.nodes || []) {
+        if (dn.terminals.some(t => t.partId === nd.refdes && t.terminal === nd.pin)) return net.id;
+      }
+    }
+    return null;
+  };
+  assert.ok(Math.abs(c.nodeVoltage(idOf('vss')) + 15) < 1e-6,
+    `VSS reads ${c.nodeVoltage(idOf('vss'))} V, expected -15`);
+  // Equal resistors between +15 and -15 put the midpoint at 0 — the number
+  // that is only right if the negative rail survived.
+  assert.ok(Math.abs(c.nodeVoltage(idOf('n'))) < 1e-6,
+    `the divider midpoint reads ${c.nodeVoltage(idOf('n'))} V, expected 0`);
+});
+
+test('a deck whose only return is spelled `vss` still gets a reference, and says so', () => {
+  // The counter-example. Without the fallback, dropping `vss` from the alias
+  // list would leave such a deck with nothing to measure against — and without
+  // the WARNING, the fallback is the silent guess that caused the original
+  // defect.
+  const r = importSpice('*t\nV1 A VSS DC 5\nR1 A VSS 1k\n.op\n.end');
+  assert.ok(r.parts.some(p => p.kind === 'gnd'), 'no reference was adopted');
+  assert.ok(r.warnings.some(w => /names no node 0 and no gnd/.test(w)),
+    `the guess was not reported: ${JSON.stringify(r.warnings)}`);
 });
 
 test('a foreign cascode deck agrees with ngspice', { skip: NG ? false : 'ngspice not installed' }, () => {

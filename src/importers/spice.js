@@ -43,8 +43,40 @@ import { evaluateConstantExpression, resolveConstantParameters } from '../model/
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 import { classifyShockleyThermal, validateExplicitShockley } from '../model/spice-diode.js';
 
-/** Nodes that mean "the reference" in every dialect. */
-const GROUND_NODES = new Set(['0', 'gnd', 'gnd!', 'ground', 'vss']);
+/**
+ * Nodes the REFERENCE SIMULATOR treats as the reference — measured, not assumed.
+ *
+ * This list used to read `0, gnd, gnd!, ground, vss`, and three of those five
+ * are ordinary nodes to ngspice. Run the same deck four times with the node
+ * renamed and read the operating point:
+ *
+ *     node      ngspice
+ *     0         the reference
+ *     gnd       the reference        (aliased; it vanishes from the table)
+ *     gnd!      2.5 V — an ordinary node
+ *     ground    2.5 V — an ordinary node
+ *     vss       2.5 V — an ordinary node
+ *
+ * Aliasing a node the simulator does not alias does not make our answer
+ * approximate, it makes it an answer about a DIFFERENT CIRCUIT. `vss` is the
+ * expensive one: in an analogue deck it is the NEGATIVE SUPPLY, and collapsing
+ * it to 0 deletes the rail. **876 of the 12,471 ADI2005 decks name a `vss`
+ * node, all 876 have a source driving it, and NONE of them rely on it as their
+ * only ground** — every one also names node `0` or `gnd`. So the alias was
+ * wrong in 876 of 876 cases there, and removing it costs that corpus nothing.
+ *
+ * A deck whose ONLY return is spelled `vss`, `ground` or `gnd!` would then have
+ * no reference at all, so those stay as a LAST-RESORT fallback below, applied
+ * once and reported — the same shape as the exporter's "no gnd part: node 0 is
+ * the vsource's negative net".
+ */
+const GROUND_NODES = new Set(['0', 'gnd']);
+
+/**
+ * Spellings that are NOT ground to ngspice, but are the only plausible
+ * reference in a deck that names none. Ordered: the most explicit first.
+ */
+const FALLBACK_GROUND_NODES = ['gnd!', 'ground', 'vss'];
 
 /** Analysis and control cards we recognise. Reported, never executed. */
 const ANALYSIS_CARDS = new Set(['op', 'tran', 'ac', 'dc', 'noise', 'tf', 'four', 'disto', 'pz', 'sens']);
@@ -694,6 +726,30 @@ export function importSpice(text) {
       if (nodeFields[i] === undefined) return;
       join(netOf(nodeFields[i], item), partId, terminal);
     });
+  }
+
+  // ── LAST-RESORT GROUND ────────────────────────────────────────────
+  //
+  // A deck that names no `0` and no `gnd` has no reference, and the solve
+  // refuses a circuit with nothing to measure against. If exactly one of the
+  // spellings ngspice does NOT alias is present, it is the only candidate, and
+  // adopting it is better than refusing — but it is a GUESS about the deck and
+  // it is reported as one, because a silent guess is how `vss` came to swallow
+  // 876 negative supply rails.
+  if (!groundUsed) {
+    const present = FALLBACK_GROUND_NODES.filter(g => nets.has(g)
+      || [...nets.keys()].some(k => k.toLowerCase() === g));
+    if (present.length) {
+      const chosen = [...nets.keys()].find(k => k.toLowerCase() === present[0]);
+      const members = nets.get(chosen) || [];
+      nets.delete(chosen);
+      const existing = nets.get('__GND__') || [];
+      nets.set('__GND__', existing.concat(members));
+      groundUsed = true;
+      warnings.push(`This deck names no node 0 and no gnd, so "${chosen}" is taken as the `
+        + 'reference. ngspice does not alias that spelling — it would solve this deck with '
+        + `"${chosen}" as an ordinary node and refuse it for having no reference.`);
+    }
   }
 
   // ── ground becomes a part, the way the designer models it ────────
