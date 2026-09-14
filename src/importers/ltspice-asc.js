@@ -915,7 +915,7 @@ export function importLtspiceAsc(text, options = {}) {
           ? 'mapped-with-analysis-blockers' : 'mapped-existing-native-kind';
         continue;
       }
-      const projectionReason = projected?.error
+      const projectionReason = asset.error || projected?.error
         || (projected?.imported.unmapped || []).map(item => item.libsource).join('; ')
         || (instance?.pins.length ? 'effective Prefix is not supported by the native/SPICE projection'
           : 'no symbol pin definition is available');
