@@ -42,6 +42,8 @@ import { annotateImportedSingletonTerminals } from '../model/import-singleton-ne
 import { normalizeLtspiceSymbolName, parseLtspiceAsy } from './ltspice-asy.js';
 import { classifyShockleyThermal, validateExplicitShockley } from '../model/spice-diode.js';
 import { parseSpiceModelDeclaration } from '../model/spice-model.js';
+import { importSpice } from './spice.js';
+import { sourceDocumentProjection } from '../model/source-document-projection.js';
 
 const SYMBOLS = new Map([
   ['res', {
@@ -79,6 +81,45 @@ const SYMBOLS = new Map([
 const STANDARD_PREFIX = Object.freeze({
   resistor: 'R', capacitor: 'C', inductor: 'L', vsource: 'V', isource: 'I', diode: 'D',
 });
+
+const ASC_LIMITS = Object.freeze({
+  maxBytes: 8 * 1024 * 1024,
+  maxLines: 100000,
+  maxRecords: 100000,
+  maxSymbols: 20000,
+});
+
+const ascByteLength = text => typeof TextEncoder === 'function'
+  ? new TextEncoder().encode(text).byteLength : text.length;
+
+/** Decode caller-owned ASC bytes without guessing beyond BOM/NUL evidence. */
+export function decodeLtspiceText(input) {
+  if (typeof input === 'string') {
+    const value = input.startsWith('\ufeff') ? input.slice(1) : input;
+    return { text: value, encoding: 'string' };
+  }
+  let bytes = null;
+  if (input instanceof Uint8Array) bytes = input;
+  else if (typeof ArrayBuffer !== 'undefined' && input instanceof ArrayBuffer) bytes = new Uint8Array(input);
+  if (!bytes) return { text: '', encoding: 'invalid' };
+  let encoding = 'utf-8';
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) encoding = 'utf-16le';
+  else if (bytes[0] === 0xfe && bytes[1] === 0xff) encoding = 'utf-16be';
+  else {
+    const sample = bytes.subarray(0, Math.min(bytes.length, 256));
+    let evenNuls = 0; let oddNuls = 0;
+    sample.forEach((value, index) => {
+      if (value === 0) { if (index % 2) oddNuls++; else evenNuls++; }
+    });
+    if (oddNuls > sample.length / 8 && evenNuls === 0) encoding = 'utf-16le';
+    else if (evenNuls > sample.length / 8 && oddNuls === 0) encoding = 'utf-16be';
+  }
+  try {
+    return { text: new TextDecoder(encoding, { fatal: true }).decode(bytes).replace(/^\ufeff/, ''), encoding };
+  } catch {
+    return { text: '', encoding, error: `input is not valid ${encoding}` };
+  }
+}
 
 function collectAscModels(directives) {
   const models = new Map();
@@ -175,11 +216,13 @@ function symbolAsset(lib, options, cache) {
     cache.set(normalizedName, resolved);
     return resolved;
   }
-  const text = typeof value === 'string' ? value : value?.text;
+  const text = typeof value === 'string' || value instanceof Uint8Array
+    || (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) ? value : value?.text;
   const declaredSha256 = typeof value === 'object' && value ? value.sha256 : null;
-  if (typeof text !== 'string') {
+  if (!(typeof text === 'string' || text instanceof Uint8Array
+      || (typeof ArrayBuffer !== 'undefined' && text instanceof ArrayBuffer))) {
     const resolved = { supplied: true, normalizedName,
-      error: 'caller symbol asset must be text or {text, sha256}' };
+      error: 'caller symbol asset must be text/bytes or {text, sha256}' };
     cache.set(normalizedName, resolved);
     return resolved;
   }
@@ -224,10 +267,11 @@ function sourceSymbolMetadata(asset, requestedName) {
 }
 
 export function looksLikeLtspiceAsc(text) {
-  if (typeof text !== 'string') return false;
-  return /^\s*Version\s+4\s*$/im.test(text)
-    && /^\s*SHEET\s+\d+\s+[-+]?\d+\s+[-+]?\d+\s*$/im.test(text)
-    && /^\s*(?:WIRE|SYMBOL|FLAG)\b/im.test(text);
+  const decoded = decodeLtspiceText(text);
+  if (decoded.error) return false;
+  return /^\s*Version\s+4(?:\.1)?\s*$/im.test(decoded.text)
+    && /^\s*SHEET\s+\d+\s+[-+]?\d+\s+[-+]?\d+\s*$/im.test(decoded.text)
+    && /^\s*(?:WIRE|SYMBOL|FLAG)\b/im.test(decoded.text);
 }
 
 /** Apply LTspice's instance orientation in its native Y-down coordinate frame. */
@@ -247,45 +291,354 @@ export function placeLtspicePin(px, py, instance) {
   return [instance.x + u, instance.y + v];
 }
 
-function parse(text) {
+/**
+ * Parse the ASC source document. Every non-empty source line has one record;
+ * the native electrical projection below is a separate consumer of this IR.
+ */
+export function parseLtspiceAscDocument(text, options = {}) {
+  const decoded = decodeLtspiceText(text);
   const wires = [];
   const flags = [];
   const symbols = [];
   const directives = [];
+  const texts = [];
+  const records = [];
+  const findings = [];
   const unknownLines = [];
   const ignoredLines = [];
+  let version = null;
+  let sheet = null;
   let current = null;
-  const lines = String(text).replace(/\r\n/g, '\n').split('\n');
+  if (decoded.error) {
+    return { ok: false, version, sheet, encoding: decoded.encoding, rawText: '', records,
+      wires, flags, symbols, texts, directives, findings: [{ kind: 'invalid-asc-encoding',
+        line: 0, reason: decoded.error }], unknownLines, ignoredLines };
+  }
+  const limits = { ...ASC_LIMITS, ...(options?.limits || {}) };
+  if (ascByteLength(decoded.text) > Math.min(limits.maxBytes || ASC_LIMITS.maxBytes, ASC_LIMITS.maxBytes)) {
+    return { ok: false, version, sheet, encoding: decoded.encoding, rawText: '', records,
+      wires, flags, symbols, texts, directives, findings: [{ kind: 'asc-limit-exceeded',
+        line: 0, reason: `schematic exceeds the ${ASC_LIMITS.maxBytes}-byte limit` }],
+      unknownLines, ignoredLines };
+  }
+  const rawText = decoded.text.replace(/\r\n?/g, '\n');
+  const lines = rawText.split('\n');
+  if (lines.length > Math.min(limits.maxLines || ASC_LIMITS.maxLines, ASC_LIMITS.maxLines)) {
+    return { ok: false, version, sheet, encoding: decoded.encoding, rawText: '', records,
+      wires, flags, symbols, texts, directives, findings: [{ kind: 'asc-limit-exceeded',
+        line: 0, reason: `schematic exceeds the ${ASC_LIMITS.maxLines}-line limit` }],
+      unknownLines, ignoredLines };
+  }
   for (let index = 0; index < lines.length; index++) {
-    const line = lines[index].trim();
-    if (!line || /^Version\s+4$/i.test(line) || /^SHEET\b/i.test(line)) continue;
+    const source = lines[index];
+    const line = source.trim();
+    if (!line) continue;
+    if (records.length >= ASC_LIMITS.maxRecords) {
+      findings.push({ kind: 'asc-limit-exceeded', line: index + 1,
+        reason: `schematic exceeds the ${ASC_LIMITS.maxRecords}-record limit` });
+      break;
+    }
     let match;
-    if ((match = /^WIRE\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)$/i.exec(line))) {
-      wires.push(match.slice(1).map(Number)); current = null;
+    if ((match = /^Version\s+(\d+(?:\.\d+)?)$/i.exec(line))) {
+      version = match[1]; records.push({ type: 'VERSION', line: index + 1, source, value: version });
+    } else if ((match = /^SHEET\s+(\d+)\s+(-?\d+)\s+(-?\d+)$/i.exec(line))) {
+      sheet = { number: Number(match[1]), width: Number(match[2]), height: Number(match[3]), line: index + 1 };
+      records.push({ type: 'SHEET', line: index + 1, source, ...sheet });
+    } else if ((match = /^WIRE\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)$/i.exec(line))) {
+      const coordinates = match.slice(1).map(Number);
+      wires.push(coordinates); records.push({ type: 'WIRE', line: index + 1, source, coordinates });
     } else if ((match = /^FLAG\s+(-?\d+)\s+(-?\d+)\s+(.+)$/i.exec(line))) {
-      flags.push({ x: Number(match[1]), y: Number(match[2]), name: match[3].trim() }); current = null;
-    } else if ((match = /^SYMBOL\s+(\S+)\s+(-?\d+)\s+(-?\d+)\s+(\S+)$/i.exec(line))) {
-      current = { source: line, lib: match[1], x: Number(match[2]), y: Number(match[3]),
-        orientation: match[4], attrs: {}, line: index + 1 };
+      const flag = { x: Number(match[1]), y: Number(match[2]), name: match[3].trim(), line: index + 1 };
+      flags.push(flag); records.push({ type: 'FLAG', source, ...flag });
+    } else if ((match = /^SYMBOL\s+(.+?)\s+(-?\d+)\s+(-?\d+)\s+(\S+)$/i.exec(line))) {
+      if (symbols.length >= ASC_LIMITS.maxSymbols) {
+        findings.push({ kind: 'asc-limit-exceeded', line: index + 1,
+          reason: `schematic exceeds the ${ASC_LIMITS.maxSymbols}-symbol limit`, source });
+        records.push({ type: 'SYMBOL', line: index + 1, source, refused: true });
+        current = null; continue;
+      }
+      current = { source, lib: match[1], x: Number(match[2]), y: Number(match[3]),
+        orientation: match[4], attrs: {}, attributeRecords: [], windows: [], line: index + 1 };
       symbols.push(current);
+      records.push({ type: 'SYMBOL', line: index + 1, source, symbolIndex: symbols.length - 1,
+        library: current.lib, x: current.x, y: current.y, orientation: current.orientation });
     } else if ((match = /^SYMATTR\s+(\S+)\s*(.*)$/i.exec(line)) && current) {
-      current.attrs[match[1].toLowerCase()] = match[2];
-    } else if ((match = /^TEXT\s+.*?\s!(.*)$/i.exec(line))) {
-      directives.push(match[1].trim()); current = null;
-    } else if (/^WINDOW\b/i.test(line)) {
-      ignoredLines.push({ line: index + 1, source: line,
+      const name = match[1]; const value = match[2]; const folded = name.toLowerCase();
+      if (Object.prototype.hasOwnProperty.call(current.attrs, folded)) findings.push({
+        kind: 'duplicate-symbol-attribute', line: index + 1, source,
+        reason: `${current.attrs.instname || current.lib} repeats SYMATTR ${name}; last value retained`,
+      });
+      current.attrs[folded] = value;
+      current.attributeRecords.push({ name, value, line: index + 1, source });
+      records.push({ type: 'SYMATTR', line: index + 1, source,
+        symbolIndex: symbols.indexOf(current), name, value });
+    } else if ((match = /^TEXT\s+(-?\d+)\s+(-?\d+)\s+(\S+)\s+(\d+)\s*(.*)$/i.exec(line))) {
+      const body = match[5]; const directive = body.startsWith('!') ? body.slice(1).trim() : null;
+      const textRecord = { x: Number(match[1]), y: Number(match[2]), alignment: match[3],
+        size: Number(match[4]), body, directive, line: index + 1, source };
+      texts.push(textRecord); records.push({ type: 'TEXT', ...textRecord });
+      if (directive !== null) directives.push(directive);
+    } else if ((match = /^WINDOW\s+(.*)$/i.exec(line))) {
+      const record = { line: index + 1, source, fields: match[1] };
+      if (current) current.windows.push(record);
+      records.push({ type: 'WINDOW', ...record,
+        ...(current ? { symbolIndex: symbols.indexOf(current) } : {}) });
+      ignoredLines.push({ line: index + 1, source,
         reason: 'symbol display annotation is not part of the bounded circuit projection' });
       // WINDOW records belong to the active SYMBOL and commonly precede or
       // separate its SYMATTR records. They do not end the symbol record.
     } else if (/^DATAFLAG\b/i.test(line)) {
-      ignoredLines.push({ line: index + 1, source: line,
+      records.push({ type: 'DATAFLAG', line: index + 1, source });
+      ignoredLines.push({ line: index + 1, source,
         reason: 'measurement annotation is not part of the bounded circuit projection' });
-      current = null;
     } else {
-      unknownLines.push({ line: index + 1, source: line }); current = null;
+      const record = { type: line.split(/\s+/, 1)[0].toUpperCase(), line: index + 1, source };
+      records.push(record); unknownLines.push({ line: index + 1, source });
     }
   }
-  return { wires, flags, symbols, directives, unknownLines, ignoredLines };
+  if (!['4', '4.1'].includes(version)) findings.push({ kind: 'unsupported-asc-version', line: 0,
+    reason: version === null ? 'schematic has no Version record' : `Version ${version} is not supported` });
+  if (!sheet) findings.push({ kind: 'missing-asc-sheet', line: 0, reason: 'schematic has no SHEET record' });
+  return { ok: !findings.some(item => ['asc-limit-exceeded', 'unsupported-asc-version',
+    'missing-asc-sheet'].includes(item.kind)), version, sheet, encoding: decoded.encoding,
+  rawText, records, wires, flags, symbols, texts, directives, findings, unknownLines, ignoredLines };
+}
+
+function documentPinDefinition(symbol, asset, spec) {
+  if (asset.document?.ok && asset.document.pins.length) {
+    return { status: 'supplied', pins: [...asset.document.pins]
+      .sort((a, b) => a.spiceOrder - b.spiceOrder)
+      .map(pin => ({ x: pin.x, y: pin.y, spiceOrder: pin.spiceOrder,
+        pinName: pin.pinName, orientation: pin.orientation, labelOffset: pin.labelOffset })) };
+  }
+  if (spec) return { status: 'builtin', pins: spec.pins.map(([x, y], index) => ({
+    x, y, spiceOrder: index + 1, pinName: spec.terminals[index],
+  })) };
+  return { status: asset.supplied ? 'refused' : 'missing', pins: [] };
+}
+
+const SPICE_PROJECTABLE_PREFIXES = new Set(['Q', 'M', 'E', 'G', 'X']);
+const SPICE_PREFIX_PIN_COUNTS = Object.freeze({ Q: 3, M: 4, E: 4, G: 4 });
+
+function sourceModelMap(directives) {
+  const models = new Map();
+  for (const source of directives) {
+    const match = /^\.model\b(.*)$/is.exec(source);
+    if (!match) continue;
+    const parsed = parseSpiceModelDeclaration(match[1]);
+    if (parsed?.name) models.set(parsed.name.toLowerCase(), parsed);
+  }
+  return models;
+}
+
+function modelProjectionLoss(prefix, attrs, models, ref) {
+  if (prefix !== 'Q' && prefix !== 'M') return null;
+  const modelName = String(attrs.spicemodel || attrs.value || '').trim().split(/\s+/, 1)[0];
+  const model = models.get(modelName.toLowerCase());
+  if (!model) return { ref, kind: 'unsupported-or-missing-device-model',
+    source: `SYMATTR Value ${modelName || '(missing)'}`,
+    reason: `${prefix === 'Q' ? 'BJT' : 'MOSFET'} model ${modelName || '(missing)'} is not declared; `
+      + 'the native part is retained for editing but default physics is not analysis-safe', fallback: null };
+  const expected = prefix === 'Q' ? new Set(['NPN', 'PNP']) : new Set(['NMOS', 'PMOS']);
+  if (!expected.has(model.type)) return { ref, kind: 'unsupported-device-model',
+    source: `.model ${model.name} ${model.type} ${model.body}`,
+    reason: `model type ${model.type || '(missing)'} does not match ${prefix}`, fallback: null };
+  const allowed = prefix === 'Q'
+    ? new Set(['is', 'bf', 'br', 'nf']) : new Set(['level', 'vto', 'kp', 'lambda']);
+  const unsupported = Object.keys(model.params).filter(name => !allowed.has(name));
+  if (prefix === 'M' && model.params.level !== undefined && model.params.level !== 1) {
+    unsupported.unshift(`level=${model.params.level}`);
+  }
+  if (!unsupported.length) return null;
+  return { ref, kind: 'unsupported-device-model-fields',
+    source: `.model ${model.name} ${model.type} ${model.body}`,
+    reason: `native ${prefix} projection does not implement ${unsupported.join(', ')}`, fallback: null };
+}
+
+function instanceProjectionLosses(prefix, instance) {
+  const attrs = instance.effectiveAttrs;
+  const extra = [attrs.value2, attrs.spiceline, attrs.spiceline2]
+    .filter(value => String(value || '').trim()).join(' ').trim();
+  const losses = [];
+  if (prefix === 'M' && instance.pins[3]?.netId !== instance.pins[2]?.netId) {
+    losses.push({ ref: instance.ref, kind: 'unsupported-mosfet-bulk-terminal',
+      source: `SYMBOL ${instance.library} ${instance.x} ${instance.y} ${instance.orientation}`,
+      reason: 'the native MOSFET has no bulk terminal and source/bulk are on different source nets',
+      fallback: null });
+  }
+  if (!extra) return losses;
+  const supportedMos = prefix === 'M' && extra.split(/\s+/)
+    .every(field => /^(?:W|L)=\S+$/i.test(field));
+  if (!supportedMos) losses.push({ ref: instance.ref,
+    kind: prefix === 'X' ? 'unsupported-subcircuit-parameter-override' : 'unsupported-instance-netlist-fields',
+    source: extra,
+    reason: `${prefix} Value2/SpiceLine fields are retained but not fully represented by the native projection`,
+    fallback: null });
+  return losses;
+}
+
+function projectableCard(instance, drawing, options) {
+  const attrs = instance.effectiveAttrs;
+  const prefix = String(attrs.prefix || instance.ref?.[0] || '').toUpperCase();
+  if (!SPICE_PROJECTABLE_PREFIXES.has(prefix)) return null;
+  if (!instance.ref || instance.ref[0].toUpperCase() !== prefix || !/^\S+$/.test(instance.ref)) {
+    return { error: `InstName must be one token beginning with effective Prefix ${prefix}` };
+  }
+  const required = SPICE_PREFIX_PIN_COUNTS[prefix];
+  if (required && instance.pins.length !== required) {
+    return { error: `${prefix} projection needs ${required} SpiceOrder pins; definition has ${instance.pins.length}` };
+  }
+  if (prefix === 'X' && !instance.pins.length) return { error: 'X projection needs at least one SpiceOrder pin' };
+  const nodes = instance.pins.map((pin, index) => `__asc_pin_${index + 1}`);
+  const value = String(attrs.spicemodel || attrs.value || '').trim();
+  const value2 = String(attrs.value2 || '').trim();
+  const spiceLine = String(attrs.spiceline || '').trim();
+  const spiceLine2 = String(attrs.spiceline2 || '').trim();
+  const tail = [value, value2, spiceLine, spiceLine2].filter(Boolean).join(' ');
+  if (!tail) return { error: `${prefix} projection has no Value/SpiceModel netlist tail` };
+  let inSubcircuit = false;
+  const definitions = drawing.directives.filter(source => {
+    if (/^\.subckt\b/i.test(source)) { inSubcircuit = true; return true; }
+    if (/^\.ends\b/i.test(source)) { inSubcircuit = false; return true; }
+    return inSubcircuit || /^\.(?:model|param|params|func|temp|options?)\b/i.test(source);
+  });
+  const deck = ['LTspice ASC electrical projection', ...definitions,
+    `${instance.ref} ${nodes.join(' ')} ${tail}`, '.end'].join('\n');
+  const imported = importSpice(deck, { libraries: options?.libraries || options?.spiceLibraries || [] });
+  let consumedDefinitions = [];
+  if (prefix === 'Q' || prefix === 'M') {
+    const modelName = value.split(/\s+/, 1)[0].toLowerCase();
+    consumedDefinitions = definitions.filter(source => {
+      const parsed = /^\.model\b(.*)$/is.exec(source);
+      return parsed && parseSpiceModelDeclaration(parsed[1])?.name.toLowerCase() === modelName;
+    });
+  } else if (prefix === 'X') {
+    const subcircuit = value.split(/\s+/, 1)[0].toLowerCase();
+    let keep = false;
+    consumedDefinitions = definitions.filter(source => {
+      const start = /^\.subckt\s+(\S+)/i.exec(source);
+      if (start) keep = start[1].toLowerCase() === subcircuit;
+      const retained = keep;
+      if (/^\.ends\b/i.test(source)) keep = false;
+      return retained;
+    });
+  }
+  return { prefix, nodes, deck, consumedDefinitions, imported };
+}
+
+/** Build format-level connectivity without requiring a bw-board device kind. */
+function buildSourceDocument(drawing, options, symbolAssets) {
+  const findings = [...drawing.findings];
+  const dependencies = [];
+  const dependencyKeys = new Set();
+  const net = new NetSolver();
+  drawing.wires.forEach(([x1, y1, x2, y2]) => net.addSegment(x1, y1, x2, y2));
+  drawing.flags.forEach(flag => net.addName(flag.x, flag.y,
+    flag.name === '0' ? '__LTSPICE_GND__' : flag.name.toLowerCase()));
+
+  const instances = drawing.symbols.map((symbol, index) => {
+    const library = symbol.lib.replace(/\\/g, '/').split('/').at(-1).toLowerCase();
+    const spec = SYMBOLS.get(library);
+    const asset = symbolAsset(symbol.lib, options, symbolAssets);
+    const definition = documentPinDefinition(symbol, asset, spec);
+    const effectiveAttrs = { ...(asset.document?.ok ? asset.document.attrs : {}), ...symbol.attrs };
+    const normalizedName = asset.normalizedName || normalizeLtspiceSymbolName(symbol.lib) || symbol.lib;
+    if (!dependencyKeys.has(normalizedName)) {
+      dependencyKeys.add(normalizedName);
+      dependencies.push({ kind: 'symbol', name: normalizedName, status: definition.status,
+        ...(asset.declaredSha256 ? { declaredSha256: asset.declaredSha256 } : {}),
+        ...(asset.error ? { reason: asset.error } : {}),
+        ...(asset.document ? { document: asset.document } : {}) });
+    }
+    const instanceId = `asc-symbol-${index + 1}`;
+    const pins = definition.pins.map(pin => {
+      const absolute = placeLtspicePin(pin.x, pin.y, symbol);
+      if (!absolute) {
+        findings.push({ kind: 'unsupported-symbol-orientation', line: symbol.line,
+          ref: symbol.attrs.instname || instanceId,
+          reason: `orientation ${symbol.orientation} cannot place ${normalizedName} pins` });
+        return { ...pin, absolute: null, netId: null };
+      }
+      net.addPoint(absolute[0], absolute[1]);
+      return { ...pin, absolute, netId: null };
+    });
+    if (!pins.length) findings.push({ kind: 'missing-symbol-pin-definition', line: symbol.line,
+      ref: symbol.attrs.instname || instanceId,
+      reason: `${normalizedName} has no caller-supplied or verified built-in pin definition` });
+    return { id: instanceId, ref: symbol.attrs.instname || null, library: symbol.lib,
+      normalizedLibrary: normalizedName, x: symbol.x, y: symbol.y,
+      orientation: symbol.orientation, line: symbol.line, attrs: { ...symbol.attrs },
+      effectiveAttrs,
+      attributeRecords: symbol.attributeRecords.map(record => ({ ...record })),
+      windows: symbol.windows.map(record => ({ ...record })), definitionStatus: definition.status, pins };
+  });
+  const instanceRefs = new Map();
+  for (const instance of instances) {
+    if (!instance.ref) continue;
+    const folded = instance.ref.toLowerCase();
+    if (instanceRefs.has(folded)) findings.push({ kind: 'duplicate-instance-name',
+      line: instance.line, ref: instance.ref,
+      reason: `InstName ${instance.ref} is also used by ${instanceRefs.get(folded)}` });
+    else instanceRefs.set(folded, instance.id);
+  }
+
+  net.solve();
+  const roots = new Map();
+  const ensure = root => {
+    if (root == null) return null;
+    if (!roots.has(root)) roots.set(root, { root, aliases: [], terminals: [], points: [] });
+    return roots.get(root);
+  };
+  drawing.wires.forEach(coordinates => {
+    ensure(net.netAt(coordinates[0], coordinates[1]))?.points.push(coordinates.slice(0, 2));
+    ensure(net.netAt(coordinates[2], coordinates[3]))?.points.push(coordinates.slice(2, 4));
+  });
+  drawing.flags.forEach(flag => {
+    const group = ensure(net.netAt(flag.x, flag.y));
+    if (group && !group.aliases.includes(flag.name)) group.aliases.push(flag.name);
+  });
+  instances.forEach(instance => instance.pins.forEach(pin => {
+    if (!pin.absolute) return;
+    const group = ensure(net.netAt(pin.absolute[0], pin.absolute[1]));
+    if (!group) return;
+    group.terminals.push({ instanceId: instance.id, ref: instance.ref,
+      spiceOrder: pin.spiceOrder, pinName: pin.pinName });
+  }));
+  const nets = [...roots.values()].map((group, index) => ({
+    id: `asc-net-${index + 1}`,
+    name: group.aliases.includes('0') ? '0' : group.aliases[0] || null,
+    aliases: group.aliases,
+    terminals: group.terminals,
+    points: group.points,
+  }));
+  const idByRoot = new Map([...roots.keys()].map((root, index) => [root, `asc-net-${index + 1}`]));
+  instances.forEach(instance => instance.pins.forEach(pin => {
+    if (pin.absolute) pin.netId = idByRoot.get(net.netAt(pin.absolute[0], pin.absolute[1])) || null;
+  }));
+  for (const item of nets) {
+    const folded = new Set(item.aliases.map(alias => alias === '0' ? '0' : alias.toLowerCase()));
+    if (folded.size > 1) findings.push({ kind: 'conflicting-net-labels', line: 0,
+      reason: `one geometric net carries distinct aliases: ${item.aliases.join(', ')}`, netId: item.id });
+  }
+  const includes = drawing.directives.filter(source => /^\.(?:include|inc|lib)\b/i.test(source));
+  includes.forEach(source => dependencies.push({ kind: 'spice-library', name: source,
+    status: 'not-resolved', reason: 'ASC import never opens directive paths' }));
+  return {
+    format: 'ltspice-asc', ok: drawing.ok, version: drawing.version,
+    encoding: drawing.encoding, sheet: drawing.sheet, rawText: drawing.rawText,
+    records: drawing.records.map(record => ({ ...record })),
+    instances, nets,
+    texts: drawing.texts.map(record => ({ ...record })),
+    directives: drawing.directives.map(source => ({ source })),
+    dependencies, findings,
+    stats: {
+      records: drawing.records.length, symbols: instances.length,
+      pinsRecovered: instances.reduce((sum, instance) => sum + instance.pins.length, 0),
+      symbolsWithPins: instances.filter(instance => instance.pins.length).length,
+      wires: drawing.wires.length, flags: drawing.flags.length, nets: nets.length,
+      unknownRecords: drawing.unknownLines.length,
+    },
+  };
 }
 
 function staticValue(raw, constants = new Map()) {
@@ -330,13 +683,16 @@ export function importLtspiceAsc(text, options = {}) {
   const symbolAssets = new Map();
   const sourceSymbols = [];
   const sourceSymbolRecords = new Map();
-  if (!looksLikeLtspiceAsc(text)) {
+  const drawing = parseLtspiceAscDocument(text, options);
+  const sourceDocument = buildSourceDocument(drawing, options, symbolAssets);
+  sourceDocument.electricalProjection = { mappedInstances: [], refusedInstances: [] };
+  if (!drawing.ok) {
     return { parts, wires: [], warnings: ['Not an LTspice Version 4 ASCII schematic.'],
-      unmapped, losses, ignored, analyses, sourceDirectives, netNames: [], sourceSymbols };
+      unmapped, losses, ignored, analyses, sourceDirectives, netNames: [], sourceSymbols,
+      sourceDocument };
   }
-
-  const drawing = parse(text);
   const ascModels = collectAscModels(drawing.directives);
+  const sourceModels = sourceModelMap(drawing.directives);
   const diodeThermal = classifyAscShockleyThermal(drawing.directives);
   const usedModelDirectiveIndexes = new Set();
   const blockedModelDirectiveIndexes = new Set();
@@ -358,8 +714,11 @@ export function importLtspiceAsc(text, options = {}) {
   }
 
   const placements = [];
+  const projectedMemberships = [];
+  const projectedWires = [];
+  const usedProjectionDirectives = new Set();
   const used = new Set();
-  for (const symbol of drawing.symbols) {
+  for (const [symbolIndex, symbol] of drawing.symbols.entries()) {
     const lib = symbol.lib.replace(/\\/g, '/').split('/').at(-1).toLowerCase();
     const spec = SYMBOLS.get(lib);
     const asset = symbolAsset(symbol.lib, options, symbolAssets);
@@ -387,10 +746,55 @@ export function importLtspiceAsc(text, options = {}) {
     if (!symbol.attrs.instname) delete effectiveAttrs.instname;
     const ref = symbol.attrs.instname || '?';
     if (!spec) {
+      const instance = sourceDocument.instances[symbolIndex];
+      const projected = instance?.pins.length ? projectableCard(instance, drawing, options) : null;
+      if (projected && !projected.error && projected.imported.parts.length
+          && !projected.imported.unmapped.length
+          && projected.imported.parts.every(part => !used.has(part.id))) {
+        const projectionLosses = [...projected.imported.losses,
+          ...instanceProjectionLosses(projected.prefix, instance)];
+        const modelLoss = modelProjectionLoss(projected.prefix,
+          instance.effectiveAttrs, sourceModels, instance.ref);
+        if (modelLoss) projectionLosses.push(modelLoss);
+        const blockers = projectionLosses.map(loss => ({ type: 'semantic-import-loss', ...loss }));
+        for (const [partIndex, projectedPart] of projected.imported.parts.entries()) {
+          used.add(projectedPart.id);
+          parts.push({ ...projectedPart, x: symbol.x + partIndex * 24, y: symbol.y + partIndex * 24,
+            sourceInstance: instance.id,
+            ...(blockers.length ? { analysisBlockers: [
+              ...(projectedPart.analysisBlockers || []), ...blockers,
+            ] } : {}) });
+        }
+        projectedWires.push(...projected.imported.wires);
+        projected.consumedDefinitions.forEach(source => usedProjectionDirectives.add(source));
+        for (const [pinIndex, pin] of instance.pins.entries()) {
+          const named = projected.imported.netNames.find(item =>
+            item.name.toLowerCase() === projected.nodes[pinIndex].toLowerCase());
+          if (!pin.absolute || !named) continue;
+          net.addPoint(pin.absolute[0], pin.absolute[1]);
+          projectedMemberships.push({ x: pin.absolute[0], y: pin.absolute[1],
+            members: named.terminals.map(member => ({
+              part: member.partId, terminal: member.terminal,
+            })) });
+        }
+        losses.push(...projectionLosses);
+        warnings.push(...projected.imported.warnings.map(message => `${instance.ref}: ${message}`));
+        sourceDocument.electricalProjection.mappedInstances.push({ instanceId: instance.id,
+          ref: instance.ref, prefix: projected.prefix,
+          partIds: projected.imported.parts.map(part => part.id),
+          card: projected.deck.split('\n').at(-2), losses: projectionLosses.length });
+        continue;
+      }
+      const projectionReason = projected?.error
+        || (projected?.imported.unmapped || []).map(item => item.libsource).join('; ')
+        || (instance?.pins.length ? 'effective Prefix is not supported by the native/SPICE projection'
+          : 'no symbol pin definition is available');
       unmapped.push({ ref, value: effectiveAttrs.value || '',
-        libsource: `${symbol.lib}: no verified standard-symbol electrical rule in the bounded ASC importer`,
+        libsource: `${symbol.lib}: ${projectionReason}`,
         ...(asset.supplied ? { sourceSymbol: asset.normalizedName || String(symbol.lib) } : {}) });
       warnings.push(`Unmapped LTspice symbol: ${ref} (${symbol.lib})`);
+      sourceDocument.electricalProjection.refusedInstances.push({ instanceId: instance?.id,
+        ref: instance?.ref, reason: projectionReason });
       continue;
     }
     if (definition.error) {
@@ -481,6 +885,13 @@ export function importLtspiceAsc(text, options = {}) {
         handling: 'constant-expression' });
       continue;
     }
+    if (usedProjectionDirectives.has(directive)) {
+      sourceDirectives.push({ source: directive,
+        kind: /^\.model\b/i.test(directive) ? 'model-definition' : 'subcircuit-definition',
+        handling: 'shared-spice-projection' });
+      ignored.push({ source: directive, reason: 'consumed by a shared SPICE electrical projection' });
+      continue;
+    }
     if (usedModelDirectiveIndexes.has(directiveIndex)) {
       sourceDirectives.push({ source: directive, kind: 'model-definition',
         handling: blockedModelDirectiveIndexes.has(directiveIndex)
@@ -539,6 +950,10 @@ export function importLtspiceAsc(text, options = {}) {
       if (live.has(netId)) attached++; else floating++;
     });
   }
+  for (const projected of projectedMemberships) {
+    const netId = net.netAt(projected.x, projected.y);
+    for (const member of projected.members) join(netId, member.part, member.terminal);
+  }
   if (drawing.flags.some(flag => flag.name === '0')) {
     const id = makeId('GND1', used);
     parts.push({ id, kind: 'gnd', params: {}, x: 0, y: 0 });
@@ -567,10 +982,13 @@ export function importLtspiceAsc(text, options = {}) {
   });
   annotateImportedSingletonTerminals(parts, byNet.values());
   const resolved = wiresFromNets(byNet);
-  warnings.push(`geometry: ${attached}/${placements.length * 2} mapped pins landed on a wire or flag `
+  resolved.wires.push(...projectedWires);
+  const mappedPinCount = placements.reduce((sum, placement) => sum + placement.pins.length, 0);
+  warnings.push(`geometry: ${attached}/${mappedPinCount} mapped pins landed on a wire or flag `
     + `(${resolved.nets} connected nets, ${drawing.flags.length} flags)`);
   if (floating) warnings.push(`${floating} mapped pin(s) are electrically floating`);
   if (!parts.length) warnings.push('No mappable components found in LTspice ASC schematic.');
+  sourceDocument.projectionSnapshot = sourceDocumentProjection(parts, resolved.wires);
   return { parts, wires: resolved.wires, warnings, unmapped, losses, ignored,
-    analyses, sourceDirectives, netNames, sourceSymbols };
+    analyses, sourceDirectives, netNames, sourceSymbols, sourceDocument };
 }

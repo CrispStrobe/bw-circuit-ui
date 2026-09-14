@@ -783,6 +783,24 @@ export class Circuit {
   }
 
   /**
+   * Explicitly adopt the supported source-on DC point as time-zero state for a
+   * non-UIC transient. Persisted import findings are enforced here just as for
+   * operatingPoint(), so a parts/wires-only caller cannot wash out a semantic
+   * loss before initializing storage.
+   *
+   * @returns {object}
+   */
+  initializeTransientFromOperatingPoint() {
+    if (this.analysisBlockers?.length) {
+      throw new Error(`initializeTransientFromOperatingPoint: blocked by ${this.analysisBlockers.length} persisted import finding(s)`);
+    }
+    if (!this.board || typeof this.board.initializeTransientFromOperatingPoint !== 'function') {
+      throw new Error('initializeTransientFromOperatingPoint: the injected bw-board engine does not provide this analysis');
+    }
+    return this.board.initializeTransientFromOperatingPoint();
+  }
+
+  /**
    * @param {string} netA
    * @param {string} netB
    * @returns {number|'requires-power-off'}
