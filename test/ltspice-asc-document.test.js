@@ -105,3 +105,102 @@ test('byte input detects and decodes UTF-16LE ASC documents', () => {
   assert.equal(sourceDocument.stats.pinsRecovered, 6);
 });
 
+test('legacy absolute symbol libraries with escaped spaces remain document instances only', () => {
+  const source = `Version 4
+SHEET 1 880 680
+SYMBOL C:\\PROGRAM\\ FILES\\LTC\\SWCADIII\\lib\\sym\\Digital\\and 100 200 R0
+SYMATTR InstName A1
+`;
+  const { sourceDocument, parts, unmapped } = importCircuit('ltspice-asc', source);
+  assert.equal(sourceDocument.records.length, 4);
+  assert.equal(sourceDocument.instances.length, 1);
+  assert.equal(sourceDocument.instances[0].library,
+    'C:\\PROGRAM\\ FILES\\LTC\\SWCADIII\\lib\\sym\\Digital\\and');
+  assert.equal(sourceDocument.instances[0].definitionStatus, 'refused');
+  assert.equal(parts.length, 0);
+  assert.equal(unmapped.length, 1);
+});
+
+const asy = (prefix, count) => `Version 4
+SymbolType CELL
+${Array.from({ length: count }, (_, index) => `PIN 0 ${index * 16} LEFT 8
+PINATTR PinName P${index + 1}
+PINATTR SpiceOrder ${index + 1}`).join('\n')}
+SYMATTR Prefix ${prefix}
+`;
+
+test('projects one R/C/L/D/Q/M/E/G/X document through shared native/SPICE semantics', () => {
+  const symbols = new Map([
+    ['q_device', asy('Q', 3)], ['m_device', asy('M', 4)],
+    ['e_device', asy('E', 4)], ['g_device', asy('G', 4)], ['x_device', asy('X', 2)],
+  ]);
+  const records = ['Version 4', 'SHEET 1 1000 700'];
+  const add = (library, ref, value, x, count, aliases = []) => {
+    records.push(`SYMBOL ${library} ${x} 100 R0`, `SYMATTR InstName ${ref}`, `SYMATTR Value ${value}`);
+    for (let index = 0; index < count; index++) {
+      records.push(`FLAG ${x} ${100 + index * 16} ${aliases[index] || `${ref}_P${index + 1}`}`);
+    }
+  };
+  add('q_device', 'Q1', 'QMOD', 100, 3);
+  add('m_device', 'M1', 'MMOD', 200, 4, ['MD', 'MG', 'MS', 'MS']);
+  add('e_device', 'E1', '2.5', 300, 4);
+  add('g_device', 'G1', '1m', 400, 4);
+  add('x_device', 'X1', 'CHILD', 500, 2);
+  records.push(
+    'SYMBOL res 600 100 R0', 'SYMATTR InstName R1', 'SYMATTR Value 2k',
+    'FLAG 616 116 R_A', 'FLAG 616 196 R_B',
+    'SYMBOL cap 700 100 R0', 'SYMATTR InstName C1', 'SYMATTR Value 2u',
+    'FLAG 716 100 C_A', 'FLAG 716 164 C_B',
+    'SYMBOL ind 800 100 R0', 'SYMATTR InstName L1', 'SYMATTR Value 3m',
+    'FLAG 816 116 L_A', 'FLAG 816 196 L_B',
+    'SYMBOL diode 900 100 R0', 'SYMATTR InstName D1', 'SYMATTR Value DMOD',
+    'FLAG 916 100 D_A', 'FLAG 916 164 D_K',
+  );
+  records.push(
+    'TEXT 8 480 Left 2 !.model DMOD D (IS=1e-14 N=1 RS=0.1)',
+    'TEXT 8 500 Left 2 !.model QMOD NPN (IS=1e-14 BF=150)',
+    'TEXT 8 520 Left 2 !.model MMOD NMOS (LEVEL=1 VTO=1 KP=1m LAMBDA=0.01)',
+    'TEXT 8 540 Left 2 !.subckt CHILD P N',
+    'TEXT 8 560 Left 2 !RIN P N 1k',
+    'TEXT 8 580 Left 2 !.ends CHILD',
+  );
+
+  const result = importCircuit('ltspice-asc', `${records.join('\n')}\n`, { symbols });
+  const kinds = result.parts.map(part => part.kind);
+  assert.deepEqual(kinds.sort(),
+    ['resistor', 'capacitor', 'inductor', 'diode', 'nmos', 'npn', 'resistor', 'vccs', 'vcvs'].sort());
+  assert.equal(result.unmapped.length, 0);
+  assert.equal(result.sourceDocument.electricalProjection.mappedInstances.length, 5);
+  assert.deepEqual(result.sourceDocument.electricalProjection.mappedInstances
+    .map(item => item.prefix), ['Q', 'M', 'E', 'G', 'X']);
+  assert.equal(result.sourceDocument.stats.pinsRecovered, 25);
+  assert.ok(result.parts.find(part => part.id === 'Q1').params.is > 0);
+  assert.equal(result.parts.find(part => part.id === 'M1').params.vth, 1);
+  assert.equal(result.losses.some(loss => loss.kind === 'unsupported-mosfet-bulk-terminal'), false,
+    'a source/bulk named-net tie is representable by the native three-terminal MOSFET');
+  assert.ok(result.parts.some(part => part.id === 'X1.RIN'));
+});
+
+test('native projection keeps unsupported Q/M physics as blockers instead of defaults', () => {
+  const symbols = new Map([['q_device', asy('Q', 3)], ['m_device', asy('M', 4)]]);
+  const source = `Version 4
+SHEET 1 500 300
+SYMBOL q_device 100 100 R0
+SYMATTR InstName Q1
+SYMATTR Value UNDECLARED
+SYMBOL m_device 200 100 R0
+SYMATTR InstName M1
+SYMATTR Value MMOD
+FLAG 200 132 SOURCE
+FLAG 200 148 BULK
+TEXT 8 250 Left 2 !.model MMOD NMOS (LEVEL=3 VTO=1 KP=1m CGSO=2p)
+`;
+  const result = importCircuit('ltspice-asc', source, { symbols });
+  assert.ok(result.parts.some(part => part.id === 'Q1'));
+  assert.ok(result.parts.some(part => part.id === 'M1'));
+  assert.ok(result.losses.some(loss => loss.kind === 'unsupported-or-missing-device-model'));
+  assert.ok(result.losses.some(loss => loss.kind === 'unsupported-device-model-fields'));
+  assert.ok(result.losses.some(loss => loss.kind === 'unsupported-mosfet-bulk-terminal'));
+  assert.ok(result.parts.find(part => part.id === 'Q1').analysisBlockers.length);
+  assert.ok(result.parts.find(part => part.id === 'M1').analysisBlockers.length);
+});
