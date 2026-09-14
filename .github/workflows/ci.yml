@@ -45,6 +45,8 @@ jobs:
           test -d /usr/share/doc/ngspice/examples || { echo "::error::ngspice example decks missing"; exit 1; }
 
       - run: npm install
+      - name: Loaded Board provenance guard
+        run: npm run verify:board-provenance
       - run: npm test
       - run: npm run test:source-precision
 

@@ -2898,6 +2898,7 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
       ...(r.analyses?.length ? { sourceAnalysis: {
         version: 1, format, sourceName: file.name,
         analyses: r.analyses, netNames: r.netNames || [],
+        retainedDirectives: r.retainedDirectives || [],
       } } : {}),
       ...(importedSourceDocuments.length ? { sourceDocuments: [
         ...(r.sourceDocument ? [r.sourceDocument] : []),

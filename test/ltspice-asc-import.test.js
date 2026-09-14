@@ -756,4 +756,25 @@ TEXT 0 280 Left 2 !.temp 50
     assert.equal(runs.length, 4);
     assert.ok(runs.every(run => run.classification === 'import-fidelity' && run.status === 'refused'));
   });
+
+  it('preserves output-only directives without making them analyses or semantic losses', () => {
+    const imported = importCircuit('ltspice-asc', `${PAIRED_ASC}
+TEXT 0 200 Left 2 !.four 1k v(vp)
+TEXT 0 220 Left 2 !.meas tran peak MAX v(vp)
+TEXT 0 240 Left 2 !.options plotwinsize=0
+TEXT 0 260 Left 2 !.options reltol=1e-5
+TEXT 0 280 Left 2 !.ic v(vp)=0
+`);
+    assert.deepEqual(imported.analyses, ['.op']);
+    assert.deepEqual(imported.retainedDirectives.map(item => item.source), [
+      '.four 1k v(vp)', '.meas tran peak MAX v(vp)', '.options plotwinsize=0',
+    ]);
+    assert.ok(imported.retainedDirectives.every(item =>
+      item.kind === 'output-request' && item.handling === 'preserved-not-executed'));
+    assert.ok(imported.retainedDirectives.every(item => !imported.ignored.includes(item.source)),
+      'preserved-but-unrequested must not be folded into ignored drawing records');
+    assert.deepEqual(imported.losses.map(item => item.source), [
+      '.options reltol=1e-5', '.ic v(vp)=0',
+    ]);
+  });
 });

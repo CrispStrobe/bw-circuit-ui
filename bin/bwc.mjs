@@ -10,7 +10,7 @@
  *
  *   bwc info      <file>                    what is in it, and what did not map
  *   bwc op        <file>                    independent static DC operating point
- *   bwc analyze   <file> --profile precision-v1  source-declared analyses
+ *   bwc analyze   <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1]
  *   bwc convert   <file> --to eagle|kicad-sch|kicad|spice|json [-o out]
  *   bwc render    <file> [-o out.svg] [--dark]
  *   bwc roundtrip <file>                    import -> export -> import, compared
@@ -104,7 +104,7 @@ for (let i = 1; i < args.length; i++) {
   // Value-taking flags must be listed, or the value silently becomes a
   // positional and the flag reads as a bare boolean — which is how --render
   // quietly rendered nothing.
-  if (['-o', '--to', '--render', '--profile'].includes(args[i])) opts[args[i].replace(/^-+/, '')] = args[++i];
+  if (['-o', '--to', '--render', '--profile', '--observations'].includes(args[i])) opts[args[i].replace(/^-+/, '')] = args[++i];
   else if (args[i].startsWith('--')) opts[args[i].slice(2)] = true;
   else positional.push(args[i]);
 }
@@ -113,7 +113,7 @@ const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
     + '  bwc op      <file>\n'
-    + '  bwc analyze <file> --profile precision-v1 [--json]\n'
+    + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
     + '\n  audit <dir> [dir...]        four-layer readiness per part kind'
@@ -295,6 +295,10 @@ switch (cmd) {
     if (opts.profile !== 'precision-v1') {
       die('analyze is an explicit high-accuracy action; select --profile precision-v1');
     }
+    const observationProfile = opts.observations || 'source-declared-v1';
+    if (!['source-declared-v1', 'bounded-research-v1'].includes(observationProfile)) {
+      die('analyze --observations must be source-declared-v1 or bounded-research-v1');
+    }
     const c = await loadOrDie(file);
     const source = c.sourceAnalysis || c;
     if (!Array.isArray(source.analyses) || !source.analyses.length) {
@@ -307,15 +311,18 @@ switch (cmd) {
       ...c, analyses: source.analyses, netNames: source.netNames || [],
       analysisBlockers: c.analysisBlockers || [],
     }, { format: source.format || c.format, sourceName: source.sourceName || basename(file),
-      transientProfile: opts.profile });
+      transientProfile: opts.profile, observationProfile });
+    const retainedDirectives = source.retainedDirectives || c.retainedDirectives || [];
     if (opts.json) {
       console.log(JSON.stringify({ source: basename(file), format: c.format,
         liveGUIProfile: 'interactive-v1', requestedTransientProfile: opts.profile,
-        results }, null, 2));
+        requestedObservationProfile: observationProfile, retainedDirectives, results }, null, 2));
     } else {
       console.log(`${basename(file)}  [${c.format}]  source analyses`);
       console.log('  live GUI profile : interactive-v1');
       console.log('  requested profile: precision-v1 (transient analyses only)');
+      console.log(`  observation profile: ${observationProfile}${observationProfile === 'bounded-research-v1' ? ' (opt-in adapted output grid)' : ''}`);
+      if (retainedDirectives.length) console.log(`  retained unrequested directives: ${retainedDirectives.length}`);
       for (const result of results) {
         const execution = result.executionProfile || result.conditions?.executionProfile;
         const pass = result.status === 'pass';
@@ -326,6 +333,7 @@ switch (cmd) {
         console.log('      oracle  : not performed; no agreement claim');
         if (execution) {
           console.log(`      profile : ${execution.configured?.id || execution.requested}`);
+          console.log(`      mode    : ${execution.integrationMode || 'not reported'}`);
           console.log(`      qualified local steps: ${execution.qualification?.accuracyMet === true ? 'yes' : 'no'}; not a global output-accuracy guarantee`);
           if (execution.work) console.log(`      work    : ${execution.work.attempts} attempts, ${execution.work.solves} solves, ${execution.work.advances} advances`);
         }
@@ -358,8 +366,12 @@ switch (cmd) {
       for (const w of r.warnings) console.error('  warning: ' + w);
       text = r.text; ext = '.kicad_sch';
     } else if (to === 'json') {
+      const sourceAnalysis = c.sourceAnalysis || (c.analyses?.length ? {
+        version: 1, format: c.format, sourceName: basename(file), analyses: c.analyses,
+        netNames: c.netNames || [], retainedDirectives: c.retainedDirectives || [],
+      } : null);
       text = JSON.stringify({ vcc: 5, parts: c.parts, wires: c.wires,
-        ...(c.sourceAnalysis ? { sourceAnalysis: c.sourceAnalysis } : {}),
+        ...(sourceAnalysis ? { sourceAnalysis } : {}),
         ...(c.sourceDocument || c.sourceDocuments?.length
           ? { sourceDocuments: [c.sourceDocument, ...(c.sourceDocuments || [])].filter(Boolean) } : {}) }, null, 1) + '\n'; ext = '.json';
     } else if (to === 'kicad' || to === 'spice') {

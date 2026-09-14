@@ -807,6 +807,7 @@ export function importLtspiceAsc(text, options = {}) {
   const ignored = [];
   const analyses = [];
   const sourceDirectives = [];
+  const retainedDirectives = [];
   const symbolAssets = new Map();
   const sourceSymbols = [];
   const sourceSymbolRecords = new Map();
@@ -818,7 +819,8 @@ export function importLtspiceAsc(text, options = {}) {
     sourceDocument.electricalProjection.numericStatus = 'blocked-before-projection';
     sourceDocument.instances.forEach(instance => { instance.electricalStatus = 'not-projected-invalid-document'; });
     return { parts, wires: [], warnings: ['Not an LTspice Version 4 ASCII schematic.'],
-      unmapped, losses, ignored, analyses, sourceDirectives, netNames: [], sourceSymbols,
+      unmapped, losses, ignored, analyses, sourceDirectives, retainedDirectives,
+      netNames: [], sourceSymbols,
       sourceDocument };
   }
   const ascModels = collectAscModels(drawing.directives);
@@ -1074,6 +1076,16 @@ export function importLtspiceAsc(text, options = {}) {
       ignored.push({ source: directive, reason: 'non-electrical LTspice metadata directive' });
       continue;
     }
+    const outputKind = /^\.(?:four|meas|measure|plot|print|save|probe|width|wave)\b/i.test(directive)
+      || /^\.options?\s+plotwinsize\s*=\s*0\s*$/i.test(directive);
+    if (outputKind) {
+      const record = { source: directive, kind: 'output-request',
+        handling: 'preserved-not-executed',
+        consequence: 'retained as an unrequested output/control card; source analysis does not execute it' };
+      sourceDirectives.push(record);
+      retainedDirectives.push(record);
+      continue;
+    }
     if (/^\.func\b/i.test(directive)) {
       sourceDirectives.push({ source: directive, kind: 'function-definition', handling: 'unsupported' });
       losses.push({ ref: 'TEXT', kind: 'unsupported-constant-function', source: directive,
@@ -1159,5 +1171,5 @@ export function importLtspiceAsc(text, options = {}) {
   sourceDocument.electricalProjection.semanticLosses = losses.length;
   sourceDocument.projectionSnapshot = sourceDocumentProjection(parts, resolved.wires);
   return { parts, wires: resolved.wires, warnings, unmapped, losses, ignored,
-    analyses, sourceDirectives, netNames, sourceSymbols, sourceDocument };
+    analyses, sourceDirectives, retainedDirectives, netNames, sourceSymbols, sourceDocument };
 }

@@ -28,7 +28,10 @@
 export { setEngine } from './engine.js';
 export { CircuitDesigner } from './components/CircuitDesigner.jsx';
 export { Circuit } from './model/circuit.js';
-export { runSourceAnalyses, sourceAnalysisDescriptors } from './model/source-analysis.js';
+export {
+  BOUNDED_RESEARCH_OBSERVATION_PROFILE, SOURCE_OBSERVATION_PROFILE,
+  runSourceAnalyses, sourceAnalysisDescriptors,
+} from './model/source-analysis.js';
 export { inferCircuit, checkWiring } from './model/inference.js';
 export { createMeterState, readMeter } from './model/multimeter.js';
 export { generatePartName, partToDeclaration, circuitToDeclarations } from './model/declarations.js';
