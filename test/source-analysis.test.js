@@ -148,6 +148,154 @@ R1 1 0 1k
     assert.deepEqual([subNs.status, subNs.code], ['not-run', 'tran-grid-not-representable']);
   });
 
+  it('keeps TSTEP, TSTART, TMAX, integration, and observation semantics separate', () => {
+    const fourField = runSourceAnalyses(imported(`four-field transient
+V1 in 0 2
+R1 in 0 1k
+C1 in 0 1n
+.tran 0 30u 10u 10u UIC
+.end
+`), { format: 'spice', transientProfile: 'precision-v1' })[0];
+    assert.equal(fourField.status, 'pass');
+    assert.equal(fourField.evidence, 'original-adapted');
+    assert.deepEqual(fourField.conditions.sourceArguments, {
+      source: '.tran 0 30u 10u 10u UIC', normalized: '.tran 0 30u 10u 10u uic',
+      tstepSec: 0, tstopSec: 30e-6, tstartSec: 10e-6, tmaxSec: 10e-6,
+      uic: true, startup: false,
+    });
+    assert.deepEqual(fourField.conditions.integrationWindow, { startSec: 0, stopSec: 30e-6 });
+    assert.deepEqual(fourField.conditions.outputWindow, { startSec: 10e-6, stopSec: 30e-6 });
+    assert.equal(fourField.observables.axis.values[0], 10e-6);
+    assert.equal(fourField.observables.axis.values.at(-1), 30e-6);
+    assert.match(fourField.adapted[0], /TSTEP is zero.*integration.*unchanged/i);
+
+    const nonDivisible = runSourceAnalyses(imported(`endpoint inclusion
+V1 in 0 2
+R1 in 0 1k
+C1 in 0 1n
+.tran 7n 20n UIC
+.end
+`), { format: 'spice', transientProfile: 'precision-v1' })[0];
+    assert.equal(nonDivisible.status, 'pass');
+    assert.deepEqual(nonDivisible.observables.axis.values, [0, 7e-9, 14e-9, 20e-9]);
+    assert.equal(nonDivisible.conditions.samplingProfile.endpointPolicy, 'include-tstop');
+  });
+
+  it('makes over-budget observation adaptation explicit and opt-in', () => {
+    const input = imported(`dense output request
+V1 in 0 2
+R1 in 0 1k
+C1 in 0 1n
+.tran 1n 3u UIC
+.end
+`);
+    const [exact] = runSourceAnalyses(input, { format: 'spice', transientProfile: 'precision-v1' });
+    assert.deepEqual([exact.status, exact.classification, exact.code],
+      ['not-run', 'integration-gap', 'analysis-budget-exceeded']);
+    assert.equal(exact.requestedObservationProfile, 'source-declared-v1');
+
+    const [adapted] = runSourceAnalyses(input, { format: 'spice', transientProfile: 'precision-v1',
+      observationProfile: 'bounded-research-v1' });
+    assert.equal(adapted.status, 'pass');
+    assert.equal(adapted.requestedObservationProfile, 'bounded-research-v1');
+    assert.equal(adapted.evidence, 'original-adapted');
+    assert.equal(adapted.conditions.samplingProfile.requestedPoints, 3001);
+    assert.equal(adapted.observables.axis.values.length, 101);
+    assert.match(adapted.adapted[0], /replaced the requested 3001-point.*101 bounded observations/i);
+  });
+
+  it('does not round fractional source edges and refuses an unenforced TMAX', () => {
+    const fractional = runSourceAnalyses(imported(`fractional source corner
+V1 in 0 PWL(0 0 .5n 1 2n 2)
+R1 in 0 1k
+.tran 1n 3n UIC
+.end
+`), { format: 'spice', transientProfile: 'precision-v1' })[0];
+    assert.equal(fractional.status, 'pass');
+    assert.deepEqual(fractional.conditions.sourceBreakpoints.exactSeconds, [0, 0.5e-9, 2e-9]);
+    assert.equal(fractional.conditions.sourceBreakpoints.fractionalNotRounded, 1);
+    assert.equal(fractional.conditions.sourceBreakpoints.integration,
+      'native-engine-source-edge-barriers');
+    assert.equal(fractional.conditions.sourceBreakpoints.addedToObservationGrid, false);
+    assert.ok(!fractional.conditions.sourceBreakpoints.publiclyRepresentableNanoseconds.includes(1),
+      'a 0.5 ns corner must not become a fabricated 1 ns observation');
+
+    const tooFine = runSourceAnalyses(imported(`tmax is an integration constraint
+V1 in 0 1
+R1 in 0 1k
+C1 in 0 1n
+.tran 1n 10n 0 1n UIC
+.end
+`), { format: 'spice', transientProfile: 'precision-v1' })[0];
+    assert.deepEqual([tooFine.status, tooFine.classification, tooFine.code],
+      ['not-run', 'integration-gap', 'tran-tmax-not-honored']);
+  });
+
+  it('runs source-declared single and nested DC sweeps as fresh static operating points', () => {
+    const single = runSourceAnalyses(imported(`single DC
+Vs in 0 0
+R1 in out 1k
+R2 out 0 1k
+.dc Vs 0V 1V .5V
+.end
+`), { format: 'spice' })[0];
+    assert.equal(single.status, 'pass');
+    assert.equal(single.classification, 'native-original');
+    assert.equal(single.evidence, 'original-direct');
+    assert.deepEqual(single.conditions.sourceArguments,
+      { source: '.dc Vs 0V 1V .5V', normalized: '.dc vs 0v 1v .5v' });
+    assert.deepEqual(single.observables.axis, {
+      quantity: 'dc-source',
+      dimensions: [{ sourceId: 's0', unit: 'V', values: [0, 0.5, 1] }],
+      order: 'single-source', coordinates: [[0], [0.5], [1]],
+    });
+    assert.ok(single.observables.nodes.find(node => node.id === 'n1').voltage
+      .every((value, index) => Math.abs(value - [0, 0.25, 0.5][index]) < 1e-9));
+    assert.equal(single.convergence.pointCount, 3);
+
+    const nested = runSourceAnalyses(imported(`nested DC
+Vx1 a 0 0
+Vx2 b 0 0
+R1 a b 1k
+.dc Vx1 0 1 1 Vx2 -1 1 2
+.end
+`), { format: 'spice' })[0];
+    assert.equal(nested.status, 'pass');
+    assert.equal(nested.conditions.order, 'last-source-outer-first-source-fastest');
+    assert.deepEqual(nested.observables.axis.coordinates,
+      [[0, -1], [1, -1], [0, 1], [1, 1]]);
+    assert.deepEqual(nested.observables.axis.dimensions.map(dimension => dimension.values),
+      [[0, 1], [-1, 1]]);
+  });
+
+  it('accepts a one-point DC sweep and refuses unsafe DC grids and source kinds', () => {
+    const one = runSourceAnalyses(imported(`one point
+V1 a 0 0
+R1 a 0 1k
+.dc V1 70 70 1
+.end
+`), { format: 'spice' })[0];
+    assert.equal(one.status, 'pass');
+    assert.deepEqual(one.observables.axis.coordinates, [[70]]);
+
+    const tooMany = runSourceAnalyses(imported(`dense DC
+V1 a 0 0
+R1 a 0 1k
+.dc V1 0 10 .1
+.end
+`), { format: 'spice', maxPoints: 50 })[0];
+    assert.deepEqual([tooMany.status, tooMany.code], ['not-run', 'analysis-budget-exceeded']);
+    assert.equal(tooMany.conditions.points, 101);
+
+    const current = runSourceAnalyses(imported(`current sweep
+I1 0 a 0
+R1 a 0 1k
+.dc I1 0 1m .5m
+.end
+`), { format: 'spice' })[0];
+    assert.deepEqual([current.status, current.code], ['not-run', 'dc-source-kind-not-implemented']);
+  });
+
   it('starts each UIC RC transient from a fresh uncharged capacitor state', () => {
     const source = `fresh uic
 V1 in 0 5
@@ -184,7 +332,8 @@ L1 coil 0 3m
         [0, 10e-6, 20e-6, 30e-6, 40e-6, 50e-6, 60e-6, 70e-6, 80e-6, 90e-6, 100e-6]);
       assert.equal(run.conditions.initialization, 'source-declared-dc-operating-point');
       assert.deepEqual(run.conditions.samplingProfile,
-        { id: 'bounded-uniform-observation-v1', sourceDeclared: false, adapted: true, targetIntervals: 100 });
+        { id: 'bounded-uniform-observation-v1', sourceDeclared: false, adapted: true,
+          targetIntervals: 100, reason: 'source declares no TSTEP' });
       assert.equal(run.initialization.initialization, 'source-declared-dc-operating-point');
       const mid = run.observables.nodes.find(node => node.id === 'n1').voltage;
       assert.equal(Math.sign(mid[0]), Math.sign(volts));

@@ -13,6 +13,9 @@ import { runPrecisionSourceAnalysis } from '../src/model/source-analysis-view.js
 
 const root = join(import.meta.dirname, '..');
 const fixture = join(root, 'test', 'fixtures', 'spice-precision-analysis.cir');
+const boundedFixture = join(root, 'test', 'fixtures', 'spice-bounded-observation.cir');
+const dcFixture = join(root, 'test', 'fixtures', 'spice-dc-analysis.cir');
+const outputOnlyFixture = join(root, 'test', 'fixtures', 'spice-output-only.cir');
 const source = readFileSync(fixture, 'utf8');
 
 function imported() { return importCircuit('spice', source); }
@@ -39,8 +42,11 @@ describe('precision-v1 source-analysis product entrypoints', () => {
     assert.equal(result.executionProfile.qualification.oracleComparison, 'not-performed');
     assert.ok(result.executionProfile.work.attempts > 0);
     assert.ok(result.executionProfile.work.solves > 0);
-    assert.equal(result.evidence, 'original-adapted');
-    assert.ok(result.adapted.some(item => /source corners/.test(item)));
+    assert.equal(result.evidence, 'original-direct');
+    assert.deepEqual(result.adapted, []);
+    assert.equal(result.conditions.sourceBreakpoints.integration,
+      'native-engine-source-edge-barriers');
+    assert.equal(result.conditions.sourceBreakpoints.addedToObservationGrid, false);
     assert.match(result.thermal, /native-fixed.*no oracle/i);
     assert.equal(circuit.transientAnalysisStatus().profile.id, 'interactive-v1');
     assert.deepEqual(circuit.board.snapshot(), before, 'independent source analysis must not mutate live GUI state');
@@ -122,9 +128,21 @@ C1 out 0 1n
 
   it('preflights and accounts deterministic total work instead of timing out', () => {
     const input = importCircuit('spice', `bounded precision\nV1 in 0 SINE(0 1 1)\nR1 in 0 1k\n.tran 2\n.end\n`);
-    const [preflight] = runSourceAnalyses(input, { format: 'spice', transientProfile: 'precision-v1' });
+    const [direct] = runSourceAnalyses(input, { format: 'spice', transientProfile: 'precision-v1' });
+    assert.equal(direct.status, 'pass');
+    assert.equal(direct.conditions.preflight.integrationMode, 'algebraic-direct');
+    assert.equal(direct.conditions.preflight.basis, 'algebraic-direct-nonzero-observation-count');
+    assert.ok(direct.executionProfile.work.solves <= direct.conditions.points);
+
+    const reactive = importCircuit('spice', `bounded reactive precision\nV1 in 0 SINE(0 1 1)\nR1 in out 1k\nC1 out 0 1u\n.tran 2\n.end\n`);
+    const [preflight] = runSourceAnalyses(reactive, { format: 'spice', transientProfile: 'precision-v1' });
     assert.deepEqual([preflight.status, preflight.classification, preflight.code],
       ['not-run', 'integration-gap', 'analysis-work-budget-exceeded']);
+    assert.equal(preflight.conditions.preflight.integrationMode, 'adaptive');
+    assert.equal(preflight.conditions.preflight.minimumAttempts, 200000);
+    assert.equal(preflight.conditions.preflight.minimumSolves, 599998);
+    assert.equal(preflight.conditions.preflight.basis,
+      'adaptive-be-seed-plus-three-solves-per-later-accepted-step');
     assert.equal(preflight.conditions.executionProfile.work.attempts, 0);
 
     const [accounted] = runSourceAnalyses(imported(), { format: 'spice',
@@ -149,7 +167,10 @@ C1 out 0 1n
     const panel = readFileSync(join(root, 'src', 'components', 'SourceAnalysisPanel.jsx'), 'utf8');
     assert.match(panel, /Live simulation/);
     assert.match(panel, /Run source analyses at/);
-    assert.match(panel, /runPrecisionSourceAnalysis\(circuit\)/);
+    assert.match(panel, /bw-source-analysis-observation-profile/);
+    assert.match(panel, /bounded-research-v1/);
+    assert.match(panel, /runPrecisionSourceAnalysis\(circuit, \{ observationProfile \}\)/);
+    assert.match(panel, /No supported source analysis was requested/);
     const designer = readFileSync(join(root, 'src', 'components', 'CircuitDesigner.jsx'), 'utf8');
     assert.match(designer, /<SourceAnalysisPanel circuit=\{circuit\} liveBoard=\{activeBoard\}/);
 
@@ -167,5 +188,39 @@ C1 out 0 1n
     assert.equal(report.results[0].status, 'pass');
     assert.equal(report.results[0].executionProfile.configured.id, 'precision-v1');
     assert.equal(report.results[0].executionProfile.qualification.oracleComparison, 'not-performed');
+
+    const exactDense = spawnSync(process.execPath,
+      ['bin/bwc.mjs', 'analyze', boundedFixture, '--profile', 'precision-v1', '--json'],
+      { cwd: root, encoding: 'utf8', timeout: 20_000 });
+    assert.equal(exactDense.status, 1, exactDense.stderr || exactDense.stdout);
+    const exactReport = JSON.parse(exactDense.stdout);
+    assert.equal(exactReport.results[0].code, 'analysis-budget-exceeded');
+    assert.equal(exactReport.results[0].requestedObservationProfile, 'source-declared-v1');
+
+    const adaptedDense = spawnSync(process.execPath,
+      ['bin/bwc.mjs', 'analyze', boundedFixture, '--profile', 'precision-v1',
+        '--observations', 'bounded-research-v1', '--json'],
+      { cwd: root, encoding: 'utf8', timeout: 20_000 });
+    assert.equal(adaptedDense.status, 0, adaptedDense.stderr || adaptedDense.stdout);
+    const adaptedReport = JSON.parse(adaptedDense.stdout);
+    assert.equal(adaptedReport.requestedObservationProfile, 'bounded-research-v1');
+    assert.equal(adaptedReport.results[0].status, 'pass');
+    assert.equal(adaptedReport.results[0].evidence, 'original-adapted');
+    assert.match(adaptedReport.results[0].adapted[0], /replaced the requested 3001-point/);
+
+    const dcCli = spawnSync(process.execPath,
+      ['bin/bwc.mjs', 'analyze', dcFixture, '--profile', 'precision-v1', '--json'],
+      { cwd: root, encoding: 'utf8', timeout: 20_000 });
+    assert.equal(dcCli.status, 0, dcCli.stderr || dcCli.stdout);
+    const dcReport = JSON.parse(dcCli.stdout);
+    assert.equal(dcReport.results[0].kind, 'dc');
+    assert.equal(dcReport.results[0].status, 'pass');
+    assert.deepEqual(dcReport.results[0].observables.axis.coordinates, [[0], [0.5], [1]]);
+
+    const outputOnly = spawnSync(process.execPath,
+      ['bin/bwc.mjs', 'analyze', outputOnlyFixture, '--profile', 'precision-v1', '--json'],
+      { cwd: root, encoding: 'utf8', timeout: 20_000 });
+    assert.equal(outputOnly.status, 2, outputOnly.stderr || outputOnly.stdout);
+    assert.match(outputOnly.stderr, /found 2 preserved output request.*not analyses/i);
   });
 });
