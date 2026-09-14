@@ -17,6 +17,7 @@ import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { importSpice } from '../src/importers/spice.js';
+import { mosVth } from 'bw-board/mna.js';
 
 const deck = (mLine, model = '.model NM NMOS(VTO=1 KP=100u GAMMA=0.5 PHI=0.6)') =>
   ['* bulk wiring', 'Vdd vdd 0 DC 10', 'Vg g 0 DC 4',
@@ -49,11 +50,28 @@ describe('MOSFET bulk node', () => {
     assert.deepEqual(r.unmapped, []);
   });
 
-  it('does NOT flag it when source and bulk are both the reference', () => {
-    // Two spellings of the same node: bulk `0`, source `gnd`. Vsb is 0, so a
-    // shift here would be a body effect invented out of a naming difference.
+  it('DOES flag it when source and bulk are both the reference', () => {
+    // This used to assert the opposite, and the opposite was wrong. The flag
+    // means one thing -- "the deck tied the bulk to the reference" -- and two
+    // consumers read it for two different purposes. The body effect wants a
+    // source off the bulk, and gets nothing here because Vsb works out to zero
+    // and `mosVth` is then identity. The bulk-DRAIN junction does not care where
+    // the source is, and a deck with source and bulk both on node 0 and its
+    // drain pulled below ground read a flat -5.000000 V against ngspice's
+    // -0.633322 while this flag was withheld.
     const r = importSpice(deck('M1 d g gnd 0 NM'));
-    assert.equal(m1(r).params.bulkAtGround, undefined);
+    assert.equal(m1(r).params.bulkAtGround, true);
+  });
+
+  it('still gives a grounded-bulk part no THRESHOLD shift when Vsb is zero', () => {
+    // The half of the old assertion that was right: no body effect may be
+    // invented out of two spellings of the reference. That is now the engine's
+    // job via Vsb rather than the importer's via the flag, so it is checked
+    // where it actually happens.
+    const r = importSpice(deck('M1 d g gnd 0 NM'));
+    assert.equal(m1(r).params.gamma, 0.5, 'GAMMA still arrives from the model');
+    assert.equal(mosVth(m1(r).params, 0), 1,
+      'with Vsb = 0 the threshold is VTO whatever GAMMA says');
   });
 
   it('declines and WARNS when the bulk is a third node, rather than guessing', () => {

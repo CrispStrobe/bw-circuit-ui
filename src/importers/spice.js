@@ -847,10 +847,21 @@ export function importSpice(text, opts = {}) {
         // mirror's output leg) has its source above the bulk BY CONSTRUCTION,
         // and its threshold is then not VTO at all.
         //
-        // Three cases, and only the first needs anything:
-        //   bulk is node 0 and the source is not  -> Vsb = V(source), shift
-        //   bulk and source are the same node     -> Vsb = 0, no shift
-        //   bulk is some THIRD node               -> left alone, not guessed
+        // Three cases:
+        //   bulk is node 0             -> flagged; Vsb = V(source), and both
+        //                                 bulk junctions are live
+        //   bulk is the source's node  -> both junctions shorted, Vsb = 0
+        //   bulk is some THIRD node    -> left alone, not guessed
+        //
+        // THE FLAG MEANS "THE DECK TIED THE BULK TO THE REFERENCE", AND NOTHING
+        // MORE. It once also required the source to be somewhere else, which
+        // conflated two different needs: the body effect needs a source off the
+        // bulk, but the bulk-DRAIN junction does not. A deck with source and
+        // bulk both on node 0 and its drain pulled below ground got neither,
+        // and read -5.000000 V where ngspice reads -0.633322 -- the drain
+        // junction conducting 0.436 mA into a 10k pull-down. `mosVth` already
+        // returns VTO unchanged when Vsb works out to 0, so widening this
+        // costs the body effect nothing.
         //
         // Measured over ADI2005's 15,587 M cards: 11,950 bulk-on-source,
         // 3,334 bulk-at-ground, 303 a third node. Of 311 numeric
@@ -860,10 +871,9 @@ export function importSpice(text, opts = {}) {
         const srcField = nodeFields[2];
         if (bulkField !== undefined && srcField !== undefined) {
           const bulkIsGround = GROUND_NODES.has(String(bulkField).toLowerCase());
-          const srcIsGround = GROUND_NODES.has(String(srcField).toLowerCase());
           const sameNode = String(bulkField).toLowerCase() === String(srcField).toLowerCase();
-          if (bulkIsGround && !srcIsGround && !sameNode) params.bulkAtGround = true;
-          else if (!bulkIsGround && !sameNode) {
+          if (bulkIsGround) params.bulkAtGround = true;
+          else if (!sameNode) {
             warnings.push(`${partId}: bulk node "${bulkField}" is neither ground nor the source, `
               + 'so the body effect is not applied — the engine MOSFET has no bulk terminal and '
               + 'this reader will not guess a potential for it.');
