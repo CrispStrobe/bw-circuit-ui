@@ -3,6 +3,105 @@ export const SHOCKLEY_FIXED_TEMP_C = 26.826793442075882;
 
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o || {}, k);
 
+/**
+ * A DIODE MODEL'S FIELDS, SORTED BY WHETHER THEY EXIST AT A DC BIAS POINT.
+ *
+ * The strict form of `validateExplicitShockley` admits `IS, N, RS` and nothing
+ * else. Measured against the acquired LTspice `cmp/standard.dio`: **0 of 926
+ * manufacturer models pass**, because every real part carries junction
+ * capacitance, a breakdown voltage and vendor metadata. Field census over
+ * those 926:
+ *
+ *     MFG 925   IS 924   RS 924   TYPE 924   N 916   VPK 895
+ *     CJO 892   M 861    BV 839   VJ 834     ISR 819  IKF 818
+ *
+ * So the strict form is not strict about a rare case; it excludes every model
+ * any vendor ships, and no amount of library acquisition can deliver anything
+ * while it stands. Measured on Si7li's 7,866 LTspice netlists, 1,560 name a
+ * diode the library defines and the rule refused all of them.
+ *
+ * The fields divide three ways, and the division is the fix:
+ *
+ *   DC        IS N RS — the Shockley curve at an operating point
+ *   NOT DC    capacitance, transit time, grading, breakdown, temperature
+ *             coefficients: they shape AC and TRANSIENT behaviour and are
+ *             IDENTICALLY INERT in a bias solve
+ *   NOT A     MFG and TYPE are a manufacturer string and a part class. They
+ *   PARAMETER are not model parameters at all and never were.
+ *
+ * A field outside the DC set is therefore a NOTE at an operating point and a
+ * LOSS for any analysis that reads it. The raw model text is preserved either
+ * way, so an AC or transient consumer can refuse on exactly the fields it needs
+ * and this decision cannot be mistaken for support it does not have.
+ *
+ * The DC-relevant list is ngspice's own diode parameter set, which is also the
+ * one the corpus lane's worker enumerates in `MODEL_KEYS.D`.
+ */
+const DIODE_DC_FIELDS = new Set(['is', 'n', 'rs']);
+/** Fields the importer MAPS onto another engine kind rather than setting aside. */
+const DIODE_MAPPED_FIELDS = new Set(['bv']);
+/**
+ * Not model parameters at all: a manufacturer string, a part class, a datasheet
+ * RATING, and the ideal-switch fields LTspice allows on a diode card.
+ * Enumerated from the 36 distinct field names that actually occur across the
+ * 926 library models, not guessed one at a time — `IAVE` was refused by a
+ * hand-written list and is a rated average current, which no solver reads.
+ */
+const DIODE_NON_PARAMETERS = new Set([
+  'mfg', 'type', 'iave', 'vpk', 'vp', 'central',
+  // LTspice's ideal-diode switch fields. They describe a PIECEWISE device, not
+  // this Shockley curve, so a model that leans on them is not the model we
+  // solved — noted rather than silently absorbed.
+  'ron', 'roff', 'vfwd', 'vrev', 'epsilon', 'revepsilon',
+]);
+/** Everything ngspice's diode takes that does NOT move a bias point. */
+const DIODE_NON_DC_FIELDS = new Set([
+  // Junction capacitance and its grading, transit time, forward-bias
+  // coefficient: charge storage, so AC and transient only.
+  'cjo', 'cj0', 'cjp', 'vj', 'm', 'tt', 'fc',
+  // Reverse breakdown SHAPE. `IBV`, `NBV`, `IBVL`, `NBVL` describe the knee's
+  // current and sharpness, which a piecewise zener does not have.
+  //
+  // `BV` ITSELF IS NOT HERE, and the first version of this list had it, with a
+  // comment claiming "a DC bias point never reaches it". That is an assumption
+  // about the CIRCUIT, not a property of the field: a diode reverse-biased past
+  // BV conducts, and calling the field inert would solve such a deck as an open.
+  // BV is mapped instead — see `diodeBreakdown` — because a D model with a
+  // breakdown voltage is exactly what the engine's `zener` kind is.
+  'ibv', 'nbv', 'ibvl', 'nbvl',
+  // Temperature coefficients. The bias is solved at one fixed temperature, so
+  // the coefficients that move it with temperature do not apply.
+  'eg', 'xti', 'tnom', 'trs1', 'trs2', 'tbv1', 'tbv2', 'tikf',
+  // Recombination and high-injection corrections. Real at a bias point in
+  // principle and second-order here: bw-board's diode is the ideal Shockley
+  // curve with a series RS and has nowhere to put them, so they are set aside
+  // WITH THE RAW MODEL KEPT rather than being pretended into the solve.
+  'isr', 'nr', 'ikf',
+  // Flicker and burst noise.
+  'kf', 'af',
+  // Geometry and level, which this reader does not scale by.
+  'level', 'area', 'perim', 'jtun', 'ntun', 'ilo', 'rl',
+]);
+
+/**
+ * Split a diode model's fields into the ones a DC solve uses and the ones it
+ * does not. `unknown` is reported separately from `nonDc`: a field nobody here
+ * recognises may or may not move a bias point, and saying "not DC" about it
+ * would be a claim rather than a classification.
+ */
+export function classifyDiodeFields(params) {
+  const dc = {}, nonDc = [], nonParameter = [], unknown = [], mapped = [];
+  for (const [k, v] of Object.entries(params || {})) {
+    const key = k.toLowerCase();
+    if (DIODE_DC_FIELDS.has(key)) dc[key] = v;
+    else if (DIODE_MAPPED_FIELDS.has(key)) mapped.push(key);
+    else if (DIODE_NON_PARAMETERS.has(key)) nonParameter.push(key);
+    else if (DIODE_NON_DC_FIELDS.has(key)) nonDc.push(key);
+    else unknown.push(key);
+  }
+  return { dc, nonDc, nonParameter, unknown, mapped };
+}
+
 export function validateExplicitShockley(params, raw = null) {
   if (raw != null) {
     let rest = String(raw).trim();
@@ -58,6 +157,103 @@ export function classifyShockleyThermal(lines) {
   }
   return { ok: false, explicit: true,
     source, reason: `diode DC requires one TEMP and one TNOM both equal to the fixed ${SHOCKLEY_FIXED_TEMP_C} C profile` };
+}
+
+/**
+ * The DC-SCOPED form: the Shockley curve must be fully stated, and anything
+ * that cannot move a bias point is a note rather than a refusal.
+ *
+ * Returns the same shape as `validateExplicitShockley` plus `notes`, so a
+ * caller can report exactly what it set aside. It does NOT loosen the numeric
+ * requirements — IS and N still have to be positive and finite and RS
+ * non-negative, and a model that omits any of the three is still refused,
+ * because the curve is then not stated.
+ */
+export function validateDiodeForDc(params, raw = null) {
+  // MALFORMED SYNTAX STILL REFUSES. `modelParams` only matches `key=value`, so
+  // a bare token inside a model body is silently dropped — a model written
+  // `D(IS=2e-12 N=1.3 RS=4 garbage)` would otherwise be admitted as if the
+  // stray word were not there. The strict validator checked the raw text for
+  // exactly this and my first DC-scoped version did not, which is a regression
+  // I introduced and this line is what caught it.
+  if (raw != null) {
+    let rest = String(raw).trim();
+    if (rest.startsWith('(') && rest.endsWith(')')) rest = rest.slice(1, -1);
+    const seen = [];
+    while (rest.trim()) {
+      const match = rest.match(/^\s*,?\s*([A-Za-z_]\w*)\s*=\s*([^\s,()]+)([\s\S]*)$/);
+      if (!match) return { ok: false, reason: 'diode model contains unparsed or malformed syntax' };
+      seen.push(match[1].toLowerCase());
+      rest = match[3];
+    }
+    if (new Set(seen).size !== seen.length) {
+      return { ok: false, reason: 'duplicate diode model fields are ambiguous' };
+    }
+  }
+  const split = classifyDiodeFields(params);
+
+  // AN OMITTED FIELD TAKES THE SIMULATOR'S DOCUMENTED DEFAULT.
+  //
+  // Refusing a model for stating no IS made us unable to judge decks the
+  // REFERENCE handles without complaint: ngspice fills IS = 1e-14, N = 1,
+  // RS = 0 and solves. Verified against it rather than read from a manual —
+  // 0.65 V across 1 Ohm into `.model DEF D` (no parameters at all) puts the
+  // junction at 0.6492044 V, and 1e-14 * exp(0.6492/0.02585) = 8.06e-4 A is
+  // exactly the 0.8 mA that drop implies.
+  //
+  // So filling them is not a loosening, it is the only way the two sides are
+  // the same circuit. On the first 2,000 ADI2005 decks this was 41 refusals,
+  // ALL of them zeners written `BV=5.1 IBV=5m RS=5` — a breakdown voltage and a
+  // bulk resistance, with the forward curve left to the defaults.
+  //
+  // A model with NO fields at all is still refused: `.model X D` names a
+  // device nobody described, and taking the whole curve from defaults would
+  // make an empty declaration indistinguishable from a considered one.
+  const NGSPICE_DIODE_DEFAULTS = { is: 1e-14, n: 1, rs: 0 };
+  const defaulted = [];
+  if (Object.keys(split.dc).length || split.mapped.length || split.nonDc.length) {
+    for (const [k, v] of Object.entries(NGSPICE_DIODE_DEFAULTS)) {
+      if (!(k in split.dc)) { split.dc[k] = v; defaulted.push(k); }
+    }
+  }
+
+  const keys = Object.keys(split.dc).sort().join(',');
+  if (keys !== 'is,n,rs') {
+    return { ok: false,
+      reason: 'the diode model states no parameters at all, so there is no device to solve — '
+        + 'a bare `.model X D` is a name, not a model' };
+  }
+  const numeric = validateExplicitShockley(split.dc);
+  if (!numeric.ok) return numeric;
+  if (split.unknown.length) {
+    // An unrecognised field is refused, not noted. "Not DC" about a name
+    // nobody here knows would be a claim, and a wrong one is how a model with
+    // a real DC parameter gets solved as if it did not have it.
+    return { ok: false,
+      reason: `unrecognised diode model field(s) ${split.unknown.join(', ').toUpperCase()} — `
+        + 'they are not classified as DC-inert, so this model is refused rather than guessed' };
+  }
+  return { ok: true, params: numeric.params,
+    notes: { nonDc: split.nonDc, nonParameter: split.nonParameter, mapped: split.mapped,
+      defaulted } };
+}
+
+/**
+ * A D MODEL WITH A BREAKDOWN VOLTAGE IS A ZENER, and the importer already knew
+ * that on its non-strict path (`if (letter === 'D' && model.params.bv) kind =
+ * 'zener'`). Returning it here keeps the one rule in one place.
+ *
+ * 839 of the 926 library diode models carry BV, so the alternative — refusing
+ * them, or worse calling BV inert — decides the fate of most of the library.
+ *
+ * @returns {number|null} the breakdown voltage, positive, or null
+ */
+export function diodeBreakdown(params) {
+  const bv = Number(params?.bv ?? params?.BV);
+  if (!Number.isFinite(bv) || bv === 0) return null;
+  // SPICE states BV as a positive magnitude; a deck writing it negative means
+  // the same device.
+  return Math.abs(bv);
 }
 
 export function isExplicitShockleyPart(part) {

@@ -37,8 +37,28 @@ describe('strict SPICE diode DC contract', () => {
     assert.ok(Math.abs(Number(row[2]) - diode.get('anode')) < 3e-8);
   });
 
+  // `CJO=2p` AND `BV=12` MOVED OUT OF THIS LIST, ON EVIDENCE.
+  //
+  // The rule was "IS, N, RS and nothing else". Measured against the acquired
+  // LTspice `cmp/standard.dio`: 0 of 926 manufacturer models passed, because
+  // every real part carries junction capacitance, a breakdown voltage and
+  // vendor metadata — MFG 925, CJO 892, BV 839, and MFG/TYPE are not model
+  // parameters at all. So the rule was not strict about a rare case; it
+  // admitted no model any vendor ships, and no library acquisition could
+  // deliver anything while it stood. On Si7li's 7,866 LTspice netlists, 1,560
+  // name a diode the library defines and all 1,560 were refused.
+  //
+  // The rule is now analysis-scoped: a field that cannot move a bias point is a
+  // NOTE at OP, the raw model text is preserved for an analysis that reads it,
+  // and 916 of 926 library models are admitted. `BV` is not "inert" — a diode
+  // reverse-biased past it conducts — so it is MAPPED to the engine's `zener`
+  // kind, which is what the importer's own non-strict path already did.
+  //
+  // Everything below still refuses, and each one is a different reason:
+  // malformed syntax, a duplicate field, a thermal profile that is not ours,
+  // and an incomplete curve.
   it('keeps unsupported physics as a serialized OP blocker and native-rejected params', () => {
-    for (const source of [deck('D(IS=2e-12 N=1.3 RS=4 CJO=2p)'), deck('D(IS=2e-12 N=1.3 RS=4 garbage)'), deck('D(IS=2e-12 N=1.3 RS=4 RS=5)'), deck('D(IS=2e-12 N=1.3 RS=4)', '.temp 27'), deck('D(IS=2e-12 N=1.3 RS=4)', '.temp 25 50'), deck('D(IS=2e-12 N=1.3)')]) {
+    for (const source of [deck('D(IS=2e-12 N=1.3 RS=4 garbage)'), deck('D(IS=2e-12 N=1.3 RS=4 RS=5)'), deck('D(IS=2e-12 N=1.3 RS=4)', '.temp 27'), deck('D(IS=2e-12 N=1.3 RS=4)', '.temp 25 50'), deck('D'), deck('D(IS=2e-12 N=1.3 RS=4 WOBBLE=3)')]) {
       const got = importSpice(source);
       assert.equal(got.losses.length, 1);
       assert.ok(got.parts.find(p => p.id === 'D1').params._spiceBlocked);
@@ -100,8 +120,68 @@ describe('strict SPICE diode DC contract', () => {
     assert.equal((out.text.match(/^\.model D_/gm) || []).length, 2);
   });
 
-  it('never reinterprets a blocked imported BV model as a native zener', () => {
+  // THE INVARIANT THIS TEST HOLDS IS ABOUT A **BLOCKED** MODEL, and it stands.
+  // What changed is that `BV=12` alone no longer blocks: a D model with a
+  // breakdown voltage is what the engine's `zener` kind IS, and 839 of the 926
+  // library models carry one. So the case is split — a clean BV model becomes a
+  // zener with that vz, and a model blocked for ANOTHER reason still must not
+  // slip out as a zener.
+  it('an omitted field takes ngspice\'s documented default, not a refusal', () => {
+    // `D(IS=2e-12 N=1.3)` used to be refused for stating no RS. ngspice fills
+    // RS = 0 and solves, so refusing made us unable to judge a deck the
+    // REFERENCE handles without complaint — which is not strictness, it is a
+    // different circuit.
+    //
+    // Verified against ngspice rather than read from a manual: 0.65 V across
+    // 1 Ohm into `.model DEF D` with no parameters at all puts the junction at
+    // 0.6492044 V, and 1e-14 * exp(0.6492/0.02585) = 8.06e-4 A is exactly the
+    // 0.8 mA that drop implies. So IS = 1e-14, N = 1, RS = 0.
+    //
+    // Measured on the first 2,000 ADI2005 decks: 41 refusals, every one a zener
+    // written `BV=5.1 IBV=5m RS=5` — a breakdown voltage and a bulk resistance
+    // with the forward curve left to the defaults.
+    const noRs = importSpice(deck('D(IS=2e-12 N=1.3)'));
+    assert.deepEqual(noRs.losses, []);
+    assert.equal(noRs.parts.find(p => p.id === 'D1').params.rs, 0);
+    assert.ok(noRs.warnings.some(w => /documented default/.test(w)),
+      `the default was applied silently: ${JSON.stringify(noRs.warnings)}`);
+
+    // The ADI zener shape: no forward curve stated at all.
+    const zener = importSpice(deck('D(BV=5.1 IBV=5m RS=5)'));
+    assert.deepEqual(zener.losses, []);
+    const z = zener.parts.find(p => p.id === 'D1');
+    assert.equal(z.kind, 'zener');
+    assert.deepEqual({ is: z.params.is, n: z.params.n, rs: z.params.rs, vz: z.params.vz },
+      { is: 1e-14, n: 1, rs: 5, vz: 5.1 });
+
+    // A BARE `.model X D` is still refused, and that is the line between a
+    // considered model and a name: taking the WHOLE curve from defaults would
+    // make an empty declaration indistinguishable from a deliberate one.
+    const bare = importSpice(deck('D'));
+    assert.equal(bare.losses.length, 1);
+    assert.match(bare.losses[0].reason, /no parameters at all/);
+  });
+
+  it('maps a clean BV model to a zener with that breakdown voltage', () => {
     const imported = importSpice(deck('D(IS=2e-12 N=1.3 RS=4 BV=12)'));
+    assert.deepEqual(imported.losses, []);
+    const d = imported.parts.find(p => p.id === 'D1');
+    assert.equal(d.kind, 'zener');
+    assert.equal(d.params.vz, 12);
+    // A negative BV states the same device.
+    const neg = importSpice(deck('D(IS=2e-12 N=1.3 RS=4 BV=-12)'));
+    assert.equal(neg.parts.find(p => p.id === 'D1').params.vz, 12);
+  });
+
+  it('never reinterprets a blocked imported BV model as a native zener', () => {
+    // Blocked for a DIFFERENT reason — a duplicate field — while also carrying
+    // BV. The block must win, or a malformed model reaches the engine wearing a
+    // kind it was never validated for.
+    const imported = importSpice(deck('D(IS=2e-12 N=1.3 RS=4 RS=5 BV=12)'));
+    assert.equal(imported.losses.length, 1);
+    const d = imported.parts.find(p => p.id === 'D1');
+    assert.ok(d.params._spiceBlocked, 'a blocked model lost its blocker');
+    assert.notEqual(d.kind, 'zener', 'a blocked model became a zener anyway');
     const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
     const out = toSpice(extractNetlist(circuit));
     assert.equal(out.skipped.length, 1);

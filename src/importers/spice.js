@@ -41,7 +41,8 @@ import { parseSpiceValue } from '../model/si.js';
 import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-source.js';
 import { evaluateConstantExpression, resolveConstantParameters } from '../model/spice-constant.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
-import { classifyShockleyThermal, validateExplicitShockley } from '../model/spice-diode.js';
+import { classifyShockleyThermal, validateExplicitShockley, validateDiodeForDc,
+  diodeBreakdown } from '../model/spice-diode.js';
 
 /**
  * Nodes the REFERENCE SIMULATOR treats as the reference — measured, not assumed.
@@ -750,10 +751,41 @@ export function importSpice(text, opts = {}) {
             ? { ok: false, reason: 'diode instance AREA, M, TEMP and other trailing fields are unsupported' }
             : model.ambiguous
               ? { ok: false, reason: 'duplicate diode model declarations are ambiguous' }
-              : model.type === 'D' ? validateExplicitShockley(model.params, model.body)
+              : model.type === 'D' ? validateDiodeForDc(model.params, model.body)
                 : { ok: false, reason: `model type ${model.type || '(missing)'} is not D` };
           if (exact.ok && diodeThermal.ok) {
             Object.assign(params, exact.params);
+            // A BREAKDOWN VOLTAGE MAKES IT A ZENER, and only once the model is
+            // otherwise admitted — a model blocked for another reason must not
+            // become a zener on the way out, which is the invariant
+            // `test/spice-diode-op.test.js` holds.
+            const bv = diodeBreakdown(model.params);
+            if (bv !== null) { kind = 'zener'; params.vz = bv; }
+            // THE RAW MODEL IS KEPT EVEN ON SUCCESS. A DC solve is entitled to
+            // ignore CJO/TT/VJ/M; an AC or transient consumer is not, and
+            // without the text it could not tell that this part was admitted on
+            // a DC-scoped rule rather than a complete one.
+            const notes = exact.notes || { nonDc: [], nonParameter: [], defaulted: [] };
+            if ((notes.defaulted || []).length) {
+              warnings.push(`${partId}: the model states no ${notes.defaulted.join(', ').toUpperCase()}`
+                + `, so ngspice's documented default(s) are used — the same value the reference `
+                + 'simulator fills in.');
+            }
+            if (notes.nonDc.length || notes.nonParameter.length) {
+              params._spiceModel = model.source;
+              params._spiceNonDcFields = notes.nonDc.join(',') || undefined;
+              const parts = [];
+              if (notes.nonDc.length) {
+                parts.push(`${notes.nonDc.join(', ').toUpperCase()} shape AC and transient `
+                  + 'behaviour and are inert at a bias point');
+              }
+              if (notes.nonParameter.length) {
+                parts.push(`${notes.nonParameter.join(', ').toUpperCase()} `
+                  + (notes.nonParameter.length > 1 ? 'are' : 'is') + ' metadata, not a model parameter');
+              }
+              warnings.push(`${partId}: the DC curve is taken from IS, N and RS; ${parts.join('; ')}. `
+                + 'The raw model is preserved for an analysis that reads them.');
+            }
             if (!diodeThermal.explicit) warnings.push(`${partId}: omitted SPICE TEMP/TNOM uses bw-board's fixed VT=0.02585 V profile; raw default-temperature source fidelity is not established.`);
           } else {
             const reason = exact.ok ? diodeThermal.reason : exact.reason;
@@ -767,7 +799,12 @@ export function importSpice(text, opts = {}) {
         if (letter === 'Q') kind = model.type === 'PNP' ? 'pnp' : 'npn';
         if (letter === 'M') kind = model.type === 'PMOS' ? 'pmos' : 'nmos';
         if (letter === 'J') kind = model.type === 'PJF' ? 'pmos' : 'nmos';
-        if (letter === 'D' && model.params.bv) kind = 'zener';
+        // A BLOCKED MODEL MUST NOT BECOME A ZENER. This line ran for every D
+        // card with a BV, admitted or not, so a model refused for a DUPLICATE
+        // FIELD still reached the engine wearing a kind nothing had validated
+        // it for. The admitted path sets `params.vz` above; if that did not
+        // happen, the model was blocked and keeps its blocker.
+        if (letter === 'D' && model.params.bv && params.vz !== undefined) kind = 'zener';
       }
       if (letter !== 'D' || params.model !== 'shockley') params._model = rest[0] || null;
       // INSTANCE PARAMETERS. `W=20u L=1u` on the element line, not in the
