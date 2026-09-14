@@ -124,6 +124,23 @@ const OUTPUT_REQUEST_CARDS = new Set(['four', 'meas', 'measure', 'print', 'plot'
 const PRESENTATION_OPTION_KEYS = new Set(['plotwinsize', 'numdgt', 'measdgt', 'nopage', 'noacct', 'noinit', 'nomod']);
 
 /**
+ * `.options` KEYS THIS READER ACTUALLY HONOURS.
+ *
+ * `temp` and `tnom` are the thermal point, and `classifyShockleyThermal` reads
+ * them off the raw lines — so they are neither presentation nor unsupported.
+ * They are ACTED ON, and a loss would be a false report.
+ *
+ * I nearly got this wrong, and the way I got it wrong is worth recording. I
+ * measured `.options` keys across ADI2005 and Si7li, found `temp` in NEITHER,
+ * and concluded that treating every non-presentation key as a loss was free.
+ * **OUR OWN EXPORTER emits `.options temp=26.8267934421 tnom=26.8267934421` on
+ * every deck it writes**, and the round-trip tests re-import exactly that — so
+ * the change turned nine of them red. A true measurement over the wrong
+ * population: the foreign corpora are not the only decks this importer reads.
+ */
+const HONOURED_OPTION_KEYS = new Set(['temp', 'tnom']);
+
+/**
  * Cards that carry no circuit and are correctly ignored — listed so the
  * accounting can say "recognised and skipped" rather than "unknown".
  */
@@ -674,8 +691,10 @@ export function importSpice(text, opts = {}) {
         // ANSWER, and `gshunt` changes it by adding a conductance from every
         // node to the reference.
         const keys = String(dot[2] || '').trim().split(/\s+/).filter(Boolean);
-        const numeric = keys.filter(kv => !PRESENTATION_OPTION_KEYS.has(
-          String(kv).split('=')[0].toLowerCase()));
+        const keyOf = (kv) => String(kv).split('=')[0].toLowerCase();
+        const numeric = keys.filter(kv => !PRESENTATION_OPTION_KEYS.has(keyOf(kv))
+          && !HONOURED_OPTION_KEYS.has(keyOf(kv)));
+        const honoured = keys.filter(kv => HONOURED_OPTION_KEYS.has(keyOf(kv)));
         if (!keys.length || numeric.length) {
           // BOTH BUCKETS, like `.ic` and `.func` above: `ignored` records that
           // the card was dropped and `losses` records what dropping it costs.
@@ -690,6 +709,11 @@ export function importSpice(text, opts = {}) {
                 + 'and is not applied by this engine'
               : `.${card} carries no keys`,
             fallback: null });
+        } else if (honoured.length) {
+          retainedDirectives.push({ source: line.trim(), kind: 'metadata',
+            handling: 'honoured',
+            consequence: `.${card} ${honoured.join(' ')} sets the thermal point this `
+              + 'reader solves at' });
         } else {
           retainedDirectives.push({ source: line.trim(), kind: 'metadata',
             handling: 'preserved-not-executed',

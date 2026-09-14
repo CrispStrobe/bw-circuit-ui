@@ -130,3 +130,43 @@ describe('a deck with none of these is unchanged', () => {
     assert.deepEqual(r.analyses, ['.op']);
   });
 });
+
+/**
+ * `.options temp`/`tnom` ARE HONOURED, AND THE WAY I ALMOST BROKE THEM IS THE
+ * POINT OF THIS BLOCK.
+ *
+ * I measured `.options` keys across ADI2005 and Si7li, found `temp` in NEITHER,
+ * and concluded that treating every non-presentation key as a loss was free.
+ * **Our own exporter emits `.options temp=26.8267934421 tnom=26.8267934421` on
+ * every deck it writes**, and the round-trip tests re-import exactly that — so
+ * the change turned nine of them red. A true measurement over the wrong
+ * population.
+ *
+ * `temp`/`tnom` are neither presentation nor unsupported: `classifyShockleyThermal`
+ * reads them, so they are ACTED ON, and a loss would be a false report. They
+ * carry `handling: 'honoured'` to distinguish them from things merely kept.
+ */
+describe('.options temp and tnom are honoured, not lost and not merely kept', () => {
+  it('our own exporter\'s thermal pair re-imports with no loss', () => {
+    const r = deck('.op', '.options temp=26.8267934421 tnom=26.8267934421');
+    assert.deepEqual(r.losses, [], JSON.stringify(r.losses));
+    assert.deepEqual(kinds(r), ['metadata']);
+    assert.equal(r.retainedDirectives[0].handling, 'honoured',
+      'honoured is not the same as preserved-not-executed: this one is acted on');
+    assert.match(r.retainedDirectives[0].consequence, /thermal point/);
+  });
+
+  it('and presentation keys stay preserved-not-executed, so the two are distinct', () => {
+    const r = deck('.op', '.options plotwinsize=0');
+    assert.equal(r.retainedDirectives[0].handling, 'preserved-not-executed');
+  });
+
+  it('temp alongside a numerical key is still a LOSS', () => {
+    // An honoured key must not launder an unsupported one either.
+    const r = deck('.op', '.options temp=27 gshunt=1e-9');
+    assert.equal(r.losses.length, 1, JSON.stringify(r.losses));
+    assert.match(r.losses[0].reason, /gshunt=1e-9/);
+    assert.ok(!/temp=27/.test(r.losses[0].reason),
+      `the reason names what is unsupported: ${r.losses[0].reason}`);
+  });
+});
