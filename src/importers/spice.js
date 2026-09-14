@@ -300,11 +300,16 @@ export function importSpice(text) {
     const declaration = rest.trim().match(/^(\S+)\s+([A-Za-z]+)\s*(.*)$/);
     const name = (declaration?.[1] || '').toLowerCase();
     const type = (declaration?.[2] || '').toUpperCase();
-    models.set(name, {
+    const prior = models.get(name);
+    const record = {
       type,
       params: modelParams(declaration?.[3] || ''),
+      body: declaration?.[3] || '',
       source: line.trim(),
-    });
+    };
+    if (prior && (prior.type === 'D' || type === 'D')) {
+      models.set(name, { ...record, ambiguous: true, source: `${prior.source}\n${line.trim()}` });
+    } else models.set(name, record);
   };
 
   for (const line of lines) {
@@ -480,8 +485,12 @@ export function importSpice(text) {
           source: item.line, reason: 'explicit declared D model with IS, N and RS is required' });
       } else {
         if (letter === 'D') {
-          const exact = model.type === 'D' ? validateExplicitShockley(model.params)
-            : { ok: false, reason: `model type ${model.type || '(missing)'} is not D` };
+          const exact = rest.length !== 1
+            ? { ok: false, reason: 'diode instance AREA, M, TEMP and other trailing fields are unsupported' }
+            : model.ambiguous
+              ? { ok: false, reason: 'duplicate diode model declarations are ambiguous' }
+              : model.type === 'D' ? validateExplicitShockley(model.params, model.body)
+                : { ok: false, reason: `model type ${model.type || '(missing)'} is not D` };
           if (exact.ok && diodeThermal.ok) {
             Object.assign(params, exact.params);
             if (!diodeThermal.explicit) warnings.push(`${partId}: omitted SPICE TEMP/TNOM uses bw-board's fixed VT=0.02585 V profile; raw default-temperature source fidelity is not established.`);

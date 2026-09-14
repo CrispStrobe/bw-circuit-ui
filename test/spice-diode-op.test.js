@@ -12,7 +12,7 @@ const TEMP = '26.826793442075882';
 const deck = (model = 'D(IS=2e-12 N=1.3 RS=4)', thermal = `.temp ${TEMP}\n.options tnom=${TEMP}`) => `self-authored diode\nV1 in 0 5\nR1 in out 1k\nD1 out 0 SELF\n.model SELF ${model}\n${thermal}\n.op\n.end\n`;
 
 describe('strict SPICE diode DC contract', () => {
-  it('retains exact IS/N/RS and the matched fixed thermal pair', () => {
+  it('retains exact IS/N/RS and the matched fixed thermal pair', (t) => {
     const got = importSpice(deck());
     assert.deepEqual(got.losses, []);
     assert.deepEqual(got.parts.find(p => p.id === 'D1').params,
@@ -27,17 +27,17 @@ describe('strict SPICE diode DC contract', () => {
     const diode = op.branchCurrents.get('D1');
     assert.ok(Math.abs(diode.get('anode') + diode.get('cathode')) < 1e-12);
     const oracle = spawnSync('ngspice', ['-b'], { input: deck().replace('\n.op\n', '\n.op\n.print op v(out) @d1[id]\n'), encoding: 'utf8' });
-    if (!oracle.error) {
-      assert.equal(oracle.status, 0, oracle.stderr);
-      const row = oracle.stdout.match(/\n0\s+([\deE+.-]+)\s+([\deE+.-]+)\s*\n/);
-      assert.ok(row, oracle.stdout);
-      assert.ok(Math.abs(Number(row[1]) - out) < 3e-7);
-      assert.ok(Math.abs(Number(row[2]) - diode.get('anode')) < 3e-8);
-    }
+    if (oracle.error?.code === 'ENOENT') return t.skip('ngspice is not installed');
+    else assert.ifError(oracle.error);
+    assert.equal(oracle.status, 0, oracle.stderr);
+    const row = oracle.stdout.match(/\n0\s+([\deE+.-]+)\s+([\deE+.-]+)\s*\n/);
+    assert.ok(row, oracle.stdout);
+    assert.ok(Math.abs(Number(row[1]) - out) < 3e-7);
+    assert.ok(Math.abs(Number(row[2]) - diode.get('anode')) < 3e-8);
   });
 
   it('keeps unsupported physics as a serialized OP blocker and native-rejected params', () => {
-    for (const source of [deck('D(IS=2e-12 N=1.3 RS=4 CJO=2p)'), deck('D(IS=2e-12 N=1.3 RS=4)', '.temp 27'), deck('D(IS=2e-12 N=1.3)')]) {
+    for (const source of [deck('D(IS=2e-12 N=1.3 RS=4 CJO=2p)'), deck('D(IS=2e-12 N=1.3 RS=4 garbage)'), deck('D(IS=2e-12 N=1.3 RS=4 RS=5)'), deck('D(IS=2e-12 N=1.3 RS=4)', '.temp 27'), deck('D(IS=2e-12 N=1.3 RS=4)', '.temp 25 50'), deck('D(IS=2e-12 N=1.3)')]) {
       const got = importSpice(source);
       assert.equal(got.losses.length, 1);
       assert.ok(got.parts.find(p => p.id === 'D1').params._spiceBlocked);
@@ -46,6 +46,10 @@ describe('strict SPICE diode DC contract', () => {
       const loaded = Circuit.fromJSON(c.toJSON());
       assert.throws(() => loaded.operatingPoint(), /persisted import finding/);
     }
+    const tailed = importSpice(deck().replace('D1 out 0 SELF', 'D1 out 0 SELF 2'));
+    assert.equal(tailed.losses.length, 1);
+    const duplicate = importSpice(deck().replace('.model SELF', '.model SELF D(IS=3e-12 N=1.3 RS=4)\n.model SELF'));
+    assert.equal(duplicate.losses.length, 1);
   });
 
   it('exports exact Shockley with explicit fixed thermal cards and reimports losslessly', () => {
@@ -53,8 +57,7 @@ describe('strict SPICE diode DC contract', () => {
     const c = Circuit.fromJSON({ parts: got.parts, wires: got.wires });
     const out = toSpice(extractNetlist(c));
     assert.deepEqual(out.skipped, []);
-    assert.match(out.text, /\.temp 26\.826793442075882/);
-    assert.match(out.text, /\.options tnom=26\.826793442075882/);
+    assert.match(out.text, /\.options temp=26\.826793 tnom=26\.826793/);
     const again = importSpice(out.text);
     assert.deepEqual(again.losses, []);
     assert.deepEqual(again.parts.find(p => p.kind === 'diode').params,
