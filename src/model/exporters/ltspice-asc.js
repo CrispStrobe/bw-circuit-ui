@@ -139,6 +139,32 @@ function netGroups(parts, wires, warnings) {
   return [...groups.values()];
 }
 
+/**
+ * A REFUSAL REASON SHOULD NAME THE CONSEQUENCE, NOT JUST THE FIELD.
+ *
+ * `bulkAtGround` is the case that made this worth a function. The generated
+ * MOSFET symbols tie their fourth pin to SOURCE -- see `pinList` above, where
+ * `source` appears twice -- so a part whose deck tied the bulk to the REFERENCE
+ * instead cannot be drawn by them. Exporting it anyway would produce a
+ * different device: no body-effect threshold shift and, more importantly, no
+ * bulk-drain junction, which on a drain driven below the reference is worth
+ * volts (measured 4.37 V on a 10k pull-down against ngspice).
+ *
+ * Before that flag existed the same deck round-tripped SILENTLY as the
+ * bulk-on-source device. So this refusal is not a loss of coverage; it is a
+ * semantic loss that used to go unreported, and the reason now says which.
+ */
+function unrepresentedReason(kind, extra) {
+  if ((kind === 'nmos' || kind === 'pmos') && extra.includes('bulkAtGround')) {
+    const rest = extra.filter(name => name !== 'bulkAtGround');
+    return 'the deck ties the bulk to the reference, and the generated '
+      + `${kind} symbol ties its bulk pin to the source; exporting it would drop `
+      + 'the body effect and the bulk-drain junction'
+      + (rest.length ? `; also unrepresented: ${rest.join(', ')}` : '');
+  }
+  return `unrepresented parameters: ${extra.join(', ')}`;
+}
+
 /** Serialize standard R/C/static-V/static-I plus ground labels as interchange. */
 export function toLtspiceAsc(circuit = {}) {
   const { parts = [], wires = [], analysisBlockers = [] } = circuit;
@@ -168,7 +194,7 @@ export function toLtspiceAsc(circuit = {}) {
     if (!spec || encoding?.error || extra.length || part.analysisBlockers?.length || !/^[^\s\r\n]+$/.test(String(part.id || ''))) {
       const reason = !spec ? 'unsupported kind'
         : (encoding?.error || value == null) ? encoding?.error || 'value is not representable'
-          : extra.length ? `unrepresented parameters: ${extra.join(', ')}`
+          : extra.length ? unrepresentedReason(part.kind, extra)
             : part.analysisBlockers?.length ? 'persisted semantic blocker' : 'invalid LTspice instance name';
       skipped.push({ id: part.id, kind: part.kind, reason }); warnings.push(`${part.id || '(unnamed)'} (${part.kind}): ${reason}`);
       continue;

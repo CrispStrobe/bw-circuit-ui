@@ -144,7 +144,8 @@ C1 nr 0 2u
 L1 nr nl 3m
 D1 nl 0 DMOD
 Q1 nq nb 0 QMOD
-M1 nd ng 0 0 MMOD W=20u L=1u
+M1 nd ng ns ns MMOD W=20u L=1u
+Rs ns 0 1k
 E1 ne 0 nr 0 2.5
 G1 0 ng nr 0 1m
 .model DMOD D (IS=1e-14 N=1 RS=0.1)
@@ -170,5 +171,61 @@ G1 0 ng nr 0 1m
     assert.equal(back.parts.find(part => part.id === 'Q1').params.beta, 150);
     assert.equal(back.parts.find(part => part.id === 'M1').params.vth, 1);
     assert.equal(back.parts.find(part => part.id === 'M1').params.w, 20e-6);
+  });
+
+  /**
+   * THE MOSFET IN THE ROUND-TRIP DECK ABOVE HAS ITS BULK ON ITS SOURCE, AND
+   * THAT IS NOT INCIDENTAL.
+   *
+   * The generated `bw_nmos`/`bw_pmos` symbols tie their fourth pin to SOURCE --
+   * `pinList` lists `source` twice -- so a deck that ties the bulk to the
+   * REFERENCE instead cannot be drawn by them. It used to round-trip anyway,
+   * silently, as the bulk-on-source device: no body-effect threshold shift and
+   * no bulk-drain junction, the second of which is worth volts on a drain
+   * driven below the reference (4.37 V on a 10k pull-down, measured against
+   * ngspice).
+   *
+   * Once the importer started recording `bulkAtGround`, the exporter could see
+   * it and refuse. That is the honest outcome, so it is asserted rather than
+   * worked around -- and the reason has to name the CONSEQUENCE, because
+   * "unrepresented parameters: bulkAtGround" sends a reader looking for a
+   * missing field instead of a missing pin.
+   */
+  it('REFUSES a MOSFET whose deck ties the bulk to the reference, and says why', () => {
+    const spice = `bulk at the reference
+V1 supply 0 5
+R1 supply nd 2k
+Rs ns 0 1k
+M1 nd ng ns 0 MMOD W=20u L=1u
+V2 ng 0 2
+.model MMOD NMOS (LEVEL=1 VTO=1 KP=1m)
+.op
+.end
+`;
+    const imported = importSpice(spice);
+    assert.equal(imported.unmapped.length, 0, JSON.stringify(imported.unmapped));
+    const m1 = imported.parts.find(part => part.id === 'M1');
+    assert.equal(m1.params.bulkAtGround, true,
+      'the importer must record the bulk wiring, or this test proves nothing');
+
+    const asc = toLtspiceAsc(imported);
+    const refusal = asc.skipped.find(entry => entry.id === 'M1');
+    assert.ok(refusal, `M1 must be refused: ${JSON.stringify(asc.skipped)}`);
+    assert.match(refusal.reason, /ties the bulk to the reference/);
+    assert.match(refusal.reason, /bulk-drain junction/,
+      `the reason must name what exporting anyway would drop: ${refusal.reason}`);
+    assert.ok(!/unrepresented parameters/.test(refusal.reason),
+      'a missing PIN must not be reported as a missing FIELD');
+
+    // And it is refused rather than emitted: no MOSFET symbol in the output.
+    assert.ok(!/SYMATTR InstName M1/.test(asc.text), asc.text);
+
+    // The CONTROL: the same deck with the bulk on the source is accepted, so
+    // the refusal is keyed to the bulk wiring and not to MOSFETs in general.
+    const onSource = importSpice(spice.replace('M1 nd ng ns 0 MMOD', 'M1 nd ng ns ns MMOD'));
+    assert.equal(onSource.parts.find(part => part.id === 'M1').params.bulkAtGround, undefined);
+    const ascOk = toLtspiceAsc(onSource);
+    assert.deepEqual(ascOk.skipped, [], JSON.stringify(ascOk.skipped));
+    assert.match(ascOk.text, /SYMATTR InstName M1/);
   });
 });
