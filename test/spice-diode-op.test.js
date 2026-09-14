@@ -7,6 +7,7 @@ import { Circuit } from '../src/model/circuit.js';
 import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice } from '../src/model/exporters/spice.js';
 import { blockersFromImport } from '../src/model/operating-point-view.js';
+import { optionsCard, ORACLE_TEMP_C } from 'bw-board/ngspice.js';
 
 const TEMP = '26.826793442075882';
 const deck = (model = 'D(IS=2e-12 N=1.3 RS=4)', thermal = `.temp ${TEMP}\n.options tnom=${TEMP}`) => `self-authored diode\nV1 in 0 5\nR1 in out 1k\nD1 out 0 SELF\n.model SELF ${model}\n${thermal}\n.op\n.end\n`;
@@ -57,7 +58,28 @@ describe('strict SPICE diode DC contract', () => {
     const c = Circuit.fromJSON({ parts: got.parts, wires: got.wires });
     const out = toSpice(extractNetlist(c));
     assert.deepEqual(out.skipped, []);
-    assert.match(out.text, /\.options temp=26\.826793 tnom=26\.826793/);
+    // DERIVED, NOT COPIED. This pinned the string `.options temp=26.826793
+    // tnom=26.826793` — a hard-coded copy of a number the exporter derives, and
+    // it pinned the ROUNDED form. `toFixed(6)` moved the thermal voltage by
+    // 1.47e-9 relative, which is not small next to the 2e-7 V agreement the
+    // card exists to produce, so `optionsCard` now emits 12 significant digits
+    // and this assertion asks it what it wrote.
+    //
+    // The claim worth holding is not the digits, it is that BOTH KEYS name the
+    // SAME temperature and that it round-trips to the engine's own constant —
+    // `temp` alone leaves a flat +0.686 mV because Is is rescaled from the
+    // TNOM default through the bandgap law.
+    assert.ok(out.text.includes(optionsCard()),
+      `the deck does not carry the exporter's own options card (${optionsCard()}):\n${out.text}`);
+    const emitted = /\.options temp=(\S+) tnom=(\S+)/.exec(out.text);
+    assert.ok(emitted, `no .options temp/tnom pair in:\n${out.text}`);
+    assert.equal(emitted[1], emitted[2], 'temp and tnom name different temperatures');
+    const K = 273.15, Q = 1.602176634e-19, KB = 1.380649e-23;
+    const vt = (tC) => (tC + K) * KB / Q;
+    const relative = Math.abs(vt(Number(emitted[1])) - vt(ORACLE_TEMP_C)) / vt(ORACLE_TEMP_C);
+    assert.ok(relative < 1e-11,
+      `the emitted temperature does not round-trip the engine's thermal voltage: `
+      + `relative error ${relative.toExponential(3)} from "${emitted[1]}"`);
     const again = importSpice(out.text);
     assert.deepEqual(again.losses, []);
     assert.deepEqual(again.parts.find(p => p.kind === 'diode').params,
