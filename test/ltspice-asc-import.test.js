@@ -1,10 +1,13 @@
 import './_setup.js';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { describe, it } from 'node:test';
 import { detectFormat } from '../src/importers/detect.js';
 import { getSupportedFormats, importCircuit, parseLtspiceAsy } from '../src/importers/index.js';
 import { placeLtspicePin } from '../src/importers/ltspice-asc.js';
 import { Circuit } from '../src/model/circuit.js';
+import { extractNetlist } from '../src/model/netlist.js';
+import { toSpice } from '../src/model/exporters/spice.js';
 import { runSourceAnalyses } from '../src/model/source-analysis.js';
 
 const DIVIDER = `Version 4
@@ -375,6 +378,110 @@ SYMATTR Value 1k
       RES_ASY.replace('PINATTR SpiceOrder 2', 'PINATTR SpiceOrder 999999999999999999999'));
     assert.equal(unsafeNumber.ok, false);
     assert.ok(unsafeNumber.findings.some(item => item.kind === 'invalid-asy-spice-order'));
+  });
+});
+
+const IND_ASY = `Version 4
+SymbolType CELL
+SYMATTR Prefix L
+PIN 16 96 BOTTOM 8
+PINATTR PinName B
+PINATTR SpiceOrder 2
+PIN 16 16 TOP 8
+PINATTR PinName A
+PINATTR SpiceOrder 1
+`;
+
+const RL_ASC = volts => `Version 4
+SHEET 1 240 240
+WIRE 0 16 96 16
+WIRE 96 96 96 112
+WIRE 0 96 0 192
+WIRE 0 192 96 192
+SYMBOL voltage 0 0 R0
+SYMATTR InstName V1
+SYMATTR Value ${volts}
+SYMBOL ind 80 0 R0
+SYMATTR InstName L1
+SYMATTR Value 2m
+SYMBOL res 80 96 R0
+SYMATTR InstName R1
+SYMATTR Value 1k
+FLAG 0 96 0
+TEXT 200 220 Left 2 !.op
+`;
+
+describe('standard LTspice ASC inductor', () => {
+  const partitions = imported => imported.netNames
+    .map(net => net.terminals.map(terminal => `${terminal.partId}.${terminal.terminal}`).sort().join('|'))
+    .sort();
+
+  it('preserves verified A/B connectivity and signed ideal-L DC through JSON and SPICE', (t) => {
+    for (const volts of [5, -5]) {
+      const imported = importCircuit('ltspice-asc', RL_ASC(volts), {
+        symbols: { ind: { text: IND_ASY, sha256: 'self-authored-ind-pin-contract' } },
+      });
+      assert.deepEqual(imported.unmapped, []);
+      assert.deepEqual(imported.losses, []);
+      assert.deepEqual(imported.parts.find(part => part.id === 'L1').params, { henrys: 0.002 });
+      assert.deepEqual(imported.netNames.find(net => net.name === '$asc$0').terminals
+        .map(terminal => `${terminal.partId}.${terminal.terminal}`).sort(), ['L1.a', 'V1.pos']);
+      assert.equal(imported.sourceSymbols[0].declaredSha256, 'self-authored-ind-pin-contract');
+      const builtIn = importCircuit('ltspice-asc', RL_ASC(volts));
+      assert.deepEqual(partitions(builtIn), partitions(imported),
+        'the built-in factual coordinates agree with the supplied self-authored pin contract');
+
+      const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+      const loaded = Circuit.fromJSON(circuit.toJSON());
+      const op = loaded.operatingPoint();
+      assert.equal(op.converged, true);
+      const expected = volts / 1000;
+      assert.ok(Math.abs(op.branchCurrents.get('L1').get('a') - expected) < 1e-10);
+      assert.ok(Math.abs(op.branchCurrents.get('L1').get('a')
+        + op.branchCurrents.get('L1').get('b')) < 1e-12);
+
+      const exported = toSpice(extractNetlist(loaded));
+      assert.deepEqual(exported.skipped, []);
+      assert.match(exported.text, /^L1\s+\S+\s+\S+\s+2m$/m);
+      const again = importCircuit('spice', exported.text);
+      assert.equal(again.parts.find(part => part.id === 'L1').params.henrys, 0.002);
+      assert.deepEqual(partitions(again), partitions(imported),
+        'ASC and exported SPICE retain the same terminal partition');
+
+      const oracle = spawnSync('ngspice', ['-b'], {
+        input: `* self-authored RL oracle\nV1 in 0 ${volts}\nL1 in out 2m\nR1 out 0 1k\n.op\n.print op @l1[i]\n.end\n`,
+        encoding: 'utf8',
+      });
+      if (oracle.error?.code === 'ENOENT') return t.skip('ngspice is not installed');
+      assert.ifError(oracle.error);
+      assert.equal(oracle.status, 0, oracle.stderr);
+      const match = /@l1\[i\]\s+(?:=\s*)?([-+\deE.]+)/i.exec(oracle.stdout);
+      assert.ok(match, oracle.stdout);
+      assert.ok(Math.abs(Number(match[1]) - expected) < 1e-10, oracle.stdout);
+    }
+  });
+
+  it('starts a fresh RL transient and retains invalid/extended values as blockers', () => {
+    const imported = importCircuit('ltspice-asc', RL_ASC(5));
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    circuit.setPower(true);
+    circuit.board.advanceTo(10_000n);
+    const current = circuit.board.branchCurrent('L1', 'a');
+    assert.ok(Math.abs(current) > 0.0048 && Math.abs(current) < 0.0051,
+      `10 us RL current magnitude: ${current}`);
+
+    for (const source of [
+      RL_ASC(5).replace('SYMATTR Value 2m', 'SYMATTR Value 0'),
+      RL_ASC(5).replace('SYMATTR Value 2m', 'SYMATTR Value -1m'),
+      RL_ASC(5).replace('SYMATTR Value 2m', 'SYMATTR Value 2m\nSYMATTR Value2 Rser=3'),
+    ]) {
+      const refused = importCircuit('ltspice-asc', source);
+      const inductor = refused.parts.find(part => part.id === 'L1');
+      assert.ok(refused.losses.length >= 1);
+      assert.ok(inductor.analysisBlockers.length >= 1);
+      assert.throws(() => Circuit.fromJSON({ parts: refused.parts, wires: refused.wires })
+        .operatingPoint(), /persisted import finding/);
+    }
   });
 });
 

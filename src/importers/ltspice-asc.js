@@ -9,9 +9,10 @@
  *   cap.asy     fcc7190e...  PIN (16,0)  order 1; (16,64) order 2
  *   voltage.asy 940d0db2...  PIN (0,16)  +/order 1; (0,96) -/order 2
  *   current.asy d36a9bf0...  PIN (0,0)   +/order 1; (0,80) -/order 2
+ *   ind.asy     9f8b8372...  PIN (16,16) A/order 1; (16,96) B/order 2
  *
  * The bounded subset maps only the exact standard `res`, `cap`, `voltage`,
- * and `current` symbols. Voltage sources additionally retain exact
+ * `current`, and `ind` symbols. Voltage sources additionally retain exact
  * three-argument `SINE(offset amplitude frequency)` and strict seven-argument
  * `PULSE(V1 V2 TD TR TF PW PER)` values. For current
  * sources, LTspice/SPICE current flows from
@@ -59,6 +60,11 @@ const SYMBOLS = new Map([
     kind: 'isource', parameter: 'amps', terminals: ['neg', 'pos'],
     pins: [[0, 0], [0, 80]],
     sourceSha256: 'd36a9bf0f6b504326a64ac0011986cf7484a57f5499d7ca6faca049076dab74c',
+  }],
+  ['ind', {
+    kind: 'inductor', parameter: 'henrys', terminals: ['a', 'b'],
+    pins: [[16, 16], [16, 96]],
+    sourceSha256: '9f8b83724e9b7147cef39529ec31da234ed0427d870bb3e5b42004afc23f63f2',
   }],
 ]);
 
@@ -333,6 +339,10 @@ export function importLtspiceAsc(text, options = {}) {
     }
     const id = makeId(ref, used);
     const authored = authoredParams(effectiveAttrs.value, spec, constantParameters.values);
+    if (!authored.reason && spec.kind === 'inductor' && !(authored.params.henrys > 0)) {
+      authored.reason = 'inductor Value must resolve to a positive finite scalar';
+      authored.params = {};
+    }
     const params = authored.params;
     const partBlockers = [];
     if (authored.reason) {
