@@ -198,6 +198,38 @@ export function runNgspice(deck, dir, name) {
   const errLine = raw.match(/^\s*(Error on line.*|.*unknown device type.*|.*Simulation interrupted.*)$/mi);
   const fatal = /Simulation interrupted|unknown device type|no such (?:vector|node)/i.test(raw);
 
+  // THE ORACLE'S OWN CONVERGENCE, HELD TO THE SAME STANDARD AS OURS.
+  //
+  // This judge already refuses OUR answer when `deviceCompanions` reports
+  // `converged: false`, on the ground that a non-converged solve is an iterate
+  // and not an answer. It was not applying that to ngspice, which is the same
+  // claim about the other operand -- and ngspice STILL PRINTS A BIAS-POINT
+  // TABLE after it gives up, with no change in exit status.
+  //
+  // ADI2005 v3 row 11, a common-emitter amplifier whose output node hangs off a
+  // 3 uF coupling capacitor and is therefore FLOATING at `.op`:
+  //
+  //   Warning: singular matrix:  check node out
+  //   Warning: Dynamic gmin stepping failed
+  //   Warning: True gmin stepping failed
+  //   Warning: source stepping failed
+  //   base   1.110813e-03      emit   3.073119e-12      coll   1.200000e+01
+  //
+  // Those numbers are a failed iterate. A divider of 36k and 7.5k off 12 V puts
+  // that base at 2.07 V and nothing in the deck says otherwise. Scoring against
+  // them manufactures false disagreements AND FALSE AGREEMENTS, and the second
+  // kind is worse because it inflates the corpus figure. Measured over a
+  // 2,000-deck ADI sample: 277 decks were being scored against a non-converged
+  // run and 257 of them were counted as AGREEING.
+  //
+  // It is also an independent confirmation of where ngspice puts GMIN: a
+  // junction-free floating node makes its matrix SINGULAR, which cannot happen
+  // if every node carries a conductance to the reference. Our engine's blanket
+  // node shunt solves these decks happily and answers a question ngspice
+  // declines to answer at all.
+  const nonConvergence = raw.match(
+    /^\s*Warning:\s*(singular matrix.*|.*gmin stepping failed.*|source stepping failed.*|.*[Nn]o convergence.*|.*failed to converge.*)$/mi);
+
   const nodes = {};
   const branches = {};
   // Batch .op output is a two-column table under a "Node / Voltage" header.
@@ -221,7 +253,13 @@ export function runNgspice(deck, dir, name) {
       nodes[name] = Number(value);
     }
   }
-  return { nodes, branches, raw, error: fatal ? (errLine ? errLine[1] : 'ngspice refused the deck') : null };
+  return {
+    nodes, branches, raw,
+    error: fatal ? (errLine ? errLine[1] : 'ngspice refused the deck') : null,
+    // Reported separately from `error`: the deck was accepted, the solve was
+    // not completed. A caller that wants to score it anyway has to say so.
+    nonConverged: nonConvergence ? nonConvergence[1].trim() : null,
+  };
 }
 
 // ── Comparison ───────────────────────────────────────────────────────
@@ -703,6 +741,46 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
       reason: 'empty import' };
   }
 
+  // A BIAS POINT AND AN INSTANT ARE DIFFERENT QUESTIONS, AND THIS ASKS THE
+  // WRONG ONE. MEASURED, DIAGNOSED, AND NOT YET FIXABLE FROM HERE.
+  //
+  // `circuit.nodeVoltage` reads the board's LIVE solve, and bw-board documents
+  // what that is: at t = 0 every capacitor is uncharged, and an uncharged
+  // capacitor is stamped as a 0 V source -- so it PINS ITS TWO NETS TOGETHER.
+  // That is right for an instrument looking at a circuit at an instant. It is
+  // not `.op`, where a capacitor is an open.
+  //
+  // Proven on ADI2005 v3 row 69, a two-stage Miller-compensated op-amp: the
+  // 3 pF between COMP and OUT shorted the compensation node to the output, both
+  // read 1.792744 V, and ngspice has COMP at 2.298037 V with OUT slammed to the
+  // -3.3 V rail because the output PMOS ends 2 mV into cutoff. Delete that one
+  // capacitor from the deck and our 5.09 V error at OUT collapses to 49 mV.
+  //
+  // THE OBVIOUS FIX MAKES IT WORSE, AND THE MEASUREMENT SAYS SO. Filtering the
+  // capacitors out of the netlist handed to the board fixed 31 decks and
+  // REGRESSED 324, taking a 2,000-deck sample from 1,836 agreeing to 1,543.
+  // Two reasons, both real:
+  //
+  //   * A net whose only terminal was a capacitor's stops existing, because
+  //     `Circuit.fromJSON` builds nets from WIRES and a one-terminal node has
+  //     none. ADI row 5, a high-pass RC of three parts, lost both IN and OUT
+  //     and the judge reported "nothing compared" -- a refusal manufactured by
+  //     the harness. ngspice still prints those nodes.
+  //   * Opening the capacitors EXPOSES floating-node behaviour that shorting
+  //     them had been masking, which is a second defect and not this one.
+  //
+  // So the capacitor must stay in the netlist and be OPEN in the solve, which
+  // is a knob bw-board does not expose today: `_solveMNA` always passes
+  // `capVoltages`, and mna.js takes the true DC branch ("a capacitor is open")
+  // only when that argument is absent. That is an engine change, in the same
+  // area as the strict-OP initialisation contract under review, and it wants
+  // its own gate over the affected decks before it lands. Recorded here rather
+  // than half-done, because a harness that asks the wrong question and says so
+  // is better than one that asks a different wrong question quietly.
+  //
+  // Inductors need nothing: outside a transient bw-board already stamps one as
+  // a 1 mOhm short, which is what `.op` does.
+
   // The ENGINE's answer, on the imported circuit.
   let circuit, solved;
   try {
@@ -771,7 +849,13 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
       const lines = String(libText).split(/\r?\n/);
       let keep = null;
       for (const raw of lines) {
-        const line = raw.replace(/\s+[$;].*$/, '');
+        // THE SAME COMMENT RULE AS THE IMPORTER, and it has to be the same
+        // one: `;` ends a line wherever it appears, `$` only at the start of a
+        // token. This was a second copy requiring whitespace before either, so
+        // a library whose `.model` carried a tight comment spliced differently
+        // than it imported. One rule with two readers is how a provenance
+        // record starts describing a different file.
+        const line = raw.replace(/;.*$/, '').replace(/(^|\s)\$.*$/, '');
         if (keep) {
           picked.push(raw);
           if (/^\s*\.ends\b/i.test(line)) keep = null;
@@ -845,6 +929,14 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
   if (run.error) {
     return { name, ok: false, lines: [`  ngspice refused the deck: ${run.error}`], compared: 0,
       reason: 'ngspice refused: ' + run.error };
+  }
+  if (run.nonConverged) {
+    // Not a disagreement and not an agreement: there is no second operand.
+    // Refused for the same reason a non-converged snapshot of OUR solve is.
+    return { name, ok: false, compared: 0, evidence, thermal, adapted: edits,
+      lines: [`  ngspice did not converge on this deck: ${run.nonConverged}`,
+        '  its printed bias-point table is a failed iterate, not an answer'],
+      reason: 'oracle-non-convergence: ' + run.nonConverged };
   }
 
   // JOIN THE TWO NAMESPACES THROUGH A TERMINAL, not through a net name.
