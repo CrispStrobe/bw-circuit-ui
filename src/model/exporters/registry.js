@@ -46,6 +46,7 @@ import { toKicadSch } from './kicad-sch.js';
 import { toEasyEDA } from './easyeda.js';
 import { toEasyEdaSchematic } from './easyeda-schematic.js';
 import { toEagleSch } from './eagle.js';
+import { toLtspiceAsc } from './ltspice-asc.js';
 import { exportKicadPcb } from './kicad-pcb.js';
 import { exportEasyEdaPcb } from './easyeda-pcb.js';
 import { exportGerbers } from './gerber.js';
@@ -85,6 +86,16 @@ function schematicDocument(circuit) {
 
 /** Formats that describe the CIRCUIT (schematic, netlist, picture). */
 export const CIRCUIT_EXPORTS = [
+  {
+    id: 'ltspice-asc',
+    label: 'LTspice schematic (.asc)', labelDe: 'LTspice-Schaltplan (.asc)',
+    needs: 'circuit',
+    run: ({ circuit }) => {
+      const { text, warnings, skipped } = toLtspiceAsc(circuit);
+      return { files: [{ name: 'circuit.asc', text, mime: 'text/plain' }], report: { warnings, skipped,
+        instructions: 'Electrical interchange for the reported supported subset; labels preserve nets, but no authored drawing layout or unsupported document records.' } };
+    },
+  },
   {
     id: 'circuitikz',
     label: 'LaTeX schematic (.tex)', labelDe: 'LaTeX-Schaltplan (.tex)',
