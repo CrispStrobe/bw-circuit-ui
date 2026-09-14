@@ -17,6 +17,9 @@ runSourceAnalyses(imported, { transientProfile: 'interactive-v1' });
 runSourceAnalyses(imported, { transientProfile: 'precision-v1' });
 ```
 
+Omitting `transientProfile` selects and records `interactive-v1`; it does not
+bypass work accounting.
+
 A transient result records the exact engine-owned profile, its cumulative
 attempt/solve/advance counts, the adapter's total-work limits, source-grid
 adaptations, evidence class, and thermal statement. `accuracyMet` qualifies

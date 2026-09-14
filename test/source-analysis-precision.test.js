@@ -48,12 +48,15 @@ describe('precision-v1 source-analysis product entrypoints', () => {
 
   it('selects and qualifies interactive-v1 separately on the same source grid', () => {
     const input = imported();
+    const [defaulted] = runSourceAnalyses(input, { format: 'spice' });
     const [interactive] = runSourceAnalyses(input, { format: 'spice',
       transientProfile: 'interactive-v1' });
     const [precision] = runSourceAnalyses(input, { format: 'spice',
       transientProfile: 'precision-v1' });
     assert.equal(interactive.status, 'pass');
     assert.equal(interactive.executionProfile.configured.id, 'interactive-v1');
+    assert.equal(defaulted.executionProfile.configured.id, 'interactive-v1');
+    assert.deepEqual(defaulted.executionProfile.work, interactive.executionProfile.work);
     assert.equal(interactive.executionProfile.qualification.accuracyMet, true);
     assert.deepEqual(interactive.observables.axis, precision.observables.axis,
       'profile comparisons must use the same authored/adapted observation grid');

@@ -516,9 +516,10 @@ function runTran(imported, descriptor, limits) {
  */
 export function runSourceAnalyses(imported, {
   format = null, sourceName = null, maxAnalyses = 16, maxPoints = 2048,
-  maxObservations = 16384, transientProfile = null,
+  maxObservations = 16384, transientProfile = 'interactive-v1',
   maxTotalAttempts = 1_000_000, maxTotalSolves = 100_000, maxTotalAdvances = 4096,
 } = {}) {
+  if (transientProfile == null) transientProfile = 'interactive-v1';
   const descriptors = sourceAnalysisDescriptors(imported?.analyses || []);
   const budgets = [
     ['maxAnalyses', maxAnalyses, 64], ['maxPoints', maxPoints, 8192],
