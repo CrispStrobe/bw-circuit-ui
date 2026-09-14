@@ -111,3 +111,86 @@ describe('ngspice non-convergence is reported, not scored', () => {
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });
+
+/**
+ * AN UNBOUNDED READING IS NOT AN ANSWER EITHER, ON EITHER SIDE.
+ *
+ * A passive network cannot bias a node past its own sources. A reading of 1e9 V
+ * on a 12 V deck is an artefact, and scoring it produces a delta of 1e9 that
+ * says nothing about either model — it is neither a disagreement nor evidence
+ * of one.
+ *
+ * Both sides do it, which is why the test is symmetric:
+ *
+ *   ADI2005 v3 rows 339, 633, 1255 — an ideal 1 mA source drives a node with
+ *     NOTHING else on it, so our blanket 1e-12 node shunt is the only load and
+ *     1e-3/1e-12 pins the node at the clamp. ngspice prints -0.001 V, with no
+ *     warning of any kind.
+ *   ADI2005 v3 row 1396 — ngspice ITSELF prints 1.669e17 V, and prints no
+ *     warning, so the non-convergence check above cannot see it.
+ *
+ * The bound is derived from the deck, not chosen: 100x the largest magnitude
+ * any voltage source states, plus a volt. Generous on purpose — this is a
+ * nonsense filter, not a tolerance.
+ */
+describe('a reading outside the deck\'s own source envelope', () => {
+  // Self-authored: a 1 mA current source into a node nothing else touches.
+  const DANGLING_ISOURCE = [
+    '* an ideal current source into a node with nothing else on it',
+    'V1 rail 0 DC 12',
+    'R1 rail a 1k',
+    'R2 a 0 1k',
+    'I1 dangling 0 DC 1m',
+    '.op',
+    '.end',
+  ].join('\n');
+
+  it('is refused as a whole deck, naming which side produced it', async (t) => {
+    if (!HAVE) { t.skip('ngspice not installed'); return; }
+    const dir = mkdtempSync(join(tmpdir(), 'unbounded-'));
+    try {
+      const r = await judgeForeignDeck('dangling.cir', DANGLING_ISOURCE, dir, {});
+      assert.equal(r.ok, false);
+      assert.equal(r.compared, 0,
+        'a network with one unbounded node has an unbounded solution; the rest '
+        + 'of its table is not independently trustworthy');
+      assert.match(r.reason, /^unbounded:/, `got: ${r.reason}`);
+      assert.ok(/engine|ngspice|both/.test(r.reason),
+        `the reason must name which side: ${r.reason}`);
+      assert.ok(r.lines.some((l) => /source envelope/.test(l)),
+        'the report must state the bound it applied');
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('does NOT fire on the same deck with the dangling node tied down', async (t) => {
+    if (!HAVE) { t.skip('ngspice not installed'); return; }
+    // The separating control. Without it, a refusal firing for any reason at
+    // all would satisfy the assertion above.
+    const dir = mkdtempSync(join(tmpdir(), 'unbounded-'));
+    try {
+      const tied = DANGLING_ISOURCE.replace('I1 dangling 0 DC 1m',
+        'I1 dangling 0 DC 1m\nR3 dangling 0 1k');
+      const r = await judgeForeignDeck('tied.cir', tied, dir, {});
+      assert.ok(r.compared > 0,
+        `the control must be compared, got compared=${r.compared} reason=${r.reason}`);
+      assert.ok(!/unbounded/.test(r.reason || ''),
+        `the control must not be refused as unbounded: ${r.reason}`);
+      assert.equal(r.ok, true, `and it must AGREE: ${JSON.stringify(r.lines)}`);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  it('scales the bound with the deck, so a 12 V deck is not judged like a 1 V one', async (t) => {
+    if (!HAVE) { t.skip('ngspice not installed'); return; }
+    // A 1 kV source must not make ordinary nodes look unbounded, and an
+    // ordinary deck's nodes must stay well inside the bound.
+    const dir = mkdtempSync(join(tmpdir(), 'unbounded-'));
+    try {
+      const kilovolt = ['* a kilovolt divider', 'V1 hv 0 DC 1000',
+        'R1 hv mid 1k', 'R2 mid 0 1k', '.op', '.end'].join('\n');
+      const r = await judgeForeignDeck('kv.cir', kilovolt, dir, {});
+      assert.ok(!/unbounded/.test(r.reason || ''),
+        `500 V on a 1 kV deck is ordinary: ${r.reason}`);
+      assert.equal(r.ok, true, JSON.stringify(r.lines));
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});

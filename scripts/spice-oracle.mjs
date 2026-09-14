@@ -46,6 +46,7 @@ import { JUNCTION_ROUTING } from 'bw-board/mna.js';
 import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice } from '../src/model/exporters/spice.js';
 import { importSpice } from '../src/importers/spice.js';
+import { parseSpiceValue } from '../src/model/si.js';
 
 /** Agreement required between ngspice and the engine on a shared node. */
 const V_TOL_ABS = 5e-3;      // volts
@@ -955,6 +956,36 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
     if (netId) deckNets.push({ name: dn.name, id: netId });
   }
 
+  // A VOLTAGE FAR OUTSIDE THE DECK'S OWN SOURCE ENVELOPE IS NOT AN ANSWER,
+  // WHICHEVER SIDE PRODUCES IT.
+  //
+  // A passive network cannot bias a node past its own sources; a reading of
+  // 1e9 V on a 12 V deck is an artefact, not a disagreement, and scoring it
+  // produces a delta of 1e9 that says nothing about either model. Both sides
+  // get the same test, because both sides do it:
+  //
+  //   ADI2005 v3 rows 339, 633, 1255: an ideal 1 mA source drives a node with
+  //     NOTHING else on it, so our blanket GMIN shunt is the only load and
+  //     1e-3/1e-12 pins it at the clamp. ngspice prints -0.001 V with no
+  //     warning.
+  //   ADI2005 v3 row 1396: ngspice itself prints 1.669e17 V, and prints no
+  //     warning either, so the non-convergence check above cannot see it.
+  //
+  // The bound is derived from the deck rather than chosen: 100x the largest
+  // magnitude any voltage source states, plus a volt, so a 12 V deck may read
+  // up to 1201 V before this fires and a 1 V deck up to 101 V. Generous on
+  // purpose -- this is a nonsense filter, not a tolerance.
+  let envelope = 0;
+  for (const line of text.split('\n')) {
+    const m = /^\s*V\S*\s+\S+\s+\S+\s+(.*)$/i.exec(line.trim());
+    if (!m) continue;
+    for (const tok of m[1].split(/[\s(),]+/)) {
+      const v = parseSpiceValue(tok);
+      if (Number.isFinite(v)) envelope = Math.max(envelope, Math.abs(v));
+    }
+  }
+  const UNBOUNDED = 100 * (envelope || 1) + 1;
+
   // THE BIAS POINT, not the instant. See the note above `Circuit.fromJSON`.
   // A non-converged bias point is an iterate, and this judge refuses one from
   // its own engine for the same reason it refuses one from ngspice.
@@ -975,12 +1006,32 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
     if (!key || !(key in run.nodes)) continue;   // ngspice folds unused nodes away
     const engineV = bias ? bias.get(net.id) : circuit.nodeVoltage(net.id);
     if (typeof engineV !== 'number' || !isFinite(engineV)) continue;
-    compared++;
     const spiceV = run.nodes[key];
+    compared++;
     const d = Math.abs(engineV - spiceV);
     const rel = d / Math.max(1e-9, Math.abs(spiceV));
     if (d > worstAbs) { worstAbs = d; worstRel = rel; worstAt = net.name; }
     if (d > V_TOL_ABS && rel > V_TOL_REL) {
+      // ONLY WHERE THEY ALREADY DISAGREE. An unbounded reading matters when it
+      // is the CAUSE of a disagreement, not whenever it is large: two
+      // independent engines landing on the same big number is evidence, and
+      // refusing that is throwing away agreement. Applying this test before the
+      // tolerance check cost 71 decks of the 2,000-deck sample, every one of
+      // them a deck where BOTH sides reported a large voltage and agreed about
+      // it -- several of them decks with no voltage source at all, where the
+      // envelope falls back to a volt and a legitimate 500 V answer looks wild.
+      if (Math.abs(engineV) > UNBOUNDED || Math.abs(spiceV) > UNBOUNDED) {
+        const who = Math.abs(engineV) > UNBOUNDED
+          ? (Math.abs(spiceV) > UNBOUNDED ? 'both' : 'the engine') : 'ngspice';
+        return { name, ok: false, compared: 0, evidence, thermal, adapted: edits,
+          lines: [`  V(${net.name}): ${who} reports a voltage outside the deck's own `
+            + `source envelope (|V| > ${UNBOUNDED.toFixed(0)} V) AND the two sides `
+            + `disagree: engine ${engineV.toExponential(3)} V, `
+            + `ngspice ${spiceV.toExponential(3)} V`,
+            '  a passive network cannot bias a node past its own sources, so this '
+            + 'is an artefact rather than a measured disagreement'],
+          reason: `unbounded: ${who} past the source envelope` };
+      }
       ok = false;
       lines.push(`  V(${net.name}): engine ${engineV.toFixed(6)} V  `
         + `ngspice ${spiceV.toFixed(6)} V  delta ${d.toExponential(2)}`);
