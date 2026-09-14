@@ -288,6 +288,68 @@ export function runNgspice(deck, dir, name) {
   };
 }
 
+/**
+ * NODE VOLTAGES IN A GALVANICALLY ISOLATED SUBGRAPH ARE DEFINED ONLY UP TO A
+ * CONSTANT, SO COMPARING THEM IS NOT A MEASUREMENT.
+ *
+ * `pc80-quellen-vergleich` is two independent 9 V batteries, each with its own
+ * resistor and LED, and NO ground part. The exporter names one net node 0; the
+ * engine picks its own reference. The second loop then floats, and the two
+ * answers differ by a rigid shift:
+ *
+ *   net_13   engine  5.305443   ngspice  3.517839   delta 1.787604
+ *   net_15   engine -1.685230   ngspice -3.472830   delta 1.787600
+ *   net_17   engine -3.620188   ngspice -5.407790   delta 1.787602
+ *
+ * Identical to six decimals across every node of that subgraph, while the
+ * OTHER loop's `net_7` agrees at 8.992494 exactly. That is not a model
+ * difference; it is two valid gauge choices, and both answers are right.
+ *
+ * So a circuit with more than one component carrying no reference is refused by
+ * name. The alternative — comparing differences within each component — is a
+ * real option and a bigger change; it is not done here, and the refusal says
+ * which case it is so nobody reads this as an engine defect.
+ *
+ * Counted over PARTS, not wires: two nets joined only through a part are in one
+ * galvanic component, which is what determines whether a gauge is shared.
+ */
+export function isolatedUnreferencedComponents(netlist) {
+  const nets = (netlist?.nets || []).filter(n => n.id);
+  if (!nets.length) return [];
+  const parent = new Map(nets.map(n => [n.id, n.id]));
+  const find = (x) => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+  const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent.set(ra, rb); };
+  // Every net a single part touches shares that part's galvanic component.
+  const netsOfPart = new Map();
+  for (const net of nets) {
+    for (const nd of net.nodes || []) {
+      if (!netsOfPart.has(nd.partId)) netsOfPart.set(nd.partId, []);
+      netsOfPart.get(nd.partId).push(net.id);
+    }
+  }
+  for (const ids of netsOfPart.values()) {
+    for (let i = 1; i < ids.length; i++) union(ids[0], ids[i]);
+  }
+  // A component is referenced if it holds a gnd rail, a net named GND or 0, or
+  // the net the exporter maps to node 0 (a source's negative net when there is
+  // no gnd part).
+  const referenced = new Set();
+  for (const net of nets) {
+    const name = String(net.name || '').toLowerCase();
+    if (net.rail === 'gnd' || name === 'gnd' || name === '0') referenced.add(find(net.id));
+  }
+  const components = new Map();
+  for (const net of nets) {
+    const root = find(net.id);
+    if (!components.has(root)) components.set(root, []);
+    components.get(root).push(net.name);
+  }
+  // With no gnd anywhere, ONE component still gets node 0 from the exporter, so
+  // a single unreferenced component is fine; two or more is the ambiguity.
+  const unref = [...components.entries()].filter(([root]) => !referenced.has(root));
+  return unref.length > 1 ? unref.map(([, names]) => names) : [];
+}
+
 // ── Comparison ───────────────────────────────────────────────────────
 
 /** The name the ground net WOULD carry if it were not mapped to node 0. */
@@ -613,6 +675,22 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
   // thousands of these, and parsing the human lines to do it would compare a
   // different thing than the judgement did. Both callers read the same fields.
   let worstAbs = 0, worstRel = 0, worstAt = null;
+
+  // TWO GAUGES, NOT TWO ANSWERS. See `isolatedUnreferencedComponents`: when a
+  // circuit has more than one galvanically isolated component with no
+  // reference, node voltages in all but one of them are defined only up to a
+  // constant, and the two solvers may legitimately pick different constants.
+  // Refused by name rather than scored as a disagreement.
+  const floating = isolatedUnreferencedComponents(solved);
+  if (floating.length) {
+    const shown = floating.map(names => `{${names.slice(0, 4).join(', ')}}`).join(' and ');
+    return { name, ok: false, compared: 0,
+      lines: [`  ${floating.length} galvanically isolated component(s) carry no reference: ${shown}`,
+        '  node voltages there are defined only up to a constant per component, so the',
+        '  two solvers may pick different gauges and both be right — nothing to compare'],
+      reason: `floating-gauge: ${floating.length} unreferenced components` };
+  }
+
   // `solved`, not `netlist`: the deck was built from the post-drive extraction,
   // and comparing nets from a different one would judge two circuits against
   // each other. Identical objects when drivePins is off.
