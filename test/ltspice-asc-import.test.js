@@ -485,6 +485,123 @@ describe('standard LTspice ASC inductor', () => {
   });
 });
 
+const DIODE_TEMP = '26.826793442075882';
+const DIODE_ASC = `Version 4
+SHEET 1 320 180
+FLAG 0 16 rail
+FLAG 0 96 0
+FLAG 200 16 rail
+FLAG 120 16 out
+FLAG 200 64 out
+FLAG 136 64 0
+SYMBOL voltage 0 0 R0
+SYMATTR InstName V1
+SYMATTR Value 5
+SYMBOL res 216 0 R90
+SYMATTR InstName R1
+SYMATTR Value 1k
+SYMBOL diode 200 80 M270
+SYMATTR InstName D1
+SYMATTR Value SELF
+TEXT 0 120 Left 2 !.model SELF D(IS=2e-12 N=1.3 RS=4)
+TEXT 0 140 Left 2 !.temp ${DIODE_TEMP}
+TEXT 160 140 Left 2 !.options tnom=${DIODE_TEMP}
+TEXT 0 160 Left 2 !.op
+`;
+
+const DIODE_SPICE = `paired ASC diode
+V1 rail 0 5
+R1 rail out 1k
+D1 out 0 SELF
+.model SELF D(IS=2e-12 N=1.3 RS=4)
+.temp ${DIODE_TEMP}
+.options tnom=${DIODE_TEMP}
+.op
+.end
+`;
+
+describe('standard LTspice ASC Shockley diode', () => {
+  it('preserves verified anode/cathode polarity, exact model parameters and signed OP', (t) => {
+    const asc = importCircuit('ltspice-asc', DIODE_ASC);
+    const spice = importCircuit('spice', DIODE_SPICE);
+    assert.deepEqual(asc.unmapped, []);
+    assert.deepEqual(asc.losses, []);
+    assert.deepEqual(asc.parts.find(part => part.id === 'D1').params,
+      { model: 'shockley', is: 2e-12, n: 1.3, rs: 4 });
+    assert.deepEqual(namedPartitions(asc), namedPartitions(spice));
+    assert.deepEqual(asc.netNames.find(net => net.name === 'out').terminals
+      .map(terminal => `${terminal.partId}.${terminal.terminal}`).sort(),
+    ['D1.anode', 'R1.b']);
+    assert.deepEqual(asc.netNames.find(net => net.name === '0').terminals
+      .map(terminal => `${terminal.partId}.${terminal.terminal}`).sort(),
+    ['D1.cathode', 'GND1.gnd', 'V1.neg']);
+    assert.ok(asc.sourceDirectives.some(item => item.source.startsWith('.model SELF')
+      && item.handling === 'strict-diode-model'));
+    assert.equal(asc.sourceDirectives.filter(item => item.kind === 'temperature-profile').length, 2);
+
+    const ascRun = runSourceAnalyses(asc, { format: 'ltspice-asc' })[0];
+    const spiceRun = runSourceAnalyses(spice, { format: 'spice' })[0];
+    assert.equal(ascRun.status, 'pass');
+    assert.equal(spiceRun.status, 'pass');
+    assert.deepEqual(ascRun.topology, spiceRun.topology);
+    const ascOut = ascRun.observables.nodes.find(node => node.id === 'n1').voltage;
+    const spiceOut = spiceRun.observables.nodes.find(node => node.id === 'n1').voltage;
+    assert.ok(Math.abs(ascOut - spiceOut) < 1e-12);
+
+    const circuit = Circuit.fromJSON({ parts: asc.parts, wires: asc.wires });
+    const loaded = Circuit.fromJSON(circuit.toJSON());
+    const op = loaded.operatingPoint();
+    const diode = op.branchCurrents.get('D1');
+    assert.ok(diode.get('anode') > 0);
+    assert.ok(Math.abs(diode.get('anode') + diode.get('cathode')) < 1e-12);
+    const exported = toSpice(extractNetlist(loaded));
+    assert.deepEqual(exported.skipped, []);
+    const again = importCircuit('spice', exported.text);
+    assert.deepEqual(again.losses, []);
+    assert.deepEqual(again.parts.find(part => part.id === 'D1').params,
+      { model: 'shockley', is: 2e-12, n: 1.3, rs: 4 });
+
+    const oracle = spawnSync('ngspice', ['-b'], {
+      input: DIODE_SPICE.replace('\n.op\n', '\n.op\n.print op v(out) @d1[id]\n'),
+      encoding: 'utf8',
+    });
+    if (oracle.error?.code === 'ENOENT') return t.skip('ngspice is not installed');
+    assert.ifError(oracle.error);
+    assert.equal(oracle.status, 0, oracle.stderr);
+    const row = oracle.stdout.match(/\n0\s+([\deE+.-]+)\s+([\deE+.-]+)\s*\n/);
+    assert.ok(row, oracle.stdout);
+    assert.ok(Math.abs(Number(row[1]) - ascOut) < 3e-7);
+    assert.ok(Math.abs(Number(row[2]) - diode.get('anode')) < 3e-8);
+  });
+
+  it('persists missing, ambiguous, non-exact and extra instance semantics as refusals', () => {
+    const refusedSources = [
+      DIODE_ASC.replace(/^TEXT .*?!\.model.*\n/m, ''),
+      DIODE_ASC.replace('RS=4)', 'RS=4 BV=12)'),
+      DIODE_ASC.replace('TEXT 0 140', 'TEXT 0 130 Left 2 !.model SELF D(IS=3e-12 N=1.3 RS=4)\nTEXT 0 140'),
+      DIODE_ASC.replace('TEXT 0 140', 'TEXT 0 130 Left 2 !.model SELF\nTEXT 0 140'),
+      DIODE_ASC.replace(`.temp ${DIODE_TEMP}`, '.temp 27'),
+      DIODE_ASC.replace(`.options tnom=${DIODE_TEMP}`, `.options tnom=${DIODE_TEMP} reltol=1e-4`),
+      DIODE_ASC.replace('RS=4)', 'RS=4 garbage)'),
+      DIODE_ASC.replace('SYMATTR Value SELF', 'SYMATTR Value SELF\nSYMATTR Value2 AREA=2'),
+    ];
+    for (const source of refusedSources) {
+      const imported = importCircuit('ltspice-asc', source);
+      const diode = imported.parts.find(part => part.id === 'D1');
+      assert.ok(diode, JSON.stringify(imported.unmapped));
+      assert.ok(imported.losses.length >= 1);
+      assert.ok(diode.analysisBlockers.length >= 1);
+      const loaded = Circuit.fromJSON(Circuit.fromJSON({
+        parts: imported.parts, wires: imported.wires,
+      }).toJSON());
+      assert.ok(loaded.analysisBlockers.length >= 1);
+      assert.throws(() => loaded.operatingPoint(), /persisted import finding/);
+      const exported = toSpice(extractNetlist(loaded));
+      assert.ok(exported.skipped.length >= 1, 'a refused diode must not regain a SPICE card');
+    }
+  });
+});
+
 const PAIRED_ASC = `Version 4
 SHEET 1 240 180
 FLAG 96 100 0
