@@ -674,11 +674,14 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
 // @param {string} name
 // @param {string} deckText   the foreign deck, verbatim
 // @param {string} dir
-export function judgeForeignDeck(name, deckText, dir) {
+export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
   const lines = [];
   let imported;
   try {
-    imported = importSpice(deckText);
+    // `libraries` is SPICE TEXT the CALLER chose to supply. The importer never
+    // opens a file: `.include` names a path, and following one means opening
+    // whatever a foreign deck points at.
+    imported = importSpice(deckText, { libraries });
   } catch (e) {
     return { name, ok: false, lines: [`  importer threw: ${e.message}`], compared: 0,
       reason: 'import-error: ' + e.message };
@@ -747,6 +750,51 @@ export function judgeForeignDeck(name, deckText, dir) {
   // changed.
   let text = deckText;
   const edits = [];
+
+  // A LIBRARY MUST BE GIVEN TO BOTH SIDES, OR IT IS NOT A COMPARISON.
+  //
+  // Resolving a deck's models from an injected library and then handing
+  // ngspice the ORIGINAL BYTES asks the two engines different questions:
+  // ngspice's `.include` is unfollowed too, so it refuses a deck naming a
+  // model it was never given. Measured the first time this ran: the import
+  // resolved cleanly and ngspice returned "Error on line 4".
+  //
+  // So the definitions the import actually USED are spliced in ahead of
+  // `.end`, and only those — appending all 2,427 definitions of the LTspice
+  // standard libraries to every deck would be slower and would also claim the
+  // deck needed them. This is an adaptation and is recorded as one.
+  const used = imported.usedLibraries || [];
+  if (used.length) {
+    const wanted = new Set(used.map(u => `${u.kind}:${u.name}`));
+    const picked = [];
+    for (const libText of libraries) {
+      const lines = String(libText).split(/\r?\n/);
+      let keep = null;
+      for (const raw of lines) {
+        const line = raw.replace(/\s+[$;].*$/, '');
+        if (keep) {
+          picked.push(raw);
+          if (/^\s*\.ends\b/i.test(line)) keep = null;
+          continue;
+        }
+        const sub = /^\s*\.subckt\s+(\S+)/i.exec(line);
+        if (sub && wanted.has(`subckt:${sub[1].toLowerCase()}`)) {
+          keep = sub[1]; picked.push(raw); continue;
+        }
+        const mod = /^\s*\.model\s+(\S+)/i.exec(line);
+        if (mod && wanted.has(`model:${mod[1].toLowerCase()}`)) picked.push(raw);
+        // A continuation belongs to whatever was last kept.
+        else if (/^\s*\+/.test(raw) && picked.length) picked.push(raw);
+      }
+    }
+    if (picked.length) {
+      const splice = picked.join('\n') + '\n';
+      text = /^\s*\.end\s*$/im.test(text)
+        ? text.replace(/^\s*\.end\s*$/im, `${splice}.end`)
+        : `${text}\n${splice}.end\n`;
+      edits.push(`spliced ${used.length} library definition(s) in so ngspice sees them too`);
+    }
+  }
   const SWEEP = /^\s*\.(ac|dc|tran|noise|tf|four|disto|pz|sens|sp)\b.*$/gim;
   if (SWEEP.test(text)) {
     SWEEP.lastIndex = 0;
@@ -783,7 +831,15 @@ export function judgeForeignDeck(name, deckText, dir) {
   // neither key is). So it is reported, and a caller that wants strict thermal
   // equality builds a separate native-matched profile.
   const declaresTemp = /^\s*\.options?\b.*\btemp\s*=/im.test(deckText);
-  const evidence = edits.length ? 'original-adapted' : 'original-direct';
+  // A DECK RESOLVED AGAINST A LIBRARY IS NOT SELF-CONTAINED, and that is a
+  // third evidence class, not a footnote: the comparison then depends on a file
+  // the source did not ship, and which ngspice is NOT given (it sees the
+  // original bytes and its own `.include`, unfollowed). Saying so is the
+  // difference between "this deck agreed" and "this deck agreed once we
+  // supplied its models".
+  const usedLib = (imported.usedLibraries || []).length > 0;
+  const evidence = usedLib ? 'library-resolved'
+    : edits.length ? 'original-adapted' : 'original-direct';
   const thermal = declaresTemp ? 'deck-declared' : 'native-fixed-vs-oracle-default';
   const run = runNgspice(text, dir, name.replace(/[^A-Za-z0-9_.-]/g, '_'));
   if (run.error) {
@@ -835,7 +891,7 @@ export function judgeForeignDeck(name, deckText, dir) {
       + 'imported circuit — nothing was compared'], compared: 0, reason: 'nothing compared' };
   }
   return { name, ok, lines, compared, worstAbs, worstRel, worstAt, evidence, thermal,
-    adapted: edits,
+    adapted: edits, usedLibraries: imported.usedLibraries || [],
     reason: ok ? null : `worst ${worstAbs.toExponential(2)} V at ${worstAt}` };
 }
 
