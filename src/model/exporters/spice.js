@@ -444,6 +444,58 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       }
     }
 
+    // A BATTERY'S INTERNAL RESISTANCE IS WHY A BATTERY IS NOT AN IDEAL SOURCE,
+    // AND THE DECK WAS DELETING IT.
+    //
+    // The engine puts `rInternal` in series between the EMF and `pos`; the deck
+    // wrote a bare V card, so ngspice returned the EMF to six decimals every
+    // time and the comparison read as an engine error. Measured, 9 V with
+    // rInternal = 1 into a 10 Ohm load:
+    //
+    //   engine                                    8.181818 V
+    //   9 * 10/(10+1)                             8.181818 V
+    //   deck as a bare V card, ngspice            9.000000 V
+    //
+    // and with the two cards below ngspice reads 8.181818 V — the same
+    // question, the same answer.
+    //
+    // The irony is where it bit: `pc77-klemmenspannung` and
+    // `pc80-quellen-vergleich` are the gallery examples that EXIST to teach
+    // terminal voltage versus EMF, and the deck removed the lesson. Four rows
+    // of the 47 remaining gallery disagreements.
+    //
+    // An internal node is introduced rather than folding the resistance into a
+    // neighbour, because the EMF is a value a reader must still be able to see:
+    // `V(BT1_EMF)` is the cell's 9 V and `V(pos)` is what a meter on the
+    // terminals would show. The series resistor takes its own R card name from
+    // the refdes so it cannot collide with a part.
+    if (TWO_TERMINAL.has(card) && card === 'V'
+        && Number.isFinite(Number(part.params?.rInternal))
+        && Number(part.params.rInternal) > 0) {
+      const rInt = Number(part.params.rInternal);
+      const fields = String(nodeFields).trim().split(/\s+/);
+      if (fields.length === 2) {
+        const [posNode, negNode] = fields;
+        const emf = `${part.refdes.toUpperCase()}_EMF`;
+        let value = part.valueNumber;
+        if (value == null) value = ENGINE_DEFAULTS[part.kind] ?? null;
+        if (value == null) {
+          warnings.push(`${part.refdes} (${part.kind}): no numeric value — `
+            + 'internal resistance cannot be exported without an EMF.');
+        } else {
+          lines.push(`* ${part.refdes} ${part.kind} — EMF at ${emf}, `
+            + `${formatSpiceValue(rInt)} internal resistance in series to ${posNode}`);
+          lines.push(`${el} ${emf} ${negNode} DC ${formatSpiceValue(value)}`);
+          lines.push(`R${part.refdes}_INT ${emf} ${posNode} ${formatSpiceValue(rInt)}`);
+          emitted.add(`${part.refdes}_INT`);
+          continue;
+        }
+      } else {
+        warnings.push(`${part.refdes} (${part.kind}): internal resistance needs exactly `
+          + `two nodes, got ${fields.length} — exported as an ideal source.`);
+      }
+    }
+
     if (TWO_TERMINAL.has(card)) {
       let value = part.valueNumber;
       // A CONTROLLED PASSIVE'S VALUE IS THE ENGINE'S TO STATE. Asking bw-board
