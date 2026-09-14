@@ -21,6 +21,7 @@ const netlistWith = (parts) => ({
 });
 
 const npn = (part) => ({ refdes: 'Q1', kind: 'npn', pins: ['collector', 'base', 'emitter'], params: part ? { part } : {} });
+const pnpPart = (part) => ({ refdes: 'Q1', kind: 'pnp', pins: ['collector', 'base', 'emitter'], params: part ? { part } : {} });
 
 test('a named transistor takes its .model from the library, byte for byte', () => {
   const card = cardFor('2N2222');
@@ -110,13 +111,64 @@ test('a named diode takes its junction numbers from the card; a bare one takes t
   assert.equal(junctionModel({ kind: 'diode', params: { part: '1N4148', rs: 3 } }).rs, 3);
 });
 
-test('a bare npn is the symbol table\'s card, derived; no generic Q literal remains', () => {
-  // The symbol table names WHICH card a bare class is (npn -> 2N2222); the
-  // library supplies the body. Two decisions, two homes, each its own.
-  const { text } = toSpice(netlistWith([npn(null)]));
-  const m = spiceModelFor('2N2222');
-  assert.ok(text.includes(`.model ${m.name} ${m.type} (${m.body})`), text);
-  assert.ok(!text.includes('Q_DEFAULT'));
+test('a bare transistor exports the GENERIC card, with the beta the solver uses', () => {
+  // The symbol table names a PART NUMBER — `2N2222` for npn, `2N2907` for pnp —
+  // and both carry Bf = 200 while bw-board's default for a transistor with no
+  // params is 100. So an unconfigured transistor was exported as a device the
+  // engine does not solve. Measured on `10-motor-speed`: engine collector
+  // 0.912 V (still active at Bf = 100), ngspice 0.147 V (saturated at
+  // Bf = 200), 15.8 % on supply current across 15 corpus circuits. It read as a
+  // model gap until the two betas were compared.
+  //
+  // The exporter now resolves an un-carded part to the generic card of its
+  // KIND, from the library, so the rule follows the cards rather than a name
+  // that has to exist at every pin this repo can be built against.
+  const withGeneric = ['npn', 'pnp'].filter(k => allCards().some(c => c.generic && c.kind === k));
+  assert.ok(withGeneric.includes('npn'),
+    'the library ships no generic npn card, so nothing below is a measurement');
+
+  for (const kind of withGeneric) {
+    const mk = kind === 'npn' ? npn : pnpPart;
+    const { text } = toSpice(netlistWith([mk(null)]));
+    const named = text.match(/^Q1 \S+ \S+ \S+ (\S+)$/m);
+    assert.ok(named, `no Q element line in the ${kind} deck:\n${text}`);
+    const card = cardFor(named[1]);
+    assert.ok(card, `the deck names '${named[1]}', which resolves to no card`);
+    assert.equal(card.generic, true,
+      `a bare ${kind} exported as '${card.id}', a specific part number. An unconfigured `
+      + 'transistor is not a 2N2222; it is the generic card, whose numbers are the ones the '
+      + 'solver uses for a part with no params.');
+    // THE LOAD-BEARING ASSERTION. The generic card's beta must be the beta
+    // bw-board solves a bare transistor with, or the deck and the solve are two
+    // devices again under a different name.
+    assert.equal(card.params.beta, classDefaults(kind).beta,
+      `the generic ${kind} card says beta ${card.params.beta} and the solver's class default `
+      + `says ${classDefaults(kind).beta}`);
+    const m = spiceModelFor(card.id);
+    assert.ok(text.includes(`.model ${m.name} ${m.type} (${m.body})`), text);
+  }
+
+  // A NAMED part still wins: a user who typed 2N2222 meant it.
+  assert.match(toSpice(netlistWith([npn('2N2222')])).text, /^Q1 .* 2N2222$/m);
+});
+
+test('a kind with no generic card falls back to the symbol table, and says which', () => {
+  // The counter-example to the rule above. Without it, a `genericCardOf` that
+  // returned something for every kind would satisfy the loop and quietly stop
+  // the symbol table ever being consulted.
+  //
+  // At a bw-board pin before e175bf4 that kind is `pnp`, which had no generic
+  // card; after it, both have one and this test measures the tip120 instead.
+  // Either way it asserts the FALLBACK still resolves rather than refusing.
+  const kinds = ['pnp', 'tip120'].filter(k => !allCards().some(c => c.generic && c.kind === k));
+  for (const kind of kinds) {
+    const part = { refdes: 'Q1', kind, pins: ['collector', 'base', 'emitter'], params: {} };
+    const { text, skipped } = toSpice(netlistWith([part]));
+    assert.deepEqual(skipped, [],
+      `a bare ${kind} was skipped rather than exported: ${JSON.stringify(skipped)}`);
+    assert.match(text, /^Q1 \S+ \S+ \S+ \S+$/m,
+      `no Q element line for a bare ${kind}:\n${text}`);
+  }
 });
 
 test('an IRRELEVANT part in the netlist does not change another part\'s emitted model', () => {

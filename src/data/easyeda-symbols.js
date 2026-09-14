@@ -90,12 +90,21 @@ export const PART_SYMBOLS = {
     refdesPrefix: 'Q', spiceCard: 'Q',
     kicadSymbol: 'Device:Q_NPN_BCE',
     kicadFootprint: 'Package_TO_SOT_THT:TO-92_Inline',
+    // A PART NUMBER, and it is NOT what a bare npn exports as. The exporter
+    // resolves an un-carded transistor to the GENERIC card of its kind first
+    // (`genericCardOf` in model/exporters/spice.js) precisely because this name
+    // carries Bf = 200 while the solver's default for a bare transistor is 100.
+    // Kept as the last-resort fallback for a kind with no generic card.
     spiceModel: '2N2222',
   },
   pnp: {
     refdesPrefix: 'Q', spiceCard: 'Q',
     kicadSymbol: 'Device:Q_PNP_BCE',
     kicadFootprint: 'Package_TO_SOT_THT:TO-92_Inline',
+    // See npn above: a part number, used only when the library ships no
+    // generic card for the kind. bw-board gained `Q_DEFAULT_PNP` at e175bf4,
+    // so once the package pin moves past it the exporter picks that up on its
+    // own and this line stops being reached.
     spiceModel: '2N2907',
   },
   nmos: {

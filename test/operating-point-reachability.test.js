@@ -9,6 +9,31 @@ import { Circuit } from '../src/model/circuit.js';
 const root = join(import.meta.dirname, '..');
 const cli = join(root, 'bin', 'bwc.mjs');
 
+/**
+ * The `scope` line is a hyphen-joined CAPABILITY LIST, and it grows.
+ *
+ * These cases used to pin it by equality — `grounded-static-native-r-c-v-i` —
+ * which is a gate that reds every time bw-board GAINS a capability, and says
+ * nothing about the one thing each case actually needs. When inductors and
+ * explicit Shockley diodes landed upstream the line became
+ * `grounded-static-native-r-c-l-d-v-i-e-g-exact-ideal-l-explicit-shockley-d`
+ * and both cases failed for a reason that is not a defect. (Measured at
+ * bw-board 7515f3e, before this repo's pin moved, so the two masters were
+ * already incompatible and only the stale pin hid it.)
+ *
+ * Asserting MEMBERSHIP fires on a capability that disappears — which is the
+ * regression worth catching — and not on one that appears.
+ */
+function assertScopeCovers(stdout, tokens) {
+  const line = /scope\s+:\s*(\S+)/.exec(stdout);
+  assert.ok(line, `no scope line in:\n${stdout}`);
+  const have = new Set(line[1].split('-'));
+  for (const t of tokens) {
+    assert.ok(have.has(t),
+      `the operating-point scope '${line[1]}' does not cover '${t}', which this case needs`);
+  }
+}
+
 describe('static operating-point reachability', () => {
   it('Circuit delegates to the engine result without adopting it', () => {
     const c = Circuit.fromJSON({
@@ -43,7 +68,9 @@ describe('static operating-point reachability', () => {
     assert.equal(r.status, 0, r.stderr || r.stdout);
     assert.match(r.stdout, /\[spice\]\s+DC operating point/);
     assert.match(r.stdout, /converged: yes/);
-    assert.match(r.stdout, /scope\s+: grounded-static-native-r-c-v-i/);
+    assertScopeCovers(r.stdout, ['grounded', 'static', 'native', 'r', 'c', 'v', 'i']);
+    // Not vacuous: a capability the scope does NOT name must fail.
+    assert.throws(() => assertScopeCovers(r.stdout, ['bsim']), /does not cover 'bsim'/);
     assert.match(r.stdout, /sources\s+: fixed-dc-only/);
     assert.match(r.stdout, /capacitors: open/);
     assert.match(r.stdout, /positive-into-part-terminal/);
@@ -65,7 +92,7 @@ describe('static operating-point reachability', () => {
     const fixture = join(root, 'test', 'fixtures', 'spice-controlled-op.cir');
     const r = spawnSync(process.execPath, [cli, 'op', fixture], { encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr || r.stdout);
-    assert.match(r.stdout, /scope\s+: grounded-static-native-r-c-v-i-e-g/);
+    assertScopeCovers(r.stdout, ['grounded', 'static', 'native', 'r', 'c', 'v', 'i', 'e', 'g']);
     assert.match(r.stdout, /controlled: ideal-explicit-finite-parameters-only/);
     assert.match(r.stdout, /kinds\s+: .*vcvs, vccs/);
     const current = terminal => {
