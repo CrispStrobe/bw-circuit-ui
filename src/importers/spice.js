@@ -83,16 +83,74 @@ const GROUND_NODES = new Set(['0', 'gnd']);
 const FALLBACK_GROUND_NODES = ['gnd!', 'ground', 'vss'];
 
 /** Analysis and control cards we recognise. Reported, never executed. */
-const ANALYSIS_CARDS = new Set(['op', 'tran', 'ac', 'dc', 'noise', 'tf', 'four', 'disto', 'pz', 'sens']);
+// `.four` IS NOT AN ANALYSIS. It is a Fourier decomposition OF a transient
+// result — an output request that needs a `.tran` to have run. Listing it here
+// made a deck carrying only `.four` look like it had declared an analysis.
+const ANALYSIS_CARDS = new Set(['op', 'tran', 'ac', 'dc', 'noise', 'tf', 'disto', 'pz', 'sens']);
+
+/**
+ * OUTPUT REQUESTS AND FORMATTING, PRESERVED AND NOT EXECUTED.
+ *
+ * These used to fall into `BENIGN_CARDS` and land in `ignored`, where nothing
+ * could tell "deliberately retained" from "fell through" — the same complaint
+ * this importer's refusal reasons exist to avoid. They are now reported in
+ * `retainedDirectives` with their own handling, and `ignored` keeps only what
+ * genuinely had no consequence.
+ *
+ * Corpus reach, measured before the split: of 7,866 Si7li decks, `.meas`
+ * appears 639 times, `.four` 28, and print/plot/save/probe 15 between them. Of
+ * 12,471 ADI decks, none at all.
+ */
+const OUTPUT_REQUEST_CARDS = new Set(['four', 'meas', 'measure', 'print', 'plot', 'save', 'probe']);
+
+/**
+ * `.options` KEYS THAT ONLY AFFECT PRESENTATION.
+ *
+ * Everything else in `.options` is a numerical instruction and must be a LOSS,
+ * because it changes the answer rather than the report. `gshunt` is the one to
+ * keep in mind: it adds a conductance from every node to the reference, which
+ * is exactly the GMIN placement this programme measured as worth volts on a
+ * floating node. `reltol`, `abstol`, `vntol`, `gminsteps`, `srcsteps` and
+ * `maxstep` all move the solver.
+ *
+ * Measured over the same corpora: 143 of 7,866 Si7li decks carry `.options`,
+ * and the keys are plotwinsize 92, numdgt 22, gminsteps 13, maxstep 8,
+ * measdgt 7, gshunt 7, reltol 7. One ADI deck carries any at all
+ * (gminsteps, srcsteps). **`temp` does not appear in either corpus**, so
+ * treating the rest as a loss costs the thermal path nothing — checked,
+ * because a deck declaring its own temperature is the case that would have
+ * made this change expensive.
+ */
+const PRESENTATION_OPTION_KEYS = new Set(['plotwinsize', 'numdgt', 'measdgt', 'nopage', 'noacct', 'noinit', 'nomod']);
+
+/**
+ * `.options` KEYS THIS READER ACTUALLY HONOURS.
+ *
+ * `temp` and `tnom` are the thermal point, and `classifyShockleyThermal` reads
+ * them off the raw lines — so they are neither presentation nor unsupported.
+ * They are ACTED ON, and a loss would be a false report.
+ *
+ * I nearly got this wrong, and the way I got it wrong is worth recording. I
+ * measured `.options` keys across ADI2005 and Si7li, found `temp` in NEITHER,
+ * and concluded that treating every non-presentation key as a loss was free.
+ * **OUR OWN EXPORTER emits `.options temp=26.8267934421 tnom=26.8267934421` on
+ * every deck it writes**, and the round-trip tests re-import exactly that — so
+ * the change turned nine of them red. A true measurement over the wrong
+ * population: the foreign corpora are not the only decks this importer reads.
+ */
+const HONOURED_OPTION_KEYS = new Set(['temp', 'tnom']);
 
 /**
  * Cards that carry no circuit and are correctly ignored — listed so the
  * accounting can say "recognised and skipped" rather than "unknown".
  */
 const BENIGN_CARDS = new Set([
-  'end', 'ends', 'model', 'subckt', 'include', 'inc', 'lib', 'options', 'option',
-  'temp', 'width', 'print', 'plot', 'save', 'probe', 'ic', 'nodeset', 'global',
-  'param', 'title', 'control', 'endc', 'meas', 'measure', 'func', 'csparam',
+  'end', 'ends', 'model', 'subckt', 'include', 'inc', 'lib',
+  'temp', 'width', 'ic', 'nodeset', 'global',
+  'param', 'title', 'control', 'endc', 'func', 'csparam',
+  // `options`/`option` and the output-request cards are handled explicitly
+  // above: benign would put them in `ignored`, where a reader cannot tell a
+  // retained directive from one that fell through.
 ]);
 
 /**
@@ -446,6 +504,13 @@ export function importSpice(text, opts = {}) {
   const unmapped = [];
   const losses = [];
   const ignored = [];
+  /**
+   * Directives kept verbatim and deliberately NOT executed. Shape agreed with
+   * the source-analysis lane so one reader serves both:
+   *   {source, kind: 'output-request'|'metadata', handling, consequence}
+   * Separate from `ignored`, which is for what had no consequence at all.
+   */
+  const retainedDirectives = [];
   const analyses = [];
   const models = new Map();     // name (lower) -> {type, params}
   const subckts = new Map();    // name (lower) -> {ports: string[], body: string[]}
@@ -609,6 +674,51 @@ export function importSpice(text, opts = {}) {
         losses.push({ ref: `.${card}`, kind: 'unsupported-initial-condition', source: line.trim(),
           reason: `.${card} initial-state semantics are retained but not applied by the native transient adapter`,
           fallback: null });
+        continue;
+      }
+      if (OUTPUT_REQUEST_CARDS.has(card)) {
+        // Kept, named, and not executed. `.four` in particular is a Fourier
+        // decomposition OF a transient result, so it is an output request and
+        // not an analysis; it used to be counted as one.
+        retainedDirectives.push({ source: line.trim(), kind: 'output-request',
+          handling: 'preserved-not-executed',
+          consequence: `.${card} is not executed by source-analysis` });
+        continue;
+      }
+      if (card === 'options' || card === 'option') {
+        // SPLIT BY KEY, because `.options` carries two unrelated things. A
+        // presentation key changes the REPORT; anything else changes the
+        // ANSWER, and `gshunt` changes it by adding a conductance from every
+        // node to the reference.
+        const keys = String(dot[2] || '').trim().split(/\s+/).filter(Boolean);
+        const keyOf = (kv) => String(kv).split('=')[0].toLowerCase();
+        const numeric = keys.filter(kv => !PRESENTATION_OPTION_KEYS.has(keyOf(kv))
+          && !HONOURED_OPTION_KEYS.has(keyOf(kv)));
+        const honoured = keys.filter(kv => HONOURED_OPTION_KEYS.has(keyOf(kv)));
+        if (!keys.length || numeric.length) {
+          // BOTH BUCKETS, like `.ic` and `.func` above: `ignored` records that
+          // the card was dropped and `losses` records what dropping it costs.
+          // Pushing only the loss left the card in no accounting bucket at all,
+          // which the importer's own "every card is accounted for" test caught
+          // on 103 corpus decks.
+          ignored.push(line.trim());
+          losses.push({ ref: `.${card}`, kind: 'unsupported-solver-option',
+            source: line.trim(),
+            reason: keys.length
+              ? `.${card} ${numeric.join(' ')} changes the solve, not the report, `
+                + 'and is not applied by this engine'
+              : `.${card} carries no keys`,
+            fallback: null });
+        } else if (honoured.length) {
+          retainedDirectives.push({ source: line.trim(), kind: 'metadata',
+            handling: 'honoured',
+            consequence: `.${card} ${honoured.join(' ')} sets the thermal point this `
+              + 'reader solves at' });
+        } else {
+          retainedDirectives.push({ source: line.trim(), kind: 'metadata',
+            handling: 'preserved-not-executed',
+            consequence: `.${card} ${keys.join(' ')} affects presentation only` });
+        }
         continue;
       }
       if (BENIGN_CARDS.has(card)) { ignored.push(line.trim()); continue; }
@@ -1033,7 +1143,7 @@ export function importSpice(text, opts = {}) {
     terminals: members.map(m => ({ partId: m.partId, terminal: m.terminal })),
   }));
 
-  return { parts, wires, warnings, unmapped, losses, ignored, analyses, title, netNames,
+  return { parts, wires, warnings, unmapped, losses, ignored, retainedDirectives, analyses, title, netNames,
     usedLibraries };
 }
 
