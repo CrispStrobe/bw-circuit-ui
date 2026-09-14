@@ -611,6 +611,7 @@ describe('the reader states what it will not do', () => {
     assert.deepEqual(v.params, {
       volts: 0, wave: 'spice-pulse', v1: 0, v2: 5, td: 0,
       tr: 1e-9, tf: 1e-9, pw: 1e-3, per: 2e-3,
+      dcValue: 0, dcBiasOrigin: 'waveform-initial-default',
     });
     assert.ok(!r.warnings.some(w => /V1.*PULSE.*not modelled/.test(w)));
     assert.deepEqual(r.losses, []);

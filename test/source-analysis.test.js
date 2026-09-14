@@ -197,7 +197,6 @@ L1 coil 0 3m
       `element IC\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1u IC=0.5\n.tran 10u\n.end\n`,
       `dot IC\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1u\n.ic v(out)=0.5\n.tran 10u\n.end\n`,
       `nodeset\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1u\n.nodeset v(out)=0.5\n.tran 10u\n.end\n`,
-      `pwl is not a fixed source\nV1 in 0 PWL(0 6 1m 18)\nR1 in 0 1k\n.tran 2m\n.end\n`,
     ];
     for (const deck of decks) {
       const result = imported(deck);

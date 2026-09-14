@@ -2895,6 +2895,10 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
     const usefulDocument = r.sourceDocument?.records?.length > 0;
     if (r.parts.length || usefulDocument) onImport({ parts: r.parts, wires: r.wires,
       analysisBlockers: blockersFromImport(r, format, file.name),
+      ...(r.analyses?.length ? { sourceAnalysis: {
+        version: 1, format, sourceName: file.name,
+        analyses: r.analyses, netNames: r.netNames || [],
+      } } : {}),
       ...(importedSourceDocuments.length ? { sourceDocuments: [
         ...(r.sourceDocument ? [r.sourceDocument] : []),
         ...(r.sourceSymbols?.length ? [{ format: 'ltspice-asy', symbols: r.sourceSymbols }] : []),

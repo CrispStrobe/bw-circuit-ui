@@ -23,6 +23,12 @@ const CARD = Object.freeze({
 const SOURCE_KINDS = new Set(['V', 'I', 'E', 'G', 'F', 'H']);
 const normalize = value => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 const finite = value => typeof value === 'number' && Number.isFinite(value);
+const nanoseconds = seconds => {
+  const raw = seconds * 1e9;
+  const rounded = Math.round(raw);
+  return finite(seconds) && Number.isSafeInteger(rounded) && Math.abs(raw - rounded) <= 1e-5
+    ? rounded : null;
+};
 
 /** Enumerate source analysis cards without deduplicating cards of one kind. */
 export function sourceAnalysisDescriptors(cards = []) {
@@ -139,7 +145,7 @@ function runOp(imported, descriptor) {
   if (circuit.netlistError != null) return mappingGap(descriptor, circuit.netlistError);
   let point;
   try {
-    point = circuit.operatingPoint();
+    point = circuit.operatingPoint({ waveformBias: 'dc-value' });
     if (!point?.converged) return solverRefusal(descriptor, 'DC operating point did not converge');
     const conflicts = [...(point.conflicts || []), ...(point.railConflicts || [])];
     if (conflicts.length) return solverRefusal(descriptor,
@@ -163,6 +169,8 @@ function runOp(imported, descriptor) {
       topology: canonical.cards,
       observables: { axis: null, nodes, sourceCurrents, unavailableSourceCurrents },
       convergence: { converged: true, conflicts: [] },
+      evidence: 'original-direct', adapted: [],
+      thermal: 'native-fixed-26.8267934421C; no oracle comparison performed',
       metadata: point.analysis || null,
     };
   } catch (error) { return mappingGap(descriptor, error); }
@@ -240,6 +248,8 @@ function runAc(imported, descriptor, limits) {
       conditions: { ...parsed, sweep: 'dec', sourceId, amplitude, phaseDeg },
       topology: canonical.cards,
       observables: { axis: { quantity: 'frequency', unit: 'Hz', values: rows.map(row => row.hz) }, nodes },
+      evidence: 'original-direct', adapted: [],
+      thermal: 'native-fixed-26.8267934421C; no oracle comparison performed',
     };
   } catch (error) { return solverRefusal(descriptor, error, parsed); }
 }
@@ -253,14 +263,14 @@ function parseTran(descriptor, limits) {
   if (values.length !== 1 && values.length !== 2) return integrationGap(descriptor,
     'tran-form-not-implemented', 'only .tran TSTOP or .tran TSTEP TSTOP, optionally followed by UIC, is currently wired');
   const stopSec = parseSpiceValue(values.at(-1));
-  const stopNs = stopSec * 1e9;
-  if (!finite(stopSec) || !(stopSec > 0) || !Number.isSafeInteger(stopNs)) {
+  const stopNs = nanoseconds(stopSec);
+  if (!finite(stopSec) || !(stopSec > 0) || stopNs == null) {
     return sourceRefusal(descriptor, 'invalid-tran-card', 'transient stop must map to a finite positive integer nanosecond');
   }
   let stepSec; let stepNs; let points; let sampleTimesNs; let samplingProfile;
   if (values.length === 2) {
-    stepSec = parseSpiceValue(values[0]); stepNs = stepSec * 1e9;
-    if (!finite(stepSec) || !(stepSec > 0) || !Number.isSafeInteger(stepNs)
+    stepSec = parseSpiceValue(values[0]); stepNs = nanoseconds(stepSec);
+    if (!finite(stepSec) || !(stepSec > 0) || stepNs == null
         || stepNs > stopNs || stopNs % stepNs !== 0) {
       return integrationGap(descriptor, 'tran-grid-not-representable',
         'the authored transient grid must map exactly to integer nanoseconds and divide the stop time');
@@ -288,9 +298,96 @@ function parseTran(descriptor, limits) {
     initialization: uic ? 'uic-zero-state' : 'source-declared-dc-operating-point' };
 }
 
+function transientSourceBreakpoints(parts, stopNs, maxPoints) {
+  const values = new Set();
+  const addSeconds = seconds => {
+    const ns = nanoseconds(seconds);
+    if (!finite(seconds) || seconds < 0 || ns == null) {
+      throw new Error('source breakpoint does not map exactly to an integer nanosecond');
+    }
+    if (ns <= stopNs) values.add(ns);
+    if (values.size > maxPoints) throw new Error('source breakpoint count exceeds the analysis point budget');
+  };
+  for (const part of parts || []) {
+    const p = part.params || {};
+    if (p.wave === 'spice-pwl') {
+      for (const point of p.points || []) addSeconds(point[0]);
+    } else if (p.wave === 'spice-exp') {
+      addSeconds(p.td1); addSeconds(p.td2);
+    } else if (p.wave === 'spice-sine') {
+      addSeconds(p.td);
+    } else if (p.wave === 'spice-pulse') {
+      if (!(p.per > 0)) throw new Error('PULSE period must be positive');
+      const offsets = [...new Set([0, p.tr, p.tr + p.pw, p.tr + p.pw + p.tf])];
+      for (let base = p.td; base <= stopNs / 1e9; base += p.per) {
+        for (const offset of offsets) addSeconds(base + offset);
+      }
+    }
+  }
+  return [...values].sort((a, b) => a - b);
+}
+
+function workOf(status) {
+  const work = status?.work || {};
+  const counts = { attempts: Number(work.attempts), solves: Number(work.solves),
+    advances: Number(work.advances) };
+  return Object.values(counts).every(value => Number.isSafeInteger(value) && value >= 0)
+    ? counts : null;
+}
+
+function executionProfile(profile, status, limits) {
+  return {
+    requested: profile,
+    configured: status?.profile || null,
+    qualification: {
+      accuracyMet: status?.accuracyMet ?? null,
+      scope: 'native local transient-step acceptance and solve convergence',
+      globalOutputAccuracy: false,
+      oracleComparison: 'not-performed',
+    },
+    work: workOf(status),
+    totalWorkLimits: {
+      attempts: limits.maxTotalAttempts,
+      solves: limits.maxTotalSolves,
+      advances: limits.maxTotalAdvances,
+    },
+    ...(status?.failure ? { failure: status.failure } : {}),
+  };
+}
+
+function profileGap(descriptor, code, detail, parsed, profile, status, limits) {
+  return integrationGap(descriptor, code, detail, {
+    ...parsed, executionProfile: executionProfile(profile, status, limits),
+  });
+}
+
+function precisionRefusal(descriptor, detail, parsed, profile, status, limits) {
+  return {
+    analysisId: descriptor.id, ordinal: descriptor.ordinal, kind: descriptor.kind,
+    status: 'refused', classification: 'solver-refusal', code: 'transient-accuracy-unmet',
+    detail, conditions: { ...parsed, executionProfile: executionProfile(profile, status, limits) },
+  };
+}
+
 function runTran(imported, descriptor, limits) {
   const parsed = parseTran(descriptor, limits);
   if (parsed.status) return parsed;
+  try {
+    const breakpoints = transientSourceBreakpoints(imported.parts, parsed.stopNs, limits.maxPoints);
+    parsed.sampleTimesNs = [...new Set([...parsed.sampleTimesNs, ...breakpoints])].sort((a, b) => a - b);
+    parsed.points = parsed.sampleTimesNs.length;
+    if (breakpoints.length) {
+      parsed.samplingProfile = { ...parsed.samplingProfile,
+        sourceBreakpointsIncluded: true, breakpointCount: breakpoints.length };
+      if (!parsed.uic) {
+        parsed.initialization = 'source-declared-waveform-time-zero-operating-point';
+      }
+    }
+    if (parsed.points > limits.maxPoints) return integrationGap(descriptor, 'analysis-budget-exceeded',
+      'authored source breakpoints plus observation points exceed the adapter limit', parsed);
+  } catch (error) {
+    return integrationGap(descriptor, 'tran-grid-not-representable', error.message, parsed);
+  }
   let circuit;
   try { circuit = circuitFor(imported); }
   catch (error) { return mappingGap(descriptor, error, parsed); }
@@ -298,6 +395,29 @@ function runTran(imported, descriptor, limits) {
   let canonical;
   try { canonical = canonicalCircuit(imported, circuit); }
   catch (error) { return mappingGap(descriptor, error, parsed); }
+  let profileStatus = null;
+  if (limits.transientProfile) {
+    try {
+      circuit.configureTransientAnalysis(limits.transientProfile);
+      profileStatus = circuit.transientAnalysisStatus();
+    } catch (error) {
+      return profileGap(descriptor, 'transient-profile-unavailable', String(error?.message || error),
+        parsed, limits.transientProfile, profileStatus, limits);
+    }
+    const maxStepSec = Number(profileStatus?.profile?.maxStepSec);
+    if (!(maxStepSec > 0)) return profileGap(descriptor, 'transient-profile-invalid',
+      'configured transient profile has no finite positive maxStepSec', parsed,
+      limits.transientProfile, profileStatus, limits);
+    const minimumSolves = Math.ceil(parsed.stopSec / maxStepSec);
+    parsed.preflight = { minimumSolves, basis: 'ceil(stop/maxStepSec)' };
+    if (limits.ledger.solves + minimumSolves > limits.maxTotalSolves
+        || limits.ledger.attempts + minimumSolves > limits.maxTotalAttempts
+        || limits.ledger.advances + parsed.sampleTimesNs.length > limits.maxTotalAdvances) {
+      return profileGap(descriptor, 'analysis-work-budget-exceeded',
+        `precision preflight needs at least ${minimumSolves} solves and ${parsed.sampleTimesNs.length} advances; remaining total limits are ${limits.maxTotalSolves - limits.ledger.solves} solves, ${limits.maxTotalAttempts - limits.ledger.attempts} attempts, ${limits.maxTotalAdvances - limits.ledger.advances} advances`,
+        parsed, limits.transientProfile, profileStatus, limits);
+    }
+  }
   try {
     if (canonical.nodes.length * parsed.points > limits.maxObservations) return integrationGap(descriptor,
       'analysis-budget-exceeded', 'transient node-point product exceeds the adapter observation limit', parsed);
@@ -308,8 +428,39 @@ function runTran(imported, descriptor, limits) {
     let converged = true;
     let initialization = null;
     if (!parsed.uic) initialization = circuit.initializeTransientFromOperatingPoint();
+    let accounted = { attempts: 0, solves: 0, advances: 0 };
+    const accountStatus = () => {
+      if (!limits.transientProfile) return null;
+      const status = circuit.transientAnalysisStatus();
+      const work = workOf(status);
+      if (!work || Object.keys(work).some(key => work[key] < accounted[key])) {
+        throw new Error('transient profile returned invalid or non-monotonic work counters');
+      }
+      for (const key of Object.keys(work)) {
+        limits.ledger[key] += work[key] - accounted[key];
+        accounted[key] = work[key];
+      }
+      profileStatus = status;
+      if (limits.ledger.attempts > limits.maxTotalAttempts
+          || limits.ledger.solves > limits.maxTotalSolves
+          || limits.ledger.advances > limits.maxTotalAdvances) {
+        return profileGap(descriptor, 'analysis-work-budget-exceeded',
+          'cumulative transient work exceeded the source-analysis total limit', parsed,
+          limits.transientProfile, profileStatus, limits);
+      }
+      if (status.failure || status.accuracyMet === false) {
+        return precisionRefusal(descriptor,
+          status.failure?.detail || status.failure?.code || 'precision profile did not meet its local step qualification',
+          parsed, limits.transientProfile, profileStatus, limits);
+      }
+      return null;
+    };
+    let workOutcome = accountStatus();
+    if (workOutcome) return workOutcome;
     for (const timeNs of parsed.sampleTimesNs) {
       circuit.advanceTo(BigInt(timeNs));
+      workOutcome = accountStatus();
+      if (workOutcome) return workOutcome;
       if (convergenceVerified) {
         const sample = circuit.board.deviceCompanions(circuit.parts[0].id);
         if (sample?.converged !== true) converged = false;
@@ -322,20 +473,44 @@ function runTran(imported, descriptor, limits) {
       'native transient returned a non-finite node voltage', parsed);
     if (convergenceVerified && !converged) return solverRefusal(descriptor,
       'native transient failed to converge at one or more authored sample times', parsed);
+    if (limits.transientProfile && profileStatus?.accuracyMet !== true) {
+      return precisionRefusal(descriptor,
+        'precision profile completed without a positive local step qualification',
+        parsed, limits.transientProfile, profileStatus, limits);
+    }
+    const adapted = [];
+    if (parsed.samplingProfile.adapted) adapted.push('generated a bounded uniform observation grid because .tran declared no TSTEP');
+    if (parsed.samplingProfile.sourceBreakpointsIncluded) adapted.push('added authored source corners to the observation grid');
     return {
       analysisId: descriptor.id, ordinal: descriptor.ordinal, kind: 'tran',
       status: convergenceVerified ? 'pass' : 'partial',
       classification: convergenceVerified
-        ? (parsed.samplingProfile.adapted ? 'native-original-adapted-observation-grid' : 'native-original')
+        ? (adapted.length ? 'native-original-adapted-observation-grid' : 'native-original')
         : 'diagnostic-native',
       ...(!convergenceVerified ? { code: 'transient-convergence-unverified' } : {}),
       conditions: parsed, topology: canonical.cards,
+      evidence: adapted.length ? 'original-adapted' : 'original-direct', adapted,
+      thermal: 'native-fixed-26.8267934421C; no oracle comparison performed',
+      ...(limits.transientProfile ? { executionProfile: executionProfile(
+        limits.transientProfile, profileStatus, limits) } : {}),
       observables: { axis: { quantity: 'time', unit: 's', values: axis }, nodes },
       convergence: { verified: convergenceVerified, converged: convergenceVerified ? true : null,
         api: convergenceVerified ? 'deviceCompanions' : null },
       ...(initialization ? { initialization: initialization.analysis } : {}),
     };
-  } catch (error) { return solverRefusal(descriptor, error, parsed); }
+  } catch (error) {
+    if (limits.transientProfile) {
+      try { profileStatus = circuit.transientAnalysisStatus(); } catch { /* original error remains primary */ }
+      if (profileStatus?.failure || profileStatus?.accuracyMet === false) {
+        return precisionRefusal(descriptor,
+          profileStatus.failure?.detail || profileStatus.failure?.code || String(error?.message || error),
+          parsed, limits.transientProfile, profileStatus, limits);
+      }
+      return profileGap(descriptor, 'native-transient-execution-failed', String(error?.message || error),
+        parsed, limits.transientProfile, profileStatus, limits);
+    }
+    return solverRefusal(descriptor, error, parsed);
+  }
 }
 
 /**
@@ -344,22 +519,51 @@ function runTran(imported, descriptor, limits) {
  */
 export function runSourceAnalyses(imported, {
   format = null, sourceName = null, maxAnalyses = 16, maxPoints = 2048,
-  maxObservations = 16384,
+  maxObservations = 16384, transientProfile = 'interactive-v1',
+  maxTotalAttempts = 1_000_000, maxTotalSolves = 100_000, maxTotalAdvances = 4096,
 } = {}) {
+  if (transientProfile == null) transientProfile = 'interactive-v1';
   const descriptors = sourceAnalysisDescriptors(imported?.analyses || []);
+  const budgets = [
+    ['maxAnalyses', maxAnalyses, 64], ['maxPoints', maxPoints, 8192],
+    ['maxObservations', maxObservations, 65536],
+    ['maxTotalAttempts', maxTotalAttempts, 2_000_000],
+    ['maxTotalSolves', maxTotalSolves, 200_000],
+    ['maxTotalAdvances', maxTotalAdvances, 8192],
+  ];
+  const invalidBudget = budgets.find(([, value, ceiling]) =>
+    !Number.isSafeInteger(value) || value < 1 || value > ceiling);
+  if (invalidBudget) {
+    const [name, value, ceiling] = invalidBudget;
+    return descriptors.map(descriptor => integrationGap(descriptor, 'invalid-analysis-budget',
+      `${name} must be a positive safe integer no greater than ${ceiling}; received ${String(value)}`));
+  }
+  if (transientProfile != null && !['interactive-v1', 'precision-v1'].includes(transientProfile)) {
+    return descriptors.map(descriptor => integrationGap(descriptor, 'transient-profile-not-allowed',
+      `source analysis profile must be interactive-v1 or precision-v1; received ${String(transientProfile)}`));
+  }
   if (descriptors.length > maxAnalyses) {
     return descriptors.map(descriptor => integrationGap(descriptor, 'analysis-budget-exceeded',
       `source declares ${descriptors.length} analyses; adapter limit is ${maxAnalyses}`));
   }
-  const blockers = blockersFromImport(imported, format, sourceName);
+  const blockers = [
+    ...blockersFromImport(imported, format, sourceName),
+    ...(Array.isArray(imported?.analysisBlockers) ? imported.analysisBlockers : []),
+  ];
   if (blockers.length) {
     return descriptors.map(descriptor => ({
       analysisId: descriptor.id, ordinal: descriptor.ordinal, kind: descriptor.kind,
       status: 'refused', classification: 'import-fidelity', code: 'semantic-import-blocker',
       blockerCount: blockers.length,
+      skipped: blockers.map(blocker => ({
+        ref: blocker.ref || 'source',
+        consequence: blocker.reason || blocker.type || 'semantic import finding blocks numerical analysis',
+      })),
     }));
   }
-  const limits = { maxPoints, maxObservations };
+  const limits = { maxPoints, maxObservations, transientProfile,
+    maxTotalAttempts, maxTotalSolves, maxTotalAdvances,
+    ledger: { attempts: 0, solves: 0, advances: 0 } };
   return descriptors.map(descriptor => {
     if (descriptor.kind === 'op') return runOp(imported, descriptor);
     if (descriptor.kind === 'ac') return runAc(imported, descriptor, limits);
@@ -368,5 +572,19 @@ export function runSourceAnalyses(imported, {
       'the reusable source-analysis adapter does not yet expose source-declared DC sweeps');
     return integrationGap(descriptor, 'analysis-kind-not-implemented',
       `source analysis ${descriptor.kind} has no reusable native adapter`);
+  });
+}
+
+/** Run the source analysis metadata persisted with a live Circuit instance. */
+export function runCircuitSourceAnalyses(circuit, options = {}) {
+  const source = circuit?.sourceAnalysis;
+  if (!source || !Array.isArray(source.analyses) || !source.analyses.length) return [];
+  return runSourceAnalyses({
+    parts: circuit.parts || [], wires: circuit.wires || [],
+    analyses: source.analyses, netNames: source.netNames || [],
+    analysisBlockers: circuit.analysisBlockers || [],
+  }, {
+    format: source.format || null, sourceName: source.sourceName || null,
+    ...options,
   });
 }

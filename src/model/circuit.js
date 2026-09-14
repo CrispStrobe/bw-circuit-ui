@@ -140,6 +140,11 @@ function cloneSourceDocuments(value) {
   return out;
 }
 
+function cloneSourceAnalysis(value) {
+  if (!value || typeof value !== 'object') return null;
+  try { return JSON.parse(JSON.stringify(value)); } catch { return null; }
+}
+
 export class Circuit {
   /**
    * @param {number} [vcc=5.0]
@@ -166,6 +171,9 @@ export class Circuit {
 
     /** Bounded foreign document metadata retained for save/load, never solver parts. */
     this.sourceDocuments = [];
+
+    /** Source-declared analyses and their imported terminal-to-node mapping. */
+    this.sourceAnalysis = null;
 
     /** @type {object} */
     this.board = new this._BoardImpl(vcc);
@@ -390,6 +398,7 @@ export class Circuit {
       wires: this.wires,
       analysisBlockers: this.analysisBlockers,
       sourceDocuments: cloneSourceDocuments(this.sourceDocuments),
+      sourceAnalysis: cloneSourceAnalysis(this.sourceAnalysis),
       engineSnap,
     });
   }
@@ -403,6 +412,7 @@ export class Circuit {
     this.analysisBlockers = Array.isArray(state.analysisBlockers)
       ? state.analysisBlockers.map(blocker => ({ ...blocker })) : [];
     this.sourceDocuments = cloneSourceDocuments(state.sourceDocuments);
+    this.sourceAnalysis = cloneSourceAnalysis(state.sourceAnalysis);
     this._syncNetlist();
     // Restore engine state if available
     if (state.engineSnap && this.board.restore) {
@@ -420,6 +430,7 @@ export class Circuit {
     this.analysisBlockers = Array.isArray(state.analysisBlockers)
       ? state.analysisBlockers.map(blocker => ({ ...blocker })) : [];
     this.sourceDocuments = cloneSourceDocuments(state.sourceDocuments);
+    this.sourceAnalysis = cloneSourceAnalysis(state.sourceAnalysis);
     this._syncNetlist();
     if (state.engineSnap && this.board.restore) {
       this.board.restore(state.engineSnap);
@@ -721,6 +732,33 @@ export class Circuit {
   }
 
   /**
+   * Select an engine-owned transient integration profile. Profiles may only
+   * be configured on a fresh analysis circuit; the live simulator never calls
+   * this proxy and therefore keeps the engine's interactive default.
+   *
+   * @param {string} profileId
+   * @returns {object} immutable engine-owned profile metadata
+   */
+  configureTransientAnalysis(profileId) {
+    if (!this.board || typeof this.board.configureTransientAnalysis !== 'function') {
+      throw new Error('configureTransientAnalysis: the injected bw-board engine does not provide transient profiles');
+    }
+    return this.board.configureTransientAnalysis(profileId);
+  }
+
+  /**
+   * Report qualification and cumulative work for the configured transient.
+   * `accuracyMet` qualifies engine step acceptance only; it is not a promise
+   * about every plotted output or agreement with an external simulator.
+   */
+  transientAnalysisStatus() {
+    if (!this.board || typeof this.board.transientAnalysisStatus !== 'function') {
+      throw new Error('transientAnalysisStatus: the injected bw-board engine does not provide transient status');
+    }
+    return this.board.transientAnalysisStatus();
+  }
+
+  /**
    * Toggle power.
    * @param {boolean} on
    */
@@ -772,14 +810,14 @@ export class Circuit {
    *
    * @returns {object}
    */
-  operatingPoint() {
+  operatingPoint(options = {}) {
     if (this.analysisBlockers?.length) {
       throw new Error(`operatingPoint: blocked by ${this.analysisBlockers.length} persisted import finding(s)`);
     }
     if (!this.board || typeof this.board.operatingPoint !== 'function') {
       throw new Error('operatingPoint: the injected bw-board engine does not provide this analysis');
     }
-    return this.board.operatingPoint();
+    return this.board.operatingPoint(options);
   }
 
   /**
@@ -1060,6 +1098,7 @@ export class Circuit {
       holeWires: this.holeWires(),
       ...(this.analysisBlockers.length ? { analysisBlockers: this.analysisBlockers.map(b => ({ ...b })) } : {}),
       ...(this.sourceDocuments.length ? { sourceDocuments: cloneSourceDocuments(this.sourceDocuments) } : {}),
+      ...(this.sourceAnalysis ? { sourceAnalysis: cloneSourceAnalysis(this.sourceAnalysis) } : {}),
       ...(this.pcb ? { pcb: this.pcb } : {}),
     };
   }
@@ -1081,6 +1120,7 @@ export class Circuit {
       ? data.analysisBlockers.filter(b => b && typeof b === 'object').map(b => ({ ...b }))
       : [];
     c.sourceDocuments = cloneSourceDocuments(data.sourceDocuments);
+    c.sourceAnalysis = cloneSourceAnalysis(data.sourceAnalysis);
     // Legacy files also predate parts carrying their terminal list — every
     // renderer maps over part.terminals, so a missing list was the SECOND
     // way a gallery file crashed the GUI (pure-circuit examples, same day

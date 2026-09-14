@@ -41,7 +41,9 @@
 
 import { NetSolver, makeId, wiresFromNets } from './kicad-common.js';
 import { parseSpiceValue } from '../model/si.js';
-import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-source.js';
+import {
+  parseStrictSpiceExp, parseStrictSpicePulse, parseStrictSpicePwl, parseStrictSpiceSine,
+} from '../model/spice-source.js';
 import { evaluateConstantExpression, resolveConstantParameters } from '../model/spice-constant.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 import { normalizeLtspiceSymbolName, parseLtspiceAsy } from './ltspice-asy.js';
@@ -778,16 +780,18 @@ function staticValue(raw, constants = new Map()) {
 /** Strict LTspice Value projection for the bounded source subset. */
 function authoredParams(raw, spec, constants) {
   const text = String(raw || '').trim();
-  const sine = parseStrictSpiceSine(text, { allowSinAlias: false });
-  if (sine && spec.kind === 'vsource') {
-    return sine.ok ? { params: sine.params, reason: null } : { params: {}, reason: sine.reason };
-  }
-  const pulse = parseStrictSpicePulse(text);
-  if (pulse) {
-    if (pulse.ok && spec.kind === 'vsource') return { params: pulse.params, reason: null };
-    return { params: {}, reason: pulse.ok
-      ? 'time-varying current PULSE sources are not modelled'
-      : pulse.reason };
+  if (spec.kind === 'vsource' || spec.kind === 'isource') {
+    const candidates = [
+      parseStrictSpiceSine(text, { allowSinAlias: false }),
+      parseStrictSpicePulse(text), parseStrictSpicePwl(text), parseStrictSpiceExp(text),
+    ];
+    const waveform = candidates.find(Boolean);
+    if (waveform) {
+      if (!waveform.ok) return { params: {}, reason: waveform.reason };
+      return { params: { ...waveform.params, [spec.parameter]: waveform.params.volts,
+        dcValue: waveform.params.volts,
+        dcBiasOrigin: 'waveform-initial-default' }, reason: null };
+    }
   }
   const resolved = staticValue(text, constants);
   return !resolved.ok
