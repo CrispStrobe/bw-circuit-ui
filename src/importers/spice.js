@@ -989,7 +989,24 @@ export function importSpice(text, opts = {}) {
           const bulkIsGround = GROUND_NODES.has(String(bulkField).toLowerCase());
           const sameNode = String(bulkField).toLowerCase() === String(srcField).toLowerCase();
           if (bulkIsGround) params.bulkAtGround = true;
-          else if (!sameNode) {
+          else if (sameNode) {
+            // BULK TIED TO THE SOURCE IS ALSO A KNOWN BULK POTENTIAL.
+            //
+            // It shorts the bulk-SOURCE junction, which is why this case needs
+            // no threshold shift. It does NOT short the bulk-DRAIN junction,
+            // and that one is live whenever the drain goes below the source.
+            //
+            // ADI2005 v3 row 4654 is the whole case in three lines:
+            //   M1 VDD VDD 3 3 NMOS   /   V1 3 0 5
+            // a diode-connected device whose source and bulk sit at 5 V with
+            // its drain/gate node dangling. ngspice reads VDD = 4.999380 V;
+            // move the bulk to node 0 and it reads 3.4e-19, which was our
+            // answer; crush IS to 1e-30 and it reads exactly 5.000000. The
+            // bulk-drain junction is the entire difference, and 6 of the 24
+            // remaining numeric disagreements in the full 12,471-deck corpus
+            // are this.
+            params.bulkOnSource = true;
+          } else {
             warnings.push(`${partId}: bulk node "${bulkField}" is neither ground nor the source, `
               + 'so the body effect is not applied — the engine MOSFET has no bulk terminal and '
               + 'this reader will not guess a potential for it.');
