@@ -75,13 +75,18 @@ describe('multimeter — voltage mode', () => {
 });
 
 describe('multimeter — current mode', () => {
-  it('preserves the raw positive-OUT sign', () => {
+  it('reverses sign when the selected terminal is swapped', () => {
     const meter = createMeterState();
     meter.mode = 'current';
     meter.probeA = { netId: null, partId: 'D1', terminal: 'anode' };
-    const reading = readMeter(meter, { board: {}, branchCurrent: () => -0.002 });
-    assert.equal(reading.value, '-2.000');
-    assert.equal(reading.unit, 'mA');
+    const circuit = { board: {}, branchCurrent: (unused, terminal) =>
+      terminal === 'anode' ? -0.002 : 0.002 };
+    const intoAnode = readMeter(meter, circuit);
+    meter.probeA.terminal = 'cathode';
+    const outCathode = readMeter(meter, circuit);
+    assert.equal(intoAnode.value, '-2.000');
+    assert.equal(outCathode.value, '2.000');
+    assert.equal(intoAnode.unit, 'mA');
   });
 
   it('reads branch current through LED', () => {

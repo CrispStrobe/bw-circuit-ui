@@ -60,14 +60,16 @@ describe('getMeterReading', () => {
     assert.ok(r.note.includes('simulator'));
   });
 
-  it('current: preserves the raw positive-OUT sign', () => {
+  it('current: retains the legacy magnitude-only face when a terminal is swapped', () => {
     const meter = { id: 'M1', kind: 'meter', params: { mode: 'current' } };
-    const wires = [{ from: { part: 'M1', terminal: 'probe_a' },
+    const anodeWires = [{ from: { part: 'M1', terminal: 'probe_a' },
       to: { part: 'D1', terminal: 'anode' } }];
-    const reading = getMeterReading(meter, wires,
-      { board: {}, branchCurrent: () => -0.002 });
-    assert.equal(reading.value, '-2.0');
-    assert.equal(reading.unit, 'mA');
+    const cathodeWires = [{ from: { part: 'M1', terminal: 'probe_a' },
+      to: { part: 'D1', terminal: 'cathode' } }];
+    const circuit = { board: {}, branchCurrent: (unused, terminal) =>
+      terminal === 'anode' ? -0.002 : 0.002 };
+    assert.equal(getMeterReading(meter, anodeWires, circuit).value, '2.0');
+    assert.equal(getMeterReading(meter, cathodeWires, circuit).value, '2.0');
   });
 
   it('resistance: refuses on powered board', () => {

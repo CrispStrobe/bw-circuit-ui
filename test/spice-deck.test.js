@@ -31,8 +31,29 @@ import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice, junctionModel } from '../src/model/exporters/spice.js';
 import { formatSi, formatSpiceValue } from '../src/model/si.js';
 import { corpusRoots } from './corpus-root.mjs';
+import { signedSupplyCurrent } from '../scripts/spice-oracle.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+
+describe('signed supply-current oracle convention', () => {
+  it('matches a delivering supply without discarding polarity', () => {
+    assert.deepEqual(signedSupplyCurrent(-0.003, [-0.002, -0.001]), {
+      spiceSupplyOut: 0.003, engineSupplyOut: 0.003, relativeDifference: 0,
+    });
+  });
+
+  it('matches an absorbing supply after both polarities reverse', () => {
+    assert.deepEqual(signedSupplyCurrent(0.003, [0.002, 0.001]), {
+      spiceSupplyOut: -0.003, engineSupplyOut: -0.003, relativeDifference: 0,
+    });
+  });
+
+  it('measures net VCC delivery when another battery supplies part of the load', () => {
+    const result = signedSupplyCurrent(-0.003, [-0.005, 0.002]);
+    assert.ok(Math.abs(result.engineSupplyOut - 0.003) < 1e-15);
+    assert.ok(result.relativeDifference < 1e-15);
+  });
+});
 
 /** The bench X0.1's acceptance names: 5 V, 1 kOhm, one LED. */
 function bench(extra = {}) {

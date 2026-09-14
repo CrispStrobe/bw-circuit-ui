@@ -69,6 +69,15 @@ const I_TOL_REL = 0.02;      // 2 %
  */
 const I_ZERO_FLOOR = 1e-9;   // amps
 
+/** Put both external readings on signed current delivered by the VCC supply. */
+export function signedSupplyCurrent(spiceBranchInto, nonRailTerminalCurrentsOut) {
+  const spiceSupplyOut = -spiceBranchInto;
+  const engineSupplyOut = -nonRailTerminalCurrentsOut.reduce((sum, amps) => sum + amps, 0);
+  const scale = Math.max(Math.abs(spiceSupplyOut), Math.abs(engineSupplyOut));
+  return { spiceSupplyOut, engineSupplyOut,
+    relativeDifference: scale ? Math.abs(spiceSupplyOut - engineSupplyOut) / scale : 0 };
+}
+
 const KEEP = process.argv.includes('--keep');
 
 /** Hand-written decks in spellings our exporter never emits. */
@@ -585,8 +594,7 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
   // supply; do not compare magnitudes or rely on unlike signs cancelling.
   const branch = Object.entries(run.branches).find(([k]) => k.includes('supply'));
   if (branch) {
-    const spiceSupplyOut = -branch[1];
-    lines.push(`  I(supply, OUT) = ${spiceSupplyOut.toExponential(6)} A`);
+    const nonRailCurrentsOut = [];
     // Cross-check by summing only non-rail terminals on the supply net. Their
     // signed OUT currents negate to the current the rail delivers. Including
     // the rail terminal itself would merely sum KCL to zero.
@@ -599,7 +607,6 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
       // Comparing that against ngspice's real reading produced "relative
       // difference 100.000 %" on 375 circuits whose every NODE VOLTAGE agreed
       // to between 1e-6 and 1e-3 V. A zero nobody drove is not a measurement.
-      let consumerOut = 0;
       let contributors = 0;
       const kindByPart = new Map(circuit.parts.map(part => [part.id, part.kind]));
       for (const nd of supplyNet.nodes) {
@@ -611,9 +618,11 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
         // VSYS (a board fighting an ideal rail). A summed current cannot say
         // which pin invented it.
         if (process.env.DEBUG_SUPPLY) console.error(`   [supply] ${nd.partId}.${nd.pin} = ${i}`);
-        if (typeof i === 'number' && isFinite(i)) { consumerOut += i; contributors++; }
+        if (typeof i === 'number' && isFinite(i)) { nonRailCurrentsOut.push(i); contributors++; }
       }
-      const engineSupplyOut = -consumerOut;
+      const { spiceSupplyOut, engineSupplyOut, relativeDifference } =
+        signedSupplyCurrent(branch[1], nonRailCurrentsOut);
+      lines.push(`  I(supply, OUT) = ${spiceSupplyOut.toExponential(6)} A`);
       if (contributors === 0) {
         lines.push('    the engine exposes no branch current on this rail '
           + `(${supplyNet.nodes.length} node(s), none reporting), so there is nothing to `
@@ -623,11 +632,9 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
           + `— both below ${I_ZERO_FLOOR} A, so this branch carries no current in either `
           + 'solve and there is no ratio to take');
       } else {
-        const rel = Math.abs(spiceSupplyOut - engineSupplyOut)
-          / Math.max(Math.abs(spiceSupplyOut), Math.abs(engineSupplyOut));
         lines.push(`    engine supply OUT ${engineSupplyOut.toExponential(6)} A `
-          + `(relative difference ${(rel * 100).toFixed(3)} %)`);
-        if (rel > I_TOL_REL) { ok = false; lines.push('    ABOVE TOLERANCE'); }
+          + `(relative difference ${(relativeDifference * 100).toFixed(3)} %)`);
+        if (relativeDifference > I_TOL_REL) { ok = false; lines.push('    ABOVE TOLERANCE'); }
       }
     }
   }
