@@ -296,7 +296,17 @@ export const KICAD_RULES = [
   // Rails named after their VOLTAGE: +3V3, +5V, +1V8, +3.3V, +12V, P3V3.
   [/^[+-]?P?\d+(\.\d+)?V\d*$/i, () => ({ kind: 'vcc', anyPin: 'vcc' })],
   // SPICE-flavoured symbol libraries: a real source and a plain capacitor.
-  [/^VSOURCE$|^VDC$|^VSRC$/i, () => ({ kind: 'vsource', pins: { 1: 'pos', 2: 'neg', '+': 'pos', '-': 'neg' } })],
+  [/^VSOURCE$|^VDC$|^VSRC$/i, (value) => {
+    const match = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(meg|[tgkmunpfµ]?)$/i
+      .exec(String(value || '').trim());
+    if (!match) return null;
+    const scale = { '': 1, t: 1e12, g: 1e9, meg: 1e6, k: 1e3, m: 1e-3,
+      u: 1e-6, 'µ': 1e-6, n: 1e-9, p: 1e-12, f: 1e-15 }[match[2].toLowerCase()];
+    const volts = Number(match[1]) * scale;
+    if (!Number.isFinite(volts)) return null;
+    return { kind: 'vsource', params: { volts },
+      pins: { 1: 'pos', 2: 'neg', '+': 'pos', '-': 'neg' } };
+  }],
   [/^AC$/i, () => ({ kind: 'vcc', anyPin: 'vcc',
     _note: 'AC supply symbol imported as a DC rail -- the engine has no AC source' })],
 

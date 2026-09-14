@@ -41,6 +41,7 @@ import { importFritzing } from './fritzing.js';
 import { importWokwi, exportWokwi } from './wokwi.js';
 import { importSpice } from './spice.js';
 import { importLtspiceAsc } from './ltspice-asc.js';
+import { parseLtspiceAsy } from './ltspice-asy.js';
 
 const IMPORTERS = {
   'eagle':         importEagle,
@@ -133,6 +134,11 @@ export const NOT_OFFERED = new Map([
  *                         positions in a separate .lib and cannot be wired
  *                         without it. 'kicad-sch' accepts `{files, rootName}`
  *                         for explicit one-level child-sheet resolution.
+ *                         'ltspice-asc' accepts caller-owned `{symbols}` or a
+ *                         synchronous `{resolveSymbol}` returning only ASY
+ *                         text / `{text, sha256}`. The optional hash is
+ *                         retained as caller-declared provenance, not
+ *                         verified here. No path or URL is opened.
  * @returns {{ parts: Array, wires: Array, warnings: string[], unmapped: Array }}
  */
 export function importCircuit(format, text, opts = {}) {
@@ -147,7 +153,7 @@ export function importCircuit(format, text, opts = {}) {
   return importer(text, opts);
 }
 
-export { exportWokwi, pickKicadHierarchyRoot };
+export { exportWokwi, parseLtspiceAsy, pickKicadHierarchyRoot };
 
 /**
  * List supported import formats.
