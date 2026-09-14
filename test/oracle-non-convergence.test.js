@@ -33,7 +33,10 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { runNgspice, judgeForeignDeck, haveNgspice } from '../scripts/spice-oracle.mjs';
+import { runNgspice, judgeForeignDeck, haveNgspice,
+  isolatedUnreferencedComponents } from '../scripts/spice-oracle.mjs';
+import { Circuit } from '../src/model/circuit.js';
+import { extractNetlist } from '../src/model/netlist.js';
 
 const HAVE = haveNgspice();
 
@@ -313,5 +316,91 @@ describe('an oracle that produced no table says so', () => {
       assert.equal(r.error, null, `a healthy deck must not be refused: ${r.error}`);
       assert.ok(Math.abs(r.nodes.b - 2.5) < 1e-6, JSON.stringify(r.nodes));
     } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
+/**
+ * TWO GAUGES ARE NOT TWO ANSWERS.
+ *
+ * `pc80-quellen-vergleich` is two independent 9 V batteries, each with its own
+ * resistor and LED, and NO ground part. The exporter names one net node 0; the
+ * engine picks its own reference. The second loop then floats, and the answers
+ * differ by a RIGID SHIFT:
+ *
+ *   net_13   engine  5.305443   ngspice  3.517839   delta 1.787604
+ *   net_15   engine -1.685230   ngspice -3.472830   delta 1.787600
+ *   net_17   engine -3.620188   ngspice -5.407790   delta 1.787602
+ *
+ * Identical to six decimals across every node of that subgraph, while the other
+ * loop's `net_7` agrees at 8.992494 exactly. That is not a model difference; it
+ * is two valid gauge choices, and both answers are right.
+ *
+ * The detector counts galvanic components over PARTS, not wires — two nets
+ * joined only through a part share a gauge — and tolerates ONE unreferenced
+ * component, because with no gnd anywhere the exporter still assigns node 0 to
+ * one of them. Two or more is the ambiguity.
+ */
+describe('a circuit with two floating gauges is refused, not scored', () => {
+  const twoIsolatedLoops = () => Circuit.fromJSON({
+    parts: [
+      { id: 'b1', kind: 'battery', params: { volts: 9, rInternal: 0.5 }, x: 0, y: 0 },
+      { id: 'r1', kind: 'resistor', params: { ohms: 470 }, x: 0, y: 0 },
+      { id: 'b2', kind: 'battery', params: { volts: 9, rInternal: 5 }, x: 0, y: 0 },
+      { id: 'r2', kind: 'resistor', params: { ohms: 470 }, x: 0, y: 0 },
+    ],
+    wires: [
+      { from: 'b1', fromTerminal: 'pos', to: 'r1', toTerminal: 'a' },
+      { from: 'r1', fromTerminal: 'b', to: 'b1', toTerminal: 'neg' },
+      { from: 'b2', fromTerminal: 'pos', to: 'r2', toTerminal: 'a' },
+      { from: 'r2', fromTerminal: 'b', to: 'b2', toTerminal: 'neg' },
+    ],
+  });
+
+  it('detects exactly the two unreferenced components', () => {
+    const c = twoIsolatedLoops(); c.setPower(true);
+    const comps = isolatedUnreferencedComponents(extractNetlist(c));
+    assert.equal(comps.length, 2, JSON.stringify(comps));
+    // Each component must hold its own loop's nets, not be split further.
+    for (const names of comps) assert.ok(names.length >= 2, JSON.stringify(comps));
+  });
+
+  it('tolerates ONE unreferenced component, because node 0 goes to it', () => {
+    // The control that keeps this from refusing every ground-free circuit:
+    // a single floating loop has a unique gauge once the exporter names node 0.
+    const c = Circuit.fromJSON({
+      parts: [
+        { id: 'b1', kind: 'battery', params: { volts: 9, rInternal: 0.5 }, x: 0, y: 0 },
+        { id: 'r1', kind: 'resistor', params: { ohms: 470 }, x: 0, y: 0 },
+      ],
+      wires: [
+        { from: 'b1', fromTerminal: 'pos', to: 'r1', toTerminal: 'a' },
+        { from: 'r1', fromTerminal: 'b', to: 'b1', toTerminal: 'neg' },
+      ],
+    });
+    c.setPower(true);
+    assert.deepEqual(isolatedUnreferencedComponents(extractNetlist(c)), []);
+  });
+
+  it('and a grounded circuit is never flagged, however many loops', () => {
+    const c = Circuit.fromJSON({
+      parts: [
+        { id: 'b1', kind: 'battery', params: { volts: 9 }, x: 0, y: 0 },
+        { id: 'r1', kind: 'resistor', params: { ohms: 470 }, x: 0, y: 0 },
+        { id: 'b2', kind: 'battery', params: { volts: 9 }, x: 0, y: 0 },
+        { id: 'r2', kind: 'resistor', params: { ohms: 470 }, x: 0, y: 0 },
+        { id: 'g1', kind: 'gnd', params: {}, x: 0, y: 0 },
+      ],
+      wires: [
+        { from: 'b1', fromTerminal: 'pos', to: 'r1', toTerminal: 'a' },
+        { from: 'r1', fromTerminal: 'b', to: 'g1', toTerminal: 'gnd' },
+        { from: 'b1', fromTerminal: 'neg', to: 'g1', toTerminal: 'gnd' },
+        { from: 'b2', fromTerminal: 'pos', to: 'r2', toTerminal: 'a' },
+        { from: 'r2', fromTerminal: 'b', to: 'g1', toTerminal: 'gnd' },
+        { from: 'b2', fromTerminal: 'neg', to: 'g1', toTerminal: 'gnd' },
+      ],
+    });
+    c.setPower(true);
+    assert.deepEqual(isolatedUnreferencedComponents(extractNetlist(c)), [],
+      'a shared ground gives every loop the same gauge');
   });
 });
