@@ -363,6 +363,29 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       .map((p, i) => nodes[i] || `UNCONNECTED_${part.refdes}_${p}`)
       .join(' ');
 
+    // AC magnitude/phase describe small-signal excitation; they are not a
+    // time waveform and do not replace the independently authored DC value.
+    // Preserve both fields exactly so `.op` still sees the DC bias while an
+    // external `.ac` analysis can consume the descriptor.
+    if ((part.kind === 'vsource' || part.kind === 'isource')
+      && Object.prototype.hasOwnProperty.call(part.params || {}, 'acMagnitude')) {
+      const p = part.params || {};
+      const dcKey = part.kind === 'vsource' ? 'volts' : 'amps';
+      const allowed = new Set([dcKey, 'acMagnitude', 'acPhase']);
+      const extra = Object.keys(p).filter(key => !allowed.has(key));
+      const phase = p.acPhase ?? 0;
+      if (Number.isFinite(p[dcKey]) && Number.isFinite(p.acMagnitude)
+          && p.acMagnitude >= 0 && Number.isFinite(phase) && extra.length === 0) {
+        lines.push(`${part.refdes} ${nodeFields} DC ${formatSpiceValue(p[dcKey])} `
+          + `AC ${formatSpiceValue(p.acMagnitude)} ${formatSpiceValue(phase)}`);
+      } else {
+        const detail = extra.length ? `; unsupported parameters ${extra.join(', ')}` : '';
+        skipped.push(`${part.refdes} (${part.kind}): AC descriptor is not losslessly exportable${detail}`);
+        lines.push(`* ${part.refdes} ${part.kind} — skipped (invalid AC descriptor${detail})`);
+      }
+      continue;
+    }
+
     // A time-varying source must either retain its complete supported shape
     // or be refused. Falling through to valueNumber here used to serialize a
     // waveform as DC while producing a plausible, runnable, different deck.

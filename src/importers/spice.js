@@ -39,6 +39,7 @@
 
 import { parseSpiceValue } from '../model/si.js';
 import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-source.js';
+import { evaluateConstantExpression, resolveConstantParameters } from '../model/spice-constant.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 import { classifyShockleyThermal, validateExplicitShockley } from '../model/spice-diode.js';
 
@@ -165,7 +166,29 @@ function modelParams(rest) {
  * @returns {{value: number, note: string|null, externalWaveform: boolean,
  *   waveformParams?: Record<string,*>, waveformLoss?: string}}
  */
-function sourceValue(fields, allowSine = false) {
+function firstScalarExpression(fields) {
+  const text = Array.isArray(fields) ? fields.join(' ').trim() : String(fields || '').trim();
+  if (!text.startsWith('{')) return text.split(/\s+/)[0] || '';
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}' && --depth === 0) return text.slice(0, i + 1);
+  }
+  return text;
+}
+
+function scalarValue(raw, constants) {
+  const text = String(raw || '').trim();
+  const direct = parseSpiceValue(text);
+  if (Number.isFinite(direct)) return { ok: true, value: direct };
+  try {
+    return { ok: true, value: evaluateConstantExpression(text, name => constants.get(name)) };
+  } catch (error) {
+    return { ok: false, reason: error.message };
+  }
+}
+
+function sourceValue(fields, allowSine = false, constants = new Map()) {
   const joined = fields.join(' ');
   const externalWaveform = /\bwavefile\s*=/i.test(joined);
   const sine = parseStrictSpiceSine(joined);
@@ -200,8 +223,28 @@ function sourceValue(fields, allowSine = false) {
       waveformLoss: reason,
     };
   }
-  const dc = joined.match(/\bDC\b\s+([^\s]+)/i);
-  if (dc) return { value: parseSpiceValue(dc[1]), note: null, externalWaveform };
+  const ac = /(?:^|\s)AC\s+(\S+)(?:\s+(\S+))?\s*$/i.exec(joined);
+  let acParams = null;
+  if (ac) {
+    const magnitude = scalarValue(ac[1], constants);
+    const phase = scalarValue(ac[2] ?? '0', constants);
+    if (!magnitude.ok || magnitude.value < 0 || !phase.ok) {
+      return { value: null, note: null, externalWaveform,
+        scalarLoss: `AC descriptor is not a resolved finite magnitude/phase`, acParams: null };
+    }
+    acParams = { acMagnitude: magnitude.value, acPhase: phase.value };
+  }
+  const dcFields = ac ? joined.slice(0, ac.index).trim() : joined;
+  if (ac && !dcFields) return { value: 0, note: null, externalWaveform, acParams };
+  const dc = dcFields.match(/^DC\b\s+([\s\S]+)$/i);
+  if (dc) {
+    const expression = firstScalarExpression(dc[1]);
+    const resolved = scalarValue(expression, constants);
+    return resolved.ok
+      ? { value: resolved.value, note: null, externalWaveform, acParams }
+      : { value: null, note: null, externalWaveform,
+        scalarLoss: `DC value ${JSON.stringify(expression)} is not a resolved finite constant: ${resolved.reason}` };
+  }
   const wave = joined.match(/\b(PULSE|SIN|SINE|EXP|PWL|SFFM|AM)\b\s*\(([^)]*)\)/i);
   if (wave) {
     const nums = wave[2].trim().split(/[\s,]+/).map(parseSpiceValue);
@@ -212,12 +255,16 @@ function sourceValue(fields, allowSine = false) {
       externalWaveform,
     };
   }
-  const bare = fields.find((f) => isFinite(parseSpiceValue(f)));
-  return {
-    value: bare !== undefined ? parseSpiceValue(bare) : 0,
-    note: null,
-    externalWaveform,
-  };
+  // WAVEFILE already carries a dedicated semantic loss and its historical,
+  // explicit zero fallback. Do not manufacture a second "constant" loss for
+  // the filename token.
+  if (externalWaveform) return { value: 0, note: null, externalWaveform };
+  const expression = firstScalarExpression(dcFields);
+  const resolved = scalarValue(expression, constants);
+  return resolved.ok
+    ? { value: resolved.value, note: null, externalWaveform, acParams }
+    : { value: null, note: null, externalWaveform,
+      scalarLoss: `source value ${JSON.stringify(expression)} is not a resolved finite constant: ${resolved.reason}` };
 }
 
 /**
@@ -280,6 +327,7 @@ export function importSpice(text) {
   const analyses = [];
   const models = new Map();     // name (lower) -> {type, params}
   const subckts = new Map();    // name (lower) -> {ports: string[], body: string[]}
+  const parameterCards = [];
 
   const { title, lines } = logicalLines(text);
   const diodeThermal = classifyShockleyThermal(lines);
@@ -359,12 +407,31 @@ export function importSpice(text) {
           }
           continue;
         }
+        if (card === 'param' || card === 'params' || card === 'func') {
+          ignored.push(line.trim());
+          losses.push({ ref: `.${card}`, kind: 'unsupported-subcircuit-parameter',
+            source: line.trim(),
+            reason: 'subcircuit-local parameters and functions are not hoisted into top-level scope',
+            fallback: null });
+          continue;
+        }
         inSub.body.push(line);
         ignored.push(line.trim());   // consumed by the definition
         continue;
       }
       if (card === 'model') { declareModel(dot[2], line); continue; }
       if (ANALYSIS_CARDS.has(card)) { analyses.push(line.trim()); continue; }
+      if (card === 'param' || card === 'params') {
+        parameterCards.push(line.trim());
+        ignored.push(line.trim());
+        continue;
+      }
+      if (card === 'func') {
+        ignored.push(line.trim());
+        losses.push({ ref: '.func', kind: 'unsupported-constant-function', source: line.trim(),
+          reason: '.func definitions are not executed by the constant parameter evaluator', fallback: null });
+        continue;
+      }
       if (card === 'include' || card === 'inc' || card === 'lib') {
         ignored.push(line.trim());
         warnings.push(`${line.trim()} — external files are not followed; anything `
@@ -382,6 +449,12 @@ export function importSpice(text) {
       continue;
     }
     flat.push({ line, prefix: '', portMap: null });
+  }
+
+  const constantParameters = resolveConstantParameters(parameterCards);
+  for (const finding of constantParameters.losses) {
+    losses.push({ ref: finding.name || '.param', kind: 'unsupported-constant-parameter',
+      source: finding.source, reason: finding.reason, fallback: null });
   }
 
   // ── pass 2: flatten subcircuit calls, ONE level ──────────────────
@@ -509,10 +582,11 @@ export function importSpice(text) {
       }
       if (letter !== 'D' || params.model !== 'shockley') params._model = rest[0] || null;
     } else if (spec.source) {
-      const { value, note, externalWaveform, waveformParams, waveformLoss } =
-        sourceValue(rest, spec.source === 'volts');
-      params[spec.source] = value;
+      const { value, note, externalWaveform, waveformParams, waveformLoss, scalarLoss, acParams } =
+        sourceValue(rest, spec.source === 'volts', constantParameters.values);
+      if (Number.isFinite(value)) params[spec.source] = value;
       if (waveformParams) Object.assign(params, waveformParams);
+      if (acParams) Object.assign(params, acParams);
       if (note) warnings.push(`${partId}: ${note}`);
       if (waveformLoss) {
         losses.push({
@@ -535,13 +609,29 @@ export function importSpice(text) {
           fallback: { parameter: spec.source, value },
         });
       }
+      if (scalarLoss) {
+        const finding = { type: 'semantic-import-loss', ref: partId,
+          reason: scalarLoss, source: item.line, fallback: null };
+        losses.push({ ref: partId, kind: 'unsupported-constant-expression',
+          source: item.line, reason: scalarLoss, fallback: null });
+        item.analysisBlocker = finding;
+      }
     } else if (spec.param) {
-      const v = parseSpiceValue(rest[0]);
-      if (isFinite(v)) params[spec.param] = v;
-      else warnings.push(`${partId}: no numeric value ("${rest[0] ?? ''}") — engine default used.`);
+      const expression = firstScalarExpression(rest);
+      const resolved = scalarValue(expression, constantParameters.values);
+      if (resolved.ok) params[spec.param] = resolved.value;
+      else {
+        const reason = `value ${JSON.stringify(expression)} is not a resolved finite constant: ${resolved.reason}`;
+        warnings.push(`${partId}: ${reason}; no engine default is analysis-safe.`);
+        losses.push({ ref: partId, kind: 'unsupported-constant-expression',
+          source: item.line, reason, fallback: null });
+        item.analysisBlocker = { type: 'semantic-import-loss', ref: partId,
+          reason, source: item.line, fallback: null };
+      }
     }
 
-    parts.push({ id: partId, kind, params, x: 0, y: 0 });
+    parts.push({ id: partId, kind, params, x: 0, y: 0,
+      ...(item.analysisBlocker ? { analysisBlockers: [item.analysisBlocker] } : {}) });
 
     spec.terminals.forEach((terminal, i) => {
       if (terminal === null) {
