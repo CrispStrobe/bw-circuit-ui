@@ -211,7 +211,34 @@ function sourceValue(fields, allowSine = false) {
       externalWaveform,
     };
   }
-  const bare = fields.find((f) => isFinite(parseSpiceValue(f)));
+  // `AC <mag> [phase]` IS NOT A DC VALUE.
+  //
+  // The bare-number fallback below took the first numeric field it saw, so
+  // `V1 IN 0 AC 1` imported as a 1 V DC source. SPICE reads that source's
+  // operating point as ZERO — the number is the small-signal magnitude for an
+  // `.ac` sweep, and the deck states no DC term at all. Measured against
+  // ngspice on the ADI corpus: every AC-only filter deck disagreed by exactly
+  // the magnitude, 1.000000 V against 0.000000, at every node.
+  //
+  // The magnitude is kept rather than dropped, so a caller that runs a sweep
+  // has it, and the bias point is the 0 V the deck means.
+  const acOnly = /\bAC\b\s+([^\s]+)(?:\s+([^\s]+))?/i.exec(joined);
+  const withoutAc = joined.replace(/\bAC\b\s+[^\s]+(?:\s+[-+.\d][^\s]*)?/ig, ' ');
+  const bareAfterAc = withoutAc.trim().split(/\s+/).find((f) => isFinite(parseSpiceValue(f)));
+  if (acOnly && bareAfterAc === undefined) {
+    const mag = parseSpiceValue(acOnly[1]);
+    return {
+      value: 0,
+      note: `AC ${acOnly[1]} is a small-signal magnitude, not a bias — the operating point of `
+        + 'this source is 0 V, which is what SPICE solves.',
+      externalWaveform,
+      waveformParams: isFinite(mag) ? { acMag: mag } : undefined,
+    };
+  }
+
+  const bare = bareAfterAc !== undefined
+    ? bareAfterAc
+    : fields.find((f) => isFinite(parseSpiceValue(f)));
   return {
     value: bare !== undefined ? parseSpiceValue(bare) : 0,
     note: null,
@@ -480,6 +507,28 @@ export function importSpice(text) {
         if (letter === 'D' && model.params.bv) kind = 'zener';
       }
       params._model = rest[0] || null;
+      // INSTANCE PARAMETERS. `W=20u L=1u` on the element line, not in the
+      // model card, and for a level-1 MOSFET they are half the transconductance
+      // — `mosK` computes KP/2 * W/L and falls back to a ratio of 1 without
+      // them. Only the two the solver reads are taken; anything else on the
+      // line (AD, AS, PD, PS, M, NRD...) is geometry for a model we do not
+      // have, and is recorded as a loss below rather than silently ignored.
+      const instance = {};
+      for (const field of rest.slice(1)) {
+        const kv = /^([A-Za-z_]+)\s*=\s*(\S+)$/.exec(field);
+        if (!kv) continue;
+        const value = parseSpiceValue(kv[2]);
+        if (isFinite(value)) instance[kv[1].toLowerCase()] = value;
+      }
+      if (letter === 'M') {
+        if (instance.w !== undefined) params.w = instance.w;
+        if (instance.l !== undefined) params.l = instance.l;
+        const unsupported = Object.keys(instance).filter(k => k !== 'w' && k !== 'l');
+        if (unsupported.length) {
+          warnings.push(`${partId}: instance parameter(s) ${unsupported.join(', ')} are not `
+            + 'read by the engine\'s square-law MOSFET.');
+        }
+      }
     } else if (spec.source) {
       const { value, note, externalWaveform, waveformParams, waveformLoss } =
         sourceValue(rest, spec.source === 'volts');
@@ -556,7 +605,24 @@ export function importSpice(text) {
     warnings.push(`Net "${net === '__GND__' ? '0' : net}" has one connection — nothing to wire it to.`);
   }
 
-  return { parts, wires, warnings, unmapped, losses, ignored, analyses, title };
+  // THE DECK'S OWN NODE NAMES, kept rather than thrown away.
+  //
+  // The star wiring reproduces the PARTITION exactly, which is all the
+  // round-trip oracle needs, and it discards what the deck CALLED each net.
+  // That made a foreign deck unjudgeable: the engine's netlist names its nets
+  // `net-lgc-1`, ngspice reports `vdd`, and a comparison by name found zero
+  // shared nodes on 195 of 200 ADI decks — "nothing compared", which reads
+  // like a harness failure and is really a dropped fact.
+  //
+  // One entry per deck net: its name (`0` for ground) and the part terminals
+  // on it. A consumer joins that to the engine's netlist through any one
+  // terminal, so no naming convention has to be shared.
+  const netNames = [...nets.entries()].map(([net, members]) => ({
+    name: net === '__GND__' ? '0' : net,
+    terminals: members.map(m => ({ partId: m.partId, terminal: m.terminal })),
+  }));
+
+  return { parts, wires, warnings, unmapped, losses, ignored, analyses, title, netNames };
 }
 
 /**
@@ -591,7 +657,27 @@ function mapModel(letter, model, warnings, partId) {
   } else if (letter === 'Q') {
     if (isFinite(p.bf)) out.beta = p.bf;
   } else if (letter === 'M') {
+    // LEVEL-1 SQUARE LAW: VTO AND KP, AND KP WAS BEING DROPPED.
+    //
+    // The engine's `mosK` already reads `kp` with per-instance `w`/`l`
+    // (`k = KP/2 * W/L`, src/mna.js) — the importer simply never passed them,
+    // so a deck stating `KP=1.0e-4` with `W=20u L=1u` was solved at the
+    // engine's fallback k = 0.5, five hundred times too big. On the ADI
+    // cascode bench that put the output at 0.0188 V where the deck's own
+    // numbers give about 11.4 V. Measured over that corpus: 15,587 M elements
+    // in 12,471 decks, all of them level-1 with VTO and KP stated.
+    //
+    // W and L are INSTANCE parameters, not model ones, so they are read from
+    // the element line below rather than here.
     if (isFinite(p.vto)) out.vth = p.vto;
+    if (isFinite(p.kp)) out.kp = p.kp;
+    // CHANNEL-LENGTH MODULATION. Level-1 saturation is
+    // Id = k*Vov^2*(1 + LAMBDA*Vds), which is LINEAR in Vds — so it needs no
+    // second Newton variable: the engine stamps `lambda * Id` as the
+    // drain-source conductance beside the VCCS and the two terms reproduce the
+    // law exactly. Without it the ADI cascode bench sat 12.5 mV off ngspice
+    // after everything else agreed.
+    if (isFinite(p.lambda)) out.lambda = p.lambda;
   }
   return out;
 }

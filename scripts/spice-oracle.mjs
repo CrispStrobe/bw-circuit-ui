@@ -630,6 +630,152 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
   } finally { JUNCTION_ROUTING.mode = priorRouting; }
 }
 
+// ── A FOREIGN DECK, JUDGED BY THE SIMULATOR THAT WROTE ITS DIALECT ───
+//
+// The corpus lane has acquired tens of thousands of valued SPICE decks, and
+// almost none of them were reachable: `judgeCase` starts from a bw-circuit-ui
+// circuit JSON, and `judgeRoundTrip` starts from one too. Both judge OUR
+// decks. A foreign `.cir` had no path in at all, so "how many can we run" was
+// a question about the harness, not about the engine.
+//
+// This closes that. Import the deck, solve it with our engine, run the
+// ORIGINAL BYTES through ngspice, and compare node voltages BY NAME — the
+// importer keeps the deck's own node names, so there is a shared namespace and
+// no need for the order-independent spectrum the round trip uses.
+//
+// WHAT IT CAN AND CANNOT CLAIM. This is `original-direct` evidence only when
+// the import reports no loss and no unmapped part: then both sides are reading
+// the same circuit and a disagreement is one of the two engines being wrong.
+// With a loss it is not a comparison at all and the case is refused by name,
+// because a deck we partly understood is a different circuit and agreeing with
+// it would be worse than failing.
+//
+// The deck is run AS WRITTEN except for one addition: `.op`, when it declares
+// no operating point. That is not a semantic change — every analysis card in
+// SPICE is computed from a bias point — but it is recorded, because a deck we
+// edited is a deck we have to say we edited.
+//
+// @param {string} name
+// @param {string} deckText   the foreign deck, verbatim
+// @param {string} dir
+export function judgeForeignDeck(name, deckText, dir) {
+  const lines = [];
+  let imported;
+  try {
+    imported = importSpice(deckText);
+  } catch (e) {
+    return { name, ok: false, lines: [`  importer threw: ${e.message}`], compared: 0,
+      reason: 'import-error: ' + e.message };
+  }
+  if (imported.unmapped.length) {
+    return { name, ok: false, compared: 0,
+      lines: [`  ${imported.unmapped.length} unmapped part(s): `
+        + imported.unmapped.slice(0, 4).map(u => u.ref ?? u.kind ?? '?').join(', ')],
+      reason: `unmapped ${imported.unmapped.length}` };
+  }
+  if (imported.losses.length) {
+    return { name, ok: false, compared: 0,
+      lines: [`  ${imported.losses.length} semantic loss: `
+        + imported.losses.slice(0, 3).map(l => l.reason).join('; ')],
+      reason: `loss: ${imported.losses[0].reason}` };
+  }
+  if (!imported.parts.length) {
+    return { name, ok: false, lines: ['  the import produced no parts'], compared: 0,
+      reason: 'empty import' };
+  }
+
+  // The ENGINE's answer, on the imported circuit.
+  let circuit, solved;
+  try {
+    circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    circuit.setPower(true);
+    solved = extractNetlist(circuit);
+  } catch (e) {
+    return { name, ok: false, lines: [`  engine refused the imported circuit: ${e.message}`],
+      compared: 0, reason: 'engine-error: ' + e.message };
+  }
+
+  // NGSPICE's answer, on the ORIGINAL BYTES. Only `.op` is added, and only when
+  // the deck declares none.
+  //
+  // A SWEEP OVERWRITES THE BIAS-POINT TABLE, so a deck carrying one is not
+  // reporting the operating point it was written at. `.DC VIN 12.5 17.0 0.1`
+  // left ngspice printing V(VIN) = 12.5 — the first sweep step — against the
+  // deck's own `VIN VIN 0 DC 15`, and the judge scored a 2.5 V disagreement
+  // that was entirely its own doing. The sweeps are commented out, not deleted,
+  // and the edit is recorded: a deck we changed is a deck we have to say we
+  // changed.
+  let text = deckText;
+  const edits = [];
+  const SWEEP = /^\s*\.(ac|dc|tran|noise|tf|four|disto|pz|sens|sp)\b.*$/gim;
+  if (SWEEP.test(text)) {
+    SWEEP.lastIndex = 0;
+    const seen = new Set();
+    text = text.replace(SWEEP, (m) => {
+      seen.add(m.trim().split(/\s+/)[0].toLowerCase());
+      return '* [oracle] ' + m.trim();
+    });
+    edits.push(`commented out ${[...seen].join(', ')} so the .op table is the bias point`);
+  }
+  if (!/^\s*\.op\b/im.test(text)) {
+    text = text.replace(/^\s*\.end\s*$/im, '.op\n.end');
+    if (!/^\s*\.op\b/im.test(text)) text += '\n.op\n.end\n';
+    edits.push('added .op to read the bias point');
+  }
+  if (edits.length) lines.push(`  (deck edited: ${edits.join('; ')})`);
+  const run = runNgspice(text, dir, name.replace(/[^A-Za-z0-9_.-]/g, '_'));
+  if (run.error) {
+    return { name, ok: false, lines: [`  ngspice refused the deck: ${run.error}`], compared: 0,
+      reason: 'ngspice refused: ' + run.error };
+  }
+
+  // JOIN THE TWO NAMESPACES THROUGH A TERMINAL, not through a net name.
+  //
+  // The engine names its nets `net-lgc-1`; the deck calls the same node `vdd`.
+  // `netNames` carries the deck's name beside the terminals on it, so one
+  // terminal is enough to find the engine net — and no convention has to be
+  // shared between an importer and a solver that never agreed on one.
+  const netIdOfTerminal = new Map();
+  for (const net of solved.nets) {
+    for (const nd of net.nodes || []) netIdOfTerminal.set(`${nd.partId}\u0000${nd.pin}`, net.id);
+  }
+  const deckNets = [];
+  for (const dn of imported.netNames || []) {
+    let netId;
+    for (const t of dn.terminals) {
+      netId = netIdOfTerminal.get(`${t.partId}\u0000${t.terminal}`);
+      if (netId) break;
+    }
+    if (netId) deckNets.push({ name: dn.name, id: netId });
+  }
+
+  let ok = true, compared = 0, worstAbs = 0, worstRel = 0, worstAt = null;
+  for (const net of deckNets) {
+    const key = String(net.name || '').toLowerCase();
+    if (!key || !(key in run.nodes)) continue;   // ngspice folds unused nodes away
+    const engineV = circuit.nodeVoltage(net.id);
+    if (typeof engineV !== 'number' || !isFinite(engineV)) continue;
+    compared++;
+    const spiceV = run.nodes[key];
+    const d = Math.abs(engineV - spiceV);
+    const rel = d / Math.max(1e-9, Math.abs(spiceV));
+    if (d > worstAbs) { worstAbs = d; worstRel = rel; worstAt = net.name; }
+    if (d > V_TOL_ABS && rel > V_TOL_REL) {
+      ok = false;
+      lines.push(`  V(${net.name}): engine ${engineV.toFixed(6)} V  `
+        + `ngspice ${spiceV.toFixed(6)} V  delta ${d.toExponential(2)}`);
+    }
+  }
+  if (compared === 0) {
+    // A zero you did not drive: no shared node means nothing was measured, and
+    // that is a refusal, not agreement.
+    return { name, ok: false, lines: ['  no node name is shared between the deck and the '
+      + 'imported circuit — nothing was compared'], compared: 0, reason: 'nothing compared' };
+  }
+  return { name, ok, lines, compared, worstAbs, worstRel, worstAt,
+    reason: ok ? null : `worst ${worstAbs.toExponential(2)} V at ${worstAt}` };
+}
+
 // ── Round trip through our own importer, judged by ngspice ───────────
 //
 // ROADMAP X1.1's acceptance: our exporter's output re-imports with an
