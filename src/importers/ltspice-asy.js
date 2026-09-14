@@ -98,7 +98,7 @@ export function parseLtspiceAsy(text, options = {}) {
     const source = lines[index].trim();
     if (!source) continue;
     let match;
-    if ((match = /^Version\s+(\d+)$/i.exec(source))) {
+    if ((match = /^Version\s+(\d+(?:\.\d+)?)$/i.exec(source))) {
       if (version !== null) findings.push(finding('duplicate-asy-version', lineNumber,
         'symbol document contains more than one Version record', source));
       else version = Number(match[1]);
@@ -152,7 +152,7 @@ export function parseLtspiceAsy(text, options = {}) {
     }
   }
 
-  if (version !== 4) findings.push(finding('unsupported-asy-version', 0,
+  if (![4, 4.1].includes(version)) findings.push(finding('unsupported-asy-version', 0,
     version === null ? 'symbol document has no Version record' : `Version ${version} is not supported`));
   if (!symbolType) findings.push(finding('missing-asy-symbol-type', 0,
     'symbol document has no SymbolType record'));
@@ -173,7 +173,7 @@ export function parseLtspiceAsy(text, options = {}) {
     'invalid-asy-input', 'asy-limit-exceeded', 'duplicate-asy-version',
     'duplicate-asy-symbol-type', 'duplicate-asy-attribute', 'orphan-asy-pin-attribute',
     'unsupported-asy-version', 'missing-asy-symbol-type', 'invalid-asy-spice-order',
-    'duplicate-asy-spice-order', 'invalid-asy-coordinate', 'unsupported-asy-record',
+    'duplicate-asy-spice-order', 'invalid-asy-coordinate',
   ]);
   return { ok: !findings.some(item => fatalKinds.has(item.kind)), version, symbolType,
     attrs, attributeRecords, pins, geometry, findings };

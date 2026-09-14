@@ -40,7 +40,7 @@ import { importEasyEdaProPcbAsCircuit } from './easyeda-pro-pcb.js';
 import { importFritzing } from './fritzing.js';
 import { importWokwi, exportWokwi } from './wokwi.js';
 import { importSpice } from './spice.js';
-import { importLtspiceAsc } from './ltspice-asc.js';
+import { importLtspiceAsc, parseLtspiceAscDocument } from './ltspice-asc.js';
 import { parseLtspiceAsy } from './ltspice-asy.js';
 
 const IMPORTERS = {
@@ -155,7 +155,7 @@ export function importCircuit(format, text, opts = {}) {
   return importer(text, opts);
 }
 
-export { exportWokwi, parseLtspiceAsy, pickKicadHierarchyRoot };
+export { exportWokwi, parseLtspiceAscDocument, parseLtspiceAsy, pickKicadHierarchyRoot };
 
 /**
  * List supported import formats.

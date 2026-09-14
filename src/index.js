@@ -65,7 +65,9 @@ export {
 } from './model/exporters/registry.js';
 export { downloadText, downloadBlob } from './model/exporters/download.js';
 export { svgToPngBlob, svgStringToPngBlob, serializeSvgStandalone, exportSvgAsPng } from './model/export-png.js';
-export { IMPORT_FORMATS, importCircuit, getSupportedFormats } from './importers/index.js';
+export {
+  IMPORT_FORMATS, importCircuit, getSupportedFormats, parseLtspiceAscDocument, parseLtspiceAsy,
+} from './importers/index.js';
 
 // Machine extraction (wired-bus → bootable config)
 export { extractMachine } from './model/machine-extract.js';
