@@ -10,9 +10,10 @@
  *   voltage.asy 940d0db2...  PIN (0,16)  +/order 1; (0,96) -/order 2
  *   current.asy d36a9bf0...  PIN (0,0)   +/order 1; (0,80) -/order 2
  *   ind.asy     9f8b8372...  PIN (16,16) A/order 1; (16,96) B/order 2
+ *   diode.asy   a7177f6c...  PIN (16,0)  +/order 1; (16,64) -/order 2
  *
  * The bounded subset maps only the exact standard `res`, `cap`, `voltage`,
- * `current`, and `ind` symbols. Voltage sources additionally retain exact
+ * `current`, `ind`, and `diode` symbols. Voltage sources additionally retain exact
  * three-argument `SINE(offset amplitude frequency)` and strict seven-argument
  * `PULSE(V1 V2 TD TR TF PW PER)` values. For current
  * sources, LTspice/SPICE current flows from
@@ -39,6 +40,8 @@ import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-sour
 import { evaluateConstantExpression, resolveConstantParameters } from '../model/spice-constant.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 import { normalizeLtspiceSymbolName, parseLtspiceAsy } from './ltspice-asy.js';
+import { classifyShockleyThermal, validateExplicitShockley } from '../model/spice-diode.js';
+import { parseSpiceModelDeclaration } from '../model/spice-model.js';
 
 const SYMBOLS = new Map([
   ['res', {
@@ -66,11 +69,87 @@ const SYMBOLS = new Map([
     pins: [[16, 16], [16, 96]],
     sourceSha256: '9f8b83724e9b7147cef39529ec31da234ed0427d870bb3e5b42004afc23f63f2',
   }],
+  ['diode', {
+    kind: 'diode', terminals: ['anode', 'cathode'],
+    pins: [[16, 0], [16, 64]],
+    sourceSha256: 'a7177f6cc9730376390e2b0f0a67de1050b6452aba3049351dcd64a68dfd0d70',
+  }],
 ]);
 
 const STANDARD_PREFIX = Object.freeze({
-  resistor: 'R', capacitor: 'C', inductor: 'L', vsource: 'V', isource: 'I',
+  resistor: 'R', capacitor: 'C', inductor: 'L', vsource: 'V', isource: 'I', diode: 'D',
 });
+
+function collectAscModels(directives) {
+  const models = new Map();
+  directives.forEach((source, index) => {
+    const match = /^\.model\b(.*)$/is.exec(source);
+    if (!match) return;
+    const parsed = parseSpiceModelDeclaration(match[1]);
+    const looseName = match[1].trim().split(/\s+/)[0] || '';
+    const name = parsed?.name || looseName;
+    if (!name) return;
+    const key = name.toLowerCase();
+    const prior = models.get(key);
+    models.set(key, {
+      ...(parsed || prior || { name, type: '', body: '', params: {} }),
+      source: [prior?.source, source].filter(Boolean).join('\n'),
+      indexes: [...(prior?.indexes || []), index],
+      ...(!parsed ? { malformed: true } : {}),
+      ...(prior ? { ambiguous: true } : {}),
+    });
+  });
+  return models;
+}
+
+function classifyAscShockleyThermal(directives) {
+  const thermal = classifyShockleyThermal(directives);
+  for (const source of directives) {
+    const option = /^\.options?\b(.*)$/i.exec(source);
+    if (!option || !/\b(?:temp|tnom)\b/i.test(option[1])) continue;
+    let rest = option[1];
+    while (rest.trim()) {
+      const match = /^\s*,?\s*(?:temp|tnom)\s*=\s*([^\s,]+)([\s\S]*)$/i.exec(rest);
+      if (!match) return { ok: false, explicit: true, source: thermal.source,
+        reason: 'diode temperature options may contain only explicit TEMP and TNOM assignments' };
+      rest = match[2];
+    }
+  }
+  return thermal;
+}
+
+function authoredDiode(raw, models, thermal) {
+  const modelName = String(raw || '').trim();
+  let model = null;
+  let reason = null;
+  if (!modelName || !/^\S+$/.test(modelName)) {
+    reason = 'diode Value must name exactly one explicit local D model';
+  } else {
+    model = models.get(modelName.toLowerCase()) || null;
+    if (!model) reason = `diode model "${modelName}" is not declared in this ASC`;
+    else if (model.ambiguous) reason = 'duplicate diode model declarations are ambiguous';
+    else if (model.malformed) reason = 'diode model declaration is malformed';
+    else if (model.type !== 'D') reason = `model type ${model.type || '(missing)'} is not D`;
+    else {
+      const exact = validateExplicitShockley(model.params, model.body);
+      if (!exact.ok) reason = exact.reason;
+      else if (!thermal.ok) reason = thermal.reason;
+      else return { params: exact.params, model, reason: null };
+    }
+  }
+  const source = [model?.source, ...(thermal.source || [])].filter(Boolean).join('\n')
+    || `SYMATTR Value ${modelName || '(missing)'}`;
+  return {
+    params: {
+      _spiceBlocked: reason,
+      ...(model?.source ? { _spiceModel: model.source } : {}),
+      ...(thermal.source?.length ? { _spiceTemperature: thermal.source.join('\n') } : {}),
+    },
+    model,
+    reason,
+    source,
+  };
+}
 
 function symbolAsset(lib, options, cache) {
   const normalizedName = normalizeLtspiceSymbolName(lib);
@@ -257,6 +336,10 @@ export function importLtspiceAsc(text, options = {}) {
   }
 
   const drawing = parse(text);
+  const ascModels = collectAscModels(drawing.directives);
+  const diodeThermal = classifyAscShockleyThermal(drawing.directives);
+  const usedModelDirectiveIndexes = new Set();
+  let mappedDiodeCount = 0;
   const constantParameters = resolveConstantParameters(
     drawing.directives.filter(directive => /^\.params?\b/i.test(directive)));
   for (const finding of constantParameters.losses) {
@@ -338,7 +421,13 @@ export function importLtspiceAsc(text, options = {}) {
       continue;
     }
     const id = makeId(ref, used);
-    const authored = authoredParams(effectiveAttrs.value, spec, constantParameters.values);
+    const authored = spec.kind === 'diode'
+      ? authoredDiode(effectiveAttrs.value, ascModels, diodeThermal)
+      : authoredParams(effectiveAttrs.value, spec, constantParameters.values);
+    if (spec.kind === 'diode') {
+      mappedDiodeCount++;
+      for (const index of authored.model?.indexes || []) usedModelDirectiveIndexes.add(index);
+    }
     if (!authored.reason && spec.kind === 'inductor' && !(authored.params.henrys > 0)) {
       authored.reason = 'inductor Value must resolve to a positive finite scalar';
       authored.params = {};
@@ -346,11 +435,17 @@ export function importLtspiceAsc(text, options = {}) {
     const params = authored.params;
     const partBlockers = [];
     if (authored.reason) {
-      const loss = { ref: id, kind: 'unsupported-or-missing-static-value', source: symbol.source,
+      const loss = { ref: id, kind: spec.kind === 'diode'
+        ? 'unsupported-diode-model' : 'unsupported-or-missing-static-value',
+        source: authored.source || symbol.source,
         reason: authored.reason, fallback: null };
       losses.push(loss);
       partBlockers.push({ type: 'semantic-import-loss', ...loss });
-      warnings.push(`${id}: non-static or missing value is not approximated`);
+      warnings.push(spec.kind === 'diode'
+        ? `${id}: diode model is retained but not numerically approximated`
+        : `${id}: non-static or missing value is not approximated`);
+    } else if (spec.kind === 'diode' && !diodeThermal.explicit) {
+      warnings.push(`${id}: omitted SPICE TEMP/TNOM uses bw-board's fixed VT=0.02585 V profile; raw default-temperature source fidelity is not established.`);
     }
     for (const [name, attributeValue] of Object.entries(effectiveAttrs)) {
       if (name === 'instname' || name === 'value' || name === 'prefix') continue;
@@ -359,6 +454,10 @@ export function importLtspiceAsc(text, options = {}) {
         reason: `the bounded ASC importer does not interpret ${name}`, fallback: null };
       losses.push(loss);
       partBlockers.push({ type: 'semantic-import-loss', ...loss });
+      if (spec.kind === 'diode') {
+        params._spiceBlocked ||= `unsupported LTspice diode instance attribute ${name}`;
+        if (authored.model?.source) params._spiceModel ||= authored.model.source;
+      }
       warnings.push(`${id}: unsupported LTspice symbol attribute ${name} is retained as a loss`);
     }
     parts.push({ id, kind: spec.kind, params, x: symbol.x, y: symbol.y,
@@ -367,7 +466,7 @@ export function importLtspiceAsc(text, options = {}) {
     placements.push({ id, spec, pins });
   }
 
-  for (const directive of drawing.directives) {
+  for (const [directiveIndex, directive] of drawing.directives.entries()) {
     if (/^\.(?:op|ac|tran|dc)\b/i.test(directive)) {
       analyses.push(directive);
       sourceDirectives.push({ source: directive, kind: 'analysis', handling: 'source-analysis' });
@@ -376,6 +475,21 @@ export function importLtspiceAsc(text, options = {}) {
     if (/^\.params?\b/i.test(directive)) {
       sourceDirectives.push({ source: directive, kind: 'parameter-definition',
         handling: 'constant-expression' });
+      continue;
+    }
+    if (usedModelDirectiveIndexes.has(directiveIndex)) {
+      sourceDirectives.push({ source: directive, kind: 'model-definition',
+        handling: 'strict-diode-model' });
+      ignored.push({ source: directive, reason: 'consumed by a mapped strict Shockley diode' });
+      continue;
+    }
+    if (mappedDiodeCount && (/^\.temp\b/i.test(directive)
+        || /^\.options?\b.*\b(?:temp|tnom)\b/i.test(directive))) {
+      sourceDirectives.push({ source: directive, kind: 'temperature-profile',
+        handling: diodeThermal.ok ? 'fixed-diode-thermal' : 'unsupported' });
+      ignored.push({ source: directive, reason: diodeThermal.ok
+        ? 'consumed by the fixed Shockley diode profile'
+        : 'retained by the diode model refusal' });
       continue;
     }
     if (/^\.(?:backanno|end)\b/i.test(directive)) {
