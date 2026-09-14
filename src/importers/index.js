@@ -106,8 +106,10 @@ export const IMPORT_FORMATS = [
     accept: '.json' },
   { id: 'spice', label: 'SPICE netlist (.cir/.sp/.net)',
     labelDe: 'SPICE-Netzliste (.cir/.sp/.net)', accept: '.cir,.sp,.spi,.ckt,.net' },
-  { id: 'ltspice-asc', label: 'LTspice schematic (.asc)',
-    labelDe: 'LTspice-Schaltplan (.asc)', accept: '.asc' },
+  { id: 'ltspice-asc', label: 'LTspice schematic + symbols (.asc, .asy)',
+    labelDe: 'LTspice-Schaltplan + Symbole (.asc, .asy)', accept: '.asc,.asy', multi: true,
+    hint: 'Pick one .asc schematic plus any explicitly supplied .asy symbol files it uses.',
+    hintDe: 'Einen .asc-Schaltplan und die benötigten .asy-Symboldateien auswählen.' },
 ];
 
 /**

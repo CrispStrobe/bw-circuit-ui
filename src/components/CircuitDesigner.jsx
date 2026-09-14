@@ -903,6 +903,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
     loadInferred(inferredParts, inferredNets);
     circuit.analysisBlockers = [];
+    circuit.sourceDocuments = [];
     // An EXPLICIT rebuild hands the canvas back to inference: future
     // declaration edits may re-derive again.
     fileLoadedRef.current = false;
@@ -921,6 +922,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     circuit.wires.length = 0;
     circuit.breadboards = new Map();
     circuit.analysisBlockers = [];
+    circuit.sourceDocuments = [];
     circuit._syncNetlist();
     setAnnotations([]);
     setSelectedParts(new Set());
@@ -963,6 +965,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     circuit.wires = parsed.wires;
     circuit.breadboards = parsed.breadboards;
     circuit.analysisBlockers = parsed.analysisBlockers;
+    circuit.sourceDocuments = parsed.sourceDocuments;
     // Generated per-device benches carry {parts, nets} (engine-format nets,
     // no wires). syncWithExternalNets feeds these directly to setNetlist,
     // which is strictly more truthful than the wire→net derivation that
@@ -1032,6 +1035,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         circuit.wires.length = 0;
         circuit.breadboards = new Map();
         circuit.analysisBlockers = [];
+        circuit.sourceDocuments = [];
         const { notes } = buildSeatedFromDeclarations(circuit, projectData);
         circuit._syncNetlist();
         circuit._saveHistory();

@@ -2796,17 +2796,51 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
     // import is every part and not one connection.
     const libFiles = picked.filter((f) => /\.lib$/i.test(f.name));
     const kicadFiles = picked.filter((f) => /\.kicad_sch$/i.test(f.name));
-    let file = picked.find((f) => !/\.lib$/i.test(f.name));
+    const ltspiceSymbolFiles = picked.filter((f) => /\.asy$/i.test(f.name));
+    const ltspiceSchematics = picked.filter((f) => /\.asc$/i.test(f.name));
+    if (ltspiceSchematics.length > 1) {
+      say({ kind: 'import', title: ltspiceSchematics[0].name,
+        error: de ? 'Bitte genau einen LTspice-Schaltplan (.asc) auswählen.'
+          : 'Pick exactly one LTspice schematic (.asc) at a time.' });
+      done(); return;
+    }
+    if (ltspiceSymbolFiles.length > 256) {
+      say({ kind: 'import', title: ltspiceSchematics[0]?.name || ltspiceSymbolFiles[0].name,
+        error: de ? 'Zu viele LTspice-Symbole gewählt (Maximum 256).'
+          : 'Too many LTspice symbol files selected (maximum 256).' });
+      done(); return;
+    }
+    const oversizedLtspiceSymbol = ltspiceSymbolFiles.find((f) => f.size > 1024 * 1024);
+    const ltspiceSymbolBytes = ltspiceSymbolFiles.reduce((sum, f) => sum + f.size, 0);
+    if (oversizedLtspiceSymbol || ltspiceSymbolBytes > 16 * 1024 * 1024) {
+      say({ kind: 'import', title: ltspiceSchematics[0]?.name || ltspiceSymbolFiles[0].name,
+        error: de ? 'LTspice-Symbolpaket zu groß (maximal 1 MiB pro Datei und 16 MiB insgesamt).'
+          : 'LTspice symbol bundle is too large (1 MiB per file and 16 MiB total).' });
+      done(); return;
+    }
+    let file = ltspiceSchematics[0]
+      || picked.find((f) => !/\.(?:lib|asy)$/i.test(f.name));
     if (!file) {
       say({ kind: 'import', title: picked[0].name,
-        error: de ? 'Nur eine Bibliothek gewählt — bitte auch den Schaltplan wählen.'
-          : 'That is only a symbol library — pick the schematic too.' });
+        error: de ? 'Nur Symbol-/Bibliotheksdateien gewählt — bitte auch den Schaltplan wählen.'
+          : 'Only symbol/library files were selected — pick the schematic too.' });
       done(); return;
     }
 
-    let text; let libs; let hierarchyFiles = null;
+    let text; let libs; let hierarchyFiles = null; let ltspiceSymbols = null;
     try {
       libs = await Promise.all(libFiles.map((f) => f.text()));
+      if (ltspiceSymbolFiles.length) {
+        ltspiceSymbols = new Map();
+        for (const symbolFile of ltspiceSymbolFiles) {
+          const name = symbolFile.name.replace(/\.asy$/i, '').toLowerCase();
+          if (!name || name.length > 256) throw new Error(`Invalid LTspice symbol filename: ${symbolFile.name}`);
+          if (ltspiceSymbols.has(name)) {
+            throw new Error(`Two selected LTspice symbol files have the same basename: ${symbolFile.name}`);
+          }
+          ltspiceSymbols.set(name, { text: await symbolFile.text() });
+        }
+      }
       if (kicadFiles.length) {
         hierarchyFiles = new Map();
         for (const kicadFile of kicadFiles) {
@@ -2845,13 +2879,19 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
 
     const importOpts = hierarchyFiles && format === 'kicad-sch'
       ? { files: hierarchyFiles, rootName: file.name }
-      : (libs.length ? { lib: libs } : {});
+      : (ltspiceSymbols && format === 'ltspice-asc'
+          ? { resolveSymbol: ({ normalizedName }) =>
+              ltspiceSymbols.get(normalizedName.split('/').at(-1)) || null }
+          : (libs.length ? { lib: libs } : {}));
     const r = importCircuit(format, text, importOpts);
     // Load even when some components were unmapped: a partial import is
     // useful as long as the gap is stated. Nothing is loaded if NOTHING
     // mapped, because that is a failed import wearing a success's clothes.
     if (r.parts.length) onImport({ parts: r.parts, wires: r.wires,
-      analysisBlockers: blockersFromImport(r, format, file.name) });
+      analysisBlockers: blockersFromImport(r, format, file.name),
+      ...(r.sourceSymbols?.length ? { sourceDocuments: [{
+        format: 'ltspice-asy', symbols: r.sourceSymbols,
+      }] } : {}) });
     say({
       kind: 'import',
       title: file.name,

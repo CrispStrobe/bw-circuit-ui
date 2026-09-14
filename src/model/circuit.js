@@ -130,6 +130,16 @@ function migrateTerminals (kind, stored, params) {
   });
 }
 
+function cloneSourceDocuments(value) {
+  if (!Array.isArray(value)) return [];
+  const out = [];
+  for (const document of value) {
+    if (!document || typeof document !== 'object') continue;
+    try { out.push(JSON.parse(JSON.stringify(document))); } catch { /* non-JSON metadata is not persisted */ }
+  }
+  return out;
+}
+
 export class Circuit {
   /**
    * @param {number} [vcc=5.0]
@@ -153,6 +163,9 @@ export class Circuit {
 
     /** Import findings that make a numeric analysis of this saved circuit unsafe. */
     this.analysisBlockers = [];
+
+    /** Bounded foreign document metadata retained for save/load, never solver parts. */
+    this.sourceDocuments = [];
 
     /** @type {object} */
     this.board = new this._BoardImpl(vcc);
@@ -372,7 +385,13 @@ export class Circuit {
   _saveHistory() {
     // Save both circuit layout AND engine state (capacitor voltages, etc.)
     const engineSnap = this.board.snapshot ? this.board.snapshot() : null;
-    this.history.save({ parts: this.parts, wires: this.wires, engineSnap });
+    this.history.save({
+      parts: this.parts,
+      wires: this.wires,
+      analysisBlockers: this.analysisBlockers,
+      sourceDocuments: cloneSourceDocuments(this.sourceDocuments),
+      engineSnap,
+    });
   }
 
   /** Undo the last structural change. Returns true if successful. */
@@ -381,6 +400,9 @@ export class Circuit {
     if (!state) return false;
     this.parts = state.parts.map(p => ({ ...p }));
     this.wires = state.wires.map(w => ({ ...w }));
+    this.analysisBlockers = Array.isArray(state.analysisBlockers)
+      ? state.analysisBlockers.map(blocker => ({ ...blocker })) : [];
+    this.sourceDocuments = cloneSourceDocuments(state.sourceDocuments);
     this._syncNetlist();
     // Restore engine state if available
     if (state.engineSnap && this.board.restore) {
@@ -395,6 +417,9 @@ export class Circuit {
     if (!state) return false;
     this.parts = state.parts.map(p => ({ ...p }));
     this.wires = state.wires.map(w => ({ ...w }));
+    this.analysisBlockers = Array.isArray(state.analysisBlockers)
+      ? state.analysisBlockers.map(blocker => ({ ...blocker })) : [];
+    this.sourceDocuments = cloneSourceDocuments(state.sourceDocuments);
     this._syncNetlist();
     if (state.engineSnap && this.board.restore) {
       this.board.restore(state.engineSnap);
@@ -1016,6 +1041,7 @@ export class Circuit {
       // conducting through its rails.
       holeWires: this.holeWires(),
       ...(this.analysisBlockers.length ? { analysisBlockers: this.analysisBlockers.map(b => ({ ...b })) } : {}),
+      ...(this.sourceDocuments.length ? { sourceDocuments: cloneSourceDocuments(this.sourceDocuments) } : {}),
       ...(this.pcb ? { pcb: this.pcb } : {}),
     };
   }
@@ -1036,6 +1062,7 @@ export class Circuit {
     c.analysisBlockers = Array.isArray(data.analysisBlockers)
       ? data.analysisBlockers.filter(b => b && typeof b === 'object').map(b => ({ ...b }))
       : [];
+    c.sourceDocuments = cloneSourceDocuments(data.sourceDocuments);
     // Legacy files also predate parts carrying their terminal list — every
     // renderer maps over part.terminals, so a missing list was the SECOND
     // way a gallery file crashed the GUI (pure-circuit examples, same day

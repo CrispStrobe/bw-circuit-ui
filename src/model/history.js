@@ -1,7 +1,8 @@
 /**
  * Undo/redo history for the circuit model.
  *
- * Stores snapshots of { parts, wires } after each mutation,
+ * Stores snapshots of { parts, wires, analysisBlockers, sourceDocuments }
+ * after each mutation,
  * plus an optional engine snapshot (Maps, BigInts — not JSON-safe)
  * kept alongside for restore across undo/redo.
  */
@@ -20,10 +21,16 @@ export class History {
 
   /**
    * Save a snapshot. Truncates any redo states.
-   * @param {{ parts: Array, wires: Array, engineSnap?: object }} state
+   * @param {{ parts: Array, wires: Array, analysisBlockers?: Array,
+   * sourceDocuments?: Array, engineSnap?: object }} state
    */
   save(state) {
-    const json = JSON.stringify({ parts: state.parts, wires: state.wires });
+    const json = JSON.stringify({
+      parts: state.parts,
+      wires: state.wires,
+      analysisBlockers: state.analysisBlockers || [],
+      sourceDocuments: state.sourceDocuments || [],
+    });
 
     // Don't save if identical to current (e.g. movePart to same position)
     if (this._cursor >= 0 && this._stack[this._cursor] === json) return;
@@ -43,7 +50,7 @@ export class History {
   }
 
   /**
-   * @returns {{ parts, wires, engineSnap } | null}
+   * @returns {{ parts, wires, analysisBlockers, sourceDocuments, engineSnap } | null}
    */
   undo() {
     if (this._cursor <= 0) return null;
@@ -54,7 +61,7 @@ export class History {
   }
 
   /**
-   * @returns {{ parts, wires, engineSnap } | null}
+   * @returns {{ parts, wires, analysisBlockers, sourceDocuments, engineSnap } | null}
    */
   redo() {
     if (this._cursor >= this._stack.length - 1) return null;
