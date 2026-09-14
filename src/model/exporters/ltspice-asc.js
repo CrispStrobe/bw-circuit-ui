@@ -1,6 +1,7 @@
 /** Bounded LTspice Version-4 ASCII schematic serializer. */
 import { wireEndpoint, isBoardEndpoint } from '../wire-endpoints.js';
 import { parseSpiceValue } from '../si.js';
+import { sourceDocumentProjection } from '../source-document-projection.js';
 
 const SPECS = {
   resistor: { lib: 'res', parameter: 'ohms', allowed: ['ohms'], terminals: { a: [16, 16], b: [16, 96] } },
@@ -45,7 +46,7 @@ function retainedDocument(circuit) {
 }
 
 function sameProjection(circuit, document) {
-  return JSON.stringify({ parts: circuit.parts || [], wires: circuit.wires || [] })
+  return JSON.stringify(sourceDocumentProjection(circuit.parts, circuit.wires))
     === JSON.stringify(document.projectionSnapshot);
 }
 

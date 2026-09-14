@@ -7,6 +7,8 @@ import { wireEndpoint } from '../src/model/wire-endpoints.js';
 import { importKicadSch } from '../src/importers/kicad-sch.js';
 import { toKicadSch } from '../src/model/exporters/kicad-sch.js';
 import { importSpice } from '../src/importers/spice.js';
+import { Circuit } from '../src/model/circuit.js';
+import './_setup.js';
 
 const terminalPartitions = wires => {
   const parent = new Map();
@@ -76,6 +78,28 @@ FUTURE_RECORD preserved exactly
     assert.equal(edited.preservedSourceDocument, undefined);
     assert.doesNotMatch(edited.text, /FUTURE_RECORD/);
     assert.match(edited.text, /SYMATTR Value 3000/);
+    assert.ok(edited.warnings.some(warning => /changed after ASC import/.test(warning)));
+  });
+
+  it('replays retained ASC after a real Circuit JSON load but detects a later edit', () => {
+    const source = `Version 4.1
+SHEET 1 880 680
+SYMBOL res 100 100 R0
+SYMATTR InstName R1
+SYMATTR Value 2k
+FLAG 116 116 A
+FLAG 116 196 B
+FUTURE_RECORD preserved through GUI load
+`;
+    const imported = importLtspiceAsc(source);
+    const loaded = Circuit.fromJSON({ vcc: 5, parts: imported.parts, wires: imported.wires,
+      sourceDocuments: [imported.sourceDocument] });
+    const exact = toLtspiceAsc(loaded);
+    assert.equal(exact.text, source);
+    assert.equal(exact.preservedSourceDocument, true);
+    loaded.parts[0].x += 16;
+    const edited = toLtspiceAsc(loaded);
+    assert.equal(edited.preservedSourceDocument, undefined);
     assert.ok(edited.warnings.some(warning => /changed after ASC import/.test(warning)));
   });
 

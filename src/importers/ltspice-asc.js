@@ -43,6 +43,7 @@ import { normalizeLtspiceSymbolName, parseLtspiceAsy } from './ltspice-asy.js';
 import { classifyShockleyThermal, validateExplicitShockley } from '../model/spice-diode.js';
 import { parseSpiceModelDeclaration } from '../model/spice-model.js';
 import { importSpice } from './spice.js';
+import { sourceDocumentProjection } from '../model/source-document-projection.js';
 
 const SYMBOLS = new Map([
   ['res', {
@@ -987,7 +988,7 @@ export function importLtspiceAsc(text, options = {}) {
     + `(${resolved.nets} connected nets, ${drawing.flags.length} flags)`);
   if (floating) warnings.push(`${floating} mapped pin(s) are electrically floating`);
   if (!parts.length) warnings.push('No mappable components found in LTspice ASC schematic.');
-  sourceDocument.projectionSnapshot = JSON.parse(JSON.stringify({ parts, wires: resolved.wires }));
+  sourceDocument.projectionSnapshot = sourceDocumentProjection(parts, resolved.wires);
   return { parts, wires: resolved.wires, warnings, unmapped, losses, ignored,
     analyses, sourceDirectives, netNames, sourceSymbols, sourceDocument };
 }
