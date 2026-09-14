@@ -53,6 +53,7 @@ import { spiceModelFor, resolveParams, cardFor, classDefaults, allCards } from '
 import { formatSpiceValue } from '../si.js';
 import { validateStrictSpicePulseParams } from '../spice-source.js';
 import { controlledResistance } from 'bw-board/mna.js';
+import { isExplicitShockleyPart } from '../spice-diode.js';
 
 /** SPICE element types that take a simple two-terminal card */
 const TWO_TERMINAL = new Set(['R', 'C', 'L', 'V', 'I', 'F']);
@@ -362,6 +363,29 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       .map((p, i) => nodes[i] || `UNCONNECTED_${part.refdes}_${p}`)
       .join(' ');
 
+    // AC magnitude/phase describe small-signal excitation; they are not a
+    // time waveform and do not replace the independently authored DC value.
+    // Preserve both fields exactly so `.op` still sees the DC bias while an
+    // external `.ac` analysis can consume the descriptor.
+    if ((part.kind === 'vsource' || part.kind === 'isource')
+      && Object.prototype.hasOwnProperty.call(part.params || {}, 'acMagnitude')) {
+      const p = part.params || {};
+      const dcKey = part.kind === 'vsource' ? 'volts' : 'amps';
+      const allowed = new Set([dcKey, 'acMagnitude', 'acPhase']);
+      const extra = Object.keys(p).filter(key => !allowed.has(key));
+      const phase = p.acPhase ?? 0;
+      if (Number.isFinite(p[dcKey]) && Number.isFinite(p.acMagnitude)
+          && p.acMagnitude >= 0 && Number.isFinite(phase) && extra.length === 0) {
+        lines.push(`${part.refdes} ${nodeFields} DC ${formatSpiceValue(p[dcKey])} `
+          + `AC ${formatSpiceValue(p.acMagnitude)} ${formatSpiceValue(phase)}`);
+      } else {
+        const detail = extra.length ? `; unsupported parameters ${extra.join(', ')}` : '';
+        skipped.push(`${part.refdes} (${part.kind}): AC descriptor is not losslessly exportable${detail}`);
+        lines.push(`* ${part.refdes} ${part.kind} — skipped (invalid AC descriptor${detail})`);
+      }
+      continue;
+    }
+
     // A time-varying source must either retain its complete supported shape
     // or be refused. Falling through to valueNumber here used to serialize a
     // waveform as DC while producing a plausible, runnable, different deck.
@@ -447,6 +471,19 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       }
     } else if (card === 'D') {
       const modelName = `D_${part.refdes}`;
+      const explicitShockleyFields = ['is', 'n', 'rs'].some(key =>
+        Object.prototype.hasOwnProperty.call(part.params || {}, key));
+      if (part.params?._spiceBlocked) {
+        skipped.push(`${part.refdes} (${part.kind}): blocked imported SPICE model is not reinterpreted`);
+        lines.push(`* ${part.refdes} ${part.kind} — blocked imported SPICE model`);
+        continue;
+      }
+      if (part.kind === 'diode' && explicitShockleyFields
+        && !isExplicitShockleyPart(part)) {
+        skipped.push(`${part.refdes} (diode): explicit Shockley export requires only finite IS, N and RS`);
+        lines.push(`* ${part.refdes} diode — unsupported Shockley parameters`);
+        continue;
+      }
       const j = junctionModel(part);
       const extra = part.kind === 'zener' && part.params?.vz
         ? ` BV=${formatSpiceValue(Number(part.params.vz))}` : '';

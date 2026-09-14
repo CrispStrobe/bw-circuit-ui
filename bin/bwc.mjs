@@ -234,6 +234,7 @@ switch (cmd) {
     console.log('  controlled: ' + result.analysis.controlledSources);
     console.log('  kinds    : ' + result.analysis.supportedKinds.join(', '));
     console.log('  capacitors: ' + result.analysis.capacitors);
+    if (result.analysis.diodes?.temperatureModel === 'fixed') console.log('  diodes  : explicit Shockley IS/N/RS; fixed VT=' + result.analysis.diodes.thermalVoltage + ' V (26.8267934421 C profile)');
     console.log('  currents : ' + result.analysis.currentConvention);
     console.log('  nodes:');
     for (const [net, volts] of [...result.nodeVoltages].sort(([a], [b]) => a.localeCompare(b))) {

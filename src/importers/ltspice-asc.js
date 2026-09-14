@@ -26,6 +26,7 @@
 import { NetSolver, makeId, wiresFromNets } from './kicad-common.js';
 import { parseSpiceValue } from '../model/si.js';
 import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-source.js';
+import { evaluateConstantExpression, resolveConstantParameters } from '../model/spice-constant.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 
 const SYMBOLS = new Map([
@@ -116,14 +117,19 @@ function parse(text) {
   return { wires, flags, symbols, directives, unknownLines, ignoredLines };
 }
 
-function staticValue(raw) {
+function staticValue(raw, constants = new Map()) {
   const text = String(raw || '').trim().replace(/^DC\s+/i, '');
   const value = parseSpiceValue(text);
-  return Number.isFinite(value) ? value : null;
+  if (Number.isFinite(value)) return { ok: true, value };
+  try {
+    return { ok: true, value: evaluateConstantExpression(text, name => constants.get(name)) };
+  } catch (error) {
+    return { ok: false, reason: error.message };
+  }
 }
 
 /** Strict LTspice Value projection for the bounded source subset. */
-function authoredParams(raw, spec) {
+function authoredParams(raw, spec, constants) {
   const text = String(raw || '').trim();
   const sine = parseStrictSpiceSine(text, { allowSinAlias: false });
   if (sine && spec.kind === 'vsource') {
@@ -136,10 +142,10 @@ function authoredParams(raw, spec) {
       ? 'time-varying current PULSE sources are not modelled'
       : pulse.reason };
   }
-  const value = staticValue(text);
-  return value === null
-    ? { params: {}, reason: `Value "${text}" is not a finite static scalar` }
-    : { params: { [spec.parameter]: value }, reason: null };
+  const resolved = staticValue(text, constants);
+  return !resolved.ok
+    ? { params: {}, reason: `Value "${text}" is not a resolved finite static scalar: ${resolved.reason}` }
+    : { params: { [spec.parameter]: resolved.value }, reason: null };
 }
 
 export function importLtspiceAsc(text) {
@@ -155,6 +161,12 @@ export function importLtspiceAsc(text) {
   }
 
   const drawing = parse(text);
+  const constantParameters = resolveConstantParameters(
+    drawing.directives.filter(directive => /^\.params?\b/i.test(directive)));
+  for (const finding of constantParameters.losses) {
+    losses.push({ ref: finding.name || 'TEXT', kind: 'unsupported-constant-parameter',
+      source: finding.source, reason: finding.reason, fallback: null });
+  }
   const net = new NetSolver();
   const segmentAnchors = [];
   for (const [x1, y1, x2, y2] of drawing.wires) {
@@ -190,7 +202,7 @@ export function importLtspiceAsc(text) {
       continue;
     }
     const id = makeId(ref, used);
-    const authored = authoredParams(symbol.attrs.value, spec);
+    const authored = authoredParams(symbol.attrs.value, spec, constantParameters.values);
     const params = authored.params;
     if (authored.reason) {
       losses.push({ ref: id, kind: 'unsupported-or-missing-static-value', source: symbol.source,
@@ -204,14 +216,20 @@ export function importLtspiceAsc(text) {
         reason: `the bounded ASC importer does not interpret ${name}`, fallback: null });
       warnings.push(`${id}: unsupported LTspice symbol attribute ${name} is retained as a loss`);
     }
-    parts.push({ id, kind: spec.kind, params, x: symbol.x, y: symbol.y });
+    parts.push({ id, kind: spec.kind, params, x: symbol.x, y: symbol.y,
+      ...(authored.reason ? { analysisBlockers: [{ type: 'semantic-import-loss', ref: id,
+        reason: authored.reason, source: symbol.source, fallback: null }] } : {}) });
     pins.forEach(([x, y], index) => net.addPoint(x, y));
     placements.push({ id, spec, pins });
   }
 
   for (const directive of drawing.directives) {
     analyses.push(directive);
-    if (!/^\.op(?:\s|$)/i.test(directive)) {
+    if (/^\.params?\b/i.test(directive)) continue;
+    if (/^\.func\b/i.test(directive)) {
+      losses.push({ ref: 'TEXT', kind: 'unsupported-constant-function', source: directive,
+        reason: '.func definitions are not executed by the constant parameter evaluator', fallback: null });
+    } else if (!/^\.op(?:\s|$)/i.test(directive)) {
       losses.push({ ref: 'TEXT', kind: 'unsupported-asc-directive', source: directive,
         reason: 'the bounded ASC importer does not execute or reinterpret this directive', fallback: null });
     }

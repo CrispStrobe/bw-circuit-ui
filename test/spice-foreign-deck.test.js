@@ -53,13 +53,32 @@ test('`AC 1` is a small-signal magnitude, not a bias', () => {
   const v1 = ac.parts.find(p => p.id === 'V1');
   assert.equal(v1.params.volts, 0,
     'an AC-only source must bias at 0 V — its number is a magnitude');
-  assert.equal(v1.params.acMag, 1, 'the magnitude is kept, not dropped');
+  assert.equal(v1.params.acMagnitude, 1, 'the magnitude is kept, not dropped');
 
-  // The counter-examples, so the rule cannot have eaten the DC case.
-  const both = importSpice('*t\nV1 IN 0 DC 5 AC 1\nR1 IN 0 1k\n.op\n.end');
-  assert.equal(both.parts.find(p => p.id === 'V1').params.volts, 5);
-  const bare = importSpice('*t\nV1 IN 0 5\nR1 IN 0 1k\n.op\n.end');
-  assert.equal(bare.parts.find(p => p.id === 'V1').params.volts, 5);
+  // The counter-examples, so the rule cannot have eaten the DC case. All four
+  // orderings, because the descriptor was once anchored at END OF LINE and
+  // `AC 1m DC 1.8` — the house style of every small-signal bench in ADI2005 —
+  // was then refused outright as "undefined constant ac".
+  const cases = [
+    ['V1 IN 0 DC 5 AC 1', 5, 1],
+    ['V1 IN 0 AC 1 DC 5', 5, 1],
+    ['V1 IN 0 AC 1m DC 1.8', 1.8, 0.001],
+    ['V1 IN 0 5', 5, undefined],
+    // A negative magnitude is a PHASE, not an error. Refusing it discarded the
+    // DC bias with it, on every deck that writes a differential pair as
+    // `AC 0.5` / `AC -0.5` — 31 of the first 400 ADI2005 decks.
+    ['V1 IN 0 DC 0 AC -0.5', 0, 0.5],
+  ];
+  for (const [card, volts, mag] of cases) {
+    const r = importSpice(`*t\n${card}\nR1 IN 0 1k\n.op\n.end`);
+    assert.deepEqual(r.losses, [], `${card} was refused: ${JSON.stringify(r.losses)}`);
+    const p = r.parts.find(x => x.id === 'V1');
+    assert.equal(p.params.volts, volts, `${card} biased at ${p.params.volts}, expected ${volts}`);
+    assert.equal(p.params.acMagnitude, mag, `${card} magnitude ${p.params.acMagnitude}`);
+  }
+  const neg = importSpice('*t\nV1 IN 0 DC 0 AC -0.5\nR1 IN 0 1k\n.op\n.end');
+  assert.equal(neg.parts.find(x => x.id === 'V1').params.acPhase, 180,
+    'a negative magnitude must become +180 degrees, not a refusal');
 });
 
 test('a level-1 MOSFET keeps KP, W, L and LAMBDA', () => {

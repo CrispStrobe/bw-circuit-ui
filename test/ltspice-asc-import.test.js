@@ -21,6 +21,51 @@ TEXT 120 120 Left 2 !.op
 `;
 
 describe('LTspice ASC bounded importer', () => {
+  it('resolves only parameter definitions authored inside the ASC', () => {
+    const withDefinition = importCircuit('ltspice-asc', `Version 4
+SHEET 1 160 160
+WIRE 16 16 96 16
+FLAG 96 16 0
+SYMBOL res 0 0 R0
+SYMATTR InstName R1
+SYMATTR Value {base/2}
+TEXT 0 120 Left 2 !.param base=2k
+TEXT 0 140 Left 2 !.op
+`);
+    assert.equal(withDefinition.parts.find(p => p.id === 'R1').params.ohms, 1000);
+    assert.deepEqual(withDefinition.losses, []);
+
+    const absent = importCircuit('ltspice-asc', `Version 4
+SHEET 1 160 160
+WIRE 16 16 96 16
+FLAG 96 16 0
+SYMBOL res 0 0 R0
+SYMATTR InstName R1
+SYMATTR Value {paired_netlist_only}
+TEXT 0 140 Left 2 !.op
+`);
+    const part = absent.parts.find(p => p.id === 'R1');
+    assert.equal('ohms' in part.params, false);
+    assert.equal(part.analysisBlockers.length, 1);
+    assert.ok(absent.losses.some(loss => loss.kind === 'unsupported-or-missing-static-value'));
+    assert.equal(Circuit.fromJSON({ parts: absent.parts, wires: absent.wires }).analysisBlockers.length, 1);
+  });
+
+  it('retains unsafe parameter definitions and functions as semantic losses', () => {
+    const result = importCircuit('ltspice-asc', `Version 4
+SHEET 1 160 160
+WIRE 16 16 96 16
+FLAG 96 16 0
+SYMBOL res 0 0 R0
+SYMATTR InstName R1
+SYMATTR Value {a}
+TEXT 0 100 Left 2 !.param a=b b=a
+TEXT 0 120 Left 2 !.func f(x) {x}
+`);
+    assert.ok(result.losses.some(loss => loss.kind === 'unsupported-constant-parameter'));
+    assert.ok(result.losses.some(loss => loss.kind === 'unsupported-constant-function'));
+  });
+
   it('uses the verified standard-symbol pin coordinates in rotations and mirrors', () => {
     const at = orientation => ({ x: 10, y: 20, orientation });
     assert.deepEqual(placeLtspicePin(16, 96, at('R0')), [26, 116]);

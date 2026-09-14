@@ -38,6 +38,7 @@ export function OperatingPointPanel({ board, blockers, lang = 'en' }) {
           <div style={label}>C: {result.analysis.capacitors}; {de ? 'Quellen' : 'sources'}: {result.analysis.sources}</div>
           <div style={label}>{de ? 'Gesteuerte Quellen' : 'controlled sources'}: {result.analysis.controlledSources}</div>
           <div style={label}>{de ? 'Unterstützte Bauteile' : 'supported kinds'}: {result.analysis.supportedKinds.join(', ')}</div>
+          {result.analysis.diodes?.temperatureModel === 'fixed' && <div style={label}>diodes: explicit Shockley IS/N/RS; fixed VT={result.analysis.diodes.thermalVoltage} V (26.8267934421 °C profile)</div>}
           <div style={label}>{result.analysis.currentConvention}</div>
           <div style={{...label, marginTop: 5}}>{de ? 'Knotenspannungen' : 'Node voltages'}</div>
           <div style={{maxHeight: 90, overflow: 'auto', fontFamily: 'monospace'}}>

@@ -748,6 +748,9 @@ export class Circuit {
    * @returns {object}
    */
   operatingPoint() {
+    if (this.analysisBlockers?.length) {
+      throw new Error(`operatingPoint: blocked by ${this.analysisBlockers.length} persisted import finding(s)`);
+    }
     if (!this.board || typeof this.board.operatingPoint !== 'function') {
       throw new Error('operatingPoint: the injected bw-board engine does not provide this analysis');
     }
@@ -1056,6 +1059,23 @@ export class Circuit {
         terminals: migrateTerminals(kind, p.terminals, p.params || {}),
       };
     });
+    // An unresolved imported scalar must remain analysis-blocking even when a
+    // caller persists only the imported parts/wires and omits the importer's
+    // top-level findings. Importers attach only semantic blockers here; the
+    // engine still receives no guessed/default parameter value.
+    const blockerKeys = new Set(c.analysisBlockers.map(b => JSON.stringify(b)));
+    for (const part of c.parts) {
+      if (!Array.isArray(part.analysisBlockers)) continue;
+      for (const blocker of part.analysisBlockers) {
+        if (!blocker || typeof blocker !== 'object') continue;
+        const copy = { ...blocker };
+        const key = JSON.stringify(copy);
+        if (!blockerKeys.has(key)) {
+          c.analysisBlockers.push(copy);
+          blockerKeys.add(key);
+        }
+      }
+    }
     // Wires arrive in two dialects. Current saves carry endpoint objects
     // ({from: {part, terminal}}); the example gallery's circuit files were
     // written against the ORIGINAL flat format ({from: 'id', fromTerminal:

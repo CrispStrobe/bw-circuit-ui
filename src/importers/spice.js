@@ -39,7 +39,9 @@
 
 import { parseSpiceValue } from '../model/si.js';
 import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-source.js';
+import { evaluateConstantExpression, resolveConstantParameters } from '../model/spice-constant.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
+import { classifyShockleyThermal, validateExplicitShockley } from '../model/spice-diode.js';
 
 /** Nodes that mean "the reference" in every dialect. */
 const GROUND_NODES = new Set(['0', 'gnd', 'gnd!', 'ground', 'vss']);
@@ -164,7 +166,29 @@ function modelParams(rest) {
  * @returns {{value: number, note: string|null, externalWaveform: boolean,
  *   waveformParams?: Record<string,*>, waveformLoss?: string}}
  */
-function sourceValue(fields, allowSine = false) {
+function firstScalarExpression(fields) {
+  const text = Array.isArray(fields) ? fields.join(' ').trim() : String(fields || '').trim();
+  if (!text.startsWith('{')) return text.split(/\s+/)[0] || '';
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}' && --depth === 0) return text.slice(0, i + 1);
+  }
+  return text;
+}
+
+function scalarValue(raw, constants) {
+  const text = String(raw || '').trim();
+  const direct = parseSpiceValue(text);
+  if (Number.isFinite(direct)) return { ok: true, value: direct };
+  try {
+    return { ok: true, value: evaluateConstantExpression(text, name => constants.get(name)) };
+  } catch (error) {
+    return { ok: false, reason: error.message };
+  }
+}
+
+function sourceValue(fields, allowSine = false, constants = new Map()) {
   const joined = fields.join(' ');
   const externalWaveform = /\bwavefile\s*=/i.test(joined);
   const sine = parseStrictSpiceSine(joined);
@@ -199,8 +223,56 @@ function sourceValue(fields, allowSine = false) {
       waveformLoss: reason,
     };
   }
-  const dc = joined.match(/\bDC\b\s+([^\s]+)/i);
-  if (dc) return { value: parseSpiceValue(dc[1]), note: null, externalWaveform };
+  // THE AC DESCRIPTOR IS NOT ALWAYS LAST, AND ITS PHASE IS A NUMBER.
+  //
+  // Anchoring this at end-of-line refused `VIN IN 0 AC 1m DC 1.8` — an ordinary
+  // SPICE source line — because `AC` then fell through to the scalar resolver
+  // as the DC expression and came back "undefined constant ac". Measured on
+  // ADI2005 v3, where that ordering is the house style for every small-signal
+  // bench. Matching anywhere and REMOVING the descriptor from the DC fields is
+  // what makes `DC 5 AC 1`, `AC 1 DC 5`, `AC 1` and a bare `5` all read right.
+  //
+  // The optional phase is anything that is NOT another source keyword. It
+  // cannot be "looks like a number": `AC {mag} {phase}` is legal and a brace
+  // expression starts with `{`. It cannot be "any token" either, or
+  // `AC 1m DC 1.8` swallows the `DC` and loses the bias. So the test is the
+  // keyword list, which is the thing that actually distinguishes them.
+  const SRC_KEYWORDS = 'DC|AC|PULSE|SINE|SIN|EXP|PWL|SFFM|AM|TRNOISE|TRRANDOM|WAVEFILE|DISTOF1|DISTOF2';
+  const ac = new RegExp(
+    `(?:^|\\s)AC\\s+(\\S+)(?:\\s+(?!(?:${SRC_KEYWORDS})\\b)(\\S+))?(?=\\s|$)`, 'i').exec(joined);
+  let acParams = null;
+  if (ac) {
+    const magnitude = scalarValue(ac[1], constants);
+    const phase = scalarValue(ac[2] ?? '0', constants);
+    if (!magnitude.ok || !phase.ok) {
+      return { value: null, note: null, externalWaveform,
+        scalarLoss: `AC descriptor is not a resolved finite magnitude/phase`, acParams: null };
+    }
+    // A NEGATIVE AC MAGNITUDE IS LEGAL, AND IT MEANS PHASE + 180.
+    //
+    // Refusing it cost the whole card, DC BIAS INCLUDED, on every deck that
+    // writes a differential pair as `AC 0.5` and `AC -0.5` — 31 of the first
+    // 400 ADI2005 decks, which is the shape half the small-signal benches in
+    // that corpus use. The sign is a phase, not an error: ngspice reads
+    // `AC -0.5` as 0.5 at 180 degrees and simulates it, and there is nothing
+    // about it we cannot represent.
+    acParams = magnitude.value < 0
+      ? { acMagnitude: -magnitude.value, acPhase: phase.value + 180 }
+      : { acMagnitude: magnitude.value, acPhase: phase.value };
+  }
+  const dcFields = ac
+    ? (joined.slice(0, ac.index) + ' ' + joined.slice(ac.index + ac[0].length)).trim()
+    : joined;
+  if (ac && !dcFields) return { value: 0, note: null, externalWaveform, acParams };
+  const dc = dcFields.match(/^DC\b\s+([\s\S]+)$/i);
+  if (dc) {
+    const expression = firstScalarExpression(dc[1]);
+    const resolved = scalarValue(expression, constants);
+    return resolved.ok
+      ? { value: resolved.value, note: null, externalWaveform, acParams }
+      : { value: null, note: null, externalWaveform,
+        scalarLoss: `DC value ${JSON.stringify(expression)} is not a resolved finite constant: ${resolved.reason}` };
+  }
   const wave = joined.match(/\b(PULSE|SIN|SINE|EXP|PWL|SFFM|AM)\b\s*\(([^)]*)\)/i);
   if (wave) {
     const nums = wave[2].trim().split(/[\s,]+/).map(parseSpiceValue);
@@ -211,39 +283,16 @@ function sourceValue(fields, allowSine = false) {
       externalWaveform,
     };
   }
-  // `AC <mag> [phase]` IS NOT A DC VALUE.
-  //
-  // The bare-number fallback below took the first numeric field it saw, so
-  // `V1 IN 0 AC 1` imported as a 1 V DC source. SPICE reads that source's
-  // operating point as ZERO — the number is the small-signal magnitude for an
-  // `.ac` sweep, and the deck states no DC term at all. Measured against
-  // ngspice on the ADI corpus: every AC-only filter deck disagreed by exactly
-  // the magnitude, 1.000000 V against 0.000000, at every node.
-  //
-  // The magnitude is kept rather than dropped, so a caller that runs a sweep
-  // has it, and the bias point is the 0 V the deck means.
-  const acOnly = /\bAC\b\s+([^\s]+)(?:\s+([^\s]+))?/i.exec(joined);
-  const withoutAc = joined.replace(/\bAC\b\s+[^\s]+(?:\s+[-+.\d][^\s]*)?/ig, ' ');
-  const bareAfterAc = withoutAc.trim().split(/\s+/).find((f) => isFinite(parseSpiceValue(f)));
-  if (acOnly && bareAfterAc === undefined) {
-    const mag = parseSpiceValue(acOnly[1]);
-    return {
-      value: 0,
-      note: `AC ${acOnly[1]} is a small-signal magnitude, not a bias — the operating point of `
-        + 'this source is 0 V, which is what SPICE solves.',
-      externalWaveform,
-      waveformParams: isFinite(mag) ? { acMag: mag } : undefined,
-    };
-  }
-
-  const bare = bareAfterAc !== undefined
-    ? bareAfterAc
-    : fields.find((f) => isFinite(parseSpiceValue(f)));
-  return {
-    value: bare !== undefined ? parseSpiceValue(bare) : 0,
-    note: null,
-    externalWaveform,
-  };
+  // WAVEFILE already carries a dedicated semantic loss and its historical,
+  // explicit zero fallback. Do not manufacture a second "constant" loss for
+  // the filename token.
+  if (externalWaveform) return { value: 0, note: null, externalWaveform };
+  const expression = firstScalarExpression(dcFields);
+  const resolved = scalarValue(expression, constants);
+  return resolved.ok
+    ? { value: resolved.value, note: null, externalWaveform, acParams }
+    : { value: null, note: null, externalWaveform,
+      scalarLoss: `source value ${JSON.stringify(expression)} is not a resolved finite constant: ${resolved.reason}` };
 }
 
 /**
@@ -306,8 +355,10 @@ export function importSpice(text) {
   const analyses = [];
   const models = new Map();     // name (lower) -> {type, params}
   const subckts = new Map();    // name (lower) -> {ports: string[], body: string[]}
+  const parameterCards = [];
 
   const { title, lines } = logicalLines(text);
+  const diodeThermal = classifyShockleyThermal(lines);
 
   // ── pass 1: collect .model and .subckt bodies ────────────────────
   //
@@ -322,13 +373,19 @@ export function importSpice(text) {
   let inControl = false;
   const declareModel = (rest, line) => {
     ignored.push(line.trim());
-    const f = rest.trim().split(/\s+/);
-    const name = (f[0] || '').toLowerCase();
-    const type = (f[1] || '').replace(/\(.*$/, '').toUpperCase();
-    models.set(name, {
+    const declaration = rest.trim().match(/^(\S+)\s+([A-Za-z]+)\s*(.*)$/);
+    const name = (declaration?.[1] || '').toLowerCase();
+    const type = (declaration?.[2] || '').toUpperCase();
+    const prior = models.get(name);
+    const record = {
       type,
-      params: modelParams(rest.slice(rest.indexOf(f[1] || '') + (f[1] || '').length)),
-    });
+      params: modelParams(declaration?.[3] || ''),
+      body: declaration?.[3] || '',
+      source: line.trim(),
+    };
+    if (prior && (prior.type === 'D' || type === 'D')) {
+      models.set(name, { ...record, ambiguous: true, source: `${prior.source}\n${line.trim()}` });
+    } else models.set(name, record);
   };
 
   for (const line of lines) {
@@ -378,12 +435,31 @@ export function importSpice(text) {
           }
           continue;
         }
+        if (card === 'param' || card === 'params' || card === 'func') {
+          ignored.push(line.trim());
+          losses.push({ ref: `.${card}`, kind: 'unsupported-subcircuit-parameter',
+            source: line.trim(),
+            reason: 'subcircuit-local parameters and functions are not hoisted into top-level scope',
+            fallback: null });
+          continue;
+        }
         inSub.body.push(line);
         ignored.push(line.trim());   // consumed by the definition
         continue;
       }
       if (card === 'model') { declareModel(dot[2], line); continue; }
       if (ANALYSIS_CARDS.has(card)) { analyses.push(line.trim()); continue; }
+      if (card === 'param' || card === 'params') {
+        parameterCards.push(line.trim());
+        ignored.push(line.trim());
+        continue;
+      }
+      if (card === 'func') {
+        ignored.push(line.trim());
+        losses.push({ ref: '.func', kind: 'unsupported-constant-function', source: line.trim(),
+          reason: '.func definitions are not executed by the constant parameter evaluator', fallback: null });
+        continue;
+      }
       if (card === 'include' || card === 'inc' || card === 'lib') {
         ignored.push(line.trim());
         warnings.push(`${line.trim()} — external files are not followed; anything `
@@ -401,6 +477,12 @@ export function importSpice(text) {
       continue;
     }
     flat.push({ line, prefix: '', portMap: null });
+  }
+
+  const constantParameters = resolveConstantParameters(parameterCards);
+  for (const finding of constantParameters.losses) {
+    losses.push({ ref: finding.name || '.param', kind: 'unsupported-constant-parameter',
+      source: finding.source, reason: finding.reason, fallback: null });
   }
 
   // ── pass 2: flatten subcircuit calls, ONE level ──────────────────
@@ -500,13 +582,33 @@ export function importSpice(text) {
       if (!model) {
         warnings.push(`${partId}: model "${rest[0] || '(none)'}" is not declared in this `
           + 'file — engine defaults are used for it.');
+        if (letter === 'D') losses.push({ ref: partId, kind: 'unsupported-diode-model',
+          source: item.line, reason: 'explicit declared D model with IS, N and RS is required' });
       } else {
-        Object.assign(params, mapModel(letter, model, warnings, partId));
+        if (letter === 'D') {
+          const exact = rest.length !== 1
+            ? { ok: false, reason: 'diode instance AREA, M, TEMP and other trailing fields are unsupported' }
+            : model.ambiguous
+              ? { ok: false, reason: 'duplicate diode model declarations are ambiguous' }
+              : model.type === 'D' ? validateExplicitShockley(model.params, model.body)
+                : { ok: false, reason: `model type ${model.type || '(missing)'} is not D` };
+          if (exact.ok && diodeThermal.ok) {
+            Object.assign(params, exact.params);
+            if (!diodeThermal.explicit) warnings.push(`${partId}: omitted SPICE TEMP/TNOM uses bw-board's fixed VT=0.02585 V profile; raw default-temperature source fidelity is not established.`);
+          } else {
+            const reason = exact.ok ? diodeThermal.reason : exact.reason;
+            Object.assign(params, { _spiceBlocked: reason, _spiceModel: model.source,
+              ...(diodeThermal.source.length ? { _spiceTemperature: diodeThermal.source.join('\n') } : {}) });
+            losses.push({ ref: partId, kind: 'unsupported-diode-model',
+              source: [model.source, ...diodeThermal.source].join('\n'),
+              reason });
+          }
+        } else Object.assign(params, mapModel(letter, model, warnings, partId));
         if (letter === 'Q') kind = model.type === 'PNP' ? 'pnp' : 'npn';
         if (letter === 'M') kind = model.type === 'PMOS' ? 'pmos' : 'nmos';
         if (letter === 'D' && model.params.bv) kind = 'zener';
       }
-      params._model = rest[0] || null;
+      if (letter !== 'D' || params.model !== 'shockley') params._model = rest[0] || null;
       // INSTANCE PARAMETERS. `W=20u L=1u` on the element line, not in the
       // model card, and for a level-1 MOSFET they are half the transconductance
       // — `mosK` computes KP/2 * W/L and falls back to a ratio of 1 without
@@ -530,10 +632,11 @@ export function importSpice(text) {
         }
       }
     } else if (spec.source) {
-      const { value, note, externalWaveform, waveformParams, waveformLoss } =
-        sourceValue(rest, spec.source === 'volts');
-      params[spec.source] = value;
+      const { value, note, externalWaveform, waveformParams, waveformLoss, scalarLoss, acParams } =
+        sourceValue(rest, spec.source === 'volts', constantParameters.values);
+      if (Number.isFinite(value)) params[spec.source] = value;
       if (waveformParams) Object.assign(params, waveformParams);
+      if (acParams) Object.assign(params, acParams);
       if (note) warnings.push(`${partId}: ${note}`);
       if (waveformLoss) {
         losses.push({
@@ -556,13 +659,29 @@ export function importSpice(text) {
           fallback: { parameter: spec.source, value },
         });
       }
+      if (scalarLoss) {
+        const finding = { type: 'semantic-import-loss', ref: partId,
+          reason: scalarLoss, source: item.line, fallback: null };
+        losses.push({ ref: partId, kind: 'unsupported-constant-expression',
+          source: item.line, reason: scalarLoss, fallback: null });
+        item.analysisBlocker = finding;
+      }
     } else if (spec.param) {
-      const v = parseSpiceValue(rest[0]);
-      if (isFinite(v)) params[spec.param] = v;
-      else warnings.push(`${partId}: no numeric value ("${rest[0] ?? ''}") — engine default used.`);
+      const expression = firstScalarExpression(rest);
+      const resolved = scalarValue(expression, constantParameters.values);
+      if (resolved.ok) params[spec.param] = resolved.value;
+      else {
+        const reason = `value ${JSON.stringify(expression)} is not a resolved finite constant: ${resolved.reason}`;
+        warnings.push(`${partId}: ${reason}; no engine default is analysis-safe.`);
+        losses.push({ ref: partId, kind: 'unsupported-constant-expression',
+          source: item.line, reason, fallback: null });
+        item.analysisBlocker = { type: 'semantic-import-loss', ref: partId,
+          reason, source: item.line, fallback: null };
+      }
     }
 
-    parts.push({ id: partId, kind, params, x: 0, y: 0 });
+    parts.push({ id: partId, kind, params, x: 0, y: 0,
+      ...(item.analysisBlocker ? { analysisBlockers: [item.analysisBlocker] } : {}) });
 
     spec.terminals.forEach((terminal, i) => {
       if (terminal === null) {

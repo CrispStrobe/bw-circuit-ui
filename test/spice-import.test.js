@@ -32,6 +32,176 @@ import { importSpice, looksLikeSpice } from '../src/importers/spice.js';
 import { detectFormat } from '../src/importers/detect.js';
 import { importCircuit } from '../src/importers/index.js';
 import { parseSpiceValue, formatSpiceValue } from '../src/model/si.js';
+import { evaluateConstantExpression, resolveConstantParameters } from '../src/model/spice-constant.js';
+import { blockersFromImport } from '../src/model/operating-point-view.js';
+
+describe('strict SPICE constant expressions', () => {
+  it('evaluates measured literals, grouping, precedence and unary signs', () => {
+    assert.equal(evaluateConstantExpression('{1/5Meg}'), 2e-7);
+    assert.equal(evaluateConstantExpression('-(2 + 3) * .1p'), -5e-13);
+    assert.equal(evaluateConstantExpression('2--3'), 5);
+    assert.equal(evaluateConstantExpression('1.4072e-08'), 1.4072e-8);
+  });
+
+  it('resolves forward references and refuses unsafe definitions', () => {
+    const good = resolveConstantParameters([
+      '.param OUT={base / DIV} base=40', '.params div=3 tail=OUT+2',
+    ]);
+    assert.deepEqual(good.losses, []);
+    assert.equal(good.values.get('tail'), 40 / 3 + 2);
+    for (const cards of [
+      ['.param a=1', '.param A=2'], ['.param a=b b=a'], ['.param a=missing+1'],
+      ['.param a=1/0'], ['.param a=V(out)'], ['.param a=time'], ['.param a=2^3'],
+      ['.param a=1XYZ'],
+      ['.param JUNK a=1'],
+    ]) {
+      const result = resolveConstantParameters(cards);
+      assert.ok(result.losses.length, cards.join('; '));
+      assert.equal(result.values.has('a'), false);
+    }
+    assert.throws(() => evaluateConstantExpression(`${'('.repeat(40)}1${')'.repeat(40)}`), /depth/);
+    assert.throws(() => evaluateConstantExpression('1e308*1e308'), /finite/);
+    const chain = Array.from({ length: 34 }, (_, i) =>
+      `.param p${i}=${i === 33 ? '1' : `p${i + 1}`}`);
+    assert.ok(resolveConstantParameters(chain).losses.some(loss => /dependency exceeds depth/.test(loss.reason)));
+  });
+});
+
+describe('SPICE top-level constant parameters', () => {
+  it('resolves measured division and forward-reference forms without loss', () => {
+    const imported = importSpice(`* parameter divider
+.param gm=1 go=1/5Meg
+V1 in 0 {gm}
+R1 in 0 {1/go}
+.op
+.end`);
+    assert.equal(imported.parts.find(p => p.id === 'V1').params.volts, 1);
+    assert.equal(imported.parts.find(p => p.id === 'R1').params.ohms, 5e6);
+    assert.deepEqual(imported.losses, []);
+  });
+
+  it('keeps AC magnitude/phase separate from the zero or authored DC bias', () => {
+    const imported = importSpice(`* AC metadata
+.param mag=2 phase=-30 bias=250m
+V1 in 0 DC {bias} AC {mag} {phase}
+I1 0 in AC 80n
+R1 in 0 1k
+.ac dec 10 1 1k
+.end`);
+    const voltage = imported.parts.find(p => p.id === 'V1');
+    const current = imported.parts.find(p => p.id === 'I1');
+    assert.deepEqual(voltage.params,
+      { volts: 0.25, acMagnitude: 2, acPhase: -30 });
+    assert.deepEqual(current.params,
+      { amps: 0, acMagnitude: 80e-9, acPhase: 0 });
+    assert.deepEqual(imported.losses, []);
+
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    const exported = toSpice(extractNetlist(circuit), 'AC metadata');
+    assert.deepEqual(exported.skipped, []);
+    assert.match(exported.text, /V1\s+\S+\s+\S+\s+DC 250m AC 2 -30/);
+    assert.match(exported.text, /I1\s+\S+\s+\S+\s+DC 0 AC 80n 0/);
+    const back = importSpice(exported.text);
+    assert.deepEqual(back.parts.find(p => p.id === 'V1').params, voltage.params);
+    assert.deepEqual(back.parts.find(p => p.id === 'I1').params, current.params);
+  });
+
+  it('matches ngspice on AC-only zero DC and mixed explicit DC bias', (t) => {
+    const deck = `* independent AC/DC semantics
+V1 a 0 AC 2 -30
+R1 a 0 1k
+V2 b 0 DC 250m AC 3 10
+R2 b 0 1k
+.op
+.print op v(a) v(b) i(V1) i(V2)
+.end
+`;
+    const foreign = spawnSync('ngspice', ['-b'], { input: deck, encoding: 'utf8' });
+    if (foreign.error?.code === 'ENOENT') return t.skip('ngspice not installed locally');
+    assert.equal(foreign.status, 0, foreign.stderr);
+    assert.match(foreign.stdout,
+      /^0\s+0\.000000e\+00\s+2\.500000e-01\s+0\.000000e\+00\s+-2\.50000e-04\s*$/m);
+    const imported = importSpice(deck);
+    assert.equal(imported.parts.find(p => p.id === 'V1').params.volts, 0);
+    assert.equal(imported.parts.find(p => p.id === 'V2').params.volts, 0.25);
+  });
+
+  it('refuses malformed AC descriptors instead of reusing magnitude as DC', () => {
+    // `AC -1` USED TO BE IN THIS LIST AND IS NOT MALFORMED. A negative
+    // magnitude is legal SPICE and means the magnitude at phase + 180;
+    // ngspice reads it and simulates it. Refusing it discarded the whole card,
+    // DC BIAS INCLUDED, on every deck that writes a differential pair as
+    // `AC 0.5` / `AC -0.5` — 31 of the first 400 ADI2005 decks, which is the
+    // shape half the small-signal benches in that corpus use. It has its own
+    // case below; what this one guards, reusing the magnitude as a DC value,
+    // is unchanged.
+    for (const card of ['V1 in 0 AC nope', 'V1 in 0 AC 1 0 extra']) {
+      const imported = importSpice(`* invalid AC\n${card}\nR1 in 0 1k\n.op\n.end`);
+      const source = imported.parts.find(p => p.id === 'V1');
+      assert.equal('volts' in source.params, false, card);
+      assert.equal(source.analysisBlockers.length, 1, card);
+      assert.ok(imported.losses.some(loss => loss.ref === 'V1'), card);
+    }
+  });
+
+  it('reads a negative AC magnitude as phase + 180, keeping the DC bias', () => {
+    const imported = importSpice('* negative AC\nV1 in 0 DC 1.5 AC -0.5\nR1 in 0 1k\n.op\n.end');
+    const source = imported.parts.find(p => p.id === 'V1');
+    assert.deepEqual(source.params, { volts: 1.5, acMagnitude: 0.5, acPhase: 180 });
+    assert.deepEqual(imported.losses, []);
+    // A phase already stated adds to it rather than being replaced.
+    const withPhase = importSpice('* negative AC\nV1 in 0 AC -2 45\nR1 in 0 1k\n.op\n.end');
+    assert.equal(withPhase.parts.find(p => p.id === 'V1').params.acPhase, 225);
+  });
+
+  it('persists unresolved scalar blockers on the part and through Circuit JSON', () => {
+    const imported = importSpice(`* unresolved
+V1 in 0 1
+R1 in 0 {missing/2}
+.op
+.end`);
+    const resistor = imported.parts.find(p => p.id === 'R1');
+    assert.equal('ohms' in resistor.params, false);
+    assert.equal(imported.losses.filter(loss => loss.ref === 'R1').length, 1);
+    assert.equal(resistor.analysisBlockers.length, 1);
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    assert.equal(circuit.analysisBlockers.length, 1,
+      'parts-only persistence must not turn an engine default into valid analysis');
+    assert.deepEqual(Circuit.fromJSON(circuit.toJSON()).analysisBlockers, circuit.analysisBlockers);
+  });
+
+  it('refuses top-level functions and subcircuit-local parameters', () => {
+    const imported = importSpice(`* scoped parameters
+.func unsafe(x) {x+1}
+.subckt cell a b
+.param local=2
+R1 a b {local}
+.ends
+X1 in 0 cell
+V1 in 0 1
+.op
+.end`);
+    assert.ok(imported.losses.some(loss => loss.kind === 'unsupported-constant-function'));
+    assert.ok(imported.losses.some(loss => loss.kind === 'unsupported-subcircuit-parameter'));
+  });
+
+  it('keeps an invalid directive blocking when another valid definition resolves', () => {
+    const imported = importSpice(`* invalid directive stays loud
+.param JUNK good=2k
+.param usable=3k
+V1 in 0 1
+R1 in 0 {usable}
+.op
+.end`);
+    assert.equal(imported.parts.find(p => p.id === 'R1').params.ohms, 3000);
+    assert.ok(imported.losses.some(loss => loss.kind === 'unsupported-constant-parameter'));
+    const blockers = blockersFromImport(imported, 'spice', 'invalid-param.net');
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires,
+      analysisBlockers: blockers });
+    assert.ok(circuit.analysisBlockers.some(blocker => /before first/.test(blocker.reason)));
+    assert.deepEqual(Circuit.fromJSON(circuit.toJSON()).analysisBlockers, circuit.analysisBlockers);
+  });
+});
 
 /**
  * The net partition of a {parts, wires} description, as a canonical string.
@@ -242,16 +412,16 @@ describe('round trip: our deck re-imports with the same net partition', () => {
     assert.equal(byId.C1.params.farads, 100e-9);
   });
 
-  it('a diode\'s forward voltage is recovered from the model card', () => {
+  it('a diode\'s explicit Shockley fields are retained without derived fields', () => {
     const circuit = Circuit.fromJSON(CASES['led-bench']);
     circuit.setPower(true);
     const { text } = toSpice(extractNetlist(circuit));
     const back = importSpice(text);
     const d = back.parts.find(p => p.kind === 'diode' || p.kind === 'led');
     assert.ok(d, `no junction came back:\n${text}`);
-    // The exporter calibrates Is so that Vf drops at 20 mA; the importer
-    // inverts exactly that, so 2.0 V out and 2.0 V back.
-    assert.ok(Math.abs(d.params.vf - 2.0) < 1e-4, `Vf came back as ${d.params.vf}`);
+    assert.equal(d.params.model, 'shockley');
+    assert.ok(Number.isFinite(d.params.is) && d.params.is > 0);
+    assert.equal(d.params.vf, undefined, 'derived Vf would exceed the exact native DC model envelope');
     assert.equal(d.params.n, 1.8);
   });
 });
