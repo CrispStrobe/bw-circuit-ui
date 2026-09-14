@@ -339,6 +339,7 @@ export function importLtspiceAsc(text, options = {}) {
   const ascModels = collectAscModels(drawing.directives);
   const diodeThermal = classifyAscShockleyThermal(drawing.directives);
   const usedModelDirectiveIndexes = new Set();
+  const blockedModelDirectiveIndexes = new Set();
   let mappedDiodeCount = 0;
   const constantParameters = resolveConstantParameters(
     drawing.directives.filter(directive => /^\.params?\b/i.test(directive)));
@@ -426,7 +427,10 @@ export function importLtspiceAsc(text, options = {}) {
       : authoredParams(effectiveAttrs.value, spec, constantParameters.values);
     if (spec.kind === 'diode') {
       mappedDiodeCount++;
-      for (const index of authored.model?.indexes || []) usedModelDirectiveIndexes.add(index);
+      for (const index of authored.model?.indexes || []) {
+        usedModelDirectiveIndexes.add(index);
+        if (authored.reason) blockedModelDirectiveIndexes.add(index);
+      }
     }
     if (!authored.reason && spec.kind === 'inductor' && !(authored.params.henrys > 0)) {
       authored.reason = 'inductor Value must resolve to a positive finite scalar';
@@ -479,8 +483,11 @@ export function importLtspiceAsc(text, options = {}) {
     }
     if (usedModelDirectiveIndexes.has(directiveIndex)) {
       sourceDirectives.push({ source: directive, kind: 'model-definition',
-        handling: 'strict-diode-model' });
-      ignored.push({ source: directive, reason: 'consumed by a mapped strict Shockley diode' });
+        handling: blockedModelDirectiveIndexes.has(directiveIndex)
+          ? 'unsupported' : 'strict-diode-model' });
+      ignored.push({ source: directive, reason: blockedModelDirectiveIndexes.has(directiveIndex)
+        ? 'retained by the diode model refusal'
+        : 'consumed by a mapped strict Shockley diode' });
       continue;
     }
     if (mappedDiodeCount && (/^\.temp\b/i.test(directive)
