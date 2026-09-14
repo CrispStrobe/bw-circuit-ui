@@ -1890,7 +1890,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
                 style={{minHeight: 32, padding: '5px 8px', cursor: simPaused ? 'pointer' : 'default'}}>{/^de/i.test(lang) ? '⏭ Ein Takt' : '⏭ Step one tick'}</button>
             </div>
             <OperatingPointPanel board={activeBoard} blockers={circuit.analysisBlockers} lang={lang} />
-            <SourceAnalysisPanel circuit={circuit} lang={lang} />
+            <SourceAnalysisPanel circuit={circuit} liveBoard={activeBoard} lang={lang} />
             <label style={{display: 'grid', gridTemplateColumns: '1fr', gap: 3, marginTop: 7, fontSize: 11, color: '#475569'}}>
               <span>Speed</span>
               <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title="Simulation speed" style={{minHeight: 30}}>

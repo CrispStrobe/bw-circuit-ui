@@ -12,10 +12,12 @@ const workText = work => work
   : 'no transient work record';
 
 /** Source-declared numerical analyses, intentionally separate from live simulation. */
-export function SourceAnalysisPanel({ circuit, lang = 'en' }) {
+export function SourceAnalysisPanel({ circuit, liveBoard = circuit?.board, lang = 'en' }) {
   const de = /^de/i.test(lang);
   const source = circuit?.sourceAnalysis;
   const analyses = Array.isArray(source?.analyses) ? source.analyses : [];
+  let liveProfile = LIVE_PROFILE;
+  try { liveProfile = liveBoard?.transientAnalysisStatus?.().profile?.id || LIVE_PROFILE; } catch { /* fallback names shipped default */ }
   const [outcome, setOutcome] = useState(null);
   useEffect(() => setOutcome(null), [circuit, source]);
 
@@ -32,7 +34,7 @@ export function SourceAnalysisPanel({ circuit, lang = 'en' }) {
     <div data-testid="bw-source-analysis-panel"
       style={{marginTop: 8, paddingTop: 8, borderTop: '1px solid #cbd5e1'}}>
       <div style={mono} data-testid="bw-live-simulation-profile">
-        {de ? 'Live-Simulation' : 'Live simulation'}: {LIVE_PROFILE}
+        {de ? 'Live-Simulation' : 'Live simulation'}: {liveProfile}
       </div>
       <button type="button" data-testid="bw-source-analysis-run" onClick={run}
         style={{width: '100%', minHeight: 32, marginTop: 4, padding: '5px 8px', cursor: 'pointer'}}>
@@ -41,7 +43,7 @@ export function SourceAnalysisPanel({ circuit, lang = 'en' }) {
       <div style={{...mono, marginTop: 4}}>
         {de
           ? 'Opt-in; unabhängiger Lauf. Die Live-Simulation bleibt interactive-v1.'
-          : 'Opt-in independent run; live simulation remains interactive-v1.'}
+          : `Opt-in independent run; live simulation remains ${liveProfile}.`}
       </div>
       {outcome?.error && <div role="alert" data-testid="bw-source-analysis-error"
         style={{marginTop: 6, color: '#991b1b', fontSize: 10}}>{outcome.error}</div>}

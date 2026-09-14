@@ -119,7 +119,7 @@ R2 b 0 1k
     assert.match(panel, /Run source analyses at/);
     assert.match(panel, /runPrecisionSourceAnalysis\(circuit\)/);
     const designer = readFileSync(join(root, 'src', 'components', 'CircuitDesigner.jsx'), 'utf8');
-    assert.match(designer, /<SourceAnalysisPanel circuit=\{circuit\}/);
+    assert.match(designer, /<SourceAnalysisPanel circuit=\{circuit\} liveBoard=\{activeBoard\}/);
 
     const noOptIn = spawnSync(process.execPath, ['bin/bwc.mjs', 'analyze', fixture],
       { cwd: root, encoding: 'utf8' });
