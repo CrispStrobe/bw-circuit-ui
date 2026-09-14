@@ -611,9 +611,60 @@ describe('the reader states what it will not do', () => {
     assert.deepEqual(v.params, {
       volts: 0, wave: 'spice-pulse', v1: 0, v2: 5, td: 0,
       tr: 1e-9, tf: 1e-9, pw: 1e-3, per: 2e-3,
+      dcValue: 0, dcBiasOrigin: 'waveform-initial-default',
     });
     assert.ok(!r.warnings.some(w => /V1.*PULSE.*not modelled/.test(w)));
     assert.deepEqual(r.losses, []);
+  });
+
+  it('retains exact PWL/EXP/SINE voltage and current waveforms with separate DC bias', () => {
+    const r = importSpice(deck([
+      'V1 a 0 DC 7 PWL(0 1 1m 3 2m -1) AC 2 30',
+      'I1 0 a EXP(1m 4m 1m 2m 5m 3m)',
+      'V2 b 0 SINE(2 3 1k 1m 200 30)',
+      'R1 a 0 1k', 'R2 b 0 1k', '.tran 10u 2m',
+    ].join('\n')));
+    assert.deepEqual(r.losses, []);
+    assert.deepEqual(r.parts.find(p => p.id === 'V1').params, {
+      volts: 1, wave: 'spice-pwl', points: [[0, 1], [1e-3, 3], [2e-3, -1]],
+      dcValue: 7, dcBiasOrigin: 'explicit-dc', acMagnitude: 2, acPhase: 30,
+    });
+    assert.deepEqual(r.parts.find(p => p.id === 'I1').params, {
+      amps: 1e-3, volts: 1e-3, wave: 'spice-exp', v1: 1e-3, v2: 4e-3,
+      td1: 1e-3, tau1: 2e-3, td2: 5e-3, tau2: 3e-3,
+      dcValue: 1e-3, dcBiasOrigin: 'waveform-initial-default',
+    });
+    assert.deepEqual(r.parts.find(p => p.id === 'V2').params, {
+      volts: 2, wave: 'spice-sine', offset: 2, amplitude: 3, freq: 1000,
+      td: 1e-3, theta: 200, phase: 30,
+      dcValue: 2, dcBiasOrigin: 'waveform-initial-default',
+    });
+
+    const circuit = Circuit.fromJSON({ parts: r.parts, wires: r.wires });
+    const exported = toSpice(extractNetlist(circuit), 'waveform round trip');
+    assert.deepEqual(exported.skipped, []);
+    assert.match(exported.text, /^V1\s+\S+\s+0\s+DC 7 PWL\(0 1 1m 3 2m -1\) AC 2 30$/m);
+    assert.match(exported.text, /^I1\s+0\s+\S+\s+EXP\(1m 4m 1m 2m 5m 3m\)$/m);
+    const back = importSpice(exported.text);
+    for (const id of ['V1', 'I1', 'V2']) {
+      assert.deepEqual(back.parts.find(p => p.id === id).params, r.parts.find(p => p.id === id).params);
+    }
+  });
+
+  it('preserves resistor tolerance/power metadata and blocks unknown or malformed tails', () => {
+    const r = importSpice(deck('V1 a 0 2.4\nR3 a 0 1k tol=5 pwr=0.1\n.tran 50m'));
+    assert.deepEqual(r.losses, []);
+    const resistor = r.parts.find(p => p.id === 'R3');
+    assert.deepEqual(resistor.params, { ohms: 1000, spiceTolerancePercent: 5,
+      spicePowerWatts: 0.1, spiceMetadataProvenance: 'instance-card' });
+    const exported = toSpice(extractNetlist(Circuit.fromJSON({ parts: r.parts, wires: r.wires })));
+    assert.deepEqual(exported.skipped, []);
+    assert.match(exported.text, /^R\S*\s+\S+\s+0\s+1k tol=5 pwr=100m$/m);
+
+    for (const tail of ['temp=25', 'tol=-1', 'tol=5 tol=10', 'pwr=oops']) {
+      const bad = importSpice(deck(`V1 a 0 1\nR1 a 0 1k ${tail}\n.op`));
+      assert.ok(bad.losses.some(loss => loss.ref === 'R1' && loss.kind === 'unsupported-instance-metadata'), tail);
+    }
   });
 
   it('an external WAVEFILE remains importable but records oracle-blocking semantic loss', () => {

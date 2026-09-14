@@ -139,7 +139,7 @@ function runOp(imported, descriptor) {
   if (circuit.netlistError != null) return mappingGap(descriptor, circuit.netlistError);
   let point;
   try {
-    point = circuit.operatingPoint();
+    point = circuit.operatingPoint({ waveformBias: 'dc-value' });
     if (!point?.converged) return solverRefusal(descriptor, 'DC operating point did not converge');
     const conflicts = [...(point.conflicts || []), ...(point.railConflicts || [])];
     if (conflicts.length) return solverRefusal(descriptor,
@@ -288,9 +288,53 @@ function parseTran(descriptor, limits) {
     initialization: uic ? 'uic-zero-state' : 'source-declared-dc-operating-point' };
 }
 
+function transientSourceBreakpoints(parts, stopNs, maxPoints) {
+  const values = new Set();
+  const addSeconds = seconds => {
+    const ns = seconds * 1e9;
+    if (!finite(seconds) || seconds < 0 || !Number.isSafeInteger(ns)) {
+      throw new Error('source breakpoint does not map exactly to an integer nanosecond');
+    }
+    if (ns <= stopNs) values.add(ns);
+    if (values.size > maxPoints) throw new Error('source breakpoint count exceeds the analysis point budget');
+  };
+  for (const part of parts || []) {
+    const p = part.params || {};
+    if (p.wave === 'spice-pwl') {
+      for (const point of p.points || []) addSeconds(point[0]);
+    } else if (p.wave === 'spice-exp') {
+      addSeconds(p.td1); addSeconds(p.td2);
+    } else if (p.wave === 'spice-sine') {
+      addSeconds(p.td);
+    } else if (p.wave === 'spice-pulse') {
+      const offsets = [...new Set([0, p.tr, p.tr + p.pw, p.tr + p.pw + p.tf])];
+      for (let base = p.td; base <= stopNs / 1e9; base += p.per) {
+        for (const offset of offsets) addSeconds(base + offset);
+        if (!(p.per > 0)) throw new Error('PULSE period must be positive');
+      }
+    }
+  }
+  return [...values].sort((a, b) => a - b);
+}
+
 function runTran(imported, descriptor, limits) {
   const parsed = parseTran(descriptor, limits);
   if (parsed.status) return parsed;
+  try {
+    const sourceBreakpointsNs = transientSourceBreakpoints(imported.parts, parsed.stopNs, limits.maxPoints);
+    parsed.sampleTimesNs = [...new Set([...parsed.sampleTimesNs, ...sourceBreakpointsNs])]
+      .sort((a, b) => a - b);
+    parsed.points = parsed.sampleTimesNs.length;
+    if (sourceBreakpointsNs.length) {
+      parsed.samplingProfile = { ...parsed.samplingProfile,
+        sourceBreakpointsIncluded: true, breakpointCount: sourceBreakpointsNs.length };
+      parsed.initialization = 'source-declared-waveform-time-zero-operating-point';
+    }
+    if (parsed.points > limits.maxPoints) return integrationGap(descriptor, 'analysis-budget-exceeded',
+      'authored source breakpoints plus observation points exceed the adapter limit', parsed);
+  } catch (error) {
+    return integrationGap(descriptor, 'tran-grid-not-representable', error.message, parsed);
+  }
   let circuit;
   try { circuit = circuitFor(imported); }
   catch (error) { return mappingGap(descriptor, error, parsed); }

@@ -772,18 +772,18 @@ export class Circuit {
    *
    * @returns {object}
    */
-  operatingPoint() {
+  operatingPoint(options = {}) {
     if (this.analysisBlockers?.length) {
       throw new Error(`operatingPoint: blocked by ${this.analysisBlockers.length} persisted import finding(s)`);
     }
     if (!this.board || typeof this.board.operatingPoint !== 'function') {
       throw new Error('operatingPoint: the injected bw-board engine does not provide this analysis');
     }
-    return this.board.operatingPoint();
+    return this.board.operatingPoint(options);
   }
 
   /**
-   * Explicitly adopt the supported source-on DC point as time-zero state for a
+   * Explicitly adopt the supported source-on time-zero point as state for a
    * non-UIC transient. Persisted import findings are enforced here just as for
    * operatingPoint(), so a parts/wires-only caller cannot wash out a semantic
    * loss before initializing storage.

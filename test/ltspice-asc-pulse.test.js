@@ -67,7 +67,9 @@ describe('strict seven-argument voltage PULSE import and export', () => {
     assert.doesNotMatch(exported.text, /^V1\s+.*\sDC\s/m);
     const back = importCircuit('spice', exported.text);
     assert.deepEqual(back.losses, []);
-    assert.deepEqual(back.parts.find(part => part.id === 'V1').params, PARAMS);
+    assert.deepEqual(back.parts.find(part => part.id === 'V1').params, {
+      ...PARAMS, dcValue: 0, dcBiasOrigin: 'waveform-initial-default',
+    });
   });
 
   it('matches ngspice for an imported RC at and around one-nanosecond edges', {
@@ -122,7 +124,7 @@ describe('strict seven-argument voltage PULSE import and export', () => {
     }
   });
 
-  it('keeps current-source PULSE explicit and never emits non-ideal pulse cards', () => {
+  it('keeps current-source PULSE exact and never emits non-ideal pulse cards', () => {
     const currentAsc = ASC_BENCH
       .replace('SYMBOL voltage 0 0 R0', 'SYMBOL current 0 16 R0');
     const current = importCircuit('ltspice-asc', currentAsc);
@@ -130,8 +132,8 @@ describe('strict seven-argument voltage PULSE import and export', () => {
     assert.match(current.losses[0].reason, /current PULSE/);
 
     const currentSpice = importCircuit('spice', `* current pulse\nI1 n 0 ${PULSE_VALUE}\nR1 n 0 1k\n.end\n`);
-    assert.equal(currentSpice.losses.length, 1);
-    assert.match(currentSpice.losses[0].reason, /current PULSE/);
+    assert.deepEqual(currentSpice.losses, []);
+    assert.equal(currentSpice.parts.find(part => part.id === 'I1').params.wave, 'spice-pulse');
 
     const valid = importCircuit('ltspice-asc', ASC_BENCH);
     for (const change of [

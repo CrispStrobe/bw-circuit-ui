@@ -38,7 +38,9 @@
  */
 
 import { parseSpiceValue } from '../model/si.js';
-import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-source.js';
+import {
+  parseStrictSpiceExp, parseStrictSpicePulse, parseStrictSpicePwl, parseStrictSpiceSine,
+} from '../model/spice-source.js';
 import { evaluateConstantExpression, resolveConstantParameters } from '../model/spice-constant.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 import { classifyShockleyThermal, validateExplicitShockley, validateDiodeForDc,
@@ -223,18 +225,49 @@ function scalarValue(raw, constants) {
   }
 }
 
-function sourceValue(fields, allowSine = false, constants = new Map()) {
+const SOURCE_KEYWORDS = 'DC|AC|PULSE|SINE|SIN|EXP|PWL|SFFM|AM|TRNOISE|TRRANDOM|WAVEFILE|DISTOF1|DISTOF2';
+
+function splitSourceDescriptors(text, constants) {
+  const ac = new RegExp(
+    `(?:^|\\s)AC\\s+(\\S+)(?:\\s+(?!(?:${SOURCE_KEYWORDS})\\b)(\\S+))?(?=\\s|$)`, 'i').exec(text);
+  let acParams = null;
+  let remainder = text;
+  if (ac) {
+    const magnitude = scalarValue(ac[1], constants);
+    const phase = scalarValue(ac[2] ?? '0', constants);
+    if (!magnitude.ok || !phase.ok) return { error: 'AC descriptor is not a resolved finite magnitude/phase' };
+    acParams = magnitude.value < 0
+      ? { acMagnitude: -magnitude.value, acPhase: phase.value + 180 }
+      : { acMagnitude: magnitude.value, acPhase: phase.value };
+    remainder = (remainder.slice(0, ac.index) + ' ' + remainder.slice(ac.index + ac[0].length)).trim();
+  }
+  const dc = /(?:^|\s)DC\s+(\{[^{}]+\}|\S+)/i.exec(remainder);
+  let dcValue = null;
+  if (dc) {
+    const resolved = scalarValue(dc[1], constants);
+    if (!resolved.ok) return { error: `DC value ${JSON.stringify(dc[1])} is not a resolved finite constant: ${resolved.reason}` };
+    dcValue = resolved.value;
+    remainder = (remainder.slice(0, dc.index) + ' ' + remainder.slice(dc.index + dc[0].length)).trim();
+  }
+  return { remainder, acParams, dcValue };
+}
+
+function sourceValue(fields, allowWaveforms = false, constants = new Map()) {
   const joined = fields.join(' ');
   const externalWaveform = /\bwavefile\s*=/i.test(joined);
-  const sine = parseStrictSpiceSine(joined);
+  const descriptors = splitSourceDescriptors(joined, constants);
+  if (descriptors.error) return { value: null, note: null, externalWaveform,
+    scalarLoss: descriptors.error, acParams: null };
+  const { remainder: sourceText, acParams, dcValue } = descriptors;
+  const sine = parseStrictSpiceSine(sourceText);
   if (sine) {
-    if (sine.ok && allowSine) {
-      return { value: sine.params.volts, note: null, externalWaveform,
-        waveformParams: sine.params };
+    if (sine.ok && allowWaveforms) {
+      const bias = dcValue ?? sine.params.volts;
+      return { value: sine.params.volts, note: null, externalWaveform, acParams,
+        waveformParams: { ...sine.params, dcValue: bias,
+          dcBiasOrigin: dcValue === null ? 'waveform-initial-default' : 'explicit-dc' } };
     }
-    const reason = sine.ok
-      ? 'time-varying current sine sources are not modelled'
-      : sine.reason;
+    const reason = sine.reason;
     return {
       value: sine.ok ? sine.params.volts : sine.fallback,
       note: `SINE waveform is not modelled here — imported at its initial value ${sine.ok ? sine.params.volts : sine.fallback}.`,
@@ -242,15 +275,15 @@ function sourceValue(fields, allowSine = false, constants = new Map()) {
       waveformLoss: reason,
     };
   }
-  const pulse = parseStrictSpicePulse(joined);
+  const pulse = parseStrictSpicePulse(sourceText);
   if (pulse) {
-    if (pulse.ok && allowSine) {
-      return { value: pulse.params.volts, note: null, externalWaveform,
-        waveformParams: pulse.params };
+    if (pulse.ok && allowWaveforms) {
+      const bias = dcValue ?? pulse.params.volts;
+      return { value: pulse.params.volts, note: null, externalWaveform, acParams,
+        waveformParams: { ...pulse.params, dcValue: bias,
+          dcBiasOrigin: dcValue === null ? 'waveform-initial-default' : 'explicit-dc' } };
     }
-    const reason = pulse.ok
-      ? 'time-varying current PULSE sources are not modelled'
-      : pulse.reason;
+    const reason = pulse.reason;
     return {
       value: pulse.ok ? pulse.params.volts : pulse.fallback,
       note: `PULSE waveform is not modelled here — imported at its initial value ${pulse.ok ? pulse.params.volts : pulse.fallback}.`,
@@ -258,57 +291,20 @@ function sourceValue(fields, allowSine = false, constants = new Map()) {
       waveformLoss: reason,
     };
   }
-  // THE AC DESCRIPTOR IS NOT ALWAYS LAST, AND ITS PHASE IS A NUMBER.
-  //
-  // Anchoring this at end-of-line refused `VIN IN 0 AC 1m DC 1.8` — an ordinary
-  // SPICE source line — because `AC` then fell through to the scalar resolver
-  // as the DC expression and came back "undefined constant ac". Measured on
-  // ADI2005 v3, where that ordering is the house style for every small-signal
-  // bench. Matching anywhere and REMOVING the descriptor from the DC fields is
-  // what makes `DC 5 AC 1`, `AC 1 DC 5`, `AC 1` and a bare `5` all read right.
-  //
-  // The optional phase is anything that is NOT another source keyword. It
-  // cannot be "looks like a number": `AC {mag} {phase}` is legal and a brace
-  // expression starts with `{`. It cannot be "any token" either, or
-  // `AC 1m DC 1.8` swallows the `DC` and loses the bias. So the test is the
-  // keyword list, which is the thing that actually distinguishes them.
-  const SRC_KEYWORDS = 'DC|AC|PULSE|SINE|SIN|EXP|PWL|SFFM|AM|TRNOISE|TRRANDOM|WAVEFILE|DISTOF1|DISTOF2';
-  const ac = new RegExp(
-    `(?:^|\\s)AC\\s+(\\S+)(?:\\s+(?!(?:${SRC_KEYWORDS})\\b)(\\S+))?(?=\\s|$)`, 'i').exec(joined);
-  let acParams = null;
-  if (ac) {
-    const magnitude = scalarValue(ac[1], constants);
-    const phase = scalarValue(ac[2] ?? '0', constants);
-    if (!magnitude.ok || !phase.ok) {
-      return { value: null, note: null, externalWaveform,
-        scalarLoss: `AC descriptor is not a resolved finite magnitude/phase`, acParams: null };
+  for (const [name, parsed] of [['PWL', parseStrictSpicePwl(sourceText)],
+    ['EXP', parseStrictSpiceExp(sourceText)]]) {
+    if (!parsed) continue;
+    if (parsed.ok && allowWaveforms) {
+      const bias = dcValue ?? parsed.params.volts;
+      return { value: parsed.params.volts, note: null, externalWaveform, acParams,
+        waveformParams: { ...parsed.params, dcValue: bias,
+          dcBiasOrigin: dcValue === null ? 'waveform-initial-default' : 'explicit-dc' } };
     }
-    // A NEGATIVE AC MAGNITUDE IS LEGAL, AND IT MEANS PHASE + 180.
-    //
-    // Refusing it cost the whole card, DC BIAS INCLUDED, on every deck that
-    // writes a differential pair as `AC 0.5` and `AC -0.5` — 31 of the first
-    // 400 ADI2005 decks, which is the shape half the small-signal benches in
-    // that corpus use. The sign is a phase, not an error: ngspice reads
-    // `AC -0.5` as 0.5 at 180 degrees and simulates it, and there is nothing
-    // about it we cannot represent.
-    acParams = magnitude.value < 0
-      ? { acMagnitude: -magnitude.value, acPhase: phase.value + 180 }
-      : { acMagnitude: magnitude.value, acPhase: phase.value };
+    return { value: parsed.fallback, note: `${name} waveform is not modelled here — imported at its initial value ${parsed.fallback}.`,
+      externalWaveform, waveformLoss: parsed.reason };
   }
-  const dcFields = ac
-    ? (joined.slice(0, ac.index) + ' ' + joined.slice(ac.index + ac[0].length)).trim()
-    : joined;
-  if (ac && !dcFields) return { value: 0, note: null, externalWaveform, acParams };
-  const dc = dcFields.match(/^DC\b\s+([\s\S]+)$/i);
-  if (dc) {
-    const expression = firstScalarExpression(dc[1]);
-    const resolved = scalarValue(expression, constants);
-    return resolved.ok
-      ? { value: resolved.value, note: null, externalWaveform, acParams }
-      : { value: null, note: null, externalWaveform,
-        scalarLoss: `DC value ${JSON.stringify(expression)} is not a resolved finite constant: ${resolved.reason}` };
-  }
-  const wave = joined.match(/\b(PULSE|SIN|SINE|EXP|PWL|SFFM|AM)\b\s*\(([^)]*)\)/i);
+  if (!sourceText) return { value: dcValue ?? 0, note: null, externalWaveform, acParams };
+  const wave = sourceText.match(/\b(PULSE|SIN|SINE|EXP|PWL|SFFM|AM)\b\s*\(([^)]*)\)/i);
   if (wave) {
     const nums = wave[2].trim().split(/[\s,]+/).map(parseSpiceValue);
     return {
@@ -323,7 +319,8 @@ function sourceValue(fields, allowSine = false, constants = new Map()) {
   // explicit zero fallback. Do not manufacture a second "constant" loss for
   // the filename token.
   if (externalWaveform) return { value: 0, note: null, externalWaveform };
-  const expression = firstScalarExpression(dcFields);
+  if (dcValue !== null) return { value: dcValue, note: null, externalWaveform, acParams };
+  const expression = firstScalarExpression(sourceText);
   const resolved = scalarValue(expression, constants);
   return resolved.ok
     ? { value: resolved.value, note: null, externalWaveform, acParams }
@@ -830,7 +827,7 @@ export function importSpice(text, opts = {}) {
       }
     } else if (spec.source) {
       const { value, note, externalWaveform, waveformParams, waveformLoss, scalarLoss, acParams } =
-        sourceValue(rest, spec.source === 'volts', constantParameters.values);
+        sourceValue(rest, true, constantParameters.values);
       if (Number.isFinite(value)) params[spec.source] = value;
       if (waveformParams) Object.assign(params, waveformParams);
       if (acParams) Object.assign(params, acParams);
@@ -874,6 +871,37 @@ export function importSpice(text, opts = {}) {
           source: item.line, reason, fallback: null });
         item.analysisBlocker = { type: 'semantic-import-loss', ref: partId,
           reason, source: item.line, fallback: null };
+      }
+      const tail = rest.join(' ').trim().slice(expression.length).trim();
+      if (tail) {
+        const metadata = {};
+        const seen = new Set();
+        let reason = null;
+        for (const token of tail.split(/\s+/)) {
+          const match = /^(tol|pwr)=(\S+)$/i.exec(token);
+          if (!match || letter !== 'R') {
+            reason = `unsupported ${letter}-card field ${JSON.stringify(token)}`;
+            break;
+          }
+          const name = match[1].toLowerCase();
+          const value = scalarValue(match[2], constantParameters.values);
+          if (seen.has(name) || !value.ok || value.value < 0) {
+            reason = `resistor ${name} metadata must be a unique non-negative finite scalar`;
+            break;
+          }
+          seen.add(name);
+          metadata[name] = value.value;
+        }
+        if (reason) {
+          losses.push({ ref: partId, kind: 'unsupported-instance-metadata',
+            source: item.line, reason, fallback: null });
+          item.analysisBlocker = { type: 'semantic-import-loss', ref: partId,
+            reason, source: item.line, fallback: null };
+        } else {
+          if (metadata.tol !== undefined) params.spiceTolerancePercent = metadata.tol;
+          if (metadata.pwr !== undefined) params.spicePowerWatts = metadata.pwr;
+          params.spiceMetadataProvenance = 'instance-card';
+        }
       }
       if ((letter === 'C' || letter === 'L') && rest.length > 1) {
         const reason = `${letter}-card initial/instance fields ${rest.slice(1).join(' ')} are not applied`;

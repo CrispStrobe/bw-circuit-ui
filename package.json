@@ -32,9 +32,9 @@
   "author": "CrispStrobe <cze+github@mailbox.org>",
   "license": "MIT",
   "peerDependencies": {
+    "bw-board": "*",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "bw-board": "*"
+    "react-dom": "^18.0.0"
   },
   "dependencies": {
     "@lit/react": "^1.0.8",
@@ -43,11 +43,11 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.5",
+    "bw-board": "github:CrispStrobe/bw-board#3e76e6895ced134723fde3e66907b50e9e651e9b",
     "playwright": "^1.61.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "vite": "^8.2.1",
-    "bw-board": "github:CrispStrobe/bw-board#7636104adbc0ecb244f59890f987a26e65b8fe73"
+    "vite": "^8.2.1"
   },
   "bin": {
     "bwc": "bin/bwc.mjs"

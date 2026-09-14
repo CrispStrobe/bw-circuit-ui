@@ -192,12 +192,42 @@ L1 coil 0 3m
     }
   });
 
+  it('runs exact PWL/EXP/current waveforms and keeps .op DC bias distinct from transient t=0', () => {
+    const result = imported(`waveform bias split
+V1 in 0 DC 4 PWL(0 1 .75m 3 2m -1)
+R1 in out 1k
+C1 out 0 1u
+I1 0 out EXP(0 1m 0.5m 0.2m 1.5m 0.3m)
+.op
+.tran .5m 2m
+.end
+`);
+    assert.deepEqual(result.losses, []);
+    const [op, tran] = runSourceAnalyses(result, { format: 'spice', maxPoints: 20 });
+    assert.equal(op.status, 'pass');
+    const inputId = result.netNames.find(net => net.name === 'in').id;
+    const inputCanonical = op.topology.find(card => card.kind === 'V').nodes[0];
+    assert.equal(inputId, result.netNames.find(net => net.name === 'in').id);
+    assert.ok(Math.abs(op.observables.nodes.find(node => node.id === inputCanonical).voltage - 4) < 1e-8,
+      '.op uses the explicit DC value');
+    assert.equal(tran.status, 'pass');
+    assert.deepEqual(tran.observables.axis.values, [0, 0.0005, 0.00075, 0.001, 0.0015, 0.002]);
+    assert.ok(Math.abs(tran.observables.nodes.find(node => node.id === inputCanonical).voltage[0] - 1) < 1e-8,
+      '.tran initializes and observes the waveform at t=0 rather than substituting DC 4');
+    assert.ok(Math.abs(tran.observables.nodes.find(node => node.id === inputCanonical).voltage[2] - 3) < 1e-8);
+    assert.equal(tran.conditions.samplingProfile.breakpointCount, 5);
+    assert.equal(tran.conditions.initialization,
+      'source-declared-waveform-time-zero-operating-point');
+    assert.equal(tran.initialization.initialization,
+      'source-declared-waveform-time-zero-operating-point');
+  });
+
   it('refuses startup and explicit initial-state semantics instead of silently changing initialization', () => {
     const decks = [
       `element IC\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1u IC=0.5\n.tran 10u\n.end\n`,
       `dot IC\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1u\n.ic v(out)=0.5\n.tran 10u\n.end\n`,
       `nodeset\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1u\n.nodeset v(out)=0.5\n.tran 10u\n.end\n`,
-      `pwl is not a fixed source\nV1 in 0 PWL(0 6 1m 18)\nR1 in 0 1k\n.tran 2m\n.end\n`,
+      `malformed pwl\nV1 in 0 PWL(0 6 0 18)\nR1 in 0 1k\n.tran 2m\n.end\n`,
     ];
     for (const deck of decks) {
       const result = imported(deck);
