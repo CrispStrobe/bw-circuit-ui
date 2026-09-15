@@ -635,3 +635,77 @@ describe('DRC: floating-control-z80', () => {
     assert.ok(hits.some(h => h.explanation.includes('WAITB')), 'should warn about floating WAITB');
   });
 });
+
+// ── Rule 0: 3.3 V board I/O voltage domain ───────────────────────
+//
+// This rule family had no test before the Tang Nano was added, so the Pico
+// case below is a regression guard for the generalisation as much as a test
+// of the board: both boards now run through one table, and a change that
+// breaks the Pico while adding the Tang Nano would otherwise land silently.
+
+describe('DRC: 3.3 V board I/O', () => {
+  it('warns: Tang Nano bank pin reaches a 5 V source', () => {
+    const c = setup();
+    const tang = c.addPart('tang_nano_20k', {}, 0, 0);
+    const vcc = c.addPart('vcc', {}, 0, 0);
+    c.addWire(vcc.id, 'vcc', tang.id, 'p15');
+
+    c.advanceTo(25n * MS);
+    const hits = findRule(runDrc(c, c.board), 'tang-nano-voltage');
+    assert.equal(hits.length, 1, 'a 5 V source on a 3.3 V bank pin must be flagged');
+    assert.equal(hits[0].severity, 'danger');
+    assert.equal(hits[0].pinId, 'p15');
+    assert.match(hits[0].explanation, /3\.3 V/);
+  });
+
+  it('does NOT warn: bank pin on the board\'s own 3V3 rail', () => {
+    const c = setup();
+    const tang = c.addPart('tang_nano_20k', {}, 0, 0);
+    c.addWire(tang.id, '3v3_1', tang.id, 'p15');
+
+    c.advanceTo(25n * MS);
+    assert.deepEqual(findRule(runDrc(c, c.board), 'tang-nano-voltage'), [],
+      '3.3 V on a 3.3 V pin is the normal case and must stay silent');
+  });
+
+  it('does NOT warn: the 5V pin used as a power OUTPUT', () => {
+    // The whole point of the rule's shape. Powering a part from the board's
+    // 5 V rail is legitimate; a checker that refuses it would be wrong, and
+    // would teach the learner to ignore it.
+    const c = setup();
+    const tang = c.addPart('tang_nano_20k', {}, 0, 0);
+    const led = c.addPart('led', {}, 0, 0);
+    const res = c.addPart('resistor', { ohms: 330 }, 0, 0);
+    c.addWire(tang.id, '5v', res.id, 'a');
+    c.addWire(res.id, 'b', led.id, 'anode');
+    c.addWire(led.id, 'cathode', tang.id, 'gnd_1');
+
+    c.advanceTo(25n * MS);
+    assert.deepEqual(findRule(runDrc(c, c.board), 'tang-nano-voltage'), [],
+      '5 V out of the 5V pin is legitimate; only 5 V arriving BACK on a bank pin is not');
+  });
+
+  it('warns: the 5V pin wired back into a bank pin', () => {
+    const c = setup();
+    const tang = c.addPart('tang_nano_20k', {}, 0, 0);
+    c.addWire(tang.id, '5v', tang.id, 'p73');
+
+    c.advanceTo(25n * MS);
+    const hits = findRule(runDrc(c, c.board), 'tang-nano-voltage');
+    assert.equal(hits.length, 1, 'the destructive direction must be caught');
+    assert.equal(hits[0].pinId, 'p73');
+  });
+
+  it('warns: Pico GPIO reaches a 5 V source (generalisation regression guard)', () => {
+    const c = setup();
+    const pico = c.addPart('pi_pico', {}, 0, 0);
+    const vcc = c.addPart('vcc', {}, 0, 0);
+    c.addWire(vcc.id, 'vcc', pico.id, 'gp0');
+
+    c.advanceTo(25n * MS);
+    const hits = findRule(runDrc(c, c.board), 'pico-voltage');
+    assert.equal(hits.length, 1, 'the Pico rule must survive being table-driven');
+    assert.equal(hits[0].severity, 'danger');
+    assert.match(hits[0].explanation, /RP2040 GPIO/);
+  });
+});

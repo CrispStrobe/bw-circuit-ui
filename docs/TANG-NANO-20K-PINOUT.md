@@ -1,4 +1,4 @@
-# Tang Nano 20K pinout — two sources reconciled, two conflicts open
+# Tang Nano 20K pinout — three sources reconciled, both conflicts resolved
 
 Compiled 2026-09-15 for TN0 (the board part). **Datasheet facts, no library
 copied** — the same standard `land-patterns.js` already sets for `pi_pico`.
@@ -12,10 +12,17 @@ package, HDMI, microSD, RGB LED, 27 MHz input, onboard USB-JTAG.
 |---|---|---|
 | **Sipeed pin-label diagram** (`tang_nano_20k_pinlabel.png`, wiki.sipeed.com) | the board vendor's own diagram — **primary** | vendor documentation |
 | **litex-boards** `litex_boards/platforms/sipeed_tang_nano_20k.py` | `_io` + `_connectors`, machine-readable | **BSD-2-Clause**, © 2023 Icenowy Zheng |
+| **Sipeed Tang Nano 20K Datasheet v1.3** (Shenzhen Sipeed Technology) | Pinout page + mechanical drawing — **decisive** | vendor documentation |
 
-Where they disagree, **Sipeed wins** (it is the board vendor) — but the two
-disagreements below are recorded rather than silently resolved, because either
-source could be describing a different board revision.
+Where they disagree, **Sipeed wins** — and the datasheet says why in its own
+revision history: *"Fixed the issue of pinout picture."* **An earlier Sipeed
+pinout diagram was wrong, and the 2023 LiteX file encodes it.** That is the
+explanation for both disagreements below; neither is a board revision, and
+neither needs a multimeter after all.
+
+Independent check on the whole table: the datasheet states **"2x20P 2.54mm DIP
+Pin Headers with 34 free IOs"**, and the table below has exactly 34 I/O pins
+and 6 power/ground pins across 40 positions.
 
 ## Header pinout (Sipeed diagram, primary)
 
@@ -28,15 +35,15 @@ any label in the diagram. Treat that mapping as inferred.
 |---|---|---|---|
 | 1 | 73 | IOT40A | |
 | 2 | 74 | IOT34B | |
-| 3 | **75** | IOT34A | **see CONFLICT 1** |
+| 3 | 75 | IOT34A | HSPI_DIR — *was CONFLICT 1* |
 | 4 | 85 | IOT4B | SDIO_D1 |
 | 5 | 77 | IOT30A | LCD_CLK |
 | 6 | 15 | IOL47A | LED0 |
 | 7 | 16 | IOL47B | LED1 |
 | 8 | 27 | IOB8A | LCD_B7 |
 | 9 | 28 | IOB8B | LCD_B6 |
-| 10 | **25** | IOB6A | LCD_HS — **see CONFLICT 2** |
-| 11 | **26** | IOB6B | LCD_VS — **see CONFLICT 2** |
+| 10 | 25 | IOB6A | LCD_HS — *was CONFLICT 2* |
+| 11 | 26 | IOB6B | LCD_VS — *was CONFLICT 2* |
 | 12 | 29 | IOB14A | LCD_B5 |
 | 13 | 30 | IOB14B | LCD_B4 |
 | 14 | 31 | IOB29A | LCD_B3 |
@@ -53,7 +60,7 @@ any label in the diagram. Treat that mapping as inferred.
 |---|---|---|---|
 | 1 | — | **5V** | power out — **never an input, see below** |
 | 2 | — | **GND** | |
-| 3 | **76** | IOT30B | **see CONFLICT 1** |
+| 3 | 76 | IOT30B | HSPI_DAT — *was CONFLICT 1* |
 | 4 | 80 | IOT27A | SDIO_D2 |
 | 5 | 42 | IOB42B | LCD_R3 |
 | 6 | 41 | IOB43A | LCD_R4 |
@@ -72,21 +79,28 @@ any label in the diagram. Treat that mapping as inferred.
 | 19 | 53 | IOR38B | EDID_CLK |
 | 20 | 52 | IOR39A | EDID_DAT |
 
-## CONFLICT 1 — pins 75 and 76 are on opposite headers
+## CONFLICT 1 — RESOLVED: pins 75 and 76
 
     Sipeed:  75 on the LEFT header (pos 3),  76 on the RIGHT header (pos 3)
     LiteX:   76 on J6 (left, pos 4),         75 on J5 (right, pos 4)
 
-They are exactly swapped. **Unresolved.** Resolve by continuity-testing the
-physical board before either pin is offered in the palette, or omit both until
-then. Do not pick one on the grounds that it is probably fine.
+They are exactly swapped. **Resolved in favour of Sipeed** by the datasheet
+v1.3 pinout page, whose revision history records the pinout-picture fix that the
+2023 LiteX file predates. **75 is on the LEFT header, 76 on the RIGHT.**
 
-## CONFLICT 2 — pins 25 and 26 are in opposite order
+## CONFLICT 2 — RESOLVED: pins 25 and 26
 
     Sipeed:  ... 28, 25 (LCD_HS), 26 (LCD_VS), 29 ...
     LiteX:   ... 28, 26,          25,          29 ...
 
-Same two pins, adjacent, swapped. Same resolution: measure.
+Same two pins, adjacent, swapped. **Resolved the same way: Sipeed v1.3 is
+correct — 25 (LCD_HS) then 26 (LCD_VS).**
+
+### A third correction, to this document's own first draft
+
+Pin 20 is **`IOL51B`**, not `IOL50B`. The low-resolution wiki diagram was
+misread here; the datasheet render is unambiguous, and `IOL51B`/`IOL51A`
+(20/19) are the expected adjacent pair.
 
 ## Electrical facts that drive the DRC
 
@@ -100,14 +114,18 @@ Same two pins, adjacent, swapped. Same resolution: measure.
 - HDMI `hdp`/`cec` are LVCMOS18 (1.8 V) per LiteX, but those are not on the
   headers, so they are out of scope for the part.
 
-## Still needed before the part JSON is complete
+## Mechanical, from the datasheet's drawing
 
-- **Board dimensions** (`mmW`/`mmH`/`transpose` for `board-geometry.js`). Not in
-  either source above; Sipeed publishes a dimensional drawing at
-  `dl.sipeed.com/shareURL/TANG/Nano_20K/4_Dimensional_drawing` (an HTML index,
-  not a direct file). **Measure the board or fetch the drawing — do not infer
-  from header pitch.**
-- **Resolution of both conflicts above.**
+- **54.04 mm x 22.55 mm**, 2.54 mm header pitch.
+- **Header rows are 20.32 mm apart = 8 pitches**, measured off the mechanical
+  drawing against its own stated 22.55 mm width. That is `rowSpanPitches: 8` in
+  the footprint, against `pi_pico`'s 7 (0.7") and `arduino_nano`'s 6 (0.6").
+
+## Still open
+
+- **A PCB land pattern.** `LAND_PATTERNS[kind] || {}` degrades gracefully, so
+  the part works on the breadboard without one; only the PCB view lacks a
+  footprint. Deliberately deferred rather than guessed.
 - Which pins double as onboard peripherals is recorded above and matters: pins
   15–20 are the LEDs and 79 is the RGB LED, so driving them from the breadboard
   also drives onboard hardware. The part should say so rather than pretend the
