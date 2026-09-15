@@ -1,0 +1,114 @@
+# Tang Nano 20K pinout — two sources reconciled, two conflicts open
+
+Compiled 2026-09-15 for TN0 (the board part). **Datasheet facts, no library
+copied** — the same standard `land-patterns.js` already sets for `pi_pico`.
+
+Part: `GW2AR-LV18QN88C8/I7`, QN88. 20736 LUT4 / 15552 FF, 64 Mbit SDRAM in
+package, HDMI, microSD, RGB LED, 27 MHz input, onboard USB-JTAG.
+
+## The two sources
+
+| source | what it is | licence |
+|---|---|---|
+| **Sipeed pin-label diagram** (`tang_nano_20k_pinlabel.png`, wiki.sipeed.com) | the board vendor's own diagram — **primary** | vendor documentation |
+| **litex-boards** `litex_boards/platforms/sipeed_tang_nano_20k.py` | `_io` + `_connectors`, machine-readable | **BSD-2-Clause**, © 2023 Icenowy Zheng |
+
+Where they disagree, **Sipeed wins** (it is the board vendor) — but the two
+disagreements below are recorded rather than silently resolved, because either
+source could be describing a different board revision.
+
+## Header pinout (Sipeed diagram, primary)
+
+LiteX's `J5`/`J6` names are matched to physical sides **by pin content**, not by
+any label in the diagram. Treat that mapping as inferred.
+
+### Left header — LiteX `J6`
+
+| # | FPGA pin | bank name | onboard function |
+|---|---|---|---|
+| 1 | 73 | IOT40A | |
+| 2 | 74 | IOT34B | |
+| 3 | **75** | IOT34A | **see CONFLICT 1** |
+| 4 | 85 | IOT4B | SDIO_D1 |
+| 5 | 77 | IOT30A | LCD_CLK |
+| 6 | 15 | IOL47A | LED0 |
+| 7 | 16 | IOL47B | LED1 |
+| 8 | 27 | IOB8A | LCD_B7 |
+| 9 | 28 | IOB8B | LCD_B6 |
+| 10 | **25** | IOB6A | LCD_HS — **see CONFLICT 2** |
+| 11 | **26** | IOB6B | LCD_VS — **see CONFLICT 2** |
+| 12 | 29 | IOB14A | LCD_B5 |
+| 13 | 30 | IOB14B | LCD_B4 |
+| 14 | 31 | IOB29A | LCD_B3 |
+| 15 | 17 | IOL49A | LED2 |
+| 16 | 20 | IOL50B | LED5 |
+| 17 | 19 | IOL51A | LED4 |
+| 18 | 18 | IOL49B | LED3 |
+| 19 | — | **3V3** | power out |
+| 20 | — | **GND** | |
+
+### Right header — LiteX `J5`
+
+| # | FPGA pin | bank name | onboard function |
+|---|---|---|---|
+| 1 | — | **5V** | power out — **never an input, see below** |
+| 2 | — | **GND** | |
+| 3 | **76** | IOT30B | **see CONFLICT 1** |
+| 4 | 80 | IOT27A | SDIO_D2 |
+| 5 | 42 | IOB42B | LCD_R3 |
+| 6 | 41 | IOB43A | LCD_R4 |
+| 7 | 56 | IOR36A | I2S_BCLK |
+| 8 | 54 | IOR38A | I2S_DIN |
+| 9 | 51 | IOR45A | PA_EN |
+| 10 | 48 | IOR49B | LCD_DE |
+| 11 | 55 | IOR36B | I2S_LRCK |
+| 12 | 49 | IOR49A | LCD_BL |
+| 13 | 86 | IOT4A | |
+| 14 | 79 | IOT27B | 2812_DIN (RGB LED) |
+| 15 | — | **GND** | |
+| 16 | — | **3V3** | power out |
+| 17 | 72 | IOT40B | |
+| 18 | 71 | IOT44A | |
+| 19 | 53 | IOR38B | EDID_CLK |
+| 20 | 52 | IOR39A | EDID_DAT |
+
+## CONFLICT 1 — pins 75 and 76 are on opposite headers
+
+    Sipeed:  75 on the LEFT header (pos 3),  76 on the RIGHT header (pos 3)
+    LiteX:   76 on J6 (left, pos 4),         75 on J5 (right, pos 4)
+
+They are exactly swapped. **Unresolved.** Resolve by continuity-testing the
+physical board before either pin is offered in the palette, or omit both until
+then. Do not pick one on the grounds that it is probably fine.
+
+## CONFLICT 2 — pins 25 and 26 are in opposite order
+
+    Sipeed:  ... 28, 25 (LCD_HS), 26 (LCD_VS), 29 ...
+    LiteX:   ... 28, 26,          25,          29 ...
+
+Same two pins, adjacent, swapped. Same resolution: measure.
+
+## Electrical facts that drive the DRC
+
+- **Every bank on the headers is V_IO = 3.3 V** — the diagram's legend marks
+  BANK0, BANK1, BANK3, BANK5 and BANK6 all at 3.3 V.
+- **Gowin I/O is NOT 5 V tolerant.** This is the rule TN0 exists to enforce.
+- **There IS a 5 V pin on the right header (position 1).** It is the USB rail,
+  an **output**. A learner can legitimately power a 5 V part from it — and then
+  wire that part's output back into a 3.3 V bank pin and destroy the FPGA. That
+  is the exact mistake to catch: *5 V out is fine, 5 V in is not.*
+- HDMI `hdp`/`cec` are LVCMOS18 (1.8 V) per LiteX, but those are not on the
+  headers, so they are out of scope for the part.
+
+## Still needed before the part JSON is complete
+
+- **Board dimensions** (`mmW`/`mmH`/`transpose` for `board-geometry.js`). Not in
+  either source above; Sipeed publishes a dimensional drawing at
+  `dl.sipeed.com/shareURL/TANG/Nano_20K/4_Dimensional_drawing` (an HTML index,
+  not a direct file). **Measure the board or fetch the drawing — do not infer
+  from header pitch.**
+- **Resolution of both conflicts above.**
+- Which pins double as onboard peripherals is recorded above and matters: pins
+  15–20 are the LEDs and 79 is the RGB LED, so driving them from the breadboard
+  also drives onboard hardware. The part should say so rather than pretend the
+  header pin is free.
