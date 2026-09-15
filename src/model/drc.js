@@ -201,6 +201,40 @@ export function runDrc(circuit, board) {
     }
   }
 
+  // ── Rule 0b: a board's power pins are not a simulated rail ────────
+  // PASSTHROUGH board kinds (tang_nano_20k and friends) are modelled as
+  // driveable terminals and NOTHING else. Their GND / 3V3 / 5V pins are places
+  // to wire, not sources: on real hardware they carry current, in here they are
+  // inert. Wiring an LED's cathode to the board's own GND is the obvious first
+  // move, and the loop then reads ~1e-10 A -- indistinguishable from a broken
+  // part, which is how a learner concludes the simulator is lying.
+  //
+  // A WARNING, not a danger: the bench is wrong, the circuit is not. And it
+  // fires only when something is actually wired to the pin, because warning
+  // about an unused pin would train people to ignore the check.
+  const INERT_RAIL_KINDS = new Set(['tang_nano_20k']);
+  const RAIL_TERMINAL = /^(gnd|3v3|5v)(_\d+)?$/i;
+  for (const part of parts.filter(p => INERT_RAIL_KINDS.has(p.kind))) {
+    for (const pin of part.terminals || []) {
+      if (!RAIL_TERMINAL.test(pin)) continue;
+      const netId = netOf(part.id, pin);
+      if (!netId) continue;
+      const others = partsOnNet(netId).filter(m => m.part !== part.id);
+      if (!others.length) continue;
+      warnings.push({
+        severity: 'warning',
+        rule: 'board-rail-not-simulated',
+        partId: part.id,
+        pinId: pin,
+        explanation: `${pin.toUpperCase()} is a power pin on the ${part.kind} board. `
+          + 'The simulation models this board as pins only, so its rails carry nothing — '
+          + 'a loop returning through here reads as an open circuit, not as ground.',
+        fix: 'Wire the return leg to a GND part (and a supply to a VCC part) for the '
+          + 'simulated bench. On the real board the pin is fine.',
+      });
+    }
+  }
+
   // ── Rule 1: Source-current violation ──────────────────────────────
   for (const part of parts) {
     if (part.kind !== 'mcu') continue;
