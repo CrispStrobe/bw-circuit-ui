@@ -234,6 +234,8 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
   // move — the proof that models are derived, not copied. Production callers
   // never pass it.
   const skipped = [];
+  // Parts the deck DOES export, with a card that is not the engine's device.
+  const approximated = [];
   const warnings = [];
 
   // ── Ground reference ─────────────────────────────────────────────
@@ -659,6 +661,29 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       }
       usedModels.add(model);
       lines.push(`${el} ${nodeFields} ${model}`);
+      // A CARD THAT RUNS IS NOT A CARD THAT DESCRIBES THE DEVICE.
+      //
+      // `tip120` is not an `npn` with a big beta: bw-board registers its own
+      // stamp for it (`devices/analog-ics.js`), a THRESHOLD SWITCH that reads
+      // `vbe` and `rceSat` — it conducts when Vbe exceeds 1.4 V, clamps Vce
+      // through `rceSat`, and draws no base current at all. An Ebers-Moll card
+      // expresses none of that: it has no threshold, no saturation resistance,
+      // and its base DOES draw current.
+      //
+      // The card still runs and the deck still simulates, which is exactly why
+      // this has to be declared. Measured on `33-inductive-no-flyback`, the
+      // largest disagreement in the gallery: our base sat at 4.949270 V (the
+      // switch draws nothing, so the node stays near the drive rail) against
+      // ngspice's 0.696071 V (a conducting Ebers-Moll junction) — reported as
+      // a 4.25 V solver error when the two sides were modelling different
+      // devices. A reason that names the wrong cause sends the next reader to
+      // the wrong fix; it sent me here.
+      if (part.kind === 'tip120') {
+        approximated.push(`${part.refdes} (${part.kind}): the \`.model ${model} NPN\` card is an `
+          + 'Ebers-Moll approximation of a threshold-switch stamp — the engine reads `vbe` '
+          + '(conduction threshold) and `rceSat` (saturation resistance), and a BJT card '
+          + 'expresses neither. The deck runs; it does not describe this device.');
+      }
     } else if (card === 'M') {
       // A SPICE M CARD TAKES FOUR NODES: drain gate source BULK. With three,
       // ngspice refuses the deck outright — "not enough nodes" — which is how
@@ -776,7 +801,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
   }
   lines.push('.end');
 
-  return { text: lines.join('\n') + '\n', skipped, warnings };
+  return { text: lines.join('\n') + '\n', skipped, warnings, approximated };
 }
 
 /**

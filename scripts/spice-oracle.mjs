@@ -646,7 +646,7 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
     if (!isFinite(va) || !isFinite(vb)) return null;
     return va - vb;
   };
-  const { text, warnings, skipped: exportSkipped } = toSpice(solved, `oracle: ${name}`,
+  const { text, warnings, skipped: exportSkipped, approximated: exportApproximated } = toSpice(solved, `oracle: ${name}`,
     { pinSource, companionsFor, capacitorVoltage,
       controls: circuit.board?.controls ?? new Map() });
 
@@ -684,6 +684,15 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
     if (kind === 'mcu' || getDevice(kind)?.gpioFollowsPinStates) continue;
     unrepresentedRefs.add(ref);
   }
+  // AND A CARD THAT IS NOT THE DEVICE COUNTS THE SAME AS NO CARD.
+  //
+  // The exporter declares these: a part it DID write, with a card that does not
+  // describe the engine's stamp. `tip120` is the case — an Ebers-Moll card for
+  // a threshold switch. The deck runs, so nothing else here would notice, and
+  // the disagreement gets reported against the solver: 4.25 V on
+  // `33-inductive-no-flyback`, the gallery's largest. Costs nothing to refuse —
+  // the two gallery circuits carrying one already disagreed.
+  for (const ap of exportApproximated || []) unrepresentedRefs.add(String(ap).split(' ')[0]);
 
   // Structural floor: these are what "unsimulatable" meant.
   //
