@@ -313,6 +313,49 @@ export function runNgspice(deck, dir, name) {
  * Counted over PARTS, not wires: two nets joined only through a part are in one
  * galvanic component, which is what determines whether a gauge is shared.
  */
+/**
+ * DIODES WHOSE SATURATION CURRENT NGSPICE SILENTLY REPLACES.
+ *
+ * ngspice CLAMPS a diode's IS at 1e-28 without a word. A deck stating less is
+ * simulated as a DIFFERENT device, and the difference is not small: the clamp
+ * is a floor, so the reference's diode conducts MORE and sits LOWER.
+ *
+ * `40-led-color-mix` is the case. Three LEDs on 330 Ohm each; the two Vf = 2 V
+ * ones agree to six decimals, and the Vf = 3.2 V one -- a blue/white LED, whose
+ * Shockley calibration is `Is=1.995705e-30` -- reads engine 3.004796 V against
+ * ngspice 2.831799 V. OURS is the stated device and ngspice's is the clamp, so
+ * scoring the 173 mV against us would have had me "fix" a correct answer
+ * towards a floor in someone else's solver.
+ *
+ * Read from the DECK TEXT, because that is what ngspice was handed, and the
+ * refdes comes from the element lines rather than from the `D_<refdes>` naming
+ * habit, which is a convention and not a contract.
+ *
+ * SCOPE, measured: 2 decks of the 2,131-circuit gallery state an IS below the
+ * clamp and both already disagreed, so naming this costs no agreement. ZERO of
+ * the 12,471 ADI v3 foreign decks do, which is why `judgeForeignDeck` has no
+ * copy of this -- a guard over an empty population is code nothing exercises.
+ *
+ * @param {string} deckText
+ * @returns {Set<string>} refdeses whose model IS is below what ngspice honours
+ */
+export function clampedIsRefsOf(deckText) {
+  const NGSPICE_IS_FLOOR = 1e-28;
+  const refs = new Set();
+  const belowFloor = new Set();
+  for (const m of String(deckText).matchAll(/^\s*\.model\s+(\S+)\s+D\s*\(([^)]*)\)/gim)) {
+    const is = /(?:^|\s)Is\s*=\s*([\d.eE+-]+)/i.exec(m[2]);
+    if (is && Number(is[1]) > 0 && Number(is[1]) < NGSPICE_IS_FLOOR) {
+      belowFloor.add(m[1].toLowerCase());
+    }
+  }
+  if (!belowFloor.size) return refs;
+  for (const m of String(deckText).matchAll(/^\s*(D\S*)\s+\S+\s+\S+\s+(\S+)\s*$/gim)) {
+    if (belowFloor.has(m[2].toLowerCase())) refs.add(m[1]);
+  }
+  return refs;
+}
+
 export function isolatedUnreferencedComponents(netlist) {
   const nets = (netlist?.nets || []).filter(n => n.id);
   if (!nets.length) return [];
@@ -694,6 +737,8 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
   // the two gallery circuits carrying one already disagreed.
   for (const ap of exportApproximated || []) unrepresentedRefs.add(String(ap).split(' ')[0]);
 
+  const clampedIsRefs = clampedIsRefsOf(text);
+
   // Structural floor: these are what "unsimulatable" meant.
   //
   // The ground assertion is deliberately about the DECK, not about whether
@@ -796,6 +841,23 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
         ? [...new Set((net.nodes || []).map(nd => nd.refdes)
           .filter(r => unrepresentedRefs.has(r)))]
         : [];
+      // A node whose diode ngspice re-specified is not a shared question either,
+      // and it gets its OWN reason: "unrepresented-part" would send a reader
+      // looking for a missing card when the card is there and the reference
+      // changed it.
+      const clamped = clampedIsRefs.size
+        ? [...new Set((net.nodes || []).map(nd => nd.refdes).filter(r => clampedIsRefs.has(r)))]
+        : [];
+      if (clamped.length && !missing.length) {
+        return { name, ok: false, compared: 0,
+          lines: [`  V(${net.name}): engine ${engineV.toFixed(6)} V  ngspice `
+            + `${spiceV.toFixed(6)} V  delta ${Math.abs(engineV - spiceV).toExponential(2)}`,
+            `  but ${clamped.join(', ')} states an IS below 1e-28, which ngspice CLAMPS`,
+            '  silently. The reference solved a stronger diode than the deck asked for,',
+            '  so it sits lower and ours is the stated device. Not a disagreement about',
+            '  the same question.'],
+          reason: `oracle-clamped-is: ${clamped.join(',')} at ${net.name}` };
+      }
       if (missing.length) {
         return { name, ok: false, compared: 0,
           lines: [`  V(${net.name}): engine ${engineV.toFixed(6)} V  ngspice `
