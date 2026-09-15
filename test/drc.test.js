@@ -709,3 +709,54 @@ describe('DRC: 3.3 V board I/O', () => {
     assert.match(hits[0].explanation, /RP2040 GPIO/);
   });
 });
+
+// ── Rule 0b: a board's power pins are not a simulated rail ───────
+
+describe('DRC: inert board rails', () => {
+    it('warns: a loop returns through the board\'s own GND pin', () => {
+        // The exact bench that reads 1.3e-10 A and looks like a broken part.
+        const c = setup();
+        const tang = c.addPart('tang_nano_20k', {}, 0, 0);
+        const r = c.addPart('resistor', {ohms: 330}, 0, 0);
+        const led = c.addPart('led', {}, 0, 0);
+        c.addWire(tang.id, 'p73', r.id, 'a');
+        c.addWire(r.id, 'b', led.id, 'anode');
+        c.addWire(led.id, 'cathode', tang.id, 'gnd_1');
+        c.advanceTo(25n * MS);
+
+        const hits = findRule(runDrc(c, c.board), 'board-rail-not-simulated');
+        assert.equal(hits.length, 1, 'the inert return path must be named');
+        assert.equal(hits[0].severity, 'warning', 'the bench is wrong, the circuit is not');
+        assert.equal(hits[0].pinId, 'gnd_1');
+        assert.match(hits[0].fix, /GND part/);
+    });
+
+    it('does NOT warn: the same circuit returned through a GND part', () => {
+        const c = setup();
+        const tang = c.addPart('tang_nano_20k', {}, 0, 0);
+        const r = c.addPart('resistor', {ohms: 330}, 0, 0);
+        const led = c.addPart('led', {}, 0, 0);
+        const gnd = c.addPart('gnd', {}, 0, 0);
+        c.addWire(tang.id, 'p73', r.id, 'a');
+        c.addWire(r.id, 'b', led.id, 'anode');
+        c.addWire(led.id, 'cathode', gnd.id, 'gnd');
+        c.advanceTo(25n * MS);
+
+        assert.deepEqual(findRule(runDrc(c, c.board), 'board-rail-not-simulated'), [],
+            'the correct bench must be silent');
+    });
+
+    it('does NOT warn about a rail pin nothing is wired to', () => {
+        // Every Tang Nano has six power pins. Warning about untouched ones
+        // would put six notices on an empty board and teach people to ignore
+        // the panel.
+        const c = setup();
+        const tang = c.addPart('tang_nano_20k', {}, 0, 0);
+        const gnd = c.addPart('gnd', {}, 0, 0);
+        c.addWire(tang.id, 'p73', gnd.id, 'gnd');
+        c.advanceTo(25n * MS);
+
+        assert.deepEqual(findRule(runDrc(c, c.board), 'board-rail-not-simulated'), [],
+            'an unused rail pin is not a defect');
+    });
+});
