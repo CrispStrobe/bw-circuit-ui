@@ -280,12 +280,34 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     '',
   ];
 
+  /**
+   * Node pairs already fixed by an IDEAL voltage source, as `min\u0000max`.
+   *
+   * TWO IDEAL SOURCES ACROSS ONE PAIR IS A SINGULAR MATRIX, and the deck was
+   * writing seven. `eater6502-full-build` has six decoupling capacitors across
+   * VCC and ground; each became `V<ref> VCC 0 DC 5` beside the synthesized
+   * `V1_SUPPLY VCC 0 DC 5`, and ngspice answered `singular matrix: check node
+   * vc1#branch`, then "Dynamic gmin stepping failed", then printed no node
+   * table at all. A deck that cannot run is not a deck.
+   *
+   * The second source carries no information -- the pair's potential
+   * difference is already determined -- so it is dropped rather than
+   * reconciled. Where the stored voltage DISAGREES with what already pins the
+   * pair, that is a fact about the engine's state and is reported.
+   */
+  const pinnedPairs = new Map();
+  /** Sources dropped because their pair was already pinned -- see `pinnedPairs`. */
+  const redundantSources = [];
+  const pairKey = (a, b) => (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
+
   // ── Supply rails ─────────────────────────────────────────────────
   const railVolts = typeof netlist.vcc === 'number' ? netlist.vcc : 5;
   if (supplyNets.length) {
     lines.push('* Supply rails (synthesized: the designer models these as rail parts)');
     supplyNets.forEach((net, i) => {
-      lines.push(`V${i + 1}_SUPPLY ${sanitizeNode(net.name)} 0 DC ${formatSpiceValue(railVolts)}`);
+      const railNode = sanitizeNode(net.name);
+      lines.push(`V${i + 1}_SUPPLY ${railNode} 0 DC ${formatSpiceValue(railVolts)}`);
+      pinnedPairs.set(pairKey(railNode, '0'), { volts: railVolts, by: `V${i + 1}_SUPPLY` });
     });
     lines.push('');
   }
@@ -514,6 +536,26 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     if (card === 'C' && capacitorVoltage) {
       const v = capacitorVoltage(part.refdes);
       if (typeof v === 'number' && isFinite(v)) {
+        const [na, nb] = String(nodeFields).trim().split(/\s+/);
+        const key = pairKey(na, nb);
+        const already = pinnedPairs.get(key);
+        if (already !== undefined) {
+          // Already pinned: a second ideal source here is a singular branch,
+          // not a stronger statement. Dropped, and named, with the numbers so
+          // a disagreement between them is visible rather than assumed away.
+          lines.push(`* ${part.refdes} ${part.kind} — its stored `
+            + `${formatSpiceValue(v)} V is not written: ${na} and ${nb} are already fixed `
+            + `at ${formatSpiceValue(already.volts)} V by ${already.by}, and two ideal `
+            + 'sources across one pair is a singular matrix');
+          redundantSources.push({ ref: part.refdes, kind: part.kind, volts: v,
+            nodes: [na, nb], pinnedBy: already.by, pinnedAt: already.volts });
+          if (Math.abs(already.volts - v) > 1e-9) {
+            warnings.push(`${part.refdes}: the engine holds it at ${v} V while ${already.by} `
+              + `fixes the same pair at ${already.volts} V; the deck keeps ${already.by}`);
+          }
+          continue;
+        }
+        pinnedPairs.set(key, { volts: v, by: `V${part.refdes}` });
         lines.push(`* ${part.refdes} ${part.kind} — held at the engine's stored voltage, `
           + 'because `.op` would open it and solve a different instant');
         lines.push(`V${part.refdes} ${nodeFields} DC ${formatSpiceValue(v)}`);
@@ -832,7 +874,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
   }
   lines.push('.end');
 
-  return { text: lines.join('\n') + '\n', skipped, warnings, approximated };
+  return { text: lines.join('\n') + '\n', skipped, warnings, approximated, redundantSources };
 }
 
 /**
