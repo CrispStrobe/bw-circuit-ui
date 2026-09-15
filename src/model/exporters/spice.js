@@ -659,8 +659,39 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         lines.push(`* ${part.refdes} ${part.kind} — no model`);
         continue;
       }
-      usedModels.add(model);
-      lines.push(`${el} ${nodeFields} ${model}`);
+      // AN AUTHORED BETA THE CARD DOES NOT CARRY IS STILL WHAT THE SOLVER USES.
+      //
+      // The card is resolved by NAME -- `params.part`, else the kind's generic
+      // card -- and its Bf is written. A part carrying `beta` in its own params
+      // and no `params.part` therefore got the GENERIC Bf while bw-board's stamp
+      // solved the authored number. Measured on `44-darlington-motor`: the part
+      // says beta 1000, the deck said `Bf=100`, and the comparison was between
+      // two different transistors.
+      //
+      // So the authored value wins, in a per-part model card -- the same shape
+      // the diode branch above already uses, and per-part because two BJTs with
+      // different betas must not collide on one name. The card's own body is
+      // the base, so everything else about the device still comes from the
+      // library rather than from literals here.
+      //
+      // The population is small and was measured before the change: 2 of the 79
+      // gallery circuits carrying a BJT have a part beta the deck contradicts,
+      // and both already disagreed, so this costs no agreement anywhere.
+      const authoredBeta = Number(part.params?.beta);
+      const cardBeta = Number(named?.params?.beta);
+      const base = modelFor(model);
+      if (Number.isFinite(authoredBeta) && Number.isFinite(cardBeta)
+          && authoredBeta !== cardBeta && base && /Bf\s*=/i.test(base.body)) {
+        const perPart = `Q_${part.refdes}`;
+        modelCards.push(`.model ${perPart} ${base.type} `
+          + `(${base.body.replace(/Bf\s*=\s*[\d.eE+-]+/i, `Bf=${authoredBeta}`)})`
+          + `  $ authored beta ${authoredBeta}, not card ${model}'s ${cardBeta}`);
+        usedModels.add(perPart);
+        lines.push(`${el} ${nodeFields} ${perPart}`);
+      } else {
+        usedModels.add(model);
+        lines.push(`${el} ${nodeFields} ${model}`);
+      }
       // A CARD THAT RUNS IS NOT A CARD THAT DESCRIBES THE DEVICE.
       //
       // `tip120` is not an `npn` with a big beta: bw-board registers its own
