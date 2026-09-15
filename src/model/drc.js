@@ -147,31 +147,56 @@ export function runDrc(circuit, board) {
     return null;
   };
 
-  // ── Rule 0: Pico GPIO voltage domain ──────────────────────────────
-  // RP2040 GPIO is 3.3 V only. VBUS is deliberately excluded: it is the
-  // board's 5 V USB input, not a GPIO signal.
-  for (const pico of parts.filter(p => p.kind === 'pi_pico')) {
-    for (const pin of pico.terminals || []) {
-      if (!/^gp\d+$/i.test(pin)) continue;
-      const netId = netOf(pico.id, pin);
-      if (!netId) continue;
-      const members = partsOnNet(netId);
-      const fiveVoltSource = members.some(member => {
-        const source = partById(member.part);
-        if (!source) return false;
-        if (source.kind === 'vcc' || /^(5v|vin)$/i.test(member.terminal)) return true;
-        return source.kind === 'vsource' && Number(source.params?.volts) > 3.6;
-      });
-      if (fiveVoltSource) {
-        warnings.push({
-          severity: 'danger',
-          rule: 'pico-voltage',
-          partId: pico.id,
-          pinId: pin,
-          explanation: `${pin.toUpperCase()} is an RP2040 GPIO at 3.3 V. ` +
-            'This connection reaches a 5 V-or-higher source and can damage the Pico.',
-          fix: 'Use the Pico 3V3 rail or a proper logic-level shifter; reserve VBUS for board power.',
+  // ── Rule 0: 3.3 V board I/O voltage domain ────────────────────────
+  // Boards whose I/O is 3.3 V only. The board's OWN 5 V rail pin is not a
+  // signal pin and is deliberately not treated as one — VBUS on the Pico,
+  // 5V on the Tang Nano. Both are legitimate power outputs; the damage comes
+  // from 5 V arriving BACK on an I/O pin, which is what this rule catches.
+  const THREE_VOLT_IO_BOARDS = [
+    {
+      kind: 'pi_pico',
+      ioPin: /^gp\d+$/i,
+      rule: 'pico-voltage',
+      what: 'an RP2040 GPIO at 3.3 V',
+      damage: 'can damage the Pico',
+      fix: 'Use the Pico 3V3 rail or a proper logic-level shifter; reserve VBUS for board power.',
+    },
+    {
+      // Gowin GW2AR-18: every header bank is V_IO = 3.3 V and NOT 5 V tolerant.
+      // Terminal names are FPGA pin numbers (p15, p73 …), matching a .cst constraint.
+      kind: 'tang_nano_20k',
+      ioPin: /^p\d+$/i,
+      rule: 'tang-nano-voltage',
+      what: 'a Gowin GW2AR-18 bank pin at 3.3 V',
+      damage: 'is not 5 V tolerant and will be damaged',
+      fix: 'Use the Tang Nano 3V3 rail or a level shifter. Its 5V pin is a power OUTPUT — '
+        + 'powering a 5 V part from it is fine, returning that part\'s 5 V signal to a bank pin is not.',
+    },
+  ];
+  for (const spec of THREE_VOLT_IO_BOARDS) {
+    for (const board3v3 of parts.filter(p => p.kind === spec.kind)) {
+      for (const pin of board3v3.terminals || []) {
+        if (!spec.ioPin.test(pin)) continue;
+        const netId = netOf(board3v3.id, pin);
+        if (!netId) continue;
+        const members = partsOnNet(netId);
+        const fiveVoltSource = members.some(member => {
+          const source = partById(member.part);
+          if (!source) return false;
+          if (source.kind === 'vcc' || /^(5v|vin)$/i.test(member.terminal)) return true;
+          return source.kind === 'vsource' && Number(source.params?.volts) > 3.6;
         });
+        if (fiveVoltSource) {
+          warnings.push({
+            severity: 'danger',
+            rule: spec.rule,
+            partId: board3v3.id,
+            pinId: pin,
+            explanation: `${pin.toUpperCase()} is ${spec.what}. `
+              + `This connection reaches a 5 V-or-higher source and ${spec.damage}.`,
+            fix: spec.fix,
+          });
+        }
       }
     }
   }

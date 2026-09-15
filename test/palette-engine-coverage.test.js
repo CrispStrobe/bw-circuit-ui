@@ -60,7 +60,14 @@ function passthroughKinds() {
   const src = readFileSync(path.join(here, '..', 'src', 'model', 'circuit.js'), 'utf8');
   const m = src.match(/PASSTHROUGH_KINDS = new Set\(\[([\s\S]*?)\]\)/);
   assert.ok(m, 'PASSTHROUGH_KINDS found in circuit.js');
-  return new Set([...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]));
+  // Strip // comments BEFORE pairing quotes. One apostrophe in a comment --
+  // "the test's ledger" -- shifts every subsequent quote pairing, silently
+  // dropping real entries and inventing orphans further down the list. That
+  // happened once (tang_nano_20k, 2026-09-15) and cost a CI round: the gate
+  // did not go quiet, it went LOUD ABOUT THE WRONG KINDS, which is worse.
+  // No kind is declared only inside a comment, so stripping loses nothing.
+  const body = m[1].replace(/\/\/[^\n]*/g, '');
+  return new Set([...body.matchAll(/'([^']+)'/g)].map(x => x[1]));
 }
 
 function sidecarKinds() {

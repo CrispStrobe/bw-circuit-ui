@@ -36,6 +36,15 @@ const PASSTHROUGH_KINDS = new Set([
   // MCU boards
   'stc_mcu', 'stc15_mcu', 'at89c2051', 'arduino_nano', 'arduino_uno', 'arduino_mega',
   'pi_pico', 'pybadge', 'attiny85', 'attiny88', 'attiny13', 'attiny2313', 'microbit', 'stm32f030',
+  // FPGA boards. tang_nano_20k has NO engine model and deliberately none yet:
+  // TN0 ships the part, its pinout and the 3.3 V rule, not a simulation. It is
+  // here rather than in the KNOWN_GAPS ledger of palette-engine-coverage
+  // because that ledger is
+  // fully burned down and may only shrink — and because the failure it guards
+  // against is real for this part too: without a passthrough the netlist is
+  // rejected and the designer board goes silently EMPTY the moment someone
+  // seats one.
+  'tang_nano_20k',
   // Retro DIPs (6502 family)
   'w65c02', 'w65c22', 'w65c51',
   // Machine-layer peripherals (bw-board implements them chip-level; the
