@@ -1269,6 +1269,17 @@ function mapModel(letter, model, warnings, partId) {
       out.is = p.is;
       if (isFinite(p.br)) out.br = p.br;
       if (isFinite(p.nf)) out.n = p.nf;
+      // FORWARD EARLY VOLTAGE. Carried only when the deck states it, because
+      // the engine's default is Infinity and a card without VAF must solve as
+      // it did before this line existed.
+      //
+      // Measured on ADI2005 v2 before the engine had the term: 59 of the 101
+      // real numeric disagreements were one circuit family, "BJT Emitter
+      // Follower", whose card declares VAF=100. Deleting VAF from the card made
+      // the two engines agree; deleting IKF or RC instead left the same 15.7 mV.
+      // So this one parameter was the whole of that family's error, and it was
+      // being parsed and then dropped on the floor here.
+      if (isFinite(p.vaf)) out.vaf = p.vaf;
       out.model = 'shockley';
     }
   } else if (letter === 'M') {

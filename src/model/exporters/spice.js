@@ -821,12 +821,43 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       const authoredBeta = Number(part.params?.beta);
       const cardBeta = Number(named?.params?.beta);
       const base = modelFor(model);
-      if (Number.isFinite(authoredBeta) && Number.isFinite(cardBeta)
-          && authoredBeta !== cardBeta && base && /Bf\s*=/i.test(base.body)) {
+      // AND THE SAME RULE FOR THE EARLY VOLTAGE, for the same reason.
+      //
+      // bw-board's Ebers-Moll stamp reads `params.vaf` and raises the transport
+      // current by (1 - Vbc/VAF). A part carrying `vaf` whose deck does not
+      // declare it is the authored-beta defect again with a different field:
+      // the engine solves one transistor and ngspice solves another. Measured:
+      // 700 ADI2005 v2 decks declare VAF on a BJT, 82 of them disagreed with
+      // ngspice without the term and none with it, and on the "BJT Emitter
+      // Follower" family it is worth 15.7 mV of base voltage -- 30x the
+      // comparator's tolerance.
+      //
+      // No card in the parts library declares VAF today, so `cardVaf` is NaN
+      // and the deck gains a `Vaf=` field only where a part authored one. That
+      // keeps this identity for every shipped circuit while making the deck and
+      // the solver agree the moment one does.
+      const authoredVaf = Number(part.params?.vaf);
+      const cardVaf = Number(/Vaf\s*=\s*([\d.eE+-]+)/i.exec(base?.body ?? '')?.[1]);
+      const betaDiffers = Number.isFinite(authoredBeta) && Number.isFinite(cardBeta)
+        && authoredBeta !== cardBeta && base && /Bf\s*=/i.test(base.body);
+      const vafDiffers = Number.isFinite(authoredVaf) && authoredVaf > 0
+        && authoredVaf !== cardVaf && base;
+      if (betaDiffers || vafDiffers) {
         const perPart = `Q_${part.refdes}`;
-        modelCards.push(`.model ${perPart} ${base.type} `
-          + `(${base.body.replace(/Bf\s*=\s*[\d.eE+-]+/i, `Bf=${authoredBeta}`)})`
-          + `  $ authored beta ${authoredBeta}, not card ${model}'s ${cardBeta}`);
+        const why = [];
+        let body = base.body;
+        if (betaDiffers) {
+          body = body.replace(/Bf\s*=\s*[\d.eE+-]+/i, `Bf=${authoredBeta}`);
+          why.push(`authored beta ${authoredBeta}, not card ${model}'s ${cardBeta}`);
+        }
+        if (vafDiffers) {
+          body = /Vaf\s*=/i.test(body)
+            ? body.replace(/Vaf\s*=\s*[\d.eE+-]+/i, `Vaf=${authoredVaf}`)
+            : `${body} Vaf=${authoredVaf}`;
+          why.push(`authored Early voltage ${authoredVaf}`
+            + `${Number.isFinite(cardVaf) ? `, not card ${model}'s ${cardVaf}` : ', which the card does not state'}`);
+        }
+        modelCards.push(`.model ${perPart} ${base.type} (${body})  $ ${why.join('; ')}`);
         usedModels.add(perPart);
         lines.push(`${el} ${nodeFields} ${perPart}`);
       } else {
