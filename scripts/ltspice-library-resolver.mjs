@@ -27,11 +27,34 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-/** LTspice writes some library files as UTF-16LE with a BOM and others as UTF-8. */
+/**
+ * LTspice writes its library files in THREE encodings, and the third one was
+ * silently corrupting models rather than failing.
+ *
+ * UTF-16LE with a BOM, UTF-8, and -- for 3,010 of the 4,908 `.sub`/`.lib` files
+ * in the 24.x tree, measured -- CP1252, which is not valid UTF-8 at all. Decoded
+ * as UTF-8 its bytes become U+FFFD, and 2,957 of those 3,010 files contain
+ * 0xB5, the micro sign, because that is how vendor models spell microamps:
+ *
+ *     I2 3 N002 55µ          <- LT1086-12's bias string
+ *
+ * So `55µ` arrived at the parser as `55�`, failed as a constant, and the
+ * deck lost a current source to a named semantic loss -- a WRONG ANSWER dressed
+ * as an honest refusal, since the value was right there in the file. Nothing
+ * reported an encoding problem because `Buffer.toString('utf8')` substitutes
+ * rather than throws.
+ *
+ * The strict decode is the detector: only bytes that are genuinely not UTF-8
+ * take the CP1252 path, so a real UTF-8 file with multi-byte characters is
+ * never mis-decoded by a guess.
+ */
+const CP1252 = new TextDecoder('windows-1252');
+const UTF8_STRICT = new TextDecoder('utf-8', { fatal: true });
+
 export function readLibraryFile(path) {
   const bytes = readFileSync(path);
   if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) return bytes.toString('utf16le');
-  return bytes.toString('utf8');
+  try { return UTF8_STRICT.decode(bytes); } catch { return CP1252.decode(bytes); }
 }
 
 /**
