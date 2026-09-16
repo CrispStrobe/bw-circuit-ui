@@ -18,9 +18,23 @@ const SPECS = {
     pinList: [['collector', 64, 0], ['base', 0, 48], ['emitter', 64, 96]], modelType: 'PNP' },
   // Standard three-pin MOS symbols make the substrate-to-source connection
   // internally; the importer reconstructs the repeated fourth SPICE node.
-  nmos: { lib: 'nmos', prefix: 'M', allowed: ['vth', 'kp', 'lambda', 'w', 'l', '_model'],
+  //
+  // `bulkOnSource` is therefore REPRESENTED, and exactly: it is the statement
+  // that the deck ties the bulk to the source, which is the one bulk wiring
+  // this symbol can draw. Listing it as unrepresented would refuse every
+  // MOSFET the symbol exists for. `bulkAtGround` is the case that cannot be
+  // drawn, and it is absent from this list for that reason -- see
+  // `unrepresentedReason`.
+  //
+  // `gamma`/`phi`/`bulkIs` are represented by the emitted `.model` card, which
+  // is where GAMMA/PHI/IS live in a level-1 MOS model. 1,296 of the 12,471 ADI
+  // v3 decks declare GAMMA and PHI; before they were emitted, every one of
+  // those MOSFETs was refused for carrying a parameter the card can hold.
+  nmos: { lib: 'nmos', prefix: 'M',
+    allowed: ['vth', 'kp', 'lambda', 'w', 'l', '_model', 'bulkOnSource', 'gamma', 'phi', 'bulkIs'],
     pinList: [['drain', 48, 0], ['gate', 0, 80], ['source', 48, 96]], modelType: 'NMOS' },
-  pmos: { lib: 'pmos', prefix: 'M', allowed: ['vth', 'kp', 'lambda', 'w', 'l', '_model'],
+  pmos: { lib: 'pmos', prefix: 'M',
+    allowed: ['vth', 'kp', 'lambda', 'w', 'l', '_model', 'bulkOnSource', 'gamma', 'phi', 'bulkIs'],
     pinList: [['drain', 48, 0], ['gate', 0, 80], ['source', 48, 96]], modelType: 'PMOS' },
   vcvs: { lib: 'e', prefix: 'E', parameter: 'gain', allowed: ['gain'],
     pinList: [['outp', 0, 16], ['outn', 0, 96], ['inp', -48, 32], ['inn', -48, 80]] },
@@ -87,6 +101,15 @@ function encodedPart(part, spec) {
   if (!finiteFields(params, ['vth', 'kp'])) return { error: 'MOSFET needs finite level-1 VTO and KP parameters' };
   const fields = ['LEVEL=1', `VTO=${params.vth}`, `KP=${params.kp}`];
   if (Number.isFinite(params.lambda)) fields.push(`LAMBDA=${params.lambda}`);
+  // The body-effect pair and the bulk-junction saturation current, each emitted
+  // INDEPENDENTLY of the others. That is safe -- and omitting one is not a loss
+  // -- only because both sides default them identically: SPICE's GAMMA=0,
+  // PHI=0.6 and IS=1e-14 are also what bw-board's `mosVth`/`mosBulkJunction`
+  // fall back to (`params.phi ?? 0.6`, `params.bulkIs || 1e-14`). If either
+  // default ever diverges, these become a set that must travel together.
+  if (Number.isFinite(params.gamma)) fields.push(`GAMMA=${params.gamma}`);
+  if (Number.isFinite(params.phi)) fields.push(`PHI=${params.phi}`);
+  if (Number.isFinite(params.bulkIs)) fields.push(`IS=${params.bulkIs}`);
   const spiceLine = [Number.isFinite(params.w) ? `W=${params.w}` : '',
     Number.isFinite(params.l) ? `L=${params.l}` : ''].filter(Boolean).join(' ');
   return { value: modelName, spiceLine,

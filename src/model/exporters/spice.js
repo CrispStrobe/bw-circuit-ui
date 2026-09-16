@@ -234,6 +234,8 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
   // move — the proof that models are derived, not copied. Production callers
   // never pass it.
   const skipped = [];
+  // Parts the deck DOES export, with a card that is not the engine's device.
+  const approximated = [];
   const warnings = [];
 
   // ── Ground reference ─────────────────────────────────────────────
@@ -278,12 +280,34 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     '',
   ];
 
+  /**
+   * Node pairs already fixed by an IDEAL voltage source, as `min\u0000max`.
+   *
+   * TWO IDEAL SOURCES ACROSS ONE PAIR IS A SINGULAR MATRIX, and the deck was
+   * writing seven. `eater6502-full-build` has six decoupling capacitors across
+   * VCC and ground; each became `V<ref> VCC 0 DC 5` beside the synthesized
+   * `V1_SUPPLY VCC 0 DC 5`, and ngspice answered `singular matrix: check node
+   * vc1#branch`, then "Dynamic gmin stepping failed", then printed no node
+   * table at all. A deck that cannot run is not a deck.
+   *
+   * The second source carries no information -- the pair's potential
+   * difference is already determined -- so it is dropped rather than
+   * reconciled. Where the stored voltage DISAGREES with what already pins the
+   * pair, that is a fact about the engine's state and is reported.
+   */
+  const pinnedPairs = new Map();
+  /** Sources dropped because their pair was already pinned -- see `pinnedPairs`. */
+  const redundantSources = [];
+  const pairKey = (a, b) => (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
+
   // ── Supply rails ─────────────────────────────────────────────────
   const railVolts = typeof netlist.vcc === 'number' ? netlist.vcc : 5;
   if (supplyNets.length) {
     lines.push('* Supply rails (synthesized: the designer models these as rail parts)');
     supplyNets.forEach((net, i) => {
-      lines.push(`V${i + 1}_SUPPLY ${sanitizeNode(net.name)} 0 DC ${formatSpiceValue(railVolts)}`);
+      const railNode = sanitizeNode(net.name);
+      lines.push(`V${i + 1}_SUPPLY ${railNode} 0 DC ${formatSpiceValue(railVolts)}`);
+      pinnedPairs.set(pairKey(railNode, '0'), { volts: railVolts, by: `V${i + 1}_SUPPLY` });
     });
     lines.push('');
   }
@@ -327,6 +351,61 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
 
     const sym = PART_SYMBOLS[part.kind];
     const card = sym ? sym.spiceCard : null;
+
+    if (part.kind === 'opamp') {
+      // AN OP-AMP WITH RAILS IS A TABLE, AND SPICE HAS ONE.
+      //
+      // This kind was omitted from the deck entirely, so `pc54-opamp-follower`
+      // refused as `unrepresented-part: U1` -- honest, and a comparison we
+      // simply were not having. The engine's stamp is a gain block that CLAMPS
+      // at `railLow`/`railHigh`, which a bare `E` card cannot express: an E
+      // card is linear forever and would agree only while the output stayed
+      // between the rails.
+      //
+      // A `B` source with `min(max(...))` is exactly the stamp, and an
+      // `E ... TABLE` is NOT -- which cost a regression to find out. ngspice's
+      // TABLE form ROUNDS ITS CORNERS to keep the derivative continuous, so a
+      // breakpoint sitting on the operating point reads the smoothed value
+      // rather than the corner: with `(0,0) (50u,5)` and the inputs exactly
+      // equal, ngspice answers 0.125 V where the clamp says 0. That is
+      // `pc40-opamp-threshold`, a comparator whose inputs sit at 2.5 V each --
+      // it AGREED while the op-amp was missing from the deck and went 125 mV
+      // out the moment a rounded corner stood in for a sharp one.
+      //
+      // The B form clamps sharply. Verified against ngspice-42 on the same
+      // shape: inputs equal gives 0.000000, +/-1 mV gives the rails, and
+      // +30 uV gives 3.000000 V, which is gain x 3e-5 exactly.
+      //
+      // Every number is READ from the part; the expression's shape is the
+      // stamp's own `clamp(gain * dV, railLow, railHigh)`.
+      // `nodeFields` is built further down, after the no-card branch this sits
+      // in front of, so the three nodes are looked up directly.
+      const [nOut, nInp, nInn] = ['out', 'inp', 'inn']
+        .map((t) => nodeOf(part.refdes, t) || `UNCONNECTED_${part.refdes}_${t}`);
+      const gain = Number(part.params?.gain);
+      const railLow = Number(part.params?.railLow ?? 0);
+      const railHigh = Number(part.params?.railHigh ?? (netlist.vcc ?? 5));
+      if (!(Number.isFinite(gain) && gain > 0) || !Number.isFinite(railLow)
+          || !Number.isFinite(railHigh) || railHigh <= railLow) {
+        skipped.push(`${part.refdes} (${part.kind}): needs a positive gain and an ordered `
+          + 'rail pair to be written as a clamped gain block');
+        lines.push(`* ${part.refdes} ${part.kind} — incomplete gain/rail parameters`);
+        continue;
+      }
+      lines.push(`B${part.refdes} ${nOut} 0 V = `
+        + `min(max(${gain}*V(${nInp},${nInn}), ${railLow}), ${railHigh})`);
+      // THE OUTPUT CURRENT LIMIT IS OPT-IN AND NOT EXPRESSIBLE. Without
+      // `iLimit` the card above is a COMPLETE description and nothing is
+      // declared; with it, the engine has a region this card does not, so it is
+      // declared rather than left to look like a solver disagreement.
+      if (Number(part.params?.iLimit) > 0) {
+        approximated.push(`${part.refdes} (${part.kind}): the gain and the rails are exact, but `
+          + `its ${part.params.iLimit} A output current limit has no SPICE spelling on this `
+          + 'card -- a limited output reads as a rail here');
+      }
+      continue;
+    }
+
 
     if (!card || card === 'X' || card === 'S') {
       // DECOMPOSE, RATHER THAN VANISH.
@@ -512,6 +591,26 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     if (card === 'C' && capacitorVoltage) {
       const v = capacitorVoltage(part.refdes);
       if (typeof v === 'number' && isFinite(v)) {
+        const [na, nb] = String(nodeFields).trim().split(/\s+/);
+        const key = pairKey(na, nb);
+        const already = pinnedPairs.get(key);
+        if (already !== undefined) {
+          // Already pinned: a second ideal source here is a singular branch,
+          // not a stronger statement. Dropped, and named, with the numbers so
+          // a disagreement between them is visible rather than assumed away.
+          lines.push(`* ${part.refdes} ${part.kind} — its stored `
+            + `${formatSpiceValue(v)} V is not written: ${na} and ${nb} are already fixed `
+            + `at ${formatSpiceValue(already.volts)} V by ${already.by}, and two ideal `
+            + 'sources across one pair is a singular matrix');
+          redundantSources.push({ ref: part.refdes, kind: part.kind, volts: v,
+            nodes: [na, nb], pinnedBy: already.by, pinnedAt: already.volts });
+          if (Math.abs(already.volts - v) > 1e-9) {
+            warnings.push(`${part.refdes}: the engine holds it at ${v} V while ${already.by} `
+              + `fixes the same pair at ${already.volts} V; the deck keeps ${already.by}`);
+          }
+          continue;
+        }
+        pinnedPairs.set(key, { volts: v, by: `V${part.refdes}` });
         lines.push(`* ${part.refdes} ${part.kind} — held at the engine's stored voltage, `
           + 'because `.op` would open it and solve a different instant');
         lines.push(`V${part.refdes} ${nodeFields} DC ${formatSpiceValue(v)}`);
@@ -630,6 +729,50 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         + `Rs=${j.rs}${extra})  $ Vf=${j.vf} V at 20 mA`);
       usedModels.add(modelName);
       lines.push(`${el} ${nodeFields} ${modelName}`);
+    } else if (part.kind === 'tip120') {
+      // A DARLINGTON DRIVER IS A SWITCH, AND SPICE HAS ONE.
+      //
+      // This kind used to be exported as `.model <X> NPN (Bf=1000 Is=1e-12)`
+      // and DECLARED an approximation, because bw-board's stamp is not an
+      // Ebers-Moll device: it is a base resistance plus a threshold switch that
+      // conducts when Vbe exceeds `vbe` and clamps Vce through `rceSat`, and it
+      // draws no base current at all. Measured on `33-inductive-no-flyback`,
+      // the largest disagreement the gallery had: our base sat at 4.949270 V
+      // against ngspice's 0.696071 V, a 4.25 V gap between two different
+      // devices.
+      //
+      // ngspice has exactly those two elements, so the deck can say what the
+      // engine solves instead of apologising for not saying it: a resistor and
+      // an `S` voltage-controlled switch with a `SW` model. Verified against
+      // ngspice-42 directly -- `S1 c 0 ctl 0 SWMOD` with `SW(VT=1.4 RON=2
+      // ROFF=1e12)` and the control above VT puts a 100 Ohm load's node at
+      // 5*2/102 = 0.098039 V, which is the stamp's own arithmetic.
+      //
+      // Every number is READ, none typed: `vbe`, `rceSat` and `rBase` come from
+      // the part or from `classDefaults('tip120')`, which is where bw-board's
+      // stamp reads them too. `rBase` was a literal inside the stamp
+      // (`R_INPUT / 10`) that no exporter could see, and declaring it is what
+      // made this emission possible at all.
+      const [nColl, nBase, nEmit] = String(nodeFields).trim().split(/\s+/);
+      const d = classDefaults('tip120') || {};
+      const vt = Number(part.params?.vbe ?? d.vbe);
+      const ron = Number(part.params?.rceSat ?? d.rceSat);
+      const rBase = Number(part.params?.rBase) > 0 ? Number(part.params.rBase) : Number(d.rBase);
+      if (![vt, ron, rBase].every(Number.isFinite)) {
+        skipped.push(`${part.refdes} (${part.kind}): the switch threshold, saturation `
+          + 'resistance or base resistance is not a finite number');
+        lines.push(`* ${part.refdes} ${part.kind} — incomplete switch parameters`);
+        continue;
+      }
+      // OFF is 1 TOhm, the same value this exporter already writes for an open
+      // switch companion. The stamp leaves NO collector-emitter path when off,
+      // and an exactly-infinite resistance is not a thing a deck can say.
+      lines.push(`RB${part.refdes} ${nBase} ${nEmit} ${formatSpiceValue(rBase)}`);
+      lines.push(`S${part.refdes} ${nColl} ${nEmit} ${nBase} ${nEmit} SW_${part.refdes}`);
+      modelCards.push(`.model SW_${part.refdes} SW(VT=${vt} RON=${ron} ROFF=1e12)`
+        + `  $ Darlington threshold ${vt} V, Vce(sat) resistance ${ron} Ohm`);
+      usedModels.add(`SW_${part.refdes}`);
+      continue;
     } else if (card === 'Q') {
       // A named part (params.part) is the card's model. A BARE class resolves to
       // the GENERIC CARD OF ITS KIND, and only then to the symbol table's name.
@@ -657,9 +800,71 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         lines.push(`* ${part.refdes} ${part.kind} — no model`);
         continue;
       }
-      usedModels.add(model);
-      lines.push(`${el} ${nodeFields} ${model}`);
-    } else if (card === 'M') {
+      // AN AUTHORED BETA THE CARD DOES NOT CARRY IS STILL WHAT THE SOLVER USES.
+      //
+      // The card is resolved by NAME -- `params.part`, else the kind's generic
+      // card -- and its Bf is written. A part carrying `beta` in its own params
+      // and no `params.part` therefore got the GENERIC Bf while bw-board's stamp
+      // solved the authored number. Measured on `44-darlington-motor`: the part
+      // says beta 1000, the deck said `Bf=100`, and the comparison was between
+      // two different transistors.
+      //
+      // So the authored value wins, in a per-part model card -- the same shape
+      // the diode branch above already uses, and per-part because two BJTs with
+      // different betas must not collide on one name. The card's own body is
+      // the base, so everything else about the device still comes from the
+      // library rather than from literals here.
+      //
+      // The population is small and was measured before the change: 2 of the 79
+      // gallery circuits carrying a BJT have a part beta the deck contradicts,
+      // and both already disagreed, so this costs no agreement anywhere.
+      const authoredBeta = Number(part.params?.beta);
+      const cardBeta = Number(named?.params?.beta);
+      const base = modelFor(model);
+      // AND THE SAME RULE FOR THE EARLY VOLTAGE, for the same reason.
+      //
+      // bw-board's Ebers-Moll stamp reads `params.vaf` and raises the transport
+      // current by (1 - Vbc/VAF). A part carrying `vaf` whose deck does not
+      // declare it is the authored-beta defect again with a different field:
+      // the engine solves one transistor and ngspice solves another. Measured:
+      // 700 ADI2005 v2 decks declare VAF on a BJT, 82 of them disagreed with
+      // ngspice without the term and none with it, and on the "BJT Emitter
+      // Follower" family it is worth 15.7 mV of base voltage -- 30x the
+      // comparator's tolerance.
+      //
+      // No card in the parts library declares VAF today, so `cardVaf` is NaN
+      // and the deck gains a `Vaf=` field only where a part authored one. That
+      // keeps this identity for every shipped circuit while making the deck and
+      // the solver agree the moment one does.
+      const authoredVaf = Number(part.params?.vaf);
+      const cardVaf = Number(/Vaf\s*=\s*([\d.eE+-]+)/i.exec(base?.body ?? '')?.[1]);
+      const betaDiffers = Number.isFinite(authoredBeta) && Number.isFinite(cardBeta)
+        && authoredBeta !== cardBeta && base && /Bf\s*=/i.test(base.body);
+      const vafDiffers = Number.isFinite(authoredVaf) && authoredVaf > 0
+        && authoredVaf !== cardVaf && base;
+      if (betaDiffers || vafDiffers) {
+        const perPart = `Q_${part.refdes}`;
+        const why = [];
+        let body = base.body;
+        if (betaDiffers) {
+          body = body.replace(/Bf\s*=\s*[\d.eE+-]+/i, `Bf=${authoredBeta}`);
+          why.push(`authored beta ${authoredBeta}, not card ${model}'s ${cardBeta}`);
+        }
+        if (vafDiffers) {
+          body = /Vaf\s*=/i.test(body)
+            ? body.replace(/Vaf\s*=\s*[\d.eE+-]+/i, `Vaf=${authoredVaf}`)
+            : `${body} Vaf=${authoredVaf}`;
+          why.push(`authored Early voltage ${authoredVaf}`
+            + `${Number.isFinite(cardVaf) ? `, not card ${model}'s ${cardVaf}` : ', which the card does not state'}`);
+        }
+        modelCards.push(`.model ${perPart} ${base.type} (${body})  $ ${why.join('; ')}`);
+        usedModels.add(perPart);
+        lines.push(`${el} ${nodeFields} ${perPart}`);
+      } else {
+        usedModels.add(model);
+        lines.push(`${el} ${nodeFields} ${model}`);
+      }
+        } else if (card === 'M') {
       // A SPICE M CARD TAKES FOUR NODES: drain gate source BULK. With three,
       // ngspice refuses the deck outright — "not enough nodes" — which is how
       // both `pc39-nmos-switch` circuits failed. A discrete MOSFET has its bulk
@@ -776,7 +981,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
   }
   lines.push('.end');
 
-  return { text: lines.join('\n') + '\n', skipped, warnings };
+  return { text: lines.join('\n') + '\n', skipped, warnings, approximated, redundantSources };
 }
 
 /**
@@ -895,6 +1100,11 @@ function getSpicePins(kind) {
       // SPICE positive I-card current flows first node -> second node, while
       // bw-board positive isource current flows neg -> pos.
       return ['neg', 'pos'];
+    case 'opamp':
+      // The E card's own order: output pair first, then the controlling pair.
+      // The engine's op-amp has a single-ended output referenced to ground, so
+      // the second output node is the reference and is written as `0`.
+      return ['out', 'inp', 'inn'];
     case 'vcvs':
       return ['outp', 'outn', 'inp', 'inn'];
     case 'vccs':
