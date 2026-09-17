@@ -895,8 +895,98 @@ export function importSpice(text, opts = {}) {
         continue;
       }
     }
-    const rest = fields.slice(1 + nodeFields.length);
+    let rest = fields.slice(1 + nodeFields.length);
     const partId = item.prefix + name;
+
+    // A BJT CARD MAY CARRY A SUBSTRATE NODE, AND WE WERE READING IT AS THE MODEL.
+    //
+    // ngspice's BJT is `Q<name> nc nb ne [ns] mname`, and LTspice writes the
+    // optional substrate in brackets. Slicing a fixed three nodes therefore took
+    // the SUBSTRATE as the model name and the real model name became a trailing
+    // field nobody looked at:
+    //
+    //     Q1 N002 N003 N005 0 2N2222       ->  model "0"
+    //     Q1 3 5 4 [4] NP                  ->  model "[4]"
+    //
+    // Neither name is declared, so the part fell through to engine defaults --
+    // a piecewise knee with no IS, no BF and no VAF where the deck stated all
+    // three. SILENTLY: only a warning, no loss, so the deck was still judged.
+    // Measured on the Si7li no-aug corpus: 5,285 npn/pnp parts across 2,028
+    // decks read a node as their model this way, and it is the whole of 5 of
+    // that corpus's 17 remaining numeric disagreements (the 4N25/4N27/PC817
+    // optocouplers, whose phototransistor is written with the bracket form).
+    //
+    // THE DISCRIMINATOR IS THE MODEL TABLE, NOT THE TOKEN COUNT. A count cannot
+    // tell `Q1 c b e MOD area=2` from `Q1 c b e s MOD`, because both have five
+    // fields after the refdes. So: if what we took as the model is not declared
+    // and the NEXT field is, the field we took was a node. That is the same
+    // lookahead ngspice itself does, and it cannot fire when the three-node
+    // reading already resolves.
+    if (letter === 'Q' && rest.length >= 2) {
+      // No bracket-stripping here, deliberately: a mutation removing it changed
+      // nothing, which means it was either untested or dead. It is dead -- a
+      // bracketed token can never name a declared model, since `.model [4] ...`
+      // is not SPICE -- and it is worse than dead in one corner: with a model
+      // legally named `e` and a substrate written `[e]`, stripping would make
+      // this return TRUE and the substrate would be read as the model again.
+      // The substrate's own brackets are removed below, where they matter.
+      const asModel = (f) => {
+        const n = String(f || '').toLowerCase();
+        return models.has(item.prefix + n) || models.has(n);
+      };
+      // TWO DISCRIMINATORS, IN THIS ORDER, AND THE SECOND ONE IS WHY THE FIRST
+      // IS NOT ENOUGH.
+      //
+      // The model table settles the ambiguous cases (`Q1 c b e MOD 2` against
+      // `Q1 c b e s MOD`) but it can only fire when the real model is DECLARED.
+      // A deck naming a model no library supplied has neither token resolving,
+      // so the table says nothing and we kept reading the substrate as the
+      // model: 3,690 parts in the Si7li no-aug corpus still reported their
+      // model as "0" after the table rule alone.
+      //
+      // The fallback is syntactic and is the rule the LIBRARY RESOLVER already
+      // uses -- a bracketed token, or a bare integer, cannot be a model name --
+      // so the two sites now agree about the same card. It matters even when
+      // the model is unavailable: the part is defaulted either way, but the
+      // WARNING then names `2N2222` as the missing model instead of `0`, and a
+      // reason that names the wrong cause sends the next reader to the wrong
+      // fix. Note `1N4148` is not a bare integer, so a model name that merely
+      // starts with a digit is untouched.
+      const looksLikeNode = (f) => /^\[.*\]$|^\d+$/.test(String(f || ''));
+      if ((!asModel(rest[0]) && asModel(rest[1]))
+          || (!asModel(rest[0]) && looksLikeNode(rest[0]))) {
+        const substrate = rest[0].replace(/^\[|\]$/g, '');
+        rest = rest.slice(1);
+        // THE DROPPED SUBSTRATE IS A LOSS ONLY WHERE DROPPING IT CHANGES THE
+        // DEVICE, and I nearly shipped it as a blanket one.
+        //
+        // bw-board's BJT has three terminals, so a fourth node's
+        // collector-substrate junction is not solved. But the overwhelmingly
+        // common wiring -- every optocoupler in the LTspice library, e.g. the
+        // 4N25's `Q1 3 5 4 [4] NP` -- ties the substrate TO THE EMITTER, and
+        // there dropping it is a topological no-op: there is no separate node to
+        // lose. Reporting a loss anyway makes the oracle DECLINE those decks,
+        // and measured on Si7li no-aug the blanket version turned 6 visible
+        // numeric disagreements into declines while fixing none of them:
+        //
+        //     parse fix only                638 agree / 18 disagree
+        //     parse fix + blanket loss      638 agree / 12 disagree
+        //
+        // Six disagreements hidden, zero agreements gained. A refusal that
+        // improves the headline by making a defect invisible is worse than the
+        // defect, so the condition is the one the physics asks for: the node is
+        // only lost when it is a node we did not already have.
+        if (substrate.toLowerCase() !== String(nodeFields[2] || '').toLowerCase()) {
+          losses.push({ ref: partId, kind: 'dropped-bjt-substrate-node',
+            source: item.line,
+            reason: `the BJT names a fourth (substrate) node "${substrate}" distinct from `
+              + `its emitter "${nodeFields[2]}", and this engine's three-terminal BJT has `
+              + 'nowhere to connect it, so the collector-substrate junction is not '
+              + 'solved. (A substrate tied to the emitter is not reported: there is no '
+              + 'node to lose.)' });
+        }
+      }
+    }
 
     // Kind and params, refined by the .model card where there is one.
     let kind = spec.kind();
