@@ -45,16 +45,33 @@ export function parseStrictSpiceSine(raw, { allowSinAlias = true } = {}) {
   const values = fields.map(parseSpiceValue);
   if (fields.length < 3 || fields.length > 6 || !values.every(Number.isFinite)
       || values[2] <= 0 || (values[3] ?? 0) < 0 || (values[4] ?? 0) < 0) {
+    // THE FALLBACK IS STILL THE t = 0 VALUE, not the offset.
+    //
+    // This branch is reached by cards this parser will not model as a waveform
+    // -- a NEGATIVE delay is the corpus case (`SINE(0 0.5 25MEG -10n)`, legal,
+    // and it means the source started before t = 0). Refusing to model the
+    // waveform is a separate question from what the source is worth at a bias
+    // point, and answering the second with the offset made the deck differ from
+    // ngspice by the full amplitude: 0 against 0.5.
+    const fallbackAtZero = values.every(Number.isFinite) && values.length >= 3 && values[2] > 0
+      ? sineValueAtZero({ offset: values[0], amplitude: values[1], freq: values[2],
+        td: values[3] ?? 0, theta: values[4] ?? 0, phase: values[5] ?? 0 })
+      : NaN;
     return {
       ok: false,
       reason: 'sine source requires three to six finite scalars, positive frequency, and non-negative delay/damping',
-      fallback: Number.isFinite(values[0]) ? values[0] : 0,
+      fallback: Number.isFinite(fallbackAtZero) ? fallbackAtZero
+        : (Number.isFinite(values[0]) ? values[0] : 0),
     };
   }
   const [offset, amplitude, freq, td = 0, theta = 0, phase = 0] = values;
   return {
     ok: true,
-    params: { volts: offset, wave: 'spice-sine', offset, amplitude, freq, td, theta, phase },
+    // `volts` is the BIAS value, which is the waveform at t = 0 and not the
+    // offset -- see sineValueAtZero. A card with phase 0 and no negative delay
+    // is unchanged, which is the overwhelming majority and is asserted.
+    params: { volts: sineValueAtZero({ offset, amplitude, freq, td, theta, phase }),
+      wave: 'spice-sine', offset, amplitude, freq, td, theta, phase },
   };
 }
 
@@ -136,6 +153,44 @@ export function parseStrictSpicePulse(raw) {
   const params = { volts: values[0], wave: 'spice-pulse' };
   PULSE_KEYS.forEach((key, index) => { params[key] = values[index]; });
   return { ok: true, params };
+}
+
+/**
+ * A SINE card's value AT t = 0, which is what a `.op` solves with.
+ *
+ * ngspice's own piecewise definition of `SIN(VO VA FREQ TD THETA PHASE)`:
+ *
+ *     0 <= t < TD    VO + VA*sin(2*pi*PHASE/360)
+ *     t >= TD        VO + VA*exp(-(t-TD)*THETA)
+ *                       * sin(2*pi*(FREQ*(t-TD) + PHASE/360))
+ *
+ * We were importing the OFFSET alone, which is only right when the phase is
+ * zero and the delay is not negative. Two corpus decks proved it independently:
+ *
+ *     SINE(0 63.6396 50 0 0 -120)     ngspice -55.1135    we said 0
+ *     SINE(0 0.5 25MEG -10n)          ngspice   0.5       we said 0
+ *
+ * The first is one leg of a three-phase supply, where two of the three legs sit
+ * at +/-55 V at t = 0 and only the 0-degree leg is at the offset. The second has
+ * a NEGATIVE delay -- legal, and it means the waveform started before t = 0, so
+ * the `t >= TD` branch applies at t = 0 and the quarter-cycle of lead puts it at
+ * full amplitude.
+ *
+ * Population, measured: of 1,597 Si7li no-aug decks carrying a SINE, 65 have a
+ * t = 0 value that is not the offset (421 of 11,072 in the raw corpus, 4 of
+ * 1,401 in ADI v2). So this is identity for the overwhelming majority and the
+ * assertion that it stays identity for phase 0 is in the tests.
+ */
+export function sineValueAtZero({ offset = 0, amplitude = 0, freq = 0, td = 0, theta = 0, phase = 0 } = {}) {
+  const turns = phase / 360;
+  // A POSITIVE delay means the source has not started: it holds the phase term
+  // only, with no frequency contribution. Folding the two branches into one
+  // expression would need `t - TD` clamped at zero, which reads as an
+  // optimisation and hides which of ngspice's two cases applies.
+  if (td > 0) return offset + amplitude * Math.sin(2 * Math.PI * turns);
+  const elapsed = -td;                       // t = 0, so (t - TD) is -TD
+  return offset + amplitude * Math.exp(-elapsed * theta)
+    * Math.sin(2 * Math.PI * (freq * elapsed + turns));
 }
 
 /** Validate an engine-side PULSE before lossless SPICE export. */

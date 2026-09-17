@@ -356,6 +356,49 @@ export function clampedIsRefsOf(deckText) {
   return refs;
 }
 
+/**
+ * Element cards whose VALUE carries a bare `A` suffix, which the two engines
+ * read 10^18 apart.
+ *
+ * ngspice 42 treats `a` as the SI prefix ATTO, so `I1 0 vc 2.6A` is 2.6e-18 A
+ * to it and 2.6 A to us -- we read a trailing letter as a unit, which is what
+ * `4.7kOhm` and `100nF` depend on. Measured against ngspice across every
+ * suffix a deck plausibly writes (V R F H Ohm T G K M MEG MIL U N P m E, upper
+ * and lower case), `A`/`a` is the ONLY one where the two disagree, including
+ * the F=femto and M=milli traps. So the scope here is exactly one letter.
+ *
+ * WHICH READING IS RIGHT IS NOT THE POINT. A deck author writing `2.6A` for a
+ * current source plainly means amperes, and ngspice plainly means atto; the
+ * comparison is meaningless either way, so it is declined BY NAME rather than
+ * reported as a numeric disagreement. Same treatment as `oracle-clamped-is`.
+ *
+ * ONLY VALUE POSITIONS ARE INSPECTED, because `3a` is a perfectly good NODE
+ * name and the corpus contains one (`XU4 N001 0 +V -V 3a level3a ...`). A
+ * looser scan would decline decks over a node's name.
+ *
+ * Population: 9 of 7,866 Si7li no-aug decks, 69 of 53,000 in the raw corpus,
+ * 1 of 7,410 in ADI v2.
+ */
+export function attoSuffixedRefsOf(deckText) {
+  const refs = new Set();
+  const ATTO_VALUE = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?[Aa]$/;
+  const NODES_BEFORE_VALUE = { R: 2, C: 2, L: 2, V: 2, I: 2 };
+  for (const raw of String(deckText).split(/\r?\n/)) {
+    const line = raw.replace(/;.*$/, '').trim();
+    if (!line || line.startsWith('*') || line.startsWith('.')) continue;
+    const fields = line.split(/\s+/);
+    const nodes = NODES_BEFORE_VALUE[fields[0][0].toUpperCase()];
+    if (nodes === undefined) continue;
+    // Everything after the nodes is a candidate: `V1 a b DC 5A` and
+    // `I1 a b 5A` both put the number in a position this reaches, and a
+    // keyword such as DC or AC cannot match the pattern.
+    for (const field of fields.slice(1 + nodes)) {
+      if (ATTO_VALUE.test(field)) { refs.add(fields[0]); break; }
+    }
+  }
+  return refs;
+}
+
 export function isolatedUnreferencedComponents(netlist) {
   const nets = (netlist?.nets || []).filter(n => n.id);
   if (!nets.length) return [];
@@ -1291,6 +1334,29 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
   const evidence = usedLib ? 'library-resolved'
     : edits.length ? 'original-adapted' : 'original-direct';
   const thermal = declaresTemp ? 'deck-declared' : 'native-fixed-vs-oracle-default';
+
+  // A VALUE THE TWO ENGINES READ 10^18 APART IS NOT A COMPARISON.
+  //
+  // Declined before ngspice runs, and named, because the difference is in the
+  // DECK's own text rather than in either solve: ngspice 42 reads a bare `A`
+  // suffix as the SI prefix ATTO and we read it as the ampere unit. Two Si7li
+  // decks were being reported as numeric disagreements on this alone -- 63.6 V
+  // and 2.6 V -- and neither is a disagreement about a circuit.
+  //
+  // See `attoSuffixedRefsOf` for the suffix sweep against ngspice that found
+  // this to be the ONLY letter where the two parsers differ.
+  const attoRefs = attoSuffixedRefsOf(deckText);
+  if (attoRefs.size) {
+    const refs = [...attoRefs].join(', ');
+    return { name, ok: false, compared: 0, evidence, thermal,
+      lines: [`  ORACLE PARSE: ${refs} carr${attoRefs.size > 1 ? 'y' : 'ies'} a bare`,
+        '  `A`-suffixed value. ngspice 42 reads `A` as the SI prefix ATTO (1e-18);',
+        '  we read it as the ampere unit, the same way `4.7kOhm` and `100nF` are',
+        '  read. The two sides would be solving values 1e18 apart, so this is not',
+        '  a question about the circuit and is not compared.'],
+      reason: `oracle-atto-suffix: ${[...attoRefs].join(',')}` };
+  }
+
   const run = runNgspice(text, dir, name.replace(/[^A-Za-z0-9_.-]/g, '_'));
   if (run.error) {
     return { name, ok: false, lines: [`  ngspice refused the deck: ${run.error}`], compared: 0,
