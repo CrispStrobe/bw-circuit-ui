@@ -868,7 +868,27 @@ export function importSpice(text, opts = {}) {
   };
 
   for (const item of expanded) {
-    const fields = item.line.split(/\s+/);
+    // A CONTROLLED SOURCE MAY WRITE ITS CONTROLLING PAIR IN PARENTHESES.
+    //
+    // `GP1 98 12 (9,98) 1` is standard SPICE for "controlled by V(9,98)", and
+    // splitting on whitespace made `(9,98)` ONE field. The element then had two
+    // output nodes, one junk control field and a gain that never parsed: the
+    // part was created with EMPTY params -- a controlled source with no gain,
+    // still in the circuit.
+    //
+    // LTspice's OP213 macromodel builds its entire gain path that way, so its
+    // amplifier had no gain at all and the output ran to the negative rail:
+    // three corpus decks read V(OUT) = -14.93 V against ngspice's -0.002 V,
+    // and an internal node at 52.5 V on a +/-15 V supply.
+    //
+    // Only a PAIR of bare node names in parentheses is rewritten, and only on
+    // the four controlled-source letters. `E ... TABLE(...)` and a `B` source's
+    // expression also carry parentheses and must be left exactly alone, which
+    // the pattern's lack of operators and its single comma enforce.
+    const elementLine = /^[EFGH]/i.test(item.line)
+      ? item.line.replace(/\(\s*([^\s,()]+)\s*,\s*([^\s,()]+)\s*\)/g, '$1 $2')
+      : item.line;
+    const fields = elementLine.split(/\s+/);
     const name = fields[0];
     const letter = name[0].toUpperCase();
 
@@ -1067,7 +1087,15 @@ export function importSpice(text, opts = {}) {
           }
         } else Object.assign(params, mapModel(letter, model, warnings, partId));
         if (letter === 'Q') kind = model.type === 'PNP' ? 'pnp' : 'npn';
-        if (letter === 'M') kind = model.type === 'PMOS' ? 'pmos' : 'nmos';
+        if (letter === 'M') {
+          // A VDMOS states its channel with a BARE `pchan` FLAG, not a type.
+          // `model.type` is VDMOS for both polarities, so keying off the type
+          // alone made every p-channel power MOSFET an n-channel one -- and
+          // silently, since a flag that is not a key=value pair leaves no
+          // parameter behind to notice missing.
+          const pchan = model.type === 'VDMOS' && /(^|\s)pchan(\s|\))/i.test(model.body || '');
+          kind = (model.type === 'PMOS' || pchan) ? 'pmos' : 'nmos';
+        }
         if (letter === 'J') kind = model.type === 'PJF' ? 'pmos' : 'nmos';
         // A BLOCKED MODEL MUST NOT BECOME A ZENER. This line ran for every D
         // card with a BV, admitted or not, so a model refused for a DUPLICATE
@@ -1387,6 +1415,49 @@ function mapModel(letter, model, warnings, partId) {
     // the element line below rather than here.
     if (isFinite(p.vto)) out.vth = p.vto;
     if (isFinite(p.kp)) out.kp = p.kp;
+    // KP IS DERIVED FROM UO AND TOX WHEN THE CARD DOES NOT STATE IT.
+    //
+    // SPICE's transconductance parameter is `KP = UO * eps_ox / TOX`, and a
+    // card that gives the process numbers instead of KP is normal -- LTspice's
+    // own OP213 macromodel does it:
+    //
+    //     .MODEL MN NMOS(LEVEL=3 VTO=1.3 RS=0.3 RD=0.3 TOX=8.5E-8
+    //     + LD=1.48E-6 NSUB=1.53E16 UO=650 DELTA=10 ...)
+    //
+    // Without this the device reached the engine with NO kp and ran at the
+    // fallback transconductance, which is how three corpus decks put an op-amp
+    // output at the negative rail where ngspice keeps it near zero.
+    //
+    // CHECKED AGAINST ngspice, not against the algebra: `UO=650 TOX=8.5E-8`
+    // with no KP draws 5.28128e-4 A on a bench where the explicitly derived
+    // `KP=2.6417E-5` draws 5.28340e-4 A -- four figures, the residual being the
+    // rounding of the constant I typed into the comparison deck.
+    //
+    // UO is spelled with a LETTER O (SPICE's surface mobility) and is in
+    // cm^2/V*s, hence the 1e-4; `u0` with a zero is accepted too because decks
+    // write both. Measured: 1,519 Si7li no-aug decks have a MOS device running
+    // on the fallback, none of them agreeing, so nothing is at risk here.
+    else {
+      const uo = isFinite(p.uo) ? p.uo : (isFinite(p.u0) ? p.u0 : NaN);
+      const OXIDE_PERMITTIVITY = 3.9 * 8.854187817e-12;     // F/m, SiO2
+      if (isFinite(uo) && uo > 0 && isFinite(p.tox) && p.tox > 0) {
+        out.kp = Number(((uo * 1e-4) * OXIDE_PERMITTIVITY / p.tox).toPrecision(12));
+      }
+    }
+    // SUBTHRESHOLD CONDUCTION, from a VDMOS card's Ksubthres.
+    //
+    // LTspice's power MOSFETs are VDMOS models and ngspice gives those real
+    // subthreshold conduction; a level-1 card has none, and ngspice's level-1
+    // agrees -- measured, it sits flat at 5e-12 right up to threshold. So this
+    // is carried only where the card declares it, and bw-board's stamp treats
+    // its absence as the existing hard cutoff.
+    //
+    // Measured on the Si7li no-aug corpus: 1,245 decks resolve a library
+    // containing a VDMOS, 84 of them reach a comparison, and 80 of those 84
+    // ALREADY agreed without this -- because above threshold the two models are
+    // identical to five significant figures. The 4 that did not are biased near
+    // or below threshold, which is where an op-amp input stage lives.
+    if (isFinite(p.ksubthres)) out.ksubthres = p.ksubthres;
     // BODY EFFECT. GAMMA defaults to 0 in SPICE, so a model that omits it gets
     // no shift and this is identity. `bulkAtGround` is set at the ELEMENT below,
     // because whether the body effect applies depends on where the deck tied

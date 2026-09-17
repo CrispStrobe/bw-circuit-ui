@@ -109,6 +109,49 @@ describe('the resolved bw-board answers what this tree asks of it', () => {
     }
   });
 
+  it('has a MOS stamp that honours the Ksubthres this importer now carries', async () => {
+    // The importer reads `Ksubthres` off a VDMOS card and puts it on the part.
+    // A pinned engine without the soft-plus branch ignores it SILENTLY -- the
+    // device cuts off hard where ngspice conducts, and the deck then disagrees
+    // for a reason nothing in this tree would name.
+    //
+    // Checked through the public board API rather than by reaching for the
+    // internal smoothing helper: exporting a numeric internal so a consumer's
+    // gate can poke it would make this test the reason that function is public,
+    // and the question here is what the ENGINE DOES, not what it exposes.
+    const { BoardImpl } = await import('bw-board/board.js');
+    const { registerAllDevices } = await import('bw-board/register-all.js');
+    registerAllDevices();
+    const drain = (ksubthres) => {
+      const b = new BoardImpl(5);
+      b.setNetlist([
+        { id: 'GND1', kind: 'gnd', params: {}, terminals: ['gnd'] },
+        { id: 'VD', kind: 'vsource', params: { volts: 2 }, terminals: ['pos', 'neg'] },
+        { id: 'VG', kind: 'vsource', params: { volts: 0.75 }, terminals: ['pos', 'neg'] },
+        { id: 'RD', kind: 'resistor', params: { ohms: 1 }, terminals: ['a', 'b'] },
+        { id: 'M1', kind: 'nmos', params: { vth: 1, kp: 0.12, w: 1, l: 1, ...(ksubthres ? { ksubthres } : {}) },
+          terminals: ['drain', 'gate', 'source'] },
+      ], [
+        { id: 'n_dd', terminals: [{ part: 'VD', terminal: 'pos' }, { part: 'RD', terminal: 'a' }] },
+        { id: 'n_d', terminals: [{ part: 'RD', terminal: 'b' }, { part: 'M1', terminal: 'drain' }] },
+        { id: 'n_g', terminals: [{ part: 'VG', terminal: 'pos' }, { part: 'M1', terminal: 'gate' }] },
+        { id: 'n_0', terminals: [
+          { part: 'GND1', terminal: 'gnd' }, { part: 'M1', terminal: 'source' },
+          { part: 'VD', terminal: 'neg' }, { part: 'VG', terminal: 'neg' },
+        ] },
+      ]);
+      return Math.abs(b.branchCurrent('RD', 'a'));
+    };
+    // A quarter volt below threshold: cut off without the parameter, and
+    // ngspice's own VDMOS draws 3.7342e-6 A there with Ksubthres = 0.1.
+    assert.ok(drain(0) < 1e-9, `without Ksubthres this must be cut off: ${drain(0)}`);
+    const withSub = drain(0.1);
+    assert.ok(Math.abs(withSub - 3.7342e-6) < 3.7342e-6 * 2e-3,
+      `with Ksubthres=0.1 the pinned engine must read ngspice's 3.7342e-6 A, read `
+      + `${withSub.toExponential(4)}. If this is cut off, the bw-board pin in `
+      + 'package.json predates the subthreshold branch -- bump it.');
+  });
+
   it('has an Ebers-Moll stamp that honours the VAF this tree now exports', async () => {
     // The exporter writes `Vaf=` into a per-part model card. If the pinned
     // engine has no Early term, the deck states a parameter the solver ignores
