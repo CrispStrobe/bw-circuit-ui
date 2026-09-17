@@ -102,9 +102,25 @@ export function undeclaredReferences(deckText) {
     const el = /^([DQJM])\S*\s+(.*)$/i.exec(line);
     if (el) {
       const toks = el[2].split(/\s+/).filter((t) => t && !t.includes('='));
-      const at = MODEL_NAME_POSITION[el[1].toUpperCase()];
+      const letter = el[1].toUpperCase();
+      const at = MODEL_NAME_POSITION[letter];
       if (toks.length > at) {
-        const ref = toks[at].toLowerCase();
+        let ref = toks[at].toLowerCase();
+        // A BJT MAY CARRY AN OPTIONAL SUBSTRATE NODE between its emitter and
+        // its model name -- `Q<name> nc nb ne [ns] mname`, with LTspice writing
+        // the substrate in brackets. A fixed position then asks the library for
+        // a NODE: the 4N25's `Q1 3 5 4 [4] NP` requested "[4]" and the deck's
+        // own `Q1 N002 N003 N005 0 2N2222` requested "0". Both are misses that
+        // look like a missing vendor model, which is how this hid.
+        //
+        // The next token is taken only when THIS one cannot be a model name --
+        // a bracketed token, or a bare integer, is a node. A name that could be
+        // either keeps the three-node reading, so a real model called `0` (there
+        // is none, but the rule should not depend on that) is unaffected.
+        if (letter === 'Q' && toks.length > at + 1 && /^\[.*\]$|^\d+$/.test(ref)) {
+          ref = toks[at + 1].toLowerCase();
+        }
+        ref = ref.replace(/^\[|\]$/g, '');
         if (!declared.has(ref)) refs.add(ref);
       }
     }
