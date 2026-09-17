@@ -44,7 +44,7 @@ import {
 import { evaluateConstantExpression, resolveConstantParameters } from '../model/spice-constant.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 import { classifyShockleyThermal, validateExplicitShockley, validateDiodeForDc,
-  diodeBreakdown } from '../model/spice-diode.js';
+  diodeBreakdown, diodeBreakdownCurrent } from '../model/spice-diode.js';
 import { parseSpiceModelDeclaration } from '../model/spice-model.js';
 
 /**
@@ -1050,7 +1050,16 @@ export function importSpice(text, opts = {}) {
             // become a zener on the way out, which is the invariant
             // `test/spice-diode-op.test.js` holds.
             const bv = diodeBreakdown(model.params);
-            if (bv !== null) { kind = 'zener'; params.vz = bv; }
+            if (bv !== null) {
+              kind = 'zener';
+              params.vz = bv;
+              // AND THE CURRENT THAT VOLTAGE IS SPECIFIED AT. BV alone is a
+              // corner; BV with IBV is a point on an exponential, which is what
+              // ngspice solves and what bw-board's zener now stamps when the
+              // card states both. Absent, the engine keeps its piecewise knee.
+              const ibv = diodeBreakdownCurrent(model.params);
+              if (ibv !== null) params.ibv = ibv;
+            }
             // THE RAW MODEL IS KEPT EVEN ON SUCCESS. A DC solve is entitled to
             // ignore CJO/TT/VJ/M; an AC or transient consumer is not, and
             // without the text it could not tell that this part was admitted on
