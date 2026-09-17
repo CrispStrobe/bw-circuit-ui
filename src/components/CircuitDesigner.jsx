@@ -104,6 +104,19 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     circuit,
   } = useCircuit(5.0);
 
+  // Brickwright: publish a live-drive handle while the designer is mounted, so
+  // another surface (lite's FPGA tab) can push a synthesised design's pin values
+  // onto the placed board. drive.js / applyPortValues consume
+  // {setPin(pin, mode, driveHigh)}; advanceBy lets a caller step a clocked design
+  // over time. The consumer checks for the handle and no-ops when it is absent,
+  // so a build without this simply cannot drive the board — fail-closed by
+  // presence, the same shape pico-sim-run's window.__bwPicoSim uses.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    window.__bwCircuit = { setPin, advanceBy, advanceTo };
+    return () => { try { delete window.__bwCircuit; } catch { /* noop */ } };
+  }, [setPin, advanceBy, advanceTo]);
+
   // The active board: external (from host/emulator) or internal (from circuit model)
   const activeBoard = externalBoard || circuit.board;
 
