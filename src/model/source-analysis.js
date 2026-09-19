@@ -90,6 +90,13 @@ function canonicalCircuit(imported, circuit) {
     const spec = CARD[part.kind];
     if (!spec) throw new Error(`canonical topology has no source-card mapping for native kind ${part.kind}`);
     const nodes = spec.terminals.map(terminal => {
+      // Native MOS parts are deliberately three-terminal.  The SPICE reader
+      // may still prove that the authored fourth terminal was ground and
+      // retain that fact as `bulkAtGround`; in that exact case the canonical
+      // source card must carry the proven fourth node rather than demand a
+      // physical terminal the native part does not have.  No other bulk
+      // potential is inferred here.
+      if (terminal === 'body' && part.params?.bulkAtGround === true) return 'gnd';
       const id = canonicalByTerminal.get(terminalKey(part.id, terminal));
       if (!id) throw new Error(`canonical topology is missing ${part.id}.${terminal}`);
       return id;

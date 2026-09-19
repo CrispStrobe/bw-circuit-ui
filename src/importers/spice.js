@@ -1120,12 +1120,18 @@ export function importSpice(text, opts = {}) {
       // them. Only the two the solver reads are taken; anything else on the
       // line (AD, AS, PD, PS, M, NRD...) is geometry for a model we do not
       // have, and is recorded as a loss below rather than silently ignored.
+      const instanceFields = rest.slice(1);
       const instance = {};
-      for (const field of rest.slice(1)) {
+      let exactInstanceSyntax = true;
+      const seenInstanceFields = new Set();
+      for (const field of instanceFields) {
         const kv = /^([A-Za-z_]+)\s*=\s*(\S+)$/.exec(field);
-        if (!kv) continue;
+        if (!kv) { exactInstanceSyntax = false; continue; }
+        const key = kv[1].toLowerCase();
         const value = parseSpiceValue(kv[2]);
-        if (isFinite(value)) instance[kv[1].toLowerCase()] = value;
+        if (!isFinite(value) || seenInstanceFields.has(key)) exactInstanceSyntax = false;
+        else instance[key] = value;
+        seenInstanceFields.add(key);
       }
       if (letter === 'M') {
         if (instance.w !== undefined) params.w = instance.w;
@@ -1160,8 +1166,9 @@ export function importSpice(text, opts = {}) {
         // non-zero GAMMA and have a source off the bulk.
         const bulkField = nodeFields[3];
         const srcField = nodeFields[2];
+        let bulkIsGround = false;
         if (bulkField !== undefined && srcField !== undefined) {
-          const bulkIsGround = GROUND_NODES.has(String(bulkField).toLowerCase());
+          bulkIsGround = GROUND_NODES.has(String(bulkField).toLowerCase());
           const sameNode = String(bulkField).toLowerCase() === String(srcField).toLowerCase();
           if (bulkIsGround) params.bulkAtGround = true;
           else if (sameNode) {
@@ -1202,6 +1209,28 @@ export function importSpice(text, opts = {}) {
           warnings.push(`${partId}: instance parameter(s) ${unsupported.join(', ')} are not `
             + 'read by the engine\'s square-law MOSFET.');
         }
+        // PUBLIC DC ADMISSION IS AN EXACT SUBSET, NOT "EVERY MOS CARD WE CAN
+        // PARTLY READ".  The general importer deliberately retains useful
+        // fields from richer LEVEL/VDMOS cards, but Board.operatingPoint must
+        // only see its `level1` selector when the complete represented law is
+        // stated and no unrepresented token has been discarded.
+        const modelKeys = Object.keys(model.params).sort();
+        const exactModelKeys = ['kp', 'lambda', 'level', 'vto'];
+        const body = String(model.body || '').trim().replace(/^\(\s*|\s*\)$/g, '');
+        const bodyFields = body ? body.split(/[\s,]+/).filter(Boolean) : [];
+        const bodyKeys = bodyFields.map(field => /^([A-Za-z_][A-Za-z0-9_]*)=(\S+)$/.exec(field))
+          .map(match => match?.[1]?.toLowerCase()).sort();
+        const exactLevel1Model = !model.ambiguous && model.type === 'NMOS'
+          && JSON.stringify(modelKeys) === JSON.stringify(exactModelKeys)
+          && JSON.stringify(bodyKeys) === JSON.stringify(exactModelKeys)
+          && model.params.level === 1 && Number.isFinite(model.params.vto)
+          && Number.isFinite(model.params.kp) && model.params.kp > 0
+          && Number.isFinite(model.params.lambda) && model.params.lambda >= 0;
+        const exactGeometry = exactInstanceSyntax && instanceFields.length === 2
+          && seenInstanceFields.size === 2 && seenInstanceFields.has('w') && seenInstanceFields.has('l')
+          && Number.isFinite(instance.w) && instance.w > 0
+          && Number.isFinite(instance.l) && instance.l > 0;
+        if (exactLevel1Model && exactGeometry && bulkIsGround) params.model = 'level1';
       }
     } else if (spec.source) {
       const { value, note, externalWaveform, waveformParams, waveformLoss, scalarLoss, acParams } =
