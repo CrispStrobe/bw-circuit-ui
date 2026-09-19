@@ -90,6 +90,32 @@ function engineKindFor(kind) {
   return 'mcu';
 }
 
+/**
+ * Keep importer provenance on the persisted/UI part without presenting it to
+ * bw-board as electrical device parameters.
+ *
+ * The SPICE diode reader has already classified `_spiceNonDcFields` before it
+ * creates these annotations.  They are needed by later source-aware consumers,
+ * but bw-board's intentionally strict operating-point gate rejects every key
+ * outside the admitted DC model.  Passing the annotations through therefore
+ * turns a successful, analysis-scoped import into a false solver refusal.
+ *
+ * This is deliberately not a prefix filter: blockers, unknown fields and all
+ * other parameters still cross the boundary and remain loud.  Only a
+ * successfully admitted Shockley diode/zener carrying both importer-owned
+ * provenance annotations gets a copied engine parameter object with those two
+ * annotations removed.
+ */
+function engineParamsFor(part) {
+  const params = part?.params;
+  if (!params || !['diode', 'zener'].includes(part.kind)
+      || params.model !== 'shockley' || params._spiceBlocked
+      || typeof params._spiceModel !== 'string'
+      || typeof params._spiceNonDcFields !== 'string') return params;
+  const { _spiceModel, _spiceNonDcFields, ...electrical } = params;
+  return electrical;
+}
+
 /** Reset the ID counter (for tests). */
 export function resetIds() { _nextId = 1; }
 
@@ -884,7 +910,7 @@ export class Circuit {
     const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
       kind: engineKindFor(p.kind),
-      params: p.params,
+      params: engineParamsFor(p),
       terminals: p.terminals,
     }));
 
@@ -1061,7 +1087,7 @@ export class Circuit {
     const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
       kind: engineKindFor(p.kind),
-      params: p.params,
+      params: engineParamsFor(p),
       terminals: p.terminals,
     }));
 
