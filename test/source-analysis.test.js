@@ -474,6 +474,28 @@ R1 supply output 1k
     assert.match(run.detail, /Q1:npn/);
   });
 
+  it('runs AC only for importer-qualified exact Level-1 NMOS models', () => {
+    const exact = `exact Level-1 NMOS AC
+VDD vdd 0 10
+VIN gate 0 DC 2 AC 1
+RD vdd drain 1k
+M1 drain gate 0 0 NM W=100u L=1u
+.model NM NMOS(LEVEL=1 VTO=1 KP=50u LAMBDA=.01)
+.ac lin 3 1k 3k
+.end`;
+    const pass = runSourceAnalyses(imported(exact), { format: 'spice' })[0];
+    assert.equal(pass.status, 'pass', JSON.stringify(pass));
+    assert.deepEqual(pass.observables.axis.values, [1000, 2000, 3000]);
+    assert.ok(pass.observables.nodes.some(node =>
+      node.magnitude.some(value => Number.isFinite(value) && value > 0)));
+
+    const richer = exact.replace('LAMBDA=.01)', 'LAMBDA=.01 GAMMA=.5 PHI=.6)');
+    const refused = runSourceAnalyses(imported(richer), { format: 'spice' })[0];
+    assert.deepEqual([refused.status, refused.classification, refused.code],
+      ['not-run', 'integration-gap', 'ac-linearization-model-unqualified']);
+    assert.match(refused.detail, /M1:nmos/);
+  });
+
   it('refuses a Board result that does not prove the strict AC execution profile', () => {
     const original = BoardImpl.prototype.runAc;
     BoardImpl.prototype.runAc = function mismatchedProfile(options) {

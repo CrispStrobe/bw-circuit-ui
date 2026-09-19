@@ -256,7 +256,8 @@ function runAc(imported, descriptor, limits) {
   const parsed = parseAc(descriptor, limits);
   if (parsed.status) return parsed;
   const unqualifiedLinearizations = (imported.parts || []).filter(part =>
-    ['npn', 'pnp', 'nmos', 'pmos'].includes(part.kind));
+    ['npn', 'pnp', 'pmos'].includes(part.kind)
+      || (part.kind === 'nmos' && part.params?.model !== 'level1'));
   if (unqualifiedLinearizations.length) return integrationGap(descriptor,
     'ac-linearization-model-unqualified',
     `native AC model fidelity is not qualified for ${unqualifiedLinearizations.map(part =>
