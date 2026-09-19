@@ -31,7 +31,7 @@ const SPECS = {
   // v3 decks declare GAMMA and PHI; before they were emitted, every one of
   // those MOSFETs was refused for carrying a parameter the card can hold.
   nmos: { lib: 'nmos', prefix: 'M',
-    allowed: ['vth', 'kp', 'lambda', 'w', 'l', '_model', 'bulkOnSource', 'gamma', 'phi', 'bulkIs'],
+    allowed: ['vth', 'kp', 'lambda', 'w', 'l', 'model', '_model', 'bulkOnSource', 'gamma', 'phi', 'bulkIs'],
     pinList: [['drain', 48, 0], ['gate', 0, 80], ['source', 48, 96]], modelType: 'NMOS' },
   pmos: { lib: 'pmos', prefix: 'M',
     allowed: ['vth', 'kp', 'lambda', 'w', 'l', '_model', 'bulkOnSource', 'gamma', 'phi', 'bulkIs'],
