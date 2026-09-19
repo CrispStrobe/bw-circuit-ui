@@ -1013,6 +1013,7 @@ export function importSpice(text, opts = {}) {
     let kind = spec.kind();
     const params = {};
     let explicitPmosBulk = false;
+    let exactNpnAc = false;
     if (spec.model) {
       const modelName = (rest[0] || '').toLowerCase();
       // Instance scope first, then the file's own. That is SPICE's rule: a
@@ -1108,6 +1109,30 @@ export function importSpice(text, opts = {}) {
           kind = (model.type === 'PMOS' || pchan) ? 'pmos' : 'nmos';
         }
         if (letter === 'J') kind = model.type === 'PJF' ? 'pmos' : 'nmos';
+        if (letter === 'Q' && model.type === 'NPN' && !model.ambiguous && rest.length === 1) {
+          // AC admission is stricter than the useful DC projection above. A
+          // richer Gummel-Poon card may share IS/BF/VAF/RB, but dropping IKF,
+          // capacitances or transit-time fields and then calling the reduced
+          // device exact makes a plausible wrong Bode plot. The selector is a
+          // root-level importer fact, not an electrical parameter presented to
+          // Board, and exists only when every authored key is represented by
+          // the static Ebers-Moll law.
+          const allowed = new Set(['is', 'bf', 'br', 'nf', 'vaf', 'rb']);
+          const modelKeys = Object.keys(model.params || {}).sort();
+          const body = String(model.body || '').trim().replace(/^\(\s*|\s*\)$/g, '');
+          const fields = body ? body.split(/[\s,]+/).filter(Boolean) : [];
+          const bodyKeys = fields.map(field => /^([A-Za-z_][A-Za-z0-9_]*)=(\S+)$/.exec(field))
+            .map(match => match?.[1]?.toLowerCase()).sort();
+          const p = model.params;
+          exactNpnAc = modelKeys.length === bodyKeys.length
+            && modelKeys.every((key, index) => key === bodyKeys[index] && allowed.has(key))
+            && Number.isFinite(p.is) && p.is > 0
+            && (p.bf === undefined || Number.isFinite(p.bf) && p.bf > 0)
+            && (p.br === undefined || Number.isFinite(p.br) && p.br > 0)
+            && (p.nf === undefined || Number.isFinite(p.nf) && p.nf > 0)
+            && (p.vaf === undefined || Number.isFinite(p.vaf) && p.vaf >= 0)
+            && (p.rb === undefined || Number.isFinite(p.rb) && p.rb >= 0);
+        }
         // A BLOCKED MODEL MUST NOT BECOME A ZENER. This line ran for every D
         // card with a BV, admitted or not, so a model refused for a DUPLICATE
         // FIELD still reached the engine wearing a kind nothing had validated
@@ -1328,6 +1353,7 @@ export function importSpice(text, opts = {}) {
     }
 
     parts.push({ id: partId, kind, params, x: 0, y: 0,
+      ...(exactNpnAc ? { _acModelProfile: 'exact-static-ebers-moll-v1' } : {}),
       ...(explicitPmosBulk ? { terminals: ['gate', 'drain', 'source', 'bulk'] } : {}),
       ...(item.analysisBlocker ? { analysisBlockers: [item.analysisBlocker] } : {}) });
 

@@ -256,7 +256,9 @@ function runAc(imported, descriptor, limits) {
   const parsed = parseAc(descriptor, limits);
   if (parsed.status) return parsed;
   const unqualifiedLinearizations = (imported.parts || []).filter(part =>
-    ['npn', 'pnp', 'pmos'].includes(part.kind)
+    ['pnp', 'pmos'].includes(part.kind)
+      || (part.kind === 'npn' && (part.params?.model !== 'shockley'
+        || part._acModelProfile !== 'exact-static-ebers-moll-v1'))
       || (part.kind === 'nmos' && part.params?.model !== 'level1'));
   if (unqualifiedLinearizations.length) return integrationGap(descriptor,
     'ac-linearization-model-unqualified',

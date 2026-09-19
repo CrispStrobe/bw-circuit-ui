@@ -458,20 +458,27 @@ R1 in 0 1k
       ['not-run', 'analysis-budget-exceeded']);
   });
 
-  it('does not equate a mapped semiconductor with a qualified AC model', () => {
-    const importedModel = imported(`unqualified small-signal model
-V1 supply 0 5
-VIN input 0 AC 1
-Q1 output input 0 QMOD
-R1 supply output 1k
-.model QMOD NPN(IS=1e-14 BF=100 VAF=100)
-.ac dec 10 10 1k
-.end
-`);
-    const run = runSourceAnalyses(importedModel, { format: 'spice' })[0];
-    assert.deepEqual([run.status, run.classification, run.code],
+  it('runs AC only for importer-qualified exact Ebers-Moll NPN models', () => {
+    const exact = `exact Ebers-Moll NPN AC
+VCC vcc 0 12
+VIN base 0 DC .75 AC 1
+RC vcc collector 3k
+RE emitter 0 1k
+Q1 collector base emitter QMOD
+.model QMOD NPN(IS=3n BF=200 VAF=130 RB=10)
+.ac lin 3 1k 3k
+.end`;
+    const pass = runSourceAnalyses(imported(exact), { format: 'spice' })[0];
+    assert.equal(pass.status, 'pass', JSON.stringify(pass));
+    assert.deepEqual(pass.observables.axis.values, [1000, 2000, 3000]);
+    assert.ok(pass.observables.nodes.some(node =>
+      node.magnitude.some(value => Number.isFinite(value) && value > 0)));
+
+    const richer = exact.replace('RB=10)', 'RB=10 IKF=1m)');
+    const refused = runSourceAnalyses(imported(richer), { format: 'spice' })[0];
+    assert.deepEqual([refused.status, refused.classification, refused.code],
       ['not-run', 'integration-gap', 'ac-linearization-model-unqualified']);
-    assert.match(run.detail, /Q1:npn/);
+    assert.match(refused.detail, /Q1:npn/);
   });
 
   it('runs AC only for importer-qualified exact Level-1 NMOS models', () => {
