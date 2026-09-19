@@ -36,6 +36,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { importSpice } from '../src/importers/spice.js';
 import { diodeBreakdown, diodeBreakdownCurrent, classifyDiodeFields } from '../src/model/spice-diode.js';
+import { runSourceAnalyses } from '../src/model/source-analysis.js';
 
 /** The ADI2005 v2 regulator deck, with whatever model body the caller wants. */
 const regulatorWith = (body) => importSpice([
@@ -124,5 +125,29 @@ describe('the readers, individually', () => {
     assert.equal(diodeBreakdownCurrent({}), null, 'absent is absent, not 1e-3');
     assert.equal(diodeBreakdownCurrent({ ibv: 0 }), null);
     assert.equal(diodeBreakdownCurrent({ ibv: -1 }), null);
+  });
+});
+
+describe('the strict public zener operating-point route', () => {
+  it('runs the complete imported card through source analysis with signed current', () => {
+    const imported = regulatorWith('IS=1e-14 N=1 RS=5 BV=3.3 IBV=5m');
+    const [run] = runSourceAnalyses(imported, { format: 'spice' });
+    assert.equal(run.status, 'pass', JSON.stringify(run));
+    assert.equal(run.kind, 'op');
+    assert.equal(run.evidence, 'original-direct');
+    assert.ok(run.metadata.supportedKinds.includes('zener'));
+    assert.deepEqual(run.metadata.zeners.parameters, ['is', 'n', 'rs', 'vz', 'ibv']);
+    const out = run.observables.nodes.find(node => node.id === 'n1');
+    assert.ok(Math.abs(out.voltage - 3.243367325840755) < 1e-9, `${out.voltage}`);
+    assert.deepEqual(run.observables.sourceCurrents.map(row => row.id), ['s0']);
+    assert.ok(Math.abs(run.observables.sourceCurrents[0].current + 5.069064236779568e-4) < 1e-12);
+  });
+
+  it('keeps a zener without a stated breakdown knee imported but refuses strict promotion', () => {
+    const imported = regulatorWith('IS=1e-14 N=1 RS=5 BV=3.3');
+    const [run] = runSourceAnalyses(imported, { format: 'spice' });
+    assert.equal(run.status, 'refused');
+    assert.equal(run.classification, 'solver-refusal');
+    assert.match(run.detail, /ibv must be an explicit finite number greater than zero/);
   });
 });
