@@ -152,6 +152,45 @@ describe('the resolved bw-board answers what this tree asks of it', () => {
       + 'package.json predates the subthreshold branch -- bump it.');
   });
 
+  it('loads the qualified MOS bulk thermal law, not the generic junction constant', async () => {
+    // ADI-v2 exposed seven Level-1 MOS circuits (20 observations) whose only
+    // numerical disagreement was the grounded bulk-source/drain junction. The
+    // public engine contract must name the law, and this forward-biased witness
+    // must exercise it: checking only the pin would let stale installed bytes
+    // pass locally while CI loaded a different package artifact.
+    const { BoardImpl } = await import('bw-board/board.js');
+    const { registerAllDevices } = await import('bw-board/register-all.js');
+    registerAllDevices();
+    const board = new BoardImpl(5);
+    board.setNetlist([
+      { id: 'G', kind: 'gnd', params: {}, terminals: ['gnd'] },
+      { id: 'VN', kind: 'vsource', params: { volts: 0.45 }, terminals: ['pos', 'neg'] },
+      { id: 'R', kind: 'resistor', params: { ohms: 1000 }, terminals: ['a', 'b'] },
+      { id: 'M', kind: 'nmos', params: {
+        model: 'level1', vth: 1, kp: 50e-6, w: 100e-6, l: 1e-6,
+        lambda: 0.01, bulkAtGround: true,
+      }, terminals: ['drain', 'gate', 'source'] },
+    ], [
+      { id: 'gnd', terminals: [
+        { part: 'G', terminal: 'gnd' }, { part: 'VN', terminal: 'pos' },
+        { part: 'M', terminal: 'drain' }, { part: 'M', terminal: 'gate' },
+      ] },
+      { id: 'neg', terminals: [
+        { part: 'VN', terminal: 'neg' }, { part: 'R', terminal: 'a' },
+      ] },
+      { id: 'src', terminals: [
+        { part: 'R', terminal: 'b' }, { part: 'M', terminal: 'source' },
+      ] },
+    ]);
+    const result = board.operatingPoint();
+    assert.equal(result.converged, true);
+    assert.equal(result.analysis.nmos.thermalVoltage, 0.025864925786328753);
+    assert.ok(Math.abs(result.nodeVoltages.get('src') - (-0.4496452412103367)) < 1e-12,
+      `forward-bulk witness moved: ${result.nodeVoltages.get('src')}`);
+    assert.ok(Math.abs(result.branchCurrents.get('M').get('bulk') - 3.5475878966362055e-7) < 1e-15,
+      `bulk current moved: ${result.branchCurrents.get('M').get('bulk')}`);
+  });
+
   it('has an Ebers-Moll stamp that honours the VAF this tree now exports', async () => {
     // The exporter writes `Vaf=` into a per-part model card. If the pinned
     // engine has no Early term, the deck states a parameter the solver ignores
