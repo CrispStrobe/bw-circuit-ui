@@ -68,6 +68,16 @@ const sourceBulkDeck = ({ model = 'NMOS(Level=1 VTO=1 KP=100u LAMBDA=0.02)',
   '.end',
 ].join('\n');
 
+const reverseVdsDeck = () => [
+  '* exact grounded-bulk Level-1 NMOS with authored negative VDS',
+  'VG gate 0 3',
+  'VD drain 0 -0.2',
+  'M1 drain gate 0 0 NM W=1u L=1u',
+  '.model NM NMOS(LEVEL=1 VTO=1 KP=100u LAMBDA=.02)',
+  '.op',
+  '.end',
+].join('\n');
+
 describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
   it('admits the exact represented card and preserves its fourth source node', () => {
     const imported = importSpice(deck());
@@ -120,6 +130,44 @@ describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
       const [run] = runSourceAnalyses(imported, { format: 'spice' });
       assert.notEqual(run.status, 'pass', `${name} must remain refused: ${JSON.stringify(run)}`);
     }
+  });
+
+  it('preserves signed reverse-VDS channel current through the imported source-analysis route', {
+    skip: !HAS_NGSPICE,
+  }, () => {
+    const text = reverseVdsDeck();
+    const oracleRun = spawnSync('ngspice', ['-b'], {
+      input: text.replace('\n.op\n.end', [
+        '.temp 27',
+        '.options tnom=27 reltol=1e-12 abstol=1e-18 vntol=1e-15',
+        '.control',
+        'set numdgt=17',
+        'op',
+        'print @m1[id] i(vd)',
+        '.endc',
+        '.end',
+      ].join('\n')),
+      encoding: 'utf8',
+    });
+    assert.equal(oracleRun.status, 0, oracleRun.stderr || oracleRun.stdout);
+    const read = name => {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const match = oracleRun.stdout.match(new RegExp(`${escaped}\\s*=\\s*([-+0-9.e]+)`, 'i'));
+      assert.ok(match, `${name} absent from:\n${oracleRun.stdout}`);
+      return Number(match[1]);
+    };
+
+    const imported = importSpice(text);
+    const [run] = runSourceAnalyses(imported, { format: 'spice' });
+    assert.equal(run.status, 'pass', JSON.stringify(run));
+    assert.deepEqual(run.topology.find(card => card.kind === 'M').nodes,
+      ['n1', 'n0', 'gnd', 'gnd']);
+    const drainSource = run.observables.sourceCurrents.find(row => row.id === 's1').current;
+    assert.ok(drainSource > 0, `reverse-VDS supply current lost its sign: ${drainSource}`);
+    assert.ok(Math.abs(drainSource - read('i(vd)')) < 1e-12,
+      `${drainSource} vs source-lead ${read('i(vd)')}`);
+    assert.ok(Math.abs(drainSource + read('@m1[id]')) < 1e-12,
+      `${drainSource} vs MOS authored-drain ${read('@m1[id]')}`);
   });
 });
 
