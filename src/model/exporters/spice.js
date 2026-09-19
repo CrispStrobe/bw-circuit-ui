@@ -334,7 +334,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         continue;
       }
 
-      const pins = getSpicePins(part.kind);
+      const pins = getSpicePins(part.kind, part);
       const nodes = pins.map(pin => nodeOf(part.refdes, pin));
       const floating = pins.filter((pin, i) => !nodes[i]);
       if (floating.length) {
@@ -488,7 +488,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       continue;
     }
 
-    const pins = getSpicePins(part.kind);
+    const pins = getSpicePins(part.kind, part);
     const nodes = pins.map(p => nodeOf(part.refdes, p));
     const floating = pins.filter((p, i) => !nodes[i]);
     if (floating.length) {
@@ -865,6 +865,33 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         lines.push(`${el} ${nodeFields} ${model}`);
       }
         } else if (card === 'M') {
+      const explicitPmos = part.kind === 'pmos' && part.params?.model === 'level1'
+        && pins.includes('bulk');
+      if (explicitPmos) {
+        if (!nodes[3]) {
+          const reason = 'exact explicit-bulk PMOS export requires a connected bulk terminal';
+          skipped.push(`${part.refdes} (${part.kind}): ${reason}`);
+          lines.push(`* ${part.refdes} ${part.kind} — skipped (${reason})`);
+          continue;
+        }
+        const required = ['vth', 'kp', 'w', 'l', 'lambda'];
+        const missing = required.filter(key => !Number.isFinite(Number(part.params?.[key])));
+        const invalid = Number(part.params?.kp) <= 0 || Number(part.params?.w) <= 0
+          || Number(part.params?.l) <= 0 || Number(part.params?.lambda) < 0;
+        if (missing.length || invalid) {
+          const reason = 'exact explicit-bulk PMOS export requires finite VTO/KP/W/L/LAMBDA, '
+            + 'positive KP/W/L and non-negative LAMBDA';
+          skipped.push(`${part.refdes} (${part.kind}): ${reason}`);
+          lines.push(`* ${part.refdes} ${part.kind} — skipped (${reason})`);
+          continue;
+        }
+        const perPart = `PM_${String(part.refdes).replace(/[^A-Za-z0-9_]/g, '_')}`;
+        modelCards.push(`.model ${perPart} PMOS (LEVEL=1 VTO=${formatSpiceValue(part.params.vth)} `
+          + `KP=${formatSpiceValue(part.params.kp)} LAMBDA=${formatSpiceValue(part.params.lambda)})`);
+        lines.push(`${el} ${nodeFields} ${perPart} W=${formatSpiceValue(part.params.w)} `
+          + `L=${formatSpiceValue(part.params.l)}`);
+        continue;
+      }
       // A SPICE M CARD TAKES FOUR NODES: drain gate source BULK. With three,
       // ngspice refuses the deck outright — "not enough nodes" — which is how
       // both `pc39-nmos-switch` circuits failed. A discrete MOSFET has its bulk
@@ -1078,7 +1105,7 @@ function emitCompanions(part, comps, nodeOf, warnings) {
  * For transistors: [collector, base, emitter] (BJT) or [drain, gate, source] (MOS).
  * For diodes: [anode, cathode].
  */
-function getSpicePins(kind) {
+function getSpicePins(kind, part = null) {
   switch (kind) {
     case 'resistor': case 'ldr': case 'ntc': case 'fuse':
       return ['a', 'b'];
@@ -1092,7 +1119,12 @@ function getSpicePins(kind) {
       return ['anode', 'cathode'];
     case 'npn': case 'pnp': case 'tip120':
       return ['collector', 'base', 'emitter'];
-    case 'nmos': case 'pmos':
+    case 'pmos':
+      if (part?.params?.model === 'level1') {
+        return ['drain', 'gate', 'source', 'bulk'];
+      }
+      return ['drain', 'gate', 'source'];
+    case 'nmos':
       return ['drain', 'gate', 'source'];
     case 'vsource': case 'battery_9v': case 'battery_aa':
       return ['pos', 'neg'];

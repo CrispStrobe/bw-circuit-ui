@@ -9,6 +9,9 @@ import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { importSpice } from '../src/importers/spice.js';
+import { Circuit } from '../src/model/circuit.js';
+import { extractNetlist } from '../src/model/netlist.js';
+import { toSpice } from '../src/model/exporters/spice.js';
 import { runSourceAnalyses } from '../src/model/source-analysis.js';
 
 const deck = ({
@@ -82,6 +85,96 @@ describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
         `${name} must not acquire the strict selector: ${JSON.stringify(transistor(imported).params)}`);
       const [run] = runSourceAnalyses(imported, { format: 'spice' });
       assert.notEqual(run.status, 'pass', `${name} must remain refused: ${JSON.stringify(run)}`);
+    }
+  });
+});
+
+const pmosDeck = ({
+  model = 'PMOS(LEVEL=1 VTO=-1 KP=25u LAMBDA=0.01)',
+  instance = 'W=100u L=1u',
+  bulk = 'bulk',
+} = {}) => [
+  '* exact explicit-bulk Level-1 PMOS',
+  'VB bulk 0 10',
+  'VS source 0 8',
+  'VG gate 0 5',
+  'RD drain 0 500',
+  `M1 drain gate source ${bulk} PM ${instance}`,
+  `.model PM ${model}`,
+  '.op',
+  '.end',
+].join('\n');
+
+describe('strict explicit-bulk Level-1 PMOS source analysis', () => {
+  it('retains the physical fourth terminal and reaches the exact native law', () => {
+    const imported = importSpice(pmosDeck());
+    const pmos = transistor(imported);
+    assert.deepEqual(imported.losses, []);
+    assert.deepEqual(imported.unmapped, []);
+    assert.deepEqual(imported.warnings, []);
+    assert.deepEqual(pmos.terminals, ['gate', 'drain', 'source', 'bulk']);
+    assert.deepEqual(pmos.params, {
+      vth: -1, kp: 25e-6, lambda: 0.01, _model: 'PM',
+      w: 100e-6, l: 1e-6, model: 'level1',
+    });
+    assert.ok(imported.wires.some(wire => wire.to === 'M1' && wire.toTerminal === 'bulk'));
+
+    const [run] = runSourceAnalyses(imported, { format: 'spice' });
+    assert.equal(run.status, 'pass', JSON.stringify(run));
+    assert.equal(run.evidence, 'original-direct');
+    assert.deepEqual(run.topology.find(card => card.kind === 'M').nodes,
+      ['n3', 'n2', 'n1', 'n0']);
+    assert.deepEqual(run.metadata.pmos, {
+      model: 'explicit-spice-level1-explicit-bulk-terminal',
+      requiredParameters: ['vth', 'kp', 'w', 'l', 'lambda'],
+      requiredTerminals: ['gate', 'drain', 'source', 'bulk'],
+      defaults: { bulkIs: 1e-14, bulkN: 1 }, thermalVoltage: 0.02585,
+      temperatureModel: 'fixed',
+    });
+    const voltage = id => run.observables.nodes.find(node => node.id === id).voltage;
+    assert.ok(Math.abs(voltage('n3') - 2.6341463476788824) < 1e-10);
+    assert.ok(Math.abs(run.observables.sourceCurrents.find(row => row.id === 's1').current
+      + 0.0052682926859719155) < 1e-10);
+  });
+
+  it('exports and re-imports the same explicit law and fourth-node topology', () => {
+    const imported = importSpice(pmosDeck());
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    const exported = toSpice(extractNetlist(circuit), 'explicit PMOS');
+    assert.deepEqual(exported.skipped, []);
+    assert.match(exported.text,
+      /^MQ1 \S+ \S+ \S+ \S+ PM_Q1 W=100u L=1u$/m);
+    assert.match(exported.text,
+      /^\.model PM_Q1 PMOS \(LEVEL=1 VTO=-1 KP=25u LAMBDA=10m\)$/m);
+
+    const roundTrip = importSpice(exported.text);
+    const roundTripPmos = roundTrip.parts.find(part => part.kind === 'pmos');
+    assert.deepEqual(roundTripPmos.terminals, ['gate', 'drain', 'source', 'bulk']);
+    assert.deepEqual({ ...roundTripPmos.params, _model: 'PM' }, transistor(imported).params);
+    const point = Circuit.fromJSON({ parts: roundTrip.parts, wires: roundTrip.wires })
+      .operatingPoint();
+    assert.equal(point.converged, true);
+  });
+
+  it('withholds the selector and physical bulk from every broader topology or law', () => {
+    const cases = [
+      ['bulk at ground', { bulk: '0' }],
+      ['bulk on source', { bulk: 'source' }],
+      ['missing LAMBDA', { model: 'PMOS(LEVEL=1 VTO=-1 KP=25u)' }],
+      ['other level', { model: 'PMOS(LEVEL=2 VTO=-1 KP=25u LAMBDA=0.01)' }],
+      ['wrong threshold sign', { model: 'PMOS(LEVEL=1 VTO=1 KP=25u LAMBDA=0.01)' }],
+      ['extra model field', { model: 'PMOS(LEVEL=1 VTO=-1 KP=25u LAMBDA=0.01 GAMMA=0.5)' }],
+      ['missing W', { instance: 'L=1u' }],
+      ['extra instance field', { instance: 'W=100u L=1u AD=2p' }],
+      ['duplicate geometry', { instance: 'W=100u W=200u L=1u' }],
+    ];
+    for (const [name, options] of cases) {
+      const imported = importSpice(pmosDeck(options));
+      const pmos = transistor(imported);
+      assert.equal(pmos.params.model, undefined, `${name}: ${JSON.stringify(pmos.params)}`);
+      assert.equal(pmos.terminals, undefined, `${name} must not gain the physical bulk terminal`);
+      const [run] = runSourceAnalyses(imported, { format: 'spice' });
+      assert.notEqual(run.status, 'pass', `${name}: ${JSON.stringify(run)}`);
     }
   });
 });

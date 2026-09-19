@@ -407,8 +407,9 @@ function sourceValue(fields, allowWaveforms = false, constants = new Map()) {
  * Element letter -> how to build a part.
  *
  * `nodes` is how many node fields the card carries, `terminals` the engine
- * terminal each maps to IN CARD ORDER. A null entry means the node exists in
- * SPICE and not here (the MOSFET bulk) and is reported.
+ * terminal each maps to IN CARD ORDER. A null entry is resolved by the narrow
+ * MOS admission below: exact explicit-bulk PMOS gets a real `bulk` terminal;
+ * all other fourth-node shapes retain the established refusal/reporting path.
  */
 const ELEMENTS = {
   R: { nodes: 2, terminals: ['a', 'b'], kind: () => 'resistor', param: 'ohms' },
@@ -1011,6 +1012,7 @@ export function importSpice(text, opts = {}) {
     // Kind and params, refined by the .model card where there is one.
     let kind = spec.kind();
     const params = {};
+    let explicitPmosBulk = false;
     if (spec.model) {
       const modelName = (rest[0] || '').toLowerCase();
       // Instance scope first, then the file's own. That is SPICE's rule: a
@@ -1167,6 +1169,7 @@ export function importSpice(text, opts = {}) {
         const bulkField = nodeFields[3];
         const srcField = nodeFields[2];
         let bulkIsGround = false;
+        let bulkIsThirdNode = false;
         if (bulkField !== undefined && srcField !== undefined) {
           bulkIsGround = GROUND_NODES.has(String(bulkField).toLowerCase());
           const sameNode = String(bulkField).toLowerCase() === String(srcField).toLowerCase();
@@ -1189,19 +1192,7 @@ export function importSpice(text, opts = {}) {
             // are this.
             params.bulkOnSource = true;
           } else {
-            // AND THE REFUSAL IS RECORDED IN THE PARAMS, not only in a warning.
-            //
-            // The engine defaults a three-terminal MOSFET to bulk-on-source,
-            // because that is what its symbol and its SPICE export both mean.
-            // A deck that ties the bulk to some THIRD node is a device we
-            // decline to model -- and if the decline lives only in a warning,
-            // the part reaches the engine indistinguishable from one that said
-            // nothing, and gets the default: a potential we just said we would
-            // not guess, guessed.
-            params.bulkUnplaced = true;
-            warnings.push(`${partId}: bulk node "${bulkField}" is neither ground nor the source, `
-              + 'so the body effect is not applied — the engine MOSFET has no bulk terminal and '
-              + 'this reader will not guess a potential for it.');
+            bulkIsThirdNode = true;
           }
         }
         const unsupported = Object.keys(instance).filter(k => k !== 'w' && k !== 'l');
@@ -1223,17 +1214,37 @@ export function importSpice(text, opts = {}) {
         const bodyFields = body ? body.split(/[\s,]+/).filter(Boolean) : [];
         const bodyKeys = bodyFields.map(field => /^([A-Za-z_][A-Za-z0-9_]*)=(\S+)$/.exec(field))
           .map(match => match?.[1]?.toLowerCase()).sort();
-        const exactLevel1Model = model && !model.ambiguous && model.type === 'NMOS'
+        const exactLevel1Model = model && !model.ambiguous
+          && (model.type === 'NMOS' || model.type === 'PMOS')
           && JSON.stringify(modelKeys) === JSON.stringify(exactModelKeys)
           && JSON.stringify(bodyKeys) === JSON.stringify(exactModelKeys)
           && model.params.level === 1 && Number.isFinite(model.params.vto)
+          && ((model.type === 'NMOS' && model.params.vto > 0)
+            || (model.type === 'PMOS' && model.params.vto < 0))
           && Number.isFinite(model.params.kp) && model.params.kp > 0
           && Number.isFinite(model.params.lambda) && model.params.lambda >= 0;
         const exactGeometry = exactInstanceSyntax && instanceFields.length === 2
           && seenInstanceFields.size === 2 && seenInstanceFields.has('w') && seenInstanceFields.has('l')
           && Number.isFinite(instance.w) && instance.w > 0
           && Number.isFinite(instance.l) && instance.l > 0;
-        if (exactLevel1Model && exactGeometry && bulkIsGround) params.model = 'level1';
+        if (exactLevel1Model && exactGeometry && model.type === 'NMOS' && bulkIsGround) {
+          params.model = 'level1';
+        } else if (exactLevel1Model && exactGeometry && model.type === 'PMOS'
+            && bulkIsThirdNode) {
+          // This is the only four-terminal MOS shape in the public contract.
+          // The landed engine stamps both bulk junctions and reports the real
+          // bulk current; retaining the terminal is therefore exact rather
+          // than an importer approximation.
+          params.model = 'level1';
+          explicitPmosBulk = true;
+        } else if (bulkIsThirdNode) {
+          // AND THE REFUSAL IS RECORDED IN THE PARAMS, not only in a warning.
+          // A richer or incomplete third-node MOS still has no qualified law.
+          params.bulkUnplaced = true;
+          warnings.push(`${partId}: bulk node "${bulkField}" is neither ground nor the source, `
+            + 'and this MOS model is outside the exact explicit-bulk PMOS domain, so this reader '
+            + 'will not guess a potential for it.');
+        }
       }
     } else if (spec.source) {
       const { value, note, externalWaveform, waveformParams, waveformLoss, scalarLoss, acParams } =
@@ -1293,9 +1304,11 @@ export function importSpice(text, opts = {}) {
     }
 
     parts.push({ id: partId, kind, params, x: 0, y: 0,
+      ...(explicitPmosBulk ? { terminals: ['gate', 'drain', 'source', 'bulk'] } : {}),
       ...(item.analysisBlocker ? { analysisBlockers: [item.analysisBlocker] } : {}) });
 
     spec.terminals.forEach((terminal, i) => {
+      if (letter === 'M' && i === 3 && explicitPmosBulk) terminal = 'bulk';
       if (terminal === null) {
         if (nodeFields[i] !== undefined) {
           warnings.push(`${partId}: bulk node "${nodeFields[i]}" dropped — the engine's `

@@ -1,11 +1,10 @@
 /**
  * Importing a MOSFET's BULK node.
  *
- * The engine's nmos/pmos have three terminals, so the bulk is not wired. It is
- * not irrelevant, though: a stacked device has its source above the bulk by
- * construction, and its threshold is then not VTO. What the importer has to
- * carry across is not a fourth terminal but a FACT ABOUT THE WIRING —
- * `bulkAtGround` — plus the two model parameters the law needs.
+ * Ordinary nmos/pmos parts have three terminals, so their implicit bulk is
+ * represented by wiring facts. The narrow exact Level-1 PMOS source-analysis
+ * path additionally preserves a genuine explicit fourth terminal; richer
+ * third-node MOS cards remain declined rather than guessed.
  *
  * Census over ADI2005 v3's 12,471 decks (15,587 M cards):
  *   11,950 bulk on the source        -> no shift
