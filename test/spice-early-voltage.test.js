@@ -38,6 +38,7 @@ import { importSpice } from '../src/importers/spice.js';
 import { Circuit } from '../src/model/circuit.js';
 import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice } from '../src/model/exporters/spice.js';
+import { runSourceAnalyses } from '../src/model/source-analysis.js';
 
 /** The corpus family, as a deck, with the model body the caller wants. */
 const followerDeck = (body) => [
@@ -51,6 +52,40 @@ const followerDeck = (body) => [
 ].join('\n');
 
 const bjtOf = (out) => out.parts.find(p => /^Q/i.test(String(p.id || '')));
+
+describe('the strict public NPN operating-point route', () => {
+  it('runs a complete imported card with signed source current and explicit model metadata', () => {
+    const imported = importSpice(followerDeck('IS=1e-14 BF=100 VAF=100'));
+    const [run] = runSourceAnalyses(imported, { format: 'spice' });
+    assert.equal(run.status, 'pass', JSON.stringify(run));
+    assert.equal(run.evidence, 'original-direct');
+    assert.ok(run.metadata.supportedKinds.includes('npn'));
+    assert.deepEqual(run.metadata.npn, {
+      model: 'explicit-ebers-moll-with-forward-early-effect',
+      requiredParameters: ['is', 'beta'], optionalParameters: ['br', 'n', 'vaf'],
+      defaults: { br: 1, n: 1, vaf: 'infinite' }, thermalVoltage: 0.02585,
+      temperatureModel: 'fixed',
+    });
+    assert.ok(Math.abs(run.observables.nodes.find(node => node.id === 'n2').voltage
+      - 0.24137665774331285) < 1e-10);
+    assert.deepEqual(run.observables.sourceCurrents.map(row => row.id), ['s0']);
+    assert.ok(Math.abs(run.observables.sourceCurrents[0].current
+      + 2.0114721478609492e-5) < 1e-12);
+  });
+
+  it('keeps incomplete and retained-extra NPN semantics as named refusals', () => {
+    const incomplete = importSpice(followerDeck('BF=100 VAF=100'));
+    const [missingRun] = runSourceAnalyses(incomplete, { format: 'spice' });
+    assert.equal(missingRun.status, 'refused');
+    assert.match(missingRun.detail, /model must be explicitly 'shockley'/);
+
+    const extra = importSpice(followerDeck('IS=1e-14 BF=100 VAF=100'));
+    bjtOf(extra).params.ikf = 0.3;
+    const [extraRun] = runSourceAnalyses(extra, { format: 'spice' });
+    assert.equal(extraRun.status, 'refused');
+    assert.match(extraRun.detail, /parameter ikf is outside the explicit Ebers-Moll DC domain/);
+  });
+});
 
 describe('importing a forward Early voltage', () => {
   it('lands VAF on the part, beside the Is that put it on the exponential path', () => {
