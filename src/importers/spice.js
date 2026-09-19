@@ -1452,6 +1452,11 @@ function mapModel(letter, model, warnings, partId) {
       // So this one parameter was the whole of that family's error, and it was
       // being parsed and then dropped on the floor here.
       if (isFinite(p.vaf)) out.vaf = p.vaf;
+      // SPICE RB IS A REAL INTERNAL-BASE ELEMENT, NOT METADATA.
+      // Carry it only for the NPN law the engine now implements.  A negative
+      // finite value is retained deliberately so the strict engine boundary
+      // refuses it by name instead of silently solving the same card as RB=0.
+      if (model.type === 'NPN' && isFinite(p.rb)) out.rb = p.rb;
       out.model = 'shockley';
     }
   } else if (letter === 'M') {

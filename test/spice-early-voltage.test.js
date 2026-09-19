@@ -51,6 +51,17 @@ const followerDeck = (body) => [
   '.op',
 ].join('\n');
 
+const baseResistanceDeck = (rb = 10, type = 'NPN') => [
+  '* ADI-v5 base-resistance witness',
+  'VCC vcc 0 9',
+  'VIN in 0 3.3',
+  'RB in base 30k',
+  'RL vcc collector 8.2k',
+  'Q1 collector base 0 QN',
+  `.model QN ${type}(IS=3n BF=200 VAF=130 RB=${rb})`,
+  '.op',
+].join('\n');
+
 const bjtOf = (out) => out.parts.find(p => /^Q/i.test(String(p.id || '')));
 
 describe('the strict public NPN operating-point route', () => {
@@ -62,8 +73,8 @@ describe('the strict public NPN operating-point route', () => {
     assert.ok(run.metadata.supportedKinds.includes('npn'));
     assert.deepEqual(run.metadata.npn, {
       model: 'explicit-ebers-moll-with-forward-early-effect',
-      requiredParameters: ['is', 'beta'], optionalParameters: ['br', 'n', 'vaf'],
-      defaults: { br: 1, n: 1, vaf: 'infinite' }, thermalVoltage: 0.02585,
+      requiredParameters: ['is', 'beta'], optionalParameters: ['br', 'n', 'vaf', 'rb'],
+      defaults: { br: 1, n: 1, vaf: 'infinite', rb: 0 }, thermalVoltage: 0.02585,
       temperatureModel: 'fixed',
     });
     assert.ok(Math.abs(run.observables.nodes.find(node => node.id === 'n2').voltage
@@ -71,6 +82,31 @@ describe('the strict public NPN operating-point route', () => {
     assert.deepEqual(run.observables.sourceCurrents.map(row => row.id), ['s0']);
     assert.ok(Math.abs(run.observables.sourceCurrents[0].current
       + 2.0114721478609492e-5) < 1e-12);
+  });
+
+  it('carries NPN RB into the native solve and matches the ADI-v5 ngspice point', () => {
+    const imported = importSpice(baseResistanceDeck());
+    assert.equal(bjtOf(imported).params.rb, 10);
+    const [run] = runSourceAnalyses(imported, { format: 'spice' });
+    assert.equal(run.status, 'pass', JSON.stringify(run));
+    const nodes = Object.fromEntries(run.observables.nodes.map(row => [row.id, row.voltage]));
+    const currents = Object.fromEntries(run.observables.sourceCurrents.map(row => [row.id, row.current]));
+    // ngspice 42 at the engine's fixed thermal point; the board-level test
+    // independently invokes ngspice and also checks all three Q currents.
+    assert.ok(Math.abs(nodes.n2 - 0.3360314352877079) < 1e-8, nodes.n2);
+    assert.ok(Math.abs(nodes.n3 - 0.0678713457377379) < 1e-8, nodes.n3);
+    assert.ok(Math.abs(currents.s0 + 0.001089283982227105) < 1e-10, currents.s0);
+    assert.ok(Math.abs(currents.s1 + 0.00009879895215707642) < 1e-10, currents.s1);
+  });
+
+  it('keeps RB NPN-only and refuses a negative authored value by name', () => {
+    const pnp = importSpice(baseResistanceDeck(10, 'PNP'));
+    assert.equal('rb' in bjtOf(pnp).params, false);
+    const negative = importSpice(baseResistanceDeck(-10));
+    assert.equal(bjtOf(negative).params.rb, -10);
+    const [run] = runSourceAnalyses(negative, { format: 'spice' });
+    assert.equal(run.status, 'refused');
+    assert.match(run.detail, /rb must be a finite number greater than or equal to zero/);
   });
 
   it('keeps incomplete and retained-extra NPN semantics as named refusals', () => {
@@ -153,6 +189,21 @@ describe('exporting a part that carries one', () => {
     assert.ok(card, text);
     assert.match(card[1], /Bf=200/);
     assert.match(card[1], /Vaf=100/);
+  });
+
+  it('preserves a positive authored RB through export and re-import', () => {
+    const text = deckFor({ beta: 200, is: 3e-9, vaf: 130, rb: 10 });
+    const card = /^\.model Q_Q1 NPN \(([^)]*)\)/m.exec(text);
+    assert.ok(card, text);
+    assert.match(card[1], /\bRb=10\b/);
+    assert.match(text, /authored base resistance 10/);
+    assert.equal(bjtOf(importSpice(text)).params.rb, 10);
+  });
+
+  it('leaves omitted and explicit zero RB on the identical shared-card output', () => {
+    const plain = deckFor({ beta: 100, is: 1e-14 });
+    assert.equal(deckFor({ beta: 100, is: 1e-14, rb: 0 }), plain);
+    assert.doesNotMatch(plain, /\bRb\s*=/i);
   });
 
   it('leaves a part with no VAF on the shared card, with no Vaf field', () => {

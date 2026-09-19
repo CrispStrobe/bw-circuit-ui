@@ -838,11 +838,19 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       // the solver agree the moment one does.
       const authoredVaf = Number(part.params?.vaf);
       const cardVaf = Number(/Vaf\s*=\s*([\d.eE+-]+)/i.exec(base?.body ?? '')?.[1]);
+      const authoredRb = Number(part.params?.rb);
+      const cardRb = Number(/Rb\s*=\s*([\d.eE+-]+)/i.exec(base?.body ?? '')?.[1]);
       const betaDiffers = Number.isFinite(authoredBeta) && Number.isFinite(cardBeta)
         && authoredBeta !== cardBeta && base && /Bf\s*=/i.test(base.body);
       const vafDiffers = Number.isFinite(authoredVaf) && authoredVaf > 0
         && authoredVaf !== cardVaf && base;
-      if (betaDiffers || vafDiffers) {
+      // Omitted and explicit zero RB are the old ideal-base path and retain
+      // the shared card byte for byte.  A positive authored value must cross
+      // the exporter: otherwise ngspice receives a different transistor than
+      // the native solver stamped.
+      const rbDiffers = Number.isFinite(authoredRb) && authoredRb > 0
+        && authoredRb !== cardRb && base;
+      if (betaDiffers || vafDiffers || rbDiffers) {
         const perPart = `Q_${part.refdes}`;
         const why = [];
         let body = base.body;
@@ -856,6 +864,13 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
             : `${body} Vaf=${authoredVaf}`;
           why.push(`authored Early voltage ${authoredVaf}`
             + `${Number.isFinite(cardVaf) ? `, not card ${model}'s ${cardVaf}` : ', which the card does not state'}`);
+        }
+        if (rbDiffers) {
+          body = /Rb\s*=/i.test(body)
+            ? body.replace(/Rb\s*=\s*[\d.eE+-]+/i, `Rb=${authoredRb}`)
+            : `${body} Rb=${authoredRb}`;
+          why.push(`authored base resistance ${authoredRb}`
+            + `${Number.isFinite(cardRb) ? `, not card ${model}'s ${cardRb}` : ', which the card does not state'}`);
         }
         modelCards.push(`.model ${perPart} ${base.type} (${body})  $ ${why.join('; ')}`);
         usedModels.add(perPart);
