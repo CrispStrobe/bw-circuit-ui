@@ -313,6 +313,92 @@ export function runNgspice(deck, dir, name) {
  * Counted over PARTS, not wires: two nets joined only through a part are in one
  * galvanic component, which is what determines whether a gauge is shared.
  */
+/**
+ * DIODES WHOSE SATURATION CURRENT NGSPICE SILENTLY REPLACES.
+ *
+ * ngspice CLAMPS a diode's IS at 1e-28 without a word. A deck stating less is
+ * simulated as a DIFFERENT device, and the difference is not small: the clamp
+ * is a floor, so the reference's diode conducts MORE and sits LOWER.
+ *
+ * `40-led-color-mix` is the case. Three LEDs on 330 Ohm each; the two Vf = 2 V
+ * ones agree to six decimals, and the Vf = 3.2 V one -- a blue/white LED, whose
+ * Shockley calibration is `Is=1.995705e-30` -- reads engine 3.004796 V against
+ * ngspice 2.831799 V. OURS is the stated device and ngspice's is the clamp, so
+ * scoring the 173 mV against us would have had me "fix" a correct answer
+ * towards a floor in someone else's solver.
+ *
+ * Read from the DECK TEXT, because that is what ngspice was handed, and the
+ * refdes comes from the element lines rather than from the `D_<refdes>` naming
+ * habit, which is a convention and not a contract.
+ *
+ * SCOPE, measured: 2 decks of the 2,131-circuit gallery state an IS below the
+ * clamp and both already disagreed, so naming this costs no agreement. ZERO of
+ * the 12,471 ADI v3 foreign decks do, which is why `judgeForeignDeck` has no
+ * copy of this -- a guard over an empty population is code nothing exercises.
+ *
+ * @param {string} deckText
+ * @returns {Set<string>} refdeses whose model IS is below what ngspice honours
+ */
+export function clampedIsRefsOf(deckText) {
+  const NGSPICE_IS_FLOOR = 1e-28;
+  const refs = new Set();
+  const belowFloor = new Set();
+  for (const m of String(deckText).matchAll(/^\s*\.model\s+(\S+)\s+D\s*\(([^)]*)\)/gim)) {
+    const is = /(?:^|\s)Is\s*=\s*([\d.eE+-]+)/i.exec(m[2]);
+    if (is && Number(is[1]) > 0 && Number(is[1]) < NGSPICE_IS_FLOOR) {
+      belowFloor.add(m[1].toLowerCase());
+    }
+  }
+  if (!belowFloor.size) return refs;
+  for (const m of String(deckText).matchAll(/^\s*(D\S*)\s+\S+\s+\S+\s+(\S+)\s*$/gim)) {
+    if (belowFloor.has(m[2].toLowerCase())) refs.add(m[1]);
+  }
+  return refs;
+}
+
+/**
+ * Element cards whose VALUE carries a bare `A` suffix, which the two engines
+ * read 10^18 apart.
+ *
+ * ngspice 42 treats `a` as the SI prefix ATTO, so `I1 0 vc 2.6A` is 2.6e-18 A
+ * to it and 2.6 A to us -- we read a trailing letter as a unit, which is what
+ * `4.7kOhm` and `100nF` depend on. Measured against ngspice across every
+ * suffix a deck plausibly writes (V R F H Ohm T G K M MEG MIL U N P m E, upper
+ * and lower case), `A`/`a` is the ONLY one where the two disagree, including
+ * the F=femto and M=milli traps. So the scope here is exactly one letter.
+ *
+ * WHICH READING IS RIGHT IS NOT THE POINT. A deck author writing `2.6A` for a
+ * current source plainly means amperes, and ngspice plainly means atto; the
+ * comparison is meaningless either way, so it is declined BY NAME rather than
+ * reported as a numeric disagreement. Same treatment as `oracle-clamped-is`.
+ *
+ * ONLY VALUE POSITIONS ARE INSPECTED, because `3a` is a perfectly good NODE
+ * name and the corpus contains one (`XU4 N001 0 +V -V 3a level3a ...`). A
+ * looser scan would decline decks over a node's name.
+ *
+ * Population: 9 of 7,866 Si7li no-aug decks, 69 of 53,000 in the raw corpus,
+ * 1 of 7,410 in ADI v2.
+ */
+export function attoSuffixedRefsOf(deckText) {
+  const refs = new Set();
+  const ATTO_VALUE = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?[Aa]$/;
+  const NODES_BEFORE_VALUE = { R: 2, C: 2, L: 2, V: 2, I: 2 };
+  for (const raw of String(deckText).split(/\r?\n/)) {
+    const line = raw.replace(/;.*$/, '').trim();
+    if (!line || line.startsWith('*') || line.startsWith('.')) continue;
+    const fields = line.split(/\s+/);
+    const nodes = NODES_BEFORE_VALUE[fields[0][0].toUpperCase()];
+    if (nodes === undefined) continue;
+    // Everything after the nodes is a candidate: `V1 a b DC 5A` and
+    // `I1 a b 5A` both put the number in a position this reaches, and a
+    // keyword such as DC or AC cannot match the pattern.
+    for (const field of fields.slice(1 + nodes)) {
+      if (ATTO_VALUE.test(field)) { refs.add(fields[0]); break; }
+    }
+  }
+  return refs;
+}
+
 export function isolatedUnreferencedComponents(netlist) {
   const nets = (netlist?.nets || []).filter(n => n.id);
   if (!nets.length) return [];
@@ -418,6 +504,42 @@ function withSynthesizedParts(circuit, netlist) {
           nets.push(net); byId.set(bn.id, net);
         }
         net.nodes.push({partId: p.id, refdes, pin: t.terminal});
+        // A SYNTHESIZED CHAIN NEEDS ITS GROUND END TIED, OR THE DECK HAS AN
+        // OPEN CIRCUIT WHERE THE ENGINE HAS A CONDUCTING ONE.
+        //
+        // bw-board invents `<part>__onboard_gnd` for a dev board whose ground
+        // pins have no external net, holding a single terminal: the board's own
+        // `gnd_1`. The device model ties that to the reference, so the engine's
+        // onboard LED conducts 1.43 mA. The deck copied the net and the parts
+        // and NOT the bond, so the chain was open: `pico1__onboard_gnd` read
+        // 0.000143 V in the engine against ngspice's 3.157034 V, and the 32 mV
+        // that current also pulls off the external GP25 node disagreed too.
+        // 4 gallery rows, both `pico01-blink` and `pico03-two-tasks`.
+        //
+        // Keyed on the TERMINAL name, not the net name: `gnd_1`/`agnd`/
+        // `swd_gnd` are the device's DECLARED ground pins, so this reads what
+        // the part says about itself rather than sniffing a string we invented.
+        //
+        // READ THE BOARD NET'S OWN TERMINAL LIST, not the synthesized part's.
+        // The first version tested `t.terminal`, which here is the synthesized
+        // LED's `cathode` — the pico's `gnd_1` sits on the same net but the
+        // pico is not in `missing`, so its terminals are never walked in this
+        // loop and the net never got marked. A true test of the wrong terminal.
+        if (!net.rail && (bn.terminals || []).some(
+          (bt) => /^(a|swd_)?gnd(_\d+)?$/i.test(String(bt.terminal)))) {
+          const existing = nets.find(n => n.rail === 'gnd' && n.id !== net.id);
+          if (existing) {
+            // A device's ground pin and the circuit's reference are the same
+            // node, so merge rather than create a second rail.
+            for (const nd of net.nodes) existing.nodes.push(nd);
+            net.nodes.length = 0;
+            byId.set(net.id, existing);
+            net = existing;
+          } else {
+            net.rail = 'gnd';
+            net.railPartId = p.id;
+          }
+        }
       }
     }
   }
@@ -610,9 +732,56 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
     if (!isFinite(va) || !isFinite(vb)) return null;
     return va - vb;
   };
-  const { text, warnings } = toSpice(solved, `oracle: ${name}`,
+  const { text, warnings, skipped: exportSkipped, approximated: exportApproximated,
+    redundantSources: exportRedundant } = toSpice(solved, `oracle: ${name}`,
     { pinSource, companionsFor, capacitorVoltage,
       controls: circuit.board?.controls ?? new Map() });
+
+  /**
+   * PARTS THE DECK HAS NOTHING STANDING IN FOR.
+   *
+   * "The exporter skipped it" is NOT "the comparison is void", and I measured
+   * three versions of that mistake before finding the affordable rule:
+   *
+   *   refuse on any skipped part            1,756 agreeing circuits lost,  10 declared
+   *   + no companions                         761 lost,                     6 declared
+   *   + the engine's pin-driving predicate     161 lost,                     4 declared
+   *   only where the DISAGREEING NODE touches one    0 lost,                 2 declared
+   *
+   * The skipped parts are overwhelmingly MCUs and dev boards, whose PINS are
+   * exported as Thevenin sources — so the part being absent as an element is
+   * not the circuit being different, and `kind === 'mcu' ||
+   * getDevice(kind)?.gpioFollowsPinStates` is the predicate that says so.
+   * Anything with companions is in the deck as its own stamp.
+   *
+   * What is left is a part that is in the circuit, contributes to it, and is
+   * nowhere in the deck: an `opamp` with no card, a `dc_motor` deliberately
+   * outside `DC_LOAD_KINDS`. A node touching one of those is not a shared
+   * question, and the refusal below fires ONLY at such a node and only once it
+   * has already missed tolerance — the same discipline as the unbounded rule,
+   * for the same reason: a filter applied before the tolerance check throws
+   * away agreement.
+   */
+  const unrepresentedRefs = new Set();
+  for (const sk of exportSkipped || []) {
+    const ref = String(sk).split(' ')[0];
+    const comps = companionsFor ? companionsFor(ref) : null;
+    if (comps && comps.length) continue;
+    const kind = solved.parts.find(q => q.refdes === ref)?.kind;
+    if (kind === 'mcu' || getDevice(kind)?.gpioFollowsPinStates) continue;
+    unrepresentedRefs.add(ref);
+  }
+  // AND A CARD THAT IS NOT THE DEVICE COUNTS THE SAME AS NO CARD.
+  //
+  // The exporter declares these: a part it DID write, with a card that does not
+  // describe the engine's stamp. `tip120` is the case — an Ebers-Moll card for
+  // a threshold switch. The deck runs, so nothing else here would notice, and
+  // the disagreement gets reported against the solver: 4.25 V on
+  // `33-inductive-no-flyback`, the gallery's largest. Costs nothing to refuse —
+  // the two gallery circuits carrying one already disagreed.
+  for (const ap of exportApproximated || []) unrepresentedRefs.add(String(ap).split(' ')[0]);
+
+  const clampedIsRefs = clampedIsRefsOf(text);
 
   // Structural floor: these are what "unsimulatable" meant.
   //
@@ -709,6 +878,40 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
       if (d > worstAbs) { worstAbs = d; worstRel = rel; worstAt = net.name; }
     }
     if (!agree(engineV, spiceV)) {
+      // A NODE TOUCHING A PART THE DECK HAS NOTHING STANDING IN FOR IS NOT A
+      // SHARED QUESTION. See `unrepresentedRefs` above for why this fires here,
+      // after the tolerance check, rather than before it.
+      const missing = unrepresentedRefs.size
+        ? [...new Set((net.nodes || []).map(nd => nd.refdes)
+          .filter(r => unrepresentedRefs.has(r)))]
+        : [];
+      // A node whose diode ngspice re-specified is not a shared question either,
+      // and it gets its OWN reason: "unrepresented-part" would send a reader
+      // looking for a missing card when the card is there and the reference
+      // changed it.
+      const clamped = clampedIsRefs.size
+        ? [...new Set((net.nodes || []).map(nd => nd.refdes).filter(r => clampedIsRefs.has(r)))]
+        : [];
+      if (clamped.length && !missing.length) {
+        return { name, ok: false, compared: 0,
+          lines: [`  V(${net.name}): engine ${engineV.toFixed(6)} V  ngspice `
+            + `${spiceV.toFixed(6)} V  delta ${Math.abs(engineV - spiceV).toExponential(2)}`,
+            `  but ${clamped.join(', ')} states an IS below 1e-28, which ngspice CLAMPS`,
+            '  silently. The reference solved a stronger diode than the deck asked for,',
+            '  so it sits lower and ours is the stated device. Not a disagreement about',
+            '  the same question.'],
+          reason: `oracle-clamped-is: ${clamped.join(',')} at ${net.name}` };
+      }
+      if (missing.length) {
+        return { name, ok: false, compared: 0,
+          lines: [`  V(${net.name}): engine ${engineV.toFixed(6)} V  ngspice `
+            + `${spiceV.toFixed(6)} V  delta ${Math.abs(engineV - spiceV).toExponential(2)}`,
+            `  but this node carries ${missing.join(', ')}, which the deck has nothing`,
+            '  standing in for — no SPICE card, no companion, and not a pin-driving',
+            '  part whose pins are exported. The two sides are not answering about',
+            '  the same circuit at this node.'],
+          reason: `unrepresented-part: ${missing.join(',')} at ${net.name}` };
+      }
       ok = false;
       lines.push(`  V(${net.name}): engine ${engineV.toFixed(6)} V  ngspice `
         + `${spiceV.toFixed(6)} V  delta ${Math.abs(engineV - spiceV).toExponential(2)}`);
@@ -767,7 +970,30 @@ export function judgeCase(name, json, dir, {drivePins = false, driveHigh = true}
       } else {
         lines.push(`    engine supply OUT ${engineSupplyOut.toExponential(6)} A `
           + `(relative difference ${(relativeDifference * 100).toFixed(3)} %)`);
-        if (relativeDifference > I_TOL_REL) { ok = false; lines.push('    ABOVE TOLERANCE'); }
+        // A RAIL WITH PARALLEL IDEAL SOURCES HAS NO DEFINED CURRENT SPLIT, so
+        // there is nothing here to be right or wrong about.
+        //
+        // `eater6502-full-build` has six decoupling capacitors across VCC and
+        // ground, each held at the engine's stored 5 V. The exporter drops them
+        // from the deck because two ideal sources across one pair is a singular
+        // matrix -- but the ENGINE still has all six, and its rail-current
+        // reader summed an indeterminate split into 5.000007e+4 A against
+        // ngspice's 6.515200e-2 A. The VOLTAGES agree to 16 uV across all 43
+        // compared nodes; only the split is undefined, and on both sides.
+        //
+        // So the comparison is declined where the exporter has told us it
+        // dropped a redundant source on this very pair. It is declined rather
+        // than widened: no tolerance makes 50 kA and 65 mA the same reading.
+        const railRedundant = (exportRedundant || []).filter((rs) =>
+          rs.nodes?.some((nd) => String(nd) !== '0'));
+        if (relativeDifference > I_TOL_REL) {
+          if (railRedundant.length) {
+            lines.push(`    but ${railRedundant.map(rs => rs.ref).join(', ')} are held at the `
+              + 'engine\'s stored voltage across a pair the rail already fixes, so the CURRENT');
+            lines.push('    split between parallel ideal sources is undefined in the engine too.');
+            lines.push('    Node voltages above are the comparison; this branch is not one.');
+          } else { ok = false; lines.push('    ABOVE TOLERANCE'); }
+        }
       }
     }
   }
@@ -882,11 +1108,38 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
         + imported.unmapped.slice(0, 4).map(u => u.ref ?? u.kind ?? '?').join(', ')],
       reason: `unmapped ${imported.unmapped.length}` };
   }
-  if (imported.losses.length) {
+  /**
+   * A LOSS OF THE TRANSIENT SHAPE IS NOT A LOSS OF THE BIAS POINT.
+   *
+   * `unsupported-inline-waveform` says the importer could not keep a source's
+   * WAVEFORM. It kept its initial value, and for a `.op` that is the whole
+   * answer -- so refusing the deck answers a question nobody asked here.
+   *
+   * ngspice's `.op` value for a waveform source, measured rather than assumed:
+   *
+   *   V1 a 0 PULSE(1 4 10u 1u 1u 5u 20u)          a = 1.000000   (V1)
+   *   V2 b 0 SINE(2 3 1k)                         b = 2.000000   (the offset)
+   *   V3 c 0 DC 0.5 PULSE(1 4 10u 1u 1u 5u 20u)   c = 0.500000   (DC wins)
+   *
+   * and the importer takes exactly that in all six waveform forms tried --
+   * PULSE at 5 and 7 arguments, SINE at 3 and 5, EXP and PWL all import at the
+   * first value, which is V1 or the offset. So the two sides agree about what
+   * the source is worth at the bias point; only the shape is gone.
+   *
+   * ~180 of the 1,129 losses in the 7,866-deck Si7li corpus are this kind.
+   *
+   * Every OTHER loss still refuses. This is a whitelist of one kind, admitted
+   * on a measurement, not a relaxation of the rule -- and it is recorded in
+   * `adapted` so an agreeing row says the waveform was dropped.
+   */
+  const biasSafeLoss = (l) => l && l.kind === 'unsupported-inline-waveform';
+  const blockingLosses = imported.losses.filter(l => !biasSafeLoss(l));
+  const waveformLosses = imported.losses.length - blockingLosses.length;
+  if (blockingLosses.length) {
     return { name, ok: false, compared: 0,
-      lines: [`  ${imported.losses.length} semantic loss: `
-        + imported.losses.slice(0, 3).map(l => l.reason).join('; ')],
-      reason: `loss: ${imported.losses[0].reason}` };
+      lines: [`  ${blockingLosses.length} semantic loss: `
+        + blockingLosses.slice(0, 3).map(l => l.reason).join('; ')],
+      reason: `loss: ${blockingLosses[0].reason}` };
   }
   if (!imported.parts.length) {
     return { name, ok: false, lines: ['  the import produced no parts'], compared: 0,
@@ -976,6 +1229,10 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
   // changed.
   let text = deckText;
   const edits = [];
+  if (waveformLosses) {
+    edits.push(`${waveformLosses} source waveform(s) not modelled; compared at the `
+      + 'initial value, which is what ngspice uses for .op');
+  }
 
   // A LIBRARY MUST BE GIVEN TO BOTH SIDES, OR IT IS NOT A COMPARISON.
   //
@@ -1077,6 +1334,29 @@ export function judgeForeignDeck(name, deckText, dir, { libraries = [] } = {}) {
   const evidence = usedLib ? 'library-resolved'
     : edits.length ? 'original-adapted' : 'original-direct';
   const thermal = declaresTemp ? 'deck-declared' : 'native-fixed-vs-oracle-default';
+
+  // A VALUE THE TWO ENGINES READ 10^18 APART IS NOT A COMPARISON.
+  //
+  // Declined before ngspice runs, and named, because the difference is in the
+  // DECK's own text rather than in either solve: ngspice 42 reads a bare `A`
+  // suffix as the SI prefix ATTO and we read it as the ampere unit. Two Si7li
+  // decks were being reported as numeric disagreements on this alone -- 63.6 V
+  // and 2.6 V -- and neither is a disagreement about a circuit.
+  //
+  // See `attoSuffixedRefsOf` for the suffix sweep against ngspice that found
+  // this to be the ONLY letter where the two parsers differ.
+  const attoRefs = attoSuffixedRefsOf(deckText);
+  if (attoRefs.size) {
+    const refs = [...attoRefs].join(', ');
+    return { name, ok: false, compared: 0, evidence, thermal,
+      lines: [`  ORACLE PARSE: ${refs} carr${attoRefs.size > 1 ? 'y' : 'ies'} a bare`,
+        '  `A`-suffixed value. ngspice 42 reads `A` as the SI prefix ATTO (1e-18);',
+        '  we read it as the ampere unit, the same way `4.7kOhm` and `100nF` are',
+        '  read. The two sides would be solving values 1e18 apart, so this is not',
+        '  a question about the circuit and is not compared.'],
+      reason: `oracle-atto-suffix: ${[...attoRefs].join(',')}` };
+  }
+
   const run = runNgspice(text, dir, name.replace(/[^A-Za-z0-9_.-]/g, '_'));
   if (run.error) {
     return { name, ok: false, lines: [`  ngspice refused the deck: ${run.error}`], compared: 0,

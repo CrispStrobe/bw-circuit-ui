@@ -2,7 +2,12 @@ import { parseSpiceValue } from './si.js';
 
 const LIMITS = Object.freeze({ definitions: 256, tokens: 256, depth: 32 });
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*/;
-const NUMBER = /^(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?:MEG|MIL|[TGMKUNPF])?(?![A-Za-z0-9_.])/i;
+// The micro sign in both spellings (U+00B5 from CP1252 vendor models, U+03BC
+// from UTF-8 editors) is a scale factor here exactly as `U` is; see the
+// MICRO_SIGN note in si.js. It must be INSIDE the suffix group, not merely
+// absent from the trailing-character class: `55\u00b5` already matched `55`
+// as a number and then died on the sign as an unsupported token.
+const NUMBER = /^(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?:MEG|MIL|[TGMKUNPF\u00b5\u03bc])?(?![A-Za-z0-9_.])/i;
 
 function stripOuterBraces (source) {
   const text = String(source).trim();

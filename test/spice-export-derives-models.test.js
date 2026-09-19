@@ -157,17 +157,35 @@ test('a kind with no generic card falls back to the symbol table, and says which
   // returned something for every kind would satisfy the loop and quietly stop
   // the symbol table ever being consulted.
   //
-  // At a bw-board pin before e175bf4 that kind is `pnp`, which had no generic
-  // card; after it, both have one and this test measures the tip120 instead.
-  // Either way it asserts the FALLBACK still resolves rather than refusing.
-  const kinds = ['pnp', 'tip120'].filter(k => !allCards().some(c => c.generic && c.kind === k));
+  // At a bw-board pin before e175bf4 that kind was `pnp`, which had no generic
+  // card; after it, `pnp` has one.
+  //
+  // THE SUBJECT MOVED AGAIN, and this is why it is not `tip120` any more.
+  // `tip120` still has no generic card, but it no longer travels the card path
+  // AT ALL: the exporter now writes it as a resistor plus an `S` switch,
+  // because that is what bw-board's stamp is, and the symbol table is never
+  // consulted for it. Asserting a `Q1` element line for a tip120 would be a
+  // claim about a subject that has left. See
+  // test/spice-export-tip120-switch.test.js for what it does instead.
+  //
+  // `pmos` is the live subject: no generic card, and it resolves its model
+  // through the symbol table like `pnp` used to. If BOTH ever gain generic
+  // cards the loop empties, which is why the count is asserted -- a vacuous
+  // pass here would stop the fallback ever being exercised again.
+  const candidates = { pmos: { pins: ['drain', 'gate', 'source'], el: /^M1 \S+ \S+ \S+ \S+ \S+$/m } };
+  const kinds = Object.keys(candidates)
+    .filter(k => !allCards().some(c => c.generic && c.kind === k));
+  assert.ok(kinds.length > 0,
+    'every candidate kind now has a generic card, so the symbol-table fallback is '
+    + 'no longer exercised -- pick a kind that still lacks one, or retire this test '
+    + 'against the rule above');
   for (const kind of kinds) {
-    const part = { refdes: 'Q1', kind, pins: ['collector', 'base', 'emitter'], params: {} };
+    const part = { refdes: 'M1', kind, pins: candidates[kind].pins, params: {} };
     const { text, skipped } = toSpice(netlistWith([part]));
     assert.deepEqual(skipped, [],
       `a bare ${kind} was skipped rather than exported: ${JSON.stringify(skipped)}`);
-    assert.match(text, /^Q1 \S+ \S+ \S+ \S+$/m,
-      `no Q element line for a bare ${kind}:\n${text}`);
+    assert.match(text, candidates[kind].el,
+      `no element line for a bare ${kind}:\n${text}`);
   }
 });
 

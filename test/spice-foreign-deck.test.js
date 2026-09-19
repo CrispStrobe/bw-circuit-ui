@@ -182,13 +182,51 @@ test('a foreign cascode deck agrees with ngspice', { skip: NG ? false : 'ngspice
 test('an import loss refuses the case instead of comparing it', { skip: NG ? false : 'ngspice not installed' }, () => {
   // A deck we only partly understood is a DIFFERENT circuit, and agreeing with
   // it would be worse than failing. The judge must refuse by name.
+  //
+  // THE FIXTURE CHANGED AND THE CLAIM DID NOT. This used to be
+  // `PULSE(0 5 0 0 1n 10n 20n)`, whose TR = 0 fails the strict waveform check —
+  // and that is now a BIAS-SAFE loss, because the importer keeps the source's
+  // initial value and ngspice's `.op` uses exactly that. So the example moved
+  // category while "a blocking loss refuses" stayed true, and the fixture is
+  // now a loss that really does change the circuit: a diode whose model the
+  // deck never declares.
   const dir = mkdtempSync(join(tmpdir(), 'bw-foreign-'));
   try {
-    const deck = '*t\nV1 IN 0 PULSE(0 5 0 0 1n 10n 20n)\nR1 IN 0 1k\n.op\n.end';
+    const deck = '*t\nV1 IN 0 DC 5\nR1 IN M 1k\nD1 M 0 NOSUCHMODEL\n.op\n.end';
     const r = judgeForeignDeck('lossy', deck, dir);
     assert.equal(r.ok, false);
     assert.match(r.reason, /loss|unmapped/,
       `expected a refusal naming the loss, got "${r.reason}"`);
     assert.equal(r.compared, 0, 'a refused case must compare nothing');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a waveform-only loss is COMPARED at the initial value, and says so',
+  { skip: NG ? false : 'ngspice not installed' }, () => {
+  /**
+   * `unsupported-inline-waveform` says the importer could not keep a source's
+   * WAVEFORM. It kept its initial value, and for a `.op` that is the whole
+   * answer. ngspice's own `.op` values, measured:
+   *
+   *   PULSE(1 4 10u 1u 1u 5u 20u)        -> 1.000000   (V1)
+   *   SINE(2 3 1k)                       -> 2.000000   (the offset)
+   *   DC 0.5 PULSE(1 4 10u 1u 1u 5u 20u) -> 0.500000   (DC wins)
+   *
+   * so the two sides agree about what the source is worth at the bias point.
+   * Refusing it answers a question nobody asked. ~180 of the 1,129 losses in
+   * the 7,866-deck Si7li corpus are this kind.
+   */
+  const dir = mkdtempSync(join(tmpdir(), 'bw-foreign-'));
+  try {
+    // TR = 0 fails the strict seven-scalar check, so this is a waveform loss.
+    const deck = '*t\nV1 IN 0 PULSE(0 5 0 0 1n 10n 20n)\nR1 IN 0 1k\n.op\n.end';
+    const r = judgeForeignDeck('waveform-only', deck, dir);
+    assert.ok(r.compared > 0,
+      `a waveform-only loss must be compared, not refused: ${r.reason}`);
+    assert.equal(r.ok, true, JSON.stringify(r.lines));
+    assert.ok((r.adapted || []).some((e) => /waveform/.test(e) && /initial value/.test(e)),
+      `the dropped waveform must be recorded as an edit: ${JSON.stringify(r.adapted)}`);
+    assert.equal(r.evidence, 'original-adapted',
+      'a deck compared at a source initial value is adapted, not direct');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
