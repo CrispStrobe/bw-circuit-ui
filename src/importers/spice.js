@@ -1278,6 +1278,12 @@ export function importSpice(text, opts = {}) {
             || (exactDefaultGeometryModel && exactDefaultGeometry))
             && model.type === 'NMOS' && bulkIsGround) {
           params.model = 'level1';
+        } else if (exactInstanceLevel1Model && exactInstanceGeometry
+            && model.type === 'NMOS' && params.bulkOnSource === true) {
+          // This is the exact three-terminal Level-1 law too: the authored
+          // fourth node is the source node, so VSB is identically zero while
+          // the drain-bulk junction remains physically live.
+          params.model = 'level1';
         } else if (exactInstanceLevel1Model && exactInstanceGeometry && model.type === 'PMOS'
             && bulkIsThirdNode) {
           // This is the only four-terminal MOS shape in the public contract.
