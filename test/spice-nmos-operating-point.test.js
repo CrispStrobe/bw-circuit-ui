@@ -59,6 +59,10 @@ describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
   });
 
   it('withholds the selector from every richer, incomplete, or unproved shape', () => {
+    const missingModel = importSpice(deck().replace(/^\.model.*$/m, ''));
+    assert.equal(transistor(missingModel).params.model, undefined);
+    assert.notEqual(runSourceAnalyses(missingModel, { format: 'spice' })[0].status, 'pass');
+
     const cases = [
       ['missing LAMBDA', { model: 'NMOS(Level=1 VTO=1 KP=50u)' }],
       ['other level', { model: 'NMOS(Level=2 VTO=1 KP=50u LAMBDA=0.01)' }],

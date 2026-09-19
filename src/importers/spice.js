@@ -1214,13 +1214,16 @@ export function importSpice(text, opts = {}) {
         // fields from richer LEVEL/VDMOS cards, but Board.operatingPoint must
         // only see its `level1` selector when the complete represented law is
         // stated and no unrepresented token has been discarded.
-        const modelKeys = Object.keys(model.params).sort();
+        // Missing model definitions are a normal partial-import case.  They
+        // retain `_model` for diagnostics; strict admission must simply stay
+        // off rather than dereferencing the absent card.
+        const modelKeys = Object.keys(model?.params || {}).sort();
         const exactModelKeys = ['kp', 'lambda', 'level', 'vto'];
-        const body = String(model.body || '').trim().replace(/^\(\s*|\s*\)$/g, '');
+        const body = String(model?.body || '').trim().replace(/^\(\s*|\s*\)$/g, '');
         const bodyFields = body ? body.split(/[\s,]+/).filter(Boolean) : [];
         const bodyKeys = bodyFields.map(field => /^([A-Za-z_][A-Za-z0-9_]*)=(\S+)$/.exec(field))
           .map(match => match?.[1]?.toLowerCase()).sort();
-        const exactLevel1Model = !model.ambiguous && model.type === 'NMOS'
+        const exactLevel1Model = model && !model.ambiguous && model.type === 'NMOS'
           && JSON.stringify(modelKeys) === JSON.stringify(exactModelKeys)
           && JSON.stringify(bodyKeys) === JSON.stringify(exactModelKeys)
           && model.params.level === 1 && Number.isFinite(model.params.vto)
