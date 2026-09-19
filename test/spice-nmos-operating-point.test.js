@@ -89,6 +89,66 @@ describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
   });
 });
 
+describe('strict Level-1 NMOS model-card geometry defaults', () => {
+  const modelGeometryDeck = (model = 'NMOS(VTO=1 KP=2m W=10u L=1u)', instance = '') => [
+    '* model-card W/L defaults',
+    'VD drain 0 5',
+    'VG gate 0 3',
+    `M1 drain gate 0 0 NM ${instance}`.trim(),
+    `.model NM ${model}`,
+    '.op',
+    '.end',
+  ].join('\n');
+
+  it('uses authored model W/L with the Level-1 and LAMBDA defaults', () => {
+    for (const model of [
+      'NMOS(VTO=1 KP=2m W=10u L=1u)',
+      'NMOS(LEVEL=1 VTO=1 KP=2m W=10u L=1u)',
+    ]) {
+      const imported = importSpice(modelGeometryDeck(model));
+      assert.deepEqual(transistor(imported).params, {
+        vth: 1, kp: 0.002, _model: 'NM', bulkAtGround: true,
+        w: 10e-6, l: 1e-6, lambda: 0, model: 'level1',
+      });
+      const [run] = runSourceAnalyses(imported, { format: 'spice' });
+      assert.equal(run.status, 'pass', JSON.stringify(run));
+      assert.ok(Math.abs(run.observables.sourceCurrents.find(row => row.id === 's0').current + 0.04) < 1e-10);
+    }
+  });
+
+  it('exports the represented law canonically and re-imports it unchanged', () => {
+    const imported = importSpice(modelGeometryDeck());
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    const exported = toSpice(extractNetlist(circuit), 'model geometry NMOS');
+    assert.deepEqual(exported.skipped, []);
+    assert.match(exported.text, /^MQ1 \S+ \S+ \S+ 0 NM_Q1 W=10u L=1u$/m);
+    assert.match(exported.text,
+      /^\.model NM_Q1 NMOS \(LEVEL=1 VTO=1 KP=2m LAMBDA=0\)$/m);
+    const roundTrip = importSpice(exported.text);
+    assert.deepEqual(roundTrip.parts.find(part => part.kind === 'nmos').params, {
+      vth: 1, kp: 0.002, lambda: 0, _model: 'NM_Q1',
+      w: 10e-6, l: 1e-6, bulkAtGround: true, model: 'level1',
+    });
+  });
+
+  it('does not generalize the default across missing, mixed, richer, invalid, or PMOS cards', () => {
+    const cases = [
+      ['missing W', 'NMOS(VTO=1 KP=2m L=1u)', ''],
+      ['mixed instance and model geometry', 'NMOS(VTO=1 KP=2m W=10u L=1u)', 'W=20u L=2u'],
+      ['richer model', 'NMOS(VTO=1 KP=2m W=10u L=1u LAMBDA=.01)', ''],
+      ['other level', 'NMOS(LEVEL=2 VTO=1 KP=2m W=10u L=1u)', ''],
+      ['negative W', 'NMOS(VTO=1 KP=2m W=-10u L=1u)', ''],
+      ['PMOS', 'PMOS(VTO=-1 KP=2m W=10u L=1u)', ''],
+    ];
+    for (const [name, model, instance] of cases) {
+      const imported = importSpice(modelGeometryDeck(model, instance));
+      assert.equal(transistor(imported).params.model, undefined,
+        `${name}: ${JSON.stringify(transistor(imported).params)}`);
+      assert.notEqual(runSourceAnalyses(imported, { format: 'spice' })[0].status, 'pass', name);
+    }
+  });
+});
+
 const pmosDeck = ({
   model = 'PMOS(LEVEL=1 VTO=-1 KP=25u LAMBDA=0.01)',
   instance = 'W=100u L=1u',

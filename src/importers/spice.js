@@ -1209,27 +1209,51 @@ export function importSpice(text, opts = {}) {
         // retain `_model` for diagnostics; strict admission must simply stay
         // off rather than dereferencing the absent card.
         const modelKeys = Object.keys(model?.params || {}).sort();
-        const exactModelKeys = ['kp', 'lambda', 'level', 'vto'];
+        const exactInstanceModelKeys = ['kp', 'lambda', 'level', 'vto'];
+        const exactDefaultGeometryKeys = ['kp', 'l', 'vto', 'w'];
+        const exactDefaultGeometryWithLevelKeys = ['kp', 'l', 'level', 'vto', 'w'];
         const body = String(model?.body || '').trim().replace(/^\(\s*|\s*\)$/g, '');
         const bodyFields = body ? body.split(/[\s,]+/).filter(Boolean) : [];
         const bodyKeys = bodyFields.map(field => /^([A-Za-z_][A-Za-z0-9_]*)=(\S+)$/.exec(field))
           .map(match => match?.[1]?.toLowerCase()).sort();
-        const exactLevel1Model = model && !model.ambiguous
+        const sameKeys = keys => JSON.stringify(modelKeys) === JSON.stringify(keys)
+          && JSON.stringify(bodyKeys) === JSON.stringify(keys);
+        const exactInstanceLevel1Model = model && !model.ambiguous
           && (model.type === 'NMOS' || model.type === 'PMOS')
-          && JSON.stringify(modelKeys) === JSON.stringify(exactModelKeys)
-          && JSON.stringify(bodyKeys) === JSON.stringify(exactModelKeys)
+          && sameKeys(exactInstanceModelKeys)
           && model.params.level === 1 && Number.isFinite(model.params.vto)
           && ((model.type === 'NMOS' && model.params.vto > 0)
             || (model.type === 'PMOS' && model.params.vto < 0))
           && Number.isFinite(model.params.kp) && model.params.kp > 0
           && Number.isFinite(model.params.lambda) && model.params.lambda >= 0;
-        const exactGeometry = exactInstanceSyntax && instanceFields.length === 2
+        const exactInstanceGeometry = exactInstanceSyntax && instanceFields.length === 2
           && seenInstanceFields.size === 2 && seenInstanceFields.has('w') && seenInstanceFields.has('l')
           && Number.isFinite(instance.w) && instance.w > 0
           && Number.isFinite(instance.l) && instance.l > 0;
-        if (exactLevel1Model && exactGeometry && model.type === 'NMOS' && bulkIsGround) {
+        // ngspice also accepts W/L on a model card as defaults for every M
+        // instance that omits them.  Its public device state reports those
+        // authored values as @m[w]/@m[l].  Keep this narrower than a generic
+        // model-default system: the measured family has exactly KP/VTO/W/L,
+        // optional explicit LEVEL=1, and therefore the Level-1 defaults
+        // LEVEL=1 and LAMBDA=0.
+        const exactDefaultGeometryModel = model && !model.ambiguous && model.type === 'NMOS'
+          && (sameKeys(exactDefaultGeometryKeys) || sameKeys(exactDefaultGeometryWithLevelKeys))
+          && (model.params.level === undefined || model.params.level === 1)
+          && Number.isFinite(model.params.vto) && model.params.vto > 0
+          && Number.isFinite(model.params.kp) && model.params.kp > 0
+          && Number.isFinite(model.params.w) && model.params.w > 0
+          && Number.isFinite(model.params.l) && model.params.l > 0;
+        const exactDefaultGeometry = exactInstanceSyntax && instanceFields.length === 0;
+        if (exactDefaultGeometryModel && exactDefaultGeometry) {
+          params.w = model.params.w;
+          params.l = model.params.l;
+          params.lambda = 0;
+        }
+        if (((exactInstanceLevel1Model && exactInstanceGeometry)
+            || (exactDefaultGeometryModel && exactDefaultGeometry))
+            && model.type === 'NMOS' && bulkIsGround) {
           params.model = 'level1';
-        } else if (exactLevel1Model && exactGeometry && model.type === 'PMOS'
+        } else if (exactInstanceLevel1Model && exactInstanceGeometry && model.type === 'PMOS'
             && bulkIsThirdNode) {
           // This is the only four-terminal MOS shape in the public contract.
           // The landed engine stamps both bulk junctions and reports the real

@@ -880,8 +880,30 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         lines.push(`${el} ${nodeFields} ${model}`);
       }
         } else if (card === 'M') {
+      const explicitNmos = part.kind === 'nmos' && part.params?.model === 'level1'
+        && part.params?.bulkAtGround === true;
       const explicitPmos = part.kind === 'pmos' && part.params?.model === 'level1'
         && pins.includes('bulk');
+      if (explicitNmos) {
+        const required = ['vth', 'kp', 'w', 'l', 'lambda'];
+        const missing = required.filter(key => !Number.isFinite(Number(part.params?.[key])));
+        const invalid = Number(part.params?.vth) <= 0 || Number(part.params?.kp) <= 0
+          || Number(part.params?.w) <= 0 || Number(part.params?.l) <= 0
+          || Number(part.params?.lambda) < 0;
+        if (missing.length || invalid) {
+          const reason = 'exact grounded-bulk NMOS export requires finite VTO/KP/W/L/LAMBDA, '
+            + 'positive VTO/KP/W/L and non-negative LAMBDA';
+          skipped.push(`${part.refdes} (${part.kind}): ${reason}`);
+          lines.push(`* ${part.refdes} ${part.kind} — skipped (${reason})`);
+          continue;
+        }
+        const perPart = `NM_${String(part.refdes).replace(/[^A-Za-z0-9_]/g, '_')}`;
+        modelCards.push(`.model ${perPart} NMOS (LEVEL=1 VTO=${formatSpiceValue(part.params.vth)} `
+          + `KP=${formatSpiceValue(part.params.kp)} LAMBDA=${formatSpiceValue(part.params.lambda)})`);
+        lines.push(`${el} ${nodeFields} 0 ${perPart} W=${formatSpiceValue(part.params.w)} `
+          + `L=${formatSpiceValue(part.params.l)}`);
+        continue;
+      }
       if (explicitPmos) {
         if (!nodes[3]) {
           const reason = 'exact explicit-bulk PMOS export requires a connected bulk terminal';
