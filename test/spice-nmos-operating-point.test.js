@@ -49,7 +49,7 @@ describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
     assert.deepEqual(run.metadata.nmos, {
       model: 'explicit-spice-level1-grounded-bulk',
       requiredParameters: ['vth', 'kp', 'w', 'l', 'lambda', 'bulkAtGround'],
-      defaults: { bulkIs: 1e-14, bulkN: 1 }, thermalVoltage: 0.02585,
+      defaults: { bulkIs: 1e-14, bulkN: 1 }, thermalVoltage: 0.025864925786328753,
       temperatureModel: 'fixed',
     });
     const voltage = id => run.observables.nodes.find(node => node.id === id).voltage;
@@ -188,7 +188,7 @@ describe('strict explicit-bulk Level-1 PMOS source analysis', () => {
       model: 'explicit-spice-level1-explicit-bulk-terminal',
       requiredParameters: ['vth', 'kp', 'w', 'l', 'lambda'],
       requiredTerminals: ['gate', 'drain', 'source', 'bulk'],
-      defaults: { bulkIs: 1e-14, bulkN: 1 }, thermalVoltage: 0.02585,
+      defaults: { bulkIs: 1e-14, bulkN: 1 }, thermalVoltage: 0.025864925786328753,
       temperatureModel: 'fixed',
     });
     const voltage = id => run.observables.nodes.find(node => node.id === id).voltage;
