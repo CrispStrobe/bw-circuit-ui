@@ -94,6 +94,11 @@ function canonicalCircuit(imported, circuit) {
       // fact rather than a physical terminal. Exact PMOS instead carries a
       // real `bulk` terminal. No other bulk potential is inferred here.
       if (terminal === 'bulk' && part.params?.bulkAtGround === true) return 'gnd';
+      if (terminal === 'bulk' && part.params?.bulkOnSource === true) {
+        const source = canonicalByTerminal.get(terminalKey(part.id, 'source'));
+        if (!source) throw new Error(`canonical topology is missing ${part.id}.source`);
+        return source;
+      }
       const id = canonicalByTerminal.get(terminalKey(part.id, terminal));
       if (!id) throw new Error(`canonical topology is missing ${part.id}.${terminal}`);
       return id;

@@ -880,8 +880,12 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         lines.push(`${el} ${nodeFields} ${model}`);
       }
         } else if (card === 'M') {
+      const nmosGroundBulk = part.params?.bulkAtGround === true
+        && !Object.prototype.hasOwnProperty.call(part.params || {}, 'bulkOnSource');
+      const nmosSourceBulk = part.params?.bulkOnSource === true
+        && !Object.prototype.hasOwnProperty.call(part.params || {}, 'bulkAtGround');
       const explicitNmos = part.kind === 'nmos' && part.params?.model === 'level1'
-        && part.params?.bulkAtGround === true;
+        && (nmosGroundBulk || nmosSourceBulk);
       const explicitPmos = part.kind === 'pmos' && part.params?.model === 'level1'
         && pins.includes('bulk');
       if (explicitNmos) {
@@ -891,7 +895,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
           || Number(part.params?.w) <= 0 || Number(part.params?.l) <= 0
           || Number(part.params?.lambda) < 0;
         if (missing.length || invalid) {
-          const reason = 'exact grounded-bulk NMOS export requires finite VTO/KP/W/L/LAMBDA, '
+          const reason = 'exact known-bulk NMOS export requires finite VTO/KP/W/L/LAMBDA, '
             + 'positive VTO/KP/W/L and non-negative LAMBDA';
           skipped.push(`${part.refdes} (${part.kind}): ${reason}`);
           lines.push(`* ${part.refdes} ${part.kind} — skipped (${reason})`);
@@ -900,7 +904,8 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         const perPart = `NM_${String(part.refdes).replace(/[^A-Za-z0-9_]/g, '_')}`;
         modelCards.push(`.model ${perPart} NMOS (LEVEL=1 VTO=${formatSpiceValue(part.params.vth)} `
           + `KP=${formatSpiceValue(part.params.kp)} LAMBDA=${formatSpiceValue(part.params.lambda)})`);
-        lines.push(`${el} ${nodeFields} 0 ${perPart} W=${formatSpiceValue(part.params.w)} `
+        const bulkNode = nmosSourceBulk ? nodes[2] : '0';
+        lines.push(`${el} ${nodeFields} ${bulkNode} ${perPart} W=${formatSpiceValue(part.params.w)} `
           + `L=${formatSpiceValue(part.params.l)}`);
         continue;
       }

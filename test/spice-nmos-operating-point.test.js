@@ -8,6 +8,7 @@
 import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { importSpice } from '../src/importers/spice.js';
 import { Circuit } from '../src/model/circuit.js';
 import { extractNetlist } from '../src/model/netlist.js';
@@ -32,6 +33,40 @@ const deck = ({
 ].join('\n');
 
 const transistor = imported => imported.parts.find(part => part.id === 'M1');
+const HAS_NGSPICE = spawnSync('ngspice', ['--version'], { encoding: 'utf8' }).status === 0;
+
+function ngspiceSourceBulk(deckText) {
+  const text = `${deckText.replace(/\n\.op\n\.end$/i, '')}
+.temp 27
+.options tnom=27 reltol=1e-12 abstol=1e-18 vntol=1e-15
+.control
+set numdgt=17
+op
+print v(out) @m1[id] i(vs)
+.endc
+.end
+`;
+  const run = spawnSync('ngspice', ['-b'], { input: text, encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr || run.stdout);
+  const read = name => {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = run.stdout.match(new RegExp(`${escaped}\\s*=\\s*([-+0-9.e]+)`, 'i'));
+    assert.ok(match, `${name} absent from:\n${run.stdout}`);
+    return Number(match[1]);
+  };
+  return { out: read('v(out)'), drain: read('@m1[id]'), supply: read('i(vs)') };
+}
+
+const sourceBulkDeck = ({ model = 'NMOS(Level=1 VTO=1 KP=100u LAMBDA=0.02)',
+  instance = 'W=1u L=1u' } = {}) => [
+  '* exact source-tied-bulk Level-1 NMOS, forward-biased drain junction',
+  'VS source 0 5',
+  'R1 out 0 10k',
+  `M1 out source source source NM ${instance}`,
+  `.model NM ${model}`,
+  '.op',
+  '.end',
+].join('\n');
 
 describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
   it('admits the exact represented card and preserves its fourth source node', () => {
@@ -75,7 +110,6 @@ describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
       ['extra instance field', { instance: 'W=100u L=1u AD=2p' }],
       ['duplicate geometry', { instance: 'W=100u W=200u L=1u' }],
       ['unparsed instance token', { instance: 'W=100u L=1u EXTRA' }],
-      ['bulk on source', { bulk: 'source' }],
       ['bulk on a third node', { bulk: 'body' }],
       ['PMOS', { model: 'PMOS(Level=1 VTO=-1 KP=50u LAMBDA=0.01)' }],
     ];
@@ -85,6 +119,58 @@ describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
         `${name} must not acquire the strict selector: ${JSON.stringify(transistor(imported).params)}`);
       const [run] = runSourceAnalyses(imported, { format: 'spice' });
       assert.notEqual(run.status, 'pass', `${name} must remain refused: ${JSON.stringify(run)}`);
+    }
+  });
+});
+
+describe('strict source-tied-bulk Level-1 NMOS source analysis', () => {
+  it('preserves the exact topology and matches the live ngspice junction witness', {
+    skip: !HAS_NGSPICE,
+  }, () => {
+    const text = sourceBulkDeck();
+    const oracle = ngspiceSourceBulk(text);
+    const imported = importSpice(text);
+    assert.deepEqual(transistor(imported).params, {
+      vth: 1, kp: 100e-6, lambda: 0.02, _model: 'NM',
+      w: 1e-6, l: 1e-6, bulkOnSource: true, model: 'level1',
+    });
+    const [run] = runSourceAnalyses(imported, { format: 'spice' });
+    assert.equal(run.status, 'pass', JSON.stringify(run));
+    assert.deepEqual(run.topology.find(card => card.kind === 'M').nodes,
+      ['n1', 'n0', 'n0', 'n0']);
+    assert.equal(run.metadata.nmos.model, 'explicit-spice-level1-source-tied-bulk');
+    const out = run.observables.nodes.find(node => node.id === 'n1').voltage;
+    const supply = run.observables.sourceCurrents.find(row => row.id === 's0').current;
+    assert.ok(Math.abs(out - oracle.out) < 5e-6, `${out} vs ${oracle.out}`);
+    assert.ok(Math.abs(supply - oracle.supply) < 1e-8, `${supply} vs ${oracle.supply}`);
+    assert.ok(Math.abs(supply - oracle.drain) < 1e-8, 'source lead returns drain-bulk current');
+  });
+
+  it('exports and re-imports the fourth node as the source node', () => {
+    const imported = importSpice(sourceBulkDeck());
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    const exported = toSpice(extractNetlist(circuit), 'source-tied NMOS');
+    assert.deepEqual(exported.skipped, []);
+    assert.match(exported.text,
+      /^MQ1 (\S+) (\S+) (\S+) \3 NM_Q1 W=1u L=1u$/m);
+    assert.match(exported.text,
+      /^\.model NM_Q1 NMOS \(LEVEL=1 VTO=1 KP=100u LAMBDA=20m\)$/m);
+    const roundTrip = importSpice(exported.text);
+    const mos = roundTrip.parts.find(part => part.kind === 'nmos');
+    assert.equal(mos.params.bulkOnSource, true);
+    assert.equal(mos.params.model, 'level1');
+    assert.equal(runSourceAnalyses(roundTrip, { format: 'spice' })[0].status, 'pass');
+  });
+
+  it('keeps richer, incomplete, and model-default source-bulk cards refused', () => {
+    for (const [name, options] of [
+      ['GAMMA/PHI', { model: 'NMOS(Level=1 VTO=1 KP=100u LAMBDA=.02 GAMMA=.5 PHI=.7)' }],
+      ['missing LAMBDA', { model: 'NMOS(Level=1 VTO=1 KP=100u)' }],
+      ['model-card geometry', { model: 'NMOS(Level=1 VTO=1 KP=100u W=1u L=1u)', instance: '' }],
+    ]) {
+      const imported = importSpice(sourceBulkDeck(options));
+      assert.equal(transistor(imported).params.model, undefined, name);
+      assert.notEqual(runSourceAnalyses(imported, { format: 'spice' })[0].status, 'pass', name);
     }
   });
 });
