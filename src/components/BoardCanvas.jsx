@@ -28,7 +28,7 @@ import { ledDisplayLevel } from './led-perception.js';
 import { DrcOverlay } from './DrcOverlay.jsx';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver, WokwiArduinoUno, WokwiArduinoNano, WokwiArduinoMega } from '../wokwi-wrappers/index.js';
-import { partLabel, effectiveRailVolts } from '../model/format.js';
+import { partLabel, effectiveRailVolts, netIsHighlighted, railFraction } from '../model/format.js';
 import TransferReport from './TransferReport.jsx';
 import { CIRCUIT_EXPORTS, runExport } from '../model/exporters/registry.js';
 import { IMPORT_FORMATS, importCircuit, pickKicadHierarchyRoot } from '../importers/index.js';
@@ -1709,7 +1709,7 @@ function jumperHitPoints(bb, a, b, index) {
   return [a, { x: a.x, y: laneY }, { x: b.x, y: laneY }, b];
 }
 
-function Wires({ wires, parts, circuit, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages, voltageMode, onUpdateWire, screenToCanvas, setDraggingWaypoint }) {
+function Wires({ wires, parts, circuit, selectedWire, onSelectWire, hoveredNet, onHoverNet, pinnedNet, supplyVolts = 5, nodeVoltages, voltageMode, onUpdateWire, screenToCanvas, setDraggingWaypoint }) {
   // Group wires by net to find all terminals in each net
   const netTerminals = new Map();
   for (const w of wires) {
@@ -1843,14 +1843,16 @@ function Wires({ wires, parts, circuit, selectedWire, onSelectWire, hoveredNet, 
       pathD = freeWireCurve(wire, a, b).path;
     }
     const isSelected = selectedWire === wire.id;
-    const isHovered = hoveredNet && hoveredNet === wire.netId;
+    const isHovered = netIsHighlighted(wire.netId, hoveredNet, pinnedNet);
 
     // Wire color by voltage: red at VCC, blue near GND, green/yellow in between
     let voltageColor = '#2ecc71'; // default green
     const v = nodeVoltages?.[wire.netId ?? wireNetId(circuit, wire)];
     if (v != null && typeof v === 'number') {
-      const vcc = 5.0;
-      const ratio = Math.max(0, Math.min(1, v / vcc));
+      // Against the board's OWN rail: dividing by a hardcoded 5.0 drew a
+      // 3.3 V board's supply rail as "mid-high" orange, when it was the
+      // highest voltage present.
+      const ratio = railFraction(v, supplyVolts);
       if (ratio > 0.8) voltageColor = '#e74c3c';      // red: near VCC
       else if (ratio > 0.4) voltageColor = '#f39c12';  // orange: mid-high
       else if (ratio > 0.15) voltageColor = '#2ecc71'; // green: mid
@@ -1961,7 +1963,7 @@ function Wires({ wires, parts, circuit, selectedWire, onSelectWire, hoveredNet, 
 
 // ── Voltage labels ───────────────────────────────────────────────
 
-function VoltageLabels({ wires, parts, nodeVoltages, circuit }) {
+function VoltageLabels({ wires, parts, nodeVoltages, circuit, pinnedNet, onPinNet, onHoverNet }) {
   if (!nodeVoltages) return null;
   // One pill per net, anchored to the net's MOST VISIBLE conductor (its
   // longest wire or jumper), with a leader line touching the wire — the
@@ -2023,18 +2025,35 @@ function VoltageLabels({ wires, parts, nodeVoltages, circuit }) {
     }
   }
   const fmtV = (v) => Math.abs(v) < 1 ? `${(v * 1000).toFixed(0)}mV` : `${v.toFixed(1)}V`;
-  return [...best.entries()].map(([netId, c]) => (
-    <g key={`vl-${netId}`} data-vl-net={netId} data-vl-len={Math.round(c.len)} pointerEvents="none">
-      {/* leader: pill → wire midpoint, so the label is unambiguous */}
-      <line x1={c.mx} y1={c.my - 16} x2={c.mx} y2={c.my} stroke="#f1c40f" strokeWidth={1} strokeDasharray="2 2" opacity={0.85} />
-      <circle cx={c.mx} cy={c.my} r={2.2} fill="#f1c40f" />
-      <g transform={`translate(${c.mx}, ${c.my - 24})`}>
-        <rect x={-23} y={-9} width={46} height={16} rx={3} fill="#0a0a1a" fillOpacity={0.88} />
-        <text textAnchor="middle" y={3.5} fill="#f1c40f" fontSize={10}
-          fontFamily="monospace" fontWeight="bold">{fmtV(c.v)}</text>
+  // The pill is the only thing on the canvas that NAMES a reading, so it is
+  // where "which wire is this?" gets asked. It used to be pointerEvents="none"
+  // — unaskable. Clicking pins the net, which paints every conductor on it,
+  // including the ones with no pill of their own; clicking again unpins. Hover
+  // alone could not answer the question, because moving the pointer toward the
+  // wire you are asking about is exactly what ends the hover.
+  return [...best.entries()].map(([netId, c]) => {
+    const pinned = pinnedNet === netId;
+    return (
+      <g key={`vl-${netId}`} data-vl-net={netId} data-vl-len={Math.round(c.len)}
+        data-vl-pinned={pinned ? '1' : undefined}
+        style={{ cursor: onPinNet ? 'pointer' : 'default' }}
+        pointerEvents={onPinNet ? 'auto' : 'none'}
+        onClick={onPinNet ? (e) => { e.stopPropagation(); onPinNet(pinned ? null : netId); } : undefined}
+        onMouseEnter={onHoverNet ? () => onHoverNet(netId) : undefined}
+        onMouseLeave={onHoverNet ? () => onHoverNet(null) : undefined}>
+        {/* leader: pill → wire midpoint, so the label is unambiguous */}
+        <line x1={c.mx} y1={c.my - 16} x2={c.mx} y2={c.my} stroke={pinned ? '#9b59b6' : '#f1c40f'}
+          strokeWidth={pinned ? 1.6 : 1} strokeDasharray="2 2" opacity={0.85} />
+        <circle cx={c.mx} cy={c.my} r={pinned ? 3 : 2.2} fill={pinned ? '#9b59b6' : '#f1c40f'} />
+        <g transform={`translate(${c.mx}, ${c.my - 24})`}>
+          <rect x={-23} y={-9} width={46} height={16} rx={3} fill="#0a0a1a" fillOpacity={0.88}
+            stroke={pinned ? '#9b59b6' : 'none'} strokeWidth={pinned ? 1.5 : 0} />
+          <text textAnchor="middle" y={3.5} fill={pinned ? '#c39bd3' : '#f1c40f'} fontSize={10}
+            fontFamily="monospace" fontWeight="bold">{fmtV(c.v)}</text>
+        </g>
       </g>
-    </g>
-  ));
+    );
+  });
 }
 
 // ── Wokwi element layer ─────────────────────────────────────────
@@ -3114,6 +3133,10 @@ export function BoardCanvas({
   const [dragging, setDragging] = useState(null); // partId that initiated the drag
   const dragStartPos = React.useRef(null); // {x, y} at drag start for offset calc
   const [hoveredNet, setHoveredNet] = useState(null);
+  // A net the reader PINNED by clicking its voltage pill. Separate from hover
+  // because the question it answers outlives the pointer: you pin the reading,
+  // then follow the highlighted conductor with your eyes and your mouse.
+  const [pinnedNet, setPinnedNet] = useState(null);
   const [hoveredPart, setHoveredPart] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
   const [snapTarget, setSnapTarget] = useState(null);
@@ -3828,6 +3851,9 @@ export function BoardCanvas({
     }
     onSelectPart(null);
     onSelectWire(null);
+    // Clicking the empty canvas clears the pinned reading too: a highlight
+    // with no way to dismiss it becomes permanent decoration.
+    setPinnedNet(null);
   }, [wiringFrom, onSelectPart, onSelectWire, rubberBand, parts]);
 
   const handleSvgMouseDown = useCallback((e) => {
@@ -4666,12 +4692,14 @@ export function BoardCanvas({
           <Wires wires={wires} parts={parts} circuit={circuit}
             selectedWire={selectedWire} onSelectWire={onSelectWire}
             hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
+            pinnedNet={pinnedNet} supplyVolts={supplyVolts}
             nodeVoltages={nodeVoltages}
             voltageMode={!!(simulate && voltageView && nodeVoltages)}
             onUpdateWire={onUpdateWire} screenToCanvas={screenToCanvas}
             setDraggingWaypoint={setDraggingWaypoint} />
           {simulate && voltageView ?
-            <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} circuit={circuit} /> : null}
+            <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} circuit={circuit}
+              pinnedNet={pinnedNet} onPinNet={setPinnedNet} onHoverNet={setHoveredNet} /> : null}
           {/* Jumper wires. Short hops keep a small arc; LONG jumpers
               route as STAPLES — down into a lane, flat across, up to the
               far hole — the way real hookup wire lies on a board. The
