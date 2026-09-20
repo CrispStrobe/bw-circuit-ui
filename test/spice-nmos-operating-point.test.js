@@ -200,7 +200,7 @@ describe('exact grounded-bulk Level-1 NMOS body-effect DC', () => {
     'NMOS(LEVEL=1 VTO=1 KP=100u LAMBDA=.02 GAMMA=.5 PHI=.6)') => [
     '* exact NMOS body-effect law',
     'VDD vdd 0 10',
-    'VG gate 0 3',
+    'VG gate 0 DC 3 AC 1',
     'RS source 0 1k',
     'RD vdd drain 1k',
     'M1 drain gate source 0 NM W=100u L=1u',
@@ -209,7 +209,7 @@ describe('exact grounded-bulk Level-1 NMOS body-effect DC', () => {
     '.end',
   ].join('\n');
 
-  it('runs the complete represented DC law and keeps AC refused without gmb', {
+  it('runs the complete represented DC law and its qualified body-effect AC Jacobian', {
     skip: !HAS_NGSPICE,
   }, () => {
     const oracle = ngspiceBodyEffect(bodyEffectDeck());
@@ -231,8 +231,10 @@ describe('exact grounded-bulk Level-1 NMOS body-effect DC', () => {
 
     const [ac] = runSourceAnalyses(importSpice(bodyEffectDeck('.ac lin 3 1k 3k')),
       { format: 'spice' });
-    assert.deepEqual([ac.status, ac.classification, ac.code],
-      ['not-run', 'integration-gap', 'ac-linearization-model-unqualified']);
+    assert.equal(ac.status, 'pass', JSON.stringify(ac));
+    assert.deepEqual(ac.observables.axis.values, [1000, 2000, 3000]);
+    assert.ok(ac.observables.nodes.some(node =>
+      node.magnitude.some(value => Number.isFinite(value) && value > 0)));
   });
 
   it('exports and re-imports GAMMA and PHI without broadening the selector', () => {

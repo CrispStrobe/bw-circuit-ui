@@ -497,7 +497,12 @@ M1 drain gate 0 0 NM W=100u L=1u
       node.magnitude.some(value => Number.isFinite(value) && value > 0)));
 
     const richer = exact.replace('LAMBDA=.01)', 'LAMBDA=.01 GAMMA=.5 PHI=.6)');
-    const refused = runSourceAnalyses(imported(richer), { format: 'spice' })[0];
+    const bodyEffect = runSourceAnalyses(imported(richer), { format: 'spice' })[0];
+    assert.equal(bodyEffect.status, 'pass', JSON.stringify(bodyEffect));
+    assert.deepEqual(bodyEffect.observables.axis.values, [1000, 2000, 3000]);
+
+    const wider = richer.replace('PHI=.6)', 'PHI=.6 TOX=10n)');
+    const refused = runSourceAnalyses(imported(wider), { format: 'spice' })[0];
     assert.deepEqual([refused.status, refused.classification, refused.code],
       ['not-run', 'integration-gap', 'ac-linearization-model-unqualified']);
     assert.match(refused.detail, /M1:nmos/);

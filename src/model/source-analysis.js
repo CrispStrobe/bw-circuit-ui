@@ -260,12 +260,19 @@ function parseAc(descriptor, limits) {
 function runAc(imported, descriptor, limits) {
   const parsed = parseAc(descriptor, limits);
   if (parsed.status) return parsed;
+  const qualifiedNmos = part => {
+    if (part.params?.model !== 'level1') return false;
+    const hasGamma = Object.prototype.hasOwnProperty.call(part.params, 'gamma');
+    const hasPhi = Object.prototype.hasOwnProperty.call(part.params, 'phi');
+    return (!hasGamma && !hasPhi) || (hasGamma && hasPhi
+      && Number.isFinite(part.params.gamma) && part.params.gamma >= 0
+      && Number.isFinite(part.params.phi) && part.params.phi > 0);
+  };
   const unqualifiedLinearizations = (imported.parts || []).filter(part =>
     ['pnp', 'pmos'].includes(part.kind)
       || (part.kind === 'npn' && (part.params?.model !== 'shockley'
         || part._acModelProfile !== 'exact-static-ebers-moll-v1'))
-      || (part.kind === 'nmos' && (part.params?.model !== 'level1'
-        || (Number.isFinite(part.params?.gamma) && Number.isFinite(part.params?.phi)))));
+      || (part.kind === 'nmos' && !qualifiedNmos(part)));
   if (unqualifiedLinearizations.length) return integrationGap(descriptor,
     'ac-linearization-model-unqualified',
     `native AC model fidelity is not qualified for ${unqualifiedLinearizations.map(part =>
