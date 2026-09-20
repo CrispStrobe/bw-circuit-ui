@@ -88,3 +88,24 @@ export function resolveSeatedParts(parts) {
     return { ...p, x: geo.x, y: geo.y, _seatTerminals: terminals };
   });
 }
+
+/**
+ * The extra rotation a seated part's drawn body needs so that it lies along the
+ * line between its own two holes. Zero unless the part is seated, has exactly
+ * two distinct legs, and those legs are separated more vertically than
+ * horizontally. Never guesses for parts with more than two legs: a DIP package
+ * has its own renderer and its own orientation.
+ *
+ * @param {object} part a part already passed through resolveSeatedParts
+ * @returns {0 | 90}
+ */
+export function seatedFaceRotation(part) {
+  const seated = part?._seatTerminals;
+  if (!seated) return 0;
+  const holes = Object.values(seated);
+  if (holes.length !== 2) return 0;
+  const [a, b] = holes;
+  if (!a || !b || !Number.isFinite(a.x) || !Number.isFinite(b.x)
+      || !Number.isFinite(a.y) || !Number.isFinite(b.y)) return 0;
+  return Math.abs(b.y - a.y) > Math.abs(b.x - a.x) ? 90 : 0;
+}

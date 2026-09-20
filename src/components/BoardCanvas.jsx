@@ -19,7 +19,7 @@ import { classifyWheel, computeFitView, retainEqualPan } from '../interaction/tr
 import {partEditingAllowed} from '../interaction/edit-policy.js';
 import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
 import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
-import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
+import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interaction/seat-geometry.js';
 import { getSidecar } from '../model/parts-registry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
@@ -2045,7 +2045,15 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
     const flip = part.flipped;
     const isSelected = selectedParts?.has(id);
     const transforms = [];
-    if (rot) transforms.push(`rotate(${rot}deg)`);
+    // A seated part's BODY must lie along its own legs. These elements are all
+    // drawn with their leads left and right, which is right for a free part and
+    // wrong for a seated one whose holes are above and below the centre channel:
+    // a tactile switch straddling the gutter was drawn lying on its side, so
+    // nothing about the picture said it bridges the upper and lower banks. Taken
+    // from the seated holes themselves rather than a list of kinds, so it stays
+    // true for any two-legged part seated either way round.
+    const faceRot = seatedFaceRotation(part);
+    if (rot + faceRot) transforms.push(`rotate(${rot + faceRot}deg)`);
     if (flip) transforms.push('scaleX(-1)');
     const baseStyle = {
       position: 'absolute',
