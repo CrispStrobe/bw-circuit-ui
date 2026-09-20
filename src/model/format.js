@@ -46,3 +46,17 @@ export function partLabel(part) {
     default: return part.id;
   }
 }
+
+/**
+ * What a VCC symbol actually delivers: its own authored rail, else the board's.
+ *
+ * bw-board resolves this as knob > `params.volts` > board default, and the cap
+ * printed `params.volts ?? 5` — so on a 3.3 V board every supply read "+5V",
+ * and the label disagreed with the solver that fed the very nodes beside it.
+ *
+ * @param {object} part @param {number} boardVolts @returns {number}
+ */
+export function effectiveRailVolts(part, boardVolts) {
+  const authored = part?.params?.volts;
+  return Number.isFinite(authored) ? authored : boardVolts;
+}

@@ -9,7 +9,7 @@
 import React, { useEffect, useRef } from 'react';
 import { partLabel } from '../model/format.js';
 
-export function InlineEditor({ part, x, y, onUpdateParams, onClose }) {
+export function InlineEditor({ part, x, y, onUpdateParams, onClose, supplyVolts = 5 }) {
   const ref = useRef(null);
   const firstInput = useRef(null);
 
@@ -34,7 +34,15 @@ export function InlineEditor({ part, x, y, onUpdateParams, onClose }) {
 
   if (!part) return null;
 
-  const editableParams = Object.entries(part.params || {})
+  // Params a kind SUPPORTS but has not been given yet. The editor listed only
+  // params that already EXISTED, so a VCC symbol saved as `params: {}` — which
+  // is every one the generators write — offered no field at all, and the only
+  // way to run a bench at 9 V was to edit its JSON by hand (owner report). The
+  // seeded value is what the part actually delivers today, so opening the
+  // editor never silently changes anything.
+  const IMPLICIT = { vcc: { volts: supplyVolts } };
+  const implicit = IMPLICIT[part.kind] || {};
+  const editableParams = Object.entries({ ...implicit, ...(part.params || {}) })
     .filter(([k]) => k !== 'pins');
 
   return (

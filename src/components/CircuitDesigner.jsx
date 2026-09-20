@@ -1389,6 +1389,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           </div>
         ) : !showSchematic ? (<>
         {profilePerformanceSubtree(performanceProbe, React, 'BoardCanvas', (<BoardCanvas
+          supplyVolts={circuit.vcc}
           performanceProbe={performanceProbe}
           engineBoard={activeBoard}
           videoFn={debugState && typeof debugState.video === 'function' ? debugState.video : null}

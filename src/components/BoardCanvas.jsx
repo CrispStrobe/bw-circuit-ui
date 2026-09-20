@@ -28,7 +28,7 @@ import { ledDisplayLevel } from './led-perception.js';
 import { DrcOverlay } from './DrcOverlay.jsx';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver, WokwiArduinoUno, WokwiArduinoNano, WokwiArduinoMega } from '../wokwi-wrappers/index.js';
-import { partLabel } from '../model/format.js';
+import { partLabel, effectiveRailVolts } from '../model/format.js';
 import TransferReport from './TransferReport.jsx';
 import { CIRCUIT_EXPORTS, runExport } from '../model/exporters/registry.js';
 import { IMPORT_FORMATS, importCircuit, pickKicadHierarchyRoot } from '../importers/index.js';
@@ -309,7 +309,7 @@ function fmtV(v) {
 // Standard 4×4 keypad key labels, row-major (key 0 = '1', key 15 = 'D').
 const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
 
-function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn }) {
+function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn, supplyVolts = 5 }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -342,7 +342,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             <rect x={-11} y={-14} width={22} height={8} rx={5} fill={capHi} opacity={0.5} />
             <circle cx={0} cy={-4} r={3.5} fill="#ecf0f1" opacity={0.9} />
             <text x={0} y={26} textAnchor="middle" fill={capHi} fontSize={8}
-              fontFamily="monospace" fontWeight="bold">{kind === 'vcc' ? `+${part.params?.volts ?? 5}V` : 'GND'}</text>
+              fontFamily="monospace" fontWeight="bold">{kind === 'vcc'
+                ? `+${effectiveRailVolts(part, supplyVolts)}V` : 'GND'}</text>
           </g>
         );
       }
@@ -3057,6 +3058,10 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
 // ── Main BoardCanvas ─────────────────────────────────────────────
 
 export function BoardCanvas({
+  // The board's own supply. The VCC symbol used to print `params.volts ?? 5`,
+  // so a 3.3 V board drew a cap reading "+5V" — a number nothing in the
+  // circuit had. Passed in rather than guessed.
+  supplyVolts = 5,
   parts, wires, ledBrightness, buzzerTones, nodeVoltages,
   onAddWire, onRemoveWire, onRemovePart, onMovePart,
   onSelectPart, selectedPart, selectedParts,
@@ -4577,6 +4582,7 @@ export function BoardCanvas({
             });
           })}
           <SvgParts parts={parts} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick}
+            supplyVolts={supplyVolts}
             deviceStates={(() => {
               // Device faces follow the ACTIVE board — during a debug run
               // that is the runner's board, and reading circuit.board here
@@ -4957,6 +4963,7 @@ export function BoardCanvas({
         {/* Inline property editor (double-click) */}
         {canEditParts && inlineEdit && onUpdateParams && (
           <InlineEditor
+            supplyVolts={supplyVolts}
             part={parts.find(p => p.id === inlineEdit.partId)}
             x={inlineEdit.x}
             y={inlineEdit.y}
