@@ -850,7 +850,28 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       // the native solver stamped.
       const rbDiffers = Number.isFinite(authoredRb) && authoredRb > 0
         && authoredRb !== cardRb && base;
-      if (betaDiffers || vafDiffers || rbDiffers) {
+      const exactFields = [
+        { param: 'rc', spice: 'Rc', label: 'collector resistance', allowZero: true },
+        { param: 'ikf', spice: 'Ikf', label: 'forward beta knee', allowZero: false },
+      ];
+      const chargeFields = [
+        { param: 'cje', spice: 'Cje', label: 'base-emitter depletion capacitance' },
+        { param: 'cjc', spice: 'Cjc', label: 'base-collector depletion capacitance' },
+        { param: 'tf', spice: 'Tf', label: 'forward transit time' },
+      ];
+      const completeCharge = chargeFields.every(({ param }) =>
+        Object.prototype.hasOwnProperty.call(part.params || {}, param)
+          && Number.isFinite(Number(part.params[param])) && Number(part.params[param]) >= 0);
+      const modelField = (spice) => Number(new RegExp(`${spice}\\s*=\\s*([\\d.eE+-]+)`, 'i')
+        .exec(base?.body ?? '')?.[1]);
+      const fieldChanges = exactFields.filter(({ param, spice, allowZero }) => {
+        const value = Number(part.params?.[param]);
+        return Number.isFinite(value) && (allowZero ? value >= 0 : value > 0)
+          && value !== modelField(spice) && base;
+      });
+      if (completeCharge && chargeFields.some(({ param, spice }) =>
+        Number(part.params[param]) !== modelField(spice))) fieldChanges.push(...chargeFields);
+      if (betaDiffers || vafDiffers || rbDiffers || fieldChanges.length) {
         const perPart = `Q_${part.refdes}`;
         const why = [];
         let body = base.body;
@@ -870,7 +891,16 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
             ? body.replace(/Rb\s*=\s*[\d.eE+-]+/i, `Rb=${authoredRb}`)
             : `${body} Rb=${authoredRb}`;
           why.push(`authored base resistance ${authoredRb}`
-            + `${Number.isFinite(cardRb) ? `, not card ${model}'s ${cardRb}` : ', which the card does not state'}`);
+              + `${Number.isFinite(cardRb) ? `, not card ${model}'s ${cardRb}` : ', which the card does not state'}`);
+        }
+        for (const { param, spice, label } of fieldChanges) {
+          const value = Number(part.params[param]);
+          const pattern = new RegExp(`${spice}\\s*=\\s*[\\d.eE+-]+`, 'i');
+          const prior = modelField(spice);
+          body = pattern.test(body) ? body.replace(pattern, `${spice}=${value}`)
+            : `${body} ${spice}=${value}`;
+          why.push(`authored ${label} ${value}`
+            + `${Number.isFinite(prior) ? `, not card ${model}'s ${prior}` : ', which the card does not state'}`);
         }
         modelCards.push(`.model ${perPart} ${base.type} (${body})  $ ${why.join('; ')}`);
         usedModels.add(perPart);

@@ -1117,13 +1117,17 @@ export function importSpice(text, opts = {}) {
           // root-level importer fact, not an electrical parameter presented to
           // Board, and exists only when every authored key is represented by
           // the static Ebers-Moll law.
-          const allowed = new Set(['is', 'bf', 'br', 'nf', 'vaf', 'rb']);
+          const allowed = new Set(['is', 'bf', 'br', 'nf', 'vaf', 'rb',
+            'rc', 'ikf', 'cje', 'cjc', 'tf']);
           const modelKeys = Object.keys(model.params || {}).sort();
           const body = String(model.body || '').trim().replace(/^\(\s*|\s*\)$/g, '');
           const fields = body ? body.split(/[\s,]+/).filter(Boolean) : [];
           const bodyKeys = fields.map(field => /^([A-Za-z_][A-Za-z0-9_]*)=(\S+)$/.exec(field))
             .map(match => match?.[1]?.toLowerCase()).sort();
           const p = model.params;
+          const chargeKeys = ['cje', 'cjc', 'tf'];
+          const chargeCount = chargeKeys.filter(key =>
+            Object.prototype.hasOwnProperty.call(p, key)).length;
           exactNpnAc = modelKeys.length === bodyKeys.length
             && modelKeys.every((key, index) => key === bodyKeys[index] && allowed.has(key))
             && Number.isFinite(p.is) && p.is > 0
@@ -1131,7 +1135,12 @@ export function importSpice(text, opts = {}) {
             && (p.br === undefined || Number.isFinite(p.br) && p.br > 0)
             && (p.nf === undefined || Number.isFinite(p.nf) && p.nf > 0)
             && (p.vaf === undefined || Number.isFinite(p.vaf) && p.vaf >= 0)
-            && (p.rb === undefined || Number.isFinite(p.rb) && p.rb >= 0);
+            && (p.rb === undefined || Number.isFinite(p.rb) && p.rb >= 0)
+            && (p.rc === undefined || Number.isFinite(p.rc) && p.rc >= 0)
+            && (p.ikf === undefined || Number.isFinite(p.ikf) && p.ikf > 0)
+            && (chargeCount === 0 || chargeCount === chargeKeys.length)
+            && chargeKeys.every(key => p[key] === undefined
+              || Number.isFinite(p[key]) && p[key] >= 0);
         }
         // A BLOCKED MODEL MUST NOT BECOME A ZENER. This line ran for every D
         // card with a BV, admitted or not, so a model refused for a DUPLICATE
@@ -1373,7 +1382,7 @@ export function importSpice(text, opts = {}) {
     }
 
     parts.push({ id: partId, kind, params, x: 0, y: 0,
-      ...(exactNpnAc ? { _acModelProfile: 'exact-static-ebers-moll-v1' } : {}),
+      ...(exactNpnAc ? { _acModelProfile: 'exact-static-ebers-moll-v2' } : {}),
       ...(explicitPmosBulk ? { terminals: ['gate', 'drain', 'source', 'bulk'] } : {}),
       ...(item.analysisBlocker ? { analysisBlockers: [item.analysisBlocker] } : {}) });
 
@@ -1527,6 +1536,16 @@ function mapModel(letter, model, warnings, partId) {
       // finite value is retained deliberately so the strict engine boundary
       // refuses it by name instead of silently solving the same card as RB=0.
       if (model.type === 'NPN' && isFinite(p.rb)) out.rb = p.rb;
+      // These five fields are one measured ADI-v2 model family and now have
+      // exact engine laws. Retain finite invalid signs too: the strict Board
+      // boundary must refuse the authored value by name rather than silently
+      // solving the default device. CJE/CJC/TF completeness is likewise a
+      // Board contract; partial cards remain non-exact and refuse there.
+      if (model.type === 'NPN') {
+        for (const name of ['rc', 'ikf', 'cje', 'cjc', 'tf']) {
+          if (isFinite(p[name])) out[name] = p[name];
+        }
+      }
       out.model = 'shockley';
     }
   } else if (letter === 'M') {

@@ -474,8 +474,30 @@ Q1 collector base emitter QMOD
     assert.ok(pass.observables.nodes.some(node =>
       node.magnitude.some(value => Number.isFinite(value) && value > 0)));
 
-    const richer = exact.replace('RB=10)', 'RB=10 IKF=1m)');
-    const refused = runSourceAnalyses(imported(richer), { format: 'spice' })[0];
+    const richer = exact.replace('RB=10)',
+      'RB=10 RC=100 IKF=10m CJE=20p CJC=10p TF=.5n)');
+    const richerRun = runSourceAnalyses(imported(richer), { format: 'spice' })[0];
+    assert.equal(richerRun.status, 'pass', JSON.stringify(richerRun));
+
+    const highFrequency = richer.replace('.ac lin 3 1k 3k', '.ac lin 3 1Meg 1000002');
+    const chargeRun = runSourceAnalyses(imported(highFrequency), { format: 'spice' })[0];
+    assert.equal(chargeRun.status, 'pass', JSON.stringify(chargeRun));
+    const rectangular = id => {
+      const node = chargeRun.observables.nodes.find(row => row.id === id);
+      const angle = node.phaseDeg[0] * Math.PI / 180;
+      return { re: node.magnitude[0] * Math.cos(angle),
+        im: node.magnitude[0] * Math.sin(angle) };
+    };
+    // Independent ngspice 42 values for the imported RC/IKF/CJE/CJC/TF card.
+    const collector = rectangular('n2');
+    const emitter = rectangular('n3');
+    assert.ok(Math.abs(collector.re - (-2.7836164880391721)) < 2e-8, collector.re);
+    assert.ok(Math.abs(collector.im - 0.3401614479609181) < 2e-8, collector.im);
+    assert.ok(Math.abs(emitter.re - 0.9420364784804977) < 2e-8, emitter.re);
+    assert.ok(Math.abs(emitter.im - (-0.0003402408658239708)) < 2e-8, emitter.im);
+
+    const unsupported = richer.replace('TF=.5n)', 'TF=.5n IKR=1m)');
+    const refused = runSourceAnalyses(imported(unsupported), { format: 'spice' })[0];
     assert.deepEqual([refused.status, refused.classification, refused.code],
       ['not-run', 'integration-gap', 'ac-linearization-model-unqualified']);
     assert.match(refused.detail, /Q1:npn/);

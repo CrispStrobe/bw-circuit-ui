@@ -271,7 +271,8 @@ function runAc(imported, descriptor, limits) {
   const unqualifiedLinearizations = (imported.parts || []).filter(part =>
     ['pnp', 'pmos'].includes(part.kind)
       || (part.kind === 'npn' && (part.params?.model !== 'shockley'
-        || part._acModelProfile !== 'exact-static-ebers-moll-v1'))
+        || !['exact-static-ebers-moll-v1', 'exact-static-ebers-moll-v2']
+          .includes(part._acModelProfile)))
       || (part.kind === 'nmos' && !qualifiedNmos(part)));
   if (unqualifiedLinearizations.length) return integrationGap(descriptor,
     'ac-linearization-model-unqualified',

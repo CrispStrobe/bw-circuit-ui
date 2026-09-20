@@ -72,9 +72,11 @@ describe('the strict public NPN operating-point route', () => {
     assert.equal(run.evidence, 'original-direct');
     assert.ok(run.metadata.supportedKinds.includes('npn'));
     assert.deepEqual(run.metadata.npn, {
-      model: 'explicit-ebers-moll-with-forward-early-effect',
-      requiredParameters: ['is', 'beta'], optionalParameters: ['br', 'n', 'vaf', 'rb'],
-      defaults: { br: 1, n: 1, vaf: 'infinite', rb: 0 }, thermalVoltage: 0.02585,
+      model: 'explicit-ebers-moll',
+      requiredParameters: ['is', 'beta'],
+      optionalParameters: ['br', 'n', 'vaf', 'ikf', 'rb', 'rc', 'cje', 'cjc', 'tf'],
+      defaults: { br: 1, n: 1, vaf: 'infinite', ikf: 'infinite', rb: 0, rc: 0,
+        cje: 0, cjc: 0, tf: 0 }, thermalVoltage: 0.02585,
       temperatureModel: 'fixed',
     });
     assert.ok(Math.abs(run.observables.nodes.find(node => node.id === 'n2').voltage
@@ -116,10 +118,10 @@ describe('the strict public NPN operating-point route', () => {
     assert.match(missingRun.detail, /model must be explicitly 'shockley'/);
 
     const extra = importSpice(followerDeck('IS=1e-14 BF=100 VAF=100'));
-    bjtOf(extra).params.ikf = 0.3;
+    bjtOf(extra).params.ikr = 0.3;
     const [extraRun] = runSourceAnalyses(extra, { format: 'spice' });
     assert.equal(extraRun.status, 'refused');
-    assert.match(extraRun.detail, /parameter ikf is outside the explicit Ebers-Moll DC domain/);
+    assert.match(extraRun.detail, /parameter ikr is outside the explicit Ebers-Moll DC domain/);
   });
 });
 
@@ -131,6 +133,26 @@ describe('importing a forward Early voltage', () => {
     assert.equal(q.params.model, 'shockley', 'VAF is only meaningful on the Ebers-Moll path');
     assert.equal(q.params.beta, 200);
     assert.equal(q.params.is, 1e-14);
+  });
+
+  it('lands the complete measured RC/IKF/CJE/CJC/TF card on the exact AC profile', () => {
+    const out = importSpice(followerDeck(
+      'IS=3n BF=200 VAF=130 RB=10 RC=100 IKF=.01 CJE=20p CJC=10p TF=.5n'));
+    const q = bjtOf(out);
+    assert.deepEqual({ rc: q.params.rc, ikf: q.params.ikf, cje: q.params.cje,
+      cjc: q.params.cjc, tf: q.params.tf },
+    { rc: 100, ikf: 0.01, cje: 20e-12, cjc: 10e-12, tf: 0.5e-9 });
+    assert.equal(q._acModelProfile, 'exact-static-ebers-moll-v2');
+  });
+
+  it('keeps partial charge cards unqualified and lets Board refuse them by name', () => {
+    const out = importSpice(followerDeck('IS=3n BF=200 CJE=20p'));
+    const q = bjtOf(out);
+    assert.equal(q.params.cje, 20e-12);
+    assert.equal('_acModelProfile' in q, false);
+    const [run] = runSourceAnalyses(out, { format: 'spice' });
+    assert.equal(run.status, 'refused');
+    assert.match(run.detail, /cje, cjc and tf must be declared together/);
   });
 
   it('leaves `vaf` ABSENT when the card does not state it', () => {
@@ -198,6 +220,22 @@ describe('exporting a part that carries one', () => {
     assert.match(card[1], /\bRb=10\b/);
     assert.match(text, /authored base resistance 10/);
     assert.equal(bjtOf(importSpice(text)).params.rb, 10);
+  });
+
+  it('preserves RC/IKF and the complete charge triple through export and re-import', () => {
+    const params = { beta: 200, is: 3e-9, vaf: 130, rb: 10, rc: 100,
+      ikf: 0.01, cje: 20e-12, cjc: 10e-12, tf: 0.5e-9 };
+    const text = deckFor(params);
+    const card = /^\.model Q_Q1 NPN \(([^)]*)\)/m.exec(text);
+    assert.ok(card, text);
+    for (const field of ['Rc=100', 'Ikf=0.01', 'Cje=2e-11', 'Cjc=1e-11', 'Tf=5e-10']) {
+      assert.match(card[1], new RegExp(`\\b${field.replace('.', '\\.')}\\b`, 'i'), card[1]);
+    }
+    const roundTrip = bjtOf(importSpice(text));
+    for (const key of ['rc', 'ikf', 'cje', 'cjc', 'tf']) {
+      assert.equal(roundTrip.params[key], params[key], `${key} did not round-trip`);
+    }
+    assert.equal(roundTrip._acModelProfile, 'exact-static-ebers-moll-v2');
   });
 
   it('leaves omitted and explicit zero RB on the identical shared-card output', () => {
