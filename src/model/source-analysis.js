@@ -264,7 +264,8 @@ function runAc(imported, descriptor, limits) {
     ['pnp', 'pmos'].includes(part.kind)
       || (part.kind === 'npn' && (part.params?.model !== 'shockley'
         || part._acModelProfile !== 'exact-static-ebers-moll-v1'))
-      || (part.kind === 'nmos' && part.params?.model !== 'level1'));
+      || (part.kind === 'nmos' && (part.params?.model !== 'level1'
+        || (Number.isFinite(part.params?.gamma) && Number.isFinite(part.params?.phi)))));
   if (unqualifiedLinearizations.length) return integrationGap(descriptor,
     'ac-linearization-model-unqualified',
     `native AC model fidelity is not qualified for ${unqualifiedLinearizations.map(part =>

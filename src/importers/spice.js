@@ -1235,6 +1235,7 @@ export function importSpice(text, opts = {}) {
         // off rather than dereferencing the absent card.
         const modelKeys = Object.keys(model?.params || {}).sort();
         const exactInstanceModelKeys = ['kp', 'lambda', 'level', 'vto'];
+        const exactBodyEffectModelKeys = ['gamma', 'kp', 'lambda', 'level', 'phi', 'vto'];
         const exactDefaultGeometryKeys = ['kp', 'l', 'vto', 'w'];
         const exactDefaultGeometryWithLevelKeys = ['kp', 'l', 'level', 'vto', 'w'];
         const body = String(model?.body || '').trim().replace(/^\(\s*|\s*\)$/g, '');
@@ -1251,6 +1252,14 @@ export function importSpice(text, opts = {}) {
             || (model.type === 'PMOS' && model.params.vto < 0))
           && Number.isFinite(model.params.kp) && model.params.kp > 0
           && Number.isFinite(model.params.lambda) && model.params.lambda >= 0;
+        const exactBodyEffectLevel1Model = model && !model.ambiguous
+          && model.type === 'NMOS' && sameKeys(exactBodyEffectModelKeys)
+          && model.params.level === 1 && Number.isFinite(model.params.vto)
+          && model.params.vto > 0
+          && Number.isFinite(model.params.kp) && model.params.kp > 0
+          && Number.isFinite(model.params.lambda) && model.params.lambda >= 0
+          && Number.isFinite(model.params.gamma) && model.params.gamma >= 0
+          && Number.isFinite(model.params.phi) && model.params.phi > 0;
         const exactInstanceGeometry = exactInstanceSyntax && instanceFields.length === 2
           && seenInstanceFields.size === 2 && seenInstanceFields.has('w') && seenInstanceFields.has('l')
           && Number.isFinite(instance.w) && instance.w > 0
@@ -1277,6 +1286,11 @@ export function importSpice(text, opts = {}) {
         if (((exactInstanceLevel1Model && exactInstanceGeometry)
             || (exactDefaultGeometryModel && exactDefaultGeometry))
             && model.type === 'NMOS' && bulkIsGround) {
+          params.model = 'level1';
+        } else if (exactBodyEffectLevel1Model && exactInstanceGeometry && bulkIsGround) {
+          // Board's DC Newton loop evaluates the authored body-effect law at
+          // the solved source/bulk bias. The AC adapter separately detects the
+          // GAMMA/PHI pair and refuses it until the engine stamps gmb.
           params.model = 'level1';
         } else if (exactInstanceLevel1Model && exactInstanceGeometry
             && model.type === 'NMOS' && params.bulkOnSource === true) {

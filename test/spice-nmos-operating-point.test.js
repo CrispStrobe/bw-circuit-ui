@@ -57,6 +57,29 @@ print v(out) @m1[id] i(vs)
   return { out: read('v(out)'), drain: read('@m1[id]'), supply: read('i(vs)') };
 }
 
+function ngspiceBodyEffect(deckText) {
+  const text = `${deckText.replace(/\n\.op\n\.end$/i, '')}
+.temp 27
+.options tnom=27 reltol=1e-12 abstol=1e-18 vntol=1e-15
+.control
+set numdgt=17
+op
+print v(gate) v(drain) v(source) i(vdd)
+.endc
+.end
+`;
+  const run = spawnSync('ngspice', ['-b'], { input: text, encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr || run.stdout);
+  const read = name => {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = run.stdout.match(new RegExp(`${escaped}\\s*=\\s*([-+0-9.e]+)`, 'i'));
+    assert.ok(match, `${name} absent from:\n${run.stdout}`);
+    return Number(match[1]);
+  };
+  return Object.fromEntries(['v(gate)', 'v(drain)', 'v(source)', 'i(vdd)']
+    .map(name => [name, read(name)]));
+}
+
 const sourceBulkDeck = ({ model = 'NMOS(Level=1 VTO=1 KP=100u LAMBDA=0.02)',
   instance = 'W=1u L=1u' } = {}) => [
   '* exact source-tied-bulk Level-1 NMOS, forward-biased drain junction',
@@ -94,6 +117,7 @@ describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
     assert.deepEqual(run.metadata.nmos, {
       model: 'explicit-spice-level1-grounded-bulk',
       requiredParameters: ['vth', 'kp', 'w', 'l', 'lambda', 'bulkAtGround'],
+      optionalParameterGroups: [['gamma', 'phi']],
       defaults: { bulkIs: 1e-14, bulkN: 1 }, thermalVoltage: 0.025864925786328753,
       temperatureModel: 'fixed',
     });
@@ -168,6 +192,79 @@ describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
       `${drainSource} vs source-lead ${read('i(vd)')}`);
     assert.ok(Math.abs(drainSource + read('@m1[id]')) < 1e-12,
       `${drainSource} vs MOS authored-drain ${read('@m1[id]')}`);
+  });
+});
+
+describe('exact grounded-bulk Level-1 NMOS body-effect DC', () => {
+  const bodyEffectDeck = (analysis = '.op', model =
+    'NMOS(LEVEL=1 VTO=1 KP=100u LAMBDA=.02 GAMMA=.5 PHI=.6)') => [
+    '* exact NMOS body-effect law',
+    'VDD vdd 0 10',
+    'VG gate 0 3',
+    'RS source 0 1k',
+    'RD vdd drain 1k',
+    'M1 drain gate source 0 NM W=100u L=1u',
+    `.model NM ${model}`,
+    analysis,
+    '.end',
+  ].join('\n');
+
+  it('runs the complete represented DC law and keeps AC refused without gmb', {
+    skip: !HAS_NGSPICE,
+  }, () => {
+    const oracle = ngspiceBodyEffect(bodyEffectDeck());
+    const imported = importSpice(bodyEffectDeck());
+    assert.equal(transistor(imported).params.model, 'level1');
+    assert.equal(transistor(imported).params.gamma, 0.5);
+    assert.equal(transistor(imported).params.phi, 0.6);
+    const [op] = runSourceAnalyses(imported, { format: 'spice' });
+    assert.equal(op.status, 'pass', JSON.stringify(op));
+    const mosNodes = op.topology.find(card => card.kind === 'M').nodes;
+    for (const [index, name] of [[0, 'v(drain)'], [1, 'v(gate)'], [2, 'v(source)']]) {
+      const actual = op.observables.nodes.find(node => node.id === mosNodes[index]).voltage;
+      assert.ok(Math.abs(actual - oracle[name]) < 1e-6,
+        `${name}: ${actual} vs ${oracle[name]}`);
+    }
+    const supply = op.observables.sourceCurrents.find(row => row.id === 's0').current;
+    assert.ok(Math.abs(supply - oracle['i(vdd)']) < 1e-8,
+      `i(vdd): ${supply} vs ${oracle['i(vdd)']}`);
+
+    const [ac] = runSourceAnalyses(importSpice(bodyEffectDeck('.ac lin 3 1k 3k')),
+      { format: 'spice' });
+    assert.deepEqual([ac.status, ac.classification, ac.code],
+      ['not-run', 'integration-gap', 'ac-linearization-model-unqualified']);
+  });
+
+  it('exports and re-imports GAMMA and PHI without broadening the selector', () => {
+    const imported = importSpice(bodyEffectDeck());
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    const exported = toSpice(extractNetlist(circuit), 'body-effect NMOS');
+    assert.deepEqual(exported.skipped, []);
+    assert.match(exported.text,
+      /^\.model NM_Q1 NMOS \(LEVEL=1 VTO=1 KP=100u LAMBDA=20m GAMMA=500m PHI=600m\)$/m);
+    const roundTrip = importSpice(exported.text);
+    const roundTripMos = roundTrip.parts.find(part => part.kind === 'nmos');
+    assert.equal(roundTripMos.params.model, 'level1');
+    assert.equal(runSourceAnalyses(roundTrip, { format: 'spice' })[0].status, 'pass');
+
+    const partial = importSpice(bodyEffectDeck());
+    delete transistor(partial).params.phi;
+    const partialExport = toSpice(extractNetlist(Circuit.fromJSON({
+      parts: partial.parts, wires: partial.wires,
+    })), 'partial body-effect NMOS');
+    assert.equal(partialExport.skipped.length, 1);
+    assert.match(partialExport.skipped[0], /exact known-bulk NMOS export requires/);
+
+    for (const model of [
+      'NMOS(LEVEL=1 VTO=1 KP=100u LAMBDA=.02 GAMMA=.5)',
+      'NMOS(LEVEL=1 VTO=1 KP=100u LAMBDA=.02 GAMMA=-.5 PHI=.6)',
+      'NMOS(LEVEL=1 VTO=1 KP=100u LAMBDA=.02 GAMMA=.5 PHI=0)',
+      'NMOS(LEVEL=1 VTO=1 KP=100u LAMBDA=.02 GAMMA=.5 PHI=.6 TOX=10n)',
+    ]) {
+      const declined = importSpice(bodyEffectDeck('.op', model));
+      assert.equal(transistor(declined).params.model, undefined, model);
+      assert.notEqual(runSourceAnalyses(declined, { format: 'spice' })[0].status, 'pass', model);
+    }
   });
 });
 
