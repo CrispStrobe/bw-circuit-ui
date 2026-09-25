@@ -86,6 +86,17 @@ import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../model/ledcube.js';
 import { getPinFunctionsForPart } from '../model/pin-functions.js';
 import { isBoardEndpoint } from '../model/wire-endpoints.js';
 import { boardTerminalOffsets, boardVisualGeometry } from '../model/board-geometry.js';
+// MakeCode simulator board art, MIT (parts-data/ART-PROVENANCE.md). Imported
+// as asset URLs the same way PartThumbnail imports pybadge.svg, so Vite and
+// lite's Webpack both resolve them; drawn through <image>, so the art's own
+// ids and <style> stay inside it and two boards on one canvas cannot collide.
+import calliopeMiniArt from '../parts-data/calliopemini.svg';
+import circuitPlaygroundArt from '../parts-data/circuit_playground_express.svg';
+
+const MAKECODE_FACE_ART = {
+  calliopemini: { href: calliopeMiniArt, title: 'Calliope mini' },
+  circuit_playground_express: { href: circuitPlaygroundArt, title: 'Adafruit Circuit Playground Express' },
+};
 import { dipTerminalPositions, dipPackageGeometry, DIP_PIN_PITCH, DIP_ROW_OFFSET } from '../model/dip-geometry.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
@@ -236,7 +247,9 @@ function terminalOffsetsForPart(part) {
     case 'arduino_nano':
     case 'arduino_mega':
     case 'pi_pico':
-    case 'pybadge': {
+    case 'pybadge':
+    case 'calliopemini':
+    case 'circuit_playground_express': {
       const sc = getSidecar(part.kind);
       const offsets = boardTerminalOffsets(part.kind, sc);
       if (Object.keys(offsets).length) {
@@ -566,6 +579,39 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fontFamily="monospace">{part.declName || id}</text>
           </g>
           </React.Fragment>
+        );
+      }
+      case 'calliopemini':
+      case 'circuit_playground_express': {
+        // The board IS its MakeCode simulator art: the face, the LED matrix /
+        // NeoPixels and the pad rings are all in the picture, and the sidecar's
+        // terminals are that picture's pad centres (board-geometry.js), so the
+        // wire end sits in the ring it names. Only a pad marker and the
+        // part's name are drawn on top.
+        const sc = getSidecar(kind);
+        const geometry = boardVisualGeometry(kind, sc);
+        const W = geometry?.w ?? 280;
+        const H = geometry?.h ?? 250;
+        const art = MAKECODE_FACE_ART[kind];
+        const offsets = boardTerminalOffsets(kind, sc);
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
+            data-board-face={kind} data-board-face-license="MIT">
+            <title>{art.title}</title>
+            {/* Hit/selection box first: the art is transparent between arms. */}
+            <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={8}
+              fill="transparent" stroke={selStroke || 'none'} strokeWidth={isSelected ? 3 : 0} />
+            <image href={art.href} x={-W / 2} y={-H / 2} width={W} height={H}
+              preserveAspectRatio="none" style={{ pointerEvents: 'none' }} />
+            {Object.entries(offsets).map(([name, p]) => (
+              <circle key={name} cx={p.dx} cy={p.dy} r={2.5}
+                fill="none" stroke="#637381" strokeWidth={0.6} pointerEvents="none">
+                <title>{name.toUpperCase()}</title>
+              </circle>
+            ))}
+            <text x={0} y={H / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
         );
       }
       case 'servo': {

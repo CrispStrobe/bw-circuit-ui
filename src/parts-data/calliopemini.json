@@ -1,0 +1,62 @@
+{
+  "kind": "calliopemini",
+  "w": 116.2,
+  "h": 102.2,
+  "terminals": [
+    {
+      "name": "p0",
+      "x": 6.8,
+      "y": 51.2,
+      "functions": [
+        "gpio",
+        "touch"
+      ]
+    },
+    {
+      "name": "p1",
+      "x": 32.6,
+      "y": 95.3,
+      "functions": [
+        "gpio",
+        "adc",
+        "pwm",
+        "touch"
+      ]
+    },
+    {
+      "name": "p2",
+      "x": 83.7,
+      "y": 95.3,
+      "functions": [
+        "gpio",
+        "adc",
+        "pwm",
+        "touch"
+      ]
+    },
+    {
+      "name": "p3",
+      "x": 109.4,
+      "y": 51.2,
+      "functions": [
+        "gpio",
+        "touch"
+      ]
+    },
+    {
+      "name": "3v",
+      "x": 83.7,
+      "y": 6.9,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 32.6,
+      "y": 6.9,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Calliope mini 1.x/2.x (nRF51822 \u2014 the chip pxt-calliope 3.0.30's target.json names). The six ring pads: P0 (left arm), P3 (right arm), P1 and P2 (bottom arms), '+' = 3V and '-' = GND (top). Terminal names are MakeCode's DigitalPin names lowercased, as for microbit, so a program's P0 is this part's p0. Functions are pxt-calliope's own pin enums: all four pads are DigitalPin and TouchPin; only P1 and P2 are AnalogPin (analog read and analog/PWM write) \u2014 P0 and P3 are digital + touch. Internally MakeCode routes P0/P1/P2/P3 to DAL pins P12/P0/P1/P16. NOT terminals: the 2x13 header (C4-C17 in MakeCode), the Grove A0 (I2C, C18/C19) and A1 (UART, C16/C17) sockets and the motor connector. Calliope mini 3 moves to the nRF52833 and keeps these six pads and names, but its per-pad functions were not re-audited here. Face: pxt-calliope's simulator board art (MIT), see ART-PROVENANCE.md; x/y are the pad-ring centres in that art, scaled by 0.2 from its viewBox origin (-26, 9). Drawn 52.7 mm wide at the art's aspect; that physical size is approximate, not from a mechanical drawing.",
+  "footprint": null
+}

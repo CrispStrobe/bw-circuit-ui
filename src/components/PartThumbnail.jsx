@@ -10,6 +10,9 @@ import { getSidecar, resolveArtSlug } from '../model/parts-registry.js';
 import { boardVisualGeometry } from '../model/board-geometry.js';
 import { WokwiArduinoUno, WokwiArduinoNano, WokwiArduinoMega } from '../wokwi-wrappers/index.js';
 import pybadgeArt from '../parts-data/pybadge.svg';
+// MakeCode simulator board art (MIT) — the same files BoardCanvas draws.
+import calliopeMiniArt from '../parts-data/calliopemini.svg';
+import circuitPlaygroundArt from '../parts-data/circuit_playground_express.svg';
 
 const S = 48; // internal coordinate space
 
@@ -35,6 +38,12 @@ export function PartThumbnail({ kind, color, params, displaySize }) {
 
   if (kind === 'pybadge') {
     return <img src={pybadgeArt} width={w} height={h} alt="Adafruit PyBadge" style={{objectFit: 'contain'}} />;
+  }
+  if (kind === 'calliopemini') {
+    return <img src={calliopeMiniArt} width={w} height={h} alt="Calliope mini" style={{objectFit: 'contain'}} />;
+  }
+  if (kind === 'circuit_playground_express') {
+    return <img src={circuitPlaygroundArt} width={w} height={h} alt="Adafruit Circuit Playground Express" style={{objectFit: 'contain'}} />;
   }
 
   // Board thumbnails share the same MIT Wokwi faces as the canvas. This is

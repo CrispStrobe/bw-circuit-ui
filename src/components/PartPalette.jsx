@@ -38,6 +38,12 @@ const CATEGORIES = [
       { kind: 'pybadge', label: 'Adafruit PyBadge', params: {}, color: '#512da8',
         capability: 'Arcade controls + wiring',
         tooltip: 'ATSAMD51J19 game board — 160×128 TFT, controls, Feather and STEMMA connections; 3.3 V only' },
+      { kind: 'calliopemini', label: 'Calliope mini', params: {}, color: '#044854',
+        capability: 'MakeCode pins',
+        tooltip: 'nRF51822 board — pads P0–P3 (P1/P2 analog, all four touch), 3V and GND; 3.3 V logic' },
+      { kind: 'circuit_playground_express', label: 'Circuit Playground Express', params: {}, color: '#111111',
+        capability: 'MakeCode pins',
+        tooltip: 'ATSAMD21 board — pads A0–A7 (A1–A7 touch, A0 true analog out), 3.3V, GND, VOUT; 3.3 V logic' },
     ],
   },
   {

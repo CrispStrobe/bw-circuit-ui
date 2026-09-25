@@ -10,6 +10,15 @@
 | vite | 8.x | MIT | https://github.com/vitejs/vite (dev only) |
 | @vitejs/plugin-react | 6.x | MIT | https://github.com/vitejs/vite-plugin-react (dev only) |
 
+## Vendored artwork
+
+`src/parts-data/calliopemini.svg` and `src/parts-data/circuit_playground_express.svg`
+are copied Microsoft MakeCode simulator board art: pxt-calliope 3.0.30 and
+pxt-adafruit 1.6.8, both MIT, Copyright (c) Microsoft Corporation. Their
+licence text and the exact edits are in `src/parts-data/THIRD-PARTY.md` and
+`src/parts-data/ART-PROVENANCE.md`. The section below says no third-party
+*source* is vendored, and that stays true: these two files are artwork only.
+
 ## Format knowledge, not code
 
 No third-party source is vendored into this repository. Several file formats
