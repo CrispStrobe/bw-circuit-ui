@@ -84,3 +84,34 @@ field and in `PARTS-CATALOG.md`:
 | `attiny85` | Pin map assumes ATtiny85 | Could be ATtiny45/25 |
 | `microbit` | Board shape is generic | v1 (nRF51822) vs v2 (nRF52833) unresolved |
 | `gas_sensor` | Generic MQ-style can | MQ-2/3/4 span different gases |
+
+<!-- bw-circuit-ui local provenance: kept by scripts/sync-parts-data.mjs -->
+## Exceptions in bw-circuit-ui: copied third-party board art
+
+Everything above comes from bw-parts, and its **Confirmation** covers bw-parts'
+drawings. This directory also has LOCAL_ONLY parts that bw-parts does not
+carry (see `scripts/sync-parts-data.mjs`). Two of their SVGs are **copied**,
+not drawn here, so the "nothing is copied" statement above does **not** apply
+to them:
+
+| Kind | File | Source | Licence | Changes made here |
+|---|---|---|---|---|
+| `calliopemini` | `calliopemini.svg` | pxt-calliope 3.0.30 (npm tarball), `built/sim.js`, the `BOARD_SVG` string: MakeCode for Calliope mini's simulator board art | MIT, Copyright (c) Microsoft Corporation (the package's `LICENSE.txt`) | XML declaration dropped; `viewBox` widened from `0 0 530 530` to the drawn board outline `-26 9 581 511`, because the pads overhang the original box; indentation whitespace collapsed. Paths are untouched. |
+| `circuit_playground_express` | `circuit_playground_express.svg` | pxt-adafruit 1.6.8 (npm tarball), `built/sim.js`, the `visuals.BOARD_SVG` string: MakeCode for Adafruit's Circuit Playground Express simulator art | MIT, Copyright (c) Microsoft Corporation (the package's `LICENSE`) | `viewBox="0 0 180.094 179.229"` added so it scales. Paths are untouched. |
+
+Each file starts with a comment that names its source and licence. The MIT
+notice is reproduced in `THIRD-PARTY.md`. The art shows the product names and
+the Calliope logo. Those names are the manufacturers' trademarks and the
+licence does not cover them; they appear only to identify the board, as in
+MakeCode's own simulator.
+
+**How the terminal positions were taken.** Chromium's `getBBox()` gave the
+centre of each pad element in the art: `EDGE_P0..P3`, `EDGE_GND`, `EDGE_VCC`
+in the Calliope art, and `PIN_A0..A7`, `GND_0..2`, `PWR_1/2`, `VBATT` in the
+CPX art. Those centres were scaled into the sidecar's coordinate space
+(Calliope 0.2 from origin (-26, 9); CPX 0.62), so a wire lands on the ring
+you see.
+
+`pybadge` (also LOCAL_ONLY) is not copied art. Its face is drawn in code in
+`BoardCanvas.jsx`, and `pybadge.svg` is an original thumbnail. Official
+PyBadge art (pxt-arcade) was not available to extract.

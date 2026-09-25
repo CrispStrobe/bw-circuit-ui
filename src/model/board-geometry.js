@@ -65,6 +65,20 @@ const CODE_BOARD_SPECS = Object.freeze({
   pybadge: { mmW: 85.6, mmH: 54, transpose: false },
 });
 
+/**
+ * Boards whose face is copied MakeCode simulator art (MIT; see
+ * parts-data/ART-PROVENANCE.md). Their sidecar coordinates ARE the art's,
+ * scaled, so the sidecar geometry below sizes the face and places the pads
+ * with one transform — the drawn ring and the wire end cannot disagree.
+ */
+export const MAKECODE_FACE_KINDS = Object.freeze(['calliopemini', 'circuit_playground_express']);
+
+/** Every kind drawn as a whole board (face + pads) rather than a symbol. */
+export const BOARD_FACE_KINDS = Object.freeze([
+  'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'tang_nano_20k', 'pybadge',
+  ...MAKECODE_FACE_KINDS,
+]);
+
 /** Dimensions in circuit-world units, before part rotation. */
 export function boardVisualGeometry(kind, sidecar) {
   const spec = WOKWI_BOARD_SPECS[kind];
@@ -141,13 +155,21 @@ export function boardTerminalOffsets(kind, sidecar) {
   }
   const geometry = boardVisualGeometry(kind, sidecar);
   if (!geometry || !sidecar?.terminals) return {};
+  // A code-drawn board (CODE_BOARD_SPECS) takes its envelope from millimetres,
+  // not from the sidecar, so it carries no `scale`: stretch the sidecar's own
+  // w/h onto the envelope per axis. Using geometry.scale there put EVERY
+  // PyBadge and Tang Nano terminal at NaN — nothing could be wired to them.
+  const along = geometry.transpose ? sidecar.h : sidecar.w;
+  const across = geometry.transpose ? sidecar.w : sidecar.h;
+  const sx = geometry.scale ?? (along ? geometry.w / along : NaN);
+  const sy = geometry.scale ?? (across ? geometry.h / across : NaN);
   const result = {};
   for (const terminal of sidecar.terminals) {
     result[terminal.name] = geometry.transpose
-      ? { dx: terminal.y * geometry.scale - geometry.w / 2,
-          dy: terminal.x * geometry.scale - geometry.h / 2 }
-      : { dx: terminal.x * geometry.scale - geometry.w / 2,
-          dy: terminal.y * geometry.scale - geometry.h / 2 };
+      ? { dx: terminal.y * sx - geometry.w / 2,
+          dy: terminal.x * sy - geometry.h / 2 }
+      : { dx: terminal.x * sx - geometry.w / 2,
+          dy: terminal.y * sy - geometry.h / 2 };
   }
   return result;
 }
@@ -166,7 +188,7 @@ export function layoutFloatingParts(parts, sidecarForKind, options = {}) {
   const sizeOf = part => {
     const sidecar = sidecarForKind(part.kind);
     if (part.kind === 'vcc' || part.kind === 'gnd') return { w: 36, h: 40 };
-    if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'tang_nano_20k', 'pybadge'].includes(part.kind)) {
+    if (BOARD_FACE_KINDS.includes(part.kind)) {
       const board = boardVisualGeometry(part.kind, sidecar);
       if (board) return { w: board.w, h: board.h };
     }

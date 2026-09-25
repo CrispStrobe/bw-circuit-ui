@@ -78,7 +78,17 @@ const ADD_ONLY = !process.argv.includes('--overwrite');
  * catalogued upstream. stm32f030 was added on 2026-08-26 and the first
  * add-only sync silently removed both its files.
  */
-const LOCAL_ONLY = new Set(['stm32f030.json', 'stm32f030.svg']);
+const LOCAL_ONLY = new Set([
+  'stm32f030.json', 'stm32f030.svg',
+  // The MakeCode boards. Their faces are pxt-calliope / pxt-adafruit simulator
+  // art (MIT); provenance is recorded in ART-PROVENANCE.md and THIRD-PARTY.md
+  // below the synced sections.
+  'calliopemini.json', 'calliopemini.svg',
+  'circuit_playground_express.json', 'circuit_playground_express.svg',
+  // Measured absent from bw-parts/parts on 2026-09-25, so the stale sweep
+  // would have deleted them exactly as it once deleted stm32f030.
+  'pybadge.json', 'pybadge.svg', 'tang_nano_20k.json', 'tang_nano_20k.svg',
+]);
 
 const HELD_BACK = new Map([
   // char_lcd came off this list on 2026-08-27: bw-parts ff2fc7d renamed its
@@ -132,13 +142,22 @@ for (const f of readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f))) {
     if (!check) writeFileSync(target, body);
   }
 }
-// Copy provenance files so licensing travels with the art
+// Copy provenance files so licensing travels with the art.
+//
+// The copy REPLACES the file, which would silently erase the provenance of a
+// LOCAL_ONLY part — third-party art whose licence notice lives only here. So
+// everything from LOCAL_PROVENANCE_MARKER to the end of the existing file is
+// carried across the copy: upstream owns the top, this repo owns the tail.
+const LOCAL_PROVENANCE_MARKER = '<!-- bw-circuit-ui local provenance: kept by scripts/sync-parts-data.mjs -->';
 for (const prov of ['ART-PROVENANCE.md', 'THIRD-PARTY.md']) {
   const provSrc = join(src, '..', prov);
   if (existsSync(provSrc)) {
-    const body = readFileSync(provSrc, 'utf8');
     const target = join(dst, prov);
     const prev = existsSync(target) ? readFileSync(target, 'utf8') : null;
+    const localAt = prev ? prev.indexOf(LOCAL_PROVENANCE_MARKER) : -1;
+    const upstream = readFileSync(provSrc, 'utf8');
+    const body = localAt === -1 ? upstream
+      : `${upstream.replace(/\s*$/, '')}\n\n${prev.slice(localAt)}`;
     if (prev !== body) { if (!check) writeFileSync(target, body); }
   }
 }

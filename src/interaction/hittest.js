@@ -1,5 +1,5 @@
 import { getSidecar } from '../model/parts-registry.js';
-import { boardVisualGeometry } from '../model/board-geometry.js';
+import { boardVisualGeometry, MAKECODE_FACE_KINDS } from '../model/board-geometry.js';
 import { dipPackageGeometry } from '../model/dip-geometry.js';
 
 /**
@@ -105,7 +105,7 @@ export const DEFAULT_FOOTPRINT = { w: 48, h: 48 };
 
 /** @param {{kind: string}} part */
 export function footprintOf(part) {
-  if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge'].includes(part.kind)) {
+  if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge', ...MAKECODE_FACE_KINDS].includes(part.kind)) {
     const geometry = boardVisualGeometry(part.kind, getSidecar(part.kind));
     if (geometry) return { w: geometry.w, h: geometry.h };
   }
