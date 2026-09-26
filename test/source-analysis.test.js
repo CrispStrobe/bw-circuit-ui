@@ -146,6 +146,48 @@ R2 out 0 1k
     assert.ok(output.phaseDeg.every(value => Math.abs(Math.abs(value) - 180) < 1e-9));
   });
 
+  it('keeps a small ideal inductor accurate through the installed Board package', () => {
+    // The former inductor admittance stamp put about j1.6e8 beside j6.3e-7
+    // here and lost 3.43e-5 V. This enters through the real SPICE adapter so a
+    // pin/provenance-only bump cannot claim the Board repair without using it.
+    const resistance = 2700;
+    const henrys = 1e-9;
+    const farads = 1e-7;
+    const run = runSourceAnalyses(imported(`small ideal inductor
+V1 in 0 DC 0 AC 1
+R1 in n_rl ${resistance}
+L1 n_rl n_lc ${henrys}
+C1 n_lc 0 ${farads}
+.ac dec 100 1 ${Math.pow(10, 0.01)}
+.end
+`), { format: 'spice', maxPoints: 4 })[0];
+    assert.equal(run.status, 'pass');
+    assert.deepEqual(run.observables.axis.values, [1, Math.pow(10, 0.01)]);
+    const nodes = new Map(run.observables.nodes.map(node => [node.id, node]));
+    for (const [index, hz] of run.observables.axis.values.entries()) {
+      const omega = 2 * Math.PI * hz;
+      const zCapImaginary = -1 / (omega * farads);
+      const zLoadImaginary = omega * henrys + zCapImaginary;
+      const denominator = resistance ** 2 + zLoadImaginary ** 2;
+      const currentReal = resistance / denominator;
+      const currentImaginary = -zLoadImaginary / denominator;
+      for (const [nodeId, loadImaginary] of [
+        ['n1', zLoadImaginary], ['n2', zCapImaginary],
+      ]) {
+        const expectedReal = -currentImaginary * loadImaginary;
+        const expectedImaginary = currentReal * loadImaginary;
+        const node = nodes.get(nodeId);
+        const angle = node.phaseDeg[index] * Math.PI / 180;
+        const actualReal = node.magnitude[index] * Math.cos(angle);
+        const actualImaginary = node.magnitude[index] * Math.sin(angle);
+        assert.ok(Math.abs(actualReal - expectedReal) < 1e-12,
+          `${nodeId} real at ${hz} Hz: ${actualReal} vs ${expectedReal}`);
+        assert.ok(Math.abs(actualImaginary - expectedImaginary) < 1e-12,
+          `${nodeId} imaginary at ${hz} Hz: ${actualImaginary} vs ${expectedImaginary}`);
+      }
+    }
+  });
+
   it('matches ngspice for signed voltage/current phasor superposition on the exact LIN grid', {
     skip: spawnSync('ngspice', ['--version'], { encoding: 'utf8' }).status !== 0,
   }, () => {
