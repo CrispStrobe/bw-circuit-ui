@@ -4,7 +4,7 @@
 // this repo carries a synced copy so the loader can import it eagerly and
 // production bundles need no external fetch.
 //
-//   node scripts/sync-parts-data.mjs [--dir ../bw-parts] [--check]
+//   node scripts/sync-parts-data.mjs [--dir ../bw-parts] [--check] [--only kind]
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,12 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const dirIdx = args.indexOf('--dir');
+const onlyIdx = args.indexOf('--only');
+const onlyKind = onlyIdx !== -1 ? args[onlyIdx + 1] : null;
+if (onlyIdx !== -1 && (!onlyKind || onlyKind.startsWith('--'))) {
+  console.error('sync-parts-data: --only requires one part kind');
+  process.exit(2);
+}
 const src = join(HERE, '..', dirIdx !== -1 ? args[dirIdx + 1] : '../bw-parts', 'parts');
 const dst = join(HERE, '..', 'src', 'parts-data');
 const check = args.includes('--check');
@@ -103,11 +109,13 @@ const HELD_BACK = new Map([
 
 const skip = (f) => NOT_OFFERED.has(f) || NOT_OFFERED.has(f.replace(/\.svg$/, '.json'));
 const held = (f) => HELD_BACK.has(f);
+const selected = (f) => !onlyKind || f === `${onlyKind}.json` || f === `${onlyKind}.svg`;
 
-const upstreamJsons = new Set(readdirSync(src).filter(f => f.endsWith('.json') && !skip(f)));
-const upstreamSvgs = new Set(readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f)));
+const upstreamJsons = new Set(readdirSync(src).filter(f => f.endsWith('.json') && !skip(f) && selected(f)));
+const upstreamSvgs = new Set(readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f) && selected(f)));
 let deleted = 0;
-if (!check) {
+// A scoped sync cannot interpret every unselected destination file as stale.
+if (!check && !onlyKind) {
   for (const f of readdirSync(dst).filter(f => f.endsWith('.json'))) {
     if (!upstreamJsons.has(f) && !LOCAL_ONLY.has(f)) { unlinkSync(join(dst, f)); deleted++; }
   }
@@ -116,7 +124,7 @@ if (!check) {
   }
 }
 let changed = 0, total = 0;
-for (const f of readdirSync(src).filter(f => f.endsWith('.json') && !skip(f))) {
+for (const f of readdirSync(src).filter(f => f.endsWith('.json') && !skip(f) && selected(f))) {
   total++;
   if (held(f)) continue;
   if (ADD_ONLY && existsSync(join(dst, f))) continue;
@@ -131,7 +139,7 @@ for (const f of readdirSync(src).filter(f => f.endsWith('.json') && !skip(f))) {
 }
 // Also vendor SVG art files — same sync, same check
 let svgChanged = 0, svgTotal = 0;
-for (const f of readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f))) {
+for (const f of readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f) && selected(f))) {
   if (ADD_ONLY && existsSync(join(dst, f))) continue;
   svgTotal++;
   const body = readFileSync(join(src, f), 'utf8');
@@ -149,7 +157,7 @@ for (const f of readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f))) {
 // everything from LOCAL_PROVENANCE_MARKER to the end of the existing file is
 // carried across the copy: upstream owns the top, this repo owns the tail.
 const LOCAL_PROVENANCE_MARKER = '<!-- bw-circuit-ui local provenance: kept by scripts/sync-parts-data.mjs -->';
-for (const prov of ['ART-PROVENANCE.md', 'THIRD-PARTY.md']) {
+for (const prov of onlyKind ? [] : ['ART-PROVENANCE.md', 'THIRD-PARTY.md']) {
   const provSrc = join(src, '..', prov);
   if (existsSync(provSrc)) {
     const target = join(dst, prov);

@@ -238,6 +238,7 @@ export const EASYEDA_RULES = [
   [/^(LM|NE|UA|MC)?555\w*$/i, () => ({ kind: 'timer_555', byName: true })],
   [/^(LM|NE|UA|MC)?556\w*$/i, () => ({ kind: 'timer_556', byName: true })],
   [/^(LM|MC)?358/i, () => ({ kind: 'lm358', byName: true })],
+  [/^(LM|MC)?324/i, () => ({ kind: 'lm324', byName: true })],
   [/^(LM|MC)?339/i, () => ({ kind: 'lm339', byName: true })],
   [/^(LM|MC)?393/i, () => ({ kind: 'lm393', byName: true })],
   [/^MAX7219/i, () => ({ kind: 'max7219', byName: true })],

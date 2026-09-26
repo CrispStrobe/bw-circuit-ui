@@ -447,6 +447,13 @@ describe('kinds: spicePre first, part number ahead of it', () => {
     assert.equal(ls373.kind, '74ls373');
   });
 
+  test('LM324 package names retain the truthful quad-op-amp identity', () => {
+    assert.deepEqual(map({spicePre: 'U', descriptor: 'LM324N', pinCount: 14}),
+      {params: {}, pins: {}, kind: 'lm324', byName: true});
+    assert.deepEqual(map({spicePre: 'U', descriptor: 'MC324DT', pinCount: 14}),
+      {params: {}, pins: {}, kind: 'lm324', byName: true});
+  });
+
   test('the 74HC138 pin map speaks the ENGINE\'s spelling, not the datasheet\'s', () => {
     // EasyEDA writes Y0 and G2A; the engine marks active-low pins with a
     // trailing b. `byName` here would hand the board eight terminals it does

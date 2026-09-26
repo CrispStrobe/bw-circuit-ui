@@ -8,7 +8,11 @@
 // the generated index references (and lists) every sidecar JSON in the directory.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import {
+  copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync,
+} from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -39,4 +43,31 @@ test('the generated index.js imports and lists every parts-data sidecar JSON', (
   // The part this test was born for.
   assert.ok(imports.has('tang_nano_20k.json'),
     'tang_nano_20k.json must be registered in the generated index.js');
+});
+
+test('a scoped parts sync copies exactly one kind and never stale-sweeps its neighbours', () => {
+  const temp = mkdtempSync(path.join(os.tmpdir(), 'cui-parts-only-'));
+  try {
+    mkdirSync(path.join(temp, 'scripts'));
+    mkdirSync(path.join(temp, 'src', 'parts-data'), {recursive: true});
+    mkdirSync(path.join(temp, 'upstream', 'parts'), {recursive: true});
+    copyFileSync(path.join(here, '../scripts/sync-parts-data.mjs'),
+      path.join(temp, 'scripts', 'sync-parts-data.mjs'));
+    const sidecar = kind => JSON.stringify({kind, w: 1, h: 1, terminals: []});
+    writeFileSync(path.join(temp, 'src', 'parts-data', 'existing.json'), sidecar('existing'));
+    for (const kind of ['wanted', 'unrelated']) {
+      writeFileSync(path.join(temp, 'upstream', 'parts', `${kind}.json`), sidecar(kind));
+      writeFileSync(path.join(temp, 'upstream', 'parts', `${kind}.svg`), '<svg></svg>\n');
+    }
+    execFileSync(process.execPath, ['scripts/sync-parts-data.mjs', '--dir', 'upstream', '--only', 'wanted'],
+      {cwd: temp, stdio: 'pipe'});
+    const names = readdirSync(path.join(temp, 'src', 'parts-data')).sort();
+    assert.deepEqual(names, ['existing.json', 'index.js', 'wanted.json', 'wanted.svg']);
+    const generated = readFileSync(path.join(temp, 'src', 'parts-data', 'index.js'), 'utf8');
+    assert.match(generated, /existing\.json/);
+    assert.match(generated, /wanted\.json/);
+    assert.doesNotMatch(generated, /unrelated/);
+  } finally {
+    rmSync(temp, {recursive: true, force: true});
+  }
 });

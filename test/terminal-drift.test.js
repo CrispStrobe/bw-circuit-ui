@@ -1,5 +1,5 @@
 /**
- * Terminal-drift regression: the five part kinds that fell through
+ * Terminal-drift regression: part kinds that must resolve through their
  * terminalsForKind to the default ['a','b'], silently breaking 180/819
  * benches (22%). Each has a parts-data sidecar with the FULL correct
  * terminal list; the sidecar-first lookup order must find them before
@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const partsDir = join(here, '../src/parts-data');
 const circuitSrc = readFileSync(join(here, '../src/model/circuit.js'), 'utf8');
+const canvasSrc = readFileSync(join(here, '../src/components/BoardCanvas.jsx'), 'utf8');
 
 /**
  * Read a sidecar JSON and return its terminal names.
@@ -37,9 +38,10 @@ const DRIFTED = [
   { kind: 'slide_switch', minTerminals: 3,  sample: ['a', 'com', 'b'] },
   { kind: 'ili9341',      minTerminals: 9,  sample: ['vcc', 'gnd', 'cs', 'mosi', 'sck'] },
   { kind: 'lm358',        minTerminals: 8,  sample: ['vcc', 'gnd', '1_pos', '1_neg', '1_out', '2_out'] },
+  { kind: 'lm324',        minTerminals: 14, sample: ['vcc', 'gnd', '1_out', '2_out', '3_out', '4_out'] },
 ];
 
-describe('terminal-drift regression: 5 drifted kinds resolve via sidecar', () => {
+describe('terminal-drift regression: multi-terminal kinds resolve via sidecar', () => {
   for (const { kind, minTerminals, sample } of DRIFTED) {
     test(`${kind} sidecar has ≥${minTerminals} terminals`, () => {
       const terms = sidecarTerminals(kind);
@@ -51,6 +53,10 @@ describe('terminal-drift regression: 5 drifted kinds resolve via sidecar', () =>
       }
     });
   }
+
+  test('LM324 has an explicit DIP label instead of a ghost face', () => {
+    assert.match(canvasSrc, /lm324:\s*'LM324'/);
+  });
 });
 
 // ── Sidecar-first guard is in place ──────────────────────────────────
