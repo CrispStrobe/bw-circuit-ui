@@ -585,8 +585,10 @@ placeable in the existing PCB projection.
 
 Remaining work, in order:
 
-1. Add a carrier-focused browser gesture that mounts, drags and seats each
-   family, then proves one header pin conducts through the destination strip.
+1. **Implemented 2026-09-27.** The real browser now mounts, drags and seats
+   one SOIC-8, SOIC-14 and TSOT-5 carrier through user gestures, then places a
+   separate supply post and proves a named header pin shares its destination
+   breadboard strip. No direct model seating substitutes for the UI path.
 2. Add assembly drawings and printable pin legends; expose carrier vendor/
    pitch metadata in BOM CSV without prescribing one manufacturer.
 3. Run each new land pattern through projection → exact DRC → KiCad and
