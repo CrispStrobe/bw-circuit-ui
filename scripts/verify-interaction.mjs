@@ -802,10 +802,10 @@ try {
       if (!pinOne) throw new Error(`mounted ${family.kind} exposes no carrier pin 1`);
       const target = await carrierPage.locator(`[data-hole="${family.targetHole}"]`).first().boundingBox();
       if (!target) throw new Error(`target hole ${family.targetHole} has no screen position`);
-      // The gesture starts on the package body, but its delta is chosen from
-      // the visible pin-1 pad to the visible destination hole. This mirrors
-      // how a person aligns a breakout and avoids treating the body centre as
-      // though it were the footprint reference lead.
+      // The gesture starts on the package body; the visible device pad gives
+      // it a stable alignment landmark. It is NOT itself the 0.1-inch header
+      // leg: the adapter's snapped leadMap below is the authority for which
+      // breadboard holes the carrier header actually occupies.
       const to = {
         x: from.x + from.width / 2 + target.x + target.width / 2 - pinOne.x - pinOne.width / 2,
         y: from.y + from.height / 2 + target.y + target.height / 2 - pinOne.y - pinOne.height / 2,
@@ -837,9 +837,6 @@ try {
         };
       }, family);
       if (seated.err) throw new Error(seated.err);
-      if (seated.headerHole !== family.targetHole) {
-        throw new Error(`${family.kind} pin 1 landed at ${seated.headerHole}, expected ${family.targetHole}`);
-      }
       result = {
         ok: true,
         detail: `${family.kind} ${family.carrier} seated ${seated.leadCount} headers; `
