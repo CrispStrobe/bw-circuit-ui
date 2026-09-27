@@ -542,8 +542,8 @@ whole source rather than choosing from one small residual subset.
 | priority | real part | instances / rows | target-only | clean after | decision |
 |---|---:|---:|---:|---:|---|
 | P1 | OP07 | 126 / 79 | 63 | 0 | Build first: highest real-part reach and OP/AC/DC/transient diversity. The official symbol netlists LT1001, so the native OP07 projection stays numerically blocked. |
-| P2 | OP27 | 48 / 25 | 19 | 6 | Next single precision/high-speed op-amp after a separate data-sheet card audit. |
-| P3 | ADP151 family | 12 / 12 | 11 | 11 | Lower frequency but unusually high immediate clean yield; fixed-output/package spellings must be audited exactly. |
+| P2 | OP27 | 48 / 25 | 19 | 6 | Next single precision/high-speed op-amp after a separate data-sheet card audit. Its official symbol delegates to `OP27` in `ADI.lib`; native behavior must remain explicitly bounded rather than claiming macro-model identity. |
+| P3 | ADP151 family | 12 / 12 | 11 | 11 | Lower frequency but unusually high immediate structural yield; fixed-output/package spellings must be audited exactly before the clean count is accepted. |
 | P4 | LT1006 | 45 / 28 | 20 | 4 | Worth a full slice after its supply/output and package variants are separated. |
 | P5 | LT1014 | 32 / 14 | 12 | 5 | Quad package; requires shared-rail/four-channel behaviour and face, not a single-op-amp alias. |
 | later | OP747, ADTL082, ADA4522-1, AD8541, AD711, AD8602, LT1678, LT1007 | 15–24 each | — | 1–4 each | Re-rank after P1–P5 because family infrastructure and residual losses will have changed. |
@@ -565,3 +565,13 @@ because Brickwright now has a more faithful physical OP07 card. After every
 landed slice, rerun this same fixed report and
 record both structural deltas and the smaller subset that becomes numerically
 judgeable; the measurements, not this initial ordering, choose the next part.
+
+The next-source preflight already found a load-bearing refusal: LTspice 26.0.2's
+`ADP151-2.85.asy` is byte-identical to `ADP151-1.1.asy` (SHA-256
+`552c7d43e0e1940a680018c37d766dd963a7b5351f53bf48de4bd275ff15718a`)
+and declares `Value ADP151-1.1` / `T=100K`. A 2.85 V importer must not infer
+voltage from that filename or silently accept the corrupted built-in default.
+The other audited ADP151 fixed-output symbols use a non-contiguous 1/2/3/5
+subcircuit interface and their own exact value-selection parameter. Package
+authority remains a separate data-sheet/part-number decision; four electrical
+symbol pins are not evidence for a four-lead purchasable face.
