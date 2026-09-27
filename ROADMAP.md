@@ -553,7 +553,7 @@ whole source rather than choosing from one small residual subset.
 | P10 | LT1678 | 15 / 8 | 4 | 0 | **Done.** One truthful production SOIC-8 dual and one bounded shared-rail engine card remain distinct from the official five-terminal logical source symbol. All eight rows retain the exact `LTC2.lib` / `LT1678` model-substitution blocker. |
 | P11 | AD8541 | 19 / 7 | 4 | 0 | **Done.** One truthful production R-8 SOIC face and one bounded rail-to-rail single-amplifier card remain distinct from the official five-terminal source symbol. The source symbol can be explicitly bound to exact `AD8541ARZ`, but never silently acquires R-8 instead of RJ-5/KS-5. All seven rows retain the exact `AD8541.lib` / `AD8541` model-substitution blocker. |
 | P12 | AD8602 | 16 / 7 | 4 | 0 | **Done.** One truthful production R-8 SOIC face and one bounded shared-rail dual engine card remain distinct from the official five-terminal logical source symbol. The symbol identifies neither channel nor package and therefore cannot bind to the whole dual; all seven rows retain its exact `AD8602.lib` / `AD8602` substitution blocker. |
-| next | ADA4522-1 | 21 / 5 | 1 | 0 expected | Lowest residual document reach of the measured named candidates; re-measure after P12 and keep package/channel identity explicit. |
+| P13 | ADA4522-1 | 21 / 5 | 1 | 0 | **Done.** One truthful production R-8 SOIC face and one bounded high-voltage zero-drift engine card remain distinct from the official five-terminal logical source symbol. Exact `ADA4522-1ARZ` selection may bind the package; RM-8 cannot. All five rows retain the exact `ADA4522-1.sub` / `ADA4522-1` substitution blocker. |
 
 The larger residuals `opamp2` (443 instances), `universalopamp2` (320), generic
 `opamp` (292), `bv` (902), and `sw` (761) are simulation abstractions, not
@@ -561,11 +561,12 @@ orderable parts. They deserve separate behavioral-import lanes and schematic
 symbols, but no purchasable face or BOM identity. Exact-name real-part work must
 not be used to smuggle those abstractions in as fake packages.
 
-P1–P12 are complete. On the current importer, exact replays of the same 8,280
+P1–P13 are complete. On the current importer, exact replays of the same 8,280
 rows map all 15 LT1678 instances across eight rows, all 19 AD8541 instances
-across seven rows, and all 16 AD8602 instances across seven rows. Each slice
-makes four additional documents free of unmapped symbols; after P12 the current
-document-pin counter is 2,372, while the stricter zero-loss total remains 119
+across seven rows, all 16 AD8602 instances across seven rows, and all 21
+ADA4522-1 instances across five rows. The final slice makes one additional
+document free of unmapped symbols; after P13 the current document-pin counter
+is 2,373, while the stricter zero-loss total remains 119
 because every mapped channel truthfully retains its external macro-model
 dependency. These
 current counters are not substituted into older historical campaign counters whose importer and
@@ -772,3 +773,17 @@ representation mismatch, not numerical equivalence. The palette part is
 separately constrained to reviewed R-8 production order codes; RM-8 does not
 borrow its face, and the package-neutral source channel cannot invent A/B
 identity or bind to the whole dual.
+
+Exact post-implementation ADA4522-1 replay at CUI `0e4cbb7` maps all 21
+instances across five rows and makes one more document fully pinned
+(2,372 -> 2,373). Every mapped instance retains the official symbol's
+`SpiceModel ADA4522-1.sub` / `Value2 ADA4522-1` source-model-substitution
+blocker, so projection lossless, numerical eligibility, and declared-analysis
+eligibility remain 119/76/83. Paired completeness/components/net partitions
+each fall by one (6,390/4,747/6,364 -> 6,389/4,746/6,363): the old counts
+omitted ADA4522-1, while the ASC projection now exposes a bounded native
+logical channel and the paired SPICE deck still invokes the external model.
+That is an exposed representation mismatch, not numerical equivalence. The
+palette part is separately constrained to reviewed `ADA4522-1ARZ` R-8 order
+codes; RM-8 does not borrow its face, and the source symbol gains the package
+only through an explicit user selection.
