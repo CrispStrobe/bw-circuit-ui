@@ -236,6 +236,8 @@ const CATEGORIES = [
       // 200000 is a PART fact and wants a card; the palette's generic op-amp
       // takes the engine's own default by saying nothing.
       { kind: 'opamp', label: 'Op-Amp', params: {}, color: '#e67e22', tooltip: 'generic op-amp' },
+      { kind: 'lm741', label: 'LM741', params: {}, color: '#d35400',
+        tooltip: 'Real single op-amp — PDIP-8, dual supply, finite gain/bandwidth/slew and output swing' },
       { kind: '555', label: '555 Timer', params: {}, color: '#e74c3c' },
       { kind: 'shift_register', label: '74HC595', params: {}, color: '#8e44ad', tooltip: 'Shift register — 8 outputs' },
       { kind: 'ir_receiver', label: 'IR Receiver', params: {}, color: '#c0392b', tooltip: 'drawable — IrDA' },
