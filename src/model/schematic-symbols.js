@@ -320,6 +320,7 @@ export const ALIASES = {
   lm324: 'opamp',
   lm741: 'opamp',
   lt1001: 'opamp',
+  op07: 'opamp',
   speaker: 'buzzer',
   electrolytic: 'polarized_cap',
   cap_pol: 'polarized_cap',

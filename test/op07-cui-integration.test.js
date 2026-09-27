@@ -10,6 +10,7 @@ import { registerAllDevices } from 'bw-board/register-all.js';
 import { PART_SYMBOLS } from '../src/data/easyeda-symbols.js';
 import { mapEasyEdaPart } from '../src/importers/easyeda.js';
 import { mapKicadSymbol, terminalFor } from '../src/importers/kicad-common.js';
+import { importLtspiceAsc } from '../src/importers/ltspice-asc.js';
 import { getSidecar } from '../src/model/parts-registry.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -18,48 +19,69 @@ const terminals = ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 
 
 registerAllDevices();
 
-test('the vendored LT1001 is the exact physical PDIP-8 sibling part', () => {
-  const sidecar = getSidecar('lt1001');
-  assert.ok(sidecar, 'generated parts-data index exposes LT1001 to every bundler');
+test('the vendored OP07 is the exact P-suffix PDIP-8 sibling part', () => {
+  const sidecar = getSidecar('op07');
+  assert.ok(sidecar, 'generated parts-data index exposes OP07 to every bundler');
   assert.deepEqual(sidecar.terminals.map(t => t.name), terminals);
-  assert.deepEqual(sidecar.footprint.leads.out, { dRow: 5, dCol: 2 });
+  assert.deepEqual(sidecar.footprint.leads.offset_5, { dRow: 5, dCol: 3 });
   assert.deepEqual(sidecar.footprint.leads.vpos, { dRow: 5, dCol: 1 });
   const pins = JSON.parse(read('.github/ci-siblings.json'));
   assert.equal(pins['bw-parts'].sha, 'd9446a1095ca9efd45226173bc6774efe76e23f0');
-  assert.match(read('src/parts-data/lt1001.svg'), />LT1001</);
+  assert.match(read('src/parts-data/op07.svg'), />OP07</);
+  assert.match(sidecar._note, /SOIC imports must not acquire this breadboard face/);
 });
 
-test('palette, canvas, schematic and export metadata name the real LT1001', () => {
+test('palette, canvas, schematic, BOM and export metadata name the real OP07', () => {
   const palette = read('src/components/PartPalette.jsx');
   const canvas = read('src/components/BoardCanvas.jsx');
+  const bom = read('src/model/bom.js');
   const interaction = read('scripts/verify-interaction.mjs');
-  assert.match(palette, /kind: 'lt1001', label: 'LT1001'/);
-  assert.match(canvas, /lt1001:\s*'LT1001'/);
-  assert.match(interaction, /\[data-part-face="lt1001"\]\[data-dip-body="lt1001"\]/);
-  assert.match(interaction, /lt1001Dots\.length === 8/);
-  assert.equal(PART_SYMBOLS.lt1001.kicadSymbol, undefined,
-    'KiCad has no official LT1001 symbol, so the exporter must not invent one');
-  assert.equal(PART_SYMBOLS.lt1001.kicadFootprint, 'Package_DIP:DIP-8_W7.62mm');
+  assert.match(palette, /kind: 'op07', label: 'OP07'/);
+  assert.match(canvas, /op07:\s*'OP07'/);
+  assert.match(bom, /op07: 'OP07 Precision Operational Amplifier'/);
+  assert.match(interaction, /\[data-part-face="op07"\]\[data-dip-body="op07"\]/);
+  assert.match(interaction, /op07Dots\.length === 8/);
+  assert.equal(PART_SYMBOLS.op07.kicadSymbol, undefined,
+    'no reviewed official KiCad OP07 symbol is claimed');
+  assert.equal(PART_SYMBOLS.op07.kicadFootprint, 'Package_DIP:DIP-8_W7.62mm');
 });
 
-test('EasyEDA and custom KiCad exact LT1001 DIP names retain all eight pins', () => {
+test('EasyEDA and custom KiCad exact OP07 PDIP names retain all eight pins', () => {
   const expected = Object.fromEntries(terminals.map((name, i) => [String(i + 1), name]));
   const easy = mapEasyEdaPart({
-    descriptor: 'LT1001ACN8#PBF', value: 'LT1001', spicePre: 'U', pinCount: 8, package: 'DIP-8',
+    descriptor: 'OP07CPZ', value: 'OP07', spicePre: 'U', pinCount: 8, package: 'DIP-8',
   });
-  assert.equal(easy.kind, 'lt1001');
+  assert.equal(easy.kind, 'op07');
   assert.deepEqual(easy.pins, expected);
-  const kicad = mapKicadSymbol('MyAmplifiers:LT1001CN8', 'LT1001CN8');
-  assert.equal(kicad.kind, 'lt1001');
+  const kicad = mapKicadSymbol('MyAmplifiers:OP07EPZ', 'OP07EPZ');
+  assert.equal(kicad.kind, 'op07');
   assert.deepEqual(kicad.terminals, terminals);
   for (let pin = 1; pin <= 8; pin++) {
     assert.equal(terminalFor(kicad, String(pin), '~'), terminals[pin - 1]);
   }
-  assert.notEqual(mapKicadSymbol('MyAmplifiers:LT1001S8', 'LT1001S8')?.kind, 'lt1001',
-    'the SO-8 package must not silently acquire the PDIP-8 physical face');
+  assert.notEqual(mapKicadSymbol('MyAmplifiers:OP07CSZ', 'OP07CSZ')?.kind, 'op07',
+    'the S-suffix SOIC must not silently acquire the P-suffix PDIP face');
 });
 
-function follower({ input = 1, feedback = true, offset = 5e-6 } = {}) {
+test('the audited LTspice symbol reaches OP07 electrically without inventing a package', () => {
+  const source = `Version 4
+SHEET 1 800 600
+SYMBOL OpAmps\\OP07 200 200 R0
+SYMATTR InstName U1
+`;
+  const result = importLtspiceAsc(source);
+  assert.deepEqual(result.unmapped, []);
+  assert.deepEqual(result.losses, []);
+  assert.equal(result.parts[0].kind, 'op07');
+  assert.deepEqual(result.parts[0].terminals, ['inp', 'inn', 'vpos', 'vneg', 'out']);
+  assert.equal(result.parts[0].sourcePackage, 'unspecified');
+  assert.equal(result.parts[0].verifiedBuiltinSymbolSha256,
+    '577ff165a528ef7fd38298ffac12113a905c4a431dbf6c85b6001df4117c1442');
+  assert.equal(result.parts[0].sourceSymbolSha256, undefined);
+  assert.equal(result.parts[0].sourceLibrary, 'opamps/op07');
+});
+
+function follower({ input = 1, feedback = true, offset = 60e-6 } = {}) {
   const board = new BoardImpl(5);
   const ground = [
     { part: 'G', terminal: 'gnd' }, { part: 'VP', terminal: 'neg' },
@@ -72,7 +94,7 @@ function follower({ input = 1, feedback = true, offset = 5e-6 } = {}) {
     { id: 'VN', kind: 'vsource', params: { volts: 15 }, terminals: ['pos', 'neg'] },
     { id: 'VIN', kind: 'vsource', params: { volts: input }, terminals: ['pos', 'neg'] },
     { id: 'G', kind: 'gnd', params: {}, terminals: ['gnd'] },
-    { id: 'U1', kind: 'lt1001', params: { inputOffsetV: offset }, terminals },
+    { id: 'U1', kind: 'op07', params: { inputOffsetV: offset }, terminals },
     { id: 'RL', kind: 'resistor', params: { ohms: 100000 }, terminals: ['a', 'b'] },
   ], [
     { id: 'gnd', terminals: ground },
@@ -87,16 +109,16 @@ function follower({ input = 1, feedback = true, offset = 5e-6 } = {}) {
   return board;
 }
 
-test('the exact pinned engine solves LT1001 precision and dynamic behavior', () => {
-  assert.ok(getDevice('lt1001'), 'the pinned engine registers the named real part');
-  const finite = follower({ input: 1e-6, feedback: false, offset: 0 });
-  finite.advanceTo(80_000n);
-  assert.ok(Math.abs(finite.nodeVoltage('output') - 5) < 0.01,
-    `5 MV/V open-loop output was ${finite.nodeVoltage('output')} V`);
+test('the exact pinned engine solves OP07 finite gain, offset and slew', () => {
+  assert.ok(getDevice('op07'), 'the pinned engine registers the named real part');
+  const finite = follower({ input: 10e-6, feedback: false, offset: 0 });
+  finite.advanceTo(30_000n);
+  assert.ok(Math.abs(finite.nodeVoltage('output') - 4) < 0.01,
+    `400 kV/V open-loop output was ${finite.nodeVoltage('output')} V`);
 
-  const precision = follower({ input: 1, offset: 10e-6 });
-  precision.advanceTo(40_000n);
-  assert.ok(Math.abs(precision.nodeVoltage('output') - 1.00001) < 5e-6,
+  const precision = follower({ input: 1 });
+  precision.advanceTo(50_000n);
+  assert.ok(Math.abs(precision.nodeVoltage('output') - 1.0000575) < 5e-6,
     `precision follower output was ${precision.nodeVoltage('output')} V`);
 
   const dynamic = follower({ input: 0, offset: 0 });
@@ -106,6 +128,6 @@ test('the exact pinned engine solves LT1001 precision and dynamic behavior', () 
   const v0 = dynamic.nodeVoltage('output');
   dynamic.advanceTo(t0 + 4_000n);
   const moved = dynamic.nodeVoltage('output') - v0;
-  assert.ok(moved > 0.75 && moved <= 1.01,
-    `0.25 V/us slew allows at most 1 V in 4 us; moved ${moved} V`);
+  assert.ok(moved > 0.9 && moved <= 1.21,
+    `0.3 V/us slew allows at most 1.2 V in 4 us; moved ${moved} V`);
 });

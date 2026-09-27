@@ -125,6 +125,11 @@ addVerifiedDevice(['lt1001a', 'opamps/lt1001a'], {
   prefix: 'X', acceptedValues: ['LT1001A'], deviceParams: {},
   sourceSha256: '69e46f8c58c08205de9d89b69f4a6dced2246cb6b0ea14128e298080a7794ab9',
 });
+addVerifiedDevice(['op07', 'opamps/op07'], {
+  kind: 'op07', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+  prefix: 'X', acceptedValues: ['OP07'], deviceParams: {},
+  sourceSha256: '577ff165a528ef7fd38298ffac12113a905c4a431dbf6c85b6001df4117c1442',
+});
 
 const adp7118Pins = [[-128, -96], [128, 96], [-128, 0], [-128, 96], [128, -96], [0, 160]];
 for (const [suffix, vOut, sourceSha256] of [
