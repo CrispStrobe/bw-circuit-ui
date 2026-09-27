@@ -115,6 +115,7 @@ const EXPECTED = [
   'drag-part',
   'wire-terminals',
   'breadboard-place',
+  'physical-package-binding',
   'carrier-soic8-seat',
   'carrier-soic14-seat',
   'carrier-tsot5-seat',
@@ -750,6 +751,60 @@ try {
   verdict('breadboard-place', boards >= 1,
     'palette drag placed a breadboard substrate',
     'breadboard did not appear after palette drag');
+}
+
+// 3b1. A package-neutral imported channel becomes physical only after the
+// user selects an exact reviewed order code. The added package pin, carrier
+// and source-model blocker must then survive the shipping save/load path.
+{
+  const bindingPage = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+  bindingPage.on('pageerror', e => errors.push(`package binding page: ${String(e)}`));
+  try {
+    await bindingPage.goto(`http://localhost:${PORT}`, { waitUntil: 'domcontentloaded', timeout: NAV_MS });
+    await bindingPage.waitForFunction(() => window.__circuit && window.__setCircuitData,
+      { timeout: 60000 });
+    const blocker = { ref: 'U1', kind: 'source-model-substitution', reason: 'external source model retained' };
+    await bindingPage.evaluate(({ blocker }) => window.__setCircuitData({
+      version: 1,
+      parts: [{
+        id: 'U1', kind: 'adp151', params: { vOut: 3.3 }, x: 360, y: 250,
+        terminals: ['vin', 'gnd', 'en', 'vout'], sourcePackage: 'unspecified',
+        analysisBlockers: [blocker],
+      }],
+      wires: [], analysisBlockers: [blocker],
+    }), { blocker });
+    const logical = bindingPage.locator('[data-part-face="adp151"][data-source-package="unspecified"]');
+    await logical.click({ timeout: 20000 });
+    const packageSelect = bindingPage.locator('[data-physical-package-binding]');
+    await packageSelect.selectOption('adp151-aujz-3v3');
+    const carrierSelect = bindingPage.locator('[data-carrier-select]');
+    await carrierSelect.selectOption('tsot5-header5');
+    const saved = await bindingPage.evaluate(() => window.__circuit.toJSON());
+    await bindingPage.evaluate(data => window.__setCircuitData(data), saved);
+    await bindingPage.waitForFunction(() => window.__circuit?.parts?.[0]?.carrier === 'tsot5-header5',
+      { timeout: 20000 });
+    const receipt = await bindingPage.evaluate(() => {
+      const circuit = window.__circuit;
+      const part = circuit.parts[0];
+      return {
+        kind: part.kind, sourcePackage: part.sourcePackage, terminals: part.terminals,
+        physicalBinding: part.physicalBinding, carrier: part.carrier,
+        blockerCount: circuit.analysisBlockers.length,
+      };
+    });
+    const ok = receipt.kind === 'adp151' && receipt.sourcePackage === 'TSOT-5'
+      && receipt.terminals.join(',') === 'vin,gnd,en,nc,vout'
+      && receipt.physicalBinding?.orderCode === 'ADP151AUJZ-3.3-R7'
+      && receipt.physicalBinding?.selectedBy === 'user'
+      && receipt.carrier === 'tsot5-header5' && receipt.blockerCount === 1;
+    verdict('physical-package-binding', ok,
+      'user-bound ADP151AUJZ-3.3-R7 persisted its TSOT-5 pins, carrier and source-model blocker',
+      `physical binding receipt incomplete: ${JSON.stringify(receipt)}`);
+  } catch (error) {
+    fail('physical-package-binding', String(error).replace(/\n/g, ' | ').slice(0, 1200));
+  } finally {
+    await bindingPage.close();
+  }
 }
 
 // 3b2. The three explicit SMD carrier families must be usable through the

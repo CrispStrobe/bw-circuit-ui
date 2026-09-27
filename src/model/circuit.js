@@ -21,6 +21,7 @@ import { getSidecar } from './parts-registry.js';
 import { applyMeterLoads } from './meter-load.js';
 import { withImportedSingletonNets } from './import-singleton-nets.js';
 import { breadboardFootprintForPart, carrierForPart } from './carriers.js';
+import { physicalPackageBindingForPart } from './physical-package-bindings.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -564,6 +565,31 @@ export class Circuit {
     const part = this.getPart(partId);
     if (!part) return false;
     part.rotation = ((part.rotation || 0) + 90) % 360;
+    this._saveHistory();
+    return true;
+  }
+
+  /** Bind an imported package-neutral logical device to a reviewed exact part. */
+  bindPhysicalPackage(partId, bindingId) {
+    const part = this.getPart(partId);
+    const binding = physicalPackageBindingForPart(part, bindingId);
+    if (!part || !binding) return false;
+    const physicalTerminals = terminalsForKind(binding.physicalKind, part.params || {});
+    if (!Array.isArray(physicalTerminals) || physicalTerminals.length === 0
+        || (part.terminals || []).some(terminal => !physicalTerminals.includes(terminal))) return false;
+
+    this.unseatPart(partId);
+    part.kind = binding.physicalKind;
+    part.terminals = [...physicalTerminals];
+    part.sourcePackage = binding.package;
+    part.physicalBinding = {
+      id: binding.id,
+      logicalKind: binding.logicalKind,
+      orderCode: binding.orderCode,
+      package: binding.package,
+      selectedBy: 'user',
+    };
+    this._syncNetlist();
     this._saveHistory();
     return true;
   }

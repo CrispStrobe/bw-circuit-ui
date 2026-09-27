@@ -233,9 +233,9 @@ export function exportGerbers(board, opts = {}) {
   }
 
   // Deterministic assembly placement data. This is deliberately
-  // manufacturer-neutral: reference, package, centre, orientation, side,
-  // technology and the pattern's pin-1 pad — no order code is invented.
-  const csv = [['reference', 'value', 'package', 'x_mm', 'y_mm', 'rotation_deg', 'side', 'technology', 'pin1_pad']];
+  // manufacturer-neutral unless the circuit carries an explicit reviewed
+  // user-selected order code. Never derive a SKU from a package or value.
+  const csv = [['reference', 'value', 'package', 'x_mm', 'y_mm', 'rotation_deg', 'side', 'technology', 'pin1_pad', 'order_code']];
   const cell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
   for (const part of [...(board.parts || [])].sort((a, b) => String(a.ref || a.id).localeCompare(String(b.ref || b.id)))) {
     const technology = part.assembly?.technology
@@ -243,7 +243,7 @@ export function exportGerbers(board, opts = {}) {
     csv.push([
       part.ref || part.id, part.name || '', part.package || '', fmtMm(part.x), fmtMm(part.y),
       fmtMm(part.rotation || 0), part.assembly?.side || part.side || 'top', technology,
-      part.assembly?.pin1Pad || '',
+      part.assembly?.pin1Pad || '', part.orderCode || '',
     ]);
   }
   files['assembly-positions.csv'] = csv.map((row) => row.map(cell).join(',')).join('\n') + '\n';

@@ -78,6 +78,12 @@ export function useCircuit(vcc = 5.0) {
     return ok;
   }, [circuit, bump]);
 
+  const bindPhysicalPackage = useCallback((partId, binding) => {
+    const ok = circuit.bindPhysicalPackage(partId, binding);
+    if (ok) bump();
+    return ok;
+  }, [circuit, bump]);
+
   // Board placement overrides (circuit.pcb, docs/PCB-SUPPORT-PLAN.md
   // Phase 6). Placement only — nothing in here may state connectivity.
   const setPcbOverrides = useCallback((pcb) => {
@@ -255,6 +261,7 @@ export function useCircuit(vcc = 5.0) {
     rotatePart,
     flipPart,
     updateParams,
+    bindPhysicalPackage,
     setCarrier,
     setPcbOverrides,
     addWire,

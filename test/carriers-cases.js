@@ -17,6 +17,135 @@ import { importKicadPcb } from '../src/importers/kicad-pcb.js';
 import { exportEasyEdaPcb } from '../src/model/exporters/easyeda-pcb.js';
 import { importEasyEdaPcb } from '../src/importers/easyeda-pcb.js';
 import { getSidecar } from '../src/model/parts-registry.js';
+import { exportGerbers } from '../src/model/exporters/gerber.js';
+import {
+  REVIEWED_PHYSICAL_PACKAGE_BINDINGS, physicalPackageBindingsForPart,
+} from '../src/model/physical-package-bindings.js';
+import { mapEasyEdaPart } from '../src/importers/easyeda.js';
+import { mapKicadSymbol } from '../src/importers/kicad-common.js';
+
+test('binding choices are exact order codes already accepted by both physical importers', () => {
+  assert.equal(REVIEWED_PHYSICAL_PACKAGE_BINDINGS.length, 8);
+  for (const binding of REVIEWED_PHYSICAL_PACKAGE_BINDINGS) {
+    const easy = mapEasyEdaPart({
+      descriptor: binding.orderCode, value: binding.orderCode, spicePre: 'U',
+      pinCount: getSidecar(binding.physicalKind).terminals.length, package: binding.package,
+    });
+    const kicad = mapKicadSymbol(`Reviewed:${binding.orderCode}`, binding.orderCode);
+    assert.equal(easy?.kind, binding.physicalKind, `${binding.orderCode} EasyEDA authority`);
+    assert.equal(kicad?.kind, binding.physicalKind, `${binding.orderCode} KiCad authority`);
+  }
+});
+
+test('explicit binding expands only physical pins and persists source truth and nets', () => {
+  const blocker = { ref: 'U1', kind: 'source-model-substitution', reason: 'external model retained' };
+  const logicalTerminals = ['inp', 'inn', 'vpos', 'vneg', 'out'];
+  const circuit = Circuit.fromJSON({
+    parts: [
+      { id: 'U1', kind: 'lt1007_channel', params: {}, terminals: logicalTerminals,
+        sourcePackage: 'unspecified', analysisBlockers: [blocker], x: 20, y: 20 },
+      { id: 'R1', kind: 'resistor', params: { ohms: 1000 }, terminals: ['a', 'b'], x: 80, y: 20 },
+    ],
+    wires: [{ id: 'w1', from: { part: 'U1', terminal: 'out' }, to: { part: 'R1', terminal: 'a' } }],
+  });
+  assert.deepEqual(physicalPackageBindingsForPart(circuit.parts[0]).map(option => option.orderCode),
+    ['LT1007CN8#PBF']);
+  assert.equal(circuit.bindPhysicalPackage('U1', 'lt1007-cn8'), true);
+  const bound = circuit.parts[0];
+  assert.equal(bound.kind, 'lt1007');
+  assert.equal(bound.sourcePackage, 'PDIP-8');
+  assert.equal(bound.physicalBinding.orderCode, 'LT1007CN8#PBF');
+  assert.equal(bound.physicalBinding.selectedBy, 'user');
+  assert.deepEqual(bound.terminals, getSidecar('lt1007').terminals.map(pin => pin.name));
+  assert.deepEqual(circuit.wires[0].from, { part: 'U1', terminal: 'out' });
+  assert.deepEqual(bound.analysisBlockers, [blocker]);
+
+  const restored = Circuit.fromJSON(circuit.toJSON());
+  assert.deepEqual(restored.parts[0].physicalBinding, bound.physicalBinding);
+  assert.deepEqual(restored.parts[0].terminals, bound.terminals);
+  assert.deepEqual(restored.wires[0].from, { part: 'U1', terminal: 'out' });
+  assert.equal(restored.analysisBlockers.length, 1);
+});
+
+test('fixed-output binding matches the exact voltage and unlocks its explicit carrier', () => {
+  const circuit = Circuit.fromJSON({ parts: [{
+    id: 'U1', kind: 'adp151', params: { vOut: 3.3 },
+    terminals: ['vin', 'gnd', 'en', 'vout'], sourcePackage: 'unspecified', x: 20, y: 20,
+  }], wires: [] });
+  assert.deepEqual(physicalPackageBindingsForPart(circuit.parts[0]).map(option => option.orderCode),
+    ['ADP151AUJZ-3.3-R7']);
+  assert.equal(circuit.bindPhysicalPackage('U1', 'adp151-aujz-3v3'), true);
+  assert.ok(circuit.parts[0].terminals.includes('nc'));
+  assert.deepEqual(carrierOptionsForPart(circuit.parts[0]).map(option => option.id), ['tsot5-header5']);
+  assert.equal(circuit.setCarrier('U1', 'tsot5-header5'), true);
+  const restored = Circuit.fromJSON(circuit.toJSON());
+  assert.equal(restored.parts[0].carrier, 'tsot5-header5');
+  assert.equal(restored.parts[0].physicalBinding.orderCode, 'ADP151AUJZ-3.3-R7');
+
+  const wrongVoltage = { kind: 'adp151', params: { vOut: 2.5 }, sourcePackage: 'unspecified' };
+  assert.deepEqual(physicalPackageBindingsForPart(wrongVoltage), []);
+});
+
+test('a bound exact part generates a complete board that survives export and re-import', () => {
+  resetIds();
+  const circuit = Circuit.fromJSON({ parts: [{
+    id: 'U1', kind: 'adp151', params: { vOut: 3.3 },
+    terminals: ['vin', 'gnd', 'en', 'vout'], sourcePackage: 'unspecified', x: 20, y: 20,
+  }], wires: [] });
+  assert.equal(circuit.bindPhysicalPackage('U1', 'adp151-aujz-3v3'), true);
+  const header = circuit.addPart('header', { pins: 5 }, 80, 20);
+  circuit.parts[0].terminals.forEach((terminal, index) => {
+    assert.ok(circuit.addWire(header.id, `p${index + 1}`, 'U1', terminal));
+  });
+  const projected = projectBoard({ parts: circuit.parts, wires: circuit.wires });
+  assert.deepEqual(projected.unplaced, []);
+  assert.deepEqual(projected.unrouted, []);
+  assert.deepEqual(runPcbDrc(projected.board), []);
+  const device = projected.board.parts.find(part => part.ref === 'U1');
+  assert.equal(device.package, 'adp151:tsot-5');
+  assert.equal(device.name, 'ADP151AUJZ-3.3-R7');
+  assert.equal(device.orderCode, 'ADP151AUJZ-3.3-R7');
+  assert.deepEqual(device.pads.map(pad => pad.num), ['1', '2', '3', '4', '5']);
+  assert.equal(new Set(device.pads.map(pad => pad.net)).size, 5,
+    'every selected-package pin reaches its separately wired header net');
+  const restored = importEasyEdaPcb(exportEasyEdaPcb(projected.board));
+  assert.deepEqual(runPcbDrc(restored), []);
+  assert.deepEqual(padPartition(restored), padPartition(projected.board));
+  assert.equal(restored.parts.find(part => part.ref === 'U1')?.orderCode,
+    'ADP151AUJZ-3.3-R7');
+
+  const bom = generateBom(circuit.parts);
+  assert.equal(bom.find(line => line.kind === 'adp151')?.orderCode,
+    'ADP151AUJZ-3.3-R7');
+  assert.match(bomToCsv(bom), /"ADP151AUJZ-3\.3-R7"/);
+  assert.match(exportGerbers(projected.board).files['assembly-positions.csv'],
+    /"U1","ADP151AUJZ-3\.3-R7","adp151:tsot-5"[^\n]+"ADP151AUJZ-3\.3-R7"/);
+});
+
+test('multi-channel logical symbols and already-physical palette parts fail closed', () => {
+  for (const kind of ['lt1014_channel', 'adtl082_channel', 'op747_channel']) {
+    assert.deepEqual(physicalPackageBindingsForPart({ kind, params: {}, sourcePackage: 'unspecified' }), [], kind);
+  }
+  assert.deepEqual(physicalPackageBindingsForPart({ kind: 'op27', params: {} }), []);
+  assert.deepEqual(physicalPackageBindingsForPart({
+    kind: 'resistor', params: {}, sourcePackage: 'PDIP-8',
+    physicalBinding: {
+      id: 'op27-epz', logicalKind: 'op27', orderCode: 'OP27EPZ',
+      package: 'PDIP-8', selectedBy: 'user',
+    },
+  }), [], 'persisted metadata cannot turn an unrelated kind into an eligible logical device');
+  const tampered = {
+    kind: 'op27', params: {}, sourcePackage: 'PDIP-8',
+    physicalBinding: {
+      id: 'op27-epz', logicalKind: 'op27', orderCode: 'OP27EPZ',
+      package: 'PDIP-8', selectedBy: 'importer',
+    },
+  };
+  assert.deepEqual(physicalPackageBindingsForPart(tampered), [],
+    'only the explicit user action is procurement authority');
+  assert.equal(generateBom([{ id: 'U1', ...tampered }])[0].orderCode, undefined,
+    'forged stored metadata cannot leak a SKU into procurement output');
+});
 
 test('bare SMD packages remain non-seatable and package-neutral channels cannot acquire a carrier', () => {
   assert.equal(FOOTPRINTS.lt1006, undefined);

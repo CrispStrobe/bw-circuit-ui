@@ -49,6 +49,14 @@ renders as a PCB beneath the package, and supplies the breadboard footprint;
 removing it unseats the part. Package-neutral imported channels cannot acquire
 a carrier because their source does not establish a package.
 
+An imported package-neutral single-channel device can become a physical part
+only through the explicit reviewed-order-code action described in ROADMAP X1.8.
+That user choice is stored separately from the source identity, expands only
+the chosen package's real terminals, and reaches the BOM and fabrication
+placement data. Five schematic pins, a family name, or a compatible carrier
+never constitute package or procurement authority; multi-channel symbols and
+unreviewed variants continue to fail closed.
+
 For fabricated boards the bare packages use native SMD land patterns. The PCB
 projection, renderer, DRC and KiCad/EasyEDA/Gerber exporters therefore handle
 the same promoted parts without introducing an adapter. Initial families are

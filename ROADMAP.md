@@ -617,9 +617,18 @@ Remaining work, in order:
    download disabled until the exact ready board is explicitly acknowledged.
    The real browser proves the button is disabled before acknowledgement and
    then downloads and parses the shipping EasyEDA board file.
-6. Add an explicit “bind logical channel to physical package” operation only
-   when the user chooses an exact orderable part. Never infer that binding from
-   a five-terminal schematic symbol.
+6. **Implemented 2026-09-27.** A selected package-neutral device now offers an
+   explicit reviewed order-code choice; no package is inferred from its
+   schematic pins. The initial allow-list is `LT1001CN8`, `OP07CPZ`,
+   `OP27EPZ`, `LT1007CN8#PBF`, `AD711JNZ`, `ADP151AUJZ-3.3-R7`,
+   `ADP7118ARDZ-5.0-R7` and `LT1763CS8-5#PBF`. Binding expands the physical
+   terminals, retains source-model blockers and existing wires, and persists
+   the exact user-selected order code through save/load, BOM CSV, board
+   projection, EasyEDA board round-trip and the assembly-position CSV. Exact
+   output voltage is part of the fixed-LDO authority. Multi-channel logical
+   symbols, other voltage grades, LT1006 without a reviewed exact procurement
+   identity, already-physical palette parts and forged stored metadata remain
+   ineligible by name.
 
 Acceptance is an end-to-end saved circuit and generated board that reopen with
 identical terminal partition, carrier choice and package variant, pass native

@@ -32,6 +32,7 @@ import { extractNetlist } from './netlist.js';
 import { wireEndpoint } from './wire-endpoints.js';
 import { padShape, trackShapes, viaShape, shapeDist } from './pcb-geometry.js';
 import { DEFAULT_CLEARANCE_MM } from './pcb-drc.js';
+import { physicalPackageBindingsForPart } from './physical-package-bindings.js';
 
 const RAIL_KINDS = new Set(['vcc', 'gnd']);
 
@@ -470,7 +471,9 @@ export function projectBoard(circuit, opts = {}) {
       warnings.push(`${part.id}: no land pattern for kind "${part.kind}" — not placed.`);
       continue;
     }
-    placeable.push({ id: part.id, kind: part.kind, pattern });
+    const binding = physicalPackageBindingsForPart(part)
+      .find(option => option.id === part.physicalBinding?.id) || null;
+    placeable.push({ id: part.id, kind: part.kind, pattern, binding });
   }
 
   const nets = netsFromCircuit(circuit)
@@ -528,13 +531,15 @@ export function projectBoard(circuit, opts = {}) {
 
   // Board parts in model space (origin bottom-left of outline).
   const modelParts = placed.map((p) => ({
-    id: p.id, ref: p.id, name: p.kind,
+    id: p.id, ref: p.id, name: p.binding?.orderCode || p.kind,
     // kind:variant — our own package vocabulary, recognised by
     // recognizePackage, so a PROJECTED board lifts and DRCs (terminal
     // maps!) exactly like an imported one. A bare variant name was
     // unrecognisable and silently disabled terminal-short on every
     // projected board (found by the MNA fault demo).
-    package: `${p.kind}:${p.pattern.variant}`, attrs: {},
+    package: `${p.kind}:${p.pattern.variant}`,
+    attrs: p.binding ? { orderCode: p.binding.orderCode } : {},
+    ...(p.binding ? { orderCode: p.binding.orderCode } : {}),
     x: p.x - ox, y: p.y - oy, rotation: 0, side: 'top',
     assembly: p.pattern.assembly
       ? { ...p.pattern.assembly, side: p.pattern.assembly.defaultSide }

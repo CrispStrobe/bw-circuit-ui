@@ -97,7 +97,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const projectData = project || stc;
   const {
     parts, wires, powered, rev,
-    addPart, removePart, nudgeSeated, movePart, duplicatePart, rotatePart, flipPart, updateParams, setCarrier, setPcbOverrides,
+    addPart, removePart, nudgeSeated, movePart, duplicatePart, rotatePart, flipPart, updateParams, bindPhysicalPackage, setCarrier, setPcbOverrides,
     addWire, removeWire, addHoleWire, addTapWire, updateWire,
     setControl, setPartParam, setPin, advanceTo, advanceBy, setPower,
     loadInferred, undo, redo, canUndo, canRedo, saveHistory,
@@ -1475,6 +1475,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onDuplicatePart={(id) => { const dup = duplicatePart(id); if (dup) handleSelectPart(dup.id); }}
           onRotatePart={rotatePart}
           onFlipPart={flipPart}
+          onBindPhysicalPackage={bindPhysicalPackage}
           onSetCarrier={setCarrier}
           onDropPart={(kind, params, x, y, seat) => {
             const declarable = ['led', 'buzzer', 'button', 'potentiometer'];

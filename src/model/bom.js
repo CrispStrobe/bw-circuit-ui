@@ -10,6 +10,7 @@
 
 import { formatSi } from './si.js';
 import { CARRIERS, carrierForPart } from './carriers.js';
+import { physicalPackageBindingsForPart } from './physical-package-bindings.js';
 
 /**
  * @typedef {object} BomLine
@@ -18,6 +19,7 @@ import { CARRIERS, carrierForPart } from './carriers.js';
  * @property {number} qty — count of identical parts
  * @property {string[]} ids — part ids
  * @property {Record<string, *>} params — shared parameters
+ * @property {string} [orderCode] — exact reviewed user-selected SKU
  */
 
 const PARAM_LABELS = {
@@ -194,9 +196,12 @@ export function generateBom(parts) {
   const groups = new Map();
   for (const p of eligible) {
     const sourcePackage = p.sourcePackage === 'unspecified' ? 'unspecified' : null;
-    const key = `${p.kind}|${paramKey(p.params)}|${sourcePackage || ''}`;
+    const binding = physicalPackageBindingsForPart(p)
+      .find(option => option.id === p.physicalBinding?.id) || null;
+    const orderCode = binding?.orderCode || null;
+    const key = `${p.kind}|${paramKey(p.params)}|${sourcePackage || ''}|${orderCode || ''}`;
     if (!groups.has(key)) {
-      groups.set(key, { kind: p.kind, params: { ...p.params }, sourcePackage, ids: [] });
+      groups.set(key, { kind: p.kind, params: { ...p.params }, sourcePackage, orderCode, ids: [] });
     }
     groups.get(key).ids.push(p.id);
     const carrier = carrierForPart(p);
@@ -228,11 +233,12 @@ export function generateBom(parts) {
 
   return [...groups.values()].map(g => ({
     kind: g.kind,
-    label: g.label || `${KIND_LABELS[g.kind] || g.kind}${g.sourcePackage === 'unspecified'
+    label: g.label || `${KIND_LABELS[g.kind] || g.kind}${g.orderCode ? ` [${g.orderCode}]` : ''}${g.sourcePackage === 'unspecified'
       ? ' (package unspecified by source)' : ''}${describeParams(g.params) ? ' ' + describeParams(g.params) : ''}`,
     qty: g.ids.length,
     ids: g.ids,
     params: g.params,
+    ...(g.orderCode ? { orderCode: g.orderCode } : {}),
     ...(g.sourcePackage ? { sourcePackage: g.sourcePackage } : {}),
     ...(g.carrier ? { carrier: g.carrier, assemblyKinds: [...g.assemblyKinds].sort() } : {}),
   })).sort((a, b) => a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label));
@@ -245,11 +251,12 @@ export function generateBom(parts) {
  */
 export function bomToCsv(bom) {
   const cell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
-  const lines = ['Qty,Part,Value,Input package,Input pitch (mm),Header pitch (mm),Sourcing'];
+  const lines = ['Qty,Part,Value,Input package,Input pitch (mm),Header pitch (mm),Sourcing,Order code'];
   for (const line of bom) {
     lines.push([
       line.qty, line.label, describeParams(line.params), line.carrier?.inputPackage,
       line.carrier?.inputPitchMm, line.carrier?.headerPitchMm, line.carrier?.sourcing,
+      line.orderCode,
     ].map(cell).join(','));
   }
   return lines.join('\n');

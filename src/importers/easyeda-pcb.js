@@ -431,6 +431,7 @@ export function importEasyEdaPcb(text) {
         ref: '',
         name: '',
         package: attrs.package || '',
+        orderCode: attrs.orderCode || '',
         attrs,
         x: Number(h[1]), y: Number(h[2]),
         rotation: Number(h[4]) || 0,
@@ -537,6 +538,7 @@ export function importEasyEdaPcb(text) {
   for (const p of raw.parts) {
     model.parts.push({
       id: p.id, ref: p.ref, name: p.name, package: p.package, attrs: p.attrs,
+      ...(p.orderCode ? { orderCode: p.orderCode } : {}),
       x: mmX(p.x), y: mmY(p.y), rotation: p.rotation, side: p.side,
       pads: p.pads.map(cvPad),
       silk: {

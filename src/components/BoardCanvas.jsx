@@ -24,6 +24,7 @@ import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { breadboardFootprintForPart, carrierOptionsForPart } from '../model/carriers.js';
+import { physicalPackageBindingsForPart } from '../model/physical-package-bindings.js';
 import { BreadboardView } from './BreadboardView.jsx';
 import { ledDisplayLevel } from './led-perception.js';
 import { DrcOverlay } from './DrcOverlay.jsx';
@@ -393,7 +394,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       const offsets = packageNeutralOffsets(kind);
       if (offsets) {
         const label = kind === 'lt1001' ? 'LT1001' : kind === 'lt1006' ? 'LT1006' : kind === 'lt1007_channel' ? 'LT1007' : kind === 'ad711_channel' ? 'AD711' : kind === 'op07' ? 'OP07' : kind === 'op27' ? 'OP27'
-          : kind === 'adp7118' ? 'ADP7118' : 'LT1763';
+          : kind === 'adp7118' ? 'ADP7118' : kind === 'adp151' ? 'ADP151' : 'LT1763';
         return (
           <g key={id} data-part-face={kind} data-source-package="unspecified"
             transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
@@ -3338,7 +3339,7 @@ export function BoardCanvas({
   mode, onModeChange, powered, onPowerToggle,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onFlipPart, onSetCarrier, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
+  onDuplicatePart, onRotatePart, onFlipPart, onBindPhysicalPackage, onSetCarrier, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit, engineBoard, videoFn, fitToken, sevenSegments, sevenSeg3,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onClearCircuit, onRewire, onImport,
@@ -4648,6 +4649,18 @@ export function BoardCanvas({
               style={{width: 30, height: 30, cursor: 'pointer'}}>↻</button>}
             {onDuplicatePart && <button onClick={() => onDuplicatePart(selectedPartId)} title="Duplicate (Ctrl+D)" aria-label="Duplicate selected part"
               style={{width: 30, height: 30, cursor: 'pointer'}}>⧉</button>}
+            {onBindPhysicalPackage && physicalPackageBindingsForPart(selectedPartModel).length > 0 && (
+              <select data-physical-package-binding aria-label="Exact physical part"
+                value={selectedPartModel.physicalBinding?.id || ''}
+                onChange={(e) => { if (e.target.value) onBindPhysicalPackage(selectedPartId, e.target.value); }}
+                title="Bind this logical device to a reviewed orderable part"
+                style={{height: 30, maxWidth: 205, cursor: 'pointer'}}>
+                <option value="">Choose exact physical part…</option>
+                {physicalPackageBindingsForPart(selectedPartModel).map(option => (
+                  <option key={option.id} value={option.id}>{option.orderCode} · {option.package}</option>
+                ))}
+              </select>
+            )}
             {onSetCarrier && carrierOptionsForPart(selectedPartModel).length > 0 && (
               <select data-carrier-select aria-label="Breadboard carrier"
                 value={selectedPartModel.carrier || ''}
