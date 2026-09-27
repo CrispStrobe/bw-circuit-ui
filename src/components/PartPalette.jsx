@@ -242,6 +242,8 @@ const CATEGORIES = [
         tooltip: 'Real precision op-amp — PDIP-8, 5 MV/V gain, 0.8 MHz GBW, 0.25 V/µs slew and bounded output swing' },
       { kind: 'op07', label: 'OP07', params: {}, color: '#a66f1f',
         tooltip: 'Real precision op-amp — PDIP-8, 400 kV/V gain, 0.6 MHz GBW, 0.3 V/µs slew and bounded output swing' },
+      { kind: 'op27', label: 'OP27', params: {}, color: '#8e611b',
+        tooltip: 'Real low-noise precision op-amp — PDIP-8, 1.8 MV/V gain, 8 MHz GBW, 2.8 V/µs slew and bounded output swing' },
       { kind: 'adp7118', label: 'ADP7118', params: {}, color: '#16a085',
         tooltip: 'Real 200 mA low-noise LDO — SOIC-8, fixed/adjustable feedback, enable and current limit' },
       { kind: 'lt1763', label: 'LT1763', params: {}, color: '#148f77',

@@ -66,6 +66,7 @@ const KIND_LABELS = {
   lm741: 'LM741 Operational Amplifier',
   lt1001: 'LT1001 Precision Operational Amplifier',
   op07: 'OP07 Precision Operational Amplifier',
+  op27: 'OP27 Low-Noise Precision Operational Amplifier',
   adp7118: 'ADP7118 200mA Low-Noise LDO',
   lt1763: 'LT1763 500mA Low-Noise LDO',
   // Named for what they are rather than for a package, because neither is

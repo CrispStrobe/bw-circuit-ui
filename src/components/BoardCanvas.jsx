@@ -72,7 +72,7 @@ const DIP_CHIP_LABELS = {
   '74ls04': '74LS04', '74ls32': '74LS32', '74ls107': '74LS107',
   '74ls157': '74LS157', '74ls161': '74LS161', '74ls173': '74LS173',
   '74ls189': '74LS189',
-  lm358: 'LM358', lm324: 'LM324', lm741: 'LM741', lt1001: 'LT1001', op07: 'OP07', lm339: 'LM339', lm393: 'LM393',
+  lm358: 'LM358', lm324: 'LM324', lm741: 'LM741', lt1001: 'LT1001', op07: 'OP07', op27: 'OP27', lm339: 'LM339', lm393: 'LM393',
   pcf8574: 'PCF8574', mcp4725: 'MCP4725', max7219: 'MAX7219',
   at24c02: '24C02', um245r: 'UM245R',
 };
@@ -149,7 +149,7 @@ function mcuChipInfo(device) {
  * Returns {terminalName: {dx, dy}} relative to part anchor.
  */
 function packageNeutralOffsets(kind) {
-  if (kind === 'lt1001' || kind === 'op07') return {
+  if (kind === 'lt1001' || kind === 'op07' || kind === 'op27') return {
     inp: { dx: -38, dy: 12 }, inn: { dx: -38, dy: -12 },
     vpos: { dx: 0, dy: -28 }, vneg: { dx: 0, dy: 28 }, out: { dx: 38, dy: 0 },
   };
@@ -381,7 +381,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
     if (part.sourcePackage === 'unspecified') {
       const offsets = packageNeutralOffsets(kind);
       if (offsets) {
-        const label = kind === 'lt1001' ? 'LT1001' : kind === 'op07' ? 'OP07'
+        const label = kind === 'lt1001' ? 'LT1001' : kind === 'op07' ? 'OP07' : kind === 'op27' ? 'OP27'
           : kind === 'adp7118' ? 'ADP7118' : 'LT1763';
         return (
           <g key={id} data-part-face={kind} data-source-package="unspecified"

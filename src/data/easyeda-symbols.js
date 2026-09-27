@@ -147,6 +147,11 @@ export const PART_SYMBOLS = {
     // belongs only to the explicit P-suffix PDIP palette/EasyEDA/KiCad part.
     kicadFootprint: 'Package_DIP:DIP-8_W7.62mm',
   },
+  op27: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // Package identity belongs only to explicit P-suffix physical parts.
+    kicadFootprint: 'Package_DIP:DIP-8_W7.62mm',
+  },
   adp7118: {
     refdesPrefix: 'U',
     kicadSymbol: 'Regulator_Linear:ADP7118ARDZ',

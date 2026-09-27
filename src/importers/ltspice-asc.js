@@ -135,6 +135,15 @@ addVerifiedDevice(['op07', 'opamps/op07'], {
   sourceModelSubstitution: Object.freeze({ file: 'LTC.lib', subcircuit: 'LT1001' }),
   sourceSha256: '577ff165a528ef7fd38298ffac12113a905c4a431dbf6c85b6001df4117c1442',
 });
+addVerifiedDevice(['op27', 'opamps/op27'], {
+  kind: 'op27', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+  prefix: 'X', acceptedValues: ['OP27'], deviceParams: {},
+  // The official LTspice 26.0.2 symbol delegates electrical behavior to the
+  // OP27 subcircuit in ADI.lib. Keep the named editable part, but retain that
+  // external macro-model dependency as a numerical-analysis blocker.
+  sourceModelSubstitution: Object.freeze({ file: 'ADI.lib', subcircuit: 'OP27' }),
+  sourceSha256: '93f2fa1510bfb884a5d5f987ad4b7325531536dd62a723a401fb96746c32ac5c',
+});
 
 const adp7118Pins = [[-128, -96], [128, 96], [-128, 0], [-128, 96], [128, -96], [0, 160]];
 for (const [suffix, vOut, sourceSha256] of [
