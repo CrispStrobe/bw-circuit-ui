@@ -60,29 +60,19 @@ function extractSlugsFromFile(filePath) {
 // Slugs that are valid but don't have sidecars — infrastructure, dynamic,
 // or UI-only kinds. Each must have a reason.
 const EXCEPTIONS = new Set([
+  // Trimmed 2026-09-14: 23 entries named kinds that HAVE had a sidecar for a
+  // while, several with comments still saying "sidecar art not yet authored".
+  // They changed nothing -- the scan skips a registered kind before it ever
+  // consults this set -- but a list of false statements is where a real gap
+  // hides, so the honesty is now asserted below rather than trusted.
+  //
   // Infrastructure / UI-only
   'breadboard',     // infrastructure, not a component
   'meter',          // UI-only instrument
-  'mcu',            // dynamic terminals from params
-  'led_cube',       // composite with dynamic terminals
-  'ps2',            // machine-side protocol device (bw-board ps2-device.js);
-                    // terminals declared in terminalsForKind, no sidecar art yet
-  // Kind aliases (resolveKind handles these)
-  'h_bridge',       // → l293d
-  'battery',        // → vsource
-  'timer_555',      // → 555
-  'vsource',        // sidecar exists; also battery alias target
-  // Import-only engine-native primitives. Their explicit terminal contracts
-  // live in circuit.js; they are not palette parts and deliberately have no
-  // UI sidecar/art yet.
-  'vcvs',           // SPICE E card -> bw-board voltage-controlled voltage source
-  'vccs',           // SPICE G card -> bw-board voltage-controlled current source
-  // Palette slug ≠ sidecar slug (known mismatches, each needs a kind alias)
+  // Palette slug != sidecar slug (known mismatches, each needs a kind alias)
   'shift_register', // sidecar: 74hc595
   'motor_encoder',  // sidecar: dc_motor_encoder
   'pir_sensor',     // sidecar: pir
-  'tilt_sensor',    // sidecar: tilt_switch
-  'dip_switch',     // sidecar: dip_switch_spst
   'keypad',         // sidecar: keypad_4x4
   // Abstract logic gates (schematic-level; gallery uses these)
   'gate_and',       // abstract 2-input AND
@@ -91,28 +81,9 @@ const EXCEPTIONS = new Set([
   'gate_nor',       // abstract 2-input NOR
   'gate_xor',       // abstract 2-input XOR
   'gate_not',       // abstract inverter
-  // Device-registry parts (registered at runtime, no static sidecar)
-  'ili9341',        // SPI TFT display (bw-board device registry)
-  'adxl335',        // analog 3-axis accelerometer
-  'memsic2125',     // thermal 2-axis accelerometer (PWM output)
-  'matrix8x8',      // 8x8 LED matrix display (bw-board device registry)
-  'hd44780',        // HD44780 LCD (bw-board device registry, machine-level)
-  'at24c64',        // 24C64 I2C EEPROM (bw-board device registry)
-  // I2C sensor kinds — terminals declared in terminalsForKind (sensor
-  // acceptance rigs, added with the VL53L0X/SGP30/VEML7700/AS5600 work);
-  // sidecar art not yet authored, same status as the device-registry parts.
-  'bmp280',         // I2C pressure/temperature sensor
-  'tcs34725',       // I2C RGB colour sensor
-  'ina219',         // I2C current/power monitor
-  'vl53l0x',        // I2C time-of-flight distance sensor
-  'sgp30',          // I2C air-quality (VOC/eCO2) sensor
-  'veml7700',       // I2C ambient light sensor
-  'as5600',         // I2C magnetic rotary position sensor
-  // OLED/display kinds — terminals in terminalsForKind, bw-board device registry
-  'ssd1306',        // I2C 128×64 OLED (bw-board device registry)
+  // Kinds whose terminals are declared in terminalsForKind with no sidecar art
   'sh1106',         // SH1106 variant (same terminals as SSD1306)
-  // Lego faceplate display widgets (no sidecar art, panel-driven)
-  'mono_lcd',       // parametric W×H mono graphical LCD (EV3/NXT)
+  'mono_lcd',       // parametric W x H mono graphical LCD (EV3/NXT)
   'rgb_light',      // RGB status indicator (WeDo 2 / Boost)
   // Internal model terms (not part kinds)
   'lead',           // occupancy type in breadboard model
@@ -130,6 +101,22 @@ describe('slug coverage: every code-referenced kind has a sidecar', () => {
   const staleSlugs = src => [...extractSlugs(src)].filter(s =>
     !registered.has(s) && !EXCEPTIONS.has(s) && s.length > 2
   );
+
+  it('no exception names a kind that already has a sidecar', () => {
+    // An exception says "this kind has no sidecar, and that is fine". Once the
+    // sidecar lands the line is a false statement that the scan never reads,
+    // so nothing fails and the comment beside it rots -- two of these still
+    // said the controlled sources deliberately had no UI art on the day the
+    // art was authored. Keeping the set honest is the only way a future
+    // reader can trust what it claims.
+    const dead = [...EXCEPTIONS].filter(k => registered.has(k));
+    assert.deepEqual(dead, [],
+      'these exceptions now have sidecars and must be deleted, with their comments: '
+      + dead.join(', '));
+    // Driven: the check does react to a kind that has one.
+    assert.ok(registered.has('resistor'), 'the registry is populated, so an empty result means something');
+    assert.deepEqual([...new Set(['resistor', 'lead'])].filter(k => registered.has(k)), ['resistor']);
+  });
 
   for (const f of files) {
     const basename = path.basename(f);

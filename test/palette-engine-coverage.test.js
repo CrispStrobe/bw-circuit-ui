@@ -33,6 +33,9 @@ const STAMPED = new Set([
   // transformer: mna-stamped coupled pair since bw-board 52f6f3e (E3.4).
   'transformer',
   'zener', 'nmos', 'pmos', 'opamp', 'vsource', 'isource', 'mcu',
+  // vcvs/vccs: stamped directly by mna.js (stampVCVS / stampVCCS), reached
+  // by SPICE E/G import and, since they gained sidecars, by the palette.
+  'vcvs', 'vccs',
   'seven_segment', 'shift_register', 'ir_receiver', 'temp_sensor',
   'eeprom', 'led_matrix', 'led_cube', 'rgb_led', 'char_lcd',
   'breadboard', 'meter',

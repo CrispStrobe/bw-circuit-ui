@@ -46,6 +46,9 @@ export const FOOTPRINTS = {
   npn: { w: 44, h: 44 }, pnp: { w: 44, h: 44 },
   nmos: { w: 44, h: 44 }, pmos: { w: 44, h: 44 },
   opamp: { w: 60, h: 50 },
+  // The two controlled sources share one body; the numbers are the sidecar's
+  // viewBox, so the hit box is what the art actually covers.
+  vcvs: { w: 64, h: 56 }, vccs: { w: 64, h: 56 },
   zener: { w: 52, h: 20 },
   vsource: { w: 48, h: 56 },
   isource: { w: 48, h: 56 },

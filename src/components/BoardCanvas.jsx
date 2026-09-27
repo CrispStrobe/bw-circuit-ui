@@ -20,7 +20,7 @@ import {partEditingAllowed} from '../interaction/edit-policy.js';
 import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
 import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interaction/seat-geometry.js';
-import { getSidecar } from '../model/parts-registry.js';
+import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { BreadboardView } from './BreadboardView.jsx';
@@ -247,6 +247,7 @@ function terminalOffsetsForPart(part) {
     case 'arduino_nano':
     case 'arduino_mega':
     case 'pi_pico':
+    case 'tang_nano_20k':
     case 'pybadge':
     case 'calliopemini':
     case 'circuit_playground_express': {
@@ -282,6 +283,15 @@ function terminalOffsetsForPart(part) {
       return { in0: r(-22, -10), in1: r(-22, 10), out: r(22, 0) };
     case 'gate_not':
       return { in0: r(-20, 0), out: r(20, 0) };
+    case 'vcvs':
+    case 'vccs': {
+      // The local sidecar owns this schematic abstraction's geometry.
+      const base = sidecarCenterOffsets(part.kind);
+      if (!base) return {};
+      const offsets = {};
+      for (const [name, o] of Object.entries(base)) offsets[name] = r(o.dx, o.dy);
+      return offsets;
+    }
     default: {
       // Generic DIP chip terminal offsets from sidecar geometry
       if (DIP_CHIP_LABELS[part.kind]) {
@@ -1453,6 +1463,40 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fontFamily="monospace" fontWeight="bold">PS/2 · CODE SET 2 · 74 KEYS</text>
             <text x={0} y={bh / 2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+      case 'vcvs':
+      case 'vccs': {
+        // A dependent source: the left port senses, the right port drives.
+        const isV = kind === 'vcvs';
+        const accent = isV ? '#8e6fd8' : '#16a085';
+        return (
+          <g key={id} data-part-face={kind} transform={xform} onClick={handleClick}
+            style={{ cursor: 'pointer' }}>
+            <line x1={-32} y1={-10} x2={-18} y2={-10} stroke="#95a5a6" strokeWidth={2} />
+            <line x1={-32} y1={10} x2={-18} y2={10} stroke="#95a5a6" strokeWidth={2} />
+            <circle cx={-18} cy={-10} r={2.5} fill="none" stroke="#95a5a6" strokeWidth={1.2} />
+            <circle cx={-18} cy={10} r={2.5} fill="none" stroke="#95a5a6" strokeWidth={1.2} />
+            <path d="M -18 -6 L -18 0 L -13 0" fill="none" stroke="#7f8c8d"
+              strokeWidth={1.2} strokeDasharray="3,2" />
+            <line x1={32} y1={-10} x2={12} y2={-10} stroke="#95a5a6" strokeWidth={2} />
+            <line x1={32} y1={10} x2={12} y2={10} stroke="#95a5a6" strokeWidth={2} />
+            <line x1={12} y1={-10} x2={12} y2={-13} stroke="#95a5a6" strokeWidth={2} />
+            <line x1={12} y1={10} x2={12} y2={13} stroke="#95a5a6" strokeWidth={2} />
+            <polygon points="12,-13 24,0 12,13 0,0"
+              fill="#20222b" stroke={selStroke || accent} strokeWidth={isSelected ? 3 : 1.6} />
+            {isV ? (
+              <>
+                <text x={12} y={-2} textAnchor="middle" fill="#d8dee4" fontSize={7}>+</text>
+                <text x={12} y={7} textAnchor="middle" fill="#d8dee4" fontSize={7}>−</text>
+              </>
+            ) : (
+              <path d="M 12 7 L 12 -6 M 8 -2 L 12 -7 L 16 -2" fill="none"
+                stroke="#d8dee4" strokeWidth={1.4} />
+            )}
+            <text x={8} y={23} textAnchor="middle" fill={accent} fontSize={7}
+              fontFamily="monospace">{isV ? 'VCVS' : 'VCCS'}</text>
           </g>
         );
       }

@@ -63,6 +63,10 @@ const KIND_LABELS = {
   nmos: 'N-MOSFET',
   pmos: 'P-MOSFET',
   opamp: 'Op-Amp',
+  // Named for what they are rather than for a package, because neither is
+  // orderable: a BOM row for one is a modelling element, not a purchase.
+  vcvs: 'Voltage-Controlled Voltage Source',
+  vccs: 'Voltage-Controlled Current Source',
   '555': '555 Timer',
   relay: 'Relay',
   servo: 'Micro Servo',

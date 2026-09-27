@@ -94,6 +94,9 @@ const LOCAL_ONLY = new Set([
   // Measured absent from bw-parts/parts on 2026-09-25, so the stale sweep
   // would have deleted them exactly as it once deleted stm32f030.
   'pybadge.json', 'pybadge.svg', 'tang_nano_20k.json', 'tang_nano_20k.svg',
+  // Schematic abstractions, not orderable packages. Their local geometry
+  // keeps four distinct electrical terminals wireable on the free canvas.
+  'vcvs.json', 'vcvs.svg', 'vccs.json', 'vccs.svg',
 ]);
 
 const HELD_BACK = new Map([
