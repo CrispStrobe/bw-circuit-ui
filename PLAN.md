@@ -47,8 +47,11 @@ fixed-corpus replay. Generic op-amp/switch/behavioral-source
 symbols stay a separate abstraction lane and never receive fake purchasable faces.
 The first such abstraction is now bounded: official LTspice UniversalOpamp2 Level 2
 maps its deterministic parameters to a package-neutral native model, while nonzero
-noise and unresolved/unknown attributes refuse by name. The next instrument work is
-ROADMAP X2.7: probe loading, analogue front end, honest ADC/acquisition, then a
+noise and unresolved/unknown attributes refuse by name. The first ROADMAP X2.7
+instrument slice now gives the scope an explicit shared reference plus ideal/debug,
+10x and 1x electrical probes; finite presets load the simulated circuit rather than
+decorating the trace. The next instrument work is the analogue front end, then honest
+ADC/acquisition and a
 bounded high-speed triggered burst so fast op-amp edges become visible without
 taxing every simulation.
 The official OP07 symbol actually netlists LT1001, the official OP27 symbol

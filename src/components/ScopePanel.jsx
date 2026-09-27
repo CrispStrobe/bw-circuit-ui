@@ -61,6 +61,9 @@ import {
   formatHz, peakBin, seriesFromScopeData, spectrum, spectrumToCsv, thd,
 } from '../model/fft.js';
 import { scopeTracesToCsv } from '../model/scope-csv.js';
+import {
+  SCOPE_PROBE_PRESETS, scopeProbeLabel, scopeProbeOptions,
+} from '../model/scope-probes.js';
 import { downloadText } from '../model/exporters/download.js';
 
 const CHANNEL_COLORS = ['#2ecc71', '#3498db'];
@@ -81,6 +84,11 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
   // rather than pretending the old samples belong to the new cadence.
   const [sampleRateHz, setSampleRateHz] = useState(SCOPE_RATES[0]);
   const [pickNet, setPickNet] = useState('');
+  // A real two-channel bench scope normally shares one reference/earth lead.
+  // Ideal keeps the historical zero-load debugger tap; 10x and 1x stamp their
+  // finite resistance and capacitance into the circuit through bw-board.
+  const [probePreset, setProbePreset] = useState('ideal');
+  const [referenceNetId, setReferenceNetId] = useState('');
   // Vertical scale is PER CHANNEL (D31) and lives on the channel record, so a
   // 5 V rail and a 50 mV shunt drop can both be on screen and both be legible.
   const [triggerMode, setTriggerMode] = useState('off');
@@ -120,6 +128,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       ...c,
       handle: board.addScopeChannel({
         type: 'voltage', netId: c.netId, sampleRateHz, depth: SCOPE_DEPTH,
+        ...scopeProbeOptions(probePreset, referenceNetId),
       }),
     }));
     setChannels(attached);
@@ -129,16 +138,17 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [board, sampleRateHz]);
+  }, [board, sampleRateHz, probePreset, referenceNetId]);
 
   const addChannel = useCallback(() => {
     if (!board || !pickNet || channels.length >= 2) return;
     if (channels.some(c => c.netId === pickNet)) return;
     const handle = board.addScopeChannel({
       type: 'voltage', netId: pickNet, sampleRateHz, depth: SCOPE_DEPTH,
+      ...scopeProbeOptions(probePreset, referenceNetId),
     });
     setChannels(cs => [...cs, { netId: pickNet, handle, scale: defaultScale() }]);
-  }, [board, pickNet, channels, sampleRateHz]);
+  }, [board, pickNet, channels, sampleRateHz, probePreset, referenceNetId]);
 
   /** Change one channel's vertical setting, leaving the other alone. */
   const setChannelScale = useCallback((netId, patch) => {
@@ -165,6 +175,9 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       netId: c.netId,
       handle: board.addScopeChannel({
         type: 'voltage', netId: c.netId, sampleRateHz: specRateHz, depth: SCOPE_DEPTH, capture: 'sample',
+        // This is a second acquisition tap, not a second physical probe. It
+        // shares the differential reference but must not double the R/C load.
+        ...scopeProbeOptions(probePreset, referenceNetId, { load: false }),
       }),
     }));
     setSpecChannels(opened);
@@ -175,7 +188,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [board, view, specRateHz, netKey]);
+  }, [board, view, specRateHz, netKey, probePreset, referenceNetId]);
 
   // Recompute the spectra on a slow clock, into state, so the table and the
   // plot and the CSV are all reading the same numbers.
@@ -436,6 +449,34 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
           : `record ${formatSeconds(recordSeconds(sampleRateHz))} · showing ${formatSeconds(recordSeconds(sampleRateHz) * windowFrac)}`}
       </div>
 
+      <div data-testid="bw-scope-probe-controls"
+        style={{ display: 'flex', gap: 4, marginBottom: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+        <label>{lang === 'de' ? 'Tastkopf' : 'probe'}{' '}
+          <select value={probePreset} data-testid="bw-scope-probe-preset"
+            onChange={e => setProbePreset(e.target.value)}
+            style={{ background: '#1a1a2e', color: '#bdc3c7', border: '1px solid #2c3e50', fontSize: 9 }}>
+            {Object.values(SCOPE_PROBE_PRESETS).map(p => (
+              <option key={p.id} value={p.id} disabled={p.id !== 'ideal' && !referenceNetId}>{p.label}</option>
+            ))}
+          </select>
+        </label>
+        <label>{lang === 'de' ? 'Bezug' : 'reference'}{' '}
+          <select value={referenceNetId} data-testid="bw-scope-reference-net"
+            onChange={e => {
+              const next = e.target.value;
+              setReferenceNetId(next);
+              if (!next) setProbePreset('ideal');
+            }}
+            style={{ background: '#1a1a2e', color: '#bdc3c7', border: '1px solid #2c3e50', fontSize: 9, maxWidth: 120 }}>
+            <option value="">{lang === 'de' ? 'Simulator-Masse' : 'engine ground'}</option>
+            {nets.filter(n => !channels.some(c => c.netId === n)).map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        <span data-testid="bw-scope-probe-readout" style={{ color: '#5d6d7e', fontSize: 8 }}>
+          {scopeProbeLabel(probePreset, referenceNetId)}
+        </span>
+      </div>
+
       {/* One vertical control set PER CHANNEL (D31). A single V/div could show
           a 5 V rail or a 50 mV shunt drop, never both; and in auto it ranged
           across all channels at once, so the small signal drew as a flat line
@@ -593,7 +634,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
             border: `1px solid ${CHANNEL_COLORS[ci]}`, borderRadius: '3px',
             padding: '1px 5px', color: CHANNEL_COLORS[ci],
           }}>
-            {c.netId}
+            {referenceNetId ? `${c.netId}−${referenceNetId}` : c.netId}
             <button onClick={() => removeChannel(c.netId)} style={{
               background: 'none', border: 'none', color: '#e74c3c',
               cursor: 'pointer', fontSize: '9px', padding: '0 0 0 4px',
@@ -605,11 +646,11 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
             <select value={pickNet} onChange={e => setPickNet(e.target.value)}
               style={{ background: '#1a1a2e', color: '#7f8c8d', border: '1px solid #2c3e50', fontSize: '9px', maxWidth: 110 }}>
               <option value="">{t('scopeNet', lang)}</option>
-              {nets.filter(n => !channels.some(c => c.netId === n)).map(n => (
+              {nets.filter(n => n !== referenceNetId && !channels.some(c => c.netId === n)).map(n => (
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
-            <button onClick={addChannel} disabled={!pickNet} style={{
+            <button onClick={addChannel} disabled={!pickNet || pickNet === referenceNetId || (probePreset !== 'ideal' && !referenceNetId)} style={{
               background: '#2c3e50', color: '#3498db', border: '1px solid #3498db',
               borderRadius: '3px', padding: '1px 6px', cursor: 'pointer', fontSize: '9px',
             }}>{t('scopeAddChannel', lang)}</button>
@@ -635,7 +676,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
           onChange={e => setCursorB(Number(e.target.value))} style={{ width: '100%', accentColor: '#e67e22' }} />
       </div>}
       <div style={{ marginTop: '4px', color: '#556' }}>
-        {t('scopeFooter', lang)}
+        {t('scopeFooter', lang)} · {scopeProbeLabel(probePreset, referenceNetId)}
       </div>
     </div>
   );

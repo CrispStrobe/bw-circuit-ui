@@ -519,13 +519,15 @@ lessons but cannot honestly show the sub-microsecond edge of a 10 MHz op amp.
 
 Implement the remaining realism as separate switchable contracts, in this order:
 
-1. **Probe loading and reference lead (Board + CUI).** Offer ideal/debug, 10x and
+1. **PARTIAL — Probe loading and reference lead (Board + CUI).** Ideal/debug, 10x and
    1x probes. Non-ideal probes stamp an explicit reviewed R||C between tip and a
    selected reference, distinguish isolated from earth-referenced instruments,
    and expose the loading in circuit state. Acceptance: the 1x/10x probes move a
    high-impedance RC node by the predicted amount while ideal mode is bit-identical
    to today's observer; a wrong ground clip can change or short the circuit rather
-   than remaining a cosmetic selector.
+   than remaining a cosmetic selector. The R||C presets and explicit shared
+   floating reference are complete; explicit earth-bonded reference safety is
+   still a separate Board contract and must not be implied by this UI.
 2. **Analogue front end.** Add DC/AC/GND coupling and a selectable single-pole
    bandwidth limit as deterministic post-acquisition transforms with stated units.
    Acceptance: DC is removed only in AC mode, the measured -3 dB point matches the

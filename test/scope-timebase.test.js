@@ -118,8 +118,8 @@ describe('scope timebase', () => {
     }
     // A channel's cadence is fixed at creation, so changing the rate must
     // rebuild them. Without this the control would move the label and nothing else.
-    assert.match(src, /\}, \[board, sampleRateHz\]\);/,
-        'the re-attach effect does not depend on the rate');
+    assert.match(src, /\}, \[board, sampleRateHz, probePreset, referenceNetId\]\);/,
+        'the re-attach effect does not depend on rate and electrical probe settings');
     assert.match(src, /data-testid="bw-scope-trace-csv-download"/,
       'the time-domain trace has no real download control');
     assert.match(src, /data-testid="bw-scope-spectrum-csv-download"/,
