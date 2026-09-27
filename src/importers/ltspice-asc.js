@@ -128,6 +128,11 @@ addVerifiedDevice(['lt1001a', 'opamps/lt1001a'], {
 addVerifiedDevice(['op07', 'opamps/op07'], {
   kind: 'op07', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
   prefix: 'X', acceptedValues: ['OP07'], deviceParams: {},
+  // The official LTspice 26.0.2 OP07.asy is only a display alias: its
+  // SpiceModel/Value2 pair netlists LTC.lib's LT1001 subcircuit. Preserve the
+  // requested physical identity for editing, but never present the native
+  // OP07 behavioural card as an exact numerical projection of that source.
+  sourceModelSubstitution: Object.freeze({ file: 'LTC.lib', subcircuit: 'LT1001' }),
   sourceSha256: '577ff165a528ef7fd38298ffac12113a905c4a431dbf6c85b6001df4117c1442',
 });
 
@@ -1093,8 +1098,25 @@ export function importLtspiceAsc(text, options = {}) {
     } else if (spec.kind === 'diode' && !diodeThermal.explicit) {
       warnings.push(`${id}: omitted SPICE TEMP/TNOM uses bw-board's fixed VT=0.02585 V profile; raw default-temperature source fidelity is not established.`);
     }
+    if (spec.sourceModelSubstitution) {
+      const { file, subcircuit } = spec.sourceModelSubstitution;
+      const loss = { ref: id, kind: 'source-model-substitution',
+        source: `ASY SYMATTR SpiceModel ${file}; ASY SYMATTR Value2 ${subcircuit}`,
+        reason: `the official ${effectiveAttrs.value || spec.acceptedValues[0]} symbol netlists ${subcircuit} from ${file}; the native ${spec.kind} behavioural card preserves the named physical part but is not that source subcircuit`,
+        fallback: null };
+      losses.push(loss);
+      partBlockers.push({ type: 'semantic-import-loss', ...loss });
+      warnings.push(`${id}: official LTspice source-model substitution is retained as an analysis blocker`);
+    }
     for (const [name, attributeValue] of Object.entries(effectiveAttrs)) {
       if (name === 'instname' || name === 'value' || name === 'prefix') continue;
+      if (spec.sourceModelSubstitution
+          && ((name === 'spicemodel'
+              && String(attributeValue).toLowerCase() === spec.sourceModelSubstitution.file.toLowerCase())
+            || (name === 'value2'
+              && String(attributeValue).toLowerCase() === spec.sourceModelSubstitution.subcircuit.toLowerCase()))) {
+        continue;
+      }
       const loss = { ref: id, kind: 'unsupported-symbol-attribute',
         source: `${Object.prototype.hasOwnProperty.call(symbol.attrs, name) ? 'SYMATTR' : 'ASY SYMATTR'} ${name} ${attributeValue}`,
         reason: `the bounded ASC importer does not interpret ${name}`, fallback: null };
@@ -1111,6 +1133,10 @@ export function importLtspiceAsc(text, options = {}) {
         terminals: [...spec.terminals], sourcePackage: 'unspecified',
         sourceLibrary: spec.verifiedLibrary,
         verifiedBuiltinSymbolSha256: spec.sourceSha256,
+        ...(spec.sourceModelSubstitution ? {
+          sourceModelFile: spec.sourceModelSubstitution.file,
+          sourceSubcircuit: spec.sourceModelSubstitution.subcircuit,
+        } : {}),
       } : {}),
       sourceInstance: sourceDocument.instances[symbolIndex]?.id,
       ...(partBlockers.length ? { analysisBlockers: partBlockers } : {}) });

@@ -541,7 +541,7 @@ whole source rather than choosing from one small residual subset.
 
 | priority | real part | instances / rows | target-only | clean after | decision |
 |---|---:|---:|---:|---:|---|
-| P1 | OP07 | 126 / 79 | 63 | 27 | Build first: highest real-part reach and OP/AC/DC/transient diversity. |
+| P1 | OP07 | 126 / 79 | 63 | 0 | Build first: highest real-part reach and OP/AC/DC/transient diversity. The official symbol netlists LT1001, so the native OP07 projection stays numerically blocked. |
 | P2 | OP27 | 48 / 25 | 19 | 6 | Next single precision/high-speed op-amp after a separate data-sheet card audit. |
 | P3 | ADP151 family | 12 / 12 | 11 | 11 | Lower frequency but unusually high immediate clean yield; fixed-output/package spellings must be audited exactly. |
 | P4 | LT1006 | 45 / 28 | 20 | 4 | Worth a full slice after its supply/output and package variants are separated. |
@@ -556,6 +556,12 @@ not be used to smuggle those abstractions in as fake packages.
 
 OP07 is the active first slice. The already-real LT1001, ADP7118 and LT1763
 bridge precedes it and deliberately refuses LT1001S8 and contradictory/unknown
-fixed-output names. After every landed slice, rerun this same fixed report and
+fixed-output names. LTspice 26.0.2's official `OP07.asy` visibly says OP07 but
+its `SpiceModel LTC.lib` / `Value2 LT1001` pair changes the generated netlist.
+The importer therefore retains the editable OP07 identity and pins while adding
+a named source-model-substitution blocker to every such instance: structural
+reach improves, but none of these rows becomes a numerical OP07 oracle merely
+because Brickwright now has a more faithful physical OP07 card. After every
+landed slice, rerun this same fixed report and
 record both structural deltas and the smaller subset that becomes numerically
 judgeable; the measurements, not this initial ordering, choose the next part.
