@@ -115,6 +115,10 @@ const EXPECTED = [
   'drag-part',
   'wire-terminals',
   'breadboard-place',
+  'carrier-soic8-seat',
+  'carrier-soic14-seat',
+  'carrier-tsot5-seat',
+  'carrier-strip-conduction',
   'seat-part',
   'jumper-holes',
   'wheel-pan',
@@ -744,6 +748,111 @@ try {
   verdict('breadboard-place', boards >= 1,
     'palette drag placed a breadboard substrate',
     'breadboard did not appear after palette drag');
+}
+
+// 3b2. The three explicit SMD carrier families must be usable through the
+//      shipping UI, not merely constructible through Circuit methods. Select
+//      the already placed physical device, mount its carrier, drag the face
+//      onto the real breadboard, then place a +5 V post in another hole on
+//      one of its strips. The resolved net is the electrical receipt that the
+//      header pin did not merely look seated.
+{
+  const families = [
+    { kind: 'lt1006', carrier: 'soic8-dip8', scenario: 'carrier-soic8-seat', xFrac: 0.25 },
+    { kind: 'op747', carrier: 'soic14-dip14', scenario: 'carrier-soic14-seat', xFrac: 0.52 },
+    { kind: 'adp151', carrier: 'tsot5-header5', scenario: 'carrier-tsot5-seat', xFrac: 0.78 },
+  ];
+  const conduction = [];
+  for (const family of families) {
+    let result = { ok: false, detail: 'scenario did not run' };
+    try {
+      const face = page.locator(`[data-part-face="${family.kind}"]`).last();
+      if (await face.count() !== 1) throw new Error(`no unique ${family.kind} face`);
+      await face.click({ timeout: 20000 });
+      const carrierSelect = page.locator('[data-carrier-select]');
+      await carrierSelect.waitFor({ state: 'attached', timeout: 10000 });
+      if (await carrierSelect.inputValue() !== family.carrier) {
+        await carrierSelect.selectOption(family.carrier);
+      }
+      await page.waitForTimeout(100);
+
+      const boardRect = await page.evaluate(() => {
+        const el = [...document.querySelectorAll('svg rect')]
+          .find(rect => rect.getAttribute('fill') === '#e8e4d8');
+        if (!el) return null;
+        const b = el.getBoundingClientRect();
+        return { x: b.x, y: b.y, w: b.width, h: b.height };
+      });
+      if (!boardRect) throw new Error('no rendered breadboard');
+      const mountedFace = page.locator(
+        `[data-part-face="${family.kind}"][data-carrier="${family.carrier}"]`).last();
+      const from = await mountedFace.boundingBox();
+      if (!from) throw new Error(`mounted ${family.kind} face has no screen box`);
+      const to = {
+        x: boardRect.x + boardRect.w * family.xFrac,
+        y: boardRect.y + boardRect.h * 0.50,
+      };
+      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(to.x, to.y, { steps: 8 });
+      await page.mouse.up();
+      await page.waitForTimeout(250);
+
+      const seated = await page.evaluate(({ kind, carrier }) => {
+        const c = window.__circuit;
+        const part = c?.parts?.find(q => q.kind === kind && q.carrier === carrier);
+        if (!c || !part?.seat?.leadMap) return { err: `${kind} did not seat` };
+        const entries = Object.entries(part.seat.leadMap);
+        const bb = c.breadboards?.get(part.seat.boardId);
+        if (!bb) return { err: `${kind} seat names no live breadboard` };
+        const occupied = new Set(Object.values(part.seat.leadMap));
+        const [terminal, headerHole] = entries[0] || [];
+        const match = /^([a-j])(\d+)$/.exec(headerHole || '');
+        if (!match) return { err: `${kind} header hole is not on a terminal strip` };
+        const rows = match[1] <= 'e' ? ['a', 'b', 'c', 'd', 'e'] : ['f', 'g', 'h', 'i', 'j'];
+        const tapHole = rows.map(row => `${row}${match[2]}`)
+          .find(hole => !occupied.has(hole) && !bb.occupantOf(hole));
+        if (!tapHole) return { err: `${kind} has no free peer on strip ${match[2]}` };
+        return {
+          partId: part.id, terminal, headerHole, tapHole,
+          leadCount: entries.length, boardId: part.seat.boardId,
+        };
+      }, family);
+      if (seated.err) throw new Error(seated.err);
+      result = {
+        ok: true,
+        detail: `${family.kind} ${family.carrier} seated ${seated.leadCount} headers; `
+          + `${seated.terminal} at ${seated.headerHole}`,
+      };
+
+      const tap = page.locator(`[data-hole="${seated.tapHole}"]`).first();
+      const tapBox = await tap.boundingBox();
+      if (!tapBox) throw new Error(`peer hole ${seated.tapHole} has no screen position`);
+      await placeByLabel('+5V post', tapBox.x + tapBox.width / 2, tapBox.y + tapBox.height / 2);
+      const shared = await page.evaluate(({ partId, terminal, boardId, tapHole }) => {
+        const c = window.__circuit;
+        const supply = c?.parts?.filter(q => q.kind === 'vcc'
+          && q.seat?.boardId === boardId && q.seat?.leadMap?.vcc === tapHole).at(-1);
+        if (!supply) return { ok: false, detail: `+5 V did not seat at ${tapHole}` };
+        const net = c.resolvedNets.find(candidate => {
+          const names = candidate.terminals.map(t => `${t.partId || t.part}:${t.terminal}`);
+          return names.includes(`${partId}:${terminal}`) && names.includes(`${supply.id}:vcc`);
+        });
+        return net
+          ? { ok: true, detail: `${partId}:${terminal} shares ${net.id || 'a net'} with ${supply.id}:vcc via ${tapHole}` }
+          : { ok: false, detail: `${partId}:${terminal} and ${supply.id}:vcc did not share a resolved net` };
+      }, { ...seated });
+      conduction.push({ kind: family.kind, ...shared });
+    } catch (error) {
+      result = { ok: false, detail: String(error).split('\n')[0] };
+      conduction.push({ kind: family.kind, ok: false, detail: result.detail });
+    }
+    verdict(family.scenario, result.ok, result.detail, result.detail);
+  }
+  const failed = conduction.filter(item => !item.ok);
+  verdict('carrier-strip-conduction', failed.length === 0,
+    conduction.map(item => `${item.kind}: ${item.detail}`).join('; '),
+    failed.map(item => `${item.kind}: ${item.detail}`).join('; '));
 }
 
 // 3c. A part placed ON the breadboard SEATS: model ground truth (the part
