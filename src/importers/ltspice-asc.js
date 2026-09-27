@@ -104,6 +104,64 @@ const NATIVE_SYMBOL_ALIASES = new Map([
   ['misc/cell', { canonical: 'voltage', pins: [[0, 0], [0, 64]] }],
 ]);
 
+// Exact vendor symbols whose electrical models already exist as named native
+// devices.  These contracts intentionally stop at the source symbol's pins:
+// an ASC does not say whether the real component was bought as DIP, SOIC, or
+// another package, so imported parts carry `sourcePackage: 'unspecified'` and
+// never acquire the palette part's physical face by implication.
+const VERIFIED_DEVICE_SYMBOLS = new Map();
+function addVerifiedDevice(keys, spec) {
+  for (const key of keys) VERIFIED_DEVICE_SYMBOLS.set(key, spec);
+}
+
+const lt1001Pins = [[-32, 80], [-32, 48], [0, 32], [0, 96], [32, 64]];
+addVerifiedDevice(['lt1001', 'opamps/lt1001'], {
+  kind: 'lt1001', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+  prefix: 'X', acceptedValues: ['LT1001'], deviceParams: {},
+  sourceSha256: '5a75f6c2ab8ea33a41475c496ba65ac3c1b5037ed767e7463c29dad0cc17111f',
+});
+addVerifiedDevice(['lt1001a', 'opamps/lt1001a'], {
+  kind: 'lt1001', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+  prefix: 'X', acceptedValues: ['LT1001A'], deviceParams: {},
+  sourceSha256: '69e46f8c58c08205de9d89b69f4a6dced2246cb6b0ea14128e298080a7794ab9',
+});
+
+const adp7118Pins = [[-128, -96], [128, 96], [-128, 0], [-128, 96], [128, -96], [0, 160]];
+for (const [suffix, vOut, sourceSha256] of [
+  ['', null, 'ed01d52c27dc43d19810d33ca4e68186078ec316629110830c486885a06e3f6b'],
+  ['-1.8', 1.8, 'ae8eb55f74128384b6e0c5ae1253d3d4c5cf22494f8f8b27175a07271051f187'],
+  ['-2.5', 2.5, 'e471aafafb996f9700de34643952773fc5c3deb3a7da826d557c15c52f5e2b3d'],
+  ['-3.3', 3.3, '132d98502dfb0359bb8b271730681b950d92c730e8a9249a584d852d37054248'],
+  ['-4.5', 4.5, 'b76e39a115ac1446f94269eca7898b2caa8eb8d0543a23c2c655d82c885c6984'],
+  ['-5.0', 5, 'c003c63c36b2b5b1b06014f10f14ce94abe7d89b085ce19d0c8cb8950ac41b4e'],
+]) {
+  const name = `adp7118${suffix}`;
+  addVerifiedDevice([name, `powerproducts/${name}`], {
+    kind: 'adp7118', terminals: ['vin_7', 'sense_adj', 'en', 'ss', 'vout_1', 'gnd'],
+    pins: adp7118Pins, prefix: 'X', acceptedValues: [name.toUpperCase()],
+    deviceParams: vOut == null ? { adjustable: true } : { vOut }, sourceSha256,
+  });
+}
+
+const lt1763Pins = [[144, -64], [144, 0], [0, 112], [144, 64], [-144, 48], [-144, -48]];
+for (const [suffix, vOut, sourceSha256] of [
+  ['', null, '9684fdc9710d2936d7fd3e79549ddfdf29acf5eb32a8a4942477e6098ef58a40'],
+  ['-1.5', 1.5, '6c15ac0e0aaf61b23053cd02fd4d7a0e5aac3061bce8409e8810836f84aa4d40'],
+  ['-1.8', 1.8, '676b8b0fe60ae16f8edfe28c60629c52c36caadc66c561850f40bf31116c8955'],
+  ['-2.5', 2.5, 'f8e346f4d8aa45b3390263be92405bae3d0a689c9813cb7127029941b7e391b1'],
+  ['-3', 3, '3e1fb0ebd20472f7452e5bcb752889df81060736d4dbff1476102df172a1104b'],
+  ['-3.3', 3.3, '791a62655e7ca53c9ce9d2a7902eac9523b39c909bcddf20acd0ef316a7bb7b4'],
+  ['-5', 5, '04266241cc87e47756dd24bc4a2562b05eaf5713cd37017993b572d9167ff1f5'],
+]) {
+  const name = `lt1763${suffix}`;
+  addVerifiedDevice([name, `powerproducts/${name}`], {
+    kind: 'lt1763', terminals: ['out', 'sense_adj', 'gnd_3', 'byp', 'shdn', 'in'],
+    pins: lt1763Pins, spiceOrders: [1, 2, 3, 4, 5, 8], prefix: 'X',
+    acceptedValues: [name.toUpperCase()],
+    deviceParams: vOut == null ? { adjustable: true } : { vOut }, sourceSha256,
+  });
+}
+
 // Common built-in pin contracts, sorted by SpiceOrder. These are deliberately
 // separate from SYMBOLS: knowing where a MOSFET pin lands is not a claim that
 // its .model is within bw-board's equations. Exact pin facts were manually
@@ -142,6 +200,9 @@ function libraryKeys(name) {
 
 function nativeSymbolSpec(name) {
   const { basename, normalized } = libraryKeys(name);
+  const verified = VERIFIED_DEVICE_SYMBOLS.get(normalized)
+    || (normalized === basename ? VERIFIED_DEVICE_SYMBOLS.get(basename) : null);
+  if (verified) return { ...verified, verifiedDevice: true };
   // A path-qualified symbol is caller/library-owned even when its basename is
   // `res` or another standard spelling. Only the unqualified LTspice built-in
   // name may use the native contract without an ASY; reviewed path-qualified
@@ -322,7 +383,7 @@ function suppliedPins(spec, asset) {
   if (String(document.symbolType).toUpperCase() !== 'CELL') {
     return { error: 'supplied ASY SymbolType must be CELL' };
   }
-  const expectedPrefix = STANDARD_PREFIX[spec.kind];
+  const expectedPrefix = spec.prefix || STANDARD_PREFIX[spec.kind];
   if (!expectedPrefix || String(document.attrs.prefix || '').toUpperCase() !== expectedPrefix) {
     return { error: `supplied ASY Prefix must be ${expectedPrefix || 'a verified standard prefix'}` };
   }
@@ -330,8 +391,9 @@ function suppliedPins(spec, asset) {
     return { error: `supplied ASY definition has ${document.pins.length} pins; ${spec.terminals.length} required` };
   }
   const ordered = [...document.pins].sort((a, b) => a.spiceOrder - b.spiceOrder);
-  if (ordered.some((pin, index) => pin.spiceOrder !== index + 1)) {
-    return { error: `supplied ASY SpiceOrder must be exactly 1..${spec.terminals.length}` };
+  const expectedOrders = spec.spiceOrders || spec.terminals.map((unused, index) => index + 1);
+  if (ordered.some((pin, index) => pin.spiceOrder !== expectedOrders[index])) {
+    return { error: `supplied ASY SpiceOrder must be exactly ${expectedOrders.join(',')}` };
   }
   return { pins: ordered.map(pin => [pin.x, pin.y]), defaults: document.attrs };
 }
@@ -501,9 +563,9 @@ function documentPinDefinition(symbol, asset, spec, pinOnly) {
         pinName: pin.pinName, orientation: pin.orientation, labelOffset: pin.labelOffset })) };
   }
   if (spec) return { status: 'builtin', pins: spec.pins.map(([x, y], index) => ({
-    x, y, spiceOrder: index + 1, pinName: spec.terminals[index],
-    pinContract: spec.aliasOf ? 'native-alias' : 'native',
-  })), pinContract: spec.aliasOf ? 'native-alias' : 'native' };
+    x, y, spiceOrder: spec.spiceOrders?.[index] ?? index + 1, pinName: spec.terminals[index],
+    pinContract: spec.verifiedDevice ? 'native-device' : spec.aliasOf ? 'native-alias' : 'native',
+  })), pinContract: spec.verifiedDevice ? 'native-device' : spec.aliasOf ? 'native-alias' : 'native' };
   if (pinOnly) return { status: 'builtin', pins: pinOnly.pins.map(([x, y], index) => ({
     x, y, spiceOrder: index + 1, pinName: pinOnly.names[index], pinContract: 'pin-only',
   })), pinContract: 'pin-only', family: pinOnly.family };
@@ -799,6 +861,15 @@ function authoredParams(raw, spec, constants) {
     : { params: { [spec.parameter]: resolved.value }, reason: null };
 }
 
+function authoredNativeDevice(raw, spec) {
+  const value = String(raw || '').trim();
+  const accepted = spec.acceptedValues || [];
+  if (!accepted.some(candidate => candidate.toLowerCase() === value.toLowerCase())) {
+    return { params: {}, reason: `Value "${value}" must be exactly ${accepted.join(' or ')}` };
+  }
+  return { params: { ...spec.deviceParams }, reason: null };
+}
+
 export function importLtspiceAsc(text, options = {}) {
   const parts = [];
   const warnings = [];
@@ -945,7 +1016,7 @@ export function importLtspiceAsc(text, options = {}) {
       sourceDocument.instances[symbolIndex].electricalStatus = 'refused';
       continue;
     }
-    const expectedPrefix = STANDARD_PREFIX[spec.kind];
+    const expectedPrefix = spec.prefix || STANDARD_PREFIX[spec.kind];
     if (effectiveAttrs.prefix != null
         && String(effectiveAttrs.prefix).toUpperCase() !== expectedPrefix) {
       unmapped.push({ ref, value: effectiveAttrs.value || '',
@@ -978,7 +1049,9 @@ export function importLtspiceAsc(text, options = {}) {
       continue;
     }
     const id = makeId(ref, used);
-    const authored = spec.kind === 'diode'
+    const authored = spec.verifiedDevice
+      ? authoredNativeDevice(effectiveAttrs.value, spec)
+      : spec.kind === 'diode'
       ? authoredDiode(effectiveAttrs.value, ascModels, diodeThermal)
       : authoredParams(effectiveAttrs.value, spec, constantParameters.values);
     if (spec.kind === 'diode') {
@@ -1021,11 +1094,17 @@ export function importLtspiceAsc(text, options = {}) {
       warnings.push(`${id}: unsupported LTspice symbol attribute ${name} is retained as a loss`);
     }
     parts.push({ id, kind: spec.kind, params, x: symbol.x, y: symbol.y,
+      ...(spec.verifiedDevice ? {
+        terminals: [...spec.terminals], sourcePackage: 'unspecified',
+        sourceLibrary: normalizeLtspiceSymbolName(symbol.lib),
+        sourceSymbolSha256: spec.sourceSha256,
+      } : {}),
       sourceInstance: sourceDocument.instances[symbolIndex]?.id,
       ...(partBlockers.length ? { analysisBlockers: partBlockers } : {}) });
     sourceDocument.electricalProjection.mappedInstances.push({
       instanceId: sourceDocument.instances[symbolIndex]?.id, ref, prefix: expectedPrefix,
-      partIds: [id], mapping: spec.aliasOf ? `native-alias:${spec.aliasOf}` : 'native-standard',
+      partIds: [id], mapping: spec.verifiedDevice ? `native-device:${spec.kind}`
+        : spec.aliasOf ? `native-alias:${spec.aliasOf}` : 'native-standard',
       losses: partBlockers.length,
       numericStatus: partBlockers.length ? 'blocked-model-or-instance-semantics' : 'candidate-native-model' });
     sourceDocument.instances[symbolIndex].electricalStatus = partBlockers.length

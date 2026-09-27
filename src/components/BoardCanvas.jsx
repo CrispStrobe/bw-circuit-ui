@@ -148,6 +148,23 @@ function mcuChipInfo(device) {
  * Terminal offset defaults per part kind, rotated by part.rotation.
  * Returns {terminalName: {dx, dy}} relative to part anchor.
  */
+function packageNeutralOffsets(kind) {
+  if (kind === 'lt1001') return {
+    inp: { dx: -38, dy: 12 }, inn: { dx: -38, dy: -12 },
+    vpos: { dx: 0, dy: -28 }, vneg: { dx: 0, dy: 28 }, out: { dx: 38, dy: 0 },
+  };
+  if (kind === 'adp7118') return {
+    vin_7: { dx: -38, dy: -14 }, en: { dx: -38, dy: 0 }, ss: { dx: -38, dy: 14 },
+    vout_1: { dx: 38, dy: -14 }, sense_adj: { dx: 38, dy: 10 }, gnd: { dx: 0, dy: 28 },
+  };
+  if (kind === 'lt1763') return {
+    in: { dx: -38, dy: -14 }, shdn: { dx: -38, dy: 5 },
+    out: { dx: 38, dy: -14 }, sense_adj: { dx: 38, dy: 5 }, byp: { dx: 38, dy: 18 },
+    gnd_3: { dx: 0, dy: 28 },
+  };
+  return null;
+}
+
 function terminalOffsetsForPart(part) {
   const rot = part.rotation || 0;
   const flip = part.flipped;
@@ -155,6 +172,12 @@ function terminalOffsetsForPart(part) {
     const rotated = rotateOffset(dx, dy, rot);
     return flip ? { dx: -rotated.dx, dy: rotated.dy } : rotated;
   };
+
+  if (part.sourcePackage === 'unspecified') {
+    const neutral = packageNeutralOffsets(part.kind);
+    if (neutral) return Object.fromEntries(Object.entries(neutral)
+      .map(([name, point]) => [name, r(point.dx, point.dy)]));
+  }
 
   switch (part.kind) {
     case 'vcc': return { vcc: r(0, 20) };
@@ -354,6 +377,39 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       e.stopPropagation();
       onSelectPart(id, e.shiftKey);
     };
+
+    if (part.sourcePackage === 'unspecified') {
+      const offsets = packageNeutralOffsets(kind);
+      if (offsets) {
+        const label = kind === 'lt1001' ? 'LT1001' : kind === 'adp7118' ? 'ADP7118' : 'LT1763';
+        return (
+          <g key={id} data-part-face={kind} data-source-package="unspecified"
+            transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            <rect x={-27} y={-22} width={54} height={44} rx={4}
+              fill="#20252d" stroke={selStroke || '#7f8c8d'} strokeWidth={isSelected ? 3 : 1.4} />
+            <text x={0} y={-3} textAnchor="middle" fill="#d0d7de" fontSize={7}
+              fontFamily="monospace" fontWeight="bold">{label}</text>
+            <text x={0} y={7} textAnchor="middle" fill="#9aa4ad" fontSize={4.5}
+              fontFamily="monospace">PACKAGE UNSPECIFIED</text>
+            {Object.entries(offsets).map(([name, point]) => {
+              const horizontal = Math.abs(point.dx) > Math.abs(point.dy);
+              const x1 = horizontal ? Math.sign(point.dx) * 27 : point.dx;
+              const y1 = horizontal ? point.dy : Math.sign(point.dy) * 22;
+              return <g key={name}>
+                <line x1={x1} y1={y1} x2={point.dx} y2={point.dy}
+                  stroke="#aab2ba" strokeWidth={1.4} />
+                <text x={horizontal ? Math.sign(point.dx) * 24 : point.dx + 3}
+                  y={horizontal ? point.dy - 2 : Math.sign(point.dy) * 19}
+                  textAnchor={horizontal ? (point.dx < 0 ? 'start' : 'end') : 'start'}
+                  fill="#87919a" fontSize={3.2} fontFamily="monospace">{name}</text>
+              </g>;
+            })}
+            <text x={0} y={37} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+    }
 
     switch (kind) {
       case 'vcc':

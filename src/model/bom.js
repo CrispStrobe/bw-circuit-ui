@@ -172,22 +172,27 @@ export function generateBom(parts) {
   const exclude = new Set(['vcc', 'gnd', 'meter', 'breadboard']);
   const eligible = parts.filter(p => !exclude.has(p.kind));
 
-  // Group by kind + params
+  // Group by kind + params + source package authority. An imported LTspice
+  // symbol proves an electrical model, not a purchasable package, and must not
+  // merge into a palette-created DIP/SOIC row that does carry that authority.
   const groups = new Map();
   for (const p of eligible) {
-    const key = `${p.kind}|${paramKey(p.params)}`;
+    const sourcePackage = p.sourcePackage === 'unspecified' ? 'unspecified' : null;
+    const key = `${p.kind}|${paramKey(p.params)}|${sourcePackage || ''}`;
     if (!groups.has(key)) {
-      groups.set(key, { kind: p.kind, params: { ...p.params }, ids: [] });
+      groups.set(key, { kind: p.kind, params: { ...p.params }, sourcePackage, ids: [] });
     }
     groups.get(key).ids.push(p.id);
   }
 
   return [...groups.values()].map(g => ({
     kind: g.kind,
-    label: `${KIND_LABELS[g.kind] || g.kind}${describeParams(g.params) ? ' ' + describeParams(g.params) : ''}`,
+    label: `${KIND_LABELS[g.kind] || g.kind}${g.sourcePackage === 'unspecified'
+      ? ' (package unspecified by source)' : ''}${describeParams(g.params) ? ' ' + describeParams(g.params) : ''}`,
     qty: g.ids.length,
     ids: g.ids,
     params: g.params,
+    ...(g.sourcePackage ? { sourcePackage: g.sourcePackage } : {}),
   })).sort((a, b) => a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label));
 }
 
