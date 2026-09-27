@@ -548,7 +548,12 @@ whole source rather than choosing from one small residual subset.
 | P5 | LT1014 | 32 / 14 | 12 | 0 | **Done.** The physical palette part is one shared-rail/four-channel PDIP-14. Official LT1014/A/D symbols expose one five-terminal channel without package/unit identity and netlist `LT1013` from `LT1013.sub`, so they map to the hidden logical-channel contract and all 14 rows retain a source-model-substitution blocker. The former five-row clean estimate is retired by the exact replay. |
 | P6 | ADTL082 | 22 / 12 | 9 | 0 | **Done.** One truthful production R-8 SOIC face and one shared-rail dual engine card remain distinct from the official five-terminal logical source symbol. All 12 rows retain the exact `ADI.lib` / `ADTL082` source-model-substitution blocker. |
 | P7 | OP747 | 24 / 9 | 6 | 0 | **Done.** One truthful production R-14 SOIC face and one nonstandard-pin shared-rail quad engine card remain distinct from the official five-terminal logical source symbol. All nine rows retain the exact `ADI.lib` / `OP747` source-model-substitution blocker. |
-| later | ADA4522-1, AD8541, AD711, AD8602, LT1678, LT1007 | 15–24 each | — | 1–4 each | Re-rank after each landed slice because family infrastructure and residual losses change. |
+| P8 | LT1007 | 19 / 10 | 8 | 0 | **Done.** One truthful N8 PDIP face and one bounded physical precision-amplifier card remain distinct from the official five-terminal logical source symbols. LT1007CS truthfully records its SOIC-8 source package without borrowing the N8 face. All ten rows retain the exact `LTC.lib` / `LT1007` source-model-substitution blocker. |
+| next | AD711 | 16 / 9 | 5 | 0 expected | Best bounded next slice after P8: four rows have no residual loss before the required source-model provenance decision. Re-measure rather than inheriting this estimate. |
+| later | LT1678 | 15 / 8 | 4 | 0 expected | Four rows are otherwise clean before source-model provenance; package/channel authority still needs a fresh vertical-slice audit. |
+| later | AD8541 | 19 / 7 | 4 | 0 expected | Two rows are otherwise clean before source-model provenance; retain package honesty and re-measure. |
+| later | AD8602 | 16 / 7 | 4 | 0 expected | One row is otherwise clean before source-model provenance; shared-package/channel identity must be proven. |
+| later | ADA4522-1 | 21 / 5 | 1 | 0 expected | Lowest residual document reach of the measured named candidates; keep behind the better-bounded slices. |
 
 The larger residuals `opamp2` (443 instances), `universalopamp2` (320), generic
 `opamp` (292), `bv` (902), and `sw` (761) are simulation abstractions, not
@@ -556,7 +561,7 @@ orderable parts. They deserve separate behavioral-import lanes and schematic
 symbols, but no purchasable face or BOM identity. Exact-name real-part work must
 not be used to smuggle those abstractions in as fake packages.
 
-P1–P7 are complete. The already-real LT1001, ADP7118 and LT1763
+P1–P8 are complete. The already-real LT1001, ADP7118 and LT1763
 bridge precedes it and deliberately refuses LT1001S8 and contradictory/unknown
 fixed-output names. LTspice 26.0.2's official `OP07.asy` visibly says OP07 but
 its `SpiceModel LTC.lib` / `Value2 LT1001` pair changes the generated netlist.
@@ -654,3 +659,16 @@ macro-model while ASC now exposes Brickwright's bounded logical channel. This
 is an honest representation mismatch, not numerical equivalence. The palette
 part is separately the production R-14 SOIC quad with the data-sheet's unusual
 channel order; the package-neutral source symbol cannot borrow that face.
+
+Exact post-implementation LT1007 replay at CUI `8ea8e33` maps all 19
+instances across ten rows. Eight rows have no other unmapped source symbol and
+nine documents become fully pinned. Every mapped instance retains the official
+`LTC.lib` / `LT1007` source-model-substitution blocker, so zero rows become
+lossless or numerically eligible. Whole-document pin completeness rises 2,346
+-> 2,355 (+9), while lossless projection, numeric eligibility, and
+declared-analysis eligibility remain 119/76/83. Paired completeness/components/
+net partitions fall 8/5/8 because paired SPICE still invokes the external LTC
+macro-model while ASC now exposes Brickwright's bounded logical channel. This
+is an honest representation mismatch, not numerical equivalence. The palette
+part is separately the production N8 PDIP; LT1007CS records SOIC-8 provenance
+without borrowing that face, and the plain/A symbols remain package-neutral.
