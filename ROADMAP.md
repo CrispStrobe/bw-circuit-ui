@@ -547,7 +547,7 @@ whole source rather than choosing from one small residual subset.
 | P4 | LT1006 | 45 / 28 | 20 | 0 | **Done.** Plain LT1006/LT1006A remain package-unspecified; LT1006S8 alone receives the truthful SOIC-8 face. All variants retain the official `LTC.lib` / `LT1006` substitution blocker, so structural reach is not mislabeled as a numerical pass. |
 | P5 | LT1014 | 32 / 14 | 12 | 0 | **Done.** The physical palette part is one shared-rail/four-channel PDIP-14. Official LT1014/A/D symbols expose one five-terminal channel without package/unit identity and netlist `LT1013` from `LT1013.sub`, so they map to the hidden logical-channel contract and all 14 rows retain a source-model-substitution blocker. The former five-row clean estimate is retired by the exact replay. |
 | P6 | ADTL082 | 22 / 12 | 9 | 0 | **Done.** One truthful production R-8 SOIC face and one shared-rail dual engine card remain distinct from the official five-terminal logical source symbol. All 12 rows retain the exact `ADI.lib` / `ADTL082` source-model-substitution blocker. |
-| next | OP747 | 24 / 9 | 6 | to measure | Best remaining bounded named-part candidate after P6: fewer complete rows than ADTL082, but useful quad precision-op-amp coverage. Re-audit official symbol/package/model provenance before implementation. |
+| P7 | OP747 | 24 / 9 | 6 | 0 | **Done.** One truthful production R-14 SOIC face and one nonstandard-pin shared-rail quad engine card remain distinct from the official five-terminal logical source symbol. All nine rows retain the exact `ADI.lib` / `OP747` source-model-substitution blocker. |
 | later | ADA4522-1, AD8541, AD711, AD8602, LT1678, LT1007 | 15–24 each | — | 1–4 each | Re-rank after each landed slice because family infrastructure and residual losses change. |
 
 The larger residuals `opamp2` (443 instances), `universalopamp2` (320), generic
@@ -556,7 +556,7 @@ orderable parts. They deserve separate behavioral-import lanes and schematic
 symbols, but no purchasable face or BOM identity. Exact-name real-part work must
 not be used to smuggle those abstractions in as fake packages.
 
-P1–P6 are complete. The already-real LT1001, ADP7118 and LT1763
+P1–P7 are complete. The already-real LT1001, ADP7118 and LT1763
 bridge precedes it and deliberately refuses LT1001S8 and contradictory/unknown
 fixed-output names. LTspice 26.0.2's official `OP07.asy` visibly says OP07 but
 its `SpiceModel LTC.lib` / `Value2 LT1001` pair changes the generated netlist.
@@ -641,3 +641,16 @@ macro-model while ASC now exposes Brickwright's bounded logical channel. This
 is an honest representation mismatch, not numerical equivalence. The palette
 part is separately the real shared-rail R-8 SOIC dual; the source symbol remains
 package-neutral and cannot borrow that face.
+
+Exact post-implementation OP747 replay at CUI `2448e6b` maps all 24 instances
+across nine rows. Six rows then have no other unmapped source symbol, and eight
+documents become fully pinned. Every mapped instance retains the official
+`ADI.lib` / `OP747` source-model-substitution blocker, so zero rows become
+lossless or numerically eligible. Whole-document pin completeness rises 2,338
+-> 2,346 (+8), while lossless projection, numeric eligibility, and
+declared-analysis eligibility remain 119/76/83. Paired completeness/components/
+net partitions fall 6/4/6 because paired SPICE still invokes the external ADI
+macro-model while ASC now exposes Brickwright's bounded logical channel. This
+is an honest representation mismatch, not numerical equivalence. The palette
+part is separately the production R-14 SOIC quad with the data-sheet's unusual
+channel order; the package-neutral source symbol cannot borrow that face.
