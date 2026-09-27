@@ -64,6 +64,7 @@ const KIND_LABELS = {
   pmos: 'P-MOSFET',
   opamp: 'Op-Amp',
   lm741: 'LM741 Operational Amplifier',
+  adp7118: 'ADP7118 200mA Low-Noise LDO',
   // Named for what they are rather than for a package, because neither is
   // orderable: a BOM row for one is a modelling element, not a purchase.
   vcvs: 'Voltage-Controlled Voltage Source',

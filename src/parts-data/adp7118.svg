@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40" width="60" height="40">
+  <!-- ADP7118 — original SOIC-8 bench face, drawn from package facts only -->
+  <rect x="10" y="3" width="40" height="34" rx="3" fill="#252525" stroke="#111" stroke-width="1"/>
+  <path d="M27 3 A3 3 0 0 1 33 3" fill="#252525" stroke="#666" stroke-width="0.8"/>
+  <circle cx="15" cy="8" r="1.5" fill="#aaa"/>
+  <text x="30" y="18" text-anchor="middle" font-family="monospace" font-size="5.5" fill="#d0d0d0">ADP7118</text>
+  <text x="30" y="25" text-anchor="middle" font-family="monospace" font-size="3.3" fill="#929292">200mA LDO</text>
+  <text x="30" y="31" text-anchor="middle" font-family="monospace" font-size="2.7" fill="#777">SOIC-8</text>
+  <g stroke="#aaa" stroke-width="1.5" stroke-linecap="round" fill="#c0c0c0">
+    <line x1="0" y1="8" x2="10" y2="8"/><circle cx="0" cy="8" r="1.4"/>
+    <line x1="0" y1="16" x2="10" y2="16"/><circle cx="0" cy="16" r="1.4"/>
+    <line x1="0" y1="24" x2="10" y2="24"/><circle cx="0" cy="24" r="1.4"/>
+    <line x1="0" y1="32" x2="10" y2="32"/><circle cx="0" cy="32" r="1.4"/>
+    <line x1="50" y1="32" x2="60" y2="32"/><circle cx="60" cy="32" r="1.4"/>
+    <line x1="50" y1="24" x2="60" y2="24"/><circle cx="60" cy="24" r="1.4"/>
+    <line x1="50" y1="16" x2="60" y2="16"/><circle cx="60" cy="16" r="1.4"/>
+    <line x1="50" y1="8" x2="60" y2="8"/><circle cx="60" cy="8" r="1.4"/>
+  </g>
+  <g font-family="monospace" font-size="2.6" fill="#888">
+    <text x="13" y="9">vout_1</text><text x="13" y="17">vout_2</text>
+    <text x="13" y="25">sense_adj</text><text x="13" y="33">gnd</text>
+    <text x="47" y="33" text-anchor="end">en</text><text x="47" y="25" text-anchor="end">ss</text>
+    <text x="47" y="17" text-anchor="end">vin_7</text><text x="47" y="9" text-anchor="end">vin_8</text>
+  </g>
+</svg>

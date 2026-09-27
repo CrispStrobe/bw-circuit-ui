@@ -1,0 +1,17 @@
+{
+  "kind": "adp7118",
+  "w": 60,
+  "h": 40,
+  "terminals": [
+    { "name": "vout_1",   "x": 0,  "y": 8,  "functions": [] },
+    { "name": "vout_2",   "x": 0,  "y": 16, "functions": [] },
+    { "name": "sense_adj", "x": 0,  "y": 24, "functions": [] },
+    { "name": "gnd",       "x": 0,  "y": 32, "functions": [] },
+    { "name": "en",        "x": 60, "y": 32, "functions": [] },
+    { "name": "ss",        "x": 60, "y": 24, "functions": [] },
+    { "name": "vin_7",     "x": 60, "y": 16, "functions": [] },
+    { "name": "vin_8",     "x": 60, "y": 8,  "functions": [] }
+  ],
+  "variants": null,
+  "_note": "ADP7118 low-noise 200 mA LDO, 8-lead SOIC top view. Physical pin order and functions audited against Analog Devices ADP7118 Rev. H Figure 5 and Table 5. The exposed thermal pad is internally GND but is not one of the eight perimeter leads. Surface-mount package: no direct breadboard footprint is claimed."
+}

@@ -40,6 +40,7 @@ const DRIFTED = [
   { kind: 'lm358',        minTerminals: 8,  sample: ['vcc', 'gnd', '1_pos', '1_neg', '1_out', '2_out'] },
   { kind: 'lm324',        minTerminals: 14, sample: ['vcc', 'gnd', '1_out', '2_out', '3_out', '4_out'] },
   { kind: 'lm741',        minTerminals: 8, sample: ['offset_1', 'inn', 'inp', 'vneg', 'out', 'vpos', 'nc'] },
+  { kind: 'adp7118',      minTerminals: 8, sample: ['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8'] },
 ];
 
 describe('terminal-drift regression: multi-terminal kinds resolve via sidecar', () => {

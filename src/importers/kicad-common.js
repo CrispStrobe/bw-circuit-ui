@@ -399,6 +399,11 @@ export const KICAD_RULES = [
   [/^Jumper(_\w+)?$|^JUMPER$/i, (v, n) => headerOf(2, `${n} imported as a 2-pin header`)],
 
   // -- regulators --------------------------------------------------
+  [/^ADP7118ARDZ(?:[-_A-Z0-9.]*)$/i,
+    () => ({ kind: 'adp7118',
+      pins: { 1: 'vout_1', 2: 'vout_2', 3: 'sense_adj', 4: 'gnd',
+        5: 'en', 6: 'ss', 7: 'vin_7', 8: 'vin_8' },
+      terminals: ['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8'] })],
   // Part number BEFORE the generic rule, and never a new kind name: the
   // engine already models lm7805, ams1117_33 and a generic vreg. Inventing a
   // `regulator` kind here is the mistake eagle.js's comments record.

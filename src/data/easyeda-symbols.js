@@ -135,6 +135,11 @@ export const PART_SYMBOLS = {
     kicadSymbol: 'Amplifier_Operational:LM741',
     kicadFootprint: 'Package_DIP:DIP-8_W7.62mm',
   },
+  adp7118: {
+    refdesPrefix: 'U',
+    kicadSymbol: 'Regulator_Linear:ADP7118ARDZ',
+    kicadFootprint: 'Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm',
+  },
   '555': {
     refdesPrefix: 'U', spiceCard: 'X',
     kicadSymbol: 'Timer:NE555',

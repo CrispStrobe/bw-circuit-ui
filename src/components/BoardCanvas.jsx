@@ -292,6 +292,11 @@ function terminalOffsetsForPart(part) {
       for (const [name, o] of Object.entries(base)) offsets[name] = r(o.dx, o.dy);
       return offsets;
     }
+    case 'adp7118': {
+      const base = sidecarCenterOffsets(part.kind);
+      if (!base) return {};
+      return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
+    }
     default: {
       // Generic DIP chip terminal offsets from sidecar geometry
       if (DIP_CHIP_LABELS[part.kind]) {
@@ -1497,6 +1502,40 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             )}
             <text x={8} y={23} textAnchor="middle" fill={accent} fontSize={7}
               fontFamily="monospace">{isV ? 'VCVS' : 'VCCS'}</text>
+          </g>
+        );
+      }
+      case 'adp7118': {
+        const sc = getSidecar(kind);
+        const offsets = sidecarCenterOffsets(kind) || {};
+        const W = sc?.w ?? 60;
+        const H = sc?.h ?? 40;
+        return (
+          <g key={id} data-part-face={kind} data-soic-body={kind}
+            transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            <rect x={-W / 2 + 10} y={-H / 2 + 3} width={W - 20} height={H - 6} rx={3}
+              fill="#252525" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.2} />
+            <path d={`M -3 ${-H / 2 + 3} A 3 3 0 0 1 3 ${-H / 2 + 3}`}
+              fill="#252525" stroke="#666" strokeWidth={0.8} />
+            <circle cx={-W / 2 + 15} cy={-H / 2 + 8} r={1.5} fill="#aaa" />
+            <text x={0} y={-2} textAnchor="middle" fill="#d0d0d0" fontSize={7}
+              fontFamily="monospace" fontWeight="bold">ADP7118</text>
+            <text x={0} y={8} textAnchor="middle" fill="#929292" fontSize={4}
+              fontFamily="monospace">200mA LDO · SOIC-8</text>
+            {(sc?.terminals || []).map(t => {
+              const p = offsets[t.name];
+              if (!p) return null;
+              const left = p.dx < 0;
+              return <g key={t.name}>
+                <line x1={left ? -W / 2 + 10 : W / 2 - 10} y1={p.dy}
+                  x2={p.dx} y2={p.dy} stroke="#aaa" strokeWidth={1.5} />
+                <text x={left ? -W / 2 + 13 : W / 2 - 13} y={p.dy + 2.5}
+                  textAnchor={left ? 'start' : 'end'} fill="#888" fontSize={3}
+                  fontFamily="monospace">{t.name}</text>
+              </g>;
+            })}
+            <text x={0} y={H / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
       }
