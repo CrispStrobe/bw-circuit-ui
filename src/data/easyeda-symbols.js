@@ -141,6 +141,12 @@ export const PART_SYMBOLS = {
     // an LT1001 symbol. Keep the real package without inventing a library ID.
     kicadFootprint: 'Package_DIP:DIP-8_W7.62mm',
   },
+  lt1006: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // The explicit S8 palette/import part owns this package. Plain LT1006 and
+    // LT1006A source symbols remain package-neutral in the ASC importer.
+    kicadFootprint: 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm',
+  },
   op07: {
     refdesPrefix: 'U', spiceCard: 'X',
     // No package identity is inferred by the LTspice importer. This footprint

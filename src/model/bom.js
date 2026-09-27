@@ -65,6 +65,7 @@ const KIND_LABELS = {
   opamp: 'Op-Amp',
   lm741: 'LM741 Operational Amplifier',
   lt1001: 'LT1001 Precision Operational Amplifier',
+  lt1006: 'LT1006 Precision Single-Supply Operational Amplifier',
   op07: 'OP07 Precision Operational Amplifier',
   op27: 'OP27 Low-Noise Precision Operational Amplifier',
   adp151: 'ADP151 200mA Ultralow-Noise LDO',

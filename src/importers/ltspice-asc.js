@@ -125,6 +125,21 @@ addVerifiedDevice(['lt1001a', 'opamps/lt1001a'], {
   prefix: 'X', acceptedValues: ['LT1001A'], deviceParams: {},
   sourceSha256: '69e46f8c58c08205de9d89b69f4a6dced2246cb6b0ea14128e298080a7794ab9',
 });
+for (const [name, sourceSha256, packaged] of [
+  ['lt1006', '2964d9e9ced195230ed5aa7a4bb1d11ddfcc4beb4d5ce76c4f021459b68466ae', false],
+  ['lt1006a', 'a49fb0bd6e33731241e2333c066ec82c16231955fbd5982dcae2d82a569a9468', false],
+  ['lt1006s8', 'd1fcbe8a7d56d3dd358b49829ec1850f3a5530d2bd2ce5c1f1b83cc6559e67ba', true],
+]) {
+  addVerifiedDevice([name, `opamps/${name}`], {
+    kind: 'lt1006', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+    prefix: 'X', acceptedValues: [name.toUpperCase()], deviceParams: {}, sourceSha256,
+    sourceModelSubstitution: Object.freeze({ file: 'LTC.lib', subcircuit: 'LT1006' }),
+    ...(packaged ? {
+      sourcePackage: 'SOIC-8',
+      partTerminals: ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 'iset'],
+    } : {}),
+  });
+}
 addVerifiedDevice(['op07', 'opamps/op07'], {
   kind: 'op07', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
   prefix: 'X', acceptedValues: ['OP07'], deviceParams: {},
@@ -1166,7 +1181,8 @@ export function importLtspiceAsc(text, options = {}) {
     }
     parts.push({ id, kind: spec.kind, params, x: symbol.x, y: symbol.y,
       ...(spec.verifiedDevice ? {
-        terminals: [...spec.terminals], sourcePackage: 'unspecified',
+        terminals: [...(spec.partTerminals || spec.terminals)],
+        sourcePackage: spec.sourcePackage || 'unspecified',
         sourceLibrary: spec.verifiedLibrary,
         verifiedBuiltinSymbolSha256: spec.sourceSha256,
         ...(spec.sourceModelSubstitution ? {
