@@ -543,7 +543,7 @@ whole source rather than choosing from one small residual subset.
 |---|---:|---:|---:|---:|---|
 | P1 | OP07 | 126 / 79 | 63 | 0 | Build first: highest real-part reach and OP/AC/DC/transient diversity. The official symbol netlists LT1001, so the native OP07 projection stays numerically blocked. |
 | P2 | OP27 | 45 / 24 safely mapped (48 / 25 target) | 18 | 0 | **Done.** The three instances in one unsafe `lib\\…\\OP27` path remain refused. The official symbol delegates to `OP27` in `ADI.lib`, so all 45 safe projections retain a model-substitution blocker rather than claiming macro-model identity. |
-| P3 | ADP151 family | 12 / 12 | 11 | 11 | Lower frequency but unusually high immediate structural yield; fixed-output/package spellings must be audited exactly before the clean count is accepted. |
+| P3 | ADP151 family | 11 / 11 safely mapped (12 / 12 target) | 10 | 0 | **Done.** Ten internally consistent fixed-output symbol variants map; the corrupt 2.85-V symbol remains refused. Every mapped symbol delegates to the proprietary `ADP151-x.x.sub`, so none is a native numerical claim. |
 | P4 | LT1006 | 45 / 28 | 20 | 4 | Worth a full slice after its supply/output and package variants are separated. |
 | P5 | LT1014 | 32 / 14 | 12 | 5 | Quad package; requires shared-rail/four-channel behaviour and face, not a single-op-amp alias. |
 | later | OP747, ADTL082, ADA4522-1, AD8541, AD711, AD8602, LT1678, LT1007 | 15–24 each | — | 1–4 each | Re-rank after P1–P5 because family infrastructure and residual losses will have changed. |
@@ -597,3 +597,17 @@ The other audited ADP151 fixed-output symbols use a non-contiguous 1/2/3/5
 subcircuit interface and their own exact value-selection parameter. Package
 authority remains a separate data-sheet/part-number decision; four electrical
 symbol pins are not evidence for a four-lead purchasable face.
+
+Exact post-implementation ADP151 replay at CUI `2798d9e` maps 11 safe
+instances across 11 rows (ten distinct internally consistent fixed-output
+symbols) and deliberately leaves the corrupt 2.85-V row refused. Ten mapped
+rows have no other unmapped symbol. All 11 retain the exact
+`ADP151-x.x.sub` / voltage-selector dependency as a source-model-substitution
+blocker, so zero rows become lossless or numerically eligible. Whole-document
+pin completeness rises 2,280 -> 2,290 (+10); lossless projection stays 119,
+numeric eligibility stays 76, and declared-analysis eligibility stays 83.
+Paired completeness/components/net partitions each fall by 11 because the ASC
+now names Brickwright's native ADP151 while the paired SPICE deck still invokes
+the external macro-model. That is an exposed representation mismatch, not a
+regression to smooth away. The physical palette part is separately constrained
+to Analog Devices' AUJZ TSOT-5 order codes; LFCSP/WLCSP parts do not borrow it.
