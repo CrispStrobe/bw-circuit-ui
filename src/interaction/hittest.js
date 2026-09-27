@@ -72,6 +72,7 @@ export const FOOTPRINTS = {
   matrix8x8: { w: 60, h: 60 },
   matrix16x8: { w: 110, h: 60 }, matrix9x9: { w: 70, h: 70 },
   at24c64: { w: 80, h: 80 },
+  attiny88_qfn32: { w: 82, h: 82 },
   // Part-matrix burn-down: palette parts that used DEFAULT_FOOTPRINT
   rgb_led: { w: 40, h: 50 }, neopixel: { w: 30, h: 30 },
   inductor: { w: 52, h: 20 }, photodiode: { w: 36, h: 36 },

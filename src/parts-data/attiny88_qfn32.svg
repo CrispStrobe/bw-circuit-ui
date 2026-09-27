@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" width="72" height="72">
+  <rect x="7" y="7" width="58" height="58" rx="3" fill="#171717" stroke="#555" stroke-width="1.5"/>
+  <circle cx="14" cy="14" r="3" fill="#888"/>
+  <text x="36" y="34" text-anchor="middle" font-family="monospace" font-size="8" fill="#ddd">ATtiny88</text>
+  <text x="36" y="45" text-anchor="middle" font-family="monospace" font-size="6" fill="#999">QFN-32</text>
+</svg>

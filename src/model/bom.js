@@ -101,6 +101,7 @@ const KIND_LABELS = {
   eeprom: 'EEPROM',
   meter: 'Multimeter',
   mcu: 'MCU (STC12)',
+  attiny88_qfn32: 'ATtiny88 QFN-32',
   // Part-matrix burn-down: palette parts without BOM labels
   vsource: 'DC Supply',
   neopixel: 'NeoPixel (WS2812B)',

@@ -36,7 +36,7 @@ function genId(prefix) { return `${prefix}_${_nextId++}`; }
 const PASSTHROUGH_KINDS = new Set([
   // MCU boards
   'stc_mcu', 'stc15_mcu', 'at89c2051', 'arduino_nano', 'arduino_uno', 'arduino_mega',
-  'pi_pico', 'pybadge', 'attiny85', 'attiny88', 'attiny13', 'attiny2313', 'microbit', 'stm32f030',
+  'pi_pico', 'pybadge', 'attiny85', 'attiny88', 'attiny88_qfn32', 'attiny13', 'attiny2313', 'microbit', 'stm32f030',
   // MakeCode boards. bw-board registers them (board-kinds.js) and they keep
   // their identity; an engine without that model collapses them to 'mcu'.
   'calliopemini', 'circuit_playground_express',
