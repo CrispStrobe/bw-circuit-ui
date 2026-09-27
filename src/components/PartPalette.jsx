@@ -242,6 +242,8 @@ const CATEGORIES = [
         tooltip: 'Real precision op-amp — PDIP-8, 5 MV/V gain, 0.8 MHz GBW, 0.25 V/µs slew and bounded output swing' },
       { kind: 'lt1006', label: 'LT1006', params: {}, color: '#9c6b22',
         tooltip: 'Real precision single-supply op-amp — SOIC-8, ground sensing, finite gain/bandwidth/slew and asymmetric output swing' },
+      { kind: 'lt1014', label: 'LT1014', params: {}, color: '#7d5a20',
+        tooltip: 'Real quad precision op-amp — PDIP-14, four channels with shared rails, finite gain/bandwidth/slew and ground sensing' },
       { kind: 'op07', label: 'OP07', params: {}, color: '#a66f1f',
         tooltip: 'Real precision op-amp — PDIP-8, 400 kV/V gain, 0.6 MHz GBW, 0.3 V/µs slew and bounded output swing' },
       { kind: 'op27', label: 'OP27', params: {}, color: '#8e611b',

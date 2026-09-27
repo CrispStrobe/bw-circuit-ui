@@ -321,6 +321,8 @@ export const ALIASES = {
   lm741: 'opamp',
   lt1001: 'opamp',
   lt1006: 'opamp',
+  lt1014: 'opamp',
+  lt1014_channel: 'opamp',
   op07: 'opamp',
   op27: 'opamp',
   speaker: 'buzzer',

@@ -147,6 +147,15 @@ export const PART_SYMBOLS = {
     // LT1006A source symbols remain package-neutral in the ASC importer.
     kicadFootprint: 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm',
   },
+  lt1014: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // The physical palette/EasyEDA part is the N/J industry-standard PDIP-14.
+    // KiCad's multi-unit symbol is not claimed by the single-record importer.
+    kicadFootprint: 'Package_DIP:DIP-14_W7.62mm',
+  },
+  lt1014_channel: {
+    refdesPrefix: 'U', spiceCard: 'X',
+  },
   op07: {
     refdesPrefix: 'U', spiceCard: 'X',
     // No package identity is inferred by the LTspice importer. This footprint

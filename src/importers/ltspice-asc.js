@@ -140,6 +140,19 @@ for (const [name, sourceSha256, packaged] of [
     } : {}),
   });
 }
+for (const [name, sourceSha256] of [
+  ['lt1014', 'b7233d9b52d2876b34faa47772a90b139e2f794bba50f45ab1ef8aa9bacb7b4c'],
+  ['lt1014a', '9fe778053a144464b0aab03fbd4f8580491bc5322d217fc6d9418fa11b59e9d1'],
+  ['lt1014d', '38c6b8ef0d2da63719b9ed6f82fd702cb2a212f23261f3be6bc5383a6508fcd0'],
+]) {
+  addVerifiedDevice([name, `opamps/${name}`], {
+    // One official ASY is one functional channel and carries neither a unit
+    // label nor package identity. Never turn it into an entire 14-pin quad.
+    kind: 'lt1014_channel', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+    prefix: 'X', acceptedValues: [name.toUpperCase()], deviceParams: {}, sourceSha256,
+    sourceModelSubstitution: Object.freeze({ file: 'LT1013.sub', subcircuit: 'LT1013' }),
+  });
+}
 addVerifiedDevice(['op07', 'opamps/op07'], {
   kind: 'op07', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
   prefix: 'X', acceptedValues: ['OP07'], deviceParams: {},

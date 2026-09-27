@@ -149,6 +149,7 @@ const EXPECTED = [
   'lm741-place',
   'lt1001-place',
   'lt1006-place',
+  'lt1014-place',
   'op07-place',
   'op27-place',
   'adp151-place',
@@ -595,6 +596,14 @@ try {
     `LT1006 placement produced ${lt1006Faces} faces and ${lt1006Dots.length} distinct pins; `
       + `model parts ${JSON.stringify(lt1006Parts)}`);
 
+  const before1014 = new Set(await freeTerminalDots());
+  await placeByLabel('LT1014', cs.x + cs.width * 0.30, cs.y + cs.height * 0.20);
+  const lt1014Dots = [...new Set((await freeTerminalDots()).filter(d => !before1014.has(d)))];
+  const lt1014Faces = await page.locator('[data-part-face="lt1014"][data-dip-body="lt1014"]').count();
+  verdict('lt1014-place', lt1014Faces >= 1 && lt1014Dots.length === 14,
+    'LT1014 places as one physical PDIP-14 quad with fourteen separately wireable pins',
+    `LT1014 placement produced ${lt1014Faces} faces and ${lt1014Dots.length} distinct pins`);
+
   const beforeOp07 = new Set(await freeTerminalDots());
   await placeByLabel('OP07', cs.x + cs.width * 0.56, cs.y + cs.height * 0.20);
   const op07Dots = [...new Set((await freeTerminalDots()).filter(d => !beforeOp07.has(d)))];
@@ -635,7 +644,7 @@ try {
     'LT1763 places as a physical SO-8 face with eight separately wireable pins',
     `LT1763 placement produced ${ltFaces} faces and ${ltDots.length} distinct pins`);
 } catch (e) {
-  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'lt1001-place', 'lt1006-place', 'op07-place', 'op27-place', 'adp151-place', 'adp7118-place', 'lt1763-place'],
+  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'lt1001-place', 'lt1006-place', 'lt1014-place', 'op07-place', 'op27-place', 'adp151-place', 'adp7118-place', 'lt1763-place'],
     `the controlled-source scenarios could not be set up: ${String(e).split('\n')[0]}`);
 }
 

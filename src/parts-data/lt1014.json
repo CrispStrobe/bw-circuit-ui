@@ -1,0 +1,44 @@
+{
+  "kind": "lt1014",
+  "w": 70,
+  "h": 46,
+  "terminals": [
+    { "name": "1_out", "x": 0,  "y": 8,  "functions": [] },
+    { "name": "1_neg", "x": 0,  "y": 13, "functions": [] },
+    { "name": "1_pos", "x": 0,  "y": 18, "functions": [] },
+    { "name": "vpos",  "x": 0,  "y": 23, "functions": [] },
+    { "name": "2_pos", "x": 0,  "y": 28, "functions": [] },
+    { "name": "2_neg", "x": 0,  "y": 33, "functions": [] },
+    { "name": "2_out", "x": 0,  "y": 38, "functions": [] },
+    { "name": "3_out", "x": 70, "y": 38, "functions": [] },
+    { "name": "3_neg", "x": 70, "y": 33, "functions": [] },
+    { "name": "3_pos", "x": 70, "y": 28, "functions": [] },
+    { "name": "vneg",  "x": 70, "y": 23, "functions": [] },
+    { "name": "4_pos", "x": 70, "y": 18, "functions": [] },
+    { "name": "4_neg", "x": 70, "y": 13, "functions": [] },
+    { "name": "4_out", "x": 70, "y": 8,  "functions": [] }
+  ],
+  "variants": null,
+  "_note": "LT1014 quad precision operational amplifier, N 14-pin PDIP top view. Physical pin order is the industry-standard LT1014 N/J order documented by TI SLOS039D. The 16-pin DW package does not borrow this face.",
+  "footprint": {
+    "refTerminal": "1_out",
+    "leads": {
+      "1_out": { "dRow": 0, "dCol": 0 },
+      "1_neg": { "dRow": 0, "dCol": 1 },
+      "1_pos": { "dRow": 0, "dCol": 2 },
+      "vpos":  { "dRow": 0, "dCol": 3 },
+      "2_pos": { "dRow": 0, "dCol": 4 },
+      "2_neg": { "dRow": 0, "dCol": 5 },
+      "2_out": { "dRow": 0, "dCol": 6 },
+      "3_out": { "dRow": 5, "dCol": 6 },
+      "3_neg": { "dRow": 5, "dCol": 5 },
+      "3_pos": { "dRow": 5, "dCol": 4 },
+      "vneg":  { "dRow": 5, "dCol": 3 },
+      "4_pos": { "dRow": 5, "dCol": 2 },
+      "4_neg": { "dRow": 5, "dCol": 1 },
+      "4_out": { "dRow": 5, "dCol": 0 }
+    },
+    "straddlesGutter": true,
+    "minCols": 7
+  }
+}
