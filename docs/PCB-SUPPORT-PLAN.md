@@ -208,6 +208,22 @@ them is the bug factory. The overrides layer keeps human placement without
 giving the board authority over connectivity — **the netlist always wins;
 overrides only ever say where something sits, never what it touches.**
 
+### 2026-09-27 usability extension: promoted SMD parts
+
+The PCB implementation is already functional rather than embryonic: it reads,
+lifts, projects, checks, renders and exports boards. The remaining usability
+gap exposed by the real-part campaign was package coverage. SOIC-8, SOIC-14 and
+TSOT-5 now have hand-authored land-pattern families whose pad terminals are
+validated against the exact physical part contracts. Bare SMD parts project to
+those patterns; breadboard use is a distinct explicit carrier assembly and
+does not alter PCB projection or electrical semantics.
+
+This makes the supported slice useful for design and export, but not yet a
+full fabrication product. The next closure is an end-to-end manufacturing
+checklist and independent exported-board DRC receipt, followed by paste/mask
+and assembly metadata. See ROADMAP X1.8. Autorouting remains heuristic and is
+always gated by the exact native DRC; connectivity remains circuit-owned.
+
 That single rule is what makes "editing to a degree" cheap and safe.
 
 ---

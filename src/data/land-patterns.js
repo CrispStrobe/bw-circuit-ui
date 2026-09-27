@@ -55,6 +55,44 @@ function header1xN(n) {
   };
 }
 
+/** Narrow SOIC land pattern. `terminals` is physical pin 1..N order. */
+function soic(terminals) {
+  const n = terminals.length;
+  const half = n / 2;
+  const pads = [];
+  for (let i = 0; i < half; i++) {
+    pads.push(smd(i + 1, terminals[i], -2.7, ((half - 1) / 2 - i) * 1.27, 1.5, 0.6));
+  }
+  for (let i = half; i < n; i++) {
+    pads.push(smd(i + 1, terminals[i], 2.7, (i - half - (half - 1) / 2) * 1.27, 1.5, 0.6));
+  }
+  const bodyH = (half - 1) * 1.27 + 1.6;
+  return {
+    description: `SOIC-${n}, 1.27 mm pitch`,
+    pads,
+    courtyard: { w: 7.0, h: bodyH + 1.0 },
+    silk: [{ kind: 'rect', x: -2.0, y: -bodyH / 2, w: 4.0, h: bodyH }],
+    pin1: { x: -2.7, y: ((half - 1) / 2) * 1.27 },
+  };
+}
+
+/** TSOT-5, physical pin order 1,2,3 down left then 4,5 up right. */
+function tsot5(terminals) {
+  return {
+    description: 'TSOT-5, 0.95 mm pitch',
+    pads: [
+      smd(1, terminals[0], -1.45, 0.95, 1.0, 0.55),
+      smd(2, terminals[1], -1.45, 0, 1.0, 0.55),
+      smd(3, terminals[2], -1.45, -0.95, 1.0, 0.55),
+      smd(4, terminals[3], 1.45, -0.95, 1.0, 0.55),
+      smd(5, terminals[4], 1.45, 0.95, 1.0, 0.55),
+    ],
+    courtyard: { w: 4.2, h: 3.8 },
+    silk: [{ kind: 'rect', x: -0.95, y: -1.5, w: 1.9, h: 3.0 }],
+    pin1: { x: -1.45, y: 0.95 },
+  };
+}
+
 /**
  * kind -> variant -> pattern. The FIRST variant listed is the default.
  */
@@ -66,6 +104,24 @@ const PAD_TERMINALS_PICO = [
 ];
 
 export const LAND_PATTERNS = {
+  lt1006: {
+    'soic-8': soic(['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 'iset']),
+  },
+  adtl082: {
+    'soic-8': soic(['1_out', '1_neg', '1_pos', 'vneg', '2_pos', '2_neg', '2_out', 'vpos']),
+  },
+  adp7118: {
+    'soic-8': soic(['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8']),
+  },
+  lt1763: {
+    'soic-8': soic(['out', 'sense_adj', 'gnd_3', 'byp', 'shdn', 'gnd_6', 'gnd_7', 'in']),
+  },
+  op747: {
+    'soic-14': soic(['1_neg', '1_pos', 'vpos', '2_pos', '2_neg', '2_out', '4_out', '4_neg', '4_pos', 'vneg', '3_pos', '3_neg', '3_out', '1_out']),
+  },
+  adp151: {
+    'tsot-5': tsot5(['vin', 'gnd', 'en', 'nc', 'vout']),
+  },
   resistor: {
     'axial-0.4': {
       description: 'axial THT, DIN 0207 body, 10.16 mm pitch',

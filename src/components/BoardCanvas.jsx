@@ -23,6 +23,7 @@ import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interac
 import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
+import { breadboardFootprintForPart, carrierOptionsForPart } from '../model/carriers.js';
 import { BreadboardView } from './BreadboardView.jsx';
 import { ledDisplayLevel } from './led-perception.js';
 import { DrcOverlay } from './DrcOverlay.jsx';
@@ -1578,11 +1579,26 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         const offsets = sidecarCenterOffsets(kind) || {};
         const W = sc?.w ?? 60;
         const H = sc?.h ?? 40;
+        const mounted = Boolean(part.carrier);
         return (
           <g key={id} data-part-face={kind}
             data-soic-body={kind === 'adp151' ? undefined : kind}
             data-tsot-body={kind === 'adp151' ? kind : undefined}
+            data-carrier={part.carrier || undefined}
             transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {mounted && <>
+              <rect x={-W / 2 - 5} y={-H / 2 - 6} width={W + 10} height={H + 12} rx={3}
+                fill="#155e3a" stroke="#6ee7a8" strokeWidth={1.2} />
+              <text x={0} y={H / 2 + 4} textAnchor="middle" fill="#d1fae5" fontSize={3.5}
+                fontFamily="monospace">{part.carrier}</text>
+              {(sc?.terminals || []).map((terminal, index) => {
+                const p = offsets[terminal.name];
+                if (!p) return null;
+                return <circle key={`carrier-${terminal.name}`} cx={p.dx} cy={p.dy} r={2.3}
+                  fill="#d8b35a" stroke="#fff2b2" strokeWidth={0.5}
+                  data-carrier-pin={index + 1} />;
+              })}
+            </>}
             <rect x={-W / 2 + 10} y={-H / 2 + 3} width={W - 20} height={H - 6} rx={3}
               fill="#252525" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.2} />
             <path d={`M -3 ${-H / 2 + 3} A 3 3 0 0 1 3 ${-H / 2 + 3}`}
@@ -3288,7 +3304,7 @@ export function BoardCanvas({
   mode, onModeChange, powered, onPowerToggle,
   statusText,
   placingProbe, onTerminalClickForProbe,
-  onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
+  onDuplicatePart, onRotatePart, onFlipPart, onSetCarrier, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
   circuit, engineBoard, videoFn, fitToken, sevenSegments, sevenSeg3,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onClearCircuit, onRewire, onImport,
@@ -3311,7 +3327,7 @@ export function BoardCanvas({
   // in place (same identity), so any memo keyed on identity would serve
   // stale seats after an edit. Building a 30-part string per render is
   // nothing; the memo below keys on its VALUE.
-  const seatStamp = parts.map(p => `${p.id}:${p.x},${p.y},${p.rotation || 0}:${p.flipped ? 'f' : ''}:${p.seat ? `${p.seat.boardId}|${Object.values(p.seat.leadMap || {}).join(',')}` : ''}:${p.kind === 'breadboard' ? (p.params?.size || 'full') : ''}`).join(';');
+  const seatStamp = parts.map(p => `${p.id}:${p.x},${p.y},${p.rotation || 0}:${p.flipped ? 'f' : ''}:${p.carrier || ''}:${p.seat ? `${p.seat.boardId}|${Object.values(p.seat.leadMap || {}).join(',')}` : ''}:${p.kind === 'breadboard' ? (p.params?.size || 'full') : ''}`).join(';');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   parts = React.useMemo(() => resolveSeatedParts(parts), [seatStamp]);
   // Footprints too: `footprint={bbFootprint(bb)}` minted a fresh object
@@ -3661,7 +3677,7 @@ export function BoardCanvas({
             // then seatSnapHole loose fallback — what you see is what the
             // drop does.
             if (pp.kind !== 'breadboard') {
-              const fp = BB_FOOTPRINTS[pp.kind];
+              const fp = breadboardFootprintForPart(pp, BB_FOOTPRINTS);
               const anchor = fp && terminalOffsetsForPart(pp)[fp.refTerminal];
               const sg = snapGhost({ kind: pp.kind, x: pp.x, y: pp.y, anchorDx: anchor?.dx || 0, anchorDy: anchor?.dy || 0 }, partsRef.current);
               let g = sg.snapped ? ghostWithLegs(sg) : null;
@@ -3694,7 +3710,7 @@ export function BoardCanvas({
         for (const id of selectedPartsRef.current) {
           const pp = partsRef.current.find(q => q.id === id);
           if (!pp) continue;
-          const fp = BB_FOOTPRINTS[pp.kind];
+          const fp = breadboardFootprintForPart(pp, BB_FOOTPRINTS);
           const anchor = fp && terminalOffsetsForPart(pp)[fp.refTerminal];
           const s = snapGhost({ kind: pp.kind, x: pp.x, y: pp.y, anchorDx: anchor?.dx || 0, anchorDy: anchor?.dy || 0 }, partsRef.current);
           if (s.snapped && api.onSeatPart && api.onSeatPart(id, s.boardId, s.hole)) {
@@ -4260,8 +4276,8 @@ export function BoardCanvas({
         // arrows alone could walk a chip across the lattice forever without
         // it ever snapping in (owner report, 2026-08-15). Seat first; from
         // then on the same keys nudge hole-by-hole.
-        if (!e.shiftKey && !part.seat && BB_FOOTPRINTS[part.kind] && onSeatPart) {
-          const fp = BB_FOOTPRINTS[part.kind];
+        const fp = breadboardFootprintForPart(part, BB_FOOTPRINTS);
+        if (!e.shiftKey && !part.seat && fp && onSeatPart) {
           const anchor = terminalOffsetsForPart(part)[fp.refTerminal];
           const ax = part.x + dx + (anchor?.dx || 0);
           const ay = part.y + dy + (anchor?.dy || 0);
@@ -4598,6 +4614,18 @@ export function BoardCanvas({
               style={{width: 30, height: 30, cursor: 'pointer'}}>↻</button>}
             {onDuplicatePart && <button onClick={() => onDuplicatePart(selectedPartId)} title="Duplicate (Ctrl+D)" aria-label="Duplicate selected part"
               style={{width: 30, height: 30, cursor: 'pointer'}}>⧉</button>}
+            {onSetCarrier && carrierOptionsForPart(selectedPartModel).length > 0 && (
+              <select data-carrier-select aria-label="Breadboard carrier"
+                value={selectedPartModel.carrier || ''}
+                onChange={(e) => onSetCarrier(selectedPartId, e.target.value || null)}
+                title="Mount on breadboard breakout"
+                style={{height: 30, maxWidth: 170, cursor: 'pointer'}}>
+                <option value="">Bare SMD package</option>
+                {carrierOptionsForPart(selectedPartModel).map(option => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </select>
+            )}
             <button onClick={() => { onRemovePart(selectedPartId); onSelectPart(null); }} title="Remove (Del)" aria-label="Remove selected part"
               style={{width: 30, height: 30, cursor: 'pointer', color: '#b91c1c'}}>✕</button>
           </div>

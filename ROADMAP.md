@@ -573,6 +573,38 @@ landed slice, rerun this same fixed report and
 record both structural deltas and the smaller subset that becomes numerically
 judgeable; the measurements, not this initial ordering, choose the next part.
 
+## X1.8 — SMD physical workflow and PCB usability
+
+**First slice implemented 2026-09-27.** Explicit SOIC-8→DIP-8,
+SOIC-14→DIP-14 and TSOT-5→0.1-inch carriers make the promoted physical SMD
+parts usable on breadboards without pretending their bare leads fit the hole
+lattice. Carrier selection, pin-preserving seating, persistence, rendering and
+BOM expansion share one contract; package-neutral source channels remain
+ineligible. Native SOIC-8/SOIC-14/TSOT-5 land patterns make the same bare parts
+placeable in the existing PCB projection.
+
+Remaining work, in order:
+
+1. Add a carrier-focused browser gesture that mounts, drags and seats each
+   family, then proves one header pin conducts through the destination strip.
+2. Add assembly drawings and printable pin legends; expose carrier vendor/
+   pitch metadata in BOM CSV without prescribing one manufacturer.
+3. Run each new land pattern through projection → exact DRC → KiCad and
+   EasyEDA export/re-import, plus the optional `kicad-cli pcb drc` oracle.
+4. Add paste/mask and assembly-side metadata needed for actually ordering a
+   small adapter or target PCB; Gerber copper/mask/silk/drill already exists.
+5. Add a fabrication preview/checklist: outline closed, zero danger DRC,
+   unrouted count zero, drill/slot summary, layer/stackup disclosure, export
+   provenance and explicit acknowledgement before download.
+6. Add an explicit “bind logical channel to physical package” operation only
+   when the user chooses an exact orderable part. Never infer that binding from
+   a five-terminal schematic symbol.
+
+Acceptance is an end-to-end saved circuit and generated board that reopen with
+identical terminal partition, carrier choice and package variant, pass native
+DRC and the independent KiCad oracle, and export a complete deterministic fab
+set. A pretty board image alone is not acceptance.
+
 Exact post-implementation replay at CUI `005815ec` confirms all 126 OP07
 instances across 79 rows mapped and all 126 received that blocker. Sixty-three
 rows have no other unmapped symbol, while zero are newly clean. Whole-document

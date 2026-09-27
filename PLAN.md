@@ -39,6 +39,23 @@ delegates to the proprietary `ADP151-x.x.sub`, and LT1006 delegates to
 `LT1006` in `LTC.lib`; all retain named
 source-model-substitution blockers instead of becoming false numerical passes.
 
+### Physical SMD use: PCB land patterns and breadboard carriers
+
+Bare SOIC and TSOT packages never snap into 0.1-inch breadboard holes. The
+physical part may instead carry an explicit persisted `carrier` assembly:
+SOIC-8→DIP-8, SOIC-14→DIP-14, or TSOT-5→a five-pin 0.1-inch breakout. The
+carrier preserves physical pin order one-to-one, contributes its own BOM row,
+renders as a PCB beneath the package, and supplies the breadboard footprint;
+removing it unseats the part. Package-neutral imported channels cannot acquire
+a carrier because their source does not establish a package.
+
+For fabricated boards the bare packages use native SMD land patterns. The PCB
+projection, renderer, DRC and KiCad/EasyEDA/Gerber exporters therefore handle
+the same promoted parts without introducing an adapter. Initial families are
+SOIC-8 (`lt1006`, `adtl082`, `adp7118`, `lt1763`), SOIC-14 (`op747`) and
+TSOT-5 (`adp151`). Follow-on usability work is the manufacturing loop in
+`ROADMAP.md` X1.8, not new solver physics.
+
 ## Architecture
 
 ```

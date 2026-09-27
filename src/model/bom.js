@@ -9,6 +9,7 @@
  */
 
 import { formatSi } from './si.js';
+import { CARRIERS, carrierForPart } from './carriers.js';
 
 /**
  * @typedef {object} BomLine
@@ -197,11 +198,25 @@ export function generateBom(parts) {
       groups.set(key, { kind: p.kind, params: { ...p.params }, sourcePackage, ids: [] });
     }
     groups.get(key).ids.push(p.id);
+    const carrier = carrierForPart(p);
+    if (carrier) {
+      const carrierKey = `carrier|${p.carrier}`;
+      if (!groups.has(carrierKey)) {
+        groups.set(carrierKey, {
+          kind: p.carrier,
+          label: CARRIERS[p.carrier].label,
+          params: {},
+          sourcePackage: null,
+          ids: [],
+        });
+      }
+      groups.get(carrierKey).ids.push(`${p.id}:carrier`);
+    }
   }
 
   return [...groups.values()].map(g => ({
     kind: g.kind,
-    label: `${KIND_LABELS[g.kind] || g.kind}${g.sourcePackage === 'unspecified'
+    label: g.label || `${KIND_LABELS[g.kind] || g.kind}${g.sourcePackage === 'unspecified'
       ? ' (package unspecified by source)' : ''}${describeParams(g.params) ? ' ' + describeParams(g.params) : ''}`,
     qty: g.ids.length,
     ids: g.ids,

@@ -59,6 +59,10 @@ export { SwitchPanel } from './components/SwitchPanel.jsx';
 // Panel data functions
 export { runDrc, setExtractors } from './model/drc.js';
 export { generateBom, bomToCsv } from './model/bom.js';
+export {
+  CARRIERS, carrierOptionsForPart, carrierForPart,
+  carrierFootprintForPart, breadboardFootprintForPart,
+} from './model/carriers.js';
 export { exportGerbers } from './model/exporters/gerber.js';
 export { toCircuitikz, escapeTex } from './model/exporters/circuitikz.js';
 

@@ -608,6 +608,16 @@ try {
     `LT1006 placement produced ${lt1006Faces} faces and ${lt1006Dots.length} distinct pins; `
       + `model parts ${JSON.stringify(lt1006Parts)}`);
 
+  const carrierSelect = page.locator('[data-carrier-select]');
+  await carrierSelect.selectOption('soic8-dip8');
+  await page.waitForTimeout(200);
+  const mounted1006 = await page.evaluate(() => window.__circuit?.parts
+    ?.find(part => part.kind === 'lt1006')?.carrier || null);
+  const mountedFace = await page.locator('[data-part-face="lt1006"][data-carrier="soic8-dip8"]').count();
+  verdict('lt1006-carrier', mounted1006 === 'soic8-dip8' && mountedFace === 1,
+    'LT1006 explicitly mounts onto a persisted SOIC-8 to DIP-8 carrier',
+    `carrier model=${mounted1006}, mounted faces=${mountedFace}`);
+
   const before1007 = new Set(await freeTerminalDots());
   await placeByLabel('LT1007', cs.x + cs.width * 0.80, cs.y + cs.height * 0.36);
   const lt1007Dots = [...new Set((await freeTerminalDots()).filter(d => !before1007.has(d)))];

@@ -76,6 +76,7 @@ import { FramebufferFace } from './FramebufferFace.jsx';
 import { StimulusControls } from './StimulusControls.jsx';
 import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
+import { breadboardFootprintForPart } from '../model/carriers.js';
 import { buildSeatedFromDeclarations } from '../model/infer-seated.js';
 import { runDrc } from '../model/drc.js';
 import { migrateStarterAutosave } from '../model/starter-migration.js';
@@ -96,7 +97,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const projectData = project || stc;
   const {
     parts, wires, powered, rev,
-    addPart, removePart, nudgeSeated, movePart, duplicatePart, rotatePart, flipPart, updateParams, setPcbOverrides,
+    addPart, removePart, nudgeSeated, movePart, duplicatePart, rotatePart, flipPart, updateParams, setCarrier, setPcbOverrides,
     addWire, removeWire, addHoleWire, addTapWire, updateWire,
     setControl, setPartParam, setPin, advanceTo, advanceBy, setPower,
     loadInferred, undo, redo, canUndo, canRedo, saveHistory,
@@ -813,6 +814,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       const p = addPart(src.kind, { ...src.params }, snapToGrid(src.x + OFFSET), snapToGrid(src.y + OFFSET), declName);
       if (p) {
         if (src.rotation) p.rotation = src.rotation;
+        if (src.carrier) setCarrier(p.id, src.carrier);
         idMap.set(src.id, p.id);
         newIds.push(p.id);
       }
@@ -832,7 +834,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
 
     // Select the pasted parts
     setSelectedParts(new Set(newIds));
-  }, [parts, addPart, addWire, setSelectedParts]);
+  }, [parts, addPart, addWire, setCarrier, setSelectedParts]);
 
   // Node voltages and warnings from getRenderState (if available)
   const nodeVoltages = {};
@@ -1473,6 +1475,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           onDuplicatePart={(id) => { const dup = duplicatePart(id); if (dup) handleSelectPart(dup.id); }}
           onRotatePart={rotatePart}
           onFlipPart={flipPart}
+          onSetCarrier={setCarrier}
           onDropPart={(kind, params, x, y, seat) => {
             const declarable = ['led', 'buzzer', 'button', 'potentiometer'];
             const existingNames = parts.filter(p => p.declName).map(p => p.declName);
@@ -1490,8 +1493,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           }}
           onSeatPart={(partId, boardId, hole) => {
             const part = parts.find(pp => pp.id === partId);
-            if (!part || !BB_FOOTPRINTS[part.kind]) return false;
-            const fp = BB_FOOTPRINTS[part.kind];
+            const fp = breadboardFootprintForPart(part, BB_FOOTPRINTS);
+            if (!part || !fp) return false;
             const tryAt = (h) => {
               try { return circuit.seatPart(partId, boardId, computeLeadMap(fp, h)); }
               catch { return false; }

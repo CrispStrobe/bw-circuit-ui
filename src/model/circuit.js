@@ -20,6 +20,7 @@ import { computeLeadMap, rotateFootprint, FOOTPRINTS as BB_FOOTPRINTS_FOR_ROTATE
 import { getSidecar } from './parts-registry.js';
 import { applyMeterLoads } from './meter-load.js';
 import { withImportedSingletonNets } from './import-singleton-nets.js';
+import { breadboardFootprintForPart, carrierForPart } from './carriers.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -558,11 +559,31 @@ export class Circuit {
     if (seated && seated.seat) {
       // On a board, rotation means re-seating the rotated leadMap — the
       // lattice decides, not free angles.
-      return this.rotateSeated(partId, BB_FOOTPRINTS_FOR_ROTATE[seated.kind]);
+      return this.rotateSeated(partId, breadboardFootprintForPart(seated, BB_FOOTPRINTS_FOR_ROTATE));
     }
     const part = this.getPart(partId);
     if (!part) return false;
     part.rotation = ((part.rotation || 0) + 90) % 360;
+    this._saveHistory();
+    return true;
+  }
+
+  /** Mount or remove an explicit SMD breakout carrier. */
+  setCarrier(partId, carrier = null) {
+    const part = this.getPart(partId);
+    if (!part) return false;
+    if (carrier == null || carrier === '') {
+      this.unseatPart(partId);
+      delete part.carrier;
+      this._syncNetlist();
+      this._saveHistory();
+      return true;
+    }
+    const candidate = { ...part, carrier };
+    if (!carrierForPart(candidate)) return false;
+    this.unseatPart(partId);
+    part.carrier = carrier;
+    this._syncNetlist();
     this._saveHistory();
     return true;
   }
@@ -603,6 +624,10 @@ export class Circuit {
     const dup = this.addPart(src.kind, { ...src.params }, src.x + offsetX, src.y + offsetY, declName);
     if (dup && src.rotation) dup.rotation = src.rotation;
     if (dup && src.flipped) dup.flipped = src.flipped;
+    if (dup && src.carrier) {
+      dup.carrier = src.carrier;
+      this._saveHistory();
+    }
     return dup;
   }
 
@@ -1270,6 +1295,7 @@ export class Circuit {
       if (p.kind === 'breadboard') c.breadboards.set(p.id, new BreadboardModel(p.params));
     }
     for (const p of c.parts) {
+      if (p.carrier && !carrierForPart(p)) delete p.carrier;
       if (!p.seat) continue;
       const bb = c.breadboards.get(p.seat.boardId);
       if (!bb) { delete p.seat; continue; }
@@ -1291,7 +1317,16 @@ export class Circuit {
       // headers so the pin rects are skipped; seated legs go into holes so
       // the lead stubs are skipped), leaving wire ends floating over the
       // artwork with nothing joining them — the owner's screenshot.
-      if (!BB_FOOTPRINTS_FOR_ROTATE[p.kind]) { delete p.seat; continue; }
+      const storedFootprint = breadboardFootprintForPart(p, BB_FOOTPRINTS_FOR_ROTATE);
+      if (!storedFootprint) { delete p.seat; continue; }
+      if (p.carrier) {
+        const expected = Object.keys(storedFootprint.leads).sort();
+        const stored = Object.keys(p.seat.leadMap || {}).sort();
+        if (expected.length !== stored.length || expected.some((name, i) => name !== stored[i])) {
+          delete p.seat;
+          continue;
+        }
+      }
       // A leadMap key is a TERMINAL NAME, so a rename is a data migration
       // here exactly as it is for a wire endpoint above — and this path was
       // missing it. When attiny88's pin 22 went from `pa0` to `gnd2` (the
