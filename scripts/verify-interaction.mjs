@@ -521,17 +521,17 @@ const selectionCount = async () =>
 //      at. That was the state of vcvs and vccs for as long as the SPICE E and
 //      G cards have imported. It takes a browser and a count of what is on
 //      the screen to see it.
-const placeByLabel = async (label, x, y) => {
+const placeByLabel = async (label, x, y, targetPage = page) => {
   // The tooltip and generated chip art may repeat the part name. Target the
   // palette's actual accessible button, otherwise a text-only descendant can
   // be clicked without arming placement (LT1001 was the first exact repeat).
-  const el = page.getByRole('button', { name: label, exact: true }).first();
+  const el = targetPage.getByRole('button', { name: label, exact: true }).first();
   try { await el.scrollIntoViewIfNeeded({ timeout: 10000 }); } catch { /* the click scrolls too */ }
   await el.click({ timeout: 20000 });
-  await page.waitForTimeout(200);
-  await page.mouse.move(x, y, { steps: 4 });
-  await page.mouse.click(x, y);
-  await page.waitForTimeout(400);
+  await targetPage.waitForTimeout(200);
+  await targetPage.mouse.move(x, y, { steps: 4 });
+  await targetPage.mouse.click(x, y);
+  await targetPage.waitForTimeout(400);
 };
 
 try {
@@ -685,8 +685,6 @@ try {
     'OP747 places as one physical SOIC-14 quad with fourteen separately wireable pins',
     `OP747 placement produced ${op747Faces} faces and ${op747Dots.length} distinct pins; `
       + `model parts ${JSON.stringify(op747Parts)}`);
-  await carrierSelect.selectOption('soic14-dip14');
-  await page.waitForTimeout(200);
 
   const beforeOp07 = new Set(await freeTerminalDots());
   await placeByLabel('OP07', cs.x + cs.width * 0.56, cs.y + cs.height * 0.20);
@@ -711,8 +709,6 @@ try {
   verdict('adp151-place', adp151Faces >= 1 && adp151Dots.length === 5,
     'ADP151 places as a physical TSOT-5 face with five separately wireable leads',
     `ADP151 placement produced ${adp151Faces} faces and ${adp151Dots.length} distinct pins`);
-  await carrierSelect.selectOption('tsot5-header5');
-  await page.waitForTimeout(200);
 
   const beforeAdp = new Set(await freeTerminalDots());
   await placeByLabel('ADP7118', cs.x + cs.width * 0.78, cs.y + cs.height * 0.62);
@@ -762,21 +758,49 @@ try {
 //      header pin did not merely look seated.
 {
   const families = [
-    { kind: 'lt1006', carrier: 'soic8-dip8', scenario: 'carrier-soic8-seat', targetHole: 'e10' },
-    { kind: 'op747', carrier: 'soic14-dip14', scenario: 'carrier-soic14-seat', targetHole: 'e25' },
-    { kind: 'adp151', carrier: 'tsot5-header5', scenario: 'carrier-tsot5-seat', targetHole: 'c40' },
+    { label: 'LT1006', kind: 'lt1006', carrier: 'soic8-dip8', scenario: 'carrier-soic8-seat', targetHole: 'e10', xFrac: 0.22 },
+    { label: 'OP747', kind: 'op747', carrier: 'soic14-dip14', scenario: 'carrier-soic14-seat', targetHole: 'e25', xFrac: 0.50 },
+    { label: 'ADP151', kind: 'adp151', carrier: 'tsot5-header5', scenario: 'carrier-tsot5-seat', targetHole: 'c40', xFrac: 0.78 },
   ];
   const conduction = [];
+  const carrierPage = await browser.newPage({ viewport: { width: 1400, height: 800 } });
+  carrierPage.on('pageerror', e => errors.push(`carrier page: ${String(e)}`));
+  let setupError = null;
+  try {
+    await carrierPage.goto(`http://localhost:${PORT}`, { waitUntil: 'domcontentloaded', timeout: NAV_MS });
+    await carrierPage.waitForFunction(() => window.__circuit && window.__setCircuitData,
+      { timeout: 60000 });
+    await carrierPage.evaluate(() => window.__setCircuitData({ version: 1, parts: [], wires: [] }));
+    await carrierPage.waitForFunction(() => window.__circuit?.parts?.length === 0,
+      { timeout: 20000 });
+    const canvas = await carrierPage.locator('[data-canvas]').boundingBox();
+    if (!canvas) throw new Error('isolated carrier page has no canvas');
+    await placeByLabel('Breadboard', canvas.x + canvas.width / 2,
+      canvas.y + canvas.height / 2, carrierPage);
+    for (const family of families) {
+      await placeByLabel(family.label, canvas.x + canvas.width * family.xFrac,
+        canvas.y + canvas.height * 0.10, carrierPage);
+      const select = carrierPage.locator('[data-carrier-select]');
+      await select.waitFor({ state: 'attached', timeout: 10000 });
+      await select.selectOption(family.carrier);
+      await carrierPage.waitForTimeout(100);
+    }
+  } catch (error) {
+    setupError = `isolated carrier scene failed: ${String(error).split('\n')[0]}`;
+  }
   for (const family of families) {
     let result = { ok: false, detail: 'scenario did not run' };
     try {
-      const mountedFace = page.locator(
+      if (setupError) throw new Error(setupError);
+      const mountedFace = carrierPage.locator(
         `[data-part-face="${family.kind}"][data-carrier="${family.carrier}"]`).last();
+      await mountedFace.click({ timeout: 20000 });
+      await carrierPage.waitForTimeout(100);
       const from = await mountedFace.boundingBox();
       if (!from) throw new Error(`mounted ${family.kind} face has no screen box`);
       const pinOne = await mountedFace.locator('[data-carrier-pin="1"]').boundingBox();
       if (!pinOne) throw new Error(`mounted ${family.kind} exposes no carrier pin 1`);
-      const target = await page.locator(`[data-hole="${family.targetHole}"]`).first().boundingBox();
+      const target = await carrierPage.locator(`[data-hole="${family.targetHole}"]`).first().boundingBox();
       if (!target) throw new Error(`target hole ${family.targetHole} has no screen position`);
       // The gesture starts on the package body, but its delta is chosen from
       // the visible pin-1 pad to the visible destination hole. This mirrors
@@ -786,13 +810,13 @@ try {
         x: from.x + from.width / 2 + target.x + target.width / 2 - pinOne.x - pinOne.width / 2,
         y: from.y + from.height / 2 + target.y + target.height / 2 - pinOne.y - pinOne.height / 2,
       };
-      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-      await page.mouse.down();
-      await page.mouse.move(to.x, to.y, { steps: 8 });
-      await page.mouse.up();
-      await page.waitForTimeout(250);
+      await carrierPage.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+      await carrierPage.mouse.down();
+      await carrierPage.mouse.move(to.x, to.y, { steps: 8 });
+      await carrierPage.mouse.up();
+      await carrierPage.waitForTimeout(250);
 
-      const seated = await page.evaluate(({ kind, carrier }) => {
+      const seated = await carrierPage.evaluate(({ kind, carrier }) => {
         const c = window.__circuit;
         const part = c?.parts?.find(q => q.kind === kind && q.carrier === carrier);
         if (!c || !part?.seat?.leadMap) return { err: `${kind} did not seat` };
@@ -822,11 +846,12 @@ try {
           + `${seated.terminal} at ${seated.headerHole}`,
       };
 
-      const tap = page.locator(`[data-hole="${seated.tapHole}"]`).first();
+      const tap = carrierPage.locator(`[data-hole="${seated.tapHole}"]`).first();
       const tapBox = await tap.boundingBox();
       if (!tapBox) throw new Error(`peer hole ${seated.tapHole} has no screen position`);
-      await placeByLabel('+5V post', tapBox.x + tapBox.width / 2, tapBox.y + tapBox.height / 2);
-      const shared = await page.evaluate(({ partId, terminal, boardId, tapHole }) => {
+      await placeByLabel('+5V post', tapBox.x + tapBox.width / 2,
+        tapBox.y + tapBox.height / 2, carrierPage);
+      const shared = await carrierPage.evaluate(({ partId, terminal, boardId, tapHole }) => {
         const c = window.__circuit;
         const supply = c?.parts?.filter(q => q.kind === 'vcc'
           && q.seat?.boardId === boardId && q.seat?.leadMap?.vcc === tapHole).at(-1);
@@ -850,6 +875,7 @@ try {
   verdict('carrier-strip-conduction', failed.length === 0,
     conduction.map(item => `${item.kind}: ${item.detail}`).join('; '),
     failed.map(item => `${item.kind}: ${item.detail}`).join('; '));
+  await carrierPage.close();
 }
 
 // 3c. A part placed ON the breadboard SEATS: model ground truth (the part
