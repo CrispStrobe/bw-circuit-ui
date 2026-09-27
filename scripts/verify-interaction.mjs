@@ -519,7 +519,10 @@ try {
         return `${Math.round(r.x + r.width / 2)},${Math.round(r.y + r.height / 2)}`; }));
 
   const placeByLabel = async (label, x, y) => {
-    const el = page.getByText(label, { exact: false }).first();
+    // The tooltip and generated chip art may repeat the part name. Target the
+    // palette's actual accessible button, otherwise a text-only descendant can
+    // be clicked without arming placement (LT1001 was the first exact repeat).
+    const el = page.getByRole('button', { name: label, exact: true }).first();
     try { await el.scrollIntoViewIfNeeded({ timeout: 10000 }); } catch { /* the click scrolls too */ }
     await el.click({ timeout: 20000 });
     await page.waitForTimeout(200);
@@ -559,12 +562,19 @@ try {
     `LM741 placement produced ${lm741Faces} faces and ${lm741Dots.length} distinct pins`);
 
   const before1001 = new Set(await freeTerminalDots());
-  await placeByLabel('LT1001', cs.x + cs.width * 0.67, cs.y + cs.height * 0.76);
+  // Keep the PDIP clear of the demo breadboard. A click over occupied holes is
+  // correctly refused by the seating gate, which would test occupancy rather
+  // than the LT1001 face.
+  await placeByLabel('LT1001', cs.x + cs.width * 0.72, cs.y + cs.height * 0.20);
   const lt1001Dots = [...new Set((await freeTerminalDots()).filter(d => !before1001.has(d)))];
   const lt1001Faces = await page.locator('[data-part-face="lt1001"][data-dip-body="lt1001"]').count();
+  const lt1001Parts = await page.evaluate(() => window.__circuit?.parts
+    ?.filter(part => part.kind === 'lt1001')
+    .map(part => ({ id: part.id, x: part.x, y: part.y, terminals: part.terminals?.length })) || []);
   verdict('lt1001-place', lt1001Faces >= 1 && lt1001Dots.length === 8,
     'LT1001 places as a physical DIP-8 face with eight separately wireable pins',
-    `LT1001 placement produced ${lt1001Faces} faces and ${lt1001Dots.length} distinct pins`);
+    `LT1001 placement produced ${lt1001Faces} faces and ${lt1001Dots.length} distinct pins; `
+      + `model parts ${JSON.stringify(lt1001Parts)}`);
 
   const beforeAdp = new Set(await freeTerminalDots());
   await placeByLabel('ADP7118', cs.x + cs.width * 0.78, cs.y + cs.height * 0.62);
