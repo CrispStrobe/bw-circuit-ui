@@ -609,9 +609,14 @@ Remaining work, in order:
    assembly-position CSV alongside copper, mask, silk, outline and drill;
    KiCad receives the same mask/paste margins and SMT classification. THT pads
    are proved paste-free, and missing SMD policy fails the registry gate.
-5. Add a fabrication preview/checklist: outline closed, zero danger DRC,
-   unrouted count zero, drill/slot summary, layer/stackup disclosure, export
-   provenance and explicit acknowledgement before download.
+5. **Implemented 2026-09-27.** Every Board-view export now opens a
+   deterministic fabrication preflight before it can download. The shared
+   report blocks open outlines, any danger DRC and projected or imported
+   unfinished nets; discloses round drills, slots, plated/unplated totals,
+   copper-layer stack and generator/source/export provenance; and keeps the
+   download disabled until the exact ready board is explicitly acknowledged.
+   The real browser proves the button is disabled before acknowledgement and
+   then downloads and parses the shipping EasyEDA board file.
 6. Add an explicit “bind logical channel to physical package” operation only
    when the user chooses an exact orderable part. Never infer that binding from
    a five-terminal schematic symbol.

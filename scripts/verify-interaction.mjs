@@ -120,6 +120,7 @@ const EXPECTED = [
   'carrier-tsot5-seat',
   'carrier-strip-conduction',
   'carrier-assembly-download',
+  'fabrication-preflight-download',
   'seat-part',
   'jumper-holes',
   'wheel-pan',
@@ -909,6 +910,47 @@ try {
       `carrier legend receipt incomplete: text="${text.slice(0, 160)}" file="${download.suggestedFilename()}" bytes=${svg.length}`);
   } catch (error) {
     fail('carrier-assembly-download', `${assemblyStage}: ${String(error).replace(/\n/g, ' | ').slice(0, 1200)}`);
+  }
+  let fabricationStage = 'close BOM';
+  try {
+    await carrierPage.locator('[data-board-bom]').click({ timeout: 10000 });
+    fabricationStage = 'open export menu';
+    await carrierPage.locator('[data-board-export]').click({ timeout: 10000 });
+    fabricationStage = 'select EasyEDA board';
+    await carrierPage.locator('[data-board-export-format="easyeda-pcb"]').click({ timeout: 10000 });
+    const preview = carrierPage.locator('[data-fabrication-preflight]');
+    await preview.waitFor({ state: 'visible', timeout: 10000 });
+    const downloadButton = preview.locator('[data-fabrication-download]');
+    const disabledBefore = await downloadButton.isDisabled();
+    const checks = await preview.locator('[data-fabrication-check]').evaluateAll(nodes =>
+      nodes.map(node => [node.getAttribute('data-fabrication-check'), node.getAttribute('data-check-ok')]));
+    const disclosure = (await preview.innerText()).replace(/\s+/g, ' ').trim();
+    fabricationStage = 'acknowledge exact board';
+    await preview.locator('[data-fabrication-acknowledge]').check();
+    const enabledAfter = await downloadButton.isEnabled();
+    fabricationStage = 'download acknowledged board';
+    let filename = ''; let exported = '';
+    if (enabledAfter) {
+      const [download] = await Promise.all([
+        carrierPage.waitForEvent('download', { timeout: 20000 }),
+        downloadButton.click({ timeout: 20000 }),
+      ]);
+      filename = download.suggestedFilename();
+      const path = await download.path();
+      exported = path ? await readFile(path, 'utf8') : '';
+    }
+    const ok = disabledBefore && enabledAfter
+      && checks.every(([, value]) => value === 'true')
+      && /Drills: \d+ round, \d+ slot\(s\)/.test(disclosure)
+      && /Stackup: 2 copper layer\(s\) \(top, bottom\)/.test(disclosure)
+      && /bw-circuit-ui\/fabrication-preflight-v1/.test(disclosure)
+      && filename === 'board.easyeda.json'
+      && JSON.parse(exported).docType === '3';
+    verdict('fabrication-preflight-download', ok,
+      'Board export stayed disabled until acknowledgement, disclosed readiness, then downloaded the real EasyEDA board',
+      `preflight receipt incomplete: disabled=${disabledBefore} enabled=${enabledAfter} checks=${JSON.stringify(checks)} file=${filename} disclosure="${disclosure.slice(0, 300)}"`);
+  } catch (error) {
+    fail('fabrication-preflight-download', `${fabricationStage}: ${String(error).replace(/\n/g, ' | ').slice(0, 1200)}`);
   }
   await carrierPage.close();
 }

@@ -20,6 +20,7 @@ import { renderBoardSvg } from '../model/board-svg.js';
 import { runPcbDrc } from '../model/pcb-drc.js';
 import { listVariants } from '../model/land-patterns.js';
 import { BOARD_EXPORTS, runExport } from '../model/exporters/registry.js';
+import { fabricationPreflight } from '../model/fabrication-preflight.js';
 import TransferReport from './TransferReport.jsx';
 import { BomPanel } from './BomPanel.jsx';
 
@@ -44,6 +45,8 @@ export default function BoardPanel({
   const [showBom, setShowBom] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [report, setReport] = useState(null);
+  const [pendingExport, setPendingExport] = useState(null);
+  const [fabricationAcknowledgement, setFabricationAcknowledgement] = useState(null);
   const [selected, setSelected] = useState(null);
   const [localOverrides, setLocalOverrides] = useState(null);
   const containerRef = useRef(null);
@@ -65,6 +68,11 @@ export default function BoardPanel({
 
   const svg = useMemo(() => renderBoardSvg(projected.board), [projected]);
   const findings = useMemo(() => runPcbDrc(projected.board), [projected]);
+  const preflight = useMemo(() => fabricationPreflight(projected.board, {
+    findings, unrouted: projected.unrouted, exportId: pendingExport?.id || null,
+  }), [projected, findings, pendingExport]);
+  const fabricationAcknowledged = fabricationAcknowledgement?.board === projected.board
+    && fabricationAcknowledgement?.exportId === pendingExport?.id;
 
   const editable = !board; // an imported board has no projection to steer
 
@@ -166,6 +174,12 @@ export default function BoardPanel({
     }
   }, [projected]);
 
+  const previewExport = useCallback((entry) => {
+    setExportOpen(false);
+    setFabricationAcknowledgement(null);
+    setPendingExport(entry);
+  }, []);
+
   const toggle = (key) => setHidden((prev) => {
     const next = new Set(prev);
     if (next.has(key)) next.delete(key); else next.add(key);
@@ -234,7 +248,7 @@ export default function BoardPanel({
             <div data-board-export-menu style={{ position: 'absolute', top: '100%', right: 0, zIndex: 70, marginTop: 4, minWidth: 210, background: '#0f172a', border: '1px solid #475569', borderRadius: 5, padding: 3, boxShadow: '0 4px 14px rgba(0,0,0,.45)' }}>
               {BOARD_EXPORTS.map((entry) => (
                 <button key={entry.id} data-board-export-format={entry.id}
-                  onClick={() => doExport(entry)}
+                  onClick={() => previewExport(entry)}
                   style={{ display: 'block', width: '100%', textAlign: 'left', padding: '5px 8px', background: 'none', border: 0, color: '#cbd5e1', fontFamily: 'monospace', fontSize: 11, cursor: 'pointer' }}>
                   {/^de/i.test(lang) ? entry.labelDe : entry.label}
                 </button>
@@ -246,6 +260,42 @@ export default function BoardPanel({
       <div style={{ position: 'relative' }}>
         <TransferReport report={report} lang={lang} onClose={() => setReport(null)} />
       </div>
+      {pendingExport && (
+        <div data-fabrication-preflight role="dialog" aria-label="Fabrication preflight"
+          style={{ background: '#0f172a', border: `1px solid ${preflight.ready ? '#2ecc71' : '#e74c3c'}`, borderRadius: 6, padding: 8, color: '#cbd5e1', fontFamily: 'monospace', fontSize: 10 }}>
+          <strong>Fabrication preflight · {pendingExport.label}</strong>
+          <div data-fabrication-checks>
+            {preflight.checks.map((check) => (
+              <div key={check.id} data-fabrication-check={check.id} data-check-ok={check.ok ? 'true' : 'false'}>
+                {check.ok ? '✓' : '✗'} {check.label}: {check.detail}
+              </div>
+            ))}
+          </div>
+          <div data-fabrication-drills>
+            Drills: {preflight.drills.roundCount} round, {preflight.drills.slotCount} slot(s), {preflight.drills.platedCount} plated, {preflight.drills.unplatedCount} unplated
+          </div>
+          <div data-fabrication-stackup>
+            Stackup: {preflight.stackup.copperLayerCount} copper layer(s) ({preflight.stackup.layerNames.join(', ')})
+          </div>
+          <div data-fabrication-provenance>
+            Provenance: {preflight.provenance.generator}/{preflight.provenance.contract} · source {preflight.provenance.boardFormat} · export {preflight.provenance.exportId}
+          </div>
+          <label style={{ display: 'flex', gap: 5, marginTop: 6, alignItems: 'flex-start' }}>
+            <input data-fabrication-acknowledge type="checkbox" checked={fabricationAcknowledged}
+              onChange={(event) => setFabricationAcknowledgement(event.target.checked
+                ? { board: projected.board, exportId: pendingExport.id }
+                : null)} />
+            I reviewed this exact board's DRC, routing, drill and layer summary.
+          </label>
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <button data-fabrication-cancel onClick={() => setPendingExport(null)}>Cancel</button>
+            <button data-fabrication-download disabled={!preflight.ready || !fabricationAcknowledged}
+              onClick={() => { const entry = pendingExport; setPendingExport(null); doExport(entry); }}>
+              Download {pendingExport.label}
+            </button>
+          </div>
+        </div>
+      )}
       {showBom && (
         <div data-board-bom-panel style={{ maxHeight: 240, overflow: 'auto' }}>
           <BomPanel parts={circuit ? circuit.parts : parts} />
