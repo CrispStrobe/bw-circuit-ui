@@ -13,6 +13,12 @@ No fabricated numbers, no placeholders that survive past the commit they appear 
 silent menu no-op), new interchange formats (X1), and instrument post-processing in
 workers (X2). Engine prerequisites are cross-referenced to `../bw-board/ROADMAP.md`.
 
+The current real-parts campaign is `ROADMAP.md` X1.7. It ranks candidates from
+all 8,280 fixed LTspice rows and requires each promoted name to arrive as one
+engine + physical face + exact importer + package-honest UI slice. OP07 is first;
+OP27 and ADP151 follow by measured reach. Generic op-amp/switch/behavioral-source
+symbols stay a separate abstraction lane and never receive fake purchasable faces.
+
 ## Architecture
 
 ```

@@ -523,3 +523,39 @@ interactive; results identical to the synchronous path on fixtures.
 Cross-repo: engine items in `../bw-board/ROADMAP.md`; brickwright-lite re-vendors
 via `sync:circuitui` after each landing and carries the attribution/disclaimer
 items listed in its own ROADMAP §3.5.
+
+## X1.7 — Real-part promotion from the fixed LTspice corpus
+
+The selection unit is a complete vertical slice, not a spelling alias: a named,
+orderable component needs a manufacturer-backed `bw-board` behaviour card, a
+package-specific `bw-parts` face, exact importer provenance, package-honest
+rendering/BOM treatment, and focused circuit consequences. An ASC symbol that
+does not identify a package remains `sourcePackage: 'unspecified'`; it must not
+borrow the palette's DIP/SOIC face. Mapping reach is not a numerical-oracle pass.
+
+Fixed measurement: `hf-si7li-ltspice-no-aug` revision
+`557298bf21f0668eaad97f84b9f6d55bad7f821e`, 8,280 rows and 110,388 raw symbol
+instances. `target-only` means no other unmapped symbol remains; `clean after`
+also requires no independent projection loss. This ranks real parts across the
+whole source rather than choosing from one small residual subset.
+
+| priority | real part | instances / rows | target-only | clean after | decision |
+|---|---:|---:|---:|---:|---|
+| P1 | OP07 | 126 / 79 | 63 | 27 | Build first: highest real-part reach and OP/AC/DC/transient diversity. |
+| P2 | OP27 | 48 / 25 | 19 | 6 | Next single precision/high-speed op-amp after a separate data-sheet card audit. |
+| P3 | ADP151 family | 12 / 12 | 11 | 11 | Lower frequency but unusually high immediate clean yield; fixed-output/package spellings must be audited exactly. |
+| P4 | LT1006 | 45 / 28 | 20 | 4 | Worth a full slice after its supply/output and package variants are separated. |
+| P5 | LT1014 | 32 / 14 | 12 | 5 | Quad package; requires shared-rail/four-channel behaviour and face, not a single-op-amp alias. |
+| later | OP747, ADTL082, ADA4522-1, AD8541, AD711, AD8602, LT1678, LT1007 | 15–24 each | — | 1–4 each | Re-rank after P1–P5 because family infrastructure and residual losses will have changed. |
+
+The larger residuals `opamp2` (443 instances), `universalopamp2` (320), generic
+`opamp` (292), `bv` (902), and `sw` (761) are simulation abstractions, not
+orderable parts. They deserve separate behavioral-import lanes and schematic
+symbols, but no purchasable face or BOM identity. Exact-name real-part work must
+not be used to smuggle those abstractions in as fake packages.
+
+OP07 is the active first slice. The already-real LT1001, ADP7118 and LT1763
+bridge precedes it and deliberately refuses LT1001S8 and contradictory/unknown
+fixed-output names. After every landed slice, rerun this same fixed report and
+record both structural deltas and the smaller subset that becomes numerically
+judgeable; the measurements, not this initial ordering, choose the next part.
