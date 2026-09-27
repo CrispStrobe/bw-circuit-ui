@@ -25,7 +25,7 @@ import { mapEasyEdaPart } from '../src/importers/easyeda.js';
 import { mapKicadSymbol } from '../src/importers/kicad-common.js';
 
 test('binding choices are exact order codes already accepted by both physical importers', () => {
-  assert.equal(REVIEWED_PHYSICAL_PACKAGE_BINDINGS.length, 10);
+  assert.equal(REVIEWED_PHYSICAL_PACKAGE_BINDINGS.length, 8);
   for (const binding of REVIEWED_PHYSICAL_PACKAGE_BINDINGS) {
     const easy = mapEasyEdaPart({
       descriptor: binding.orderCode, value: binding.orderCode, spicePre: 'U',
@@ -123,7 +123,7 @@ test('a bound exact part generates a complete board that survives export and re-
 });
 
 test('multi-channel logical symbols and already-physical palette parts fail closed', () => {
-  for (const kind of ['lt1014_channel', 'adtl082_channel', 'op747_channel']) {
+  for (const kind of ['lt1014_channel', 'adtl082_channel', 'lt1678_channel', 'op747_channel']) {
     assert.deepEqual(physicalPackageBindingsForPart({ kind, params: {}, sourcePackage: 'unspecified' }), [], kind);
   }
   assert.deepEqual(physicalPackageBindingsForPart({ kind: 'op27', params: {} }), []);

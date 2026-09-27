@@ -77,17 +77,16 @@ test('the official LTspice symbol remains one logical channel with its exact mod
   assert.equal(part.verifiedBuiltinSymbolSha256, symbolSha);
   assert.equal(part.sourceModelFile, 'LTC2.lib');
   assert.equal(part.sourceSubcircuit, 'LT1678');
-  assert.equal(result.sourceDocument.instances[0].pins.length, 5);
+  assert.deepEqual(result.sourceDocument.instances[0].pins.map(pin => [pin.spiceOrder, pin.pinName, pin.x, pin.y]), [
+    [1, 'inp', -32, 16], [2, 'inn', -32, -16], [3, 'out', 32, 0],
+    [4, 'vpos', 0, -32], [5, 'vneg', 0, 32],
+  ]);
   const restored = Circuit.fromJSON({ parts: result.parts, wires: result.wires });
   assert.equal(restored.analysisBlockers.length, 1);
   assert.throws(() => restored.operatingPoint(), /blocked by 1 persisted import finding/);
-  assert.deepEqual(physicalPackageBindingsForPart(part).map(binding => binding.orderCode),
-    ['LT1678CS8#PBF', 'LT1678IS8#PBF']);
-  assert.equal(restored.bindPhysicalPackage(part.id, 'lt1678-cs8-pbf'), true);
-  assert.equal(restored.parts[0].kind, 'lt1678');
-  assert.equal(restored.parts[0].physicalBinding.orderCode, 'LT1678CS8#PBF');
-  assert.deepEqual(restored.parts[0].terminals, physicalTerminals);
-  assert.equal(restored.setCarrier(part.id, 'soic8-dip8'), true);
+  assert.deepEqual(physicalPackageBindingsForPart(part), [],
+    'a single source channel cannot choose channel 1 or 2 of an entire dual package');
+  assert.equal(restored.bindPhysicalPackage(part.id, 'lt1678-cs8-pbf'), false);
 });
 
 test('the exact pinned engine keeps both shared-rail channels independent', () => {
