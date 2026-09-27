@@ -45,6 +45,12 @@ R-8 face only through an explicit `ADA4522-1ARZ` selection; RM-8 stays distinct.
 Every later choice is re-ranked after the preceding exact
 fixed-corpus replay. Generic op-amp/switch/behavioral-source
 symbols stay a separate abstraction lane and never receive fake purchasable faces.
+The first such abstraction is now bounded: official LTspice UniversalOpamp2 Level 2
+maps its deterministic parameters to a package-neutral native model, while nonzero
+noise and unresolved/unknown attributes refuse by name. The next instrument work is
+ROADMAP X2.7: probe loading, analogue front end, honest ADC/acquisition, then a
+bounded high-speed triggered burst so fast op-amp edges become visible without
+taxing every simulation.
 The official OP07 symbol actually netlists LT1001, the official OP27 symbol
 delegates to `OP27` in `ADI.lib`, every accepted ADP151 fixed-output symbol
 delegates to the proprietary `ADP151-x.x.sub`, and LT1006 delegates to

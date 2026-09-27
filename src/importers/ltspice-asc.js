@@ -114,6 +114,29 @@ function addVerifiedDevice(keys, spec) {
   for (const key of keys) VERIFIED_DEVICE_SYMBOLS.set(key, spec);
 }
 
+const universalOpamp2Pins = [[-32, 16], [-32, -16], [0, -32], [0, 32], [32, 0]];
+addVerifiedDevice(['universalopamp2', 'opamps/universalopamp2'], {
+  kind: 'ltspice_universal_opamp2',
+  terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'],
+  pins: universalOpamp2Pins,
+  prefix: 'X',
+  parameterizedDevice: 'universal-opamp2-level2',
+  consumedAttributes: Object.freeze([
+    'value', 'value2', 'spiceline', 'spiceline2', 'spicemodel', 'modelfile',
+  ]),
+  defaultAttrs: Object.freeze({
+    prefix: 'X',
+    spicemodel: 'level2',
+    value2: 'Avol=1Meg GBW=10Meg Slew=10Meg',
+    spiceline: 'Ilimit=25m Rail=0 Vos=0',
+    spiceline2: 'En=0 Enk=0 In=0 Ink=0 Rin=500Meg',
+    modelfile: 'UniversalOpAmp2.lib',
+  }),
+  sourceModelFile: 'UniversalOpAmp2.lib',
+  sourceSubcircuit: 'level2',
+  sourceSha256: 'de4401d01225e1dba4b5658784625614ba706b89c871afbefb28a0a22d459d85',
+});
+
 const lt1001Pins = [[-32, 80], [-32, 48], [0, 32], [0, 96], [32, 64]];
 addVerifiedDevice(['lt1001', 'opamps/lt1001'], {
   kind: 'lt1001', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
@@ -526,7 +549,7 @@ function symbolAsset(lib, options, cache, verifiedLibrary = null) {
 
 function suppliedPins(spec, asset) {
   if (!asset.supplied) return { pins: spec.pins, defaults: spec.verifiedDevice
-    ? { value: spec.acceptedValues[0], prefix: spec.prefix } : {} };
+    ? (spec.defaultAttrs || { value: spec.acceptedValues[0], prefix: spec.prefix }) : {} };
   if (asset.error) return { error: asset.error };
   const document = asset.document;
   if (!document?.ok) return { error: 'supplied ASY definition is not structurally valid' };
@@ -1020,6 +1043,68 @@ function authoredNativeDevice(raw, spec) {
   return { params: { ...spec.deviceParams }, reason: null };
 }
 
+function universalOpamp2Params(attrs, constants) {
+  if (String(attrs.value || '').trim() && String(attrs.value).trim() !== '""') {
+    return { params: {}, reason: 'UniversalOpAmp2 Value must be absent; SpiceModel level2 owns the model identity' };
+  }
+  if (String(attrs.spicemodel || '').trim().toLowerCase() !== 'level2') {
+    return { params: {}, reason: 'UniversalOpAmp2 SpiceModel must be exactly level2' };
+  }
+  if (String(attrs.modelfile || '').trim().toLowerCase() !== 'universalopamp2.lib') {
+    return { params: {}, reason: 'UniversalOpAmp2 ModelFile must be exactly UniversalOpAmp2.lib' };
+  }
+
+  // Defaults inside UniversalOpAmp2.lib. The standard ASY then overrides Rin
+  // to 500 Meg through SpiceLine2; an explicit empty SpiceLine2 correctly
+  // exposes the library's 1 Gig default instead of manufacturing the ASY value.
+  const values = new Map(Object.entries({
+    avol: 1e6, gbw: 10e6, slew: 10e6, ilimit: 0.025,
+    rail: 0, vos: 0, rin: 1e9, en: 0, enk: 0, in: 0, ink: 0,
+  }));
+  const seen = new Set();
+  const known = new Set(values.keys());
+  for (const attr of ['value2', 'spiceline', 'spiceline2']) {
+    const text = String(attrs[attr] || '').trim();
+    if (!text || text === '""') continue;
+    for (const token of text.replace(/,/g, ' ').split(/\s+/).filter(Boolean)) {
+      const match = /^([A-Za-z][A-Za-z0-9_]*)=(.+)$/.exec(token);
+      if (!match) return { params: {}, reason: `${attr} token "${token}" is not a key=value scalar` };
+      const key = match[1].toLowerCase();
+      if (!known.has(key)) return { params: {}, reason: `UniversalOpAmp2 parameter ${match[1]} is unsupported` };
+      if (seen.has(key)) return { params: {}, reason: `UniversalOpAmp2 parameter ${match[1]} is repeated` };
+      const resolved = staticValue(match[2], constants);
+      if (!resolved.ok || !Number.isFinite(resolved.value)) {
+        return { params: {}, reason: `UniversalOpAmp2 parameter ${match[1]} is not a resolved finite scalar: ${resolved.reason}` };
+      }
+      seen.add(key);
+      values.set(key, resolved.value);
+    }
+  }
+  for (const key of ['avol', 'gbw', 'slew', 'ilimit', 'rin']) {
+    if (!(values.get(key) > 0)) return { params: {}, reason: `UniversalOpAmp2 parameter ${key} must be positive` };
+  }
+  if (!(values.get('rail') >= 0)) return { params: {}, reason: 'UniversalOpAmp2 parameter rail must be non-negative' };
+  for (const key of ['en', 'enk', 'in', 'ink']) {
+    if (values.get(key) !== 0) {
+      return { params: {}, reason: `UniversalOpAmp2 nonzero noise parameter ${key} requires an unimplemented calibrated noise path` };
+    }
+  }
+  return {
+    params: {
+      a0: values.get('avol'),
+      gbwHz: values.get('gbw'),
+      slewVPerUs: values.get('slew') / 1e6,
+      outputCurrentLimitA: values.get('ilimit'),
+      railHeadroomV: values.get('rail'),
+      inputOffsetV: values.get('vos'),
+      // The source subcircuit has four 2*Rin rail-return legs. The native
+      // engine parameter is the resulting differential resistance.
+      inputR: 2 * values.get('rin'),
+    },
+    reason: null,
+  };
+}
+
 export function importLtspiceAsc(text, options = {}) {
   const parts = [];
   const warnings = [];
@@ -1199,7 +1284,9 @@ export function importLtspiceAsc(text, options = {}) {
       continue;
     }
     const id = makeId(ref, used);
-    const authored = spec.verifiedDevice
+    const authored = spec.parameterizedDevice === 'universal-opamp2-level2'
+      ? universalOpamp2Params(effectiveAttrs, constantParameters.values)
+      : spec.verifiedDevice
       ? authoredNativeDevice(effectiveAttrs.value, spec)
       : spec.kind === 'diode'
       ? authoredDiode(effectiveAttrs.value, ascModels, diodeThermal)
@@ -1219,7 +1306,8 @@ export function importLtspiceAsc(text, options = {}) {
     const partBlockers = [];
     if (authored.reason) {
       const loss = { ref: id, kind: spec.kind === 'diode'
-        ? 'unsupported-diode-model' : 'unsupported-or-missing-static-value',
+        ? 'unsupported-diode-model' : spec.parameterizedDevice
+        ? 'unsupported-device-parameters' : 'unsupported-or-missing-static-value',
         source: authored.source || symbol.source,
         reason: authored.reason, fallback: null };
       losses.push(loss);
@@ -1242,6 +1330,7 @@ export function importLtspiceAsc(text, options = {}) {
     }
     for (const [name, attributeValue] of Object.entries(effectiveAttrs)) {
       if (name === 'instname' || name === 'value' || name === 'prefix') continue;
+      if (spec.consumedAttributes?.includes(name)) continue;
       if (spec.sourceModelSubstitution
           && ((name === 'spicemodel'
               && String(attributeValue).toLowerCase() === spec.sourceModelSubstitution.file.toLowerCase())
@@ -1269,6 +1358,10 @@ export function importLtspiceAsc(text, options = {}) {
         ...(spec.sourceModelSubstitution ? {
           sourceModelFile: spec.sourceModelSubstitution.file,
           sourceSubcircuit: spec.sourceModelSubstitution.subcircuit,
+        } : {}),
+        ...(spec.sourceModelFile ? {
+          sourceModelFile: spec.sourceModelFile,
+          sourceSubcircuit: spec.sourceSubcircuit,
         } : {}),
       } : {}),
       sourceInstance: sourceDocument.instances[symbolIndex]?.id,

@@ -508,6 +508,47 @@ repaint. Fold into the X2.3 worker harness (one worker protocol for sweep / AC /
 Monte Carlo / stepping). Acceptance: a deliberately heavy sweep leaves the canvas
 interactive; results identical to the synchronous path on fixtures.
 
+### X2.7 A scope that behaves like an instrument, not a chart
+
+The existing scope is already evidence-based: its traces come from Board's ring,
+envelope and true-sample capture are distinct, each channel has its own scale,
+and edge trigger/cursors/FFT/CSV operate on recorded values. Its fastest offered
+acquisition is nevertheless 100 kS/s (50 kHz Nyquist), its probe is electrically
+ideal, and it has no analogue front end or ADC. That is sufficient for slow
+lessons but cannot honestly show the sub-microsecond edge of a 10 MHz op amp.
+
+Implement the remaining realism as separate switchable contracts, in this order:
+
+1. **Probe loading and reference lead (Board + CUI).** Offer ideal/debug, 10x and
+   1x probes. Non-ideal probes stamp an explicit reviewed R||C between tip and a
+   selected reference, distinguish isolated from earth-referenced instruments,
+   and expose the loading in circuit state. Acceptance: the 1x/10x probes move a
+   high-impedance RC node by the predicted amount while ideal mode is bit-identical
+   to today's observer; a wrong ground clip can change or short the circuit rather
+   than remaining a cosmetic selector.
+2. **Analogue front end.** Add DC/AC/GND coupling and a selectable single-pole
+   bandwidth limit as deterministic post-acquisition transforms with stated units.
+   Acceptance: DC is removed only in AC mode, the measured -3 dB point matches the
+   selected bandwidth, and GND displays zero without rewriting captured circuit data.
+3. **Acquisition/ADC.** Couple volts/div and vertical offset to an explicit full
+   scale, clipping, finite ADC bits and quantization; state sample rate, record
+   length and Nyquist bandwidth on screen. Anti-alias refusal/warning must precede
+   any frequency claim. Keep an ideal floating-point mode for solver diagnosis.
+4. **Bounded high-speed triggered burst.** Do not impose tens of millions of solve
+   points on every run. A single/normal trigger may arm a finite true-sample record
+   (initial target: 8,192 samples at up to 50 MS/s = 163.84 us), advance Board in
+   bounded work slices, stop, and decimate only for drawing. Benchmark this mode in
+   hosted CI before exposing its higher rates. It is the path that should make an
+   authored UniversalOpamp2 slew/settling edge visible.
+5. **Trigger and phosphor behavior.** Add auto/normal/single, trigger source,
+   pre-trigger position, hysteresis and holdoff, followed by intensity/persistence.
+   Persistence accumulates measured records only; it never synthesizes samples.
+6. **Noise, calibration and deskew last.** Instrument noise needs a documented RMS
+   density/bandwidth/range contract and deterministic test seed, separate from
+   circuit/device noise. Add channel gain/offset/deskew calibration. Only after a
+   circuit-noise analysis exists may LTspice `en/enk/in/ink` parameters become
+   executable; until then they remain named import blockers, not decorative fuzz.
+
 ---
 
 ## Sequencing
@@ -516,7 +557,7 @@ interactive; results identical to the synchronous path on fixtures.
 2. **X1.6** native-format hygiene (small, de-risks everything else), then **X1.1
    SPICE import** (pairs with the X0.1 exporter fix; round-trip property test),
    then **X1.2** breadboard format, **X1.3** applet text, **X1.4** LaTeX.
-3. **X2.2 FFT/CSV** (no engine dependency) any time; **X2.6/X2.3/X2.4** once
+3. **X2.2 FFT/CSV** (no engine dependency) any time; **X2.6/X2.3/X2.4/X2.7** once
    bw-board E1.5 confirms worker-safety; **X2.1** when E2.1 lands; **X2.5** last.
    X0.4, X2.2, X2.6 and X2.1 have all landed; X2.3/X2.4/X2.5 remain.
 
@@ -560,6 +601,22 @@ The larger residuals `opamp2` (443 instances), `universalopamp2` (320), generic
 orderable parts. They deserve separate behavioral-import lanes and schematic
 symbols, but no purchasable face or BOM identity. Exact-name real-part work must
 not be used to smuggle those abstractions in as fake packages.
+
+**UniversalOpamp2 deterministic Level-2 slice implemented 2026-09-27.** The
+current official five-pin symbol now maps to a package-neutral native engine
+model with finite Avol/GBW, slew, output-current and rail limits, offset and
+effective differential input resistance. `Rin` is translated through the source
+subcircuit's four `2*Rin` rail-return legs; it is not copied as though it were
+already the differential resistance. On the exact fixed corpus, all 332 instances
+across 159 rows are structurally mapped; 321 instances across 148 rows are
+deterministically executable. The 11 blocked instances remain explicit: nonzero
+noise parameters, three identity-changing `Value` records, repeated parameters,
+and two unresolved constants. Under the directly stated predicate
+`unmapped.length === 0 && losses.length === 0`, whole documents rise 127 -> 151
+(+24); zero-unmapped documents rise 2,041 -> 2,155 (+114). These current numbers
+supersede the earlier approximate 320-instance label but do not rewrite older
+harness-specific historical counters. Levels 1/3/4, generic `opamp`/`opamp2`,
+noise execution and transistor/macromodel equivalence remain separate work.
 
 P1–P13 are complete. On the current importer, exact replays of the same 8,280
 rows map all 15 LT1678 instances across eight rows, all 19 AD8541 instances
