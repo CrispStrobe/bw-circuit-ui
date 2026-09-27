@@ -549,8 +549,8 @@ whole source rather than choosing from one small residual subset.
 | P6 | ADTL082 | 22 / 12 | 9 | 0 | **Done.** One truthful production R-8 SOIC face and one shared-rail dual engine card remain distinct from the official five-terminal logical source symbol. All 12 rows retain the exact `ADI.lib` / `ADTL082` source-model-substitution blocker. |
 | P7 | OP747 | 24 / 9 | 6 | 0 | **Done.** One truthful production R-14 SOIC face and one nonstandard-pin shared-rail quad engine card remain distinct from the official five-terminal logical source symbol. All nine rows retain the exact `ADI.lib` / `OP747` source-model-substitution blocker. |
 | P8 | LT1007 | 19 / 10 | 8 | 0 | **Done.** One truthful N8 PDIP face and one bounded physical precision-amplifier card remain distinct from the official five-terminal logical source symbols. LT1007CS truthfully records its SOIC-8 source package without borrowing the N8 face. All ten rows retain the exact `LTC.lib` / `LT1007` source-model-substitution blocker. |
-| next | AD711 | 16 / 9 | 5 | 0 expected | Best bounded next slice after P8: four rows have no residual loss before the required source-model provenance decision. Re-measure rather than inheriting this estimate. |
-| later | LT1678 | 15 / 8 | 4 | 0 expected | Four rows are otherwise clean before source-model provenance; package/channel authority still needs a fresh vertical-slice audit. |
+| P9 | AD711 | 16 / 9 | 5 | 0 | **Done.** One truthful J-grade N-8 PDIP face and one bounded physical JFET-input precision-amplifier card remain distinct from the official package-neutral five-terminal source symbol. The symbol delegates to `AD712` in `ADI1.lib`; all nine rows retain that exact substitution blocker. |
+| next | LT1678 | 15 / 8 | 4 | 0 expected | Four rows are otherwise clean before source-model provenance; package/channel authority still needs a fresh vertical-slice audit. |
 | later | AD8541 | 19 / 7 | 4 | 0 expected | Two rows are otherwise clean before source-model provenance; retain package honesty and re-measure. |
 | later | AD8602 | 16 / 7 | 4 | 0 expected | One row is otherwise clean before source-model provenance; shared-package/channel identity must be proven. |
 | later | ADA4522-1 | 21 / 5 | 1 | 0 expected | Lowest residual document reach of the measured named candidates; keep behind the better-bounded slices. |
@@ -561,7 +561,7 @@ orderable parts. They deserve separate behavioral-import lanes and schematic
 symbols, but no purchasable face or BOM identity. Exact-name real-part work must
 not be used to smuggle those abstractions in as fake packages.
 
-P1–P8 are complete. The already-real LT1001, ADP7118 and LT1763
+P1–P9 are complete. The already-real LT1001, ADP7118 and LT1763
 bridge precedes it and deliberately refuses LT1001S8 and contradictory/unknown
 fixed-output names. LTspice 26.0.2's official `OP07.asy` visibly says OP07 but
 its `SpiceModel LTC.lib` / `Value2 LT1001` pair changes the generated netlist.
@@ -672,3 +672,17 @@ macro-model while ASC now exposes Brickwright's bounded logical channel. This
 is an honest representation mismatch, not numerical equivalence. The palette
 part is separately the production N8 PDIP; LT1007CS records SOIC-8 provenance
 without borrowing that face, and the plain/A symbols remain package-neutral.
+
+Exact post-implementation AD711 replay at CUI `49fe759` maps all 16 instances
+across nine rows. Five documents become fully pinned. Every mapped instance
+retains the official symbol's `SpiceModel ADI1.lib` / `Value2 AD712`
+source-model-substitution blocker, so zero rows become lossless or numerically
+eligible. Whole-document pin completeness rises 2,355 -> 2,360 (+5), while
+lossless projection, numeric eligibility, and declared-analysis eligibility
+remain 119/76/83. Paired completeness/components/net partitions fall 4/3/4:
+the old counts received false credit by omitting AD711, while the ASC projection
+now truthfully exposes a bounded native AD711 channel and the paired SPICE deck
+still invokes AD712. This is an exposed representation mismatch, not numerical
+equivalence. The palette part is separately constrained to the production JNZ
+N-8 PDIP and the historical JN/KN N-8 names; RN-8, Q-8, and H-08A packages do
+not borrow its face.
