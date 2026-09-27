@@ -62,7 +62,7 @@ function gerberFile(fileFunction, body, apertures) {
   ].join('\n') + '\n';
 }
 
-/** One layer's copper (or mask/silk) as Gerber body lines. */
+/** One layer's copper (or mask/silk/paste) as Gerber body lines. */
 function drawLayer({ pads = [], tracks = [], arcs = [], pours = [], circles = [], sizeGrow = 0 }, ap, warnings) {
   const body = [];
   const flashOps = [];
@@ -70,8 +70,12 @@ function drawLayer({ pads = [], tracks = [], arcs = [], pours = [], circles = []
   const drawOps = [];
 
   for (const pad of pads) {
-    const grow = sizeGrow;
+    const grow = typeof sizeGrow === 'function' ? sizeGrow(pad) : sizeGrow;
     const w = pad.w + grow; const h = pad.h + grow;
+    if (!(w > 0) || !(h > 0)) {
+      warnings.push(`pad ${pad.id || pad.num}: fabrication expansion removes the printable aperture`);
+      continue;
+    }
     if (pad.shape === 'circle' || (pad.w === pad.h && pad.shape !== 'rect' && !pad.points)) {
       const d = ap.get(`C,${fmtMm(w)}`);
       flashOps.push([d, `${XY(pad.x, pad.y)}D03*`]);
@@ -166,12 +170,13 @@ function ringRegion(pts) {
 
 /**
  * @param {object} board  board model (importer or projection output)
- * @param {object} [opts] {maskGrow = 0.05} solder-mask opening growth per side
+ * @param {object} [opts] fallback {maskGrow = 0.05, pasteGrow = 0}, per side
  * @returns {{files: Record<string, string>, warnings: string[]}}
  */
 export function exportGerbers(board, opts = {}) {
   const warnings = [];
-  const maskGrow = (opts.maskGrow ?? 0.05) * 2;
+  const maskGrow = opts.maskGrow ?? 0.05;
+  const pasteGrow = opts.pasteGrow ?? 0;
   const files = {};
   const layerPads = (side) => {
     const pads = [];
@@ -192,9 +197,9 @@ export function exportGerbers(board, opts = {}) {
     shape: 'circle', x: v.x, y: v.y, w: v.diameter, h: v.diameter, rotation: 0, id: v.id,
   }));
 
-  for (const [side, id, cuName, maskName] of [
-    ['top', 1, 'Copper,L1,Top', 'Soldermask,Top'],
-    ['bottom', 2, 'Copper,L2,Bot', 'Soldermask,Bot'],
+  for (const [side, id, cuName, maskName, pasteName] of [
+    ['top', 1, 'Copper,L1,Top', 'Soldermask,Top', 'Paste,Top'],
+    ['bottom', 2, 'Copper,L2,Bot', 'Soldermask,Bot', 'Paste,Bot'],
   ]) {
     {
       const ap = new Apertures();
@@ -207,10 +212,41 @@ export function exportGerbers(board, opts = {}) {
     {
       // Mask = OPENINGS (negative plot at the fab): pads grown, vias tented.
       const ap = new Apertures();
-      const body = drawLayer({ pads: layerPads(side), sizeGrow: maskGrow }, ap, warnings);
+      const body = drawLayer({
+        pads: layerPads(side).filter((pad) => pad.solderMask !== false),
+        sizeGrow: (pad) => 2 * (pad.solderMaskExpansion ?? maskGrow),
+      }, ap, warnings);
       files[side === 'top' ? 'mask-top.gts' : 'mask-bottom.gbs'] = gerberFile(maskName, body, ap);
     }
+    {
+      // Paste is opt-out for imported SMD pads (matching the long-standing
+      // KiCad export), but projected patterns carry an explicit true/false
+      // policy. Through-hole pads can never acquire a paste aperture.
+      const ap = new Apertures();
+      const pads = layerPads(side).filter((pad) => !pad.through && pad.solderPaste !== false);
+      const body = drawLayer({
+        pads,
+        sizeGrow: (pad) => 2 * (pad.solderPasteExpansion ?? pasteGrow),
+      }, ap, warnings);
+      files[side === 'top' ? 'paste-top.gtp' : 'paste-bottom.gbp'] = gerberFile(pasteName, body, ap);
+    }
   }
+
+  // Deterministic assembly placement data. This is deliberately
+  // manufacturer-neutral: reference, package, centre, orientation, side,
+  // technology and the pattern's pin-1 pad — no order code is invented.
+  const csv = [['reference', 'value', 'package', 'x_mm', 'y_mm', 'rotation_deg', 'side', 'technology', 'pin1_pad']];
+  const cell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+  for (const part of [...(board.parts || [])].sort((a, b) => String(a.ref || a.id).localeCompare(String(b.ref || b.id)))) {
+    const technology = part.assembly?.technology
+      || (part.pads?.some((pad) => !pad.through) ? 'smt' : 'through-hole');
+    csv.push([
+      part.ref || part.id, part.name || '', part.package || '', fmtMm(part.x), fmtMm(part.y),
+      fmtMm(part.rotation || 0), part.assembly?.side || part.side || 'top', technology,
+      part.assembly?.pin1Pad || '',
+    ]);
+  }
+  files['assembly-positions.csv'] = csv.map((row) => row.map(cell).join(',')).join('\n') + '\n';
 
   // Silk: part + board silk tracks/circles/rects; texts are reported.
   for (const [side, layerId, name, file] of [

@@ -536,6 +536,9 @@ export function projectBoard(circuit, opts = {}) {
     // projected board (found by the MNA fault demo).
     package: `${p.kind}:${p.pattern.variant}`, attrs: {},
     x: p.x - ox, y: p.y - oy, rotation: 0, side: 'top',
+    assembly: p.pattern.assembly
+      ? { ...p.pattern.assembly, side: p.pattern.assembly.defaultSide }
+      : { technology: 'through-hole', side: 'top' },
     pads: p.pattern.pads.map((pad) => ({
       num: pad.num,
       net: netOfPad.get(`${p.id}\t${pad.num}`) || '',
@@ -544,6 +547,9 @@ export function projectBoard(circuit, opts = {}) {
       drill: pad.drill || 0, slotLength: 0, plated: true,
       through: (pad.drill || 0) > 0,
       layer: (pad.drill || 0) > 0 ? 'through' : 'top',
+      solderMaskExpansion: pad.solderMaskExpansion,
+      solderPaste: pad.solderPaste,
+      ...(pad.solderPaste ? { solderPasteExpansion: pad.solderPasteExpansion } : {}),
       points: null, id: `${p.id}-p${pad.num}`,
     })),
     silk: {

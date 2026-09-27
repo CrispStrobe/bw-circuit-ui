@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { importEasyEdaPcb } from '../src/importers/easyeda-pcb.js';
 import { exportGerbers } from '../src/model/exporters/gerber.js';
+import { exportKicadPcb } from '../src/model/exporters/kicad-pcb.js';
 import { projectBoard } from '../src/model/board-projection.js';
 
 const FIX = join(import.meta.dirname, 'fixtures');
@@ -28,10 +29,12 @@ describe('mini fixture', () => {
 
   test('the full fab set exists', () => {
     assert.deepEqual(Object.keys(files).sort(), [
-      'copper-bottom.gbl', 'copper-top.gtl', 'drill.drl', 'mask-bottom.gbs',
-      'mask-top.gts', 'outline.gko', 'silk-bottom.gbo', 'silk-top.gto',
+      'assembly-positions.csv', 'copper-bottom.gbl', 'copper-top.gtl', 'drill.drl',
+      'mask-bottom.gbs', 'mask-top.gts', 'outline.gko', 'paste-bottom.gbp',
+      'paste-top.gtp', 'silk-bottom.gbo', 'silk-top.gto',
     ]);
-    for (const text of Object.values(files)) {
+    for (const [name, text] of Object.entries(files)) {
+      if (name.endsWith('.csv')) continue;
       if (text.startsWith('M48')) continue; // Excellon
       assert.match(text, /%FSLAX46Y46\*%/);
       assert.match(text, /%MOMM\*%/);
@@ -135,5 +138,36 @@ describe('projected boards export too', () => {
     assert.ok(files['copper-top.gtl'].includes('D01*'), 'tracks draw');
     assert.ok((files['drill.drl'].match(/^X/gm) || []).length >= 6, 'every THT pad drills');
     // The pin-1 legend is text, so it must be counted in the warnings.
+  });
+
+  test('an SOIC emits explicit top paste/mask and assembly placement metadata', () => {
+    const { board } = projectBoard({ parts: [{ id: 'U1', kind: 'lt1006', params: {} }], wires: [] });
+    const part = board.parts[0];
+    assert.deepEqual(part.assembly, {
+      technology: 'smt', defaultSide: 'top', orientation: 'pin-1', pin1Pad: '1', side: 'top',
+    });
+    assert.ok(part.pads.every((pad) => pad.solderPaste === true));
+    assert.ok(part.pads.every((pad) => pad.solderPasteExpansion === 0));
+    assert.ok(part.pads.every((pad) => pad.solderMaskExpansion === 0.05));
+
+    const { files } = exportGerbers(board);
+    assert.equal((files['paste-top.gtp'].match(/D03\*/g) || []).length, 8);
+    assert.equal((files['paste-bottom.gbp'].match(/D03\*/g) || []).length, 0);
+    assert.equal((files['mask-top.gts'].match(/D03\*/g) || []).length, 8);
+    assert.match(files['assembly-positions.csv'],
+      /"U1","lt1006","lt1006:soic-8","[^"]+","[^"]+","0","top","smt","1"/);
+    const kicad = exportKicadPcb(board).text;
+    assert.match(kicad, /\(attr smd\)/);
+    assert.equal((kicad.match(/"F\.Cu" "F\.Paste" "F\.Mask"/g) || []).length, 8);
+    assert.equal((kicad.match(/\(solder_mask_margin 0\.05\)/g) || []).length, 8);
+    assert.equal((kicad.match(/\(solder_paste_margin 0\)/g) || []).length, 8);
+  });
+
+  test('through-hole projection never acquires a paste aperture', () => {
+    const { board } = projectBoard({ parts: [{ id: 'J1', kind: 'header', params: { pins: 2 } }], wires: [] });
+    assert.ok(board.parts[0].pads.every((pad) => pad.solderPaste === false));
+    const { files } = exportGerbers(board);
+    assert.equal((files['paste-top.gtp'].match(/D03\*/g) || []).length, 0);
+    assert.match(files['assembly-positions.csv'], /"through-hole"/);
   });
 });

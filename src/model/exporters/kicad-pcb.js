@@ -84,7 +84,7 @@ export function exportKicadPcb(board, opts = {}) {
     const refAt = refText ? `(at ${fmt(refText.x - part.x)} ${fmt(-(refText.y - part.y))})` : '(at 0 -3)';
     fp.push(`  (property "Reference" ${q(part.ref || part.id)} ${refAt} (layer "F.SilkS") (effects (font (size 1 1) (thickness 0.15))))`);
     fp.push(`  (property "Value" ${q(part.name || '')} (at 0 3) (layer "F.Fab") (effects (font (size 1 1) (thickness 0.15))))`);
-    fp.push(`  (attr through_hole)`);
+    fp.push(`  (attr ${part.pads.every((pad) => !pad.through) ? 'smd' : 'through_hole'})`);
     for (const t of part.silk?.tracks || []) {
       for (let i = 0; i + 1 < t.points.length; i++) {
         fp.push(`  (fp_line (start ${fmt(t.points[i][0] - part.x)} ${fmt(-(t.points[i][1] - part.y))}) `
@@ -217,6 +217,8 @@ export function exportKicadPcb(board, opts = {}) {
     '    (0 "F.Cu" signal)',
     ...innerIds.map((id, i) => `    (${i + 1} "In${i + 1}.Cu" signal)`),
     '    (31 "B.Cu" signal)',
+    '    (34 "B.Paste" user "B.Paste")',
+    '    (35 "F.Paste" user "F.Paste")',
     '    (36 "B.SilkS" user "B.Silkscreen")',
     '    (37 "F.SilkS" user "F.Silkscreen")',
     '    (38 "B.Mask" user "B.Mask")',
@@ -246,8 +248,11 @@ function padOut(pad, part, netIds, warnings) {
     shape = 'rect';
   }
   const type = pad.through ? 'thru_hole' : 'smd';
-  const layers = pad.through ? '"*.Cu" "*.Mask"'
-    : pad.layer === 'bottom' ? '"B.Cu" "B.Paste" "B.Mask"' : '"F.Cu" "F.Paste" "F.Mask"';
+  const side = pad.layer === 'bottom' ? 'B' : 'F';
+  const maskLayer = pad.solderMask === false ? '' : ` "${side}.Mask"`;
+  const pasteLayer = !pad.through && pad.solderPaste !== false ? ` "${side}.Paste"` : '';
+  const layers = pad.through ? `"*.Cu"${pad.solderMask === false ? '' : ' "*.Mask"'}`
+    : `"${side}.Cu"${pasteLayer}${maskLayer}`;
   let drill = pad.through && pad.drill ? ` (drill ${fmt(pad.drill)})` : '';
   if (pad.through && pad.slotLength > pad.drill) {
     // A slot: (drill oval W H) in the pad's own frame. The slot axis
@@ -260,8 +265,12 @@ function padOut(pad, part, netIds, warnings) {
   }
   const netId = netIds.get(pad.net || '') ?? 0;
   const net = pad.net ? ` (net ${netId} "${String(pad.net).replace(/"/g, '')}")` : '';
+  const maskMargin = Number.isFinite(pad.solderMaskExpansion)
+    ? ` (solder_mask_margin ${fmt(pad.solderMaskExpansion)})` : '';
+  const pasteMargin = pad.solderPaste && Number.isFinite(pad.solderPasteExpansion)
+    ? ` (solder_paste_margin ${fmt(pad.solderPasteExpansion)})` : '';
   // Model pad rotation is the EasyEDA raw angle (padShape negates it in the
   // Y-up frame); KiCad's Y-down frame matches the raw sense again.
   const rot = pad.rotation ? ` ${fmt(pad.rotation)}` : '';
-  return `(pad ${q(pad.num)} ${type} ${shape} (at ${dx} ${dy}${rot}) (size ${fmt(pad.w)} ${fmt(pad.h)})${rrOut}${drill} (layers ${layers})${net})`;
+  return `(pad ${q(pad.num)} ${type} ${shape} (at ${dx} ${dy}${rot}) (size ${fmt(pad.w)} ${fmt(pad.h)})${rrOut}${drill} (layers ${layers})${maskMargin}${pasteMargin}${net})`;
 }

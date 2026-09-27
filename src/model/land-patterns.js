@@ -75,6 +75,7 @@ export function validatePattern(pattern, kind, params = undefined) {
     : new Set(terminalsForKind(kind, params) || []);
   const covered = new Set();
   const nums = new Set();
+  let hasSmd = false;
   for (const pad of pattern.pads) {
     if (nums.has(pad.num)) problems.push(`${kind}/${pattern.variant}: duplicate pad number ${pad.num}`);
     nums.add(pad.num);
@@ -91,6 +92,21 @@ export function validatePattern(pattern, kind, params = undefined) {
     if (pad.drill > 0 && pad.drill >= Math.min(pad.w, pad.h)) {
       problems.push(`${kind}/${pattern.variant}: pad ${pad.num} drill ${pad.drill} swallows the ${pad.w}x${pad.h} pad`);
     }
+    const isSmd = !(pad.drill > 0);
+    hasSmd ||= isSmd;
+    if (!Number.isFinite(pad.solderMaskExpansion) || pad.solderMaskExpansion < 0) {
+      problems.push(`${kind}/${pattern.variant}: pad ${pad.num} has no valid solder-mask expansion`);
+    }
+    if (typeof pad.solderPaste !== 'boolean') {
+      problems.push(`${kind}/${pattern.variant}: pad ${pad.num} has no explicit solder-paste policy`);
+    } else if (!isSmd && pad.solderPaste) {
+      problems.push(`${kind}/${pattern.variant}: through-hole pad ${pad.num} cannot request solder paste`);
+    }
+    if (pad.solderPaste && (!Number.isFinite(pad.solderPasteExpansion)
+      || pad.w + 2 * pad.solderPasteExpansion <= 0
+      || pad.h + 2 * pad.solderPasteExpansion <= 0)) {
+      problems.push(`${kind}/${pattern.variant}: pad ${pad.num} has no valid solder-paste expansion`);
+    }
   }
   if (!pattern.partial) {
     for (const t of wanted) {
@@ -99,6 +115,17 @@ export function validatePattern(pattern, kind, params = undefined) {
   }
   if (!pattern.courtyard || !(pattern.courtyard.w > 0) || !(pattern.courtyard.h > 0)) {
     problems.push(`${kind}/${pattern.variant}: no courtyard`);
+  }
+  if (hasSmd) {
+    if (pattern.assembly?.technology !== 'smt') {
+      problems.push(`${kind}/${pattern.variant}: SMD pattern has no SMT assembly metadata`);
+    }
+    if (!['top', 'bottom'].includes(pattern.assembly?.defaultSide)) {
+      problems.push(`${kind}/${pattern.variant}: SMD pattern has no valid default assembly side`);
+    }
+    if (pattern.pin1 && !pattern.pads.some((pad) => pad.num === pattern.assembly?.pin1Pad)) {
+      problems.push(`${kind}/${pattern.variant}: pin-1 marker has no matching assembly pad`);
+    }
   }
   return problems;
 }

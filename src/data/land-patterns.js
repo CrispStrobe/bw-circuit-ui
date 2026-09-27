@@ -29,11 +29,25 @@
 
 /** Round through-hole pad. */
 const tht = (num, terminal, x, y, { pad = 1.7, drill = 1.0 } = {}) =>
-  ({ num: String(num), terminal, x, y, shape: 'circle', w: pad, h: pad, drill });
+  ({
+    num: String(num), terminal, x, y, shape: 'circle', w: pad, h: pad, drill,
+    solderMaskExpansion: 0.05, solderPaste: false,
+  });
 
 /** SMD rect pad. */
 const smd = (num, terminal, x, y, w, h) =>
-  ({ num: String(num), terminal, x, y, shape: 'rect', w, h, drill: 0 });
+  ({
+    num: String(num), terminal, x, y, shape: 'rect', w, h, drill: 0,
+    // Vendor-neutral 1:1 paste aperture and 0.05 mm mask expansion. These
+    // are explicit fabrication policy, not dimensions inferred by exporters.
+    solderMaskExpansion: 0.05, solderPaste: true, solderPasteExpansion: 0,
+  });
+
+const smtAssembly = (pin1Pad = null) => ({
+  technology: 'smt', defaultSide: 'top',
+  orientation: pin1Pad ? 'pin-1' : 'non-polarized',
+  ...(pin1Pad ? { pin1Pad: String(pin1Pad) } : {}),
+});
 
 /** 1xN pin header on 2.54 mm pitch, terminals p1..pN, pad 1 leftmost. */
 function header1xN(n) {
@@ -69,6 +83,7 @@ function soic(terminals) {
   const bodyH = (half - 1) * 1.27 + 1.6;
   return {
     description: `SOIC-${n}, 1.27 mm pitch`,
+    assembly: smtAssembly(1),
     pads,
     courtyard: { w: 7.0, h: bodyH + 1.0 },
     silk: [{ kind: 'rect', x: -2.0, y: -bodyH / 2, w: 4.0, h: bodyH }],
@@ -80,6 +95,7 @@ function soic(terminals) {
 function tsot5(terminals) {
   return {
     description: 'TSOT-5, 0.95 mm pitch',
+    assembly: smtAssembly(1),
     pads: [
       smd(1, terminals[0], -1.45, 0.95, 1.0, 0.55),
       smd(2, terminals[1], -1.45, 0, 1.0, 0.55),
@@ -131,6 +147,7 @@ export const LAND_PATTERNS = {
     },
     '0603': {
       description: 'SMD 0603 (1608 metric)',
+      assembly: smtAssembly(),
       pads: [smd(1, 'a', -0.775, 0, 0.9, 0.95), smd(2, 'b', 0.775, 0, 0.9, 0.95)],
       courtyard: { w: 2.8, h: 1.4 },
       silk: [],
@@ -145,6 +162,7 @@ export const LAND_PATTERNS = {
     },
     '0603': {
       description: 'SMD 0603 (1608 metric)',
+      assembly: smtAssembly(),
       pads: [smd(1, 'a', -0.775, 0, 0.9, 0.95), smd(2, 'b', 0.775, 0, 0.9, 0.95)],
       courtyard: { w: 2.8, h: 1.4 },
       silk: [],
@@ -286,6 +304,7 @@ export const LAND_PATTERNS = {
       }
       return {
         description: 'TSSOP-20, 0.65 mm pitch (STM32F030F4P6)',
+        assembly: smtAssembly(1),
         pads,
         courtyard: { w: 7.8, h: 7.0 },
         silk: [{ kind: 'rect', x: -2.2, y: -3.25, w: 4.4, h: 6.5 }],

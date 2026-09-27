@@ -71,6 +71,25 @@ describe('the gate can fail', () => {
   test('a kind with no pattern is a problem, not a null', () => {
     assert.ok(validateLandPattern('flux_capacitor', null).length === 1);
   });
+
+  test('an SMD pattern without explicit paste and assembly policy is rejected', () => {
+    const good = getLandPattern('lt1006', 'soic-8');
+    const broken = {
+      ...good,
+      assembly: undefined,
+      pads: good.pads.map((pad, i) => i === 0 ? { ...pad, solderPaste: undefined } : { ...pad }),
+    };
+    const problems = validatePattern(broken, 'lt1006');
+    assert.ok(problems.some((p) => /pad 1 has no explicit solder-paste policy/.test(p)), problems.join('; '));
+    assert.ok(problems.some((p) => /no SMT assembly metadata/.test(p)), problems.join('; '));
+  });
+
+  test('a through-hole pad requesting paste is rejected', () => {
+    const good = getLandPattern('header', '1x2');
+    const broken = { ...good, pads: good.pads.map((pad, i) => i ? pad : { ...pad, solderPaste: true, solderPasteExpansion: 0 }) };
+    assert.ok(validatePattern(broken, 'header', { pins: 2 })
+      .some((p) => /through-hole pad 1 cannot request solder paste/.test(p)));
+  });
 });
 
 describe('the button map is the measured one', () => {

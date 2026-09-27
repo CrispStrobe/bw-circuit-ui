@@ -291,7 +291,7 @@ export const BOARD_EXPORTS = [
       const { files, warnings } = exportGerbers(board);
       return {
         files: Object.entries(files).map(([name, text]) => ({
-          name, text, mime: 'text/plain',
+          name, text, mime: name.endsWith('.csv') ? 'text/csv' : 'text/plain',
         })),
         report: {
           warnings,

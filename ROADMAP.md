@@ -601,8 +601,14 @@ Remaining work, in order:
    verdicts survive both KiCad and EasyEDA export/re-import. The hosted KiCad
    8+ oracle now independently runs `pcb drc` on the same six fixtures in
    addition to its existing chain/keypad controls.
-4. Add paste/mask and assembly-side metadata needed for actually ordering a
-   small adapter or target PCB; Gerber copper/mask/silk/drill already exists.
+4. **Implemented 2026-09-27.** Every registered pad now carries an explicit
+   solder-mask expansion and solder-paste policy; SMT patterns additionally
+   declare assembly technology, default side and pin-1 orientation where
+   applicable. Projection preserves that contract. Native fabrication export
+   now includes deterministic top/bottom paste Gerbers and a vendor-neutral
+   assembly-position CSV alongside copper, mask, silk, outline and drill;
+   KiCad receives the same mask/paste margins and SMT classification. THT pads
+   are proved paste-free, and missing SMD policy fails the registry gate.
 5. Add a fabrication preview/checklist: outline closed, zero danger DRC,
    unrouted count zero, drill/slot summary, layer/stackup disclosure, export
    provenance and explicit acknowledgement before download.
