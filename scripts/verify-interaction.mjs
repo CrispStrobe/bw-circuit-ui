@@ -149,6 +149,7 @@ const EXPECTED = [
   'lm741-place',
   'lt1001-place',
   'lt1006-place',
+  'lt1006-carrier',
   'lt1007-place',
   'ad711-place',
   'lt1014-place',
@@ -721,7 +722,7 @@ try {
     'LT1763 places as a physical SO-8 face with eight separately wireable pins',
     `LT1763 placement produced ${ltFaces} faces and ${ltDots.length} distinct pins`);
 } catch (e) {
-  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'lt1001-place', 'lt1006-place', 'lt1007-place', 'ad711-place', 'lt1014-place', 'adtl082-place', 'op747-place', 'op07-place', 'op27-place', 'adp151-place', 'adp7118-place', 'lt1763-place'],
+  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'lt1001-place', 'lt1006-place', 'lt1006-carrier', 'lt1007-place', 'ad711-place', 'lt1014-place', 'adtl082-place', 'op747-place', 'op07-place', 'op27-place', 'adp151-place', 'adp7118-place', 'lt1763-place'],
     `the controlled-source scenarios could not be set up: ${String(e).split('\n')[0]}`);
 }
 
