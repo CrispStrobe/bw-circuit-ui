@@ -135,6 +135,12 @@ export const PART_SYMBOLS = {
     kicadSymbol: 'Amplifier_Operational:LM741',
     kicadFootprint: 'Package_DIP:DIP-8_W7.62mm',
   },
+  lt1001: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // KiCad's official operational-amplifier library does not currently carry
+    // an LT1001 symbol. Keep the real package without inventing a library ID.
+    kicadFootprint: 'Package_DIP:DIP-8_W7.62mm',
+  },
   adp7118: {
     refdesPrefix: 'U',
     kicadSymbol: 'Regulator_Linear:ADP7118ARDZ',

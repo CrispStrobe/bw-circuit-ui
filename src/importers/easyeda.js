@@ -241,6 +241,10 @@ export const EASYEDA_RULES = [
     1: 'offset_1', 2: 'inn', 3: 'inp', 4: 'vneg',
     5: 'offset_5', 6: 'out', 7: 'vpos', 8: 'nc',
   } })],
+  [/^LT1001A?(?:(?:C|I)?N8)?(?:#PBF)?$/i, () => ({ kind: 'lt1001', pins: {
+    1: 'offset_1', 2: 'inn', 3: 'inp', 4: 'vneg',
+    5: 'offset_5', 6: 'out', 7: 'vpos', 8: 'nc',
+  } })],
   [/^ADP7118ARDZ(?:[-_A-Z0-9.]*)$/i, () => ({ kind: 'adp7118', pins: {
     1: 'vout_1', 2: 'vout_2', 3: 'sense_adj', 4: 'gnd',
     5: 'en', 6: 'ss', 7: 'vin_7', 8: 'vin_8',
