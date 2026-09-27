@@ -27,11 +27,29 @@ import '../test/_setup.js';
 import { projectBoard } from '../src/model/board-projection.js';
 import { exportKicadPcb } from '../src/model/exporters/kicad-pcb.js';
 import { runPcbDrc } from '../src/model/pcb-drc.js';
+import { getSidecar } from '../src/model/parts-registry.js';
 
 const GATING = new Set([
   'clearance', 'shorting_items', 'tracks_crossing', 'track_dangling',
   'via_dangling', 'hole_clearance', 'hole_near_hole', 'edge_clearance',
 ]);
+
+function wiredSmdCircuit(kind, pinCount) {
+  const terminals = getSidecar(kind).terminals.map((terminal) => terminal.name);
+  if (terminals.length !== pinCount) throw new Error(`${kind}: sidecar has ${terminals.length}, expected ${pinCount}`);
+  const groupSize = pinCount === 8 ? 4 : pinCount === 14 ? 8 : 5;
+  const parts = [{ id: 'U1', kind, params: {} }];
+  const wires = [];
+  for (let offset = 0, group = 1; offset < terminals.length; offset += groupSize, group++) {
+    const slice = terminals.slice(offset, offset + groupSize);
+    const header = `J${group}`;
+    parts.push({ id: header, kind: 'header', params: { pins: slice.length } });
+    slice.forEach((terminal, index) => wires.push({
+      from: header, fromTerminal: `p${index + 1}`, to: 'U1', toTerminal: terminal,
+    }));
+  }
+  return { parts, wires };
+}
 
 const CASES = [
   ['chain', {
@@ -63,6 +81,12 @@ const CASES = [
     }
     return { parts, wires };
   })()],
+  ['smd-lt1006-soic8', wiredSmdCircuit('lt1006', 8)],
+  ['smd-adtl082-soic8', wiredSmdCircuit('adtl082', 8)],
+  ['smd-adp7118-soic8', wiredSmdCircuit('adp7118', 8)],
+  ['smd-lt1763-soic8', wiredSmdCircuit('lt1763', 8)],
+  ['smd-op747-soic14', wiredSmdCircuit('op747', 14)],
+  ['smd-adp151-tsot5', wiredSmdCircuit('adp151', 5)],
 ];
 
 const which = spawnSync('kicad-cli', ['version'], { encoding: 'utf8' });

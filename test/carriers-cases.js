@@ -11,8 +11,12 @@ import { generateBom, bomToCsv } from '../src/model/bom.js';
 import { projectBoard } from '../src/model/board-projection.js';
 import { getLandPattern } from '../src/model/land-patterns.js';
 import { runPcbDrc } from '../src/model/pcb-drc.js';
+import { computeCopperNetlist } from '../src/model/copper-netlist.js';
+import { exportKicadPcb } from '../src/model/exporters/kicad-pcb.js';
+import { importKicadPcb } from '../src/importers/kicad-pcb.js';
 import { exportEasyEdaPcb } from '../src/model/exporters/easyeda-pcb.js';
 import { importEasyEdaPcb } from '../src/importers/easyeda-pcb.js';
+import { getSidecar } from '../src/model/parts-registry.js';
 
 test('bare SMD packages remain non-seatable and package-neutral channels cannot acquire a carrier', () => {
   assert.equal(FOOTPRINTS.lt1006, undefined);
@@ -146,6 +150,60 @@ test('a connected SOIC-8 design routes, passes DRC, and survives board export/im
   assert.deepEqual(runPcbDrc(restored), []);
   assert.equal(restored.parts.find(part => part.ref === 'U1').pads.length, 8);
 });
+
+const SMD_PATTERNS = [
+  ['lt1006', 'lt1006:soic-8', 8],
+  ['adtl082', 'adtl082:soic-8', 8],
+  ['adp7118', 'adp7118:soic-8', 8],
+  ['lt1763', 'lt1763:soic-8', 8],
+  ['op747', 'op747:soic-14', 14],
+  ['adp151', 'adp151:tsot-5', 5],
+];
+
+function wiredSmdCircuit(kind, pinCount) {
+  const terminals = getSidecar(kind).terminals.map(terminal => terminal.name);
+  assert.equal(terminals.length, pinCount, `${kind} physical sidecar/pattern pin count`);
+  // Header sizes are existing orderable land patterns. Two 1x4 headers make
+  // the 8-pin fixtures route cleanly; SOIC-14 uses 1x8 + 1x6.
+  const groupSize = pinCount === 8 ? 4 : pinCount === 14 ? 8 : 5;
+  const parts = [{ id: 'U1', kind, params: {} }];
+  const wires = [];
+  for (let offset = 0, group = 1; offset < terminals.length; offset += groupSize, group++) {
+    const slice = terminals.slice(offset, offset + groupSize);
+    const header = `J${group}`;
+    parts.push({ id: header, kind: 'header', params: { pins: slice.length } });
+    slice.forEach((terminal, index) => wires.push({
+      from: header, fromTerminal: `p${index + 1}`, to: 'U1', toTerminal: terminal,
+    }));
+  }
+  return { parts, wires };
+}
+
+function padPartition(board) {
+  return computeCopperNetlist(board).islands.filter(island => island.pads.length)
+    .map(island => island.pads.map(pad => `${pad.ref}.${pad.num}`).sort().join(' ')).sort();
+}
+
+for (const [kind, packageName, pinCount] of SMD_PATTERNS) {
+  test(`${kind} projects, routes and retains its exact partition through both PCB formats`, () => {
+    const projected = projectBoard(wiredSmdCircuit(kind, pinCount));
+    assert.deepEqual(projected.unplaced, []);
+    assert.deepEqual(projected.unrouted, []);
+    assert.deepEqual(runPcbDrc(projected.board), []);
+    const device = projected.board.parts.find(part => part.ref === 'U1');
+    assert.equal(device.package, packageName);
+    assert.equal(device.pads.length, pinCount);
+    const expected = padPartition(projected.board);
+
+    const kicad = importKicadPcb(exportKicadPcb(projected.board, { title: kind }).text);
+    assert.deepEqual(padPartition(kicad), expected, 'KiCad round-trip partition');
+    assert.deepEqual(runPcbDrc(kicad), [], 'KiCad round-trip native DRC');
+
+    const easyeda = importEasyEdaPcb(exportEasyEdaPcb(projected.board));
+    assert.deepEqual(padPartition(easyeda), expected, 'EasyEDA round-trip partition');
+    assert.deepEqual(runPcbDrc(easyeda), [], 'EasyEDA round-trip native DRC');
+  });
+}
 
 const ASSEMBLY_CASES = [
   { kind: 'lt1006', carrier: 'soic8-dip8', count: 8, first: 'offset_1', last: 'iset' },

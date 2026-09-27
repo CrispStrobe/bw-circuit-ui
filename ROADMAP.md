@@ -595,8 +595,12 @@ Remaining work, in order:
    top-view SVG whose numbered pins use the physical sidecar order. The browser
    gate downloads the real LT1006 legend and verifies its pin 1/pin 8 labels;
    no manufacturer, orderable part, pad dimensions or board outline is invented.
-3. Run each new land pattern through projection → exact DRC → KiCad and
-   EasyEDA export/re-import, plus the optional `kicad-cli pcb drc` oracle.
+3. **Implemented 2026-09-27.** All six promoted physical kinds (four
+   SOIC-8, one SOIC-14 and one TSOT-5) project into fully routed generic-header
+   fixtures with zero native DRC. Their exact pad/net partitions and clean DRC
+   verdicts survive both KiCad and EasyEDA export/re-import. The hosted KiCad
+   8+ oracle now independently runs `pcb drc` on the same six fixtures in
+   addition to its existing chain/keypad controls.
 4. Add paste/mask and assembly-side metadata needed for actually ordering a
    small adapter or target PCB; Gerber copper/mask/silk/drill already exists.
 5. Add a fabrication preview/checklist: outline closed, zero danger DRC,
