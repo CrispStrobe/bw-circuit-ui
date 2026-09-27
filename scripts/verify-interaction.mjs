@@ -521,6 +521,19 @@ const selectionCount = async () =>
 //      at. That was the state of vcvs and vccs for as long as the SPICE E and
 //      G cards have imported. It takes a browser and a count of what is on
 //      the screen to see it.
+const placeByLabel = async (label, x, y) => {
+  // The tooltip and generated chip art may repeat the part name. Target the
+  // palette's actual accessible button, otherwise a text-only descendant can
+  // be clicked without arming placement (LT1001 was the first exact repeat).
+  const el = page.getByRole('button', { name: label, exact: true }).first();
+  try { await el.scrollIntoViewIfNeeded({ timeout: 10000 }); } catch { /* the click scrolls too */ }
+  await el.click({ timeout: 20000 });
+  await page.waitForTimeout(200);
+  await page.mouse.move(x, y, { steps: 4 });
+  await page.mouse.click(x, y);
+  await page.waitForTimeout(400);
+};
+
 try {
   const cs = await page.locator('[data-canvas]').boundingBox();
   // Free (unwired) terminal dots, identified the way scenario 12 does: the
@@ -539,19 +552,6 @@ try {
       .filter(el => el.getAttribute('stroke') === '#e74c3c' && el.getAttribute('r') === '5')
       .map(el => { const r = el.getBoundingClientRect();
         return `${Math.round(r.x + r.width / 2)},${Math.round(r.y + r.height / 2)}`; }));
-
-  const placeByLabel = async (label, x, y) => {
-    // The tooltip and generated chip art may repeat the part name. Target the
-    // palette's actual accessible button, otherwise a text-only descendant can
-    // be clicked without arming placement (LT1001 was the first exact repeat).
-    const el = page.getByRole('button', { name: label, exact: true }).first();
-    try { await el.scrollIntoViewIfNeeded({ timeout: 10000 }); } catch { /* the click scrolls too */ }
-    await el.click({ timeout: 20000 });
-    await page.waitForTimeout(200);
-    await page.mouse.move(x, y, { steps: 4 });
-    await page.mouse.click(x, y);
-    await page.waitForTimeout(400);
-  };
 
   const results = [];
   let i = 0;
@@ -685,6 +685,8 @@ try {
     'OP747 places as one physical SOIC-14 quad with fourteen separately wireable pins',
     `OP747 placement produced ${op747Faces} faces and ${op747Dots.length} distinct pins; `
       + `model parts ${JSON.stringify(op747Parts)}`);
+  await carrierSelect.selectOption('soic14-dip14');
+  await page.waitForTimeout(200);
 
   const beforeOp07 = new Set(await freeTerminalDots());
   await placeByLabel('OP07', cs.x + cs.width * 0.56, cs.y + cs.height * 0.20);
@@ -709,6 +711,8 @@ try {
   verdict('adp151-place', adp151Faces >= 1 && adp151Dots.length === 5,
     'ADP151 places as a physical TSOT-5 face with five separately wireable leads',
     `ADP151 placement produced ${adp151Faces} faces and ${adp151Dots.length} distinct pins`);
+  await carrierSelect.selectOption('tsot5-header5');
+  await page.waitForTimeout(200);
 
   const beforeAdp = new Set(await freeTerminalDots());
   await placeByLabel('ADP7118', cs.x + cs.width * 0.78, cs.y + cs.height * 0.62);
@@ -766,16 +770,6 @@ try {
   for (const family of families) {
     let result = { ok: false, detail: 'scenario did not run' };
     try {
-      const face = page.locator(`[data-part-face="${family.kind}"]`).last();
-      if (await face.count() !== 1) throw new Error(`no unique ${family.kind} face`);
-      await face.click({ timeout: 20000 });
-      const carrierSelect = page.locator('[data-carrier-select]');
-      await carrierSelect.waitFor({ state: 'attached', timeout: 10000 });
-      if (await carrierSelect.inputValue() !== family.carrier) {
-        await carrierSelect.selectOption(family.carrier);
-      }
-      await page.waitForTimeout(100);
-
       const boardRect = await page.evaluate(() => {
         const el = [...document.querySelectorAll('svg rect')]
           .find(rect => rect.getAttribute('fill') === '#e8e4d8');
