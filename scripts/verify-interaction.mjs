@@ -762,29 +762,29 @@ try {
 //      header pin did not merely look seated.
 {
   const families = [
-    { kind: 'lt1006', carrier: 'soic8-dip8', scenario: 'carrier-soic8-seat', xFrac: 0.25 },
-    { kind: 'op747', carrier: 'soic14-dip14', scenario: 'carrier-soic14-seat', xFrac: 0.52 },
-    { kind: 'adp151', carrier: 'tsot5-header5', scenario: 'carrier-tsot5-seat', xFrac: 0.78 },
+    { kind: 'lt1006', carrier: 'soic8-dip8', scenario: 'carrier-soic8-seat', targetHole: 'e10' },
+    { kind: 'op747', carrier: 'soic14-dip14', scenario: 'carrier-soic14-seat', targetHole: 'e25' },
+    { kind: 'adp151', carrier: 'tsot5-header5', scenario: 'carrier-tsot5-seat', targetHole: 'c40' },
   ];
   const conduction = [];
   for (const family of families) {
     let result = { ok: false, detail: 'scenario did not run' };
     try {
-      const boardRect = await page.evaluate(() => {
-        const el = [...document.querySelectorAll('svg rect')]
-          .find(rect => rect.getAttribute('fill') === '#e8e4d8');
-        if (!el) return null;
-        const b = el.getBoundingClientRect();
-        return { x: b.x, y: b.y, w: b.width, h: b.height };
-      });
-      if (!boardRect) throw new Error('no rendered breadboard');
       const mountedFace = page.locator(
         `[data-part-face="${family.kind}"][data-carrier="${family.carrier}"]`).last();
       const from = await mountedFace.boundingBox();
       if (!from) throw new Error(`mounted ${family.kind} face has no screen box`);
+      const pinOne = await mountedFace.locator('[data-carrier-pin="1"]').boundingBox();
+      if (!pinOne) throw new Error(`mounted ${family.kind} exposes no carrier pin 1`);
+      const target = await page.locator(`[data-hole="${family.targetHole}"]`).first().boundingBox();
+      if (!target) throw new Error(`target hole ${family.targetHole} has no screen position`);
+      // The gesture starts on the package body, but its delta is chosen from
+      // the visible pin-1 pad to the visible destination hole. This mirrors
+      // how a person aligns a breakout and avoids treating the body centre as
+      // though it were the footprint reference lead.
       const to = {
-        x: boardRect.x + boardRect.w * family.xFrac,
-        y: boardRect.y + boardRect.h * 0.50,
+        x: from.x + from.width / 2 + target.x + target.width / 2 - pinOne.x - pinOne.width / 2,
+        y: from.y + from.height / 2 + target.y + target.height / 2 - pinOne.y - pinOne.height / 2,
       };
       await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
       await page.mouse.down();
@@ -813,6 +813,9 @@ try {
         };
       }, family);
       if (seated.err) throw new Error(seated.err);
+      if (seated.headerHole !== family.targetHole) {
+        throw new Error(`${family.kind} pin 1 landed at ${seated.headerHole}, expected ${family.targetHole}`);
+      }
       result = {
         ok: true,
         detail: `${family.kind} ${family.carrier} seated ${seated.leadCount} headers; `
