@@ -1,0 +1,32 @@
+{
+  "kind": "ad711",
+  "w": 60,
+  "h": 48,
+  "terminals": [
+    { "name": "offset_1", "x": 0, "y": 8, "functions": [] },
+    { "name": "inn", "x": 0, "y": 18, "functions": [] },
+    { "name": "inp", "x": 0, "y": 28, "functions": [] },
+    { "name": "vneg", "x": 0, "y": 38, "functions": [] },
+    { "name": "offset_5", "x": 60, "y": 38, "functions": [] },
+    { "name": "out", "x": 60, "y": 28, "functions": [] },
+    { "name": "vpos", "x": 60, "y": 18, "functions": [] },
+    { "name": "nc", "x": 60, "y": 8, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "AD711 BiFET precision operational amplifier, production AD711JNZ N-8 plastic PDIP top view. Physical pin order audited against Analog Devices AD711 Rev. E; RN-8 SOIC, Q-8 ceramic DIP and H-08A metal-can parts must not borrow this face, and offset-null behavior is not implied by the artwork.",
+  "footprint": {
+    "refTerminal": "offset_1",
+    "leads": {
+      "offset_1": { "dRow": 0, "dCol": 0 },
+      "inn": { "dRow": 0, "dCol": 1 },
+      "inp": { "dRow": 0, "dCol": 2 },
+      "vneg": { "dRow": 0, "dCol": 3 },
+      "offset_5": { "dRow": 5, "dCol": 3 },
+      "out": { "dRow": 5, "dCol": 2 },
+      "vpos": { "dRow": 5, "dCol": 1 },
+      "nc": { "dRow": 5, "dCol": 0 }
+    },
+    "straddlesGutter": true,
+    "minCols": 4
+  }
+}

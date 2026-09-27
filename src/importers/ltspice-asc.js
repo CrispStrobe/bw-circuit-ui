@@ -152,6 +152,12 @@ for (const [name, sourceSha256, sourcePackage] of [
     ...(sourcePackage ? { sourcePackage } : {}),
   });
 }
+addVerifiedDevice(['ad711', 'opamps/ad711'], {
+  kind: 'ad711_channel', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+  prefix: 'X', acceptedValues: ['AD711'], deviceParams: {},
+  sourceSha256: '661d0a0e03267c8b0cebcedae656689402c82941fe998bea5e100ebcb7b543e5',
+  sourceModelSubstitution: Object.freeze({ file: 'ADI1.lib', subcircuit: 'AD712' }),
+});
 for (const [name, sourceSha256] of [
   ['lt1014', 'b7233d9b52d2876b34faa47772a90b139e2f794bba50f45ab1ef8aa9bacb7b4c'],
   ['lt1014a', '9fe778053a144464b0aab03fbd4f8580491bc5322d217fc6d9418fa11b59e9d1'],

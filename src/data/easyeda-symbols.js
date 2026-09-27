@@ -155,6 +155,15 @@ export const PART_SYMBOLS = {
   lt1007_channel: {
     refdesPrefix: 'U', spiceCard: 'X',
   },
+  ad711: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // The physical palette/import part owns the reviewed N-8 PDIP ordering.
+    // No official KiCad AD711 symbol was found, so do not invent one here.
+    kicadFootprint: 'Package_DIP:DIP-8_W7.62mm',
+  },
+  ad711_channel: {
+    refdesPrefix: 'U', spiceCard: 'X',
+  },
   lt1014: {
     refdesPrefix: 'U', spiceCard: 'X',
     // The physical palette/EasyEDA part is the N/J industry-standard PDIP-14.
