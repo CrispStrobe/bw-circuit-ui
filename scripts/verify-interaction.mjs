@@ -148,6 +148,7 @@ const EXPECTED = [
   'controlled-source-terminals',
   'lm741-place',
   'lt1001-place',
+  'op07-place',
   'adp7118-place',
   'lt1763-place',
   'zero-page-errors',
@@ -576,6 +577,14 @@ try {
     `LT1001 placement produced ${lt1001Faces} faces and ${lt1001Dots.length} distinct pins; `
       + `model parts ${JSON.stringify(lt1001Parts)}`);
 
+  const beforeOp07 = new Set(await freeTerminalDots());
+  await placeByLabel('OP07', cs.x + cs.width * 0.56, cs.y + cs.height * 0.20);
+  const op07Dots = [...new Set((await freeTerminalDots()).filter(d => !beforeOp07.has(d)))];
+  const op07Faces = await page.locator('[data-part-face="op07"][data-dip-body="op07"]').count();
+  verdict('op07-place', op07Faces >= 1 && op07Dots.length === 8,
+    'OP07 places as a physical P-suffix DIP-8 face with eight separately wireable pins',
+    `OP07 placement produced ${op07Faces} faces and ${op07Dots.length} distinct pins`);
+
   const beforeAdp = new Set(await freeTerminalDots());
   await placeByLabel('ADP7118', cs.x + cs.width * 0.78, cs.y + cs.height * 0.62);
   const adpDots = [...new Set((await freeTerminalDots()).filter(d => !beforeAdp.has(d)))];
@@ -592,7 +601,7 @@ try {
     'LT1763 places as a physical SO-8 face with eight separately wireable pins',
     `LT1763 placement produced ${ltFaces} faces and ${ltDots.length} distinct pins`);
 } catch (e) {
-  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'lt1001-place', 'adp7118-place', 'lt1763-place'],
+  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'lt1001-place', 'op07-place', 'adp7118-place', 'lt1763-place'],
     `the controlled-source scenarios could not be set up: ${String(e).split('\n')[0]}`);
 }
 

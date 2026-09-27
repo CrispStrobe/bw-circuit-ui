@@ -141,6 +141,12 @@ export const PART_SYMBOLS = {
     // an LT1001 symbol. Keep the real package without inventing a library ID.
     kicadFootprint: 'Package_DIP:DIP-8_W7.62mm',
   },
+  op07: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // No package identity is inferred by the LTspice importer. This footprint
+    // belongs only to the explicit P-suffix PDIP palette/EasyEDA/KiCad part.
+    kicadFootprint: 'Package_DIP:DIP-8_W7.62mm',
+  },
   adp7118: {
     refdesPrefix: 'U',
     kicadSymbol: 'Regulator_Linear:ADP7118ARDZ',
