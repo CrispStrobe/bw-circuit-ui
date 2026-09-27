@@ -123,6 +123,38 @@ try {
     `moved ${Math.round(moved)}px`);
   check(Math.abs(afterPan - beforePan) <= 0.02,
     'and panning does not change the zoom', `x${beforePan} -> x${afterPan}`);
+  // ── The schematic, which zoomed only from `wheel` ──────────────────
+  // A touchscreen has no wheel, so this view could be panned and never
+  // magnified. Reached by its aria-label because the toggle has no test id.
+  await page.getByRole('radio', { name: 'Schematic view' }).click();
+  await page.waitForTimeout(800);
+  // BY NAME. Toolbar icons are inline <svg viewBox> too, so "the first svg
+  // with a viewBox" aimed the gesture at a 16px icon while the viewBox was
+  // read off something else entirely — the box and the reading have to come
+  // from the SAME element or the check means nothing.
+  const schematic = page.locator('[data-schematic-svg]');
+  await schematic.waitFor({ state: 'visible', timeout: 30000 });
+
+  /** The schematic's zoom is its viewBox width: smaller box = closer in. */
+  const viewBoxW = async () => schematic.evaluate(el =>
+    Math.round(Number(el.getAttribute('viewBox').split(/\s+/)[2]) * 100) / 100);
+
+  const sBox = await schematic.boundingBox();
+  const sx = sBox.x + sBox.width / 2;
+  const sy = sBox.y + sBox.height / 2;
+  const sBefore = await viewBoxW();
+  check(Number.isFinite(sBefore) && sBefore > 0, 'the schematic reports a viewBox', `w=${sBefore}`);
+
+  await touch('touchStart', [[sx - 50, sy], [sx + 50, sy]]);
+  for (const half of [80, 110, 140, 170]) {
+    await touch('touchMove', [[sx - half, sy], [sx + half, sy]]);
+    await page.waitForTimeout(60);
+  }
+  await touch('touchEnd', []);
+  await page.waitForTimeout(400);
+  const sAfter = await viewBoxW();
+  check(sAfter < sBefore, 'pinching out zooms the schematic in',
+    `viewBox w ${sBefore} -> ${sAfter}`);
 } finally {
   await browser.close();
   stop();
