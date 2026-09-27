@@ -1466,6 +1466,40 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
       }
+      case 'vcvs':
+      case 'vccs': {
+        // A dependent source: the left port senses, the right port drives.
+        const isV = kind === 'vcvs';
+        const accent = isV ? '#8e6fd8' : '#16a085';
+        return (
+          <g key={id} data-part-face={kind} transform={xform} onClick={handleClick}
+            style={{ cursor: 'pointer' }}>
+            <line x1={-32} y1={-10} x2={-18} y2={-10} stroke="#95a5a6" strokeWidth={2} />
+            <line x1={-32} y1={10} x2={-18} y2={10} stroke="#95a5a6" strokeWidth={2} />
+            <circle cx={-18} cy={-10} r={2.5} fill="none" stroke="#95a5a6" strokeWidth={1.2} />
+            <circle cx={-18} cy={10} r={2.5} fill="none" stroke="#95a5a6" strokeWidth={1.2} />
+            <path d="M -18 -6 L -18 0 L -13 0" fill="none" stroke="#7f8c8d"
+              strokeWidth={1.2} strokeDasharray="3,2" />
+            <line x1={32} y1={-10} x2={12} y2={-10} stroke="#95a5a6" strokeWidth={2} />
+            <line x1={32} y1={10} x2={12} y2={10} stroke="#95a5a6" strokeWidth={2} />
+            <line x1={12} y1={-10} x2={12} y2={-13} stroke="#95a5a6" strokeWidth={2} />
+            <line x1={12} y1={10} x2={12} y2={13} stroke="#95a5a6" strokeWidth={2} />
+            <polygon points="12,-13 24,0 12,13 0,0"
+              fill="#20222b" stroke={selStroke || accent} strokeWidth={isSelected ? 3 : 1.6} />
+            {isV ? (
+              <>
+                <text x={12} y={-2} textAnchor="middle" fill="#d8dee4" fontSize={7}>+</text>
+                <text x={12} y={7} textAnchor="middle" fill="#d8dee4" fontSize={7}>−</text>
+              </>
+            ) : (
+              <path d="M 12 7 L 12 -6 M 8 -2 L 12 -7 L 16 -2" fill="none"
+                stroke="#d8dee4" strokeWidth={1.4} />
+            )}
+            <text x={8} y={23} textAnchor="middle" fill={accent} fontSize={7}
+              fontFamily="monospace">{isV ? 'VCVS' : 'VCCS'}</text>
+          </g>
+        );
+      }
       default: {
         // Generic DIP body for retro/logic ICs that have sidecars.
         // Pin-1-bottom convention: left column (pin 1 side) at bottom row,

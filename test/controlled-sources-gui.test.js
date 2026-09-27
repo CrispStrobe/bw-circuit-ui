@@ -130,6 +130,9 @@ test('3. the canvas derives its geometry from the sidecar rather than keeping a 
   // And the renderer consumes that helper rather than its own arithmetic.
   assert.match(CANVAS, /sidecarCenterOffsets\(part\.kind\)/,
     'BoardCanvas no longer reads the shared derivation');
+  assert.match(CANVAS,
+    /case 'vcvs':\s*case 'vccs':\s*\{[\s\S]{0,2500}?data-part-face=\{kind\}/,
+    'BoardCanvas lost the controlled-source body while retaining its terminal geometry');
 });
 
 test('4. the palette restates no electrical default; the engine keeps both', () => {
