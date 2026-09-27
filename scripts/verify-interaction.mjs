@@ -581,12 +581,19 @@ try {
       + `model parts ${JSON.stringify(lt1001Parts)}`);
 
   const before1006 = new Set(await freeTerminalDots());
-  await placeByLabel('LT1006', cs.x + cs.width * 0.80, cs.y + cs.height * 0.20);
+  // Keep this target out of LT1001's physical body and terminal hit area.
+  // Clicking an existing face correctly selects it and consumes the click;
+  // that proves selection, not placement of the newly armed palette part.
+  await placeByLabel('LT1006', cs.x + cs.width * 0.42, cs.y + cs.height * 0.20);
   const lt1006Dots = [...new Set((await freeTerminalDots()).filter(d => !before1006.has(d)))];
   const lt1006Faces = await page.locator('[data-part-face="lt1006"][data-soic-body="lt1006"]').count();
+  const lt1006Parts = await page.evaluate(() => window.__circuit?.parts
+    ?.filter(part => part.kind === 'lt1006')
+    .map(part => ({ id: part.id, x: part.x, y: part.y, terminals: part.terminals?.length })) || []);
   verdict('lt1006-place', lt1006Faces >= 1 && lt1006Dots.length === 8,
     'LT1006 places as a physical S8 SOIC face with eight separately wireable pins',
-    `LT1006 placement produced ${lt1006Faces} faces and ${lt1006Dots.length} distinct pins`);
+    `LT1006 placement produced ${lt1006Faces} faces and ${lt1006Dots.length} distinct pins; `
+      + `model parts ${JSON.stringify(lt1006Parts)}`);
 
   const beforeOp07 = new Set(await freeTerminalDots());
   await placeByLabel('OP07', cs.x + cs.width * 0.56, cs.y + cs.height * 0.20);
