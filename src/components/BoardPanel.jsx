@@ -71,8 +71,16 @@ export default function BoardPanel({
   const preflight = useMemo(() => fabricationPreflight(projected.board, {
     findings, unrouted: projected.unrouted, exportId: pendingExport?.id || null,
   }), [projected, findings, pendingExport]);
-  const fabricationAcknowledged = fabricationAcknowledgement?.board === projected.board
-    && fabricationAcknowledgement?.exportId === pendingExport?.id;
+  // BoardPanel intentionally rebuilds a projection on each parent revision:
+  // Circuit is a mutable model, so object identity cannot prove that the
+  // acknowledged board is still the board about to be exported. Its complete
+  // JSON value plus the writer id can: any fabrication-relevant edit changes
+  // this receipt, while a render of unchanged content keeps it stable.
+  const fabricationReceipt = useMemo(() => JSON.stringify({
+    exportId: pendingExport?.id || null,
+    board: projected.board,
+  }), [projected, pendingExport]);
+  const fabricationAcknowledged = fabricationAcknowledgement === fabricationReceipt;
 
   const editable = !board; // an imported board has no projection to steer
 
@@ -283,7 +291,7 @@ export default function BoardPanel({
           <label style={{ display: 'flex', gap: 5, marginTop: 6, alignItems: 'flex-start' }}>
             <input data-fabrication-acknowledge type="checkbox" checked={fabricationAcknowledged}
               onChange={(event) => setFabricationAcknowledgement(event.target.checked
-                ? { board: projected.board, exportId: pendingExport.id }
+                ? fabricationReceipt
                 : null)} />
             I reviewed this exact board's DRC, routing, drill and layer summary.
           </label>

@@ -152,8 +152,9 @@ describe('fabrication preflight', () => {
 
   test('BoardPanel requires the exact ready report and acknowledgement before download', () => {
     assert.match(panel, /data-fabrication-preflight/);
-    assert.match(panel, /fabricationAcknowledgement\?\.board === projected\.board/);
-    assert.match(panel, /fabricationAcknowledgement\?\.exportId === pendingExport\?\.id/);
+    assert.match(panel, /JSON\.stringify\(\{\s*exportId: pendingExport\?\.id \|\| null,\s*board: projected\.board/);
+    assert.match(panel, /fabricationAcknowledgement === fabricationReceipt/);
+    assert.match(panel, /setFabricationAcknowledgement\(event\.target\.checked\s*\? fabricationReceipt/);
     assert.match(panel, /disabled=\{!preflight\.ready \|\| !fabricationAcknowledged\}/);
     assert.match(panel, /previewExport\(entry\)/);
     assert.doesNotMatch(panel, /onClick=\{\(\) => doExport\(entry\)\}/);
