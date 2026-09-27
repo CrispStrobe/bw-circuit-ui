@@ -209,6 +209,14 @@ export const PART_SYMBOLS = {
   ad8602_channel: {
     refdesPrefix: 'U', spiceCard: 'X',
   },
+  ada4522_1: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // This physical identity is the production R-8 SOIC only; RM-8 is distinct.
+    kicadFootprint: 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm',
+  },
+  ada4522_1_channel: {
+    refdesPrefix: 'U', spiceCard: 'X',
+  },
   op747: {
     refdesPrefix: 'U', spiceCard: 'X',
     // The physical palette/EasyEDA part is the production R-14 SOIC.

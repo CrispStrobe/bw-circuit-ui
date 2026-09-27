@@ -135,6 +135,9 @@ export const LAND_PATTERNS = {
   ad8602: {
     'soic-8': soic(['1_out', '1_neg', '1_pos', 'vneg', '2_pos', '2_neg', '2_out', 'vpos']),
   },
+  ada4522_1: {
+    'soic-8': soic(['nic_1', 'inn', 'inp', 'vneg', 'nic_5', 'out', 'vpos', 'nic_8']),
+  },
   adp7118: {
     'soic-8': soic(['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8']),
   },

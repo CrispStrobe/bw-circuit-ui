@@ -259,6 +259,8 @@ const CATEGORIES = [
         tooltip: 'Real rail-to-rail op-amp — R-8 SOIC, 40 kV/V gain, 1 MHz GBW, 0.92 V/µs slew and 2.7–5.5 V operation' },
       { kind: 'ad8602', label: 'AD8602', params: {}, color: '#2f6c78',
         tooltip: 'Real dual rail-to-rail op-amp — R-8 SOIC, shared rails, 80 kV/V gain, 8.4 MHz GBW and 6 V/µs slew' },
+      { kind: 'ada4522_1', label: 'ADA4522-1', params: {}, color: '#375f78',
+        tooltip: 'Real zero-drift precision op-amp — R-8 SOIC, 4.5–55 V operation, 125 dB gain, 2.7 MHz GBW and 0.8 V/µs slew' },
       { kind: 'op747', label: 'OP747', params: {}, color: '#6d4c7d',
         tooltip: 'Real quad precision op-amp — SOIC-14, shared rails, high input impedance, finite gain/bandwidth/slew and loaded swing' },
       { kind: 'op07', label: 'OP07', params: {}, color: '#a66f1f',

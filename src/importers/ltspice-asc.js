@@ -205,6 +205,14 @@ addVerifiedDevice(['ad8602', 'opamps/ad8602'], {
   sourceSha256: '2e179beb1909fce966b27ce673c920139831b6dae59f9c417322d3d9a24fb552',
   sourceModelSubstitution: Object.freeze({ file: 'AD8602.lib', subcircuit: 'AD8602' }),
 });
+addVerifiedDevice(['ada4522-1', 'opamps/ada4522-1'], {
+  // The official symbol describes one package-neutral functional amplifier;
+  // its five pins do not establish R-8 rather than the distinct RM-8 package.
+  kind: 'ada4522_1_channel', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+  prefix: 'X', acceptedValues: ['ADA4522-1'], deviceParams: {},
+  sourceSha256: 'd36914a39d3c53db68fb36939212a67b8b063ff61ac5b847c17b760b29f5b78a',
+  sourceModelSubstitution: Object.freeze({ file: 'ADA4522-1.sub', subcircuit: 'ADA4522-1' }),
+});
 addVerifiedDevice(['op747', 'opamps/op747'], {
   // The official five-terminal ASY is one functional channel and has no
   // package/unit identity. Never turn it into the whole R-14 quad package.

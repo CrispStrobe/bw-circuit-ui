@@ -21,7 +21,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = rel => readFileSync(join(root, rel), 'utf8');
 const physicalTerminals = ['1_out', '1_neg', '1_pos', 'vneg', '2_pos', '2_neg', '2_out', 'vpos'];
 const channelTerminals = ['inp', 'inn', 'vpos', 'vneg', 'out'];
-const partsSha = 'bdadcaa969cfabde737778f013e19cf99602850c';
+const partsSha = '897eee90699d8d01cfabca294f7d5d6703bb01fb';
 const sourceSha = '2e179beb1909fce966b27ce673c920139831b6dae59f9c417322d3d9a24fb552';
 
 registerAllDevices();

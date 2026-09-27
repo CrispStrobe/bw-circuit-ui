@@ -49,6 +49,7 @@ const DRIFTED = [
   { kind: 'lt1678',       minTerminals: 8, sample: ['1_out', '1_neg', '1_pos', 'vneg', '2_out', 'vpos'] },
   { kind: 'ad8541',       minTerminals: 8, sample: ['nc_1', 'inn', 'inp', 'vneg', 'nc_5', 'out', 'vpos', 'nc_8'] },
   { kind: 'ad8602',       minTerminals: 8, sample: ['1_out', '1_neg', '1_pos', 'vneg', '2_pos', '2_neg', '2_out', 'vpos'] },
+  { kind: 'ada4522_1',    minTerminals: 8, sample: ['nic_1', 'inn', 'inp', 'vneg', 'nic_5', 'out', 'vpos', 'nic_8'] },
   { kind: 'op747',        minTerminals: 14, sample: ['1_neg', '1_pos', 'vpos', '2_out', '4_out', 'vneg', '3_out', '1_out'] },
   { kind: 'adp7118',      minTerminals: 8, sample: ['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8'] },
   { kind: 'adp151',       minTerminals: 5, sample: ['vin', 'gnd', 'en', 'nc', 'vout'] },
@@ -107,6 +108,9 @@ describe('terminal-drift regression: multi-terminal kinds resolve via sidecar', 
   });
   test('AD8602 has an explicit SOIC-8 label instead of two generic ideal triangles', () => {
     assert.match(canvasSrc, /ad8602:\s*'AD8602'/);
+  });
+  test('ADA4522-1 has an explicit SOIC-8 label instead of a generic ideal triangle', () => {
+    assert.match(canvasSrc, /ada4522_1:\s*'ADA4522-1'/);
   });
   test('OP747 has an explicit SOIC-14 label instead of four unrelated triangles', () => {
     assert.match(canvasSrc, /op747:\s*'OP747'/);
