@@ -208,10 +208,21 @@ export function generateBom(parts) {
           label: CARRIERS[p.carrier].label,
           params: {},
           sourcePackage: null,
+          carrier: {
+            id: p.carrier,
+            inputPackage: CARRIERS[p.carrier].package,
+            inputPitchMm: CARRIERS[p.carrier].inputPitchMm,
+            headerPitchMm: CARRIERS[p.carrier].headerPitchMm,
+            layout: CARRIERS[p.carrier].layout,
+            sourcing: CARRIERS[p.carrier].sourcing,
+          },
+          assemblyKinds: [],
           ids: [],
         });
       }
-      groups.get(carrierKey).ids.push(`${p.id}:carrier`);
+      const carrierGroup = groups.get(carrierKey);
+      carrierGroup.ids.push(`${p.id}:carrier`);
+      if (!carrierGroup.assemblyKinds.includes(p.kind)) carrierGroup.assemblyKinds.push(p.kind);
     }
   }
 
@@ -223,6 +234,7 @@ export function generateBom(parts) {
     ids: g.ids,
     params: g.params,
     ...(g.sourcePackage ? { sourcePackage: g.sourcePackage } : {}),
+    ...(g.carrier ? { carrier: g.carrier, assemblyKinds: [...g.assemblyKinds].sort() } : {}),
   })).sort((a, b) => a.kind.localeCompare(b.kind) || a.label.localeCompare(b.label));
 }
 
@@ -232,9 +244,13 @@ export function generateBom(parts) {
  * @returns {string}
  */
 export function bomToCsv(bom) {
-  const lines = ['Qty,Part,Value'];
+  const cell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+  const lines = ['Qty,Part,Value,Input package,Input pitch (mm),Header pitch (mm),Sourcing'];
   for (const line of bom) {
-    lines.push(`${line.qty},"${line.label}","${describeParams(line.params)}"`);
+    lines.push([
+      line.qty, line.label, describeParams(line.params), line.carrier?.inputPackage,
+      line.carrier?.inputPitchMm, line.carrier?.headerPitchMm, line.carrier?.sourcing,
+    ].map(cell).join(','));
   }
   return lines.join('\n');
 }

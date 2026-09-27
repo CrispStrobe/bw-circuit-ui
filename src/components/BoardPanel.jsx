@@ -21,6 +21,7 @@ import { runPcbDrc } from '../model/pcb-drc.js';
 import { listVariants } from '../model/land-patterns.js';
 import { BOARD_EXPORTS, runExport } from '../model/exporters/registry.js';
 import TransferReport from './TransferReport.jsx';
+import { BomPanel } from './BomPanel.jsx';
 
 const LAYERS = [
   ['copper-top', 'Top'],
@@ -40,6 +41,7 @@ export default function BoardPanel({
 }) {
   const [hidden, setHidden] = useState(() => new Set());
   const [showFindings, setShowFindings] = useState(false);
+  const [showBom, setShowBom] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [report, setReport] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -188,6 +190,13 @@ export default function BoardPanel({
           </label>
         ))}
         <span style={{ flex: 1 }} />
+        <button data-board-bom onClick={() => setShowBom((value) => !value)}
+          aria-expanded={showBom}
+          style={{ background: showBom ? '#334155' : '#1e293b', color: '#cbd5e1',
+            border: '1px solid #475569', borderRadius: 4, fontFamily: 'monospace',
+            fontSize: 10, cursor: 'pointer', padding: '2px 7px' }}>
+          BOM
+        </button>
         {editable && selected && (
           <span data-board-part-tools style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
             <span style={{ color: '#f1c40f', fontFamily: 'monospace', fontSize: 10 }}>{selected}</span>
@@ -237,6 +246,11 @@ export default function BoardPanel({
       <div style={{ position: 'relative' }}>
         <TransferReport report={report} lang={lang} onClose={() => setReport(null)} />
       </div>
+      {showBom && (
+        <div data-board-bom-panel style={{ maxHeight: 240, overflow: 'auto' }}>
+          <BomPanel parts={circuit ? circuit.parts : parts} />
+        </div>
+      )}
       {showFindings && findings.length > 0 && (
         <div data-board-findings style={{ maxHeight: 140, overflowY: 'auto', background: '#0f172a', border: '1px solid #2c3e50', borderRadius: 6, padding: 6 }}>
           {findings.map((f, i) => (

@@ -7,6 +7,8 @@
 
 import React, { useMemo, useCallback } from 'react';
 import { generateBom, bomToCsv } from '../model/bom.js';
+import { carrierAssemblySvg } from '../model/carrier-assembly-svg.js';
+import { downloadText } from '../model/exporters/download.js';
 import { PartThumbnail } from './PartThumbnail.jsx';
 
 export function BomPanel({ parts }) {
@@ -22,6 +24,11 @@ export function BomPanel({ parts }) {
     a.click();
     URL.revokeObjectURL(url);
   }, [bom]);
+
+  const handleAssemblyExport = useCallback((line, kind) => {
+    const svg = carrierAssemblySvg({ kind, carrier: line.carrier.id });
+    downloadText(svg, `${kind}-${line.carrier.id}-assembly.svg`, 'image/svg+xml');
+  }, []);
 
   if (bom.length === 0) {
     return (
@@ -78,6 +85,22 @@ export function BomPanel({ parts }) {
               </td>
               <td style={{ padding: '4px 6px', color: '#bdc3c7' }}>
                 {line.label}
+                {line.carrier && (
+                  <div style={{ marginTop: 3, color: '#7f8c8d', fontSize: 9 }}>
+                    {line.carrier.inputPackage} {line.carrier.inputPitchMm} mm →{' '}
+                    {line.carrier.headerPitchMm} mm header · {line.carrier.sourcing}
+                    {line.assemblyKinds.map(kind => (
+                      <button key={kind} data-carrier-assembly={kind}
+                        onClick={() => handleAssemblyExport(line, kind)}
+                        title={`Download printable ${kind} pin legend`}
+                        style={{ marginLeft: 6, border: '1px solid #2c3e50', borderRadius: 3,
+                          background: '#16213e', color: '#9fb3c8', cursor: 'pointer',
+                          fontFamily: 'monospace', fontSize: 8 }}>
+                        {kind} legend SVG
+                      </button>
+                    ))}
+                  </div>
+                )}
               </td>
             </tr>
           ))}

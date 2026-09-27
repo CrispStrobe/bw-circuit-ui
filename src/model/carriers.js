@@ -14,6 +14,9 @@ export const CARRIERS = Object.freeze({
   'soic8-dip8': Object.freeze({
     label: 'SOIC-8 to DIP-8 breakout',
     package: 'SOIC-8',
+    inputPitchMm: 1.27,
+    headerPitchMm: 2.54,
+    sourcing: 'vendor-neutral',
     pinCount: 8,
     layout: 'dip',
     compatibleKinds: Object.freeze(['lt1006', 'adtl082', 'adp7118', 'lt1763']),
@@ -21,6 +24,9 @@ export const CARRIERS = Object.freeze({
   'soic14-dip14': Object.freeze({
     label: 'SOIC-14 to DIP-14 breakout',
     package: 'SOIC-14',
+    inputPitchMm: 1.27,
+    headerPitchMm: 2.54,
+    sourcing: 'vendor-neutral',
     pinCount: 14,
     layout: 'dip',
     compatibleKinds: Object.freeze(['op747']),
@@ -28,6 +34,9 @@ export const CARRIERS = Object.freeze({
   'tsot5-header5': Object.freeze({
     label: 'TSOT-5 to 0.1-inch breakout',
     package: 'TSOT-5',
+    inputPitchMm: 0.95,
+    headerPitchMm: 2.54,
+    sourcing: 'vendor-neutral',
     pinCount: 5,
     layout: 'single-row',
     compatibleKinds: Object.freeze(['adp151']),

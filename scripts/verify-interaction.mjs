@@ -119,6 +119,7 @@ const EXPECTED = [
   'carrier-soic14-seat',
   'carrier-tsot5-seat',
   'carrier-strip-conduction',
+  'carrier-assembly-download',
   'seat-part',
   'jumper-holes',
   'wheel-pan',
@@ -872,6 +873,43 @@ try {
   verdict('carrier-strip-conduction', failed.length === 0,
     conduction.map(item => `${item.kind}: ${item.detail}`).join('; '),
     failed.map(item => `${item.kind}: ${item.detail}`).join('; '));
+  let assemblyStage = 'find Board view';
+  try {
+    let boardView = carrierPage.locator('[data-circuit-view-toggle] [aria-label="Board view"]').last();
+    if (await boardView.count() === 0 || !await boardView.isVisible()) {
+      assemblyStage = 'open compact toolbar';
+      await carrierPage.getByRole('button', { name: 'More circuit controls' }).click({ timeout: 20000 });
+      boardView = carrierPage.locator('[data-circuit-view-toggle] [aria-label="Board view"]').last();
+    }
+    assemblyStage = 'open Board view';
+    await boardView.click({ timeout: 20000 });
+    assemblyStage = 'wait for Board panel';
+    await carrierPage.locator('[data-board-panel]').waitFor({ state: 'visible', timeout: 20000 });
+    assemblyStage = 'open BOM';
+    await carrierPage.locator('[data-board-bom]').click();
+    const panel = carrierPage.locator('[data-board-bom-panel]');
+    assemblyStage = 'wait for BOM';
+    await panel.waitFor({ state: 'visible', timeout: 10000 });
+    const text = (await panel.innerText()).replace(/\s+/g, ' ').trim();
+    const legend = panel.locator('[data-carrier-assembly="lt1006"]');
+    assemblyStage = 'download LT1006 legend';
+    const [download] = await Promise.all([
+      carrierPage.waitForEvent('download', { timeout: 20000 }),
+      legend.click({ timeout: 20000 }),
+    ]);
+    const path = await download.path();
+    const svg = path ? await readFile(path, 'utf8') : '';
+    const ok = /SOIC-8 1\.27 mm → 2\.54 mm header · vendor-neutral/.test(text)
+      && download.suggestedFilename() === 'lt1006-soic8-dip8-assembly.svg'
+      && /data-pin="1" data-terminal="offset_1"/.test(svg)
+      && /data-pin="8" data-terminal="iset"/.test(svg)
+      && /TOP VIEW/.test(svg);
+    verdict('carrier-assembly-download', ok,
+      'Board BOM downloaded the LT1006 top-view 8-pin carrier legend with vendor-neutral pitch metadata',
+      `carrier legend receipt incomplete: text="${text.slice(0, 160)}" file="${download.suggestedFilename()}" bytes=${svg.length}`);
+  } catch (error) {
+    fail('carrier-assembly-download', `${assemblyStage}: ${String(error).replace(/\n/g, ' | ').slice(0, 1200)}`);
+  }
   await carrierPage.close();
 }
 

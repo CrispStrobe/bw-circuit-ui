@@ -589,8 +589,12 @@ Remaining work, in order:
    one SOIC-8, SOIC-14 and TSOT-5 carrier through user gestures, then places a
    separate supply post and proves a named header pin shares its destination
    breadboard strip. No direct model seating substitutes for the UI path.
-2. Add assembly drawings and printable pin legends; expose carrier vendor/
-   pitch metadata in BOM CSV without prescribing one manufacturer.
+2. **Implemented 2026-09-27.** Board view now exposes its BOM directly.
+   Each mounted carrier family contributes vendor-neutral input-package and
+   input/header-pitch fields to the BOM and CSV, plus a deterministic printable
+   top-view SVG whose numbered pins use the physical sidecar order. The browser
+   gate downloads the real LT1006 legend and verifies its pin 1/pin 8 labels;
+   no manufacturer, orderable part, pad dimensions or board outline is invented.
 3. Run each new land pattern through projection → exact DRC → KiCad and
    EasyEDA export/re-import, plus the optional `kicad-cli pcb drc` oracle.
 4. Add paste/mask and assembly-side metadata needed for actually ordering a

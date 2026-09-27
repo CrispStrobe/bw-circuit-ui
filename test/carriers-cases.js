@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { FOOTPRINTS, computeLeadMap } from '../src/model/footprints.js';
 import {
-  carrierOptionsForPart, carrierFootprintForPart, breadboardFootprintForPart,
+  CARRIERS, carrierOptionsForPart, carrierFootprintForPart, breadboardFootprintForPart,
 } from '../src/model/carriers.js';
-import { generateBom } from '../src/model/bom.js';
+import { carrierAssemblySvg } from '../src/model/carrier-assembly-svg.js';
+import { generateBom, bomToCsv } from '../src/model/bom.js';
 import { projectBoard } from '../src/model/board-projection.js';
 import { getLandPattern } from '../src/model/land-patterns.js';
 import { runPcbDrc } from '../src/model/pcb-drc.js';
@@ -144,4 +145,57 @@ test('a connected SOIC-8 design routes, passes DRC, and survives board export/im
   const restored = importEasyEdaPcb(exportEasyEdaPcb(result.board));
   assert.deepEqual(runPcbDrc(restored), []);
   assert.equal(restored.parts.find(part => part.ref === 'U1').pads.length, 8);
+});
+
+const ASSEMBLY_CASES = [
+  { kind: 'lt1006', carrier: 'soic8-dip8', count: 8, first: 'offset_1', last: 'iset' },
+  { kind: 'op747', carrier: 'soic14-dip14', count: 14, first: '1_neg', last: '1_out' },
+  { kind: 'adp151', carrier: 'tsot5-header5', count: 5, first: 'vin', last: 'vout' },
+];
+
+test('carrier procurement metadata states only package and generic header facts', () => {
+  assert.deepEqual(Object.fromEntries(Object.entries(CARRIERS).map(([id, carrier]) => [id, {
+    package: carrier.package,
+    inputPitchMm: carrier.inputPitchMm,
+    headerPitchMm: carrier.headerPitchMm,
+    sourcing: carrier.sourcing,
+  }])), {
+    'soic8-dip8': { package: 'SOIC-8', inputPitchMm: 1.27, headerPitchMm: 2.54, sourcing: 'vendor-neutral' },
+    'soic14-dip14': { package: 'SOIC-14', inputPitchMm: 1.27, headerPitchMm: 2.54, sourcing: 'vendor-neutral' },
+    'tsot5-header5': { package: 'TSOT-5', inputPitchMm: 0.95, headerPitchMm: 2.54, sourcing: 'vendor-neutral' },
+  });
+});
+
+test('each physical carrier family produces a complete deterministic top-view legend', () => {
+  for (const item of ASSEMBLY_CASES) {
+    const svg = carrierAssemblySvg(item);
+    assert.equal(svg, carrierAssemblySvg(item), `${item.carrier} output must be deterministic`);
+    assert.equal([...svg.matchAll(/data-pin="/g)].length, item.count);
+    assert.match(svg, new RegExp(`data-pin="1" data-terminal="${item.first}"`));
+    assert.match(svg, new RegExp(`data-pin="${item.count}" data-terminal="${item.last}"`));
+    assert.match(svg, /data-pin-one-marker="true"/);
+    assert.match(svg, /TOP VIEW/);
+    assert.match(svg, /No manufacturer, board outline, or pad dimensions are prescribed/);
+  }
+});
+
+test('carrier BOM rows and CSV retain pitch, sourcing and per-device legend authority', () => {
+  const bom = generateBom(ASSEMBLY_CASES.map((item, index) => ({
+    id: `u${index + 1}`, kind: item.kind, carrier: item.carrier, params: {},
+  })));
+  const soic8 = bom.find(line => line.kind === 'soic8-dip8');
+  assert.deepEqual(soic8.carrier, {
+    id: 'soic8-dip8', inputPackage: 'SOIC-8', inputPitchMm: 1.27,
+    headerPitchMm: 2.54, layout: 'dip', sourcing: 'vendor-neutral',
+  });
+  assert.deepEqual(soic8.assemblyKinds, ['lt1006']);
+  const csv = bomToCsv(bom);
+  assert.match(csv, /^Qty,Part,Value,Input package,Input pitch \(mm\),Header pitch \(mm\),Sourcing/m);
+  assert.match(csv, /"SOIC-8","1\.27","2\.54","vendor-neutral"/);
+  assert.match(csv, /"TSOT-5","0\.95","2\.54","vendor-neutral"/);
+});
+
+test('incompatible or package-neutral devices cannot produce an assembly legend', () => {
+  assert.throws(() => carrierAssemblySvg({ kind: 'adp151', carrier: 'soic8-dip8' }), /compatible physical part/);
+  assert.throws(() => carrierAssemblySvg({ kind: 'lt1006', carrier: 'soic8-dip8', sourcePackage: 'unspecified' }), /compatible physical part/);
 });
