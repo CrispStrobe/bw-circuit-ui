@@ -165,6 +165,15 @@ export const PART_SYMBOLS = {
   adtl082_channel: {
     refdesPrefix: 'U', spiceCard: 'X',
   },
+  op747: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // The physical palette/EasyEDA part is the production R-14 SOIC.
+    // The package-neutral LTspice channel cannot establish this footprint.
+    kicadFootprint: 'Package_SO:SOIC-14_3.9x8.7mm_P1.27mm',
+  },
+  op747_channel: {
+    refdesPrefix: 'U', spiceCard: 'X',
+  },
   op07: {
     refdesPrefix: 'U', spiceCard: 'X',
     // No package identity is inferred by the LTspice importer. This footprint

@@ -257,6 +257,10 @@ export const EASYEDA_RULES = [
     1: '1_out', 2: '1_neg', 3: '1_pos', 4: 'vneg',
     5: '2_pos', 6: '2_neg', 7: '2_out', 8: 'vpos',
   } })],
+  [/^OP747ARZ(?:-REEL7?)?$/i, () => ({ kind: 'op747', pins: {
+    1: '1_neg', 2: '1_pos', 3: 'vpos', 4: '2_pos', 5: '2_neg', 6: '2_out', 7: '4_out',
+    8: '4_neg', 9: '4_pos', 10: 'vneg', 11: '3_pos', 12: '3_neg', 13: '3_out', 14: '1_out',
+  } })],
   [/^OP07(?:C|E)?PZ?(?:-REEL7?)?$/i, () => ({ kind: 'op07', pins: {
     1: 'offset_1', 2: 'inn', 3: 'inp', 4: 'vneg',
     5: 'offset_5', 6: 'out', 7: 'vpos', 8: 'nc',

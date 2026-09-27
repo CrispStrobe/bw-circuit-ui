@@ -72,7 +72,7 @@ const DIP_CHIP_LABELS = {
   '74ls04': '74LS04', '74ls32': '74LS32', '74ls107': '74LS107',
   '74ls157': '74LS157', '74ls161': '74LS161', '74ls173': '74LS173',
   '74ls189': '74LS189',
-  lm358: 'LM358', lm324: 'LM324', lm741: 'LM741', lt1001: 'LT1001', lt1006: 'LT1006', lt1014: 'LT1014', adtl082: 'ADTL082', op07: 'OP07', op27: 'OP27', adp151: 'ADP151', lm339: 'LM339', lm393: 'LM393',
+  lm358: 'LM358', lm324: 'LM324', lm741: 'LM741', lt1001: 'LT1001', lt1006: 'LT1006', lt1014: 'LT1014', adtl082: 'ADTL082', op747: 'OP747', op07: 'OP07', op27: 'OP27', adp151: 'ADP151', lm339: 'LM339', lm393: 'LM393',
   pcf8574: 'PCF8574', mcp4725: 'MCP4725', max7219: 'MAX7219',
   at24c02: '24C02', um245r: 'UM245R',
 };
@@ -1571,6 +1571,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       case 'adp151':
       case 'adp7118':
       case 'adtl082':
+      case 'op747':
       case 'lt1006':
       case 'lt1763': {
         const sc = getSidecar(kind);
@@ -1588,9 +1589,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fill="#252525" stroke="#666" strokeWidth={0.8} />
             <circle cx={-W / 2 + 15} cy={-H / 2 + 8} r={1.5} fill="#aaa" />
             <text x={0} y={-2} textAnchor="middle" fill="#d0d0d0" fontSize={7}
-              fontFamily="monospace" fontWeight="bold">{kind === 'lt1763' ? 'LT1763' : kind === 'lt1006' ? 'LT1006' : kind === 'adtl082' ? 'ADTL082' : kind === 'adp151' ? 'ADP151' : 'ADP7118'}</text>
+              fontFamily="monospace" fontWeight="bold">{kind === 'lt1763' ? 'LT1763' : kind === 'lt1006' ? 'LT1006' : kind === 'adtl082' ? 'ADTL082' : kind === 'op747' ? 'OP747' : kind === 'adp151' ? 'ADP151' : 'ADP7118'}</text>
             <text x={0} y={8} textAnchor="middle" fill="#929292" fontSize={4}
-              fontFamily="monospace">{kind === 'lt1763' ? '500mA LDO · SO-8' : kind === 'lt1006' ? 'PRECISION OP AMP · SOIC-8' : kind === 'adtl082' ? 'DUAL JFET OP AMP · SOIC-8' : kind === 'adp151' ? '200mA LDO · TSOT-5' : '200mA LDO · SOIC-8'}</text>
+              fontFamily="monospace">{kind === 'lt1763' ? '500mA LDO · SO-8' : kind === 'lt1006' ? 'PRECISION OP AMP · SOIC-8' : kind === 'adtl082' ? 'DUAL JFET OP AMP · SOIC-8' : kind === 'op747' ? 'QUAD PRECISION OP AMP · SOIC-14' : kind === 'adp151' ? '200mA LDO · TSOT-5' : '200mA LDO · SOIC-8'}</text>
             {(sc?.terminals || []).map(t => {
               const p = offsets[t.name];
               if (!p) return null;

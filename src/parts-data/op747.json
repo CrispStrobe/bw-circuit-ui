@@ -1,0 +1,23 @@
+{
+  "kind": "op747",
+  "w": 70,
+  "h": 56,
+  "terminals": [
+    { "name": "1_neg", "x": 0,  "y": 6,  "functions": [] },
+    { "name": "1_pos", "x": 0,  "y": 13, "functions": [] },
+    { "name": "vpos",  "x": 0,  "y": 20, "functions": [] },
+    { "name": "2_pos", "x": 0,  "y": 28, "functions": [] },
+    { "name": "2_neg", "x": 0,  "y": 36, "functions": [] },
+    { "name": "2_out", "x": 0, "y": 43, "functions": [] },
+    { "name": "4_out", "x": 0, "y": 50, "functions": [] },
+    { "name": "4_neg", "x": 70, "y": 50, "functions": [] },
+    { "name": "4_pos", "x": 70, "y": 43, "functions": [] },
+    { "name": "vneg",  "x": 70, "y": 36, "functions": [] },
+    { "name": "3_pos", "x": 70, "y": 28, "functions": [] },
+    { "name": "3_neg", "x": 70, "y": 20, "functions": [] },
+    { "name": "3_out", "x": 70, "y": 13, "functions": [] },
+    { "name": "1_out", "x": 70, "y": 6,  "functions": [] }
+  ],
+  "variants": null,
+  "_note": "OP747 precision micropower quad operational amplifier, R-14 narrow 14-lead SOIC top view. Physical pin order audited against Analog Devices OP777/OP727/OP747 Rev. D. The official LTspice five-terminal OP747 symbol is one logical amplifier and does not establish this package. Surface-mount package: no direct breadboard footprint is claimed."
+}

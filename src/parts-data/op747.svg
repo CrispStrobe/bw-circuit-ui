@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 56" width="70" height="56">
+  <!-- OP747 — original SOIC-14 bench face, drawn from package facts only -->
+  <rect x="10" y="2" width="50" height="52" rx="3" fill="#252525" stroke="#111" stroke-width="1"/>
+  <path d="M31 2 A4 4 0 0 1 39 2" fill="#252525" stroke="#666" stroke-width="0.8"/>
+  <circle cx="15" cy="7" r="1.5" fill="#aaa"/>
+  <text x="35" y="23" text-anchor="middle" font-family="monospace" font-size="6" fill="#d0d0d0">OP747</text>
+  <text x="35" y="31" text-anchor="middle" font-family="monospace" font-size="3.2" fill="#929292">QUAD PRECISION OP AMP</text>
+  <text x="35" y="38" text-anchor="middle" font-family="monospace" font-size="2.8" fill="#777">SOIC-14</text>
+  <g stroke="#aaa" stroke-width="1.5" stroke-linecap="round" fill="#c0c0c0">
+    <line x1="0" y1="6" x2="10" y2="6"/><circle cx="0" cy="6" r="1.4"/>
+    <line x1="0" y1="13" x2="10" y2="13"/><circle cx="0" cy="13" r="1.4"/>
+    <line x1="0" y1="20" x2="10" y2="20"/><circle cx="0" cy="20" r="1.4"/>
+    <line x1="0" y1="28" x2="10" y2="28"/><circle cx="0" cy="28" r="1.4"/>
+    <line x1="0" y1="36" x2="10" y2="36"/><circle cx="0" cy="36" r="1.4"/>
+    <line x1="0" y1="43" x2="10" y2="43"/><circle cx="0" cy="43" r="1.4"/>
+    <line x1="0" y1="50" x2="10" y2="50"/><circle cx="0" cy="50" r="1.4"/>
+    <line x1="60" y1="50" x2="70" y2="50"/><circle cx="70" cy="50" r="1.4"/>
+    <line x1="60" y1="43" x2="70" y2="43"/><circle cx="70" cy="43" r="1.4"/>
+    <line x1="60" y1="36" x2="70" y2="36"/><circle cx="70" cy="36" r="1.4"/>
+    <line x1="60" y1="28" x2="70" y2="28"/><circle cx="70" cy="28" r="1.4"/>
+    <line x1="60" y1="20" x2="70" y2="20"/><circle cx="70" cy="20" r="1.4"/>
+    <line x1="60" y1="13" x2="70" y2="13"/><circle cx="70" cy="13" r="1.4"/>
+    <line x1="60" y1="6" x2="70" y2="6"/><circle cx="70" cy="6" r="1.4"/>
+  </g>
+  <g font-family="monospace" font-size="2.5" fill="#888">
+    <text x="13" y="7">1_neg</text><text x="13" y="14">1_pos</text><text x="13" y="21">vpos</text>
+    <text x="13" y="29">2_pos</text><text x="13" y="37">2_neg</text><text x="13" y="44">2_out</text><text x="13" y="51">4_out</text>
+    <text x="57" y="51" text-anchor="end">4_neg</text><text x="57" y="44" text-anchor="end">4_pos</text><text x="57" y="37" text-anchor="end">vneg</text>
+    <text x="57" y="29" text-anchor="end">3_pos</text><text x="57" y="21" text-anchor="end">3_neg</text><text x="57" y="14" text-anchor="end">3_out</text><text x="57" y="7" text-anchor="end">1_out</text>
+  </g>
+</svg>

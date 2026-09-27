@@ -161,6 +161,14 @@ addVerifiedDevice(['adtl082', 'opamps/adtl082'], {
   sourceSha256: 'b55fe8571a7ceda780cd2f7f3cd9218b3a206016502b5c1fbc6ca80668ea2c47',
   sourceModelSubstitution: Object.freeze({ file: 'ADI.lib', subcircuit: 'ADTL082' }),
 });
+addVerifiedDevice(['op747', 'opamps/op747'], {
+  // The official five-terminal ASY is one functional channel and has no
+  // package/unit identity. Never turn it into the whole R-14 quad package.
+  kind: 'op747_channel', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+  prefix: 'X', acceptedValues: ['OP747'], deviceParams: {},
+  sourceSha256: 'bb7e907e13d16c3c72452f4527fbf4f8abdfea25e9745478b0319dab13ae1db4',
+  sourceModelSubstitution: Object.freeze({ file: 'ADI.lib', subcircuit: 'OP747' }),
+});
 addVerifiedDevice(['op07', 'opamps/op07'], {
   kind: 'op07', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
   prefix: 'X', acceptedValues: ['OP07'], deviceParams: {},

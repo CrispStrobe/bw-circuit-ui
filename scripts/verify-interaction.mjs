@@ -151,6 +151,7 @@ const EXPECTED = [
   'lt1006-place',
   'lt1014-place',
   'adtl082-place',
+  'op747-place',
   'op07-place',
   'op27-place',
   'adp151-place',
@@ -632,6 +633,18 @@ try {
     `ADTL082 placement produced ${adtl082Faces} faces and ${adtl082Dots.length} distinct pins; `
       + `model parts ${JSON.stringify(adtl082Parts)}`);
 
+  const beforeOp747 = new Set(await activeManyPinDots());
+  await placeByLabel('OP747', cs.x + cs.width * 0.16, cs.y + cs.height * 0.62);
+  const op747Dots = [...new Set((await activeManyPinDots()).filter(d => !beforeOp747.has(d)))];
+  const op747Faces = await page.locator('[data-part-face="op747"][data-soic-body="op747"]').count();
+  const op747Parts = await page.evaluate(() => window.__circuit?.parts
+    ?.filter(part => part.kind === 'op747')
+    .map(part => ({ id: part.id, x: part.x, y: part.y, terminals: part.terminals?.length })) || []);
+  verdict('op747-place', op747Faces >= 1 && op747Dots.length === 14,
+    'OP747 places as one physical SOIC-14 quad with fourteen separately wireable pins',
+    `OP747 placement produced ${op747Faces} faces and ${op747Dots.length} distinct pins; `
+      + `model parts ${JSON.stringify(op747Parts)}`);
+
   const beforeOp07 = new Set(await freeTerminalDots());
   await placeByLabel('OP07', cs.x + cs.width * 0.56, cs.y + cs.height * 0.20);
   const op07Dots = [...new Set((await freeTerminalDots()).filter(d => !beforeOp07.has(d)))];
@@ -672,7 +685,7 @@ try {
     'LT1763 places as a physical SO-8 face with eight separately wireable pins',
     `LT1763 placement produced ${ltFaces} faces and ${ltDots.length} distinct pins`);
 } catch (e) {
-  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'lt1001-place', 'lt1006-place', 'lt1014-place', 'adtl082-place', 'op07-place', 'op27-place', 'adp151-place', 'adp7118-place', 'lt1763-place'],
+  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'lt1001-place', 'lt1006-place', 'lt1014-place', 'adtl082-place', 'op747-place', 'op07-place', 'op27-place', 'adp151-place', 'adp7118-place', 'lt1763-place'],
     `the controlled-source scenarios could not be set up: ${String(e).split('\n')[0]}`);
 }
 
