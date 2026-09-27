@@ -552,8 +552,8 @@ whole source rather than choosing from one small residual subset.
 | P9 | AD711 | 16 / 9 | 5 | 0 | **Done.** One truthful J-grade N-8 PDIP face and one bounded physical JFET-input precision-amplifier card remain distinct from the official package-neutral five-terminal source symbol. The symbol delegates to `AD712` in `ADI1.lib`; all nine rows retain that exact substitution blocker. |
 | P10 | LT1678 | 15 / 8 | 4 | 0 | **Done.** One truthful production SOIC-8 dual and one bounded shared-rail engine card remain distinct from the official five-terminal logical source symbol. All eight rows retain the exact `LTC2.lib` / `LT1678` model-substitution blocker. |
 | P11 | AD8541 | 19 / 7 | 4 | 0 | **Done.** One truthful production R-8 SOIC face and one bounded rail-to-rail single-amplifier card remain distinct from the official five-terminal source symbol. The source symbol can be explicitly bound to exact `AD8541ARZ`, but never silently acquires R-8 instead of RJ-5/KS-5. All seven rows retain the exact `AD8541.lib` / `AD8541` model-substitution blocker. |
-| next | AD8602 | 16 / 7 | 4 | 0 expected | One row is otherwise clean before source-model provenance; shared-package/channel identity must be proven. |
-| later | ADA4522-1 | 21 / 5 | 1 | 0 expected | Lowest residual document reach of the measured named candidates; keep behind the better-bounded slices. |
+| P12 | AD8602 | 16 / 7 | 4 | 0 | **Done.** One truthful production R-8 SOIC face and one bounded shared-rail dual engine card remain distinct from the official five-terminal logical source symbol. The symbol identifies neither channel nor package and therefore cannot bind to the whole dual; all seven rows retain its exact `AD8602.lib` / `AD8602` substitution blocker. |
+| next | ADA4522-1 | 21 / 5 | 1 | 0 expected | Lowest residual document reach of the measured named candidates; re-measure after P12 and keep package/channel identity explicit. |
 
 The larger residuals `opamp2` (443 instances), `universalopamp2` (320), generic
 `opamp` (292), `bv` (902), and `sw` (761) are simulation abstractions, not
@@ -561,12 +561,13 @@ orderable parts. They deserve separate behavioral-import lanes and schematic
 symbols, but no purchasable face or BOM identity. Exact-name real-part work must
 not be used to smuggle those abstractions in as fake packages.
 
-P1–P11 are complete. On the current importer, exact replays of the same 8,280
-rows map all 15 LT1678 instances across eight rows and all 19 AD8541 instances
-across seven rows. Each slice makes four additional documents free of unmapped
-symbols (2,028 -> 2,032 -> 2,036 under the current counter), while the stricter
-zero-loss total remains 127 because every mapped channel truthfully retains its
-external macro-model dependency. These
+P1–P12 are complete. On the current importer, exact replays of the same 8,280
+rows map all 15 LT1678 instances across eight rows, all 19 AD8541 instances
+across seven rows, and all 16 AD8602 instances across seven rows. Each slice
+makes four additional documents free of unmapped symbols; after P12 the current
+document-pin counter is 2,372, while the stricter zero-loss total remains 119
+because every mapped channel truthfully retains its external macro-model
+dependency. These
 current counters are not substituted into older historical campaign counters whose importer and
 accounting surfaces differed.
 
@@ -757,3 +758,17 @@ still invokes AD712. This is an exposed representation mismatch, not numerical
 equivalence. The palette part is separately constrained to the production JNZ
 N-8 PDIP and the historical JN/KN N-8 names; RN-8, Q-8, and H-08A packages do
 not borrow its face.
+
+Exact post-implementation AD8602 replay at CUI `b2e3d31` maps all 16 instances
+across seven rows and makes four more documents fully pinned
+(2,368 -> 2,372). Every mapped instance retains the official symbol's
+`SpiceModel AD8602.lib` / `Value2 AD8602` source-model-substitution blocker, so
+projection lossless, numerical eligibility, and declared-analysis eligibility
+remain 119/76/83. Paired completeness/components/net partitions each fall by
+four (6,394/4,751/6,368 -> 6,390/4,747/6,364): the old counts omitted AD8602,
+while the ASC projection now exposes a bounded logical channel and the paired
+SPICE deck still invokes the external macro-model. That is an exposed
+representation mismatch, not numerical equivalence. The palette part is
+separately constrained to reviewed R-8 production order codes; RM-8 does not
+borrow its face, and the package-neutral source channel cannot invent A/B
+identity or bind to the whole dual.

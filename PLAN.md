@@ -16,7 +16,7 @@ workers (X2). Engine prerequisites are cross-referenced to `../bw-board/ROADMAP.
 The current real-parts campaign is `ROADMAP.md` X1.7. It ranks candidates from
 all 8,280 fixed LTspice rows and requires each promoted name to arrive as one
 engine + physical face + exact importer + package-honest UI slice. OP07, OP27,
-ADP151, LT1006, LT1014, ADTL082, OP747, LT1007, AD711, LT1678 and AD8541 are complete. LT1014 is a genuine shared-rail
+ADP151, LT1006, LT1014, ADTL082, OP747, LT1007, AD711, LT1678, AD8541 and AD8602 are complete. LT1014 is a genuine shared-rail
 four-channel package rather than four aliased single amplifiers; its official
 five-terminal source symbols remain package-neutral LT1013 macro-model
 substitutions. ADTL082 similarly separates the real shared-rail dual SOIC-8
@@ -34,7 +34,10 @@ production SOIC-8 dual and a separate five-terminal logical channel; the latter 
 `LTC2.lib` / `LT1678` substitution blocker. AD8541 adds the production R-8
 SOIC face and bounded rail-to-rail single-amplifier card while keeping its
 five-terminal source identity package-neutral and blocked on `AD8541.lib`.
-AD8602 is the next measured candidate; every later choice is re-ranked after the preceding exact
+AD8602 adds a truthful production R-8 dual SOIC and bounded shared-rail engine
+card. Its official five-terminal symbol identifies neither channel nor package,
+so it remains a separate logical channel blocked on `AD8602.lib` and cannot be
+bound to the whole dual. ADA4522-1 is the next measured candidate; every later choice is re-ranked after the preceding exact
 fixed-corpus replay. Generic op-amp/switch/behavioral-source
 symbols stay a separate abstraction lane and never receive fake purchasable faces.
 The official OP07 symbol actually netlists LT1001, the official OP27 symbol
