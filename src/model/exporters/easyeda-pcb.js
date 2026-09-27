@@ -113,7 +113,7 @@ export function exportEasyEdaPcb(board, opts = {}) {
     const attrs = [
       'package', sanitize(part.package || ''),
       ...(part.orderCode ? ['orderCode', sanitize(part.orderCode)] : []),
-    ].join('`');
+    ].join('`') + '`';
     const side = part.side === 'bottom' ? 2 : 1;
     shape.push(
       `LIB~${fx(part.x)}~${fy(part.y)}~${attrs}~${part.rotation ? fmt(part.rotation) : ''}~~${id('gge_lib')}~${side}~${id('uuid')}~0~~yes~~`
