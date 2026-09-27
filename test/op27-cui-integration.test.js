@@ -17,7 +17,7 @@ import { Circuit } from '../src/model/circuit.js';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = rel => readFileSync(join(root, rel), 'utf8');
 const terminals = ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 'nc'];
-const partsSha = 'e5e263c05d86f9b79022224f289b32e754d66951';
+const partsSha = 'bdadcaa969cfabde737778f013e19cf99602850c';
 const symbolSha = '93f2fa1510bfb884a5d5f987ad4b7325531536dd62a723a401fb96746c32ac5c';
 
 registerAllDevices();

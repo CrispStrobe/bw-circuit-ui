@@ -197,6 +197,14 @@ addVerifiedDevice(['ad8541', 'opamps/ad8541'], {
   sourceSha256: '3f12555d6c336ca54459c2c58c791de281b56b68f5940edf8d19d6ca40fd347d',
   sourceModelSubstitution: Object.freeze({ file: 'AD8541.lib', subcircuit: 'AD8541' }),
 });
+addVerifiedDevice(['ad8602', 'opamps/ad8602'], {
+  // LTspice 26's official symbol is one package-neutral functional amplifier;
+  // its five pins do not identify channel A/B or the R-8/RM-8 package.
+  kind: 'ad8602_channel', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+  prefix: 'X', acceptedValues: ['AD8602'], deviceParams: {},
+  sourceSha256: '2e179beb1909fce966b27ce673c920139831b6dae59f9c417322d3d9a24fb552',
+  sourceModelSubstitution: Object.freeze({ file: 'AD8602.lib', subcircuit: 'AD8602' }),
+});
 addVerifiedDevice(['op747', 'opamps/op747'], {
   // The official five-terminal ASY is one functional channel and has no
   // package/unit identity. Never turn it into the whole R-14 quad package.

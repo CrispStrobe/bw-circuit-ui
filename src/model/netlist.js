@@ -26,7 +26,7 @@ const PREFIX_MAP = {
   resistor: 'R', capacitor: 'C', inductor: 'L',
   diode: 'D', zener: 'D', led: 'D', rgb_led: 'D',
   npn: 'Q', pnp: 'Q', nmos: 'Q', pmos: 'Q', tip120: 'Q',
-  opamp: 'U', lm741: 'U', lt1001: 'U', lt1006: 'U', lt1007: 'U', lt1007_channel: 'U', ad711: 'U', ad711_channel: 'U', lt1014: 'U', lt1014_channel: 'U', adtl082: 'U', adtl082_channel: 'U', lt1678: 'U', lt1678_channel: 'U', ad8541: 'U', ad8541_channel: 'U', op747: 'U', op747_channel: 'U', op07: 'U', op27: 'U', adp151: 'U', adp7118: 'U', lt1763: 'U', '555': 'U', relay: 'K', relay_dpdt: 'K',
+  opamp: 'U', lm741: 'U', lt1001: 'U', lt1006: 'U', lt1007: 'U', lt1007_channel: 'U', ad711: 'U', ad711_channel: 'U', lt1014: 'U', lt1014_channel: 'U', adtl082: 'U', adtl082_channel: 'U', lt1678: 'U', lt1678_channel: 'U', ad8541: 'U', ad8541_channel: 'U', ad8602: 'U', ad8602_channel: 'U', op747: 'U', op747_channel: 'U', op07: 'U', op27: 'U', adp151: 'U', adp7118: 'U', lt1763: 'U', '555': 'U', relay: 'K', relay_dpdt: 'K',
   button: 'SW', switch: 'SW', slide_switch: 'SW',
   potentiometer: 'RV', ldr: 'R', ntc: 'R',
   buzzer: 'LS', dc_motor: 'M', servo: 'M', gearmotor: 'M',

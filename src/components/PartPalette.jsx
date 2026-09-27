@@ -257,6 +257,8 @@ const CATEGORIES = [
         tooltip: 'Real dual low-noise precision op-amp — SOIC-8, shared rails, finite gain/bandwidth/slew and rail-to-rail output' },
       { kind: 'ad8541', label: 'AD8541', params: {}, color: '#39706d',
         tooltip: 'Real rail-to-rail op-amp — R-8 SOIC, 40 kV/V gain, 1 MHz GBW, 0.92 V/µs slew and 2.7–5.5 V operation' },
+      { kind: 'ad8602', label: 'AD8602', params: {}, color: '#2f6c78',
+        tooltip: 'Real dual rail-to-rail op-amp — R-8 SOIC, shared rails, 80 kV/V gain, 8.4 MHz GBW and 6 V/µs slew' },
       { kind: 'op747', label: 'OP747', params: {}, color: '#6d4c7d',
         tooltip: 'Real quad precision op-amp — SOIC-14, shared rails, high input impedance, finite gain/bandwidth/slew and loaded swing' },
       { kind: 'op07', label: 'OP07', params: {}, color: '#a66f1f',

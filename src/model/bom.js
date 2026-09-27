@@ -81,6 +81,8 @@ const KIND_LABELS = {
   lt1678_channel: 'LT1678 Functional Channel (Package Unspecified)',
   ad8541: 'AD8541 Rail-to-Rail Operational Amplifier',
   ad8541_channel: 'AD8541 Functional Channel (Package Unspecified)',
+  ad8602: 'AD8602 Dual Rail-to-Rail Operational Amplifier',
+  ad8602_channel: 'AD8602 Functional Channel (Package Unspecified)',
   op747: 'OP747 Quad Precision Operational Amplifier',
   op747_channel: 'OP747 Functional Channel (Package Unspecified)',
   op07: 'OP07 Precision Operational Amplifier',

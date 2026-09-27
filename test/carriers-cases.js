@@ -285,6 +285,7 @@ const SMD_PATTERNS = [
   ['adtl082', 'adtl082:soic-8', 8],
   ['lt1678', 'lt1678:soic-8', 8],
   ['ad8541', 'ad8541:soic-8', 8],
+  ['ad8602', 'ad8602:soic-8', 8],
   ['adp7118', 'adp7118:soic-8', 8],
   ['lt1763', 'lt1763:soic-8', 8],
   ['op747', 'op747:soic-14', 14],
