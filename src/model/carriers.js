@@ -19,7 +19,7 @@ export const CARRIERS = Object.freeze({
     sourcing: 'vendor-neutral',
     pinCount: 8,
     layout: 'dip',
-    compatibleKinds: Object.freeze(['lt1006', 'adtl082', 'adp7118', 'lt1763']),
+    compatibleKinds: Object.freeze(['lt1006', 'adtl082', 'lt1678', 'adp7118', 'lt1763']),
   }),
   'soic14-dip14': Object.freeze({
     label: 'SOIC-14 to DIP-14 breakout',

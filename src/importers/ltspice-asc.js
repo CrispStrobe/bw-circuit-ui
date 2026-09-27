@@ -179,6 +179,16 @@ addVerifiedDevice(['adtl082', 'opamps/adtl082'], {
   sourceSha256: 'b55fe8571a7ceda780cd2f7f3cd9218b3a206016502b5c1fbc6ca80668ea2c47',
   sourceModelSubstitution: Object.freeze({ file: 'ADI.lib', subcircuit: 'ADTL082' }),
 });
+addVerifiedDevice(['lt1678', 'opamps/lt1678'], {
+  // The official LTspice symbol is one functional channel. It carries no
+  // unit or package identity, so it must not become the whole SOIC-8 dual.
+  kind: 'lt1678_channel',
+  terminals: ['inp', 'inn', 'out', 'vpos', 'vneg'],
+  pins: [[-32, 16], [-32, -16], [32, 0], [0, -32], [0, 32]],
+  prefix: 'X', acceptedValues: ['LT1678'], deviceParams: {},
+  sourceSha256: '39e7e1f66b240267730061812d4b9b95c299bc0fa613a6e824b37777b79144bf',
+  sourceModelSubstitution: Object.freeze({ file: 'LTC2.lib', subcircuit: 'LT1678' }),
+});
 addVerifiedDevice(['op747', 'opamps/op747'], {
   // The official five-terminal ASY is one functional channel and has no
   // package/unit identity. Never turn it into the whole R-14 quad package.

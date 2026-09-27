@@ -30,7 +30,7 @@ cross-repository procedure is in [`docs/UPSTREAM-WIP.md`](docs/UPSTREAM-WIP.md).
   strips conduct, matching the real object.
 - **60+ part kinds** across 14 palette categories, from passives through
   74HC logic ICs to sensors, motors, and instruments. Terminal definitions
-  from bw-parts sidecars (115 vendored JSON + 115 SVG art files).
+  from sidecars (288 vendored JSON + 288 SVG art files, including the explicit local-only set).
 - **Design-rule check** — 8 rules (source-current, missing-resistor,
   missing-flyback, floating-input, supply-short, polarity, I2C pull-up,
   aggregate current). Explains and offers fixes; never blocks. Current
@@ -104,7 +104,7 @@ are category 2b (same-source agreement) at best. Categories per
 |------|----------|----------|
 | Serialiser round-trip (52 gallery files) | 0 losses, 5 negative controls | 2c |
 | Legacy file round-trip | Stable derivation, battery→vsource upgrade idempotent | 2c |
-| Terminal cross-check vs bw-parts | 109/115 kinds, 0 coverage gaps | 2b |
+| Terminal cross-check vs bw-parts | 260/270 upstream kinds checked, 6 explicitly skipped, 4 named product gaps | 2b |
 | Cube scan accumulator | 64 voxels, 32 lit at 12.5% duty | 2b |
 | Wire resolution (53+ gallery files) | Every terminal resolves (both wire formats) | 2c |
 | Breadboard strip conduction | LED lights through strips alone, no drawn wires | 2b |
@@ -194,7 +194,7 @@ Exported panels (for host integration):
 
 ## Bundle
 
-~480 KB / ~138 KB gzip (with React, 115 sidecar JSONs, 115 SVGs).
+~2.43 MB / ~599 KB gzip (with React, 288 sidecar JSONs, 288 SVGs; measured by the 2026-09-27 production build).
 
 Measured by `vite build` at commit `2d6f617`.
 

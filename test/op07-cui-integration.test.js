@@ -27,7 +27,7 @@ test('the vendored OP07 is the exact P-suffix PDIP-8 sibling part', () => {
   assert.deepEqual(sidecar.footprint.leads.offset_5, { dRow: 5, dCol: 3 });
   assert.deepEqual(sidecar.footprint.leads.vpos, { dRow: 5, dCol: 1 });
   const pins = JSON.parse(read('.github/ci-siblings.json'));
-  assert.equal(pins['bw-parts'].sha, 'aecba1384701609c51592750465931904692339d');
+  assert.equal(pins['bw-parts'].sha, 'a3750229c2b77369bc70fe62487b119ef1860419');
   assert.match(read('src/parts-data/op07.svg'), />OP07</);
   assert.match(sidecar._note, /SOIC imports must not acquire this breadboard face/);
 });

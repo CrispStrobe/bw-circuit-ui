@@ -24,7 +24,7 @@ test('the vendored LT1763 is the exact physical SO-8 sibling part', () => {
   assert.deepEqual(sidecar.terminals.map(t => t.name), terminals);
   assert.equal('footprint' in sidecar, false, 'surface-mount package must not claim breadboard seating');
   const pins = JSON.parse(read('.github/ci-siblings.json'));
-  assert.equal(pins['bw-parts'].sha, 'aecba1384701609c51592750465931904692339d');
+  assert.equal(pins['bw-parts'].sha, 'a3750229c2b77369bc70fe62487b119ef1860419');
   assert.match(read('src/parts-data/lt1763.svg'), />LT1763</);
 });
 

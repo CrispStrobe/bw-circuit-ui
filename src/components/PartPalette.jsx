@@ -253,6 +253,8 @@ const CATEGORIES = [
         tooltip: 'Real quad precision op-amp — PDIP-14, four channels with shared rails, finite gain/bandwidth/slew and ground sensing' },
       { kind: 'adtl082', label: 'ADTL082', params: {}, color: '#305b72',
         tooltip: 'Real dual JFET-input op-amp — SOIC-8, shared rails, high input impedance, finite gain/bandwidth/slew and loaded swing' },
+      { kind: 'lt1678', label: 'LT1678', params: {}, color: '#31556f',
+        tooltip: 'Real dual low-noise precision op-amp — SOIC-8, shared rails, finite gain/bandwidth/slew and rail-to-rail output' },
       { kind: 'op747', label: 'OP747', params: {}, color: '#6d4c7d',
         tooltip: 'Real quad precision op-amp — SOIC-14, shared rails, high input impedance, finite gain/bandwidth/slew and loaded swing' },
       { kind: 'op07', label: 'OP07', params: {}, color: '#a66f1f',

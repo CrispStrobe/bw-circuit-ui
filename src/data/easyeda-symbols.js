@@ -182,6 +182,15 @@ export const PART_SYMBOLS = {
   adtl082_channel: {
     refdesPrefix: 'U', spiceCard: 'X',
   },
+  lt1678: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // The physical palette/EasyEDA part is a reviewed production SOIC-8.
+    // A five-terminal source channel cannot establish that package.
+    kicadFootprint: 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm',
+  },
+  lt1678_channel: {
+    refdesPrefix: 'U', spiceCard: 'X',
+  },
   op747: {
     refdesPrefix: 'U', spiceCard: 'X',
     // The physical palette/EasyEDA part is the production R-14 SOIC.

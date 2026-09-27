@@ -77,6 +77,8 @@ const KIND_LABELS = {
   lt1014_channel: 'LT1014 Functional Channel (Package Unspecified)',
   adtl082: 'ADTL082 Dual JFET-Input Operational Amplifier',
   adtl082_channel: 'ADTL082 Functional Channel (Package Unspecified)',
+  lt1678: 'LT1678 Dual Low-Noise Precision Operational Amplifier',
+  lt1678_channel: 'LT1678 Functional Channel (Package Unspecified)',
   op747: 'OP747 Quad Precision Operational Amplifier',
   op747_channel: 'OP747 Functional Channel (Package Unspecified)',
   op07: 'OP07 Precision Operational Amplifier',
