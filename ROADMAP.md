@@ -544,7 +544,7 @@ whole source rather than choosing from one small residual subset.
 | P1 | OP07 | 126 / 79 | 63 | 0 | Build first: highest real-part reach and OP/AC/DC/transient diversity. The official symbol netlists LT1001, so the native OP07 projection stays numerically blocked. |
 | P2 | OP27 | 45 / 24 safely mapped (48 / 25 target) | 18 | 0 | **Done.** The three instances in one unsafe `lib\\…\\OP27` path remain refused. The official symbol delegates to `OP27` in `ADI.lib`, so all 45 safe projections retain a model-substitution blocker rather than claiming macro-model identity. |
 | P3 | ADP151 family | 11 / 11 safely mapped (12 / 12 target) | 10 | 0 | **Done.** Ten internally consistent fixed-output symbol variants map; the corrupt 2.85-V symbol remains refused. Every mapped symbol delegates to the proprietary `ADP151-x.x.sub`, so none is a native numerical claim. |
-| P4 | LT1006 | 45 / 28 | 20 | 4 | Worth a full slice after its supply/output and package variants are separated. |
+| P4 | LT1006 | 45 / 28 | 20 | 0 | **Done.** Plain LT1006/LT1006A remain package-unspecified; LT1006S8 alone receives the truthful SOIC-8 face. All variants retain the official `LTC.lib` / `LT1006` substitution blocker, so structural reach is not mislabeled as a numerical pass. |
 | P5 | LT1014 | 32 / 14 | 12 | 5 | Quad package; requires shared-rail/four-channel behaviour and face, not a single-op-amp alias. |
 | later | OP747, ADTL082, ADA4522-1, AD8541, AD711, AD8602, LT1678, LT1007 | 15–24 each | — | 1–4 each | Re-rank after P1–P5 because family infrastructure and residual losses will have changed. |
 
@@ -611,3 +611,18 @@ now names Brickwright's native ADP151 while the paired SPICE deck still invokes
 the external macro-model. That is an exposed representation mismatch, not a
 regression to smooth away. The physical palette part is separately constrained
 to Analog Devices' AUJZ TSOT-5 order codes; LFCSP/WLCSP parts do not borrow it.
+
+Exact post-implementation LT1006 replay at CUI `ee8b8407` maps all 45
+instances across 28 rows. Twenty rows then have no other unmapped source
+symbol; three of the remaining rows still depend on LTZ1000A, `bi`, or 4N25.
+Every mapped instance retains the exact official `LTC.lib` / `LT1006`
+source-model-substitution blocker, so zero rows become lossless or numerically
+eligible. Whole-document pin completeness rises 2,290 -> 2,315 (+25), while
+lossless projection, numeric eligibility, and declared-analysis eligibility
+remain 119/76/83. Paired completeness/components/net partitions fall
+23/12/23 because the ASC now names Brickwright's bounded native LT1006 while
+the paired SPICE deck still invokes the external macro-model. That honest
+representation mismatch is not a solver regression or a numerical match.
+Plain LT1006/LT1006A symbols remain package-unspecified; only the audited S8
+symbol carries the full SOIC-8 physical terminal set, including the unmodelled
+supply-current-set pin 8.
