@@ -74,7 +74,7 @@ const DIP_CHIP_LABELS = {
   '74ls04': '74LS04', '74ls32': '74LS32', '74ls107': '74LS107',
   '74ls157': '74LS157', '74ls161': '74LS161', '74ls173': '74LS173',
   '74ls189': '74LS189',
-  lm358: 'LM358', lm324: 'LM324', lm741: 'LM741', lt1001: 'LT1001', lt1006: 'LT1006', lt1007: 'LT1007', ad711: 'AD711', lt1014: 'LT1014', adtl082: 'ADTL082', lt1678: 'LT1678', op747: 'OP747', op07: 'OP07', op27: 'OP27', adp151: 'ADP151', lm339: 'LM339', lm393: 'LM393',
+  lm358: 'LM358', lm324: 'LM324', lm741: 'LM741', lt1001: 'LT1001', lt1006: 'LT1006', lt1007: 'LT1007', ad711: 'AD711', lt1014: 'LT1014', adtl082: 'ADTL082', lt1678: 'LT1678', ad8541: 'AD8541', op747: 'OP747', op07: 'OP07', op27: 'OP27', adp151: 'ADP151', lm339: 'LM339', lm393: 'LM393',
   pcf8574: 'PCF8574', mcp4725: 'MCP4725', max7219: 'MAX7219',
   at24c02: '24C02', um245r: 'UM245R',
 };
@@ -151,7 +151,7 @@ function mcuChipInfo(device) {
  * Returns {terminalName: {dx, dy}} relative to part anchor.
  */
 function packageNeutralOffsets(kind) {
-  if (kind === 'lt1001' || kind === 'lt1006' || kind === 'lt1007_channel' || kind === 'ad711_channel' || kind === 'op07' || kind === 'op27') return {
+  if (kind === 'lt1001' || kind === 'lt1006' || kind === 'lt1007_channel' || kind === 'ad711_channel' || kind === 'ad8541_channel' || kind === 'op07' || kind === 'op27') return {
     inp: { dx: -38, dy: 12 }, inn: { dx: -38, dy: -12 },
     vpos: { dx: 0, dy: -28 }, vneg: { dx: 0, dy: 28 }, out: { dx: 38, dy: 0 },
   };
@@ -390,10 +390,10 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       onSelectPart(id, e.shiftKey);
     };
 
-    if (part.sourcePackage === 'unspecified' || kind === 'lt1007_channel' || kind === 'ad711_channel') {
+    if (part.sourcePackage === 'unspecified' || kind === 'lt1007_channel' || kind === 'ad711_channel' || kind === 'ad8541_channel') {
       const offsets = packageNeutralOffsets(kind);
       if (offsets) {
-        const label = kind === 'lt1001' ? 'LT1001' : kind === 'lt1006' ? 'LT1006' : kind === 'lt1007_channel' ? 'LT1007' : kind === 'ad711_channel' ? 'AD711' : kind === 'op07' ? 'OP07' : kind === 'op27' ? 'OP27'
+        const label = kind === 'lt1001' ? 'LT1001' : kind === 'lt1006' ? 'LT1006' : kind === 'lt1007_channel' ? 'LT1007' : kind === 'ad711_channel' ? 'AD711' : kind === 'ad8541_channel' ? 'AD8541' : kind === 'op07' ? 'OP07' : kind === 'op27' ? 'OP27'
           : kind === 'adp7118' ? 'ADP7118' : kind === 'adp151' ? 'ADP151' : 'LT1763';
         return (
           <g key={id} data-part-face={kind} data-source-package="unspecified"
@@ -1608,6 +1608,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       case 'adp7118':
       case 'adtl082':
       case 'lt1678':
+      case 'ad8541':
       case 'op747':
       case 'lt1006':
       case 'lt1763': {
@@ -1641,9 +1642,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fill="#252525" stroke="#666" strokeWidth={0.8} />
             <circle cx={-W / 2 + 15} cy={-H / 2 + 8} r={1.5} fill="#aaa" />
             <text x={0} y={-2} textAnchor="middle" fill="#d0d0d0" fontSize={7}
-              fontFamily="monospace" fontWeight="bold">{kind === 'lt1763' ? 'LT1763' : kind === 'lt1006' ? 'LT1006' : kind === 'adtl082' ? 'ADTL082' : kind === 'lt1678' ? 'LT1678' : kind === 'op747' ? 'OP747' : kind === 'adp151' ? 'ADP151' : 'ADP7118'}</text>
+              fontFamily="monospace" fontWeight="bold">{kind === 'lt1763' ? 'LT1763' : kind === 'lt1006' ? 'LT1006' : kind === 'adtl082' ? 'ADTL082' : kind === 'lt1678' ? 'LT1678' : kind === 'ad8541' ? 'AD8541' : kind === 'op747' ? 'OP747' : kind === 'adp151' ? 'ADP151' : 'ADP7118'}</text>
             <text x={0} y={8} textAnchor="middle" fill="#929292" fontSize={4}
-              fontFamily="monospace">{kind === 'lt1763' ? '500mA LDO · SO-8' : kind === 'lt1006' ? 'PRECISION OP AMP · SOIC-8' : kind === 'adtl082' ? 'DUAL JFET OP AMP · SOIC-8' : kind === 'lt1678' ? 'DUAL PRECISION OP AMP · SOIC-8' : kind === 'op747' ? 'QUAD PRECISION OP AMP · SOIC-14' : kind === 'adp151' ? '200mA LDO · TSOT-5' : '200mA LDO · SOIC-8'}</text>
+              fontFamily="monospace">{kind === 'lt1763' ? '500mA LDO · SO-8' : kind === 'lt1006' ? 'PRECISION OP AMP · SOIC-8' : kind === 'adtl082' ? 'DUAL JFET OP AMP · SOIC-8' : kind === 'lt1678' ? 'DUAL PRECISION OP AMP · SOIC-8' : kind === 'ad8541' ? 'RAIL-TO-RAIL OP AMP · SOIC-8' : kind === 'op747' ? 'QUAD PRECISION OP AMP · SOIC-14' : kind === 'adp151' ? '200mA LDO · TSOT-5' : '200mA LDO · SOIC-8'}</text>
             {(sc?.terminals || []).map(t => {
               const p = offsets[t.name];
               if (!p) return null;

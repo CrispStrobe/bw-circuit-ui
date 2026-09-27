@@ -191,6 +191,15 @@ export const PART_SYMBOLS = {
   lt1678_channel: {
     refdesPrefix: 'U', spiceCard: 'X',
   },
+  ad8541: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // The physical palette/EasyEDA part is the production R-8 SOIC.
+    // RJ-5, KS-5 and package-neutral source symbols cannot borrow it.
+    kicadFootprint: 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm',
+  },
+  ad8541_channel: {
+    refdesPrefix: 'U', spiceCard: 'X',
+  },
   op747: {
     refdesPrefix: 'U', spiceCard: 'X',
     // The physical palette/EasyEDA part is the production R-14 SOIC.

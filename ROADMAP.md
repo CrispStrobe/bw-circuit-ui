@@ -551,8 +551,8 @@ whole source rather than choosing from one small residual subset.
 | P8 | LT1007 | 19 / 10 | 8 | 0 | **Done.** One truthful N8 PDIP face and one bounded physical precision-amplifier card remain distinct from the official five-terminal logical source symbols. LT1007CS truthfully records its SOIC-8 source package without borrowing the N8 face. All ten rows retain the exact `LTC.lib` / `LT1007` source-model-substitution blocker. |
 | P9 | AD711 | 16 / 9 | 5 | 0 | **Done.** One truthful J-grade N-8 PDIP face and one bounded physical JFET-input precision-amplifier card remain distinct from the official package-neutral five-terminal source symbol. The symbol delegates to `AD712` in `ADI1.lib`; all nine rows retain that exact substitution blocker. |
 | P10 | LT1678 | 15 / 8 | 4 | 0 | **Done.** One truthful production SOIC-8 dual and one bounded shared-rail engine card remain distinct from the official five-terminal logical source symbol. All eight rows retain the exact `LTC2.lib` / `LT1678` model-substitution blocker. |
-| next | AD8541 | 19 / 7 | 4 | 0 expected | Two rows are otherwise clean before source-model provenance; retain package honesty and re-measure. |
-| later | AD8602 | 16 / 7 | 4 | 0 expected | One row is otherwise clean before source-model provenance; shared-package/channel identity must be proven. |
+| P11 | AD8541 | 19 / 7 | 4 | 0 | **Done.** One truthful production R-8 SOIC face and one bounded rail-to-rail single-amplifier card remain distinct from the official five-terminal source symbol. The source symbol can be explicitly bound to exact `AD8541ARZ`, but never silently acquires R-8 instead of RJ-5/KS-5. All seven rows retain the exact `AD8541.lib` / `AD8541` model-substitution blocker. |
+| next | AD8602 | 16 / 7 | 4 | 0 expected | One row is otherwise clean before source-model provenance; shared-package/channel identity must be proven. |
 | later | ADA4522-1 | 21 / 5 | 1 | 0 expected | Lowest residual document reach of the measured named candidates; keep behind the better-bounded slices. |
 
 The larger residuals `opamp2` (443 instances), `universalopamp2` (320), generic
@@ -561,10 +561,12 @@ orderable parts. They deserve separate behavioral-import lanes and schematic
 symbols, but no purchasable face or BOM identity. Exact-name real-part work must
 not be used to smuggle those abstractions in as fake packages.
 
-P1–P10 are complete. On the current importer, an exact replay of the same 8,280 rows maps all
-15 LT1678 instances across eight rows, makes four additional documents free of unmapped symbols
-(2,028 -> 2,032 under the current counter), and leaves the stricter zero-loss total unchanged at
-127 because every mapped channel truthfully retains its external macro-model dependency. These
+P1–P11 are complete. On the current importer, exact replays of the same 8,280
+rows map all 15 LT1678 instances across eight rows and all 19 AD8541 instances
+across seven rows. Each slice makes four additional documents free of unmapped
+symbols (2,028 -> 2,032 -> 2,036 under the current counter), while the stricter
+zero-loss total remains 127 because every mapped channel truthfully retains its
+external macro-model dependency. These
 current counters are not substituted into older historical campaign counters whose importer and
 accounting surfaces differed.
 

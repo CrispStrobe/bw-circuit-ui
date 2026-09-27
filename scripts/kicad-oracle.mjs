@@ -84,6 +84,7 @@ const CASES = [
   ['smd-lt1006-soic8', wiredSmdCircuit('lt1006', 8)],
   ['smd-adtl082-soic8', wiredSmdCircuit('adtl082', 8)],
   ['smd-lt1678-soic8', wiredSmdCircuit('lt1678', 8)],
+  ['smd-ad8541-soic8', wiredSmdCircuit('ad8541', 8)],
   ['smd-adp7118-soic8', wiredSmdCircuit('adp7118', 8)],
   ['smd-lt1763-soic8', wiredSmdCircuit('lt1763', 8)],
   ['smd-op747-soic14', wiredSmdCircuit('op747', 14)],

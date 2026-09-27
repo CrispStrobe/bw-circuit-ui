@@ -331,6 +331,8 @@ export const ALIASES = {
   adtl082_channel: 'opamp',
   lt1678: 'opamp',
   lt1678_channel: 'opamp',
+  ad8541: 'opamp',
+  ad8541_channel: 'opamp',
   op747: 'opamp',
   op747_channel: 'opamp',
   op07: 'opamp',

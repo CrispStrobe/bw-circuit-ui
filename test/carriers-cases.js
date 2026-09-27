@@ -25,7 +25,7 @@ import { mapEasyEdaPart } from '../src/importers/easyeda.js';
 import { mapKicadSymbol } from '../src/importers/kicad-common.js';
 
 test('binding choices are exact order codes already accepted by both physical importers', () => {
-  assert.equal(REVIEWED_PHYSICAL_PACKAGE_BINDINGS.length, 8);
+  assert.equal(REVIEWED_PHYSICAL_PACKAGE_BINDINGS.length, 9);
   for (const binding of REVIEWED_PHYSICAL_PACKAGE_BINDINGS) {
     const easy = mapEasyEdaPart({
       descriptor: binding.orderCode, value: binding.orderCode, spicePre: 'U',
@@ -284,6 +284,7 @@ const SMD_PATTERNS = [
   ['lt1006', 'lt1006:soic-8', 8],
   ['adtl082', 'adtl082:soic-8', 8],
   ['lt1678', 'lt1678:soic-8', 8],
+  ['ad8541', 'ad8541:soic-8', 8],
   ['adp7118', 'adp7118:soic-8', 8],
   ['lt1763', 'lt1763:soic-8', 8],
   ['op747', 'op747:soic-14', 14],

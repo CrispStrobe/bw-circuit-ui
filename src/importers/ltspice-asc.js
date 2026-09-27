@@ -189,6 +189,14 @@ addVerifiedDevice(['lt1678', 'opamps/lt1678'], {
   sourceSha256: '39e7e1f66b240267730061812d4b9b95c299bc0fa613a6e824b37777b79144bf',
   sourceModelSubstitution: Object.freeze({ file: 'LTC2.lib', subcircuit: 'LT1678' }),
 });
+addVerifiedDevice(['ad8541', 'opamps/ad8541'], {
+  // The official symbol is one package-neutral functional amplifier. Its
+  // five pins do not establish R-8, RJ-5 or KS-5 package identity.
+  kind: 'ad8541_channel', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+  prefix: 'X', acceptedValues: ['AD8541'], deviceParams: {},
+  sourceSha256: '3f12555d6c336ca54459c2c58c791de281b56b68f5940edf8d19d6ca40fd347d',
+  sourceModelSubstitution: Object.freeze({ file: 'AD8541.lib', subcircuit: 'AD8541' }),
+});
 addVerifiedDevice(['op747', 'opamps/op747'], {
   // The official five-terminal ASY is one functional channel and has no
   // package/unit identity. Never turn it into the whole R-14 quad package.
