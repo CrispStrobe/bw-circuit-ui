@@ -4246,6 +4246,11 @@ export function BoardCanvas({
     onPan: useCallback((dx, dy) => {
       setPan(p => ({ x: p.x - dx / zoom, y: p.y - dy / zoom }));
     }, [zoom]),
+    // SINGLE TOUCH IS THE POINTER PATH'S, and must stay there: pointer events
+    // fire for touch, so letting this hook see one finger too would run every
+    // drag twice. Pointer events cannot see a SECOND finger, which is the
+    // whole reason this hook is attached at all.
+    twoFingerOnly: true,
   });
 
   return (
@@ -4448,6 +4453,13 @@ export function BoardCanvas({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        /* THE TOUCH HANDLERS WERE NEVER ATTACHED. useTouch was written,
+           documented ("Two-finger pinch-to-zoom", "Two-finger pan"), wired to
+           six callbacks including setZoom and setPan — and the object it
+           returned was referenced exactly once, at its own declaration. So the
+           canvas had no pinch and no two-finger pan on any touchscreen, while
+           the code read as though it did. */
+        {...touchHandlers}
         onPointerCancel={handlePointerCancel}
         onDoubleClick={(e) => {
           const { x, y } = eventToWorld(e);

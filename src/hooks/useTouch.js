@@ -7,6 +7,12 @@
  * - Two-finger pinch-to-zoom
  * - Two-finger pan
  * - Tap (select)
+ *
+ * `twoFingerOnly` LEAVES SINGLE TOUCH ALONE, and BoardCanvas needs it. That
+ * canvas drags through POINTER events, which fire for touch already — so
+ * attaching this hook wholesale would run both paths for one finger and handle
+ * every drag twice. Pointer events cannot see a second finger, though, which
+ * is why pinch and two-finger pan have to come from here.
  */
 
 import { useRef, useCallback } from 'react';
@@ -18,7 +24,7 @@ const MOVE_THRESHOLD = 10; // pixels before a touch becomes a drag
  * @param {{ onDrag, onDragEnd, onTap, onLongPress, onPinch, onPan }} handlers
  * @returns {{ onTouchStart, onTouchMove, onTouchEnd, onTouchCancel }}
  */
-export function useTouch({ onDrag, onDragEnd, onTap, onLongPress, onPinch, onPan }) {
+export function useTouch({ onDrag, onDragEnd, onTap, onLongPress, onPinch, onPan, twoFingerOnly = false }) {
   const state = useRef({
     startX: 0, startY: 0,
     lastX: 0, lastY: 0,
@@ -51,7 +57,7 @@ export function useTouch({ onDrag, onDragEnd, onTap, onLongPress, onPinch, onPan
       return;
     }
 
-    if (touches.length !== 1) return;
+    if (touches.length !== 1 || twoFingerOnly) return;
 
     const touch = touches[0];
     state.current.startX = touch.clientX;
@@ -68,7 +74,7 @@ export function useTouch({ onDrag, onDragEnd, onTap, onLongPress, onPinch, onPan
       }
       state.current.longPressTimer = null;
     }, LONG_PRESS_MS);
-  }, [onLongPress, clearLongPress]);
+  }, [onLongPress, clearLongPress, twoFingerOnly]);
 
   const onTouchMove = useCallback((e) => {
     const touches = e.touches;
@@ -93,7 +99,7 @@ export function useTouch({ onDrag, onDragEnd, onTap, onLongPress, onPinch, onPan
       return;
     }
 
-    if (touches.length !== 1) return;
+    if (touches.length !== 1 || twoFingerOnly) return;
 
     const touch = touches[0];
     const dx = touch.clientX - state.current.startX;

@@ -14,6 +14,7 @@ import { classifyWheel } from '../interaction/transform.js';
 import { renderSchematicSvg } from '../model/schematic-svg.js';
 import { downloadText, downloadBlob } from '../model/exporters/download.js';
 import { t } from '../i18n/strings.js';
+import { useTouch } from '../hooks/useTouch.js';
 
 const STROKE = '#9ab0c4';
 const LABEL = '#6b8299';
@@ -177,6 +178,49 @@ export function SchematicPanel({ parts, nets, lang = 'en' }) {
     });
   }, [fitX, fitY, fitW, fitH, viewport.width, viewport.height]);
 
+  /**
+   * PINCH, because `wheel` does not exist on a touchscreen.
+   *
+   * The schematic pans on touch already — that goes through pointer events,
+   * which fire for a finger. Zoom did not, and could not: it was reachable
+   * only from onWheel, so a tablet could move the drawing around and never
+   * make it bigger. Same shape as BoardCanvas's missing pinch, different
+   * cause — there the gesture was written and never attached; here it was
+   * never written.
+   *
+   * twoFingerOnly: single touch stays with the pointer drag above, which
+   * already owns panning. Two fingers zoom about their midpoint, the way the
+   * wheel zooms about the cursor.
+   */
+  const touchHandlers = useTouch({
+    twoFingerOnly: true,
+    onPinch: useCallback((scale) => {
+      setCam(c => {
+        const cur = c ?? {x: fitX, y: fitY, k: 1};
+        const nk = Math.max(0.4, Math.min(6, cur.k * scale));
+        const host = hostRef.current;
+        if (!host) return {...cur, k: nk};
+        // About the centre of the box: the midpoint of two fingers is where
+        // the drawing should stay put, and mid-gesture that is what the
+        // hook's own centre tracking keeps the pan honest about.
+        const wx = cur.x + 0.5 * (fitW / cur.k);
+        const wy = cur.y + 0.5 * (fitH / cur.k);
+        return { x: wx - 0.5 * (fitW / nk), y: wy - 0.5 * (fitH / nk), k: nk };
+      });
+    }, [fitX, fitY, fitW, fitH]),
+    onPan: useCallback((dx, dy) => {
+      setCam(c => {
+        const cur = c ?? {x: fitX, y: fitY, k: 1};
+        const host = hostRef.current;
+        if (!host) return cur;
+        const r = host.getBoundingClientRect();
+        return { ...cur,
+          x: cur.x - dx * (fitW / cur.k) / r.width,
+          y: cur.y - dy * (fitH / cur.k) / r.height };
+      });
+    }, [fitX, fitY, fitW, fitH]),
+  });
+
   // React makes wheel listeners passive; preventDefault needs a real one.
   useEffect(() => {
     const el = hostRef.current;
@@ -247,6 +291,11 @@ export function SchematicPanel({ parts, nets, lang = 'en' }) {
         }}>{saveNote}</div>
       )}
     <svg data-schematic width="100%" height="100%" ref={hostRef}
+      /* NAMED, the way BoardCanvas names data-canvas-svg and
+         data-wokwi-layer and for the same reason: a probe that finds this by
+         "the first svg with a viewBox" finds a toolbar icon, because inline
+         icons carry viewBoxes too. */
+      data-schematic-svg
       viewBox={`${view.x} ${view.y} ${vw} ${vh}`}
       preserveAspectRatio="xMidYMid meet"
       onPointerDown={(e) => {
@@ -266,6 +315,7 @@ export function SchematicPanel({ parts, nets, lang = 'en' }) {
         dragRef.current = { x: e.clientX, y: e.clientY };
       }}
       onPointerUp={() => { dragRef.current = null; }}
+      {...touchHandlers}
       onDoubleClick={() => setCam(null)}
       style={{
         background: '#111a26', borderRadius: 6, display: 'block',
