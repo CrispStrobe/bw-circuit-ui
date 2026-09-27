@@ -72,7 +72,7 @@ const DIP_CHIP_LABELS = {
   '74ls04': '74LS04', '74ls32': '74LS32', '74ls107': '74LS107',
   '74ls157': '74LS157', '74ls161': '74LS161', '74ls173': '74LS173',
   '74ls189': '74LS189',
-  lm358: 'LM358', lm324: 'LM324', lm741: 'LM741', lt1001: 'LT1001', op07: 'OP07', op27: 'OP27', lm339: 'LM339', lm393: 'LM393',
+  lm358: 'LM358', lm324: 'LM324', lm741: 'LM741', lt1001: 'LT1001', op07: 'OP07', op27: 'OP27', adp151: 'ADP151', lm339: 'LM339', lm393: 'LM393',
   pcf8574: 'PCF8574', mcp4725: 'MCP4725', max7219: 'MAX7219',
   at24c02: '24C02', um245r: 'UM245R',
 };
@@ -156,6 +156,10 @@ function packageNeutralOffsets(kind) {
   if (kind === 'adp7118') return {
     vin_7: { dx: -38, dy: -14 }, en: { dx: -38, dy: 0 }, ss: { dx: -38, dy: 14 },
     vout_1: { dx: 38, dy: -14 }, sense_adj: { dx: 38, dy: 10 }, gnd: { dx: 0, dy: 28 },
+  };
+  if (kind === 'adp151') return {
+    vin: { dx: -25, dy: -12 }, gnd: { dx: -25, dy: 0 }, en: { dx: -25, dy: 12 },
+    nc: { dx: 25, dy: 12 }, vout: { dx: 25, dy: -12 },
   };
   if (kind === 'lt1763') return {
     in: { dx: -38, dy: -14 }, shdn: { dx: -38, dy: 5 },
@@ -315,6 +319,7 @@ function terminalOffsetsForPart(part) {
       for (const [name, o] of Object.entries(base)) offsets[name] = r(o.dx, o.dy);
       return offsets;
     }
+    case 'adp151':
     case 'adp7118':
     case 'lt1763': {
       const base = sidecarCenterOffsets(part.kind);
@@ -1563,6 +1568,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
       }
+      case 'adp151':
       case 'adp7118':
       case 'lt1763': {
         const sc = getSidecar(kind);
@@ -1570,7 +1576,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         const W = sc?.w ?? 60;
         const H = sc?.h ?? 40;
         return (
-          <g key={id} data-part-face={kind} data-soic-body={kind}
+          <g key={id} data-part-face={kind}
+            data-soic-body={kind === 'adp151' ? undefined : kind}
+            data-tsot-body={kind === 'adp151' ? kind : undefined}
             transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
             <rect x={-W / 2 + 10} y={-H / 2 + 3} width={W - 20} height={H - 6} rx={3}
               fill="#252525" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.2} />
@@ -1578,9 +1586,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fill="#252525" stroke="#666" strokeWidth={0.8} />
             <circle cx={-W / 2 + 15} cy={-H / 2 + 8} r={1.5} fill="#aaa" />
             <text x={0} y={-2} textAnchor="middle" fill="#d0d0d0" fontSize={7}
-              fontFamily="monospace" fontWeight="bold">{kind === 'lt1763' ? 'LT1763' : 'ADP7118'}</text>
+              fontFamily="monospace" fontWeight="bold">{kind === 'lt1763' ? 'LT1763' : kind === 'adp151' ? 'ADP151' : 'ADP7118'}</text>
             <text x={0} y={8} textAnchor="middle" fill="#929292" fontSize={4}
-              fontFamily="monospace">{kind === 'lt1763' ? '500mA LDO · SO-8' : '200mA LDO · SOIC-8'}</text>
+              fontFamily="monospace">{kind === 'lt1763' ? '500mA LDO · SO-8' : kind === 'adp151' ? '200mA LDO · TSOT-5' : '200mA LDO · SOIC-8'}</text>
             {(sc?.terminals || []).map(t => {
               const p = offsets[t.name];
               if (!p) return null;

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 42" width="50" height="42">
+  <!-- ADP151 — original TSOT-5 bench face, drawn from package facts only -->
+  <rect x="9" y="3" width="32" height="36" rx="3" fill="#252525" stroke="#111" stroke-width="1"/>
+  <circle cx="14" cy="9" r="1.5" fill="#aaa"/>
+  <text x="25" y="19" text-anchor="middle" font-family="monospace" font-size="5.5" fill="#d0d0d0">ADP151</text>
+  <text x="25" y="26" text-anchor="middle" font-family="monospace" font-size="3.2" fill="#929292">200mA LDO</text>
+  <text x="25" y="32" text-anchor="middle" font-family="monospace" font-size="2.7" fill="#777">TSOT-5</text>
+  <g stroke="#aaa" stroke-width="1.5" stroke-linecap="round" fill="#c0c0c0">
+    <line x1="0" y1="9" x2="9" y2="9"/><circle cx="0" cy="9" r="1.4"/>
+    <line x1="0" y1="21" x2="9" y2="21"/><circle cx="0" cy="21" r="1.4"/>
+    <line x1="0" y1="33" x2="9" y2="33"/><circle cx="0" cy="33" r="1.4"/>
+    <line x1="41" y1="33" x2="50" y2="33"/><circle cx="50" cy="33" r="1.4"/>
+    <line x1="41" y1="9" x2="50" y2="9"/><circle cx="50" cy="9" r="1.4"/>
+  </g>
+  <g font-family="monospace" font-size="2.8" fill="#888">
+    <text x="12" y="10">vin</text><text x="12" y="22">gnd</text><text x="12" y="34">en</text>
+    <text x="38" y="34" text-anchor="end">nc</text><text x="38" y="10" text-anchor="end">vout</text>
+  </g>
+</svg>

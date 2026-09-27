@@ -145,6 +145,33 @@ addVerifiedDevice(['op27', 'opamps/op27'], {
   sourceSha256: '93f2fa1510bfb884a5d5f987ad4b7325531536dd62a723a401fb96746c32ac5c',
 });
 
+const adp151Pins = [[0, -128], [0, 128], [-128, 0], [128, 0]];
+for (const [suffix, vOut, selector, sourceSha256] of [
+  ['-1.1', 1.1, '100K', '552c7d43e0e1940a680018c37d766dd963a7b5351f53bf48de4bd275ff15718a'],
+  ['-1.2', 1.2, '200K', '1c48100424ef80a429e4d85afe60e6630cbc570d78679dc985d20a42d00ef5e3'],
+  ['-1.5', 1.5, '500K', '18d3902d26fd9677bc623c0c181e5591bd79c15125495af97c5da1802c3a738d'],
+  ['-1.8', 1.8, '800K', '029f1a9a69a05abc2678e0dca60e94af838b717f67374ba18d5184202fb85156'],
+  ['-2.5', 2.5, '1.5Meg', 'a9e4897035193a4b272355e8d942ffaf85e40c6eb2f63c42fb2ed8252296ebfb'],
+  ['-2.6', 2.6, '1.6Meg', 'b46f53b22ecd609e9102adc141359236d4fd917eed876680b448ff5721656893'],
+  ['-2.75', 2.75, '1.75Meg', '692c265ca03948a8b7cbd2e95f13865b0c6213c9c62a2dfc5e3ec370775ba225'],
+  ['-2.8', 2.8, '1.8Meg', '6dca8977beffc2c2814a7e8f9dab5428ad01ff0e97c022e8fc211d9e717e8303'],
+  ['-3.0', 3, '2Meg', 'e2e9412431d1848d957cb85db6bc24ae560d53446446f2a4fcbc0e5abf3e2ecb'],
+  ['-3.3', 3.3, '2.3Meg', '4bb81b51e80c66b9ec9ec5c1fba4baa49b0f364a49fe6bb7c6bd6eefa09e6642'],
+]) {
+  const name = `adp151${suffix}`;
+  const sourceSubcircuit = `ADP151-x.x T=${selector}`;
+  addVerifiedDevice([name, `powerproducts/${name}`], {
+    kind: 'adp151', terminals: ['vin', 'gnd', 'en', 'vout'], pins: adp151Pins,
+    spiceOrders: [1, 2, 3, 5], prefix: 'X', acceptedValues: [name.toUpperCase()],
+    deviceParams: { vOut }, sourceSha256,
+    // The proprietary .sub is not executed by Brickwright. Preserve this
+    // distinction even though the fixed-output selector itself is audited.
+    sourceModelSubstitution: Object.freeze({
+      file: 'ADP151-x.x.sub', subcircuit: sourceSubcircuit,
+    }),
+  });
+}
+
 const adp7118Pins = [[-128, -96], [128, 96], [-128, 0], [-128, 96], [128, -96], [0, 160]];
 for (const [suffix, vOut, sourceSha256] of [
   ['', null, 'ed01d52c27dc43d19810d33ca4e68186078ec316629110830c486885a06e3f6b'],

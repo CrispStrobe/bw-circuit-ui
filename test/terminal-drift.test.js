@@ -42,6 +42,7 @@ const DRIFTED = [
   { kind: 'lm741',        minTerminals: 8, sample: ['offset_1', 'inn', 'inp', 'vneg', 'out', 'vpos', 'nc'] },
   { kind: 'lt1001',       minTerminals: 8, sample: ['offset_1', 'inn', 'inp', 'vneg', 'out', 'vpos', 'nc'] },
   { kind: 'adp7118',      minTerminals: 8, sample: ['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8'] },
+  { kind: 'adp151',       minTerminals: 5, sample: ['vin', 'gnd', 'en', 'nc', 'vout'] },
   { kind: 'lt1763',       minTerminals: 8, sample: ['out', 'sense_adj', 'gnd_3', 'byp', 'shdn', 'gnd_6', 'gnd_7', 'in'] },
 ];
 

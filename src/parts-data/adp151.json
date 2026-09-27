@@ -1,0 +1,14 @@
+{
+  "kind": "adp151",
+  "w": 50,
+  "h": 42,
+  "terminals": [
+    { "name": "vin",  "x": 0,  "y": 9,  "functions": [] },
+    { "name": "gnd",  "x": 0,  "y": 21, "functions": [] },
+    { "name": "en",   "x": 0,  "y": 33, "functions": [] },
+    { "name": "nc",   "x": 50, "y": 33, "functions": [] },
+    { "name": "vout", "x": 50, "y": 9,  "functions": [] }
+  ],
+  "variants": null,
+  "_note": "ADP151 ultralow-noise 200 mA LDO, 5-lead TSOT top view. Physical pin order audited against Analog Devices ADP151 Rev. J Figure 4 and Table 5. LFCSP and WLCSP imports must not acquire this face. Surface-mount package: no direct breadboard footprint is claimed."
+}

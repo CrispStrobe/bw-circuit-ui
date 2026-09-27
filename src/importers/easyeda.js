@@ -257,6 +257,10 @@ export const EASYEDA_RULES = [
     1: 'vout_1', 2: 'vout_2', 3: 'sense_adj', 4: 'gnd',
     5: 'en', 6: 'ss', 7: 'vin_7', 8: 'vin_8',
   } })],
+  [/^ADP151AUJZ-(?:1\.2|1\.5|1\.8|2\.5|2\.8|2\.9|3\.0|3\.3)-R7$/i,
+    () => ({ kind: 'adp151', pins: {
+      1: 'vin', 2: 'gnd', 3: 'en', 4: 'nc', 5: 'vout',
+    } })],
   [/^LT1763(?:C|I|MP)?S8(?:[-_A-Z0-9.#]*)$/i, () => ({ kind: 'lt1763', pins: {
     1: 'out', 2: 'sense_adj', 3: 'gnd_3', 4: 'byp',
     5: 'shdn', 6: 'gnd_6', 7: 'gnd_7', 8: 'in',

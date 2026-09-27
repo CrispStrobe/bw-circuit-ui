@@ -157,6 +157,12 @@ export const PART_SYMBOLS = {
     kicadSymbol: 'Regulator_Linear:ADP7118ARDZ',
     kicadFootprint: 'Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm',
   },
+  adp151: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // This is the explicit AUJZ 5-lead TSOT face only. LTspice's four-pin
+    // symbol and ADI's LFCSP/WLCSP order codes carry no package authority.
+    kicadFootprint: 'Package_TO_SOT_SMD:TSOT-23-5',
+  },
   lt1763: {
     refdesPrefix: 'U',
     kicadFootprint: 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm',

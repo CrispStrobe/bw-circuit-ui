@@ -25,7 +25,7 @@ test('the vendored LM741 is the exact physical PDIP-8 sibling part', () => {
   assert.deepEqual(sidecar.footprint.leads.out, {dRow: 5, dCol: 2});
   assert.deepEqual(sidecar.footprint.leads.vpos, {dRow: 5, dCol: 1});
   const pins = JSON.parse(read('.github/ci-siblings.json'));
-  assert.equal(pins['bw-parts'].sha, '9f58c6a9d0837e2c1e2fc42f9ae6873fddb9b372');
+  assert.equal(pins['bw-parts'].sha, '395d50027b894d8a97b3158641b92f561c0609e2');
   const sibling = process.env.BW_PARTS_DIR || join(root, '..', 'bw-parts', 'parts');
   if (existsSync(sibling)) {
     assert.equal(read('src/parts-data/lm741.json'), readFileSync(join(sibling, 'lm741.json'), 'utf8'));

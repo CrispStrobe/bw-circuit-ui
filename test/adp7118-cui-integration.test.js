@@ -24,7 +24,7 @@ test('the vendored ADP7118 is the exact physical SOIC-8 sibling part', () => {
   assert.deepEqual(sidecar.terminals.map(t => t.name), terminals);
   assert.equal('footprint' in sidecar, false, 'surface-mount package must not claim breadboard seating');
   const pins = JSON.parse(read('.github/ci-siblings.json'));
-  assert.equal(pins['bw-parts'].sha, '9f58c6a9d0837e2c1e2fc42f9ae6873fddb9b372');
+  assert.equal(pins['bw-parts'].sha, '395d50027b894d8a97b3158641b92f561c0609e2');
   assert.match(read('src/parts-data/adp7118.svg'), />ADP7118</);
 });
 
@@ -34,7 +34,8 @@ test('palette, canvas, schematic and export metadata name the real LDO', () => {
   const interaction = read('scripts/verify-interaction.mjs');
   assert.match(palette, /kind: 'adp7118', label: 'ADP7118'/);
   assert.match(canvas, /case 'adp7118'/);
-  assert.match(canvas, /data-soic-body=\{kind\}/);
+  assert.match(canvas, /data-soic-body=\{kind === 'adp151' \? undefined : kind\}/,
+    'the shared surface-mount renderer exposes a SOIC marker only for SOIC/SO-8 parts');
   assert.match(interaction, /\[data-part-face="adp7118"\]\[data-soic-body="adp7118"\]/);
   assert.match(interaction, /adpDots\.length === 8/);
   assert.equal(PART_SYMBOLS.adp7118.kicadSymbol, 'Regulator_Linear:ADP7118ARDZ');
