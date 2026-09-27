@@ -72,7 +72,7 @@ const DIP_CHIP_LABELS = {
   '74ls04': '74LS04', '74ls32': '74LS32', '74ls107': '74LS107',
   '74ls157': '74LS157', '74ls161': '74LS161', '74ls173': '74LS173',
   '74ls189': '74LS189',
-  lm358: 'LM358', lm324: 'LM324', lm741: 'LM741', lt1001: 'LT1001', lt1006: 'LT1006', lt1014: 'LT1014', adtl082: 'ADTL082', op747: 'OP747', op07: 'OP07', op27: 'OP27', adp151: 'ADP151', lm339: 'LM339', lm393: 'LM393',
+  lm358: 'LM358', lm324: 'LM324', lm741: 'LM741', lt1001: 'LT1001', lt1006: 'LT1006', lt1007: 'LT1007', lt1014: 'LT1014', adtl082: 'ADTL082', op747: 'OP747', op07: 'OP07', op27: 'OP27', adp151: 'ADP151', lm339: 'LM339', lm393: 'LM393',
   pcf8574: 'PCF8574', mcp4725: 'MCP4725', max7219: 'MAX7219',
   at24c02: '24C02', um245r: 'UM245R',
 };
@@ -149,7 +149,7 @@ function mcuChipInfo(device) {
  * Returns {terminalName: {dx, dy}} relative to part anchor.
  */
 function packageNeutralOffsets(kind) {
-  if (kind === 'lt1001' || kind === 'lt1006' || kind === 'op07' || kind === 'op27') return {
+  if (kind === 'lt1001' || kind === 'lt1006' || kind === 'lt1007_channel' || kind === 'op07' || kind === 'op27') return {
     inp: { dx: -38, dy: 12 }, inn: { dx: -38, dy: -12 },
     vpos: { dx: 0, dy: -28 }, vneg: { dx: 0, dy: 28 }, out: { dx: 38, dy: 0 },
   };
@@ -383,10 +383,10 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       onSelectPart(id, e.shiftKey);
     };
 
-    if (part.sourcePackage === 'unspecified') {
+    if (part.sourcePackage === 'unspecified' || kind === 'lt1007_channel') {
       const offsets = packageNeutralOffsets(kind);
       if (offsets) {
-        const label = kind === 'lt1001' ? 'LT1001' : kind === 'lt1006' ? 'LT1006' : kind === 'op07' ? 'OP07' : kind === 'op27' ? 'OP27'
+        const label = kind === 'lt1001' ? 'LT1001' : kind === 'lt1006' ? 'LT1006' : kind === 'lt1007_channel' ? 'LT1007' : kind === 'op07' ? 'OP07' : kind === 'op27' ? 'OP27'
           : kind === 'adp7118' ? 'ADP7118' : 'LT1763';
         return (
           <g key={id} data-part-face={kind} data-source-package="unspecified"
@@ -396,7 +396,7 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             <text x={0} y={-3} textAnchor="middle" fill="#d0d7de" fontSize={7}
               fontFamily="monospace" fontWeight="bold">{label}</text>
             <text x={0} y={7} textAnchor="middle" fill="#9aa4ad" fontSize={4.5}
-              fontFamily="monospace">PACKAGE UNSPECIFIED</text>
+              fontFamily="monospace">{part.sourcePackage === 'unspecified' ? 'PACKAGE UNSPECIFIED' : part.sourcePackage}</text>
             {Object.entries(offsets).map(([name, point]) => {
               const horizontal = Math.abs(point.dx) > Math.abs(point.dy);
               const x1 = horizontal ? Math.sign(point.dx) * 27 : point.dx;

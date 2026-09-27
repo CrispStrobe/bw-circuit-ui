@@ -249,6 +249,10 @@ export const EASYEDA_RULES = [
     1: 'offset_1', 2: 'inn', 3: 'inp', 4: 'vneg',
     5: 'offset_5', 6: 'out', 7: 'vpos', 8: 'iset',
   } })],
+  [/^LT1007(?:AC|C|I)N8#PBF$/i, () => ({ kind: 'lt1007', pins: {
+    1: 'offset_1', 2: 'inn', 3: 'inp', 4: 'vneg',
+    5: 'nc', 6: 'out', 7: 'vpos', 8: 'offset_8',
+  } })],
   [/^LT1014(?:A|D)?(?:C|I|M)?N$/i, () => ({ kind: 'lt1014', pins: {
     1: '1_out', 2: '1_neg', 3: '1_pos', 4: 'vpos', 5: '2_pos', 6: '2_neg', 7: '2_out',
     8: '3_out', 9: '3_neg', 10: '3_pos', 11: 'vneg', 12: '4_pos', 13: '4_neg', 14: '4_out',

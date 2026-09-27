@@ -140,6 +140,18 @@ for (const [name, sourceSha256, packaged] of [
     } : {}),
   });
 }
+for (const [name, sourceSha256, sourcePackage] of [
+  ['lt1007', '27cc3c47f6f99673d395c5cba0238868c898935424ca84194b0a81f976702b55', undefined],
+  ['lt1007a', '6b83e0cd0122fbccc0747de0718c100aa1a5d8fb84613121ffc68111649ec2f9', undefined],
+  ['lt1007cs', '2df754764366610988df336094580ae523b1b8b10ed4f82bdc84baa25d0aaabf', 'SOIC-8'],
+]) {
+  addVerifiedDevice([name, `opamps/${name}`], {
+    kind: 'lt1007_channel', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+    prefix: 'X', acceptedValues: [name.toUpperCase()], deviceParams: {}, sourceSha256,
+    sourceModelSubstitution: Object.freeze({ file: 'LTC.lib', subcircuit: 'LT1007' }),
+    ...(sourcePackage ? { sourcePackage } : {}),
+  });
+}
 for (const [name, sourceSha256] of [
   ['lt1014', 'b7233d9b52d2876b34faa47772a90b139e2f794bba50f45ab1ef8aa9bacb7b4c'],
   ['lt1014a', '9fe778053a144464b0aab03fbd4f8580491bc5322d217fc6d9418fa11b59e9d1'],

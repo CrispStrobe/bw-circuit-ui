@@ -149,6 +149,7 @@ const EXPECTED = [
   'lm741-place',
   'lt1001-place',
   'lt1006-place',
+  'lt1007-place',
   'lt1014-place',
   'adtl082-place',
   'op747-place',
@@ -606,6 +607,18 @@ try {
     `LT1006 placement produced ${lt1006Faces} faces and ${lt1006Dots.length} distinct pins; `
       + `model parts ${JSON.stringify(lt1006Parts)}`);
 
+  const before1007 = new Set(await freeTerminalDots());
+  await placeByLabel('LT1007', cs.x + cs.width * 0.80, cs.y + cs.height * 0.36);
+  const lt1007Dots = [...new Set((await freeTerminalDots()).filter(d => !before1007.has(d)))];
+  const lt1007Faces = await page.locator('[data-part-face="lt1007"][data-dip-body="lt1007"]').count();
+  const lt1007Parts = await page.evaluate(() => window.__circuit?.parts
+    ?.filter(part => part.kind === 'lt1007')
+    .map(part => ({ id: part.id, x: part.x, y: part.y, terminals: part.terminals?.length })) || []);
+  verdict('lt1007-place', lt1007Faces >= 1 && lt1007Dots.length === 8,
+    'LT1007 places as a physical N8 PDIP face with eight separately wireable pins',
+    `LT1007 placement produced ${lt1007Faces} faces and ${lt1007Dots.length} distinct pins; `
+      + `model parts ${JSON.stringify(lt1007Parts)}`);
+
   const before1014 = new Set(await activeManyPinDots());
   // A PDIP-14 is wider than the preceding single amplifiers. Keep it clear
   // of the demo circuit and of every earlier placement in this cumulative
@@ -685,7 +698,7 @@ try {
     'LT1763 places as a physical SO-8 face with eight separately wireable pins',
     `LT1763 placement produced ${ltFaces} faces and ${ltDots.length} distinct pins`);
 } catch (e) {
-  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'lt1001-place', 'lt1006-place', 'lt1014-place', 'adtl082-place', 'op747-place', 'op07-place', 'op27-place', 'adp151-place', 'adp7118-place', 'lt1763-place'],
+  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'lt1001-place', 'lt1006-place', 'lt1007-place', 'lt1014-place', 'adtl082-place', 'op747-place', 'op07-place', 'op27-place', 'adp151-place', 'adp7118-place', 'lt1763-place'],
     `the controlled-source scenarios could not be set up: ${String(e).split('\n')[0]}`);
 }
 

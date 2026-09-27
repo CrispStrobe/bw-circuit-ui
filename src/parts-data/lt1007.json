@@ -1,0 +1,32 @@
+{
+  "kind": "lt1007",
+  "w": 60,
+  "h": 48,
+  "terminals": [
+    { "name": "offset_1", "x": 0, "y": 8, "functions": [] },
+    { "name": "inn", "x": 0, "y": 18, "functions": [] },
+    { "name": "inp", "x": 0, "y": 28, "functions": [] },
+    { "name": "vneg", "x": 0, "y": 38, "functions": [] },
+    { "name": "nc", "x": 60, "y": 38, "functions": [] },
+    { "name": "out", "x": 60, "y": 28, "functions": [] },
+    { "name": "vpos", "x": 60, "y": 18, "functions": [] },
+    { "name": "offset_8", "x": 60, "y": 8, "functions": [] }
+  ],
+  "variants": null,
+  "_note": "LT1007 low-noise precision operational amplifier, production N8 narrow PDIP top view. Physical pin order audited against the Analog Devices LT1007/LT1037 data sheet; S8 packages must not borrow this face, and offset-null behavior is not implied by the artwork.",
+  "footprint": {
+    "refTerminal": "offset_1",
+    "leads": {
+      "offset_1": { "dRow": 0, "dCol": 0 },
+      "inn": { "dRow": 0, "dCol": 1 },
+      "inp": { "dRow": 0, "dCol": 2 },
+      "vneg": { "dRow": 0, "dCol": 3 },
+      "nc": { "dRow": 5, "dCol": 3 },
+      "out": { "dRow": 5, "dCol": 2 },
+      "vpos": { "dRow": 5, "dCol": 1 },
+      "offset_8": { "dRow": 5, "dCol": 0 }
+    },
+    "straddlesGutter": true,
+    "minCols": 4
+  }
+}

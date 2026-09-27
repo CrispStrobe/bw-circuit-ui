@@ -66,6 +66,8 @@ const KIND_LABELS = {
   lm741: 'LM741 Operational Amplifier',
   lt1001: 'LT1001 Precision Operational Amplifier',
   lt1006: 'LT1006 Precision Single-Supply Operational Amplifier',
+  lt1007: 'LT1007 Low-Noise Precision Operational Amplifier',
+  lt1007_channel: 'LT1007 Functional Channel (Package Unspecified)',
   lt1014: 'LT1014 Quad Precision Operational Amplifier',
   lt1014_channel: 'LT1014 Functional Channel (Package Unspecified)',
   adtl082: 'ADTL082 Dual JFET-Input Operational Amplifier',

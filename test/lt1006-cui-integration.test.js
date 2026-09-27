@@ -18,7 +18,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = rel => readFileSync(join(root, rel), 'utf8');
 const physicalTerminals = ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 'iset'];
 const electricalTerminals = ['inp', 'inn', 'vpos', 'vneg', 'out'];
-const partsSha = 'a58bc844d1b3f295e3f41bac2b1062d48728b812';
+const partsSha = '978f42edfb442139e7fd2e35c9d48edf05a9092a';
 const symbolShas = new Map([
   ['LT1006', '2964d9e9ced195230ed5aa7a4bb1d11ddfcc4beb4d5ce76c4f021459b68466ae'],
   ['LT1006A', 'a49fb0bd6e33731241e2333c066ec82c16231955fbd5982dcae2d82a569a9468'],

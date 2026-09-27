@@ -42,6 +42,7 @@ const DRIFTED = [
   { kind: 'lm741',        minTerminals: 8, sample: ['offset_1', 'inn', 'inp', 'vneg', 'out', 'vpos', 'nc'] },
   { kind: 'lt1001',       minTerminals: 8, sample: ['offset_1', 'inn', 'inp', 'vneg', 'out', 'vpos', 'nc'] },
   { kind: 'lt1006',       minTerminals: 8, sample: ['offset_1', 'inn', 'inp', 'vneg', 'out', 'vpos', 'iset'] },
+  { kind: 'lt1007',       minTerminals: 8, sample: ['offset_1', 'inn', 'inp', 'vneg', 'nc', 'out', 'vpos', 'offset_8'] },
   { kind: 'lt1014',       minTerminals: 14, sample: ['1_out', '1_neg', '1_pos', 'vpos', 'vneg', '4_out'] },
   { kind: 'adtl082',      minTerminals: 8, sample: ['1_out', '1_neg', '1_pos', 'vneg', '2_out', 'vpos'] },
   { kind: 'op747',        minTerminals: 14, sample: ['1_neg', '1_pos', 'vpos', '2_out', '4_out', 'vneg', '3_out', '1_out'] },
@@ -77,6 +78,10 @@ describe('terminal-drift regression: multi-terminal kinds resolve via sidecar', 
 
   test('LT1006 has an explicit SOIC label instead of a generic ideal triangle', () => {
     assert.match(canvasSrc, /lt1006:\s*'LT1006'/);
+  });
+
+  test('LT1007 has an explicit DIP label instead of a generic ideal triangle', () => {
+    assert.match(canvasSrc, /lt1007:\s*'LT1007'/);
   });
 
   test('LT1014 has an explicit DIP label instead of four unrelated ideal triangles', () => {
