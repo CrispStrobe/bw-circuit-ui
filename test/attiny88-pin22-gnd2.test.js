@@ -80,3 +80,15 @@ describe('attiny88 pin 22 is gnd2, not pa0', () => {
       'the package list is what makes the alias resolvable; a one-entry declared list cannot');
   });
 });
+
+describe('attiny88 QFN-32 keeps the real Blinkenrocket modem pad', () => {
+  test('the surface-mount package exposes PA0/ADC6 separately from the PDIP', () => {
+    const terms = terminalsForKind('attiny88_qfn32', {});
+    assert.equal(terms.length, 32, 'QFN-32 has all 32 pads');
+    assert.ok(terms.includes('pa0'), 'QFN-32 bonds out PA0 / ADC6');
+    assert.ok(terms.includes('pa1'), 'QFN-32 bonds out PA1 / ADC7');
+    assert.ok(terms.includes('gnd2'), 'the second ground remains explicit');
+    assert.equal(FOOTPRINTS.attiny88_qfn32, undefined,
+      'a QFN must not claim a solderless-breadboard footprint');
+  });
+});

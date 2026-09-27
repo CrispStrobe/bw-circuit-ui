@@ -327,6 +327,11 @@ function terminalOffsetsForPart(part) {
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
     }
+    case 'attiny88_qfn32': {
+      const base = sidecarCenterOffsets(part.kind);
+      if (!base) return {};
+      return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
+    }
     default: {
       // Generic DIP chip terminal offsets from sidecar geometry
       if (DIP_CHIP_LABELS[part.kind]) {
@@ -419,6 +424,35 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
     }
 
     switch (kind) {
+      case 'attiny88_qfn32': {
+        const sc = typeof getSidecar === 'function' ? getSidecar(kind) : null;
+        const offsets = terminalOffsetsForPart(part);
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{cursor: 'pointer'}}
+            data-part-face={kind} data-package="QFN-32">
+            <rect x={-29} y={-29} width={58} height={58} rx={3}
+              fill="#171717" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.5} />
+            <circle cx={-21} cy={-21} r={2.5} fill="#888" />
+            <text x={0} y={-2} textAnchor="middle" fill="#ddd" fontSize={8}
+              fontFamily="monospace" fontWeight="bold">ATtiny88</text>
+            <text x={0} y={9} textAnchor="middle" fill="#888" fontSize={5}
+              fontFamily="monospace">QFN-32</text>
+            {(sc?.terminals || []).map(t => {
+              const p = offsets[t.name];
+              if (!p) return null;
+              const edge = Math.abs(p.dx) > Math.abs(p.dy) ? 'x' : 'y';
+              const x1 = edge === 'x' ? Math.sign(p.dx) * 29 : p.dx;
+              const y1 = edge === 'y' ? Math.sign(p.dy) * 29 : p.dy;
+              return <g key={t.name}>
+                <line x1={x1} y1={y1} x2={p.dx} y2={p.dy} stroke="#adb5bd" strokeWidth={1.2} />
+                <circle cx={p.dx} cy={p.dy} r={1.8} fill="#d8dee4" />
+              </g>;
+            })}
+            <text x={0} y={43} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
       case 'vcc':
       case 'gnd': {
         // A bench binding post: metal collar, colored cap, base plate.

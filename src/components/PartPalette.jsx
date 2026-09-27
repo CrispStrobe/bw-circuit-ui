@@ -49,6 +49,9 @@ const CATEGORIES = [
   {
     name: 'Chips',
     parts: [
+      { kind: 'attiny88_qfn32', label: 'ATtiny88 QFN-32', params: {}, color: '#168aad',
+        capability: 'AVR simulation',
+        tooltip: 'Surface-mount ATtiny88 package used by Blinkenrocket — includes PA0/ADC6 and PA1/ADC7' },
       { kind: 'attiny2313', label: 'ATtiny2313', params: {}, color: '#168aad',
         capability: 'AVR simulation',
         tooltip: 'DIP-20 MCU — 2 KB flash, UART (PD0/PD1), no ADC' },
