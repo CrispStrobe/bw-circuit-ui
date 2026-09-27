@@ -245,6 +245,10 @@ export const EASYEDA_RULES = [
     1: 'vout_1', 2: 'vout_2', 3: 'sense_adj', 4: 'gnd',
     5: 'en', 6: 'ss', 7: 'vin_7', 8: 'vin_8',
   } })],
+  [/^LT1763(?:C|I|MP)?S8(?:[-_A-Z0-9.#]*)$/i, () => ({ kind: 'lt1763', pins: {
+    1: 'out', 2: 'sense_adj', 3: 'gnd_3', 4: 'byp',
+    5: 'shdn', 6: 'gnd_6', 7: 'gnd_7', 8: 'in',
+  } })],
   [/^(LM|MC)?358/i, () => ({ kind: 'lm358', byName: true })],
   [/^(LM|MC)?324/i, () => ({ kind: 'lm324', byName: true })],
   [/^(LM|MC)?339/i, () => ({ kind: 'lm339', byName: true })],

@@ -404,6 +404,11 @@ export const KICAD_RULES = [
       pins: { 1: 'vout_1', 2: 'vout_2', 3: 'sense_adj', 4: 'gnd',
         5: 'en', 6: 'ss', 7: 'vin_7', 8: 'vin_8' },
       terminals: ['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8'] })],
+  [/^LT1763(?:C|I|MP)?S8(?:[-_A-Z0-9.#]*)$/i,
+    () => ({ kind: 'lt1763',
+      pins: { 1: 'out', 2: 'sense_adj', 3: 'gnd_3', 4: 'byp',
+        5: 'shdn', 6: 'gnd_6', 7: 'gnd_7', 8: 'in' },
+      terminals: ['out', 'sense_adj', 'gnd_3', 'byp', 'shdn', 'gnd_6', 'gnd_7', 'in'] })],
   // Part number BEFORE the generic rule, and never a new kind name: the
   // engine already models lm7805, ams1117_33 and a generic vreg. Inventing a
   // `regulator` kind here is the mistake eagle.js's comments record.

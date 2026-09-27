@@ -26,7 +26,7 @@ const PREFIX_MAP = {
   resistor: 'R', capacitor: 'C', inductor: 'L',
   diode: 'D', zener: 'D', led: 'D', rgb_led: 'D',
   npn: 'Q', pnp: 'Q', nmos: 'Q', pmos: 'Q', tip120: 'Q',
-  opamp: 'U', lm741: 'U', adp7118: 'U', '555': 'U', relay: 'K', relay_dpdt: 'K',
+  opamp: 'U', lm741: 'U', adp7118: 'U', lt1763: 'U', '555': 'U', relay: 'K', relay_dpdt: 'K',
   button: 'SW', switch: 'SW', slide_switch: 'SW',
   potentiometer: 'RV', ldr: 'R', ntc: 'R',
   buzzer: 'LS', dc_motor: 'M', servo: 'M', gearmotor: 'M',
