@@ -1105,7 +1105,7 @@ export function importLtspiceAsc(text, options = {}) {
       ...(spec.verifiedDevice ? {
         terminals: [...spec.terminals], sourcePackage: 'unspecified',
         sourceLibrary: spec.verifiedLibrary,
-        sourceSymbolSha256: spec.sourceSha256,
+        verifiedBuiltinSymbolSha256: spec.sourceSha256,
       } : {}),
       sourceInstance: sourceDocument.instances[symbolIndex]?.id,
       ...(partBlockers.length ? { analysisBlockers: partBlockers } : {}) });

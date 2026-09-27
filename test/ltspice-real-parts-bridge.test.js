@@ -34,7 +34,9 @@ test('exact LTspice names reach real native devices without inventing a package'
     assert.deepEqual(result.parts[0].params, params);
     assert.deepEqual(result.parts[0].terminals, terminals);
     assert.equal(result.parts[0].sourcePackage, 'unspecified');
-    assert.match(result.parts[0].sourceSymbolSha256, /^[0-9a-f]{64}$/);
+    assert.match(result.parts[0].verifiedBuiltinSymbolSha256, /^[0-9a-f]{64}$/);
+    assert.equal(result.parts[0].sourceSymbolSha256, undefined,
+      'an audited built-in contract is not proof that the caller supplied those exact ASY bytes');
     assert.equal(result.sourceDocument.electricalProjection.mappedInstances[0].mapping,
       `native-device:${kind}`);
     const circuit = Circuit.fromJSON({ parts: result.parts, wires: result.wires });
