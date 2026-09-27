@@ -153,6 +153,14 @@ for (const [name, sourceSha256] of [
     sourceModelSubstitution: Object.freeze({ file: 'LT1013.sub', subcircuit: 'LT1013' }),
   });
 }
+addVerifiedDevice(['adtl082', 'opamps/adtl082'], {
+  // The official symbol is one functional channel and carries neither a
+  // unit label nor package identity. Never turn it into the whole SOIC dual.
+  kind: 'adtl082_channel', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
+  prefix: 'X', acceptedValues: ['ADTL082'], deviceParams: {},
+  sourceSha256: 'b55fe8571a7ceda780cd2f7f3cd9218b3a206016502b5c1fbc6ca80668ea2c47',
+  sourceModelSubstitution: Object.freeze({ file: 'ADI.lib', subcircuit: 'ADTL082' }),
+});
 addVerifiedDevice(['op07', 'opamps/op07'], {
   kind: 'op07', terminals: ['inp', 'inn', 'vpos', 'vneg', 'out'], pins: lt1001Pins,
   prefix: 'X', acceptedValues: ['OP07'], deviceParams: {},

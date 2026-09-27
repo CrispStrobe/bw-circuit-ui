@@ -156,6 +156,15 @@ export const PART_SYMBOLS = {
   lt1014_channel: {
     refdesPrefix: 'U', spiceCard: 'X',
   },
+  adtl082: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    // The physical palette/EasyEDA part is the production R-8 SOIC.
+    // KiCad's multi-unit symbol is not claimed by the single-record importer.
+    kicadFootprint: 'Package_SO:SOIC-8_3.9x4.9mm_P1.27mm',
+  },
+  adtl082_channel: {
+    refdesPrefix: 'U', spiceCard: 'X',
+  },
   op07: {
     refdesPrefix: 'U', spiceCard: 'X',
     // No package identity is inferred by the LTspice importer. This footprint

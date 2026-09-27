@@ -1,0 +1,17 @@
+{
+  "kind": "adtl082",
+  "w": 60,
+  "h": 40,
+  "terminals": [
+    { "name": "1_out", "x": 0,  "y": 8,  "functions": [] },
+    { "name": "1_neg", "x": 0,  "y": 16, "functions": [] },
+    { "name": "1_pos", "x": 0,  "y": 24, "functions": [] },
+    { "name": "vneg",  "x": 0,  "y": 32, "functions": [] },
+    { "name": "2_pos", "x": 60, "y": 32, "functions": [] },
+    { "name": "2_neg", "x": 60, "y": 24, "functions": [] },
+    { "name": "2_out", "x": 60, "y": 16, "functions": [] },
+    { "name": "vpos",  "x": 60, "y": 8,  "functions": [] }
+  ],
+  "variants": null,
+  "_note": "ADTL082 low-cost dual JFET-input operational amplifier, R-8 8-lead SOIC top view. Physical pin order audited against Analog Devices ADTL082/ADTL084 Rev. B. The official LTspice five-terminal ADTL082 symbol is one logical amplifier and does not establish this package. Surface-mount package: no direct breadboard footprint is claimed."
+}

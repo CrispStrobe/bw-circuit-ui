@@ -20,7 +20,7 @@ const physicalTerminals = [
   '3_out', '3_neg', '3_pos', 'vneg', '4_pos', '4_neg', '4_out',
 ];
 const channelTerminals = ['inp', 'inn', 'vpos', 'vneg', 'out'];
-const partsSha = 'ed7b8adda5a2820ee42fcd43b9e6a9b113175c8c';
+const partsSha = '90f3527b662fd929bfde061a198e9d4246877cdd';
 const symbolShas = new Map([
   ['LT1014', 'b7233d9b52d2876b34faa47772a90b139e2f794bba50f45ab1ef8aa9bacb7b4c'],
   ['LT1014A', '9fe778053a144464b0aab03fbd4f8580491bc5322d217fc6d9418fa11b59e9d1'],
