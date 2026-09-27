@@ -39,6 +39,7 @@ const DRIFTED = [
   { kind: 'ili9341',      minTerminals: 9,  sample: ['vcc', 'gnd', 'cs', 'mosi', 'sck'] },
   { kind: 'lm358',        minTerminals: 8,  sample: ['vcc', 'gnd', '1_pos', '1_neg', '1_out', '2_out'] },
   { kind: 'lm324',        minTerminals: 14, sample: ['vcc', 'gnd', '1_out', '2_out', '3_out', '4_out'] },
+  { kind: 'lm741',        minTerminals: 8, sample: ['offset_1', 'inn', 'inp', 'vneg', 'out', 'vpos', 'nc'] },
 ];
 
 describe('terminal-drift regression: multi-terminal kinds resolve via sidecar', () => {
@@ -56,6 +57,10 @@ describe('terminal-drift regression: multi-terminal kinds resolve via sidecar', 
 
   test('LM324 has an explicit DIP label instead of a ghost face', () => {
     assert.match(canvasSrc, /lm324:\s*'LM324'/);
+  });
+
+  test('LM741 has an explicit DIP label instead of a generic ideal triangle', () => {
+    assert.match(canvasSrc, /lm741:\s*'LM741'/);
   });
 });
 

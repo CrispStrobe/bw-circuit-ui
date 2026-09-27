@@ -432,7 +432,12 @@ export const KICAD_RULES = [
   // so the output is found by the pin's electrical TYPE instead -- there is
   // nothing else to find it by, and a per-number map cannot work because
   // unit A's output is pin 1 and unit B's is pin 7.
-  [/^(TL07\d|TL08\d|LM3\d\d|OPA\d+|MCP60\d|LF35\d|UA741|LM741|NE553\d)/i,
+  [/^(UA|LM)741(?:[A-Z0-9_-]*)$/i,
+    () => ({ kind: 'lm741',
+      pins: { 1: 'offset_1', 2: 'inn', 3: 'inp', 4: 'vneg',
+        5: 'offset_5', 6: 'out', 7: 'vpos', 8: 'nc' },
+      terminals: ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 'nc'] })],
+  [/^(TL07\d|TL08\d|LM3\d\d|OPA\d+|MCP60\d|LF35\d|NE553\d)/i,
     (v, n) => ({ kind: 'opamp',
       pins: { '+': 'inp', '-': 'inn', '~+': 'inp', '~-': 'inn' },
       byType: { output: 'out' },

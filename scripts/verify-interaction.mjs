@@ -146,6 +146,7 @@ const EXPECTED = [
   'sweep-ac-region',
   'controlled-source-place',
   'controlled-source-terminals',
+  'lm741-place',
   'zero-page-errors',
 ];
 
@@ -545,8 +546,16 @@ try {
     'each controlled source offers four separately wireable terminals',
     `a controlled source did not show four distinct terminal dots — the stacked-terminal `
       + `defect: ${JSON.stringify(results)}`);
+
+  const before741 = new Set(await freeTerminalDots());
+  await placeByLabel('LM741', cs.x + cs.width * 0.56, cs.y + cs.height * 0.62);
+  const lm741Dots = [...new Set((await freeTerminalDots()).filter(d => !before741.has(d)))];
+  const lm741Faces = await page.locator('[data-part-face="lm741"][data-dip-body="lm741"]').count();
+  verdict('lm741-place', lm741Faces >= 1 && lm741Dots.length === 8,
+    'LM741 places as a physical DIP-8 face with eight separately wireable pins',
+    `LM741 placement produced ${lm741Faces} faces and ${lm741Dots.length} distinct pins`);
 } catch (e) {
-  failAll(['controlled-source-place', 'controlled-source-terminals'],
+  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place'],
     `the controlled-source scenarios could not be set up: ${String(e).split('\n')[0]}`);
 }
 

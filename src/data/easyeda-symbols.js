@@ -130,6 +130,11 @@ export const PART_SYMBOLS = {
     kicadSymbol: 'Amplifier_Operational:LM741',
     kicadFootprint: 'Package_DIP:DIP-8_W7.62mm',
   },
+  lm741: {
+    refdesPrefix: 'U', spiceCard: 'X',
+    kicadSymbol: 'Amplifier_Operational:LM741',
+    kicadFootprint: 'Package_DIP:DIP-8_W7.62mm',
+  },
   '555': {
     refdesPrefix: 'U', spiceCard: 'X',
     kicadSymbol: 'Timer:NE555',

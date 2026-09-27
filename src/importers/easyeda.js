@@ -237,6 +237,10 @@ export const EASYEDA_RULES = [
   // -- analogue ICs the engine models by name
   [/^(LM|NE|UA|MC)?555\w*$/i, () => ({ kind: 'timer_555', byName: true })],
   [/^(LM|NE|UA|MC)?556\w*$/i, () => ({ kind: 'timer_556', byName: true })],
+  [/^(LM|UA)741(?:[A-Z0-9_-]*)$/i, () => ({ kind: 'lm741', pins: {
+    1: 'offset_1', 2: 'inn', 3: 'inp', 4: 'vneg',
+    5: 'offset_5', 6: 'out', 7: 'vpos', 8: 'nc',
+  } })],
   [/^(LM|MC)?358/i, () => ({ kind: 'lm358', byName: true })],
   [/^(LM|MC)?324/i, () => ({ kind: 'lm324', byName: true })],
   [/^(LM|MC)?339/i, () => ({ kind: 'lm339', byName: true })],

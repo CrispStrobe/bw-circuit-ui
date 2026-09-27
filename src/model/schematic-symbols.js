@@ -318,6 +318,7 @@ export const ALIASES = {
   transistor: 'npn',
   lm358: 'opamp',      // dual op-amp; one triangle per used section
   lm324: 'opamp',
+  lm741: 'opamp',
   speaker: 'buzzer',
   electrolytic: 'polarized_cap',
   cap_pol: 'polarized_cap',
