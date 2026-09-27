@@ -57,6 +57,16 @@ test('verified fixed-output spellings bind exact outputs rather than parsing a s
   }
 });
 
+test('an exact built-in symbol inherits its audited ASY default when ASC omits Value', () => {
+  const source = asc('PowerProducts\\ADP7118-2.5', 'ADP7118-2.5')
+    .replace('SYMATTR Value ADP7118-2.5\n', '');
+  const result = importLtspiceAsc(source);
+  assert.deepEqual(result.unmapped, []);
+  assert.deepEqual(result.losses, []);
+  assert.deepEqual(result.parts[0].params, { vOut: 2.5 });
+  assert.equal(result.parts[0].sourcePackage, 'unspecified');
+});
+
 test('SO-8 LT1001 and unknown or contradictory values remain refused by exact name', () => {
   for (const [library, value] of [
     ['OpAmps\\LT1001S8', 'LT1001S8'],

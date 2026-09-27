@@ -376,7 +376,8 @@ function symbolAsset(lib, options, cache) {
 }
 
 function suppliedPins(spec, asset) {
-  if (!asset.supplied) return { pins: spec.pins, defaults: {} };
+  if (!asset.supplied) return { pins: spec.pins, defaults: spec.verifiedDevice
+    ? { value: spec.acceptedValues[0], prefix: spec.prefix } : {} };
   if (asset.error) return { error: asset.error };
   const document = asset.document;
   if (!document?.ok) return { error: 'supplied ASY definition is not structurally valid' };
