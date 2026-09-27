@@ -71,7 +71,10 @@ SYMATTR InstName U1
 `;
   const result = importLtspiceAsc(source);
   assert.deepEqual(result.unmapped, []);
-  assert.deepEqual(result.losses, []);
+  assert.equal(result.losses.length, 1);
+  assert.equal(result.losses[0].kind, 'source-model-substitution');
+  assert.match(result.losses[0].source, /SpiceModel LTC\.lib.*Value2 LT1001/);
+  assert.match(result.losses[0].reason, /native op07 behavioural card.*is not that source subcircuit/);
   assert.equal(result.parts[0].kind, 'op07');
   assert.deepEqual(result.parts[0].terminals, ['inp', 'inn', 'vpos', 'vneg', 'out']);
   assert.equal(result.parts[0].sourcePackage, 'unspecified');
@@ -79,6 +82,48 @@ SYMATTR InstName U1
     '577ff165a528ef7fd38298ffac12113a905c4a431dbf6c85b6001df4117c1442');
   assert.equal(result.parts[0].sourceSymbolSha256, undefined);
   assert.equal(result.parts[0].sourceLibrary, 'opamps/op07');
+  assert.equal(result.parts[0].sourceModelFile, 'LTC.lib');
+  assert.equal(result.parts[0].sourceSubcircuit, 'LT1001');
+  assert.equal(result.parts[0].analysisBlockers.length, 1);
+  assert.equal(result.sourceDocument.electricalProjection.mappedInstances[0].numericStatus,
+    'blocked-model-or-instance-semantics');
+});
+
+test('a caller-supplied official OP07 symbol produces one load-bearing substitution blocker', () => {
+  const source = `Version 4
+SHEET 1 800 600
+SYMBOL OpAmps\\OP07 200 200 R0
+SYMATTR InstName U1
+`;
+  const symbol = `Version 4
+SymbolType CELL
+SYMATTR Value OP07
+SYMATTR Prefix X
+SYMATTR SpiceModel LTC.lib
+SYMATTR Value2 LT1001
+PIN -32 80 NONE 0
+PINATTR PinName In+
+PINATTR SpiceOrder 1
+PIN -32 48 NONE 0
+PINATTR PinName In-
+PINATTR SpiceOrder 2
+PIN 0 32 NONE 0
+PINATTR PinName V+
+PINATTR SpiceOrder 3
+PIN 0 96 NONE 0
+PINATTR PinName V-
+PINATTR SpiceOrder 4
+PIN 32 64 NONE 0
+PINATTR PinName OUT
+PINATTR SpiceOrder 5
+`;
+  const result = importLtspiceAsc(source, {
+    symbols: new Map([['opamps/op07', symbol]]),
+  });
+  assert.deepEqual(result.unmapped, []);
+  assert.equal(result.losses.length, 1);
+  assert.equal(result.losses[0].kind, 'source-model-substitution');
+  assert.equal(result.parts[0].analysisBlockers.length, 1);
 });
 
 function follower({ input = 1, feedback = true, offset = 60e-6 } = {}) {

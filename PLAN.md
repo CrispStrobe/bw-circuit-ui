@@ -18,6 +18,8 @@ all 8,280 fixed LTspice rows and requires each promoted name to arrive as one
 engine + physical face + exact importer + package-honest UI slice. OP07 is first;
 OP27 and ADP151 follow by measured reach. Generic op-amp/switch/behavioral-source
 symbols stay a separate abstraction lane and never receive fake purchasable faces.
+The official OP07 symbol actually netlists LT1001, so OP07 rows retain a named
+source-model-substitution blocker instead of becoming false numerical passes.
 
 ## Architecture
 
