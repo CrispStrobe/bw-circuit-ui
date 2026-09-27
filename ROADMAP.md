@@ -545,7 +545,7 @@ whole source rather than choosing from one small residual subset.
 | P2 | OP27 | 45 / 24 safely mapped (48 / 25 target) | 18 | 0 | **Done.** The three instances in one unsafe `lib\\…\\OP27` path remain refused. The official symbol delegates to `OP27` in `ADI.lib`, so all 45 safe projections retain a model-substitution blocker rather than claiming macro-model identity. |
 | P3 | ADP151 family | 11 / 11 safely mapped (12 / 12 target) | 10 | 0 | **Done.** Ten internally consistent fixed-output symbol variants map; the corrupt 2.85-V symbol remains refused. Every mapped symbol delegates to the proprietary `ADP151-x.x.sub`, so none is a native numerical claim. |
 | P4 | LT1006 | 45 / 28 | 20 | 0 | **Done.** Plain LT1006/LT1006A remain package-unspecified; LT1006S8 alone receives the truthful SOIC-8 face. All variants retain the official `LTC.lib` / `LT1006` substitution blocker, so structural reach is not mislabeled as a numerical pass. |
-| P5 | LT1014 | 32 / 14 | 12 | 5 | Quad package; requires shared-rail/four-channel behaviour and face, not a single-op-amp alias. |
+| P5 | LT1014 | 32 / 14 | 12 | 0 | **Done.** The physical palette part is one shared-rail/four-channel PDIP-14. Official LT1014/A/D symbols expose one five-terminal channel without package/unit identity and netlist `LT1013` from `LT1013.sub`, so they map to the hidden logical-channel contract and all 14 rows retain a source-model-substitution blocker. The former five-row clean estimate is retired by the exact replay. |
 | later | OP747, ADTL082, ADA4522-1, AD8541, AD711, AD8602, LT1678, LT1007 | 15–24 each | — | 1–4 each | Re-rank after P1–P5 because family infrastructure and residual losses will have changed. |
 
 The larger residuals `opamp2` (443 instances), `universalopamp2` (320), generic
@@ -554,7 +554,7 @@ orderable parts. They deserve separate behavioral-import lanes and schematic
 symbols, but no purchasable face or BOM identity. Exact-name real-part work must
 not be used to smuggle those abstractions in as fake packages.
 
-OP07 is the active first slice. The already-real LT1001, ADP7118 and LT1763
+P1–P5 are complete. The already-real LT1001, ADP7118 and LT1763
 bridge precedes it and deliberately refuses LT1001S8 and contradictory/unknown
 fixed-output names. LTspice 26.0.2's official `OP07.asy` visibly says OP07 but
 its `SpiceModel LTC.lib` / `Value2 LT1001` pair changes the generated netlist.

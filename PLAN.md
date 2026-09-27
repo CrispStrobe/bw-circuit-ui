@@ -16,8 +16,10 @@ workers (X2). Engine prerequisites are cross-referenced to `../bw-board/ROADMAP.
 The current real-parts campaign is `ROADMAP.md` X1.7. It ranks candidates from
 all 8,280 fixed LTspice rows and requires each promoted name to arrive as one
 engine + physical face + exact importer + package-honest UI slice. OP07, OP27,
-ADP151 and LT1006 are complete; LT1014 is next by measured reach and requires
-a genuine shared-rail four-channel model rather than four aliased single amplifiers. Generic op-amp/switch/behavioral-source
+ADP151, LT1006 and LT1014 are complete. LT1014 is a genuine shared-rail
+four-channel package rather than four aliased single amplifiers; its official
+five-terminal source symbols remain package-neutral LT1013 macro-model
+substitutions. The remaining named parts are re-ranked after P5. Generic op-amp/switch/behavioral-source
 symbols stay a separate abstraction lane and never receive fake purchasable faces.
 The official OP07 symbol actually netlists LT1001, the official OP27 symbol
 delegates to `OP27` in `ADI.lib`, every accepted ADP151 fixed-output symbol
