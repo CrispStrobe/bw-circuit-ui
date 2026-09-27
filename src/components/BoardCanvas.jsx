@@ -292,7 +292,8 @@ function terminalOffsetsForPart(part) {
       for (const [name, o] of Object.entries(base)) offsets[name] = r(o.dx, o.dy);
       return offsets;
     }
-    case 'adp7118': {
+    case 'adp7118':
+    case 'lt1763': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
@@ -1505,7 +1506,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
       }
-      case 'adp7118': {
+      case 'adp7118':
+      case 'lt1763': {
         const sc = getSidecar(kind);
         const offsets = sidecarCenterOffsets(kind) || {};
         const W = sc?.w ?? 60;
@@ -1519,9 +1521,9 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fill="#252525" stroke="#666" strokeWidth={0.8} />
             <circle cx={-W / 2 + 15} cy={-H / 2 + 8} r={1.5} fill="#aaa" />
             <text x={0} y={-2} textAnchor="middle" fill="#d0d0d0" fontSize={7}
-              fontFamily="monospace" fontWeight="bold">ADP7118</text>
+              fontFamily="monospace" fontWeight="bold">{kind === 'lt1763' ? 'LT1763' : 'ADP7118'}</text>
             <text x={0} y={8} textAnchor="middle" fill="#929292" fontSize={4}
-              fontFamily="monospace">200mA LDO · SOIC-8</text>
+              fontFamily="monospace">{kind === 'lt1763' ? '500mA LDO · SO-8' : '200mA LDO · SOIC-8'}</text>
             {(sc?.terminals || []).map(t => {
               const p = offsets[t.name];
               if (!p) return null;

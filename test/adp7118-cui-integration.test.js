@@ -24,7 +24,7 @@ test('the vendored ADP7118 is the exact physical SOIC-8 sibling part', () => {
   assert.deepEqual(sidecar.terminals.map(t => t.name), terminals);
   assert.equal('footprint' in sidecar, false, 'surface-mount package must not claim breadboard seating');
   const pins = JSON.parse(read('.github/ci-siblings.json'));
-  assert.equal(pins['bw-parts'].sha, 'c56f5803f80fcce97bd2b9744b5cd8c93f028195');
+  assert.equal(pins['bw-parts'].sha, '1571698d5472ce97c21d969dc97767682f59865a');
   assert.match(read('src/parts-data/adp7118.svg'), />ADP7118</);
 });
 

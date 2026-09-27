@@ -148,6 +148,7 @@ const EXPECTED = [
   'controlled-source-terminals',
   'lm741-place',
   'adp7118-place',
+  'lt1763-place',
   'zero-page-errors',
 ];
 
@@ -563,8 +564,16 @@ try {
   verdict('adp7118-place', adpFaces >= 1 && adpDots.length === 8,
     'ADP7118 places as a physical SOIC-8 face with eight separately wireable pins',
     `ADP7118 placement produced ${adpFaces} faces and ${adpDots.length} distinct pins`);
+
+  const beforeLt = new Set(await freeTerminalDots());
+  await placeByLabel('LT1763', cs.x + cs.width * 0.90, cs.y + cs.height * 0.62);
+  const ltDots = [...new Set((await freeTerminalDots()).filter(d => !beforeLt.has(d)))];
+  const ltFaces = await page.locator('[data-part-face="lt1763"][data-soic-body="lt1763"]').count();
+  verdict('lt1763-place', ltFaces >= 1 && ltDots.length === 8,
+    'LT1763 places as a physical SO-8 face with eight separately wireable pins',
+    `LT1763 placement produced ${ltFaces} faces and ${ltDots.length} distinct pins`);
 } catch (e) {
-  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'adp7118-place'],
+  failAll(['controlled-source-place', 'controlled-source-terminals', 'lm741-place', 'adp7118-place', 'lt1763-place'],
     `the controlled-source scenarios could not be set up: ${String(e).split('\n')[0]}`);
 }
 

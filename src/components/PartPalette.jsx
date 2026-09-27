@@ -240,6 +240,8 @@ const CATEGORIES = [
         tooltip: 'Real single op-amp — PDIP-8, dual supply, finite gain/bandwidth/slew and output swing' },
       { kind: 'adp7118', label: 'ADP7118', params: {}, color: '#16a085',
         tooltip: 'Real 200 mA low-noise LDO — SOIC-8, fixed/adjustable feedback, enable and current limit' },
+      { kind: 'lt1763', label: 'LT1763', params: {}, color: '#148f77',
+        tooltip: 'Real 500 mA low-noise LDO — SO-8, fixed/adjustable feedback, shutdown and current limit' },
       { kind: '555', label: '555 Timer', params: {}, color: '#e74c3c' },
       { kind: 'shift_register', label: '74HC595', params: {}, color: '#8e44ad', tooltip: 'Shift register — 8 outputs' },
       { kind: 'ir_receiver', label: 'IR Receiver', params: {}, color: '#c0392b', tooltip: 'drawable — IrDA' },

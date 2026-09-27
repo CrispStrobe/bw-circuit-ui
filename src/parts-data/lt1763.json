@@ -1,0 +1,17 @@
+{
+  "kind": "lt1763",
+  "w": 60,
+  "h": 40,
+  "terminals": [
+    { "name": "out",       "x": 0,  "y": 8,  "functions": [] },
+    { "name": "sense_adj", "x": 0,  "y": 16, "functions": [] },
+    { "name": "gnd_3",     "x": 0,  "y": 24, "functions": [] },
+    { "name": "byp",       "x": 0,  "y": 32, "functions": [] },
+    { "name": "shdn",      "x": 60, "y": 32, "functions": [] },
+    { "name": "gnd_6",     "x": 60, "y": 24, "functions": [] },
+    { "name": "gnd_7",     "x": 60, "y": 16, "functions": [] },
+    { "name": "in",        "x": 60, "y": 8,  "functions": [] }
+  ],
+  "variants": null,
+  "_note": "LT1763 500 mA low-noise LDO, 8-lead SO top view. Physical pin order and functions audited against Analog Devices LT1763 Rev. H Pin Functions (DE12/S8). Surface-mount package: no direct breadboard footprint is claimed."
+}
