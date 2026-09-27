@@ -522,6 +522,14 @@ try {
       .filter(el => el.getAttribute('stroke') === '#e74c3c' && el.getAttribute('r') === '8')
       .map(el => { const r = el.getBoundingClientRect();
         return `${Math.round(r.x + r.width / 2)},${Math.round(r.y + r.height / 2)}`; }));
+  // Parts above twelve pins deliberately hide their terminal chrome until
+  // active, then cap the visible dot radius at 5px. The ordinary r=8 probe
+  // therefore cannot prove a DIP-14 even when all terminals are correct.
+  const activeManyPinDots = async () => await page.evaluate(() =>
+    [...document.querySelectorAll('svg circle')]
+      .filter(el => el.getAttribute('stroke') === '#e74c3c' && el.getAttribute('r') === '5')
+      .map(el => { const r = el.getBoundingClientRect();
+        return `${Math.round(r.x + r.width / 2)},${Math.round(r.y + r.height / 2)}`; }));
 
   const placeByLabel = async (label, x, y) => {
     // The tooltip and generated chip art may repeat the part name. Target the
@@ -596,13 +604,20 @@ try {
     `LT1006 placement produced ${lt1006Faces} faces and ${lt1006Dots.length} distinct pins; `
       + `model parts ${JSON.stringify(lt1006Parts)}`);
 
-  const before1014 = new Set(await freeTerminalDots());
-  await placeByLabel('LT1014', cs.x + cs.width * 0.30, cs.y + cs.height * 0.20);
-  const lt1014Dots = [...new Set((await freeTerminalDots()).filter(d => !before1014.has(d)))];
+  const before1014 = new Set(await activeManyPinDots());
+  // A PDIP-14 is wider than the preceding single amplifiers. Keep it clear
+  // of the demo circuit and of every earlier placement in this cumulative
+  // browser scene, otherwise its valid terminal coordinates alias old dots.
+  await placeByLabel('LT1014', cs.x + cs.width * 0.86, cs.y + cs.height * 0.20);
+  const lt1014Dots = [...new Set((await activeManyPinDots()).filter(d => !before1014.has(d)))];
   const lt1014Faces = await page.locator('[data-part-face="lt1014"][data-dip-body="lt1014"]').count();
+  const lt1014Parts = await page.evaluate(() => window.__circuit?.parts
+    ?.filter(part => part.kind === 'lt1014')
+    .map(part => ({ id: part.id, x: part.x, y: part.y, terminals: part.terminals?.length })) || []);
   verdict('lt1014-place', lt1014Faces >= 1 && lt1014Dots.length === 14,
     'LT1014 places as one physical PDIP-14 quad with fourteen separately wireable pins',
-    `LT1014 placement produced ${lt1014Faces} faces and ${lt1014Dots.length} distinct pins`);
+    `LT1014 placement produced ${lt1014Faces} faces and ${lt1014Dots.length} distinct pins; `
+      + `model parts ${JSON.stringify(lt1014Parts)}`);
 
   const beforeOp07 = new Set(await freeTerminalDots());
   await placeByLabel('OP07', cs.x + cs.width * 0.56, cs.y + cs.height * 0.20);
