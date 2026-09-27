@@ -12,6 +12,7 @@ import { mapEasyEdaPart } from '../src/importers/easyeda.js';
 import { mapKicadSymbol, terminalFor } from '../src/importers/kicad-common.js';
 import { importLtspiceAsc } from '../src/importers/ltspice-asc.js';
 import { getSidecar } from '../src/model/parts-registry.js';
+import { Circuit } from '../src/model/circuit.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = rel => readFileSync(join(root, rel), 'utf8');
@@ -87,6 +88,11 @@ SYMATTR InstName U1
   assert.equal(result.parts[0].analysisBlockers.length, 1);
   assert.equal(result.sourceDocument.electricalProjection.mappedInstances[0].numericStatus,
     'blocked-model-or-instance-semantics');
+  const restored = Circuit.fromJSON({ parts: result.parts, wires: result.wires });
+  assert.equal(restored.analysisBlockers.length, 1,
+    'the part-owned source substitution survives a minimal Circuit JSON round trip');
+  assert.throws(() => restored.operatingPoint(), /blocked by 1 persisted import finding/,
+    'an LT1001 source deck cannot become OP07 numerical evidence after save/load');
 });
 
 test('a caller-supplied official OP07 symbol produces one load-bearing substitution blocker', () => {
