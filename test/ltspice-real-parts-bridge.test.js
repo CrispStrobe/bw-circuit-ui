@@ -117,8 +117,8 @@ test('rendering and BOM distinguish electrical identity from package authority',
   assert.match(canvas, /if \(part\.sourcePackage === 'unspecified'\)/);
   assert.match(canvas, /data-dip-body=\{kind\}/,
     'palette-created LT1001 still has its physical DIP face');
-  assert.match(canvas, /data-soic-body=\{kind\}/,
-    'palette-created regulators still have their physical SOIC face');
+  assert.match(canvas, /data-soic-body=\{kind === 'adp151' \? undefined : kind\}/,
+    'the shared surface-mount renderer exposes a SOIC marker only for SOIC/SO-8 parts');
 
   const lines = generateBom([
     { id: 'imported', kind: 'lt1001', params: {}, sourcePackage: 'unspecified' },
