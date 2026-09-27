@@ -198,11 +198,18 @@ function libraryKeys(name) {
   return { basename, normalized };
 }
 
+function verifiedDeviceKey(name) {
+  const raw = String(name || '').trim();
+  if (/^[A-Za-z0-9.-]+$/.test(raw)) return raw.toLowerCase();
+  const qualified = /^(OpAmps|PowerProducts)[\\/]+([A-Za-z0-9.-]+)$/i.exec(raw);
+  return qualified ? `${qualified[1].toLowerCase()}/${qualified[2].toLowerCase()}` : null;
+}
+
 function nativeSymbolSpec(name) {
   const { basename, normalized } = libraryKeys(name);
-  const verified = VERIFIED_DEVICE_SYMBOLS.get(normalized)
-    || (normalized === basename ? VERIFIED_DEVICE_SYMBOLS.get(basename) : null);
-  if (verified) return { ...verified, verifiedDevice: true };
+  const verifiedLibrary = verifiedDeviceKey(name);
+  const verified = verifiedLibrary ? VERIFIED_DEVICE_SYMBOLS.get(verifiedLibrary) : null;
+  if (verified) return { ...verified, verifiedDevice: true, verifiedLibrary };
   // A path-qualified symbol is caller/library-owned even when its basename is
   // `res` or another standard spelling. Only the unqualified LTspice built-in
   // name may use the native contract without an ASY; reviewed path-qualified
@@ -334,8 +341,8 @@ function authoredDiode(raw, models, thermal) {
   };
 }
 
-function symbolAsset(lib, options, cache) {
-  const normalizedName = normalizeLtspiceSymbolName(lib);
+function symbolAsset(lib, options, cache, verifiedLibrary = null) {
+  const normalizedName = normalizeLtspiceSymbolName(lib) || verifiedLibrary;
   if (!normalizedName) return { supplied: true, error: 'unsafe symbol library name' };
   if (cache.has(normalizedName)) return cache.get(normalizedName);
   let value;
@@ -712,7 +719,7 @@ function buildSourceDocument(drawing, options, symbolAssets) {
   const instances = drawing.symbols.map((symbol, index) => {
     const spec = nativeSymbolSpec(symbol.lib);
     const pinOnly = pinOnlySymbolSpec(symbol.lib);
-    const asset = symbolAsset(symbol.lib, options, symbolAssets);
+    const asset = symbolAsset(symbol.lib, options, symbolAssets, spec?.verifiedLibrary);
     const definition = documentPinDefinition(symbol, asset, spec, pinOnly);
     const effectiveAttrs = { ...(asset.document?.ok ? asset.document.attrs : {}), ...symbol.attrs };
     const normalizedName = asset.normalizedName || normalizeLtspiceSymbolName(symbol.lib) || symbol.lib;
@@ -924,7 +931,7 @@ export function importLtspiceAsc(text, options = {}) {
   const used = new Set();
   for (const [symbolIndex, symbol] of drawing.symbols.entries()) {
     const spec = nativeSymbolSpec(symbol.lib);
-    const asset = symbolAsset(symbol.lib, options, symbolAssets);
+    const asset = symbolAsset(symbol.lib, options, symbolAssets, spec?.verifiedLibrary);
     let sourceSymbolRecord = null;
     if (asset.supplied) {
       const key = asset.normalizedName || symbol.lib;
@@ -1097,7 +1104,7 @@ export function importLtspiceAsc(text, options = {}) {
     parts.push({ id, kind: spec.kind, params, x: symbol.x, y: symbol.y,
       ...(spec.verifiedDevice ? {
         terminals: [...spec.terminals], sourcePackage: 'unspecified',
-        sourceLibrary: normalizeLtspiceSymbolName(symbol.lib),
+        sourceLibrary: spec.verifiedLibrary,
         sourceSymbolSha256: spec.sourceSha256,
       } : {}),
       sourceInstance: sourceDocument.instances[symbolIndex]?.id,

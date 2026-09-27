@@ -65,6 +65,11 @@ test('an exact built-in symbol inherits its audited ASY default when ASC omits V
   assert.deepEqual(result.losses, []);
   assert.deepEqual(result.parts[0].params, { vOut: 2.5 });
   assert.equal(result.parts[0].sourcePackage, 'unspecified');
+
+  const encodedSeparator = importLtspiceAsc(source.replace(
+    'PowerProducts\\ADP7118-2.5', 'PowerProducts\\\\ADP7118-2.5'));
+  assert.deepEqual(encodedSeparator.unmapped, []);
+  assert.equal(encodedSeparator.parts[0].sourceLibrary, 'powerproducts/adp7118-2.5');
 });
 
 test('SO-8 LT1001 and unknown or contradictory values remain refused by exact name', () => {
