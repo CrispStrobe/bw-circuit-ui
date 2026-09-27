@@ -15,11 +15,12 @@ workers (X2). Engine prerequisites are cross-referenced to `../bw-board/ROADMAP.
 
 The current real-parts campaign is `ROADMAP.md` X1.7. It ranks candidates from
 all 8,280 fixed LTspice rows and requires each promoted name to arrive as one
-engine + physical face + exact importer + package-honest UI slice. OP07 is first;
-OP27 and ADP151 follow by measured reach. Generic op-amp/switch/behavioral-source
+engine + physical face + exact importer + package-honest UI slice. OP07 and
+OP27 are complete; ADP151 is next by measured reach. Generic op-amp/switch/behavioral-source
 symbols stay a separate abstraction lane and never receive fake purchasable faces.
-The official OP07 symbol actually netlists LT1001, so OP07 rows retain a named
-source-model-substitution blocker instead of becoming false numerical passes.
+The official OP07 symbol actually netlists LT1001, and the official OP27 symbol
+delegates to `OP27` in `ADI.lib`, so both retain named source-model-substitution
+blockers instead of becoming false numerical passes.
 
 ## Architecture
 

@@ -542,7 +542,7 @@ whole source rather than choosing from one small residual subset.
 | priority | real part | instances / rows | target-only | clean after | decision |
 |---|---:|---:|---:|---:|---|
 | P1 | OP07 | 126 / 79 | 63 | 0 | Build first: highest real-part reach and OP/AC/DC/transient diversity. The official symbol netlists LT1001, so the native OP07 projection stays numerically blocked. |
-| P2 | OP27 | 48 / 25 | 19 | 6 | Next single precision/high-speed op-amp after a separate data-sheet card audit. Its official symbol delegates to `OP27` in `ADI.lib`; native behavior must remain explicitly bounded rather than claiming macro-model identity. |
+| P2 | OP27 | 45 / 24 safely mapped (48 / 25 target) | 18 | 0 | **Done.** The three instances in one unsafe `lib\\…\\OP27` path remain refused. The official symbol delegates to `OP27` in `ADI.lib`, so all 45 safe projections retain a model-substitution blocker rather than claiming macro-model identity. |
 | P3 | ADP151 family | 12 / 12 | 11 | 11 | Lower frequency but unusually high immediate structural yield; fixed-output/package spellings must be audited exactly before the clean count is accepted. |
 | P4 | LT1006 | 45 / 28 | 20 | 4 | Worth a full slice after its supply/output and package variants are separated. |
 | P5 | LT1014 | 32 / 14 | 12 | 5 | Quad package; requires shared-rail/four-channel behaviour and face, not a single-op-amp alias. |
@@ -574,6 +574,19 @@ numeric eligibility stays 76, and declared-analysis eligibility stays 83.
 Paired completeness/components/net partitions fall 68/51/67 because paired
 SPICE still names LT1001 where the ASC requests OP07. Those declines are the
 expected representation mismatch and must not be smoothed into a match.
+
+Exact post-implementation OP27 replay at CUI `f1da46a` confirms the distinction
+between target reach and safe reach. The source has 48 apparent OP27 instances
+across 25 rows, but three instances in one row arrive through the unsafe
+`lib\\lib\\sym\\ZZZ\\OpAmps\\OP27` library path and remain refused. All 45
+instances under the verified `opamps/op27` identity map across the other 24
+rows; 18 of those rows then have no other unmapped symbol. Six would otherwise
+be projection-clean, but every mapped instance correctly retains the official
+symbol's `SpiceModel ADI.lib` / `Value2 OP27` substitution blocker, so zero rows
+become numerically eligible. Whole-document pin completeness rises 2,262 ->
+2,280 (+18); lossless projections remain 119, numeric eligibility remains 76,
+and declared-analysis eligibility remains 83. The result is useful editable
+identity and a real palette model, not a false claim to execute ADI's macro-model.
 
 The next-source preflight already found a load-bearing refusal: LTspice 26.0.2's
 `ADP151-2.85.asy` is byte-identical to `ADP151-1.1.asy` (SHA-256
