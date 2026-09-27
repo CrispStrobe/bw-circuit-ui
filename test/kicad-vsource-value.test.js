@@ -26,3 +26,16 @@ describe('KiCad SPICE voltage-source scalar values', () => {
     }
   });
 });
+
+describe('KiCad SPICE current-source scalar values', () => {
+  const source = toKicadSch({ parts: [{ id: 'I1', kind: 'isource', params: { amps: 0.002 } }], wires: [] }).text;
+
+  it('retains the native current polarity and static value', () => {
+    const result = importKicadSch(source);
+    assert.equal(result.unmapped.length, 0);
+    assert.deepEqual(result.parts.find(part => part.id === 'I1')?.params,
+      { amps: 0.002, _value: '0.002' });
+    assert.deepEqual(mapKicadSymbol('pspice:ISOURCE', '2m').pins,
+      { 1: 'neg', 2: 'pos', '+': 'neg', '-': 'pos' });
+  });
+});

@@ -127,6 +127,9 @@ function seatExample(id) {
     // (a full-size board is ~310 world units tall; 360 leaves an air gap
     // for the arcing cross-board wires).
     const MAX_BOARDS = 4;
+    // Parts whose on-screen control reaches beyond the holes it occupies.
+    const KNOBBED = new Set(['potentiometer']);
+    const KNOB_PAD = 2;
     const boards = [];
     const openBoard = () => {
         const n = boards.length + 1;
@@ -155,7 +158,19 @@ function seatExample(id) {
         // Small flat parts use a tighter gap: a resistor does not overhang
         // its span the way a DIP body does, and +3 gaps are what pushed the
         // LED rank onto a fourth board.
-        const gap = (!straddles && w <= 6) ? 1 : 3;
+        let gap = (!straddles && w <= 6) ? 1 : 3;
+        // A KNOB IS WIDER THAN ITS SEAT. The app draws a potentiometer's
+        // control as a box +/-30*scale about the seat centre, rising 60*scale
+        // above row a, with scale = |b.x - a.x| / 40 capped at 1.4. For the
+        // usual three-lead pot that box overhangs the seat span by two columns
+        // on EACH side, so the one-column flat-part gap puts the knob on top of
+        // whatever comes next: measured as `POT_pot covers SERVO_servo by
+        // 7.0x30.0` in every device variant of arduino-sk-p05-servo-mood.
+        // Reserve those two columns AFTER the part. The leading side needs no
+        // pad of its own: packing is widest-first, so whatever precedes a pot
+        // is at least as wide, and the measured collisions are all with the
+        // narrow wide-bodied parts (servo, motor) that follow it.
+        gap += KNOBBED.has(part.kind) ? KNOB_PAD : 0;
         // Where does this part go? Gutter DIPs need the top cursor. Flat
         // parts take the top cursor while it fits, then the BOTTOM block
         // of any open board, and only then a new board.

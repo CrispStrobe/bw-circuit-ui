@@ -36,6 +36,18 @@ const PASSTHROUGH_KINDS = new Set([
   // MCU boards
   'stc_mcu', 'stc15_mcu', 'at89c2051', 'arduino_nano', 'arduino_uno', 'arduino_mega',
   'pi_pico', 'pybadge', 'attiny85', 'attiny88', 'attiny13', 'attiny2313', 'microbit', 'stm32f030',
+  // MakeCode boards. bw-board registers them (board-kinds.js) and they keep
+  // their identity; an engine without that model collapses them to 'mcu'.
+  'calliopemini', 'circuit_playground_express',
+  // FPGA boards. tang_nano_20k has NO engine model and deliberately none yet:
+  // TN0 ships the part, its pinout and the 3.3 V rule, not a simulation. It is
+  // here rather than in the KNOWN_GAPS ledger of palette-engine-coverage
+  // because that ledger is
+  // fully burned down and may only shrink — and because the failure it guards
+  // against is real for this part too: without a passthrough the netlist is
+  // rejected and the designer board goes silently EMPTY the moment someone
+  // seats one.
+  'tang_nano_20k',
   // Retro DIPs (6502 family)
   'w65c02', 'w65c22', 'w65c51',
   // Machine-layer peripherals (bw-board implements them chip-level; the
@@ -79,6 +91,32 @@ function engineKindFor(kind) {
     if (eng && typeof eng.getDevice === 'function' && eng.getDevice(kind)) return kind;
   } catch { /* engine not injected yet — construction-time default below */ }
   return 'mcu';
+}
+
+/**
+ * Keep importer provenance on the persisted/UI part without presenting it to
+ * bw-board as electrical device parameters.
+ *
+ * The SPICE diode reader has already classified `_spiceNonDcFields` before it
+ * creates these annotations.  They are needed by later source-aware consumers,
+ * but bw-board's intentionally strict operating-point gate rejects every key
+ * outside the admitted DC model.  Passing the annotations through therefore
+ * turns a successful, analysis-scoped import into a false solver refusal.
+ *
+ * This is deliberately not a prefix filter: blockers, unknown fields and all
+ * other parameters still cross the boundary and remain loud.  Only a
+ * successfully admitted Shockley diode/zener carrying both importer-owned
+ * provenance annotations gets a copied engine parameter object with those two
+ * annotations removed.
+ */
+function engineParamsFor(part) {
+  const params = part?.params;
+  if (!params || !['diode', 'zener'].includes(part.kind)
+      || params.model !== 'shockley' || params._spiceBlocked
+      || typeof params._spiceModel !== 'string'
+      || typeof params._spiceNonDcFields !== 'string') return params;
+  const { _spiceModel, _spiceNonDcFields, ...electrical } = params;
+  return electrical;
 }
 
 /** Reset the ID counter (for tests). */
@@ -140,6 +178,11 @@ function cloneSourceDocuments(value) {
   return out;
 }
 
+function cloneSourceAnalysis(value) {
+  if (!value || typeof value !== 'object') return null;
+  try { return JSON.parse(JSON.stringify(value)); } catch { return null; }
+}
+
 export class Circuit {
   /**
    * @param {number} [vcc=5.0]
@@ -166,6 +209,9 @@ export class Circuit {
 
     /** Bounded foreign document metadata retained for save/load, never solver parts. */
     this.sourceDocuments = [];
+
+    /** Source-declared analyses and their imported terminal-to-node mapping. */
+    this.sourceAnalysis = null;
 
     /** @type {object} */
     this.board = new this._BoardImpl(vcc);
@@ -390,6 +436,7 @@ export class Circuit {
       wires: this.wires,
       analysisBlockers: this.analysisBlockers,
       sourceDocuments: cloneSourceDocuments(this.sourceDocuments),
+      sourceAnalysis: cloneSourceAnalysis(this.sourceAnalysis),
       engineSnap,
     });
   }
@@ -403,6 +450,7 @@ export class Circuit {
     this.analysisBlockers = Array.isArray(state.analysisBlockers)
       ? state.analysisBlockers.map(blocker => ({ ...blocker })) : [];
     this.sourceDocuments = cloneSourceDocuments(state.sourceDocuments);
+    this.sourceAnalysis = cloneSourceAnalysis(state.sourceAnalysis);
     this._syncNetlist();
     // Restore engine state if available
     if (state.engineSnap && this.board.restore) {
@@ -420,6 +468,7 @@ export class Circuit {
     this.analysisBlockers = Array.isArray(state.analysisBlockers)
       ? state.analysisBlockers.map(blocker => ({ ...blocker })) : [];
     this.sourceDocuments = cloneSourceDocuments(state.sourceDocuments);
+    this.sourceAnalysis = cloneSourceAnalysis(state.sourceAnalysis);
     this._syncNetlist();
     if (state.engineSnap && this.board.restore) {
       this.board.restore(state.engineSnap);
@@ -721,6 +770,33 @@ export class Circuit {
   }
 
   /**
+   * Select an engine-owned transient integration profile. Profiles may only
+   * be configured on a fresh analysis circuit; the live simulator never calls
+   * this proxy and therefore keeps the engine's interactive default.
+   *
+   * @param {string} profileId
+   * @returns {object} immutable engine-owned profile metadata
+   */
+  configureTransientAnalysis(profileId) {
+    if (!this.board || typeof this.board.configureTransientAnalysis !== 'function') {
+      throw new Error('configureTransientAnalysis: the injected bw-board engine does not provide transient profiles');
+    }
+    return this.board.configureTransientAnalysis(profileId);
+  }
+
+  /**
+   * Report qualification and cumulative work for the configured transient.
+   * `accuracyMet` qualifies engine step acceptance only; it is not a promise
+   * about every plotted output or agreement with an external simulator.
+   */
+  transientAnalysisStatus() {
+    if (!this.board || typeof this.board.transientAnalysisStatus !== 'function') {
+      throw new Error('transientAnalysisStatus: the injected bw-board engine does not provide transient status');
+    }
+    return this.board.transientAnalysisStatus();
+  }
+
+  /**
    * Toggle power.
    * @param {boolean} on
    */
@@ -758,7 +834,7 @@ export class Circuit {
   /**
    * @param {string} partId
    * @param {string} terminal
-   * @returns {number} amperes
+   * @returns {number} amperes leaving the part through the named terminal
    */
   branchCurrent(partId, terminal) {
     return this.board.branchCurrent(partId, terminal);
@@ -772,14 +848,32 @@ export class Circuit {
    *
    * @returns {object}
    */
-  operatingPoint() {
+  operatingPoint(options = {}) {
     if (this.analysisBlockers?.length) {
       throw new Error(`operatingPoint: blocked by ${this.analysisBlockers.length} persisted import finding(s)`);
     }
     if (!this.board || typeof this.board.operatingPoint !== 'function') {
       throw new Error('operatingPoint: the injected bw-board engine does not provide this analysis');
     }
-    return this.board.operatingPoint();
+    return this.board.operatingPoint(options);
+  }
+
+  /**
+   * Explicitly adopt the supported source-on DC point as time-zero state for a
+   * non-UIC transient. Persisted import findings are enforced here just as for
+   * operatingPoint(), so a parts/wires-only caller cannot wash out a semantic
+   * loss before initializing storage.
+   *
+   * @returns {object}
+   */
+  initializeTransientFromOperatingPoint() {
+    if (this.analysisBlockers?.length) {
+      throw new Error(`initializeTransientFromOperatingPoint: blocked by ${this.analysisBlockers.length} persisted import finding(s)`);
+    }
+    if (!this.board || typeof this.board.initializeTransientFromOperatingPoint !== 'function') {
+      throw new Error('initializeTransientFromOperatingPoint: the injected bw-board engine does not provide this analysis');
+    }
+    return this.board.initializeTransientFromOperatingPoint();
   }
 
   /**
@@ -819,7 +913,7 @@ export class Circuit {
     const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
       kind: engineKindFor(p.kind),
-      params: p.params,
+      params: engineParamsFor(p),
       terminals: p.terminals,
     }));
 
@@ -996,7 +1090,7 @@ export class Circuit {
     const engineParts = this.parts.filter(p => p.kind !== 'meter' && p.kind !== 'breadboard').map(p => ({
       id: p.id,
       kind: engineKindFor(p.kind),
-      params: p.params,
+      params: engineParamsFor(p),
       terminals: p.terminals,
     }));
 
@@ -1042,6 +1136,7 @@ export class Circuit {
       holeWires: this.holeWires(),
       ...(this.analysisBlockers.length ? { analysisBlockers: this.analysisBlockers.map(b => ({ ...b })) } : {}),
       ...(this.sourceDocuments.length ? { sourceDocuments: cloneSourceDocuments(this.sourceDocuments) } : {}),
+      ...(this.sourceAnalysis ? { sourceAnalysis: cloneSourceAnalysis(this.sourceAnalysis) } : {}),
       ...(this.pcb ? { pcb: this.pcb } : {}),
     };
   }
@@ -1063,6 +1158,7 @@ export class Circuit {
       ? data.analysisBlockers.filter(b => b && typeof b === 'object').map(b => ({ ...b }))
       : [];
     c.sourceDocuments = cloneSourceDocuments(data.sourceDocuments);
+    c.sourceAnalysis = cloneSourceAnalysis(data.sourceAnalysis);
     // Legacy files also predate parts carrying their terminal list — every
     // renderer maps over part.terminals, so a missing list was the SECOND
     // way a gallery file crashed the GUI (pure-circuit examples, same day

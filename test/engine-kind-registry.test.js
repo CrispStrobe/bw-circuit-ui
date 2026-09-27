@@ -64,3 +64,47 @@ test('the engine the app injects exposes the accessor engineKindFor needs', () =
     + 'stop driving their data pins and nothing reports an error.');
   assert.ok(eng.getDevice('28c256'), 'a registered memory model must be reachable through it');
 });
+
+test('the pinned engine solves all four LM324 channels through their physical contract', () => {
+  assert.ok(getDevice('lm324'), 'the exact pinned engine must register LM324');
+  const board = new BoardImpl(5);
+  const parts = [
+    {id: 'VS', kind: 'vsource', params: {volts: 5}, terminals: ['pos', 'neg']},
+    {id: 'G', kind: 'gnd', params: {}, terminals: ['gnd']},
+    {id: 'U1', kind: 'lm324', params: {}, terminals: [
+      'vcc', 'gnd', '1_pos', '1_neg', '1_out', '2_pos', '2_neg', '2_out',
+      '3_pos', '3_neg', '3_out', '4_pos', '4_neg', '4_out',
+    ]},
+  ];
+  const ground = [{part: 'G', terminal: 'gnd'}, {part: 'VS', terminal: 'neg'}, {part: 'U1', terminal: 'gnd'}];
+  const supply = [{part: 'VS', terminal: 'pos'}, {part: 'U1', terminal: 'vcc'}];
+  const nets = [];
+  const expected = [0.5, 1, 2, 3];
+  for (let ch = 1; ch <= 4; ch++) {
+    const volts = expected[ch - 1];
+    parts.push(
+      {id: `T${ch}`, kind: 'resistor', params: {ohms: (5 - volts) * 1000}, terminals: ['a', 'b']},
+      {id: `B${ch}`, kind: 'resistor', params: {ohms: volts * 1000}, terminals: ['a', 'b']},
+      {id: `L${ch}`, kind: 'resistor', params: {ohms: 100000}, terminals: ['a', 'b']},
+    );
+    supply.push({part: `T${ch}`, terminal: 'a'});
+    ground.push({part: `B${ch}`, terminal: 'b'}, {part: `L${ch}`, terminal: 'b'});
+    nets.push(
+      {id: `in${ch}`, terminals: [
+        {part: `T${ch}`, terminal: 'b'}, {part: `B${ch}`, terminal: 'a'},
+        {part: 'U1', terminal: `${ch}_pos`},
+      ]},
+      {id: `out${ch}`, terminals: [
+        {part: 'U1', terminal: `${ch}_neg`}, {part: 'U1', terminal: `${ch}_out`},
+        {part: `L${ch}`, terminal: 'a'},
+      ]},
+    );
+  }
+  nets.push({id: 'gnd', terminals: ground}, {id: 'vcc', terminals: supply});
+  board.setNetlist(parts, nets);
+  board.advanceTo(1n);
+  for (let ch = 1; ch <= 4; ch++) {
+    assert.ok(Math.abs(board.nodeVoltage(`out${ch}`) - expected[ch - 1]) < 0.02,
+      `LM324 channel ${ch} follows its ${expected[ch - 1]} V input`);
+  }
+});

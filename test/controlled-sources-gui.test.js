@@ -171,17 +171,8 @@ test('4. the palette restates no electrical default; the engine keeps both', () 
     return { kind: m[1], params: params ? params[1].trim() : null };
   }).filter(e => e.params && /\b(gain|gm)\s*:/.test(e.params));
 
-  /**
-   * Palette entries that still state an electrical default the engine owns.
-   * Shrink-only; the end state is an empty list and it is reachable, which is
-   * what separates this from the version above.
-   *
-   * opamp: gain 100000 against an engine default of 1e6. Not this lane's part;
-   * the engine/parts-library owner took it on 2026-09-14 and is deleting the
-   * copy rather than correcting it, since an LM741's real 200000 is a part
-   * fact that belongs on a card. Delete this line when that lands.
-   */
-  const KNOWN_STATED_DEFAULTS = ['opamp'];
+  // Shrink-only; LM324/LM741 work removed the final generic-opamp copy.
+  const KNOWN_STATED_DEFAULTS = [];
   const unledgered = stated.map(e => `${e.kind}: ${e.params}`).filter(e => !KNOWN_STATED_DEFAULTS.some(k => e.startsWith(k + ':')));
   assert.deepEqual(unledgered, [],
     'a palette entry states an electrical default the engine already owns');

@@ -39,7 +39,15 @@ const own = (o, k) => Object.prototype.hasOwnProperty.call(o || {}, k);
  */
 const DIODE_DC_FIELDS = new Set(['is', 'n', 'rs']);
 /** Fields the importer MAPS onto another engine kind rather than setting aside. */
-const DIODE_MAPPED_FIELDS = new Set(['bv']);
+// Fields the reader MAPS onto an engine parameter rather than reading into the
+// Shockley curve: `bv` becomes the zener kind's breakdown voltage and `ibv` the
+// knee current that voltage is specified at. Being here rather than in
+// DIODE_NON_DC_FIELDS is load-bearing in both directions -- a field that is
+// neither DC, mapped, a non-parameter nor non-DC counts as UNKNOWN and blocks
+// the whole model, which is exactly what happened when `ibv` was taken out of
+// the non-DC set without being put in here: every BV+IBV card imported as a
+// bare diode with no vz at all.
+const DIODE_MAPPED_FIELDS = new Set(['bv', 'ibv']);
 /**
  * Not model parameters at all: a manufacturer string, a part class, a datasheet
  * RATING, and the ideal-switch fields LTspice allows on a diode card.
@@ -52,23 +60,46 @@ const DIODE_NON_PARAMETERS = new Set([
   // LTspice's ideal-diode switch fields. They describe a PIECEWISE device, not
   // this Shockley curve, so a model that leans on them is not the model we
   // solved — noted rather than silently absorbed.
-  'ron', 'roff', 'vfwd', 'vrev', 'epsilon', 'revepsilon',
+  'ron', 'roff', 'vfwd', 'vrev', 'epsilon', 'revepsilon', 'ilimit',
+  // A noise-only flag, carried bare. It changes no bias point, and ngspice
+  // ignores it: `.model DLIMN D(Ron=100k Roff=100Meg Vfwd=1.1 Vrev=-300m
+  // epsilon=.1 noiseless)` and a bare `.model DDEF D` both put 6.924935e-01
+  // on the same 1k divider -- measured, not assumed. So a deck written for
+  // LTspice's piecewise diode is still judgeable: the REFERENCE solves it as a
+  // default Shockley diode, and taking the same defaults answers the same
+  // question. The fields are reported as set aside, so nobody reads the
+  // agreement as our having modelled a piecewise device.
+  'noiseless',
 ]);
 /** Everything ngspice's diode takes that does NOT move a bias point. */
 const DIODE_NON_DC_FIELDS = new Set([
   // Junction capacitance and its grading, transit time, forward-bias
   // coefficient: charge storage, so AC and transient only.
   'cjo', 'cj0', 'cjp', 'vj', 'm', 'tt', 'fc',
-  // Reverse breakdown SHAPE. `IBV`, `NBV`, `IBVL`, `NBVL` describe the knee's
-  // current and sharpness, which a piecewise zener does not have.
+  // Reverse breakdown SHAPE, minus the two fields that now move a bias point.
   //
-  // `BV` ITSELF IS NOT HERE, and the first version of this list had it, with a
-  // comment claiming "a DC bias point never reaches it". That is an assumption
-  // about the CIRCUIT, not a property of the field: a diode reverse-biased past
-  // BV conducts, and calling the field inert would solve such a deck as an open.
-  // BV is mapped instead — see `diodeBreakdown` — because a D model with a
-  // breakdown voltage is exactly what the engine's `zener` kind is.
-  'ibv', 'nbv', 'ibvl', 'nbvl',
+  // `BV` IS NOT HERE, and the first version of this list had it, with a comment
+  // claiming "a DC bias point never reaches it". That is an assumption about the
+  // CIRCUIT, not a property of the field: a diode reverse-biased past BV
+  // conducts, and calling the field inert would solve such a deck as an open. BV
+  // is mapped instead — see `diodeBreakdown`.
+  //
+  // `IBV` IS NO LONGER HERE EITHER, for exactly the same reason one step later.
+  // Its old comment said IBV describes a knee "which a piecewise zener does not
+  // have", and that was true of the engine at the time. The engine now solves
+  // the breakdown as an exponential through the point (BV, IBV) — ngspice's own
+  // placement, measured to 0.186 mV over five decades — so IBV moves the bias
+  // point by construction. Leaving it here would have been the BV mistake again,
+  // and the field is stated on 976 corpus decks.
+  //
+  // `NBV`/`IBVL`/`NBVL` STAY, and the label is imprecise for them: they are not
+  // inert, they are UNMODELLED — NBV is the breakdown region's ideality factor,
+  // which our exponential fixes at 1, and IBVL/NBVL describe a second, low-level
+  // breakdown segment we do not have at all. They are set aside with the raw
+  // model kept, the same treatment ISR/NR/IKF get two entries down. Measured
+  // population: 7 decks in Si7li no-aug, ZERO in ADI2005 v2 and v3, so the
+  // imprecision is recorded rather than restructured for now.
+  'nbv', 'ibvl', 'nbvl',
   // Temperature coefficients. The bias is solved at one fixed temperature, so
   // the coefficients that move it with temperature do not apply.
   'eg', 'xti', 'tnom', 'trs1', 'trs2', 'tbv1', 'tbv2', 'tikf',
@@ -108,7 +139,8 @@ export function validateExplicitShockley(params, raw = null) {
     if (rest.startsWith('(') && rest.endsWith(')')) rest = rest.slice(1, -1);
     const names = [];
     while (rest.trim()) {
-      const match = rest.match(/^\s*,?\s*([A-Za-z_]\w*)\s*=\s*([^\s,()]+)([\s\S]*)$/);
+      const match = rest.match(/^\s*,?\s*([A-Za-z_]\w*)\s*=\s*([^\s,()]+)([\s\S]*)$/)
+        || rest.match(/^\s*,?\s*([A-Za-z_]\w*)()(?=\s|,|$)([\s\S]*)$/);
       if (!match) return { ok: false, reason: 'diode model contains unparsed or malformed syntax' };
       names.push(match[1].toLowerCase());
       rest = match[3];
@@ -181,9 +213,33 @@ export function validateDiodeForDc(params, raw = null) {
     if (rest.startsWith('(') && rest.endsWith(')')) rest = rest.slice(1, -1);
     const seen = [];
     while (rest.trim()) {
-      const match = rest.match(/^\s*,?\s*([A-Za-z_]\w*)\s*=\s*([^\s,()]+)([\s\S]*)$/);
+      // A VALUELESS FLAG IS VALID MODEL SYNTAX, and reading it as malformed
+      // blamed our parser for a card SPICE accepts. LTspice's `noiseless` is
+      // written bare, and the loop bailed on it before any field had been
+      // classified -- so 4,139 diode models in an 800-deck sample of the
+      // library-resolved corpus were refused as "unparsed or malformed
+      // syntax" when the syntax was fine and the fields were merely ones we
+      // set aside. A reason that names our own parser sends the next reader to
+      // fix the parser.
+      //
+      // The flag is collected by NAME and then judged like any other field, so
+      // a bare token is still not silently dropped: `D(IS=2e-12 N=1.3 RS=4
+      // garbage)` now refuses for naming `garbage`, which is the honest reason.
+      const assigned = rest.match(/^\s*,?\s*([A-Za-z_]\w*)\s*=\s*([^\s,()]+)([\s\S]*)$/);
+      const match = assigned || rest.match(/^\s*,?\s*([A-Za-z_]\w*)()(?=\s|,|$)([\s\S]*)$/);
       if (!match) return { ok: false, reason: 'diode model contains unparsed or malformed syntax' };
-      seen.push(match[1].toLowerCase());
+      const field = match[1].toLowerCase();
+      seen.push(field);
+      // A FLAG STILL HAS TO BE A FIELD WE KNOW. `modelParams` only collects
+      // `key=value`, so a valueless token never reaches `classifyDiodeFields`
+      // and would be admitted as if it were not written -- which is why the
+      // loop used to refuse the whole card. Checking the flag's NAME here
+      // keeps that protection (`D(IS=2e-12 N=1.3 RS=4 garbage)` refuses, and
+      // now says which token) while letting a recognized flag through.
+      if (!assigned && !DIODE_DC_FIELDS.has(field) && !DIODE_MAPPED_FIELDS.has(field)
+          && !DIODE_NON_PARAMETERS.has(field) && !DIODE_NON_DC_FIELDS.has(field)) {
+        return { ok: false, reason: `diode model field "${match[1]}" is not a recognized model field` };
+      }
       rest = match[3];
     }
     if (new Set(seen).size !== seen.length) {
@@ -254,6 +310,22 @@ export function diodeBreakdown(params) {
   // SPICE states BV as a positive magnitude; a deck writing it negative means
   // the same device.
   return Math.abs(bv);
+}
+
+/**
+ * The breakdown KNEE CURRENT, the current at which BV is specified.
+ *
+ * SPICE's default is 1e-3 A, and it is a real default rather than an absence:
+ * ngspice places the junction so the current is IBV at |Vj| = BV whether or not
+ * the card says so. But this reader returns null for a card that states no IBV,
+ * because the engine's piecewise zener is what every shipped circuit is written
+ * against and inventing a knee current for them would move all of it. A deck
+ * that wants the exponential says IBV.
+ */
+export function diodeBreakdownCurrent(params) {
+  const ibv = Number(params?.ibv ?? params?.IBV);
+  if (!Number.isFinite(ibv) || ibv <= 0) return null;
+  return Math.abs(ibv);
 }
 
 export function isExplicitShockleyPart(part) {

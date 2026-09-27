@@ -28,7 +28,10 @@
 export { setEngine } from './engine.js';
 export { CircuitDesigner } from './components/CircuitDesigner.jsx';
 export { Circuit } from './model/circuit.js';
-export { runSourceAnalyses, sourceAnalysisDescriptors } from './model/source-analysis.js';
+export {
+  BOUNDED_RESEARCH_OBSERVATION_PROFILE, SOURCE_OBSERVATION_PROFILE,
+  runSourceAnalyses, sourceAnalysisDescriptors,
+} from './model/source-analysis.js';
 export { inferCircuit, checkWiring } from './model/inference.js';
 export { createMeterState, readMeter } from './model/multimeter.js';
 export { generatePartName, partToDeclaration, circuitToDeclarations } from './model/declarations.js';
@@ -42,6 +45,9 @@ export { OrientationInput } from './components/OrientationInput.jsx';
 export { MidiMonitor } from './components/MidiMonitor.jsx';
 export { StimulusControls } from './components/StimulusControls.jsx';
 export { OperatingPointPanel } from './components/OperatingPointPanel.jsx';
+export { SourceAnalysisPanel } from './components/SourceAnalysisPanel.jsx';
+export { runPrecisionSourceAnalysis } from './model/source-analysis-view.js';
+export { runCircuitSourceAnalyses } from './model/source-analysis.js';
 export { SerialConsole } from './components/SerialConsole.jsx';
 export { AsmDebugPanel } from './components/AsmDebugPanel.jsx';
 export { ArchitectureFace } from './components/ArchitectureFace.jsx';
@@ -65,7 +71,9 @@ export {
 } from './model/exporters/registry.js';
 export { downloadText, downloadBlob } from './model/exporters/download.js';
 export { svgToPngBlob, svgStringToPngBlob, serializeSvgStandalone, exportSvgAsPng } from './model/export-png.js';
-export { IMPORT_FORMATS, importCircuit, getSupportedFormats } from './importers/index.js';
+export {
+  IMPORT_FORMATS, importCircuit, getSupportedFormats, parseLtspiceAscDocument, parseLtspiceAsy,
+} from './importers/index.js';
 
 // Machine extraction (wired-bus → bootable config)
 export { extractMachine } from './model/machine-extract.js';

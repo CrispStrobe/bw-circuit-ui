@@ -1,0 +1,6 @@
+source-declared DC analysis
+VS in 0 0
+R1 in out 1k
+R2 out 0 1k
+.dc VS 0V 1V .5V
+.end

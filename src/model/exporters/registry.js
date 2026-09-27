@@ -91,9 +91,12 @@ export const CIRCUIT_EXPORTS = [
     label: 'LTspice schematic (.asc)', labelDe: 'LTspice-Schaltplan (.asc)',
     needs: 'circuit',
     run: ({ circuit }) => {
-      const { text, warnings, skipped } = toLtspiceAsc(circuit);
-      return { files: [{ name: 'circuit.asc', text, mime: 'text/plain' }], report: { warnings, skipped,
-        instructions: 'Electrical interchange for the reported supported subset; labels preserve nets, but no authored drawing layout or unsupported document records.' } };
+      const { text, warnings, skipped, preservedSourceDocument, symbolFiles = [] } = toLtspiceAsc(circuit);
+      return { files: [{ name: 'circuit.asc', text, mime: 'text/plain' },
+        ...symbolFiles.map(file => ({ ...file, mime: 'text/plain' }))], report: { warnings, skipped,
+        instructions: preservedSourceDocument
+          ? 'The unchanged LTspice source document was preserved, including layout and unsupported records.'
+          : `Generated electrical interchange for the reported supported subset; labels preserve nets, but edited authored layout and unsupported records are not replayed.${symbolFiles.length ? ' Keep the generated .asy symbol files beside the .asc.' : ''}` } };
     },
   },
   {

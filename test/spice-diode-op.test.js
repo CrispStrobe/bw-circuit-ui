@@ -37,6 +37,35 @@ describe('strict SPICE diode DC contract', () => {
     assert.ok(Math.abs(Number(row[2]) - diode.get('anode')) < 3e-8);
   });
 
+  it('keeps DC-inert model provenance on the circuit but outside the engine parameter set', () => {
+    const imported = importSpice(deck('D(IS=2e-12 N=1.3 RS=4 CJO=2p)'));
+    assert.deepEqual(imported.losses, []);
+    const importedDiode = imported.parts.find(p => p.id === 'D1');
+    assert.equal(importedDiode.params._spiceNonDcFields, 'cjo');
+    assert.match(importedDiode.params._spiceModel, /CJO=2p/);
+
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    circuit.setPower(true);
+    assert.equal(circuit.operatingPoint().converged, true,
+      'classified CJO provenance must not become an electrical Board parameter');
+    circuit.syncWithExternalNets(circuit.resolvedNets);
+    circuit.setPower(true);
+    assert.equal(circuit.operatingPoint().converged, true,
+      'the externally resolved-net route must apply the same engine boundary');
+
+    const saved = circuit.toJSON();
+    const persisted = saved.parts.find(p => p.id === 'D1');
+    assert.equal(persisted.params._spiceNonDcFields, 'cjo');
+    assert.match(persisted.params._spiceModel, /CJO=2p/,
+      'engine-boundary filtering must not erase persisted source provenance');
+
+    persisted.params._unclassifiedElectricalField = 1;
+    const unsafe = Circuit.fromJSON(saved);
+    unsafe.setPower(true);
+    assert.throws(() => unsafe.operatingPoint(), /_unclassifiedElectricalField.*outside the explicit Shockley DC domain/,
+      'the boundary must not become a generic underscore-field filter');
+  });
+
   // `CJO=2p` AND `BV=12` MOVED OUT OF THIS LIST, ON EVIDENCE.
   //
   // The rule was "IS, N, RS and nothing else". Measured against the acquired

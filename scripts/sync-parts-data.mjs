@@ -4,7 +4,7 @@
 // this repo carries a synced copy so the loader can import it eagerly and
 // production bundles need no external fetch.
 //
-//   node scripts/sync-parts-data.mjs [--dir ../bw-parts] [--check]
+//   node scripts/sync-parts-data.mjs [--dir ../bw-parts] [--check] [--only kind]
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,12 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const dirIdx = args.indexOf('--dir');
+const onlyIdx = args.indexOf('--only');
+const onlyKind = onlyIdx !== -1 ? args[onlyIdx + 1] : null;
+if (onlyIdx !== -1 && (!onlyKind || onlyKind.startsWith('--'))) {
+  console.error('sync-parts-data: --only requires one part kind');
+  process.exit(2);
+}
 const src = join(HERE, '..', dirIdx !== -1 ? args[dirIdx + 1] : '../bw-parts', 'parts');
 const dst = join(HERE, '..', 'src', 'parts-data');
 const check = args.includes('--check');
@@ -80,12 +86,16 @@ const ADD_ONLY = !process.argv.includes('--overwrite');
  */
 const LOCAL_ONLY = new Set([
   'stm32f030.json', 'stm32f030.svg',
-  // The two controlled sources are schematic abstractions, not orderable
-  // parts: there is no package to photograph and no footprint to seat, so
-  // bw-parts is the wrong home for them. Their geometry exists only so the
-  // designer can place four distinguishable terminals — without a sidecar
-  // `terminalPos` returns {dx:0,dy:0} for every name it has no case for and
-  // all four dots land on one pixel.
+  // The MakeCode boards. Their faces are pxt-calliope / pxt-adafruit simulator
+  // art (MIT); provenance is recorded in ART-PROVENANCE.md and THIRD-PARTY.md
+  // below the synced sections.
+  'calliopemini.json', 'calliopemini.svg',
+  'circuit_playground_express.json', 'circuit_playground_express.svg',
+  // Measured absent from bw-parts/parts on 2026-09-25, so the stale sweep
+  // would have deleted them exactly as it once deleted stm32f030.
+  'pybadge.json', 'pybadge.svg', 'tang_nano_20k.json', 'tang_nano_20k.svg',
+  // Schematic abstractions, not orderable packages. Their local geometry
+  // keeps four distinct electrical terminals wireable on the free canvas.
   'vcvs.json', 'vcvs.svg', 'vccs.json', 'vccs.svg',
 ]);
 
@@ -102,11 +112,13 @@ const HELD_BACK = new Map([
 
 const skip = (f) => NOT_OFFERED.has(f) || NOT_OFFERED.has(f.replace(/\.svg$/, '.json'));
 const held = (f) => HELD_BACK.has(f);
+const selected = (f) => !onlyKind || f === `${onlyKind}.json` || f === `${onlyKind}.svg`;
 
-const upstreamJsons = new Set(readdirSync(src).filter(f => f.endsWith('.json') && !skip(f)));
-const upstreamSvgs = new Set(readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f)));
+const upstreamJsons = new Set(readdirSync(src).filter(f => f.endsWith('.json') && !skip(f) && selected(f)));
+const upstreamSvgs = new Set(readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f) && selected(f)));
 let deleted = 0;
-if (!check) {
+// A scoped sync cannot interpret every unselected destination file as stale.
+if (!check && !onlyKind) {
   for (const f of readdirSync(dst).filter(f => f.endsWith('.json'))) {
     if (!upstreamJsons.has(f) && !LOCAL_ONLY.has(f)) { unlinkSync(join(dst, f)); deleted++; }
   }
@@ -115,7 +127,7 @@ if (!check) {
   }
 }
 let changed = 0, total = 0;
-for (const f of readdirSync(src).filter(f => f.endsWith('.json') && !skip(f))) {
+for (const f of readdirSync(src).filter(f => f.endsWith('.json') && !skip(f) && selected(f))) {
   total++;
   if (held(f)) continue;
   if (ADD_ONLY && existsSync(join(dst, f))) continue;
@@ -130,7 +142,7 @@ for (const f of readdirSync(src).filter(f => f.endsWith('.json') && !skip(f))) {
 }
 // Also vendor SVG art files — same sync, same check
 let svgChanged = 0, svgTotal = 0;
-for (const f of readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f))) {
+for (const f of readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f) && selected(f))) {
   if (ADD_ONLY && existsSync(join(dst, f))) continue;
   svgTotal++;
   const body = readFileSync(join(src, f), 'utf8');
@@ -141,13 +153,22 @@ for (const f of readdirSync(src).filter(f => f.endsWith('.svg') && !skip(f))) {
     if (!check) writeFileSync(target, body);
   }
 }
-// Copy provenance files so licensing travels with the art
-for (const prov of ['ART-PROVENANCE.md', 'THIRD-PARTY.md']) {
+// Copy provenance files so licensing travels with the art.
+//
+// The copy REPLACES the file, which would silently erase the provenance of a
+// LOCAL_ONLY part — third-party art whose licence notice lives only here. So
+// everything from LOCAL_PROVENANCE_MARKER to the end of the existing file is
+// carried across the copy: upstream owns the top, this repo owns the tail.
+const LOCAL_PROVENANCE_MARKER = '<!-- bw-circuit-ui local provenance: kept by scripts/sync-parts-data.mjs -->';
+for (const prov of onlyKind ? [] : ['ART-PROVENANCE.md', 'THIRD-PARTY.md']) {
   const provSrc = join(src, '..', prov);
   if (existsSync(provSrc)) {
-    const body = readFileSync(provSrc, 'utf8');
     const target = join(dst, prov);
     const prev = existsSync(target) ? readFileSync(target, 'utf8') : null;
+    const localAt = prev ? prev.indexOf(LOCAL_PROVENANCE_MARKER) : -1;
+    const upstream = readFileSync(provSrc, 'utf8');
+    const body = localAt === -1 ? upstream
+      : `${upstream.replace(/\s*$/, '')}\n\n${prev.slice(localAt)}`;
     if (prev !== body) { if (!check) writeFileSync(target, body); }
   }
 }

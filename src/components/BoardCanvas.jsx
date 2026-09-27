@@ -19,7 +19,7 @@ import { classifyWheel, computeFitView, retainEqualPan } from '../interaction/tr
 import {partEditingAllowed} from '../interaction/edit-policy.js';
 import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
 import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
-import { resolveSeatedParts, holeWorldPos } from '../interaction/seat-geometry.js';
+import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interaction/seat-geometry.js';
 import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
@@ -28,7 +28,7 @@ import { ledDisplayLevel } from './led-perception.js';
 import { DrcOverlay } from './DrcOverlay.jsx';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver, WokwiArduinoUno, WokwiArduinoNano, WokwiArduinoMega } from '../wokwi-wrappers/index.js';
-import { partLabel } from '../model/format.js';
+import { partLabel, effectiveRailVolts, netIsHighlighted, railFraction } from '../model/format.js';
 import TransferReport from './TransferReport.jsx';
 import { CIRCUIT_EXPORTS, runExport } from '../model/exporters/registry.js';
 import { IMPORT_FORMATS, importCircuit, pickKicadHierarchyRoot } from '../importers/index.js';
@@ -72,7 +72,7 @@ const DIP_CHIP_LABELS = {
   '74ls04': '74LS04', '74ls32': '74LS32', '74ls107': '74LS107',
   '74ls157': '74LS157', '74ls161': '74LS161', '74ls173': '74LS173',
   '74ls189': '74LS189',
-  lm358: 'LM358', lm339: 'LM339', lm393: 'LM393',
+  lm358: 'LM358', lm324: 'LM324', lm339: 'LM339', lm393: 'LM393',
   pcf8574: 'PCF8574', mcp4725: 'MCP4725', max7219: 'MAX7219',
   at24c02: '24C02', um245r: 'UM245R',
 };
@@ -86,6 +86,17 @@ import { computeCubeVoxels, testPattern, VOXEL_MAP } from '../model/ledcube.js';
 import { getPinFunctionsForPart } from '../model/pin-functions.js';
 import { isBoardEndpoint } from '../model/wire-endpoints.js';
 import { boardTerminalOffsets, boardVisualGeometry } from '../model/board-geometry.js';
+// MakeCode simulator board art, MIT (parts-data/ART-PROVENANCE.md). Imported
+// as asset URLs the same way PartThumbnail imports pybadge.svg, so Vite and
+// lite's Webpack both resolve them; drawn through <image>, so the art's own
+// ids and <style> stay inside it and two boards on one canvas cannot collide.
+import calliopeMiniArt from '../parts-data/calliopemini.svg';
+import circuitPlaygroundArt from '../parts-data/circuit_playground_express.svg';
+
+const MAKECODE_FACE_ART = {
+  calliopemini: { href: calliopeMiniArt, title: 'Calliope mini' },
+  circuit_playground_express: { href: circuitPlaygroundArt, title: 'Adafruit Circuit Playground Express' },
+};
 import { dipTerminalPositions, dipPackageGeometry, DIP_PIN_PITCH, DIP_ROW_OFFSET } from '../model/dip-geometry.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
@@ -236,7 +247,10 @@ function terminalOffsetsForPart(part) {
     case 'arduino_nano':
     case 'arduino_mega':
     case 'pi_pico':
-    case 'pybadge': {
+    case 'tang_nano_20k':
+    case 'pybadge':
+    case 'calliopemini':
+    case 'circuit_playground_express': {
       const sc = getSidecar(part.kind);
       const offsets = boardTerminalOffsets(part.kind, sc);
       if (Object.keys(offsets).length) {
@@ -271,13 +285,8 @@ function terminalOffsetsForPart(part) {
       return { in0: r(-20, 0), out: r(20, 0) };
     case 'vcvs':
     case 'vccs': {
-      // Derived from the sidecar, never retyped: the sidecar is where this
-      // part's geometry lives, and a second copy here would be right today
-      // and wrong the day the art moves. Sidecar coordinates have their
-      // origin at the top-left of the viewBox; the canvas wants them
-      // relative to the part anchor, which is the body centre.
-      const base = typeof sidecarCenterOffsets === 'function'
-        ? sidecarCenterOffsets(part.kind) : null;
+      // The local sidecar owns this schematic abstraction's geometry.
+      const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       const offsets = {};
       for (const [name, o] of Object.entries(base)) offsets[name] = r(o.dx, o.dy);
@@ -323,7 +332,7 @@ function fmtV(v) {
 // Standard 4×4 keypad key labels, row-major (key 0 = '1', key 15 = 'D').
 const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
 
-function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn }) {
+function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn, supplyVolts = 5 }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -356,7 +365,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
             <rect x={-11} y={-14} width={22} height={8} rx={5} fill={capHi} opacity={0.5} />
             <circle cx={0} cy={-4} r={3.5} fill="#ecf0f1" opacity={0.9} />
             <text x={0} y={26} textAnchor="middle" fill={capHi} fontSize={8}
-              fontFamily="monospace" fontWeight="bold">{kind === 'vcc' ? `+${part.params?.volts ?? 5}V` : 'GND'}</text>
+              fontFamily="monospace" fontWeight="bold">{kind === 'vcc'
+                ? `+${effectiveRailVolts(part, supplyVolts)}V` : 'GND'}</text>
           </g>
         );
       }
@@ -579,6 +589,39 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fontFamily="monospace">{part.declName || id}</text>
           </g>
           </React.Fragment>
+        );
+      }
+      case 'calliopemini':
+      case 'circuit_playground_express': {
+        // The board IS its MakeCode simulator art: the face, the LED matrix /
+        // NeoPixels and the pad rings are all in the picture, and the sidecar's
+        // terminals are that picture's pad centres (board-geometry.js), so the
+        // wire end sits in the ring it names. Only a pad marker and the
+        // part's name are drawn on top.
+        const sc = getSidecar(kind);
+        const geometry = boardVisualGeometry(kind, sc);
+        const W = geometry?.w ?? 280;
+        const H = geometry?.h ?? 250;
+        const art = MAKECODE_FACE_ART[kind];
+        const offsets = boardTerminalOffsets(kind, sc);
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
+            data-board-face={kind} data-board-face-license="MIT">
+            <title>{art.title}</title>
+            {/* Hit/selection box first: the art is transparent between arms. */}
+            <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={8}
+              fill="transparent" stroke={selStroke || 'none'} strokeWidth={isSelected ? 3 : 0} />
+            <image href={art.href} x={-W / 2} y={-H / 2} width={W} height={H}
+              preserveAspectRatio="none" style={{ pointerEvents: 'none' }} />
+            {Object.entries(offsets).map(([name, p]) => (
+              <circle key={name} cx={p.dx} cy={p.dy} r={2.5}
+                fill="none" stroke="#637381" strokeWidth={0.6} pointerEvents="none">
+                <title>{name.toUpperCase()}</title>
+              </circle>
+            ))}
+            <text x={0} y={H / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
         );
       }
       case 'servo': {
@@ -1423,51 +1466,6 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           </g>
         );
       }
-      case 'vcvs':
-      case 'vccs': {
-        // A DEPENDENT source: diamond body, controlling port drawn open on
-        // the left because it draws no current. The two kinds share every
-        // line except what sits inside the diamond -- polarity marks for the
-        // voltage source, a current arrow for the current source. The arrow
-        // points outn -> outp because stampVCCS injects +gm*vin into outp.
-        const isV = kind === 'vcvs';
-        const accent = isV ? '#8e6fd8' : '#16a085';
-        return (
-          <g key={id} data-part-face={kind} transform={xform} onClick={handleClick}
-            style={{ cursor: 'pointer' }}>
-            {/* controlling port */}
-            <line x1={-32} y1={-10} x2={-18} y2={-10} stroke="#95a5a6" strokeWidth={2} />
-            <line x1={-32} y1={10} x2={-18} y2={10} stroke="#95a5a6" strokeWidth={2} />
-            <circle cx={-18} cy={-10} r={2.5} fill="none" stroke="#95a5a6" strokeWidth={1.2} />
-            <circle cx={-18} cy={10} r={2.5} fill="none" stroke="#95a5a6" strokeWidth={1.2} />
-            {/* control path: dashed, it carries information and not current */}
-            <path d="M -18 -6 L -18 0 L -13 0" fill="none" stroke="#7f8c8d"
-              strokeWidth={1.2} strokeDasharray="3,2" />
-            {/* output branch */}
-            <line x1={32} y1={-10} x2={12} y2={-10} stroke="#95a5a6" strokeWidth={2} />
-            <line x1={32} y1={10} x2={12} y2={10} stroke="#95a5a6" strokeWidth={2} />
-            <line x1={12} y1={-10} x2={12} y2={-13} stroke="#95a5a6" strokeWidth={2} />
-            <line x1={12} y1={10} x2={12} y2={13} stroke="#95a5a6" strokeWidth={2} />
-            <polygon points="12,-13 24,0 12,13 0,0"
-              fill="#20222b" stroke={selStroke || accent} strokeWidth={isSelected ? 3 : 1.6} />
-            {isV ? (
-              <>
-                <text x={12} y={-2} textAnchor="middle" fill="#d8dee4" fontSize={7}
-                  fontFamily="monospace">+</text>
-                <text x={12} y={9} textAnchor="middle" fill="#d8dee4" fontSize={8}
-                  fontFamily="monospace">−</text>
-              </>
-            ) : (
-              <>
-                <line x1={12} y1={7} x2={12} y2={-4} stroke="#d8dee4" strokeWidth={1.4} />
-                <polygon points="12,-8 9,-2 15,-2" fill="#d8dee4" />
-              </>
-            )}
-            <text x={0} y={26} textAnchor="middle" fill="#7f8c8d" fontSize={7}
-              fontFamily="monospace">{part.declName || id}</text>
-          </g>
-        );
-      }
       default: {
         // Generic DIP body for retro/logic ICs that have sidecars.
         // Pin-1-bottom convention: left column (pin 1 side) at bottom row,
@@ -1767,7 +1765,7 @@ function jumperHitPoints(bb, a, b, index) {
   return [a, { x: a.x, y: laneY }, { x: b.x, y: laneY }, b];
 }
 
-function Wires({ wires, parts, circuit, selectedWire, onSelectWire, hoveredNet, onHoverNet, nodeVoltages, voltageMode, onUpdateWire, screenToCanvas, setDraggingWaypoint }) {
+function Wires({ wires, parts, circuit, selectedWire, onSelectWire, hoveredNet, onHoverNet, pinnedNet, supplyVolts = 5, nodeVoltages, voltageMode, onUpdateWire, screenToCanvas, setDraggingWaypoint }) {
   // Group wires by net to find all terminals in each net
   const netTerminals = new Map();
   for (const w of wires) {
@@ -1901,14 +1899,16 @@ function Wires({ wires, parts, circuit, selectedWire, onSelectWire, hoveredNet, 
       pathD = freeWireCurve(wire, a, b).path;
     }
     const isSelected = selectedWire === wire.id;
-    const isHovered = hoveredNet && hoveredNet === wire.netId;
+    const isHovered = netIsHighlighted(wire.netId, hoveredNet, pinnedNet);
 
     // Wire color by voltage: red at VCC, blue near GND, green/yellow in between
     let voltageColor = '#2ecc71'; // default green
     const v = nodeVoltages?.[wire.netId ?? wireNetId(circuit, wire)];
     if (v != null && typeof v === 'number') {
-      const vcc = 5.0;
-      const ratio = Math.max(0, Math.min(1, v / vcc));
+      // Against the board's OWN rail: dividing by a hardcoded 5.0 drew a
+      // 3.3 V board's supply rail as "mid-high" orange, when it was the
+      // highest voltage present.
+      const ratio = railFraction(v, supplyVolts);
       if (ratio > 0.8) voltageColor = '#e74c3c';      // red: near VCC
       else if (ratio > 0.4) voltageColor = '#f39c12';  // orange: mid-high
       else if (ratio > 0.15) voltageColor = '#2ecc71'; // green: mid
@@ -2019,7 +2019,7 @@ function Wires({ wires, parts, circuit, selectedWire, onSelectWire, hoveredNet, 
 
 // ── Voltage labels ───────────────────────────────────────────────
 
-function VoltageLabels({ wires, parts, nodeVoltages, circuit }) {
+function VoltageLabels({ wires, parts, nodeVoltages, circuit, pinnedNet, onPinNet, onHoverNet }) {
   if (!nodeVoltages) return null;
   // One pill per net, anchored to the net's MOST VISIBLE conductor (its
   // longest wire or jumper), with a leader line touching the wire — the
@@ -2081,18 +2081,35 @@ function VoltageLabels({ wires, parts, nodeVoltages, circuit }) {
     }
   }
   const fmtV = (v) => Math.abs(v) < 1 ? `${(v * 1000).toFixed(0)}mV` : `${v.toFixed(1)}V`;
-  return [...best.entries()].map(([netId, c]) => (
-    <g key={`vl-${netId}`} data-vl-net={netId} data-vl-len={Math.round(c.len)} pointerEvents="none">
-      {/* leader: pill → wire midpoint, so the label is unambiguous */}
-      <line x1={c.mx} y1={c.my - 16} x2={c.mx} y2={c.my} stroke="#f1c40f" strokeWidth={1} strokeDasharray="2 2" opacity={0.85} />
-      <circle cx={c.mx} cy={c.my} r={2.2} fill="#f1c40f" />
-      <g transform={`translate(${c.mx}, ${c.my - 24})`}>
-        <rect x={-23} y={-9} width={46} height={16} rx={3} fill="#0a0a1a" fillOpacity={0.88} />
-        <text textAnchor="middle" y={3.5} fill="#f1c40f" fontSize={10}
-          fontFamily="monospace" fontWeight="bold">{fmtV(c.v)}</text>
+  // The pill is the only thing on the canvas that NAMES a reading, so it is
+  // where "which wire is this?" gets asked. It used to be pointerEvents="none"
+  // — unaskable. Clicking pins the net, which paints every conductor on it,
+  // including the ones with no pill of their own; clicking again unpins. Hover
+  // alone could not answer the question, because moving the pointer toward the
+  // wire you are asking about is exactly what ends the hover.
+  return [...best.entries()].map(([netId, c]) => {
+    const pinned = pinnedNet === netId;
+    return (
+      <g key={`vl-${netId}`} data-vl-net={netId} data-vl-len={Math.round(c.len)}
+        data-vl-pinned={pinned ? '1' : undefined}
+        style={{ cursor: onPinNet ? 'pointer' : 'default' }}
+        pointerEvents={onPinNet ? 'auto' : 'none'}
+        onClick={onPinNet ? (e) => { e.stopPropagation(); onPinNet(pinned ? null : netId); } : undefined}
+        onMouseEnter={onHoverNet ? () => onHoverNet(netId) : undefined}
+        onMouseLeave={onHoverNet ? () => onHoverNet(null) : undefined}>
+        {/* leader: pill → wire midpoint, so the label is unambiguous */}
+        <line x1={c.mx} y1={c.my - 16} x2={c.mx} y2={c.my} stroke={pinned ? '#9b59b6' : '#f1c40f'}
+          strokeWidth={pinned ? 1.6 : 1} strokeDasharray="2 2" opacity={0.85} />
+        <circle cx={c.mx} cy={c.my} r={pinned ? 3 : 2.2} fill={pinned ? '#9b59b6' : '#f1c40f'} />
+        <g transform={`translate(${c.mx}, ${c.my - 24})`}>
+          <rect x={-23} y={-9} width={46} height={16} rx={3} fill="#0a0a1a" fillOpacity={0.88}
+            stroke={pinned ? '#9b59b6' : 'none'} strokeWidth={pinned ? 1.5 : 0} />
+          <text textAnchor="middle" y={3.5} fill={pinned ? '#c39bd3' : '#f1c40f'} fontSize={10}
+            fontFamily="monospace" fontWeight="bold">{fmtV(c.v)}</text>
+        </g>
       </g>
-    </g>
-  ));
+    );
+  });
 }
 
 // ── Wokwi element layer ─────────────────────────────────────────
@@ -2104,7 +2121,15 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
     const flip = part.flipped;
     const isSelected = selectedParts?.has(id);
     const transforms = [];
-    if (rot) transforms.push(`rotate(${rot}deg)`);
+    // A seated part's BODY must lie along its own legs. These elements are all
+    // drawn with their leads left and right, which is right for a free part and
+    // wrong for a seated one whose holes are above and below the centre channel:
+    // a tactile switch straddling the gutter was drawn lying on its side, so
+    // nothing about the picture said it bridges the upper and lower banks. Taken
+    // from the seated holes themselves rather than a list of kinds, so it stays
+    // true for any two-legged part seated either way round.
+    const faceRot = seatedFaceRotation(part);
+    if (rot + faceRot) transforms.push(`rotate(${rot + faceRot}deg)`);
     if (flip) transforms.push('scaleX(-1)');
     const baseStyle = {
       position: 'absolute',
@@ -2897,7 +2922,7 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
           if (ltspiceSymbols.has(name)) {
             throw new Error(`Two selected LTspice symbol files have the same basename: ${symbolFile.name}`);
           }
-          ltspiceSymbols.set(name, { text: await symbolFile.text() });
+          ltspiceSymbols.set(name, { text: new Uint8Array(await symbolFile.arrayBuffer()) });
         }
       }
       if (kicadFiles.length) {
@@ -2914,7 +2939,8 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
         file = kicadFiles.find((candidate) => candidate.name === pickedRoot.rootName);
         text = hierarchyFiles.get(pickedRoot.rootName);
       } else {
-        text = await file.text();
+        text = /\.asc$/i.test(file.name) || pendingFormat.current === 'ltspice-asc'
+          ? new Uint8Array(await file.arrayBuffer()) : await file.text();
       }
     } catch (err) {
       say({ kind: 'import', title: file.name, error: String((err && err.message) || err) });
@@ -2946,18 +2972,29 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
     // Load even when some components were unmapped: a partial import is
     // useful as long as the gap is stated. Nothing is loaded if NOTHING
     // mapped, because that is a failed import wearing a success's clothes.
-    if (r.parts.length) onImport({ parts: r.parts, wires: r.wires,
+    const importedSourceDocuments = [
+      ...(r.sourceDocument ? [r.sourceDocument] : []),
+      ...(r.sourceSymbols?.length ? [{ format: 'ltspice-asy', symbols: r.sourceSymbols }] : []),
+    ];
+    const usefulDocument = r.sourceDocument?.records?.length > 0;
+    if (r.parts.length || usefulDocument) onImport({ parts: r.parts, wires: r.wires,
       analysisBlockers: blockersFromImport(r, format, file.name),
-      ...(r.sourceSymbols?.length ? { sourceDocuments: [{
-        format: 'ltspice-asy', symbols: r.sourceSymbols,
-      }] } : {}) });
+      ...(r.analyses?.length ? { sourceAnalysis: {
+        version: 1, format, sourceName: file.name,
+        analyses: r.analyses, netNames: r.netNames || [],
+        retainedDirectives: r.retainedDirectives || [],
+      } } : {}),
+      ...(importedSourceDocuments.length ? { sourceDocuments: [
+        ...(r.sourceDocument ? [r.sourceDocument] : []),
+        ...(r.sourceSymbols?.length ? [{ format: 'ltspice-asy', symbols: r.sourceSymbols }] : []),
+      ] } : {}) });
     say({
       kind: 'import',
       title: file.name,
       summary: de
         ? `${r.parts.length} Bauteile, ${r.wires.length} Verbindungen (${format})`
         : `${r.parts.length} parts, ${r.wires.length} connections (${format})`,
-      error: r.parts.length ? null
+      error: r.parts.length || usefulDocument ? null
         : (de ? 'Nichts importiert.' : 'Nothing was imported.'),
       skipped: (r.unmapped || []).map((u) => `${u.ref}: ${u.libsource || u.value || '?'}`),
       warnings: r.warnings || [],
@@ -3096,6 +3133,10 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
 // ── Main BoardCanvas ─────────────────────────────────────────────
 
 export function BoardCanvas({
+  // The board's own supply. The VCC symbol used to print `params.volts ?? 5`,
+  // so a 3.3 V board drew a cap reading "+5V" — a number nothing in the
+  // circuit had. Passed in rather than guessed.
+  supplyVolts = 5,
   parts, wires, ledBrightness, buzzerTones, nodeVoltages,
   onAddWire, onRemoveWire, onRemovePart, onMovePart,
   onSelectPart, selectedPart, selectedParts,
@@ -3148,6 +3189,10 @@ export function BoardCanvas({
   const [dragging, setDragging] = useState(null); // partId that initiated the drag
   const dragStartPos = React.useRef(null); // {x, y} at drag start for offset calc
   const [hoveredNet, setHoveredNet] = useState(null);
+  // A net the reader PINNED by clicking its voltage pill. Separate from hover
+  // because the question it answers outlives the pointer: you pin the reading,
+  // then follow the highlighted conductor with your eyes and your mouse.
+  const [pinnedNet, setPinnedNet] = useState(null);
   const [hoveredPart, setHoveredPart] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
   const [snapTarget, setSnapTarget] = useState(null);
@@ -3862,6 +3907,9 @@ export function BoardCanvas({
     }
     onSelectPart(null);
     onSelectWire(null);
+    // Clicking the empty canvas clears the pinned reading too: a highlight
+    // with no way to dismiss it becomes permanent decoration.
+    setPinnedNet(null);
   }, [wiringFrom, onSelectPart, onSelectWire, rubberBand, parts]);
 
   const handleSvgMouseDown = useCallback((e) => {
@@ -4616,6 +4664,7 @@ export function BoardCanvas({
             });
           })}
           <SvgParts parts={parts} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick}
+            supplyVolts={supplyVolts}
             deviceStates={(() => {
               // Device faces follow the ACTIVE board — during a debug run
               // that is the runner's board, and reading circuit.board here
@@ -4629,8 +4678,8 @@ export function BoardCanvas({
               for (const p of parts) {
                 if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge' || p.kind === 'mono_lcd' || p.kind === 'rgb_light') {
                   let ds = eb.getDeviceState(p.id);
-                  // Bargraph: passive device exports no brightness — compute
-                  // from branch current across each anode/cathode pair.
+                  // Bargraph brightness is a magnitude-only visual property;
+                  // raw branch current itself remains signed positive OUT.
                   if (p.kind === 'bargraph' && eb.branchCurrent) {
                     const brightness = new Float64Array(10);
                     for (let i = 0; i < 10; i++) {
@@ -4699,12 +4748,14 @@ export function BoardCanvas({
           <Wires wires={wires} parts={parts} circuit={circuit}
             selectedWire={selectedWire} onSelectWire={onSelectWire}
             hoveredNet={hoveredNet} onHoverNet={setHoveredNet}
+            pinnedNet={pinnedNet} supplyVolts={supplyVolts}
             nodeVoltages={nodeVoltages}
             voltageMode={!!(simulate && voltageView && nodeVoltages)}
             onUpdateWire={onUpdateWire} screenToCanvas={screenToCanvas}
             setDraggingWaypoint={setDraggingWaypoint} />
           {simulate && voltageView ?
-            <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} circuit={circuit} /> : null}
+            <VoltageLabels wires={wires} parts={parts} nodeVoltages={nodeVoltages} circuit={circuit}
+              pinnedNet={pinnedNet} onPinNet={setPinnedNet} onHoverNet={setHoveredNet} /> : null}
           {/* Jumper wires. Short hops keep a small arc; LONG jumpers
               route as STAPLES — down into a lane, flat across, up to the
               far hole — the way real hookup wire lies on a board. The
@@ -4996,6 +5047,7 @@ export function BoardCanvas({
         {/* Inline property editor (double-click) */}
         {canEditParts && inlineEdit && onUpdateParams && (
           <InlineEditor
+            supplyVolts={supplyVolts}
             part={parts.find(p => p.id === inlineEdit.partId)}
             x={inlineEdit.x}
             y={inlineEdit.y}

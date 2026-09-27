@@ -1,0 +1,6 @@
+Precision source-analysis entrypoint fixture
+V1 in 0 PULSE(0 5 1u 1n 1n 2u 5u)
+R1 in out 1k
+C1 out 0 1n
+.tran 250n 3u UIC
+.end

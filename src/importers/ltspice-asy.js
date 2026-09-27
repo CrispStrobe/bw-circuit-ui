@@ -39,6 +39,29 @@ function byteLength(text) {
   return typeof TextEncoder === 'function' ? new TextEncoder().encode(text).byteLength : text.length;
 }
 
+function decodeSymbolText(input) {
+  if (typeof input === 'string') return { text: input.replace(/^\ufeff/, ''), encoding: 'string' };
+  let bytes = null;
+  if (input instanceof Uint8Array) bytes = input;
+  else if (typeof ArrayBuffer !== 'undefined' && input instanceof ArrayBuffer) bytes = new Uint8Array(input);
+  if (!bytes) return { text: '', encoding: 'invalid', error: 'symbol text must be a string or byte array' };
+  let encoding = 'utf-8';
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) encoding = 'utf-16le';
+  else if (bytes[0] === 0xfe && bytes[1] === 0xff) encoding = 'utf-16be';
+  else {
+    const sample = bytes.subarray(0, Math.min(bytes.length, 256));
+    let evenNuls = 0; let oddNuls = 0;
+    sample.forEach((value, index) => {
+      if (value === 0) { if (index % 2) oddNuls++; else evenNuls++; }
+    });
+    if (oddNuls > sample.length / 8 && evenNuls === 0) encoding = 'utf-16le';
+    else if (evenNuls > sample.length / 8 && oddNuls === 0) encoding = 'utf-16be';
+  }
+  try {
+    return { text: new TextDecoder(encoding, { fatal: true }).decode(bytes).replace(/^\ufeff/, ''), encoding };
+  } catch { return { text: '', encoding, error: `symbol bytes are not valid ${encoding}` }; }
+}
+
 function finding(kind, line, reason, source = '') {
   return { kind, line, reason, ...(source ? { source } : {}) };
 }
@@ -47,8 +70,7 @@ function setAttribute(target, records, key, value, line, findings, owner) {
   const folded = key.toLowerCase();
   if (Object.prototype.hasOwnProperty.call(target, folded)) {
     findings.push(finding('duplicate-asy-attribute', line,
-      `${owner} repeats SYMATTR/PINATTR ${key}; the electrical meaning is ambiguous`));
-    return;
+      `${owner} repeats SYMATTR/PINATTR ${key}; LTspice's later value is effective`));
   }
   target[folded] = value;
   records.push({ name: key, value, line });
@@ -70,22 +92,26 @@ export function parseLtspiceAsy(text, options = {}) {
   let symbolType = null;
   let version = null;
 
-  if (typeof text !== 'string') {
+  const decoded = decodeSymbolText(text);
+  if (decoded.error) {
     return { ok: false, version, symbolType, attrs, attributeRecords, pins, geometry,
-      findings: [finding('invalid-asy-input', 0, 'symbol text must be a string')] };
+      encoding: decoded.encoding,
+      findings: [finding('invalid-asy-input', 0, decoded.error)] };
   }
+  const sourceText = decoded.text;
   const limits = limitsFrom(options);
-  if (byteLength(text) > limits.maxBytes) {
+  if (byteLength(sourceText) > limits.maxBytes) {
     return { ok: false, version, symbolType, attrs, attributeRecords, pins, geometry,
       findings: [finding('asy-limit-exceeded', 0,
         `symbol text exceeds the ${limits.maxBytes}-byte limit`)] };
   }
-  if (text.includes('\0')) {
+  if (sourceText.includes('\0')) {
     return { ok: false, version, symbolType, attrs, attributeRecords, pins, geometry,
       findings: [finding('invalid-asy-input', 0, 'symbol text contains a NUL byte')] };
   }
 
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  const rawText = sourceText.replace(/\r\n?/g, '\n');
+  const lines = rawText.split('\n');
   if (lines.length > limits.maxLines) {
     return { ok: false, version, symbolType, attrs, attributeRecords, pins, geometry,
       findings: [finding('asy-limit-exceeded', 0,
@@ -98,7 +124,7 @@ export function parseLtspiceAsy(text, options = {}) {
     const source = lines[index].trim();
     if (!source) continue;
     let match;
-    if ((match = /^Version\s+(\d+)$/i.exec(source))) {
+    if ((match = /^Version\s+(\d+(?:\.\d+)?)$/i.exec(source))) {
       if (version !== null) findings.push(finding('duplicate-asy-version', lineNumber,
         'symbol document contains more than one Version record', source));
       else version = Number(match[1]);
@@ -152,7 +178,7 @@ export function parseLtspiceAsy(text, options = {}) {
     }
   }
 
-  if (version !== 4) findings.push(finding('unsupported-asy-version', 0,
+  if (![4, 4.1].includes(version)) findings.push(finding('unsupported-asy-version', 0,
     version === null ? 'symbol document has no Version record' : `Version ${version} is not supported`));
   if (!symbolType) findings.push(finding('missing-asy-symbol-type', 0,
     'symbol document has no SymbolType record'));
@@ -171,12 +197,12 @@ export function parseLtspiceAsy(text, options = {}) {
 
   const fatalKinds = new Set([
     'invalid-asy-input', 'asy-limit-exceeded', 'duplicate-asy-version',
-    'duplicate-asy-symbol-type', 'duplicate-asy-attribute', 'orphan-asy-pin-attribute',
+    'duplicate-asy-symbol-type', 'orphan-asy-pin-attribute',
     'unsupported-asy-version', 'missing-asy-symbol-type', 'invalid-asy-spice-order',
-    'duplicate-asy-spice-order', 'invalid-asy-coordinate', 'unsupported-asy-record',
+    'duplicate-asy-spice-order', 'invalid-asy-coordinate',
   ]);
   return { ok: !findings.some(item => fatalKinds.has(item.kind)), version, symbolType,
-    attrs, attributeRecords, pins, geometry, findings };
+    encoding: decoded.encoding, rawText, attrs, attributeRecords, pins, geometry, findings };
 }
 
 /** Reject paths/URLs before handing a library key to a caller resolver. */

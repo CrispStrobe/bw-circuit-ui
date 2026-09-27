@@ -51,7 +51,10 @@ import { optionsCard } from 'bw-board/ngspice.js';
 // the spice-oracle job reddened.)
 import { spiceModelFor, resolveParams, cardFor, classDefaults, allCards } from 'bw-board/parts-library.js';
 import { formatSpiceValue } from '../si.js';
-import { validateStrictSpicePulseParams } from '../spice-source.js';
+import {
+  validateStrictSpiceExpParams, validateStrictSpicePulseParams,
+  validateStrictSpicePwlParams, validateStrictSpiceSineParams,
+} from '../spice-source.js';
 import { controlledResistance } from 'bw-board/mna.js';
 import { isExplicitShockleyPart } from '../spice-diode.js';
 
@@ -154,6 +157,60 @@ function lowestSourceFrequency(netlist) {
  * @param {string} [title='BrickWright Circuit']
  * @returns {{ text: string, skipped: string[], warnings: string[] }}
  */
+/**
+ * THE INTERNAL RESISTANCE THE ENGINE SOLVES WITH IS NOT ALWAYS ON THE CARD.
+ *
+ * A `battery_aa` in the gallery declares `{volts: 1.45}` and nothing else, and
+ * `bw-board/src/devices/named-parts.js` then stamps it with
+ * `part.params?.rInternal ?? 0.3` -- so 0.3 Ohm is the value that SOLVED, and it
+ * is invisible to anything reading `part.params`. The first version of the
+ * EMF/series-R export read only the card, so `75-battery-tester` kept
+ * disagreeing: engine 1.429559 V against ngspice's 1.450000 V, the EMF again.
+ *
+ * So ASK THE ENGINE, which is the rule this exporter already follows for a
+ * controlled resistance. `companionsFor` returns the companions the final
+ * Newton iteration stamped; a two-terminal source appears as one `between`
+ * record carrying `g` and `vth`, and the resistance is `1/g`.
+ *
+ *     battery_aa {volts: 1.45}
+ *       -> [{kind: 'between', tP: 'pos', tN: 'neg', g: 3.3333333, vth: 1.45}]
+ *       -> 1/g = 0.3 Ohm, EMF = 1.45 V
+ *
+ * An AUTHORED `rInternal` wins over a derived one, because a number a person
+ * wrote is the one they meant. A derived one is reported as a warning and
+ * marked in the deck comment, because taking the engine's linearisation makes
+ * this an `original-adapted` export rather than a straight translation -- the
+ * same distinction the `companionsFor` path below already draws.
+ *
+ * Returns null when there is no internal resistance to export, which is the
+ * ideal-source case and must stay a single bare V card.
+ */
+function internalResistanceOf(part, companionsFor) {
+  const authored = Number(part.params?.rInternal);
+  if (Number.isFinite(authored) && authored > 0) {
+    return { rInt: authored, volts: null, source: 'authored' };
+  }
+  if (!companionsFor) return null;
+  let snap = null;
+  try { snap = companionsFor(part.refdes); } catch { return null; }
+  // A non-converged snapshot is an iterate, not an answer.
+  const records = Array.isArray(snap) ? snap
+    : (snap && snap.converged !== false ? snap.records : null);
+  if (!Array.isArray(records)) return null;
+  const between = records.find(r => r && r.kind === 'between'
+    && ((r.tP === 'pos' && r.tN === 'neg') || (r.tP === 'neg' && r.tN === 'pos')));
+  if (!between) return null;
+  const g = Number(between.g);
+  const vth = Number(between.vth);
+  if (!Number.isFinite(g) || g <= 0) return null;
+  const rInt = 1 / g;
+  // An ideal source stamps a huge conductance; below a milliohm there is
+  // nothing a deck can usefully say and the round-off would dominate.
+  if (!(rInt > 1e-3)) return null;
+  return { rInt, volts: Number.isFinite(vth) ? Math.abs(vth) : null,
+    source: 'engine-companion' };
+}
+
 export function toSpice(netlist, title = 'BrickWright Circuit',
   {modelFor = spiceModelFor, pinSource = null, controls = new Map(),
    companionsFor = null, capacitorVoltage = null} = {}) {
@@ -177,6 +234,8 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
   // move — the proof that models are derived, not copied. Production callers
   // never pass it.
   const skipped = [];
+  // Parts the deck DOES export, with a card that is not the engine's device.
+  const approximated = [];
   const warnings = [];
 
   // ── Ground reference ─────────────────────────────────────────────
@@ -221,12 +280,34 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     '',
   ];
 
+  /**
+   * Node pairs already fixed by an IDEAL voltage source, as `min\u0000max`.
+   *
+   * TWO IDEAL SOURCES ACROSS ONE PAIR IS A SINGULAR MATRIX, and the deck was
+   * writing seven. `eater6502-full-build` has six decoupling capacitors across
+   * VCC and ground; each became `V<ref> VCC 0 DC 5` beside the synthesized
+   * `V1_SUPPLY VCC 0 DC 5`, and ngspice answered `singular matrix: check node
+   * vc1#branch`, then "Dynamic gmin stepping failed", then printed no node
+   * table at all. A deck that cannot run is not a deck.
+   *
+   * The second source carries no information -- the pair's potential
+   * difference is already determined -- so it is dropped rather than
+   * reconciled. Where the stored voltage DISAGREES with what already pins the
+   * pair, that is a fact about the engine's state and is reported.
+   */
+  const pinnedPairs = new Map();
+  /** Sources dropped because their pair was already pinned -- see `pinnedPairs`. */
+  const redundantSources = [];
+  const pairKey = (a, b) => (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
+
   // ── Supply rails ─────────────────────────────────────────────────
   const railVolts = typeof netlist.vcc === 'number' ? netlist.vcc : 5;
   if (supplyNets.length) {
     lines.push('* Supply rails (synthesized: the designer models these as rail parts)');
     supplyNets.forEach((net, i) => {
-      lines.push(`V${i + 1}_SUPPLY ${sanitizeNode(net.name)} 0 DC ${formatSpiceValue(railVolts)}`);
+      const railNode = sanitizeNode(net.name);
+      lines.push(`V${i + 1}_SUPPLY ${railNode} 0 DC ${formatSpiceValue(railVolts)}`);
+      pinnedPairs.set(pairKey(railNode, '0'), { volts: railVolts, by: `V${i + 1}_SUPPLY` });
     });
     lines.push('');
   }
@@ -253,7 +334,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         continue;
       }
 
-      const pins = getSpicePins(part.kind);
+      const pins = getSpicePins(part.kind, part);
       const nodes = pins.map(pin => nodeOf(part.refdes, pin));
       const floating = pins.filter((pin, i) => !nodes[i]);
       if (floating.length) {
@@ -270,6 +351,61 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
 
     const sym = PART_SYMBOLS[part.kind];
     const card = sym ? sym.spiceCard : null;
+
+    if (part.kind === 'opamp') {
+      // AN OP-AMP WITH RAILS IS A TABLE, AND SPICE HAS ONE.
+      //
+      // This kind was omitted from the deck entirely, so `pc54-opamp-follower`
+      // refused as `unrepresented-part: U1` -- honest, and a comparison we
+      // simply were not having. The engine's stamp is a gain block that CLAMPS
+      // at `railLow`/`railHigh`, which a bare `E` card cannot express: an E
+      // card is linear forever and would agree only while the output stayed
+      // between the rails.
+      //
+      // A `B` source with `min(max(...))` is exactly the stamp, and an
+      // `E ... TABLE` is NOT -- which cost a regression to find out. ngspice's
+      // TABLE form ROUNDS ITS CORNERS to keep the derivative continuous, so a
+      // breakpoint sitting on the operating point reads the smoothed value
+      // rather than the corner: with `(0,0) (50u,5)` and the inputs exactly
+      // equal, ngspice answers 0.125 V where the clamp says 0. That is
+      // `pc40-opamp-threshold`, a comparator whose inputs sit at 2.5 V each --
+      // it AGREED while the op-amp was missing from the deck and went 125 mV
+      // out the moment a rounded corner stood in for a sharp one.
+      //
+      // The B form clamps sharply. Verified against ngspice-42 on the same
+      // shape: inputs equal gives 0.000000, +/-1 mV gives the rails, and
+      // +30 uV gives 3.000000 V, which is gain x 3e-5 exactly.
+      //
+      // Every number is READ from the part; the expression's shape is the
+      // stamp's own `clamp(gain * dV, railLow, railHigh)`.
+      // `nodeFields` is built further down, after the no-card branch this sits
+      // in front of, so the three nodes are looked up directly.
+      const [nOut, nInp, nInn] = ['out', 'inp', 'inn']
+        .map((t) => nodeOf(part.refdes, t) || `UNCONNECTED_${part.refdes}_${t}`);
+      const gain = Number(part.params?.gain);
+      const railLow = Number(part.params?.railLow ?? 0);
+      const railHigh = Number(part.params?.railHigh ?? (netlist.vcc ?? 5));
+      if (!(Number.isFinite(gain) && gain > 0) || !Number.isFinite(railLow)
+          || !Number.isFinite(railHigh) || railHigh <= railLow) {
+        skipped.push(`${part.refdes} (${part.kind}): needs a positive gain and an ordered `
+          + 'rail pair to be written as a clamped gain block');
+        lines.push(`* ${part.refdes} ${part.kind} — incomplete gain/rail parameters`);
+        continue;
+      }
+      lines.push(`B${part.refdes} ${nOut} 0 V = `
+        + `min(max(${gain}*V(${nInp},${nInn}), ${railLow}), ${railHigh})`);
+      // THE OUTPUT CURRENT LIMIT IS OPT-IN AND NOT EXPRESSIBLE. Without
+      // `iLimit` the card above is a COMPLETE description and nothing is
+      // declared; with it, the engine has a region this card does not, so it is
+      // declared rather than left to look like a solver disagreement.
+      if (Number(part.params?.iLimit) > 0) {
+        approximated.push(`${part.refdes} (${part.kind}): the gain and the rails are exact, but `
+          + `its ${part.params.iLimit} A output current limit has no SPICE spelling on this `
+          + 'card -- a limited output reads as a rail here');
+      }
+      continue;
+    }
+
 
     if (!card || card === 'X' || card === 'S') {
       // DECOMPOSE, RATHER THAN VANISH.
@@ -352,7 +488,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
       continue;
     }
 
-    const pins = getSpicePins(part.kind);
+    const pins = getSpicePins(part.kind, part);
     const nodes = pins.map(p => nodeOf(part.refdes, p));
     const floating = pins.filter((p, i) => !nodes[i]);
     if (floating.length) {
@@ -368,7 +504,8 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     // Preserve both fields exactly so `.op` still sees the DC bias while an
     // external `.ac` analysis can consume the descriptor.
     if ((part.kind === 'vsource' || part.kind === 'isource')
-      && Object.prototype.hasOwnProperty.call(part.params || {}, 'acMagnitude')) {
+      && Object.prototype.hasOwnProperty.call(part.params || {}, 'acMagnitude')
+      && (!part.params?.wave || part.params.wave === 'dc')) {
       const p = part.params || {};
       const dcKey = part.kind === 'vsource' ? 'volts' : 'amps';
       const allowed = new Set([dcKey, 'acMagnitude', 'acPhase']);
@@ -392,25 +529,42 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     if ((part.kind === 'vsource' || part.kind === 'isource')
       && part.params?.wave && part.params.wave !== 'dc') {
       const p = part.params;
-      const allowed = new Set(['wave', 'volts', 'offset', 'amplitude', 'freq', 'phase']);
-      const extra = Object.keys(p).filter(key => !allowed.has(key));
-      const phase = p.phase ?? 0;
-      const validSine = part.kind === 'vsource' && p.wave === 'sine'
-        && [p.offset, p.amplitude, p.freq, phase].every(Number.isFinite)
-        && p.freq > 0 && phase === 0 && extra.length === 0;
-      if (validSine) {
-        lines.push(`${part.refdes} ${nodeFields} SINE(${formatSpiceValue(p.offset)} `
-          + `${formatSpiceValue(p.amplitude)} ${formatSpiceValue(p.freq)})`);
-      } else if (part.kind === 'vsource' && p.wave === 'spice-pulse') {
+      const dc = p.dcBiasOrigin === 'explicit-dc' && Number.isFinite(p.dcValue)
+        ? `DC ${formatSpiceValue(p.dcValue)} ` : '';
+      const ac = Number.isFinite(p.acMagnitude) && Number.isFinite(p.acPhase ?? 0)
+        ? ` AC ${formatSpiceValue(p.acMagnitude)} ${formatSpiceValue(p.acPhase ?? 0)}` : '';
+      let emittedWave = null;
+      let invalidReason = null;
+      if (p.wave === 'sine') {
+        const allowed = new Set(['wave', 'volts', 'offset', 'amplitude', 'freq', 'phase']);
+        const extra = Object.keys(p).filter(key => !allowed.has(key));
+        const phase = p.phase ?? 0;
+        if ([p.offset, p.amplitude, p.freq, phase].every(Number.isFinite)
+            && p.freq > 0 && phase === 0 && extra.length === 0) {
+          emittedWave = `SINE(${[p.offset, p.amplitude, p.freq].map(formatSpiceValue).join(' ')})`;
+        } else invalidReason = extra.length ? `unsupported parameters ${extra.join(', ')}`
+          : 'native sine requires finite offset/amplitude/frequency and zero phase';
+      } else if (p.wave === 'spice-sine') {
+        const sine = validateStrictSpiceSineParams(p);
+        if (sine.ok) emittedWave = `SINE(${sine.values.map(formatSpiceValue).join(' ')})`;
+        else invalidReason = sine.reason;
+      } else if (p.wave === 'spice-pulse') {
         const pulse = validateStrictSpicePulseParams(p);
-        if (pulse.ok) {
-          lines.push(`${part.refdes} ${nodeFields} PULSE(${pulse.values.map(formatSpiceValue).join(' ')})`);
-        } else {
-          skipped.push(`${part.refdes} (${part.kind}): time-varying spice-pulse source is not losslessly exportable; ${pulse.reason}`);
-          lines.push(`* ${part.refdes} ${part.kind} — skipped (time-varying source not losslessly exportable; ${pulse.reason})`);
-        }
+        if (pulse.ok) emittedWave = `PULSE(${pulse.values.map(formatSpiceValue).join(' ')})`;
+        else invalidReason = pulse.reason;
+      } else if (p.wave === 'spice-pwl') {
+        const pwl = validateStrictSpicePwlParams(p);
+        if (pwl.ok) emittedWave = `PWL(${pwl.points.flat().map(formatSpiceValue).join(' ')})`;
+        else invalidReason = pwl.reason;
+      } else if (p.wave === 'spice-exp') {
+        const exp = validateStrictSpiceExpParams(p);
+        if (exp.ok) emittedWave = `EXP(${exp.values.map(formatSpiceValue).join(' ')})`;
+        else invalidReason = exp.reason;
+      }
+      if (emittedWave) {
+        lines.push(`${part.refdes} ${nodeFields} ${dc}${emittedWave}${ac}`);
       } else {
-        const detail = extra.length ? `; unsupported parameter${extra.length > 1 ? 's' : ''} ${extra.join(', ')}` : '';
+        const detail = invalidReason ? `; ${invalidReason}` : '';
         skipped.push(`${part.refdes} (${part.kind}): time-varying ${String(p.wave)} source is not losslessly exportable${detail}`);
         lines.push(`* ${part.refdes} ${part.kind} — skipped (time-varying source not losslessly exportable${detail})`);
       }
@@ -437,10 +591,94 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     if (card === 'C' && capacitorVoltage) {
       const v = capacitorVoltage(part.refdes);
       if (typeof v === 'number' && isFinite(v)) {
+        const [na, nb] = String(nodeFields).trim().split(/\s+/);
+        const key = pairKey(na, nb);
+        const already = pinnedPairs.get(key);
+        if (already !== undefined) {
+          // Already pinned: a second ideal source here is a singular branch,
+          // not a stronger statement. Dropped, and named, with the numbers so
+          // a disagreement between them is visible rather than assumed away.
+          lines.push(`* ${part.refdes} ${part.kind} — its stored `
+            + `${formatSpiceValue(v)} V is not written: ${na} and ${nb} are already fixed `
+            + `at ${formatSpiceValue(already.volts)} V by ${already.by}, and two ideal `
+            + 'sources across one pair is a singular matrix');
+          redundantSources.push({ ref: part.refdes, kind: part.kind, volts: v,
+            nodes: [na, nb], pinnedBy: already.by, pinnedAt: already.volts });
+          if (Math.abs(already.volts - v) > 1e-9) {
+            warnings.push(`${part.refdes}: the engine holds it at ${v} V while ${already.by} `
+              + `fixes the same pair at ${already.volts} V; the deck keeps ${already.by}`);
+          }
+          continue;
+        }
+        pinnedPairs.set(key, { volts: v, by: `V${part.refdes}` });
         lines.push(`* ${part.refdes} ${part.kind} — held at the engine's stored voltage, `
           + 'because `.op` would open it and solve a different instant');
         lines.push(`V${part.refdes} ${nodeFields} DC ${formatSpiceValue(v)}`);
         continue;
+      }
+    }
+
+    // A BATTERY'S INTERNAL RESISTANCE IS WHY A BATTERY IS NOT AN IDEAL SOURCE,
+    // AND THE DECK WAS DELETING IT.
+    //
+    // The engine puts `rInternal` in series between the EMF and `pos`; the deck
+    // wrote a bare V card, so ngspice returned the EMF to six decimals every
+    // time and the comparison read as an engine error. Measured, 9 V with
+    // rInternal = 1 into a 10 Ohm load:
+    //
+    //   engine                                    8.181818 V
+    //   9 * 10/(10+1)                             8.181818 V
+    //   deck as a bare V card, ngspice            9.000000 V
+    //
+    // and with the two cards below ngspice reads 8.181818 V — the same
+    // question, the same answer.
+    //
+    // The irony is where it bit: `pc77-klemmenspannung` and
+    // `pc80-quellen-vergleich` are the gallery examples that EXIST to teach
+    // terminal voltage versus EMF, and the deck removed the lesson. Four rows
+    // of the 47 remaining gallery disagreements.
+    //
+    // An internal node is introduced rather than folding the resistance into a
+    // neighbour, because the EMF is a value a reader must still be able to see:
+    // `V(BT1_EMF)` is the cell's 9 V and `V(pos)` is what a meter on the
+    // terminals would show. The series resistor takes its own R card name from
+    // the refdes so it cannot collide with a part.
+    if (TWO_TERMINAL.has(card) && card === 'V'
+        && internalResistanceOf(part, companionsFor)) {
+      // NAMED `emfVolts`, NOT `emf`. This block briefly had both a destructured
+      // `emf` holding the engine's EMF and a local `const emf` holding the NODE
+      // NAME, and the local shadowed it -- so the V card's DC value became the
+      // string "BT1_EMF" and `formatSpiceValue` rendered it as nothing:
+      // `VBT1 BT1_EMF 0 DC` with no value at all. A deck that parses and means
+      // something else.
+      const { rInt, volts: emfVolts, source: rSource } = internalResistanceOf(part, companionsFor);
+      const fields = String(nodeFields).trim().split(/\s+/);
+      if (fields.length === 2) {
+        const [posNode, negNode] = fields;
+        let value = emfVolts ?? part.valueNumber;
+        if (value == null) value = ENGINE_DEFAULTS[part.kind] ?? null;
+        if (value == null) {
+          warnings.push(`${part.refdes} (${part.kind}): no numeric value — `
+            + 'internal resistance cannot be exported without an EMF.');
+        } else {
+          const emfNode = `${part.refdes.toUpperCase()}_EMF`;
+          lines.push(`* ${part.refdes} ${part.kind} — EMF at ${emfNode}, `
+            + `${formatSpiceValue(rInt)} internal resistance in series to ${posNode}`
+            + (rSource === 'engine-companion'
+              ? ' (resistance read from the engine\'s own stamp, not the card)' : ''));
+          lines.push(`${el} ${emfNode} ${negNode} DC ${formatSpiceValue(value)}`);
+          lines.push(`R${part.refdes}_INT ${emfNode} ${posNode} ${formatSpiceValue(rInt)}`);
+          emitted.add(`${part.refdes}_INT`);
+          if (rSource === 'engine-companion') {
+            warnings.push(`${part.refdes} (${part.kind}): internal resistance `
+              + `${formatSpiceValue(rInt)} taken from the engine's stamp; the part `
+              + 'declares none.');
+          }
+          continue;
+        }
+      } else {
+        warnings.push(`${part.refdes} (${part.kind}): internal resistance needs exactly `
+          + `two nodes, got ${fields.length} — exported as an ideal source.`);
       }
     }
 
@@ -491,6 +729,50 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         + `Rs=${j.rs}${extra})  $ Vf=${j.vf} V at 20 mA`);
       usedModels.add(modelName);
       lines.push(`${el} ${nodeFields} ${modelName}`);
+    } else if (part.kind === 'tip120') {
+      // A DARLINGTON DRIVER IS A SWITCH, AND SPICE HAS ONE.
+      //
+      // This kind used to be exported as `.model <X> NPN (Bf=1000 Is=1e-12)`
+      // and DECLARED an approximation, because bw-board's stamp is not an
+      // Ebers-Moll device: it is a base resistance plus a threshold switch that
+      // conducts when Vbe exceeds `vbe` and clamps Vce through `rceSat`, and it
+      // draws no base current at all. Measured on `33-inductive-no-flyback`,
+      // the largest disagreement the gallery had: our base sat at 4.949270 V
+      // against ngspice's 0.696071 V, a 4.25 V gap between two different
+      // devices.
+      //
+      // ngspice has exactly those two elements, so the deck can say what the
+      // engine solves instead of apologising for not saying it: a resistor and
+      // an `S` voltage-controlled switch with a `SW` model. Verified against
+      // ngspice-42 directly -- `S1 c 0 ctl 0 SWMOD` with `SW(VT=1.4 RON=2
+      // ROFF=1e12)` and the control above VT puts a 100 Ohm load's node at
+      // 5*2/102 = 0.098039 V, which is the stamp's own arithmetic.
+      //
+      // Every number is READ, none typed: `vbe`, `rceSat` and `rBase` come from
+      // the part or from `classDefaults('tip120')`, which is where bw-board's
+      // stamp reads them too. `rBase` was a literal inside the stamp
+      // (`R_INPUT / 10`) that no exporter could see, and declaring it is what
+      // made this emission possible at all.
+      const [nColl, nBase, nEmit] = String(nodeFields).trim().split(/\s+/);
+      const d = classDefaults('tip120') || {};
+      const vt = Number(part.params?.vbe ?? d.vbe);
+      const ron = Number(part.params?.rceSat ?? d.rceSat);
+      const rBase = Number(part.params?.rBase) > 0 ? Number(part.params.rBase) : Number(d.rBase);
+      if (![vt, ron, rBase].every(Number.isFinite)) {
+        skipped.push(`${part.refdes} (${part.kind}): the switch threshold, saturation `
+          + 'resistance or base resistance is not a finite number');
+        lines.push(`* ${part.refdes} ${part.kind} — incomplete switch parameters`);
+        continue;
+      }
+      // OFF is 1 TOhm, the same value this exporter already writes for an open
+      // switch companion. The stamp leaves NO collector-emitter path when off,
+      // and an exactly-infinite resistance is not a thing a deck can say.
+      lines.push(`RB${part.refdes} ${nBase} ${nEmit} ${formatSpiceValue(rBase)}`);
+      lines.push(`S${part.refdes} ${nColl} ${nEmit} ${nBase} ${nEmit} SW_${part.refdes}`);
+      modelCards.push(`.model SW_${part.refdes} SW(VT=${vt} RON=${ron} ROFF=1e12)`
+        + `  $ Darlington threshold ${vt} V, Vce(sat) resistance ${ron} Ohm`);
+      usedModels.add(`SW_${part.refdes}`);
+      continue;
     } else if (card === 'Q') {
       // A named part (params.part) is the card's model. A BARE class resolves to
       // the GENERIC CARD OF ITS KIND, and only then to the symbol table's name.
@@ -518,9 +800,177 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         lines.push(`* ${part.refdes} ${part.kind} — no model`);
         continue;
       }
-      usedModels.add(model);
-      lines.push(`${el} ${nodeFields} ${model}`);
-    } else if (card === 'M') {
+      // AN AUTHORED BETA THE CARD DOES NOT CARRY IS STILL WHAT THE SOLVER USES.
+      //
+      // The card is resolved by NAME -- `params.part`, else the kind's generic
+      // card -- and its Bf is written. A part carrying `beta` in its own params
+      // and no `params.part` therefore got the GENERIC Bf while bw-board's stamp
+      // solved the authored number. Measured on `44-darlington-motor`: the part
+      // says beta 1000, the deck said `Bf=100`, and the comparison was between
+      // two different transistors.
+      //
+      // So the authored value wins, in a per-part model card -- the same shape
+      // the diode branch above already uses, and per-part because two BJTs with
+      // different betas must not collide on one name. The card's own body is
+      // the base, so everything else about the device still comes from the
+      // library rather than from literals here.
+      //
+      // The population is small and was measured before the change: 2 of the 79
+      // gallery circuits carrying a BJT have a part beta the deck contradicts,
+      // and both already disagreed, so this costs no agreement anywhere.
+      const authoredBeta = Number(part.params?.beta);
+      const cardBeta = Number(named?.params?.beta);
+      const base = modelFor(model);
+      // AND THE SAME RULE FOR THE EARLY VOLTAGE, for the same reason.
+      //
+      // bw-board's Ebers-Moll stamp reads `params.vaf` and raises the transport
+      // current by (1 - Vbc/VAF). A part carrying `vaf` whose deck does not
+      // declare it is the authored-beta defect again with a different field:
+      // the engine solves one transistor and ngspice solves another. Measured:
+      // 700 ADI2005 v2 decks declare VAF on a BJT, 82 of them disagreed with
+      // ngspice without the term and none with it, and on the "BJT Emitter
+      // Follower" family it is worth 15.7 mV of base voltage -- 30x the
+      // comparator's tolerance.
+      //
+      // No card in the parts library declares VAF today, so `cardVaf` is NaN
+      // and the deck gains a `Vaf=` field only where a part authored one. That
+      // keeps this identity for every shipped circuit while making the deck and
+      // the solver agree the moment one does.
+      const authoredVaf = Number(part.params?.vaf);
+      const cardVaf = Number(/Vaf\s*=\s*([\d.eE+-]+)/i.exec(base?.body ?? '')?.[1]);
+      const authoredRb = Number(part.params?.rb);
+      const cardRb = Number(/Rb\s*=\s*([\d.eE+-]+)/i.exec(base?.body ?? '')?.[1]);
+      const betaDiffers = Number.isFinite(authoredBeta) && Number.isFinite(cardBeta)
+        && authoredBeta !== cardBeta && base && /Bf\s*=/i.test(base.body);
+      const vafDiffers = Number.isFinite(authoredVaf) && authoredVaf > 0
+        && authoredVaf !== cardVaf && base;
+      // Omitted and explicit zero RB are the old ideal-base path and retain
+      // the shared card byte for byte.  A positive authored value must cross
+      // the exporter: otherwise ngspice receives a different transistor than
+      // the native solver stamped.
+      const rbDiffers = Number.isFinite(authoredRb) && authoredRb > 0
+        && authoredRb !== cardRb && base;
+      const exactFields = [
+        { param: 'rc', spice: 'Rc', label: 'collector resistance', allowZero: true },
+        { param: 'ikf', spice: 'Ikf', label: 'forward beta knee', allowZero: false },
+      ];
+      const chargeFields = [
+        { param: 'cje', spice: 'Cje', label: 'base-emitter depletion capacitance' },
+        { param: 'cjc', spice: 'Cjc', label: 'base-collector depletion capacitance' },
+        { param: 'tf', spice: 'Tf', label: 'forward transit time' },
+      ];
+      const completeCharge = chargeFields.every(({ param }) =>
+        Object.prototype.hasOwnProperty.call(part.params || {}, param)
+          && Number.isFinite(Number(part.params[param])) && Number(part.params[param]) >= 0);
+      const modelField = (spice) => Number(new RegExp(`${spice}\\s*=\\s*([\\d.eE+-]+)`, 'i')
+        .exec(base?.body ?? '')?.[1]);
+      const fieldChanges = exactFields.filter(({ param, spice, allowZero }) => {
+        const value = Number(part.params?.[param]);
+        return Number.isFinite(value) && (allowZero ? value >= 0 : value > 0)
+          && value !== modelField(spice) && base;
+      });
+      if (completeCharge && chargeFields.some(({ param, spice }) =>
+        Number(part.params[param]) !== modelField(spice))) fieldChanges.push(...chargeFields);
+      if (betaDiffers || vafDiffers || rbDiffers || fieldChanges.length) {
+        const perPart = `Q_${part.refdes}`;
+        const why = [];
+        let body = base.body;
+        if (betaDiffers) {
+          body = body.replace(/Bf\s*=\s*[\d.eE+-]+/i, `Bf=${authoredBeta}`);
+          why.push(`authored beta ${authoredBeta}, not card ${model}'s ${cardBeta}`);
+        }
+        if (vafDiffers) {
+          body = /Vaf\s*=/i.test(body)
+            ? body.replace(/Vaf\s*=\s*[\d.eE+-]+/i, `Vaf=${authoredVaf}`)
+            : `${body} Vaf=${authoredVaf}`;
+          why.push(`authored Early voltage ${authoredVaf}`
+            + `${Number.isFinite(cardVaf) ? `, not card ${model}'s ${cardVaf}` : ', which the card does not state'}`);
+        }
+        if (rbDiffers) {
+          body = /Rb\s*=/i.test(body)
+            ? body.replace(/Rb\s*=\s*[\d.eE+-]+/i, `Rb=${authoredRb}`)
+            : `${body} Rb=${authoredRb}`;
+          why.push(`authored base resistance ${authoredRb}`
+              + `${Number.isFinite(cardRb) ? `, not card ${model}'s ${cardRb}` : ', which the card does not state'}`);
+        }
+        for (const { param, spice, label } of fieldChanges) {
+          const value = Number(part.params[param]);
+          const pattern = new RegExp(`${spice}\\s*=\\s*[\\d.eE+-]+`, 'i');
+          const prior = modelField(spice);
+          body = pattern.test(body) ? body.replace(pattern, `${spice}=${value}`)
+            : `${body} ${spice}=${value}`;
+          why.push(`authored ${label} ${value}`
+            + `${Number.isFinite(prior) ? `, not card ${model}'s ${prior}` : ', which the card does not state'}`);
+        }
+        modelCards.push(`.model ${perPart} ${base.type} (${body})  $ ${why.join('; ')}`);
+        usedModels.add(perPart);
+        lines.push(`${el} ${nodeFields} ${perPart}`);
+      } else {
+        usedModels.add(model);
+        lines.push(`${el} ${nodeFields} ${model}`);
+      }
+        } else if (card === 'M') {
+      const nmosGroundBulk = part.params?.bulkAtGround === true
+        && !Object.prototype.hasOwnProperty.call(part.params || {}, 'bulkOnSource');
+      const nmosSourceBulk = part.params?.bulkOnSource === true
+        && !Object.prototype.hasOwnProperty.call(part.params || {}, 'bulkAtGround');
+      const explicitNmos = part.kind === 'nmos' && part.params?.model === 'level1'
+        && (nmosGroundBulk || nmosSourceBulk);
+      const explicitPmos = part.kind === 'pmos' && part.params?.model === 'level1'
+        && pins.includes('bulk');
+      if (explicitNmos) {
+        const hasGamma = Object.prototype.hasOwnProperty.call(part.params ?? {}, 'gamma');
+        const hasPhi = Object.prototype.hasOwnProperty.call(part.params ?? {}, 'phi');
+        const bodyEffect = hasGamma && hasPhi;
+        const required = ['vth', 'kp', 'w', 'l', 'lambda',
+          ...(bodyEffect ? ['gamma', 'phi'] : [])];
+        const missing = required.filter(key => !Number.isFinite(Number(part.params?.[key])));
+        const invalid = Number(part.params?.vth) <= 0 || Number(part.params?.kp) <= 0
+          || Number(part.params?.w) <= 0 || Number(part.params?.l) <= 0
+          || Number(part.params?.lambda) < 0
+          || hasGamma !== hasPhi
+          || (bodyEffect && (Number(part.params?.gamma) < 0 || Number(part.params?.phi) <= 0));
+        if (missing.length || invalid) {
+          const reason = 'exact known-bulk NMOS export requires finite VTO/KP/W/L/LAMBDA, '
+            + 'positive VTO/KP/W/L and non-negative LAMBDA';
+          skipped.push(`${part.refdes} (${part.kind}): ${reason}`);
+          lines.push(`* ${part.refdes} ${part.kind} — skipped (${reason})`);
+          continue;
+        }
+        const perPart = `NM_${String(part.refdes).replace(/[^A-Za-z0-9_]/g, '_')}`;
+        modelCards.push(`.model ${perPart} NMOS (LEVEL=1 VTO=${formatSpiceValue(part.params.vth)} `
+          + `KP=${formatSpiceValue(part.params.kp)} LAMBDA=${formatSpiceValue(part.params.lambda)}`
+          + `${bodyEffect ? ` GAMMA=${formatSpiceValue(part.params.gamma)} PHI=${formatSpiceValue(part.params.phi)}` : ''})`);
+        const bulkNode = nmosSourceBulk ? nodes[2] : '0';
+        lines.push(`${el} ${nodeFields} ${bulkNode} ${perPart} W=${formatSpiceValue(part.params.w)} `
+          + `L=${formatSpiceValue(part.params.l)}`);
+        continue;
+      }
+      if (explicitPmos) {
+        if (!nodes[3]) {
+          const reason = 'exact explicit-bulk PMOS export requires a connected bulk terminal';
+          skipped.push(`${part.refdes} (${part.kind}): ${reason}`);
+          lines.push(`* ${part.refdes} ${part.kind} — skipped (${reason})`);
+          continue;
+        }
+        const required = ['vth', 'kp', 'w', 'l', 'lambda'];
+        const missing = required.filter(key => !Number.isFinite(Number(part.params?.[key])));
+        const invalid = Number(part.params?.kp) <= 0 || Number(part.params?.w) <= 0
+          || Number(part.params?.l) <= 0 || Number(part.params?.lambda) < 0;
+        if (missing.length || invalid) {
+          const reason = 'exact explicit-bulk PMOS export requires finite VTO/KP/W/L/LAMBDA, '
+            + 'positive KP/W/L and non-negative LAMBDA';
+          skipped.push(`${part.refdes} (${part.kind}): ${reason}`);
+          lines.push(`* ${part.refdes} ${part.kind} — skipped (${reason})`);
+          continue;
+        }
+        const perPart = `PM_${String(part.refdes).replace(/[^A-Za-z0-9_]/g, '_')}`;
+        modelCards.push(`.model ${perPart} PMOS (LEVEL=1 VTO=${formatSpiceValue(part.params.vth)} `
+          + `KP=${formatSpiceValue(part.params.kp)} LAMBDA=${formatSpiceValue(part.params.lambda)})`);
+        lines.push(`${el} ${nodeFields} ${perPart} W=${formatSpiceValue(part.params.w)} `
+          + `L=${formatSpiceValue(part.params.l)}`);
+        continue;
+      }
       // A SPICE M CARD TAKES FOUR NODES: drain gate source BULK. With three,
       // ngspice refuses the deck outright — "not enough nodes" — which is how
       // both `pc39-nmos-switch` circuits failed. A discrete MOSFET has its bulk
@@ -637,7 +1087,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
   }
   lines.push('.end');
 
-  return { text: lines.join('\n') + '\n', skipped, warnings };
+  return { text: lines.join('\n') + '\n', skipped, warnings, approximated, redundantSources };
 }
 
 /**
@@ -734,7 +1184,7 @@ function emitCompanions(part, comps, nodeOf, warnings) {
  * For transistors: [collector, base, emitter] (BJT) or [drain, gate, source] (MOS).
  * For diodes: [anode, cathode].
  */
-function getSpicePins(kind) {
+function getSpicePins(kind, part = null) {
   switch (kind) {
     case 'resistor': case 'ldr': case 'ntc': case 'fuse':
       return ['a', 'b'];
@@ -748,7 +1198,12 @@ function getSpicePins(kind) {
       return ['anode', 'cathode'];
     case 'npn': case 'pnp': case 'tip120':
       return ['collector', 'base', 'emitter'];
-    case 'nmos': case 'pmos':
+    case 'pmos':
+      if (part?.params?.model === 'level1') {
+        return ['drain', 'gate', 'source', 'bulk'];
+      }
+      return ['drain', 'gate', 'source'];
+    case 'nmos':
       return ['drain', 'gate', 'source'];
     case 'vsource': case 'battery_9v': case 'battery_aa':
       return ['pos', 'neg'];
@@ -756,6 +1211,11 @@ function getSpicePins(kind) {
       // SPICE positive I-card current flows first node -> second node, while
       // bw-board positive isource current flows neg -> pos.
       return ['neg', 'pos'];
+    case 'opamp':
+      // The E card's own order: output pair first, then the controlling pair.
+      // The engine's op-amp has a single-ended output referenced to ground, so
+      // the second output node is the reference and is written as `0`.
+      return ['out', 'inp', 'inn'];
     case 'vcvs':
       return ['outp', 'outn', 'inp', 'inn'];
     case 'vccs':

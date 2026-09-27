@@ -43,12 +43,14 @@ describe('LTspice ASC strict three-argument voltage SINE', () => {
     assert.deepEqual(imported.unmapped, []);
     assert.deepEqual(imported.losses, []);
     assert.deepEqual(imported.parts.find(part => part.id === 'V1').params, {
-      volts: 1.25, wave: 'sine', offset: 1.25, amplitude: -2, freq: 2000, phase: 0,
+      volts: 1.25, wave: 'spice-sine', offset: 1.25, amplitude: -2, freq: 2000,
+      td: 0, theta: 0, phase: 0, dcValue: 1.25,
+      dcBiasOrigin: 'waveform-initial-default',
     });
 
     const circuit = Circuit.fromJSON({ vcc: 5, parts: imported.parts, wires: imported.wires });
     circuit.setPower(true);
-    assert.throws(() => circuit.operatingPoint(), /time-varying source V1 \(sine\)/);
+    assert.throws(() => circuit.operatingPoint(), /time-varying source V1 \(spice-sine\)/);
     const signal = netAt(circuit, 'V1', 'pos');
     circuit.advanceTo(125_000n);
     assert.ok(Math.abs(circuit.nodeVoltage(signal) - (-0.75)) < 1e-9);
@@ -59,7 +61,7 @@ describe('LTspice ASC strict three-argument voltage SINE', () => {
 
     const exported = toSpice(extractNetlist(circuit), 'strict sine round trip');
     assert.deepEqual(exported.skipped, []);
-    assert.match(exported.text, /^V1\s+\S+\s+0\s+SINE\(1\.25 -2 2k\)$/m);
+    assert.match(exported.text, /^V1\s+\S+\s+0\s+SINE\(1\.25 -2 2k 0 0 0\)$/m);
     assert.doesNotMatch(exported.text, /^V1\s+.*\sDC\s/m);
     const back = importCircuit('spice', exported.text);
     assert.deepEqual(back.losses, []);
@@ -100,10 +102,10 @@ R1 n 0 1k
       'the independent observations must exercise both signs');
   });
 
-  it('refuses defaults, extra arguments, invalid numbers, non-positive frequency, and current waves', () => {
+  it('refuses missing, extra, invalid, and non-positive-frequency values while retaining current waves', () => {
     const values = [
       'SINE(0 1)', 'SINE(0 1 0)', 'SINE(0 1 -1k)', 'SINE(0 nope 1k)',
-      'SINE(0 1 1k 0)', 'DC 2 SINE(0 1 1k)',
+      'SINE(0 1 1k 0 0 0 7)', 'DC 2 SINE(0 1 1k)',
     ];
     for (const value of values) {
       const result = importCircuit('ltspice-asc', SINE_BENCH.replace('SINE(1.25 -2 2k)', value));
@@ -113,8 +115,8 @@ R1 n 0 1k
     const current = importCircuit('ltspice-asc', SINE_BENCH
       .replace('SYMBOL voltage 0 0 R0', 'SYMBOL current 0 16 R0')
       .replace('SINE(1.25 -2 2k)', 'SINE(0 1m 2k)'));
-    assert.equal(current.losses.length, 1);
-    assert.ok(!Object.hasOwn(current.parts.find(part => part.id === 'V1').params, 'wave'));
+    assert.deepEqual(current.losses, []);
+    assert.equal(current.parts.find(part => part.id === 'V1').params.wave, 'spice-sine');
   });
 
   it('does not export unsupported or non-ideal waveform sources as plausible DC cards', () => {
@@ -141,9 +143,11 @@ R1 n 0 1k
       const imported = importCircuit('spice', `sine\nV1 n 0 ${spelling}\nR1 n 0 1k\n.end\n`);
       assert.deepEqual(imported.losses, []);
       assert.deepEqual(imported.parts.find(part => part.id === 'V1').params,
-        { volts: -1, wave: 'sine', offset: -1, amplitude: 2, freq: 3000, phase: 0 });
+        { volts: -1, wave: 'spice-sine', offset: -1, amplitude: 2, freq: 3000,
+          td: 0, theta: 0, phase: 0, dcValue: -1,
+          dcBiasOrigin: 'waveform-initial-default' });
     }
-    for (const value of ['SINE(0 1 1k 0)', 'DC 2 SINE(0 1 1k)', 'SINE(0 1 0)']) {
+    for (const value of ['SINE(0 1 1k 0 0 0 7)', 'SINE(0 1 0)']) {
       const imported = importCircuit('spice', `sine loss\nV1 n 0 ${value}\nR1 n 0 1k\n.end\n`);
       assert.equal(imported.losses.length, 1, value);
       assert.equal(imported.losses[0].kind, 'unsupported-inline-waveform');

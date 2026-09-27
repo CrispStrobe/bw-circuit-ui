@@ -38,11 +38,13 @@
  */
 
 import { parseSpiceValue } from '../model/si.js';
-import { parseStrictSpicePulse, parseStrictSpiceSine } from '../model/spice-source.js';
+import {
+  parseStrictSpiceExp, parseStrictSpicePulse, parseStrictSpicePwl, parseStrictSpiceSine,
+} from '../model/spice-source.js';
 import { evaluateConstantExpression, resolveConstantParameters } from '../model/spice-constant.js';
 import { annotateImportedSingletonTerminals } from '../model/import-singleton-nets.js';
 import { classifyShockleyThermal, validateExplicitShockley, validateDiodeForDc,
-  diodeBreakdown } from '../model/spice-diode.js';
+  diodeBreakdown, diodeBreakdownCurrent } from '../model/spice-diode.js';
 import { parseSpiceModelDeclaration } from '../model/spice-model.js';
 
 /**
@@ -81,16 +83,74 @@ const GROUND_NODES = new Set(['0', 'gnd']);
 const FALLBACK_GROUND_NODES = ['gnd!', 'ground', 'vss'];
 
 /** Analysis and control cards we recognise. Reported, never executed. */
-const ANALYSIS_CARDS = new Set(['op', 'tran', 'ac', 'dc', 'noise', 'tf', 'four', 'disto', 'pz', 'sens']);
+// `.four` IS NOT AN ANALYSIS. It is a Fourier decomposition OF a transient
+// result — an output request that needs a `.tran` to have run. Listing it here
+// made a deck carrying only `.four` look like it had declared an analysis.
+const ANALYSIS_CARDS = new Set(['op', 'tran', 'ac', 'dc', 'noise', 'tf', 'disto', 'pz', 'sens']);
+
+/**
+ * OUTPUT REQUESTS AND FORMATTING, PRESERVED AND NOT EXECUTED.
+ *
+ * These used to fall into `BENIGN_CARDS` and land in `ignored`, where nothing
+ * could tell "deliberately retained" from "fell through" — the same complaint
+ * this importer's refusal reasons exist to avoid. They are now reported in
+ * `retainedDirectives` with their own handling, and `ignored` keeps only what
+ * genuinely had no consequence.
+ *
+ * Corpus reach, measured before the split: of 7,866 Si7li decks, `.meas`
+ * appears 639 times, `.four` 28, and print/plot/save/probe 15 between them. Of
+ * 12,471 ADI decks, none at all.
+ */
+const OUTPUT_REQUEST_CARDS = new Set(['four', 'meas', 'measure', 'print', 'plot', 'save', 'probe']);
+
+/**
+ * `.options` KEYS THAT ONLY AFFECT PRESENTATION.
+ *
+ * Everything else in `.options` is a numerical instruction and must be a LOSS,
+ * because it changes the answer rather than the report. `gshunt` is the one to
+ * keep in mind: it adds a conductance from every node to the reference, which
+ * is exactly the GMIN placement this programme measured as worth volts on a
+ * floating node. `reltol`, `abstol`, `vntol`, `gminsteps`, `srcsteps` and
+ * `maxstep` all move the solver.
+ *
+ * Measured over the same corpora: 143 of 7,866 Si7li decks carry `.options`,
+ * and the keys are plotwinsize 92, numdgt 22, gminsteps 13, maxstep 8,
+ * measdgt 7, gshunt 7, reltol 7. One ADI deck carries any at all
+ * (gminsteps, srcsteps). **`temp` does not appear in either corpus**, so
+ * treating the rest as a loss costs the thermal path nothing — checked,
+ * because a deck declaring its own temperature is the case that would have
+ * made this change expensive.
+ */
+const PRESENTATION_OPTION_KEYS = new Set(['plotwinsize', 'numdgt', 'measdgt', 'nopage', 'noacct', 'noinit', 'nomod']);
+
+/**
+ * `.options` KEYS THIS READER ACTUALLY HONOURS.
+ *
+ * `temp` and `tnom` are the thermal point, and `classifyShockleyThermal` reads
+ * them off the raw lines — so they are neither presentation nor unsupported.
+ * They are ACTED ON, and a loss would be a false report.
+ *
+ * I nearly got this wrong, and the way I got it wrong is worth recording. I
+ * measured `.options` keys across ADI2005 and Si7li, found `temp` in NEITHER,
+ * and concluded that treating every non-presentation key as a loss was free.
+ * **OUR OWN EXPORTER emits `.options temp=26.8267934421 tnom=26.8267934421` on
+ * every deck it writes**, and the round-trip tests re-import exactly that — so
+ * the change turned nine of them red. A true measurement over the wrong
+ * population: the foreign corpora are not the only decks this importer reads.
+ */
+const HONOURED_OPTION_KEYS = new Set(['temp', 'tnom']);
 
 /**
  * Cards that carry no circuit and are correctly ignored — listed so the
  * accounting can say "recognised and skipped" rather than "unknown".
  */
 const BENIGN_CARDS = new Set([
-  'end', 'ends', 'model', 'subckt', 'include', 'inc', 'lib', 'options', 'option',
-  'temp', 'width', 'print', 'plot', 'save', 'probe', 'ic', 'nodeset', 'global',
-  'param', 'title', 'control', 'endc', 'meas', 'measure', 'func', 'csparam',
+  'end', 'ends', 'model', 'subckt', 'include', 'inc', 'lib',
+  'temp', 'width', 'ic', 'nodeset', 'global',
+  'param', 'title', 'control', 'endc', 'func', 'csparam',
+  // `options`/`option` and the output-request cards are handled explicitly
+  // above: benign would put them in `ignored`, where a reader cannot tell a
+  // retained directive from one that fell through.
 ]);
 
 /**
@@ -179,7 +239,23 @@ function logicalLines(text, opts = {}) {
   for (let i = start; i < raw.length; i++) {
     let line = raw[i];
     if (/^\s*\*/.test(line)) continue;
-    line = line.replace(/\s+[$;].*$/, '');
+    // END-OF-LINE COMMENTS. The two characters do NOT follow the same rule,
+    // and treating them alike breaks real decks in one direction or the other.
+    // Measured against ngspice 44:
+    //
+    //   R1 a b 1k;nospace   -> b = 3.750000   ';' is a comment with no space
+    //   R1 a b;x  1k        -> "not a valid resistor instance line, ignored"
+    //                          -- so ';' cut the line mid-token, i.e. ANYWHERE
+    //   R1 a b$x 1k         -> node 'b$x' reads 3.750000
+    //                          -- so '$' INSIDE a token is an ordinary char
+    //
+    // So `;` ends the line wherever it appears, while `$` does so only at the
+    // start of a token. That second half is not pedantry: KiCad and Eagle
+    // exports in the corpus carry `U$1 MOUNTINGHOLE2.5` and node names like
+    // `Net-_J202-PadP$3_`, and a blanket `$` rule truncates the refdes and the
+    // net name. The `\s+` the old single rule required was wrong for `;`
+    // (23 corpus decks carry a tight one) and right for `$` by accident.
+    line = line.replace(/;.*$/, '').replace(/(^|\s)\$.*$/, '');
     if (!line.trim()) continue;
     if (/^\s*\+/.test(line)) {
       if (out.length) out[out.length - 1] += ' ' + line.replace(/^\s*\+/, '').trim();
@@ -223,18 +299,49 @@ function scalarValue(raw, constants) {
   }
 }
 
-function sourceValue(fields, allowSine = false, constants = new Map()) {
+const SOURCE_KEYWORDS = 'DC|AC|PULSE|SINE|SIN|EXP|PWL|SFFM|AM|TRNOISE|TRRANDOM|WAVEFILE|DISTOF1|DISTOF2';
+
+function splitSourceDescriptors(text, constants) {
+  const ac = new RegExp(
+    `(?:^|\\s)AC\\s+(\\S+)(?:\\s+(?!(?:${SOURCE_KEYWORDS})\\b)(\\S+))?(?=\\s|$)`, 'i').exec(text);
+  let acParams = null;
+  let remainder = text;
+  if (ac) {
+    const magnitude = scalarValue(ac[1], constants);
+    const phase = scalarValue(ac[2] ?? '0', constants);
+    if (!magnitude.ok || !phase.ok) return { error: 'AC descriptor is not a resolved finite magnitude/phase' };
+    acParams = magnitude.value < 0
+      ? { acMagnitude: -magnitude.value, acPhase: phase.value + 180 }
+      : { acMagnitude: magnitude.value, acPhase: phase.value };
+    remainder = (remainder.slice(0, ac.index) + ' ' + remainder.slice(ac.index + ac[0].length)).trim();
+  }
+  const dc = /(?:^|\s)DC\s+(\{[^{}]+\}|\S+)/i.exec(remainder);
+  let dcValue = null;
+  if (dc) {
+    const resolved = scalarValue(dc[1], constants);
+    if (!resolved.ok) return { error: `DC value ${JSON.stringify(dc[1])} is not a resolved finite constant: ${resolved.reason}` };
+    dcValue = resolved.value;
+    remainder = (remainder.slice(0, dc.index) + ' ' + remainder.slice(dc.index + dc[0].length)).trim();
+  }
+  return { remainder, acParams, dcValue };
+}
+
+function sourceValue(fields, allowWaveforms = false, constants = new Map()) {
   const joined = fields.join(' ');
   const externalWaveform = /\bwavefile\s*=/i.test(joined);
-  const sine = parseStrictSpiceSine(joined);
+  const descriptors = splitSourceDescriptors(joined, constants);
+  if (descriptors.error) return { value: null, note: null, externalWaveform,
+    scalarLoss: descriptors.error, acParams: null };
+  const { remainder: sourceText, acParams, dcValue } = descriptors;
+  const sine = parseStrictSpiceSine(sourceText);
   if (sine) {
-    if (sine.ok && allowSine) {
-      return { value: sine.params.volts, note: null, externalWaveform,
-        waveformParams: sine.params };
+    if (sine.ok && allowWaveforms) {
+      const bias = dcValue ?? sine.params.volts;
+      return { value: sine.params.volts, note: null, externalWaveform, acParams,
+        waveformParams: { ...sine.params, dcValue: bias,
+          dcBiasOrigin: dcValue === null ? 'waveform-initial-default' : 'explicit-dc' } };
     }
-    const reason = sine.ok
-      ? 'time-varying current sine sources are not modelled'
-      : sine.reason;
+    const reason = sine.reason;
     return {
       value: sine.ok ? sine.params.volts : sine.fallback,
       note: `SINE waveform is not modelled here — imported at its initial value ${sine.ok ? sine.params.volts : sine.fallback}.`,
@@ -242,15 +349,15 @@ function sourceValue(fields, allowSine = false, constants = new Map()) {
       waveformLoss: reason,
     };
   }
-  const pulse = parseStrictSpicePulse(joined);
+  const pulse = parseStrictSpicePulse(sourceText);
   if (pulse) {
-    if (pulse.ok && allowSine) {
-      return { value: pulse.params.volts, note: null, externalWaveform,
-        waveformParams: pulse.params };
+    if (pulse.ok && allowWaveforms) {
+      const bias = dcValue ?? pulse.params.volts;
+      return { value: pulse.params.volts, note: null, externalWaveform, acParams,
+        waveformParams: { ...pulse.params, dcValue: bias,
+          dcBiasOrigin: dcValue === null ? 'waveform-initial-default' : 'explicit-dc' } };
     }
-    const reason = pulse.ok
-      ? 'time-varying current PULSE sources are not modelled'
-      : pulse.reason;
+    const reason = pulse.reason;
     return {
       value: pulse.ok ? pulse.params.volts : pulse.fallback,
       note: `PULSE waveform is not modelled here — imported at its initial value ${pulse.ok ? pulse.params.volts : pulse.fallback}.`,
@@ -258,57 +365,21 @@ function sourceValue(fields, allowSine = false, constants = new Map()) {
       waveformLoss: reason,
     };
   }
-  // THE AC DESCRIPTOR IS NOT ALWAYS LAST, AND ITS PHASE IS A NUMBER.
-  //
-  // Anchoring this at end-of-line refused `VIN IN 0 AC 1m DC 1.8` — an ordinary
-  // SPICE source line — because `AC` then fell through to the scalar resolver
-  // as the DC expression and came back "undefined constant ac". Measured on
-  // ADI2005 v3, where that ordering is the house style for every small-signal
-  // bench. Matching anywhere and REMOVING the descriptor from the DC fields is
-  // what makes `DC 5 AC 1`, `AC 1 DC 5`, `AC 1` and a bare `5` all read right.
-  //
-  // The optional phase is anything that is NOT another source keyword. It
-  // cannot be "looks like a number": `AC {mag} {phase}` is legal and a brace
-  // expression starts with `{`. It cannot be "any token" either, or
-  // `AC 1m DC 1.8` swallows the `DC` and loses the bias. So the test is the
-  // keyword list, which is the thing that actually distinguishes them.
-  const SRC_KEYWORDS = 'DC|AC|PULSE|SINE|SIN|EXP|PWL|SFFM|AM|TRNOISE|TRRANDOM|WAVEFILE|DISTOF1|DISTOF2';
-  const ac = new RegExp(
-    `(?:^|\\s)AC\\s+(\\S+)(?:\\s+(?!(?:${SRC_KEYWORDS})\\b)(\\S+))?(?=\\s|$)`, 'i').exec(joined);
-  let acParams = null;
-  if (ac) {
-    const magnitude = scalarValue(ac[1], constants);
-    const phase = scalarValue(ac[2] ?? '0', constants);
-    if (!magnitude.ok || !phase.ok) {
-      return { value: null, note: null, externalWaveform,
-        scalarLoss: `AC descriptor is not a resolved finite magnitude/phase`, acParams: null };
+  for (const [name, parsed] of [['PWL', parseStrictSpicePwl(sourceText)],
+    ['EXP', parseStrictSpiceExp(sourceText)]]) {
+    if (!parsed) continue;
+    if (parsed.ok && allowWaveforms) {
+      const bias = dcValue ?? parsed.params.volts;
+      return { value: parsed.params.volts, note: null, externalWaveform, acParams,
+        waveformParams: { ...parsed.params, dcValue: bias,
+          dcBiasOrigin: dcValue === null ? 'waveform-initial-default' : 'explicit-dc' } };
     }
-    // A NEGATIVE AC MAGNITUDE IS LEGAL, AND IT MEANS PHASE + 180.
-    //
-    // Refusing it cost the whole card, DC BIAS INCLUDED, on every deck that
-    // writes a differential pair as `AC 0.5` and `AC -0.5` — 31 of the first
-    // 400 ADI2005 decks, which is the shape half the small-signal benches in
-    // that corpus use. The sign is a phase, not an error: ngspice reads
-    // `AC -0.5` as 0.5 at 180 degrees and simulates it, and there is nothing
-    // about it we cannot represent.
-    acParams = magnitude.value < 0
-      ? { acMagnitude: -magnitude.value, acPhase: phase.value + 180 }
-      : { acMagnitude: magnitude.value, acPhase: phase.value };
+    return { value: parsed.fallback,
+      note: `${name} waveform is not modelled here — imported at its initial value ${parsed.fallback}.`,
+      externalWaveform, waveformLoss: parsed.reason };
   }
-  const dcFields = ac
-    ? (joined.slice(0, ac.index) + ' ' + joined.slice(ac.index + ac[0].length)).trim()
-    : joined;
-  if (ac && !dcFields) return { value: 0, note: null, externalWaveform, acParams };
-  const dc = dcFields.match(/^DC\b\s+([\s\S]+)$/i);
-  if (dc) {
-    const expression = firstScalarExpression(dc[1]);
-    const resolved = scalarValue(expression, constants);
-    return resolved.ok
-      ? { value: resolved.value, note: null, externalWaveform, acParams }
-      : { value: null, note: null, externalWaveform,
-        scalarLoss: `DC value ${JSON.stringify(expression)} is not a resolved finite constant: ${resolved.reason}` };
-  }
-  const wave = joined.match(/\b(PULSE|SIN|SINE|EXP|PWL|SFFM|AM)\b\s*\(([^)]*)\)/i);
+  if (!sourceText) return { value: dcValue ?? 0, note: null, externalWaveform, acParams };
+  const wave = sourceText.match(/\b(PULSE|SIN|SINE|EXP|PWL|SFFM|AM)\b\s*\(([^)]*)\)/i);
   if (wave) {
     const nums = wave[2].trim().split(/[\s,]+/).map(parseSpiceValue);
     return {
@@ -316,13 +387,15 @@ function sourceValue(fields, allowSine = false, constants = new Map()) {
       note: `${wave[1].toUpperCase()} waveform is not modelled here — imported at its `
         + `initial value ${isFinite(nums[0]) ? nums[0] : 0}.`,
       externalWaveform,
+      waveformLoss: `${wave[1].toUpperCase()} time-varying waveform is not modelled`,
     };
   }
   // WAVEFILE already carries a dedicated semantic loss and its historical,
   // explicit zero fallback. Do not manufacture a second "constant" loss for
   // the filename token.
   if (externalWaveform) return { value: 0, note: null, externalWaveform };
-  const expression = firstScalarExpression(dcFields);
+  if (dcValue !== null) return { value: dcValue, note: null, externalWaveform, acParams };
+  const expression = firstScalarExpression(sourceText);
   const resolved = scalarValue(expression, constants);
   return resolved.ok
     ? { value: resolved.value, note: null, externalWaveform, acParams }
@@ -334,8 +407,9 @@ function sourceValue(fields, allowSine = false, constants = new Map()) {
  * Element letter -> how to build a part.
  *
  * `nodes` is how many node fields the card carries, `terminals` the engine
- * terminal each maps to IN CARD ORDER. A null entry means the node exists in
- * SPICE and not here (the MOSFET bulk) and is reported.
+ * terminal each maps to IN CARD ORDER. A null entry is resolved by the narrow
+ * MOS admission below: exact explicit-bulk PMOS gets a real `bulk` terminal;
+ * all other fourth-node shapes retain the established refusal/reporting path.
  */
 const ELEMENTS = {
   R: { nodes: 2, terminals: ['a', 'b'], kind: () => 'resistor', param: 'ohms' },
@@ -431,6 +505,13 @@ export function importSpice(text, opts = {}) {
   const unmapped = [];
   const losses = [];
   const ignored = [];
+  /**
+   * Directives kept verbatim and deliberately NOT executed. Shape agreed with
+   * the source-analysis lane so one reader serves both:
+   *   {source, kind: 'output-request'|'metadata', handling, consequence}
+   * Separate from `ignored`, which is for what had no consequence at all.
+   */
+  const retainedDirectives = [];
   const analyses = [];
   const models = new Map();     // name (lower) -> {type, params}
   const subckts = new Map();    // name (lower) -> {ports: string[], body: string[]}
@@ -589,6 +670,58 @@ export function importSpice(text, opts = {}) {
           + 'it defines is missing from this import.');
         continue;
       }
+      if (card === 'ic' || card === 'nodeset') {
+        ignored.push(line.trim());
+        losses.push({ ref: `.${card}`, kind: 'unsupported-initial-condition', source: line.trim(),
+          reason: `.${card} initial-state semantics are retained but not applied by the native transient adapter`,
+          fallback: null });
+        continue;
+      }
+      if (OUTPUT_REQUEST_CARDS.has(card)) {
+        // Kept, named, and not executed. `.four` in particular is a Fourier
+        // decomposition OF a transient result, so it is an output request and
+        // not an analysis; it used to be counted as one.
+        retainedDirectives.push({ source: line.trim(), kind: 'output-request',
+          handling: 'preserved-not-executed',
+          consequence: `.${card} is not executed by source-analysis` });
+        continue;
+      }
+      if (card === 'options' || card === 'option') {
+        // SPLIT BY KEY, because `.options` carries two unrelated things. A
+        // presentation key changes the REPORT; anything else changes the
+        // ANSWER, and `gshunt` changes it by adding a conductance from every
+        // node to the reference.
+        const keys = String(dot[2] || '').trim().split(/\s+/).filter(Boolean);
+        const keyOf = (kv) => String(kv).split('=')[0].toLowerCase();
+        const numeric = keys.filter(kv => !PRESENTATION_OPTION_KEYS.has(keyOf(kv))
+          && !HONOURED_OPTION_KEYS.has(keyOf(kv)));
+        const honoured = keys.filter(kv => HONOURED_OPTION_KEYS.has(keyOf(kv)));
+        if (!keys.length || numeric.length) {
+          // BOTH BUCKETS, like `.ic` and `.func` above: `ignored` records that
+          // the card was dropped and `losses` records what dropping it costs.
+          // Pushing only the loss left the card in no accounting bucket at all,
+          // which the importer's own "every card is accounted for" test caught
+          // on 103 corpus decks.
+          ignored.push(line.trim());
+          losses.push({ ref: `.${card}`, kind: 'unsupported-solver-option',
+            source: line.trim(),
+            reason: keys.length
+              ? `.${card} ${numeric.join(' ')} changes the solve, not the report, `
+                + 'and is not applied by this engine'
+              : `.${card} carries no keys`,
+            fallback: null });
+        } else if (honoured.length) {
+          retainedDirectives.push({ source: line.trim(), kind: 'metadata',
+            handling: 'honoured',
+            consequence: `.${card} ${honoured.join(' ')} sets the thermal point this `
+              + 'reader solves at' });
+        } else {
+          retainedDirectives.push({ source: line.trim(), kind: 'metadata',
+            handling: 'preserved-not-executed',
+            consequence: `.${card} ${keys.join(' ')} affects presentation only` });
+        }
+        continue;
+      }
       if (BENIGN_CARDS.has(card)) { ignored.push(line.trim()); continue; }
       ignored.push(line.trim());
       warnings.push(`Unrecognised control card, ignored: ${line.trim()}`);
@@ -664,6 +797,50 @@ export function importSpice(text, opts = {}) {
           libsource: 'nested subcircuit: flattening stops at one level' });
         continue;
       }
+      // A SUBCIRCUIT BODY CONTAINS DIRECTIVES, AND THEY ARE NOT ELEMENTS.
+      //
+      // Every `.model`/`.param`/`.ends` line in a body used to be pushed
+      // straight into the element stream, where the parser read the leading
+      // `.` as an element letter and reported `XU1..param: unknown element
+      // letter "."`. Measured on 3,000 library-resolved LTspice decks: 42,912
+      // of those, the largest single unmapped class in the corpus by a factor
+      // of four.
+      //
+      // The `.model` half was not merely mis-described, it was LOST -- and a
+      // vendor subcircuit declares its devices' models inside its own body.
+      // So the flattened diodes referenced a model nothing had registered,
+      // which is the same corpus's 21,930 `undeclared-diode-model` losses.
+      // One cause wearing two reasons, and the second one sent me looking for
+      // a library that already had everything.
+      const bodyDot = body.match(/^\.(\w+)\s*(.*)$/s);
+      if (bodyDot) {
+        const bodyCard = bodyDot[1].toLowerCase();
+        if (bodyCard === 'ends' || bodyCard === 'end') continue;
+        if (bodyCard === 'model') {
+          const decl = parseSpiceModelDeclaration(bodyDot[2]);
+          const modelName = (decl?.name || '').toLowerCase();
+          // SCOPED TO THE INSTANCE, not registered globally. A `.model` inside
+          // a subcircuit is local to it in SPICE, and two vendor subcircuits
+          // in one deck routinely both define `DX` with different numbers.
+          // Registering globally would let whichever flattened first decide
+          // the other's diode -- a wrong answer that no reason line would
+          // ever mention.
+          if (modelName) {
+            models.set(`${inst}.${modelName}`, { type: decl?.type || '',
+              params: decl?.params || {}, body: decl?.body || '',
+              source: body.trim(), fromSubcircuit: inst });
+            continue;
+          }
+        }
+        // Everything else a body can carry -- `.param`, `.func`, `.ic`,
+        // `.lib` -- is recorded as the loss it is, naming the construct and
+        // the instance, rather than as an element with a full stop for a name.
+        losses.push({ ref: `${inst}.${bodyDot[1]}`, kind: 'unsupported-subcircuit-directive',
+          source: body.trim(),
+          reason: `.${bodyCard} inside subcircuit "${subName}" is not applied when the body `
+            + 'is flattened', fallback: null });
+        continue;
+      }
       expanded.push({ line: body, prefix: `${inst}.`, portMap });
     }
   }
@@ -692,7 +869,27 @@ export function importSpice(text, opts = {}) {
   };
 
   for (const item of expanded) {
-    const fields = item.line.split(/\s+/);
+    // A CONTROLLED SOURCE MAY WRITE ITS CONTROLLING PAIR IN PARENTHESES.
+    //
+    // `GP1 98 12 (9,98) 1` is standard SPICE for "controlled by V(9,98)", and
+    // splitting on whitespace made `(9,98)` ONE field. The element then had two
+    // output nodes, one junk control field and a gain that never parsed: the
+    // part was created with EMPTY params -- a controlled source with no gain,
+    // still in the circuit.
+    //
+    // LTspice's OP213 macromodel builds its entire gain path that way, so its
+    // amplifier had no gain at all and the output ran to the negative rail:
+    // three corpus decks read V(OUT) = -14.93 V against ngspice's -0.002 V,
+    // and an internal node at 52.5 V on a +/-15 V supply.
+    //
+    // Only a PAIR of bare node names in parentheses is rewritten, and only on
+    // the four controlled-source letters. `E ... TABLE(...)` and a `B` source's
+    // expression also carry parentheses and must be left exactly alone, which
+    // the pattern's lack of operators and its single comma enforce.
+    const elementLine = /^[EFGH]/i.test(item.line)
+      ? item.line.replace(/\(\s*([^\s,()]+)\s*,\s*([^\s,()]+)\s*\)/g, '$1 $2')
+      : item.line;
+    const fields = elementLine.split(/\s+/);
     const name = fields[0];
     const letter = name[0].toUpperCase();
 
@@ -719,20 +916,125 @@ export function importSpice(text, opts = {}) {
         continue;
       }
     }
-    const rest = fields.slice(1 + nodeFields.length);
+    let rest = fields.slice(1 + nodeFields.length);
     const partId = item.prefix + name;
+
+    // A BJT CARD MAY CARRY A SUBSTRATE NODE, AND WE WERE READING IT AS THE MODEL.
+    //
+    // ngspice's BJT is `Q<name> nc nb ne [ns] mname`, and LTspice writes the
+    // optional substrate in brackets. Slicing a fixed three nodes therefore took
+    // the SUBSTRATE as the model name and the real model name became a trailing
+    // field nobody looked at:
+    //
+    //     Q1 N002 N003 N005 0 2N2222       ->  model "0"
+    //     Q1 3 5 4 [4] NP                  ->  model "[4]"
+    //
+    // Neither name is declared, so the part fell through to engine defaults --
+    // a piecewise knee with no IS, no BF and no VAF where the deck stated all
+    // three. SILENTLY: only a warning, no loss, so the deck was still judged.
+    // Measured on the Si7li no-aug corpus: 5,285 npn/pnp parts across 2,028
+    // decks read a node as their model this way, and it is the whole of 5 of
+    // that corpus's 17 remaining numeric disagreements (the 4N25/4N27/PC817
+    // optocouplers, whose phototransistor is written with the bracket form).
+    //
+    // THE DISCRIMINATOR IS THE MODEL TABLE, NOT THE TOKEN COUNT. A count cannot
+    // tell `Q1 c b e MOD area=2` from `Q1 c b e s MOD`, because both have five
+    // fields after the refdes. So: if what we took as the model is not declared
+    // and the NEXT field is, the field we took was a node. That is the same
+    // lookahead ngspice itself does, and it cannot fire when the three-node
+    // reading already resolves.
+    if (letter === 'Q' && rest.length >= 2) {
+      // No bracket-stripping here, deliberately: a mutation removing it changed
+      // nothing, which means it was either untested or dead. It is dead -- a
+      // bracketed token can never name a declared model, since `.model [4] ...`
+      // is not SPICE -- and it is worse than dead in one corner: with a model
+      // legally named `e` and a substrate written `[e]`, stripping would make
+      // this return TRUE and the substrate would be read as the model again.
+      // The substrate's own brackets are removed below, where they matter.
+      const asModel = (f) => {
+        const n = String(f || '').toLowerCase();
+        return models.has(item.prefix + n) || models.has(n);
+      };
+      // TWO DISCRIMINATORS, IN THIS ORDER, AND THE SECOND ONE IS WHY THE FIRST
+      // IS NOT ENOUGH.
+      //
+      // The model table settles the ambiguous cases (`Q1 c b e MOD 2` against
+      // `Q1 c b e s MOD`) but it can only fire when the real model is DECLARED.
+      // A deck naming a model no library supplied has neither token resolving,
+      // so the table says nothing and we kept reading the substrate as the
+      // model: 3,690 parts in the Si7li no-aug corpus still reported their
+      // model as "0" after the table rule alone.
+      //
+      // The fallback is syntactic and is the rule the LIBRARY RESOLVER already
+      // uses -- a bracketed token, or a bare integer, cannot be a model name --
+      // so the two sites now agree about the same card. It matters even when
+      // the model is unavailable: the part is defaulted either way, but the
+      // WARNING then names `2N2222` as the missing model instead of `0`, and a
+      // reason that names the wrong cause sends the next reader to the wrong
+      // fix. Note `1N4148` is not a bare integer, so a model name that merely
+      // starts with a digit is untouched.
+      const looksLikeNode = (f) => /^\[.*\]$|^\d+$/.test(String(f || ''));
+      if ((!asModel(rest[0]) && asModel(rest[1]))
+          || (!asModel(rest[0]) && looksLikeNode(rest[0]))) {
+        const substrate = rest[0].replace(/^\[|\]$/g, '');
+        rest = rest.slice(1);
+        // THE DROPPED SUBSTRATE IS A LOSS ONLY WHERE DROPPING IT CHANGES THE
+        // DEVICE, and I nearly shipped it as a blanket one.
+        //
+        // bw-board's BJT has three terminals, so a fourth node's
+        // collector-substrate junction is not solved. But the overwhelmingly
+        // common wiring -- every optocoupler in the LTspice library, e.g. the
+        // 4N25's `Q1 3 5 4 [4] NP` -- ties the substrate TO THE EMITTER, and
+        // there dropping it is a topological no-op: there is no separate node to
+        // lose. Reporting a loss anyway makes the oracle DECLINE those decks,
+        // and measured on Si7li no-aug the blanket version turned 6 visible
+        // numeric disagreements into declines while fixing none of them:
+        //
+        //     parse fix only                638 agree / 18 disagree
+        //     parse fix + blanket loss      638 agree / 12 disagree
+        //
+        // Six disagreements hidden, zero agreements gained. A refusal that
+        // improves the headline by making a defect invisible is worse than the
+        // defect, so the condition is the one the physics asks for: the node is
+        // only lost when it is a node we did not already have.
+        if (substrate.toLowerCase() !== String(nodeFields[2] || '').toLowerCase()) {
+          losses.push({ ref: partId, kind: 'dropped-bjt-substrate-node',
+            source: item.line,
+            reason: `the BJT names a fourth (substrate) node "${substrate}" distinct from `
+              + `its emitter "${nodeFields[2]}", and this engine's three-terminal BJT has `
+              + 'nowhere to connect it, so the collector-substrate junction is not '
+              + 'solved. (A substrate tied to the emitter is not reported: there is no '
+              + 'node to lose.)' });
+        }
+      }
+    }
 
     // Kind and params, refined by the .model card where there is one.
     let kind = spec.kind();
     const params = {};
+    let explicitPmosBulk = false;
+    let exactNpnAc = false;
     if (spec.model) {
       const modelName = (rest[0] || '').toLowerCase();
-      const model = models.get(modelName);
+      // Instance scope first, then the file's own. That is SPICE's rule: a
+      // `.model` declared inside a subcircuit shadows a global one of the same
+      // name for the devices in that body, while a body device naming a model
+      // the body does NOT declare still resolves to the deck's.
+      const model = models.get(item.prefix + modelName) ?? models.get(modelName);
       if (!model) {
         warnings.push(`${partId}: model "${rest[0] || '(none)'}" is not declared in this `
           + 'file — engine defaults are used for it.');
-        if (letter === 'D') losses.push({ ref: partId, kind: 'unsupported-diode-model',
-          source: item.line, reason: 'explicit declared D model with IS, N and RS is required' });
+        // THE REASON MUST NAME THIS CAUSE, not the other one. This said
+        // "explicit declared D model with IS, N and RS is required", which is
+        // the message for a model that IS declared and states the wrong
+        // fields. Here the model is not declared at all -- a different
+        // problem with a different remedy (supply the library), and 122 decks
+        // of a 2,000-deck Si7li sample carry it. A refusal whose reason names
+        // the wrong cause sends the next reader to the wrong fix; it sent me.
+        if (letter === 'D') losses.push({ ref: partId, kind: 'undeclared-diode-model',
+          source: item.line,
+          reason: `diode model "${rest[0] || '(none)'}" is not declared in this file `
+            + 'and no library supplied it' });
       } else {
         if (model.fromLibrary) {
           usedLibraries.push({ kind: 'model', name: modelName, ref: partId });
@@ -751,7 +1053,16 @@ export function importSpice(text, opts = {}) {
             // become a zener on the way out, which is the invariant
             // `test/spice-diode-op.test.js` holds.
             const bv = diodeBreakdown(model.params);
-            if (bv !== null) { kind = 'zener'; params.vz = bv; }
+            if (bv !== null) {
+              kind = 'zener';
+              params.vz = bv;
+              // AND THE CURRENT THAT VOLTAGE IS SPECIFIED AT. BV alone is a
+              // corner; BV with IBV is a point on an exponential, which is what
+              // ngspice solves and what bw-board's zener now stamps when the
+              // card states both. Absent, the engine keeps its piecewise knee.
+              const ibv = diodeBreakdownCurrent(model.params);
+              if (ibv !== null) params.ibv = ibv;
+            }
             // THE RAW MODEL IS KEPT EVEN ON SUCCESS. A DC solve is entitled to
             // ignore CJO/TT/VJ/M; an AC or transient consumer is not, and
             // without the text it could not tell that this part was admitted on
@@ -788,8 +1099,49 @@ export function importSpice(text, opts = {}) {
           }
         } else Object.assign(params, mapModel(letter, model, warnings, partId));
         if (letter === 'Q') kind = model.type === 'PNP' ? 'pnp' : 'npn';
-        if (letter === 'M') kind = model.type === 'PMOS' ? 'pmos' : 'nmos';
+        if (letter === 'M') {
+          // A VDMOS states its channel with a BARE `pchan` FLAG, not a type.
+          // `model.type` is VDMOS for both polarities, so keying off the type
+          // alone made every p-channel power MOSFET an n-channel one -- and
+          // silently, since a flag that is not a key=value pair leaves no
+          // parameter behind to notice missing.
+          const pchan = model.type === 'VDMOS' && /(^|\s)pchan(\s|\))/i.test(model.body || '');
+          kind = (model.type === 'PMOS' || pchan) ? 'pmos' : 'nmos';
+        }
         if (letter === 'J') kind = model.type === 'PJF' ? 'pmos' : 'nmos';
+        if (letter === 'Q' && model.type === 'NPN' && !model.ambiguous && rest.length === 1) {
+          // AC admission is stricter than the useful DC projection above. A
+          // richer Gummel-Poon card may share IS/BF/VAF/RB, but dropping IKF,
+          // capacitances or transit-time fields and then calling the reduced
+          // device exact makes a plausible wrong Bode plot. The selector is a
+          // root-level importer fact, not an electrical parameter presented to
+          // Board, and exists only when every authored key is represented by
+          // the static Ebers-Moll law.
+          const allowed = new Set(['is', 'bf', 'br', 'nf', 'vaf', 'rb',
+            'rc', 'ikf', 'cje', 'cjc', 'tf']);
+          const modelKeys = Object.keys(model.params || {}).sort();
+          const body = String(model.body || '').trim().replace(/^\(\s*|\s*\)$/g, '');
+          const fields = body ? body.split(/[\s,]+/).filter(Boolean) : [];
+          const bodyKeys = fields.map(field => /^([A-Za-z_][A-Za-z0-9_]*)=(\S+)$/.exec(field))
+            .map(match => match?.[1]?.toLowerCase()).sort();
+          const p = model.params;
+          const chargeKeys = ['cje', 'cjc', 'tf'];
+          const chargeCount = chargeKeys.filter(key =>
+            Object.prototype.hasOwnProperty.call(p, key)).length;
+          exactNpnAc = modelKeys.length === bodyKeys.length
+            && modelKeys.every((key, index) => key === bodyKeys[index] && allowed.has(key))
+            && Number.isFinite(p.is) && p.is > 0
+            && (p.bf === undefined || Number.isFinite(p.bf) && p.bf > 0)
+            && (p.br === undefined || Number.isFinite(p.br) && p.br > 0)
+            && (p.nf === undefined || Number.isFinite(p.nf) && p.nf > 0)
+            && (p.vaf === undefined || Number.isFinite(p.vaf) && p.vaf >= 0)
+            && (p.rb === undefined || Number.isFinite(p.rb) && p.rb >= 0)
+            && (p.rc === undefined || Number.isFinite(p.rc) && p.rc >= 0)
+            && (p.ikf === undefined || Number.isFinite(p.ikf) && p.ikf > 0)
+            && (chargeCount === 0 || chargeCount === chargeKeys.length)
+            && chargeKeys.every(key => p[key] === undefined
+              || Number.isFinite(p[key]) && p[key] >= 0);
+        }
         // A BLOCKED MODEL MUST NOT BECOME A ZENER. This line ran for every D
         // card with a BV, admitted or not, so a model refused for a DUPLICATE
         // FIELD still reached the engine wearing a kind nothing had validated
@@ -804,25 +1156,177 @@ export function importSpice(text, opts = {}) {
       // them. Only the two the solver reads are taken; anything else on the
       // line (AD, AS, PD, PS, M, NRD...) is geometry for a model we do not
       // have, and is recorded as a loss below rather than silently ignored.
+      const instanceFields = rest.slice(1);
       const instance = {};
-      for (const field of rest.slice(1)) {
+      let exactInstanceSyntax = true;
+      const seenInstanceFields = new Set();
+      for (const field of instanceFields) {
         const kv = /^([A-Za-z_]+)\s*=\s*(\S+)$/.exec(field);
-        if (!kv) continue;
+        if (!kv) { exactInstanceSyntax = false; continue; }
+        const key = kv[1].toLowerCase();
         const value = parseSpiceValue(kv[2]);
-        if (isFinite(value)) instance[kv[1].toLowerCase()] = value;
+        if (!isFinite(value) || seenInstanceFields.has(key)) exactInstanceSyntax = false;
+        else instance[key] = value;
+        seenInstanceFields.add(key);
       }
       if (letter === 'M') {
         if (instance.w !== undefined) params.w = instance.w;
         if (instance.l !== undefined) params.l = instance.l;
+        // WHERE THE BULK IS TIED DECIDES WHETHER THE BODY EFFECT APPLIES.
+        //
+        // The engine's nmos/pmos have three terminals, so the bulk node is not
+        // wired — but it is not irrelevant either: a stacked device (a
+        // cascode's upper transistor, a diff pair's tail-connected pair, a
+        // mirror's output leg) has its source above the bulk BY CONSTRUCTION,
+        // and its threshold is then not VTO at all.
+        //
+        // Three cases:
+        //   bulk is node 0             -> flagged; Vsb = V(source), and both
+        //                                 bulk junctions are live
+        //   bulk is the source's node  -> both junctions shorted, Vsb = 0
+        //   bulk is some THIRD node    -> left alone, not guessed
+        //
+        // THE FLAG MEANS "THE DECK TIED THE BULK TO THE REFERENCE", AND NOTHING
+        // MORE. It once also required the source to be somewhere else, which
+        // conflated two different needs: the body effect needs a source off the
+        // bulk, but the bulk-DRAIN junction does not. A deck with source and
+        // bulk both on node 0 and its drain pulled below ground got neither,
+        // and read -5.000000 V where ngspice reads -0.633322 -- the drain
+        // junction conducting 0.436 mA into a 10k pull-down. `mosVth` already
+        // returns VTO unchanged when Vsb works out to 0, so widening this
+        // costs the body effect nothing.
+        //
+        // Measured over ADI2005's 15,587 M cards: 11,950 bulk-on-source,
+        // 3,334 bulk-at-ground, 303 a third node. Of 311 numeric
+        // disagreements in a 2,000-deck sample, 107 are decks that state a
+        // non-zero GAMMA and have a source off the bulk.
+        const bulkField = nodeFields[3];
+        const srcField = nodeFields[2];
+        let bulkIsGround = false;
+        let bulkIsThirdNode = false;
+        if (bulkField !== undefined && srcField !== undefined) {
+          bulkIsGround = GROUND_NODES.has(String(bulkField).toLowerCase());
+          const sameNode = String(bulkField).toLowerCase() === String(srcField).toLowerCase();
+          if (bulkIsGround) params.bulkAtGround = true;
+          else if (sameNode) {
+            // BULK TIED TO THE SOURCE IS ALSO A KNOWN BULK POTENTIAL.
+            //
+            // It shorts the bulk-SOURCE junction, which is why this case needs
+            // no threshold shift. It does NOT short the bulk-DRAIN junction,
+            // and that one is live whenever the drain goes below the source.
+            //
+            // ADI2005 v3 row 4654 is the whole case in three lines:
+            //   M1 VDD VDD 3 3 NMOS   /   V1 3 0 5
+            // a diode-connected device whose source and bulk sit at 5 V with
+            // its drain/gate node dangling. ngspice reads VDD = 4.999380 V;
+            // move the bulk to node 0 and it reads 3.4e-19, which was our
+            // answer; crush IS to 1e-30 and it reads exactly 5.000000. The
+            // bulk-drain junction is the entire difference, and 6 of the 24
+            // remaining numeric disagreements in the full 12,471-deck corpus
+            // are this.
+            params.bulkOnSource = true;
+          } else {
+            bulkIsThirdNode = true;
+          }
+        }
         const unsupported = Object.keys(instance).filter(k => k !== 'w' && k !== 'l');
         if (unsupported.length) {
           warnings.push(`${partId}: instance parameter(s) ${unsupported.join(', ')} are not `
             + 'read by the engine\'s square-law MOSFET.');
         }
+        // PUBLIC DC ADMISSION IS AN EXACT SUBSET, NOT "EVERY MOS CARD WE CAN
+        // PARTLY READ".  The general importer deliberately retains useful
+        // fields from richer LEVEL/VDMOS cards, but Board.operatingPoint must
+        // only see its `level1` selector when the complete represented law is
+        // stated and no unrepresented token has been discarded.
+        // Missing model definitions are a normal partial-import case.  They
+        // retain `_model` for diagnostics; strict admission must simply stay
+        // off rather than dereferencing the absent card.
+        const modelKeys = Object.keys(model?.params || {}).sort();
+        const exactInstanceModelKeys = ['kp', 'lambda', 'level', 'vto'];
+        const exactBodyEffectModelKeys = ['gamma', 'kp', 'lambda', 'level', 'phi', 'vto'];
+        const exactDefaultGeometryKeys = ['kp', 'l', 'vto', 'w'];
+        const exactDefaultGeometryWithLevelKeys = ['kp', 'l', 'level', 'vto', 'w'];
+        const body = String(model?.body || '').trim().replace(/^\(\s*|\s*\)$/g, '');
+        const bodyFields = body ? body.split(/[\s,]+/).filter(Boolean) : [];
+        const bodyKeys = bodyFields.map(field => /^([A-Za-z_][A-Za-z0-9_]*)=(\S+)$/.exec(field))
+          .map(match => match?.[1]?.toLowerCase()).sort();
+        const sameKeys = keys => JSON.stringify(modelKeys) === JSON.stringify(keys)
+          && JSON.stringify(bodyKeys) === JSON.stringify(keys);
+        const exactInstanceLevel1Model = model && !model.ambiguous
+          && (model.type === 'NMOS' || model.type === 'PMOS')
+          && sameKeys(exactInstanceModelKeys)
+          && model.params.level === 1 && Number.isFinite(model.params.vto)
+          && ((model.type === 'NMOS' && model.params.vto > 0)
+            || (model.type === 'PMOS' && model.params.vto < 0))
+          && Number.isFinite(model.params.kp) && model.params.kp > 0
+          && Number.isFinite(model.params.lambda) && model.params.lambda >= 0;
+        const exactBodyEffectLevel1Model = model && !model.ambiguous
+          && model.type === 'NMOS' && sameKeys(exactBodyEffectModelKeys)
+          && model.params.level === 1 && Number.isFinite(model.params.vto)
+          && model.params.vto > 0
+          && Number.isFinite(model.params.kp) && model.params.kp > 0
+          && Number.isFinite(model.params.lambda) && model.params.lambda >= 0
+          && Number.isFinite(model.params.gamma) && model.params.gamma >= 0
+          && Number.isFinite(model.params.phi) && model.params.phi > 0;
+        const exactInstanceGeometry = exactInstanceSyntax && instanceFields.length === 2
+          && seenInstanceFields.size === 2 && seenInstanceFields.has('w') && seenInstanceFields.has('l')
+          && Number.isFinite(instance.w) && instance.w > 0
+          && Number.isFinite(instance.l) && instance.l > 0;
+        // ngspice also accepts W/L on a model card as defaults for every M
+        // instance that omits them.  Its public device state reports those
+        // authored values as @m[w]/@m[l].  Keep this narrower than a generic
+        // model-default system: the measured family has exactly KP/VTO/W/L,
+        // optional explicit LEVEL=1, and therefore the Level-1 defaults
+        // LEVEL=1 and LAMBDA=0.
+        const exactDefaultGeometryModel = model && !model.ambiguous && model.type === 'NMOS'
+          && (sameKeys(exactDefaultGeometryKeys) || sameKeys(exactDefaultGeometryWithLevelKeys))
+          && (model.params.level === undefined || model.params.level === 1)
+          && Number.isFinite(model.params.vto) && model.params.vto > 0
+          && Number.isFinite(model.params.kp) && model.params.kp > 0
+          && Number.isFinite(model.params.w) && model.params.w > 0
+          && Number.isFinite(model.params.l) && model.params.l > 0;
+        const exactDefaultGeometry = exactInstanceSyntax && instanceFields.length === 0;
+        if (exactDefaultGeometryModel && exactDefaultGeometry) {
+          params.w = model.params.w;
+          params.l = model.params.l;
+          params.lambda = 0;
+        }
+        if (((exactInstanceLevel1Model && exactInstanceGeometry)
+            || (exactDefaultGeometryModel && exactDefaultGeometry))
+            && model.type === 'NMOS' && bulkIsGround) {
+          params.model = 'level1';
+        } else if (exactBodyEffectLevel1Model && exactInstanceGeometry && bulkIsGround) {
+          // Board's DC Newton loop evaluates the authored body-effect law at
+          // the solved source/bulk bias. The AC adapter separately detects the
+          // GAMMA/PHI pair and refuses it until the engine stamps gmb.
+          params.model = 'level1';
+        } else if (exactInstanceLevel1Model && exactInstanceGeometry
+            && model.type === 'NMOS' && params.bulkOnSource === true) {
+          // This is the exact three-terminal Level-1 law too: the authored
+          // fourth node is the source node, so VSB is identically zero while
+          // the drain-bulk junction remains physically live.
+          params.model = 'level1';
+        } else if (exactInstanceLevel1Model && exactInstanceGeometry && model.type === 'PMOS'
+            && bulkIsThirdNode) {
+          // This is the only four-terminal MOS shape in the public contract.
+          // The landed engine stamps both bulk junctions and reports the real
+          // bulk current; retaining the terminal is therefore exact rather
+          // than an importer approximation.
+          params.model = 'level1';
+          explicitPmosBulk = true;
+        } else if (bulkIsThirdNode) {
+          // AND THE REFUSAL IS RECORDED IN THE PARAMS, not only in a warning.
+          // A richer or incomplete third-node MOS still has no qualified law.
+          params.bulkUnplaced = true;
+          warnings.push(`${partId}: bulk node "${bulkField}" is neither ground nor the source, `
+            + 'and this MOS model is outside the exact explicit-bulk PMOS domain, so this reader '
+            + 'will not guess a potential for it.');
+        }
       }
     } else if (spec.source) {
       const { value, note, externalWaveform, waveformParams, waveformLoss, scalarLoss, acParams } =
-        sourceValue(rest, spec.source === 'volts', constantParameters.values);
+        sourceValue(rest, true, constantParameters.values);
       if (Number.isFinite(value)) params[spec.source] = value;
       if (waveformParams) Object.assign(params, waveformParams);
       if (acParams) Object.assign(params, acParams);
@@ -867,12 +1371,23 @@ export function importSpice(text, opts = {}) {
         item.analysisBlocker = { type: 'semantic-import-loss', ref: partId,
           reason, source: item.line, fallback: null };
       }
+      if ((letter === 'C' || letter === 'L') && rest.length > 1) {
+        const reason = `${letter}-card initial/instance fields ${rest.slice(1).join(' ')} are not applied`;
+        warnings.push(`${partId}: ${reason}`);
+        losses.push({ ref: partId, kind: 'unsupported-reactive-instance-parameter',
+          source: item.line, reason, fallback: null });
+        item.analysisBlocker = { type: 'semantic-import-loss', ref: partId,
+          reason, source: item.line, fallback: null };
+      }
     }
 
     parts.push({ id: partId, kind, params, x: 0, y: 0,
+      ...(exactNpnAc ? { _acModelProfile: 'exact-static-ebers-moll-v2' } : {}),
+      ...(explicitPmosBulk ? { terminals: ['gate', 'drain', 'source', 'bulk'] } : {}),
       ...(item.analysisBlocker ? { analysisBlockers: [item.analysisBlocker] } : {}) });
 
     spec.terminals.forEach((terminal, i) => {
+      if (letter === 'M' && i === 3 && explicitPmosBulk) terminal = 'bulk';
       if (terminal === null) {
         if (nodeFields[i] !== undefined) {
           warnings.push(`${partId}: bulk node "${nodeFields[i]}" dropped — the engine's `
@@ -954,7 +1469,7 @@ export function importSpice(text, opts = {}) {
     terminals: members.map(m => ({ partId: m.partId, terminal: m.terminal })),
   }));
 
-  return { parts, wires, warnings, unmapped, losses, ignored, analyses, title, netNames,
+  return { parts, wires, warnings, unmapped, losses, ignored, retainedDirectives, analyses, title, netNames,
     usedLibraries };
 }
 
@@ -1005,6 +1520,32 @@ function mapModel(letter, model, warnings, partId) {
       out.is = p.is;
       if (isFinite(p.br)) out.br = p.br;
       if (isFinite(p.nf)) out.n = p.nf;
+      // FORWARD EARLY VOLTAGE. Carried only when the deck states it, because
+      // the engine's default is Infinity and a card without VAF must solve as
+      // it did before this line existed.
+      //
+      // Measured on ADI2005 v2 before the engine had the term: 59 of the 101
+      // real numeric disagreements were one circuit family, "BJT Emitter
+      // Follower", whose card declares VAF=100. Deleting VAF from the card made
+      // the two engines agree; deleting IKF or RC instead left the same 15.7 mV.
+      // So this one parameter was the whole of that family's error, and it was
+      // being parsed and then dropped on the floor here.
+      if (isFinite(p.vaf)) out.vaf = p.vaf;
+      // SPICE RB IS A REAL INTERNAL-BASE ELEMENT, NOT METADATA.
+      // Carry it only for the NPN law the engine now implements.  A negative
+      // finite value is retained deliberately so the strict engine boundary
+      // refuses it by name instead of silently solving the same card as RB=0.
+      if (model.type === 'NPN' && isFinite(p.rb)) out.rb = p.rb;
+      // These five fields are one measured ADI-v2 model family and now have
+      // exact engine laws. Retain finite invalid signs too: the strict Board
+      // boundary must refuse the authored value by name rather than silently
+      // solving the default device. CJE/CJC/TF completeness is likewise a
+      // Board contract; partial cards remain non-exact and refuse there.
+      if (model.type === 'NPN') {
+        for (const name of ['rc', 'ikf', 'cje', 'cjc', 'tf']) {
+          if (isFinite(p[name])) out[name] = p[name];
+        }
+      }
       out.model = 'shockley';
     }
   } else if (letter === 'M') {
@@ -1022,6 +1563,62 @@ function mapModel(letter, model, warnings, partId) {
     // the element line below rather than here.
     if (isFinite(p.vto)) out.vth = p.vto;
     if (isFinite(p.kp)) out.kp = p.kp;
+    // KP IS DERIVED FROM UO AND TOX WHEN THE CARD DOES NOT STATE IT.
+    //
+    // SPICE's transconductance parameter is `KP = UO * eps_ox / TOX`, and a
+    // card that gives the process numbers instead of KP is normal -- LTspice's
+    // own OP213 macromodel does it:
+    //
+    //     .MODEL MN NMOS(LEVEL=3 VTO=1.3 RS=0.3 RD=0.3 TOX=8.5E-8
+    //     + LD=1.48E-6 NSUB=1.53E16 UO=650 DELTA=10 ...)
+    //
+    // Without this the device reached the engine with NO kp and ran at the
+    // fallback transconductance, which is how three corpus decks put an op-amp
+    // output at the negative rail where ngspice keeps it near zero.
+    //
+    // CHECKED AGAINST ngspice, not against the algebra: `UO=650 TOX=8.5E-8`
+    // with no KP draws 5.28128e-4 A on a bench where the explicitly derived
+    // `KP=2.6417E-5` draws 5.28340e-4 A -- four figures, the residual being the
+    // rounding of the constant I typed into the comparison deck.
+    //
+    // UO is spelled with a LETTER O (SPICE's surface mobility) and is in
+    // cm^2/V*s, hence the 1e-4; `u0` with a zero is accepted too because decks
+    // write both. Measured: 1,519 Si7li no-aug decks have a MOS device running
+    // on the fallback, none of them agreeing, so nothing is at risk here.
+    else {
+      const uo = isFinite(p.uo) ? p.uo : (isFinite(p.u0) ? p.u0 : NaN);
+      const OXIDE_PERMITTIVITY = 3.9 * 8.854187817e-12;     // F/m, SiO2
+      if (isFinite(uo) && uo > 0 && isFinite(p.tox) && p.tox > 0) {
+        out.kp = Number(((uo * 1e-4) * OXIDE_PERMITTIVITY / p.tox).toPrecision(12));
+      }
+    }
+    // SUBTHRESHOLD CONDUCTION, from a VDMOS card's Ksubthres.
+    //
+    // LTspice's power MOSFETs are VDMOS models and ngspice gives those real
+    // subthreshold conduction; a level-1 card has none, and ngspice's level-1
+    // agrees -- measured, it sits flat at 5e-12 right up to threshold. So this
+    // is carried only where the card declares it, and bw-board's stamp treats
+    // its absence as the existing hard cutoff.
+    //
+    // Measured on the Si7li no-aug corpus: 1,245 decks resolve a library
+    // containing a VDMOS, 84 of them reach a comparison, and 80 of those 84
+    // ALREADY agreed without this -- because above threshold the two models are
+    // identical to five significant figures. The 4 that did not are biased near
+    // or below threshold, which is where an op-amp input stage lives.
+    if (isFinite(p.ksubthres)) out.ksubthres = p.ksubthres;
+    // BODY EFFECT. GAMMA defaults to 0 in SPICE, so a model that omits it gets
+    // no shift and this is identity. `bulkAtGround` is set at the ELEMENT below,
+    // because whether the body effect applies depends on where the deck tied
+    // the bulk, which is an instance fact and not a model one.
+    if (isFinite(p.gamma)) out.gamma = p.gamma;
+    if (isFinite(p.phi)) out.phi = p.phi;
+    // THE BULK JUNCTIONS' SATURATION CURRENT. A SPICE MOSFET's bulk carries a
+    // pn junction to the source and another to the drain, and `IS` is their
+    // saturation current (SPICE's default, 1e-14 A, is the engine's too). It is
+    // called `bulkIs` on the card because a part's bare `is` already means a
+    // diode's own junction, and one name for two junctions is how a value ends
+    // up with two meanings.
+    if (isFinite(p.is)) out.bulkIs = p.is;
     // CHANNEL-LENGTH MODULATION. Level-1 saturation is
     // Id = k*Vov^2*(1 + LAMBDA*Vds), which is LINEAR in Vds — so it needs no
     // second Newton variable: the engine stamps `lambda * Id` as the

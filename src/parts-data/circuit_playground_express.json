@@ -1,0 +1,132 @@
+{
+  "kind": "circuit_playground_express",
+  "w": 111.66,
+  "h": 111.12,
+  "terminals": [
+    {
+      "name": "a0",
+      "x": 95.82,
+      "y": 89.01,
+      "functions": [
+        "gpio",
+        "adc",
+        "dac"
+      ]
+    },
+    {
+      "name": "a1",
+      "x": 104.2,
+      "y": 73.35,
+      "functions": [
+        "gpio",
+        "adc",
+        "pwm",
+        "touch"
+      ]
+    },
+    {
+      "name": "a2",
+      "x": 104.2,
+      "y": 37.13,
+      "functions": [
+        "gpio",
+        "adc",
+        "pwm",
+        "touch"
+      ]
+    },
+    {
+      "name": "a3",
+      "x": 95.82,
+      "y": 21.48,
+      "functions": [
+        "gpio",
+        "adc",
+        "touch"
+      ]
+    },
+    {
+      "name": "a4",
+      "x": 15.84,
+      "y": 21.61,
+      "functions": [
+        "gpio",
+        "adc",
+        "touch",
+        "i2c_scl"
+      ]
+    },
+    {
+      "name": "a5",
+      "x": 7.45,
+      "y": 37.13,
+      "functions": [
+        "gpio",
+        "adc",
+        "touch",
+        "i2c_sda"
+      ]
+    },
+    {
+      "name": "a6",
+      "x": 7.59,
+      "y": 73.91,
+      "functions": [
+        "gpio",
+        "adc",
+        "touch",
+        "uart_rx"
+      ]
+    },
+    {
+      "name": "a7",
+      "x": 16.4,
+      "y": 89.57,
+      "functions": [
+        "gpio",
+        "adc",
+        "touch",
+        "uart_tx"
+      ]
+    },
+    {
+      "name": "3v3",
+      "x": 5.16,
+      "y": 55.24,
+      "functions": []
+    },
+    {
+      "name": "3v3_2",
+      "x": 82.11,
+      "y": 10.29,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 29.41,
+      "y": 10.43,
+      "functions": []
+    },
+    {
+      "name": "gnd2",
+      "x": 29.54,
+      "y": 100.2,
+      "functions": []
+    },
+    {
+      "name": "gnd3",
+      "x": 106.49,
+      "y": 55.24,
+      "functions": []
+    },
+    {
+      "name": "vout",
+      "x": 82.11,
+      "y": 100.19,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Adafruit Circuit Playground Express (ATSAMD21G18). Its 14 alligator pads: A0-A7, two 3.3V, three GND and VOUT. Terminal names are MakeCode's pins.A0..A7 lowercased. Functions follow pxt-adafruit 1.6.8's own pin typing (device.d.ts): A0 is the true-analog DAC output (AnalogOutPin) and is also the speaker line; A1/A2 are PwmPin; A3-A7 are AnalogInPin (the hardware can PWM more of them; MakeCode does not expose it); A1-A7 are capacitive touch; A4/A5 are I2C SCL/SDA and A6/A7 UART RX/TX. The second 3.3V pad is 3v3_2 and the GND pads gnd/gnd2/gnd3 (engine names). VOUT is USB 5V or the battery, whichever is higher, after the power-path diode. The ten NeoPixels, buttons A/B, slide switch, speaker, microphone, light/temperature/motion sensors and IR are part of the board, not pads. Face: pxt-adafruit's simulator board art (MIT), see ART-PROVENANCE.md; x/y are the pad centres in that art scaled by 0.62, which draws the board at 50.6 mm across — its real 2-inch (50.8 mm) diameter to within 0.3%.",
+  "footprint": null
+}

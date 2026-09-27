@@ -1,0 +1,277 @@
+/**
+ * VAF CROSSES BOTH BOUNDARIES OR IT IS WORSE THAN ABSENT.
+ *
+ * bw-board's Ebers-Moll stamp now carries a forward Early voltage, and that
+ * makes VAF a value with two crossings to get right:
+ *
+ *   IMPORT   a foreign deck's `.MODEL Q NPN (... VAF=100 ...)` must land on the
+ *            part, or the engine solves a transistor the deck did not describe.
+ *   EXPORT   a part carrying `vaf` must put `Vaf=` in the deck, or the deck
+ *            describes a transistor the engine does not solve.
+ *
+ * The second is not hypothetical symmetry -- it is the authored-beta defect
+ * with a different field name, and that one cost 59 mV on a real gallery
+ * circuit before `spice-export-authored-beta` caught it.
+ *
+ * WHAT THE PARAMETER IS WORTH, measured over all 7,410 ADI2005 v2 decks: 700
+ * declare VAF on a BJT, and with the engine term forced off 82 of those 700
+ * disagree with ngspice numerically while with it none do -- 82 converted, 0
+ * regressed. The family that led me to it is "BJT Emitter Follower", whose card
+ * declares VAF=100 against a 22 MOhm base feed: ngspice reads V(BASE) 1.022540,
+ * we read 1.006830, a 15.7 mV gap that is 30x the comparator's tolerance.
+ * Removal test: with VAF deleted from the card the two engines agree, with IKF
+ * or RC deleted instead the gap is unchanged. So one term was the whole of it.
+ *
+ * (The first count I quoted was 59, which was the BASE-node disagreements in
+ * the first 2,000 decks only. Measuring the whole release found 82.)
+ *
+ * THE CONTROL IS THE IMPORTANT TEST HERE. A deck with no VAF must import to a
+ * part with no `vaf`, and a part with no `vaf` must export the shared card --
+ * because the engine's default is Infinity, and any value that reaches the part
+ * by accident changes every answer that was already right.
+ */
+
+import './_setup.js';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { importSpice } from '../src/importers/spice.js';
+import { Circuit } from '../src/model/circuit.js';
+import { extractNetlist } from '../src/model/netlist.js';
+import { toSpice } from '../src/model/exporters/spice.js';
+import { runSourceAnalyses } from '../src/model/source-analysis.js';
+
+/** The corpus family, as a deck, with the model body the caller wants. */
+const followerDeck = (body) => [
+  '* BJT Emitter Follower',
+  `.MODEL Q2N2222 NPN (${body})`,
+  'V1 VCC 0 DC 5.0',
+  'RB1 VCC BASE 22Meg',
+  'RE1 EMIT 0 12k',
+  'Q1 VCC BASE EMIT Q2N2222',
+  '.op',
+].join('\n');
+
+const baseResistanceDeck = (rb = 10, type = 'NPN') => [
+  '* ADI-v5 base-resistance witness',
+  'VCC vcc 0 9',
+  'VIN in 0 3.3',
+  'RB in base 30k',
+  'RL vcc collector 8.2k',
+  'Q1 collector base 0 QN',
+  `.model QN ${type}(IS=3n BF=200 VAF=130 RB=${rb})`,
+  '.op',
+].join('\n');
+
+const bjtOf = (out) => out.parts.find(p => /^Q/i.test(String(p.id || '')));
+
+describe('the strict public NPN operating-point route', () => {
+  it('runs a complete imported card with signed source current and explicit model metadata', () => {
+    const imported = importSpice(followerDeck('IS=1e-14 BF=100 VAF=100'));
+    const [run] = runSourceAnalyses(imported, { format: 'spice' });
+    assert.equal(run.status, 'pass', JSON.stringify(run));
+    assert.equal(run.evidence, 'original-direct');
+    assert.ok(run.metadata.supportedKinds.includes('npn'));
+    assert.deepEqual(run.metadata.npn, {
+      model: 'explicit-ebers-moll',
+      requiredParameters: ['is', 'beta'],
+      optionalParameters: ['br', 'n', 'vaf', 'ikf', 'rb', 'rc', 'cje', 'cjc', 'tf'],
+      defaults: { br: 1, n: 1, vaf: 'infinite', ikf: 'infinite', rb: 0, rc: 0,
+        cje: 0, cjc: 0, tf: 0 }, thermalVoltage: 0.02585,
+      temperatureModel: 'fixed',
+    });
+    assert.ok(Math.abs(run.observables.nodes.find(node => node.id === 'n2').voltage
+      - 0.24137665774331285) < 1e-10);
+    assert.deepEqual(run.observables.sourceCurrents.map(row => row.id), ['s0']);
+    assert.ok(Math.abs(run.observables.sourceCurrents[0].current
+      + 2.0114721478609492e-5) < 1e-12);
+  });
+
+  it('carries NPN RB into the native solve and matches the ADI-v5 ngspice point', () => {
+    const imported = importSpice(baseResistanceDeck());
+    assert.equal(bjtOf(imported).params.rb, 10);
+    const [run] = runSourceAnalyses(imported, { format: 'spice' });
+    assert.equal(run.status, 'pass', JSON.stringify(run));
+    const nodes = Object.fromEntries(run.observables.nodes.map(row => [row.id, row.voltage]));
+    const currents = Object.fromEntries(run.observables.sourceCurrents.map(row => [row.id, row.current]));
+    // ngspice 42 at the engine's fixed thermal point; the board-level test
+    // independently invokes ngspice and also checks all three Q currents.
+    assert.ok(Math.abs(nodes.n2 - 0.3360314352877079) < 1e-8, nodes.n2);
+    assert.ok(Math.abs(nodes.n3 - 0.0678713457377379) < 1e-8, nodes.n3);
+    assert.ok(Math.abs(currents.s0 + 0.001089283982227105) < 1e-10, currents.s0);
+    assert.ok(Math.abs(currents.s1 + 0.00009879895215707642) < 1e-10, currents.s1);
+  });
+
+  it('keeps RB NPN-only and refuses a negative authored value by name', () => {
+    const pnp = importSpice(baseResistanceDeck(10, 'PNP'));
+    assert.equal('rb' in bjtOf(pnp).params, false);
+    const negative = importSpice(baseResistanceDeck(-10));
+    assert.equal(bjtOf(negative).params.rb, -10);
+    const [run] = runSourceAnalyses(negative, { format: 'spice' });
+    assert.equal(run.status, 'refused');
+    assert.match(run.detail, /rb must be a finite number greater than or equal to zero/);
+  });
+
+  it('keeps incomplete and retained-extra NPN semantics as named refusals', () => {
+    const incomplete = importSpice(followerDeck('BF=100 VAF=100'));
+    const [missingRun] = runSourceAnalyses(incomplete, { format: 'spice' });
+    assert.equal(missingRun.status, 'refused');
+    assert.match(missingRun.detail, /model must be explicitly 'shockley'/);
+
+    const extra = importSpice(followerDeck('IS=1e-14 BF=100 VAF=100'));
+    bjtOf(extra).params.ikr = 0.3;
+    const [extraRun] = runSourceAnalyses(extra, { format: 'spice' });
+    assert.equal(extraRun.status, 'refused');
+    assert.match(extraRun.detail, /parameter ikr is outside the explicit Ebers-Moll DC domain/);
+  });
+});
+
+describe('importing a forward Early voltage', () => {
+  it('lands VAF on the part, beside the Is that put it on the exponential path', () => {
+    const out = importSpice(followerDeck('IS=1e-14 BF=200 VAF=100 IKF=0.3 RC=0.3 CJC=8p'));
+    const q = bjtOf(out);
+    assert.equal(q.params.vaf, 100);
+    assert.equal(q.params.model, 'shockley', 'VAF is only meaningful on the Ebers-Moll path');
+    assert.equal(q.params.beta, 200);
+    assert.equal(q.params.is, 1e-14);
+  });
+
+  it('lands the complete measured RC/IKF/CJE/CJC/TF card on the exact AC profile', () => {
+    const out = importSpice(followerDeck(
+      'IS=3n BF=200 VAF=130 RB=10 RC=100 IKF=.01 CJE=20p CJC=10p TF=.5n'));
+    const q = bjtOf(out);
+    assert.deepEqual({ rc: q.params.rc, ikf: q.params.ikf, cje: q.params.cje,
+      cjc: q.params.cjc, tf: q.params.tf },
+    { rc: 100, ikf: 0.01, cje: 20e-12, cjc: 10e-12, tf: 0.5e-9 });
+    assert.equal(q._acModelProfile, 'exact-static-ebers-moll-v2');
+  });
+
+  it('keeps partial charge cards unqualified and lets Board refuse them by name', () => {
+    const out = importSpice(followerDeck('IS=3n BF=200 CJE=20p'));
+    const q = bjtOf(out);
+    assert.equal(q.params.cje, 20e-12);
+    assert.equal('_acModelProfile' in q, false);
+    const [run] = runSourceAnalyses(out, { format: 'spice' });
+    assert.equal(run.status, 'refused');
+    assert.match(run.detail, /cje, cjc and tf must be declared together/);
+  });
+
+  it('leaves `vaf` ABSENT when the card does not state it', () => {
+    // The control, and the whole safety property: the engine reads Infinity
+    // when the key is missing, so a key appearing by accident -- a default, a
+    // stale object, a `?? 100` -- would move every BJT answer in the corpus.
+    const out = importSpice(followerDeck('IS=1e-14 BF=200 IKF=0.3'));
+    const q = bjtOf(out);
+    assert.equal('vaf' in q.params, false, `no vaf key may appear: ${JSON.stringify(q.params)}`);
+  });
+
+  it('does not invent VAF for a piecewise card that states no Is', () => {
+    // No Is means no Ebers-Moll, and VAF on a piecewise knee is a parameter
+    // with nothing to multiply. It must not be carried into a model that
+    // cannot express it.
+    const out = importSpice(followerDeck('BF=200 VAF=100'));
+    const q = bjtOf(out);
+    assert.equal('vaf' in q.params, false, `${JSON.stringify(q.params)}`);
+    assert.notEqual(q.params.model, 'shockley');
+  });
+});
+
+describe('exporting a part that carries one', () => {
+  const deckFor = (params) => {
+    const c = Circuit.fromJSON({
+      parts: [
+        { id: 'v1', kind: 'vcc', params: {} },
+        { id: 'g1', kind: 'gnd', params: {} },
+        { id: 'rc1', kind: 'resistor', params: { ohms: 100 } },
+        { id: 'rb1', kind: 'resistor', params: { ohms: 10000 } },
+        { id: 'q1', kind: 'npn', params },
+      ],
+      wires: [
+        { id: 'w1', from: { part: 'v1', terminal: 'vcc' }, to: { part: 'rc1', terminal: 'a' } },
+        { id: 'w2', from: { part: 'rc1', terminal: 'b' }, to: { part: 'q1', terminal: 'collector' } },
+        { id: 'w3', from: { part: 'v1', terminal: 'vcc' }, to: { part: 'rb1', terminal: 'a' } },
+        { id: 'w4', from: { part: 'rb1', terminal: 'b' }, to: { part: 'q1', terminal: 'base' } },
+        { id: 'w5', from: { part: 'q1', terminal: 'emitter' }, to: { part: 'g1', terminal: 'gnd' } },
+      ],
+    });
+    return toSpice(extractNetlist(c), 'early voltage').text;
+  };
+
+  it('states Vaf in a per-part card, and says why', () => {
+    const text = deckFor({ beta: 100, is: 1e-14, vaf: 75 });
+    assert.match(text, /^\.model Q_Q1 NPN \([^)]*\bVaf=75\b[^)]*\)/m, text);
+    assert.match(text, /^Q1\s+\S+\s+\S+\s+\S+\s+Q_Q1\b/m, text);
+    assert.match(text, /authored Early voltage 75/, text);
+  });
+
+  it('carries an authored beta AND an authored VAF in the same card', () => {
+    // Two substitutions into one body: the earlier code path replaced Bf and
+    // returned, so a part with both would have exported only one of them.
+    const text = deckFor({ beta: 200, is: 1e-14, vaf: 100 });
+    const card = /^\.model Q_Q1 NPN \(([^)]*)\)/m.exec(text);
+    assert.ok(card, text);
+    assert.match(card[1], /Bf=200/);
+    assert.match(card[1], /Vaf=100/);
+  });
+
+  it('preserves a positive authored RB through export and re-import', () => {
+    const text = deckFor({ beta: 200, is: 3e-9, vaf: 130, rb: 10 });
+    const card = /^\.model Q_Q1 NPN \(([^)]*)\)/m.exec(text);
+    assert.ok(card, text);
+    assert.match(card[1], /\bRb=10\b/);
+    assert.match(text, /authored base resistance 10/);
+    assert.equal(bjtOf(importSpice(text)).params.rb, 10);
+  });
+
+  it('preserves RC/IKF and the complete charge triple through export and re-import', () => {
+    const params = { beta: 200, is: 3e-9, vaf: 130, rb: 10, rc: 100,
+      ikf: 0.01, cje: 20e-12, cjc: 10e-12, tf: 0.5e-9 };
+    const text = deckFor(params);
+    const card = /^\.model Q_Q1 NPN \(([^)]*)\)/m.exec(text);
+    assert.ok(card, text);
+    for (const field of ['Rc=100', 'Ikf=0.01', 'Cje=2e-11', 'Cjc=1e-11', 'Tf=5e-10']) {
+      assert.match(card[1], new RegExp(`\\b${field.replace('.', '\\.')}\\b`, 'i'), card[1]);
+    }
+    const roundTrip = bjtOf(importSpice(text));
+    for (const key of ['rc', 'ikf', 'cje', 'cjc', 'tf']) {
+      assert.equal(roundTrip.params[key], params[key], `${key} did not round-trip`);
+    }
+    assert.equal(roundTrip._acModelProfile, 'exact-static-ebers-moll-v2');
+  });
+
+  it('leaves omitted and explicit zero RB on the identical shared-card output', () => {
+    const plain = deckFor({ beta: 100, is: 1e-14 });
+    assert.equal(deckFor({ beta: 100, is: 1e-14, rb: 0 }), plain);
+    assert.doesNotMatch(plain, /\bRb\s*=/i);
+  });
+
+  it('leaves a part with no VAF on the shared card, with no Vaf field', () => {
+    // THE CONTROL. Every shipped circuit is this case, so this assertion is
+    // what says the feature costs nothing: no per-part model, no Vaf, and the
+    // library card still governs.
+    const text = deckFor({ beta: 100, is: 1e-14 });
+    assert.ok(!/\bVaf\s*=/i.test(text), `no Vaf may appear: ${text}`);
+    assert.ok(!/\.model Q_Q1\b/.test(text), `no per-part card is needed: ${text}`);
+    assert.match(text, /^\.model Q_DEFAULT NPN \(/m, text);
+  });
+
+  it('ignores a zero or negative authored VAF, as SPICE and the engine do', () => {
+    for (const vaf of [0, -12]) {
+      const text = deckFor({ beta: 100, is: 1e-14, vaf });
+      assert.ok(!/\bVaf\s*=/i.test(text), `VAF=${vaf} means no Early effect: ${text}`);
+    }
+  });
+});
+
+describe('the round trip', () => {
+  it('import then export puts the deck\'s own VAF back in the deck', () => {
+    // End to end over both crossings: a foreign deck's VAF must survive into
+    // the deck we hand the oracle, or the comparison is between two different
+    // devices no matter how good either engine is.
+    const out = importSpice(followerDeck('IS=1e-14 BF=200 VAF=100'));
+    const c = Circuit.fromJSON({ parts: out.parts, wires: out.wires });
+    const text = toSpice(extractNetlist(c), 'round trip').text;
+    const card = /^\.model \S+ NPN \(([^)]*)\)/m.exec(text);
+    assert.ok(card, text);
+    assert.match(card[1], /Vaf=100\b/, `the deck must state the VAF it came in with: ${text}`);
+  });
+});

@@ -1,0 +1,560 @@
+{
+ "kind": "tang_nano_20k",
+ "w": 60,
+ "h": 210,
+ "variants": null,
+ "_note": "Sipeed Tang Nano 20K \u2014 Gowin GW2AR-LV18QN88C8/I7 FPGA (20736 LUT4 / 15552 FF, 64 Mbit SDRAM in package). 2x20P 2.54 mm headers, 34 free IOs. Board 54.04 x 22.55 mm. 3.3 V logic \u2014 NOT 5 V tolerant, on every header bank (BANK0/1/3/5/6 all V_IO=3.3 V). The 5 V header pin is the USB rail and is an OUTPUT: powering a 5 V part from it is fine, returning 5 V into a bank pin destroys the FPGA. Pins 15-20 also drive onboard LED0-LED5 and pin 79 the WS2812, so those header pins are not electrically free. Terminal names are FPGA pin numbers (pXX), which is what a Gowin .cst constraint uses.",
+ "_pinmap_source": "Sipeed Tang Nano 20K Datasheet v1.3 (Shenzhen Sipeed Technology), Pinout page, cross-checked against the wiki pin-label diagram and litex-boards litex_boards/platforms/sipeed_tang_nano_20k.py (BSD-2-Clause, (c) 2023 Icenowy Zheng). Where LiteX disagrees the datasheet wins: LiteX places 75/76 on opposite headers and swaps 25/26, and the datasheet's own revision history records 'Fixed the issue of pinout picture', so the 2023 LiteX file predates that correction. Dimensions and the 2.54 mm pitch are from the datasheet's mechanical drawing; the 20.32 mm (8-pitch) header span is measured from it. Datasheet facts, no library copied. See docs/TANG-NANO-20K-PINOUT.md.",
+ "terminals": [
+  {
+   "name": "p73",
+   "x": 4,
+   "y": 14,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 73,
+   "_note": "IOT40A, BANK V_IO=3.3 V; board net HSPI_DIN2"
+  },
+  {
+   "name": "p74",
+   "x": 4,
+   "y": 22,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 74,
+   "_note": "IOT34B, BANK V_IO=3.3 V; board net HSPI_DIN3"
+  },
+  {
+   "name": "p75",
+   "x": 4,
+   "y": 30,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 75,
+   "_note": "IOT34A, BANK V_IO=3.3 V; board net HSPI_DIR"
+  },
+  {
+   "name": "p85",
+   "x": 4,
+   "y": 38,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 85,
+   "_note": "IOT4B, BANK V_IO=3.3 V; board net SDIO_D1"
+  },
+  {
+   "name": "p77",
+   "x": 4,
+   "y": 46,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 77,
+   "_note": "IOT30A, BANK V_IO=3.3 V; board net LCD_CLK"
+  },
+  {
+   "name": "p15",
+   "x": 4,
+   "y": 54,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 15,
+   "_note": "IOL47A, BANK V_IO=3.3 V; board net LED0 \u2014 also drives the onboard LED0 (active low)"
+  },
+  {
+   "name": "p16",
+   "x": 4,
+   "y": 62,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 16,
+   "_note": "IOL47B, BANK V_IO=3.3 V; board net LED1 \u2014 also drives the onboard LED1 (active low)"
+  },
+  {
+   "name": "p27",
+   "x": 4,
+   "y": 70,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 27,
+   "_note": "IOB8A, BANK V_IO=3.3 V; board net LCD_B7"
+  },
+  {
+   "name": "p28",
+   "x": 4,
+   "y": 78,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 28,
+   "_note": "IOB8B, BANK V_IO=3.3 V; board net LCD_B6"
+  },
+  {
+   "name": "p25",
+   "x": 4,
+   "y": 86,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 25,
+   "_note": "IOB6A, BANK V_IO=3.3 V; board net LCD_HS"
+  },
+  {
+   "name": "p26",
+   "x": 4,
+   "y": 94,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 26,
+   "_note": "IOB6B, BANK V_IO=3.3 V; board net LCD_VS"
+  },
+  {
+   "name": "p29",
+   "x": 4,
+   "y": 102,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 29,
+   "_note": "IOB14A, BANK V_IO=3.3 V; board net LCD_B5"
+  },
+  {
+   "name": "p30",
+   "x": 4,
+   "y": 110,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 30,
+   "_note": "IOB14B, BANK V_IO=3.3 V; board net LCD_B4"
+  },
+  {
+   "name": "p31",
+   "x": 4,
+   "y": 118,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 31,
+   "_note": "IOB29A, BANK V_IO=3.3 V; board net LCD_B3"
+  },
+  {
+   "name": "p17",
+   "x": 4,
+   "y": 126,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 17,
+   "_note": "IOL49A, BANK V_IO=3.3 V; board net LED2 \u2014 also drives the onboard LED2 (active low)"
+  },
+  {
+   "name": "p20",
+   "x": 4,
+   "y": 134,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 20,
+   "_note": "IOL51B, BANK V_IO=3.3 V; board net LED5 \u2014 also drives the onboard LED5 (active low)"
+  },
+  {
+   "name": "p19",
+   "x": 4,
+   "y": 142,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 19,
+   "_note": "IOL51A, BANK V_IO=3.3 V; board net LED4 \u2014 also drives the onboard LED4 (active low)"
+  },
+  {
+   "name": "p18",
+   "x": 4,
+   "y": 150,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 18,
+   "_note": "IOL49B, BANK V_IO=3.3 V; board net LED3 \u2014 also drives the onboard LED3 (active low)"
+  },
+  {
+   "name": "3v3_1",
+   "x": 4,
+   "y": 158,
+   "functions": [],
+   "_note": "3.3 V rail"
+  },
+  {
+   "name": "gnd_1",
+   "x": 4,
+   "y": 166,
+   "functions": [],
+   "_note": "ground"
+  },
+  {
+   "name": "5v",
+   "x": 56,
+   "y": 14,
+   "functions": [],
+   "_note": "5 V rail from USB \u2014 OUTPUT ONLY. Gowin I/O is NOT 5 V tolerant; powering a part from here is fine, feeding 5 V back into any bank pin is not."
+  },
+  {
+   "name": "gnd_2",
+   "x": 56,
+   "y": 22,
+   "functions": [],
+   "_note": "ground"
+  },
+  {
+   "name": "p76",
+   "x": 56,
+   "y": 30,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 76,
+   "_note": "IOT30B, BANK V_IO=3.3 V; board net HSPI_DAT"
+  },
+  {
+   "name": "p80",
+   "x": 56,
+   "y": 38,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 80,
+   "_note": "IOT27A, BANK V_IO=3.3 V; board net SDIO_D2"
+  },
+  {
+   "name": "p42",
+   "x": 56,
+   "y": 46,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 42,
+   "_note": "IOB42B, BANK V_IO=3.3 V; board net LCD_R3"
+  },
+  {
+   "name": "p41",
+   "x": 56,
+   "y": 54,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 41,
+   "_note": "IOB43A, BANK V_IO=3.3 V; board net LCD_R4"
+  },
+  {
+   "name": "p56",
+   "x": 56,
+   "y": 62,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 56,
+   "_note": "IOR36A, BANK V_IO=3.3 V; board net I2S_BCLK"
+  },
+  {
+   "name": "p54",
+   "x": 56,
+   "y": 70,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 54,
+   "_note": "IOR38A, BANK V_IO=3.3 V; board net I2S_DIN"
+  },
+  {
+   "name": "p51",
+   "x": 56,
+   "y": 78,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 51,
+   "_note": "IOR45A, BANK V_IO=3.3 V; board net PA_EN"
+  },
+  {
+   "name": "p48",
+   "x": 56,
+   "y": 86,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 48,
+   "_note": "IOR49B, BANK V_IO=3.3 V; board net LCD_DE"
+  },
+  {
+   "name": "p55",
+   "x": 56,
+   "y": 94,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 55,
+   "_note": "IOR36B, BANK V_IO=3.3 V; board net I2S_LRCK"
+  },
+  {
+   "name": "p49",
+   "x": 56,
+   "y": 102,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 49,
+   "_note": "IOR49A, BANK V_IO=3.3 V; board net LCD_BL"
+  },
+  {
+   "name": "p86",
+   "x": 56,
+   "y": 110,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 86,
+   "_note": "IOT4A, BANK V_IO=3.3 V; board net HSPI_CSN"
+  },
+  {
+   "name": "p79",
+   "x": 56,
+   "y": 118,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 79,
+   "_note": "IOT27B, BANK V_IO=3.3 V; board net 2812_DIN \u2014 also drives the onboard WS2812 RGB LED data in"
+  },
+  {
+   "name": "gnd_3",
+   "x": 56,
+   "y": 126,
+   "functions": [],
+   "_note": "ground"
+  },
+  {
+   "name": "3v3_2",
+   "x": 56,
+   "y": 134,
+   "functions": [],
+   "_note": "3.3 V rail"
+  },
+  {
+   "name": "p72",
+   "x": 56,
+   "y": 142,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 72,
+   "_note": "IOT40B, BANK V_IO=3.3 V; board net HSPI_DIN1"
+  },
+  {
+   "name": "p71",
+   "x": 56,
+   "y": 150,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 71,
+   "_note": "IOT44A, BANK V_IO=3.3 V; board net HSPI_DIN0"
+  },
+  {
+   "name": "p53",
+   "x": 56,
+   "y": 158,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 53,
+   "_note": "IOR38B, BANK V_IO=3.3 V; board net EDID_CLK"
+  },
+  {
+   "name": "p52",
+   "x": 56,
+   "y": 166,
+   "functions": [
+    "gpio"
+   ],
+   "_fpgaPin": 52,
+   "_note": "IOR39A, BANK V_IO=3.3 V; board net EDID_DAT"
+  }
+ ],
+ "footprint": {
+  "refTerminal": "p73",
+  "leads": {
+   "p73": {
+    "dRow": 0,
+    "dCol": 0
+   },
+   "p74": {
+    "dRow": 0,
+    "dCol": 1
+   },
+   "p75": {
+    "dRow": 0,
+    "dCol": 2
+   },
+   "p85": {
+    "dRow": 0,
+    "dCol": 3
+   },
+   "p77": {
+    "dRow": 0,
+    "dCol": 4
+   },
+   "p15": {
+    "dRow": 0,
+    "dCol": 5
+   },
+   "p16": {
+    "dRow": 0,
+    "dCol": 6
+   },
+   "p27": {
+    "dRow": 0,
+    "dCol": 7
+   },
+   "p28": {
+    "dRow": 0,
+    "dCol": 8
+   },
+   "p25": {
+    "dRow": 0,
+    "dCol": 9
+   },
+   "p26": {
+    "dRow": 0,
+    "dCol": 10
+   },
+   "p29": {
+    "dRow": 0,
+    "dCol": 11
+   },
+   "p30": {
+    "dRow": 0,
+    "dCol": 12
+   },
+   "p31": {
+    "dRow": 0,
+    "dCol": 13
+   },
+   "p17": {
+    "dRow": 0,
+    "dCol": 14
+   },
+   "p20": {
+    "dRow": 0,
+    "dCol": 15
+   },
+   "p19": {
+    "dRow": 0,
+    "dCol": 16
+   },
+   "p18": {
+    "dRow": 0,
+    "dCol": 17
+   },
+   "3v3_1": {
+    "dRow": 0,
+    "dCol": 18
+   },
+   "gnd_1": {
+    "dRow": 0,
+    "dCol": 19
+   },
+   "5v": {
+    "dRow": 5,
+    "dCol": 0
+   },
+   "gnd_2": {
+    "dRow": 5,
+    "dCol": 1
+   },
+   "p76": {
+    "dRow": 5,
+    "dCol": 2
+   },
+   "p80": {
+    "dRow": 5,
+    "dCol": 3
+   },
+   "p42": {
+    "dRow": 5,
+    "dCol": 4
+   },
+   "p41": {
+    "dRow": 5,
+    "dCol": 5
+   },
+   "p56": {
+    "dRow": 5,
+    "dCol": 6
+   },
+   "p54": {
+    "dRow": 5,
+    "dCol": 7
+   },
+   "p51": {
+    "dRow": 5,
+    "dCol": 8
+   },
+   "p48": {
+    "dRow": 5,
+    "dCol": 9
+   },
+   "p55": {
+    "dRow": 5,
+    "dCol": 10
+   },
+   "p49": {
+    "dRow": 5,
+    "dCol": 11
+   },
+   "p86": {
+    "dRow": 5,
+    "dCol": 12
+   },
+   "p79": {
+    "dRow": 5,
+    "dCol": 13
+   },
+   "gnd_3": {
+    "dRow": 5,
+    "dCol": 14
+   },
+   "3v3_2": {
+    "dRow": 5,
+    "dCol": 15
+   },
+   "p72": {
+    "dRow": 5,
+    "dCol": 16
+   },
+   "p71": {
+    "dRow": 5,
+    "dCol": 17
+   },
+   "p53": {
+    "dRow": 5,
+    "dCol": 18
+   },
+   "p52": {
+    "dRow": 5,
+    "dCol": 19
+   }
+  },
+  "straddlesGutter": true,
+  "rowSpanPitches": 8,
+  "minCols": 20
+ }
+}

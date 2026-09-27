@@ -107,7 +107,12 @@ describe('the published-deck corpus', { skip: HAVE ? false : `no corpus at ${COR
       try { text = readFileSync(f, 'utf-8'); } catch { continue; }
       const r = importSpice(text);
       const parts = r.parts.filter(p => p.kind !== 'gnd').length;
-      const accounted = parts + r.unmapped.length + r.ignored.length + r.analyses.length;
+      // `retainedDirectives` is its own accounting bucket: a directive kept
+      // verbatim and deliberately not executed is NOT in `ignored`, which is
+      // the point of the split. Omitting it here read 103 corpus decks as
+      // silently dropping cards the importer had in fact named.
+      const accounted = parts + r.unmapped.length + r.ignored.length + r.analyses.length
+        + (r.retainedDirectives || []).length;
       const cards = cardCount(text);
       if (accounted < cards) {
         short.push(`${path.relative(CORPUS, f)}: ${cards} cards in, ${accounted} accounted `

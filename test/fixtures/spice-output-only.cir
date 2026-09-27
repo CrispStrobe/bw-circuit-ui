@@ -1,0 +1,6 @@
+preserved output request without an analysis
+V1 out 0 1
+R1 out 0 1k
+.four 1k V(out)
+.options plotwinsize=0
+.end

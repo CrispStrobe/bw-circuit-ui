@@ -10,6 +10,15 @@
 | vite | 8.x | MIT | https://github.com/vitejs/vite (dev only) |
 | @vitejs/plugin-react | 6.x | MIT | https://github.com/vitejs/vite-plugin-react (dev only) |
 
+## Vendored artwork
+
+`src/parts-data/calliopemini.svg` and `src/parts-data/circuit_playground_express.svg`
+are copied Microsoft MakeCode simulator board art: pxt-calliope 3.0.30 and
+pxt-adafruit 1.6.8, both MIT, Copyright (c) Microsoft Corporation. Their
+licence text and the exact edits are in `src/parts-data/THIRD-PARTY.md` and
+`src/parts-data/ART-PROVENANCE.md`. The section below says no third-party
+*source* is vendored, and that stays true: these two files are artwork only.
+
 ## Format knowledge, not code
 
 No third-party source is vendored into this repository. Several file formats
@@ -29,6 +38,9 @@ copyrightable; an implementation is, and none was copied.
 | EasyEDA Standard PCB `.json` (docType 3) | — | the PCB half of the tilde DSL, decoded by MEASURING three real boards (2026-08-25); no reader's source was read while writing `src/importers/easyeda-pcb.js` |
 | EasyEDA Standard `.json` documents | — | the tilde-delimited shape DSL, decoded by MEASURING published schematics; no reader's source was read while writing `src/importers/easyeda.js` |
 | SPICE netlist language (ngspice manual, and every SPICE textbook) | the language is a published format, not a work | element letters and their node counts, node 0 as the reference, `.model`/`.subckt`/`.control`, and the scale factors. The suffix table was CHECKED against ngspice 42 rather than trusted: a deck of six resistors read back out of its own device table gives `1M` = 1e-3, `1MEG` = 1e6, `1MIL` = 2.54e-5, `1F` = 1e-15. No simulator's source was read while writing `src/importers/spice.js` or `src/model/exporters/spice.js` |
+| [asc_viewer](https://github.com/ahaensler/asc_viewer) | MIT | Cross-check of ASC instance-record ownership, ASY `SpiceOrder`, attribute defaults and mirror-before-rotation behavior. No Python source was copied. |
+| [Weave](https://github.com/senolgulgonul/weave) | MIT for Weave code; bundled elkjs is EPL-2.0 | Its independent ASC connectivity verifier was used as a differential oracle for endpoint-on-segment and crossing behavior, and its generated companion-ASY approach was reviewed. No embedded/vendor-derived symbol table or implementation code was copied. |
+| [ltspice2kicad](https://github.com/LBurnsUF/ltspice2kicad) | MIT | Cross-format ASC record vocabulary and generated-KiCad behavior were reviewed. Its known detached-pin output was treated as a counterexample, not an oracle; no Zig source was copied. |
 
 EasyEDA publishes no grammar, so that one was worked out from the files: field
 positions confirmed by counting, and the load-bearing claims (pins are already

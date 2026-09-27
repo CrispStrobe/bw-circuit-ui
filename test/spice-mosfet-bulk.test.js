@@ -1,0 +1,97 @@
+/**
+ * Importing a MOSFET's BULK node.
+ *
+ * Ordinary nmos/pmos parts have three terminals, so their implicit bulk is
+ * represented by wiring facts. The narrow exact Level-1 PMOS source-analysis
+ * path additionally preserves a genuine explicit fourth terminal; richer
+ * third-node MOS cards remain declined rather than guessed.
+ *
+ * Census over ADI2005 v3's 12,471 decks (15,587 M cards):
+ *   11,950 bulk on the source        -> no shift
+ *    3,334 bulk at ground, source not -> shift
+ *      303 bulk on a third node       -> declined, with a warning
+ */
+
+import './_setup.js';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { importSpice } from '../src/importers/spice.js';
+import { mosVth } from 'bw-board/mna.js';
+
+const deck = (mLine, model = '.model NM NMOS(VTO=1 KP=100u GAMMA=0.5 PHI=0.6)') =>
+  ['* bulk wiring', 'Vdd vdd 0 DC 10', 'Vg g 0 DC 4',
+    mLine, 'Rd vdd d 2k', 'Rs s 0 1k', model, '.op', '.end'].join('\n');
+
+const m1 = (r) => r.parts.find((p) => p.id === 'M1');
+
+describe('MOSFET bulk node', () => {
+  it('maps GAMMA and PHI off the model card', () => {
+    const r = importSpice(deck('M1 d g s 0 NM'));
+    assert.equal(m1(r).params.gamma, 0.5);
+    assert.equal(m1(r).params.phi, 0.6);
+  });
+
+  it('omits GAMMA when the model omits it — SPICE defaults it to zero', () => {
+    const r = importSpice(deck('M1 d g s 0 NM', '.model NM NMOS(VTO=1 KP=100u)'));
+    assert.equal(m1(r).params.gamma, undefined);
+    assert.equal(m1(r).params.phi, undefined);
+  });
+
+  it('flags bulk-at-ground when the SOURCE is somewhere else', () => {
+    const r = importSpice(deck('M1 d g s 0 NM'));
+    assert.equal(m1(r).params.bulkAtGround, true);
+    assert.deepEqual(r.unmapped, []);
+  });
+
+  it('does NOT flag it when the bulk is tied to the source', () => {
+    const r = importSpice(deck('M1 d g s s NM'));
+    assert.equal(m1(r).params.bulkAtGround, undefined);
+    assert.deepEqual(r.unmapped, []);
+  });
+
+  it('DOES flag it when source and bulk are both the reference', () => {
+    // This used to assert the opposite, and the opposite was wrong. The flag
+    // means one thing -- "the deck tied the bulk to the reference" -- and two
+    // consumers read it for two different purposes. The body effect wants a
+    // source off the bulk, and gets nothing here because Vsb works out to zero
+    // and `mosVth` is then identity. The bulk-DRAIN junction does not care where
+    // the source is, and a deck with source and bulk both on node 0 and its
+    // drain pulled below ground read a flat -5.000000 V against ngspice's
+    // -0.633322 while this flag was withheld.
+    const r = importSpice(deck('M1 d g gnd 0 NM'));
+    assert.equal(m1(r).params.bulkAtGround, true);
+  });
+
+  it('still gives a grounded-bulk part no THRESHOLD shift when Vsb is zero', () => {
+    // The half of the old assertion that was right: no body effect may be
+    // invented out of two spellings of the reference. That is now the engine's
+    // job via Vsb rather than the importer's via the flag, so it is checked
+    // where it actually happens.
+    const r = importSpice(deck('M1 d g gnd 0 NM'));
+    assert.equal(m1(r).params.gamma, 0.5, 'GAMMA still arrives from the model');
+    assert.equal(mosVth(m1(r).params, 0), 1,
+      'with Vsb = 0 the threshold is VTO whatever GAMMA says');
+  });
+
+  it('declines and WARNS when the bulk is a third node, rather than guessing', () => {
+    const r = importSpice(
+      ['* third-node bulk', 'Vdd vdd 0 DC 10', 'Vg g 0 DC 4', 'Vb bulk 0 DC -5',
+        'M1 d g s bulk NM', 'Rd vdd d 2k', 'Rs s 0 1k',
+        '.model NM NMOS(VTO=1 KP=100u GAMMA=0.5 PHI=0.6)', '.op', '.end'].join('\n'));
+    assert.equal(m1(r).params.bulkAtGround, undefined,
+      'a third-node bulk is not a grounded bulk');
+    assert.ok(r.warnings.some((w) => /bulk node/.test(w) && /M1/.test(w)),
+      `the decision must be reported: ${JSON.stringify(r.warnings)}`);
+  });
+
+  it('warns for a third-node bulk on a PMOS too, not only an NMOS', () => {
+    // Guard every reach, not the one you see: the bulk rule is on the M card,
+    // so it must not depend on which channel type the model declares.
+    const r = importSpice(
+      ['* pmos third-node bulk', 'Vdd vdd 0 DC 10', 'Vb bulk 0 DC 12',
+        'M1 d g s bulk PM', 'Rd d 0 2k', 'Vg g 0 DC 4', 'Vs vdd s 0',
+        '.model PM PMOS(VTO=-1 KP=100u GAMMA=0.5 PHI=0.6)', '.op', '.end'].join('\n'));
+    assert.ok(r.warnings.some((w) => /bulk node/.test(w) && /M1/.test(w)),
+      `the decision must be reported for a PMOS as well: ${JSON.stringify(r.warnings)}`);
+  });
+});

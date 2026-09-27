@@ -32,9 +32,18 @@ const CATEGORIES = [
       { kind: 'pi_pico', label: 'Raspberry Pi Pico', params: {}, color: '#7b2cbf',
         capability: 'RP2040 simulation',
         tooltip: 'RP2040 board — 3.3 V logic, GPIO simulation; do not connect 5 V signals' },
+      { kind: 'tang_nano_20k', label: 'Sipeed Tang Nano 20K', params: {}, color: '#b8860b',
+        capability: 'FPGA board part (no simulation yet)',
+        tooltip: 'Gowin GW2AR-18 FPGA board — 3.3 V banks, NOT 5 V tolerant; its 5V pin is a power output' },
       { kind: 'pybadge', label: 'Adafruit PyBadge', params: {}, color: '#512da8',
         capability: 'Arcade controls + wiring',
         tooltip: 'ATSAMD51J19 game board — 160×128 TFT, controls, Feather and STEMMA connections; 3.3 V only' },
+      { kind: 'calliopemini', label: 'Calliope mini', params: {}, color: '#044854',
+        capability: 'MakeCode pins',
+        tooltip: 'nRF51822 board — pads P0–P3 (P1/P2 analog, all four touch), 3V and GND; 3.3 V logic' },
+      { kind: 'circuit_playground_express', label: 'Circuit Playground Express', params: {}, color: '#111111',
+        capability: 'MakeCode pins',
+        tooltip: 'ATSAMD21 board — pads A0–A7 (A1–A7 touch, A0 true analog out), 3.3V, GND, VOUT; 3.3 V logic' },
     ],
   },
   {
@@ -219,7 +228,14 @@ const CATEGORIES = [
   {
     name: 'ICs',
     parts: [
-      { kind: 'opamp', label: 'Op-Amp', params: { gain: 100000 }, color: '#e67e22', tooltip: 'LM741 type' },
+      // NO `gain` HERE. A palette entry is a KIND, and an electrical value
+      // belongs on a part's card, not in a UI list. This carried 100000
+      // beside an engine default of 1e6, so every placed op-amp solved at a
+      // tenth of the open-loop gain the engine documents -- a restated
+      // default that had drifted from the thing it restated. An LM741's real
+      // 200000 is a PART fact and wants a card; the palette's generic op-amp
+      // takes the engine's own default by saying nothing.
+      { kind: 'opamp', label: 'Op-Amp', params: {}, color: '#e67e22', tooltip: 'generic op-amp' },
       { kind: '555', label: '555 Timer', params: {}, color: '#e74c3c' },
       { kind: 'shift_register', label: '74HC595', params: {}, color: '#8e44ad', tooltip: 'Shift register — 8 outputs' },
       { kind: 'ir_receiver', label: 'IR Receiver', params: {}, color: '#c0392b', tooltip: 'drawable — IrDA' },

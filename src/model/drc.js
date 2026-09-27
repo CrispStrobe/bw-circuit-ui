@@ -147,32 +147,91 @@ export function runDrc(circuit, board) {
     return null;
   };
 
-  // ── Rule 0: Pico GPIO voltage domain ──────────────────────────────
-  // RP2040 GPIO is 3.3 V only. VBUS is deliberately excluded: it is the
-  // board's 5 V USB input, not a GPIO signal.
-  for (const pico of parts.filter(p => p.kind === 'pi_pico')) {
-    for (const pin of pico.terminals || []) {
-      if (!/^gp\d+$/i.test(pin)) continue;
-      const netId = netOf(pico.id, pin);
-      if (!netId) continue;
-      const members = partsOnNet(netId);
-      const fiveVoltSource = members.some(member => {
-        const source = partById(member.part);
-        if (!source) return false;
-        if (source.kind === 'vcc' || /^(5v|vin)$/i.test(member.terminal)) return true;
-        return source.kind === 'vsource' && Number(source.params?.volts) > 3.6;
-      });
-      if (fiveVoltSource) {
-        warnings.push({
-          severity: 'danger',
-          rule: 'pico-voltage',
-          partId: pico.id,
-          pinId: pin,
-          explanation: `${pin.toUpperCase()} is an RP2040 GPIO at 3.3 V. ` +
-            'This connection reaches a 5 V-or-higher source and can damage the Pico.',
-          fix: 'Use the Pico 3V3 rail or a proper logic-level shifter; reserve VBUS for board power.',
+  // ── Rule 0: 3.3 V board I/O voltage domain ────────────────────────
+  // Boards whose I/O is 3.3 V only. The board's OWN 5 V rail pin is not a
+  // signal pin and is deliberately not treated as one — VBUS on the Pico,
+  // 5V on the Tang Nano. Both are legitimate power outputs; the damage comes
+  // from 5 V arriving BACK on an I/O pin, which is what this rule catches.
+  const THREE_VOLT_IO_BOARDS = [
+    {
+      kind: 'pi_pico',
+      ioPin: /^gp\d+$/i,
+      rule: 'pico-voltage',
+      what: 'an RP2040 GPIO at 3.3 V',
+      damage: 'can damage the Pico',
+      fix: 'Use the Pico 3V3 rail or a proper logic-level shifter; reserve VBUS for board power.',
+    },
+    {
+      // Gowin GW2AR-18: every header bank is V_IO = 3.3 V and NOT 5 V tolerant.
+      // Terminal names are FPGA pin numbers (p15, p73 …), matching a .cst constraint.
+      kind: 'tang_nano_20k',
+      ioPin: /^p\d+$/i,
+      rule: 'tang-nano-voltage',
+      what: 'a Gowin GW2AR-18 bank pin at 3.3 V',
+      damage: 'is not 5 V tolerant and will be damaged',
+      fix: 'Use the Tang Nano 3V3 rail or a level shifter. Its 5V pin is a power OUTPUT — '
+        + 'powering a 5 V part from it is fine, returning that part\'s 5 V signal to a bank pin is not.',
+    },
+  ];
+  for (const spec of THREE_VOLT_IO_BOARDS) {
+    for (const board3v3 of parts.filter(p => p.kind === spec.kind)) {
+      for (const pin of board3v3.terminals || []) {
+        if (!spec.ioPin.test(pin)) continue;
+        const netId = netOf(board3v3.id, pin);
+        if (!netId) continue;
+        const members = partsOnNet(netId);
+        const fiveVoltSource = members.some(member => {
+          const source = partById(member.part);
+          if (!source) return false;
+          if (source.kind === 'vcc' || /^(5v|vin)$/i.test(member.terminal)) return true;
+          return source.kind === 'vsource' && Number(source.params?.volts) > 3.6;
         });
+        if (fiveVoltSource) {
+          warnings.push({
+            severity: 'danger',
+            rule: spec.rule,
+            partId: board3v3.id,
+            pinId: pin,
+            explanation: `${pin.toUpperCase()} is ${spec.what}. `
+              + `This connection reaches a 5 V-or-higher source and ${spec.damage}.`,
+            fix: spec.fix,
+          });
+        }
       }
+    }
+  }
+
+  // ── Rule 0b: a board's power pins are not a simulated rail ────────
+  // PASSTHROUGH board kinds (tang_nano_20k and friends) are modelled as
+  // driveable terminals and NOTHING else. Their GND / 3V3 / 5V pins are places
+  // to wire, not sources: on real hardware they carry current, in here they are
+  // inert. Wiring an LED's cathode to the board's own GND is the obvious first
+  // move, and the loop then reads ~1e-10 A -- indistinguishable from a broken
+  // part, which is how a learner concludes the simulator is lying.
+  //
+  // A WARNING, not a danger: the bench is wrong, the circuit is not. And it
+  // fires only when something is actually wired to the pin, because warning
+  // about an unused pin would train people to ignore the check.
+  const INERT_RAIL_KINDS = new Set(['tang_nano_20k']);
+  const RAIL_TERMINAL = /^(gnd|3v3|5v)(_\d+)?$/i;
+  for (const part of parts.filter(p => INERT_RAIL_KINDS.has(p.kind))) {
+    for (const pin of part.terminals || []) {
+      if (!RAIL_TERMINAL.test(pin)) continue;
+      const netId = netOf(part.id, pin);
+      if (!netId) continue;
+      const others = partsOnNet(netId).filter(m => m.part !== part.id);
+      if (!others.length) continue;
+      warnings.push({
+        severity: 'warning',
+        rule: 'board-rail-not-simulated',
+        partId: part.id,
+        pinId: pin,
+        explanation: `${pin.toUpperCase()} is a power pin on the ${part.kind} board. `
+          + 'The simulation models this board as pins only, so its rails carry nothing — '
+          + 'a loop returning through here reads as an open circuit, not as ground.',
+        fix: 'Wire the return leg to a GND part (and a supply to a VCC part) for the '
+          + 'simulated bench. On the real board the pin is fine.',
+      });
     }
   }
 

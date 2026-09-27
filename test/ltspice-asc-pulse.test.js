@@ -11,6 +11,7 @@ const PULSE_VALUE = 'PULSE(0 5 1u 2n 3n 18u 20u)';
 const PARAMS = {
   volts: 0, wave: 'spice-pulse', v1: 0, v2: 5,
   td: 1e-6, tr: 2e-9, tf: 3e-9, pw: 18e-6, per: 20e-6,
+  dcValue: 0, dcBiasOrigin: 'waveform-initial-default',
 };
 
 const ASC_BENCH = `Version 4
@@ -126,12 +127,12 @@ describe('strict seven-argument voltage PULSE import and export', () => {
     const currentAsc = ASC_BENCH
       .replace('SYMBOL voltage 0 0 R0', 'SYMBOL current 0 16 R0');
     const current = importCircuit('ltspice-asc', currentAsc);
-    assert.equal(current.losses.length, 1);
-    assert.match(current.losses[0].reason, /current PULSE/);
+    assert.deepEqual(current.losses, []);
+    assert.equal(current.parts.find(part => part.id === 'V1').params.wave, 'spice-pulse');
 
     const currentSpice = importCircuit('spice', `* current pulse\nI1 n 0 ${PULSE_VALUE}\nR1 n 0 1k\n.end\n`);
-    assert.equal(currentSpice.losses.length, 1);
-    assert.match(currentSpice.losses[0].reason, /current PULSE/);
+    assert.deepEqual(currentSpice.losses, []);
+    assert.equal(currentSpice.parts.find(part => part.id === 'I1').params.wave, 'spice-pulse');
 
     const valid = importCircuit('ltspice-asc', ASC_BENCH);
     for (const change of [

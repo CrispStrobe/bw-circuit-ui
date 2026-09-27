@@ -611,6 +611,7 @@ describe('the reader states what it will not do', () => {
     assert.deepEqual(v.params, {
       volts: 0, wave: 'spice-pulse', v1: 0, v2: 5, td: 0,
       tr: 1e-9, tf: 1e-9, pw: 1e-3, per: 2e-3,
+      dcValue: 0, dcBiasOrigin: 'waveform-initial-default',
     });
     assert.ok(!r.warnings.some(w => /V1.*PULSE.*not modelled/.test(w)));
     assert.deepEqual(r.losses, []);
@@ -659,11 +660,18 @@ describe('the reader states what it will not do', () => {
       + '.end\n';
     const r = importSpice(text);
     const cards = text.trim().split('\n').slice(1).length;
+    // `retainedDirectives` IS AN ACCOUNTING BUCKET. A directive kept verbatim
+    // and deliberately not executed is not in `ignored` -- that is the whole
+    // point of the split -- so it has to be counted here or this check reads a
+    // deliberate retention as a silent drop. It caught exactly that when the
+    // bucket was introduced.
     const accounted = r.parts.filter(p => p.kind !== 'gnd').length
-      + r.unmapped.length + r.ignored.length + r.analyses.length;
+      + r.unmapped.length + r.ignored.length + r.analyses.length
+      + (r.retainedDirectives || []).length;
     assert.equal(accounted, cards,
       `${cards} cards in, ${accounted} accounted for: parts=${r.parts.length} `
-      + `unmapped=${r.unmapped.length} ignored=${r.ignored.length} analyses=${r.analyses.length}`);
+      + `unmapped=${r.unmapped.length} ignored=${r.ignored.length} `
+      + `analyses=${r.analyses.length} retained=${(r.retainedDirectives || []).length}`);
   });
 });
 

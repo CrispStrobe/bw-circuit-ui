@@ -98,6 +98,23 @@ export function formatSpiceValue(val) {
  * factor are units and are ignored, which is why `4.7kOhm`, `100nF` and
  * `1uF` all work.
  */
+/**
+ * The micro sign, in both spellings, normalised to `U` BEFORE the scale lookup.
+ *
+ * Two distinct codepoints reach us: U+00B5 MICRO SIGN, which is what CP1252
+ * bytes decode to and what LTspice's own vendor models are written with
+ * (`I2 3 N002 55\u00b5`), and U+03BC GREEK SMALL LETTER MU, which UTF-8 editors
+ * emit. Neither is `[A-Za-z]`, so before this both fell out of the regex as a
+ * NON-NUMBER and every value carrying one became a named semantic loss.
+ *
+ * Normalising rather than adding a scale-table row is deliberate: U+00B5
+ * upper-cases to U+039C GREEK CAPITAL MU, not to `M`, so a table row spelled
+ * with the lower-case sign would be dead code after `.toUpperCase()` -- and one
+ * spelled with U+039C would be a second row meaning micro sitting beside `M`
+ * meaning milli, which is the 1M/1MEG trap again with a worse disguise.
+ */
+const MICRO_SIGN = /[\u00b5\u03bc]/g;
+
 const SPICE_SCALES = [
   ['MEG', 1e6], ['MIL', 25.4e-6],
   ['T', 1e12], ['G', 1e9], ['K', 1e3],
@@ -113,10 +130,10 @@ const SPICE_SCALES = [
 export function parseSpiceValue(str) {
   const s = String(str).trim();
   // number, optional exponent, then whatever letters follow
-  const m = s.match(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*([A-Za-z]*)$/);
+  const m = s.match(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*([A-Za-z\u00b5\u03bc]*)$/);
   if (!m) return NaN;
   const num = parseFloat(m[1]);
-  const tail = m[2].toUpperCase();
+  const tail = MICRO_SIGN.test(m[2]) ? m[2].replace(MICRO_SIGN, 'U').toUpperCase() : m[2].toUpperCase();
   if (!tail) return num;
   for (const [suffix, mult] of SPICE_SCALES) {
     // Round to 12 significant digits: 100 * 1e-9 is 1.0000000000000001e-7 in

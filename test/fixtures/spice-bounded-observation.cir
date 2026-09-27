@@ -1,0 +1,6 @@
+bounded source observation fixture
+V1 in 0 PWL(0 0 500n 1 2u 2)
+R1 in 0 1k
+C1 in 0 1n
+.tran 1n 3u UIC
+.end
