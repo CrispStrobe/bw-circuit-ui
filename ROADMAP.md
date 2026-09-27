@@ -566,6 +566,15 @@ landed slice, rerun this same fixed report and
 record both structural deltas and the smaller subset that becomes numerically
 judgeable; the measurements, not this initial ordering, choose the next part.
 
+Exact post-implementation replay at CUI `005815ec` confirms all 126 OP07
+instances across 79 rows mapped and all 126 received that blocker. Sixty-three
+rows have no other unmapped symbol, while zero are newly clean. Whole-document
+pin completeness rises 2,195 -> 2,262 (+67); lossless projections stay 119,
+numeric eligibility stays 76, and declared-analysis eligibility stays 83.
+Paired completeness/components/net partitions fall 68/51/67 because paired
+SPICE still names LT1001 where the ASC requests OP07. Those declines are the
+expected representation mismatch and must not be smoothed into a match.
+
 The next-source preflight already found a load-bearing refusal: LTspice 26.0.2's
 `ADP151-2.85.asy` is byte-identical to `ADP151-1.1.asy` (SHA-256
 `552c7d43e0e1940a680018c37d766dd963a7b5351f53bf48de4bd275ff15718a`)
