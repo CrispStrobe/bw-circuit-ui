@@ -826,13 +826,14 @@ export class Circuit {
    * this proxy and therefore keeps the engine's interactive default.
    *
    * @param {string} profileId
+   * @param {{maxStepSec?: number}} [options]
    * @returns {object} immutable engine-owned profile metadata
    */
-  configureTransientAnalysis(profileId) {
+  configureTransientAnalysis(profileId, options = undefined) {
     if (!this.board || typeof this.board.configureTransientAnalysis !== 'function') {
       throw new Error('configureTransientAnalysis: the injected bw-board engine does not provide transient profiles');
     }
-    return this.board.configureTransientAnalysis(profileId);
+    return this.board.configureTransientAnalysis(profileId, options);
   }
 
   /**

@@ -4,8 +4,7 @@ import { spawnSync } from 'node:child_process';
 import './_setup.js';
 import { BoardImpl } from 'bw-board/board.js';
 import { importCircuit } from '../src/importers/index.js';
-import { runSourceAnalyses, sourceAnalysisDescriptors,
-  transientExecutionTimes } from '../src/model/source-analysis.js';
+import { runSourceAnalyses, sourceAnalysisDescriptors } from '../src/model/source-analysis.js';
 
 const imported = text => importCircuit('spice', text);
 
@@ -359,7 +358,6 @@ R1 in 0 1k
     assert.ok(!fractional.conditions.sourceBreakpoints.publiclyRepresentableNanoseconds.includes(1),
       'a 0.5 ns corner must not become a fabricated 1 ns observation');
 
-    assert.deepEqual(transientExecutionTimes([0, 10], 10, 2, 6), [0, 2, 4, 6, 8, 10]);
     const tooFine = runSourceAnalyses(imported(`tmax is an integration constraint
 V1 in 0 1
 R1 in 0 1k
@@ -368,20 +366,10 @@ C1 in 0 1n
 .end
 `), { format: 'spice', transientProfile: 'precision-v1' })[0];
     assert.equal(tooFine.status, 'pass');
-    assert.equal(tooFine.conditions.tmaxHandling, 'enforced-by-bounded-integration-checkpoints');
-    assert.deepEqual(tooFine.conditions.integrationCheckpoints,
-      { count: 6, observations: 2, outputPointsInvented: false });
+    assert.equal(tooFine.conditions.tmaxHandling, 'enforced-by-bounded-engine-step');
+    assert.deepEqual(tooFine.conditions.integrationStepBound,
+      { maxStepSec: 2e-9, externalAdvances: 2, outputPointsInvented: false });
     assert.deepEqual(tooFine.observables.axis.values, [0, 10e-9]);
-
-    const overBudget = runSourceAnalyses(imported(`tmax checkpoint budget
-V1 in 0 1
-R1 in 0 1k
-C1 in 0 1n
-.tran 0 10u 0 1n UIC
-.end
-`), { format: 'spice', transientProfile: 'precision-v1' })[0];
-    assert.deepEqual([overBudget.status, overBudget.classification, overBudget.code],
-      ['not-run', 'integration-gap', 'analysis-work-budget-exceeded']);
   });
 
   it('runs source-declared single and nested DC sweeps as fresh static operating points', () => {
