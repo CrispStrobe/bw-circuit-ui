@@ -184,41 +184,69 @@ function genYL39() {
 // the board's central lesson, not a modelling error.
 
 function genPrechinA2() {
+  // EVERY PART CARRIES COORDINATES, AND THEY FOLLOW THE REAL BOARD. They did
+  // not: all 29 were left at the part() helper's x=0, y=0 default, so the whole
+  // board rendered as one pile at the origin. Ordinary examples have 0 parts at
+  // the origin; this one had 29 of 29. The corpus invariant surfaced it as
+  // "pot_a0 covers mcu by 60.0x52.0", which is what a stack of 29 parts looks
+  // like through a gate that only inspects potentiometer controls.
+  //
+  // The arrangement is taken from the manufacturer's own annotated board
+  // drawing for the PRECHIN 普中51-单核-A2 (51MCUD), whose numbered legend names
+  // each module. Read left to right, the board is:
+  //
+  //   LEFT    buzzer (2), DS1302 (3), the ADC/DAC block (4: XPT2046 + LM358)
+  //           with its trimmer, NTC and LDR, EEPROM (23), and the power corner
+  //           (6 switch, 9 ASM1117, 10 output terminal)
+  //   CENTRE  the STC socket (13) with the 8-digit dynamic display (22) above
+  //           it, and along the bottom edge the four independent keys (11),
+  //           NRF24L01 header (12), IR receiver (15) and DS18B20 (14)
+  //   RIGHT   LCD1602/12864 headers (21/20), the 8x8 matrix (18) with its
+  //           74HC595 (19), the LED bank (17), and the 4x4 keypad (16)
+  //
+  // Positions are that topology, not a pixel tracing: the drawing packs the
+  // analogue block far tighter than this renderer draws parts, so the cluster is
+  // spread enough that nothing overlaps while keeping its place on the board and
+  // its neighbours. A learner holding the board should recognise where things
+  // are; nobody should measure it.
   const parts = [
-    part('vcc1', 'vcc'),
-    part('gnd1', 'gnd'),
-    part('mcu', 'stc_mcu'),
+    // Power corner, bottom left
+    part('vcc1', 'vcc', {}, 60, 980),
+    part('gnd1', 'gnd', {}, 260, 980),
 
-    // 8×8 LED matrix: one 74HC595 for rows, P0 for columns
-    part('sr1', '74hc595'),   // row driver
-    part('matrix', 'matrix8x8', { colActiveHigh: false, rowActiveHigh: true }),
-    part('j24', 'slide_switch', { position: 'b' }), // B=OE high: LCD position
+    part('mcu', 'stc_mcu', {}, 700, 470),
 
-    // Direct-wired 4×4 keypad
-    part('keypad', 'keypad_4x4'),
+    // 8x8 LED matrix (18) and its row driver (19), right
+    part('sr1', '74hc595', {}, 1000, 330),   // row driver
+    part('matrix', 'matrix8x8', { colActiveHigh: false, rowActiveHigh: true }, 1280, 120),
+    part('j24', 'slide_switch', { position: 'b' }, 1000, 120), // B=OE high: LCD position
 
-    // Peripherals
-    part('rtc', 'ds1302'),
-    part('temp', 'ds18b20'),
-    part('eeprom', 'at24c02'),
-    part('lcd', 'char_lcd'),
-    part('ir', 'ir_receiver'),
-    part('buz', 'buzzer'),
-    part('adc', 'xpt2046', { vbatDivider: false }),
-    part('pot_a0', 'potentiometer', { ohms: 5000, position: 0.5 }),
-    part('ntc_a1', 'ntc', { ohms: 10000 }),
-    part('ldr_a2', 'ldr', { ohms: 10000 }),
-  part('sevenseg', 'sevenseg8'),
-    part('leds', 'ledbank8', { activeLow: true }),
-    ...Array.from({ length: 4 }, (_, i) => part(`key${i + 1}`, 'button')),
+    // 4x4 matrix keypad (16), lower right
+    part('keypad', 'keypad_4x4', {}, 1280, 620),
 
-    // Pull-up resistors
-    part('r_dq', 'resistor', { ohms: 4700 }),    // DS18B20 pull-up
-    part('r_sda', 'resistor', { ohms: 4700 }),   // I2C SDA pull-up
-    part('r_scl', 'resistor', { ohms: 4700 }),   // I2C SCL pull-up
-    part('r_ntc', 'resistor', { ohms: 10000 }),  // A1 divider
-    part('r_ldr', 'resistor', { ohms: 10000 }),  // A2 divider
-    part('r_bl', 'resistor', { ohms: 100 }),      // LCD backlight
+    // Peripherals, placed where the board puts them
+    part('rtc', 'ds1302', {}, 320, 300),          // (3) upper left
+    part('temp', 'ds18b20', {}, 940, 800),        // (14) bottom centre-right
+    part('eeprom', 'at24c02', {}, 460, 640),      // (23) left of the socket
+    part('lcd', 'char_lcd', {}, 1040, 40),        // (21) top right
+    part('ir', 'ir_receiver', {}, 740, 800),      // (15) bottom centre
+    part('buz', 'buzzer', {}, 60, 300),           // (2) upper left
+    part('adc', 'xpt2046', { vbatDivider: false }, 60, 470),   // (4) ADC/DAC block
+    part('pot_a0', 'potentiometer', { ohms: 5000, position: 0.5 }, 260, 470),
+    part('ntc_a1', 'ntc', { ohms: 10000 }, 60, 640),
+    part('ldr_a2', 'ldr', { ohms: 10000 }, 260, 640),
+    part('sevenseg', 'sevenseg8', {}, 640, 40),   // (22) above the socket
+    part('leds', 'ledbank8', { activeLow: true }, 1280, 400),  // (17) LED module
+    // (11) the four independent keys, in a row along the bottom edge
+    ...Array.from({ length: 4 }, (_, i) => part(`key${i + 1}`, 'button', {}, 460 + (i * 70), 800)),
+
+    // Pull-ups and dividers: their own row, so the chains read as chains
+    part('r_dq', 'resistor', { ohms: 4700 }, 460, 980),    // DS18B20 pull-up
+    part('r_sda', 'resistor', { ohms: 4700 }, 640, 980),   // I2C SDA pull-up
+    part('r_scl', 'resistor', { ohms: 4700 }, 820, 980),   // I2C SCL pull-up
+    part('r_ntc', 'resistor', { ohms: 10000 }, 1000, 980), // A1 divider
+    part('r_ldr', 'resistor', { ohms: 10000 }, 1180, 980), // A2 divider
+    part('r_bl', 'resistor', { ohms: 100 }, 1360, 980),    // LCD backlight
   ];
 
   const wires = [
