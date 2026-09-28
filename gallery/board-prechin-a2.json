@@ -5,29 +5,29 @@
       "id": "vcc1",
       "kind": "vcc",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 60,
+      "y": 980
     },
     {
       "id": "gnd1",
       "kind": "gnd",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 260,
+      "y": 980
     },
     {
       "id": "mcu",
       "kind": "stc_mcu",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 700,
+      "y": 470
     },
     {
       "id": "sr1",
       "kind": "74hc595",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 1000,
+      "y": 330
     },
     {
       "id": "matrix",
@@ -36,8 +36,8 @@
         "colActiveHigh": false,
         "rowActiveHigh": true
       },
-      "x": 0,
-      "y": 0
+      "x": 1280,
+      "y": 120
     },
     {
       "id": "j24",
@@ -45,57 +45,57 @@
       "params": {
         "position": "b"
       },
-      "x": 0,
-      "y": 0
+      "x": 1000,
+      "y": 120
     },
     {
       "id": "keypad",
       "kind": "keypad_4x4",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 1280,
+      "y": 620
     },
     {
       "id": "rtc",
       "kind": "ds1302",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 320,
+      "y": 300
     },
     {
       "id": "temp",
       "kind": "ds18b20",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 940,
+      "y": 800
     },
     {
       "id": "eeprom",
       "kind": "at24c02",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 460,
+      "y": 640
     },
     {
       "id": "lcd",
       "kind": "char_lcd",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 1040,
+      "y": 40
     },
     {
       "id": "ir",
       "kind": "ir_receiver",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 740,
+      "y": 800
     },
     {
       "id": "buz",
       "kind": "buzzer",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 60,
+      "y": 300
     },
     {
       "id": "adc",
@@ -103,8 +103,8 @@
       "params": {
         "vbatDivider": false
       },
-      "x": 0,
-      "y": 0
+      "x": 60,
+      "y": 470
     },
     {
       "id": "pot_a0",
@@ -113,8 +113,8 @@
         "ohms": 5000,
         "position": 0.5
       },
-      "x": 0,
-      "y": 0
+      "x": 260,
+      "y": 470
     },
     {
       "id": "ntc_a1",
@@ -122,8 +122,8 @@
       "params": {
         "ohms": 10000
       },
-      "x": 0,
-      "y": 0
+      "x": 60,
+      "y": 640
     },
     {
       "id": "ldr_a2",
@@ -131,15 +131,15 @@
       "params": {
         "ohms": 10000
       },
-      "x": 0,
-      "y": 0
+      "x": 260,
+      "y": 640
     },
     {
       "id": "sevenseg",
       "kind": "sevenseg8",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 640,
+      "y": 40
     },
     {
       "id": "leds",
@@ -147,36 +147,36 @@
       "params": {
         "activeLow": true
       },
-      "x": 0,
-      "y": 0
+      "x": 1280,
+      "y": 400
     },
     {
       "id": "key1",
       "kind": "button",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 460,
+      "y": 800
     },
     {
       "id": "key2",
       "kind": "button",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 530,
+      "y": 800
     },
     {
       "id": "key3",
       "kind": "button",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 600,
+      "y": 800
     },
     {
       "id": "key4",
       "kind": "button",
       "params": {},
-      "x": 0,
-      "y": 0
+      "x": 670,
+      "y": 800
     },
     {
       "id": "r_dq",
@@ -184,8 +184,8 @@
       "params": {
         "ohms": 4700
       },
-      "x": 0,
-      "y": 0
+      "x": 460,
+      "y": 980
     },
     {
       "id": "r_sda",
@@ -193,8 +193,8 @@
       "params": {
         "ohms": 4700
       },
-      "x": 0,
-      "y": 0
+      "x": 640,
+      "y": 980
     },
     {
       "id": "r_scl",
@@ -202,8 +202,8 @@
       "params": {
         "ohms": 4700
       },
-      "x": 0,
-      "y": 0
+      "x": 820,
+      "y": 980
     },
     {
       "id": "r_ntc",
@@ -211,8 +211,8 @@
       "params": {
         "ohms": 10000
       },
-      "x": 0,
-      "y": 0
+      "x": 1000,
+      "y": 980
     },
     {
       "id": "r_ldr",
@@ -220,8 +220,8 @@
       "params": {
         "ohms": 10000
       },
-      "x": 0,
-      "y": 0
+      "x": 1180,
+      "y": 980
     },
     {
       "id": "r_bl",
@@ -229,8 +229,8 @@
       "params": {
         "ohms": 100
       },
-      "x": 0,
-      "y": 0
+      "x": 1360,
+      "y": 980
     }
   ],
   "wires": [
