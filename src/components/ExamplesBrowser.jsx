@@ -250,9 +250,18 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
           aria-label="Clear search">&times;</button>}
       </div>
 
-      {/* Filter toolbar: each group stays compact and the groups share rows. */}
-      <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '4px', marginBottom: '4px'}}>
-      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'nowrap', flexShrink: 0 }}>
+      {/* Filter toolbar: each group stays compact and the groups share rows.
+          THEY NOW ACTUALLY DO. `flexWrap: nowrap` with `overflowX: auto`
+          contradicted that comment: the four groups (554 + 312 + 192 + 507px)
+          were laid side by side inside a rail whose content box is 172px, so the
+          toolbar was 1595px wide — NINE AND A THIRD SCREENS of sideways
+          scrolling to reach the Target filter. Measured identically at 1440,
+          1024 and on a phone, because the rail is ~190px at every screen size:
+          this was never a small-screen bug. Wrapping costs vertical space in a
+          column that already scrolls vertically, which is the cheap direction
+          here. */}
+      <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', rowGap: '6px', paddingBottom: '4px', marginBottom: '4px'}}>
+      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap', rowGap: '4px' }}>
         <button
           onClick={() => setSelectedCategory(null)}
           style={{
@@ -456,7 +465,9 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
 
 function FilterRow({label, children, palette}) {
   return (
-    <div style={{display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap', flexShrink: 0}}>
+    // Wraps for the same reason as the toolbar that holds it: a group wider
+    // than the rail is unreachable, not merely cramped.
+    <div style={{display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', rowGap: '4px'}}>
       <span style={{color: palette.muted, fontSize: '12px', minWidth: 'auto', fontWeight: 600}}>{label}</span>
       {children}
     </div>
