@@ -1,0 +1,14 @@
+{
+  "vcc": 5,
+  "parts": [
+    { "id": "VCC", "kind": "vcc", "params": {}, "x": 0, "y": 0 },
+    { "id": "GND", "kind": "gnd", "params": {}, "x": 0, "y": 0 },
+    { "id": "RT", "kind": "resistor", "params": { "ohms": 10000000 }, "x": 0, "y": 0 },
+    { "id": "RB", "kind": "resistor", "params": { "ohms": 10000000 }, "x": 0, "y": 0 }
+  ],
+  "wires": [
+    { "from": "VCC", "fromTerminal": "vcc", "to": "RT", "toTerminal": "a" },
+    { "from": "RT", "fromTerminal": "b", "to": "RB", "toTerminal": "a" },
+    { "from": "RB", "fromTerminal": "b", "to": "GND", "toTerminal": "gnd" }
+  ]
+}

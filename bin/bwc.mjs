@@ -10,6 +10,7 @@
  *
  *   bwc info      <file>                    what is in it, and what did not map
  *   bwc op        <file>                    independent static DC operating point
+ *   bwc measure   <file> --scope <tip>[,<ref>] [--meter <mode>:<probe>]
  *   bwc analyze   <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1]
  *   bwc convert   <file> --to eagle|kicad-sch|kicad|spice|json [-o out]
  *   bwc render    <file> [-o out.svg] [--dark]
@@ -49,6 +50,12 @@ const { toEagleSch } = await import(join(SRC, 'model/exporters/eagle.js'));
 const { toKicadSch } = await import(join(SRC, 'model/exporters/kicad-sch.js'));
 const { toLtspiceAsc } = await import(join(SRC, 'model/exporters/ltspice-asc.js'));
 const { renderSchematicSvg, netsFromWires } = await import(join(SRC, 'model/schematic-svg.js'));
+const { createMeterState, readMeter } = await import(join(SRC, 'model/multimeter.js'));
+const { scopeProbeOptions } = await import(join(SRC, 'model/scope-probes.js'));
+const { scopeTracesToCsv } = await import(join(SRC, 'model/scope-csv.js'));
+const {
+  parseMeterSpec, parseScaledNumber, parseScopeSpec, resolveEndpointNet, summarizeScope,
+} = await import(join(SRC, 'model/instrument-report.js'));
 
 /** The engine is optional: only netlist exports need it. */
 async function loadEngine() {
@@ -100,11 +107,20 @@ const args = process.argv.slice(2);
 const cmd = args[0];
 const positional = [];
 const opts = {};
+const valueFlags = new Set(['-o', '--to', '--render', '--profile', '--observations',
+  '--scope', '--meter', '--probe', '--duration', '--rate', '--csv']);
+const repeatFlags = new Set(['scope', 'meter']);
 for (let i = 1; i < args.length; i++) {
   // Value-taking flags must be listed, or the value silently becomes a
   // positional and the flag reads as a bare boolean — which is how --render
   // quietly rendered nothing.
-  if (['-o', '--to', '--render', '--profile', '--observations'].includes(args[i])) opts[args[i].replace(/^-+/, '')] = args[++i];
+  if (valueFlags.has(args[i])) {
+    const key = args[i].replace(/^-+/, '');
+    const value = args[++i];
+    if (value == null) { console.error(`bwc: --${key} needs a value`); process.exit(2); }
+    if (repeatFlags.has(key)) (opts[key] ||= []).push(value);
+    else opts[key] = value;
+  }
   else if (args[i].startsWith('--')) opts[args[i].slice(2)] = true;
   else positional.push(args[i]);
 }
@@ -113,6 +129,10 @@ const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
     + '  bwc op      <file>\n'
+    + '  bwc measure <file> --scope <tip>[,<ref>] [--probe ideal|10x|1x]\n'
+    + '              [--meter voltage:<red>,<black>] [--meter current:<part>.<terminal>]\n'
+    + '              [--meter resistance:<red>,<black>] [--duration 10ms] [--rate 10kHz]\n'
+    + '              [--json] [--csv trace.csv]\n'
     + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
@@ -287,6 +307,153 @@ switch (cmd) {
     }
     for (const [terminal, amps] of rows.sort(([a], [b]) => a.localeCompare(b))) {
       console.log('    ' + terminal.padEnd(18) + ' ' + Number(amps).toPrecision(12) + ' A');
+    }
+    break;
+  }
+
+  case 'measure': {
+    const scopeSpecs = (opts.scope || []).map(value => {
+      try { return parseScopeSpec(value); } catch (error) { return die(error.message); }
+    });
+    const meterSpecs = (opts.meter || []).map(value => {
+      try { return parseMeterSpec(value); } catch (error) { return die(error.message); }
+    });
+    if (!scopeSpecs.length && !meterSpecs.length) die('measure needs at least one --scope or --meter');
+    const probe = opts.probe || 'ideal';
+    let durationSeconds; let rateHz;
+    try {
+      durationSeconds = parseScaledNumber(opts.duration || '10ms', 'duration');
+      rateHz = parseScaledNumber(opts.rate || '10kHz', 'rate');
+    } catch (error) { die(error.message); }
+    if (!(durationSeconds > 0 && durationSeconds <= 10)) die('measure duration must be > 0 and <= 10 s');
+    if (!(rateHz >= 1 && rateHz <= 2e6)) die('measure rate must be between 1 Hz and 2 MHz');
+    const requestedSamples = Math.ceil(durationSeconds * rateHz);
+    if (requestedSamples > 200_000) die('measure refuses more than 200000 scope samples');
+
+    const c = await loadOrDie(file);
+    if (c.unmapped && c.unmapped.length) {
+      die(`measure refuses ${c.unmapped.length} unmapped component(s); run \`bwc info ${file}\``);
+    }
+    if (c.losses && c.losses.length) {
+      die(`measure refuses ${c.losses.length} semantic import loss(es); run \`bwc info ${file}\``);
+    }
+    if (c.analysisBlockers && c.analysisBlockers.length) {
+      die(`measure refuses ${c.analysisBlockers.length} retained analysis blocker(s)`);
+    }
+    if (!c.parts.length) die('measure needs at least one imported circuit part');
+    const { Circuit, error } = await loadEngine();
+    if (error) die('measure needs a bw-board engine (' + error + ')');
+    const circ = Circuit.fromJSON({ vcc: Number.isFinite(c.vcc) ? c.vcc : 5,
+      parts: c.parts, wires: c.wires });
+    if (circ.netlistError) die('measure could not build an engine netlist (' + circ.netlistError + ')');
+    circ.setPower(true);
+
+    const scope = [];
+    for (const spec of scopeSpecs) {
+      let tipNet; let referenceNet = '';
+      try {
+        tipNet = resolveEndpointNet(circ.resolvedNets, spec.tip);
+        if (spec.reference) referenceNet = resolveEndpointNet(circ.resolvedNets, spec.reference);
+      } catch (error2) { die(error2.message); }
+      let electrical;
+      try { electrical = scopeProbeOptions(probe, referenceNet); } catch (error2) { die(error2.message); }
+      const handle = circ.board.addScopeChannel({
+        type: 'voltage', netId: tipNet, sampleRateHz: rateHz,
+        depth: requestedSamples + 2, capture: 'sample', ...electrical,
+      });
+      scope.push({ spec, tipNet, referenceNet, handle });
+    }
+
+    const durationNs = BigInt(Math.round(durationSeconds * 1e9));
+    const startNs = BigInt(circ.board.timeNs || 0);
+    try { circ.advanceTo(startNs + durationNs); } catch (error2) { die(`measure simulation failed: ${error2.message}`); }
+
+    const meterRows = [];
+    const resistance = [];
+    for (const spec of meterSpecs) {
+      const meter = createMeterState();
+      meter.mode = spec.mode;
+      if (spec.mode === 'current') {
+        const endpoint = spec.probes[0];
+        const dot = endpoint.lastIndexOf('.');
+        if (dot <= 0 || dot === endpoint.length - 1) die(`current endpoint "${endpoint}" must be <part>.<terminal>`);
+        try { resolveEndpointNet(circ.resolvedNets, endpoint); } catch (error2) { die(error2.message); }
+        meter.probeA = { netId: null, partId: endpoint.slice(0, dot), terminal: endpoint.slice(dot + 1) };
+      } else {
+        let a; let b;
+        try {
+          a = resolveEndpointNet(circ.resolvedNets, spec.probes[0]);
+          b = resolveEndpointNet(circ.resolvedNets, spec.probes[1]);
+        } catch (error2) { die(error2.message); }
+        meter.probeA = { netId: a, partId: null, terminal: null };
+        meter.probeB = { netId: b, partId: null, terminal: null };
+      }
+      const row = { mode: spec.mode, probes: spec.probes, meter };
+      if (spec.mode === 'resistance') resistance.push(row);
+      else meterRows.push({ mode: spec.mode, probes: spec.probes, reading: readMeter(meter, circ) });
+    }
+    if (resistance.length) {
+      circ.setPower(false);
+      circ.advanceTo(BigInt(circ.board.timeNs || 0) + 1n);
+      for (const row of resistance) meterRows.push({
+        mode: row.mode, probes: row.probes, reading: readMeter(row.meter, circ),
+      });
+    }
+
+    for (const row of meterRows) {
+      if (row.reading.note) {
+        die(`${row.mode} meter ${row.probes.join(',')} could not be read: ${row.reading.note}`);
+      }
+    }
+
+    const scopeRows = scope.map(row => {
+      const data = circ.board.getScopeData(row.handle);
+      const summary = summarizeScope(data);
+      if (!summary.samples) die(`scope ${row.spec.tip} captured no finite samples`);
+      return {
+        tip: row.spec.tip,
+        reference: row.spec.reference || 'engine ground',
+        tipNet: row.tipNet,
+        referenceNet: row.referenceNet || null,
+        probe,
+        rateHz,
+        capture: data?.capture || null,
+        summary,
+        data,
+      };
+    });
+    if (opts.csv) {
+      if (!scopeRows.length) die('--csv needs at least one --scope');
+      const csv = scopeTracesToCsv(scopeRows.map(row => ({ data: row.data,
+        netId: `${row.tip}${row.referenceNet ? ` - ${row.reference}` : ''}` })));
+      writeFileSync(opts.csv, `${csv}\n`);
+    }
+
+    const report = {
+      source: basename(file), format: c.format,
+      durationSeconds, rateHz, requestedSamples,
+      scope: scopeRows.map(({ data, ...row }) => row),
+      meters: meterRows,
+      claims: {
+        engineBacked: true,
+        independentOracle: false,
+        voltageMeterLoading: 'ideal observer; place a physical meter part to model input impedance',
+      },
+    };
+    if (opts.json) console.log(JSON.stringify(report, null, 2));
+    else {
+      console.log(`${basename(file)}  [${c.format}]  instrument measurements`);
+      console.log(`  simulated: ${durationSeconds} s at ${rateHz} Hz (${requestedSamples} requested samples)`);
+      for (const row of report.scope) {
+        const s = row.summary;
+        console.log(`  scope ${row.tip} relative to ${row.reference}  [${row.probe}, ${s.samples} samples]`);
+        console.log(`      min ${Number(s.minVolts).toPrecision(9)} V  max ${Number(s.maxVolts).toPrecision(9)} V  mean ${Number(s.meanVolts).toPrecision(9)} V  rms ${Number(s.rmsVolts).toPrecision(9)} V  last ${Number(s.lastVolts).toPrecision(9)} V`);
+      }
+      for (const row of report.meters) {
+        console.log(`  meter ${row.mode} ${row.probes.join(' ↔ ')}: ${row.reading.value} ${row.reading.unit}${row.reading.note ? `  (${row.reading.note})` : ''}`);
+      }
+      if (opts.csv) console.log(`  wrote ${opts.csv}`);
+      console.log('  oracle: not performed; these are engine measurements');
     }
     break;
   }
