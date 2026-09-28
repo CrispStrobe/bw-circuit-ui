@@ -13,8 +13,9 @@ export function scopeTraceToCsv(data, netId = '') {
   const capture = data.capture === 'sample' ? 'sample' : 'envelope';
   const oldest = ((Number(data.writeIndex || 0) - count) % depth + depth) % depth;
   const intervalNs = Number(data.sampleIntervalNs);
+  const startTimeNs = data.startTNs == null ? '0' : String(data.startTNs);
   const rows = [
-    `# net=${safeComment(netId)} capture=${capture} sampleIntervalNs=${intervalNs} points=${count}`,
+    `# net=${safeComment(netId)} capture=${capture} startTimeNs=${startTimeNs} sampleIntervalNs=${intervalNs} points=${count}`,
     capture === 'sample' ? 'elapsed_seconds,volts' : 'elapsed_seconds,min_volts,max_volts',
   ];
   for (let offset = 0; offset < count; offset++) {

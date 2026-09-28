@@ -11,6 +11,7 @@ import {
 const ROOT = join(import.meta.dirname, '..');
 const CLI = join(ROOT, 'bin', 'bwc.mjs');
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json');
+const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 
 test('measurement arguments are bounded and unambiguous', () => {
   assert.equal(parseScaledNumber('2.5ms', 'duration'), 0.0025);
@@ -52,8 +53,12 @@ test('bwc measure returns real scope and multimeter readings as JSON', () => {
   assert.equal(report.meters[0].mode, 'voltage');
   assert.equal(report.meters[0].reading.value, '1.667');
   assert.equal(report.meters[0].reading.unit, 'V');
+  assert.ok(Math.abs(report.meters[0].reading.siValue - (5 / 3)) < 1e-4);
+  assert.equal(report.meters[0].reading.siUnit, 'V');
   assert.equal(report.meters[1].mode, 'current');
-  assert.equal(report.meters[1].reading.unit, 'mA');
+  assert.equal(report.meters[1].reading.unit, 'nA');
+  assert.ok(Math.abs(Math.abs(report.meters[1].reading.siValue) - (1 / 3_000_000)) < 1e-10);
+  assert.equal(report.meters[1].reading.siUnit, 'A');
 });
 
 test('finite probes require a reference and CSV is an explicit file', () => {
@@ -70,8 +75,32 @@ test('finite probes require a reference and CSV is an explicit file', () => {
   { encoding: 'utf8', env: { ...process.env } });
   assert.match(output, /meter resistance/);
   assert.doesNotMatch(output, /Turn power OFF/);
-  assert.match(readFileSync(csv, 'utf8'), /capture=sample sampleIntervalNs=100000 points=10/);
+  assert.match(readFileSync(csv, 'utf8'), /capture=sample startTimeNs=100000 sampleIntervalNs=100000 points=10/);
   assert.match(readFileSync(csv, 'utf8'), /elapsed_seconds,volts/);
+});
+
+test('imported SINE is measured on its real simulation clock with analytical values', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bwc-measure-sine-'));
+  const csv = join(dir, 'trace.csv');
+  const text = execFileSync(process.execPath, [CLI, 'measure', SINE_FIXTURE,
+    '--scope', 'V1.pos,V1.neg', '--meter', 'voltage:V1.pos,V1.neg',
+    '--meter', 'current:R1.a', '--duration', '500us', '--rate', '100kHz',
+    '--csv', csv, '--json'], { encoding: 'utf8', env: { ...process.env } });
+  const report = JSON.parse(text);
+  const scope = report.scope[0];
+  assert.equal(scope.summary.samples, 50);
+  assert.equal(scope.startTimeSeconds, 10e-6);
+  assert.equal(scope.sampleIntervalSeconds, 10e-6);
+  assert.ok(Math.abs(scope.summary.meanVolts - 1.25) < 1e-12);
+  assert.ok(Math.abs(scope.summary.rmsVolts - Math.sqrt(1.25 ** 2 + (2 ** 2) / 2)) < 1e-12);
+  assert.ok(Math.abs(report.meters[0].reading.siValue - 1.25) < 1e-12);
+  assert.ok(Math.abs(report.meters[1].reading.siValue + 0.00125) < 1e-12,
+    'current is signed positive out of the selected resistor terminal');
+  const rows = readFileSync(csv, 'utf8').trim().split('\n');
+  assert.match(rows[0], /startTimeNs=10000 sampleIntervalNs=10000 points=50/);
+  const [elapsed, firstVolts] = rows[2].split(',').map(Number);
+  assert.equal(elapsed, 0);
+  assert.ok(Math.abs(firstVolts - (1.25 - 2 * Math.sin(2 * Math.PI * 2000 * 10e-6))) < 1e-12);
 });
 
 test('invalid requested meter endpoints fail instead of printing a placeholder', () => {

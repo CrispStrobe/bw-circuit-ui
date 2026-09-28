@@ -418,6 +418,8 @@ switch (cmd) {
         probe,
         rateHz,
         capture: data?.capture || null,
+        startTimeSeconds: Number(data?.startTNs ?? 0n) / 1e9,
+        sampleIntervalSeconds: Number(data?.sampleIntervalNs ?? 0) / 1e9,
         summary,
         data,
       };

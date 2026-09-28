@@ -87,6 +87,20 @@ describe('multimeter — current mode', () => {
     assert.equal(intoAnode.value, '-2.000');
     assert.equal(outCathode.value, '2.000');
     assert.equal(intoAnode.unit, 'mA');
+    assert.equal(intoAnode.siValue, -0.002);
+    assert.equal(intoAnode.siUnit, 'A');
+  });
+
+  it('autoranges small nonzero currents instead of displaying a false zero', () => {
+    const meter = createMeterState();
+    meter.mode = 'current';
+    meter.probeA = { netId: null, partId: 'R1', terminal: 'a' };
+    const circuit = { board: {}, branchCurrent: () => 1 / 3_000_000 };
+    const reading = readMeter(meter, circuit);
+    assert.equal(reading.value, '333.333');
+    assert.equal(reading.unit, 'nA');
+    assert.equal(reading.siValue, 1 / 3_000_000);
+    assert.equal(reading.siUnit, 'A');
   });
 
   it('reads branch current through LED', () => {
@@ -98,6 +112,7 @@ describe('multimeter — current mode', () => {
     const reading = readMeter(meter, c);
     assert.equal(reading.unit, 'mA');
     assert.equal(reading.note, null);
+    assert.equal(reading.siUnit, 'A');
 
     const mA = parseFloat(reading.value);
     // ~2.9 mA through the LED
@@ -148,6 +163,8 @@ describe('multimeter — resistance mode (honesty rule)', () => {
     const reading = readMeter(meter, c);
     // Should now return a number, not 'requires-power-off'
     assert.equal(reading.note, null, `should have no note when powered off: ${reading.note}`);
+    assert.equal(reading.siUnit, 'Ω');
+    assert.ok(reading.siValue > 0);
 
     // The value should be parseable and represent the 1kΩ resistor path
     const val = parseFloat(reading.value);

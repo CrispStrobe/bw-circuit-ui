@@ -31,8 +31,15 @@ bwc measure divider.json --scope RT.b --duration 10ms --rate 20kHz \
 
 Repeat `--scope` and `--meter` for multiple channels/readings. Scope summaries
 report sample count, minimum, maximum, mean, RMS and last voltage. CSV records
-the engine's true uniformly spaced samples oldest-first. JSON includes the
-resolved net IDs, probe preset and the same summary.
+the engine's true uniformly spaced samples oldest-first. Its rows use elapsed
+time from the oldest retained sample, while the header's `startTimeNs` records
+that sample's absolute simulation time. JSON includes `startTimeSeconds`, the
+sample interval, resolved net IDs, probe preset and the same summary.
+
+Every successful JSON meter reading includes numeric `siValue`/`siUnit` fields
+for computation as well as the formatted display value. Current display values
+autorange across A, mA, µA, nA and pA; a real nonzero current is never rounded
+into a displayed zero merely because it is smaller than one microamp.
 
 The command is intentionally bounded to 10 seconds, 2 MHz and 200,000 samples
 per channel. It refuses unmapped components, semantic import losses and

@@ -1,0 +1,5 @@
+* Imported dynamic CLI measurement fixture
+V1 signal 0 SINE(1.25 -2 2k)
+R1 signal 0 1k
+.tran 10u 500u
+.end

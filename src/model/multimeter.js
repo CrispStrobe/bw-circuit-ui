@@ -44,12 +44,16 @@ export function createMeterState() {
  *
  * @param {MeterState} meter
  * @param {import('./circuit.js').Circuit} circuit
- * @returns {{ value: string, unit: string, note: string|null }}
+ * Successful readings preserve their numeric SI value alongside the formatted
+ * display value.  Callers doing calculations must use siValue rather than
+ * parsing the human-readable value/unit pair.
+ *
+ * @returns {{ value: string, unit: string, note: string|null, siValue: number|null, siUnit: string }}
  */
 export function readMeter(meter, circuit) {
   // No board → "needs the simulator", not 0 (which would be a fabricated reading)
   if (!circuit || !circuit.board) {
-    return { value: '---', unit: '', note: 'Needs the simulator' };
+    return { value: '---', unit: '', note: 'Needs the simulator', siValue: null, siUnit: '' };
   }
 
   const { mode, probeA, probeB } = meter;
@@ -57,41 +61,57 @@ export function readMeter(meter, circuit) {
   switch (mode) {
     case 'voltage': {
       if (!probeA.netId || !probeB.netId) {
-        return { value: '---', unit: 'V', note: 'Place both probes on nets' };
+        return { value: '---', unit: 'V', note: 'Place both probes on nets', siValue: null, siUnit: 'V' };
       }
       try {
         const vA = circuit.nodeVoltage(probeA.netId);
         const vB = circuit.nodeVoltage(probeB.netId);
         const diff = vA - vB;
-        return { value: diff.toFixed(3), unit: 'V', note: null };
+        return { value: diff.toFixed(3), unit: 'V', note: null, siValue: diff, siUnit: 'V' };
       } catch {
-        return { value: '---', unit: 'V', note: 'Cannot read voltage' };
+        return { value: '---', unit: 'V', note: 'Cannot read voltage', siValue: null, siUnit: 'V' };
       }
     }
 
     case 'current': {
       if (!probeA.partId || !probeA.terminal) {
-        return { value: '---', unit: 'A', note: 'Place probe A on a part terminal' };
+        return { value: '---', unit: 'A', note: 'Place probe A on a part terminal', siValue: null, siUnit: 'A' };
       }
       try {
         // Raw/public current is signed positive OUT of the probed part. Keep
         // the sign: reversing the selected terminal must reverse the reading.
         const i = circuit.branchCurrent(probeA.partId, probeA.terminal);
-        // Display in mA for readability
-        const mA = i * 1000;
-        return {
-          value: Math.abs(mA) < 0.001 ? '0.000' : mA.toFixed(3),
-          unit: 'mA',
-          note: null,
-        };
+        const magnitude = Math.abs(i);
+        let scale = 1e3;
+        let unit = 'mA';
+        let digits = 3;
+        if (magnitude >= 1) {
+          scale = 1;
+          unit = 'A';
+        } else if (magnitude > 0 && magnitude < 1e-12) {
+          scale = 1;
+          unit = 'A';
+          digits = null;
+        } else if (magnitude > 0 && magnitude < 1e-9) {
+          scale = 1e12;
+          unit = 'pA';
+        } else if (magnitude > 0 && magnitude < 1e-6) {
+          scale = 1e9;
+          unit = 'nA';
+        } else if (magnitude > 0 && magnitude < 1e-3) {
+          scale = 1e6;
+          unit = 'µA';
+        }
+        const value = digits == null ? i.toExponential(3) : (i * scale).toFixed(digits);
+        return { value, unit, note: null, siValue: i, siUnit: 'A' };
       } catch {
-        return { value: '---', unit: 'mA', note: 'Cannot read current' };
+        return { value: '---', unit: 'mA', note: 'Cannot read current', siValue: null, siUnit: 'A' };
       }
     }
 
     case 'resistance': {
       if (!probeA.netId || !probeB.netId) {
-        return { value: '---', unit: 'Ω', note: 'Place both probes on nets' };
+        return { value: '---', unit: 'Ω', note: 'Place both probes on nets', siValue: null, siUnit: 'Ω' };
       }
       try {
         const r = circuit.resistance(probeA.netId, probeB.netId);
@@ -101,21 +121,23 @@ export function readMeter(meter, circuit) {
             value: '---',
             unit: 'Ω',
             note: 'Turn power OFF to measure resistance (this is how a real DMM works)',
+            siValue: null,
+            siUnit: 'Ω',
           };
         }
         if (r > 1e6) {
-          return { value: (r / 1e6).toFixed(2), unit: 'MΩ', note: null };
+          return { value: (r / 1e6).toFixed(2), unit: 'MΩ', note: null, siValue: r, siUnit: 'Ω' };
         }
         if (r > 1e3) {
-          return { value: (r / 1e3).toFixed(2), unit: 'kΩ', note: null };
+          return { value: (r / 1e3).toFixed(2), unit: 'kΩ', note: null, siValue: r, siUnit: 'Ω' };
         }
-        return { value: r.toFixed(1), unit: 'Ω', note: null };
+        return { value: r.toFixed(1), unit: 'Ω', note: null, siValue: r, siUnit: 'Ω' };
       } catch {
-        return { value: '---', unit: 'Ω', note: 'Cannot read resistance' };
+        return { value: '---', unit: 'Ω', note: 'Cannot read resistance', siValue: null, siUnit: 'Ω' };
       }
     }
 
     default:
-      return { value: '---', unit: '', note: 'Unknown mode' };
+      return { value: '---', unit: '', note: 'Unknown mode', siValue: null, siUnit: '' };
   }
 }

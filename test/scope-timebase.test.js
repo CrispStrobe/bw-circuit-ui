@@ -35,15 +35,17 @@ describe('scope timebase', () => {
       count: 4, writeIndex: 2, sampleIntervalNs: 250_000, capture: 'envelope',
     }, 'rail\nunsafe');
     assert.equal(envelope,
-      '# net=rail unsafe capture=envelope sampleIntervalNs=250000 points=4\n' +
+      '# net=rail unsafe capture=envelope startTimeNs=0 sampleIntervalNs=250000 points=4\n' +
       'elapsed_seconds,min_volts,max_volts\n' +
       '0,10,11\n0.00025,20,21\n0.0005,30,31\n0.00075,40,41');
 
     const sampled = scopeTraceToCsv({
       samples: Float64Array.from([1 / 3, 1 / 3, NaN, NaN]),
-      count: 2, writeIndex: 0, sampleIntervalNs: 1_000_000, capture: 'sample',
+      count: 2, writeIndex: 0, startTNs: 12_345n,
+      sampleIntervalNs: 1_000_000, capture: 'sample',
     }, 'sense');
     assert.match(sampled, /capture=sample/);
+    assert.match(sampled, /startTimeNs=12345/);
     assert.match(sampled, /elapsed_seconds,volts\n0,0\.3333333333333333\n0\.001,NaN$/);
     assert.ok(!sampled.includes('min_volts'), 'a sampled series must not claim envelope extrema');
     assert.equal(scopeTracesToCsv([{ netId: 'a', data: null }]), '');
