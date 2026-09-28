@@ -1564,7 +1564,24 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           rightOpen={rightOpen}
           lang={lang}
           viewNav={(
-            <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{display: 'inline-flex', width: 104, height: 34, border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
+            <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{
+              display: 'inline-flex',
+              // flexShrink 0 AND border-box, together. This sits in a flex row
+              // that overflows, so the default flex-shrink:1 squeezed the box
+              // from its declared 104 down to a measured clientWidth of 68 —
+              // exactly two buttons — and `overflow: hidden` then clipped the
+              // third one away. Board (PCB) view was unreachable at EVERY
+              // width measured: phone portrait, phone landscape, desktop 1024
+              // and desktop 1440 all reported it outside the box and not
+              // clickable. Not a small-screen bug; nobody could reach it.
+              // border-box so the declared 104 covers 3x34 of buttons plus the
+              // 1px borders, rather than 104 of content plus borders on top.
+              flexShrink: 0,
+              boxSizing: 'border-box',
+              width: 104, height: 34,
+              border: '1px solid #64748b', borderRadius: 5,
+              overflow: 'hidden', background: '#0f172a',
+          }}>
               <button data-circuit-toggle-state={!showSchematic && !showBoard ? 'selected' : 'unselected'} role="radio" aria-checked={!showSchematic && !showBoard} onClick={() => { setShowSchematic(false); setShowBoard(false); }} aria-label="Realistic view" title="Realistic view"
                 style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: !showSchematic && !showBoard ? '#2563eb' : '#475569', color: '#fff', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: 17}}>◉</button>
               <button data-circuit-toggle-state={showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={showSchematic} onClick={() => { setShowSchematic(true); setShowBoard(false); }} aria-label="Schematic view" title="Schematic view"
