@@ -4420,7 +4420,15 @@ export function BoardCanvas({
         </div>
 
         {!toolbarCramped && panelNav ? <div data-circuit-control-group style={{flex: '0 0 auto', width: 150, height: 34, minHeight: 34, display: 'flex', alignItems: 'center'}}>{panelNav}</div> : null}
-        {!toolbarCramped && viewNav ? <div data-circuit-control-group style={{flex: '0 0 auto', width: 70, height: 34, minHeight: 34, display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
+        {/* width AUTO, not a number. This wrapper was 70px around a toggle that is
+            104px wide — it was sized when the toggle offered two views and was not
+            revisited when a third (Board/PCB) was added. The toggle overflowed its
+            wrapper by exactly one button, and because the next toolbar item is laid
+            out after the 70px box, the "SELECT" label was painted on top of that
+            third button. Board view was not clickable at ANY width measured:
+            430x930, 930x430, 1024x768, 1440x900. A hard-coded width here can only
+            ever drift again; auto cannot. */}
+        {!toolbarCramped && viewNav ? <div data-circuit-control-group style={{flex: '0 0 auto', width: 'auto', height: 34, minHeight: 34, display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
         {/* Mode indicator */}
         <span style={{
           padding: '2px 8px', borderRadius: '3px',
