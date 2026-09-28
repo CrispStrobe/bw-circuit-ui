@@ -160,7 +160,7 @@ C1 N001 0 5e-5
 L1 N002 0 100
 R1 V2 N001 1k
 R2 V2 N002 1k
-.tran 0.05 5
+.tran 5
 .end
 `;
     const [result] = runSourceAnalyses(importCircuit('spice', deck), {
@@ -168,6 +168,9 @@ R2 V2 N002 1k
     });
     assert.equal(result.status, 'pass');
     assert.equal(result.conditions.points, 101);
+    assert.equal(result.conditions.samplingProfile.sourceDeclared, false);
+    assert.equal(result.conditions.samplingProfile.reason, 'source declares no TSTEP');
+    assert.equal(result.evidence, 'original-adapted');
     assert.equal(result.conditions.preflight.basis, 'board-certified-invariant-zero-state');
     assert.deepEqual(result.executionProfile.work, { attempts: 0, solves: 0, advances: 0 });
     assert.equal(result.executionProfile.qualification.accuracyMet, null,
@@ -177,8 +180,12 @@ R2 V2 N002 1k
     assert.ok(result.observables.nodes.every(node =>
       node.voltage.length === 101 && node.voltage.every(value => value === 0)));
 
+    // ngspice does not implement LTspice's one-argument `.tran TSTOP`
+    // extension, so make the same already-disclosed 100-interval observation
+    // adaptation explicit on the independent side.
+    const oracleDeck = deck.replace('.tran 5', '.tran 0.05 5');
     const oracle = spawnSync('ngspice', ['-n', '-b'], {
-      input: deck.replace('.end', '.print tran v(N001) v(N002) v(V2)\n.end'),
+      input: oracleDeck.replace('.end', '.print tran v(N001) v(N002) v(V2)\n.end'),
       encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME },
     });
     assert.equal(oracle.status, 0, oracle.stderr || oracle.stdout);
@@ -188,8 +195,8 @@ R2 V2 N002 1k
     assert.ok(rows.every(fields => fields.slice(2).every(value => Number(value) === 0)),
       'the independent oracle also reports an invariant zero series');
 
-    const [uic] = runSourceAnalyses(importCircuit('spice', deck.replace('.tran 0.05 5',
-      '.tran 0.05 5 UIC')), { format: 'spice', transientProfile: 'precision-v1' });
+    const [uic] = runSourceAnalyses(importCircuit('spice', deck.replace('.tran 5',
+      '.tran 5 UIC')), { format: 'spice', transientProfile: 'precision-v1' });
     assert.deepEqual([uic.status, uic.code], ['refused', 'transient-accuracy-unmet'],
       'UIC executes normally and does not receive a non-UIC operating-point certificate');
     assert.equal(uic.conditions.executionProfile.qualification.certifiedQuiescent, false);
