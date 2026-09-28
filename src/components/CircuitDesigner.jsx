@@ -81,6 +81,8 @@ import { buildSeatedFromDeclarations } from '../model/infer-seated.js';
 import { runDrc } from '../model/drc.js';
 import { migrateStarterAutosave } from '../model/starter-migration.js';
 import './circuit-theme.css';
+import { narrowScreenNow } from '../hooks/narrow-screen.js';
+import useNarrowScreen from '../hooks/useNarrowScreen.js';
 
 const MS = 1_000_000n;
 const GRID = 20;
@@ -255,7 +257,17 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     lastStopToken.current = stopToken;
     setMode('build');
   }, [stopToken]);
-  const [selectorsOpen, setSelectorsOpen] = useState(!embedded);
+  // THE RAIL STARTS CLOSED ON A PHONE, and only starts closed — the ‹/›
+  // toggle below is untouched, so the palette is one tap away.
+  //
+  // It is this state and not partsOpen/examplesOpen that buys canvas width:
+  // those two only split the rail VERTICALLY (the rail stays 0 0 190px either
+  // way), whereas this one takes it to 0. At 430pt the browser already has to
+  // shrink the page to ~0.42 to fit a 1024 layout, so 190 of those points is
+  // 45% of the width the reader can actually see, spent on a palette they have
+  // not asked for yet.
+  const narrowScreen = useNarrowScreen();
+  const [selectorsOpen, setSelectorsOpen] = useState(!embedded && !narrowScreenNow());
   const [partsOpen, setPartsOpen] = useState(!embedded);
   const [examplesOpen, setExamplesOpen] = useState(true);
   const [selectorSplit, setSelectorSplit] = useState(0.68);
@@ -1603,8 +1615,13 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         onClose={() => setHostTransferReport(null)} />
 
       {/* Right sidebar — collapsible */}
+      {/* ON A PHONE THE INSTRUMENTS TAKE THE WIDTH instead of standing beside
+          the bench. 280 beside a canvas is a desktop arrangement; on a 430pt
+          screen the two together overflow the device and the reader gets the
+          left half of each. The canvas stays mounted (its state survives) and
+          the collapse button brings it straight back. */}
       {rightOpen ? (
-      <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', flex: '0 1 280px', width: 280, minWidth: 280, minHeight: 0, maxHeight: '100%', height: '100%', overflow: 'hidden', alignSelf: 'stretch', boxSizing: 'border-box' }}>
+      <div data-instruments-column style={{ position: 'relative', display: 'flex', flexDirection: 'column', flex: narrowScreen ? '1 1 100%' : '0 1 280px', width: narrowScreen ? '100%' : 280, minWidth: narrowScreen ? 0 : 280, minHeight: 0, maxHeight: '100%', height: '100%', overflow: 'hidden', alignSelf: 'stretch', boxSizing: 'border-box' }}>
         <button onPointerDownCapture={e => { e.stopPropagation(); setRightOpen(false); }} onMouseDownCapture={e => e.stopPropagation()} onClick={() => setRightOpen(false)} aria-label={/^de/i.test(lang) ? 'Instrumentenpanel einklappen' : 'Collapse instruments panel'} aria-expanded="true" title={/^de/i.test(lang) ? 'Instrumentenpanel einklappen' : 'Collapse instruments panel'} style={{
           position: 'absolute', zIndex: 3, top: 4, left: 4, background: '#ffffff', border: '1px solid #cbd5e1',
           boxShadow: '0 1px 3px rgba(15,23,42,.18)', borderRadius: '999px', color: '#475569', cursor: 'pointer',
