@@ -135,14 +135,28 @@ C1 out 0 1n
     assert.ok(direct.executionProfile.work.solves <= direct.conditions.points);
 
     const reactive = importCircuit('spice', `bounded reactive precision\nV1 in 0 SINE(0 1 1)\nR1 in out 1k\nC1 out 0 1u\n.tran 2\n.end\n`);
-    const [preflight] = runSourceAnalyses(reactive, { format: 'spice', transientProfile: 'precision-v1' });
+    const [reactiveRun] = runSourceAnalyses(reactive, {
+      format: 'spice', transientProfile: 'precision-v1',
+    });
+    assert.equal(reactiveRun.status, 'pass');
+    assert.equal(reactiveRun.conditions.preflight.integrationMode, 'adaptive');
+    assert.equal(reactiveRun.conditions.preflight.minimumAttempts, 128);
+    assert.equal(reactiveRun.conditions.preflight.minimumSolves, 382);
+    assert.equal(reactiveRun.conditions.preflight.basis,
+      'active-step-bound-be-seed-plus-three-solves-per-later-accepted-step');
+    assert.equal(reactiveRun.executionProfile.qualification.accuracyMet, true);
+    assert.ok(reactiveRun.executionProfile.work.attempts > 0);
+    assert.ok(reactiveRun.executionProfile.work.attempts < 20_000);
+
+    const fastReactive = importCircuit('spice', `bounded fast reactive precision\nV1 in 0 SINE(0 1 16k)\nR1 in out 1k\nC1 out 0 1u\n.tran 2\n.end\n`);
+    const [preflight] = runSourceAnalyses(fastReactive, {
+      format: 'spice', transientProfile: 'precision-v1',
+    });
     assert.deepEqual([preflight.status, preflight.classification, preflight.code],
       ['not-run', 'integration-gap', 'analysis-work-budget-exceeded']);
     assert.equal(preflight.conditions.preflight.integrationMode, 'adaptive');
     assert.equal(preflight.conditions.preflight.minimumAttempts, 200000);
     assert.equal(preflight.conditions.preflight.minimumSolves, 599998);
-    assert.equal(preflight.conditions.preflight.basis,
-      'active-step-bound-be-seed-plus-three-solves-per-later-accepted-step');
     assert.equal(preflight.conditions.executionProfile.work.attempts, 0);
 
     const [accounted] = runSourceAnalyses(imported(), { format: 'spice',
@@ -150,6 +164,67 @@ C1 out 0 1n
     assert.deepEqual([accounted.status, accounted.classification, accounted.code],
       ['not-run', 'integration-gap', 'analysis-work-budget-exceeded']);
     assert.ok(accounted.conditions.executionProfile.work.attempts > 10);
+  });
+
+  it('runs ADI row 5114 through the public adapter and matches ngspice', {
+    skip: spawnSync('ngspice', ['--version'], { encoding: 'utf8' }).status !== 0,
+  }, () => {
+    const samples = [0.1, 2.5, 4.9, 5.1, 7.5, 9.9];
+    const measures = samples.map((time, index) =>
+      `.meas tran out${index} FIND v(out) AT=${time}`).join('\n');
+    const deck = `ADI row 5114 zero-width PULSE
+V1 N001 0 5
+I1 N001 out PULSE(20u 200u 0 4 1 0 5)
+R1 out 0 24k
+R4 out 0 1Meg
+C2 out 0 14p
+.tran 0.01 10 0 0.01
+.end
+`;
+    const [result] = runSourceAnalyses(importCircuit('spice', deck), {
+      format: 'spice', transientProfile: 'precision-v1',
+    });
+    assert.equal(result.status, 'pass');
+    assert.equal(result.executionProfile.qualification.accuracyMet, true);
+    assert.equal(result.conditions.points, 1001);
+    assert.ok(result.executionProfile.work.attempts < 5000);
+
+    const ng = spawnSync('ngspice', ['-b'], {
+      input: deck.replace('.end', `${measures}\n.end`), encoding: 'utf8',
+    });
+    assert.equal(ng.status, 0, ng.stderr || ng.stdout);
+    const measured = new Map();
+    for (const match of ng.stdout.matchAll(/^\s*out(\d+)\s*=\s*([-+0-9.e]+)/gmi)) {
+      measured.set(Number(match[1]), Number(match[2]));
+    }
+    assert.equal(measured.size, samples.length);
+    const output = result.observables.nodes.find(node => node.id === 'n1');
+    samples.forEach((time, index) => {
+      const sampleIndex = result.observables.axis.values.findIndex(value =>
+        Math.abs(value - time) < 1e-10);
+      assert.notEqual(sampleIndex, -1, `public result includes ${time}s`);
+      assert.ok(Math.abs(output.voltage[sampleIndex] - measured.get(index)) < 2e-4,
+        `${time}s: public adapter ${output.voltage[sampleIndex]} vs ngspice ${measured.get(index)}`);
+    });
+  });
+
+  it('names ADI row 5158 as the remaining ideal-inductor history blocker', () => {
+    const input = importCircuit('spice', `ADI row 5158 ideal-inductor history
+L1 1 0 1
+I1 0 1 SINE(0 1 1 0)
+.tran 3
+.OPTIONS plotwinsize=0
+.end
+`);
+    const [result] = runSourceAnalyses(input, {
+      format: 'spice', transientProfile: 'precision-v1',
+    });
+    assert.deepEqual([result.status, result.classification, result.code],
+      ['refused', 'solver-refusal', 'transient-accuracy-unmet']);
+    assert.equal(result.conditions.executionProfile.failure.code,
+      'minimum-step-accuracy-unmet');
+    assert.equal(result.conditions.executionProfile.failure.timeSec, 2e-12);
+    assert.equal(result.conditions.executionProfile.qualification.accuracyMet, false);
   });
 
   it('emits the certified-quiescent Si7li row 3835 series with zero work and ngspice agreement', {
