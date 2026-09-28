@@ -525,6 +525,18 @@ function boundedObservationTimes(startNs, stopNs, limits, targetIntervals = 100)
     startNs + Math.round(index * span / intervals)))];
 }
 
+export function transientExecutionTimes(sampleTimesNs, stopNs, maxStepNs, maxAdvances) {
+  if (!Array.isArray(sampleTimesNs) || !sampleTimesNs.length || !Number.isSafeInteger(stopNs)
+      || stopNs < 0 || !Number.isSafeInteger(maxStepNs) || maxStepNs < 1
+      || !Number.isSafeInteger(maxAdvances) || maxAdvances < 1) return null;
+  const intervals = Math.ceil(stopNs / maxStepNs);
+  if (!Number.isSafeInteger(intervals) || intervals + sampleTimesNs.length > maxAdvances * 2) return null;
+  const times = new Set(sampleTimesNs);
+  for (let index = 0; index <= intervals; index += 1) times.add(Math.min(stopNs, index * maxStepNs));
+  const ordered = [...times].sort((a, b) => a - b);
+  return ordered.length <= maxAdvances ? ordered : null;
+}
+
 function parseTran(descriptor, limits) {
   const fields = descriptor.normalized.split(' ');
   const modifiers = [];
@@ -725,6 +737,7 @@ function runTran(imported, descriptor, limits) {
   try { canonical = canonicalCircuit(imported, circuit); }
   catch (error) { return mappingGap(descriptor, error, parsed); }
   let profileStatus = null;
+  let executionTimesNs = parsed.sampleTimesNs;
   if (limits.transientProfile) {
     try {
       circuit.configureTransientAnalysis(limits.transientProfile);
@@ -733,21 +746,35 @@ function runTran(imported, descriptor, limits) {
       return profileGap(descriptor, 'transient-profile-unavailable', String(error?.message || error),
         parsed, limits.transientProfile, profileStatus, limits);
     }
-    const maxStepSec = Number(profileStatus?.profile?.maxStepSec);
-    if (!(maxStepSec > 0)) return profileGap(descriptor, 'transient-profile-invalid',
+    const profileMaxStepSec = Number(profileStatus?.profile?.maxStepSec);
+    if (!(profileMaxStepSec > 0)) return profileGap(descriptor, 'transient-profile-invalid',
       'configured transient profile has no finite positive maxStepSec', parsed,
       limits.transientProfile, profileStatus, limits);
     const algebraic = profileStatus?.integrationMode === 'algebraic-direct';
-    if (parsed.maxStepSec != null && !algebraic
-        && maxStepSec > parsed.maxStepSec * (1 + 1e-12)) {
-      return profileGap(descriptor, 'tran-tmax-not-honored',
-        `source TMAX is ${parsed.maxStepSec}s but ${limits.transientProfile} permits steps up to ${maxStepSec}s`,
-        parsed, limits.transientProfile, profileStatus, limits);
+    const authoredMaxStepNs = parsed.maxStepSec == null ? null : nanoseconds(parsed.maxStepSec);
+    if (parsed.maxStepSec != null && authoredMaxStepNs == null) {
+      return profileGap(descriptor, 'tran-tmax-not-representable',
+        'source TMAX must map to an exact positive integer nanosecond', parsed,
+        limits.transientProfile, profileStatus, limits);
     }
+    const effectiveMaxStepSec = algebraic || parsed.maxStepSec == null
+      ? profileMaxStepSec : Math.min(profileMaxStepSec, parsed.maxStepSec);
+    const effectiveMaxStepNs = nanoseconds(effectiveMaxStepSec);
+    const remainingAdvances = limits.maxTotalAdvances - limits.ledger.advances;
+    executionTimesNs = algebraic || parsed.maxStepSec == null || profileMaxStepSec <= parsed.maxStepSec * (1 + 1e-12)
+      ? parsed.sampleTimesNs
+      : transientExecutionTimes(parsed.sampleTimesNs, parsed.stopNs, effectiveMaxStepNs, remainingAdvances);
+    if (!executionTimesNs) return profileGap(descriptor, 'analysis-work-budget-exceeded',
+      `authored TMAX integration checkpoints exceed the remaining ${remainingAdvances} advance limit`,
+      parsed, limits.transientProfile, profileStatus, limits);
+    parsed.integrationCheckpoints = { count: executionTimesNs.length,
+      observations: parsed.sampleTimesNs.length, outputPointsInvented: false };
     parsed.tmaxHandling = parsed.maxStepSec == null ? 'not-declared'
       : algebraic ? 'not-applicable-algebraic-direct'
-        : 'enforced-by-equal-or-stricter-execution-profile';
-    const acceptedStepLowerBound = algebraic ? 0 : Math.ceil(parsed.stopSec / maxStepSec);
+        : profileMaxStepSec <= parsed.maxStepSec * (1 + 1e-12)
+          ? 'enforced-by-equal-or-stricter-execution-profile'
+          : 'enforced-by-bounded-integration-checkpoints';
+    const acceptedStepLowerBound = algebraic ? 0 : Math.ceil(parsed.stopSec / effectiveMaxStepSec);
     const nonzeroObservationCount = parsed.sampleTimesNs.filter(timeNs => timeNs > 0).length;
     // The adaptive controller qualifies an accepted step with one full-step
     // solve plus two half-step solves.  The first backward-Euler seed uses one
@@ -763,9 +790,9 @@ function runTran(imported, descriptor, limits) {
       integrationMode: profileStatus?.integrationMode || 'adaptive' };
     if (limits.ledger.solves + minimumSolves > limits.maxTotalSolves
         || limits.ledger.attempts + minimumAttempts > limits.maxTotalAttempts
-        || limits.ledger.advances + parsed.sampleTimesNs.length > limits.maxTotalAdvances) {
+        || limits.ledger.advances + executionTimesNs.length > limits.maxTotalAdvances) {
       return profileGap(descriptor, 'analysis-work-budget-exceeded',
-        `precision preflight needs at least ${minimumAttempts} attempts, ${minimumSolves} solves, and ${parsed.sampleTimesNs.length} advances; remaining total limits are ${limits.maxTotalSolves - limits.ledger.solves} solves, ${limits.maxTotalAttempts - limits.ledger.attempts} attempts, ${limits.maxTotalAdvances - limits.ledger.advances} advances`,
+        `precision preflight needs at least ${minimumAttempts} attempts, ${minimumSolves} solves, and ${executionTimesNs.length} advances; remaining total limits are ${limits.maxTotalSolves - limits.ledger.solves} solves, ${limits.maxTotalAttempts - limits.ledger.attempts} attempts, ${limits.maxTotalAdvances - limits.ledger.advances} advances`,
         parsed, limits.transientProfile, profileStatus, limits);
     }
   }
@@ -808,7 +835,8 @@ function runTran(imported, descriptor, limits) {
     };
     let workOutcome = accountStatus();
     if (workOutcome) return workOutcome;
-    for (const timeNs of parsed.sampleTimesNs) {
+    const observationTimes = new Set(parsed.sampleTimesNs);
+    for (const timeNs of executionTimesNs) {
       circuit.advanceTo(BigInt(timeNs));
       workOutcome = accountStatus();
       if (workOutcome) return workOutcome;
@@ -816,8 +844,10 @@ function runTran(imported, descriptor, limits) {
         const sample = circuit.board.deviceCompanions(circuit.parts[0].id);
         if (sample?.converged !== true) converged = false;
       }
-      axis.push(timeNs / 1e9);
-      for (const node of canonical.nodes) values.get(node.id).push(circuit.nodeVoltage(node.netId));
+      if (observationTimes.has(timeNs)) {
+        axis.push(timeNs / 1e9);
+        for (const node of canonical.nodes) values.get(node.id).push(circuit.nodeVoltage(node.netId));
+      }
     }
     const nodes = canonical.nodes.map(node => ({ id: node.id, voltage: values.get(node.id) }));
     if (nodes.some(node => node.voltage.some(value => !finite(value)))) return solverRefusal(descriptor,

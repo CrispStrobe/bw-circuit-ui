@@ -4,7 +4,8 @@ import { spawnSync } from 'node:child_process';
 import './_setup.js';
 import { BoardImpl } from 'bw-board/board.js';
 import { importCircuit } from '../src/importers/index.js';
-import { runSourceAnalyses, sourceAnalysisDescriptors } from '../src/model/source-analysis.js';
+import { runSourceAnalyses, sourceAnalysisDescriptors,
+  transientExecutionTimes } from '../src/model/source-analysis.js';
 
 const imported = text => importCircuit('spice', text);
 
@@ -342,7 +343,7 @@ C1 in 0 1n
     assert.match(adapted.adapted[0], /replaced the requested 3001-point.*101 bounded observations/i);
   });
 
-  it('does not round fractional source edges and refuses an unenforced TMAX', () => {
+  it('does not round fractional source edges and enforces authored TMAX without inventing output points', () => {
     const fractional = runSourceAnalyses(imported(`fractional source corner
 V1 in 0 PWL(0 0 .5n 1 2n 2)
 R1 in 0 1k
@@ -358,15 +359,29 @@ R1 in 0 1k
     assert.ok(!fractional.conditions.sourceBreakpoints.publiclyRepresentableNanoseconds.includes(1),
       'a 0.5 ns corner must not become a fabricated 1 ns observation');
 
+    assert.deepEqual(transientExecutionTimes([0, 10], 10, 2, 6), [0, 2, 4, 6, 8, 10]);
     const tooFine = runSourceAnalyses(imported(`tmax is an integration constraint
 V1 in 0 1
 R1 in 0 1k
 C1 in 0 1n
-.tran 1n 10n 0 1n UIC
+.tran 10n 10n 0 2n UIC
 .end
 `), { format: 'spice', transientProfile: 'precision-v1' })[0];
-    assert.deepEqual([tooFine.status, tooFine.classification, tooFine.code],
-      ['not-run', 'integration-gap', 'tran-tmax-not-honored']);
+    assert.equal(tooFine.status, 'pass');
+    assert.equal(tooFine.conditions.tmaxHandling, 'enforced-by-bounded-integration-checkpoints');
+    assert.deepEqual(tooFine.conditions.integrationCheckpoints,
+      { count: 6, observations: 2, outputPointsInvented: false });
+    assert.deepEqual(tooFine.observables.axis.values, [0, 10e-9]);
+
+    const overBudget = runSourceAnalyses(imported(`tmax checkpoint budget
+V1 in 0 1
+R1 in 0 1k
+C1 in 0 1n
+.tran 0 10u 0 1n UIC
+.end
+`), { format: 'spice', transientProfile: 'precision-v1' })[0];
+    assert.deepEqual([overBudget.status, overBudget.classification, overBudget.code],
+      ['not-run', 'integration-gap', 'analysis-work-budget-exceeded']);
   });
 
   it('runs source-declared single and nested DC sweeps as fresh static operating points', () => {
