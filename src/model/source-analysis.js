@@ -744,14 +744,15 @@ function runTran(imported, descriptor, limits) {
         'source TMAX must map to an exact positive integer nanosecond', parsed,
         limits.transientProfile, profileStatus, limits);
     }
-    let effectiveMaxStepSec = profileMaxStepSec;
-    if (!algebraic && parsed.maxStepSec != null
-        && profileMaxStepSec > parsed.maxStepSec * (1 + 1e-12)) {
+    let effectiveMaxStepSec = profileStatus?.stepBound?.maxStepSec == null
+      ? null : Number(profileStatus.stepBound.maxStepSec);
+    if (!algebraic && parsed.maxStepSec != null) {
       try {
         circuit.configureTransientAnalysis(limits.transientProfile,
           { maxStepSec: parsed.maxStepSec });
         profileStatus = circuit.transientAnalysisStatus();
-        effectiveMaxStepSec = Number(profileStatus?.profile?.maxStepSec);
+        effectiveMaxStepSec = profileStatus?.stepBound?.maxStepSec == null
+          ? null : Number(profileStatus.stepBound.maxStepSec);
       } catch (error) {
         return profileGap(descriptor, 'tran-tmax-not-honored', String(error?.message || error),
           parsed, limits.transientProfile, profileStatus, limits);
@@ -763,15 +764,15 @@ function runTran(imported, descriptor, limits) {
           parsed, limits.transientProfile, profileStatus, limits);
       }
     }
-    parsed.integrationStepBound = { maxStepSec: effectiveMaxStepSec,
+    parsed.integrationStepBound = { maxStepSec: Number.isFinite(effectiveMaxStepSec)
+      ? effectiveMaxStepSec : null,
       externalAdvances: parsed.sampleTimesNs.length, outputPointsInvented: false };
     parsed.tmaxHandling = parsed.maxStepSec == null ? 'not-declared'
       : algebraic ? 'not-applicable-algebraic-direct'
-        : profileMaxStepSec <= parsed.maxStepSec * (1 + 1e-12)
-          ? 'enforced-by-equal-or-stricter-execution-profile'
-          : 'enforced-by-bounded-engine-step';
-    const acceptedStepLowerBound = algebraic ? 0 : Math.ceil(parsed.stopSec / effectiveMaxStepSec);
+        : 'enforced-by-bounded-engine-step';
     const nonzeroObservationCount = parsed.sampleTimesNs.filter(timeNs => timeNs > 0).length;
+    const acceptedStepLowerBound = algebraic ? 0 : Number.isFinite(effectiveMaxStepSec)
+      ? Math.ceil(parsed.stopSec / effectiveMaxStepSec) : nonzeroObservationCount;
     // The adaptive controller qualifies an accepted step with one full-step
     // solve plus two half-step solves.  The first backward-Euler seed uses one
     // solve; every later accepted step therefore has a deterministic minimum
@@ -781,7 +782,9 @@ function runTran(imported, descriptor, limits) {
       : acceptedStepLowerBound === 0 ? 0 : 1 + 3 * (acceptedStepLowerBound - 1);
     parsed.preflight = { minimumAttempts, minimumSolves,
       basis: algebraic ? 'algebraic-direct-nonzero-observation-count'
-        : 'adaptive-be-seed-plus-three-solves-per-later-accepted-step',
+        : Number.isFinite(effectiveMaxStepSec)
+          ? 'active-step-bound-be-seed-plus-three-solves-per-later-accepted-step'
+          : 'observation-floor-be-seed-plus-three-solves-per-later-accepted-step',
       acceptedStepLowerBound,
       integrationMode: profileStatus?.integrationMode || 'adaptive' };
     if (limits.ledger.solves + minimumSolves > limits.maxTotalSolves

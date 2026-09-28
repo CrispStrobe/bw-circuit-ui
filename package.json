@@ -48,7 +48,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.5",
-    "bw-board": "github:CrispStrobe/bw-board#0546f2c406645c6bbc0b2fe3b85ed88055a554b4",
+    "bw-board": "github:CrispStrobe/bw-board#799338966b3fca1571ca17000ecf806fc22a4cfb",
     "playwright": "^1.61.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

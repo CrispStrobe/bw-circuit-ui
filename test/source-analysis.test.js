@@ -370,6 +370,19 @@ C1 in 0 1n
     assert.deepEqual(tooFine.conditions.integrationStepBound,
       { maxStepSec: 2e-9, externalAdvances: 2, outputPointsInvented: false });
     assert.deepEqual(tooFine.observables.axis.values, [0, 10e-9]);
+
+    const slowerThanProfile = runSourceAnalyses(imported(`authored static maximum is independent
+V1 in 0 1
+R1 in out 1k
+C1 out 0 1u
+.tran 1m 10m 0 1m UIC
+.end
+`), { format: 'spice', transientProfile: 'precision-v1' })[0];
+    assert.equal(slowerThanProfile.status, 'pass');
+    assert.deepEqual(slowerThanProfile.conditions.integrationStepBound,
+      { maxStepSec: 1e-3, externalAdvances: 11, outputPointsInvented: false });
+    assert.equal(slowerThanProfile.conditions.preflight.acceptedStepLowerBound, 10,
+      'a static authored 1 ms bound must not become the profile waveform-only 10 us cap');
   });
 
   it('runs source-declared single and nested DC sweeps as fresh static operating points', () => {
