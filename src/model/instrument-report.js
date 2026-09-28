@@ -68,6 +68,97 @@ export function scopeSeries(data) {
   return values;
 }
 
+/** Chronological true samples with their absolute simulation timestamps. */
+export function timedScopeSeries(data) {
+  const values = scopeSeries(data);
+  if (!values.length) return [];
+  const startNs = BigInt(data?.startTNs ?? 0n);
+  const intervalNs = BigInt(Math.round(Number(data?.sampleIntervalNs || 0)));
+  if (intervalNs <= 0n) throw new Error('scope trace has no positive sample interval');
+  return values.map((volts, index) => ({
+    index,
+    timeSeconds: Number(startNs + BigInt(index) * intervalNs) / 1e9,
+    elapsedSeconds: Number(BigInt(index) * intervalNs) / 1e9,
+    volts,
+  }));
+}
+
+export function parseExpectedWaveforms(text) {
+  let value;
+  try { value = JSON.parse(String(text)); } catch (error) {
+    throw new Error(`expected waveform is not JSON: ${error.message}`);
+  }
+  if (value?.schemaVersion !== 1 || !Array.isArray(value.traces) || !value.traces.length) {
+    throw new Error('expected waveform needs schemaVersion 1 and a non-empty traces array');
+  }
+  const traces = value.traces.map((trace, traceIndex) => {
+    if (!Array.isArray(trace.samples) || !trace.samples.length) {
+      throw new Error(`expected trace ${traceIndex} has no samples`);
+    }
+    const samples = trace.samples.map((sample, sampleIndex) => {
+      if (!Number.isFinite(sample?.timeSeconds) || !Number.isFinite(sample?.volts)) {
+        throw new Error(`expected trace ${traceIndex} sample ${sampleIndex} needs finite timeSeconds and volts`);
+      }
+      if (sampleIndex && !(sample.timeSeconds > trace.samples[sampleIndex - 1].timeSeconds)) {
+        throw new Error(`expected trace ${traceIndex} timestamps are not strictly increasing`);
+      }
+      return { timeSeconds: sample.timeSeconds, volts: sample.volts };
+    });
+    return { tip: String(trace.tip || ''), reference: String(trace.reference || ''), samples };
+  });
+  return { schemaVersion: 1, provenance: value.provenance || null, traces };
+}
+
+/** Compare exact sample grids and values; a missing point can never disappear into a tolerance. */
+export function compareExpectedWaveforms(actual, expected, tolerances = {}) {
+  const absoluteVolts = Number(tolerances.absoluteVolts ?? 1e-6);
+  const relative = Number(tolerances.relative ?? 1e-6);
+  const timeSeconds = Number(tolerances.timeSeconds ?? 1e-12);
+  if (![absoluteVolts, relative, timeSeconds].every(value => Number.isFinite(value) && value >= 0)) {
+    throw new Error('waveform tolerances must be finite and non-negative');
+  }
+  const mismatches = [];
+  let compared = 0; let passed = 0; let structuralFailures = 0; let worstVolts = 0; let worstAt = null;
+  if (actual.length !== expected.traces.length) {
+    mismatches.push({ code: 'trace-count', actual: actual.length, expected: expected.traces.length });
+    structuralFailures++;
+  }
+  const count = Math.max(actual.length, expected.traces.length);
+  for (let traceIndex = 0; traceIndex < count; traceIndex++) {
+    const a = actual[traceIndex]; const e = expected.traces[traceIndex];
+    if (!a || !e) continue;
+    if (a.tip !== e.tip || (a.reference || '') !== (e.reference || '')) {
+      mismatches.push({ code: 'trace-identity', traceIndex,
+        actual: { tip: a.tip, reference: a.reference || '' }, expected: { tip: e.tip, reference: e.reference || '' } });
+      structuralFailures++;
+    }
+    if (a.samples.length !== e.samples.length) {
+      mismatches.push({ code: 'sample-count', traceIndex, actual: a.samples.length, expected: e.samples.length });
+      structuralFailures++;
+    }
+    const points = Math.min(a.samples.length, e.samples.length);
+    for (let sampleIndex = 0; sampleIndex < points; sampleIndex++) {
+      const av = a.samples[sampleIndex]; const ev = e.samples[sampleIndex];
+      compared++;
+      const timeError = Math.abs(av.timeSeconds - ev.timeSeconds);
+      const voltageError = Math.abs(av.volts - ev.volts);
+      const allowed = absoluteVolts + relative * Math.max(Math.abs(av.volts), Math.abs(ev.volts));
+      const ok = timeError <= timeSeconds && voltageError <= allowed;
+      if (ok) passed++;
+      if (voltageError > worstVolts) {
+        worstVolts = voltageError;
+        worstAt = { traceIndex, sampleIndex, timeSeconds: av.timeSeconds, actualVolts: av.volts, expectedVolts: ev.volts };
+      }
+      if (!ok && mismatches.length < 20) mismatches.push({ code: timeError > timeSeconds ? 'sample-time' : 'sample-voltage',
+        traceIndex, sampleIndex, actualTimeSeconds: av.timeSeconds, expectedTimeSeconds: ev.timeSeconds,
+        actualVolts: av.volts, expectedVolts: ev.volts, voltageError, allowedVolts: allowed });
+    }
+  }
+  return { status: structuralFailures || passed !== compared ? 'fail' : 'pass',
+    counts: { traces: actual.length, compared, passed, failed: compared - passed, structuralFailures },
+    tolerances: { absoluteVolts, relative, timeSeconds }, worstVolts, worstAt, mismatches };
+}
+
 export function summarizeScope(data) {
   const values = scopeSeries(data);
   if (!values.length) return { samples: 0, minVolts: null, maxVolts: null, meanVolts: null, rmsVolts: null, lastVolts: null };

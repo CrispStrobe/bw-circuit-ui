@@ -47,6 +47,7 @@ import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice } from '../src/model/exporters/spice.js';
 import { importSpice } from '../src/importers/spice.js';
 import { parseSpiceValue } from '../src/model/si.js';
+import { runCliWaveformOracle } from './cli-waveform-oracle.mjs';
 
 /** Agreement required between ngspice and the engine on a shared node. */
 const V_TOL_ABS = 5e-3;      // volts
@@ -1701,6 +1702,12 @@ function main() {
   }
   console.log('');
 
+  const cliWaveform = runCliWaveformOracle();
+  console.log(`${cliWaveform.ok ? 'PASS' : 'FAIL'}  CLI transient waveform`);
+  for (const line of cliWaveform.lines) console.log(line);
+  console.log('');
+  if (cliWaveform.ok) passed++; else failed++;
+
   const gap = modelGap();
   console.log('Model note (not a gate): the shipped piecewise LED model and the');
   console.log('Shockley model the deck carries differ on the canonical bench by');
@@ -1713,7 +1720,7 @@ function main() {
   else console.log(`decks kept in ${dir}`);
 
   // The count line, last, so a log tail always shows it.
-  const total = CASES.length * 2 + foreignFiles.length;
+  const total = CASES.length * 2 + foreignFiles.length + 1;
   console.log(`${total} decks simulated - ${passed} passed - ${failed} failed`);
   if (failed > 0 || passed !== total) process.exit(1);
 }

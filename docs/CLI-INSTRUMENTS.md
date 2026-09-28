@@ -27,6 +27,14 @@ bwc measure divider.json \
 # Uniform true samples for another tool
 bwc measure divider.json --scope RT.b --duration 10ms --rate 20kHz \
   --csv trace.csv
+
+# Watch the actual simulation clock advance (newline-delimited JSON)
+bwc measure sine.cir --scope V1.pos,V1.neg \
+  --meter voltage:V1.pos,V1.neg --duration 1ms --rate 100kHz --watch
+
+# Compare every timestamp and voltage with a reviewed analytical/oracle trace
+bwc measure sine.cir --scope V1.pos,V1.neg \
+  --duration 1ms --rate 100kHz --expect expected-waveform.json --json
 ```
 
 Repeat `--scope` and `--meter` for multiple channels/readings. Scope summaries
@@ -40,6 +48,40 @@ Every successful JSON meter reading includes numeric `siValue`/`siUnit` fields
 for computation as well as the formatted display value. Current display values
 autorange across A, mA, µA, nA and pA; a real nonzero current is never rounded
 into a displayed zero merely because it is smaller than one microamp.
+
+`--watch` emits one NDJSON `sample` record after each requested simulation-time
+advance and finishes with one `summary` record. Each sample carries absolute and
+elapsed simulation time, every scope voltage, and simultaneous numeric meter
+readings. It does not sleep to imitate wall time: a 1 ms circuit simulation can
+finish much faster or slower than 1 ms, while its timestamps remain the engine's
+clock. Resistance mode is rejected because measuring resistance powers the
+circuit off and therefore is not a powered time series.
+
+`--expect` reads a bounded, explicit waveform document and compares every sample
+timestamp and voltage. Point-count, trace identity, missing samples and timestamp
+drift fail independently of voltage tolerance. Defaults are 1 µV absolute,
+1 ppm relative and 1 ps time tolerance; override them explicitly with
+`--abs-volts`, `--rel` and `--time-tolerance`. A failed comparison exits 1 and
+still prints the complete report. The format is:
+
+```json
+{
+  "schemaVersion": 1,
+  "provenance": { "kind": "ngspice", "version": "42" },
+  "traces": [{
+    "tip": "V1.pos",
+    "reference": "V1.neg",
+    "samples": [
+      { "timeSeconds": 0.00001, "volts": 0.9993335328713915 }
+    ]
+  }]
+}
+```
+
+Provenance is reported but not trusted merely because a caller wrote
+`"kind":"ngspice"`; the CLI therefore keeps `independentOracle:false`. The
+independent CI/corpus runner is responsible for constructing and verifying real
+ngspice references before handing the same sample document to this command.
 
 The command is intentionally bounded to 10 seconds, 2 MHz and 200,000 samples
 per channel. It refuses unmapped components, semantic import losses and
