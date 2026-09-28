@@ -680,6 +680,14 @@ function precisionRefusal(descriptor, detail, parsed, profile, status, limits) {
   };
 }
 
+function transientLocallyQualified(status) {
+  // A storage-free algebraic endpoint has no local integration error to
+  // estimate. Board names that execution mode explicitly; requiring an
+  // accepted adaptive step would turn its exact non-adaptive result into a
+  // false refusal. Adaptive execution still needs a positive qualification.
+  return status?.integrationMode === 'algebraic-direct' || status?.accuracyMet === true;
+}
+
 function runTran(imported, descriptor, limits) {
   const parsed = parseTran(descriptor, limits);
   if (parsed.status) return parsed;
@@ -816,7 +824,7 @@ function runTran(imported, descriptor, limits) {
       'native transient returned a non-finite node voltage', parsed);
     if (convergenceVerified && !converged) return solverRefusal(descriptor,
       'native transient failed to converge at one or more authored sample times', parsed);
-    if (limits.transientProfile && profileStatus?.accuracyMet !== true) {
+    if (limits.transientProfile && !transientLocallyQualified(profileStatus)) {
       return precisionRefusal(descriptor,
         'precision profile completed without a positive local step qualification',
         parsed, limits.transientProfile, profileStatus, limits);

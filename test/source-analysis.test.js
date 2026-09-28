@@ -241,6 +241,51 @@ R1 1 0 1k
     assert.deepEqual([subNs.status, subNs.code], ['not-run', 'tran-grid-not-representable']);
   });
 
+  it('accepts exact algebraic-direct endpoints without inventing an adaptive-step qualification', () => {
+    const run = runSourceAnalyses(imported(`storage-free transient endpoints
+V1 in 0 2.5
+R1 in out 1k
+R2 out 0 1k
+.tran .01 .1
+.end
+`), { format: 'spice', transientProfile: 'precision-v1' })[0];
+    assert.equal(run.status, 'pass');
+    assert.equal(run.executionProfile.integrationMode, 'algebraic-direct');
+    assert.equal(run.executionProfile.qualification.accuracyMet, null,
+      'no adaptive qualification is fabricated for an algebraic endpoint');
+    assert.deepEqual(run.observables.axis.values,
+      [0, .01, .02, .03, .04, .05, .06, .07, .08, .09, .1]);
+    const output = run.observables.nodes.find(node => node.id === 'n1').voltage;
+    run.observables.axis.values.forEach((time, index) => {
+      const expected = 1.25;
+      assert.ok(Math.abs(output[index] - expected) < 1e-12,
+        `algebraic endpoint ${index}: ${output[index]} vs ${expected}`);
+    });
+  });
+
+  it('still refuses adaptive execution without a positive local-step qualification', () => {
+    const original = BoardImpl.prototype.transientAnalysisStatus;
+    BoardImpl.prototype.transientAnalysisStatus = function unqualifiedAdaptiveStatus() {
+      const status = original.call(this);
+      return status.work.advances > 0
+        ? { ...status, integrationMode: 'adaptive', accuracyMet: null }
+        : status;
+    };
+    try {
+      const run = runSourceAnalyses(imported(`reactive qualification control
+V1 in 0 1
+R1 in out 1k
+C1 out 0 1u
+.tran 1u 3u UIC
+.end
+`), { format: 'spice', transientProfile: 'precision-v1' })[0];
+      assert.deepEqual([run.status, run.classification, run.code],
+        ['refused', 'solver-refusal', 'transient-accuracy-unmet']);
+    } finally {
+      BoardImpl.prototype.transientAnalysisStatus = original;
+    }
+  });
+
   it('keeps TSTEP, TSTART, TMAX, integration, and observation semantics separate', () => {
     const fourField = runSourceAnalyses(imported(`four-field transient
 V1 in 0 2
