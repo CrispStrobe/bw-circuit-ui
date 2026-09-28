@@ -208,23 +208,57 @@ C2 out 0 14p
     });
   });
 
-  it('names ADI row 5158 as the remaining ideal-inductor history blocker', () => {
-    const input = importCircuit('spice', `ADI row 5158 ideal-inductor history
+  it('runs ADI row 5158 through its exact constraint and matches ngspice', {
+    skip: spawnSync('ngspice', ['--version'], { encoding: 'utf8' }).status !== 0,
+  }, () => {
+    const samples = [0.24, 0.51, 0.99, 1.5, 2.25, 3];
+    const measures = samples.map((time, index) =>
+      `.meas tran out${index} FIND v(1) AT=${time}`).join('\n');
+    const deck = `ADI row 5158 source-constrained ideal inductor
 L1 1 0 1
 I1 0 1 SINE(0 1 1 0)
 .tran 3
 .OPTIONS plotwinsize=0
 .end
-`);
-    const [result] = runSourceAnalyses(input, {
+`;
+    const [result] = runSourceAnalyses(importCircuit('spice', deck), {
       format: 'spice', transientProfile: 'precision-v1',
     });
-    assert.deepEqual([result.status, result.classification, result.code],
-      ['refused', 'solver-refusal', 'transient-accuracy-unmet']);
-    assert.equal(result.conditions.executionProfile.failure.code,
-      'minimum-step-accuracy-unmet');
-    assert.equal(result.conditions.executionProfile.failure.timeSec, 2e-12);
-    assert.equal(result.conditions.executionProfile.qualification.accuracyMet, false);
+    assert.equal(result.status, 'pass');
+    assert.equal(result.executionProfile.integrationMode,
+      'source-constrained-inductor-direct');
+    assert.deepEqual(result.executionProfile.work,
+      { attempts: 100, solves: 0, advances: 100 });
+    assert.equal(result.executionProfile.qualification.basis,
+      'ideal-current-source-constrains-inductor-current-and-voltage-derivative');
+    assert.deepEqual(result.conditions.preflight, {
+      minimumAttempts: 100,
+      minimumSolves: 0,
+      basis: 'source-constrained-inductor-analytic-endpoint-count',
+      acceptedStepLowerBound: 0,
+      integrationMode: 'source-constrained-inductor-direct',
+    });
+
+    // ngspice does not accept LTspice's one-argument `.tran TSTOP`, so spell
+    // the same three-second interval with a deliberately fine independent
+    // integration ceiling before asking for the six authored observations.
+    const oracleDeck = deck.replace('.tran 3', '.tran .001 3 0 .0001')
+      .replace('.end', `${measures}\n.end`);
+    const ng = spawnSync('ngspice', ['-b'], { input: oracleDeck, encoding: 'utf8' });
+    assert.equal(ng.status, 0, ng.stderr || ng.stdout);
+    const measured = new Map();
+    for (const match of ng.stdout.matchAll(/^\s*out(\d+)\s*=\s*([-+0-9.e]+)/gmi)) {
+      measured.set(Number(match[1]), Number(match[2]));
+    }
+    assert.equal(measured.size, samples.length);
+    const output = result.observables.nodes[0].voltage;
+    samples.forEach((time, index) => {
+      const sampleIndex = result.observables.axis.values.findIndex(value =>
+        Math.abs(value - time) < 1e-10);
+      assert.notEqual(sampleIndex, -1);
+      assert.ok(Math.abs(output[sampleIndex] - measured.get(index)) < 1e-6,
+        `${time}s: public adapter ${output[sampleIndex]} vs ngspice ${measured.get(index)}`);
+    });
   });
 
   it('emits the certified-quiescent Si7li row 3835 series with zero work and ngspice agreement', {

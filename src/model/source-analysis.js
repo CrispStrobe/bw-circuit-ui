@@ -646,16 +646,19 @@ function workOf(status) {
 }
 
 function executionProfile(profile, status, limits, { certifiedQuiescent = false } = {}) {
+  const constrained = status?.integrationMode === 'source-constrained-inductor-direct';
   return {
     requested: profile,
     configured: status?.profile || null,
     integrationMode: status?.integrationMode || null,
     qualification: {
       accuracyMet: status?.accuracyMet ?? null,
-      scope: 'native local transient-step acceptance and solve convergence',
+      scope: constrained ? 'exact source-constrained endpoint evaluation'
+        : 'native local transient-step acceptance and solve convergence',
       certifiedQuiescent,
       basis: certifiedQuiescent ? 'board-certified-invariant-zero-state'
         : status?.integrationMode === 'algebraic-direct' ? 'storage-free-algebraic-endpoint'
+          : constrained ? 'ideal-current-source-constrains-inductor-current-and-voltage-derivative'
           : 'native-local-step-acceptance',
       globalOutputAccuracy: false,
       oracleComparison: 'not-performed',
@@ -689,7 +692,9 @@ function transientLocallyQualified(status, certifiedQuiescent = false) {
   // estimate. Board names that execution mode explicitly; requiring an
   // accepted adaptive step would turn its exact non-adaptive result into a
   // false refusal. Adaptive execution still needs a positive qualification.
-  return certifiedQuiescent || status?.integrationMode === 'algebraic-direct' || status?.accuracyMet === true;
+  return certifiedQuiescent || status?.integrationMode === 'algebraic-direct'
+    || status?.integrationMode === 'source-constrained-inductor-direct'
+    || status?.accuracyMet === true;
 }
 
 function runTran(imported, descriptor, limits) {
@@ -744,6 +749,7 @@ function runTran(imported, descriptor, limits) {
       'configured transient profile has no finite positive maxStepSec', parsed,
       limits.transientProfile, profileStatus, limits);
     const algebraic = profileStatus?.integrationMode === 'algebraic-direct';
+    const sourceConstrained = profileStatus?.integrationMode === 'source-constrained-inductor-direct';
     const authoredMaxStepNs = parsed.maxStepSec == null ? null : nanoseconds(parsed.maxStepSec);
     if (parsed.maxStepSec != null && authoredMaxStepNs == null) {
       return profileGap(descriptor, 'tran-tmax-not-representable',
@@ -752,7 +758,7 @@ function runTran(imported, descriptor, limits) {
     }
     let effectiveMaxStepSec = profileStatus?.stepBound?.maxStepSec == null
       ? null : Number(profileStatus.stepBound.maxStepSec);
-    if (!algebraic && parsed.maxStepSec != null) {
+    if (!algebraic && !sourceConstrained && parsed.maxStepSec != null) {
       try {
         circuit.configureTransientAnalysis(limits.transientProfile,
           { maxStepSec: parsed.maxStepSec });
@@ -787,21 +793,25 @@ function runTran(imported, descriptor, limits) {
       outputPointsInvented: false };
     parsed.tmaxHandling = parsed.maxStepSec == null ? 'not-declared'
       : algebraic ? 'not-applicable-algebraic-direct'
+        : sourceConstrained ? 'not-applicable-source-constrained-endpoint-direct'
         : 'enforced-by-bounded-engine-step';
     const nonzeroObservationCount = parsed.sampleTimesNs.filter(timeNs => timeNs > 0).length;
-    const acceptedStepLowerBound = certifiedQuiescent || algebraic ? 0 : Number.isFinite(effectiveMaxStepSec)
+    const acceptedStepLowerBound = certifiedQuiescent || algebraic || sourceConstrained
+      ? 0 : Number.isFinite(effectiveMaxStepSec)
       ? Math.ceil(parsed.stopSec / effectiveMaxStepSec) : nonzeroObservationCount;
     // The adaptive controller qualifies an accepted step with one full-step
     // solve plus two half-step solves.  The first backward-Euler seed uses one
     // solve; every later accepted step therefore has a deterministic minimum
     // of three.  Retries and method restarts only increase these counts.
     const minimumAttempts = certifiedQuiescent ? 0
-      : algebraic ? nonzeroObservationCount : acceptedStepLowerBound;
+      : algebraic || sourceConstrained ? nonzeroObservationCount : acceptedStepLowerBound;
     const minimumSolves = certifiedQuiescent ? 0 : algebraic ? nonzeroObservationCount
+      : sourceConstrained ? 0
       : acceptedStepLowerBound === 0 ? 0 : 1 + 3 * (acceptedStepLowerBound - 1);
     parsed.preflight = { minimumAttempts, minimumSolves,
       basis: certifiedQuiescent ? 'board-certified-invariant-zero-state'
         : algebraic ? 'algebraic-direct-nonzero-observation-count'
+          : sourceConstrained ? 'source-constrained-inductor-analytic-endpoint-count'
         : Number.isFinite(effectiveMaxStepSec)
           ? 'active-step-bound-be-seed-plus-three-solves-per-later-accepted-step'
           : 'observation-floor-be-seed-plus-three-solves-per-later-accepted-step',
