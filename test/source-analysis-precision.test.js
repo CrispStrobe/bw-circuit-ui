@@ -142,7 +142,7 @@ C1 out 0 1n
     assert.equal(preflight.conditions.preflight.minimumAttempts, 200000);
     assert.equal(preflight.conditions.preflight.minimumSolves, 599998);
     assert.equal(preflight.conditions.preflight.basis,
-      'adaptive-be-seed-plus-three-solves-per-later-accepted-step');
+      'active-step-bound-be-seed-plus-three-solves-per-later-accepted-step');
     assert.equal(preflight.conditions.executionProfile.work.attempts, 0);
 
     const [accounted] = runSourceAnalyses(imported(), { format: 'spice',
