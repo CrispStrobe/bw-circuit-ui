@@ -152,6 +152,61 @@ C1 out 0 1n
     assert.ok(accounted.conditions.executionProfile.work.attempts > 10);
   });
 
+  it('emits the certified-quiescent Si7li row 3835 series with zero work and ngspice agreement', {
+    skip: spawnSync('ngspice', ['--version'], { encoding: 'utf8' }).status !== 0,
+  }, () => {
+    const deck = `Si7li train row 3835
+C1 N001 0 5e-5
+L1 N002 0 100
+R1 V2 N001 1k
+R2 V2 N002 1k
+.tran 0.05 5
+.end
+`;
+    const [result] = runSourceAnalyses(importCircuit('spice', deck), {
+      format: 'spice', transientProfile: 'precision-v1',
+    });
+    assert.equal(result.status, 'pass');
+    assert.equal(result.conditions.points, 101);
+    assert.equal(result.conditions.preflight.basis, 'board-certified-invariant-zero-state');
+    assert.deepEqual(result.executionProfile.work, { attempts: 0, solves: 0, advances: 0 });
+    assert.equal(result.executionProfile.qualification.accuracyMet, null,
+      'an invariant-state certificate is not relabelled as adaptive-step accuracy');
+    assert.equal(result.executionProfile.qualification.certifiedQuiescent, true);
+    assert.equal(result.initialization.initialization, 'source-declared-quiescent-zero-state');
+    assert.ok(result.observables.nodes.every(node =>
+      node.voltage.length === 101 && node.voltage.every(value => value === 0)));
+
+    const oracle = spawnSync('ngspice', ['-n', '-b'], {
+      input: deck.replace('.end', '.print tran v(N001) v(N002) v(V2)\n.end'),
+      encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME },
+    });
+    assert.equal(oracle.status, 0, oracle.stderr || oracle.stdout);
+    const rows = oracle.stdout.split(/\r?\n/).map(line => line.trim().split(/\s+/))
+      .filter(fields => fields.length === 5 && /^\d+$/.test(fields[0]));
+    assert.ok(rows.length >= 101, 'ngspice emitted the complete five-second transient');
+    assert.ok(rows.every(fields => fields.slice(2).every(value => Number(value) === 0)),
+      'the independent oracle also reports an invariant zero series');
+
+    const [uic] = runSourceAnalyses(importCircuit('spice', deck.replace('.tran 0.05 5',
+      '.tran 0.05 5 UIC')), { format: 'spice', transientProfile: 'precision-v1' });
+    assert.deepEqual([uic.status, uic.code], ['refused', 'transient-accuracy-unmet'],
+      'UIC executes normally and does not receive a non-UIC operating-point certificate');
+    assert.equal(uic.conditions.executionProfile.qualification.certifiedQuiescent, false);
+
+    const withDiode = deck.replace('R2 V2 N002 1k',
+      'R2 V2 N002 1k\nD1 N001 0 D\n.model D D(IS=1e-12 N=1 RS=0)\n.temp 26.826793442075882\n.options tnom=26.826793442075882');
+    const [unsupported] = runSourceAnalyses(importCircuit('spice', withDiode), {
+      format: 'spice', transientProfile: 'precision-v1',
+    });
+    assert.equal(unsupported.status, 'pass');
+    assert.equal(unsupported.executionProfile.qualification.certifiedQuiescent, false,
+      'an exact-zero result outside the Board certificate topology cannot use the shortcut');
+    assert.notEqual(unsupported.conditions.preflight.basis, 'board-certified-invariant-zero-state');
+    assert.ok(unsupported.executionProfile.work.attempts > 0,
+      'the unsupported topology follows ordinary bounded integration');
+  });
+
   it('refuses unsupported profiles and never labels an unqualified solve as pass', () => {
     const [invalid] = runSourceAnalyses(imported(), { format: 'spice', transientProfile: 'precision-v2' });
     assert.deepEqual([invalid.status, invalid.code], ['not-run', 'transient-profile-not-allowed']);

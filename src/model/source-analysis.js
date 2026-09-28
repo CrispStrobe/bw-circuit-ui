@@ -645,7 +645,7 @@ function workOf(status) {
     ? counts : null;
 }
 
-function executionProfile(profile, status, limits) {
+function executionProfile(profile, status, limits, { certifiedQuiescent = false } = {}) {
   return {
     requested: profile,
     configured: status?.profile || null,
@@ -653,6 +653,10 @@ function executionProfile(profile, status, limits) {
     qualification: {
       accuracyMet: status?.accuracyMet ?? null,
       scope: 'native local transient-step acceptance and solve convergence',
+      certifiedQuiescent,
+      basis: certifiedQuiescent ? 'board-certified-invariant-zero-state'
+        : status?.integrationMode === 'algebraic-direct' ? 'storage-free-algebraic-endpoint'
+          : 'native-local-step-acceptance',
       globalOutputAccuracy: false,
       oracleComparison: 'not-performed',
     },
@@ -680,12 +684,12 @@ function precisionRefusal(descriptor, detail, parsed, profile, status, limits) {
   };
 }
 
-function transientLocallyQualified(status) {
+function transientLocallyQualified(status, certifiedQuiescent = false) {
   // A storage-free algebraic endpoint has no local integration error to
   // estimate. Board names that execution mode explicitly; requiring an
   // accepted adaptive step would turn its exact non-adaptive result into a
   // false refusal. Adaptive execution still needs a positive qualification.
-  return status?.integrationMode === 'algebraic-direct' || status?.accuracyMet === true;
+  return certifiedQuiescent || status?.integrationMode === 'algebraic-direct' || status?.accuracyMet === true;
 }
 
 function runTran(imported, descriptor, limits) {
@@ -725,6 +729,8 @@ function runTran(imported, descriptor, limits) {
   try { canonical = canonicalCircuit(imported, circuit); }
   catch (error) { return mappingGap(descriptor, error, parsed); }
   let profileStatus = null;
+  let initialization = null;
+  let certifiedQuiescent = false;
   if (limits.transientProfile) {
     try {
       circuit.configureTransientAnalysis(limits.transientProfile);
@@ -764,24 +770,38 @@ function runTran(imported, descriptor, limits) {
           parsed, limits.transientProfile, profileStatus, limits);
       }
     }
+    if (!parsed.uic) {
+      try {
+        initialization = circuit.initializeTransientFromOperatingPoint({
+          fallback: 'proven-zero-state',
+        });
+        certifiedQuiescent = initialization?.analysis?.quiescent === true;
+      } catch (error) {
+        return profileGap(descriptor, 'native-transient-execution-failed',
+          String(error?.message || error), parsed, limits.transientProfile, profileStatus, limits);
+      }
+    }
     parsed.integrationStepBound = { maxStepSec: Number.isFinite(effectiveMaxStepSec)
       ? effectiveMaxStepSec : null,
-      externalAdvances: parsed.sampleTimesNs.length, outputPointsInvented: false };
+      externalAdvances: certifiedQuiescent ? 0 : parsed.sampleTimesNs.length,
+      outputPointsInvented: false };
     parsed.tmaxHandling = parsed.maxStepSec == null ? 'not-declared'
       : algebraic ? 'not-applicable-algebraic-direct'
         : 'enforced-by-bounded-engine-step';
     const nonzeroObservationCount = parsed.sampleTimesNs.filter(timeNs => timeNs > 0).length;
-    const acceptedStepLowerBound = algebraic ? 0 : Number.isFinite(effectiveMaxStepSec)
+    const acceptedStepLowerBound = certifiedQuiescent || algebraic ? 0 : Number.isFinite(effectiveMaxStepSec)
       ? Math.ceil(parsed.stopSec / effectiveMaxStepSec) : nonzeroObservationCount;
     // The adaptive controller qualifies an accepted step with one full-step
     // solve plus two half-step solves.  The first backward-Euler seed uses one
     // solve; every later accepted step therefore has a deterministic minimum
     // of three.  Retries and method restarts only increase these counts.
-    const minimumAttempts = algebraic ? nonzeroObservationCount : acceptedStepLowerBound;
-    const minimumSolves = algebraic ? nonzeroObservationCount
+    const minimumAttempts = certifiedQuiescent ? 0
+      : algebraic ? nonzeroObservationCount : acceptedStepLowerBound;
+    const minimumSolves = certifiedQuiescent ? 0 : algebraic ? nonzeroObservationCount
       : acceptedStepLowerBound === 0 ? 0 : 1 + 3 * (acceptedStepLowerBound - 1);
     parsed.preflight = { minimumAttempts, minimumSolves,
-      basis: algebraic ? 'algebraic-direct-nonzero-observation-count'
+      basis: certifiedQuiescent ? 'board-certified-invariant-zero-state'
+        : algebraic ? 'algebraic-direct-nonzero-observation-count'
         : Number.isFinite(effectiveMaxStepSec)
           ? 'active-step-bound-be-seed-plus-three-solves-per-later-accepted-step'
           : 'observation-floor-be-seed-plus-three-solves-per-later-accepted-step',
@@ -789,9 +809,10 @@ function runTran(imported, descriptor, limits) {
       integrationMode: profileStatus?.integrationMode || 'adaptive' };
     if (limits.ledger.solves + minimumSolves > limits.maxTotalSolves
         || limits.ledger.attempts + minimumAttempts > limits.maxTotalAttempts
-        || limits.ledger.advances + parsed.sampleTimesNs.length > limits.maxTotalAdvances) {
+        || limits.ledger.advances + (certifiedQuiescent ? 0 : parsed.sampleTimesNs.length)
+          > limits.maxTotalAdvances) {
       return profileGap(descriptor, 'analysis-work-budget-exceeded',
-        `precision preflight needs at least ${minimumAttempts} attempts, ${minimumSolves} solves, and ${parsed.sampleTimesNs.length} advances; remaining total limits are ${limits.maxTotalSolves - limits.ledger.solves} solves, ${limits.maxTotalAttempts - limits.ledger.attempts} attempts, ${limits.maxTotalAdvances - limits.ledger.advances} advances`,
+        `precision preflight needs at least ${minimumAttempts} attempts, ${minimumSolves} solves, and ${certifiedQuiescent ? 0 : parsed.sampleTimesNs.length} advances; remaining total limits are ${limits.maxTotalSolves - limits.ledger.solves} solves, ${limits.maxTotalAttempts - limits.ledger.attempts} attempts, ${limits.maxTotalAdvances - limits.ledger.advances} advances`,
         parsed, limits.transientProfile, profileStatus, limits);
     }
   }
@@ -803,10 +824,10 @@ function runTran(imported, descriptor, limits) {
     let convergenceVerified = typeof circuit.board?.deviceCompanions === 'function'
       && (circuit.parts || []).length > 0;
     let converged = true;
-    let initialization = null;
-    if (!parsed.uic) initialization = circuit.initializeTransientFromOperatingPoint({
+    if (!parsed.uic && !initialization) initialization = circuit.initializeTransientFromOperatingPoint({
       fallback: 'proven-zero-state',
     });
+    certifiedQuiescent = initialization?.analysis?.quiescent === true;
     let accounted = { attempts: 0, solves: 0, advances: 0 };
     const accountStatus = () => {
       if (!limits.transientProfile) return null;
@@ -837,10 +858,10 @@ function runTran(imported, descriptor, limits) {
     let workOutcome = accountStatus();
     if (workOutcome) return workOutcome;
     for (const timeNs of parsed.sampleTimesNs) {
-      circuit.advanceTo(BigInt(timeNs));
+      if (!certifiedQuiescent) circuit.advanceTo(BigInt(timeNs));
       workOutcome = accountStatus();
       if (workOutcome) return workOutcome;
-      if (convergenceVerified) {
+      if (convergenceVerified && !certifiedQuiescent) {
         const sample = circuit.board.deviceCompanions(circuit.parts[0].id);
         if (sample?.converged !== true) converged = false;
       }
@@ -852,7 +873,7 @@ function runTran(imported, descriptor, limits) {
       'native transient returned a non-finite node voltage', parsed);
     if (convergenceVerified && !converged) return solverRefusal(descriptor,
       'native transient failed to converge at one or more authored sample times', parsed);
-    if (limits.transientProfile && !transientLocallyQualified(profileStatus)) {
+    if (limits.transientProfile && !transientLocallyQualified(profileStatus, certifiedQuiescent)) {
       return precisionRefusal(descriptor,
         'precision profile completed without a positive local step qualification',
         parsed, limits.transientProfile, profileStatus, limits);
@@ -874,7 +895,7 @@ function runTran(imported, descriptor, limits) {
       evidence: adapted.length ? 'original-adapted' : 'original-direct', adapted,
       thermal: 'native-fixed-26.8267934421C; no oracle comparison performed',
       ...(limits.transientProfile ? { executionProfile: executionProfile(
-        limits.transientProfile, profileStatus, limits) } : {}),
+        limits.transientProfile, profileStatus, limits, { certifiedQuiescent }) } : {}),
       observables: { axis: { quantity: 'time', unit: 's', values: axis }, nodes },
       convergence: { verified: convergenceVerified, converged: convergenceVerified ? true : null,
         api: convergenceVerified ? 'deviceCompanions' : null },
