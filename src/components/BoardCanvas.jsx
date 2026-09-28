@@ -100,6 +100,7 @@ const MAKECODE_FACE_ART = {
   circuit_playground_express: { href: circuitPlaygroundArt, title: 'Adafruit Circuit Playground Express' },
 };
 import { dipTerminalPositions, dipPackageGeometry, DIP_PIN_PITCH, DIP_ROW_OFFSET } from '../model/dip-geometry.js';
+import useNarrowScreen from '../hooks/useNarrowScreen.js';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
@@ -4335,6 +4336,8 @@ export function BoardCanvas({
     }
   }, [selectedParts, selectedWire, onRemovePart, onRemoveWire, onSelectPart, onSelectWire, parts, onMovePart, onNudgePart, onNudgeSeated, onSeatPart, onCopy, onPaste, onFlipPart, onUndo, onRedo, onSelectAll, onRotatePart, onDuplicatePart]);
 
+  const narrowScreen = useNarrowScreen();
+
   // ── Touch support ────────────────────────────────────────────────
   const canvasContainerRef = useRef(null);
   const touchHandlers = useTouch({
@@ -4564,9 +4567,17 @@ export function BoardCanvas({
           // still forces a scrollbar (not a crush) below it.
           flex: '1 1 auto',
           width: 'auto',
-          minWidth: CANVAS_W,
+          // ON A SMALL SCREEN THERE IS NO FLOOR. The 700 below is the
+          // narrow-PANE story (a designer squeezed inside a wide window, where
+          // a scrollbar is the right answer and a 2px canvas is not). A phone
+          // is the opposite case: 700 + the 190 rail + the 280 instruments
+          // demand 1170px of a 430pt screen, so the floor is what pushes the
+          // bench off the side of the device. Measured at 430x930: canvas box
+          // 700 wide inside a 430 root. Fitting beats scrolling when the whole
+          // screen is narrower than the floor.
+          minWidth: narrowScreen ? 0 : CANVAS_W,
           height: '100%',
-          minHeight: CANVAS_H,
+          minHeight: narrowScreen ? 0 : CANVAS_H,
           background: '#16213e',
           borderRadius: '8px',
           border: '1px solid #2c3e50',

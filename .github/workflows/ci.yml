@@ -105,6 +105,13 @@ jobs:
       - name: Real-browser interaction gate (npm run verify:interaction)
         run: npm run verify:interaction
 
+      # Two-finger pinch/pan (the handlers were written, documented and never
+      # attached — only a real multi-touch browser noticed) and the phone
+      # layout (a 700px canvas floor beside a 190px rail inside a 430pt
+      # screen). Both need a real Chromium; neither can be unit-tested.
+      - name: Touch and small-screen layout gates (npm run verify:touch)
+        run: npm run verify:touch
+
   kicad-oracle:
     runs-on: ubuntu-latest
     steps:
