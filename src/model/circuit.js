@@ -918,14 +918,14 @@ export class Circuit {
    *
    * @returns {object}
    */
-  initializeTransientFromOperatingPoint() {
+  initializeTransientFromOperatingPoint(options = undefined) {
     if (this.analysisBlockers?.length) {
       throw new Error(`initializeTransientFromOperatingPoint: blocked by ${this.analysisBlockers.length} persisted import finding(s)`);
     }
     if (!this.board || typeof this.board.initializeTransientFromOperatingPoint !== 'function') {
       throw new Error('initializeTransientFromOperatingPoint: the injected bw-board engine does not provide this analysis');
     }
-    return this.board.initializeTransientFromOperatingPoint();
+    return this.board.initializeTransientFromOperatingPoint(options);
   }
 
   /**

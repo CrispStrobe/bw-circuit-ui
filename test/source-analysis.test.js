@@ -495,6 +495,60 @@ L1 coil 0 3m
     }
   });
 
+  it('uses the explicit proven-zero fallback for the real parallel-inductor TMAX topology', () => {
+    const row2854 = `Si7li train row 2854
+V1 in 0 SINE(0 7.8 78)
+R1 N001 0 10k
+R2 N001 in 10k
+R3 out 0 30k
+R4 out 0 60k
+C1 N002 out 4m
+L1 N001 N002 10
+L2 N002 N001 10
+.tran 0 15ms 0 1us
+.end
+`;
+    const run = runSourceAnalyses(imported(row2854), {
+      format: 'spice', transientProfile: 'precision-v1', maxPoints: 101,
+    })[0];
+    assert.equal(run.status, 'pass');
+    assert.equal(run.initialization.initialization,
+      'source-declared-waveform-time-zero-zero-state');
+    assert.equal(run.initialization.quiescent, false);
+    assert.deepEqual(run.conditions.integrationStepBound,
+      { maxStepSec: 1e-6, externalAdvances: 101, outputPointsInvented: false });
+    assert.equal(run.observables.axis.values.length, 101);
+    assert.ok(run.observables.nodes.every(node => node.voltage.every(Number.isFinite)));
+
+    // ngspice cannot assign the two individual DC branch currents of parallel
+    // ideal inductors.  For node voltages their opposite-oriented 10 H pair is
+    // exactly one 5 H branch, which gives a nonsingular independent oracle.
+    // These are ngspice 42 .measure results for that reduction at the same
+    // authored 1 us maximum step; the canonical importer IDs are stable and
+    // the tolerance is bounded by ngspice's printed precision.
+    const nodes = new Map(run.observables.nodes.map(node => [node.id, node.voltage]));
+    for (const [index, expected] of [[25, {
+      n0: 7.523548, n1: 2.996613, n2: 3.060642, n3: 3.060735,
+    }], [100, {
+      n0: 6.835192, n1: 2.777068, n2: 2.562111, n3: 2.562145,
+    }]]) {
+      for (const [id, voltage] of Object.entries(expected)) {
+        assert.ok(Math.abs(nodes.get(id)[index] - voltage) < 8e-7,
+          `${id} at sample ${index}: native ${nodes.get(id)[index]} vs ngspice ${voltage}`);
+      }
+    }
+
+    const nonzeroAtTimeZero = runSourceAnalyses(imported(row2854.replace(
+      'SINE(0 7.8 78)', 'SINE(1 7.8 78)')), {
+      format: 'spice', transientProfile: 'precision-v1', maxPoints: 101,
+    })[0];
+    assert.deepEqual([nonzeroAtTimeZero.status, nonzeroAtTimeZero.classification,
+      nonzeroAtTimeZero.code],
+    ['not-run', 'integration-gap', 'native-transient-execution-failed']);
+    assert.match(nonzeroAtTimeZero.detail,
+      /parallel ideal (?:branches|constraints)|operating point|proven/i);
+  });
+
   it('refuses startup and explicit initial-state semantics instead of silently changing initialization', () => {
     const decks = [
       `element IC\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1u IC=0.5\n.tran 10u\n.end\n`,

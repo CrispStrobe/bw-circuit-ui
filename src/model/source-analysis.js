@@ -804,7 +804,9 @@ function runTran(imported, descriptor, limits) {
       && (circuit.parts || []).length > 0;
     let converged = true;
     let initialization = null;
-    if (!parsed.uic) initialization = circuit.initializeTransientFromOperatingPoint();
+    if (!parsed.uic) initialization = circuit.initializeTransientFromOperatingPoint({
+      fallback: 'proven-zero-state',
+    });
     let accounted = { attempts: 0, solves: 0, advances: 0 };
     const accountStatus = () => {
       if (!limits.transientProfile) return null;
