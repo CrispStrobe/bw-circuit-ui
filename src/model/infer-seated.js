@@ -23,6 +23,38 @@ import { FOOTPRINTS, computeLeadMap, straddleRefRow } from './footprints.js';
 import { wirableKind } from './declared-part-kind.js';
 
 /**
+ * The MakeCode boards: device id → the board part a program for it seats.
+ *
+ * Each is a board part whose pads are its sidecar's terminals (bw-board
+ * registers each kind as a 3.3 V board model under the same names), so a
+ * program's pin maps to a pad by name — `P0` → `p0` on the micro:bit and
+ * Calliope mini, `A1` → `a1` on the Circuit Playground Express, MakeCode's own
+ * DigitalPin / CPlayPinName spellings. There is no second naming here.
+ *
+ * Unlike the Arduino-style boards these are not fed from a bench battery: the
+ * board is powered over its own USB/battery connector, and its supply pad
+ * (`power`) FEEDS the breadboard rails — the way a learner wires one.
+ */
+const MAKECODE_BOARDS = {
+  microbit: { kind: 'microbit', label: 'micro:bit', power: '3v' },
+  calliopemini: { kind: 'calliopemini', label: 'Calliope mini', power: '3v' },
+  circuit_playground_express: { kind: 'circuit_playground_express', label: 'Circuit Playground Express', power: '3v3' },
+};
+// The ids the same boards arrive under: MakeCode's target name for the CPX
+// (`adafruit`, what Lite's MakeCode pane calls it) and the common short form.
+const MAKECODE_DEVICE_ALIASES = { cpx: 'circuit_playground_express', adafruit: 'circuit_playground_express' };
+
+/** The device id normalised (`-` → `_`) and resolved to its MakeCode board, or null. */
+export function makeCodeBoardFor(device) {
+  const id = String(device || '').trim().toLowerCase().replace(/-/g, '_');
+  return MAKECODE_BOARDS[MAKECODE_DEVICE_ALIASES[id] || id] || null;
+}
+
+/** `P0`, `DigitalPin.P0`, `AnalogPin.P1`, `CPlayPinName.A1` → the pad name. */
+const makeCodePad = pin => String(pin.where || pin.pin || pin.name || '')
+  .trim().toLowerCase().replace(/^(digitalpin|analogpin|cplaypinname)\./, '');
+
+/**
  * Build the seated circuit for a project's declarations into `circuit`.
  *
  * @param {import('./circuit.js').Circuit} circuit - an EMPTY circuit
@@ -39,7 +71,9 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
 
   // Device-specific board support
   const device = String(stc.device || '').toLowerCase();
-  const controllerKind = device === 'arduino-uno' ? 'arduino_uno'
+  const makeCode = makeCodeBoardFor(device);
+  const controllerKind = makeCode ? makeCode.kind
+    : device === 'arduino-uno' ? 'arduino_uno'
     : device === 'arduino-nano' ? 'arduino_nano'
       : device === 'pico' ? 'pi_pico'
         : device === 'pybadge' ? 'pybadge'
@@ -48,10 +82,11 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
   // A bare chip with fixed terminals (stm32f030) names pins like a board
   // (lowercase `where`) but powers like a chip (vcc/gnd pads, no rail).
   const isBareChip = controllerKind === 'stm32f030';
-  const controllerPin = pin => isBoard
-    ? String(pin.where || pin.pin || pin.name || '').toLowerCase()
+  const controllerPin = pin => makeCode ? makeCodePad(pin)
+    : isBoard ? String(pin.where || pin.pin || pin.name || '').toLowerCase()
     : `P${pin.port}.${pin.bit}`;
-  const powerPin = controllerKind === 'pi_pico' ? 'vbus' : controllerKind === 'pybadge' ? '3v3' : isBareChip ? 'vcc' : isBoard ? '5v' : 'VCC';
+  const powerPin = makeCode ? makeCode.power
+    : controllerKind === 'pi_pico' ? 'vbus' : controllerKind === 'pybadge' ? '3v3' : isBareChip ? 'vcc' : isBoard ? '5v' : 'VCC';
   const groundPin = isBareChip ? 'gnd' : isBoard ? 'gnd' : 'GND';
 
   // ── Place and seat the breadboard + controller ───────────────────
@@ -78,12 +113,27 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
 
   // ── Power: battery → rails → MCU ────────────────────────────────
   // The F030 is a 3.3 V part — a 5 V bench rail would exceed abs-max.
-  const benchVolts = controllerKind === 'stm32f030' ? 3.3 : 5;
-  const bat = circuit.addPart('vsource', { variant: '9v', volts: benchVolts }, 120, 150);
-  circuit.addTapWire(bat.id, 'pos', bb.id, 't+2', '#e74c3c');
-  circuit.addTapWire(bat.id, 'neg', bb.id, 't-2', '#2c3e50');
+  // A MakeCode board brings its own supply: its 3V pad feeds the rails, so
+  // there is no battery to add (5 V into that pad would be the wrong way round).
+  if (!makeCode) {
+    const benchVolts = controllerKind === 'stm32f030' ? 3.3 : 5;
+    const bat = circuit.addPart('vsource', { variant: '9v', volts: benchVolts }, 120, 150);
+    circuit.addTapWire(bat.id, 'pos', bb.id, 't+2', '#e74c3c');
+    circuit.addTapWire(bat.id, 'neg', bb.id, 't-2', '#2c3e50');
+  }
 
-  if (seated) {
+  // The pads a MakeCode board actually has (its sidecar's, as bw-board knows
+  // them). A declared pin that names none of them is refused by name below.
+  const boardPads = makeCode ? new Set(mcu.terminals || []) : null;
+
+  if (makeCode) {
+    circuit.addTapWire(mcu.id, powerPin, bb.id, 't+1', '#e74c3c');
+    circuit.addTapWire(mcu.id, groundPin, bb.id, 't-1', '#2c3e50');
+    // Both halves of the breadboard get the board's supply (a button returns
+    // to the bottom rail).
+    try { circuit.addHoleWire(bb.id, 't+3', 'b+3', '#e74c3c'); } catch { /* occupied */ }
+    try { circuit.addHoleWire(bb.id, 't-3', 'b-3', '#2c3e50'); } catch { /* occupied */ }
+  } else if (seated) {
     // MCU power pins are in the breadboard strips — jumper from their
     // columns to the power rails.
     const leadMap = mcu.seat.leadMap;
@@ -113,7 +163,9 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
     circuit.addTapWire(mcu.id, groundPin, bb.id, 't-1', '#2c3e50');
   }
 
-  notes.push(seated
+  notes.push(makeCode
+    ? `${makeCode.label}: the board powers the breadboard — its ${powerPin.toUpperCase()} pad (3.3 V) to the + rails, GND to the − rails.`
+    : seated
     ? `${stc.device || 'MCU'}: seated on the breadboard. Power from the rails through column jumpers.`
     : (isBoard
       ? `${stc.device}: ${powerPin.toUpperCase()} and GND feed the controller from the rails.`
@@ -123,7 +175,7 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
   // when the MCU is seated — the 40-column net expansion triggers the
   // cap-companion solver bug (documented in spec-updates/cap-companion-setpin.md).
   // The caps are a teaching aid, not electrically required.
-  if (realism === 'bench' && !seated) {
+  if (realism === 'bench' && !seated && !makeCode) {
     const c100n = circuit.addPart('capacitor', { farads: 100e-9 }, 250, 90);
     circuit.addTapWire(c100n.id, 'a', bb.id, 't+4', '#e74c3c');
     circuit.addTapWire(c100n.id, 'b', bb.id, 't-4', '#2c3e50');
@@ -140,6 +192,12 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
     const pinName = controllerPin(pin);
     const dir = String(pin.direction || 'output').toLowerCase();
     const activeLow = !!pin.activeLow;
+
+    if (boardPads && !boardPads.has(pinName)) {
+      const pads = [...boardPads].filter(t => t !== powerPin && !/^(gnd|3v|vout)/.test(t));
+      notes.push(`${pin.name}: ${pin.where || pin.pin || pinName} is not a pad of the ${makeCode.label} (${pads.join(', ')}) — not wired.`);
+      continue;
+    }
 
     // For a seated MCU, find which hole the pin occupies and run a
     // jumper from its column strip to the part's column.
@@ -185,6 +243,18 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
       } else {
         circuit.addTapWire(mcu.id, pinName, bb.id, `b${col + 2}`, '#f1c40f');
       }
+    } else if (dir === 'input' && makeCode) {
+      // A MakeCode pin reads with no pull-up to rely on (the micro:bit and
+      // Calliope DAL default to a pull-DOWN), so the button pulls the pad HIGH to
+      // the board's own 3V rail and an explicit 10k holds it LOW when released.
+      const btn = circuit.addPart('button', {}, 0, 0, pin.name);
+      const pd = circuit.addPart('resistor', { ohms: 10000 }, 0, 0);
+      circuit.seatPart(btn.id, bb.id, computeLeadMap(FOOTPRINTS.button, `e${col}`));
+      circuit.seatPart(pd.id, bb.id, computeLeadMap(FOOTPRINTS.resistor, `c${col}`));
+      circuit.addTapWire(mcu.id, pinName, bb.id, `d${col}`, '#f1c40f');
+      circuit.addHoleWire(bb.id, `g${col}`, `b+${col}`, '#e74c3c');
+      circuit.addHoleWire(bb.id, `b${col + 4}`, `t-${col + 4}`, '#2c3e50');
+      notes.push(`${pin.name}: pressing pulls ${pinName.toUpperCase()} up to 3.3 V; the 10k pull-down holds it LOW when released.`);
     } else if (dir === 'input') {
       const btn = circuit.addPart('button', {}, 0, 0, pin.name);
       circuit.seatPart(btn.id, bb.id, computeLeadMap(FOOTPRINTS.button, `e${col}`));
@@ -229,7 +299,9 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
       } else {
         circuit.addTapWire(mcu.id, pinName, bb.id, `a${col + 5}`, '#f1c40f');
       }
-      notes.push(`${pin.name}: wired active-low — the pin SINKS current (20 mA) far better than it sources (~230 µA); writing 0 lights it.`);
+      notes.push(makeCode
+        ? `${pin.name}: wired active-low from the 3.3 V rail into ${pinName.toUpperCase()}; writing 0 lights it.`
+        : `${pin.name}: wired active-low — the pin SINKS current (20 mA) far better than it sources (~230 µA); writing 0 lights it.`);
     } else {
       const r = circuit.addPart('resistor', { ohms: 1000 }, 0, 0);
       const led = circuit.addPart('led', { color: 'red' }, 0, 0, pin.name);
@@ -241,7 +313,9 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
         circuit.addTapWire(mcu.id, pinName, bb.id, `a${col}`, '#f1c40f');
       }
       circuit.addHoleWire(bb.id, `a${col + 5}`, `t-${col + 5}`, '#2c3e50');
-      notes.push(`${pin.name}: wired active-high — a quasi pin sources only ~230 µA, so this LED will be DIM unless the pin is push-pull. That is the lesson.`);
+      notes.push(makeCode
+        ? `${pin.name}: ${pinName.toUpperCase()} drives the LED through 1k to the − rail; writing 1 lights it.`
+        : `${pin.name}: wired active-high — a quasi pin sources only ~230 µA, so this LED will be DIM unless the pin is push-pull. That is the lesson.`);
     }
     col += 7;
   }
