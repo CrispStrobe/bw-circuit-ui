@@ -487,20 +487,39 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
           const px = (t) => positions[t.name]?.dx || 0;
           const py = (t) => positions[t.name]?.dy || 0;
           const { w: bodyW, h: bodyH } = dipPackageGeometry(sc);
+          // A micro:bit carries its own 5x5 LED matrix. Its emulator's picture
+          // arrives as deviceStates[id].matrix ({width, height, brightness
+          // 0..1}); with no picture the LEDs are drawn dark, never guessed.
+          const isMicrobit = chipInfo.label === 'micro:bit';
+          const mbMatrix = isMicrobit ? deviceStates?.get(id)?.matrix : null;
           return (
             <g key={id} data-part-face={kind} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
               <rect x={-bodyW / 2} y={-bodyH / 2} width={bodyW} height={bodyH} rx={5}
                 fill="#1a1a1a" stroke={selStroke || '#444'} strokeWidth={isSelected ? 3 : 1.5} />
+              {isMicrobit && (
+                <g data-microbit-matrix={mbMatrix ? 'live' : 'dark'}>
+                  {Array.from({ length: 25 }, (_, i) => {
+                    const row = Math.floor(i / 5), col = i % 5;
+                    const b = mbMatrix && mbMatrix.width === 5 ? (mbMatrix.brightness?.[i] ?? 0) : 0;
+                    const v = ledDisplayLevel(b);
+                    const fill = v > 0.05
+                      ? `rgba(255,${Math.round(40 + 140 * v)},${Math.round(30 * v)},${Math.min(1, 0.25 + 0.75 * v)})`
+                      : '#3a0a0a';
+                    return <circle key={i} cx={-9 + col * 4.5} cy={-6 + row * 4.5} r={1.6} fill={fill} />;
+                  })}
+                </g>
+              )}
               {/* Notch at left end — pin-1-bottom convention */}
               <path d={`M ${-bodyW / 2} -5 A 5 5 0 0 1 ${-bodyW / 2} 5`}
                 fill="#2c3e50" stroke={selStroke || '#555'} strokeWidth={1} />
               {/* Pin 1 dot — bottom-left */}
               <circle cx={-bodyW / 2 + 10} cy={bodyH / 2 - 8} r={2.5} fill="#555" />
-              <text x={0} y={-5} textAnchor="middle" fill="#bbb" fontSize={10}
+              <text x={0} y={isMicrobit ? -10 : -5} textAnchor="middle" fill="#bbb"
+                fontSize={isMicrobit ? 6 : 10}
                 fontFamily="monospace" fontWeight="bold"
                 transform="rotate(0)">{chipInfo.label}</text>
-              <text x={0} y={9} textAnchor="middle" fill="#777" fontSize={7}
-                fontFamily="monospace">{chipInfo.pkg}</text>
+              {!isMicrobit && <text x={0} y={9} textAnchor="middle" fill="#777" fontSize={7}
+                fontFamily="monospace">{chipInfo.pkg}</text>}
               {sc.terminals.map(t => {
                 const isVCC = /^(VCC|AVCC|VDD)$/i.test(t.name);
                 const isGND = /^(GND|VSS)$/i.test(t.name);
@@ -4931,7 +4950,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge' || p.kind === 'mono_lcd' || p.kind === 'rgb_light') {
+                if (p.kind === 'mcu' || p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge' || p.kind === 'mono_lcd' || p.kind === 'rgb_light') {
                   let ds = eb.getDeviceState(p.id);
                   // Bargraph brightness is a magnitude-only visual property;
                   // raw branch current itself remains signed positive OUT.
