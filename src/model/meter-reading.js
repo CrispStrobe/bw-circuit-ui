@@ -6,6 +6,7 @@
  */
 import { wireEndpoint } from './wire-endpoints.js';
 import { meterInputOhms } from './meter-load.js';
+import { meterDifference, meterCurrentOf } from './multimeter.js';
 
 /** Human label for an ohms value: 10 MΩ, 470 kΩ, 100 Ω. */
 export function ohmsLabel(ohms) {
@@ -46,9 +47,9 @@ export function getMeterReading(meter, wires, circuit) {
       const spec = ohmsLabel(meterInputOhms(meter));
       if (!probeANet || !probeBNet) return { value: '---', unit: 'V', note: 'Wire both probes', spec };
       try {
-        const vA = circuit.nodeVoltage(probeANet);
-        const vB = circuit.nodeVoltage(probeBNet);
-        const diff = vA - vB;
+        // Averaged over the engine's 100 ms meter window, as a DMM does: a
+        // PWM net reads its mean, not the instant's on or off.
+        const diff = meterDifference(circuit, probeANet, probeBNet);
         // Three decimals on volts, one on millivolts. One decimal — what this
         // showed until 2026-08-29 — renders the loaded and unloaded readings of
         // a 100 kΩ divider as the same string, which is the one comparison the
@@ -85,7 +86,7 @@ export function getMeterReading(meter, wires, circuit) {
       const conn = findProbePartTerminal(meter.id, 'probe_a', wires);
       if (!conn) return { value: '---', unit: 'mA', note: 'Wire probe A in series with a part' };
       try {
-        const i = circuit.branchCurrent(conn.part, conn.terminal);
+        const i = meterCurrentOf(circuit, conn.part, conn.terminal);
         const mA = i * 1000;
         return {
           // This legacy single-lead face promises magnitude only. Direction is

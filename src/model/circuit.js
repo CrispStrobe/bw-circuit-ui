@@ -893,6 +893,32 @@ export class Circuit {
   }
 
   /**
+   * What a DMM shows between two nets: the engine's 100 ms mean
+   * (bw-board meterVoltage), so a PWM net reads its average rather than the
+   * instant's on or off. A board older than meterVoltage gives the
+   * instantaneous difference, as every meter here read before.
+   * @param {string} netA
+   * @param {string} netB
+   * @returns {number}
+   */
+  meterVoltage(netA, netB) {
+    if (typeof this.board.meterVoltage === 'function') return this.board.meterVoltage(netA, netB);
+    return this.board.nodeVoltage(netA) - this.board.nodeVoltage(netB);
+  }
+
+  /**
+   * The current a DMM in series with a part's terminal shows: the engine's
+   * 100 ms mean (bw-board meterCurrent), else the instantaneous branchCurrent.
+   * @param {string} partId
+   * @param {string} terminal
+   * @returns {number}
+   */
+  meterCurrent(partId, terminal) {
+    if (typeof this.board.meterCurrent === 'function') return this.board.meterCurrent(partId, terminal);
+    return this.board.branchCurrent(partId, terminal);
+  }
+
+  /**
    * Compute an independent DC operating point without adopting it as the
    * circuit's live transient state. The engine owns the supported-domain,
    * convergence and current-orientation contract; this is intentionally only

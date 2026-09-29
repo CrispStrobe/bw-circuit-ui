@@ -28,6 +28,22 @@
  */
 
 /**
+ * The averaged reading when the circuit offers one (Circuit.meterVoltage /
+ * meterCurrent, over bw-board's 100 ms meter window), else the instantaneous
+ * one — a caller handing in a bare {nodeVoltage, branchCurrent} still works.
+ */
+export function meterDifference(circuit, netA, netB) {
+  if (typeof circuit.meterVoltage === 'function') return circuit.meterVoltage(netA, netB);
+  return circuit.nodeVoltage(netA) - circuit.nodeVoltage(netB);
+}
+
+/** @see meterDifference */
+export function meterCurrentOf(circuit, partId, terminal) {
+  if (typeof circuit.meterCurrent === 'function') return circuit.meterCurrent(partId, terminal);
+  return circuit.branchCurrent(partId, terminal);
+}
+
+/**
  * Create a fresh meter state.
  * @returns {MeterState}
  */
@@ -64,9 +80,9 @@ export function readMeter(meter, circuit) {
         return { value: '---', unit: 'V', note: 'Place both probes on nets', siValue: null, siUnit: 'V' };
       }
       try {
-        const vA = circuit.nodeVoltage(probeA.netId);
-        const vB = circuit.nodeVoltage(probeB.netId);
-        const diff = vA - vB;
+        // A DMM averages (100 ms, the engine's meter window): on a PWM net it
+        // shows the mean, not whichever level the last instant solved to.
+        const diff = meterDifference(circuit, probeA.netId, probeB.netId);
         return { value: diff.toFixed(3), unit: 'V', note: null, siValue: diff, siUnit: 'V' };
       } catch {
         return { value: '---', unit: 'V', note: 'Cannot read voltage', siValue: null, siUnit: 'V' };
@@ -80,7 +96,7 @@ export function readMeter(meter, circuit) {
       try {
         // Raw/public current is signed positive OUT of the probed part. Keep
         // the sign: reversing the selected terminal must reverse the reading.
-        const i = circuit.branchCurrent(probeA.partId, probeA.terminal);
+        const i = meterCurrentOf(circuit, probeA.partId, probeA.terminal);
         const magnitude = Math.abs(i);
         let scale = 1e3;
         let unit = 'mA';
