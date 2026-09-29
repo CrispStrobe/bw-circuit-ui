@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
+import { servoHasSignal } from '../model/servo-signal.js';
 import ReactDOM from 'react-dom';
 import { t } from '../i18n/strings.js';
 import { InteractionMachine } from '../interaction/machine.js';
@@ -732,10 +733,11 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
       case 'servo': {
         // Servo: body + horn that rotates to the decoded angle from the board model.
         // Read from deviceStates (board.getDeviceState), NOT from block arguments.
-        // Undriven = no valid pulse train → show "?" instead of a default angle.
+        // Undriven = nothing has set an angle → show "?" instead of a default
+        // angle (servoHasSignal: a decoded pulse OR a setDeviceControl angle).
         const ds = deviceStates?.get(id);
         const angle = ds?.actualAngle;
-        const hasSignal = ds && ds._riseNs > 0n;
+        const hasSignal = servoHasSignal(ds);
         const hornAngle = hasSignal && angle != null ? angle - 90 : null; // center = 0°
         return (
           <g key={id} transform={xform}
