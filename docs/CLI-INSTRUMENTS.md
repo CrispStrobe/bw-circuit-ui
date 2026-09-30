@@ -57,6 +57,12 @@ finish much faster or slower than 1 ms, while its timestamps remain the engine's
 clock. Resistance mode is rejected because measuring resistance powers the
 circuit off and therefore is not a powered time series.
 
+Watching reads only the newest scope-buffer pair per channel per tick, rather
+than rebuilding the entire trace at every observation. This keeps instrument
+readout work linear in the number of streamed samples; circuit integration and
+output transport have their own costs. The final summary still validates every
+retained point, so earlier nonfinite samples cannot be hidden by this fast path.
+
 Measurement keeps the engine's live interactive integration profile. An explicit
 `--profile interactive-v1` selects the same policy; other profile requests refuse
 instead of being silently ignored. For bounded high-accuracy source-declared

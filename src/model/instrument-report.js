@@ -53,6 +53,16 @@ export function parseMeterSpec(value) {
   return { mode, probes };
 }
 
+function scopePointVoltage(data, index, chronologicalIndex) {
+  const low = data.samples[index * 2];
+  const high = data.samples[index * 2 + 1];
+  if (!Number.isFinite(low) || !Number.isFinite(high)) {
+    throw new Error(`scope trace has a nonfinite sample at chronological index ${chronologicalIndex}`);
+  }
+  const sum = low + high;
+  return Number.isFinite(sum) ? sum / 2 : low / 2 + high / 2;
+}
+
 export function scopeSeries(data) {
   if (!data?.samples) return [];
   const depth = Math.floor(data.samples.length / 2);
@@ -61,16 +71,28 @@ export function scopeSeries(data) {
   const values = [];
   for (let offset = 0; offset < count; offset++) {
     const index = (oldest + offset) % depth;
-    const low = data.samples[index * 2];
-    const high = data.samples[index * 2 + 1];
-    if (!Number.isFinite(low) || !Number.isFinite(high)) {
-      throw new Error(`scope trace has a nonfinite sample at chronological index ${offset}`);
-    }
     // Do not drop a point: its index is the authority for its simulation timestamp.
-    const sum = low + high;
-    values.push(Number.isFinite(sum) ? sum / 2 : low / 2 + high / 2);
+    values.push(scopePointVoltage(data, index, offset));
   }
   return values;
+}
+
+/** Newest retained point only: two buffer reads, independent of capture length.
+ * Earlier points are still validated by the final full-trace summary/comparison.
+ */
+export function latestTimedScopeSample(data) {
+  if (!data?.samples) return null;
+  const depth = Math.floor(data.samples.length / 2);
+  const count = Math.min(Number(data.count || 0), depth);
+  if (!count) return null;
+  const index = ((Number(data.writeIndex || 0) - 1) % depth + depth) % depth;
+  const volts = scopePointVoltage(data, index, count - 1);
+  const startNs = BigInt(data.startTNs ?? 0n);
+  const intervalNs = BigInt(Math.round(Number(data.sampleIntervalNs || 0)));
+  if (intervalNs <= 0n) throw new Error('scope trace has no positive sample interval');
+  const elapsedNs = BigInt(count - 1) * intervalNs;
+  return { index: count - 1, timeSeconds: Number(startNs + elapsedNs) / 1e9,
+    elapsedSeconds: Number(elapsedNs) / 1e9, volts };
 }
 
 /** Chronological true samples with their absolute simulation timestamps. */

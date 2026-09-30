@@ -6,13 +6,60 @@ import { join } from 'node:path';
 import test from 'node:test';
 import {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
-  parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries,
+  parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
 } from '../src/model/instrument-report.js';
 
 const ROOT = join(import.meta.dirname, '..');
 const CLI = join(ROOT, 'bin', 'bwc.mjs');
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json');
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
+
+test('newest scope point agrees with chronological series before and after ring wrap', () => {
+  for (const [count,writeIndex,startTNs] of [[1,1,10n],[3,0,10n],[8,2,60n]]) {
+    const data = { samples:new Float64Array([1,1,2,2,3,3]), count,writeIndex,
+      startTNs,sampleIntervalNs:10n };
+    assert.deepEqual(latestTimedScopeSample(data),timedScopeSeries(data).at(-1));
+  }
+  assert.equal(latestTimedScopeSample(null),null);
+  assert.equal(latestTimedScopeSample({samples:new Float64Array(6),count:0}),null);
+  for (const bad of [NaN,Infinity,-Infinity]) {
+    assert.throws(() => latestTimedScopeSample({ samples:new Float64Array([1,1,bad,bad]),
+      count:2,writeIndex:0,startTNs:10n,sampleIntervalNs:10n }),/nonfinite sample.*index 1/);
+  }
+  assert.throws(() => latestTimedScopeSample({ samples:new Float64Array([1,1]),
+    count:1,writeIndex:0,sampleIntervalNs:0n }),/positive sample interval/);
+});
+
+test('streaming newest sample reads only one pair even at the 200000-point capture limit', () => {
+  const reads = [];
+  const samples = new Proxy({length:400000},{get(target,key) {
+    if (key === 'length') return target.length;
+    reads.push(key);
+    assert.ok(key === '399998' || key === '399999','historical buffer point was revisited');
+    return 2.5;
+  }});
+  const sample = latestTimedScopeSample({samples,count:200000,writeIndex:0,
+    startTNs:500n,sampleIntervalNs:500n});
+  assert.deepEqual(reads,['399998','399999']);
+  assert.equal(sample.volts,2.5);
+  assert.equal(sample.timeSeconds,0.1);
+});
+
+test('1000 streamed observations preserve analytical sine values and absolute timestamps', () => {
+  const rows = execFileSync(process.execPath,[CLI,'measure',SINE_FIXTURE,
+    '--scope','V1.pos,V1.neg','--duration','10ms','--rate','100kHz','--watch'],
+  {encoding:'utf8'}).trim().split('\n').map(JSON.parse);
+  const samples = rows.filter(row => row.recordType === 'sample');
+  assert.equal(samples.length,1000);
+  for (let index = 0; index < samples.length; index++) {
+    const timeSeconds = (index + 1) * 10000 / 1e9;
+    assert.equal(samples[index].timeSeconds,timeSeconds);
+    assert.ok(Math.abs(samples[index].scope[0].volts
+      - (1.25 - 2 * Math.sin(2 * Math.PI * 2000 * timeSeconds))) < 1e-12,
+    `analytical sine observation ${index}`);
+  }
+  assert.equal(rows.at(-1).report.scope[0].summary.samples,1000);
+});
 
 test('measure refuses ignored profile promises before executing a circuit', () => {
   for (const profile of ['','made-up','precision-v1']) {

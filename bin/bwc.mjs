@@ -55,7 +55,7 @@ const { scopeProbeOptions } = await import(join(SRC, 'model/scope-probes.js'));
 const { scopeTracesToCsv } = await import(join(SRC, 'model/scope-csv.js'));
 const {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
-  parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries,
+  parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
 } = await import(join(SRC, 'model/instrument-report.js'));
 
 /** The engine is optional: only netlist exports need it. */
@@ -413,7 +413,7 @@ switch (cmd) {
         for (let targetNs = startNs + intervalNs; targetNs <= endNs; targetNs += intervalNs) {
           circ.advanceTo(targetNs);
           const watchedScope = scope.map(row => {
-            const sample = timedScopeSeries(circ.board.getScopeData(row.handle)).at(-1);
+            const sample = latestTimedScopeSample(circ.board.getScopeData(row.handle));
             if (!sample) die(`scope ${row.spec.tip} captured no sample at ${targetNs} ns`);
             return { tip: row.spec.tip, reference: row.spec.reference || '', volts: sample.volts };
           });
