@@ -1,0 +1,6 @@
+Self-authored dynamic probe divider (zero initial bias)
+V1 signal 0 PULSE(0 1 10u 20u 20u 50u 200u)
+R1 signal sense 100k
+R2 sense 0 1meg
+.tran 500n 200u UIC
+.end

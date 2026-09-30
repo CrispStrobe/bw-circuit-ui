@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -8,12 +8,268 @@ import {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
   parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
   measurementSampleClock,
+  validatePrecisionCaptureInput, precisionCaptureBudget, validatePrecisionCaptureWork,
+  validatePrecisionVoltageTopology,
 } from '../src/model/instrument-report.js';
 
 const ROOT = join(import.meta.dirname, '..');
 const CLI = join(ROOT, 'bin', 'bwc.mjs');
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json');
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
+const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
+
+test('precision capture input and cumulative work policies refuse unsupported authority', () => {
+  const profile = {id:'precision-v1',maxAttempts:20000,maxStepSec:1e-5};
+  const clock = measurementSampleClock(.0002,2e6);
+  const budget = precisionCaptureBudget(clock,profile,3);
+  assert.equal(budget.maxAttempts,20000);
+  assert.equal(budget.maxSolves,60001);
+  assert.equal(budget.maxAdvances,1);
+  assert.equal(budget.minimumAdaptiveAttempts,400);
+  validatePrecisionCaptureInput([{id:'C1',kind:'capacitor',params:{farads:1e-9}}],1,[]);
+  for (const kind of ['555','mcu','opamp','led','unknown']) {
+    assert.throws(() => validatePrecisionCaptureInput([{id:'unsupported',kind}],1,[]),
+      /refuses part unsupported/);
+  }
+  assert.throws(() => validatePrecisionCaptureInput(Array(33).fill({kind:'resistor'}),1,[]),/32 parts/);
+  for (const count of [0,5]) assert.throws(() => validatePrecisionCaptureInput([],count,[]),/1 to 4 scope/);
+  assert.throws(() => validatePrecisionCaptureInput([],1,['resistance']),/second advance/);
+  assert.throws(() => validatePrecisionCaptureInput([],1,Array(9).fill('voltage')),/at most 8/);
+  assert.throws(() => validatePrecisionCaptureInput([{id:'V1',kind:'vsource',params:{wave:'spice-pwl'}}],1,[]),/waveform spice-pwl/);
+  assert.throws(() => validatePrecisionCaptureInput([{id:'C1',kind:'capacitor',params:{initialVoltage:0}}],1,[]),/initial conditions/);
+  assert.throws(() => validatePrecisionCaptureInput([{id:'R1',kind:'resistor',analysisBlockers:[{}]}],1,[]),/analysis blockers/);
+  assert.throws(() => precisionCaptureBudget(clock,profile,33),/32 nets/);
+  assert.throws(() => precisionCaptureBudget(clock,{...profile,id:'interactive-v1'},3),/bounded precision/);
+  assert.throws(() => precisionCaptureBudget(clock,{...profile,maxAttempts:20001},3),/bounded precision/);
+  assert.throws(() => precisionCaptureBudget(measurementSampleClock(.201,1000),profile,3),/preflight needs 20100/);
+  assert.throws(() => precisionCaptureBudget(measurementSampleClock(.0100005,2e6),profile,3),/preflight needs 20001/);
+  const good = {profile,work:{attempts:2440,solves:7310,advances:1},accuracyMet:true,failure:null};
+  validatePrecisionCaptureWork(good,budget);
+  for (const [key,value] of [['attempts',20001],['solves',60002],['advances',2]]) {
+    assert.throws(() => validatePrecisionCaptureWork({...good,work:{...good.work,[key]:value}},budget),/whole-capture work/);
+  }
+  for (const value of [-1,NaN,Infinity,.5]) {
+    assert.throws(() => validatePrecisionCaptureWork({...good,work:{...good.work,attempts:value}},budget),/invalid work/);
+  }
+  for (const accuracyMet of [false,null]) assert.throws(() => validatePrecisionCaptureWork({...good,accuracyMet},budget),/did not qualify/);
+  assert.throws(() => validatePrecisionCaptureWork({...good,failure:{code:'minimum-step-accuracy-unmet'}},budget),/minimum-step/);
+  assert.throws(() => validatePrecisionCaptureWork({...good,profile:{id:'interactive-v1'}},budget),/profile changed/);
+});
+
+test('precision CLI refuses absent initialization, streaming and budget/domain escapes', () => {
+  const base = [CLI,'measure',PROBE_FIXTURE,'--scope','R2.a,V1.neg','--profile','precision-v1','--json'];
+  for (const [extra,reason] of [
+    [[],/requires --initial zero-state/],
+    [['--initial','dc-operating-point'],/requires --initial zero-state/],
+    [['--initial','zero-state','--watch'],/refuses --watch/],
+    [['--initial','zero-state','--meter','resistance:R1.a,R1.b'],/second advance/],
+    [['--initial','zero-state','--duration','201ms','--rate','1kHz'],/preflight needs 20100/],
+  ]) {
+    const result = spawnSync(process.execPath,[...base,...extra],{encoding:'utf8',timeout:15000});
+    assert.equal(result.status,2,result.stderr);
+    assert.equal(result.stdout,'');
+    assert.match(result.stderr,reason);
+  }
+  const dir = mkdtempSync(join(tmpdir(),'bwc-precision-refusal-'));
+  try {
+    const file = join(dir,'unsupported.json');
+    writeFileSync(file,JSON.stringify({parts:[{id:'timer',kind:'555',params:{}}],wires:[]}));
+    const result = spawnSync(process.execPath,[CLI,'measure',file,'--scope','timer.out',
+      '--profile','precision-v1','--initial','zero-state','--json'],{encoding:'utf8',timeout:15000});
+    assert.equal(result.status,2);
+    assert.equal(result.stdout,'');
+    assert.match(result.stderr,/refuses part timer \(555\)/);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('precision CLI refuses a real attempt-cap hit before writing JSON or CSV', () => {
+  const dir = mkdtempSync(join(tmpdir(),'bwc-precision-cap-'));
+  try {
+    const file = join(dir,'budget.cir'), csv = join(dir,'capture.csv');
+    writeFileSync(file,'Self-authored bounded attempt-cap fixture\n'
+      + 'V1 in 0 PULSE(0 1 0 20p 20p 400p 1n)\nR1 in 0 1k\n.tran 1n 10u UIC\n.end\n');
+    const result = spawnSync(process.execPath,[CLI,'measure',file,'--scope','V1.pos,V1.neg',
+      '--profile','precision-v1','--initial','zero-state','--duration','10us','--rate','1MHz',
+      '--json','--csv',csv],{encoding:'utf8',timeout:30000});
+    assert.equal(result.status,2,result.stderr || result.stdout);
+    assert.equal(result.stdout,'');
+    assert.match(result.stderr,/did not qualify: step-attempt-budget-exceeded/);
+    assert.throws(() => readFileSync(csv),/ENOENT/,'no apparently qualified partial CSV');
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('precision CLI refuses a source constraint omitted by legacy convergence', () => {
+  const dir = mkdtempSync(join(tmpdir(),'bwc-precision-source-'));
+  try {
+    const file = join(dir,'conflict.cir');
+    writeFileSync(file,'Contradictory grounded source\nV1 0 0 1\nV2 n 0 1\nR1 n 0 1k\n.end\n');
+    const result = spawnSync(process.execPath,[CLI,'measure',file,'--scope','V2.pos,V2.neg',
+      '--profile','precision-v1','--initial','zero-state','--json'],{encoding:'utf8',timeout:15000});
+    assert.equal(result.status,2,result.stderr || result.stdout);
+    assert.equal(result.stdout,'');
+    assert.match(result.stderr,/ideal voltage constraint cycle at V1/);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('precision CLI refuses a delayed grounded waveform before time-zero admission can miss it', () => {
+  const dir = mkdtempSync(join(tmpdir(),'bwc-precision-delayed-source-'));
+  try {
+    const file = join(dir,'delayed.cir');
+    writeFileSync(file,'Delayed contradictory grounded source\n'
+      + 'V1 0 0 PULSE(0 1 1u 1u 1u 2u 10u)\nV2 n 0 1\nR1 n 0 1k\n.end\n');
+    const result = spawnSync(process.execPath,[CLI,'measure',file,'--scope','V2.pos,V2.neg',
+      '--profile','precision-v1','--initial','zero-state','--duration','10us','--rate','1MHz',
+      '--json'],{encoding:'utf8',timeout:15000});
+    assert.equal(result.status,2,result.stderr || result.stdout);
+    assert.equal(result.stdout,'');
+    assert.match(result.stderr,/ideal voltage constraint cycle at V1/);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('precision voltage topology rejects delayed contradictions but preserves explicit DC zero shorts', () => {
+  const nets = [
+    {id:'zero',terminals:[{part:'G1',terminal:'gnd'},{part:'V1',terminal:'neg'},{part:'V1',terminal:'pos'}]},
+  ];
+  const ground = {id:'G1',kind:'gnd'};
+  validatePrecisionVoltageTopology([ground,{id:'V1',kind:'vsource',params:{volts:0}}],nets);
+  for (const params of [{volts:1},{wave:'spice-pulse',v1:0,v2:1}]) {
+    assert.throws(() => validatePrecisionVoltageTopology([ground,{id:'V1',kind:'vsource',params}],nets),/cycle at V1/);
+  }
+  const separateGroundNets = [
+    {id:'a',terminals:[{part:'G1',terminal:'gnd'},{part:'V1',terminal:'pos'}]},
+    {id:'b',terminals:[{part:'G2',terminal:'gnd'},{part:'V1',terminal:'neg'}]},
+  ];
+  assert.throws(() => validatePrecisionVoltageTopology([ground,{id:'G2',kind:'gnd'},
+    {id:'V1',kind:'vsource',params:{volts:1}}],separateGroundNets),/cycle at V1/);
+  assert.throws(() => validatePrecisionVoltageTopology([ground,
+    {id:'E1',kind:'vcvs',params:{gain:1}}],
+    [{id:'zero',terminals:[{part:'G1',terminal:'gnd'},{part:'E1',terminal:'outp'},{part:'E1',terminal:'outn'}]}]),/cycle at E1/);
+  const parallel = [
+    {id:'positive',terminals:[{part:'V1',terminal:'pos'},{part:'V2',terminal:'pos'}]},
+    {id:'negative',terminals:[{part:'V1',terminal:'neg'},{part:'V2',terminal:'neg'}]},
+  ];
+  assert.throws(() => validatePrecisionVoltageTopology([
+    {id:'V1',kind:'vsource',params:{volts:1}},{id:'V2',kind:'vsource',params:{volts:1}}],parallel),/cycle at V2/);
+});
+
+test('precision CLI preserves the real redundant DC zero short control', () => {
+  const dir = mkdtempSync(join(tmpdir(),'bwc-precision-zero-short-'));
+  try {
+    const file = join(dir,'zero.cir');
+    writeFileSync(file,'Valid redundant DC zero short\nV1 0 0 0\nV2 n 0 1\nR1 n 0 1k\n.end\n');
+    const result = spawnSync(process.execPath,[CLI,'measure',file,'--scope','V2.pos,V2.neg',
+      '--profile','precision-v1','--initial','zero-state','--json'],{encoding:'utf8',timeout:15000});
+    assert.equal(result.status,0,result.stderr);
+    assert.equal(JSON.parse(result.stdout).scope[0].summary.lastVolts,1);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('precision native admission refuses current-limited source state outside its domain', () => {
+  const dir = mkdtempSync(join(tmpdir(),'bwc-precision-current-limit-'));
+  try {
+    const file = join(dir,'limited.json');
+    writeFileSync(file,JSON.stringify({parts:[
+      {id:'V1',kind:'vsource',params:{volts:1,iLimit:.001}},
+      {id:'R1',kind:'resistor',params:{ohms:1}}, {id:'G',kind:'gnd',params:{}},
+    ],wires:[
+      {from:'V1',fromTerminal:'pos',to:'R1',toTerminal:'a'},
+      {from:'V1',fromTerminal:'neg',to:'R1',toTerminal:'b'},
+      {from:'V1',fromTerminal:'neg',to:'G',toTerminal:'gnd'},
+    ]}));
+    const result = spawnSync(process.execPath,[CLI,'measure',file,'--scope','V1.pos,V1.neg',
+      '--profile','precision-v1','--initial','zero-state','--json'],{encoding:'utf8',timeout:15000});
+    assert.equal(result.status,2,result.stderr || result.stdout);
+    assert.equal(result.stdout,'');
+    assert.match(result.stderr,/unsupported current-limited source V1/);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('precision native admission does not apply its DC bias to zero-state storage', () => {
+  const dir = mkdtempSync(join(tmpdir(),'bwc-zero-state-'));
+  try {
+    const file = join(dir,'step.cir'), csv = join(dir,'capture.csv');
+    writeFileSync(file,'Explicit zero-state RC step\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1n\n.tran 500n 3u UIC\n.end\n');
+    const result = spawnSync(process.execPath,[CLI,'measure',file,'--scope','C1.a,V1.neg',
+      '--profile','precision-v1','--initial','zero-state','--duration','3us','--rate','2MHz',
+      '--json','--csv',csv],{encoding:'utf8',timeout:30000});
+    assert.equal(result.status,0,result.stderr);
+    const report = JSON.parse(result.stdout);
+    assert.match(report.precisionCapture.admission,/bias-not-adopted/);
+    const rows = readFileSync(csv,'utf8').trim().split('\n').slice(2).map(row => row.split(',').map(Number));
+    assert.equal(rows.length,6);
+    rows.forEach(row => {
+      const time = row[0]+report.scope[0].startTimeSeconds;
+      assert.ok(Math.abs(row[1]-(1-Math.exp(-time/1e-6)))<=1e-6,
+        `zero-state step at ${time}s, not the 1 V DC bias`);
+    });
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+const ngspicePresent = spawnSync('ngspice',['--version'],{encoding:'utf8'}).status===0;
+for (const [probe,ohms,farads] of [['10x',1e7,15e-12],['1x',1e6,100e-12]]) {
+  test(`precision CLI ${probe} compares all 400 samples to live ngspice and analytical RC response`, {
+    skip:ngspicePresent?false:'ngspice unavailable: no independent precision CLI comparison ran',
+  }, () => {
+    const dir = mkdtempSync(join(tmpdir(),'bwc-precision-probe-'));
+    try {
+      writeFileSync(join(dir,'reference.cir'),'* Independent explicit probe load\n'
+        + 'V1 signal 0 PULSE(0 1 10u 20u 20u 50u 200u)\nR1 signal sense 100k\nR2 sense 0 1meg\n'
+        + `RP sense 0 ${ohms}\nCP sense 0 ${farads}\n`
+        + '.options reltol=1e-10 abstol=1e-14 vntol=1e-10 trtol=1\n.control\n'
+        + 'set wr_vecnames\nset wr_singlescale\ntran 500n 200u 0 1n\nlinearize v(sense)\n'
+        + 'wrdata reference.csv time v(sense)\n.endc\n.end\n');
+      const oracle = spawnSync('ngspice',['-b','reference.cir'],{cwd:dir,encoding:'utf8',timeout:60000});
+      assert.equal(oracle.status,0,oracle.stderr || oracle.stdout);
+      const rows = readFileSync(join(dir,'reference.csv'),'utf8').trim().split('\n').slice(1)
+        .map(line => line.trim().split(/\s+/).map(Number));
+      assert.ok(rows.every(row => row.length>=2 && row.every(Number.isFinite)));
+      const samples = rows.filter(row => row[0]>0).map(row => ({timeSeconds:row[0],volts:row.at(-1)}));
+      assert.equal(samples.length,400);
+      const parallel = 1/(1/1e6+1/ohms), gain = parallel/(1e5+parallel), tau = gain*1e5*farads;
+      for (const point of samples) {
+        const closed = gain * [[10e-6,50000],[30e-6,-50000],[80e-6,-50000],[100e-6,50000]]
+          .reduce((sum,[start,slope]) => {
+            const dt = Math.max(0,point.timeSeconds-start);
+            return sum+slope*(dt+tau*Math.expm1(-dt/tau));
+          },0);
+        assert.ok(Math.abs(point.volts-closed)<=1e-6,'independent oracle analytical control');
+      }
+      const expect = join(dir,'expected.json'), csv = join(dir,'capture.csv');
+      const reference = {schemaVersion:1,provenance:{kind:'live-ngspice-explicit-probe'},
+        traces:[{tip:'R2.a',reference:'V1.neg',samples}]};
+      writeFileSync(expect,JSON.stringify(reference));
+      const args = [CLI,'measure',PROBE_FIXTURE,'--scope','R2.a,V1.neg','--probe',probe,
+        '--duration','200us','--rate','2MHz','--profile','precision-v1','--initial','zero-state',
+        '--expect',expect,'--csv',csv,'--json'];
+      const result = spawnSync(process.execPath,args,{encoding:'utf8',timeout:30000});
+      assert.equal(result.status,0,result.stderr || result.stdout);
+      const report = JSON.parse(result.stdout);
+      assert.equal(report.transient.profile.id,'precision-v1');
+      assert.equal(report.transient.accuracyMet,true);
+      assert.equal(report.transient.work.advances,1);
+      assert.equal(report.precisionCapture.initialization,'zero-state-no-dc-operating-point');
+      assert.equal(report.precisionCapture.maxSolves,60001);
+      assert.equal(report.scope[0].summary.samples,400);
+      assert.equal(report.comparison.status,'pass');
+      assert.equal(report.comparison.counts.compared,400);
+      assert.equal(report.claims.independentOracle,false,'reference agreement is not a blanket simulator certificate');
+      const csvText = readFileSync(csv,'utf8');
+      assert.match(csvText,/startTimeNs=500 sampleIntervalNs=500 points=400/);
+      const captured = csvText.trim().split('\n').slice(2)
+        .map(line => line.split(',').map(Number));
+      assert.equal(captured.length,400);
+      captured.forEach((row,index) => {
+        assert.ok(Math.abs(row[0]+report.scope[0].startTimeSeconds-samples[index].timeSeconds)<=1e-12);
+        assert.ok(Math.abs(row[1]-samples[index].volts)<=1e-6+1e-6*Math.abs(samples[index].volts));
+      });
+      reference.traces[0].samples[123].volts+=.01;
+      writeFileSync(expect,JSON.stringify(reference));
+      const mutant = spawnSync(process.execPath,args,{encoding:'utf8',timeout:30000});
+      assert.equal(mutant.status,1,mutant.stderr);
+      assert.equal(JSON.parse(mutant.stdout).comparison.status,'fail');
+    } finally { rmSync(dir,{recursive:true,force:true}); }
+  });
+}
 
 test('capture bounds use the actual rounded clock, including the exact ceiling', () => {
   assert.deepEqual(measurementSampleClock(.002,1998003),{
@@ -122,12 +378,12 @@ test('1000 streamed observations preserve analytical sine values and absolute ti
 });
 
 test('measure refuses ignored profile promises before executing a circuit', () => {
-  for (const profile of ['','made-up','precision-v1']) {
+  for (const profile of ['','made-up']) {
     const refused = spawnSync(process.execPath, [CLI,'measure',FIXTURE,
       '--scope','RT.b','--profile',profile,'--json'],{encoding:'utf8'});
     assert.equal(refused.status,2);
     assert.equal(refused.stdout,'');
-    assert.match(refused.stderr,/supports only --profile interactive-v1/);
+    assert.match(refused.stderr,/supports --profile interactive-v1 or bounded precision-v1/);
     assert.match(refused.stderr,/analyze --profile precision-v1/);
   }
 });

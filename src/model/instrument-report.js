@@ -7,6 +7,113 @@ const UNIT_SCALE = Object.freeze({
 
 export const MEASUREMENT_MAX_SAMPLES = 200_000;
 
+// A single batch advance in this domain has no device deadlines or driven PWM
+// subdivisions. The engine's fixed per-integrator cap is therefore a capture
+// cap, unlike an arbitrary sequence of --watch advances on a timed-device graph.
+const PRECISION_PARTS = new Set(['resistor','capacitor','cap','inductor','gnd',
+  'vsource','isource','vcvs','vccs']);
+const PRECISION_WAVES = new Set(['dc','sine','square','triangle','pulse',
+  'spice-sine','spice-pulse','spice-exp']);
+
+export function validatePrecisionCaptureInput(parts, scopeCount, meterModes) {
+  if (!Array.isArray(parts) || parts.length>32) {
+    throw new Error('precision batch limits the circuit to 32 parts');
+  }
+  if (!(scopeCount>=1 && scopeCount<=4)) {
+    throw new Error('precision batch requires 1 to 4 scope channels');
+  }
+  if (meterModes.length>8 || meterModes.some(mode => !['voltage','current'].includes(mode))) {
+    throw new Error('precision batch allows at most 8 voltage/current meters; resistance requires a second advance');
+  }
+  for (const part of parts) {
+    if (part.analysisBlockers?.length) {
+      throw new Error(`precision batch refuses retained analysis blockers on ${part.id}`);
+    }
+    if (['ic','initial','initialVoltage','initialCurrent'].some(key =>
+      Object.hasOwn(part.params ?? {},key))) {
+      throw new Error(`precision batch refuses explicit initial conditions on ${part.id}`);
+    }
+    if (!PRECISION_PARTS.has(part.kind)) {
+      throw new Error(`precision batch refuses part ${part.id} (${part.kind}); timed/non-passive models need a whole-run budget`);
+    }
+    if (['vsource','isource'].includes(part.kind)
+        && !PRECISION_WAVES.has(part.params?.wave ?? 'dc')) {
+      throw new Error(`precision batch refuses source ${part.id} waveform ${part.params.wave}`);
+    }
+  }
+}
+
+/** Conservative voltage-constraint admission, not another waveform parser. */
+export function validatePrecisionVoltageTopology(parts, nets) {
+  const ground = Symbol('all native ground terminals');
+  const groundParts = new Set(parts.filter(part => part.kind==='gnd').map(part => part.id));
+  const groundNets = new Set(nets.filter(net => net.terminals.some(terminal =>
+    groundParts.has(terminal.part))).map(net => net.id));
+  const parent = new Map();
+  const root = node => {
+    if (!parent.has(node)) parent.set(node,node);
+    while (node!==parent.get(node)) node = parent.get(node);
+    return node;
+  };
+  const nodeAt = (part,terminal) => {
+    const matches = nets.filter(net => net.terminals.some(t => t.part===part.id && t.terminal===terminal));
+    if (matches.length!==1) throw new Error(`precision batch requires one net for ${part.id}.${terminal}`);
+    return groundNets.has(matches[0].id) ? ground : matches[0].id;
+  };
+  for (const part of parts) {
+    if (!['vsource','vcvs'].includes(part.kind)) continue;
+    const positive = nodeAt(part,part.kind==='vsource'?'pos':'outp');
+    const negative = nodeAt(part,part.kind==='vsource'?'neg':'outn');
+    // A declared DC zero is a valid redundant short. Other redundant rows,
+    // including initially-zero waveforms, need a stronger time-domain source
+    // consistency proof; legacy convergence alone does not provide it.
+    if (positive===negative && part.kind==='vsource'
+        && (part.params?.wave ?? 'dc')==='dc' && part.params?.volts===0) continue;
+    const a = root(positive), b = root(negative);
+    if (a===b) throw new Error(`precision batch refuses ideal voltage constraint cycle at ${part.id}`);
+    parent.set(a,b);
+  }
+}
+
+export function precisionCaptureBudget(clock, profile, netCount) {
+  if (!(Number.isSafeInteger(netCount) && netCount>=0 && netCount<=32)) {
+    throw new Error('precision batch limits the resolved circuit to 32 nets');
+  }
+  if (profile?.id!=='precision-v1' || !Number.isSafeInteger(profile.maxAttempts)
+      || profile.maxAttempts<1 || profile.maxAttempts>20000
+      || !(Number.isFinite(profile.maxStepSec) && profile.maxStepSec>0)) {
+    throw new Error('precision batch requires the fixed bounded precision-v1 engine contract');
+  }
+  const minimumAdaptiveAttempts = Math.max(clock.captureSamples,
+    Math.ceil(Number(clock.durationNs)/1e9/profile.maxStepSec));
+  if (minimumAdaptiveAttempts>profile.maxAttempts) {
+    throw new Error(`precision batch preflight needs ${minimumAdaptiveAttempts} adaptive attempts; limit is ${profile.maxAttempts}`);
+  }
+  return {maxAttempts:profile.maxAttempts,maxSolves:3*profile.maxAttempts+1,
+    maxAdvances:1,minimumAdaptiveAttempts,basis:'single-advance-passive-source-domain',
+    initialization:'zero-state-no-dc-operating-point',
+    admission:'native-time-zero-constraint-check-and-acyclic-voltage-graph; bias-not-adopted'};
+}
+
+export function validatePrecisionCaptureWork(status, budget) {
+  if (status?.profile?.id!=='precision-v1') {
+    throw new Error('precision batch engine profile changed during capture');
+  }
+  const work = status?.work;
+  if (!work || !['attempts','solves','advances'].every(key =>
+    Number.isSafeInteger(work[key]) && work[key]>=0)) {
+    throw new Error('precision batch returned invalid work counters');
+  }
+  if (work.attempts>budget.maxAttempts || work.solves>budget.maxSolves
+      || work.advances>budget.maxAdvances) {
+    throw new Error('precision batch exceeded its whole-capture work budget');
+  }
+  if (status.failure || status.accuracyMet===false
+      || (work.advances>0 && status.accuracyMet!==true)) {
+    throw new Error(`precision batch did not qualify: ${status.failure?.code || 'local accuracy unmet or unassessed'}`);
+  }
+}
+
 /** Match the engine's integer-nanosecond clock before allocating a capture. */
 export function measurementSampleClock(durationSeconds, rateHz) {
   if (![durationSeconds, rateHz].every(value => Number.isFinite(value) && value > 0)) {

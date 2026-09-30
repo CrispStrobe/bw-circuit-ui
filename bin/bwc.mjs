@@ -57,6 +57,8 @@ const {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
   parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
   measurementSampleClock, MEASUREMENT_MAX_SAMPLES,
+  validatePrecisionCaptureInput, precisionCaptureBudget, validatePrecisionCaptureWork,
+  validatePrecisionVoltageTopology,
 } = await import(join(SRC, 'model/instrument-report.js'));
 
 /** The engine is optional: only netlist exports need it. */
@@ -109,7 +111,7 @@ const args = process.argv.slice(2);
 const cmd = args[0];
 const positional = [];
 const opts = {};
-const valueFlags = new Set(['-o', '--to', '--render', '--profile', '--observations',
+const valueFlags = new Set(['-o', '--to', '--render', '--profile', '--observations', '--initial',
   '--scope', '--meter', '--probe', '--duration', '--rate', '--csv', '--expect',
   '--abs-volts', '--rel', '--time-tolerance']);
 const repeatFlags = new Set(['scope', 'meter']);
@@ -136,6 +138,7 @@ const usage = () => {
     + '              [--meter voltage:<red>,<black>] [--meter current:<part>.<terminal>]\n'
     + '              [--meter resistance:<red>,<black>] [--duration 10ms] [--rate 10kHz]\n'
     + '              [--profile interactive-v1] [--watch] [--expect waveform.json] [--json] [--csv trace.csv]\n'
+    + '              precision batch: --profile precision-v1 --initial zero-state (passive/source circuits only)\n'
     + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
@@ -315,8 +318,18 @@ switch (cmd) {
   }
 
   case 'measure': {
-    if (opts.profile !== undefined && opts.profile !== 'interactive-v1') {
-      die('measure supports only --profile interactive-v1; use analyze --profile precision-v1 for bounded high-accuracy source analysis');
+    const precision = opts.profile === 'precision-v1';
+    if (opts.profile !== undefined && !['interactive-v1','precision-v1'].includes(opts.profile)) {
+      die('measure supports --profile interactive-v1 or bounded precision-v1; use analyze --profile precision-v1 for source-declared analysis');
+    }
+    if (precision && opts.initial !== 'zero-state') {
+      die('measure precision-v1 requires --initial zero-state; DC bias/startup is not implied');
+    }
+    if (!precision && opts.initial !== undefined) {
+      die('measure --initial is supported only for an explicit precision-v1 batch');
+    }
+    if (precision && opts.watch) {
+      die('precision batch refuses --watch; repeated advances need a whole-run engine budget');
     }
     const scopeSpecs = (opts.scope || []).map(value => {
       try { return parseScopeSpec(value); } catch (error) { return die(error.message); }
@@ -356,6 +369,10 @@ switch (cmd) {
       die(`measure refuses ${c.analysisBlockers.length} retained analysis blocker(s)`);
     }
     if (!c.parts.length) die('measure needs at least one imported circuit part');
+    if (precision) {
+      try { validatePrecisionCaptureInput(c.parts,scopeSpecs.length,meterSpecs.map(spec => spec.mode)); }
+      catch (policyError) { die(policyError.message); }
+    }
     const { Circuit, error } = await loadEngine();
     if (error) die('measure needs a bw-board engine (' + error + ')');
     const circ = Circuit.fromJSON({ vcc: Number.isFinite(c.vcc) ? c.vcc : 5,
@@ -364,6 +381,13 @@ switch (cmd) {
     if (opts.profile) {
       try { circ.configureTransientAnalysis(opts.profile); }
       catch (profileError) { die(`measure profile selection failed: ${profileError.message}`); }
+    }
+    let precisionBudget = null;
+    if (precision) {
+      try {
+        precisionBudget = precisionCaptureBudget(clock,circ.transientAnalysisStatus().profile,circ.resolvedNets.length);
+        validatePrecisionVoltageTopology(circ.parts,circ.resolvedNets);
+      } catch (policyError) { die(`precision batch admission failed: ${policyError.message}`); }
     }
     circ.setPower(true);
 
@@ -408,6 +432,14 @@ switch (cmd) {
       else poweredMeters.push(row);
     }
 
+    if (precision) {
+      try {
+        const admission = circ.operatingPoint({waveformBias:'time-zero'});
+        if (admission.converged!==true) throw new Error('native time-zero constraint check did not converge');
+        // Include physical probe loading in admission, but do NOT initialize
+        // storage from this result: capture remains explicit zero-state.
+      } catch (policyError) { die(`precision batch admission failed: ${policyError.message}`); }
+    }
     const startNs = BigInt(circ.board.timeNs || 0);
     const endNs = startNs + durationNs;
     let watchSamples = 0;
@@ -436,6 +468,13 @@ switch (cmd) {
     // Snapshot the powered capture before resistance mode powers the circuit off.
     // This is engine local-step status, not a global-accuracy or oracle certificate.
     const transient = circ.transientAnalysisStatus();
+    if (precision) {
+      try { validatePrecisionCaptureWork(transient,precisionBudget); }
+      catch (policyError) { die(policyError.message); }
+      if (circ.board.deviceCompanions(circ.parts[0].id)?.converged!==true) {
+        die('precision batch final native solve did not converge');
+      }
+    }
     // Resistance's extra power-off tick can cross a scope sample boundary.
     // Preserve both ring metadata and values from the requested powered capture.
     const capturedScopeData = scope.map(row => {
@@ -514,6 +553,7 @@ switch (cmd) {
       effectiveRateHz, plannedSamples: captureSamples,
       requestedTransientProfile: opts.profile || null,
       transient,
+      ...(precision ? {precisionCapture:precisionBudget} : {}),
       scope: scopeRows.map(({ data, selectorReference, ...row }) => row),
       meters: meterRows,
       ...(comparison ? { comparison } : {}),
@@ -531,6 +571,7 @@ switch (cmd) {
       console.log(`  simulated: ${report.simulatedDurationSeconds} s at ${effectiveRateHz} Hz (${captureSamples} planned samples; requested ${rateHz} Hz)`);
       console.log(`  integration: ${transient.profile.id}; engine local step check ${transient.accuracyMet == null
         ? 'not assessed' : transient.accuracyMet ? 'met' : 'unmet'} (not an oracle check)`);
+      if (precision) console.log('  initial state: zero stored energy; no DC operating-point initialization');
       for (const row of report.scope) {
         const s = row.summary;
         console.log(`  scope ${row.tip} relative to ${row.reference}  [${row.probe}, ${s.samples} samples]`);

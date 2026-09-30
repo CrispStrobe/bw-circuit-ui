@@ -71,10 +71,47 @@ readout work linear in the number of streamed samples; circuit integration and
 output transport have their own costs. The final summary still validates every
 retained point, so earlier nonfinite samples cannot be hidden by this fast path.
 
-Measurement keeps the engine's live interactive integration profile. An explicit
-`--profile interactive-v1` selects the same policy; other profile requests refuse
-instead of being silently ignored. For bounded high-accuracy source-declared
-analysis, use `bwc analyze --profile precision-v1`.
+Measurement defaults to the engine's live interactive integration profile. An
+explicit `--profile interactive-v1` selects the same policy. Unknown profiles
+refuse instead of being silently ignored. Source-declared analyses remain a
+separate action: `bwc analyze --profile precision-v1`.
+
+Opt-in precision **batch** capture:
+
+```sh
+node bin/bwc.mjs measure test/fixtures/cli-measure-probe.cir \
+  --scope R2.a,V1.neg --probe 10x --duration 200us --rate 2MHz \
+  --profile precision-v1 --initial zero-state --json --csv capture.csv
+```
+
+`zero-state` means initially uncharged capacitors and zero inductor current, not
+a source-declared DC bias or LTspice startup ramp. The CLI flags select capture
+timing/initialization; this is not execution of the deck's analysis cards.
+Explicit part initial-condition fields refuse rather than being silently used.
+The native time-zero operating point is checked for admission **with probe
+loading**, but its bias is never adopted. A nonzero DC RC-step regression proves
+the output charges from zero instead of starting at its steady-state voltage.
+
+The initial admitted domain is a consistent time-zero R/C/L/V/I/E/G graph, at
+most 32 user parts and 32 resolved nets, 1–4 scopes and at most 8 voltage/current
+meters. Only fixed-size native waveforms are admitted; PWL/PCM, current-limited
+supplies, non-passive/timed models and graphs lacking a solvable admitted bias
+refuse by name. Redundant ideal-voltage constraint loops refuse, including an
+initially-zero source that would later contradict its short. An explicit DC
+zero self-short remains valid. This conservative boundary does not mean a
+refused circuit is physically invalid or unsupported by other engine actions.
+
+Precision capture advances the passive/source graph **once**: no `--watch`,
+timed-device deadlines, driven PWM or resistance power-off tick can turn the
+per-integrator limit into a repeated allowance. The fixed limit is 20,000
+transient attempts, at most 60,001 transient solves (including the final
+backstop solve), and one transient advance. Preflight checks the adaptive grid/
+maximum-step floor; actual work and local failures are checked before JSON/CSV
+qualification. Hitting the cap is a named refusal, never a partial passing trace.
+Part/net/channel bounds also constrain setup and the separate admission solve;
+the counters do not claim to measure CPU time or every setup operation.
+Static captures with no transient work retain explicit unassessed (`null`)
+local-step status. The policy/initialization are disclosed in `precisionCapture`.
 
 JSON reports and watch summaries include `requestedTransientProfile` and the
 engine's `transient` status: configured profile, integration mode, local step
@@ -83,17 +120,29 @@ profile and local check. The status is captured before resistance mode powers
 the circuit off. A local step check is not a global waveform-error bound or
 independent-oracle agreement; unknown (`null`) or unmet status stays explicit.
 
-Follow-up roadmap: support precision instrument capture only with explicit
-initial-condition semantics, total-work budgets and independent waveform proof.
-Do not turn arbitrary measurement durations into unbounded precision runs.
+Follow-up roadmap: add native whole-run work limits before enabling precision
+streaming and timed/non-passive models, then qualify explicit DC-bias and startup
+initialization separately. Do not turn arbitrary durations into repeated budget
+allowances. Op-amp/device captures still use interactive measurement or their
+separately bounded source-analysis action, not this narrower precision batch.
 
 The pinned engine includes the fractional solve-time sampling repair: a solve
 rounded up to a nanosecond grid point cannot publish that scope point early,
 and interpolation retains the actual solve instants. Public Circuit regression
 captures cover both passive probe presets on an imported pulse divider, checking
 all 800 observations against live ngspice and an independent first-order R/C
-response at 1 microvolt + 1 ppm. These are **precision API** tests, not evidence
-that `bwc measure` or the live GUI has switched away from interactive integration.
+response at 1 microvolt + 1 ppm. The same two fixtures are now compared through
+the shipping CLI action and exported CSV at all 800 aligned points, with a
+changed reference point making each comparison fail. These are two circuits/
+probe configurations, not 800 distinct imported circuits or a universal oracle
+certificate. Neither default CLI nor live GUI switches away from interactive.
+
+Upstream follow-up: legacy MNA convergence can omit a grounded nonzero ideal
+voltage source when another node exists. Strict `operatingPoint` already rejects
+it; this action does not trust the weaker flag alone. Repair the general solver
+constraint/closed-source handling under its own ownership, with nonzero/zero,
+waveform, merged-ground and finite-internal-resistance controls. No general
+legacy-solver repair is claimed by this CLI admission gate.
 
 Voltage/current meters now use the engine's existing maximum-100-ms recorded
 history mean. The first read starts watching and returns the instant's value;
