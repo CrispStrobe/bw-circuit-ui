@@ -63,7 +63,12 @@ export function scopeSeries(data) {
     const index = (oldest + offset) % depth;
     const low = data.samples[index * 2];
     const high = data.samples[index * 2 + 1];
-    if (Number.isFinite(low) && Number.isFinite(high)) values.push((low + high) / 2);
+    if (!Number.isFinite(low) || !Number.isFinite(high)) {
+      throw new Error(`scope trace has a nonfinite sample at chronological index ${offset}`);
+    }
+    // Do not drop a point: its index is the authority for its simulation timestamp.
+    const sum = low + high;
+    values.push(Number.isFinite(sum) ? sum / 2 : low / 2 + high / 2);
   }
   return values;
 }
@@ -143,16 +148,22 @@ export function compareExpectedWaveforms(actual, expected, tolerances = {}) {
       const timeError = Math.abs(av.timeSeconds - ev.timeSeconds);
       const voltageError = Math.abs(av.volts - ev.volts);
       const allowed = absoluteVolts + relative * Math.max(Math.abs(av.volts), Math.abs(ev.volts));
-      const ok = timeError <= timeSeconds && voltageError <= allowed;
+      const finite = [av.timeSeconds, ev.timeSeconds, av.volts, ev.volts].every(Number.isFinite);
+      const ok = finite && timeError <= timeSeconds && voltageError <= allowed;
       if (ok) passed++;
-      if (voltageError > worstVolts) {
+      if (finite && voltageError > worstVolts) {
         worstVolts = voltageError;
         worstAt = { traceIndex, sampleIndex, timeSeconds: av.timeSeconds, actualVolts: av.volts, expectedVolts: ev.volts };
       }
-      if (!ok && mismatches.length < 20) mismatches.push({ code: timeError > timeSeconds ? 'sample-time' : 'sample-voltage',
+      if (!ok && mismatches.length < 20) mismatches.push({ code: !finite ? 'sample-nonfinite'
+        : timeError > timeSeconds ? 'sample-time' : 'sample-voltage',
         traceIndex, sampleIndex, actualTimeSeconds: av.timeSeconds, expectedTimeSeconds: ev.timeSeconds,
         actualVolts: av.volts, expectedVolts: ev.volts, voltageError, allowedVolts: allowed });
     }
+  }
+  if (!compared && !structuralFailures) {
+    mismatches.push({ code: 'no-compared-samples' });
+    structuralFailures++;
   }
   return { status: structuralFailures || passed !== compared ? 'fail' : 'pass',
     counts: { traces: actual.length, compared, passed, failed: compared - passed, structuralFailures },

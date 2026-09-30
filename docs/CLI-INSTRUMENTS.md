@@ -62,7 +62,14 @@ timestamp and voltage. Point-count, trace identity, missing samples and timestam
 drift fail independently of voltage tolerance. Defaults are 1 µV absolute,
 1 ppm relative and 1 ps time tolerance; override them explicitly with
 `--abs-volts`, `--rel` and `--time-tolerance`. A failed comparison exits 1 and
-still prints the complete report. The format is:
+still prints the complete report.
+
+A capture containing a nonfinite point is refused rather than dropping that
+point and shifting later timestamps. Waveform comparison requires finite times
+and voltages on both sides and at least one compared sample: neither an infinite
+relative-tolerance calculation nor an empty trace can qualify as a pass.
+
+The format is:
 
 ```json
 {

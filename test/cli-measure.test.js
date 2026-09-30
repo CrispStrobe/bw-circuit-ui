@@ -6,13 +6,56 @@ import { join } from 'node:path';
 import test from 'node:test';
 import {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
-  parseScopeSpec, resolveEndpointNet, summarizeScope,
+  parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries,
 } from '../src/model/instrument-report.js';
 
 const ROOT = join(import.meta.dirname, '..');
 const CLI = join(ROOT, 'bin', 'bwc.mjs');
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json');
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
+
+test('scope refuses nonfinite ring points instead of moving later timestamps', () => {
+  for (const bad of [NaN, Infinity, -Infinity]) {
+    const data = { samples: new Float64Array([1,1,bad,bad,3,3]), count:3, writeIndex:0,
+      startTNs:100n, sampleIntervalNs:10 };
+    assert.throws(() => timedScopeSeries(data), /nonfinite sample at chronological index 1/);
+    assert.throws(() => summarizeScope(data), /nonfinite sample/);
+  }
+  const valid = { samples: new Float64Array([1,1,2,2,3,3]), count:3, writeIndex:0,
+    startTNs:100n, sampleIntervalNs:10 };
+  assert.deepEqual(timedScopeSeries(valid).map(s => s.timeSeconds), [100e-9,110e-9,120e-9]);
+  assert.deepEqual(timedScopeSeries(valid).map(s => s.volts), [1,2,3]);
+  const large = { ...valid, samples: new Float64Array([1e308,1e308]), count:1, writeIndex:0 };
+  assert.equal(timedScopeSeries(large)[0].volts, 1e308, 'finite operands must not overflow the midpoint');
+});
+
+test('waveform comparison cannot accept nonfinite observations through infinite tolerance', () => {
+  const trace = sample => ({ tip:'n', reference:'', samples:[sample] });
+  const normal = {timeSeconds:0,volts:1};
+  for (const field of ['timeSeconds','volts']) for (const bad of [NaN,Infinity,-Infinity]) {
+    for (const side of ['actual','expected']) {
+      const invalid = {...normal,[field]:bad};
+      const actual = [trace(side === 'actual' ? invalid : normal)];
+      const expected = { traces:[trace(side === 'expected' ? invalid : normal)] };
+      const report = compareExpectedWaveforms(actual, expected);
+      assert.equal(report.status,'fail',`${side} ${field}=${bad}`);
+      assert.equal(report.counts.failed,1);
+      assert.equal(report.mismatches[0].code,'sample-nonfinite');
+    }
+  }
+  assert.equal(compareExpectedWaveforms([trace(normal)],{traces:[trace(normal)]}).status,'pass');
+});
+
+test('zero observations cannot qualify as a passing waveform comparison', () => {
+  for (const [actual,expected] of [[[],{traces:[]}],
+    [[{tip:'n',samples:[]}],{traces:[{tip:'n',samples:[]}]}]]) {
+    const report = compareExpectedWaveforms(actual,expected);
+    assert.equal(report.status,'fail');
+    assert.equal(report.counts.compared,0);
+    assert.equal(report.counts.structuralFailures,1);
+    assert.equal(report.mismatches[0].code,'no-compared-samples');
+  }
+});
 
 test('measurement arguments are bounded and unambiguous', () => {
   assert.equal(parseScaledNumber('2.5ms', 'duration'), 0.0025);
