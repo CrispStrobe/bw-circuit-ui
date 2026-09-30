@@ -14,6 +14,46 @@ const CLI = join(ROOT, 'bin', 'bwc.mjs');
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json');
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 
+test('measure refuses ignored profile promises before executing a circuit', () => {
+  for (const profile of ['','made-up','precision-v1']) {
+    const refused = spawnSync(process.execPath, [CLI,'measure',FIXTURE,
+      '--scope','RT.b','--profile',profile,'--json'],{encoding:'utf8'});
+    assert.equal(refused.status,2);
+    assert.equal(refused.stdout,'');
+    assert.match(refused.stderr,/supports only --profile interactive-v1/);
+    assert.match(refused.stderr,/analyze --profile precision-v1/);
+  }
+});
+
+test('explicit interactive profile and default acquisition have identical scope values and disclose actual status', () => {
+  const args = [CLI,'measure',SINE_FIXTURE,'--scope','V1.pos,V1.neg',
+    '--duration','50us','--rate','100kHz','--json'];
+  const implicit = JSON.parse(execFileSync(process.execPath,args,{encoding:'utf8'}));
+  const explicit = JSON.parse(execFileSync(process.execPath,[...args,'--profile','interactive-v1'],{encoding:'utf8'}));
+  assert.equal(implicit.requestedTransientProfile,null);
+  assert.equal(explicit.requestedTransientProfile,'interactive-v1');
+  for (const report of [implicit,explicit]) {
+    assert.equal(report.transient.profile.id,'interactive-v1');
+    assert.equal(typeof report.transient.work.advances,'number');
+    assert.ok([null,true,false].includes(report.transient.accuracyMet));
+    assert.equal(report.claims.independentOracle,false);
+  }
+  assert.deepEqual(explicit.scope,implicit.scope);
+  assert.deepEqual(explicit.transient,implicit.transient);
+});
+
+test('resistance power-off does not replace powered acquisition status', () => {
+  const fixture = join(import.meta.dirname,'fixtures','spice-precision-analysis.cir');
+  const args = [CLI,'measure',fixture,'--scope','C1.a,V1.neg',
+    '--duration','3us','--rate','2MHz','--json'];
+  const powered = JSON.parse(execFileSync(process.execPath,args,{encoding:'utf8'}));
+  const resistance = JSON.parse(execFileSync(process.execPath,[...args,
+    '--meter','resistance:R1.a,R1.b'],{encoding:'utf8'}));
+  assert.ok(powered.transient.work.advances > 0,'reactive capture actually integrates');
+  assert.deepEqual(resistance.transient,powered.transient);
+  assert.deepEqual(resistance.scope,powered.scope);
+});
+
 test('scope refuses nonfinite ring points instead of moving later timestamps', () => {
   for (const bad of [NaN, Infinity, -Infinity]) {
     const data = { samples: new Float64Array([1,1,bad,bad,3,3]), count:3, writeIndex:0,
@@ -165,6 +205,7 @@ test('watch streams monotonic true samples and agrees exactly with batch capture
   assert.equal(samples.length, 5);
   assert.equal(summary.recordType, 'summary');
   assert.equal(summary.watchSamples, 5);
+  assert.equal(summary.report.transient.profile.id,'interactive-v1');
   for (let index = 0; index < samples.length; index++) {
     const row = samples[index];
     const time = (index + 1) * 10e-6;

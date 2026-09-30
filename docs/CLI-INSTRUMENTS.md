@@ -57,6 +57,22 @@ finish much faster or slower than 1 ms, while its timestamps remain the engine's
 clock. Resistance mode is rejected because measuring resistance powers the
 circuit off and therefore is not a powered time series.
 
+Measurement keeps the engine's live interactive integration profile. An explicit
+`--profile interactive-v1` selects the same policy; other profile requests refuse
+instead of being silently ignored. For bounded high-accuracy source-declared
+analysis, use `bwc analyze --profile precision-v1`.
+
+JSON reports and watch summaries include `requestedTransientProfile` and the
+engine's `transient` status: configured profile, integration mode, local step
+qualification, failure detail and work counters. Text reports also name the
+profile and local check. The status is captured before resistance mode powers
+the circuit off. A local step check is not a global waveform-error bound or
+independent-oracle agreement; unknown (`null`) or unmet status stays explicit.
+
+Follow-up roadmap: support precision instrument capture only with explicit
+initial-condition semantics, total-work budgets and independent waveform proof.
+Do not turn arbitrary measurement durations into unbounded precision runs.
+
 `--expect` reads a bounded, explicit waveform document and compares every sample
 timestamp and voltage. Point-count, trace identity, missing samples and timestamp
 drift fail independently of voltage tolerance. Defaults are 1 µV absolute,

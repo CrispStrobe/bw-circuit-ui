@@ -134,7 +134,7 @@ const usage = () => {
     + '  bwc measure <file> --scope <tip>[,<ref>] [--probe ideal|10x|1x]\n'
     + '              [--meter voltage:<red>,<black>] [--meter current:<part>.<terminal>]\n'
     + '              [--meter resistance:<red>,<black>] [--duration 10ms] [--rate 10kHz]\n'
-    + '              [--watch] [--expect waveform.json] [--json] [--csv trace.csv]\n'
+    + '              [--profile interactive-v1] [--watch] [--expect waveform.json] [--json] [--csv trace.csv]\n'
     + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
@@ -314,6 +314,9 @@ switch (cmd) {
   }
 
   case 'measure': {
+    if (opts.profile !== undefined && opts.profile !== 'interactive-v1') {
+      die('measure supports only --profile interactive-v1; use analyze --profile precision-v1 for bounded high-accuracy source analysis');
+    }
     const scopeSpecs = (opts.scope || []).map(value => {
       try { return parseScopeSpec(value); } catch (error) { return die(error.message); }
     });
@@ -353,6 +356,10 @@ switch (cmd) {
     const circ = Circuit.fromJSON({ vcc: Number.isFinite(c.vcc) ? c.vcc : 5,
       parts: c.parts, wires: c.wires });
     if (circ.netlistError) die('measure could not build an engine netlist (' + circ.netlistError + ')');
+    if (opts.profile) {
+      try { circ.configureTransientAnalysis(opts.profile); }
+      catch (profileError) { die(`measure profile selection failed: ${profileError.message}`); }
+    }
     circ.setPower(true);
 
     const scope = [];
@@ -423,6 +430,9 @@ switch (cmd) {
       } else circ.advanceTo(endNs);
     } catch (error2) { die(`measure simulation failed: ${error2.message}`); }
 
+    // Snapshot the powered capture before resistance mode powers the circuit off.
+    // This is engine local-step status, not a global-accuracy or oracle certificate.
+    const transient = circ.transientAnalysisStatus();
     const meterRows = poweredMeters.map(row => ({ mode: row.mode, probes: row.probes,
       reading: readMeter(row.meter, circ) }));
     if (resistance.length) {
@@ -490,6 +500,8 @@ switch (cmd) {
     const report = {
       source: basename(file), format: c.format,
       durationSeconds, rateHz, requestedSamples,
+      requestedTransientProfile: opts.profile || null,
+      transient,
       scope: scopeRows.map(({ data, selectorReference, ...row }) => row),
       meters: meterRows,
       ...(comparison ? { comparison } : {}),
@@ -505,6 +517,8 @@ switch (cmd) {
     else {
       console.log(`${basename(file)}  [${c.format}]  instrument measurements`);
       console.log(`  simulated: ${durationSeconds} s at ${rateHz} Hz (${requestedSamples} requested samples)`);
+      console.log(`  integration: ${transient.profile.id}; engine local step check ${transient.accuracyMet == null
+        ? 'not assessed' : transient.accuracyMet ? 'met' : 'unmet'} (not an oracle check)`);
       for (const row of report.scope) {
         const s = row.summary;
         console.log(`  scope ${row.tip} relative to ${row.reference}  [${row.probe}, ${s.samples} samples]`);
