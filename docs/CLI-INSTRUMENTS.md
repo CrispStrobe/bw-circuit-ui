@@ -44,6 +44,14 @@ time from the oldest retained sample, while the header's `startTimeNs` records
 that sample's absolute simulation time. JSON includes `startTimeSeconds`, the
 sample interval, resolved net IDs, probe preset and the same summary.
 
+The engine rounds sample periods and simulated duration to integer nanoseconds.
+`rateHz` and `requestedSamples` retain the user's nominal request;
+`effectiveRateHz`, `simulatedDurationSeconds`, and `plannedSamples` disclose the
+actual clock and its complete-point count. Scope rows also expose the effective
+rate and exact interval. Capture capacity and the 200,000-point safety limit
+use that clock-derived count, so a non-divisor requested rate cannot silently
+wrap away its first sample or evade the limit. Durations rounding to zero refuse.
+
 Every successful JSON meter reading includes numeric `siValue`/`siUnit` fields
 for computation as well as the formatted display value. Current display values
 autorange across A, mA, µA, nA and pA; a real nonzero current is never rounded
@@ -117,6 +125,9 @@ per channel. It refuses unmapped components, semantic import losses and
 retained analysis blockers. Resistance readings turn circuit power off before
 calling the existing multimeter API. Voltage/current readings and scope traces
 are captured first while powered.
+Scope ring metadata and values are frozen before that power-off tick, including
+when the tick crosses the next sampling boundary; it cannot append a false 0 V
+tail to the powered waveform.
 
 The `ideal` scope preset does not load the circuit. `10x` is 10 MΩ in parallel
 with 15 pF and `1x` is 1 MΩ in parallel with 100 pF; both require an explicit

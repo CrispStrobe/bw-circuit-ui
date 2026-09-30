@@ -5,6 +5,24 @@ const UNIT_SCALE = Object.freeze({
   hz: 1, khz: 1e3, mhz: 1e6,
 });
 
+export const MEASUREMENT_MAX_SAMPLES = 200_000;
+
+/** Match the engine's integer-nanosecond clock before allocating a capture. */
+export function measurementSampleClock(durationSeconds, rateHz) {
+  if (![durationSeconds, rateHz].every(value => Number.isFinite(value) && value > 0)) {
+    throw new Error('measurement duration and rate must be positive and finite');
+  }
+  const durationNs = BigInt(Math.round(durationSeconds * 1e9));
+  const intervalNs = BigInt(Math.round(1e9 / rateHz));
+  if (durationNs <= 0n) throw new Error('measure duration rounds to zero on the nanosecond simulation clock');
+  if (intervalNs <= 0n) throw new Error('measure rate has no positive nanosecond sample interval');
+  const captureSamples = Number(durationNs / intervalNs);
+  if (captureSamples > MEASUREMENT_MAX_SAMPLES) {
+    throw new Error(`measure rounded sample clock produces ${captureSamples} samples; limit is ${MEASUREMENT_MAX_SAMPLES}`);
+  }
+  return { durationNs, intervalNs, captureSamples, effectiveRateHz: 1e9 / Number(intervalNs) };
+}
+
 export function parseScaledNumber(value, kind) {
   const match = String(value ?? '').trim().match(/^([+]?(?:\d+(?:\.\d*)?|\.\d+))(ns|us|ms|s|hz|khz|mhz)?$/i);
   if (!match) throw new Error(`invalid ${kind}: ${value}`);

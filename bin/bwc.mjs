@@ -56,6 +56,7 @@ const { scopeTracesToCsv } = await import(join(SRC, 'model/scope-csv.js'));
 const {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
   parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
+  measurementSampleClock, MEASUREMENT_MAX_SAMPLES,
 } = await import(join(SRC, 'model/instrument-report.js'));
 
 /** The engine is optional: only netlist exports need it. */
@@ -338,7 +339,11 @@ switch (cmd) {
     if (!(durationSeconds > 0 && durationSeconds <= 10)) die('measure duration must be > 0 and <= 10 s');
     if (!(rateHz >= 1 && rateHz <= 2e6)) die('measure rate must be between 1 Hz and 2 MHz');
     const requestedSamples = Math.ceil(durationSeconds * rateHz);
-    if (requestedSamples > 200_000) die('measure refuses more than 200000 scope samples');
+    if (requestedSamples > MEASUREMENT_MAX_SAMPLES) die('measure refuses more than 200000 scope samples');
+    let clock;
+    try { clock = measurementSampleClock(durationSeconds, rateHz); }
+    catch (clockError) { die(clockError.message); }
+    const { durationNs, intervalNs, captureSamples, effectiveRateHz } = clock;
 
     const c = await loadOrDie(file);
     if (c.unmapped && c.unmapped.length) {
@@ -373,7 +378,7 @@ switch (cmd) {
       try { electrical = scopeProbeOptions(probe, referenceNet); } catch (error2) { die(error2.message); }
       const handle = circ.board.addScopeChannel({
         type: 'voltage', netId: tipNet, sampleRateHz: rateHz,
-        depth: requestedSamples + 2, capture: 'sample', ...electrical,
+        depth: captureSamples + 2, capture: 'sample', ...electrical,
       });
       scope.push({ spec, tipNet, referenceNet, handle });
     }
@@ -403,13 +408,11 @@ switch (cmd) {
       else poweredMeters.push(row);
     }
 
-    const durationNs = BigInt(Math.round(durationSeconds * 1e9));
     const startNs = BigInt(circ.board.timeNs || 0);
     const endNs = startNs + durationNs;
     let watchSamples = 0;
     try {
       if (opts.watch) {
-        const intervalNs = BigInt(Math.round(1e9 / rateHz));
         for (let targetNs = startNs + intervalNs; targetNs <= endNs; targetNs += intervalNs) {
           circ.advanceTo(targetNs);
           const watchedScope = scope.map(row => {
@@ -433,6 +436,12 @@ switch (cmd) {
     // Snapshot the powered capture before resistance mode powers the circuit off.
     // This is engine local-step status, not a global-accuracy or oracle certificate.
     const transient = circ.transientAnalysisStatus();
+    // Resistance's extra power-off tick can cross a scope sample boundary.
+    // Preserve both ring metadata and values from the requested powered capture.
+    const capturedScopeData = scope.map(row => {
+      const data = circ.board.getScopeData(row.handle);
+      return data && resistance.length ? { ...data, samples: data.samples.slice() } : data;
+    });
     const meterRows = poweredMeters.map(row => ({ mode: row.mode, probes: row.probes,
       reading: readMeter(row.meter, circ) }));
     if (resistance.length) {
@@ -449,8 +458,8 @@ switch (cmd) {
       }
     }
 
-    const scopeRows = scope.map(row => {
-      const data = circ.board.getScopeData(row.handle);
+    const scopeRows = scope.map((row, index) => {
+      const data = capturedScopeData[index];
       const summary = summarizeScope(data);
       if (!summary.samples) die(`scope ${row.spec.tip} captured no finite samples`);
       return {
@@ -460,6 +469,7 @@ switch (cmd) {
         referenceNet: row.referenceNet || null,
         probe,
         rateHz,
+        effectiveRateHz,
         capture: data?.capture || null,
         startTimeSeconds: Number(data?.startTNs ?? 0n) / 1e9,
         sampleIntervalSeconds: Number(data?.sampleIntervalNs ?? 0) / 1e9,
@@ -500,6 +510,8 @@ switch (cmd) {
     const report = {
       source: basename(file), format: c.format,
       durationSeconds, rateHz, requestedSamples,
+      simulatedDurationSeconds: Number(durationNs) / 1e9,
+      effectiveRateHz, plannedSamples: captureSamples,
       requestedTransientProfile: opts.profile || null,
       transient,
       scope: scopeRows.map(({ data, selectorReference, ...row }) => row),
@@ -516,7 +528,7 @@ switch (cmd) {
     else if (opts.json) console.log(JSON.stringify(report, null, 2));
     else {
       console.log(`${basename(file)}  [${c.format}]  instrument measurements`);
-      console.log(`  simulated: ${durationSeconds} s at ${rateHz} Hz (${requestedSamples} requested samples)`);
+      console.log(`  simulated: ${report.simulatedDurationSeconds} s at ${effectiveRateHz} Hz (${captureSamples} planned samples; requested ${rateHz} Hz)`);
       console.log(`  integration: ${transient.profile.id}; engine local step check ${transient.accuracyMet == null
         ? 'not assessed' : transient.accuracyMet ? 'met' : 'unmet'} (not an oracle check)`);
       for (const row of report.scope) {

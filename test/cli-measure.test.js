@@ -7,12 +7,72 @@ import test from 'node:test';
 import {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
   parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
+  measurementSampleClock,
 } from '../src/model/instrument-report.js';
 
 const ROOT = join(import.meta.dirname, '..');
 const CLI = join(ROOT, 'bin', 'bwc.mjs');
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json');
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
+
+test('capture bounds use the actual rounded clock, including the exact ceiling', () => {
+  assert.deepEqual(measurementSampleClock(.002,1998003),{
+    durationNs:2000000n,intervalNs:500n,captureSamples:4000,effectiveRateHz:2000000 });
+  assert.equal(measurementSampleClock(.1,2000000).captureSamples,200000);
+  assert.throws(() => measurementSampleClock(.1000005,2000000),/produces 200001 samples/);
+  assert.throws(() => measurementSampleClock(200000 / 1998003,1998003),/produces 200199 samples/);
+  assert.throws(() => measurementSampleClock(.1e-9,100000),/rounds to zero/);
+});
+
+test('CLI refuses clock-derived overflow and zero duration before simulation', () => {
+  for (const [duration,rate,reason] of [
+    [String(200000 / 1998003),'1998003',/rounded sample clock produces 200199 samples/],
+    ['0.1ns','100kHz',/duration rounds to zero/],
+  ]) {
+    const result = spawnSync(process.execPath,[CLI,'measure',FIXTURE,'--scope','RT.b,GND.gnd',
+      '--duration',duration,'--rate',rate,'--json'],{encoding:'utf8'});
+    assert.equal(result.status,2);
+    assert.equal(result.stdout,'');
+    assert.match(result.stderr,reason);
+  }
+});
+
+test('non-divisor-rate captures retain every point and disclose the actual clock', () => {
+  const dir = mkdtempSync(join(tmpdir(),'bwc-rounded-clock-'));
+  const csv = join(dir,'capture.csv');
+  const args = [CLI,'measure',FIXTURE,'--scope','RT.b,GND.gnd',
+    '--duration','2ms','--rate','1.998003MHz'];
+  const report = JSON.parse(execFileSync(process.execPath,[...args,'--json','--csv',csv],{encoding:'utf8'}));
+  assert.equal(report.requestedSamples,3997);
+  assert.equal(report.plannedSamples,4000);
+  assert.equal(report.rateHz,1998003);
+  assert.equal(report.effectiveRateHz,2000000);
+  assert.equal(report.scope[0].effectiveRateHz,2000000);
+  assert.equal(report.scope[0].summary.samples,4000);
+  assert.equal(report.scope[0].startTimeSeconds,.5e-6);
+  assert.equal(report.scope[0].sampleIntervalSeconds,.5e-6);
+  assert.match(readFileSync(csv,'utf8').split('\n')[0],/startTimeNs=500 sampleIntervalNs=500 points=4000/);
+  const watched = execFileSync(process.execPath,[...args,'--watch'],{encoding:'utf8',maxBuffer:8*1024*1024})
+    .trim().split('\n').map(JSON.parse);
+  assert.equal(watched.length,4001);
+  assert.equal(watched[0].timeSeconds,.5e-6);
+  assert.equal(watched.at(-2).timeSeconds,.002);
+  assert.equal(watched.at(-1).watchSamples,4000);
+  assert.equal(watched.at(-1).report.scope[0].summary.samples,4000);
+  assert.deepEqual(watched.at(-1).report.scope,report.scope);
+});
+
+test('resistance tick cannot append a powered-off point at the next scope boundary', () => {
+  const args = [CLI,'measure',FIXTURE,'--scope','RT.b,GND.gnd',
+    '--duration','999ns','--rate','2MHz','--json'];
+  const powered = JSON.parse(execFileSync(process.execPath,args,{encoding:'utf8'}));
+  const resistance = JSON.parse(execFileSync(process.execPath,[...args,
+    '--meter','resistance:RT.a,RT.b'],{encoding:'utf8'}));
+  assert.equal(resistance.plannedSamples,1);
+  assert.equal(resistance.scope[0].summary.samples,1);
+  assert.equal(resistance.scope[0].summary.lastVolts,2.5);
+  assert.deepEqual(resistance.scope,powered.scope);
+});
 
 test('newest scope point agrees with chronological series before and after ring wrap', () => {
   for (const [count,writeIndex,startTNs] of [[1,1,10n],[3,0,10n],[8,2,60n]]) {
