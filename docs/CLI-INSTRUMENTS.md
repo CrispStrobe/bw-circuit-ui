@@ -87,6 +87,24 @@ Follow-up roadmap: support precision instrument capture only with explicit
 initial-condition semantics, total-work budgets and independent waveform proof.
 Do not turn arbitrary measurement durations into unbounded precision runs.
 
+The pinned engine includes the fractional solve-time sampling repair: a solve
+rounded up to a nanosecond grid point cannot publish that scope point early,
+and interpolation retains the actual solve instants. Public Circuit regression
+captures cover both passive probe presets on an imported pulse divider, checking
+all 800 observations against live ngspice and an independent first-order R/C
+response at 1 microvolt + 1 ppm. These are **precision API** tests, not evidence
+that `bwc measure` or the live GUI has switched away from interactive integration.
+
+Voltage/current meters now use the engine's existing maximum-100-ms recorded
+history mean. The first read starts watching and returns the instant's value;
+later reads integrate held recorded values over the available history, not a
+full window predating that first read. Scope samples remain instantaneous.
+Batch meter readout therefore has no prior watch history and need not equal the
+last streamed meter readout. This contract is not a true-RMS model or a
+continuous-waveform integral qualification. Follow-up: record meter history at
+actual transient solve/source-edge times and independently test its time integral
+against analytical and ngspice waveforms, including short captures and aliasing.
+
 `--expect` reads a bounded, explicit waveform document and compares every sample
 timestamp and voltage. Point-count, trace identity, missing samples and timestamp
 drift fail independently of voltage tolerance. Defaults are 1 µV absolute,

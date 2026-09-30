@@ -320,8 +320,15 @@ test('watch streams monotonic true samples and agrees exactly with batch capture
     assert.equal(row.index, index);
     assert.ok(Math.abs(row.timeSeconds - time) < 1e-15);
     assert.ok(Math.abs(row.scope[0].volts - expected) < 1e-12);
-    assert.equal(row.meters[0].reading.siValue, row.scope[0].volts);
-    assert.ok(Math.abs(row.meters[1].reading.siValue + row.scope[0].volts / 1000) < 1e-15);
+    // The first read starts watching; the engine holds each recorded reading
+    // to the next advance. This is not the instantaneous scope value or an
+    // independently qualified continuous integral of the sine waveform.
+    const priorMean = index === 0 ? expected : samples.slice(0,index)
+      .reduce((sum,point) => sum + point.scope[0].volts,0) / index;
+    assert.ok(Math.abs(row.meters[0].reading.siValue-priorMean)<1e-12,
+      `recorded-history voltage mean at observation ${index}`);
+    assert.ok(Math.abs(row.meters[1].reading.siValue + priorMean / 1000) < 1e-15,
+      `signed recorded-history current mean at observation ${index}`);
   }
 
   const dir = mkdtempSync(join(tmpdir(), 'bwc-measure-watch-'));
@@ -380,7 +387,9 @@ test('watch exposes PULSE edges on their actual simulation timestamps', () => {
     .trim().split('\n').map(JSON.parse).filter(row => row.recordType === 'sample');
   assert.deepEqual(rows.map(row => row.timeSeconds), [0.5e-6, 1e-6, 1.5e-6, 2e-6, 2.5e-6, 3e-6]);
   assert.deepEqual(rows.map(row => row.scope[0].volts), [0, 0, 5, 5, 5, 5]);
-  assert.deepEqual(rows.map(row => row.meters[0].reading.siValue), [0, 0, 5, 5, 5, 5]);
+  // Meter history starts at the first read (0.5 us), independently of the
+  // true scope samples. Its held readings first change at 1.5 us.
+  assert.deepEqual(rows.map(row => row.meters[0].reading.siValue), [0, 0, 0, 5/3, 2.5, 3]);
 });
 
 test('watch refuses modes that cannot represent a powered time series', () => {

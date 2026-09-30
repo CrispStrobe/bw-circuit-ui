@@ -1,7 +1,8 @@
 import './_setup.js';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { importCircuit } from '../src/importers/index.js';
@@ -10,6 +11,8 @@ import { extractNetlist } from '../src/model/netlist.js';
 import { toSpice } from '../src/model/exporters/spice.js';
 import { runSourceAnalyses } from '../src/model/source-analysis.js';
 import { runPrecisionSourceAnalysis } from '../src/model/source-analysis-view.js';
+import { resolveEndpointNet, timedScopeSeries } from '../src/model/instrument-report.js';
+import { scopeProbeOptions } from '../src/model/scope-probes.js';
 
 const root = join(import.meta.dirname, '..');
 const fixture = join(root, 'test', 'fixtures', 'spice-precision-analysis.cir');
@@ -19,6 +22,77 @@ const outputOnlyFixture = join(root, 'test', 'fixtures', 'spice-output-only.cir'
 const source = readFileSync(fixture, 'utf8');
 
 function imported() { return importCircuit('spice', source); }
+
+// Independently authored zero-biased divider, not a private corpus payload.
+const probeDeck = '* Authored dynamic probe divider\nV1 signal 0 PULSE(0 1 10u 20u 20u 50u 200u)\n'
+  + 'R1 signal sense 100k\nR2 sense 0 1meg\n.tran 500n 200u\n.end\n';
+function probeResponse(time, ohms, farads) {
+  const parallel = 1 / (1 / 1e6 + 1 / ohms);
+  const gain = parallel / (100000 + parallel), tau = 100000 * gain * farads;
+  return gain * [[10e-6,50000],[30e-6,-50000],[80e-6,-50000],[100e-6,50000]]
+    .reduce((sum,[start,slope]) => {
+      const dt = Math.max(0,time-start);
+      return sum + slope * (dt + tau * Math.expm1(-dt/tau));
+    },0);
+}
+
+describe('pinned Circuit fractional-time scope adoption', () => {
+  for (const [probe,ohms,farads] of [['10x',1e7,15e-12],['1x',1e6,100e-12]]) {
+    it(`${probe} imported precision probe agrees at all 400 analytical and live ngspice points`, {
+      skip: spawnSync('ngspice',['--version'],{encoding:'utf8'}).status !== 0
+        ? 'ngspice unavailable: no independent probe comparison ran' : false,
+    }, () => {
+      const input = importCircuit('spice',probeDeck);
+      assert.deepEqual(input.unmapped || [],[]);
+      assert.deepEqual(input.losses || [],[]);
+      assert.deepEqual(input.analysisBlockers || [],[]);
+      assert.ok(input.parts.some(part => part.id==='V1'),'source retained after SPICE title');
+      const circuit = Circuit.fromJSON({parts:input.parts,wires:input.wires});
+      assert.equal(circuit.netlistError,null);
+      circuit.configureTransientAnalysis('precision-v1');
+      circuit.setPower(true);
+      const tip = resolveEndpointNet(circuit.resolvedNets,'R2.a');
+      const reference = resolveEndpointNet(circuit.resolvedNets,'V1.neg');
+      const handle = circuit.board.addScopeChannel({type:'voltage',netId:tip,
+        sampleRateHz:2e6,depth:402,capture:'sample',...scopeProbeOptions(probe,reference)});
+      circuit.advanceTo(200000n);
+      const series = timedScopeSeries(circuit.board.getScopeData(handle));
+      assert.equal(series.length,400,'no missing or overwritten acquisition points');
+      const status = circuit.transientAnalysisStatus();
+      assert.equal(status.profile.id,'precision-v1');
+      assert.equal(status.accuracyMet,true);
+      assert.ok(status.work.attempts>0 && status.work.attempts<status.profile.maxAttempts);
+      const dir = mkdtempSync(join(tmpdir(),'cui-probe-oracle-'));
+      try {
+        writeFileSync(join(dir,'reference.cir'),'* Explicit independent probe reference\n'
+          + probeDeck.replace('.tran 500n 200u\n.end\n',
+            `RP sense 0 ${ohms}\nCP sense 0 ${farads}\n`
+            + '.options reltol=1e-10 abstol=1e-14 vntol=1e-10 trtol=1\n'
+            + '.control\nset wr_vecnames\nset wr_singlescale\ntran 500n 200u 0 1n\n'
+            + 'linearize v(sense)\nwrdata reference.csv time v(sense)\n.endc\n.end\n'));
+        const oracle = spawnSync('ngspice',['-b','reference.cir'],
+          {cwd:dir,encoding:'utf8',timeout:60000});
+        assert.equal(oracle.status,0,oracle.stderr || oracle.stdout);
+        const rows = readFileSync(join(dir,'reference.csv'),'utf8').trim().split('\n').slice(1)
+          .map(line => line.trim().split(/\s+/).map(Number));
+        assert.ok(rows.every(row => row.length>=2 && row.every(Number.isFinite)));
+        const referenceRows = rows.filter(row => row[0]>0);
+        assert.equal(referenceRows.length,400);
+        series.forEach((point,index) => {
+          const [time] = referenceRows[index], volts = referenceRows[index].at(-1);
+          assert.ok(Math.abs(point.timeSeconds-time)<=1e-12,`sample ${index} time alignment`);
+          const expected = probeResponse(point.timeSeconds,ohms,farads);
+          assert.ok(Math.abs(volts-expected)<=1e-6,`oracle analytical control ${index}`);
+          const tolerance = 1e-6+1e-6*Math.max(Math.abs(point.volts),Math.abs(volts));
+          assert.ok(Math.abs(point.volts-volts)<=tolerance,
+            `${probe} sample ${index}: ${point.volts} vs ngspice ${volts}`);
+          assert.ok(Math.abs(point.volts-expected)<=1e-6+1e-6*Math.abs(expected),
+            `${probe} analytical sample ${index}`);
+        });
+      } finally { rmSync(dir,{recursive:true,force:true}); }
+    });
+  }
+});
 
 function persistedCircuit() {
   const input = imported();
