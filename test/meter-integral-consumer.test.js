@@ -48,7 +48,7 @@ test('meter integration uses the exact installed package, not a sibling checkout
   const proof=verifyBoardProvenance({throwOnFailure:true});
   assert.equal(proof.qualified,true);
   assert.equal(proof.loaded.logicalIsSymlink,false);
-  assert.equal(proof.declared.packageCommit,'928ecf7b5d12161ef827e4046dfe21a8fcb263d2');
+  assert.equal(proof.declared.packageCommit,'60dff22fec624e0fd4213df17fbf89222accc761');
 });
 
 for(const c of cases) for(const stride of [7000000n,700000n,10000n]) {
@@ -143,15 +143,53 @@ for(const stride of [7000000n,700000n,10000n]) {
     close(i.siValue,-inductorCurrentMean(0,.007),1e-12,'analytic inductor signed OUT mean');
   });
 }
-test('imported analytic inductor clips its rolling window and refuses a parameter jump',()=>{
+test('imported analytic inductor clips dense compacted history and refuses a parameter jump',()=>{
   const circuit=circuitFor(inductorDeck),{voltage,current}=inductorMeters(circuit);
   readMeter(voltage,circuit); readMeter(current,circuit);
-  circuit.advanceTo(70000000n); circuit.advanceTo(135000000n);
+  for(let k=1;k<=1350;k++) {
+    circuit.advanceTo(BigInt(k)*100000n); readMeter(current,circuit);
+    assert.ok([...circuit.board._meterWatches.values()].every(w=>w.hist.length===2));
+  }
   close(readMeter(voltage,circuit).siValue,inductorVoltageMean(.035,.135),1e-12,'clipped voltage');
   close(readMeter(current,circuit).siValue,-inductorCurrentMean(.035,.135),1e-12,'clipped signed current');
   circuit.board.setPartParam('I1','amplitude',.002);
   assert.throws(()=>circuit.meterVoltage(voltage.probeA.netId,voltage.probeB.netId),/parameter-edit-unqualified/);
   assert.throws(()=>circuit.meterCurrent('L1','a'),/parameter-edit-unqualified/);
+});
+test('imported Circuit and Instruments bound actual analytic history reads at 700 watch ticks',()=>{
+  const circuit=circuitFor(inductorDeck),{voltage,current}=inductorMeters(circuit);
+  readMeter(voltage,circuit); readMeter(current,circuit);
+  let indexedReads=0;
+  for(let k=1;k<=700;k++) {
+    circuit.advanceTo(BigInt(k)*10000n);
+    for(const w of circuit.board._meterWatches.values()) {
+      assert.equal(w.hist.length,2,'retain only support and current analytic endpoints');
+      const original=w.hist;
+      w.hist=new Proxy(original,{get(target,key,receiver){
+        if(typeof key==='string' && /^\d+$/.test(key)) indexedReads++;
+        return Reflect.get(target,key,receiver);
+      }});
+      try {
+        const reading=readMeter(w.kind==='v'?voltage:current,circuit);
+        assert.equal(reading.note,null);
+        close(reading.siValue,w.kind==='v'?inductorVoltageMean(0,k*1e-5):-inductorCurrentMean(0,k*1e-5),
+          1e-12,'actual compacted Instruments mean');
+      } finally {w.hist=original;}
+    }
+  }
+  assert.ok(indexedReads<=700*2*8,`${indexedReads} indexed reads exceed bounded per-tick work`);
+});
+test('imported power-on at zero preserves the past off interval despite equal endpoint values',()=>{
+  const circuit=circuitFor(inductorDeck.replace('SINE(0 1m 250)','SINE(1m 1m 250 0 0 270)'));
+  const {current}=inductorMeters(circuit); readMeter(current,circuit);
+  circuit.setPower(false); circuit.advanceTo(4000000n); circuit.setPower(true);
+  const w=[...circuit.board._meterWatches.values()][0];
+  assert.ok(w.hist.at(-1).before===0 && w.hist.at(-1).v===0,'zero-valued power boundary');
+  circuit.advanceTo(5000000n);
+  const omega=2*Math.PI*250;
+  const area=.001*.001-.001*(Math.sin(omega*.005)-Math.sin(omega*.004))/omega;
+  close(readMeter(current,circuit).siValue,-area/.005,1e-12,'retain off area, not phantom powered area');
+  assert.equal(w.hist.length,3);
 });
 test('meter-only CLI uses the exact analytic inductor route and preserves signed polarity',()=>{
   const dir=mkdtempSync(join(tmpdir(),'cui-inductor-cli-'));
@@ -177,15 +215,15 @@ test('meter-only CLI uses the exact analytic inductor route and preserves signed
       close(report.meters[k].reading.siValue,expected[k],1e-12,`CLI meter ${k}`);
     }
     const watch=spawnSync(process.execPath,[CLI,'measure',file,'--meter','voltage:L1.a,L1.b',
-      '--meter','current:L1.a','--duration','7ms','--rate','1kHz','--watch'],
+      '--meter','current:L1.a','--duration','7ms','--rate','100kHz','--watch'],
       {encoding:'utf8',timeout:30000});
     assert.ifError(watch.error); assert.equal(watch.status,0,watch.stderr);
     const records=watch.stdout.trim().split('\n').map(line=>JSON.parse(line));
-    assert.equal(records.length,8); assert.equal(records.at(-1).recordType,'summary');
+    assert.equal(records.length,701); assert.equal(records.at(-1).recordType,'summary');
     const rows=records.filter(row=>row.recordType==='sample');
-    assert.equal(rows.length,7);
+    assert.equal(rows.length,700);
     for(let k=0;k<rows.length;k++) {
-      const time=(k+1)/1000;
+      const time=(k+1)/100000;
       close(rows[k].meters[0].reading.siValue,inductorVoltageMean(0,time),1e-12,'watched voltage mean');
       close(rows[k].meters[1].reading.siValue,-inductorCurrentMean(0,time),1e-12,'watched signed mean');
     }

@@ -186,7 +186,14 @@ bwc measure inductor.cir --meter voltage:L1.a,L1.b --meter current:L1.a \
 
 This meter-only command uses the default interactive profile and the exact
 analytic route; its current is signed OUT of `L1.a`. `--watch` reports the
-running mean at each requested tick. The existing precision CLI admission
+running mean at each requested tick. The engine now coalesces unchanged
+analytic history without changing the physical interval:
+the imported Circuit/Instruments test retains two points across 700 ticks
+and bounds actual indexed history reads per tick. The actual CLI watch test
+checks all 700 voltage/current means at 100 kHz, not only a final endpoint.
+Power boundaries and clipped 100 ms windows remain independently checked.
+This is bounded history work, not a wall-time speedup or broader circuit claim.
+The existing precision CLI admission
 still requires 1–4 scope channels; it does not admit meter-only batches.
 Adding a scope excludes the analytic shortcut and uses the adaptive solver;
 this adoption does not newly qualify that different topology/acquisition path.
