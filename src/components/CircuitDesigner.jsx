@@ -1331,7 +1331,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           </div>
         </div>
       ) : null}
-        <button data-selectors-toggle onPointerDown={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(v => !v); }} onMouseDown={e => e.stopPropagation()} onTouchStart={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(v => !v); }} onClick={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(v => !v); }} style={{
+        <button data-selectors-toggle type="button" onClick={e => { e.stopPropagation(); setShowSchematic(false); setSelectorsOpen(v => !v); }} style={{
           position: 'absolute', right: -13, top: 4, zIndex: 70,
           width: 28, height: 28, padding: 0, display: 'grid', placeItems: 'center',
           background: 'rgba(255,255,255,.96)', border: '1px solid #94a3b8',

@@ -112,6 +112,9 @@ jobs:
       - name: Touch and small-screen layout gates (npm run verify:touch)
         run: npm run verify:touch
 
+      - name: Sidebar activation with mouse and touch
+        run: node --test --test-name-pattern="toggles the selectors panel" test/e2e.test.js
+
   kicad-oracle:
     runs-on: ubuntu-latest
     steps:

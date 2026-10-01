@@ -70,7 +70,9 @@ export async function startDevServer (name) {
     throw new Error(`no port reserved for "${name}" in test/_dev-server.js. Add one — do not `
       + 'reuse another file\'s, and do not navigate to a server you did not start.');
   }
-  const proc = spawn('npx', ['vite', '--port', String(port), '--strictPort'], {
+  // Own Vite directly so teardown cannot leave an npx child serving stale code.
+  const proc = spawn(process.execPath, [path.join(ROOT, 'node_modules/vite/bin/vite.js'),
+    '--port', String(port), '--strictPort'], {
     stdio: 'ignore', detached: false, cwd: ROOT,
   });
   let exited = null;

@@ -47,7 +47,6 @@ const ROOT = path.resolve(here, '..');
  */
 const NOT_IN_CI = new Map([
   ['test/debug-status.test.js', 'hard-imports playwright'],
-  ['test/e2e.test.js', 'hard-imports playwright'],
   ['test/rendering.test.js', 'hard-imports playwright'],
   ['test/snapshot-render.test.js', 'hard-imports playwright'],
   // These five LOOK safe for `npm test`: they wrap the import in try/catch and
@@ -74,7 +73,7 @@ const NOT_IN_CI = new Map([
 ]);
 
 /**
- * Nothing CI runs may launch a browser.
+ * Browser tests may run only in a job that installs the browser first.
  *
  * This is the guard that would have caught the mistake above. `npm install`
  * installs playwright without downloading browsers, so a launch in CI throws —
@@ -117,8 +116,8 @@ function workflowCommands (yaml) {
   return out.join('\n');
 }
 
-const workflow = workflowCommands(
-  readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf-8'));
+const workflowYaml = readFileSync(path.join(ROOT, '.github/workflows/ci.yml'), 'utf-8');
+const workflow = workflowCommands(workflowYaml);
 const testFile = /test\/[\w.-]+\.test\.[a-z]+/g;
 const filesIn = (text) => new Set(String(text).match(testFile) || []);
 
@@ -132,6 +131,33 @@ function filesRunBy (scriptName, seen = new Set()) {
     for (const f of filesRunBy(m[1], seen)) out.add(f);
   }
   return out;
+}
+
+// Installation in another job cannot prepare this job's runner. Only the
+// sidebar scenario in e2e.test.js is selected in CI; its other scenarios stay
+// available through test:browser.
+function unpreparedBrowserTests (yaml) {
+  const offenders = [];
+  for (const section of yaml.split(/(?=^  [\w-]+:\s*$)/m)) {
+    const job = /^  ([\w-]+):/.exec(section)?.[1];
+    if (!job) continue;
+    let chromiumInstalled = false;
+    for (const command of workflowCommands(section).split('\n')) {
+      if (/playwright\s+install\b[^\n]*\bchromium\b/.test(command)) chromiumInstalled = true;
+      const files = filesIn(command);
+      for (const m of command.matchAll(/npm (?:run )?([\w:-]+)/g)) {
+        for (const file of filesRunBy(m[1])) files.add(file);
+      }
+      for (const file of files) {
+        if (file.endsWith('test-registration.test.js')) continue;
+        const full = path.join(ROOT, file);
+        if (!chromiumInstalled && existsSync(full) && LAUNCHES_BROWSER.test(readFileSync(full, 'utf-8'))) {
+          offenders.push(`${job}: ${file}`);
+        }
+      }
+    }
+  }
+  return offenders.sort();
 }
 
 describe('every test file is run by something', () => {
@@ -166,18 +192,21 @@ describe('every test file is run by something', () => {
       + 'browser, or give it its own CI step.');
   });
 
-  test('nothing CI runs launches a browser', () => {
-    const offenders = [...ciFiles].filter((f) => {
-      if (f.endsWith('test-registration.test.js')) return false;   // names the pattern, does not launch
-      const full = path.join(ROOT, f);
-      return existsSync(full) && LAUNCHES_BROWSER.test(readFileSync(full, 'utf-8'));
-    }).sort();
-    assert.deepEqual(offenders, [],
-      `${offenders.length} test file(s) reachable from CI launch a browser. CI installs `
-      + 'playwright (a devDependency) WITHOUT downloading browsers, so the launch throws there '
-      + 'while the same file skips silently on a machine that has no playwright at all — which '
-      + 'is how this exact failure reached CI once already. Move them to `test:browser` and add '
-      + 'them to NOT_IN_CI.');
+  test('CI browser tests install Chromium in the same job before launching', () => {
+    assert.deepEqual(unpreparedBrowserTests(workflowYaml), [],
+      'a CI job launches a browser without first installing Chromium on its runner');
+  });
+
+  test('browser registration rejects missing, late and other-job installations', () => {
+    const launch = '      - run: node --test test/e2e.test.js\n';
+    const install = '      - run: npx playwright install --with-deps chromium\n';
+    assert.deepEqual(unpreparedBrowserTests('jobs:\n  browser:\n' + launch),
+      ['browser: test/e2e.test.js']);
+    assert.deepEqual(unpreparedBrowserTests('jobs:\n  browser:\n' + launch + install),
+      ['browser: test/e2e.test.js']);
+    assert.deepEqual(unpreparedBrowserTests('jobs:\n  setup:\n' + install + '  browser:\n' + launch),
+      ['browser: test/e2e.test.js']);
+    assert.deepEqual(unpreparedBrowserTests('jobs:\n  browser:\n' + install + launch), []);
   });
 
   test('every browser test has its own port, and the table matches the files', () => {

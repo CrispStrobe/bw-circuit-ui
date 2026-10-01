@@ -56,6 +56,37 @@ after(async () => {
 });
 
 describe('e2e: full user flow', () => {
+  it('toggles the selectors panel once per mouse click and touch tap', async () => {
+    await page.goto(`${server.url}/?examples=none`, { waitUntil: 'networkidle' });
+    const designer = page.locator('[data-selectors-open]');
+    const toggle = page.locator('[data-selectors-toggle]');
+    assert.equal(await designer.getAttribute('data-selectors-open'), 'true');
+    await toggle.hover();
+    await page.mouse.down();
+    assert.equal(await designer.getAttribute('data-selectors-open'), 'true',
+      'pointerdown must not toggle before the click completes');
+    await page.mouse.up();
+    assert.equal(await designer.getAttribute('data-selectors-open'), 'false');
+    await toggle.click();
+    assert.equal(await designer.getAttribute('data-selectors-open'), 'true');
+
+    const touchContext = await browser.newContext({hasTouch: true, isMobile: true,
+      viewport: {width: 1024, height: 768}});
+    try {
+      const touchPage = await touchContext.newPage();
+      await touchPage.goto(`${server.url}/?examples=none`, {waitUntil: 'networkidle'});
+      const touchDesigner = touchPage.locator('[data-selectors-open]');
+      const touchToggle = touchPage.locator('[data-selectors-toggle]');
+      assert.equal(await touchDesigner.getAttribute('data-selectors-open'), 'true');
+      await touchToggle.tap();
+      assert.equal(await touchDesigner.getAttribute('data-selectors-open'), 'false');
+      await touchToggle.tap();
+      assert.equal(await touchDesigner.getAttribute('data-selectors-open'), 'true');
+    } finally {
+      await touchContext.close();
+    }
+  });
+
   it('loads preset, simulates, shows correct values', async () => {
     errors.length = 0;
     await page.goto(`${server.url}/?examples=none`, { waitUntil: 'networkidle' });
