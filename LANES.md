@@ -1,5 +1,23 @@
 # Work lanes
 
+2026-10-01 Source self-constraint consumer adoption — CLAIM, Codex bwcx `/root`.
+Reuse clean closed worktree `wt-cui-measurement-receipt-20261001`, new branch
+`fable/source-self-constraint-adoption`, exact base
+`bc98cd1d6e5822f7b2dbdedd54c20beb9969a2ab`. Seven-path envelope: this row;
+package.json/package-lock.json Board pin; scripts/board-provenance.json;
+only finite-positive-source-resistance classification in
+src/model/instrument-report.js; existing test/cli-measure.test.js; and
+docs/CLI-INSTRUMENTS.md. Adopt both upstream same-node source corrections in
+one package update; classify resistive sources as nonideal without dropping
+endpoint validation or ideal/VCVS cycle checks. Prove actual batch/watch/
+precision scope and signed meter results, contradictory-source refusal and
+installed package identity, with load-bearing mutations and existing guards.
+No CLI parser, engine source copy/fork, waveform, tolerance/work budget,
+workflow, GUI, parts/corpus, Lite or deployment changes. Local preparation
+only while upstream 6f693b0 qualifies; no implementation push or landing
+before upstream qualification and guarded promotion. Upstream task remains
+frozen and separately owned by the same session during the hosted queue.
+
 2026-10-01 Finite-range scope summary correction — DONE candidate, Codex bwcx `/root`.
 Reused clean `wt-cui-measurement-receipt-20261001`, branch
 `fable/scope-summary-range`, exact base `4c3d9cbdc372ef9617dc0685513fcc821b450379`.
