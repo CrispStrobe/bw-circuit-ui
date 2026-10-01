@@ -1,5 +1,20 @@
 # Work lanes
 
+2026-10-01 Finite-range scope summary correction — CLAIM, Codex bwcx `/root`.
+Reused clean `wt-cui-measurement-receipt-20261001`, branch
+`fable/scope-summary-range`, exact base `4c3d9cbdc372ef9617dc0685513fcc821b450379`.
+Four-path envelope: this row; only summarizeScope arithmetic in
+src/model/instrument-report.js; existing test/cli-measure.test.js;
+docs/CLI-INSTRUMENTS.md. Actual finite ideal-source controls 1e200 and 1e-200
+both exit 0 but report RMS null/zero despite representable correct results.
+Scale RMS accumulation to avoid square overflow/underflow; preserve ordinary
+finite mean accumulation and use bounded normalized fallback only on overflow.
+Prove zero, sign, mixed, maximum/subnormal boundaries, ring order, malformed
+samples, ordinary outputs and real CLI batch/watch with independent controls.
+No new physical-range, bandwidth, solver, sampling or cancellation-accuracy claim.
+Preserve all other helpers/CLI policies, Board/GUI, package pins, workflows,
+private corpus, deployment and other lanes. One exact branch qualification.
+
 2026-10-01 CLI AC reference comparison — DONE candidate, Codex bwcx `/root`.
 Reused clean `wt-cui-measurement-receipt-20261001`, branch
 `fable/cli-ac-reference`, exact base `1cf4054c32eb0c9e8b335dc74e6172eb4227de8d`.
