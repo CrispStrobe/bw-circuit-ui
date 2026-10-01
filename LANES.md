@@ -1,5 +1,19 @@
 # Work lanes
 
+2026-10-01 CLI AC reference comparison — CLAIM, Codex bwcx `/root`.
+Reused clean `wt-cui-measurement-receipt-20261001`, branch
+`fable/cli-ac-reference`, exact base `1cf4054c32eb0c9e8b335dc74e6172eb4227de8d`.
+Five-path envelope: this row; bin/bwc.mjs; new pure
+src/model/ac-reference-report.js; existing test/cli-measure.test.js;
+docs/CLI-INSTRUMENTS.md. Explicit bounded analyze --expect-ac reference
+comparison for every AC analysis/node/frequency in existing native output,
+using complex voltages (not phase-only comparisons). Preserve solver/importer,
+AC source composition, existing analyze execution and unsupported/refused results.
+Prove real CLI RC/RLC curves against live ngspice and independent complex math,
+full-grid/identity/finiteness/tolerance failures and load-bearing mutations.
+Existing AC adapter reports node voltages, not terminal currents: no new current
+coverage claim. No Board, GUI, package/pin, workflow, corpus or deployment changes.
+
 2026-10-01 README refresh — DONE, Codex bwcx `/root`.
 Clean reused worktree `wt-cui-measurement-receipt-20261001`, branch
 `docs/readme-current-20261001`, base `90c94cb9846b1dd15f677c8f5bc536829f434d04`.
