@@ -41,6 +41,44 @@ Repeat `--scope` and `--meter` for multiple channels/readings. Scope traces
 can be checked with `--expect`; meter-only captures now also support
 `--expect-meters meter-reference.json` in batch and `--watch` modes.
 
+### Reproducible diagnostic receipts
+
+Use `--receipt capture.json` to save a separate JSON diagnostic record without
+changing measurements or their normal JSON/text/NDJSON output:
+
+```sh
+bwc measure sine.cir --scope V1.pos,V1.neg --duration 1ms --rate 100kHz \
+  --expect expected-waveform.json --csv trace.csv --receipt capture.json --json
+```
+
+The receipt records SHA-256 and byte counts of the exact top-level input and
+reference buffers used, an imported parts/wires/supply fingerprint, observed
+Board and CLI JS/JSON runtime tree fingerprints, the declared package spec,
+actual engine selection (including `BW_BOARD`), Node version, working directory,
+argument array, effective integer-nanosecond clock, CSV hash if requested, and
+the complete final report including endpoints, local work/failure and reference
+comparison diagnostics. A completed comparison failure still writes a receipt
+with `exitCode: 1`; a refused/aborted acquisition does not produce a completed
+receipt. Watch receipts contain the final summary and sample count, not all
+NDJSON samples: redirect stdout if the full timeline is needed.
+
+Save the input, references and optional CSV/NDJSON alongside the receipt. Replay
+the recorded argument array under the recorded working directory and compare
+content fingerprints before comparing numbers; choose a **new** receipt path.
+Existing receipt destinations are refused, and the final write is exclusive.
+The receipt and CSV paths must differ. Receipt files intentionally contain local
+paths/invocation details, so review them before publishing.
+
+This is opt-in forensic evidence, not a hermetic execution or oracle certificate.
+Fingerprints are observed before simulation, not a guarantee that files cannot
+change later. The runtime tree covers `package.json`, recursive `src` JS/JSON,
+and the CLI entrypoint for CUI; external modules, WASM, native binaries and other
+assets are not an execution-closure attestation. Sibling libraries/sheets read
+by importers are not archived or independently hashed, though changes to their
+resulting parts/wires alter the imported-circuit fingerprint. A declared pin is
+not falsely presented as an overridden engine's identity. Source bytes and full
+waveforms are not embedded, and supplied reference provenance remains untrusted.
+
 ```sh
 bwc measure inductor.cir --meter current:L1.a --duration 7ms --rate 100kHz \
   --watch --expect-meters meter-reference.json

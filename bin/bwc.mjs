@@ -10,7 +10,7 @@
  *
  *   bwc info      <file>                    what is in it, and what did not map
  *   bwc op        <file>                    independent static DC operating point
- *   bwc measure   <file> --scope <tip>[,<ref>] [--meter <mode>:<probe>]
+ *   bwc measure   <file> --scope <tip>[,<ref>] [--meter <mode>:<probe>] [--receipt <file>]
  *   bwc analyze   <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1]
  *   bwc convert   <file> --to eagle|kicad-sch|kicad|spice|json [-o out]
  *   bwc render    <file> [-o out.svg] [--dark]
@@ -30,8 +30,8 @@
  * pipe it through whatever rasteriser you already trust.
  */
 
-import { readFileSync, writeFileSync, statSync } from 'node:fs';
-import { basename, extname, join, dirname } from 'node:path';
+import { readFileSync, writeFileSync, statSync, existsSync } from 'node:fs';
+import { basename, extname, join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -114,7 +114,7 @@ const positional = [];
 const opts = {};
 const valueFlags = new Set(['-o', '--to', '--render', '--profile', '--observations', '--initial',
   '--scope', '--meter', '--probe', '--duration', '--rate', '--csv', '--expect', '--expect-meters',
-  '--abs-volts', '--rel', '--time-tolerance']);
+  '--abs-volts', '--rel', '--time-tolerance', '--receipt']);
 const repeatFlags = new Set(['scope', 'meter']);
 for (let i = 1; i < args.length; i++) {
   // Value-taking flags must be listed, or the value silently becomes a
@@ -131,6 +131,7 @@ for (let i = 1; i < args.length; i++) {
   else positional.push(args[i]);
 }
 const die = (m) => { console.error('bwc: ' + m); process.exit(2); };
+if (opts.receipt && cmd !== 'measure') die('--receipt is supported only by measure');
 const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
@@ -149,8 +150,8 @@ const usage = () => {
 };
 
 /** Read any supported file into {parts, wires, unmapped, ignored, warnings}. */
-async function load(path) {
-  const bytes = readFileSync(path);
+async function load(path, suppliedBytes) {
+  const bytes = suppliedBytes ?? readFileSync(path);
   const text = bytes.toString('utf8');
   if (/^\s*\{/.test(text)) {
     try {
@@ -234,7 +235,7 @@ async function load(path) {
 if (!cmd || cmd === '--help' || cmd === '-h') { usage(); process.exit(0); }
 const file = positional[0];
 if (!file) die(cmd + ' needs a file');
-const loadOrDie = async (p2) => { try { return await load(p2); } catch (e) { return die(e.message); } };
+const loadOrDie = async (p2, bytes) => { try { return await load(p2, bytes); } catch (e) { return die(e.message); } };
 
 switch (cmd) {
   case 'info': {
@@ -319,6 +320,35 @@ switch (cmd) {
   }
 
   case 'measure': {
+    let receiptIdentity = null; let inputBytes; let waveformReferenceBytes; let meterReferenceBytes;
+    if (opts.receipt) {
+      try {
+        // Never overwrite the source, a reference, or an earlier receipt. The
+        // final exclusive write also closes a create-between-check-and-write race.
+        if (existsSync(opts.receipt)) throw new Error('receipt destination already exists');
+        if (opts.csv && resolve(opts.csv)===resolve(opts.receipt)) throw new Error('receipt and CSV destinations must differ');
+        const { fileReceipt, runtimeReceipt } = await import(join(SRC,'model/measurement-receipt.js'));
+        inputBytes = readFileSync(file);
+        if (opts.expect) waveformReferenceBytes = readFileSync(opts.expect);
+        if (opts['expect-meters']) {
+          if (statSync(opts['expect-meters']).size>16*1024*1024) throw new Error('meter reference exceeds 16 MiB');
+          meterReferenceBytes = readFileSync(opts['expect-meters']);
+        }
+        const pkg = JSON.parse(readFileSync(join(HERE,'..','package.json'),'utf8'));
+        receiptIdentity = { input: fileReceipt(file,inputBytes),
+          references: {
+            waveform: waveformReferenceBytes ? fileReceipt(opts.expect,waveformReferenceBytes) : null,
+            meters: meterReferenceBytes ? fileReceipt(opts['expect-meters'],meterReferenceBytes) : null,
+          },
+          engine: { selection: process.env.BW_BOARD ? 'BW_BOARD override' : 'installed package',
+            declaredPackageSpec: pkg.devDependencies?.['bw-board'] ?? pkg.dependencies?.['bw-board'] ?? null,
+            observed: runtimeReceipt(engineDir()) },
+          cli: runtimeReceipt(join(HERE,'..'),['bin/bwc.mjs']),
+          invocation: { executable: process.execPath, nodeVersion: process.version,
+            cwd: process.cwd(), argv: args.slice(), BW_BOARD: process.env.BW_BOARD || null },
+        };
+      } catch (receiptError) { die(`measure receipt failed: ${receiptError.message}`); }
+    }
     const precision = opts.profile === 'precision-v1';
     if (opts.profile !== undefined && !['interactive-v1','precision-v1'].includes(opts.profile)) {
       die('measure supports --profile interactive-v1 or bounded precision-v1; use analyze --profile precision-v1 for source-declared analysis');
@@ -349,7 +379,7 @@ switch (cmd) {
       if (!meterSpecs.length) die('measure --expect-meters needs at least one --meter');
       try {
         if (statSync(opts['expect-meters']).size>16*1024*1024) throw new Error('meter reference exceeds 16 MiB');
-        const expected=parseExpectedMeters(readFileSync(opts['expect-meters'],'utf8'));
+        const expected=parseExpectedMeters((meterReferenceBytes ?? readFileSync(opts['expect-meters'])).toString('utf8'));
         if (expected.acquisition!==(opts.watch?'watch':'batch')) throw new Error('meter reference acquisition differs from batch/watch command');
         meterReference=createExpectedMeterComparison(expected);
       } catch (referenceError) { die(`measure meter reference failed: ${referenceError.message}`); }
@@ -372,7 +402,7 @@ switch (cmd) {
     catch (clockError) { die(clockError.message); }
     const { durationNs, intervalNs, captureSamples, effectiveRateHz } = clock;
 
-    const c = await loadOrDie(file);
+    const c = await loadOrDie(file,inputBytes);
     if (c.unmapped && c.unmapped.length) {
       die(`measure refuses ${c.unmapped.length} unmapped component(s); run \`bwc info ${file}\``);
     }
@@ -550,7 +580,7 @@ switch (cmd) {
     let comparison = null;
     if (opts.expect) {
       let expected;
-      try { expected = parseExpectedWaveforms(readFileSync(opts.expect, 'utf8')); } catch (error2) {
+      try { expected = parseExpectedWaveforms((waveformReferenceBytes ?? readFileSync(opts.expect)).toString('utf8')); } catch (error2) {
         die(`measure expected waveform failed: ${error2.message}`);
       }
       const tolerance = name => {
@@ -594,6 +624,24 @@ switch (cmd) {
         voltageMeterLoading: 'ideal observer; place a physical meter part to model input impedance',
       },
     };
+    if (receiptIdentity) {
+      try {
+        const { importedCircuitSha256, fileReceipt } = await import(join(SRC,'model/measurement-receipt.js'));
+        const receipt = { schemaVersion: 1, kind: 'bwc-measurement-receipt', ...receiptIdentity,
+          importedCircuitSha256: importedCircuitSha256(c),
+          acquisition: opts.watch ? 'watch' : 'batch',
+          clock: { startNs: String(startNs), durationNs: String(durationNs), intervalNs: String(intervalNs) },
+          watchSamples: opts.watch ? watchSamples : null,
+          csv: opts.csv ? fileReceipt(opts.csv) : null,
+          exitCode: comparison?.status==='fail' || meterComparison?.status==='fail' ? 1 : 0,
+          report,
+          limits: { independentOracle: false, hermeticExecution: false,
+            importedDependencyClosure: false, runtimeFingerprintCaptured: 'before simulation',
+            embeddedSourceOrWaveforms: false },
+        };
+        writeFileSync(opts.receipt,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});
+      } catch (receiptError) { die(`measure receipt write failed: ${receiptError.message}`); }
+    }
     if (opts.watch) process.stdout.write(`${JSON.stringify({ recordType: 'summary', watchSamples, report })}\n`);
     else if (opts.json) console.log(JSON.stringify(report, null, 2));
     else {

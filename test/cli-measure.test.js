@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { fileReceipt, runtimeReceipt, importedCircuitSha256 } from '../src/model/measurement-receipt.js';
 import {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
   parseExpectedMeters, createExpectedMeterComparison,
@@ -18,6 +21,180 @@ const CLI = join(ROOT, 'bin', 'bwc.mjs');
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json');
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
+
+test('measurement receipt fingerprints bind actual bytes, runtime paths and importer output', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-receipt-tree-'));
+  try {
+    mkdirSync(join(dir,'src'));
+    writeFileSync(join(dir,'package.json'),'{"name":"test-engine","version":"1"}');
+    writeFileSync(join(dir,'src','a.js'),'export const a=1;');
+    writeFileSync(join(dir,'src','ignored.md'),'not runtime');
+    const expected=createHash('sha256');
+    for (const path of ['package.json','src/a.js']) {
+      const bytes=readFileSync(join(dir,path));
+      expected.update(`${path}\0${bytes.length}\0`).update(bytes).update('\0');
+    }
+    const first=runtimeReceipt(dir);
+    assert.equal(first.jsJsonTreeSha256,expected.digest('hex'));
+    assert.equal(first.files,2);
+    writeFileSync(join(dir,'src','a.js'),'export const a=2;');
+    assert.notEqual(runtimeReceipt(dir).jsJsonTreeSha256,first.jsJsonTreeSha256);
+    assert.deepEqual(fileReceipt('same-name.cir',Buffer.from('V1 a 0 2')),
+      {name:'same-name.cir',bytes:8,sha256:createHash('sha256').update('V1 a 0 2').digest('hex')});
+    const input={parts:[{id:'R',params:{ohms:1}}],wires:[],vcc:5};
+    assert.notEqual(importedCircuitSha256(input),importedCircuitSha256({...input,vcc:3}));
+    assert.notEqual(importedCircuitSha256(input),importedCircuitSha256({...input,wires:[{from:'R'}]}));
+    assert.throws(()=>runtimeReceipt(join(dir,'missing')),/ENOENT/);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('actual CLI receipts bind batch/watch, overrides, rounded clock and failed references', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-receipt-cli-'));
+  const env={...process.env}; delete env.BW_BOARD;
+  const run=(argv,extraEnv={})=>spawnSync(process.execPath,[CLI,'measure',...argv],
+    {encoding:'utf8',env:{...env,...extraEnv},timeout:30000});
+  const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+  try {
+    const source=join(dir,'divider.json'),receiptPath=join(dir,'batch.json'),csv=join(dir,'scope.csv');
+    const bytes=readFileSync(FIXTURE); writeFileSync(source,bytes);
+    const argv=[source,'--scope','RT.b,GND.gnd','--meter','voltage:RT.b,GND.gnd',
+      '--duration','999us','--rate','3kHz','--json','--csv',csv,'--receipt',receiptPath];
+    const result=run(argv);
+    assert.equal(result.status,0,result.stderr);
+    const receipt=JSON.parse(readFileSync(receiptPath,'utf8'));
+    assert.deepEqual(receipt.report,JSON.parse(result.stdout));
+    const plain=run(argv.slice(0,-2));
+    assert.equal(plain.status,0,plain.stderr);
+    assert.deepEqual(JSON.parse(plain.stdout),receipt.report,'opt-in receipt does not change acquisition');
+    assert.equal(receipt.input.sha256,hash(bytes));
+    assert.equal(receipt.input.bytes,bytes.length);
+    assert.deepEqual(receipt.invocation.argv,['measure',...argv]);
+    assert.equal(receipt.invocation.nodeVersion,process.version);
+    assert.equal(receipt.clock.durationNs,'999000');
+    assert.equal(receipt.clock.intervalNs,'333333');
+    assert.equal(receipt.report.plannedSamples,2);
+    assert.equal(receipt.csv.sha256,hash(readFileSync(csv)));
+    assert.equal(receipt.acquisition,'batch');
+    assert.equal(receipt.exitCode,0);
+    assert.equal(receipt.engine.selection,'installed package');
+    const provenance=JSON.parse(readFileSync(join(ROOT,'scripts','board-provenance.json'),'utf8'));
+    assert.equal(receipt.engine.observed.jsJsonTreeSha256,provenance.runtimeTreeSha256);
+    assert.match(receipt.cli.jsJsonTreeSha256,/^[a-f0-9]{64}$/);
+    assert.equal(receipt.limits.hermeticExecution,false);
+    assert.equal(receipt.limits.importedDependencyClosure,false);
+    assert.equal(receipt.report.claims.independentOracle,false);
+    const changed=JSON.parse(bytes); changed.vcc=4;
+    writeFileSync(source,JSON.stringify(changed));
+    const changedPath=join(dir,'changed.json');
+    const changedRun=run([source,'--meter','voltage:RT.b,GND.gnd','--duration','1ms','--json','--receipt',changedPath]);
+    assert.equal(changedRun.status,0,changedRun.stderr);
+    const changedReceipt=JSON.parse(readFileSync(changedPath,'utf8'));
+    assert.notEqual(changedReceipt.input.sha256,receipt.input.sha256);
+    assert.notEqual(changedReceipt.importedCircuitSha256,receipt.importedCircuitSha256);
+    assert.equal(changedReceipt.report.meters[0].reading.siValue,2);
+    const reference=join(dir,'expected.json');
+    writeFileSync(reference,JSON.stringify({schemaVersion:1,acquisition:'watch',meters:[{
+      mode:'voltage',probes:['RT.b','GND.gnd'],siUnit:'V',quantity:'observed-dc-mean',
+      absoluteTolerance:1e-9,samples:[{timeSeconds:.0001,siValue:2},{timeSeconds:.0002,siValue:-2}],
+    }]}));
+    const watchPath=join(dir,'watch.json');
+    const engineRoot=dirname(fileURLToPath(import.meta.resolve('bw-board/package.json')));
+    const watched=run([source,'--meter','voltage:RT.b,GND.gnd','--duration','200us','--watch',
+      '--expect-meters',reference,'--receipt',watchPath],{BW_BOARD:engineRoot});
+    assert.equal(watched.status,1,watched.stderr);
+    const watchReceipt=JSON.parse(readFileSync(watchPath,'utf8'));
+    const records=watched.stdout.trim().split('\n').map(line=>JSON.parse(line));
+    assert.deepEqual(watchReceipt.report,records.at(-1).report);
+    assert.equal(watchReceipt.watchSamples,2);
+    assert.equal(watchReceipt.acquisition,'watch');
+    assert.equal(watchReceipt.exitCode,1);
+    assert.equal(watchReceipt.report.meterComparison.counts.failed,1);
+    assert.equal(watchReceipt.references.meters.sha256,hash(readFileSync(reference)));
+    assert.equal(watchReceipt.engine.selection,'BW_BOARD override');
+    assert.equal(watchReceipt.engine.observed.root,engineRoot);
+    assert.equal(watchReceipt.engine.observed.jsJsonTreeSha256,receipt.engine.observed.jsJsonTreeSha256);
+    assert.equal(watchReceipt.engine.declaredPackageSpec,receipt.engine.declaredPackageSpec);
+    // Deterministic filesystem race: immediately after the first source read,
+    // replace its disk bytes. A second unbound read would simulate 4 V, not 5 V.
+    writeFileSync(source,bytes);
+    const earlyPath=join(dir,'early.json');
+    const preload=`import fs from 'node:fs'; import {syncBuiltinESMExports} from 'node:module';
+      const read=fs.readFileSync; let changed=false;
+      fs.readFileSync=function(path,...rest){ const result=read.call(this,path,...rest);
+        if(path===${JSON.stringify(source)}&&!changed){changed=true;fs.writeFileSync(path,${JSON.stringify(JSON.stringify(changed))});}
+        return result; }; syncBuiltinESMExports();`;
+    const early=spawnSync(process.execPath,['--import',`data:text/javascript,${encodeURIComponent(preload)}`,
+      CLI,'measure',source,'--meter','voltage:RT.b,GND.gnd','--duration','1ms',
+      '--json','--receipt',earlyPath],{encoding:'utf8',env,timeout:30000});
+    assert.equal(early.status,0,early.stderr);
+    const earlyReceipt=JSON.parse(readFileSync(earlyPath,'utf8'));
+    assert.equal(earlyReceipt.input.sha256,hash(bytes));
+    assert.equal(earlyReceipt.report.meters[0].reading.siValue,2.5,'source snapshot, not changed disk bytes');
+    assert.equal(readFileSync(source,'utf8'),JSON.stringify(changed));
+    // A genuine override changes identity without borrowing the package pin;
+    // its loader changes both reference files before the final comparisons.
+    const override=join(dir,'override'); mkdirSync(join(override,'src'),{recursive:true});
+    writeFileSync(join(override,'package.json'),'{"name":"test-override","version":"0"}');
+    writeFileSync(source,bytes);
+    const replacement=JSON.stringify(changed);
+    const wavePath=join(dir,'wave.json');
+    const waveBytes=Buffer.from(JSON.stringify({schemaVersion:1,traces:[{
+      tip:'RT.b',reference:'GND.gnd',samples:Array.from({length:10},(_,i)=>({timeSeconds:(i+1)*.0001,volts:2.5})),
+    }]}));
+    writeFileSync(wavePath,waveBytes);
+    const meterBytes=Buffer.from(JSON.stringify({schemaVersion:1,acquisition:'batch',meters:[{
+      mode:'voltage',probes:['RT.b','GND.gnd'],siUnit:'V',quantity:'observed-dc-mean',
+      absoluteTolerance:1e-9,samples:[{timeSeconds:.001,siValue:2.5}],
+    }]}));
+    writeFileSync(reference,meterBytes);
+    writeFileSync(join(override,'src','index.js'),
+      `export * from ${JSON.stringify(join(engineRoot,'src','index.js'))};\n`
+      +`import {writeFileSync} from 'node:fs';\nwriteFileSync(${JSON.stringify(source)},${JSON.stringify(replacement)});\n`
+      +`writeFileSync(${JSON.stringify(wavePath)},'{}');\nwriteFileSync(${JSON.stringify(reference)},'{}');\n`);
+    writeFileSync(join(override,'src','register-all.js'),
+      `export * from ${JSON.stringify(join(engineRoot,'src','register-all.js'))};\n`);
+    const snapshotPath=join(dir,'snapshot.json');
+    const snapshot=run([source,'--meter','voltage:RT.b,GND.gnd','--duration','1ms',
+      '--scope','RT.b,GND.gnd','--expect',wavePath,'--expect-meters',reference,
+      '--json','--receipt',snapshotPath],{BW_BOARD:override});
+    assert.equal(snapshot.status,0,snapshot.stderr);
+    const snapshotReceipt=JSON.parse(readFileSync(snapshotPath,'utf8'));
+    assert.equal(snapshotReceipt.engine.observed.root,override);
+    assert.notEqual(snapshotReceipt.engine.observed.jsJsonTreeSha256,receipt.engine.observed.jsJsonTreeSha256);
+    assert.equal(snapshotReceipt.engine.observed.jsJsonTreeSha256,runtimeReceipt(override).jsJsonTreeSha256);
+    assert.equal(snapshotReceipt.engine.declaredPackageSpec,receipt.engine.declaredPackageSpec);
+    assert.equal(snapshotReceipt.input.sha256,hash(bytes));
+    assert.equal(snapshotReceipt.report.meters[0].reading.siValue,2.5);
+    assert.equal(snapshotReceipt.report.comparison.status,'pass');
+    assert.equal(snapshotReceipt.report.meterComparison.status,'pass');
+    assert.equal(snapshotReceipt.references.waveform.sha256,hash(waveBytes));
+    assert.equal(snapshotReceipt.references.meters.sha256,hash(meterBytes));
+    assert.equal(readFileSync(wavePath,'utf8'),'{}');
+    assert.equal(readFileSync(reference,'utf8'),'{}');
+    const racedPath=join(dir,'raced.json');
+    writeFileSync(join(override,'src','index.js'),
+      `export * from ${JSON.stringify(join(engineRoot,'src','index.js'))};\n`
+      +`import {writeFileSync} from 'node:fs';\nwriteFileSync(${JSON.stringify(racedPath)},'concurrent-writer');\n`);
+    const raced=run([source,'--meter','voltage:RT.b,GND.gnd','--duration','1ms',
+      '--json','--receipt',racedPath],{BW_BOARD:override});
+    assert.equal(raced.status,2,'exclusive final write must reject a destination created during capture');
+    assert.match(raced.stderr,/receipt write failed/);
+    assert.equal(readFileSync(racedPath,'utf8'),'concurrent-writer');
+    assert.equal(readFileSync(source,'utf8'),replacement);
+    assert.equal(run(argv).status,2,'existing receipt refuses before rewriting CSV');
+    assert.equal(readFileSync(receiptPath,'utf8'),JSON.stringify(receipt,null,2)+'\n');
+    const same=run([source,'--meter','voltage:RT.b,GND.gnd','--receipt',source]);
+    assert.equal(same.status,2); assert.match(same.stderr,/already exists/);
+    assert.equal(readFileSync(source,'utf8'),JSON.stringify(changed));
+    const alias=join(dir,'alias.json');
+    const sameOutput=run([source,'--scope','RT.b','--csv',alias,'--receipt',alias]);
+    assert.equal(sameOutput.status,2); assert.match(sameOutput.stderr,/destinations must differ/);
+    assert.equal(existsSync(alias),false);
+    const refusedPath=join(dir,'refused.json');
+    assert.equal(run([source,'--scope','missing','--receipt',refusedPath]).status,2);
+    assert.equal(existsSync(refusedPath),false,'refused acquisition has no completed receipt');
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
 
 test('precision capture input and cumulative work policies refuse unsupported authority', () => {
   const profile = {id:'precision-v1',maxAttempts:20000,maxStepSec:1e-5};
