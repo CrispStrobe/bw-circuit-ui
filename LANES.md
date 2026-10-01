@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-01 README refresh — CLAIM, Codex bwcx `/root`.
+2026-10-01 README refresh — DONE, Codex bwcx `/root`.
 Clean reused worktree `wt-cui-measurement-receipt-20261001`, branch
 `docs/readme-current-20261001`, base `90c94cb9846b1dd15f677c8f5bc536829f434d04`.
 Envelope: README.md and this claim only. Rewrite the user introduction around

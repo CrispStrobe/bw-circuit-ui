@@ -1,231 +1,130 @@
 # bw-circuit-ui
 
-Circuit designer and simulator UI for Brickwright. A learner builds circuits
-on a breadboard, wires them, and measures with a multimeter — with or without
-a microcontroller program. Every electrical value comes from
-[bw-board](https://github.com/CrispStrobe/bw-board)'s MNA solver. Nothing
-is fabricated.
+A React circuit workshop for Brickwright: build and wire circuits, inspect them
+as breadboards or schematics, and measure their simulated behavior. It also
+provides the `bwc` command-line tools for import, analysis and instrument tests.
 
-**Live:** [brickwright-lite.vercel.app](https://brickwright-lite.vercel.app/) → Circuit tab.
+Electrical simulation comes from [bw-board](https://github.com/CrispStrobe/bw-board).
+This repository owns the circuit editor, import/export adapters, instrument UI
+and CLI—not the engine's device physics or the host application's deployment.
 
-## Repository role and adoption
+## Run locally
 
-This repository is the source of truth for the circuit model, editor, renderer,
-part placement, and UI-side netlist construction. Reusable fixes to those
-contracts land and pass here first; Brickwright Lite consumes a reviewed exact
-git SHA rather than carrying a private copy of this source.
+Use Node.js 20 or newer and npm:
 
-`bw-board` owns electrical simulation. This repository consumes it from the
-full git SHA in `package.json` and `package-lock.json`; an upstream engine change
-is adopted deliberately by moving both together after the affected contract
-tests pass. Application preferences and packaging stay in Lite. The complete
-cross-repository procedure is in [`docs/UPSTREAM-WIP.md`](docs/UPSTREAM-WIP.md).
-
-## What is in it
-
-- **Circuit model** — parts, wires, breadboard seating, netlist derivation,
-  undo/redo, serialisation (toJSON/fromJSON with legacy-format support).
-- **Breadboard** — full/half/mini boards with strip conduction, hole
-  occupancy, tap wires, seated placement. No drawn wires needed — the
-  strips conduct, matching the real object.
-- **60+ part kinds** across 14 palette categories, from passives through
-  74HC logic ICs to sensors, motors, and instruments. Terminal definitions
-  from sidecars (288 vendored JSON + 288 SVG art files, including the explicit local-only set).
-- **Design-rule check** — 8 rules (source-current, missing-resistor,
-  missing-flyback, floating-input, supply-short, polarity, I2C pull-up,
-  aggregate current). Explains and offers fixes; never blocks. Current
-  ratings imported from bw-board (one owner for the numbers).
-- **Schematic projection** — auto-generated read-only schematic view as a
-  mode toggle beside the realistic view. Pure function of (parts, nets).
-- **Servo angle rendering** — decoded from the board model's pin-edge
-  analysis, not from block arguments. Undriven shows "no signal".
-- **BOM export** — bill of materials with CSV download.
-- **Examples browser** — gallery circuits loadable via `circuitData` prop.
-- **Teaching ladders** — `gallery/l0..l10` (a single AND gate to a keypad you can
-  type into) and `gallery/c0..c17` (a 555 ticking to an eight-bit computer under
-  microcode: a control ROM, conditional jumps, an 8-bit ALU that derives its own
-  flags, a stack, CALL/RET, the whole machine again with a ROM where its control
-  matrix was, and then that machine twice as wide). All 74-series, no CPU and no
-  firmware, every rung simulated and asserted. See [`docs/LADDERS.md`](docs/LADDERS.md).
-- **Multimeter** — voltage, current (with burden-voltage teaching note),
-  resistance (refuses on powered board — `requires-power-off` is a feature).
-- **CLI instruments** — `bwc measure` captures scope traces and numeric meter
-  readings, streams simulation-time changes, and compares caller-supplied
-  waveform/meter references with explicit tolerances and failure diagnostics.
-  See [CLI instruments](docs/CLI-INSTRUMENTS.md) for supported acquisition
-  policies and reference formats; a supplied reference is not automatically
-  an independent oracle.
-
-## Verification
-
-At qualified revision `336d138` (2026-10-01), the main CI suite ran 3,165 tests:
-3,148 passed, 0 failed and 17 explicitly skipped. The separate precision CLI
-suite passed 67/67 with no skips, including three live ngspice comparisons.
-These are dated verification surfaces, not a claim that every imported circuit
-has been compared numerically. The ladder RANGES above are
-asserted against the gallery by `test/computer-ladder.test.js` — they had
-drifted to `l0..l9`/`c0..c10` before anything checked them.
-
-### The real-browser interaction gate
-
-`npm run verify:interaction` drives a real Chromium through **61 scenarios**
-with real pointer sequences against real WOKWI parts — click-select, part
-drag, terminal-to-terminal wiring, breadboard placement and seating,
-hole-to-hole jumpers, wheel pan (and that a plain wheel does NOT zoom),
-opening the instruments column, the scope panel and a live channel, a
-function generator's waveform on that scope, the simulation transport
-(pause freezes board time, step advances exactly one 50 ms tick, resume
-flows), schematic projection, the no-MCU starter entering Sim, body-beats-hole
-on a seated part, the pin chooser completing a tap wire, the selectors column
-collapsing and restoring, a multimeter that does not empty the board it
-measures, per-channel V/div, the spectrum view's 1 kHz peak, a sweep that
-reports per-point progress while the canvas still drags, and zero page errors.
-
-**It runs in CI** (`.github/workflows/ci.yml`, job `interaction-gate`), which
-it did not for most of its life — and three of its scenarios had been red the
-whole time with nobody watching. It installs Chromium and `bw-board` (a git-sha
-devDependency the dev harness imports by name), and fails the build on any scenario
-failure.
-
-The **count is asserted, not printed**. Every scenario reports exactly one
-outcome under its own id and the script holds the full `EXPECTED` list: a
-missing id, an unexpected id, or a pass arriving after a fail fails the run
-and names it. "It was green" is not a result if it silently ran fewer than
-last time. The last line of the run is:
-
-```
-61 scenarios · 61 passed · 0 failed
-roll-call: 61/61 expected scenarios reported an outcome
+```sh
+npm ci
+npm run dev
 ```
 
-Two DOM hooks exist for it and are asserted by it: `data-canvas-svg` (the one
-svg whose viewBox is the camera — the container also holds a button icon's
-svg, and reading that ornament's constant viewBox is how "wheel did not pan"
-was reported for months) and `data-wokwi-layer` (the world→screen matrix —
-found by "the first div with scale() in its transform" until palette
-thumbnails started scaling and the pin-chooser gesture was drawn inside the
-parts palette). Remove either and the gate fails by name.
+Open http://localhost:3100. The development app supplies the engine integration;
+embedding the library in another app requires the setup below.
 
-**Nothing in this campaign has run on real silicon.** All cross-model claims
-are category 2b (same-source agreement) at best. Categories per
-`stc/docs/EVIDENCE-CATEGORIES.md`.
+## What you can do
 
-| What | Evidence | Category |
-|------|----------|----------|
-| Serialiser round-trip (52 gallery files) | 0 losses, 5 negative controls | 2c |
-| Legacy file round-trip | Stable derivation, battery→vsource upgrade idempotent | 2c |
-| Terminal cross-check vs bw-parts | 260/270 upstream kinds checked, 6 explicitly skipped, 4 named product gaps | 2b |
-| Cube scan accumulator | 64 voxels, 32 lit at 12.5% duty | 2b |
-| Wire resolution (53+ gallery files) | Every terminal resolves (both wire formats) | 2c |
-| Breadboard strip conduction | LED lights through strips alone, no drawn wires | 2b |
-| DRC (8 rules) | 22 tests including safety-lesson canary | 2c |
+- Place parts, wire breadboards, interact with controls and inspect circuit warnings.
+- View generated schematics, bills of materials and examples, including
+  the logic ladder (l0..l10) and computer ladder (c0..c17).
+- Use oscilloscope traces, voltage/current/resistance meters, DC operating points
+  and supported frequency/source analyses.
+- Import supported subsets of SPICE, LTspice ASC, KiCad, EAGLE, EasyEDA,
+  Fritzing and Wokwi documents. Import reports expose unsupported components
+  and semantic losses; loading a drawing does not guarantee it is simulatable.
+- Work with supported PCB documents, footprints and copper connectivity,
+  and export circuit/board data through the shared export registry.
 
-The terminal cross-check is **2b, not independent**: both bw-parts and
-bw-circuit-ui were written by agents in this campaign reading the same
-datasheets. It catches transcription errors, not shared misreadings.
+Format versions and supported models differ. See the
+[import registry](src/importers/index.js), [export registry](src/model/exporters/registry.js),
+[LTspice guide](docs/LTSPICE-IMPORT.md) and [PCB support](docs/PCB-SUPPORT-PLAN.md).
 
-See `CLOSE-OUT.md` for the full ledger, defects found, and bench-blocked items.
+## Command-line instruments
 
-## How to run
+From a checkout, run `node bin/bwc.mjs --help`; the installed package exposes
+the same command as `bwc`.
 
-```bash
-npm install
-npm run dev              # Vite dev server on port 3100
-npm test                 # 621 unit/integration tests
-npm run verify:interaction  # 31 real-browser scenarios (also runs in CI)
-npm run test:render      # rendering tests (needs dev server)
-npm run sync:parts       # re-vendor bw-parts sidecars into src/parts-data/
-npm run verify:deployed  # deployed-page probes against GH Pages (see below)
+```sh
+# Inspect an included circuit
+node bin/bwc.mjs info test/fixtures/cli-measure-divider.json
+
+# Capture a waveform and a voltage reading
+node bin/bwc.mjs measure test/fixtures/cli-measure-divider.json \
+  --scope RT.b,GND.gnd --meter voltage:RT.b,GND.gnd \
+  --duration 20ms --rate 100kHz --json
 ```
 
-### Deployed-page probes
+Commands include `info`, `op`, `analyze`, `measure`, `dc-sweep`,
+`verify-receipt`, `convert`, `render` and `audit`.
+Measurements support text/JSON, CSV traces, live simulation-clock output,
+explicit waveform/meter references and optional provenance receipts.
+DC sweeps use fresh strict operating points and can compare complete signed
+voltage/current curves against a supplied reference.
 
-Playwright probes that run against the live GitHub Pages deployment (no local
-server). They verify rendering invariants that unit tests cannot reach:
+Read [CLI instruments](docs/CLI-INSTRUMENTS.md) for selectors, acquisition
+profiles, limits, schemas and exit codes, and
+[source analysis](docs/SOURCE-ANALYSIS.md) for supported analysis domains.
+A receipt verifies recorded identities and inputs; it is not a numerical
+oracle, hardware calibration or proof that a deployment contains this code.
 
-1. **Single-renderer guard** — no two stroked SVG elements share endpoints
-   for one jumper; `addHoleWire` adds exactly one `[data-jumper]` element.
-2. **Z spot-check** — jumper `<path>` elements appear after chip bodies in
-   SVG document order (later = painted on top).
-3. **Blinkenrocket pendant** — ATtiny88 chip label, matrix brightness > 0,
-   button press reads correctly via `setControl`/`readPin('PC3')`.
-4. **Blink an LED** — exactly 3 tagged jumpers, zero untagged twins.
+## Embed in a React application
 
-```bash
-# Default: probes against GH Pages
-npm run verify:deployed
-
-# Custom URL (preview deploy, local dev server, etc.)
-PROOF_URL=https://my-preview.vercel.app/ npm run verify:deployed
-
-# Or as a positional arg
-node scripts/deployed-probes.mjs https://crispstrobe.github.io/brickwright-lite/
-```
-
-Requires `playwright` (`npm install`). The probes navigate to the Circuit tab,
-load examples from the gallery, and exercise the circuit model via
-`window.__circuit` and `window.__board`.
-
-## Importing as a component
+Install compatible `bw-circuit-ui` and `bw-board` revisions together with
+React 18. Pin Git dependencies to full commit SHAs and commit the lockfile
+rather than copying source into the host.
 
 ```jsx
-import { setEngine, CircuitDesigner } from 'bw-circuit-ui';
-import { BoardImpl, inferNetlist, checkWiring } from './lib/bw-board/index.js';
-import { getMaxCurrent, PORT_LIMITS } from './lib/bw-board/current-ratings.js';
+import { CircuitDesigner, setEngine } from 'bw-circuit-ui';
+import {
+  BoardImpl, inferNetlist, checkWiring, getDevice, registerAllDevices,
+} from 'bw-board';
 
-setEngine({ BoardImpl, inferNetlist, checkWiring, getMaxCurrent, PORT_LIMITS });
+registerAllDevices();
+setEngine({ BoardImpl, inferNetlist, checkWiring, getDevice });
 
-<CircuitDesigner
-  project={{ device: 'STC12C5A60S2', clock: 11059200, pins: [...] }}
-  circuitData={pendingExample}       // load a gallery example
-  onDeclarationChange={(decls) => {}} // parts → blocks
-  onCircuitReady={(circuit) => {}}    // once, on mount
-/>
+export function Workshop() {
+  return <CircuitDesigner project={{ pins: [] }} />;
+}
 ```
 
-Exported panels (for host integration):
-`DrcPanel`, `BomPanel`, `ExamplesBrowser`, `runDrc`, `generateBom`, `bomToCsv`.
+An optional `board` prop connects an externally driven emulator instead of
+the standalone scripted simulation. The host owns program loading, persistence
+and application layout. See [component props](src/components/CircuitDesigner.jsx),
+[engine injection](src/engine.js) and [public exports](src/index.js).
+Repository and consumer responsibilities are described in
+[UPSTREAM-WIP](docs/UPSTREAM-WIP.md).
 
-## Current limits and integration boundaries
+## Limits worth knowing
 
-- **Host pane layout:** Lite consumes the three column sizes and the middle
-  content slot. Full upper/lower slot composition is not supplied by this
-  package; it is a host integration concern, not an unrendered CUI feature.
-- **Hardware block availability:** the host's circuit reporters still return
-  `NaN` when no simulator is attached. Capability-aware block disabling remains
-  a host/block integration gap; this renderer does not implement it.
-- **Canvas art:** palette thumbnails use bw-parts SVGs. The canvas mixes
-  Wokwi elements, code-drawn SVGs and selected sidecar assets/geometry; it is
-  not a universal sidecar-art renderer.
-- **LED placement geometry:** hit testing and previews use the shared 40×50
-  footprint, with matching 0.78 scaling for seated previews/faces. Exact pixel
-  equality between ghost and Wokwi body bounds has no dedicated browser
-  assertion; do not treat it as either a proven mismatch or a verified fix.
-- **Seated-part legibility:** selecting a part highlights its occupied holes
-  and conducting strips. Breadboard hover support exists, but the canvas does
-  not yet forward its hovered-part identity to that highlight path.
-- **Schematic projection:** symbol rendering and complete SVG download are
-  exercised in the real-browser gate. Readability and routing quality across
-  arbitrary large imported schematics still need broader visual coverage;
-  the projection is not a manually authored schematic layout.
+- This is not a drop-in implementation of every SPICE dialect, vendor model
+  or schematic/PCB format. Unsupported analysis domains must be inspected,
+  not treated as successful measurements.
+- Op-amp and other component readings follow the particular engine model;
+  they do not imply complete silicon, parasitic or thermal fidelity.
+- PCB import and connectivity tools do not constitute manufacturing sign-off.
+  Automatic schematic projection is not an authored publication-quality layout.
+- Canvas artwork mixes rendering systems. Palette appearance, placed-part
+  geometry and dense-circuit legibility are not universally identical.
+  Selected seating is highlighted; hover feedback is not complete everywhere.
+- Host pane layouts and hardware/block integration are separate from this
+  package's simulated editor. A working simulation does not certify hardware execution.
 
-## Bundle
+## Tests and further documentation
 
-~2.43 MB / ~599 KB gzip (with React, 288 sidecar JSONs, 288 SVGs; measured by the 2026-09-27 production build).
+```sh
+npm test
+npm run test:source-precision
+npm run test:render
+```
 
-Measured by `vite build` at commit `2d6f617`.
+Browser interaction checks and optional independent-oracle checks have their
+own setup requirements. See [test registration](docs/TEST-REGISTRATION.md),
+[schematic verification](docs/SCHEMATIC-AUDIT.md) and the
+[CI results](https://github.com/CrispStrobe/bw-circuit-ui/actions).
+Test totals and corpus agreement depend on the revision, available tools and
+selected suite; they are not universal compatibility claims.
 
-## Dependencies
+Development plans live in [ROADMAP.md](ROADMAP.md) and [PLAN.md](PLAN.md).
+Historical receipts remain in their detailed documents, not this introduction.
 
-| Package | Licence | Role |
-|---------|---------|------|
-| react, react-dom | MIT | peer (host provides) |
-| @wokwi/elements | MIT | runtime — Arduino Uno/Nano/Mega faces, LED, resistor, pot, buzzer, button, 7-seg, LCD, IR |
-| lit, @lit/react | BSD-3-Clause | runtime — React wrappers for wokwi web components |
-| vite | MIT | dev only |
-| playwright | Apache-2.0 | dev only — interaction gate |
+## License
 
-Part art in `src/parts-data/` is vendored from
-[bw-parts](https://github.com/CrispStrobe/bw-parts) —
-see `src/parts-data/ART-PROVENANCE.md` and `src/parts-data/THIRD-PARTY.md`
-for drawing methodology and licensing.
+MIT. See [LICENSE](LICENSE) and [third-party notices](THIRD-PARTY.md).
