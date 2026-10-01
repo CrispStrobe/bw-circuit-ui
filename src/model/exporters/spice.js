@@ -998,10 +998,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         continue;
       }
       usedModels.add('MOSFET');
-<<<<<<< HEAD
       lines.push(`${el} ${nodeFields} ${bulk} MOSFET`);
-=======
-      lines.push(`${part.refdes} ${nodeFields} MOSFET`);
     } else if (card === 'X' && DC_LOAD_KINDS.has(part.kind)) {
       // A part SPICE has no primitive for, which the engine nonetheless models
       // as a plain DC resistance. Only kinds fully described by that one number
@@ -1022,7 +1019,6 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         continue;
       }
       lines.push(`R${part.refdes} ${nodeFields} ${formatSpiceValue(ohms)}`);
->>>>>>> review/buzzer-22-20261001
     } else {
       skipped.push(`${part.refdes} (${part.kind}): unsupported card '${card}'`);
       lines.push(`* ${part.refdes} ${part.kind} — unsupported`);

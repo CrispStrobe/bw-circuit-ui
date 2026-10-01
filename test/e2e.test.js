@@ -61,7 +61,11 @@ describe('e2e: full user flow', () => {
     const designer = page.locator('[data-selectors-open]');
     const toggle = page.locator('[data-selectors-toggle]');
     assert.equal(await designer.getAttribute('data-selectors-open'), 'true');
-    await toggle.click();
+    await toggle.hover();
+    await page.mouse.down();
+    assert.equal(await designer.getAttribute('data-selectors-open'), 'true',
+      'pointerdown must not toggle before the click completes');
+    await page.mouse.up();
     assert.equal(await designer.getAttribute('data-selectors-open'), 'false');
     await toggle.click();
     assert.equal(await designer.getAttribute('data-selectors-open'), 'true');
