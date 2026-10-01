@@ -350,6 +350,9 @@ switch (cmd) {
       rateHz = parseScaledNumber(opts.rate || '10kHz', 'rate');
     } catch (error) { die(error.message); }
     if (!(durationSeconds > 0 && durationSeconds <= 10)) die('measure duration must be > 0 and <= 10 s');
+    if (!opts.watch && durationSeconds>2 && meterSpecs.some(spec => spec.mode!=='resistance')) {
+      die('powered meter batch capture is limited to the 2 s watch lifetime; use --watch for longer captures');
+    }
     if (!(rateHz >= 1 && rateHz <= 2e6)) die('measure rate must be between 1 Hz and 2 MHz');
     const requestedSamples = Math.ceil(durationSeconds * rateHz);
     if (requestedSamples > MEASUREMENT_MAX_SAMPLES) die('measure refuses more than 200000 scope samples');
@@ -441,6 +444,12 @@ switch (cmd) {
       } catch (policyError) { die(`precision batch admission failed: ${policyError.message}`); }
     }
     const startNs = BigInt(circ.board.timeNs || 0);
+    // The first read starts the engine watch; taking it only at the end
+    // returns an instant, not the requested capture's observed DC mean.
+    for (const row of poweredMeters) {
+      const reading=readMeter(row.meter,circ);
+      if (reading.note) die(`${row.mode} meter ${row.probes.join(',')} could not start capture: ${reading.note}`);
+    }
     const endNs = startNs + durationNs;
     let watchSamples = 0;
     try {
@@ -556,6 +565,9 @@ switch (cmd) {
       ...(precision ? {precisionCapture:precisionBudget} : {}),
       scope: scopeRows.map(({ data, selectorReference, ...row }) => row),
       meters: meterRows,
+      ...(poweredMeters.length ? {poweredMeterAcquisition:{quantity:'observed-dc-mean',
+        startTimeSeconds:Number(startNs)/1e9,maximumWindowSeconds:.1,
+        independentIntegralCertificate:false}} : {}),
       ...(comparison ? { comparison } : {}),
       claims: {
         engineBacked: true,
@@ -580,6 +592,7 @@ switch (cmd) {
       for (const row of report.meters) {
         console.log(`  meter ${row.mode} ${row.probes.join(' ↔ ')}: ${row.reading.value} ${row.reading.unit}${row.reading.note ? `  (${row.reading.note})` : ''}`);
       }
+      if (report.poweredMeterAcquisition) console.log('  powered meters: observed DC mean since capture start, rolling window at most 100 ms; not true RMS or an independent integral certificate');
       if (opts.csv) console.log(`  wrote ${opts.csv}`);
       if (comparison) console.log(`  expected waveform: ${comparison.status.toUpperCase()} (${comparison.counts.passed}/${comparison.counts.compared} samples)`);
       else console.log('  oracle: not performed; these are engine measurements');
