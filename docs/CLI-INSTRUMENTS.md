@@ -162,17 +162,38 @@ work budget, and scope-only/resistance captures retain their existing policies.
 
 Independent consumer fixtures check sine and pulse areas and signed resistor
 currents through the installed package, Circuit, Instruments and CLI against
-closed forms and live ngspice. These are two self-authored circuits, not a corpus
+closed forms and live ngspice. Those are two self-authored source/resistor circuits;
+the analytic inductor fixture below is a third, not a corpus
 qualification. Numerical quadrature error depends on waveform curvature and
 accepted step spacing: even an exact sine endpoint does not make its trapezoid
 area exact. The short interactive sine watch test uses the explicitly derived
 curvature/step error bound; the fixed precision oracle fixtures use 50 µV/50 nA.
 An engine local step check is not a global integral certificate, physical meter
 bandwidth model or true-RMS claim. The source-constrained analytic-inductor path
-keeps its solver and first instantaneous reading but refuses subsequent means
-by name until its integral is qualified.
+now supplies exact delayed/damped/phase-shifted sine integrals for its narrow
+three-part topology: one ideal SINE current source, one ideal inductor and
+ground. It retains its endpoint solver and first instantaneous meter reading;
+later voltage and signed current means clip the actual analytic interval.
+Editing the source/inductor parameters during an active watch still refuses
+by name, because ideal-inductor jumps/impulses are not qualified.
 
-Remaining work: independently qualify analytic-inductor integrals, nonlinear and
+For example, with `I1 0 signal SINE(0 1m 250)` and `L1 signal 0 1m`:
+
+```sh
+bwc measure inductor.cir --meter voltage:L1.a,L1.b --meter current:L1.a \
+  --duration 7ms --rate 1kHz --json
+```
+
+This meter-only command uses the default interactive profile and the exact
+analytic route; its current is signed OUT of `L1.a`. `--watch` reports the
+running mean at each requested tick. The existing precision CLI admission
+still requires 1–4 scope channels; it does not admit meter-only batches.
+Adding a scope excludes the analytic shortcut and uses the adaptive solver;
+this adoption does not newly qualify that different topology/acquisition path.
+The imported inductor fixture is also checked against a separate live ngspice
+voltage/current area and independent closed forms; it is not a corpus claim.
+
+Remaining work: nonlinear and
 high-frequency/aliasing cases, power-off residual-charge current measurements,
 and explicit meter bandwidth/RMS behavior. No general legacy-MNA fix or GUI/Lite
 package/deployment adoption is claimed here.

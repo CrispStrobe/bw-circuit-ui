@@ -48,7 +48,7 @@ test('meter integration uses the exact installed package, not a sibling checkout
   const proof=verifyBoardProvenance({throwOnFailure:true});
   assert.equal(proof.qualified,true);
   assert.equal(proof.loaded.logicalIsSymlink,false);
-  assert.equal(proof.declared.packageCommit,'ec6c0ff6302624712a411373d85bf8782b9867db');
+  assert.equal(proof.declared.packageCommit,'928ecf7b5d12161ef827e4046dfe21a8fcb263d2');
 });
 
 for(const c of cases) for(const stride of [7000000n,700000n,10000n]) {
@@ -118,17 +118,132 @@ for(const c of cases) test(`CLI ${c.name} means agree with live ngspice and inde
   } finally {rmSync(dir,{recursive:true,force:true});}
 });
 
-test('analytic source-constrained inductor mean refuses by name through Circuit',()=>{
-  const circuit=circuitFor('* Authored constrained inductor\nI1 signal 0 SINE(0 1m 250)\nL1 signal 0 1m\n.tran 1u 2u\n.end\n');
-  circuit.advanceTo(1000n);
-  const a=resolveEndpointNet(circuit.resolvedNets,'L1.a');
-  const b=resolveEndpointNet(circuit.resolvedNets,'L1.b');
-  assert.equal(circuit.transientAnalysisStatus().integrationMode,'source-constrained-inductor-direct');
-  assert.equal(circuit.meterVoltage(a,b),circuit.nodeVoltage(a)-circuit.nodeVoltage(b));
-  circuit.meterCurrent('L1','a');
-  circuit.advanceTo(2000n);
-  assert.throws(()=>circuit.meterVoltage(a,b),/inductor-meter-integral-unqualified/);
-  assert.throws(()=>circuit.meterCurrent('L1','a'),/inductor-meter-integral-unqualified/);
+const inductorDeck='* Independently authored ideal inductor\nI1 0 signal SINE(0 1m 250)\nL1 signal 0 1m\n.tran 1u 7m\n.end\n';
+const inductorCurrentMean=(from,to)=>(Math.cos(2*Math.PI*250*from)-Math.cos(2*Math.PI*250*to))*.001/(2*Math.PI*250*(to-from));
+const inductorVoltageMean=(from,to)=>1e-6*(Math.sin(2*Math.PI*250*to)-Math.sin(2*Math.PI*250*from))/(to-from);
+function inductorMeters(circuit) {
+  const voltage=createMeterState();
+  voltage.probeA.netId=resolveEndpointNet(circuit.resolvedNets,'L1.a');
+  voltage.probeB.netId=resolveEndpointNet(circuit.resolvedNets,'L1.b');
+  const current=createMeterState(); current.mode='current';
+  current.probeA.partId='L1'; current.probeA.terminal='a';
+  return {voltage,current};
+}
+for(const stride of [7000000n,700000n,10000n]) {
+  test(`imported analytic inductor Circuit/Instruments exact means at ${stride} ns stride`,()=>{
+    const circuit=circuitFor(inductorDeck),{voltage,current}=inductorMeters(circuit);
+    assert.equal(readMeter(voltage,circuit).siValue,circuit.nodeVoltage(voltage.probeA.netId)-circuit.nodeVoltage(voltage.probeB.netId));
+    readMeter(current,circuit);
+    for(let t=stride;t<=7000000n;t+=stride) circuit.advanceTo(t);
+    assert.equal(circuit.transientAnalysisStatus().integrationMode,'source-constrained-inductor-direct');
+    assert.equal(circuit.transientAnalysisStatus().work.solves,0);
+    const v=readMeter(voltage,circuit),i=readMeter(current,circuit);
+    assert.equal(v.note,null); assert.equal(i.note,null);
+    close(v.siValue,inductorVoltageMean(0,.007),1e-12,'analytic inductor voltage mean');
+    close(i.siValue,-inductorCurrentMean(0,.007),1e-12,'analytic inductor signed OUT mean');
+  });
+}
+test('imported analytic inductor clips its rolling window and refuses a parameter jump',()=>{
+  const circuit=circuitFor(inductorDeck),{voltage,current}=inductorMeters(circuit);
+  readMeter(voltage,circuit); readMeter(current,circuit);
+  circuit.advanceTo(70000000n); circuit.advanceTo(135000000n);
+  close(readMeter(voltage,circuit).siValue,inductorVoltageMean(.035,.135),1e-12,'clipped voltage');
+  close(readMeter(current,circuit).siValue,-inductorCurrentMean(.035,.135),1e-12,'clipped signed current');
+  circuit.board.setPartParam('I1','amplitude',.002);
+  assert.throws(()=>circuit.meterVoltage(voltage.probeA.netId,voltage.probeB.netId),/parameter-edit-unqualified/);
+  assert.throws(()=>circuit.meterCurrent('L1','a'),/parameter-edit-unqualified/);
+});
+test('meter-only CLI uses the exact analytic inductor route and preserves signed polarity',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'cui-inductor-cli-'));
+  try {
+    const file=join(dir,'capture.cir'); writeFileSync(file,inductorDeck);
+    const result=spawnSync(process.execPath,[CLI,'measure',file,'--meter','voltage:L1.a,L1.b',
+      '--meter','voltage:L1.b,L1.a','--meter','current:L1.a','--meter','current:L1.b',
+      '--profile','interactive-v1','--duration','7ms','--rate','1kHz','--json'],
+      {encoding:'utf8',timeout:30000});
+    assert.ifError(result.error); assert.equal(result.status,0,result.stderr);
+    const report=JSON.parse(result.stdout);
+    assert.deepEqual(report.scope,[]);
+    assert.equal(report.transient.integrationMode,'source-constrained-inductor-direct');
+    assert.equal(report.transient.profile.id,'interactive-v1');
+    assert.equal(report.transient.accuracyMet,true); assert.equal(report.transient.work.solves,0);
+    assert.equal(report.transient.work.advances,1);
+    assert.equal(report.poweredMeterAcquisition.independentIntegralCertificate,false);
+    const expected=[inductorVoltageMean(0,.007),-inductorVoltageMean(0,.007),
+      -inductorCurrentMean(0,.007),inductorCurrentMean(0,.007)];
+    assert.equal(report.meters.length,4);
+    for(let k=0;k<4;k++) {
+      assert.equal(report.meters[k].reading.note,null);
+      close(report.meters[k].reading.siValue,expected[k],1e-12,`CLI meter ${k}`);
+    }
+    const watch=spawnSync(process.execPath,[CLI,'measure',file,'--meter','voltage:L1.a,L1.b',
+      '--meter','current:L1.a','--duration','7ms','--rate','1kHz','--watch'],
+      {encoding:'utf8',timeout:30000});
+    assert.ifError(watch.error); assert.equal(watch.status,0,watch.stderr);
+    const records=watch.stdout.trim().split('\n').map(line=>JSON.parse(line));
+    assert.equal(records.length,8); assert.equal(records.at(-1).recordType,'summary');
+    const rows=records.filter(row=>row.recordType==='sample');
+    assert.equal(rows.length,7);
+    for(let k=0;k<rows.length;k++) {
+      const time=(k+1)/1000;
+      close(rows[k].meters[0].reading.siValue,inductorVoltageMean(0,time),1e-12,'watched voltage mean');
+      close(rows[k].meters[1].reading.siValue,-inductorCurrentMean(0,time),1e-12,'watched signed mean');
+    }
+    const refused=spawnSync(process.execPath,[CLI,'measure',file,'--meter','current:L1.a',
+      '--profile','precision-v1','--initial','zero-state','--duration','7ms','--rate','1kHz','--json'],
+      {encoding:'utf8',timeout:30000});
+    assert.ifError(refused.error); assert.equal(refused.status,2); assert.equal(refused.stdout,'');
+    assert.match(refused.stderr,/precision batch requires 1 to 4 scope channels/);
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test('meter-only CLI inductor means match a separate live ngspice deck',{
+  skip:ngspiceProbe.error || ngspiceProbe.status!==0 ? 'ngspice unavailable: no independent inductor comparison ran' : false,
+},()=>{
+  const dir=mkdtempSync(join(tmpdir(),'cui-inductor-oracle-'));
+  try {
+    const file=join(dir,'capture.cir'); writeFileSync(file,inductorDeck);
+    const result=spawnSync(process.execPath,[CLI,'measure',file,'--meter','voltage:L1.a,L1.b',
+      '--meter','current:L1.a','--duration','7ms','--rate','1kHz','--json'],{encoding:'utf8',timeout:30000});
+    assert.ifError(result.error); assert.equal(result.status,0,result.stderr);
+    const report=JSON.parse(result.stdout);
+    writeFileSync(join(dir,'reference.cir'),`Independent ideal inductor reference
+I1 0 a SIN(0 0.001 250)
+L1 a 0 0.001
+.control
+set numdgt=15
+set wr_singlescale
+set wr_vecnames
+tran 1u 7m 0 100n
+linearize v(a) i(L1)
+wrdata reference.csv v(a) i(L1)
+quit
+.endc
+.end
+`);
+    const oracle=spawnSync('ngspice',['-b','reference.cir'],{cwd:dir,encoding:'utf8',timeout:30000});
+    assert.ifError(oracle.error); assert.equal(oracle.status,0,oracle.stderr);
+    const rows=readFileSync(join(dir,'reference.csv'),'utf8').trim().split('\n').slice(1)
+      .map(line=>line.trim().split(/\s+/).map(Number));
+    assert.equal(rows.length,7001); close(rows[0][0],0,1e-15,'oracle start');
+    close(rows.at(-1)[0],.007,1e-12,'oracle end');
+    let volts=0,amps=0;
+    for(let k=1;k<rows.length;k++) {
+      assert.ok(rows[k].every(Number.isFinite) && rows[k][0]>rows[k-1][0]);
+      const d=rows[k][0]-rows[k-1][0];
+      volts+=d*(rows[k][1]+rows[k-1][1])/2;
+      amps+=d*(rows[k][2]+rows[k-1][2])/2;
+    }
+    volts/=.007; amps/=.007;
+    // The oracle's DC initialization makes v(L) at t=0 zero, not the right
+    // sine derivative: explicitly budget its first 1 us quadrature segment.
+    const voltageTolerance=.5*1e-6*(.001*.001*2*Math.PI*250)/.007+2e-9;
+    close(volts,inductorVoltageMean(0,.007),voltageTolerance,'oracle voltage area control');
+    close(amps,inductorCurrentMean(0,.007),1e-9,'oracle current area control');
+    close(report.meters[0].reading.siValue,volts,voltageTolerance,'CLI voltage vs independent oracle');
+    close(report.meters[1].reading.siValue,-amps,1e-9,'CLI signed current vs independent oracle');
+    assert.throws(()=>close(report.meters[1].reading.siValue,-amps+.0001,1e-9,'changed oracle'),/changed oracle/);
+  } finally {rmSync(dir,{recursive:true,force:true});}
 });
 
 test('powered batch cannot silently outlive the meter watch',()=>{
