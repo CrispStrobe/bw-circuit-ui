@@ -498,14 +498,21 @@ test('bwc measure returns real scope and multimeter readings as JSON', () => {
   assert.equal(report.scope[0].summary.samples, 10);
   assert.ok(Math.abs(report.scope[0].summary.lastVolts - (5 / 3)) < 1e-4);
   assert.equal(report.meters[0].mode, 'voltage');
-  assert.equal(report.meters[0].reading.value, '1.667');
+  // A 10 MOhm || 15 pF probe loads the two 10 MOhm divider resistors:
+  // final voltage=5/3, tau=(10 MOhm/3)*15 pF=50 us. The meter observes
+  // the startup integral, not the final scope voltage.
+  const tau = 50e-6, duration = .001;
+  const mean = (5/3)*(1-tau/duration*(1-Math.exp(-duration/tau)));
+  assert.equal(report.meters[0].reading.value, mean.toFixed(3));
   assert.equal(report.meters[0].reading.unit, 'V');
-  assert.ok(Math.abs(report.meters[0].reading.siValue - (5 / 3)) < 1e-4);
+  assert.ok(Math.abs(report.meters[0].reading.siValue - mean) < 1e-4);
   assert.equal(report.meters[0].reading.siUnit, 'V');
   assert.equal(report.meters[1].mode, 'current');
   assert.equal(report.meters[1].reading.unit, 'nA');
-  assert.ok(Math.abs(Math.abs(report.meters[1].reading.siValue) - (1 / 3_000_000)) < 1e-10);
+  assert.ok(Math.abs(report.meters[1].reading.siValue + (5-mean)/1e7) < 1e-10);
   assert.equal(report.meters[1].reading.siUnit, 'A');
+  assert.deepEqual(report.poweredMeterAcquisition,{quantity:'observed-dc-mean',
+    startTimeSeconds:0,maximumWindowSeconds:.1,independentIntegralCertificate:false});
 });
 
 test('finite probes require a reference and CSV is an explicit file', () => {
@@ -540,8 +547,8 @@ test('imported SINE is measured on its real simulation clock with analytical val
   assert.equal(scope.sampleIntervalSeconds, 10e-6);
   assert.ok(Math.abs(scope.summary.meanVolts - 1.25) < 1e-12);
   assert.ok(Math.abs(scope.summary.rmsVolts - Math.sqrt(1.25 ** 2 + (2 ** 2) / 2)) < 1e-12);
-  assert.ok(Math.abs(report.meters[0].reading.siValue - 1.25) < 1e-12);
-  assert.ok(Math.abs(report.meters[1].reading.siValue + 0.00125) < 1e-12,
+  assert.ok(Math.abs(report.meters[0].reading.siValue - 1.25) < 50e-6);
+  assert.ok(Math.abs(report.meters[1].reading.siValue + 0.00125) < 50e-9,
     'current is signed positive out of the selected resistor terminal');
   const rows = readFileSync(csv, 'utf8').trim().split('\n');
   assert.match(rows[0], /startTimeNs=10000 sampleIntervalNs=10000 points=50/);
@@ -576,15 +583,18 @@ test('watch streams monotonic true samples and agrees exactly with batch capture
     assert.equal(row.index, index);
     assert.ok(Math.abs(row.timeSeconds - time) < 1e-15);
     assert.ok(Math.abs(row.scope[0].volts - expected) < 1e-12);
-    // The first read starts watching; the engine holds each recorded reading
-    // to the next advance. This is not the instantaneous scope value or an
-    // independently qualified continuous integral of the sine waveform.
-    const priorMean = index === 0 ? expected : samples.slice(0,index)
-      .reduce((sum,point) => sum + point.scope[0].volts,0) / index;
-    assert.ok(Math.abs(row.meters[0].reading.siValue-priorMean)<1e-12,
-      `recorded-history voltage mean at observation ${index}`);
-    assert.ok(Math.abs(row.meters[1].reading.siValue + priorMean / 1000) < 1e-15,
-      `signed recorded-history current mean at observation ${index}`);
+    // CLI primes at t=0; independently integrate the sine from that instant.
+    const omega=2*Math.PI*2000;
+    const mean=1.25-2*(1-Math.cos(omega*time))/(omega*time);
+    // Each accepted adaptive interval publishes its two half-step solves.
+    // For this fixed source and 10 us sample grid, composite trapezoid mean
+    // error is bounded by max|V''| * (5 us)^2 / 12. Scope endpoint tolerance
+    // remains unchanged; this is a quadrature bound, not exact analog truth.
+    const meanErrorBound=2*omega**2*(5e-6)**2/12;
+    assert.ok(Math.abs(row.meters[0].reading.siValue-mean)<meanErrorBound,
+      `waveform-integral voltage mean at observation ${index}`);
+    assert.ok(Math.abs(row.meters[1].reading.siValue + mean / 1000) < meanErrorBound/1000,
+      `signed waveform-integral current mean at observation ${index}`);
   }
 
   const dir = mkdtempSync(join(tmpdir(), 'bwc-measure-watch-'));
@@ -643,9 +653,12 @@ test('watch exposes PULSE edges on their actual simulation timestamps', () => {
     .trim().split('\n').map(JSON.parse).filter(row => row.recordType === 'sample');
   assert.deepEqual(rows.map(row => row.timeSeconds), [0.5e-6, 1e-6, 1.5e-6, 2e-6, 2.5e-6, 3e-6]);
   assert.deepEqual(rows.map(row => row.scope[0].volts), [0, 0, 5, 5, 5, 5]);
-  // Meter history starts at the first read (0.5 us), independently of the
-  // true scope samples. Its held readings first change at 1.5 us.
-  assert.deepEqual(rows.map(row => row.meters[0].reading.siValue), [0, 0, 0, 5/3, 2.5, 3]);
+  // CLI primes at zero, retaining the 1 ns ramp's area, not held scope samples.
+  rows.forEach(row => {
+    const expected=row.timeSeconds<=1e-6 ? 0
+      : 5*(row.timeSeconds-1e-6-.5e-9)/row.timeSeconds;
+    assert.ok(Math.abs(row.meters[0].reading.siValue-expected)<50e-6);
+  });
 });
 
 test('watch refuses modes that cannot represent a powered time series', () => {

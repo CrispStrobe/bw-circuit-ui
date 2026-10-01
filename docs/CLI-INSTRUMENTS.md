@@ -144,15 +144,38 @@ constraint/closed-source handling under its own ownership, with nonzero/zero,
 waveform, merged-ground and finite-internal-resistance controls. No general
 legacy-solver repair is claimed by this CLI admission gate.
 
-Voltage/current meters now use the engine's existing maximum-100-ms recorded
-history mean. The first read starts watching and returns the instant's value;
-later reads integrate held recorded values over the available history, not a
-full window predating that first read. Scope samples remain instantaneous.
-Batch meter readout therefore has no prior watch history and need not equal the
-last streamed meter readout. This contract is not a true-RMS model or a
-continuous-waveform integral qualification. Follow-up: record meter history at
-actual transient solve/source-edge times and independently test its time integral
-against analytical and ngspice waveforms, including short captures and aliasing.
+Voltage/current meters observe a DC mean over at most the last 100 ms. The CLI
+primes each powered meter before advancing the capture, so both batch and watch
+readout include the waveform from capture start rather than starting history at
+the first output sample. JSON exposes `poweredMeterAcquisition` with that start
+time, the maximum window and `independentIntegralCertificate: false`. Text output
+states the same distinction. Scope samples remain instantaneous; a source's
+last scope voltage generally differs from its meter mean.
+
+The engine integrates accepted solve points at their actual substep times using
+piecewise-linear quadrature, retaining the left/right limits of discrete changes.
+The first direct API read still starts a watch and returns an instantaneous value;
+the CLI's priming read is not emitted as a sample. Histories do not predate that
+read. Idle watches expire after 2 s, so powered single-advance batches longer than
+2 s refuse with `--watch` as the alternative. This does not raise the precision
+work budget, and scope-only/resistance captures retain their existing policies.
+
+Independent consumer fixtures check sine and pulse areas and signed resistor
+currents through the installed package, Circuit, Instruments and CLI against
+closed forms and live ngspice. These are two self-authored circuits, not a corpus
+qualification. Numerical quadrature error depends on waveform curvature and
+accepted step spacing: even an exact sine endpoint does not make its trapezoid
+area exact. The short interactive sine watch test uses the explicitly derived
+curvature/step error bound; the fixed precision oracle fixtures use 50 µV/50 nA.
+An engine local step check is not a global integral certificate, physical meter
+bandwidth model or true-RMS claim. The source-constrained analytic-inductor path
+keeps its solver and first instantaneous reading but refuses subsequent means
+by name until its integral is qualified.
+
+Remaining work: independently qualify analytic-inductor integrals, nonlinear and
+high-frequency/aliasing cases, power-off residual-charge current measurements,
+and explicit meter bandwidth/RMS behavior. No general legacy-MNA fix or GUI/Lite
+package/deployment adoption is claimed here.
 
 `--expect` reads a bounded, explicit waveform document and compares every sample
 timestamp and voltage. Point-count, trace identity, missing samples and timestamp
