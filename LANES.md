@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-01 Finite-range scope summary correction — CLAIM, Codex bwcx `/root`.
+2026-10-01 Finite-range scope summary correction — DONE candidate, Codex bwcx `/root`.
 Reused clean `wt-cui-measurement-receipt-20261001`, branch
 `fable/scope-summary-range`, exact base `4c3d9cbdc372ef9617dc0685513fcc821b450379`.
 Four-path envelope: this row; only summarizeScope arithmetic in
@@ -14,6 +14,19 @@ samples, ordinary outputs and real CLI batch/watch with independent controls.
 No new physical-range, bandwidth, solver, sampling or cancellation-accuracy claim.
 Preserve all other helpers/CLI policies, Board/GUI, package pins, workflows,
 private corpus, deployment and other lanes. One exact branch qualification.
+Final precision suite 85/85, zero failures/skips, retaining all existing live
+ngspice/independent controls. New numeric controls include signed zero,
+subnormal and MAX_VALUE, mixed 3-4-5 RMS, overflowing mean, preserved tiny
+finite cancellation residual, chronological rings and empty capture; nonfinite
+sample refusals stay tested. Actual CLI six signed extreme values in batch
+and watch: 12 captures / 120 finite samples, correct representable summaries;
+these are ideal numeric boundaries, not physical circuits or a corpus claim.
+Four isolated mutations genuinely red and restored: old unscaled RMS (2 tests),
+missing mean fallback (2), always-normalized mean losing residual (1), lost zero
+guard (1). Ordinary mean behavior remains unchanged when its sum is finite.
+Restored helper blob 6446b370524cc078d98b5ca2d600dd581e3c0301;
+diff/syntax checks clean. Freeze exact candidate for automatic branch CI before
+guarded normal FF; no duplicate workflow or identical-head second gate.
 
 2026-10-01 CLI AC reference comparison — DONE candidate, Codex bwcx `/root`.
 Reused clean `wt-cui-measurement-receipt-20261001`, branch

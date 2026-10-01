@@ -303,6 +303,16 @@ time from the oldest retained sample, while the header's `startTimeNs` records
 that sample's absolute simulation time. JSON includes `startTimeSeconds`, the
 sample interval, resolved net IDs, probe preset and the same summary.
 
+Scope RMS is the square root of the mean squared **sample values**, not a
+bandwidth-qualified physical-meter reading. Its accumulation is scaled so
+finite representable results do not become Infinity/null or zero merely because
+raw squares overflow or underflow. Mean retains the existing finite sum;
+only an overflowed sum uses a bounded normalized fallback. Zero traces remain
+zero, and nonfinite samples still refuse. These are floating-point robustness
+guarantees, not exact cancellation arithmetic, an expanded physical-voltage
+domain, anti-alias filtering or additional solver fidelity. Numeric boundary
+tests use deliberately extreme ideal sources, not real hardware voltages.
+
 The engine rounds sample periods and simulated duration to integer nanoseconds.
 `rateHz` and `requestedSamples` retain the user's nominal request;
 `effectiveRateHz`, `simulatedDurationSeconds`, and `plannedSamples` disclose the

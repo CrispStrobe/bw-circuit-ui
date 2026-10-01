@@ -1087,6 +1087,61 @@ test('endpoint resolution accepts explicit nets and part terminals but refuses g
   assert.throws(() => resolveEndpointNet(nets, 'RB.b'), /resolves to 0 nets/);
 });
 
+test('scope summary preserves representable high/low range RMS and overflowed means', () => {
+  const summarize = values => summarizeScope({samples:new Float64Array(values.flatMap(value=>[value,value])),
+    count:values.length,writeIndex:0});
+  const max=Number.MAX_VALUE,tiny=Number.MIN_VALUE;
+  for (const value of [0,-0,1,-1,1e200,-1e200,1e-200,-1e-200,max,-max,tiny,-tiny]) {
+    const result=summarize(Array(10).fill(value));
+    assert.equal(result.samples,10);assert.equal(result.lastVolts,value);
+    assert.equal(result.minVolts,value);assert.equal(result.maxVolts,value);
+    assert.equal(result.rmsVolts,Math.abs(value),`constant ${value} RMS must remain representable`);
+    assert.ok(Number.isFinite(result.meanVolts));
+    if(value!==0)assert.ok(Math.abs(result.meanVolts/value-1)<1e-14);
+  }
+  const balanced=summarize([max,max,-max,-max]);
+  assert.equal(balanced.meanVolts,0);assert.equal(balanced.rmsVolts,max);
+  const unequal=summarize([1e308,1e308,-1e308]);
+  assert.ok(Math.abs(unequal.meanVolts/(1e308/3)-1)<1e-14);
+  assert.equal(unequal.rmsVolts,1e308);
+  assert.equal(summarize([1e308,-1e308,1e-200]).meanVolts,1e-200/3,
+    'preserve the finite ordinary sum; scaling every mean would lose this small residual');
+  const mixed=summarize([3e200,-4e200,0]);
+  assert.ok(Math.abs(mixed.rmsVolts/(5e200/Math.sqrt(3))-1)<1e-14,
+    'independent 3-4-5 identity, not squared overflow, determines the mixed RMS');
+  const wrapped={samples:new Float64Array([3e200,3e200,4e200,4e200,1e200,1e200,2e200,2e200]),
+    count:4,writeIndex:2};
+  assert.equal(summarizeScope(wrapped).lastVolts,4e200);
+  assert.ok(Math.abs(summarizeScope(wrapped).rmsVolts/(Math.sqrt(7.5)*1e200)-1)<1e-14);
+  assert.deepEqual(summarize([]),{samples:0,minVolts:null,maxVolts:null,meanVolts:null,rmsVolts:null,lastVolts:null});
+});
+
+test('actual CLI batch/watch scope summaries retain extreme finite ideal-source RMS',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-scope-range-'));
+  try {
+    const path=join(dir,'input.cir');
+    for(const value of [1e200,-1e200,1e-200,-1e-200,1e308,-1e308]) {
+      writeFileSync(path,`Extreme numeric boundary, not a realistic-voltage fixture\nV1 signal 0 DC ${value}\nR1 signal 0 1000\n.end\n`);
+      for(const watch of [false,true]) {
+        const run=spawnSync(process.execPath,[CLI,'measure',path,'--scope','V1.pos,V1.neg',
+          '--duration','1ms','--rate','10kHz',...(watch?['--watch']:['--json'])],{encoding:'utf8'});
+        assert.equal(run.status,0,run.stderr);
+        const rows=watch?run.stdout.trim().split('\n').map(JSON.parse):[];
+        const report=watch?rows.at(-1).report:JSON.parse(run.stdout);
+        if(watch) {
+          assert.equal(rows.filter(row=>row.recordType==='sample').length,10);
+          for(const row of rows.filter(row=>row.recordType==='sample'))assert.equal(row.scope[0].volts,value);
+        }
+        const summary=report.scope[0].summary;
+        assert.equal(summary.samples,10);assert.equal(summary.minVolts,value);assert.equal(summary.maxVolts,value);
+        assert.ok(Number.isFinite(summary.meanVolts));assert.ok(Number.isFinite(summary.rmsVolts));
+        assert.ok(Math.abs(summary.meanVolts/value-1)<1e-14);
+        assert.equal(summary.rmsVolts,Math.abs(value),'ideal constant source RMS is independently |V|');
+      }
+    }
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
 test('scope summary reads the chronological ring rather than backing storage order', () => {
   const data = { samples: new Float64Array([3, 3, 4, 4, 1, 1, 2, 2]), count: 4, writeIndex: 2 };
   assert.deepEqual(summarizeScope(data), {

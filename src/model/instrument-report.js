@@ -422,16 +422,37 @@ export function compareExpectedWaveforms(actual, expected, tolerances = {}) {
 export function summarizeScope(data) {
   const values = scopeSeries(data);
   if (!values.length) return { samples: 0, minVolts: null, maxVolts: null, meanVolts: null, rmsVolts: null, lastVolts: null };
-  let min = Infinity; let max = -Infinity; let sum = 0; let squares = 0;
+  let min = Infinity; let max = -Infinity; let sum = 0;
   for (const value of values) {
-    min = Math.min(min, value); max = Math.max(max, value); sum += value; squares += value * value;
+    min = Math.min(min, value); max = Math.max(max, value); sum += value;
   }
+  // Finite samples can overflow their squares (or round them all to zero).
+  // Normalize before squaring: every term is bounded by one. Keep the existing
+  // finite mean sum, including small residuals after large cancellation;
+  // normalized accumulation is only its overflow fallback, not a new mean policy.
+  const scale = Math.max(Math.abs(min), Math.abs(max));
+  let normalizedSum = 0; let sumError = 0; let normalizedSquares = 0;
+  if (scale > 0) {
+    for (const value of values) {
+      const normalized = value / scale;
+      const increment = normalized - sumError;
+      const next = normalizedSum + increment;
+      sumError = (next - normalizedSum) - increment;
+      normalizedSum = next;
+      normalizedSquares += normalized * normalized;
+    }
+  }
+  // A mathematical mean/RMS cannot exceed the largest absolute sample.
+  // Clamp only the normalized bounds to prevent a rounding overshoot at MAX_VALUE.
+  const mean = Number.isFinite(sum) ? sum / values.length
+    : scale * Math.max(-1, Math.min(1, normalizedSum / values.length));
+  const rms = scale * Math.sqrt(Math.min(1, normalizedSquares / values.length));
   return {
     samples: values.length,
     minVolts: min,
     maxVolts: max,
-    meanVolts: sum / values.length,
-    rmsVolts: Math.sqrt(squares / values.length),
+    meanVolts: mean,
+    rmsVolts: rms,
     lastVolts: values.at(-1),
   };
 }
