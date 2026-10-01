@@ -8,6 +8,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { fileReceipt, runtimeReceipt, importedCircuitSha256,
   parseMeasurementReceipt, compareMeasurementReceiptIdentity } from '../src/model/measurement-receipt.js';
+import {dcSweepGrid,validateDcSweepInput,parseExpectedDcSweep,compareExpectedDcSweep} from '../src/model/dc-sweep-report.js';
 import {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
   parseExpectedMeters, createExpectedMeterComparison,
@@ -22,6 +23,149 @@ const CLI = join(ROOT, 'bin', 'bwc.mjs');
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json');
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
+
+test('strict DC sweep grids, admission and typed full-curve comparison refuse false success', () => {
+  assert.deepEqual(dcSweepGrid(-1,1,3),[-1,0,1]);
+  assert.deepEqual(dcSweepGrid(1,-1,3),[1,0,-1]);
+  assert.equal(dcSweepGrid(0,1,501).length,501);
+  assert.throws(()=>dcSweepGrid(1,1+Number.EPSILON,3),/floating-point/);
+  for (const args of [[0,0,3],[NaN,1,3],[0,Infinity,3],[-1001,1,3],[0,1,1],[0,1,502],[0,1,3.5]]) {
+    assert.throws(()=>dcSweepGrid(...args),/DC sweep/);
+  }
+  const source={id:'V1',kind:'vsource',params:{volts:0}};
+  const observation={kind:'voltage',selector:'R1.b',reference:'GND1.gnd',unit:'V'};
+  validateDcSweepInput({parts:[source]},'V1',[observation]);
+  for (const c of [{parts:[]},{parts:Array(33).fill(source)},{parts:[source],losses:[{}]},
+    {parts:[source],analysisBlockers:[{}]},{parts:[source],unmapped:[{}]},
+    {parts:[{...source,params:{dcBias:0}}]},{parts:[{...source,params:{wave:'spice-sine'}}]}]) {
+    assert.throws(()=>validateDcSweepInput(c,'V1',[observation]),/DC sweep/);
+  }
+  assert.throws(()=>validateDcSweepInput({parts:[source]},'missing',[observation]),/voltage source/);
+  assert.throws(()=>validateDcSweepInput({parts:[source]},'V1',[]),/observations/);
+  const raw={schemaVersion:1,sourceId:'V1',observations:[{...observation,absoluteTolerance:0,relativeTolerance:.6}],
+    samples:[{sourceVolts:0,values:[1]},{sourceVolts:1,values:[1]}]};
+  const expected=parseExpectedDcSweep(JSON.stringify(raw));
+  const actual={sourceId:'V1',observations:[observation],samples:structuredClone(raw.samples)};
+  assert.equal(compareExpectedDcSweep(actual,expected).status,'pass');
+  actual.samples[1].values[0]=2;
+  assert.equal(compareExpectedDcSweep(actual,expected).counts.failed,1,'relative tolerance scales expected, not actual');
+  for (const bad of [{...raw,schemaVersion:2},{...raw,samples:[]},
+    {...raw,observations:[{...raw.observations[0],unit:'A'}]},
+    {...raw,observations:[{...raw.observations[0],absoluteTolerance:null}]},
+    {...raw,samples:[{sourceVolts:0,values:[]},raw.samples[1]]},
+    {...raw,samples:[raw.samples[0],raw.samples[0]]}]) {
+    assert.throws(()=>parseExpectedDcSweep(JSON.stringify(bad)),/DC reference/);
+  }
+  for (const changed of [{...actual,sourceId:'V2'},
+    {...actual,observations:[{...observation,reference:'other'}]},
+    {...actual,samples:[]},{...actual,samples:actual.samples.slice(0,1)}]) {
+    assert.equal(compareExpectedDcSweep(changed,expected).status,'fail');
+    assert.ok(compareExpectedDcSweep(changed,expected).counts.structuralFailures>0);
+  }
+});
+
+test('actual CLI strict DC sweep refuses unsupported setup and a later conflicting source point without partial output', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-dc-refusal-'));
+  const file=join(dir,'input.cir');
+  const run=extra=>spawnSync(process.execPath,[CLI,'dc-sweep',file,...extra],{encoding:'utf8',timeout:30000});
+  try {
+    writeFileSync(file,'self-authored\nV1 in 0 0\nR1 in 0 1k\n.op\n.end\n');
+    const args=['--source','V1','--from','-1','--to','1','--points','3','--observe','V1.pos,V1.neg','--current','V1.pos','--json'];
+    const good=run(args); assert.equal(good.status,0,good.stderr);
+    const got=JSON.parse(good.stdout);
+    assert.deepEqual(got.samples.map(row=>row.sourceVolts),[-1,0,1]);
+    assert.ok(Math.abs(got.samples[0].values[0]+1)<1e-12);
+    assert.ok(Math.abs(got.samples[0].values[1]-.001)<1e-9,'delivering-source sign remains signed');
+    const descending=args.slice(); descending[descending.indexOf('--from')+1]='1'; descending[descending.indexOf('--to')+1]='-1';
+    const reversed=run(descending); assert.equal(reversed.status,0,reversed.stderr);
+    const descendingRows=JSON.parse(reversed.stdout).samples;
+    assert.deepEqual(descendingRows.map(row=>row.sourceVolts),[1,0,-1]);
+    assert.ok(Math.abs(descendingRows[0].values[1]+.001)<1e-9);
+    for (const extra of [['--source','missing','--observe','V1.pos'],
+      ['--source','V1','--observe','missing.pin'],['--source','V1','--current','V1.missing'],
+      ['--source','V1','--observe','V1.pos','--points','502'],['--source','V1','--observe','V1.pos','--watch']]) {
+      const refused=run(extra); assert.equal(refused.status,2,refused.stderr); assert.equal(refused.stdout,'');
+    }
+    writeFileSync(file,'self-authored initially redundant short\nV1 0 0 0\nV2 in 0 1\nR1 in 0 1k\n.op\n.end\n');
+    const conflict=run(['--source','V1','--from','0','--to','1','--points','3','--observe','V2.pos','--json']);
+    assert.equal(conflict.status,2); assert.match(conflict.stderr,/DC point 1 \(0.5 V\)/);
+    assert.equal(conflict.stdout,'','point zero success must not hide later failure');
+    writeFileSync(file,'self-authored timed source\nV1 in 0 SINE(0 1 1k)\nR1 in 0 1k\n.end\n');
+    const timed=run(args); assert.equal(timed.status,2); assert.match(timed.stderr,/non-DC waveform/);
+    // A solver may return finite diagnostics despite an explicit failure flag.
+    // Do not treat those values as successful points or publish a partial curve.
+    writeFileSync(file,'self-authored\nV1 in 0 0\nR1 in 0 1k\n.op\n.end\n');
+    const engineRoot=dirname(fileURLToPath(import.meta.resolve('bw-board/package.json')));
+    const override=join(dir,'flagged-engine'); mkdirSync(join(override,'src'),{recursive:true});
+    writeFileSync(join(override,'package.json'),'{"name":"flagged-engine","version":"0"}');
+    writeFileSync(join(override,'src','index.js'),
+      `import * as base from ${JSON.stringify(join(engineRoot,'src','index.js'))};\n`
+      +`export * from ${JSON.stringify(join(engineRoot,'src','index.js'))};\n`
+      +`export class BoardImpl extends base.BoardImpl { operatingPoint(options) { const result=super.operatingPoint(options); return this.parts.find(p=>p.id==='V1').params.volts>0 ? {...result,converged:false}:result; } }\n`);
+    writeFileSync(join(override,'src','register-all.js'),`export * from ${JSON.stringify(join(engineRoot,'src','register-all.js'))};\n`);
+    const flagged=spawnSync(process.execPath,[CLI,'dc-sweep',file,'--source','V1','--from','0','--to','1',
+      '--points','3','--observe','V1.pos','--json'],{encoding:'utf8',env:{...process.env,BW_BOARD:override},timeout:30000});
+    assert.equal(flagged.status,2,flagged.stderr); assert.match(flagged.stderr,/DC point 1/);
+    assert.equal(flagged.stdout,'');
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+for (const kind of ['linear','diode']) test(`actual CLI compares 201 ${kind} strict DC points with live ngspice and independent analytical controls`, {
+  skip:spawnSync('ngspice',['--version'],{encoding:'utf8'}).status!==0?'ngspice unavailable; no DC oracle comparison':false,
+},()=>{
+  const dir=mkdtempSync(join(tmpdir(),`bwc-dc-${kind}-`));
+  try {
+    const file=join(dir,'input.cir'),reference=join(dir,'reference.json');
+    const deck=kind==='linear'?'self-authored linear\nV1 in 0 0\nR1 in out 1k\nR2 out 0 1k\n'
+      :'self-authored diode\nV1 in 0 0\nR1 in out 1k\nD1 out 0 SELF\n.model SELF D(IS=2e-12 N=1.3 RS=4)\n.temp 26.826793442075882\n.options tnom=26.826793442075882\n';
+    writeFileSync(file,deck+'.op\n.end\n');
+    const from=kind==='linear'?-1:0,to=kind==='linear'?1:5,step=(to-from)/200;
+    writeFileSync(join(dir,'oracle.cir'),deck+'.options reltol=1e-10 abstol=1e-14 vntol=1e-12\n.control\n'
+      +`set numdgt=17\ndc V1 ${from} ${to} ${step}\nwrdata oracle.dat v(out) i(V1)\nquit\n.endc\n.end\n`);
+    const oracle=spawnSync('ngspice',['-b','oracle.cir'],{cwd:dir,encoding:'utf8',timeout:30000});
+    assert.equal(oracle.status,0,oracle.stderr);
+    const rows=readFileSync(join(dir,'oracle.dat'),'utf8').trim().split('\n').map(line=>line.trim().split(/\s+/).map(Number));
+    assert.equal(rows.length,201); assert.ok(rows.every(row=>row.length===4&&row.every(Number.isFinite)));
+    const observations=[{kind:'voltage',selector:'R1.b',reference:'GND1.gnd',unit:'V',absoluteTolerance:1e-6},
+      {kind:'current',selector:'V1.pos',reference:'',unit:'A',absoluteTolerance:1e-9}];
+    const expected={schemaVersion:1,sourceId:'V1',observations,provenance:{tool:'live ngspice',deck:'self-authored',analysis:'DC'},
+      samples:rows.map(row=>({sourceVolts:row[0],values:[row[1],row[3]]}))};
+    for (const row of rows) {
+      const voltage=row[1],current=-row[3];
+      if (kind==='linear') {
+        assert.ok(Math.abs(voltage-row[0]/2)<1e-8);
+        assert.ok(Math.abs(current-row[0]/2000)<1e-10);
+      } else {
+        assert.ok(Math.abs(current-(row[0]-voltage)/1000)<1e-10,'independent resistor KCL');
+        // Solve the independent implicit Shockley/series-R equation by
+        // bisection. Comparing voltage avoids magnifying the known ngspice
+        // thermal-constant residue through an exponential current residual.
+        let lo=0,hi=Math.max(0,row[0]/1000);
+        for (let iteration=0;iteration<100;iteration++) {
+          const mid=(lo+hi)/2;
+          if (mid*1004+.02585*1.3*Math.log1p(mid/2e-12)>row[0]) hi=mid;
+          else lo=mid;
+        }
+        const closedVoltage=row[0]-1000*(lo+hi)/2;
+        assert.ok(Math.abs(voltage-closedVoltage)<3e-7,'independent implicit Shockley voltage control');
+      }
+    }
+    writeFileSync(reference,JSON.stringify(expected));
+    const argv=[CLI,'dc-sweep',file,'--source','V1','--from',String(from),'--to',String(to),'--points','201',
+      '--observe','R1.b,GND1.gnd','--current','V1.pos','--expect',reference,'--json'];
+    const run=()=>spawnSync(process.execPath,argv,{encoding:'utf8',timeout:30000});
+    const result=run(); assert.equal(result.status,0,result.stderr);
+    const report=JSON.parse(result.stdout);
+    assert.equal(report.samples.length,201);
+    assert.equal(report.comparison.status,'pass'); assert.equal(report.comparison.counts.compared,402);
+    assert.equal(report.comparison.counts.failed,0); assert.equal(report.claims.transient,false);
+    assert.equal(report.claims.independentOracle,false,'CLI does not authenticate caller provenance');
+    expected.samples[137].values[0]+=.01; writeFileSync(reference,JSON.stringify(expected));
+    const changed=run(); assert.equal(changed.status,1,changed.stderr);
+    const mismatch=JSON.parse(changed.stdout).comparison;
+    assert.equal(mismatch.counts.failed,1); assert.equal(mismatch.mismatches[0].index,137);
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
 
 test('receipt identity verification validates authority and cannot empty-pass missing fingerprints', () => {
   const artifact={name:'input',bytes:3,sha256:'a'.repeat(64)};

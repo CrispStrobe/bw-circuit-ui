@@ -114,8 +114,9 @@ const positional = [];
 const opts = {};
 const valueFlags = new Set(['-o', '--to', '--render', '--profile', '--observations', '--initial',
   '--scope', '--meter', '--probe', '--duration', '--rate', '--csv', '--expect', '--expect-meters',
-  '--abs-volts', '--rel', '--time-tolerance', '--receipt', '--input']);
-const repeatFlags = new Set(['scope', 'meter']);
+  '--abs-volts', '--rel', '--time-tolerance', '--receipt', '--input',
+  '--source', '--from', '--points', '--observe', '--current']);
+const repeatFlags = new Set(['scope', 'meter', 'observe', 'current']);
 for (let i = 1; i < args.length; i++) {
   // Value-taking flags must be listed, or the value silently becomes a
   // positional and the flag reads as a bare boolean — which is how --render
@@ -136,6 +137,8 @@ const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
     + '  bwc op      <file>\n'
+    + '  bwc dc-sweep <file> --source V1 --from -1 --to 1 --points 201\n'
+    + '              [--observe <tip>[,<ref>]] [--current <part>.<terminal>] [--expect curve.json] [--json]\n'
     + '  bwc verify-receipt <receipt.json> --input <circuit> [--expect waveform.json]\n'
     + '              [--expect-meters meters.json] [--csv trace.csv] [--json]\n'
     + '  bwc measure <file> --scope <tip>[,<ref>] [--probe ideal|10x|1x]\n'
@@ -240,6 +243,71 @@ if (!file) die(cmd + ' needs a file');
 const loadOrDie = async (p2, bytes) => { try { return await load(p2, bytes); } catch (e) { return die(e.message); } };
 
 switch (cmd) {
+  case 'dc-sweep': {
+    const unsupported=Object.keys(opts).find(key=>!['source','from','to','points','observe','current','expect','json'].includes(key));
+    if (unsupported) die(`dc-sweep does not support --${unsupported}`);
+    try {
+      const {dcSweepGrid,validateDcSweepInput,parseExpectedDcSweep,compareExpectedDcSweep}=await import(join(SRC,'model/dc-sweep-report.js'));
+      const grid=dcSweepGrid(Number(opts.from ?? 0),Number(opts.to ?? 5),Number(opts.points ?? 21));
+      const observations=[...(opts.observe||[]).map(value=>{
+        const spec=parseScopeSpec(value);
+        return {kind:'voltage',selector:spec.tip,reference:spec.reference||'',unit:'V'};
+      }),...(opts.current||[]).map(value=>({kind:'current',selector:parseMeterSpec(`current:${value}`).probes[0],reference:'',unit:'A'}))];
+      let expected=null;
+      if (opts.expect) {
+        if (statSync(opts.expect).size>4*1024*1024) throw new Error('DC reference exceeds 4 MiB');
+        expected=parseExpectedDcSweep(readFileSync(opts.expect,'utf8'));
+      }
+      const c=await load(file);
+      validateDcSweepInput(c,opts.source,observations);
+      const {Circuit,error}=await loadEngine();
+      if (error) throw new Error(`DC sweep needs a strict operatingPoint engine (${error})`);
+      const samples=[]; let analysis;
+      for (const [index,sourceVolts] of grid.entries()) {
+        try {
+          const parts=structuredClone(c.parts);
+          const source=parts.find(part=>part.id===opts.source);
+          source.params={...source.params,volts:sourceVolts};
+          const circ=Circuit.fromJSON({...c,vcc:Number.isFinite(c.vcc)?c.vcc:5,parts});
+          if (circ.netlistError) throw new Error(circ.netlistError);
+          if (circ.resolvedNets.length>32) throw new Error('DC sweep limits the graph to 32 nets');
+          circ.setPower(true);
+          const result=circ.operatingPoint();
+          if (result?.converged!==true||result.railConflicts?.length) throw new Error(`strict OP did not converge without rail conflicts: ${result?.railConflicts?.join('; ')||'nonconvergence'}`);
+          analysis ??= result.analysis;
+          const voltage=selector=>{
+            const net=resolveEndpointNet(circ.resolvedNets,selector);
+            const value=result.nodeVoltages.get(net);
+            if (!Number.isFinite(value)) throw new Error(`no finite OP voltage for ${selector}`);
+            return value;
+          };
+          const values=observations.map(row=>{
+            if (row.kind==='voltage') return voltage(row.selector)-(row.reference?voltage(row.reference):0);
+            const split=row.selector.lastIndexOf('.');
+            const value=result.branchCurrents.get(row.selector.slice(0,split))?.get(row.selector.slice(split+1));
+            if (!Number.isFinite(value)) throw new Error(`no finite OP terminal current for ${row.selector}`);
+            return value;
+          });
+          if (values.some(value=>!Number.isFinite(value))) throw new Error('nonfinite DC observation');
+          samples.push({sourceVolts,values});
+        } catch (pointError) { throw new Error(`DC point ${index} (${sourceVolts} V): ${pointError.message}`); }
+      }
+      const report={schemaVersion:1,source:basename(file),format:c.format,sourceId:opts.source,
+        observations,samples,analysis,
+        claims:{analysis:'fresh static strict operating point per point',transient:false,independentOracle:false}};
+      if (expected) report.comparison=compareExpectedDcSweep(report,expected);
+      if (opts.json) console.log(JSON.stringify(report,null,2));
+      else {
+        console.log(`${basename(file)}: ${samples.length} strict DC points (${opts.source})`);
+        console.log(['source[V]',...observations.map(row=>`${row.kind}:${row.selector}${row.reference?','+row.reference:''}[${row.unit}]`)].join('\t'));
+        for (const row of samples) console.log([row.sourceVolts,...row.values].join('\t'));
+        if (report.comparison) console.log(`reference curve: ${report.comparison.status.toUpperCase()}`);
+        console.log('static operating points, not transient samples or an independent oracle certificate');
+      }
+      if (report.comparison?.status==='fail') process.exitCode=1;
+    } catch (error) { die(`DC sweep failed: ${error.message}`); }
+    break;
+  }
   case 'verify-receipt': {
     if (!opts.input) die('verify-receipt requires an explicit --input circuit file');
     const unsupported=Object.keys(opts).find(key=>!['input','expect','expect-meters','csv','json'].includes(key));

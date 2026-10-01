@@ -41,6 +41,73 @@ Repeat `--scope` and `--meter` for multiple channels/readings. Scope traces
 can be checked with `--expect`; meter-only captures now also support
 `--expect-meters meter-reference.json` in batch and `--watch` modes.
 
+### Strict DC source curves
+
+```sh
+bwc dc-sweep divider.cir --source V1 --from -1 --to 1 --points 201 \
+  --observe R1.b,GND1.gnd --current V1.pos --json
+
+bwc dc-sweep diode.cir --source V1 --from 0 --to 5 --points 201 \
+  --observe R1.b,GND1.gnd --current D1.anode --expect dc-reference.json --json
+```
+
+`--from`/`--to` are finite voltages (plain numbers, including scientific notation);
+`--points` includes both endpoints. Ascending and descending grids are supported.
+Defaults are 0 to 5 V, 21 points. The selected source must be one uniquely named
+`vsource`, not a supply part. Each point clones the imported circuit, sets only
+that source's `volts`, and calls public strict `operatingPoint`. No previous
+point's storage, meter history or nonlinear solver state is reused. This is a
+static curve, **not** a time trace, oscilloscope acquisition or temperature sweep.
+
+Repeat `--observe tip[,reference]` and `--current part.terminal`. Voltages are
+differential or relative to engine ground; currents retain the native signed
+terminal convention. Limits: 2–501 points, 1–32 parts, at most 32 nets and
+1–8 observations, endpoints within ±1000 V. A grid that collapses at floating
+point resolution refuses. The engine's strict DC supported-kind/parameter
+domain remains authoritative. Non-DC source waveforms, selected-source explicit
+`dcBias`, semantic import losses and retained blockers refuse rather than being
+silently overridden. Any unconverged/conflicting or nonfinite point aborts with
+its index and swept voltage; no successful partial JSON curve is printed.
+
+`--expect` uses this curve schema, distinct from transient/meter references.
+This illustrative reference is for a **two-point divider** sweep from -1 to
+1 V; the 201-point commands above require their own full matching references:
+
+```json
+{
+  "schemaVersion": 1,
+  "sourceId": "V1",
+  "observations": [
+    {"kind": "voltage", "selector": "R1.b", "reference": "GND1.gnd",
+     "unit": "V", "absoluteTolerance": 0.000001, "relativeTolerance": 0},
+    {"kind": "current", "selector": "V1.pos", "reference": "",
+     "unit": "A", "absoluteTolerance": 0.000000001, "relativeTolerance": 0}
+  ],
+  "sourceVoltageTolerance": 0.000000000001,
+  "samples": [
+    {"sourceVolts": -1, "values": [-0.5, 0.0005]},
+    {"sourceVolts": 1, "values": [0.5, -0.0005]}
+  ]
+}
+```
+
+Voltage observations precede current observations, with command order retained
+within each group. Reference channel identity/order, SI units, grid and sample
+counts must match; values are not interpolated or dropped. Every channel needs
+an explicit nonnegative absolute tolerance; relative tolerance defaults to 0
+and scales the **expected** magnitude. Reference size is bounded at 4 MiB,
+501 points and 8 channels. A mismatch exits 1 with full result and at most 20
+diagnostics; unsupported input or a failed solve exits 2; completion/match exits
+0. Text output is a tab-separated curve; JSON preserves typed channels, strict
+analysis metadata and optional comparison. Caller reference provenance is
+reported, never authenticated as an independent-oracle certificate.
+
+The focused proof uses two self-authored circuits: 201 divider points checked
+against closed form and live ngspice, plus 201 Shockley/series-resistance diode
+points checked against an independent implicit equation and live ngspice.
+That is 402 operating points / 804 selected V/A observations—not 402 imported
+corpus circuits, nor universal nonlinear or transient qualification.
+
 ### Reproducible diagnostic receipts
 
 Use `--receipt capture.json` to save a separate JSON diagnostic record without
