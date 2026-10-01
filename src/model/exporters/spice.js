@@ -62,6 +62,19 @@ import { isExplicitShockleyPart } from '../spice-diode.js';
 const TWO_TERMINAL = new Set(['R', 'C', 'L', 'V', 'I', 'F']);
 
 /**
+ * `spiceCard: 'X'` kinds the engine models as a PLAIN DC resistance, and which
+ * are therefore fully described by one number from the parts library.
+ *
+ * Deliberately only the buzzer. `dc_motor` and `relay` also carry an `ohms`
+ * card, and both would be WRONG here: the motor is `theveninBetween(a, b,
+ * kV·omega, R)` — a resistor only at the static operating point where omega is
+ * 0 — and the relay's coil resistance says nothing about its contacts, which
+ * are the circuit on a relay bench. Adding a kind to this set is a claim that
+ * one resistor is the whole device.
+ */
+const DC_LOAD_KINDS = new Set(['buzzer']);
+
+/**
  * Engine defaults for parts whose value param was never set. These are
  * bw-board's own `params.X ?? default` fallbacks (src/mna.js). The old
  * serializer wrote `1` for anything valueless, which turned a default
@@ -407,7 +420,7 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
     }
 
 
-    if (!card || card === 'X' || card === 'S') {
+    if (!card || (card === 'X' && !DC_LOAD_KINDS.has(part.kind)) || card === 'S') {
       // DECOMPOSE, RATHER THAN VANISH.
       //
       // A part with no SPICE card used to leave the deck entirely, and for a
@@ -985,7 +998,31 @@ export function toSpice(netlist, title = 'BrickWright Circuit',
         continue;
       }
       usedModels.add('MOSFET');
+<<<<<<< HEAD
       lines.push(`${el} ${nodeFields} ${bulk} MOSFET`);
+=======
+      lines.push(`${part.refdes} ${nodeFields} MOSFET`);
+    } else if (card === 'X' && DC_LOAD_KINDS.has(part.kind)) {
+      // A part SPICE has no primitive for, which the engine nonetheless models
+      // as a plain DC resistance. Only kinds fully described by that one number
+      // belong here: `dc_motor` is a back-EMF source in series with its winding
+      // and `relay` is a coil PLUS contacts stamped as switches, so emitting
+      // either as one resistor would agree with ngspice about a simpler device
+      // than the solver runs. They stay skipped until their multi-element emit
+      // exists (bw-board parts-library says so in the cards' own comment).
+      //
+      // The number comes from the card, never from here. It was three homes in
+      // bw-board alone — the stamp, the extraction, and both walkers — before
+      // parts-library took it, and a copy in this file would be the fourth.
+      const ohms = Number(part.params?.ohms ?? classDefaults(part.kind).ohms);
+      if (!Number.isFinite(ohms) || ohms <= 0) {
+        skipped.push(`${part.refdes} (${part.kind}): no DC-equivalent resistance is derivable`
+          + ' — the parts library has no `ohms` for this kind');
+        lines.push(`* ${part.refdes} ${part.kind} — no resistance`);
+        continue;
+      }
+      lines.push(`R${part.refdes} ${nodeFields} ${formatSpiceValue(ohms)}`);
+>>>>>>> review/buzzer-22-20261001
     } else {
       skipped.push(`${part.refdes} (${part.kind}): unsupported card '${card}'`);
       lines.push(`* ${part.refdes} ${part.kind} — unsupported`);
