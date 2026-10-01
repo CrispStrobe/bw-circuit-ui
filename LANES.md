@@ -1,5 +1,13 @@
 # Work lanes
 
+2026-10-01 README refresh — CLAIM, Codex bwcx `/root`.
+Clean reused worktree `wt-cui-measurement-receipt-20261001`, branch
+`docs/readme-current-20261001`, base `90c94cb9846b1dd15f677c8f5bc536829f434d04`.
+Envelope: README.md and this claim only. Rewrite the user introduction around
+current installation, integration, CLI, supported subsets and honest limits;
+remove stale counts and campaign narratives without changing historical evidence.
+No source, test, package, workflow, pin, deployment or other lane changes.
+
 Claims are effective only after this file is merged to the canonical remote branch. A
 claim covers overlapping files and package surfaces, not merely a task title. If a
 claim push races, the losing writer must reread this registry and abandon an occupied
