@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { fileReceipt, runtimeReceipt, importedCircuitSha256 } from '../src/model/measurement-receipt.js';
+import { fileReceipt, runtimeReceipt, importedCircuitSha256,
+  parseMeasurementReceipt, compareMeasurementReceiptIdentity } from '../src/model/measurement-receipt.js';
 import {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
   parseExpectedMeters, createExpectedMeterComparison,
@@ -21,6 +22,124 @@ const CLI = join(ROOT, 'bin', 'bwc.mjs');
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json');
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
+
+test('receipt identity verification validates authority and cannot empty-pass missing fingerprints', () => {
+  const artifact={name:'input',bytes:3,sha256:'a'.repeat(64)};
+  const receipt={schemaVersion:1,kind:'bwc-measurement-receipt',input:artifact,
+    references:{waveform:null,meters:null},csv:null,
+    cli:{jsJsonTreeSha256:'b'.repeat(64)},
+    engine:{selection:'installed package',declaredPackageSpec:'declared',observed:{jsJsonTreeSha256:'c'.repeat(64)}},
+    importedCircuitSha256:'d'.repeat(64),invocation:{nodeVersion:process.version},
+    acquisition:'batch',exitCode:1,report:{}};
+  const parsed=parseMeasurementReceipt(JSON.stringify(receipt));
+  const observed={...parsed,nodeVersion:process.version};
+  const good=compareMeasurementReceiptIdentity(parsed,observed);
+  assert.equal(good.status,'match'); assert.equal(good.checks.length,14);
+  assert.equal(good.recordedMeasurementExitCode,1,'identity match does not turn failed measurements into passing ones');
+  assert.equal(good.limits.numericalAgreement,false);
+  for (const [field,value] of [['schemaVersion',2],['kind','unknown'],['input',null],
+    ['references',{}],['csv',{}],['cli',{}],['engine',{}],['importedCircuitSha256',''],
+    ['invocation',{}],['exitCode',2],['acquisition','unknown'],['report',null]]) {
+    assert.throws(()=>parseMeasurementReceipt(JSON.stringify({...receipt,[field]:value})),/invalid measurement receipt/,field);
+  }
+  for (const bad of [{...artifact,bytes:-1},{...artifact,bytes:1.5},{...artifact,sha256:'A'.repeat(64)}]) {
+    assert.throws(()=>parseMeasurementReceipt(JSON.stringify({...receipt,input:bad})),/invalid/);
+  }
+  for (const [field,mutate] of [
+    ['input',value=>({...value,input:{...artifact,sha256:'0'.repeat(64)}})],
+    ['references',value=>({...value,references:{waveform:artifact,meters:null}})],
+    ['csv',value=>({...value,csv:artifact})],
+    ['imported',value=>({...value,importedCircuitSha256:'e'.repeat(64)})],
+    ['engine',value=>({...value,engine:{...value.engine,observed:{jsJsonTreeSha256:'e'.repeat(64)}}})],
+    ['selection',value=>({...value,engine:{...value.engine,selection:'BW_BOARD override'}})],
+    ['declaration',value=>({...value,engine:{...value.engine,declaredPackageSpec:'other'}})],
+    ['cli',value=>({...value,cli:{jsJsonTreeSha256:'e'.repeat(64)}})],
+    ['node',value=>({...value,nodeVersion:'v0.0.0'})],
+  ]) assert.equal(compareMeasurementReceiptIdentity(parsed,mutate(observed)).status,'mismatch',field);
+});
+
+test('actual CLI verifies explicit receipt artifacts without simulation or embedded path execution', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-verify-receipt-'));
+  const env={...process.env}; delete env.BW_BOARD;
+  const run=(argv,extraEnv={})=>spawnSync(process.execPath,[CLI,...argv],{env:{...env,...extraEnv},encoding:'utf8',timeout:30000});
+  try {
+    const source=join(dir,'input.json'),wave=join(dir,'wave.json'),meter=join(dir,'meter.json');
+    const csv=join(dir,'trace.csv'),saved=join(dir,'receipt.json');
+    const inputBytes=readFileSync(FIXTURE); writeFileSync(source,inputBytes);
+    const waveBytes=JSON.stringify({schemaVersion:1,traces:[{tip:'RT.b',reference:'GND.gnd',
+      samples:[{timeSeconds:.0001,volts:2.5},{timeSeconds:.0002,volts:2.5}]}]});
+    const meterBytes=JSON.stringify({schemaVersion:1,acquisition:'batch',meters:[{mode:'voltage',
+      probes:['RT.b','GND.gnd'],siUnit:'V',quantity:'observed-dc-mean',absoluteTolerance:1e-9,
+      samples:[{timeSeconds:.0002,siValue:2.5}]}]});
+    writeFileSync(wave,waveBytes); writeFileSync(meter,meterBytes);
+    const capture=run(['measure',source,'--scope','RT.b,GND.gnd','--meter','voltage:RT.b,GND.gnd',
+      '--duration','200us','--csv',csv,'--expect',wave,'--expect-meters',meter,'--receipt',saved,'--json']);
+    assert.equal(capture.status,0,capture.stderr);
+    const receipt=JSON.parse(readFileSync(saved,'utf8'));
+    const verify=['verify-receipt',saved,'--input',source,'--expect',wave,'--expect-meters',meter,'--csv',csv,'--json'];
+    const good=run(verify); assert.equal(good.status,0,good.stderr);
+    assert.equal(JSON.parse(good.stdout).status,'match');
+    assert.equal(JSON.parse(good.stdout).checks.filter(row=>!row.match).length,0);
+    const missing=run(['verify-receipt',saved,'--input',source,'--json']);
+    assert.equal(missing.status,1);
+    assert.deepEqual(JSON.parse(missing.stdout).checks.filter(row=>!row.match).map(row=>row.field),
+      ['references.waveform.sha256','references.waveform.bytes','references.meters.sha256',
+        'references.meters.bytes','csv.sha256','csv.bytes']);
+    for (const [path,bytes,field] of [[wave,waveBytes,'references.waveform'],[meter,meterBytes,'references.meters'],
+      [csv,readFileSync(csv),'csv']]) {
+      writeFileSync(path,Buffer.concat([Buffer.from(bytes),Buffer.from('\n')]));
+      const changed=run(verify); assert.equal(changed.status,1,changed.stderr);
+      assert.ok(JSON.parse(changed.stdout).checks.some(row=>row.field===`${field}.sha256`&&!row.match));
+      writeFileSync(path,bytes);
+    }
+    const changedInput=JSON.parse(inputBytes); changedInput.vcc=4;
+    writeFileSync(source,JSON.stringify(changedInput));
+    const changed=run(verify); assert.equal(changed.status,1,changed.stderr);
+    const fields=JSON.parse(changed.stdout).checks.filter(row=>!row.match).map(row=>row.field);
+    assert.ok(fields.includes('input.sha256')); assert.ok(fields.includes('importedCircuitSha256'));
+    writeFileSync(source,inputBytes);
+    for (const [path,value,field] of [['engine','0'.repeat(64),'engine.jsJsonTreeSha256'],
+      ['cli','0'.repeat(64),'cli.jsJsonTreeSha256'],['node','v0.0.0','nodeVersion']]) {
+      const mutated=structuredClone(receipt);
+      if (path==='engine') mutated.engine.observed.jsJsonTreeSha256=value;
+      if (path==='cli') mutated.cli.jsJsonTreeSha256=value;
+      if (path==='node') mutated.invocation.nodeVersion=value;
+      writeFileSync(saved,JSON.stringify(mutated));
+      const result=run(verify); assert.equal(result.status,1,result.stderr);
+      assert.deepEqual(JSON.parse(result.stdout).checks.filter(row=>!row.match).map(row=>row.field),[field]);
+    }
+    const marker=join(dir,'must-not-execute');
+    const inert=structuredClone(receipt);
+    inert.invocation={...inert.invocation,cwd:'/missing/untrusted/path',argv:['-e',`require('fs').writeFileSync(${JSON.stringify(marker)},'bad')`]};
+    inert.engine.observed.root='/missing/untrusted/engine';
+    inert.cli.root='/missing/untrusted/cli';
+    writeFileSync(saved,JSON.stringify(inert));
+    const ignored=run(verify); assert.equal(ignored.status,0,ignored.stderr);
+    assert.equal(existsSync(marker),false);
+    assert.equal(JSON.parse(ignored.stdout).limits.recordedInvocationExecuted,false);
+    const relocated=join(dir,'relocated.json'); writeFileSync(relocated,inputBytes);
+    const relocatedArgs=verify.slice(); relocatedArgs[3]=relocated;
+    assert.equal(run(relocatedArgs).status,0,'artifact names/locations are not content identity');
+    const override=join(dir,'no-execution'); mkdirSync(join(override,'src'),{recursive:true});
+    writeFileSync(join(override,'package.json'),'{"name":"must-not-run","version":"0"}');
+    writeFileSync(join(override,'src','index.js'),'throw new Error("engine must not execute");');
+    writeFileSync(join(override,'src','register-all.js'),'throw new Error("register must not execute");');
+    const noExecution=structuredClone(receipt);
+    noExecution.engine.selection='BW_BOARD override';
+    noExecution.engine.observed=runtimeReceipt(override);
+    writeFileSync(saved,JSON.stringify(noExecution));
+    const inspected=run(verify,{BW_BOARD:override});
+    assert.equal(inspected.status,0,inspected.stderr);
+    assert.equal(JSON.parse(inspected.stdout).status,'match','runtime inspected as bytes, never imported/executed');
+    writeFileSync(saved,JSON.stringify({...receipt,padding:' '.repeat(4*1024*1024)}));
+    const oversized=run(verify); assert.equal(oversized.status,2); assert.match(oversized.stderr,/4 MiB/);
+    writeFileSync(saved,'{}'); assert.equal(run(verify).status,2);
+    writeFileSync(saved,JSON.stringify(receipt));
+    assert.equal(run(['verify-receipt',saved]).status,2);
+    assert.equal(run([...verify,'--watch']).status,2);
+    assert.equal(readFileSync(source,'utf8'),inputBytes.toString());
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
 
 test('measurement receipt fingerprints bind actual bytes, runtime paths and importer output', () => {
   const dir=mkdtempSync(join(tmpdir(),'bwc-receipt-tree-'));

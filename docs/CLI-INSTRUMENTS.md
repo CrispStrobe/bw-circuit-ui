@@ -79,6 +79,36 @@ resulting parts/wires alter the imported-circuit fingerprint. A declared pin is
 not falsely presented as an overridden engine's identity. Source bytes and full
 waveforms are not embedded, and supplied reference provenance remains untrusted.
 
+### Verify a saved receipt before comparing a replay
+
+```sh
+bwc verify-receipt capture.json --input sine.cir \
+  --expect expected-waveform.json --csv trace.csv --json
+```
+
+Supply `--expect-meters` too if that reference was recorded. Verification is
+read-only: it does not simulate, execute saved arguments, use saved working
+directories or follow embedded runtime roots. Files must be supplied explicitly;
+the current installed engine (or current `BW_BOARD`) and current CLI are
+fingerprinted. It compares input/reference/CSV hashes **and byte counts**,
+imported parts/wires/supply, engine selection/declared spec/observed tree, CLI
+tree and Node version. Equal bytes may be relocated or renamed. Missing or
+unexpected artifacts, changed importer output and changed runtimes are named
+in `checks`; changing the CLI code itself legitimately changes its tree hash.
+
+Exit `0` means these identity checks match, `1` means at least one differs,
+and `2` means malformed/unsupported receipt, unavailable supplied file or
+invalid command. Receipts larger than 4 MiB refuse. Optional reference/CSV
+files recorded in the receipt must be supplied for a match; their embedded
+filenames are never automatically opened. Unrelated acquisition flags refuse.
+
+An identity match does **not** mean the recorded measurements passed. The
+reported `recordedMeasurementExitCode` remains separate, and is itself an
+untrusted receipt field. This does not verify recorded measurement values,
+clock/invocation integrity, a complete dependency closure, signed provenance,
+physical fidelity or independent oracle agreement. Run the numerical reference
+checks again on replay output; retain actual CSV/NDJSON for waveform review.
+
 ```sh
 bwc measure inductor.cir --meter current:L1.a --duration 7ms --rate 100kHz \
   --watch --expect-meters meter-reference.json

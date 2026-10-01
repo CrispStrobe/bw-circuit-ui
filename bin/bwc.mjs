@@ -114,7 +114,7 @@ const positional = [];
 const opts = {};
 const valueFlags = new Set(['-o', '--to', '--render', '--profile', '--observations', '--initial',
   '--scope', '--meter', '--probe', '--duration', '--rate', '--csv', '--expect', '--expect-meters',
-  '--abs-volts', '--rel', '--time-tolerance', '--receipt']);
+  '--abs-volts', '--rel', '--time-tolerance', '--receipt', '--input']);
 const repeatFlags = new Set(['scope', 'meter']);
 for (let i = 1; i < args.length; i++) {
   // Value-taking flags must be listed, or the value silently becomes a
@@ -136,10 +136,12 @@ const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
     + '  bwc op      <file>\n'
+    + '  bwc verify-receipt <receipt.json> --input <circuit> [--expect waveform.json]\n'
+    + '              [--expect-meters meters.json] [--csv trace.csv] [--json]\n'
     + '  bwc measure <file> --scope <tip>[,<ref>] [--probe ideal|10x|1x]\n'
     + '              [--meter voltage:<red>,<black>] [--meter current:<part>.<terminal>]\n'
     + '              [--meter resistance:<red>,<black>] [--duration 10ms] [--rate 10kHz]\n'
-    + '              [--profile interactive-v1] [--watch] [--expect waveform.json] [--expect-meters meters.json] [--json] [--csv trace.csv]\n'
+    + '              [--profile interactive-v1] [--watch] [--expect waveform.json] [--expect-meters meters.json] [--json] [--csv trace.csv] [--receipt capture.json]\n'
     + '              precision batch: --profile precision-v1 --initial zero-state (passive/source circuits only)\n'
     + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
@@ -238,6 +240,39 @@ if (!file) die(cmd + ' needs a file');
 const loadOrDie = async (p2, bytes) => { try { return await load(p2, bytes); } catch (e) { return die(e.message); } };
 
 switch (cmd) {
+  case 'verify-receipt': {
+    if (!opts.input) die('verify-receipt requires an explicit --input circuit file');
+    const unsupported=Object.keys(opts).find(key=>!['input','expect','expect-meters','csv','json'].includes(key));
+    if (unsupported) die(`verify-receipt does not support --${unsupported}`);
+    try {
+      if (statSync(file).size>4*1024*1024) throw new Error('receipt exceeds 4 MiB');
+      const { parseMeasurementReceipt, compareMeasurementReceiptIdentity,
+        fileReceipt, runtimeReceipt, importedCircuitSha256 } = await import(join(SRC,'model/measurement-receipt.js'));
+      const receipt=parseMeasurementReceipt(readFileSync(file,'utf8'));
+      const bytes=readFileSync(opts.input);
+      const c=await load(opts.input,bytes);
+      const pkg=JSON.parse(readFileSync(join(HERE,'..','package.json'),'utf8'));
+      const observed={input:fileReceipt(opts.input,bytes),
+        references:{waveform:opts.expect?fileReceipt(opts.expect):null,
+          meters:opts['expect-meters']?fileReceipt(opts['expect-meters']):null},
+        csv:opts.csv?fileReceipt(opts.csv):null,
+        importedCircuitSha256:importedCircuitSha256(c),
+        engine:{selection:process.env.BW_BOARD?'BW_BOARD override':'installed package',
+          declaredPackageSpec:pkg.devDependencies?.['bw-board'] ?? pkg.dependencies?.['bw-board'] ?? null,
+          observed:runtimeReceipt(engineDir())},
+        cli:runtimeReceipt(join(HERE,'..'),['bin/bwc.mjs']),nodeVersion:process.version};
+      const result=compareMeasurementReceiptIdentity(receipt,observed);
+      if (opts.json) console.log(JSON.stringify(result,null,2));
+      else {
+        console.log(`receipt identity: ${result.status.toUpperCase()}`);
+        console.log(`  recorded measurement exit code: ${result.recordedMeasurementExitCode} (untrusted receipt field)`);
+        for (const row of result.checks.filter(row=>!row.match)) console.log(`  ${row.field}: expected ${JSON.stringify(row.expected)}, observed ${JSON.stringify(row.actual)}`);
+        console.log('  identity only; no simulation, numerical agreement or oracle certificate');
+      }
+      if (result.status!=='match') process.exitCode=1;
+    } catch (error) { die(`receipt verification failed: ${error.message}`); }
+    break;
+  }
   case 'info': {
     const c = await loadOrDie(file);
     console.log(basename(file) + '  [' + c.format + ']');
