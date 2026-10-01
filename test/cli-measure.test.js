@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { fileReceipt, runtimeReceipt, importedCircuitSha256,
   parseMeasurementReceipt, compareMeasurementReceiptIdentity } from '../src/model/measurement-receipt.js';
 import {dcSweepGrid,validateDcSweepInput,parseExpectedDcSweep,compareExpectedDcSweep} from '../src/model/dc-sweep-report.js';
+import {parseExpectedAc,compareExpectedAc} from '../src/model/ac-reference-report.js';
 import {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
   parseExpectedMeters, createExpectedMeterComparison,
@@ -23,6 +24,172 @@ const CLI = join(ROOT, 'bin', 'bwc.mjs');
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json');
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
+
+const acReference = () => ({schemaVersion:1,analyses:[{analysisId:'0:ac',frequenciesHz:[10,100],
+  nodes:[{id:'n0',unit:'V',absoluteTolerance:1e-12,relativeTolerance:0,real:[-1,0],imaginary:[0,0]}]}]});
+const acActual = () => [{analysisId:'0:ac',kind:'ac',status:'pass',observables:{
+  axis:{quantity:'frequency',unit:'Hz',values:[10,100]},
+  nodes:[{id:'n0',magnitude:[1,0],phaseDeg:[180,123]}]}}];
+
+test('AC reference validates bounded complete typed grids and finite tolerances',()=>{
+  assert.equal(parseExpectedAc(JSON.stringify(acReference())).analyses.length,1);
+  const reject=edit=>{const value=acReference();edit(value);assert.throws(()=>parseExpectedAc(JSON.stringify(value)),/AC reference/);};
+  reject(v=>v.schemaVersion=2);reject(v=>v.analyses=[]);reject(v=>v.analyses=Array(9).fill(v.analyses[0]));
+  reject(v=>v.analyses.push(structuredClone(v.analyses[0])));
+  reject(v=>v.analyses[0].analysisId='');reject(v=>v.analyses[0].frequencyToleranceHz=-1);
+  reject(v=>v.analyses[0].frequenciesHz=[100,10]);reject(v=>v.analyses[0].frequenciesHz=[10,10]);
+  reject(v=>v.analyses[0].frequenciesHz=[0,100]);reject(v=>v.analyses[0].frequenciesHz=Array(4097).fill(10));
+  reject(v=>v.analyses[0].nodes=[]);reject(v=>v.analyses[0].nodes[0].unit='A');
+  reject(v=>v.analyses[0].nodes.push(structuredClone(v.analyses[0].nodes[0])));
+  reject(v=>v.analyses[0].nodes[0].real=[0]);reject(v=>v.analyses[0].nodes[0].imaginary=[0,null]);
+  reject(v=>delete v.analyses[0].nodes[0].absoluteTolerance);
+  reject(v=>v.analyses[0].nodes[0].absoluteTolerance=-1);reject(v=>v.analyses[0].nodes[0].relativeTolerance='1');
+  assert.throws(()=>parseExpectedAc(' '.repeat(4*1024*1024)+JSON.stringify(acReference())),/4 MiB/);
+  const large=acReference();large.analyses[0].frequenciesHz=Array.from({length:4096},(_,i)=>i+1);
+  large.analyses[0].nodes=Array.from({length:49},(_,i)=>({id:`n${i}`,unit:'V',absoluteTolerance:0,
+    real:Array(4096).fill(0),imaginary:Array(4096).fill(0)}));
+  assert.throws(()=>parseExpectedAc(JSON.stringify(large)),/200000/);
+});
+
+test('AC comparison checks all complex observations, identities, statuses and axes without phase-wrap false failures',()=>{
+  const expected=parseExpectedAc(JSON.stringify(acReference()));
+  const run=edit=>{const value=acActual();edit?.(value);return compareExpectedAc(value,expected);};
+  assert.equal(run().status,'pass');
+  assert.equal(run(v=>v[0].observables.nodes[0].phaseDeg[0]=-180).status,'pass');
+  for(const edit of [v=>v.pop(),v=>v.push(structuredClone(v[0])),v=>v[0].status='refused',
+    v=>v[0].analysisId='1:ac',v=>v[0].observables.axis.unit='s',v=>v[0].observables.axis.quantity='time',
+    v=>v[0].observables.axis.values.pop(),v=>v[0].observables.axis.values.push(101),
+    v=>v[0].observables.axis.values[1]=10,v=>v[0].observables.axis.values[1]+=1,
+    v=>v[0].observables.nodes[0].id='n1',v=>v[0].observables.nodes=[],
+    v=>v[0].observables.nodes.push(structuredClone(v[0].observables.nodes[0])),
+    v=>v[0].observables.nodes[0].magnitude.pop(),v=>v[0].observables.nodes[0].phaseDeg.push(0)]) {
+    const result=run(edit);assert.equal(result.status,'fail');assert.ok(result.structuralFailures>0);
+  }
+  for(const edit of [v=>v[0].observables.nodes[0].magnitude[0]=-1,
+    v=>v[0].observables.nodes[0].magnitude[0]=Infinity,
+    v=>v[0].observables.nodes[0].phaseDeg[0]=NaN,
+    v=>v[0].observables.nodes[0].phaseDeg[0]=0]) {
+    const result=run(edit);assert.equal(result.status,'fail');assert.equal(result.failed,1);
+  }
+  const relative=acReference();relative.analyses[0].nodes[0].relativeTolerance=.6;
+  const doubled=acActual();doubled[0].observables.nodes[0].magnitude[0]=2;
+  assert.equal(compareExpectedAc(doubled,parseExpectedAc(JSON.stringify(relative))).failed,1,
+    'relative allowance scales from the reference, not a wrong large actual voltage');
+  const overflow=acReference();overflow.analyses[0].nodes[0].relativeTolerance=1e308;
+  overflow.analyses[0].nodes[0].real[0]=1e308;
+  assert.equal(compareExpectedAc(acActual(),parseExpectedAc(JSON.stringify(overflow))).status,'fail');
+  const bounded=acReference();bounded.analyses[0].frequenciesHz=Array.from({length:50},(_,i)=>i+1);
+  bounded.analyses[0].nodes[0].real=Array(50).fill(1);bounded.analyses[0].nodes[0].imaginary=Array(50).fill(0);
+  const many=acActual();many[0].observables.axis.values=bounded.analyses[0].frequenciesHz;
+  many[0].observables.nodes[0].magnitude=Array(50).fill(2);many[0].observables.nodes[0].phaseDeg=Array(50).fill(0);
+  const result=compareExpectedAc(many,parseExpectedAc(JSON.stringify(bounded)));
+  assert.equal(result.failed,50);assert.equal(result.mismatches.length,20);
+  const multi=acReference();multi.analyses.push({...structuredClone(multi.analyses[0]),analysisId:'2:ac'});
+  assert.equal(compareExpectedAc([...acActual(),{...acActual()[0],analysisId:'2:ac'}],
+    parseExpectedAc(JSON.stringify(multi))).compared,4);
+});
+
+test('actual CLI AC comparisons preserve execution, report numerical/structural failures and refuse malformed references',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-ac-reference-'));
+  try {
+    const deck=join(dir,'input.cir'),path=join(dir,'reference.json');
+    const unitBody='AC unit voltage\nV1 signal 0 DC 0 AC 1 180\nR1 signal 0 1000\n.ac lin 3 10 100\n';
+    writeFileSync(deck,unitBody+'.end\n');
+    const reference=acReference();reference.analyses[0].frequenciesHz=[10,55,100];
+    reference.analyses[0].nodes[0].real=[-1,-1,-1];reference.analyses[0].nodes[0].imaginary=[0,0,0];
+    writeFileSync(path,JSON.stringify(reference));
+    const run=(args=[])=>spawnSync(process.execPath,[CLI,'analyze',deck,'--profile','precision-v1',
+      '--expect-ac',path,...args],{encoding:'utf8'});
+    const plain=spawnSync(process.execPath,[CLI,'analyze',deck,'--profile','precision-v1','--json'],{encoding:'utf8'});
+    const baseline=run(['--json']);assert.equal(baseline.status,0,baseline.stderr);
+    const report=JSON.parse(baseline.stdout);assert.deepEqual(report.results,JSON.parse(plain.stdout).results);
+    assert.equal(report.acComparison.status,'pass');assert.equal(report.acComparison.compared,3);
+    assert.equal(report.acComparison.claims.independentOracle,false);
+    assert.equal(report.acComparison.claims.terminalCurrents,false);
+    assert.match(run().stdout,/AC reference PASS: 3\/3/);
+    const empty=spawnSync(process.execPath,[CLI,'analyze',deck,'--profile','precision-v1','--expect-ac',''],{encoding:'utf8'});
+    assert.equal(empty.status,2);assert.match(empty.stderr,/invalid AC reference/);
+    writeFileSync(deck,unitBody+'.op\n.ac lin 3 10 100\n.end\n');
+    const missing=run(['--json']);assert.equal(missing.status,1);
+    assert.ok(JSON.parse(missing.stdout).acComparison.structuralFailures>0);
+    const multiple=structuredClone(reference);
+    multiple.analyses.push({...structuredClone(multiple.analyses[0]),analysisId:'2:ac'});
+    writeFileSync(path,JSON.stringify(multiple));
+    const complete=run(['--json']);assert.equal(complete.status,0,complete.stderr+complete.stdout);
+    assert.equal(JSON.parse(complete.stdout).acComparison.compared,6);
+    writeFileSync(path,JSON.stringify(reference));
+    writeFileSync(deck,unitBody+'.noise V(signal) V1 dec 3 10 100\n.end\n');
+    const otherRefusal=run(['--json']);assert.equal(otherRefusal.status,1);
+    assert.equal(JSON.parse(otherRefusal.stdout).acComparison.status,'pass',
+      'an unrelated native refusal must still fail the command after a successful AC comparison');
+    writeFileSync(deck,unitBody+'.end\n');
+    reference.analyses[0].nodes[0].imaginary[1]=.01;writeFileSync(path,JSON.stringify(reference));
+    const wrong=run(['--json']);assert.equal(wrong.status,1);assert.equal(JSON.parse(wrong.stdout).acComparison.failed,1);
+    reference.analyses[0].nodes[0].imaginary[1]=0;reference.analyses[0].frequenciesHz[2]=101;
+    writeFileSync(path,JSON.stringify(reference));assert.equal(run(['--json']).status,1);
+    delete reference.analyses[0].nodes[0].absoluteTolerance;writeFileSync(path,JSON.stringify(reference));
+    const invalid=run(['--json']);assert.equal(invalid.status,2);assert.equal(invalid.stdout,'');
+    assert.match(invalid.stderr,/invalid AC reference/);
+    writeFileSync(path,' '.repeat(4*1024*1024)+JSON.stringify(acReference()));
+    assert.match(run().stderr,/4 MiB/);
+    writeFileSync(path,JSON.stringify(acReference()));
+    writeFileSync(deck,'DC only\nV1 signal 0 1\nR1 signal 0 1000\n.op\n.end\n');
+    assert.equal(run(['--json']).status,1,'compared-zero cannot pass');
+    writeFileSync(deck,'Unsupported AC\nV1 signal 0 DC 0 AC 1\nD1 signal 0 DM\n.model DM D\n.ac lin 2 10 100\n.end\n');
+    const refused=run(['--json']);assert.equal(refused.status,1);
+    assert.equal(JSON.parse(refused.stdout).acComparison.status,'fail');
+    const other=spawnSync(process.execPath,[CLI,'info',FIXTURE,'--expect-ac',path],{encoding:'utf8'});
+    assert.equal(other.status,2);assert.match(other.stderr,/supported only by analyze/);
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test('actual CLI AC RC and resonant RLC full curves agree with live ngspice and independent complex controls',{
+  skip:spawnSync(process.env.NGSPICE||'ngspice',['--version'],{encoding:'utf8'}).status===0?false:
+    'ngspice unavailable: no independent AC full-curve comparison ran',
+},()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-ac-ngspice-'));
+  const mul=(a,b)=>[a[0]*b[0]-a[1]*b[1],a[0]*b[1]+a[1]*b[0]];
+  const div=(a,b)=>{const d=b[0]**2+b[1]**2;return[(a[0]*b[0]+a[1]*b[1])/d,(a[1]*b[0]-a[0]*b[1])/d];};
+  try {
+    for(const kind of ['rc','rlc']) {
+      const rlc=kind==='rlc',names=rlc?['in','mid','out']:['in','out'];
+      const deck=join(dir,`${kind}.cir`),oracle=join(dir,'oracle.cir'),referencePath=join(dir,'reference.json');
+      const body=`Independent ${kind} curve\nV1 in 0 DC 0 AC 2 37\nR1 in ${rlc?'mid':'out'} ${rlc?100:1000}\n`
+        +(rlc?'L1 mid out 10m\n':'')+'C1 out 0 1u\n.ac lin 201 10 10000\n';
+      writeFileSync(deck,body+'.end\n');
+      writeFileSync(oracle,body+'.control\nset wr_singlescale\nset wr_vecnames\nset numdgt=17\nrun\n'
+        +`wrdata curve.csv ${names.map(n=>`real(v(${n})) imag(v(${n}))`).join(' ')}\n.endc\n.end\n`);
+      const ng=spawnSync(process.env.NGSPICE||'ngspice',['-b','oracle.cir'],{cwd:dir,encoding:'utf8',timeout:30000});
+      assert.equal(ng.status,0,ng.stderr);
+      const rows=readFileSync(join(dir,'curve.csv'),'utf8').trim().split('\n').slice(1)
+        .map(line=>line.trim().split(/\s+/).map(Number));
+      assert.equal(rows.length,201);assert.ok(rows.every(row=>row.length===1+2*names.length&&row.every(Number.isFinite)));
+      const source=[2*Math.cos(37*Math.PI/180),2*Math.sin(37*Math.PI/180)];
+      for(const row of rows) {
+        const w=2*Math.PI*row[0];
+        const zc=[0,-1/(w*1e-6)],zl=[0,w*.01],total=rlc?[100,zl[1]+zc[1]]:[1000,zc[1]];
+        const outputs=[source,...(rlc?[mul(source,div([0,zl[1]+zc[1]],total))]:[]),mul(source,div(zc,total))];
+        outputs.forEach((value,i)=>assert.ok(Math.hypot(value[0]-row[1+2*i],value[1]-row[2+2*i])<1e-10,
+          `${kind} independent complex control ${names[i]} at ${row[0]} Hz`));
+      }
+      const reference={schemaVersion:1,provenance:{kind:'live-ngspice-plus-independent-impedance'},analyses:[{
+        analysisId:'0:ac',frequenciesHz:rows.map(row=>row[0]),frequencyToleranceHz:1e-8,
+        nodes:names.map((name,index)=>({id:`n${index}`,unit:'V',absoluteTolerance:1e-9,relativeTolerance:1e-9,
+          real:rows.map(row=>row[1+2*index]),imaginary:rows.map(row=>row[2+2*index])}))}]};
+      writeFileSync(referencePath,JSON.stringify(reference));
+      const run=()=>spawnSync(process.execPath,[CLI,'analyze',deck,'--profile','precision-v1',
+        '--expect-ac',referencePath,'--json'],{encoding:'utf8'});
+      const measured=run();assert.equal(measured.status,0,measured.stderr+measured.stdout);
+      const comparison=JSON.parse(measured.stdout).acComparison;
+      assert.equal(comparison.compared,201*names.length);assert.equal(comparison.failed,0);
+      reference.analyses[0].nodes.at(-1).imaginary[137]+=.01;
+      writeFileSync(referencePath,JSON.stringify(reference));
+      const changed=run();assert.equal(changed.status,1);
+      const failures=JSON.parse(changed.stdout).acComparison;
+      assert.equal(failures.failed,1);assert.equal(failures.mismatches[0].point,137);
+    }
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
 
 test('strict DC sweep grids, admission and typed full-curve comparison refuse false success', () => {
   assert.deepEqual(dcSweepGrid(-1,1,3),[-1,0,1]);

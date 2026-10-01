@@ -41,6 +41,79 @@ Repeat `--scope` and `--meter` for multiple channels/readings. Scope traces
 can be checked with `--expect`; meter-only captures now also support
 `--expect-meters meter-reference.json` in batch and `--watch` modes.
 
+### Full-grid AC reference checks
+
+`analyze` can compare its existing source-declared AC results with an explicit
+complex-voltage reference:
+
+```sh
+bwc analyze filter.cir --profile precision-v1 --expect-ac ac-reference.json --json
+```
+
+The input needs a supported `.ac` card and explicit independent AC excitation.
+The source-analysis adapter's native model, grid and convergence refusals are
+unchanged. `precision-v1` is the command's existing explicit profile selection;
+it does not turn AC analysis into a transient capture.
+
+Reference schema (an illustrative one-node, two-frequency result):
+
+```json
+{
+  "schemaVersion": 1,
+  "provenance": {"kind": "reviewed-reference"},
+  "analyses": [{
+    "analysisId": "0:ac",
+    "frequenciesHz": [10, 100],
+    "frequencyToleranceHz": 0.000000001,
+    "nodes": [{
+      "id": "n0", "unit": "V",
+      "absoluteTolerance": 0.000000001, "relativeTolerance": 0.000001,
+      "real": [1, 1], "imaginary": [0, 0]
+    }]
+  }]
+}
+```
+
+Include **every** AC analysis and every reported node in report order. Analysis
+ids include their ordinal among all source analysis cards; canonical node ids
+(`n0`, `n1`, ...) are source-topology identities, not original SPICE names.
+Review the report's topology when building an independent reference. The
+comparison does not certify source-file identity or the correctness of this
+mapping. It supplies no source-file identity attestation.
+
+Each observation is a ground-referenced complex voltage in volts. Reported
+magnitude/phase is converted to real/imaginary components, then compared by
+complex Euclidean error against `absoluteTolerance + relativeTolerance *
+hypot(expectedReal, expectedImaginary)`. Relative allowance uses the reference,
+not the actual reading. Equivalent phases such as -180 and +180 degrees agree;
+finite zero magnitude is phase-insensitive. Nonfinite readings, negative
+magnitude or overflowed allowance fail, not pass. Terminal-current and
+differential-voltage references are not supplied by this adapter.
+
+Frequency identity is checked independently with the explicit nonnegative
+absolute Hz allowance (default 1e-9 Hz). No interpolation, grid resampling,
+analysis/node omission or compared-zero pass. All AC results must be successful;
+any refused non-AC source analysis also retains the command's failure status.
+Reference bounds: 4 MiB, 1–8 analyses, 1–128 nodes each, 1–4096 positive strictly
+increasing frequencies each, and 200,000 complex observations total. Node ids
+and analysis ids must be unique within their respective scopes; every node
+needs an explicit `V` unit and finite nonnegative absolute tolerance. Relative
+tolerance defaults to zero. Every real/imaginary entry must be finite.
+
+JSON adds `acComparison` without altering native `results`; text prints its
+summary. Exit 0 means execution and reference comparison succeeded, exit 1
+means a numerical/structural mismatch or native refusal, and exit 2 means invalid
+arguments/reference input. At most 20 mismatch details are included; failure
+totals remain complete. Without `--expect-ac`, existing output is unchanged.
+User-written provenance is untrusted metadata: agreement with supplied values
+does not assert that an independent oracle ran or establish hardware fidelity.
+
+The focused CLI tests run one RC and one resonant RLC circuit against live
+ngspice and independent complex-impedance controls: 201 frequencies per circuit,
+402 frequency points and 1,005 complex node-voltage observations altogether.
+Changing reference point 137 fails exactly that point in each curve. These are
+two deliberately constructed circuits, not a corpus-wide qualification.
+
 ### Strict DC source curves
 
 ```sh

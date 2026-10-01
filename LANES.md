@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-01 CLI AC reference comparison — CLAIM, Codex bwcx `/root`.
+2026-10-01 CLI AC reference comparison — DONE candidate, Codex bwcx `/root`.
 Reused clean `wt-cui-measurement-receipt-20261001`, branch
 `fable/cli-ac-reference`, exact base `1cf4054c32eb0c9e8b335dc74e6172eb4227de8d`.
 Five-path envelope: this row; bin/bwc.mjs; new pure
@@ -13,6 +13,18 @@ Prove real CLI RC/RLC curves against live ngspice and independent complex math,
 full-grid/identity/finiteness/tolerance failures and load-bearing mutations.
 Existing AC adapter reports node voltages, not terminal currents: no new current
 coverage claim. No Board, GUI, package/pin, workflow, corpus or deployment changes.
+Final precision surface 83/83, no failures/skips; repeated AC cards and unrelated
+refused analyses are covered by actual CLI execution. Two constructed circuits
+(RC and resonant RLC) give 402 frequency points/1,005 complex voltages against
+live ngspice plus independent impedance controls; altered reference point 137
+fails exactly once per curve. Four isolated load-bearing mutants red: reversed
+phase (1 test), actual-scaled relative allowance (1), forced comparison pass (3),
+suppressed mismatch exit (2); restored production formatting and diff check clean.
+Initial unit fixture LIN 2 hit the existing ac-grid-not-representable refusal;
+corrected to LIN 3 without changing that native refusal or reference tolerances.
+Restored CLI/helper blobs aa6206cbaec60413a6bdccba63c3e39d8de8b49f /
+73daa93eeb0b385500fd89fd792bd2aa2230248d. One exact automatic branch CI
+qualification precedes guarded normal FF; no duplicate dispatch or pin change.
 
 2026-10-01 README refresh — DONE, Codex bwcx `/root`.
 Clean reused worktree `wt-cui-measurement-receipt-20261001`, branch

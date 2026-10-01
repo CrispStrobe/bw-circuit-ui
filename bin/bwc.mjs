@@ -115,7 +115,7 @@ const opts = {};
 const valueFlags = new Set(['-o', '--to', '--render', '--profile', '--observations', '--initial',
   '--scope', '--meter', '--probe', '--duration', '--rate', '--csv', '--expect', '--expect-meters',
   '--abs-volts', '--rel', '--time-tolerance', '--receipt', '--input',
-  '--source', '--from', '--points', '--observe', '--current']);
+  '--source', '--from', '--points', '--observe', '--current', '--expect-ac']);
 const repeatFlags = new Set(['scope', 'meter', 'observe', 'current']);
 for (let i = 1; i < args.length; i++) {
   // Value-taking flags must be listed, or the value silently becomes a
@@ -133,6 +133,7 @@ for (let i = 1; i < args.length; i++) {
 }
 const die = (m) => { console.error('bwc: ' + m); process.exit(2); };
 if (opts.receipt && cmd !== 'measure') die('--receipt is supported only by measure');
+if (opts['expect-ac'] !== undefined && cmd !== 'analyze') die('--expect-ac is supported only by analyze');
 const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
@@ -146,7 +147,7 @@ const usage = () => {
     + '              [--meter resistance:<red>,<black>] [--duration 10ms] [--rate 10kHz]\n'
     + '              [--profile interactive-v1] [--watch] [--expect waveform.json] [--expect-meters meters.json] [--json] [--csv trace.csv] [--receipt capture.json]\n'
     + '              precision batch: --profile precision-v1 --initial zero-state (passive/source circuits only)\n'
-    + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--json]\n'
+    + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--expect-ac reference.json] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
     + '\n  audit <dir> [dir...]        four-layer readiness per part kind'
@@ -772,6 +773,16 @@ switch (cmd) {
   }
 
   case 'analyze': {
+    let expectedAc, compareAc;
+    if (opts['expect-ac'] !== undefined) {
+      try {
+        const { parseExpectedAc, compareExpectedAc, AC_REFERENCE_MAX_BYTES } =
+          await import(join(SRC, 'model/ac-reference-report.js'));
+        if (statSync(opts['expect-ac']).size > AC_REFERENCE_MAX_BYTES) throw new Error('AC reference exceeds 4 MiB');
+        expectedAc = parseExpectedAc(readFileSync(opts['expect-ac'], 'utf8'));
+        compareAc = compareExpectedAc;
+      } catch (error) { die(`invalid AC reference: ${error.message}`); }
+    }
     if (opts.profile !== 'precision-v1') {
       die('analyze is an explicit high-accuracy action; select --profile precision-v1');
     }
@@ -795,16 +806,19 @@ switch (cmd) {
     }, { format: source.format || c.format, sourceName: source.sourceName || basename(file),
       transientProfile: opts.profile, observationProfile });
     const retainedDirectives = source.retainedDirectives || c.retainedDirectives || [];
+    const acComparison = expectedAc ? compareAc(results, expectedAc) : null;
     if (opts.json) {
       console.log(JSON.stringify({ source: basename(file), format: c.format,
         liveGUIProfile: 'interactive-v1', requestedTransientProfile: opts.profile,
-        requestedObservationProfile: observationProfile, retainedDirectives, results }, null, 2));
+        requestedObservationProfile: observationProfile, retainedDirectives, results,
+        ...(acComparison ? { acComparison } : {}) }, null, 2));
     } else {
       console.log(`${basename(file)}  [${c.format}]  source analyses`);
       console.log('  live GUI profile : interactive-v1');
       console.log('  requested profile: precision-v1 (transient analyses only)');
       console.log(`  observation profile: ${observationProfile}${observationProfile === 'bounded-research-v1' ? ' (opt-in adapted output grid)' : ''}`);
       if (retainedDirectives.length) console.log(`  retained unrequested directives: ${retainedDirectives.length}`);
+      if (acComparison) console.log(`  AC reference ${acComparison.status.toUpperCase()}: ${acComparison.passed}/${acComparison.compared} complex voltages; ${acComparison.structuralFailures} structural failures`);
       for (const result of results) {
         const execution = result.executionProfile || result.conditions?.executionProfile;
         const pass = result.status === 'pass';
@@ -823,7 +837,8 @@ switch (cmd) {
         for (const skipped of result.skipped || []) console.log(`      skipped ${skipped.ref}: ${skipped.consequence}`);
       }
     }
-    if (!results.length || results.some(result => result.status !== 'pass')) process.exitCode = 1;
+    if (!results.length || results.some(result => result.status !== 'pass')
+        || acComparison?.status === 'fail') process.exitCode = 1;
     break;
   }
 
