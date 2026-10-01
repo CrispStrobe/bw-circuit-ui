@@ -64,6 +64,11 @@ export function validatePrecisionVoltageTopology(parts, nets) {
     if (!['vsource','vcvs'].includes(part.kind)) continue;
     const positive = nodeAt(part,part.kind==='vsource'?'pos':'outp');
     const negative = nodeAt(part,part.kind==='vsource'?'neg':'outn');
+    // Finite internal resistance makes this a branch-current equation, not
+    // an ideal voltage constraint. Resolve both endpoints before excluding
+    // that edge; dangling terminals must still refuse admission.
+    const resistance = Number(part.params?.rInternal);
+    if (part.kind==='vsource' && Number.isFinite(resistance) && resistance>0) continue;
     // A declared DC zero is a valid redundant short. Other redundant rows,
     // including initially-zero waveforms, need a stronger time-domain source
     // consistency proof; legacy convergence alone does not provide it.

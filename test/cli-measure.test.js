@@ -715,7 +715,7 @@ test('precision CLI refuses a source constraint omitted by legacy convergence', 
       '--profile','precision-v1','--initial','zero-state','--json'],{encoding:'utf8',timeout:15000});
     assert.equal(result.status,2,result.stderr || result.stdout);
     assert.equal(result.stdout,'');
-    assert.match(result.stderr,/ideal voltage constraint cycle at V1/);
+    assert.match(result.stderr,/inconsistent ideal voltage constraint V1; 1 V/);
   } finally { rmSync(dir,{recursive:true,force:true}); }
 });
 
@@ -770,6 +770,83 @@ test('precision CLI preserves the real redundant DC zero short control', () => {
     assert.equal(result.status,0,result.stderr);
     assert.equal(JSON.parse(result.stdout).scope[0].summary.lastVolts,1);
   } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('precision voltage topology excludes only finite resistive source edges and still validates endpoints', () => {
+  const ground = {id:'G',kind:'gnd'};
+  const source = resistance => ({id:'V',kind:'vsource',params:{volts:5,rInternal:resistance}});
+  const short = [{id:'g',terminals:[{part:'G',terminal:'gnd'},{part:'V',terminal:'pos'},{part:'V',terminal:'neg'}]}];
+  for (const r of [1e-9,10,1e9]) validatePrecisionVoltageTopology([ground,source(r)],short);
+  for (const r of [undefined,0,-1,NaN,Infinity,'unknown']) {
+    assert.throws(() => validatePrecisionVoltageTopology([ground,source(r)],short),/cycle at V/);
+  }
+  assert.throws(() => validatePrecisionVoltageTopology([ground,source(10)],
+    [{id:'g',terminals:[{part:'G',terminal:'gnd'},{part:'V',terminal:'pos'}]}]),/one net for V.neg/);
+  assert.throws(() => validatePrecisionVoltageTopology([ground,
+    {id:'E',kind:'vcvs',params:{gain:1,rInternal:10}}],
+    [{id:'g',terminals:[{part:'G',terminal:'gnd'},{part:'E',terminal:'outp'},{part:'E',terminal:'outn'}]}]),/cycle at E/);
+  const parallel=[
+    {id:'p',terminals:[{part:'R',terminal:'pos'},{part:'I',terminal:'pos'}]},
+    {id:'n',terminals:[{part:'G',terminal:'gnd'},{part:'R',terminal:'neg'},{part:'I',terminal:'neg'}]},
+  ];
+  validatePrecisionVoltageTopology([ground,
+    {id:'R',kind:'vsource',params:{volts:5,rInternal:10}},
+    {id:'I',kind:'vsource',params:{volts:1}}],parallel);
+});
+
+test('actual installed-engine CLI preserves same-node source scope and signed meter readings in batch/watch/precision', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-source-self-constraint-'));
+  const file=join(dir,'input.json');
+  const modes=[['--json'],['--watch'],['--profile','precision-v1','--initial','zero-state','--json']];
+  const fixture=(volts,resistance,live)=>({parts:[
+    {id:'G',kind:'gnd',params:{}}, {id:'GOOD',kind:'vsource',params:{volts:1}},
+    {id:'SHORT',kind:'vsource',params:{volts,rInternal:resistance}},
+    {id:'LOAD',kind:'resistor',params:{ohms:1000}},
+  ],wires:[
+    {from:'GOOD',fromTerminal:'pos',to:'LOAD',toTerminal:'a'},
+    {from:'GOOD',fromTerminal:'neg',to:'G',toTerminal:'gnd'},
+    {from:'LOAD',fromTerminal:'b',to:'G',toTerminal:'gnd'},
+    ...['pos','neg'].map(terminal=>({from:'SHORT',fromTerminal:terminal,
+      to:live?'LOAD':'G',toTerminal:live?'a':'gnd'})),
+  ]});
+  const run=(mode,includeShort=true)=>spawnSync(process.execPath,[CLI,'measure',file,
+    '--scope','GOOD.pos,GOOD.neg',
+    ...(includeShort?['--meter','current:SHORT.pos','--meter','current:SHORT.neg']:[]),
+    '--meter','current:GOOD.pos',
+    '--duration','1ms','--rate','10kHz',...mode],{encoding:'utf8',timeout:15000});
+  try{
+    for(const [volts,resistance] of [[5,10],[-5,10],[0,0]]) for(const live of [false,true]) {
+      writeFileSync(file,JSON.stringify(fixture(volts,resistance,live)));
+      for(const mode of modes){
+        const result=run(mode,resistance>0); assert.equal(result.status,0,result.stderr);
+        const records=mode.includes('--watch')?result.stdout.trim().split('\n').map(line=>JSON.parse(line)):[];
+        const report=records.length?records.at(-1).report:JSON.parse(result.stdout);
+        assert.equal(report.scope[0].summary.samples,10);
+        for(const key of ['minVolts','maxVolts','meanVolts','rmsVolts','lastVolts']) assert.equal(report.scope[0].summary[key],1);
+        const expected=resistance?volts/resistance:0;
+        const checkMeters=meters=>{
+          if(resistance>0){
+            assert.ok(Math.abs(meters[0].reading.siValue-expected)<1e-12);
+            assert.ok(Math.abs(meters[1].reading.siValue+expected)<1e-12);
+          }
+          assert.ok(Math.abs(meters[resistance>0?2:0].reading.siValue-.001)<1e-12,
+            'unrelated supply must not report phantom short-circuit load');
+        };
+        checkMeters(report.meters);
+        if(records.length){
+          assert.equal(records.length,11);
+          for(const record of records.slice(0,-1)){assert.equal(record.scope[0].volts,1);checkMeters(record.meters);}
+        }
+      }
+    }
+    for(const volts of [5,-5]) for(const live of [false,true]){
+      writeFileSync(file,JSON.stringify(fixture(volts,0,live)));
+      for(const mode of modes){
+        const result=run(mode); assert.equal(result.status,2,result.stderr);
+        assert.equal(result.stdout,''); assert.match(result.stderr,/inconsistent ideal voltage constraint SHORT/);
+      }
+    }
+  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
 test('precision native admission refuses current-limited source state outside its domain', () => {

@@ -1,12 +1,13 @@
 # Work lanes
 
-2026-10-01 Source self-constraint consumer adoption — CLAIM, Codex bwcx `/root`.
+2026-10-01 Source self-constraint consumer adoption — DONE local candidate (held), Codex bwcx `/root`.
 Reuse clean closed worktree `wt-cui-measurement-receipt-20261001`, new branch
 `fable/source-self-constraint-adoption`, exact base
-`bc98cd1d6e5822f7b2dbdedd54c20beb9969a2ab`. Seven-path envelope: this row;
+`bc98cd1d6e5822f7b2dbdedd54c20beb9969a2ab`. Eight-path envelope: this row;
 package.json/package-lock.json Board pin; scripts/board-provenance.json;
 only finite-positive-source-resistance classification in
-src/model/instrument-report.js; existing test/cli-measure.test.js; and
+src/model/instrument-report.js; existing test/cli-measure.test.js;
+the exact installed-pin assertion in test/meter-integral-consumer.test.js; and
 docs/CLI-INSTRUMENTS.md. Adopt both upstream same-node source corrections in
 one package update; classify resistive sources as nonideal without dropping
 endpoint validation or ideal/VCVS cycle checks. Prove actual batch/watch/
@@ -17,6 +18,20 @@ workflow, GUI, parts/corpus, Lite or deployment changes. Local preparation
 only while upstream 6f693b0 qualifies; no implementation push or landing
 before upstream qualification and guarded promotion. Upstream task remains
 frozen and separately owned by the same session during the hosted queue.
+Restored full source-precision surface: 87/87, no failures/skips, including
+existing live ngspice integral/AC controls and exact installed-pin identity.
+New actual CLI proof: 18 captures / 180 scope points across ground/live,
+signed finite-resistance and valid zero-ideal setups in batch/watch/precision;
+12 contradictory ideal sources refuse by name without output. Redundant
+ideal-source individual current is indeterminate and deliberately not claimed.
+Four isolated buildable classifier mutants red and restored: missing resistive
+exclusion, finiteness, source-kind and endpoint guards (one named test each).
+Helper blob 75dc6526d12e14b078dc8b46ee01f8e0494ae507; runtime tree
+b896ef67d116831b36f5453f82a70b2d1f55d3c0b580706886402caf4d70403f.
+The first full run was 86/87 solely because an existing evidence assertion
+required the previous pin; corrected to the exact new pin without weakening
+loaded-artifact checks. No implementation push/CI or adoption until upstream
+qualification/promotion; final candidate then requires its own branch CI.
 
 2026-10-01 Finite-range scope summary correction — DONE candidate, Codex bwcx `/root`.
 Reused clean `wt-cui-measurement-receipt-20261001`, branch

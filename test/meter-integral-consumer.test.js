@@ -48,7 +48,7 @@ test('meter integration uses the exact installed package, not a sibling checkout
   const proof=verifyBoardProvenance({throwOnFailure:true});
   assert.equal(proof.qualified,true);
   assert.equal(proof.loaded.logicalIsSymlink,false);
-  assert.equal(proof.declared.packageCommit,'60dff22fec624e0fd4213df17fbf89222accc761');
+  assert.equal(proof.declared.packageCommit,'6f693b077f1b712e4a484c3d789f21a152c866a4');
 });
 
 for(const c of cases) for(const stride of [7000000n,700000n,10000n]) {

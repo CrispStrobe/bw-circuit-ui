@@ -370,6 +370,24 @@ initially-zero source that would later contradict its short. An explicit DC
 zero self-short remains valid. This conservative boundary does not mean a
 refused circuit is physically invalid or unsupported by other engine actions.
 
+An independent source with finite positive `rInternal` is not an ideal voltage
+constraint: its resistance permits a voltage difference and determines its
+current. Precision admission resolves both terminals but does not add that
+source to the ideal-cycle graph. Unknown/nonfinite resistance and ideal/VCVS
+cycles retain the existing refusal policy; current-limited precision sources
+remain outside the admitted domain. Native source consistency is checked during
+netlist construction, so a contradictory ideal self-short can refuse before
+the precision topology check.
+
+For a 5 V source with 10 Ω internal resistance and its external terminals
+shorted, the measured current is 0.5 A whether those terminals are at ground
+or on a driven 1 V node. That circulating current does not load an unrelated
+supply on the node. Installed-engine regressions cover both polarities in
+batch, watch and precision mode; the native OP oracle uses equivalent explicit
+source/resistor ngspice decks. A zero-resistance redundant ideal source has
+indeterminate individual branch current; its valid voltage identity is not a
+physical current-measurement guarantee.
+
 Precision capture advances the passive/source graph **once**: no `--watch`,
 timed-device deadlines, driven PWM or resistance power-off tick can turn the
 per-integrator limit into a repeated allowance. The fixed limit is 20,000
