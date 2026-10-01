@@ -49,16 +49,26 @@ cross-repository procedure is in [`docs/UPSTREAM-WIP.md`](docs/UPSTREAM-WIP.md).
   firmware, every rung simulated and asserted. See [`docs/LADDERS.md`](docs/LADDERS.md).
 - **Multimeter** — voltage, current (with burden-voltage teaching note),
   resistance (refuses on powered board — `requires-power-off` is a feature).
+- **CLI instruments** — `bwc measure` captures scope traces and numeric meter
+  readings, streams simulation-time changes, and compares caller-supplied
+  waveform/meter references with explicit tolerances and failure diagnostics.
+  See [CLI instruments](docs/CLI-INSTRUMENTS.md) for supported acquisition
+  policies and reference formats; a supplied reference is not automatically
+  an independent oracle.
 
 ## Verification
 
-2,226 tests, 0 failures on CI (2026-08-27). The ladder RANGES above are
+At qualified revision `336d138` (2026-10-01), the main CI suite ran 3,165 tests:
+3,148 passed, 0 failed and 17 explicitly skipped. The separate precision CLI
+suite passed 67/67 with no skips, including three live ngspice comparisons.
+These are dated verification surfaces, not a claim that every imported circuit
+has been compared numerically. The ladder RANGES above are
 asserted against the gallery by `test/computer-ladder.test.js` — they had
 drifted to `l0..l9`/`c0..c10` before anything checked them.
 
 ### The real-browser interaction gate
 
-`npm run verify:interaction` drives a real Chromium through **31 scenarios**
+`npm run verify:interaction` drives a real Chromium through **61 scenarios**
 with real pointer sequences against real WOKWI parts — click-select, part
 drag, terminal-to-terminal wiring, breadboard placement and seating,
 hole-to-hole jumpers, wheel pan (and that a plain wheel does NOT zoom),
@@ -84,8 +94,8 @@ and names it. "It was green" is not a result if it silently ran fewer than
 last time. The last line of the run is:
 
 ```
-31 scenarios · 31 passed · 0 failed
-roll-call: 31/31 expected scenarios reported an outcome
+61 scenarios · 61 passed · 0 failed
+roll-call: 61/61 expected scenarios reported an outcome
 ```
 
 Two DOM hooks exist for it and are asserted by it: `data-canvas-svg` (the one
@@ -176,21 +186,28 @@ setEngine({ BoardImpl, inferNetlist, checkWiring, getMaxCurrent, PORT_LIMITS });
 Exported panels (for host integration):
 `DrcPanel`, `BomPanel`, `ExamplesBrowser`, `runDrc`, `generateBom`, `bomToCsv`.
 
-## What is NOT done
+## Current limits and integration boundaries
 
-- **Pane slots (slice 4)** — state modelled in `pane-layout.js`, not
-  rendered. Moved to bw-bundle. Specified, not built.
-- **Circuit block greying on hardware** — `PARTS-TO-BLOCKS.md` describes
-  greying as existing; it is not implemented. Blocks return NaN (stopgap).
-  Assigned to bw-blocks. Specified, not built.
-- **Full sidecar-art canvas rendering** — palette thumbnails use bw-parts
-  SVGs; the canvas still uses wokwi elements and hand-drawn SVG parts.
-- **LED ghost vs placed size mismatch** — FOOTPRINTS dimensions and
-  wokwi-led natural size disagree. Owner-reported, not yet fixed.
-- **Seated part legibility** — hover/select should highlight occupied
-  holes and strips. Owner-reported, not yet built.
-- **Schematic projection quality** — visible for the first time after
-  the height fix. Rendering is unverified at full width.
+- **Host pane layout:** Lite consumes the three column sizes and the middle
+  content slot. Full upper/lower slot composition is not supplied by this
+  package; it is a host integration concern, not an unrendered CUI feature.
+- **Hardware block availability:** the host's circuit reporters still return
+  `NaN` when no simulator is attached. Capability-aware block disabling remains
+  a host/block integration gap; this renderer does not implement it.
+- **Canvas art:** palette thumbnails use bw-parts SVGs. The canvas mixes
+  Wokwi elements, code-drawn SVGs and selected sidecar assets/geometry; it is
+  not a universal sidecar-art renderer.
+- **LED placement geometry:** hit testing and previews use the shared 40×50
+  footprint, with matching 0.78 scaling for seated previews/faces. Exact pixel
+  equality between ghost and Wokwi body bounds has no dedicated browser
+  assertion; do not treat it as either a proven mismatch or a verified fix.
+- **Seated-part legibility:** selecting a part highlights its occupied holes
+  and conducting strips. Breadboard hover support exists, but the canvas does
+  not yet forward its hovered-part identity to that highlight path.
+- **Schematic projection:** symbol rendering and complete SVG download are
+  exercised in the real-browser gate. Readability and routing quality across
+  arbitrary large imported schematics still need broader visual coverage;
+  the projection is not a manually authored schematic layout.
 
 ## Bundle
 

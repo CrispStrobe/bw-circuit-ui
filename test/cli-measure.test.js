@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
+  parseExpectedMeters, createExpectedMeterComparison,
   parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
   measurementSampleClock,
   validatePrecisionCaptureInput, precisionCaptureBudget, validatePrecisionCaptureWork,
@@ -666,4 +667,135 @@ test('watch refuses modes that cannot represent a powered time series', () => {
     '--meter', 'resistance:RT.a,RT.b', '--watch'], { encoding: 'utf8' });
   assert.equal(resistance.status, 2);
   assert.match(resistance.stderr, /resistance powers the circuit off/);
+});
+
+const meterReference=(samples=[{timeSeconds:.001,siValue:2}],acquisition='batch')=>({
+  schemaVersion:1,acquisition,provenance:{kind:'analytical-control'},
+  meters:[{mode:'voltage',probes:['V1.pos','V1.neg'],siUnit:'V',quantity:'observed-dc-mean',
+    absoluteTolerance:1e-9,relativeTolerance:0,samples}],
+});
+const meterObservation=(siValue=2,timeSeconds=.001)=>({mode:'voltage',probes:['V1.pos','V1.neg'],
+  quantity:'observed-dc-mean',timeSeconds,reading:{siValue,siUnit:'V',note:null}});
+test('typed meter references refuse missing authority, invalid values and unbounded grids',()=>{
+  const good=meterReference();
+  for(const mutate of [r=>r.schemaVersion=2,r=>r.acquisition='instant',r=>r.meters=[],
+    r=>r.meters=[null],r=>r.meters[0].quantity='instantaneous',r=>r.meters[0].siUnit='mV',
+    r=>delete r.meters[0].absoluteTolerance,r=>r.meters[0].absoluteTolerance=-1,
+    r=>r.meters[0].samples[0].siValue=null,r=>r.meters[0].samples[0].timeSeconds=-1,
+    r=>r.meters[0].samples.push({timeSeconds:.002,siValue:2}),r=>r.timeToleranceSeconds=-1]) {
+    const changed=structuredClone(good);mutate(changed);
+    assert.throws(()=>parseExpectedMeters(JSON.stringify(changed)),/meter reference|meter time tolerance/);
+  }
+  const repeated=meterReference([{timeSeconds:0,siValue:2},{timeSeconds:0,siValue:2}],'watch');
+  assert.throws(()=>parseExpectedMeters(JSON.stringify(repeated)),/strictly increasing/);
+  const huge=meterReference(Array(200001).fill({timeSeconds:0,siValue:0}),'watch');
+  assert.throws(()=>parseExpectedMeters(JSON.stringify(huge)),/200000/);
+});
+test('streaming meter comparison exposes identity/time/value/count/nonfinite errors without unbounded diagnostics',()=>{
+  const run=(rows,reference=meterReference())=>{
+    const c=createExpectedMeterComparison(parseExpectedMeters(JSON.stringify(reference)));
+    rows.forEach(row=>c.observe(row));return c.finish();
+  };
+  assert.equal(run([[meterObservation()]]).status,'pass');
+  const relative=meterReference();relative.meters[0].absoluteTolerance=0;relative.meters[0].relativeTolerance=.9;
+  assert.equal(run([[meterObservation(6)]],relative).status,'fail','relative allowance uses expected value, never wrong actual magnitude');
+  for(const [row,code] of [
+    [{...meterObservation(),probes:['V1.neg','V1.pos']},'meter-identity'],
+    [{...meterObservation(),reading:{siValue:2,siUnit:'A'}},'meter-identity'],
+    [meterObservation(-2),'meter-value'],[meterObservation(2,.002),'meter-time'],
+    [meterObservation(NaN),'meter-nonfinite'],[{...meterObservation(),reading:{siValue:2,siUnit:'V',note:'refused'}},'meter-nonfinite']]) {
+    const result=run([[row]]);assert.equal(result.status,'fail');
+    assert.ok(result.mismatches.some(m=>m.code===code),code);
+  }
+  assert.equal(run([]).status,'fail');
+  assert.equal(run([[]]).status,'fail');
+  assert.equal(run([[meterObservation(),meterObservation()]]).status,'fail');
+  const reference=meterReference(Array.from({length:50},(_,k)=>({timeSeconds:(k+1)*.001,siValue:2})),'watch');
+  const result=run(reference.meters[0].samples.map(s=>[meterObservation(-2,s.timeSeconds)]),reference);
+  assert.equal(result.counts.failed,50);assert.equal(result.mismatches.length,20);
+  assert.equal(result.channels[0].worstAbsoluteError,4);
+  const missing=run(reference.meters[0].samples.slice(1).map(s=>[meterObservation(2,s.timeSeconds)]),reference);
+  assert.equal(missing.status,'fail');assert.ok(missing.mismatches.some(m=>m.code==='sample-count'));
+});
+test('actual CLI meter references pass and fail batch/watch with diagnostic exit statuses',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-meter-reference-'));
+  try {
+    const file=join(dir,'constant.cir'),path=join(dir,'expected.json');
+    writeFileSync(file,'* Self-authored constant oracle\nV1 signal 0 2\nR1 signal 0 1k\n.op\n.end\n');
+    const base=[CLI,'measure',file,'--meter','voltage:V1.pos,V1.neg','--duration','1ms','--rate','1kHz','--expect-meters',path];
+    const invoke=extra=>spawnSync(process.execPath,[...base,...extra],{encoding:'utf8',timeout:30000});
+    writeFileSync(path,JSON.stringify(meterReference()));
+    const good=invoke(['--json']);assert.equal(good.status,0,good.stderr);
+    const report=JSON.parse(good.stdout);
+    assert.equal(report.meterComparison.status,'pass');assert.equal(report.meterComparison.counts.compared,1);
+    assert.equal(report.claims.independentOracle,false);assert.equal(report.claims.referenceProvided,true);
+    for(const mutate of [r=>r.meters[0].samples[0].siValue=-2,r=>r.meters[0].samples[0].timeSeconds=.002,
+      r=>r.meters[0].probes.reverse()]) {
+      const bad=meterReference();mutate(bad);writeFileSync(path,JSON.stringify(bad));
+      const result=invoke(['--json']);assert.equal(result.status,1,result.stderr);
+      assert.equal(JSON.parse(result.stdout).meterComparison.status,'fail');
+    }
+    const invalid=meterReference();invalid.meters[0].quantity='instantaneous';writeFileSync(path,JSON.stringify(invalid));
+    const refused=invoke(['--json']);assert.equal(refused.status,2);assert.equal(refused.stdout,'');
+    writeFileSync(path,JSON.stringify(meterReference([{timeSeconds:.001,siValue:2}],'watch')));
+    const watched=invoke(['--watch']);assert.equal(watched.status,0,watched.stderr);
+    const records=watched.stdout.trim().split('\n').map(JSON.parse);
+    assert.equal(records.length,2);assert.equal(records.at(-1).report.meterComparison.status,'pass');
+    assert.equal(invoke(['--json']).status,2,'acquisition mismatch refuses before simulation');
+    writeFileSync(path,JSON.stringify(meterReference([{timeSeconds:.001,siValue:-2}],'watch')));
+    const wrong=invoke(['--watch']);assert.equal(wrong.status,1);
+    assert.equal(JSON.parse(wrong.stdout.trim().split('\n').at(-1)).report.meterComparison.status,'fail');
+    const resistance={schemaVersion:1,acquisition:'batch',meters:[{mode:'resistance',
+      probes:['R1.a','R1.b'],siUnit:'Ω',quantity:'power-off-resistance',absoluteTolerance:1e-5,
+      samples:[{timeSeconds:.001000001,siValue:1000}]}]};
+    writeFileSync(path,JSON.stringify(resistance));
+    const ohms=spawnSync(process.execPath,[CLI,'measure',file,'--meter','resistance:R1.a,R1.b',
+      '--duration','1ms','--expect-meters',path,'--json'],{encoding:'utf8',timeout:30000});
+    assert.equal(ohms.status,0,ohms.stderr);const ohmsReport=JSON.parse(ohms.stdout);
+    assert.equal(ohmsReport.meterComparison.status,'pass');
+    assert.equal(ohmsReport.meters[0].timeSeconds,.001000001);
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+test('actual CLI compares all 700 signed meter means to live ngspice, with an independent integral control',{
+  skip:ngspicePresent?false:'ngspice unavailable: no independent meter reference comparison ran',
+},()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-meter-ngspice-'));
+  try {
+    const circuit='* Independent signed ideal inductor\nI1 0 signal SINE(0 1m 250)\nL1 signal 0 1m\n';
+    const file=join(dir,'input.cir'),path=join(dir,'expected.json');
+    writeFileSync(file,circuit+'.tran 1u 7m\n.end\n');
+    writeFileSync(join(dir,'oracle.cir'),circuit+'.options reltol=1e-10 abstol=1e-14 trtol=1\n.control\n'
+      +'set wr_vecnames\nset wr_singlescale\ntran 1u 7m 0 100n\nlinearize i(L1)\nwrdata current.csv i(L1)\n.endc\n.end\n');
+    const oracle=spawnSync('ngspice',['-b','oracle.cir'],{cwd:dir,encoding:'utf8',timeout:30000});
+    assert.equal(oracle.status,0,oracle.stderr);
+    const points=readFileSync(join(dir,'current.csv'),'utf8').trim().split('\n').slice(1)
+      .map(line=>line.trim().split(/\s+/).map(Number));
+    assert.equal(points.length,7001);assert.ok(points.every(p=>p.length===2 && p.every(Number.isFinite)));
+    let area=0;const samples=[];
+    for(let k=1;k<points.length;k++) {
+      const [time,current]=points[k],[previousTime,previousCurrent]=points[k-1];
+      assert.ok(time>previousTime);
+      area+=(time-previousTime)*(current+previousCurrent)/2;
+      if(k%10===0) {
+        const siValue=-area/time;
+        const closed=-.001*(1-Math.cos(2*Math.PI*250*time))/(2*Math.PI*250*time);
+        assert.ok(Math.abs(siValue-closed)<1e-9,'ngspice prefix mean agrees with independent closed form');
+        samples.push({timeSeconds:time,siValue});
+      }
+    }
+    assert.equal(samples.length,700);
+    const reference={schemaVersion:1,acquisition:'watch',provenance:{kind:'live-ngspice-trapezoidal-current-area'},
+      meters:[{mode:'current',probes:['L1.a'],siUnit:'A',quantity:'observed-dc-mean',absoluteTolerance:1e-9,samples}]};
+    const base=[CLI,'measure',file,'--meter','current:L1.a','--duration','7ms','--rate','100kHz','--expect-meters',path];
+    writeFileSync(path,JSON.stringify(reference));
+    const good=spawnSync(process.execPath,[...base,'--watch'],{encoding:'utf8',timeout:30000});
+    assert.equal(good.status,0,good.stderr);
+    const summary=JSON.parse(good.stdout.trim().split('\n').at(-1)).report;
+    assert.equal(summary.meterComparison.counts.compared,700);assert.equal(summary.meterComparison.counts.failed,0);
+    assert.equal(summary.claims.independentOracle,false,'caller provenance must never self-certify independence');
+    reference.meters[0].samples[333].siValue+=.0001;writeFileSync(path,JSON.stringify(reference));
+    const bad=spawnSync(process.execPath,[...base,'--watch'],{encoding:'utf8',timeout:30000});
+    assert.equal(bad.status,1);const result=JSON.parse(bad.stdout.trim().split('\n').at(-1)).report.meterComparison;
+    assert.equal(result.counts.failed,1);assert.equal(result.mismatches[0].sampleIndex,333);
+  } finally {rmSync(dir,{recursive:true,force:true});}
 });

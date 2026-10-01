@@ -37,7 +37,58 @@ bwc measure sine.cir --scope V1.pos,V1.neg \
   --duration 1ms --rate 100kHz --expect expected-waveform.json --json
 ```
 
-Repeat `--scope` and `--meter` for multiple channels/readings. Scope summaries
+Repeat `--scope` and `--meter` for multiple channels/readings. Scope traces
+can be checked with `--expect`; meter-only captures now also support
+`--expect-meters meter-reference.json` in batch and `--watch` modes.
+
+```sh
+bwc measure inductor.cir --meter current:L1.a --duration 7ms --rate 100kHz \
+  --watch --expect-meters meter-reference.json
+```
+
+A meter reference has this explicit schema (a batch has exactly one sample
+per channel; a watch has one per emitted sample, excluding its summary):
+
+```json
+{
+  "schemaVersion": 1,
+  "acquisition": "batch",
+  "provenance": {"kind": "analytical", "model": "constant 1 mA, signed OUT"},
+  "timeToleranceSeconds": 1e-12,
+  "meters": [{
+    "mode": "current", "probes": ["L1.a"], "siUnit": "A",
+    "quantity": "observed-dc-mean", "absoluteTolerance": 1e-9,
+    "relativeTolerance": 0,
+    "samples": [{"timeSeconds": 0.007, "siValue": -0.001}]
+  }]
+}
+```
+
+This example describes a constant-current fixture, not the sine fixture above.
+Channel order, mode, ordered probe selectors, units, quantity, sample count and
+simulation timestamps must match.
+Batch channel order follows the report: powered meters first, then resistance
+readings, preserving order within each group. Streaming preserves meter order.
+The allowed value error is the channel's
+explicit absolute tolerance plus its relative tolerance times the absolute
+**reference** value. No interpolation, resampling, dropped points or unsigned
+current substitution occurs. Voltage/current are observed DC means over the
+watch interval (at most the trailing 100 ms), not instantaneous scope samples
+or true RMS. Resistance uses unit `Ω`, quantity `power-off-resistance` and the
+actual timestamp after the power-off tick; it is batch-only.
+
+References are parsed before simulation; malformed/nonfinite values, incompatible
+acquisition, missing quantities/absolute tolerances and unsupported units refuse
+with exit 2. At most eight channels, 200,000 total reference points and 16 MiB
+are accepted. Comparison retains counters and at most 20 mismatch diagnostics,
+not a second actual history. A completed mismatch exits 1 and includes
+`meterComparison` in JSON or the watch summary, with per-channel worst error,
+timestamp/value context and complete failure counts. Match exits 0. Supplied
+provenance is reported, never trusted as an independent-oracle certificate.
+For ngspice ground truth, integrate signed current/voltage over the same meter
+window before writing the reference; raw transient endpoints are not meter means.
+
+Scope summaries
 report sample count, minimum, maximum, mean, RMS and last voltage. CSV records
 the engine's true uniformly spaced samples oldest-first. Its rows use elapsed
 time from the oldest retained sample, while the header's `startTimeNs` records

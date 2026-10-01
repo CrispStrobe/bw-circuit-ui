@@ -235,6 +235,108 @@ export function timedScopeSeries(data) {
   }));
 }
 
+/** A caller-supplied reference is evidence to compare, never proof of independence. */
+export function parseExpectedMeters(text) {
+  if (String(text).length>16*1024*1024) throw new Error('meter reference exceeds 16 MiB');
+  let value;
+  try { value=JSON.parse(String(text)); } catch { throw new Error('meter reference is not JSON'); }
+  if (value?.schemaVersion!==1 || !['batch','watch'].includes(value.acquisition)
+      || !Array.isArray(value.meters) || !value.meters.length || value.meters.length>8) {
+    throw new Error('meter reference needs schemaVersion 1, batch/watch acquisition and 1 to 8 meters');
+  }
+  const timeToleranceSeconds=value.timeToleranceSeconds ?? 1e-12;
+  if (!Number.isFinite(timeToleranceSeconds) || timeToleranceSeconds<0) throw new Error('invalid meter time tolerance');
+  let points=0;
+  const meters=value.meters.map((meter,index)=>{
+    if (!meter || typeof meter!=='object') throw new Error(`meter reference ${index} is not an object`);
+    const units={voltage:'V',current:'A',resistance:'Ω'};
+    const quantity=meter.mode==='resistance'?'power-off-resistance':'observed-dc-mean';
+    if (!Object.hasOwn(units,meter.mode) || meter.siUnit!==units[meter.mode]
+        || meter.quantity!==quantity || (value.acquisition==='watch' && meter.mode==='resistance')
+        || !Array.isArray(meter.probes) || meter.probes.length!==(meter.mode==='current'?1:2)
+        || meter.probes.some(p=>typeof p!=='string' || !p.trim())) {
+      throw new Error(`meter reference ${index} has invalid mode/probes/SI unit/quantity`);
+    }
+    const absoluteTolerance=meter.absoluteTolerance,relativeTolerance=meter.relativeTolerance ?? 0;
+    if (![absoluteTolerance,relativeTolerance].every(x=>Number.isFinite(x) && x>=0)) {
+      throw new Error(`meter reference ${index} requires a finite non-negative absolute tolerance and relative tolerance`);
+    }
+    if (!Array.isArray(meter.samples) || !meter.samples.length
+        || (value.acquisition==='batch' && meter.samples.length!==1)) {
+      throw new Error(`meter reference ${index} needs samples (exactly one for batch)`);
+    }
+    points+=meter.samples.length;
+    if (points>MEASUREMENT_MAX_SAMPLES) throw new Error('meter reference exceeds 200000 total points');
+    const samples=meter.samples.map((sample,k)=>{
+      if (!Number.isFinite(sample?.timeSeconds) || sample.timeSeconds<0 || !Number.isFinite(sample?.siValue)
+          || (k && !(sample.timeSeconds>meter.samples[k-1].timeSeconds))) {
+        throw new Error(`meter reference ${index} sample ${k} needs finite values and strictly increasing non-negative time`);
+      }
+      return {timeSeconds:sample.timeSeconds,siValue:sample.siValue};
+    });
+    return {mode:meter.mode,probes:meter.probes,siUnit:meter.siUnit,quantity,absoluteTolerance,relativeTolerance,samples};
+  });
+  return {schemaVersion:1,acquisition:value.acquisition,timeToleranceSeconds,provenance:value.provenance ?? null,meters};
+}
+
+/** Streaming comparisons retain counters and at most twenty diagnostics, not actual histories. */
+export function createExpectedMeterComparison(expected) {
+  let frames=0,compared=0,passed=0,structuralFailures=0,finished=null;
+  const mismatches=[],channels=expected.meters.map(m=>({mode:m.mode,probes:m.probes,siUnit:m.siUnit,
+    quantity:m.quantity,absoluteTolerance:m.absoluteTolerance,relativeTolerance:m.relativeTolerance,
+    expectedSamples:m.samples.length,compared:0,passed:0,worstAbsoluteError:0,worstAt:null}));
+  const record=(diagnostic,structural=false)=>{
+    if (structural) structuralFailures++;
+    if (mismatches.length<20) mismatches.push(diagnostic);
+    else if (structural) mismatches[19]=diagnostic; // keep late missing-grid evidence visible.
+  };
+  return {
+    observe(rows) {
+      if (finished) throw new Error('meter comparison is already finished');
+      if (rows.length!==expected.meters.length) record({code:'meter-count',sampleIndex:frames,
+        actual:rows.length,expected:expected.meters.length},true);
+      for(let channelIndex=0;channelIndex<expected.meters.length;channelIndex++) {
+        const e=expected.meters[channelIndex],a=rows[channelIndex],stat=channels[channelIndex];
+        if (!a) {record({code:'missing-meter',channelIndex,sampleIndex:frames},true);continue;}
+        if (a.mode!==e.mode || JSON.stringify(a.probes)!==JSON.stringify(e.probes)
+            || a.reading?.siUnit!==e.siUnit || a.quantity!==e.quantity) {
+          record({code:'meter-identity',channelIndex,sampleIndex:frames,expected:{mode:e.mode,probes:e.probes,
+            siUnit:e.siUnit,quantity:e.quantity},actual:{mode:a.mode,probes:a.probes,
+            siUnit:a.reading?.siUnit,quantity:a.quantity}},true);
+        }
+        const sample=e.samples[frames];
+        if (!sample) continue; // finish reports the complete count mismatch.
+        compared++;stat.compared++;
+        const actual=a.reading?.siValue,error=Math.abs(actual-sample.siValue);
+        const timeError=Math.abs(a.timeSeconds-sample.timeSeconds);
+        const allowed=e.absoluteTolerance+e.relativeTolerance*Math.abs(sample.siValue);
+        const finite=[actual,a.timeSeconds,error,timeError,allowed].every(Number.isFinite) && !a.reading?.note;
+        const ok=finite && error<=allowed && timeError<=expected.timeToleranceSeconds;
+        if (ok) {passed++;stat.passed++;}
+        if (finite && (stat.worstAt===null || error>stat.worstAbsoluteError)) {
+          stat.worstAbsoluteError=error;stat.worstAt={sampleIndex:frames,timeSeconds:a.timeSeconds,
+            actualSiValue:actual,expectedSiValue:sample.siValue};
+        }
+        if (!ok) record({code:!finite?'meter-nonfinite':timeError>expected.timeToleranceSeconds?'meter-time':'meter-value',
+          channelIndex,sampleIndex:frames,actualTimeSeconds:a.timeSeconds,expectedTimeSeconds:sample.timeSeconds,
+          actualSiValue:actual,expectedSiValue:sample.siValue,absoluteError:error,allowed});
+      }
+      frames++;
+    },
+    finish() {
+      if (finished) return finished;
+      expected.meters.forEach((m,channelIndex)=>{
+        if (frames!==m.samples.length) record({code:'sample-count',channelIndex,actual:frames,expected:m.samples.length},true);
+      });
+      if (!compared) record({code:'no-compared-samples'},true);
+      finished={status:structuralFailures || passed!==compared?'fail':'pass',acquisition:expected.acquisition,
+        counts:{frames,compared,passed,failed:compared-passed,structuralFailures},channels,
+        timeToleranceSeconds:expected.timeToleranceSeconds,mismatches,provenance:expected.provenance};
+      return finished;
+    },
+  };
+}
+
 export function parseExpectedWaveforms(text) {
   let value;
   try { value = JSON.parse(String(text)); } catch (error) {

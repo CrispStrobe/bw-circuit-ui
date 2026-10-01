@@ -30,7 +30,7 @@
  * pipe it through whatever rasteriser you already trust.
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, statSync } from 'node:fs';
 import { basename, extname, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -55,6 +55,7 @@ const { scopeProbeOptions } = await import(join(SRC, 'model/scope-probes.js'));
 const { scopeTracesToCsv } = await import(join(SRC, 'model/scope-csv.js'));
 const {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
+  parseExpectedMeters, createExpectedMeterComparison,
   parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
   measurementSampleClock, MEASUREMENT_MAX_SAMPLES,
   validatePrecisionCaptureInput, precisionCaptureBudget, validatePrecisionCaptureWork,
@@ -112,7 +113,7 @@ const cmd = args[0];
 const positional = [];
 const opts = {};
 const valueFlags = new Set(['-o', '--to', '--render', '--profile', '--observations', '--initial',
-  '--scope', '--meter', '--probe', '--duration', '--rate', '--csv', '--expect',
+  '--scope', '--meter', '--probe', '--duration', '--rate', '--csv', '--expect', '--expect-meters',
   '--abs-volts', '--rel', '--time-tolerance']);
 const repeatFlags = new Set(['scope', 'meter']);
 for (let i = 1; i < args.length; i++) {
@@ -137,7 +138,7 @@ const usage = () => {
     + '  bwc measure <file> --scope <tip>[,<ref>] [--probe ideal|10x|1x]\n'
     + '              [--meter voltage:<red>,<black>] [--meter current:<part>.<terminal>]\n'
     + '              [--meter resistance:<red>,<black>] [--duration 10ms] [--rate 10kHz]\n'
-    + '              [--profile interactive-v1] [--watch] [--expect waveform.json] [--json] [--csv trace.csv]\n'
+    + '              [--profile interactive-v1] [--watch] [--expect waveform.json] [--expect-meters meters.json] [--json] [--csv trace.csv]\n'
     + '              precision batch: --profile precision-v1 --initial zero-state (passive/source circuits only)\n'
     + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
@@ -343,6 +344,16 @@ switch (cmd) {
       die('measure --watch refuses resistance mode because resistance powers the circuit off');
     }
     if (opts.expect && !scopeSpecs.length) die('measure --expect needs at least one --scope');
+    let meterReference=null;
+    if (opts['expect-meters']) {
+      if (!meterSpecs.length) die('measure --expect-meters needs at least one --meter');
+      try {
+        if (statSync(opts['expect-meters']).size>16*1024*1024) throw new Error('meter reference exceeds 16 MiB');
+        const expected=parseExpectedMeters(readFileSync(opts['expect-meters'],'utf8'));
+        if (expected.acquisition!==(opts.watch?'watch':'batch')) throw new Error('meter reference acquisition differs from batch/watch command');
+        meterReference=createExpectedMeterComparison(expected);
+      } catch (referenceError) { die(`measure meter reference failed: ${referenceError.message}`); }
+    }
     const probe = opts.probe || 'ideal';
     let durationSeconds; let rateHz;
     try {
@@ -465,6 +476,8 @@ switch (cmd) {
             reading: readMeter(row.meter, circ) }));
           const bad = watchedMeters.find(row => row.reading.note);
           if (bad) die(`${bad.mode} meter ${bad.probes.join(',')} could not be read: ${bad.reading.note}`);
+          if (meterReference) meterReference.observe(watchedMeters.map(row=>({...row,
+            timeSeconds:Number(targetNs)/1e9,quantity:'observed-dc-mean'})));
           process.stdout.write(`${JSON.stringify({ recordType: 'sample', index: watchSamples,
             timeSeconds: Number(targetNs) / 1e9, elapsedSeconds: Number(targetNs - startNs) / 1e9,
             scope: watchedScope, meters: watchedMeters })}\n`);
@@ -491,12 +504,14 @@ switch (cmd) {
       return data && resistance.length ? { ...data, samples: data.samples.slice() } : data;
     });
     const meterRows = poweredMeters.map(row => ({ mode: row.mode, probes: row.probes,
+      timeSeconds:Number(circ.board.timeNs)/1e9,quantity:'observed-dc-mean',
       reading: readMeter(row.meter, circ) }));
     if (resistance.length) {
       circ.setPower(false);
       circ.advanceTo(BigInt(circ.board.timeNs || 0) + 1n);
       for (const row of resistance) meterRows.push({
         mode: row.mode, probes: row.probes, reading: readMeter(row.meter, circ),
+        timeSeconds:Number(circ.board.timeNs)/1e9,quantity:'power-off-resistance',
       });
     }
 
@@ -555,6 +570,8 @@ switch (cmd) {
       } catch (error2) { die(`measure waveform comparison failed: ${error2.message}`); }
     }
 
+    if (meterReference && !opts.watch) meterReference.observe(meterRows);
+    const meterComparison=meterReference?.finish() ?? null;
     const report = {
       source: basename(file), format: c.format,
       durationSeconds, rateHz, requestedSamples,
@@ -569,10 +586,11 @@ switch (cmd) {
         startTimeSeconds:Number(startNs)/1e9,maximumWindowSeconds:.1,
         independentIntegralCertificate:false}} : {}),
       ...(comparison ? { comparison } : {}),
+      ...(meterComparison ? {meterComparison} : {}),
       claims: {
         engineBacked: true,
         independentOracle: false,
-        referenceProvided: Boolean(comparison),
+        referenceProvided: Boolean(comparison || meterComparison),
         voltageMeterLoading: 'ideal observer; place a physical meter part to model input impedance',
       },
     };
@@ -595,9 +613,10 @@ switch (cmd) {
       if (report.poweredMeterAcquisition) console.log('  powered meters: observed DC mean since capture start, rolling window at most 100 ms; not true RMS or an independent integral certificate');
       if (opts.csv) console.log(`  wrote ${opts.csv}`);
       if (comparison) console.log(`  expected waveform: ${comparison.status.toUpperCase()} (${comparison.counts.passed}/${comparison.counts.compared} samples)`);
-      else console.log('  oracle: not performed; these are engine measurements');
+      if (meterComparison) console.log(`  expected meters: ${meterComparison.status.toUpperCase()} (${meterComparison.counts.passed}/${meterComparison.counts.compared} readings)`);
+      if (!comparison && !meterComparison) console.log('  oracle: not performed; these are engine measurements');
     }
-    if (comparison?.status === 'fail') process.exitCode = 1;
+    if (comparison?.status === 'fail' || meterComparison?.status==='fail') process.exitCode = 1;
     break;
   }
 
