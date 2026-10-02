@@ -13,6 +13,23 @@ import {verifyBoardProvenance} from '../scripts/board-provenance.mjs';
 
 const CLI=join(import.meta.dirname,'../bin/bwc.mjs');
 const duration=.007;
+
+test('shared GUI meter model reports failed live solve unavailable, never fabricated voltage or load current zero', () => {
+  for (const otherVolts of [1, 2]) {
+    const imported = importCircuit('spice', `* failed live solve\nV1 n 0 1\nV2 n 0 ${otherVolts}\nR1 n 0 1k\n.end\n`);
+    assert.deepEqual(imported.unmapped || [], []);
+    const circuit = Circuit.fromJSON({ parts: imported.parts, wires: imported.wires });
+    assert.equal(circuit.netlistError, null);
+    circuit.setPower(true);
+    for (const meter of [voltageMeter(circuit), currentMeter()]) {
+      const reading = readMeter(meter, circuit);
+      assert.equal(reading.value, '---');
+      assert.equal(reading.siValue, null);
+      assert.match(reading.note, /^Cannot read (voltage|current)$/);
+    }
+    assert.equal(circuit.board._meterWatches.size, 0, 'failed GUI primes install no numeric history');
+  }
+});
 const ngspiceProbe=spawnSync('ngspice',['--version'],{encoding:'utf8'});
 const cases=[
   {name:'sine',source:'SINE(2 1 250)',mean:2+(1-Math.cos(2*Math.PI*250*duration))/(2*Math.PI*250*duration)},

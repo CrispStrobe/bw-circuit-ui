@@ -600,13 +600,17 @@ switch (cmd) {
       if (reading.note) die(`${row.mode} meter ${row.probes.join(',')} could not start capture: ${reading.note}`);
     }
     const endNs = startNs + durationNs;
+    const capturedData = row => {
+      try { return circ.board.getScopeData(row.handle); }
+      catch (captureError) { die(`scope ${row.spec.tip} capture unavailable: ${captureError.message}`); }
+    };
     let watchSamples = 0;
     try {
       if (opts.watch) {
         for (let targetNs = startNs + intervalNs; targetNs <= endNs; targetNs += intervalNs) {
           circ.advanceTo(targetNs);
           const watchedScope = scope.map(row => {
-            const sample = latestTimedScopeSample(circ.board.getScopeData(row.handle));
+            const sample = latestTimedScopeSample(capturedData(row));
             if (!sample) die(`scope ${row.spec.tip} captured no sample at ${targetNs} ns`);
             return { tip: row.spec.tip, reference: row.spec.reference || '', volts: sample.volts };
           });
@@ -638,7 +642,7 @@ switch (cmd) {
     // Resistance's extra power-off tick can cross a scope sample boundary.
     // Preserve both ring metadata and values from the requested powered capture.
     const capturedScopeData = scope.map(row => {
-      const data = circ.board.getScopeData(row.handle);
+      const data = capturedData(row);
       return data && resistance.length ? { ...data, samples: data.samples.slice() } : data;
     });
     const meterRows = poweredMeters.map(row => ({ mode: row.mode, probes: row.probes,

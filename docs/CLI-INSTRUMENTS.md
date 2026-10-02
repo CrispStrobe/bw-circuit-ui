@@ -7,6 +7,12 @@ and every foreign schematic format already accepted by `bwc info`.
 Probe endpoints are explicit. Use `<part>.<terminal>` or `net:<engine-net-id>`;
 the command refuses unknown and ambiguous selectors rather than guessing.
 
+Measurements also require a valid circuit solve. Batch and watch capture refuse
+failed solves instead of reporting fallback 0 V or 0 A. An invalid analog scope
+interval remains unavailable even if the circuit later recovers; start a new
+capture after correcting the circuit. Valid, determinate zeros remain numeric.
+Precision admission may refuse an unsupported ideal-source cycle before capture.
+
 ```sh
 # Ideal scope tap and a voltage reading
 bwc measure examples/50-rc-scope/circuit.json \

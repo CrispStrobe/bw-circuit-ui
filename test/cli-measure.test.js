@@ -25,6 +25,41 @@ const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json'
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
 
+test('failed live measurement refuses scope-only and meter captures cleanly in batch/watch; valid zero stays numeric', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bwc-failed-solve-'));
+  try {
+    for (const otherVolts of [1, 2]) {
+      const fixture = join(dir, `parallel-${otherVolts}.cir`);
+      writeFileSync(fixture, `* singular or inconsistent independent sources\nVA n 0 1\nVB n 0 ${otherVolts}\nRLOAD n 0 1k\n.end\n`);
+      for (const watch of [false, true]) for (const request of [
+        ['--scope', 'VA.pos,VA.neg'],
+        ['--meter', 'voltage:VA.pos,VA.neg'],
+        ['--meter', 'current:RLOAD.a'],
+      ]) {
+        const result = spawnSync(process.execPath, [CLI, 'measure', fixture, ...request,
+          '--duration', '1ms', '--rate', '1kHz', watch ? '--watch' : '--json'], { encoding: 'utf8', timeout: 15000 });
+        assert.equal(result.error, undefined);
+        assert.equal(result.status, 2, `${otherVolts} V ${request[0]} ${watch}: ${result.stderr}`);
+        assert.equal(result.stdout, '', 'failed capture cannot emit fabricated numeric observations');
+        assert.match(result.stderr, /^bwc: .*?(?:capture unavailable:.*solve failed|Cannot read (?:voltage|current))/);
+        assert.doesNotMatch(result.stderr, /at BoardImpl|file:\/\/|Node\.js/, 'normal CLI diagnostic, not uncaught stack trace');
+      }
+    }
+    const zero = join(dir, 'valid-zero.cir');
+    writeFileSync(zero, '* valid determinate zero\nVA n 0 0\nRLOAD n 0 1k\n.end\n');
+    for (const watch of [false, true]) {
+      const result = spawnSync(process.execPath, [CLI, 'measure', zero, '--scope', 'VA.pos,VA.neg',
+        '--meter', 'voltage:VA.pos,VA.neg', '--meter', 'current:RLOAD.a',
+        '--duration', '1ms', '--rate', '1kHz', watch ? '--watch' : '--json'], { encoding: 'utf8', timeout: 15000 });
+      assert.equal(result.status, 0, result.stderr);
+      const records = watch ? result.stdout.trim().split('\n').map(line => JSON.parse(line)) : [JSON.parse(result.stdout)];
+      const report = watch ? records.at(-1).report : records[0];
+      assert.equal(report.scope[0].summary.minVolts, 0);
+      for (const row of report.meters) { assert.equal(Math.abs(row.reading.siValue), 0); assert.equal(row.reading.note, null); }
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 const acReference = () => ({schemaVersion:1,analyses:[{analysisId:'0:ac',frequenciesHz:[10,100],
   nodes:[{id:'n0',unit:'V',absoluteTolerance:1e-12,relativeTolerance:0,real:[-1,0],imaginary:[0,0]}]}]});
 const acActual = () => [{analysisId:'0:ac',kind:'ac',status:'pass',observables:{
