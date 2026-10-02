@@ -1,5 +1,17 @@
 # Work lanes
 
+2026-10-02 CLI physical op-amp capture audit — CLAIM, Codex bwcx `/root`.
+Clean isolated wt-cui-measurement-receipt-20261001, branch
+fable/cli-physical-opamp-audit-20261002; exact base
+e0aea6bd16b4fcde53f5f7a5b1e21c71c2092916. Three-path envelope: this row,
+existing test/cli-measure.test.js and docs/CLI-INSTRUMENTS.md. Exercise actual
+LM741/LT1001 signed large-signal slew and small-signal settling through shipping
+CLI scope/watch/CSV and explicit model-contract reference controls. Existing
+component tests are not an end-to-end measurement proof. No solver, parser,
+GUI, package/pin, workflow, corpus or other repository edits; unchanged
+tolerances, and no transistor-level/vendor-macromodel physical accuracy claim.
+Reproduced implementation defects require a separately bounded upstream fix.
+
 2026-10-02 Instantaneous meter operand authority — DONE candidate, Codex bwcx `/root`.
 Isolated wt-cui-measurement-receipt-20261001; branch
 fable/meter-fallback-coercion-20261002, exact base
