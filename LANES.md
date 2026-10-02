@@ -1,5 +1,18 @@
 # Work lanes
 
+2026-10-02 Instantaneous meter operand authority — CLAIM, Codex bwcx `/root`.
+Isolated wt-cui-measurement-receipt-20261001; branch
+fable/meter-fallback-coercion-20261002, exact base
+3a44883095223f33689d0c0e16695c9ba2ee8757. Three paths only: this row,
+src/model/multimeter.js and existing test/multimeter.test.js. Reproduced public
+bare-circuit voltage fallback subtracts null/string/boolean operands and falsely
+reports 0 V before the outer finite-result check. Validate BOTH raw operands
+before subtraction, retaining finite signed/zero and the averaged path. Exercise
+each operand independently with exact fallback tests and two guard mutants.
+No solver/importer/acquisition/browser/package/pin/workflow/other repository
+edit. Current Lite release remains byte-frozen and independently observed;
+this forward fix must qualify upstream before a later bounded adoption.
+
 2026-10-02 CLI storage waveform audit — DONE candidate, Codex bwcx `/root`.
 Clean wt-cui-measurement-receipt-20261001; branch
 fable/cli-storage-waveform-audit-20261002; exact base
