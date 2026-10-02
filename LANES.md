@@ -1,5 +1,23 @@
 # Work lanes
 
+2026-10-02 Installed ADP7118 startup CLI adoption — CLAIM, Codex bwcx `/root`.
+Clean reused wt-cui-measurement-receipt-20261001, branch
+fable/adp7118-startup-installed-cli-20261002; exact CUI base
+c307c7494616a03f71b49c2d3cefc9ce44845f6b. Six-path envelope: this row,
+package.json, generated package-lock.json, scripts/board-provenance.json,
+existing test/cli-measure.test.js and docs/CLI-INSTRUMENTS.md. Adopt landed
+Board 944d1357e093fdb4c65bed65de378e1128dfc1ac, whose runtime and startup
+repair are identical to exact qualified 3c0eeb4c (CI 37037332946 and Harris
+37037333051 both green); merged focused surface 88/88, zero skips.
+Bind the actual installed artifact, not a checkout override. Exercise shipping
+CLI scope/CSV and capture-window mean against the independent authored
+envelope/RC solution, plus reactive overload/high-inrush and precision admission
+refusals with no successful numeric batch output or CSV. Keep the legacy
+device default unchanged and disclose the bounded interpolation, not an ADI
+transistor-model certificate. No Board/source physics, importer/exporter, GUI,
+other dependency, workflow, private corpus, Lite or deployment edit. Publish
+this claim before implementation; exact-head hosted qualification before landing.
+
 2026-10-02 CLI physical op-amp capture audit — DONE candidate, Codex bwcx `/root`.
 Clean isolated wt-cui-measurement-receipt-20261001, branch
 fable/cli-physical-opamp-audit-20261002; exact base
