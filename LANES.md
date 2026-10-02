@@ -1,5 +1,23 @@
 # Work lanes
 
+2026-10-02 Indeterminate-current consumer adoption — CLAIM, Codex bwcx `/root`.
+Reuse clean closed worktree wt-cui-measurement-receipt-20261001, branch
+fable/indeterminate-current-adoption, exact base
+4eb8bc0e9ea11b4264e5fb72ffab3d78135b733a. Seven-path envelope: this row;
+package.json/package-lock.json exact Board pin; scripts/board-provenance.json;
+existing test/cli-measure.test.js and test/meter-integral-consumer.test.js;
+docs/CLI-INSTRUMENTS.md. Adopt qualified landed Board 81f136c7 after CI
+36958927919, Harris 36958927810 and xv6 36958927944 green (7,511 pass,
+zero failures, 285 environment skips in hosted main). Runtime pin range
+changes only Board/MNA; other additions are source-only CPU diagnostics/tests
+and docs, with package/exports/dependencies unchanged. Prove installed non-
+symlink identity, actual batch/watch/precision current refusal, valid voltage/
+determinate source controls, and imported Circuit/shared GUI meter model.
+Mutation must catch fabricated zero behavior independently of provenance.
+No CUI production implementation, browser-rendering certificate, parser/GUI,
+workflow, other dependencies, corpus, Lite or deployment changes. One final
+automatic exact-head four-job qualification before guarded normal FF.
+
 2026-10-01 Source self-constraint consumer adoption — DONE candidate, Codex bwcx `/root`.
 Reuse clean closed worktree `wt-cui-measurement-receipt-20261001`, new branch
 `fable/source-self-constraint-adoption`, exact base
