@@ -597,6 +597,24 @@ declared gain, rail clipping and output resistance to an independently written
 ngspice equation; this is not a physical-device macromodel comparison. Changed
 reference samples must fail the actual CLI command.
 
+LM741 and LT1001 also have shipping-CLI capture checks: followers on ±15 V
+rails into 10 kΩ receive signed 10 mV and 10 V PULSE steps. Two scope channels
+(input and output) capture 160 points each at 2 MHz; watch and CSV must agree
+on every timestamp and value. Authored source timing, zero-input baseline,
+polarity, settled feedback output, dominant-pole envelope and large-signal slew
+bounds are checked independently of a saved capture. These behavioural cards
+update every 300 ns and hold output between updates. A 500 ns sample interval
+can therefore contain two updates: adjacent-point slopes are bounded with that
+explicit cadence, not claimed to be a continuous real-world slew measurement.
+Same-model CSV replay through `--expect` is labelled capture repeatability;
+one corrupted reference point must fail. It is not an independent oracle.
+
+These checks do not compare the named devices against vendor transistor
+macromodels or certify noise, temperature, trim-network dynamics, overload
+recovery or capacitive-load stability. A real oscilloscope includes analogue
+bandwidth and probe response; this capture exposes the stated engine model,
+not those additional instrument effects.
+
 These are bounded model checks, not certification of every imported circuit.
 `precision-v1` measurement admission is limited to its passive/source domain;
 op-amp clipping, bandwidth/slew, regulator startup and changing loads need their

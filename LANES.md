@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-02 CLI physical op-amp capture audit — CLAIM, Codex bwcx `/root`.
+2026-10-02 CLI physical op-amp capture audit — DONE candidate, Codex bwcx `/root`.
 Clean isolated wt-cui-measurement-receipt-20261001, branch
 fable/cli-physical-opamp-audit-20261002; exact base
 e0aea6bd16b4fcde53f5f7a5b1e21c71c2092916. Three-path envelope: this row,
@@ -11,6 +11,17 @@ component tests are not an end-to-end measurement proof. No solver, parser,
 GUI, package/pin, workflow, corpus or other repository edits; unchanged
 tolerances, and no transistor-level/vendor-macromodel physical accuracy claim.
 Reproduced implementation defects require a separately bounded upstream fix.
+Eight actual CLI cases pass with zero skips: two parts, two amplitudes and both
+polarities; 2560 time-aligned input/output observations checked against authored
+source and discrete behavioural bounds, then every watch/CSV pair compared.
+Eight isolated +0.1 V corrupted-reference CLI runs each reject exactly one point;
+same-model replay is explicitly not independent oracle evidence. Adjacent
+part-integration/scope surface 30/30, zero skips. Initial new tests incorrectly
+expected report rather than summary and continuous slew rather than the stated
+300 ns update cadence; corrected the test assumptions, not production behavior
+or existing tolerances. A further counts-shape assertion omitted two real fields;
+now asserts both. No underlying solver failure found in these eight fixtures.
+Single automatic exact-head qualification precedes guarded normal upstream FF.
 
 2026-10-02 Instantaneous meter operand authority — DONE candidate, Codex bwcx `/root`.
 Isolated wt-cui-measurement-receipt-20261001; branch

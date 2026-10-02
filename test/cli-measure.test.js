@@ -990,6 +990,113 @@ test('precision native admission does not apply its DC bias to zero-state storag
 });
 
 const ngspicePresent = spawnSync('ngspice',['--version'],{encoding:'utf8'}).status===0;
+for (const [kind, slewVPerUs, gbwHz] of [['lm741', .5, 1e6], ['lt1001', .25, .8e6]]) {
+  for (const amplitude of [.01, 10]) for (const sign of [1, -1]) {
+    test(`physical ${kind} CLI ${sign * amplitude} V step preserves model dynamics and watch/CSV samples`, async () => {
+      await import('./_setup.js');
+      const {Circuit} = await import('../src/model/circuit.js');
+      const {importCircuit} = await import('../src/importers/index.js');
+      const dir = mkdtempSync(join(tmpdir(), 'bwc-physical-opamp-'));
+      try {
+        const input = importCircuit('spice', '* behavioural part step, not vendor transistor macromodel\n'
+          + `VI in 0 PULSE(0 ${sign * amplitude} 10u 1n 1n 100u 200u)\n`
+          + 'VP positive 0 15\nVN negative 0 -15\nRL out 0 10k\n.end\n');
+        assert.equal(input.unmapped.length, 0);
+        const c = Circuit.fromJSON({parts: input.parts, wires: input.wires});
+        const amp = c.addPart(kind, {inputOffsetV: 0}, 0, 0);
+        for (const [part, terminal, pin] of [
+          ['VI', 'pos', 'inp'], ['VP', 'pos', 'vpos'], ['VN', 'pos', 'vneg'],
+          ['RL', 'a', 'out'], ['RL', 'a', 'inn'],
+        ]) c.addWire(part, terminal, amp.id, pin);
+        assert.equal(c.netlistError, null);
+        const fixture = join(dir, 'step.json'), csv = join(dir, 'step.csv');
+        writeFileSync(fixture, JSON.stringify(c.toJSON()));
+        const args = [CLI, 'measure', fixture, '--scope', `${amp.id}.out,VI.neg`,
+          '--scope', 'VI.pos,VI.neg', '--duration', '80us', '--rate', '2MHz'];
+        const batch = spawnSync(process.execPath, [...args, '--csv', csv, '--json'],
+          {encoding: 'utf8', timeout: 30000});
+        assert.equal(batch.status, 0, batch.stderr || batch.stdout);
+        const report = JSON.parse(batch.stdout);
+        assert.equal(report.claims.independentOracle, false);
+        assert.equal(report.plannedSamples, 160);
+        const sections = readFileSync(csv, 'utf8').trim().split('\n\n');
+        assert.equal(sections.length, 2);
+        const traces = sections.map((section, channel) => {
+          assert.match(section.split('\n')[0], /capture=sample .*sampleIntervalNs=500 points=160/);
+          const rows = section.split('\n').slice(2).map(line => line.split(',').map(Number));
+          assert.equal(rows.length, 160);
+          return rows.map(([elapsed, volts], index) => {
+            const timeSeconds = elapsed + report.scope[channel].startTimeSeconds;
+            assert.ok(Number.isFinite(volts));
+            assert.ok(Math.abs(timeSeconds - (index + 1) * .5e-6) < 1e-12);
+            return {timeSeconds, volts};
+          });
+        });
+        const [output, source] = traces;
+        for (const point of source) {
+          const expected = point.timeSeconds <= 10e-6 ? 0 : sign * amplitude;
+          assert.ok(Math.abs(point.volts - expected) < 1e-7, 'independent authored PULSE control');
+        }
+        assert.ok(output.filter(p => p.timeSeconds < 10e-6).every(p => Math.abs(p.volts) < 1e-6));
+        for (let i = 1; i < output.length; i++) {
+          const dtUs = (output[i].timeSeconds - output[i - 1].timeSeconds) * 1e6;
+          // This behavioural card publishes every 300 ns, holding output
+          // between updates. Adjacent 500 ns samples may contain two ticks.
+          // Bound that explicit quantization; do not assert continuous slew.
+          assert.ok(Math.abs(output[i].volts - output[i - 1].volts) <= slewVPerUs * (dtUs + .3) + 1e-5,
+            `${kind} slew at sample ${i}: ${output[i - 1].volts} -> ${output[i].volts} V over ${dtUs} us`);
+        }
+        const early = output.find(p => Math.abs(p.timeSeconds - 10.5e-6) < 1e-12).volts * sign;
+        if (amplitude === 10) {
+          assert.ok(early > 0 && early <= slewVPerUs * .5 + 1e-5,
+            'large-signal transition must be in flight, not an ideal instant step');
+        } else {
+          // Independent dominant-pole envelope permits the declared 300 ns
+          // device update cadence; it is not a fitted per-sample golden.
+          const lower = amplitude * (1 - Math.exp(-2 * Math.PI * gbwHz * .2e-6));
+          assert.ok(early >= lower * .9 && early < amplitude,
+            `small-signal pole is observable: ${early} V`);
+        }
+        const settled = output.at(-1).volts;
+        assert.ok(Math.abs(settled - sign * amplitude) < (amplitude === 10 ? .002 : .0002),
+          'feedback settles with correct polarity, rather than merely staying below slew');
+
+        const watched = spawnSync(process.execPath, [...args, '--watch'],
+          {encoding: 'utf8', timeout: 30000});
+        assert.equal(watched.status, 0, watched.stderr || watched.stdout);
+        const records = watched.stdout.trim().split('\n').map(line => JSON.parse(line));
+        const observations = records.filter(row => row.recordType === 'sample');
+        assert.equal(observations.length, 160);
+        observations.forEach((row, i) => {
+          assert.equal(row.index, i);
+          assert.ok(Math.abs(row.timeSeconds - output[i].timeSeconds) < 1e-12);
+          row.scope.forEach((channel, j) => assert.ok(Math.abs(channel.volts - traces[j][i].volts) < 1e-6,
+            `watch and CSV observe the same channel ${j} sample ${i}`));
+        });
+        assert.equal(records.at(-1).recordType, 'summary');
+
+        // This is a capture-repeatability reference, deliberately not an
+        // independent physical oracle. Prove comparison/export plumbing too.
+        const reference = {schemaVersion: 1, provenance: {kind: 'same-model-capture-repeatability'},
+          traces: [amp.id + '.out', 'VI.pos'].map((tip, i) => ({tip, reference: 'VI.neg', samples: traces[i]}))};
+        const expectedPath = join(dir, 'expected.json');
+        writeFileSync(expectedPath, JSON.stringify(reference));
+        const compareArgs = [...args, '--expect', expectedPath, '--json'];
+        const repeated = spawnSync(process.execPath, compareArgs, {encoding: 'utf8', timeout: 30000});
+        assert.equal(repeated.status, 0, repeated.stderr || repeated.stdout);
+        assert.deepEqual(JSON.parse(repeated.stdout).comparison.counts,
+          {traces: 2, compared: 320, passed: 320, failed: 0, structuralFailures: 0});
+        reference.traces[0].samples[73].volts += .1;
+        writeFileSync(expectedPath, JSON.stringify(reference));
+        const corrupted = spawnSync(process.execPath, compareArgs, {encoding: 'utf8', timeout: 30000});
+        assert.equal(corrupted.status, 1, corrupted.stderr);
+        assert.equal(JSON.parse(corrupted.stdout).comparison.counts.failed, 1,
+          'a corrupted physical-part reference cannot silently pass');
+      } finally {rmSync(dir, {recursive: true, force: true});}
+    });
+  }
+}
+
 test('interactive CLI static opamp clipping matches independently stated gain/rails/output-resistance model', {
   skip: ngspicePresent ? false : 'ngspice unavailable: static clipping model oracle did not run',
 }, async () => {
