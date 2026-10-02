@@ -1,5 +1,18 @@
 # Work lanes
 
+2026-10-02 Nonfinite multimeter boundary — CLAIM, Codex bwcx `/root`.
+Isolated clean wt-cui-measurement-receipt-20261001; branch
+fable/meter-nonfinite-authority-20261002; exact base
+c76dcc4440e456456c46f4808657d02a632c3ba8. Three-path envelope: this row,
+src/model/multimeter.js and existing test/multimeter.test.js. Refuse nonfinite
+or nonnumeric voltage/current/resistance values before successful display/SI
+formatting; preserve signed finite readings, actual zero, powered resistance
+refusal and existing units. Reproduced NaN voltage displays NaN without a note.
+Executable regressions and isolated removed-guard mutations must red. No solver,
+importer, waveform acquisition, browser, package/pin/workflow or Lite changes.
+Browser fault/recovery and broad CI waveform/corpus audits are subsequent lanes.
+One exact-head automatic qualification then guarded normal FF, no duplicate.
+
 2026-10-02 Live-fault and placeable meter consumer — DONE candidate, Codex bwcx `/root`.
 Clean reused worktree wt-cui-measurement-receipt-20261001, new branch
 fable/live-fault-bench-availability-adoption, exact base
