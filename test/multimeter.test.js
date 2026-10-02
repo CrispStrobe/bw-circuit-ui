@@ -63,6 +63,28 @@ describe('multimeter — finite result authority', () => {
     assert.equal(readMeter(meter, circuit).siValue, null);
     assert.equal(readMeter(meter, circuit).value, '---');
   });
+
+  for (const badNet of ['a', 'b']) {
+    it(`instantaneous voltage refuses invalid raw operand ${badNet} before arithmetic coercion`, () => {
+      const meter = createMeterState(); meter.probeA.netId = 'a'; meter.probeB.netId = 'b';
+      for (const value of [NaN, Infinity, -Infinity, null, undefined, '1', true, false,
+        {}, {valueOf: () => 1}]) {
+        const reading = readMeter(meter, {board: {}, nodeVoltage: net => net === badNet ? value : 0});
+        assert.equal(reading.value, '---', `${badNet}: ${String(value)}`);
+        assert.equal(reading.siValue, null); assert.equal(reading.note, 'Cannot read voltage');
+      }
+    });
+  }
+
+  it('instantaneous voltage preserves finite raw operands and does not inspect them on averaged path', () => {
+    const meter = createMeterState(); meter.probeA.netId = 'a'; meter.probeB.netId = 'b';
+    for (const [a, b, expected] of [[0, 0, 0], [1, 2, -1], [-2, -3, 1], [1e-15, 0, 1e-15]]) {
+      const reading = readMeter(meter, {board: {}, nodeVoltage: net => net === 'a' ? a : b});
+      assert.equal(reading.siValue, expected); assert.equal(reading.note, null);
+    }
+    assert.equal(readMeter(meter, {board: {}, meterVoltage: () => -2,
+      nodeVoltage: () => {throw new Error('averaged path must not use instantaneous nodes');}}).siValue, -2);
+  });
 });
 
 function buildTestCircuit() {

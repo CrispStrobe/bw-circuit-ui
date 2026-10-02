@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-02 Instantaneous meter operand authority — CLAIM, Codex bwcx `/root`.
+2026-10-02 Instantaneous meter operand authority — DONE candidate, Codex bwcx `/root`.
 Isolated wt-cui-measurement-receipt-20261001; branch
 fable/meter-fallback-coercion-20261002, exact base
 3a44883095223f33689d0c0e16695c9ba2ee8757. Three paths only: this row,
@@ -12,6 +12,13 @@ each operand independently with exact fallback tests and two guard mutants.
 No solver/importer/acquisition/browser/package/pin/workflow/other repository
 edit. Current Lite release remains byte-frozen and independently observed;
 this forward fix must qualify upstream before a later bounded adoption.
+Each new operand regression fails first on null before the repair. Adjacent
+actual-meter/fault/live-ngspice surface 59/59 and scope-tools subset 28/28,
+zero skips (overlapping counts not summed). Two isolated removed-operand-guard
+mutants make null-as-zero rejection assertions red; source remains pristine.
+Finite signed/true-zero fallback controls and averaged-path non-use of raw nodes
+pass. Exactly three new tests and five-line operand repair; full exact-head
+automatic qualification required before guarded upstream landing.
 
 2026-10-02 CLI storage waveform audit — DONE candidate, Codex bwcx `/root`.
 Clean wt-cui-measurement-receipt-20261001; branch

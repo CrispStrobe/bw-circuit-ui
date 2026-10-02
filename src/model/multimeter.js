@@ -34,7 +34,11 @@
  */
 export function meterDifference(circuit, netA, netB) {
   if (typeof circuit.meterVoltage === 'function') return circuit.meterVoltage(netA, netB);
-  return circuit.nodeVoltage(netA) - circuit.nodeVoltage(netB);
+  const a = circuit.nodeVoltage(netA);
+  const b = circuit.nodeVoltage(netB);
+  if (!Number.isFinite(a)) throw new Error('Invalid instantaneous voltage operand A');
+  if (!Number.isFinite(b)) throw new Error('Invalid instantaneous voltage operand B');
+  return a - b;
 }
 
 /** @see meterDifference */
