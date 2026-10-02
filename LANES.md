@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-02 Live-fault and placeable meter consumer — CLAIM, Codex bwcx `/root`.
+2026-10-02 Live-fault and placeable meter consumer — DONE candidate, Codex bwcx `/root`.
 Clean reused worktree wt-cui-measurement-receipt-20261001, new branch
 fable/live-fault-bench-availability-adoption, exact base
 0ff3edca0c9848b6383360ff50c4ecfa66938039. Seven-path envelope: this row;
@@ -15,6 +15,26 @@ actual installed placeable meter state must be nullable/unavailable, with valid
 nonzero/zero recovery. No source copy, UI/artwork, importer, solver, workflow,
 other dependency, Lite/corpus or deployment edits. Existing CLI handlers and
 shared meter model already catch these errors; do not duplicate engine logic.
+Upstream source 9b9ebff4 passed CI 36977432739/Harris 36977432742; main
+7977 total/7688 pass/0 fail/289 documented environment skips. Board landing
+c0dea37a3bb44b5a425e08ad16389adc5c8bb711 includes an independently green,
+disjoint CPU-tools/evidence merge, unchanged repair patch and runtime identity,
+and merged 53/53 proof recorded in its ledger. Adopt that actual landing here.
+Actual installed non-symlink Board, package/lock/provenance and independent
+source runtime hash agree:
+c041236c666443948f0acbc86ad783bdc69ede047f5e6c86536260c16b228924.
+Lock changes only Board pin/resolution/integrity. Installed adjacent surface
+87/87, zero skips, including shared GUI/placed UI meter refusal after a real
+control exception, sticky scope interval across recovery, and all three native
+bench devices' unavailable/null state followed by nonzero, zero and power-off
+recovery. Both new Circuit cases genuinely red against old installed 373c300a
+(stale 1.000 GUI value and missing native availability). Upstream separately
+rejects six buildable mutants. Real installed CLI regressions pass 16 constructed
+requests: prior returned-failure/valid-zero controls plus transient batch/watch
+exceptions retaining valid early observations but no success final. Name-filter
+runner is 2 pass/56 deliberately unselected tests, not 58 passes. No new browser
+face rendering, corpus/ngspice agreement denominator, universal completion,
+Lite adoption or deployment asserted. One final exact automatic CI precedes FF.
 
 2026-10-02 Failed-solve instrument consumer — DONE candidate, Codex bwcx `/root`.
 Clean reused worktree wt-cui-measurement-receipt-20261001, new branch

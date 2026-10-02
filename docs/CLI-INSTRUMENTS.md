@@ -12,6 +12,14 @@ failed solves instead of reporting fallback 0 V or 0 A. An invalid analog scope
 interval remains unavailable even if the circuit later recovers; start a new
 capture after correcting the circuit. Valid, determinate zeros remain numeric.
 Precision admission may refuse an unsupported ideal-source cycle before capture.
+Solver exceptions also invalidate existing measurement history; correcting the
+circuit does not retrospectively make the failed interval valid. Start a new
+capture after recovery. Watch mode may emit valid early samples before a later
+fault, but then exits with an error rather than a successful final report.
+
+Native placeable analog meter state uses `available: false`, `reading: null`
+and a reason when measurement is unavailable; an analog needle's `deflection`
+is null too. This state contract does not imply additional face rendering.
 
 ```sh
 # Ideal scope tap and a voltage reading

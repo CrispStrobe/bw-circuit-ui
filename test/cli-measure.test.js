@@ -25,6 +25,32 @@ const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json'
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
 
+test('live transient solver exception refuses batch/watch without a false successful final report', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bwc-live-fault-'));
+  try {
+    const fixture = join(dir, 'fault.cir');
+    writeFileSync(fixture, '* source becomes inconsistent after 10 us\nV1 n 0 1\nVBAD 0 0 PULSE(0 1 10u 1u 1u 10u 100u)\nR1 n 0 1k\n.end\n');
+    for (const watch of [false, true]) {
+      const run = spawnSync(process.execPath, [CLI, 'measure', fixture, '--scope', 'V1.pos,V1.neg',
+        '--meter', 'voltage:V1.pos,V1.neg', '--duration', '20us', '--rate', '1MHz', watch ? '--watch' : '--json'],
+      { encoding: 'utf8', timeout: 15000 });
+      assert.equal(run.status, 2, run.stderr);
+      assert.match(run.stderr, /^bwc: measure simulation failed:.*inconsistent ideal voltage constraint VBAD/);
+      if (!watch) assert.equal(run.stdout, '', 'batch must not serialize an invalid final capture');
+      else {
+        const records = run.stdout.trim() ? run.stdout.trim().split('\n').map(line => JSON.parse(line)) : [];
+        assert.ok(records.length > 0, 'valid early watch observations are exercised');
+        for (const row of records) {
+          assert.equal(row.recordType, 'sample', 'no successful final report after a live fault');
+          assert.ok(row.elapsedSeconds <= 10e-6);
+          assert.equal(row.scope[0].volts, 1);
+          assert.equal(row.meters[0].reading.siValue, 1);
+        }
+      }
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('failed live measurement refuses scope-only and meter captures cleanly in batch/watch; valid zero stays numeric', () => {
   const dir = mkdtempSync(join(tmpdir(), 'bwc-failed-solve-'));
   try {

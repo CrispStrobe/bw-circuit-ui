@@ -9,10 +9,72 @@ import {importCircuit} from '../src/importers/index.js';
 import {Circuit} from '../src/model/circuit.js';
 import {resolveEndpointNet} from '../src/model/instrument-report.js';
 import {createMeterState,readMeter} from '../src/model/multimeter.js';
+import {getMeterReading} from '../src/model/meter-reading.js';
 import {verifyBoardProvenance} from '../scripts/board-provenance.mjs';
 
 const CLI=join(import.meta.dirname,'../bin/bwc.mjs');
 const duration=.007;
+
+test('installed live exception invalidates shared panel, placeable UI meter and scope history without fabricating recovery', () => {
+  const input = importCircuit('spice', '* live control fault\nV1 n 0 1\nVBAD 0 0 0\nR1 n 0 1k\n.end\n');
+  assert.deepEqual(input.unmapped || [], []);
+  const c = Circuit.fromJSON({ parts: input.parts, wires: input.wires });
+  const placed = c.addPart('meter', { mode: 'voltage' }, 0, 0);
+  c.addWire(placed.id, 'probe_a', 'V1', 'pos');
+  c.addWire(placed.id, 'probe_b', 'V1', 'neg');
+  assert.equal(c.netlistError, null); c.setPower(true);
+  const voltage = voltageMeter(c), current = currentMeter();
+  assert.equal(readMeter(voltage, c).siValue, 1);
+  close(readMeter(current, c).siValue, -.001, 1e-12, 'load current');
+  assert.equal(getMeterReading(placed, c.wires, c).value, '1.000');
+  const h = c.board.addScopeChannel({ type: 'voltage', netId: voltage.probeA.netId, capture: 'sample', sampleRateHz: 1000, depth: 8 });
+  c.advanceTo(1_000_000n);
+  assert.throws(() => c.setControl('VBAD', 5), /inconsistent ideal voltage constraint VBAD/);
+  for (const meter of [voltage, current]) {
+    const reading = readMeter(meter, c);
+    assert.equal(reading.value, '---'); assert.equal(reading.siValue, null);
+    assert.match(reading.note, /^Cannot read (voltage|current)$/);
+  }
+  assert.equal(getMeterReading(placed, c.wires, c).value, '---');
+  // No scope read while invalid: recovery cannot erase an unnoticed bad interval.
+  c.setControl('VBAD', 0);
+  assert.equal(readMeter(voltage, c).siValue, null, 'old DC mean is still unavailable');
+  assert.throws(() => c.board.getScopeData(h), /scope capture refused:.*solve failed/);
+  const fresh = createMeterState();
+  fresh.probeA.netId = voltage.probeB.netId; fresh.probeB.netId = voltage.probeA.netId;
+  assert.equal(readMeter(fresh, c).siValue, -1, 'new pair observes the recovered physical circuit');
+});
+
+test('installed Circuit exposes explicit unavailable native bench-meter state, not numeric zero or needle', () => {
+  for (const kind of ['voltmeter', 'analog_meter', 'ammeter']) {
+    const c = new Circuit(5);
+    const a = c.addPart('vsource', { volts: 1 }, 0, 0);
+    const b = c.addPart('vsource', { volts: 1 }, 0, 0);
+    const g = c.addPart('gnd', {}, 0, 0), r = c.addPart('resistor', { ohms: 1000 }, 0, 0);
+    const m = c.addPart(kind, {}, 0, 0);
+    c.addWire(a.id, 'pos', b.id, 'pos'); c.addWire(a.id, 'pos', r.id, 'a');
+    c.addWire(a.id, 'neg', b.id, 'neg'); c.addWire(a.id, 'neg', g.id, 'gnd');
+    c.addWire(r.id, 'b', g.id, 'gnd');
+    c.addWire(m.id, 'a', a.id, 'pos'); c.addWire(m.id, 'b', g.id, 'gnd');
+    assert.equal(c.netlistError, null); c.setPower(true);
+    const state = c.board.getDeviceState(m.id);
+    assert.ok(state, `${kind} stays a native engine device`);
+    assert.equal(state.available, false); assert.equal(state.reading, null);
+    assert.match(state.measurementError, /solve failed/);
+    if (kind === 'analog_meter') assert.equal(state.deflection, null);
+    c.removePart(b.id);
+    const recovered = c.board.getDeviceState(m.id);
+    assert.equal(recovered.available, true, `${kind} recovers after removing the invalid source cycle`);
+    assert.equal(recovered.measurementError, null);
+    assert.ok(Number.isFinite(recovered.reading) && recovered.reading !== 0);
+    c.setControl(a.id, 0);
+    assert.equal(c.board.getDeviceState(m.id).available, true);
+    assert.equal(c.board.getDeviceState(m.id).reading, 0, 'real zero is not unavailable');
+    c.setControl(a.id, 1); c.setPower(false);
+    assert.equal(c.board.getDeviceState(m.id).available, true);
+    assert.equal(c.board.getDeviceState(m.id).reading, 0, 'power-off zero remains available');
+  }
+});
 
 test('shared GUI meter model reports failed live solve unavailable, never fabricated voltage or load current zero', () => {
   for (const otherVolts of [1, 2]) {
@@ -65,7 +127,7 @@ test('meter integration uses the exact installed package, not a sibling checkout
   const proof=verifyBoardProvenance({throwOnFailure:true});
   assert.equal(proof.qualified,true);
   assert.equal(proof.loaded.logicalIsSymlink,false);
-  assert.equal(proof.declared.packageCommit,'373c300ab53531ce525e843d2ae0deef97ee2cf7');
+  assert.equal(proof.declared.packageCommit,'c0dea37a3bb44b5a425e08ad16389adc5c8bb711');
 });
 
 test('installed Circuit shared meter model reports indeterminate source current unavailable without breaking valid meters',()=>{
