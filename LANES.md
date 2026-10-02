@@ -3,9 +3,10 @@
 2026-10-02 Installed ADP7118 startup CLI adoption — CLAIM, Codex bwcx `/root`.
 Clean reused wt-cui-measurement-receipt-20261001, branch
 fable/adp7118-startup-installed-cli-20261002; exact CUI base
-c307c7494616a03f71b49c2d3cefc9ce44845f6b. Six-path envelope: this row,
+c307c7494616a03f71b49c2d3cefc9ce44845f6b. Seven-path envelope: this row,
 package.json, generated package-lock.json, scripts/board-provenance.json,
-existing test/cli-measure.test.js and docs/CLI-INSTRUMENTS.md. Adopt landed
+existing test/cli-measure.test.js, the exact installed-pin assertion in
+test/meter-integral-consumer.test.js, and docs/CLI-INSTRUMENTS.md. Adopt landed
 Board 944d1357e093fdb4c65bed65de378e1128dfc1ac, whose runtime and startup
 repair are identical to exact qualified 3c0eeb4c (CI 37037332946 and Harris
 37037333051 both green); merged focused surface 88/88, zero skips.
@@ -17,6 +18,12 @@ device default unchanged and disclose the bounded interpolation, not an ADI
 transistor-model certificate. No Board/source physics, importer/exporter, GUI,
 other dependency, workflow, private corpus, Lite or deployment edit. Publish
 this claim before implementation; exact-head hosted qualification before landing.
+Scope expansion measured one literal old-pin authority: the existing meter
+integration package assertion correctly reds at the new installed SHA. Update
+that assertion only, retaining its actual loaded-artifact/symlink qualification.
+The broader local sweep was stopped under VPS load above 20, not called green;
+full qualification belongs on hosted CI. No other executable stale-pin readers
+were found in test/ or scripts/ for the old SHA/runtime fingerprint.
 
 2026-10-02 CLI physical op-amp capture audit — DONE candidate, Codex bwcx `/root`.
 Clean isolated wt-cui-measurement-receipt-20261001, branch
