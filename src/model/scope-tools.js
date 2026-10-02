@@ -1,5 +1,15 @@
 /** Pure oscilloscope calculations, kept separate from React for deterministic tests. */
 
+/** Read-only validity check: holding the display never makes a faulted capture valid. */
+export function readScopeCapture(board, handle) {
+  try {
+    const data = board?.getScopeData?.(handle);
+    return data ? {data, reason: null} : {data: null, reason: 'Scope capture unavailable'};
+  } catch (error) {
+    return {data: null, reason: String(error?.message || error)};
+  }
+}
+
 const midpoint = (samples, index) => {
   const min = samples[index * 2];
   const max = samples[index * 2 + 1];

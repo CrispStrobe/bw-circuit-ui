@@ -88,7 +88,7 @@ export function Multimeter({ circuit, wires, parts, placingProbe, onStartPlacing
         textAlign: 'center',
         marginBottom: '10px',
       }}>
-        <div style={{
+        <div data-testid="bw-meter-value" style={{
           color: reading.value === '---' ? '#7f8c8d' : '#2ecc71',
           fontSize: '24px',
           fontWeight: 'bold',
@@ -103,7 +103,7 @@ export function Multimeter({ circuit, wires, parts, placingProbe, onStartPlacing
 
       {/* Note (teaching feedback, not error) */}
       {reading.note && (
-        <div style={{
+        <div data-testid="bw-meter-note" style={{
           padding: '8px',
           background: reading.note.includes('Turn power OFF') || reading.note.includes('Strom AUS') ? '#1a1a0e' : '#16213e',
           border: `1px solid ${reading.note.includes('Turn power OFF') || reading.note.includes('Strom AUS') ? '#f39c12' : '#2c3e50'}`,

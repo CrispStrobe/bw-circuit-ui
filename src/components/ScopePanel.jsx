@@ -50,6 +50,7 @@ import {
   cursorDeltaSeconds,
   findTriggerIndex,
   triggeredWindowStart,
+  readScopeCapture,
 } from '../model/scope-tools.js';
 import {
   SCOPE_DEPTH, SCOPE_RATES, formatSeconds, rateLabel, recordSeconds,
@@ -118,6 +119,35 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
   const [spectra, setSpectra] = useState([]); // [{netId, spec}|{netId, reason}]
   const [specCopied, setSpecCopied] = useState('');
   const specCanvasRef = useRef(null);
+  const [captureErrors, setCaptureErrors] = useState([]);
+
+  // HOLD freezes a valid picture, not its validity. Check the actual engine
+  // even when drawing/FFT are paused; never retain a plausible old trace or
+  // cached spectrum after the underlying capture has been refused.
+  useEffect(() => {
+    const check = () => {
+      const refused = [...channels, ...specChannels].map(c => ({
+        netId: c.netId, reason: readScopeCapture(board, c.handle).reason,
+      })).filter(c => c.reason);
+      const unique = refused.filter((c, i) => refused.findIndex(other =>
+        other.netId === c.netId && other.reason === c.reason) === i);
+      setCaptureErrors(previous => JSON.stringify(previous) === JSON.stringify(unique) ? previous : unique);
+      if (!unique.length) return;
+      triggeredRef.current = false;
+      setTriggered(false);
+      for (const ref of [canvasRef, specCanvasRef]) {
+        const canvas = ref.current, g = canvas?.getContext('2d');
+        if (g) { g.fillStyle = '#0d1420'; g.fillRect(0, 0, canvas.width, canvas.height); }
+      }
+      setSpectra(previous => previous.map(s => {
+        const fault = unique.find(c => c.netId === s.netId);
+        return fault ? {netId: s.netId, reason: fault.reason} : s;
+      }));
+    };
+    check();
+    const id = setInterval(check, SPECTRUM_PERIOD_MS);
+    return () => clearInterval(id);
+  }, [board, channels, specChannels]);
 
   // (Re)attach channels whenever the board instance changes — an edit
   // rebuilds the engine and the old handles die with it — OR when the capture
@@ -340,6 +370,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
     triggerMode, triggerLevel, cursorA, cursorB]);
 
   const copySpectrumCsv = useCallback(() => {
+    if (specChannels.some(c => readScopeCapture(board, c.handle).reason)) return;
     const parts = spectra.filter(s => s.spec)
       .map(s => `# net=${s.netId}\n${spectrumToCsv(s.spec)}`);
     if (!parts.length) return;
@@ -349,22 +380,22 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       if (navigator?.clipboard?.writeText) navigator.clipboard.writeText(csv).then(done, () => setSpecCopied(csv));
       else setSpecCopied(csv);
     } catch { setSpecCopied(csv); }
-  }, [spectra, lang]);
+  }, [spectra, lang, board, specChannels]);
 
   const spectrumCsv = useCallback(() => spectra.filter(s => s.spec)
     .map(s => `# net=${s.netId}\n${spectrumToCsv(s.spec)}`).join('\n'), [spectra]);
 
   const downloadSpectrumCsv = useCallback(() => {
+    if (specChannels.some(c => readScopeCapture(board, c.handle).reason)) return;
     const csv = spectrumCsv();
     if (csv) downloadText(csv, 'scope-spectrum.csv', 'text/csv');
-  }, [spectrumCsv]);
+  }, [spectrumCsv, board, specChannels]);
 
   const downloadTraceCsv = useCallback(() => {
     if (!board) return;
-    const traces = channels.map(c => {
-      try { return { netId: c.netId, data: board.getScopeData(c.handle) }; }
-      catch { return { netId: c.netId, data: null }; }
-    });
+    const captures = channels.map(c => ({netId: c.netId, ...readScopeCapture(board, c.handle)}));
+    if (captures.some(c => c.reason)) return;
+    const traces = captures.map(c => ({netId: c.netId, data: c.data}));
     const csv = scopeTracesToCsv(traces);
     if (csv) downloadText(csv, 'scope-trace.csv', 'text/csv');
   }, [board, channels]);
@@ -568,6 +599,10 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       </div>
       )}
 
+      {captureErrors.length > 0 && <div role="alert" data-testid="bw-scope-capture-error"
+        style={{color: '#f39c12', marginBottom: 5}}>
+        {captureErrors.map(c => `${c.netId}: ${c.reason}`).join('; ')}
+      </div>}
       {view === 'spectrum' ? (
         <div data-testid="bw-scope-spectrum">
           {channels.length === 0 ? (
@@ -604,11 +639,11 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
           ))}
           {spectra.some(s => s.spec) && (
             <div style={{ display: 'flex', gap: 4, marginTop: 5 }}>
-              <button onClick={copySpectrumCsv} data-testid="bw-scope-spectrum-csv" style={{
+              <button onClick={copySpectrumCsv} disabled={captureErrors.length > 0} data-testid="bw-scope-spectrum-csv" style={{
                 flex: 1, padding: '3px 6px', background: '#0d1420', border: '1px solid #2c3e50',
                 borderRadius: 3, color: '#5d6d7e', fontFamily: 'monospace', fontSize: 9, cursor: 'pointer',
               }}>{t('scopeSpectrumCsv', lang)}</button>
-              <button onClick={downloadSpectrumCsv} data-testid="bw-scope-spectrum-csv-download" style={{
+              <button onClick={downloadSpectrumCsv} disabled={captureErrors.length > 0} data-testid="bw-scope-spectrum-csv-download" style={{
                 flex: 1, padding: '3px 6px', background: '#0d1420', border: '1px solid #2c3e50',
                 borderRadius: 3, color: '#5d6d7e', fontFamily: 'monospace', fontSize: 9, cursor: 'pointer',
               }}>{lang === 'de' ? '⇩ CSV speichern' : '⇩ Download CSV'}</button>
@@ -659,7 +694,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
         <span style={{ marginLeft: 'auto' }}>{timeLabel}</span>
       </div>
       {view === 'time' && channels.length > 0 && (
-        <button onClick={downloadTraceCsv} data-testid="bw-scope-trace-csv-download" style={{
+        <button onClick={downloadTraceCsv} disabled={captureErrors.length > 0} data-testid="bw-scope-trace-csv-download" style={{
           width: '100%', marginTop: 5, padding: '3px 6px', background: '#0d1420',
           border: '1px solid #2c3e50', borderRadius: 3, color: '#5d6d7e',
           fontFamily: 'monospace', fontSize: 9, cursor: 'pointer',

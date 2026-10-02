@@ -6,6 +6,7 @@ import {
   cursorDeltaSeconds,
   findTriggerIndex,
   latestWindowStart,
+  readScopeCapture,
   triggeredWindowStart,
 } from '../src/model/scope-tools.js';
 
@@ -14,6 +15,18 @@ const waveform = values => ({
   writeIndex: 0,
   count: values.length,
   sampleIntervalNs: 1_000_000n,
+});
+
+test('scope validity reads actual data without advancing and preserves named refusals', () => {
+  const data = waveform([0, 1]);
+  const board = {getScopeData: handle => { assert.equal(handle, 7); return data; }};
+  assert.deepEqual(readScopeCapture(board, 7), {data, reason: null});
+  board.getScopeData = () => { throw new Error('scope capture refused: circuit solve failed: VBAD'); };
+  assert.deepEqual(readScopeCapture(board, 7), {
+    data: null, reason: 'scope capture refused: circuit solve failed: VBAD',
+  });
+  assert.equal(readScopeCapture(null, 7).data, null);
+  assert.ok(readScopeCapture(null, 7).reason);
 });
 
 test('trigger finds the latest crossing in chronological ring-buffer order', () => {

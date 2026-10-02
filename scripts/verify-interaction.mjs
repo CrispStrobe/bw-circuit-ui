@@ -144,6 +144,9 @@ const EXPECTED = [
   'selectors-collapse',
   'selectors-restore',
   'meter-board-intact',
+  'instrument-fault-held-trace',
+  'instrument-fault-sticky-recovery',
+  'instrument-fault-fresh-capture',
   'scope-vdiv-per-channel',
   'spectrum-answers',
   'spectrum-peak',
@@ -2069,6 +2072,79 @@ try {
 } catch (e) {
   failAll(AC_IDS, `the AC scenarios could not be set up: ${String(e).split('\n')[0]}`);
 }
+
+// BEGIN instrument-fault-browser-proof
+const FAULT_IDS = ['instrument-fault-held-trace', 'instrument-fault-sticky-recovery', 'instrument-fault-fresh-capture'];
+const faultPage = await browser.newPage({viewport: {width: 1200, height: 800}});
+faultPage.on('pageerror', e => errors.push(`instrument fault fixture: ${e.message}`));
+try {
+  await faultPage.goto(`http://localhost:${PORT}/dev/measurement-fault.html`, {waitUntil: 'networkidle'});
+  const fixture = faultPage.getByTestId('measurement-fault-fixture');
+  await fixture.waitFor();
+  const signal = await fixture.getAttribute('data-signal');
+  const scope = faultPage.locator('[data-scope-panel]');
+  await faultPage.getByRole('button', {name: 'Probe A signal', exact: true}).click();
+  await faultPage.getByRole('button', {name: 'Probe B ground', exact: true}).click();
+  await faultPage.getByTestId('bw-meter-value').filter({hasText: /^1\.000$/}).waitFor();
+  const addChannel = async () => {
+    await scope.locator('select').last().selectOption(signal);
+    await scope.getByRole('button', {name: '+ channel', exact: true}).click();
+    await faultPage.getByRole('button', {name: 'Acquire 100 ms', exact: true}).click();
+  };
+  const tracePixels = () => scope.locator('canvas').evaluate(canvas => {
+    const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    let count = 0;
+    for (let i = 0; i < pixels.length; i += 4)
+      if (pixels[i + 1] > 70 && pixels[i + 1] > pixels[i] * 1.5 && pixels[i + 1] > pixels[i + 2] * 1.2) count++;
+    return count;
+  });
+  await addChannel();
+  await faultPage.waitForFunction(() => {
+    const canvas = document.querySelector('[data-scope-panel] canvas');
+    const p = canvas?.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    if (!p) return false;
+    for (let i = 0; i < p.length; i += 4) if (p[i + 1] > 70 && p[i + 1] > p[i] * 1.5 && p[i + 1] > p[i + 2] * 1.2) return true;
+    return false;
+  });
+  await scope.getByRole('button', {name: 'RUN', exact: true}).click();
+  const heldPixels = await tracePixels();
+  const heldImage = await scope.locator('canvas').evaluate(canvas => canvas.toDataURL());
+  await faultPage.getByRole('button', {name: 'Raise healthy source', exact: true}).click();
+  await faultPage.getByRole('button', {name: 'Acquire 100 ms', exact: true}).click();
+  await faultPage.getByTestId('bw-meter-value').filter({hasText: /^2\.000$/}).waitFor();
+  await faultPage.waitForTimeout(300);
+  const validHoldUnchanged = heldImage === await scope.locator('canvas').evaluate(canvas => canvas.toDataURL());
+  await faultPage.getByRole('button', {name: 'Restore healthy source', exact: true}).click();
+  await faultPage.getByRole('button', {name: 'Acquire 100 ms', exact: true}).click();
+  await faultPage.getByTestId('bw-meter-value').filter({hasText: /^1\.000$/}).waitFor();
+  await faultPage.getByRole('button', {name: 'Introduce constraint fault', exact: true}).click();
+  await faultPage.getByTestId('bw-meter-value').filter({hasText: /^---$/}).waitFor();
+  await scope.getByTestId('bw-scope-capture-error').filter({hasText: /solve failed.*VBAD/}).waitFor();
+  await faultPage.waitForFunction(() => document.querySelector('[data-testid="bw-scope-trace-csv-download"]')?.disabled);
+  verdict(FAULT_IDS[0], validHoldUnchanged && heldPixels > 0 && await tracePixels() === 0
+    && /Cannot read voltage/.test(await faultPage.getByTestId('bw-meter-note').innerText()),
+    'real constraint fault clears held waveform and refuses meter/export', 'fault concealed by a stale held trace or numeric meter');
+
+  await faultPage.getByRole('button', {name: 'Repair constraint', exact: true}).click();
+  verdict(FAULT_IDS[1], await scope.getByTestId('bw-scope-capture-error').count() === 1
+    && (await faultPage.getByTestId('bw-meter-value').innerText()).trim() === '---'
+    && await tracePixels() === 0,
+    'repair does not fabricate a valid old capture or meter interval', 'repair resurrected invalid history');
+
+  await faultPage.getByRole('button', {name: 'Probe A ground', exact: true}).click();
+  await faultPage.getByRole('button', {name: 'Probe B signal', exact: true}).click();
+  await faultPage.getByTestId('bw-meter-value').filter({hasText: /^-1\.000$/}).waitFor();
+  await scope.getByRole('button', {name: '✕', exact: true}).click();
+  await scope.getByRole('button', {name: 'HOLD', exact: true}).click();
+  await addChannel();
+  await scope.getByTestId('bw-scope-capture-error').waitFor({state: 'detached'});
+  await faultPage.waitForTimeout(300);
+  verdict(FAULT_IDS[2], await tracePixels() > 0 && !await scope.getByTestId('bw-scope-trace-csv-download').isDisabled(),
+    'fresh reversed meter and explicit recapture recover genuine readings', 'fresh acquisition did not recover');
+} catch (error) {
+  failAll(FAULT_IDS, `real instrument fixture: ${String(error).split('\n')[0]}`);
+} finally {await faultPage.close();}
+// END instrument-fault-browser-proof
 
 verdict('zero-page-errors', errors.length === 0,
   'zero page errors',

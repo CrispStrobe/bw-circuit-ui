@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-02 Browser instrument fault/recovery — CLAIM, Codex bwcx `/root`.
+2026-10-02 Browser instrument fault/recovery — DONE candidate, Codex bwcx `/root`.
 Reuse clean isolated wt-cui-measurement-receipt-20261001; branch
 fable/browser-instrument-fault-20261002; exact base
 097738d3df94fa4e5d31ed9fea2842d84968dea9. Nine-path envelope: this row;
@@ -14,6 +14,15 @@ sticky refusal across recovery, and explicit fresh-probe/recapture recovery.
 Register named browser scenarios and prove pure-helper failure identity plus
 actual browser trace-pixel/display/refusal controls. No solver, importer,
 acquisition numerics, package/pin, workflow, other repo or corpus edit.
+Local narrow execution of the exact registered browser scenario block passes
+3/3 with zero page errors using actual installed engine/Circuit/UI components.
+Healthy 1-to-2 V change preserves held image byte-for-byte; genuine VBAD
+constraint fault clears actual colored pixels, refuses meter/CSV, and recovery
+cannot resurrect old history. Reversed fresh meter returns -1 V and explicit
+remove/re-add scope yields a fresh trace/export. Removing the real canvas-clear
+call genuinely reds held-trace behavior, then source restored and 3/3 repeated.
+Adjacent scope-tools/timebase/scale tests pass 19/19, zero skips. Full hosted
+browser interaction/oracle qualification still required before landing.
 
 2026-10-02 Nonfinite multimeter boundary — DONE candidate, Codex bwcx `/root`.
 Isolated clean wt-cui-measurement-receipt-20261001; branch

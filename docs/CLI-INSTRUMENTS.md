@@ -577,3 +577,11 @@ meter input impedance, place a physical meter part in the circuit.
 These are native engine measurements, not independent oracle comparisons. A
 private corpus item can be measured by passing its locally materialized file;
 the CLI neither searches nor copies private corpus payload.
+
+## Browser capture validity
+
+Holding the oscilloscope freezes a valid display, not its validity. If the live
+engine refuses a capture, the panel names the reason, clears the invalid image
+and prevents its export. Repairing a circuit does not certify the old interval:
+remove and re-add the channel to acquire a fresh capture. Multimeter failures
+display `---`, not zero; nonfinite values are not successful readings.
