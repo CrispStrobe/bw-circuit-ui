@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-02 Failed-solve instrument consumer — CLAIM, Codex bwcx `/root`.
+2026-10-02 Failed-solve instrument consumer — DONE candidate, Codex bwcx `/root`.
 Clean reused worktree wt-cui-measurement-receipt-20261001, new branch
 fable/failed-solve-instrument-adoption, exact base
 b9299b61379abeafad518bfade4fdfe2c7467e62. Eight-path envelope: this row;
@@ -17,6 +17,23 @@ clean refusal before JSON output with a load-bearing error-handler mutation.
 No source copy/fork, solver, importer, UI canvas, workflow, corpus, Lite, other
 dependency or deployment changes. Existing ScopePanel catches invalid data and
 does not render a false trace; no new browser-click proof or explicit UI alert.
+Upstream prerequisite landed at 373c300ab53531ce525e843d2ae0deef97ee2cf7:
+source 21481d64 CI 36973086306/Harris 36973086267 both green; disjoint master
+f4deb08a CI 36973146456/Harris 36973146432 both green; unchanged runtime and
+repair patch identities plus merged 75/75 documented in the upstream ledger.
+Actual installed package/lock/provenance identity matches runtime SHA256
+12ca8d699c369fce71f9641e2992f96b0f0a96bc326c649d1d98c6ff44cb5639,
+not a source override or symlink. Lock changes only Board pin/resolution/integrity.
+Adjacent source-analysis/provenance/OP/shared-meter surface 85/85, zero skips.
+New CLI regression passes all 14 constructed requests (12 failed-solve scope/
+voltage/current batch/watch refusals and two valid-zero combined controls).
+Focused name-filter run is 1 pass/56 deliberately unselected tests, not 57 passes.
+Both new consumer regressions genuinely fail on the previous installed engine
+(numeric zero instead of unavailable). One isolated installed-engine CLI handler
+mutation genuinely reds at status 1 versus required clean status 2; restored.
+No new corpus or ngspice agreement count, universal instrument completion, or
+deployment claim. Placeable bench-device readings remain a separate confirmed
+follow-up. One automatic exact-head consumer qualification precedes landing.
 
 2026-10-02 Aliased-rail operating-point consumer repair — DONE candidate, Codex bwcx `/root`.
 Clean reused worktree wt-cui-measurement-receipt-20261001, branch
