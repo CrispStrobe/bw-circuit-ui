@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-02 Aliased-rail operating-point consumer repair — DONE local candidate, Codex bwcx `/root`.
+2026-10-02 Aliased-rail operating-point consumer repair — DONE candidate, Codex bwcx `/root`.
 Clean reused worktree wt-cui-measurement-receipt-20261001, branch
 fable/rail-current-display-adoption, exact base
 f28050df9a31ac3a4e68090bad440272b4f86624. Eleven-path envelope: this row;
@@ -34,6 +34,17 @@ selection, not a newly successful numeric sweep: absent raw current still fails
 the legacy finiteness guard. GUI proof is shared-model behavior plus component
 wiring; no dedicated browser-click certificate claimed. Board current exact
 CI/Harris/xv6 qualification remains the first landing prerequisite.
+Upstream prerequisite released: qualified bef4 CI 36965389333/Harris
+36965389249/xv6 36965389373 all green, with 7905 total/7616 pass/0 fail/289
+documented skips in hosted main. Normal FF after proved disjoint F0 evidence
+merge landed Board e56eff3d2065b508c765cb621b72e5efe2f947c3; full runtime hash
+unchanged and merged rail/census/F0 25/25. This consumer pins that actual landing,
+not the held branch. Broader CLI/instrument local surface also passed 89/89,
+zero skips (overlaps the 70-test adjacent suite; not a summed case denominator).
+One final exact-head consumer branch qualification remains its landing gate.
+Reinstalled actual e56 landing and reran the complete adjacent 70/70 with zero
+skips; package/lock/loaded non-symlink artifact identity agree. Previous 89/89
+broader CLI proof remains applicable because every runtime byte is unchanged.
 
 2026-10-02 Indeterminate-current consumer adoption — DONE candidate, Codex bwcx `/root`.
 Reuse clean closed worktree wt-cui-measurement-receipt-20261001, branch
