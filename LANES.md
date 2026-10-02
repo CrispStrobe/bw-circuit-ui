@@ -1,5 +1,18 @@
 # Work lanes
 
+2026-10-02 CLI storage waveform audit — CLAIM, Codex bwcx `/root`.
+Clean wt-cui-measurement-receipt-20261001; branch
+fable/cli-storage-waveform-audit-20261002; exact base
+d252ba72122915b7783e9907b3742cb5eb26c03f. Three-path envelope: this row,
+existing test/cli-measure.test.js and docs/CLI-INSTRUMENTS.md. Extend actual
+shipping CLI scope comparisons to zero-state RC/RL storage response using live
+independent ngspice plus closed-form controls, exact timestamp/count/sign checks
+and corrupted-reference reds at unchanged tolerances. Inventory existing SINE,
+PULSE, signed means and 1x/10x loading coverage instead of duplicating it.
+Unsupported op-amp/LDO dynamic models remain named limitations, not inferred
+physical success. No solver/importer/acquisition/GUI/pin/workflow/corpus edits;
+any newly reproduced implementation defect requires a bounded upstream repair.
+
 2026-10-02 Browser instrument fault/recovery — DONE candidate, Codex bwcx `/root`.
 Reuse clean isolated wt-cui-measurement-receipt-20261001; branch
 fable/browser-instrument-fault-20261002; exact base
