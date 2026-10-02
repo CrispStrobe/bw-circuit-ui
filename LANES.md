@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-01 Source self-constraint consumer adoption — DONE local candidate (held), Codex bwcx `/root`.
+2026-10-01 Source self-constraint consumer adoption — DONE candidate, Codex bwcx `/root`.
 Reuse clean closed worktree `wt-cui-measurement-receipt-20261001`, new branch
 `fable/source-self-constraint-adoption`, exact base
 `bc98cd1d6e5822f7b2dbdedd54c20beb9969a2ab`. Eight-path envelope: this row;
@@ -15,9 +15,10 @@ precision scope and signed meter results, contradictory-source refusal and
 installed package identity, with load-bearing mutations and existing guards.
 No CLI parser, engine source copy/fork, waveform, tolerance/work budget,
 workflow, GUI, parts/corpus, Lite or deployment changes. Local preparation
-only while upstream 6f693b0 qualifies; no implementation push or landing
-before upstream qualification and guarded promotion. Upstream task remains
-frozen and separately owned by the same session during the hosted queue.
+was held until upstream qualification and promotion. Upstream exact 6f693b0
+passed CI 36915020898 and Harris 36915020900 and landed unchanged on master
+2026-10-02: hosted main 7,723 tests / 7,438 pass / zero failures / 285
+environment skips; vectors-full intentionally excluded by event policy.
 Restored full source-precision surface: 87/87, no failures/skips, including
 existing live ngspice integral/AC controls and exact installed-pin identity.
 New actual CLI proof: 18 captures / 180 scope points across ground/live,
@@ -30,8 +31,9 @@ Helper blob 75dc6526d12e14b078dc8b46ee01f8e0494ae507; runtime tree
 b896ef67d116831b36f5453f82a70b2d1f55d3c0b580706886402caf4d70403f.
 The first full run was 86/87 solely because an existing evidence assertion
 required the previous pin; corrected to the exact new pin without weakening
-loaded-artifact checks. No implementation push/CI or adoption until upstream
-qualification/promotion; final candidate then requires its own branch CI.
+loaded-artifact checks. Upstream hold released; this final consumer candidate
+requires its own exact branch CI before guarded normal FF. No Lite adoption
+or deployment is implied by either upstream or consumer landing.
 
 2026-10-01 Finite-range scope summary correction — DONE candidate, Codex bwcx `/root`.
 Reused clean `wt-cui-measurement-receipt-20261001`, branch
