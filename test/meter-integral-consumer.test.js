@@ -48,7 +48,7 @@ test('meter integration uses the exact installed package, not a sibling checkout
   const proof=verifyBoardProvenance({throwOnFailure:true});
   assert.equal(proof.qualified,true);
   assert.equal(proof.loaded.logicalIsSymlink,false);
-  assert.equal(proof.declared.packageCommit,'81f136c7e56188ec72680a8b63b4e4d6f33472cb');
+  assert.equal(proof.declared.packageCommit,'bef4b3bbcb518efa7207ec7da4fe0e0367d80ad5');
 });
 
 test('installed Circuit shared meter model reports indeterminate source current unavailable without breaking valid meters',()=>{

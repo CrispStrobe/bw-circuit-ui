@@ -397,6 +397,18 @@ zero-current result. A powered-off source also retains its known zero reading.
 This is a scoped source-current availability contract, not a claim that every
 missing device-current entry has been classified.
 
+For several `vcc` symbols attached to the same ideal supply rail, the voltage
+constraint measures total rail delivery, not a unique current for each symbol.
+Their individual current requests refuse; reordering the symbols cannot turn
+an arbitrary solver-row owner into a physical current measurement. The DC
+operating-point panel and `bwc op` name these currents as indeterminate instead
+of printing the retained internal aggregate as an individual-symbol value.
+They also name an omitted redundant ideal-zero source current. Valid node
+voltages, load currents and genuine determinate zeros remain available.
+The engine's `railCurrent(netId)` API exposes total signed delivery separately;
+it includes existing numerical regularization, not a physical noise model or
+an inferred equal sharing between independent supplies.
+
 Precision capture advances the passive/source graph **once**: no `--watch`,
 timed-device deadlines, driven PWM or resistance power-off tick can turn the
 per-integrator limit into a repeated allowance. The fixed limit is 20,000

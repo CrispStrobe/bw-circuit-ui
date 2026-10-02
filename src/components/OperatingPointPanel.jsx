@@ -48,6 +48,11 @@ export function OperatingPointPanel({ board, blockers, lang = 'en' }) {
           <div style={{maxHeight: 90, overflow: 'auto', fontFamily: 'monospace'}}>
             {rows.currents.map((row) => <div key={row.id}>{row.id}: {value(row.value, 'A')}</div>)}
           </div>
+          {rows.unavailableCurrents.length > 0 && (
+            <div data-testid="bw-operating-point-unavailable-currents" style={label}>
+              {de ? 'Strom nicht eindeutig bestimmt' : 'Current indeterminate'}: {rows.unavailableCurrents.join(', ')}
+            </div>
+          )}
         </div>
       )}
     </div>

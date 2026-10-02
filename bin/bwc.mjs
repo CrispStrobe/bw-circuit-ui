@@ -51,6 +51,7 @@ const { toKicadSch } = await import(join(SRC, 'model/exporters/kicad-sch.js'));
 const { toLtspiceAsc } = await import(join(SRC, 'model/exporters/ltspice-asc.js'));
 const { renderSchematicSvg, netsFromWires } = await import(join(SRC, 'model/schematic-svg.js'));
 const { createMeterState, readMeter } = await import(join(SRC, 'model/multimeter.js'));
+const { operatingPointRows } = await import(join(SRC, 'model/operating-point-view.js'));
 const { scopeProbeOptions } = await import(join(SRC, 'model/scope-probes.js'));
 const { scopeTracesToCsv } = await import(join(SRC, 'model/scope-csv.js'));
 const {
@@ -285,6 +286,9 @@ switch (cmd) {
           const values=observations.map(row=>{
             if (row.kind==='voltage') return voltage(row.selector)-(row.reference?voltage(row.reference):0);
             const split=row.selector.lastIndexOf('.');
+            if (result.indeterminateBranchCurrents?.has(row.selector.slice(0,split))) {
+              throw new Error(`indeterminate OP terminal current for ${row.selector}`);
+            }
             const value=result.branchCurrents.get(row.selector.slice(0,split))?.get(row.selector.slice(split+1));
             if (!Number.isFinite(value)) throw new Error(`no finite OP terminal current for ${row.selector}`);
             return value;
@@ -413,12 +417,12 @@ switch (cmd) {
       console.log('    ' + String(net).padEnd(18) + ' ' + Number(volts).toPrecision(12) + ' V');
     }
     console.log('  terminal currents:');
-    const rows = [];
-    for (const [part, terminals] of result.branchCurrents) {
-      for (const [terminal, amps] of terminals) rows.push([`${part}.${terminal}`, amps]);
+    const rows = operatingPointRows(result);
+    for (const {id, value} of rows.currents) {
+      console.log('    ' + id.padEnd(18) + ' ' + Number(value).toPrecision(12) + ' A');
     }
-    for (const [terminal, amps] of rows.sort(([a], [b]) => a.localeCompare(b))) {
-      console.log('    ' + terminal.padEnd(18) + ' ' + Number(amps).toPrecision(12) + ' A');
+    for (const id of rows.unavailableCurrents) {
+      console.log('    ' + id + ': current indeterminate (no individual measurement)');
     }
     break;
   }

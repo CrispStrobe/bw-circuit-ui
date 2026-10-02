@@ -4,6 +4,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { Circuit } from '../src/model/circuit.js';
 
 const root = join(import.meta.dirname, '..');
@@ -35,6 +37,43 @@ function assertScopeCovers(stdout, tokens) {
 }
 
 describe('static operating-point reachability', () => {
+  it('bwc op names aliased supply currents instead of presenting an arbitrary individual current', () => {
+    const directory=mkdtempSync(join(tmpdir(),'bw-op-current-'));
+    try{
+      const fixture=join(directory,'aliases.json');
+      for(const reverse of [false,true]){
+        const supplies=[{id:'A',kind:'vcc',params:{volts:5}},{id:'B',kind:'vcc',params:{volts:5}}];
+        if(reverse) supplies.reverse();
+        writeFileSync(fixture,JSON.stringify({parts:[...supplies,
+          {id:'R',kind:'resistor',params:{ohms:1000}},{id:'G',kind:'gnd',params:{}}],wires:[
+          {from:'A',fromTerminal:'vcc',to:'B',toTerminal:'vcc'},
+          {from:'A',fromTerminal:'vcc',to:'R',toTerminal:'a'},
+          {from:'R',fromTerminal:'b',to:'G',toTerminal:'gnd'},
+        ]}));
+        const run=spawnSync(process.execPath,[cli,'op',fixture],{encoding:'utf8'});
+        assert.equal(run.status,0,run.stderr||run.stdout);
+        for(const id of ['A','B']) assert.match(run.stdout,new RegExp(`${id}: current indeterminate \\(no individual measurement\\)`));
+        assert.doesNotMatch(run.stdout,/[AB]\.vcc\s+[-+0-9.e]+ A/);
+        const load=/R\.a\s+([-+0-9.e]+) A/.exec(run.stdout);
+        assert.ok(load,run.stdout);assert.ok(Math.abs(Number(load[1])-.005)<1e-12);
+      }
+      const zero=join(directory,'zero.cir');
+      writeFileSync(zero,'zero source control\nV1 rail 0 5\nR1 rail 0 1k\nVZERO rail rail 0\n.end\n');
+      const run=spawnSync(process.execPath,[cli,'op',zero],{encoding:'utf8'});
+      assert.equal(run.status,0,run.stderr||run.stdout);
+      assert.match(run.stdout,/VZERO: current indeterminate/);
+      assert.doesNotMatch(run.stdout,/VZERO\.(pos|neg)\s+[-+0-9.e]+ A/);
+      const sweepArgs=['--source','V1','--from','4','--to','5','--points','2','--json'];
+      const refused=spawnSync(process.execPath,[cli,'dc-sweep',zero,...sweepArgs,'--current','VZERO.pos'],{encoding:'utf8'});
+      assert.equal(refused.status,2,refused.stdout+refused.stderr);
+      assert.match(refused.stderr,/DC point 0 .*indeterminate OP terminal current for VZERO\.pos/);
+      assert.equal(refused.stdout,'','no partial numeric sweep on unavailable current');
+      const valid=spawnSync(process.execPath,[cli,'dc-sweep',zero,...sweepArgs,'--current','R1.a'],{encoding:'utf8'});
+      assert.equal(valid.status,0,valid.stderr);
+      assert.deepEqual(JSON.parse(valid.stdout).samples.map(row=>row.values[0]),[.004,.005]);
+    }finally{rmSync(directory,{recursive:true,force:true});}
+  });
+
   it('Circuit delegates to the engine result without adopting it', () => {
     const c = Circuit.fromJSON({
       vcc: 5,

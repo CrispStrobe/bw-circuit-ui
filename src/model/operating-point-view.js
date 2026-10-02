@@ -51,13 +51,17 @@ export function runOperatingPointAnalysis(board, blockers = []) {
 }
 
 export function operatingPointRows(result) {
+  const unavailable = result?.indeterminateBranchCurrents || new Set();
   const nodes = [...(result?.nodeVoltages || new Map())]
     .map(([id, value]) => ({ id, value }))
     .sort((a, b) => String(a.id).localeCompare(String(b.id)));
   const currents = [];
   for (const [part, terminals] of result?.branchCurrents || new Map()) {
+    // A retained solver row can be an aggregate, not this symbol's current.
+    // Omitted source rows are unavailable too; absence must not hide the label.
+    if (unavailable.has(part)) continue;
     for (const [terminal, value] of terminals) currents.push({ id: `${part}.${terminal}`, value });
   }
   currents.sort((a, b) => a.id.localeCompare(b.id));
-  return { nodes, currents };
+  return { nodes, currents, unavailableCurrents: [...unavailable].sort() };
 }

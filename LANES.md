@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-02 Aliased-rail operating-point consumer repair — CLAIM, Codex bwcx `/root`.
+2026-10-02 Aliased-rail operating-point consumer repair — DONE local candidate, Codex bwcx `/root`.
 Clean reused worktree wt-cui-measurement-receipt-20261001, branch
 fable/rail-current-display-adoption, exact base
 f28050df9a31ac3a4e68090bad440272b4f86624. Eleven-path envelope: this row;
@@ -19,6 +19,21 @@ current display and genuinely fail behavior assertions. No source copy/fork,
 solver, importer, source-analysis redesign, waveform, workflow, corpus, Lite,
 other dependencies or deployment changes. Local preparation only while Board
 qualifies; consumer production landing held until that exact engine is upstream.
+Prepared exact Board bef4b3bb package, non-symlink runtime hash
+0ab6495f8fb308c6ceda42e17a60ea8f30f52e4a5b764e67ce295cc2ecb5f6d4,
+independently equal to source checkout. Lock changes only its pin, resolution
+and integrity. Installed OP/shared panel formatter and real bwc op retain 5 V
+and 5 mA load controls in both alias orders but explicitly name A/B unavailable;
+omitted ideal-zero self-source is named, finite-resistance genuine zero retained.
+Real DC sweep refuses a requested unavailable current before JSON output while
+valid resistor-current sweep succeeds. Restored provenance/OP/meter/source-
+analysis/precision surface 70/70, zero skips. Three isolated executable mutants
+red and restored: raw-map owner display (2 tests), missing unavailable labels
+(3), removed named DC availability check (1). The last proves explicit reason
+selection, not a newly successful numeric sweep: absent raw current still fails
+the legacy finiteness guard. GUI proof is shared-model behavior plus component
+wiring; no dedicated browser-click certificate claimed. Board current exact
+CI/Harris/xv6 qualification remains the first landing prerequisite.
 
 2026-10-02 Indeterminate-current consumer adoption — DONE candidate, Codex bwcx `/root`.
 Reuse clean closed worktree wt-cui-measurement-receipt-20261001, branch
