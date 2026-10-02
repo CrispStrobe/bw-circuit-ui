@@ -849,6 +849,44 @@ test('actual installed-engine CLI preserves same-node source scope and signed me
   }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
+test('indeterminate current CLI refuses fabricated zero in batch/watch/precision while voltage capture remains valid',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-indeterminate-current-'));
+  const file=join(dir,'source.cir');
+  const modes=[['--json'],['--watch'],['--profile','precision-v1','--initial','zero-state','--json']];
+  try{
+    for(const live of [false,true]){
+      const node=live?'n':'0';
+      writeFileSync(file,`* current availability control\nVGOOD n 0 1\nRLOAD n 0 1k\nVZERO ${node} ${node} 0\n.end\n`);
+      for(const mode of modes){
+        for(const terminal of ['pos','neg']){
+          const result=spawnSync(process.execPath,[CLI,'measure',file,'--scope','VGOOD.pos,VGOOD.neg',
+            '--meter',`current:VZERO.${terminal}`,'--duration','1ms','--rate','10kHz',...mode],
+            {encoding:'utf8',timeout:15000});
+          assert.ifError(result.error); assert.equal(result.status,2,result.stderr||result.stdout);
+          assert.equal(result.stdout,'','no JSON/NDJSON may claim an indeterminate current');
+          assert.match(result.stderr,new RegExp(`current meter VZERO\\.${terminal} could not start capture: Cannot read current`));
+        }
+        const valid=spawnSync(process.execPath,[CLI,'measure',file,'--scope','VGOOD.pos,VGOOD.neg',
+          '--meter','current:VGOOD.pos','--duration','1ms','--rate','10kHz',...mode],
+          {encoding:'utf8',timeout:15000});
+        assert.ifError(valid.error); assert.equal(valid.status,0,valid.stderr);
+        const records=mode.includes('--watch')?valid.stdout.trim().split('\n').map(line=>JSON.parse(line)):[];
+        const report=records.length?records.at(-1).report:JSON.parse(valid.stdout);
+        assert.equal(report.scope[0].summary.samples,10);
+        assert.equal(report.scope[0].summary.meanVolts,1);
+        assert.ok(Math.abs(report.meters[0].reading.siValue-.001)<1e-12);
+        if(records.length){
+          assert.equal(records.length,11);
+          for(const record of records.slice(0,-1)){
+            assert.equal(record.scope[0].volts,1);
+            assert.ok(Math.abs(record.meters[0].reading.siValue-.001)<1e-12);
+          }
+        }
+      }
+    }
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
 test('precision native admission refuses current-limited source state outside its domain', () => {
   const dir = mkdtempSync(join(tmpdir(),'bwc-precision-current-limit-'));
   try {

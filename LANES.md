@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-02 Indeterminate-current consumer adoption — CLAIM, Codex bwcx `/root`.
+2026-10-02 Indeterminate-current consumer adoption — DONE candidate, Codex bwcx `/root`.
 Reuse clean closed worktree wt-cui-measurement-receipt-20261001, branch
 fable/indeterminate-current-adoption, exact base
 4eb8bc0e9ea11b4264e5fb72ffab3d78135b733a. Seven-path envelope: this row;
@@ -17,6 +17,21 @@ Mutation must catch fabricated zero behavior independently of provenance.
 No CUI production implementation, browser-rendering certificate, parser/GUI,
 workflow, other dependencies, corpus, Lite or deployment changes. One final
 automatic exact-head four-job qualification before guarded normal FF.
+Installed non-symlink runtime hash matches accepted source exactly:
+0f829d1e8a656ce241a4e8af8aefa474f97d2c7a67aba933250ef3ff2c9b8cf6.
+Only three Board pin/resolution/integrity lines change in the lock. Existing
+provenance/source-analysis/meter surface passes 33/33, zero skips, including
+live ngspice controls; three selected CLI aggregates pass with 53 unrelated
+filtered skips. New aggregate proves 12 unavailable current requests and
+six valid captures / 60 scope samples across ground/live batch/watch/precision.
+Shared GUI model proves both terminals at three instants, resistive known-zero
+and power-off controls, with voltage/load meters unchanged; no browser claim.
+Isolated installed-artifact refusal bypass genuinely fails BOTH numerical/
+behavioral regressions, independently of skipped provenance test; exact bytes
+restored, new tests 2/2 and provenance green. A test-only -0/0 distinction on
+the reversed determinate-zero terminal was corrected to absolute zero without
+changing production sign behavior or accepting nonzero results. Full suite
+and browser/oracles run in the one hosted candidate qualification.
 
 2026-10-01 Source self-constraint consumer adoption — DONE candidate, Codex bwcx `/root`.
 Reuse clean closed worktree `wt-cui-measurement-receipt-20261001`, new branch

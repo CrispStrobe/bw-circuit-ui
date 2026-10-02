@@ -388,6 +388,15 @@ source/resistor ngspice decks. A zero-resistance redundant ideal source has
 indeterminate individual branch current; its valid voltage identity is not a
 physical current-measurement guarantee.
 
+Requesting the current of that redundant ideal source now refuses capture:
+the shared meter model displays an unavailable reading (`---`, no numeric
+value), and CLI batch/watch/precision exits with an error rather than returning
+`0 A`. Its valid voltage identity and unrelated load currents remain readable.
+Finite resistance makes the branch current determinate, including a genuine
+zero-current result. A powered-off source also retains its known zero reading.
+This is a scoped source-current availability contract, not a claim that every
+missing device-current entry has been classified.
+
 Precision capture advances the passive/source graph **once**: no `--watch`,
 timed-device deadlines, driven PWM or resistance power-off tick can turn the
 per-integrator limit into a repeated allowance. The fixed limit is 20,000

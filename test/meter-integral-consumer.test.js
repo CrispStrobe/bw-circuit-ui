@@ -48,7 +48,45 @@ test('meter integration uses the exact installed package, not a sibling checkout
   const proof=verifyBoardProvenance({throwOnFailure:true});
   assert.equal(proof.qualified,true);
   assert.equal(proof.loaded.logicalIsSymlink,false);
-  assert.equal(proof.declared.packageCommit,'6f693b077f1b712e4a484c3d789f21a152c866a4');
+  assert.equal(proof.declared.packageCommit,'81f136c7e56188ec72680a8b63b4e4d6f33472cb');
+});
+
+test('installed Circuit shared meter model reports indeterminate source current unavailable without breaking valid meters',()=>{
+  for(const live of [false,true]) for(const resistance of [0,10]) {
+    const node=live?'n':'0';
+    const imported=importCircuit('spice',`* current availability control\nVGOOD n 0 1\nRLOAD n 0 1k\nVZERO ${node} ${node} 0\n.end\n`);
+    assert.deepEqual(imported.unmapped||[],[]);
+    if(resistance) imported.parts.find(part=>part.id==='VZERO').params.rInternal=resistance;
+    const circuit=Circuit.fromJSON({parts:imported.parts,wires:imported.wires});
+    assert.equal(circuit.netlistError,null); circuit.setPower(true);
+    const source=createMeterState(); source.mode='current'; source.probeA.partId='VZERO';
+    const load=createMeterState(); load.mode='current'; load.probeA.partId='VGOOD'; load.probeA.terminal='pos';
+    const voltage=createMeterState();
+    voltage.probeA.netId=resolveEndpointNet(circuit.resolvedNets,'VGOOD.pos');
+    voltage.probeB.netId=resolveEndpointNet(circuit.resolvedNets,'VGOOD.neg');
+    for(const at of [0n,100_000n,1_000_000n]) {
+      if(at) circuit.advanceTo(at);
+      for(const terminal of ['pos','neg']) {
+        source.probeA.terminal=terminal;
+        const reading=readMeter(source,circuit);
+        if(resistance){
+          assert.equal(reading.note,null); assert.equal(Math.abs(reading.siValue),0,'determinate resistive zero is physical');
+        }else{
+          assert.equal(reading.value,'---'); assert.equal(reading.siValue,null);
+          assert.equal(reading.note,'Cannot read current','indeterminate current must not become fabricated zero');
+        }
+      }
+      const v=readMeter(voltage,circuit),i=readMeter(load,circuit);
+      assert.equal(v.note,null); assert.equal(v.siValue,1);
+      assert.equal(i.note,null); close(i.siValue,.001,1e-12,'unrelated load current');
+    }
+    circuit.setPower(false);
+    for(const terminal of ['pos','neg']) {
+      source.probeA.terminal=terminal;
+      const reading=readMeter(source,circuit);
+      assert.equal(reading.note,null); assert.equal(reading.siValue,0,'known powered-off zero remains available');
+    }
+  }
 });
 
 for(const c of cases) for(const stride of [7000000n,700000n,10000n]) {
