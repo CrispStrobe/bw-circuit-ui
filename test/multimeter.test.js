@@ -17,6 +17,54 @@ const MS = 1_000_000n;
 
 beforeEach(() => resetIds());
 
+describe('multimeter — finite result authority', () => {
+  for (const [mode, method, siUnit] of [
+    ['voltage', 'meterVoltage', 'V'],
+    ['current', 'meterCurrent', 'A'],
+    ['resistance', 'resistance', 'Ω'],
+  ]) {
+    it(`${mode} refuses nonfinite and nonnumeric engine results without a successful SI value`, () => {
+      const meter = createMeterState();
+      meter.mode = mode;
+      meter.probeA = {netId: 'a', partId: 'R1', terminal: 'a'};
+      meter.probeB.netId = 'b';
+      for (const value of [NaN, Infinity, -Infinity, null, undefined, '1', {}]) {
+        const reading = readMeter(meter, {board: {}, [method]: () => value});
+        assert.equal(reading.value, '---', `${mode}: ${String(value)}`);
+        assert.equal(reading.siValue, null);
+        assert.equal(reading.siUnit, siUnit);
+        assert.equal(reading.note, `Cannot read ${mode}`);
+      }
+    });
+
+    it(`${mode} preserves finite signed values and genuine zero`, () => {
+      const meter = createMeterState();
+      meter.mode = mode;
+      meter.probeA = {netId: 'a', partId: 'R1', terminal: 'a'};
+      meter.probeB.netId = 'b';
+      for (const value of mode === 'resistance' ? [0, 1, 1e9] : [-1, 0, 1, 1e-15]) {
+        const reading = readMeter(meter, {board: {}, [method]: () => value});
+        assert.equal(reading.siValue, value);
+        assert.equal(reading.siUnit, siUnit);
+        assert.equal(reading.note, null);
+        assert.notEqual(reading.value, '---');
+      }
+    });
+  }
+
+  it('the instantaneous fallback paths obey the same finite-value boundary', () => {
+    const meter = createMeterState();
+    meter.probeA = {netId: 'a', partId: 'R1', terminal: 'a'};
+    meter.probeB.netId = 'b';
+    const circuit = {board: {}, nodeVoltage: () => Infinity, branchCurrent: () => NaN};
+    assert.equal(readMeter(meter, circuit).siValue, null);
+    assert.equal(readMeter(meter, circuit).value, '---');
+    meter.mode = 'current';
+    assert.equal(readMeter(meter, circuit).siValue, null);
+    assert.equal(readMeter(meter, circuit).value, '---');
+  });
+});
+
 function buildTestCircuit() {
   const c = new Circuit(5.0);
   const vcc = c.addPart('vcc', {}, 0, 0);

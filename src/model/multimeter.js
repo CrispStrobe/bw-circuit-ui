@@ -83,6 +83,7 @@ export function readMeter(meter, circuit) {
         // A DMM averages (100 ms, the engine's meter window): on a PWM net it
         // shows the mean, not whichever level the last instant solved to.
         const diff = meterDifference(circuit, probeA.netId, probeB.netId);
+        if (!Number.isFinite(diff)) throw new Error('Nonfinite voltage reading');
         return { value: diff.toFixed(3), unit: 'V', note: null, siValue: diff, siUnit: 'V' };
       } catch {
         return { value: '---', unit: 'V', note: 'Cannot read voltage', siValue: null, siUnit: 'V' };
@@ -97,6 +98,7 @@ export function readMeter(meter, circuit) {
         // Raw/public current is signed positive OUT of the probed part. Keep
         // the sign: reversing the selected terminal must reverse the reading.
         const i = meterCurrentOf(circuit, probeA.partId, probeA.terminal);
+        if (!Number.isFinite(i)) throw new Error('Nonfinite current reading');
         const magnitude = Math.abs(i);
         let scale = 1e3;
         let unit = 'mA';
@@ -141,6 +143,7 @@ export function readMeter(meter, circuit) {
             siUnit: 'Ω',
           };
         }
+        if (!Number.isFinite(r)) throw new Error('Nonfinite resistance reading');
         if (r > 1e6) {
           return { value: (r / 1e6).toFixed(2), unit: 'MΩ', note: null, siValue: r, siUnit: 'Ω' };
         }
