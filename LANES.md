@@ -1,5 +1,25 @@
 # Work lanes
 
+2026-10-02 Aliased-rail operating-point consumer repair — CLAIM, Codex bwcx `/root`.
+Clean reused worktree wt-cui-measurement-receipt-20261001, branch
+fable/rail-current-display-adoption, exact base
+f28050df9a31ac3a4e68090bad440272b4f86624. Eleven-path envelope: this row;
+package.json/package-lock.json exact qualified Board pin;
+scripts/board-provenance.json; src/model/operating-point-view.js availability
+formatter; src/components/OperatingPointPanel.jsx explicit unavailable labels;
+bin/bwc.mjs shared OP formatter and scoped DC current availability check;
+existing test/operating-point-ui.test.js, test/operating-point-reachability.test.js
+and test/meter-integral-consumer.test.js; docs/CLI-INSTRUMENTS.md.
+Measured unchanged formatter falsely shows A.vcc=-5 mA although the candidate
+Board marks both A/B ambiguous on a 5 V/1 kohm aliased rail. Preserve valid
+node/load currents, unique-symbol currents, powered-off zero and source-analysis
+policies. Prove actual installed package, both alias orders and real CLI output,
+including named unavailable zero self-sources; mutation must restore the false
+current display and genuinely fail behavior assertions. No source copy/fork,
+solver, importer, source-analysis redesign, waveform, workflow, corpus, Lite,
+other dependencies or deployment changes. Local preparation only while Board
+qualifies; consumer production landing held until that exact engine is upstream.
+
 2026-10-02 Indeterminate-current consumer adoption — DONE candidate, Codex bwcx `/root`.
 Reuse clean closed worktree wt-cui-measurement-receipt-20261001, branch
 fable/indeterminate-current-adoption, exact base
