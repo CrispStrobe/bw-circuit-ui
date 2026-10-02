@@ -1,5 +1,20 @@
 # Work lanes
 
+2026-10-02 Browser instrument fault/recovery — CLAIM, Codex bwcx `/root`.
+Reuse clean isolated wt-cui-measurement-receipt-20261001; branch
+fable/browser-instrument-fault-20261002; exact base
+097738d3df94fa4e5d31ed9fea2842d84968dea9. Nine-path envelope: this row;
+src/components/ScopePanel.jsx and Multimeter.jsx; src/model/scope-tools.js;
+existing test/scope-tools.test.mjs; dev/measurement-fault.html and .jsx;
+existing scripts/verify-interaction.mjs; docs/CLI-INSTRUMENTS.md.
+Preserve held valid waveform but invalidate its image and expose actual capture
+refusal even while paused; disable invalid exports. Real-component browser
+fixture uses installed Circuit/Board, healthy voltage, real constraint fault,
+sticky refusal across recovery, and explicit fresh-probe/recapture recovery.
+Register named browser scenarios and prove pure-helper failure identity plus
+actual browser trace-pixel/display/refusal controls. No solver, importer,
+acquisition numerics, package/pin, workflow, other repo or corpus edit.
+
 2026-10-02 Nonfinite multimeter boundary — DONE candidate, Codex bwcx `/root`.
 Isolated clean wt-cui-measurement-receipt-20261001; branch
 fable/meter-nonfinite-authority-20261002; exact base
