@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-02 CLI storage waveform audit — CLAIM, Codex bwcx `/root`.
+2026-10-02 CLI storage waveform audit — DONE candidate, Codex bwcx `/root`.
 Clean wt-cui-measurement-receipt-20261001; branch
 fable/cli-storage-waveform-audit-20261002; exact base
 d252ba72122915b7783e9907b3742cb5eb26c03f. Three-path envelope: this row,
@@ -12,6 +12,18 @@ PULSE, signed means and 1x/10x loading coverage instead of duplicating it.
 Unsupported op-amp/LDO dynamic models remain named limitations, not inferred
 physical success. No solver/importer/acquisition/GUI/pin/workflow/corpus edits;
 any newly reproduced implementation defect requires a bounded upstream repair.
+Also audit generic static opamp clipping against an independently stated ngspice
+gain/rail/output-resistance equation, explicitly not a physical macromodel claim.
+Five new actual CLI circuits pass 1800/1800 time-aligned observations across
+nine probe locations: four signed RC/RL cases (two locations each) plus one
+static-clipping case. Independent closed-form controls judge ngspice itself;
+five corrupted-reference CLI executions each fail exactly one observation.
+Adjacent selected precision/domain/probe suite passes 12/12, zero skips (its
+RC/RL cases overlap the five-case count and are not summed). Initial CSV-only
+test red was the new test treating two labelled channels as one table; repaired
+the parser to assert both complete 200-row sections, without dropping rows or
+changing tolerances. No solver error found in these bounded cases. Full hosted
+qualification remains mandatory; private few-hundred-circuit replay follows.
 
 2026-10-02 Browser instrument fault/recovery — DONE candidate, Codex bwcx `/root`.
 Reuse clean isolated wt-cui-measurement-receipt-20261001; branch

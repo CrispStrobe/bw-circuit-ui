@@ -585,3 +585,20 @@ engine refuses a capture, the panel names the reason, clears the invalid image
 and prevents its export. Repairing a circuit does not certify the old interval:
 remove and re-add the channel to acquire a fresh capture. Multimeter failures
 display `---`, not zero; nonfinite values are not successful readings.
+
+## What the time-domain checks establish
+
+The CLI tests compare signed zero-state RC/RL scope responses at both the
+storage node and source node against live ngspice, with independent exponential
+controls, explicit timestamps and unchanged default comparison tolerances.
+Existing checks also cover SINE/PULSE, signed meter means and explicit 1x/10x
+probe loading. A separate interactive check compares the generic static opamp's
+declared gain, rail clipping and output resistance to an independently written
+ngspice equation; this is not a physical-device macromodel comparison. Changed
+reference samples must fail the actual CLI command.
+
+These are bounded model checks, not certification of every imported circuit.
+`precision-v1` measurement admission is limited to its passive/source domain;
+op-amp clipping, bandwidth/slew, regulator startup and changing loads need their
+own model-specific dynamic qualification. An interactive waveform from such a
+part is not by itself evidence of physical-device accuracy.

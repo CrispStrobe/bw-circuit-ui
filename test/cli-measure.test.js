@@ -990,6 +990,123 @@ test('precision native admission does not apply its DC bias to zero-state storag
 });
 
 const ngspicePresent = spawnSync('ngspice',['--version'],{encoding:'utf8'}).status===0;
+test('interactive CLI static opamp clipping matches independently stated gain/rails/output-resistance model', {
+  skip: ngspicePresent ? false : 'ngspice unavailable: static clipping model oracle did not run',
+}, async () => {
+  await import('./_setup.js');
+  const {Circuit} = await import('../src/model/circuit.js');
+  const {importCircuit} = await import('../src/importers/index.js');
+  const dir = mkdtempSync(join(tmpdir(), 'bwc-static-clip-'));
+  try {
+    const input = importCircuit('spice', '* static clipping input\nV1 in 0 SINE(0 .02 1k)\nR1 out 0 10k\n.end\n');
+    assert.equal(input.unmapped.length, 0);
+    const c = Circuit.fromJSON({parts: input.parts, wires: input.wires});
+    const amp = c.addPart('opamp', {gain: 100, railLow: -1, railHigh: 1, rout: 100}, 0, 0);
+    c.addWire('V1', 'pos', amp.id, 'inp');
+    c.addWire('V1', 'neg', amp.id, 'inn');
+    c.addWire(amp.id, 'out', 'R1', 'a');
+    assert.equal(c.netlistError, null);
+    const fixture = join(dir, 'clip.json'), expectedPath = join(dir, 'expected.json');
+    writeFileSync(fixture, JSON.stringify(c.toJSON()));
+    writeFileSync(join(dir, 'reference.cir'), 'Independent static clipping model, not a physical opamp macromodel\n'
+      + 'V1 in 0 SIN(0 .02 1k)\nBAMP internal 0 V=min(1,max(-1,100*v(in)))\n'
+      + 'ROUT internal out 100\nRLOAD out 0 10k\n'
+      + '.options reltol=1e-10 abstol=1e-14 vntol=1e-10 trtol=1\n.control\n'
+      + 'set wr_vecnames\nset wr_singlescale\ntran 10u 2m 0 5n\nlinearize v(out)\n'
+      + 'wrdata reference.csv v(out)\n.endc\n.end\n');
+    const oracle = spawnSync('ngspice', ['-b', 'reference.cir'], {cwd: dir, encoding: 'utf8', timeout: 60000});
+    assert.equal(oracle.status, 0, oracle.stderr || oracle.stdout);
+    const samples = readFileSync(join(dir, 'reference.csv'), 'utf8').trim().split('\n').slice(1)
+      .map(line => line.trim().split(/\s+/).map(Number)).filter(row => row[0] > 0)
+      .map(row => ({timeSeconds: row[0], volts: row[1]}));
+    assert.equal(samples.length, 200);
+    for (const point of samples) {
+      const closed = Math.max(-1, Math.min(1, 2 * Math.sin(2 * Math.PI * 1000 * point.timeSeconds))) * 10000 / 10100;
+      assert.ok(Math.abs(point.volts - closed) <= 1e-7, 'oracle matches independently stated static clipping equation');
+    }
+    const expected = {schemaVersion: 1, provenance: {kind: 'live-ngspice-declared-static-clipping-model'},
+      traces: [{tip: `${amp.id}.out`, reference: 'V1.neg', samples}]};
+    writeFileSync(expectedPath, JSON.stringify(expected));
+    const args = [CLI, 'measure', fixture, '--scope', `${amp.id}.out,V1.neg`,
+      '--duration', '2ms', '--rate', '100kHz', '--expect', expectedPath, '--json'];
+    const run = spawnSync(process.execPath, args, {encoding: 'utf8', timeout: 30000});
+    assert.equal(run.status, 0, run.stderr || run.stdout);
+    const report = JSON.parse(run.stdout);
+    assert.equal(report.comparison.counts.passed, 200);
+    assert.equal(report.comparison.counts.compared, 200);
+    assert.equal(report.claims.independentOracle, false);
+    expected.traces[0].samples[73].volts += .01;
+    writeFileSync(expectedPath, JSON.stringify(expected));
+    const mutant = spawnSync(process.execPath, args, {encoding: 'utf8', timeout: 30000});
+    assert.equal(mutant.status, 1, mutant.stderr);
+    assert.equal(JSON.parse(mutant.stdout).comparison.counts.failed, 1);
+  } finally {rmSync(dir, {recursive: true, force: true});}
+});
+
+for (const kind of ['RC', 'RL']) for (const sign of [1, -1]) {
+  test(`precision CLI ${kind} signed ${sign} step compares both scope insertion points to live ngspice`, {
+    skip: ngspicePresent ? false : 'ngspice unavailable: storage waveform oracle did not run',
+  }, () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bwc-storage-waveform-'));
+    try {
+      const storage = kind === 'RC' ? 'C1 out 0 100n' : 'L1 out 0 1m';
+      const tip = kind === 'RC' ? 'C1.a' : 'L1.a';
+      const cards = `V1 in 0 ${sign}\nR1 in out 100\n${storage}\n`;
+      const fixture = join(dir, 'capture.cir'), expectedPath = join(dir, 'expected.json'), csv = join(dir, 'capture.csv');
+      writeFileSync(fixture, `Zero-state signed ${kind} scope\n${cards}.tran 1u 200u UIC\n.end\n`);
+      writeFileSync(join(dir, 'reference.cir'), `Independent signed ${kind} reference\n${cards}`
+        + '.options reltol=1e-10 abstol=1e-14 vntol=1e-10 trtol=1\n.control\n'
+        + 'set wr_vecnames\nset wr_singlescale\ntran 1u 200u 0 5n uic\n'
+        + 'linearize v(out) v(in)\nwrdata reference.csv v(out) v(in)\n.endc\n.end\n');
+      const oracle = spawnSync('ngspice', ['-b', 'reference.cir'], {cwd: dir, encoding: 'utf8', timeout: 60000});
+      assert.equal(oracle.status, 0, oracle.stderr || oracle.stdout);
+      const rows = readFileSync(join(dir, 'reference.csv'), 'utf8').trim().split('\n').slice(1)
+        .map(line => line.trim().split(/\s+/).map(Number)).filter(row => row[0] > 0);
+      assert.equal(rows.length, 200);
+      rows.forEach((row, index) => {
+        assert.equal(row.length, 3);
+        assert.ok(row.every(Number.isFinite));
+        assert.ok(Math.abs(row[0] - (index + 1) * 1e-6) <= 1e-12, 'oracle exact time grid');
+        const exponential = Math.exp(-row[0] / 1e-5);
+        const closed = sign * (kind === 'RC' ? 1 - exponential : exponential);
+        assert.ok(Math.abs(row[1] - closed) <= 1e-7, 'ngspice independent closed-form control');
+        assert.equal(row[2], sign, 'source polarity independently preserved');
+      });
+      const reference = {schemaVersion: 1, provenance: {kind: 'live-ngspice-zero-state-storage'},
+        traces: [tip, 'V1.pos'].map((endpoint, index) => ({tip: endpoint, reference: 'V1.neg',
+          samples: rows.map(row => ({timeSeconds: row[0], volts: row[index + 1]}))}))};
+      writeFileSync(expectedPath, JSON.stringify(reference));
+      const args = [CLI, 'measure', fixture, '--scope', `${tip},V1.neg`, '--scope', 'V1.pos,V1.neg',
+        '--duration', '200us', '--rate', '1MHz', '--profile', 'precision-v1', '--initial', 'zero-state',
+        '--expect', expectedPath, '--csv', csv, '--json'];
+      const run = spawnSync(process.execPath, args, {encoding: 'utf8', timeout: 30000});
+      assert.equal(run.status, 0, run.stderr || run.stdout);
+      const report = JSON.parse(run.stdout);
+      assert.equal(report.transient.accuracyMet, true);
+      assert.equal(report.comparison.status, 'pass');
+      assert.equal(report.comparison.counts.compared, 400);
+      assert.equal(report.comparison.counts.passed, 400);
+      assert.equal(report.claims.independentOracle, false);
+      const sections = readFileSync(csv, 'utf8').trim().split('\n\n');
+      assert.equal(sections.length, 2, 'CSV labels each independent channel, not one merged ring');
+      sections.forEach((section, channel) => {
+        assert.match(section.split('\n')[0], /capture=sample .*sampleIntervalNs=1000 points=200/);
+        const captured = section.split('\n').slice(2).map(line => line.split(',').map(Number));
+        assert.equal(captured.length, 200);
+        captured.forEach((row, index) => {
+          assert.ok(Math.abs(row[0] + report.scope[channel].startTimeSeconds - rows[index][0]) <= 1e-12);
+          assert.ok(Math.abs(row[1] - rows[index][channel + 1]) <= 1e-6 + 1e-6 * Math.abs(rows[index][channel + 1]));
+        });
+      });
+      reference.traces[0].samples[123].volts += .01;
+      writeFileSync(expectedPath, JSON.stringify(reference));
+      const mutant = spawnSync(process.execPath, args, {encoding: 'utf8', timeout: 30000});
+      assert.equal(mutant.status, 1, mutant.stderr);
+      assert.equal(JSON.parse(mutant.stdout).comparison.counts.failed, 1);
+    } finally {rmSync(dir, {recursive: true, force: true});}
+  });
+}
+
 for (const [probe,ohms,farads] of [['10x',1e7,15e-12],['1x',1e6,100e-12]]) {
   test(`precision CLI ${probe} compares all 400 samples to live ngspice and analytical RC response`, {
     skip:ngspicePresent?false:'ngspice unavailable: no independent precision CLI comparison ran',
