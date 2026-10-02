@@ -1,5 +1,21 @@
 # Work lanes
 
+2026-10-02 Live-fault and placeable meter consumer — CLAIM, Codex bwcx `/root`.
+Clean reused worktree wt-cui-measurement-receipt-20261001, new branch
+fable/live-fault-bench-availability-adoption, exact base
+0ff3edca0c9848b6383360ff50c4ecfa66938039. Seven-path envelope: this row;
+package.json/package-lock.json exact qualified Board pin;
+scripts/board-provenance.json; existing test/meter-integral-consumer.test.js
+and test/cli-measure.test.js; docs/CLI-INSTRUMENTS.md.
+Adopt upstream live-exception and analog device-state availability repair after
+it qualifies and lands. Prepare local regressions now: real Circuit control fault
+must turn shared GUI meter readings unavailable; capture history stays invalid
+after recovery; transient CLI faults must refuse without false final reports;
+actual installed placeable meter state must be nullable/unavailable, with valid
+nonzero/zero recovery. No source copy, UI/artwork, importer, solver, workflow,
+other dependency, Lite/corpus or deployment edits. Existing CLI handlers and
+shared meter model already catch these errors; do not duplicate engine logic.
+
 2026-10-02 Failed-solve instrument consumer — DONE candidate, Codex bwcx `/root`.
 Clean reused worktree wt-cui-measurement-receipt-20261001, new branch
 fable/failed-solve-instrument-adoption, exact base
