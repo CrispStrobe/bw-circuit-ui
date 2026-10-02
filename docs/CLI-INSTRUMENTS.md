@@ -586,6 +586,71 @@ and prevents its export. Repairing a circuit does not certify the old interval:
 remove and re-add the channel to acquire a fresh capture. Multimeter failures
 display `---`, not zero; nonfinite values are not successful readings.
 
+## ADP7118 internal startup capture
+
+The pinned Board engine supports the explicit ADP7118
+`startupModel: 'datasheet-envelope'` option. The CLI regressions exercise the
+installed package; availability in a deployed application is a separate release.
+The unchanged default ADP7118 model remains its existing DC contract.
+
+Use native circuit JSON containing a fixed-output part, for example:
+
+```js
+{id: 'U', kind: 'adp7118', params: {vOut: 5, startupModel: 'datasheet-envelope'}}
+```
+
+Connect both VIN leads to an 8 V source, EN to 3.3 V, both VOUT leads and
+SENSE directly together, and the ground pin to the common return. Leave SS
+completely unconnected: even an explicitly authored singleton SS net is outside
+this model's open-SS admission. A 500 ohm load and actual 2.2 microfarad output
+capacitor provide the bounded startup fixture. For a JSON file describing that
+setup, the existing CLI action is:
+
+```sh
+node bin/bwc.mjs measure startup.json --scope U.vout_1,G.gnd \
+  --meter voltage:U.vout_1,G.gnd --duration 1200us --rate 100kHz \
+  --json --csv startup.csv --receipt startup-receipt.json
+```
+
+Here `G.gnd` names the fixture's ground part. Native JSON preserves the explicit
+startup parameter; this command does not establish startup-model support in a
+SPICE or ASC exporter/importer. The regression removes any `BW_BOARD` override
+and binds the loaded installed package to its full declared pin and runtime
+fingerprint, rather than testing an unadopted sibling checkout.
+
+[ADI's ADP7118 data sheet](https://www.analog.com/media/en/technical-documentation/data-sheets/adp7118.pdf)
+supplies typical 80 microsecond and 380 microsecond EN-to-10%/90% anchors.
+Brickwright chooses a delayed exponential through these points; ADI does not
+specify that complete interpolation waveform. The circuit's actual output
+resistance and capacitance then determine its response. The installed-package
+regressions require all 120 engine-clock CSV observations to match an independent
+closed-form RC solution, along with a successful unchanged local integration
+accuracy check. The voltage meter reports the capture-window mean: about
+4.157 V for this 1.2 ms fixture, not its roughly 4.996 V endpoint. This is an
+analytic check of the authored behavioral circuit, not vendor-SPICE agreement
+or a physical-device accuracy certificate.
+VIN draw and quiescent-current bookkeeping remain behavioral approximations;
+these voltage/mean checks do not certify a fast charging-power trace at VIN.
+
+The upstream stamp is observational: a bias query must not mutate startup
+progress or the next real trajectory. Accepted transient-step context is
+delivered only to the opting-in device model; this does not change ordinary
+device callback semantics or relax solver tolerances and work budgets.
+
+Reactive overload and excessive charging inrush remain named refusals: the
+tests exercise 10 ohms with 2.2 microfarads and 500 ohms with 22 microfarads.
+The batch command must exit unsuccessfully without successful numeric JSON or
+a CSV capture. A within-solve nonlinear current limiter is a separate model
+task, not a post-step clamp disguised as accurate simulation. Precision batch
+admission remains passive/source-only and refuses this timed device by name.
+
+This slice supports only fixed 1.2–5 V outputs with direct SENSE and open SS.
+External soft-start capacitance, adjustable feedback, prebiased startup,
+overshoot, load-step stability, noise/PSRR, temperature and thermal shutdown
+are not qualified by these measurements. LT1763 startup is unchanged. Real
+oscilloscope bandwidth, acquisition electronics and probe effects are separate
+from this ideal-probe model capture.
+
 ## What the time-domain checks establish
 
 The CLI tests compare signed zero-state RC/RL scope responses at both the

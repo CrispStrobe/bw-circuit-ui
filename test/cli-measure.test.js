@@ -25,6 +25,148 @@ const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json'
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
 
+function adp7118StartupCliFixture({ohms = 500, farads = 2.2e-6} = {}) {
+  const wire = (from, fromTerminal, to, toTerminal) =>
+    ({from, fromTerminal, to, toTerminal});
+  return {
+    vcc: 5,
+    parts: [
+      {id:'VIN',kind:'vsource',params:{volts:8}},
+      {id:'EN',kind:'vsource',params:{volts:3.3}},
+      {id:'G',kind:'gnd',params:{}},
+      {id:'U',kind:'adp7118',params:{vOut:5,startupModel:'datasheet-envelope'}},
+      {id:'RL',kind:'resistor',params:{ohms}},
+      {id:'C',kind:'capacitor',params:{farads}},
+    ],
+    // SS is intentionally absent: an authored singleton SS net is NOT open
+    // according to this model's qualified admission contract.
+    wires: [
+      wire('VIN','pos','U','vin_7'), wire('VIN','pos','U','vin_8'),
+      wire('EN','pos','U','en'),
+      wire('U','vout_1','U','vout_2'),
+      wire('U','vout_1','U','sense_adj'),
+      wire('U','vout_1','RL','a'), wire('U','vout_1','C','a'),
+      wire('G','gnd','VIN','neg'), wire('G','gnd','EN','neg'),
+      wire('G','gnd','U','gnd'), wire('G','gnd','RL','b'),
+      wire('G','gnd','C','b'),
+    ],
+  };
+}
+
+test('ADP7118 startup uses the installed pinned package for real CLI scope and meter mean', () => {
+  const dir = mkdtempSync(join(tmpdir(),'bwc-adp7118-installed-'));
+  const env = {...process.env}; delete env.BW_BOARD;
+  try {
+    const source = join(dir,'startup.json');
+    const csv = join(dir,'startup.csv');
+    const saved = join(dir,'receipt.json');
+    writeFileSync(source,JSON.stringify(adp7118StartupCliFixture()));
+    const result = spawnSync(process.execPath,[CLI,'measure',source,
+      '--scope','U.vout_1,G.gnd','--meter','voltage:U.vout_1,G.gnd',
+      '--duration','1200us','--rate','100kHz','--csv',csv,
+      '--receipt',saved,'--json'],{encoding:'utf8',env,timeout:30000});
+    assert.equal(result.status,0,result.stderr);
+    const report = JSON.parse(result.stdout);
+    assert.equal(report.transient.accuracyMet,true,JSON.stringify(report.transient));
+    assert.equal(report.transient.failure,null);
+    assert.equal(report.plannedSamples,120);
+    assert.equal(report.scope.length,1);
+    assert.equal(report.scope[0].summary.samples,120);
+    assert.equal(report.scope[0].capture,'sample');
+    assert.equal(report.scope[0].sampleIntervalSeconds,10e-6);
+
+    // Independent closed-form solution of the authored envelope driving
+    // actual 0.05 ohm / 500 ohm / 2.2 uF; not a vendor macromodel oracle.
+    const tau = (380e-6-80e-6)/Math.log(9);
+    const delay = Math.round((80e-6+tau*Math.log(.9))*1e9)/1e9;
+    const gain = 500/(500+.05);
+    const rc = (.05*500/(500+.05))*2.2e-6;
+    const expectedVoltage = time => {
+      const x = time-delay;
+      return x <= 0 ? 0 : 5*gain*(1-
+        (tau*Math.exp(-x/tau)-rc*Math.exp(-x/rc))/(tau-rc));
+    };
+    const lines = readFileSync(csv,'utf8').trim().split('\n');
+    assert.equal(lines.length,122,'one header, one column row, 120 observations');
+    assert.match(lines[0],/capture=sample/);
+    assert.match(lines[0],/sampleIntervalNs=10000 points=120$/);
+    const match = lines[0].match(/startTimeNs=(\d+)/);
+    assert.ok(match,'CSV must carry actual acquisition origin');
+    const startNs = BigInt(match[1]);
+    assert.equal(startNs,10000n,'first engine-clock sample is at 10 us');
+    assert.equal(report.scope[0].startTimeSeconds,Number(startNs)/1e9);
+    assert.equal(lines[1],'elapsed_seconds,volts');
+    for (const [index,line] of lines.slice(2).entries()) {
+      const values = line.split(',').map(Number);
+      assert.equal(values.length,2);
+      const [elapsed,volts] = values;
+      assert.ok(Number.isFinite(elapsed) && Number.isFinite(volts));
+      assert.equal(elapsed,index*10000/1e9,'all CSV observation timestamps checked');
+      const time = Number(startNs)/1e9+elapsed;
+      assert.ok(Math.abs(volts-expectedVoltage(time))<.001,
+        `sample ${index} at ${time}: ${volts} versus closed-form ${expectedVoltage(time)}`);
+    }
+    const duration = .0012;
+    const x = duration-delay;
+    const expectedMean = 5*gain*(x-
+      (tau*tau*(1-Math.exp(-x/tau))-rc*rc*(1-Math.exp(-x/rc)))/(tau-rc))/duration;
+    assert.equal(report.meters.length,1);
+    assert.equal(report.meters[0].quantity,'observed-dc-mean');
+    assert.equal(report.meters[0].reading.siUnit,'V');
+    assert.ok(Number.isFinite(report.meters[0].reading.siValue));
+    assert.ok(Math.abs(report.meters[0].reading.siValue-expectedMean)<.0001,
+      'meter must judge capture-window mean, not final output voltage');
+    assert.ok(Math.abs(report.meters[0].reading.siValue-
+      report.scope[0].summary.lastVolts)>.5,'mean and endpoint are distinct');
+
+    const receipt = JSON.parse(readFileSync(saved,'utf8'));
+    const provenance = JSON.parse(readFileSync(join(ROOT,'scripts','board-provenance.json'),'utf8'));
+    const pkg = JSON.parse(readFileSync(join(ROOT,'package.json'),'utf8'));
+    assert.match(provenance.commit,/^[a-f0-9]{40}$/);
+    assert.equal(pkg.devDependencies['bw-board'],
+      `github:CrispStrobe/bw-board#${provenance.commit}`);
+    assert.equal(receipt.engine.selection,'installed package');
+    assert.equal(receipt.engine.declaredPackageSpec,pkg.devDependencies['bw-board']);
+    assert.equal(receipt.engine.observed.jsJsonTreeSha256,provenance.runtimeTreeSha256);
+    assert.equal(receipt.invocation.BW_BOARD,null);
+    assert.equal(receipt.clock.startNs,'0');
+    assert.equal(receipt.clock.durationNs,'1200000');
+    assert.equal(receipt.clock.intervalNs,'10000');
+    assert.deepEqual(receipt.report,report);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('ADP7118 startup installed CLI refuses reactive overload, inrush and precision admission honestly', () => {
+  const dir = mkdtempSync(join(tmpdir(),'bwc-adp7118-refusal-'));
+  const env = {...process.env}; delete env.BW_BOARD;
+  const run = argv => spawnSync(process.execPath,[CLI,'measure',...argv],
+    {encoding:'utf8',env,timeout:30000});
+  try {
+    for (const [name,options] of [
+      ['overload',{ohms:10}], ['high-inrush',{farads:22e-6}],
+    ]) {
+      const source = join(dir,`${name}.json`);
+      const csv = join(dir,`${name}.csv`);
+      writeFileSync(source,JSON.stringify(adp7118StartupCliFixture(options)));
+      const result = run([source,'--scope','U.vout_1,G.gnd',
+        '--meter','voltage:U.vout_1,G.gnd','--duration','1200us',
+        '--rate','100kHz','--csv',csv,'--json']);
+      assert.equal(result.status,2,`${name}: ${result.stderr}`);
+      assert.match(result.stderr,/ADP7118.*current-limited startup transient is unqualified/);
+      assert.equal(result.stdout,'',`${name}: no plausible successful numeric JSON`);
+      assert.equal(existsSync(csv),false,`${name}: no numeric CSV published after refusal`);
+    }
+    const normal = join(dir,'precision.json');
+    writeFileSync(normal,JSON.stringify(adp7118StartupCliFixture()));
+    const precision = run([normal,'--scope','U.vout_1,G.gnd',
+      '--duration','1200us','--rate','100kHz','--profile','precision-v1',
+      '--initial','zero-state','--json']);
+    assert.equal(precision.status,2,precision.stderr);
+    assert.match(precision.stderr,/precision batch refuses part U \(adp7118\)/);
+    assert.equal(precision.stdout,'','timed model must not sneak into passive-only precision admission');
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
 test('live transient solver exception refuses batch/watch without a false successful final report', () => {
   const dir = mkdtempSync(join(tmpdir(), 'bwc-live-fault-'));
   try {

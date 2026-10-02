@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-02 Installed ADP7118 startup CLI adoption — CLAIM, Codex bwcx `/root`.
+2026-10-02 Installed ADP7118 startup CLI adoption — DONE candidate (hosted pending), Codex bwcx `/root`.
 Clean reused wt-cui-measurement-receipt-20261001, branch
 fable/adp7118-startup-installed-cli-20261002; exact CUI base
 c307c7494616a03f71b49c2d3cefc9ce44845f6b. Seven-path envelope: this row,
@@ -24,6 +24,18 @@ that assertion only, retaining its actual loaded-artifact/symlink qualification.
 The broader local sweep was stopped under VPS load above 20, not called green;
 full qualification belongs on hosted CI. No other executable stale-pin readers
 were found in test/ or scripts/ for the old SHA/runtime fingerprint.
+Exact package/lock/provenance now name the landed Board; loaded installed
+runtime fingerprint a466d2a77c484c6bf1689c7d5f27e3a07aa4d8d3ff4d20f46cd25868f8dc9db0
+matches the landed source using the same byte-based hash function. Actual
+installed CLI startup tests pass 2/2 with no skips: 120 finite time-aligned
+scope observations and independent RC/window-mean checks, two reactive-limit
+refusals with empty numeric stdout/no CSV, and named precision admission.
+The existing exact installed-meter pin assertion now passes 1/1 after its
+one-line mechanical update. Package provenance qualifies without a symlink
+or checkout override. The broader local run is explicitly incomplete: stopped
+under load above 20, with 44 passes, the old-pin failure and cancellation;
+it is not a full-suite green receipt. Hosted exact-head CI remains mandatory.
+No installed CUI main, Lite or deployment adoption is claimed yet.
 
 2026-10-02 CLI physical op-amp capture audit — DONE candidate, Codex bwcx `/root`.
 Clean isolated wt-cui-measurement-receipt-20261001, branch
