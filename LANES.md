@@ -1,5 +1,23 @@
 # Work lanes
 
+2026-10-02 Failed-solve instrument consumer — CLAIM, Codex bwcx `/root`.
+Clean reused worktree wt-cui-measurement-receipt-20261001, new branch
+fable/failed-solve-instrument-adoption, exact base
+b9299b61379abeafad518bfade4fdfe2c7467e62. Eight-path envelope: this row;
+package.json/package-lock.json exact qualified Board pin;
+scripts/board-provenance.json; bin/bwc.mjs named scope capture refusal for
+batch/watch; existing test/cli-measure.test.js and
+test/meter-integral-consumer.test.js; docs/CLI-INSTRUMENTS.md.
+Two parallel independent ideal sources reproduce failed live solve but numeric
+zero scope/meter success in batch/watch. Upstream Board 21481d64 is qualifying:
+local consumer preparation allowed, pin/landing held until upstream green and
+landed. Preserve valid zero and precision's existing cycle refusal; prove actual
+installed non-symlink artifact, shared GUI meter unavailable, and scope-only CLI
+clean refusal before JSON output with a load-bearing error-handler mutation.
+No source copy/fork, solver, importer, UI canvas, workflow, corpus, Lite, other
+dependency or deployment changes. Existing ScopePanel catches invalid data and
+does not render a false trace; no new browser-click proof or explicit UI alert.
+
 2026-10-02 Aliased-rail operating-point consumer repair — DONE candidate, Codex bwcx `/root`.
 Clean reused worktree wt-cui-measurement-receipt-20261001, branch
 fable/rail-current-display-adoption, exact base
