@@ -35,6 +35,10 @@ The first fixture omission of explicit rOut/currentLimit was likewise a new
 test mistake, not a physics change. No reference bound or existing tolerance
 weakened. Hosted full exact-head qualification remains pending; no downstream
 Lite adoption or deployment is claimed by this upstream candidate.
+Final docs audit also corrected two older passive-only statements in the same
+declared guide, retaining the legacy datasheet-envelope refusal and adding the
+explicit current-limited parameters/command. This docs-only forward correction
+does not alter the tested runtime, package or test bytes.
 
 2026-10-02 Installed ADP7118 startup CLI adoption — DONE candidate (hosted pending), Codex bwcx `/root`.
 Clean reused wt-cui-measurement-receipt-20261001, branch

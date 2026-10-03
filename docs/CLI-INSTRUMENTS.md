@@ -666,9 +666,22 @@ device callback semantics or relax solver tolerances and work budgets.
 Reactive overload and excessive charging inrush remain named refusals: the
 tests exercise 10 ohms with 2.2 microfarads and 500 ohms with 22 microfarads.
 The batch command must exit unsuccessfully without successful numeric JSON or
-a CSV capture. A within-solve nonlinear current limiter is a separate model
-task, not a post-step clamp disguised as accurate simulation. Precision batch
-admission remains passive/source-only and refuses this timed device by name.
+a CSV capture. These refusals apply to this earlier `datasheet-envelope` mode,
+which remains outside precision admission. The separately selected
+`current-limited-envelope` uses a within-solve limiter and has the bounded
+precision batch qualification described above; it is not a post-step clamp.
+For the same fully bonded JSON circuit, configure the regulator explicitly:
+
+```js
+{id: 'U', kind: 'adp7118', params: {
+  vOut: 5, rOut: 0.05, currentLimit: 0.36,
+  startupModel: 'current-limited-envelope'
+}}
+```
+
+Then add `--profile precision-v1 --initial zero-state` to the 1200us batch
+command. The overload and 22 microfarad inrush fixtures are checked through
+this actual installed CLI path; other startup modes are not silently upgraded.
 
 This slice supports only fixed 1.2–5 V outputs with direct SENSE and open SS.
 External soft-start capacitance, adjustable feedback, prebiased startup,
@@ -707,7 +720,8 @@ bandwidth and probe response; this capture exposes the stated engine model,
 not those additional instrument effects.
 
 These are bounded model checks, not certification of every imported circuit.
-`precision-v1` measurement admission is limited to its passive/source domain;
-op-amp clipping, bandwidth/slew, regulator startup and changing loads need their
+`precision-v1` measurement admits the passive/source domain and the separately
+bounded ADP7118 current-limited startup domain above. Op-amp clipping,
+bandwidth/slew, other regulator startup modes and changing loads need their
 own model-specific dynamic qualification. An interactive waveform from such a
 part is not by itself evidence of physical-device accuracy.
