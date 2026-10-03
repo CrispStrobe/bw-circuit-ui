@@ -438,7 +438,7 @@ local-step status. The policy/initialization are disclosed in `precisionCapture`
 A separate bounded domain admits **one** ADP7118 explicitly configured with
 `startupModel: "current-limited-envelope"`, `vOut`, `rOut` and `currentLimit`.
 Its companions are limited to R/C, ground and static DC voltage sources;
-capture is at most **1.2 ms**, zero-state batch only. The same part/net/channel
+capture is at most **1.2 ms**, with explicit zero-state initialization. The same part/net/channel
 limits, explicit-initial-condition refusals and ideal-cycle admission still
 apply. The native cold model validates bonded VIN/VOUT leads, direct SENSE,
 open SS, fixed-output parameters, static enable and sufficient headroom. Its
@@ -468,7 +468,21 @@ profile and local check. The status is captured before resistance mode powers
 the circuit off. A local step check is not a global waveform-error bound or
 independent-oracle agreement; unknown (`null`) or unmet status stays explicit.
 
-Follow-up roadmap: qualify additional bounded domains before enabling precision
+Finite ADP precision streaming is the next consumer under qualification. It uses
+one native `advanceToBoundedStream` call, not repeated fresh budget allowances.
+The proposed CLI contract is `--watch --profile precision-v1 --initial zero-state`
+for this same ADP domain, at most 200 observation callbacks including a final
+short chunk. Each NDJSON sample has `qualified:false`; only a completed matching
+native endpoint/work/step/count receipt can produce a `qualified:true` summary.
+Failure after provisional samples produces a terminal `failure` record with
+`qualified:false`, actual partial time and native status, never a successful
+summary or capture artifact. Qualification is local bounded-model capture, not
+independent-oracle agreement. The final short chunk reports the latest actual
+scope observation rather than inventing a sample at an unaligned endpoint.
+This consumer is not yet released: installed-package and real CLI tests must
+pass before landing. GUI precision streaming is not supplied by this API.
+
+Follow-up roadmap: qualify additional bounded domains before enabling their precision
 streaming and other timed/non-passive models, then qualify explicit DC-bias and startup
 initialization separately. Do not turn arbitrary durations into repeated budget
 allowances. Op-amp/device captures still use interactive measurement or their

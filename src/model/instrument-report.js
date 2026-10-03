@@ -155,6 +155,28 @@ export function validatePrecisionCaptureWork(status, budget) {
   }
 }
 
+/** Finite ADP stream admission is narrower than existing precision batch. */
+export function precisionStreamBudget(clock, budget, domain) {
+  if (domain !== 'adp7118-current-limited') {
+    throw new Error('precision watch requires the bounded ADP7118 current-limited domain');
+  }
+  const observerCalls = Number((clock.durationNs + clock.intervalNs - 1n) / clock.intervalNs);
+  if (!Number.isSafeInteger(observerCalls) || observerCalls < 1 || observerCalls > 200) {
+    throw new Error('precision watch limits finite capture to 200 observations');
+  }
+  return { ...budget, stream: { stepNs: String(clock.intervalNs), observerCalls } };
+}
+
+export function validatePrecisionStreamWork(status, budget, observed, timeNs) {
+  validatePrecisionCaptureWork(status, budget);
+  const stream = status?.boundedAdvance?.stream;
+  if (!budget.stream || !stream || stream.stepNs !== budget.stream.stepNs
+      || stream.observerCalls !== budget.stream.observerCalls
+      || observed !== stream.observerCalls || String(timeNs) !== budget.requestedTimeNs) {
+    throw new Error('precision watch returned missing or inconsistent finite stream receipt');
+  }
+}
+
 /** Match the engine's integer-nanosecond clock before allocating a capture. */
 export function measurementSampleClock(durationSeconds, rateHz) {
   if (![durationSeconds, rateHz].every(value => Number.isFinite(value) && value > 0)) {

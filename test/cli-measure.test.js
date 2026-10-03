@@ -16,6 +16,7 @@ import {
   parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
   measurementSampleClock,
   validatePrecisionCaptureInput, precisionCaptureBudget, validatePrecisionCaptureWork,
+  precisionStreamBudget, validatePrecisionStreamWork,
   validatePrecisionVoltageTopology,
 } from '../src/model/instrument-report.js';
 
@@ -138,7 +139,7 @@ test('bounded ADP7118 precision refuses escaped domains and publishes no partial
   try {
     const cases=[
       ['duration',()=>{},['--duration','1201us'],/limits capture to 1.2 ms/],
-      ['watch',()=>{},['--watch'],/refuses --watch/],
+      ['watch-json',()=>{},['--watch'],/NDJSON/],
       ['legacy',c=>{c.parts.find(p=>p.id==='U').params.startupModel='datasheet-envelope';},[],/refuses part U/],
       ['second',c=>c.parts.push({id:'U2',kind:'adp7118',params:{startupModel:'current-limited-envelope'}}),[],/multiple ADP7118/],
       ['timed',c=>c.parts.push({id:'timer',kind:'555'}),[],/refuses part timer/],
@@ -216,6 +217,131 @@ test('bounded Circuit proxy preserves actual clock on failure and cannot fall ba
   circ.board.advanceToBounded=function(){this.timeNs=5000n;throw failure;};
   assert.throws(()=>circ.advanceToBounded(1200000n,{}),error=>error===failure);
   assert.equal(circ.timeNs,5000n,'failed capture must not claim requested endpoint');
+});
+
+test('finite ADP precision watch publishes provisional actual-time readings and qualified independent RC means', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-adp-stream-'));
+  const env={...process.env};delete env.BW_BOARD;
+  try {
+    for(const [name,ohms,farads] of [['overload',10,2.2e-6],['inrush',500,22e-6]]) {
+      const source=join(dir,`${name}.json`);
+      writeFileSync(source,JSON.stringify(adp7118StartupCliFixture({ohms,farads,startupModel:'current-limited-envelope'})));
+      for(const rate of ['100kHz','90kHz']) {
+        const result=spawnSync(process.execPath,[CLI,'measure',source,'--watch',
+          '--scope','U.vout_1,G.gnd','--meter','voltage:U.vout_1,G.gnd',
+          ...['vout_1','vout_2','vin_7','vin_8','gnd'].flatMap(t=>['--meter',`current:U.${t}`]),
+          '--duration','1200us','--rate',rate,'--profile','precision-v1','--initial','zero-state'],
+        {encoding:'utf8',env,timeout:30000});
+        assert.equal(result.status,0,result.stderr);
+        const rows=result.stdout.trim().split('\n').map(line=>JSON.parse(line));
+        const summary=rows.pop(),reference=limitedStartupReference(ohms,farads);
+        const step=rate==='100kHz'?10000n:11111n;
+        assert.equal(summary.recordType,'summary');assert.equal(summary.qualified,true);
+        assert.equal(rows.length,Number((1200000n+step-1n)/step));
+        for(const [index,row] of rows.entries()) {
+          assert.equal(row.recordType,'sample');assert.equal(row.qualified,false);assert.equal(row.index,index);
+          const endpoint=(BigInt(index+1)*step)>1200000n?1200000n:BigInt(index+1)*step;
+          assert.equal(row.timeSeconds,Number(endpoint)/1e9);
+          // A short final chunk may report the latest real scope point, not a fabricated endpoint sample.
+          const scopeTime=Number(endpoint/step*step)/1e9;
+          assert.ok(Math.abs(row.scope[0].volts-reference.voltage(scopeTime))<.5e-6,`${name}/${rate}/${index}`);
+        }
+        const report=summary.report;
+        validatePrecisionStreamWork(report.transient,report.precisionCapture,rows.length,1200000n);
+        assert.ok(Math.abs(report.meters[0].reading.siValue-reference.mean)<1e-6);
+        const current=Object.fromEntries(report.meters.slice(1).map(r=>[r.probes[0].split('.')[1],r.reading.siValue]));
+        const output=current.vout_1+current.vout_2;
+        assert.ok(Math.abs(output-(reference.mean/ohms+farads*reference.voltage(.0012)/.0012))<2e-6);
+        assert.ok(Math.abs(Object.values(current).reduce((sum,value)=>sum+value,0))<1e-9);
+      }
+    }
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test('finite stream receipt and admission reject wrong count, step, endpoint and missing authority with a guard mutant', async () => {
+  const profile={id:'precision-v1',maxAttempts:20000,maxStepSec:1e-5};
+  const clock=measurementSampleClock(.0012,1e5);
+  const budget=precisionStreamBudget(clock,precisionCaptureBudget(clock,profile,5,'adp7118-current-limited'),'adp7118-current-limited');
+  assert.throws(()=>precisionStreamBudget(clock,budget,'passive-source'),/bounded ADP7118/);
+  assert.throws(()=>precisionStreamBudget(measurementSampleClock(.0012,2e5),budget,'adp7118-current-limited'),/200 observations/);
+  const status={profile,work:{attempts:400,solves:1200,advances:120},accuracyMet:true,failure:null,
+    boundedAdvance:{limits:{maxAttempts:20000,maxSolves:60001,maxAdvances:200},
+      work:{attempts:400,solves:1400,advances:120},completed:true,failure:null,
+      requestedTimeNs:'1200000',stream:{stepNs:'10000',observerCalls:120}}};
+  validatePrecisionStreamWork(status,budget,120,1200000n);
+  for(const stream of [undefined,{stepNs:'10001',observerCalls:120},{stepNs:'10000',observerCalls:119}]) {
+    assert.throws(()=>validatePrecisionStreamWork({...status,boundedAdvance:{...status.boundedAdvance,stream}},budget,120,1200000n),/finite stream receipt/);
+  }
+  assert.throws(()=>validatePrecisionStreamWork(status,budget,119,1200000n),/finite stream receipt/);
+  assert.throws(()=>validatePrecisionStreamWork(status,budget,120,1199999n),/finite stream receipt/);
+  const source=readFileSync(join(ROOT,'src/model/instrument-report.js'),'utf8');
+  const anchor='if (!budget.stream || !stream || stream.stepNs !== budget.stream.stepNs';
+  assert.equal(source.split(anchor).length-1,1);
+  const mutant=await import(`data:text/javascript;base64,${Buffer.from(source.replace(anchor,'if (false && (!budget.stream || !stream || stream.stepNs !== budget.stream.stepNs')
+    .replace('String(timeNs) !== budget.requestedTimeNs) {','String(timeNs) !== budget.requestedTimeNs)) {')).toString('base64')}`);
+  const oracle=judge=>assert.throws(()=>judge(status,budget,119,1200000n),/finite stream receipt/);
+  oracle(validatePrecisionStreamWork);
+  assert.throws(()=>oracle(mutant.validatePrecisionStreamWork),{name:'AssertionError'});
+});
+
+test('finite precision actual CLI fails late with a terminal receipt, and reset/bypass mutants fail real caller oracles', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-adp-stream-refuse-'));
+  const env={...process.env};delete env.BW_BOARD;
+  try {
+    const source=join(dir,'fixture.json');
+    writeFileSync(source,JSON.stringify(adp7118StartupCliFixture({ohms:500,farads:22e-6,startupModel:'current-limited-envelope'})));
+    const circuitUrl=new URL('../src/model/circuit.js',import.meta.url).href;
+    const boardUrl=new URL('../node_modules/bw-board/src/board.js',import.meta.url).href;
+    const limited=`import {Circuit} from ${JSON.stringify(circuitUrl)};
+      const original=Circuit.prototype.advanceToBoundedStream;
+      Circuit.prototype.advanceToBoundedStream=function(t,limits,options){return original.call(this,t,{...limits,maxAdvances:2},options);};`;
+    const run=(name,preload)=>{
+      const module=join(dir,`${name}.mjs`),csv=join(dir,`${name}.csv`),receipt=join(dir,`${name}.json`);
+      writeFileSync(module,preload);
+      const result=spawnSync(process.execPath,['--import',module,CLI,'measure',source,
+        '--scope','U.vout_1,G.gnd','--watch','--duration','1200us','--rate','100kHz',
+        '--profile','precision-v1','--initial','zero-state','--csv',csv,'--receipt',receipt],
+      {encoding:'utf8',env,timeout:30000});
+      const rows=result.stdout.trim().split('\n').filter(Boolean).map(line=>JSON.parse(line));
+      return {result,rows,csv,receipt};
+    };
+    const lateOracle=({result,rows,csv,receipt})=>{
+      assert.equal(result.status,2,result.stderr);
+      const failure=rows.at(-1);
+      assert.equal(failure.recordType,'failure');assert.equal(failure.qualified,false);
+      assert.ok(rows.length>1,'real observations precede late failure');
+      assert.ok(failure.timeSeconds>0&&failure.timeSeconds<.0012);
+      assert.equal(failure.transient.boundedAdvance.completed,false);
+      assert.match(failure.error,/budget/i);
+      assert.equal(existsSync(csv),false);assert.equal(existsSync(receipt),false);
+      assert.ok(rows.every(row=>row.recordType!=='summary'&&row.qualified===false));
+    };
+    lateOracle(run('late',limited));
+    const reset=`import {BoardImpl} from ${JSON.stringify(boardUrl)};
+      const advance=BoardImpl.prototype.advanceTo;
+      BoardImpl.prototype.advanceTo=function(t){const c=this._boundedAdvanceContext;
+        if(c?.stream&&!c.observing)c.work={attempts:0,solves:0,advances:0};return advance.call(this,t);};`;
+    assert.throws(()=>lateOracle(run('reset-mutant',limited+reset)),{name:'AssertionError'});
+    const bypass=`import {Circuit} from ${JSON.stringify(circuitUrl)};
+      Circuit.prototype.advanceToBoundedStream=function(t,limits,options){
+        for(let time=options.stepNs;time<=t;time+=options.stepNs){this.advanceTo(time);options.onStep({timeNs:time});}};`;
+    const bypassOracle=value=>{assert.equal(value.result.status,2);assert.equal(value.rows.at(-1).recordType,'failure');
+      assert.match(value.rows.at(-1).error,/whole-advance receipt/);};
+    bypassOracle(run('bypass-negative',bypass));
+    const missing=run('missing',`import {BoardImpl} from ${JSON.stringify(boardUrl)};delete BoardImpl.prototype.advanceToBoundedStream;`);
+    assert.equal(missing.result.status,2);assert.equal(missing.rows.length,1);
+    assert.match(missing.rows[0].error,/does not provide bounded streams/);
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test('stream Circuit proxy exposes actual observer and failed partial clocks without ordinary fallback', async () => {
+  const {Circuit}=await import('../src/model/circuit.js');
+  const c=Object.create(Circuit.prototype),failure=new Error('observer cancellation');
+  c.timeNs=0n;c.board={timeNs:0n,advanceTo(){assert.fail('no fallback');}};
+  assert.throws(()=>c.advanceToBoundedStream(20n,{},{}),/does not provide bounded streams/);
+  c.board.advanceToBoundedStream=function(t,limits,options){this.timeNs=10n;options.onStep({timeNs:10n});};
+  assert.throws(()=>c.advanceToBoundedStream(20n,{}, {stepNs:10n,onStep:()=>{assert.equal(c.timeNs,10n);throw failure;}}),e=>e===failure);
+  assert.equal(c.timeNs,10n);
 });
 
 test('bounded receipt guard mutation makes the missing-receipt refusal assertion red', async () => {

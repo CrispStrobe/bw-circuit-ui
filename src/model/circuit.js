@@ -821,6 +821,22 @@ export class Circuit {
     finally { this.timeNs = this.board.timeNs; }
   }
 
+  /** One finite capture with native cumulative work authority, never a replay. */
+  advanceToBoundedStream(tNs, limits, options) {
+    if (!this.board || typeof this.board.advanceToBoundedStream !== 'function') {
+      throw new Error('advanceToBoundedStream: the injected bw-board engine does not provide bounded streams');
+    }
+    try {
+      return this.board.advanceToBoundedStream(tNs, limits, {
+        ...options,
+        onStep: packet => {
+          this.timeNs = this.board.timeNs;
+          return options.onStep(packet);
+        },
+      });
+    } finally { this.timeNs = this.board.timeNs; }
+  }
+
   /**
    * Advance by a delta.
    * @param {bigint} deltaNs

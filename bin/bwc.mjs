@@ -60,6 +60,7 @@ const {
   parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
   measurementSampleClock, MEASUREMENT_MAX_SAMPLES,
   validatePrecisionCaptureInput, precisionCaptureBudget, validatePrecisionCaptureWork,
+  precisionStreamBudget, validatePrecisionStreamWork,
   validatePrecisionVoltageTopology,
 } = await import(join(SRC, 'model/instrument-report.js'));
 
@@ -467,9 +468,7 @@ switch (cmd) {
     if (!precision && opts.initial !== undefined) {
       die('measure --initial is supported only for an explicit precision-v1 batch');
     }
-    if (precision && opts.watch) {
-      die('precision batch refuses --watch; repeated advances need a whole-run engine budget');
-    }
+    const precisionWatch = precision && Boolean(opts.watch);
     const scopeSpecs = (opts.scope || []).map(value => {
       try { return parseScopeSpec(value); } catch (error) { return die(error.message); }
     });
@@ -542,6 +541,7 @@ switch (cmd) {
     if (precision) {
       try {
         precisionBudget = precisionCaptureBudget(clock,circ.transientAnalysisStatus().profile,circ.resolvedNets.length,precisionDomain);
+        if (precisionWatch) precisionBudget = precisionStreamBudget(clock,precisionBudget,precisionDomain);
         validatePrecisionVoltageTopology(circ.parts,circ.resolvedNets);
       } catch (policyError) { die(`precision batch admission failed: ${policyError.message}`); }
     }
@@ -614,43 +614,60 @@ switch (cmd) {
       catch (captureError) { die(`scope ${row.spec.tip} capture unavailable: ${captureError.message}`); }
     };
     let watchSamples = 0;
+    // Inside the native observer, exit() would skip invalidation/unwinding.
+    const captureDie = message => { if (precisionWatch) throw new Error(message); die(message); };
+    try {
     try {
       if (opts.watch) {
-        for (let targetNs = startNs + intervalNs; targetNs <= endNs; targetNs += intervalNs) {
-          circ.advanceTo(targetNs);
+        const observe = targetNs => {
           const watchedScope = scope.map(row => {
             const sample = latestTimedScopeSample(capturedData(row));
-            if (!sample) die(`scope ${row.spec.tip} captured no sample at ${targetNs} ns`);
+            if (!sample) captureDie(`scope ${row.spec.tip} captured no sample at ${targetNs} ns`);
             return { tip: row.spec.tip, reference: row.spec.reference || '', volts: sample.volts };
           });
           const watchedMeters = poweredMeters.map(row => ({ mode: row.mode, probes: row.probes,
             reading: readMeter(row.meter, circ) }));
           const bad = watchedMeters.find(row => row.reading.note);
-          if (bad) die(`${bad.mode} meter ${bad.probes.join(',')} could not be read: ${bad.reading.note}`);
+          if (bad) captureDie(`${bad.mode} meter ${bad.probes.join(',')} could not be read: ${bad.reading.note}`);
           if (meterReference) meterReference.observe(watchedMeters.map(row=>({...row,
             timeSeconds:Number(targetNs)/1e9,quantity:'observed-dc-mean'})));
           process.stdout.write(`${JSON.stringify({ recordType: 'sample', index: watchSamples,
+            ...(precisionWatch ? {qualified:false} : {}),
             timeSeconds: Number(targetNs) / 1e9, elapsedSeconds: Number(targetNs - startNs) / 1e9,
             scope: watchedScope, meters: watchedMeters })}\n`);
           watchSamples++;
+        };
+        if (precisionWatch) {
+          circ.advanceToBoundedStream(endNs, {
+            maxAttempts:precisionBudget.maxAttempts,maxSolves:precisionBudget.maxSolves,
+            maxAdvances:precisionBudget.maxAdvances,
+          }, {stepNs:intervalNs,onStep:packet=>observe(packet.timeNs)});
+        } else {
+        for (let targetNs = startNs + intervalNs; targetNs <= endNs; targetNs += intervalNs) {
+          circ.advanceTo(targetNs);
+          observe(targetNs);
         }
         if (BigInt(circ.board.timeNs || 0) < endNs) circ.advanceTo(endNs);
+        }
       } else if (precisionDomain==='adp7118-current-limited') {
         circ.advanceToBounded(endNs,{
           maxAttempts:precisionBudget.maxAttempts,maxSolves:precisionBudget.maxSolves,
           maxAdvances:precisionBudget.maxAdvances,
         });
       } else circ.advanceTo(endNs);
-    } catch (error2) { die(`measure simulation failed: ${error2.message}`); }
+    } catch (error2) { captureDie(`measure simulation failed: ${error2.message}`); }
 
     // Snapshot the powered capture before resistance mode powers the circuit off.
     // This is engine local-step status, not a global-accuracy or oracle certificate.
     const transient = circ.transientAnalysisStatus();
     if (precision) {
-      try { validatePrecisionCaptureWork(transient,precisionBudget); }
-      catch (policyError) { die(policyError.message); }
+      try {
+        if (precisionWatch) validatePrecisionStreamWork(transient,precisionBudget,watchSamples,circ.board.timeNs);
+        else validatePrecisionCaptureWork(transient,precisionBudget);
+      }
+      catch (policyError) { captureDie(policyError.message); }
       if (circ.board.deviceCompanions(circ.parts[0].id)?.converged!==true) {
-        die('precision batch final native solve did not converge');
+        captureDie('precision batch final native solve did not converge');
       }
     }
     // Resistance's extra power-off tick can cross a scope sample boundary.
@@ -673,14 +690,14 @@ switch (cmd) {
 
     for (const row of meterRows) {
       if (row.reading.note) {
-        die(`${row.mode} meter ${row.probes.join(',')} could not be read: ${row.reading.note}`);
+        captureDie(`${row.mode} meter ${row.probes.join(',')} could not be read: ${row.reading.note}`);
       }
     }
 
     const scopeRows = scope.map((row, index) => {
       const data = capturedScopeData[index];
       const summary = summarizeScope(data);
-      if (!summary.samples) die(`scope ${row.spec.tip} captured no finite samples`);
+      if (!summary.samples) captureDie(`scope ${row.spec.tip} captured no finite samples`);
       return {
         tip: row.spec.tip,
         reference: row.spec.reference || 'engine ground',
@@ -696,23 +713,16 @@ switch (cmd) {
         data,
       };
     });
-    if (opts.csv) {
-      if (!scopeRows.length) die('--csv needs at least one --scope');
-      const csv = scopeTracesToCsv(scopeRows.map(row => ({ data: row.data,
-        netId: `${row.tip}${row.referenceNet ? ` - ${row.reference}` : ''}` })));
-      writeFileSync(opts.csv, `${csv}\n`);
-    }
-
     let comparison = null;
     if (opts.expect) {
       let expected;
       try { expected = parseExpectedWaveforms((waveformReferenceBytes ?? readFileSync(opts.expect)).toString('utf8')); } catch (error2) {
-        die(`measure expected waveform failed: ${error2.message}`);
+        captureDie(`measure expected waveform failed: ${error2.message}`);
       }
       const tolerance = name => {
         const value = opts[name] == null ? undefined : Number(opts[name]);
         if (value != null && (!Number.isFinite(value) || value < 0)) {
-          die(`measure --${name} must be finite and non-negative`);
+          captureDie(`measure --${name} must be finite and non-negative`);
         }
         return value;
       };
@@ -723,11 +733,17 @@ switch (cmd) {
           timeSeconds: tolerance('time-tolerance'),
         });
         comparison.provenance = expected.provenance;
-      } catch (error2) { die(`measure waveform comparison failed: ${error2.message}`); }
+      } catch (error2) { captureDie(`measure waveform comparison failed: ${error2.message}`); }
     }
 
     if (meterReference && !opts.watch) meterReference.observe(meterRows);
     const meterComparison=meterReference?.finish() ?? null;
+    if (opts.csv) {
+      if (!scopeRows.length) captureDie('--csv needs at least one --scope');
+      const csv = scopeTracesToCsv(scopeRows.map(row => ({ data: row.data,
+        netId: `${row.tip}${row.referenceNet ? ` - ${row.reference}` : ''}` })));
+      writeFileSync(opts.csv, `${csv}\n`);
+    }
     const report = {
       source: basename(file), format: c.format,
       durationSeconds, rateHz, requestedSamples,
@@ -766,9 +782,10 @@ switch (cmd) {
             embeddedSourceOrWaveforms: false },
         };
         writeFileSync(opts.receipt,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});
-      } catch (receiptError) { die(`measure receipt write failed: ${receiptError.message}`); }
+      } catch (receiptError) { captureDie(`measure receipt write failed: ${receiptError.message}`); }
     }
-    if (opts.watch) process.stdout.write(`${JSON.stringify({ recordType: 'summary', watchSamples, report })}\n`);
+    if (opts.watch) process.stdout.write(`${JSON.stringify({ recordType: 'summary', watchSamples,
+      ...(precisionWatch ? {qualified:true} : {}), report })}\n`);
     else if (opts.json) console.log(JSON.stringify(report, null, 2));
     else {
       console.log(`${basename(file)}  [${c.format}]  instrument measurements`);
@@ -791,6 +808,12 @@ switch (cmd) {
       if (!comparison && !meterComparison) console.log('  oracle: not performed; these are engine measurements');
     }
     if (comparison?.status === 'fail' || meterComparison?.status==='fail') process.exitCode = 1;
+    } catch (captureError) {
+      if (precisionWatch) process.stdout.write(`${JSON.stringify({recordType:'failure',qualified:false,
+        watchSamples,timeSeconds:Number(circ.board.timeNs)/1e9,error:captureError.message,
+        transient:circ.transientAnalysisStatus()})}\n`);
+      die(captureError.message);
+    }
     break;
   }
 
