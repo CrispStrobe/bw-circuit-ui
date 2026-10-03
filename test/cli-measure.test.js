@@ -25,7 +25,8 @@ const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json'
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
 
-function adp7118StartupCliFixture({ohms = 500, farads = 2.2e-6} = {}) {
+function adp7118StartupCliFixture({ohms = 500, farads = 2.2e-6,
+  startupModel = 'datasheet-envelope'} = {}) {
   const wire = (from, fromTerminal, to, toTerminal) =>
     ({from, fromTerminal, to, toTerminal});
   return {
@@ -34,7 +35,8 @@ function adp7118StartupCliFixture({ohms = 500, farads = 2.2e-6} = {}) {
       {id:'VIN',kind:'vsource',params:{volts:8}},
       {id:'EN',kind:'vsource',params:{volts:3.3}},
       {id:'G',kind:'gnd',params:{}},
-      {id:'U',kind:'adp7118',params:{vOut:5,startupModel:'datasheet-envelope'}},
+      {id:'U',kind:'adp7118',params:{vOut:5,startupModel,
+        ...(startupModel==='current-limited-envelope'?{rOut:.05,currentLimit:.36}:{})}},
       {id:'RL',kind:'resistor',params:{ohms}},
       {id:'C',kind:'capacitor',params:{farads}},
     ],
@@ -52,6 +54,183 @@ function adp7118StartupCliFixture({ohms = 500, farads = 2.2e-6} = {}) {
     ],
   };
 }
+
+// Continuous RC equation with analytically bracketed clamp entry/release.
+// This is an independent authored-envelope reference, not a vendor macromodel.
+function limitedStartupReference(R,C,duration=.0012) {
+  const A=5,r=.05,I=.36,tau=300e-6/Math.log(9);
+  const delay=Math.round((80e-6+tau*Math.log(.9))*1e9)/1e9;
+  const k=R/(R+r),rho=C*R*r/(R+r);
+  const target=x=>A*(1-Math.exp(-x/tau));
+  const initial=x=>A*k*(1-(tau*Math.exp(-x/tau)-rho*Math.exp(-x/rho))/(tau-rho));
+  const root=(f,a,b)=>{for(let i=0;i<70;i++){const m=(a+b)/2;if(f(m)>0)b=m;else a=m;}return(a+b)/2;};
+  let entry=null,release=null;
+  const f=x=>target(x)-initial(x)-r*I;
+  for(let x=1e-6;x<=duration;x+=1e-6)if(f(x)>0){entry=root(f,x-1e-6,x);break;}
+  const limited=x=>I*R+(initial(entry)-I*R)*Math.exp(-(x-entry)/(R*C));
+  if(entry!==null){const g=x=>-(target(x)-limited(x)-r*I);
+    for(let x=entry+1e-6;x<=duration;x+=1e-6)if(g(x)>0){release=root(g,x-1e-6,x);break;}}
+  const P=x=>A*k*(1-tau*Math.exp(-x/tau)/(tau-rho));
+  const voltage=t=>{const x=t-delay;if(x<=0)return 0;if(entry===null||x<=entry)return initial(x);
+    if(release===null||x<=release)return limited(x);
+    return P(x)+(limited(release)-P(release))*Math.exp(-(x-release)/rho);};
+  const F0=x=>A*k*(x+(tau*tau*Math.exp(-x/tau)-rho*rho*Math.exp(-x/rho))/(tau-rho));
+  const F1=x=>I*R*x-(initial(entry)-I*R)*R*C*Math.exp(-(x-entry)/(R*C));
+  const F2=x=>A*k*(x+tau*tau*Math.exp(-x/tau)/(tau-rho))
+    -(limited(release)-P(release))*rho*Math.exp(-(x-release)/rho);
+  const integrate=(F,a,b)=>F(b)-F(a),x=duration-delay;
+  const e=entry===null?x:Math.min(x,entry),l=release===null?x:Math.min(x,release);
+  const integral=integrate(F0,0,e)+(entry===null||x<=entry?0:integrate(F1,entry,l))
+    +(release===null||x<=release?0:integrate(F2,release,x));
+  return {voltage,mean:integral/duration,entry:entry===null?null:entry+delay,
+    release:release===null?null:release+delay};
+}
+
+test('bounded ADP7118 precision installed CLI qualifies actual work, RC waveform and signed meter means', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-adp-precision-'));
+  const env={...process.env};delete env.BW_BOARD;
+  try {
+    for(const [name,ohms,farads] of [['overload',10,2.2e-6],['inrush',500,22e-6]]) {
+      const source=join(dir,`${name}.json`),csv=join(dir,`${name}.csv`);
+      writeFileSync(source,JSON.stringify(adp7118StartupCliFixture({ohms,farads,startupModel:'current-limited-envelope'})));
+      const currents=['vout_1','vout_2','vin_7','vin_8','gnd'];
+      const result=spawnSync(process.execPath,[CLI,'measure',source,
+        '--scope','U.vout_1,G.gnd','--meter','voltage:U.vout_1,G.gnd',
+        ...currents.flatMap(terminal=>['--meter',`current:U.${terminal}`]),
+        '--duration','1200us','--rate','100kHz','--profile','precision-v1',
+        '--initial','zero-state','--csv',csv,'--json'],{encoding:'utf8',env,timeout:30000});
+      assert.equal(result.status,0,result.stderr);
+      const report=JSON.parse(result.stdout),reference=limitedStartupReference(ohms,farads);
+      assert.equal(report.scope[0].summary.samples,120);
+      assert.equal(report.transient.accuracyMet,true);
+      const budget=report.precisionCapture,receipt=report.transient.boundedAdvance;
+      assert.equal(budget.basis,'engine-whole-advance-adp7118-current-limited');
+      assert.equal(receipt.completed,true);assert.equal(receipt.failure,null);
+      assert.equal(receipt.requestedTimeNs,'1200000');
+      assert.deepEqual(receipt.limits,{maxAttempts:20000,maxSolves:60001,maxAdvances:200});
+      assert.ok(receipt.work.advances>100,'timed device genuinely subdivides the capture');
+      validatePrecisionCaptureWork(report.transient,budget);
+      const lines=readFileSync(csv,'utf8').trim().split('\n');assert.equal(lines.length,122);
+      const startNs=BigInt(lines[0].match(/startTimeNs=(\d+)/)[1]);assert.equal(startNs,10000n);
+      for(const [i,line] of lines.slice(2).entries()) {
+        const [elapsed,volts]=line.split(',').map(Number);
+        assert.equal(elapsed,i*10000/1e9);
+        assert.ok(Math.abs(volts-reference.voltage(Number(startNs)/1e9+elapsed))<=5e-7,
+          `${name} independent RC waveform sample ${i}: ${volts}`);
+      }
+      const values=report.meters.map(row=>{assert.equal(row.reading.note,null);
+        assert.equal(row.quantity,'observed-dc-mean');return row.reading.siValue;});
+      assert.ok(Math.abs(values[0]-reference.mean)<=1e-6,`${name} independent window integral`);
+      const output=values[1]+values[2],input=values[3]+values[4],ground=values[5];
+      assert.ok(output>0 && output<=.36 && input<0 && ground>0,'physical signed currents');
+      assert.ok(Math.abs(output+input+ground)<1e-10,'capture-mean eight-terminal KCL');
+      // Integral of C*dV/dt + V/R; independent of terminal current implementation.
+      const expectedOutput=farads*reference.voltage(.0012)/.0012+reference.mean/ohms;
+      assert.ok(Math.abs(output-expectedOutput)<1e-6,'independent load/storage mean current');
+      assert.ok(reference.entry>0);assert.equal(reference.release!==null,name==='inrush');
+    }
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test('bounded ADP7118 precision refuses escaped domains and publishes no partial artifacts', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-adp-precision-refuse-'));
+  const env={...process.env};delete env.BW_BOARD;
+  try {
+    const cases=[
+      ['duration',()=>{},['--duration','1201us'],/limits capture to 1.2 ms/],
+      ['watch',()=>{},['--watch'],/refuses --watch/],
+      ['legacy',c=>{c.parts.find(p=>p.id==='U').params.startupModel='datasheet-envelope';},[],/refuses part U/],
+      ['second',c=>c.parts.push({id:'U2',kind:'adp7118',params:{startupModel:'current-limited-envelope'}}),[],/multiple ADP7118/],
+      ['timed',c=>c.parts.push({id:'timer',kind:'555'}),[],/refuses part timer/],
+      ['inductor',c=>c.parts.push({id:'L',kind:'inductor'}),[],/refuses part L/],
+      ['waveform',c=>{c.parts[0].params.wave='sine';},[],/static DC source VIN/],
+      ['ic',c=>{c.parts.find(p=>p.id==='C').params.initialVoltage=0;},[],/initial conditions/],
+      ['unbonded',c=>{c.wires=c.wires.filter(w=>w.toTerminal!=='vin_8');},[],/ADP7118/],
+      ['headroom',c=>{c.parts[0].params.volts=5;},[],/ADP7118/],
+    ];
+    for(const [name,edit,extra,reason] of cases) {
+      const fixture=adp7118StartupCliFixture({farads:22e-6,startupModel:'current-limited-envelope'});edit(fixture);
+      const source=join(dir,`${name}.json`),csv=join(dir,`${name}.csv`);
+      writeFileSync(source,JSON.stringify(fixture));
+      const result=spawnSync(process.execPath,[CLI,'measure',source,'--scope','U.vout_1,G.gnd',
+        '--duration','1200us','--rate','100kHz','--profile','precision-v1','--initial','zero-state',
+        '--json','--csv',csv,...extra],{encoding:'utf8',env,timeout:30000});
+      assert.equal(result.status,2,`${name}: ${result.stderr}`);assert.match(result.stderr,reason);
+      assert.equal(result.stdout,'');assert.equal(existsSync(csv),false);
+    }
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test('bounded ADP7118 precision receipt judge rejects missing, forged and incomplete actual-work receipts', () => {
+  const profile={id:'precision-v1',maxAttempts:20000,maxStepSec:1e-5};
+  const budget=precisionCaptureBudget(measurementSampleClock(.0012,1e5),profile,5,'adp7118-current-limited');
+  const limits={maxAttempts:20000,maxSolves:60001,maxAdvances:200};
+  const status={profile,work:{attempts:400,solves:1200,advances:120},accuracyMet:true,failure:null,
+    boundedAdvance:{limits,work:{attempts:400,solves:1400,advances:120},completed:true,failure:null,requestedTimeNs:'1200000'}};
+  validatePrecisionCaptureWork(status,budget);
+  for(const bad of [undefined,{...status.boundedAdvance,completed:false},
+    {...status.boundedAdvance,failure:'whole-advance-budget-exceeded'},
+    {...status.boundedAdvance,requestedTimeNs:'1200001'},
+    {...status.boundedAdvance,limits:{...limits,maxSolves:60002}},
+    {...status.boundedAdvance,work:{...status.boundedAdvance.work,solves:60002}},
+    {...status.boundedAdvance,work:{...status.boundedAdvance.work,solves:1199}},
+    {...status.boundedAdvance,work:{...status.boundedAdvance.work,advances:NaN}}]) {
+    assert.throws(()=>validatePrecisionCaptureWork({...status,boundedAdvance:bad},budget),/whole-advance receipt/);
+  }
+});
+
+test('bounded ADP7118 precision actual CLI requires native API, enforcement and completion receipt', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-adp-budget-mutations-'));
+  const env={...process.env};delete env.BW_BOARD;
+  try {
+    const source=join(dir,'fixture.json');
+    writeFileSync(source,JSON.stringify(adp7118StartupCliFixture({farads:22e-6,startupModel:'current-limited-envelope'})));
+    const circuitUrl=new URL('../src/model/circuit.js',import.meta.url).href;
+    const boardUrl=new URL('../node_modules/bw-board/src/board.js',import.meta.url).href;
+    for(const [name,preload,reason] of [
+      ['missing-api',`import {BoardImpl} from ${JSON.stringify(boardUrl)}; delete BoardImpl.prototype.advanceToBounded;`,/does not provide whole-advance budgets/],
+      ['budget-exhaustion',`import {Circuit} from ${JSON.stringify(circuitUrl)};
+        const original=Circuit.prototype.advanceToBounded;
+        Circuit.prototype.advanceToBounded=function(t,limits){return original.call(this,t,{...limits,maxSolves:1});};`,/whole-advance.*budget/i],
+      ['ordinary-advance-bypass',`import {Circuit} from ${JSON.stringify(circuitUrl)};
+        Circuit.prototype.advanceToBounded=function(t){this.advanceTo(t);};`,/unqualified whole-advance receipt/],
+    ]) {
+      const module=join(dir,`${name}.mjs`),csv=join(dir,`${name}.csv`);
+      writeFileSync(module,preload);
+      const result=spawnSync(process.execPath,['--import',module,CLI,'measure',source,
+        '--scope','U.vout_1,G.gnd','--duration','1200us','--rate','100kHz',
+        '--profile','precision-v1','--initial','zero-state','--json','--csv',csv],
+      {encoding:'utf8',env,timeout:30000});
+      assert.equal(result.status,2,`${name}: ${result.stderr}`);assert.match(result.stderr,reason);
+      assert.equal(result.stdout,'');assert.equal(existsSync(csv),false);
+    }
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test('bounded Circuit proxy preserves actual clock on failure and cannot fall back to ordinary advance', async () => {
+  const {Circuit}=await import('../src/model/circuit.js');
+  const circ=Object.create(Circuit.prototype),failure=new Error('real budget failure');
+  circ.timeNs=0n;
+  circ.board={timeNs:0n,advanceTo(){assert.fail('ordinary advance is not authorized');}};
+  assert.throws(()=>circ.advanceToBounded(1200000n,{}),/does not provide whole-advance budgets/);
+  circ.board.advanceToBounded=function(){this.timeNs=5000n;throw failure;};
+  assert.throws(()=>circ.advanceToBounded(1200000n,{}),error=>error===failure);
+  assert.equal(circ.timeNs,5000n,'failed capture must not claim requested endpoint');
+});
+
+test('bounded receipt guard mutation makes the missing-receipt refusal assertion red', async () => {
+  const source=readFileSync(join(ROOT,'src/model/instrument-report.js'),'utf8');
+  const anchor="if (budget.basis==='engine-whole-advance-adp7118-current-limited') {";
+  assert.equal(source.split(anchor).length-1,1);
+  const mutated=await import(`data:text/javascript;base64,${Buffer.from(source.replace(anchor,'if (false) {')).toString('base64')}`);
+  const profile={id:'precision-v1',maxAttempts:20000,maxStepSec:1e-5};
+  const budget=precisionCaptureBudget(measurementSampleClock(.0012,1e5),profile,5,'adp7118-current-limited');
+  const status={profile,work:{attempts:1,solves:3,advances:1},accuracyMet:true,failure:null};
+  const oracle=judge=>assert.throws(()=>judge(status,budget),/whole-advance receipt/);
+  oracle(validatePrecisionCaptureWork);
+  assert.throws(()=>oracle(mutated.validatePrecisionCaptureWork),{name:'AssertionError'},
+    'removing receipt admission must fail its executable refusal oracle');
+});
 
 test('ADP7118 startup uses the installed pinned package for real CLI scope and meter mean', () => {
   const dir = mkdtempSync(join(tmpdir(),'bwc-adp7118-installed-'));

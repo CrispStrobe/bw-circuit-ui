@@ -147,7 +147,7 @@ const usage = () => {
     + '              [--meter voltage:<red>,<black>] [--meter current:<part>.<terminal>]\n'
     + '              [--meter resistance:<red>,<black>] [--duration 10ms] [--rate 10kHz]\n'
     + '              [--profile interactive-v1] [--watch] [--expect waveform.json] [--expect-meters meters.json] [--json] [--csv trace.csv] [--receipt capture.json]\n'
-    + '              precision batch: --profile precision-v1 --initial zero-state (passive/source circuits only)\n'
+    + '              precision batch: --profile precision-v1 --initial zero-state (passive/source or bounded ADP7118 current-limited envelope)\n'
     + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--expect-ac reference.json] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
@@ -521,14 +521,18 @@ switch (cmd) {
       die(`measure refuses ${c.analysisBlockers.length} retained analysis blocker(s)`);
     }
     if (!c.parts.length) die('measure needs at least one imported circuit part');
+    let precisionDomain = null;
     if (precision) {
-      try { validatePrecisionCaptureInput(c.parts,scopeSpecs.length,meterSpecs.map(spec => spec.mode)); }
+      try { precisionDomain = validatePrecisionCaptureInput(c.parts,scopeSpecs.length,meterSpecs.map(spec => spec.mode)); }
       catch (policyError) { die(policyError.message); }
     }
     const { Circuit, error } = await loadEngine();
     if (error) die('measure needs a bw-board engine (' + error + ')');
-    const circ = Circuit.fromJSON({ vcc: Number.isFinite(c.vcc) ? c.vcc : 5,
-      parts: c.parts, wires: c.wires });
+    let circ;
+    try {
+      circ = Circuit.fromJSON({ vcc: Number.isFinite(c.vcc) ? c.vcc : 5,
+        parts: c.parts, wires: c.wires });
+    } catch (modelError) { die(`measure model admission failed: ${modelError.message}`); }
     if (circ.netlistError) die('measure could not build an engine netlist (' + circ.netlistError + ')');
     if (opts.profile) {
       try { circ.configureTransientAnalysis(opts.profile); }
@@ -537,11 +541,12 @@ switch (cmd) {
     let precisionBudget = null;
     if (precision) {
       try {
-        precisionBudget = precisionCaptureBudget(clock,circ.transientAnalysisStatus().profile,circ.resolvedNets.length);
+        precisionBudget = precisionCaptureBudget(clock,circ.transientAnalysisStatus().profile,circ.resolvedNets.length,precisionDomain);
         validatePrecisionVoltageTopology(circ.parts,circ.resolvedNets);
       } catch (policyError) { die(`precision batch admission failed: ${policyError.message}`); }
     }
-    circ.setPower(true);
+    try { circ.setPower(true); }
+    catch (modelError) { die(`measure model admission failed: ${modelError.message}`); }
 
     const scope = [];
     for (const spec of scopeSpecs) {
@@ -586,8 +591,12 @@ switch (cmd) {
 
     if (precision) {
       try {
-        const admission = circ.operatingPoint({waveformBias:'time-zero'});
-        if (admission.converged!==true) throw new Error('native time-zero constraint check did not converge');
+        if (precisionDomain==='passive-source') {
+          const admission = circ.operatingPoint({waveformBias:'time-zero'});
+          if (admission.converged!==true) throw new Error('native time-zero constraint check did not converge');
+        } else if (circ.board.deviceCompanions(circ.parts[0].id)?.converged!==true) {
+          throw new Error('native cold ADP7118 model admission did not converge');
+        }
         // Include physical probe loading in admission, but do NOT initialize
         // storage from this result: capture remains explicit zero-state.
       } catch (policyError) { die(`precision batch admission failed: ${policyError.message}`); }
@@ -626,6 +635,11 @@ switch (cmd) {
           watchSamples++;
         }
         if (BigInt(circ.board.timeNs || 0) < endNs) circ.advanceTo(endNs);
+      } else if (precisionDomain==='adp7118-current-limited') {
+        circ.advanceToBounded(endNs,{
+          maxAttempts:precisionBudget.maxAttempts,maxSolves:precisionBudget.maxSolves,
+          maxAdvances:precisionBudget.maxAdvances,
+        });
       } else circ.advanceTo(endNs);
     } catch (error2) { die(`measure simulation failed: ${error2.message}`); }
 

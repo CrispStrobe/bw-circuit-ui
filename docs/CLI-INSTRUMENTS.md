@@ -371,14 +371,14 @@ node bin/bwc.mjs measure test/fixtures/cli-measure-probe.cir \
 a source-declared DC bias or LTspice startup ramp. The CLI flags select capture
 timing/initialization; this is not execution of the deck's analysis cards.
 Explicit part initial-condition fields refuse rather than being silently used.
-The native time-zero operating point is checked for admission **with probe
+For passive/source captures the native time-zero operating point is checked for admission **with probe
 loading**, but its bias is never adopted. A nonzero DC RC-step regression proves
 the output charges from zero instead of starting at its steady-state voltage.
 
-The initial admitted domain is a consistent time-zero R/C/L/V/I/E/G graph, at
+The passive/source domain is a consistent time-zero R/C/L/V/I/E/G graph, at
 most 32 user parts and 32 resolved nets, 1–4 scopes and at most 8 voltage/current
 meters. Only fixed-size native waveforms are admitted; PWL/PCM, current-limited
-supplies, non-passive/timed models and graphs lacking a solvable admitted bias
+supplies, other non-passive/timed models and graphs lacking a solvable admitted bias
 refuse by name. Redundant ideal-voltage constraint loops refuse, including an
 initially-zero source that would later contradict its short. An explicit DC
 zero self-short remains valid. This conservative boundary does not mean a
@@ -435,6 +435,32 @@ the counters do not claim to measure CPU time or every setup operation.
 Static captures with no transient work retain explicit unassessed (`null`)
 local-step status. The policy/initialization are disclosed in `precisionCapture`.
 
+A separate bounded domain admits **one** ADP7118 explicitly configured with
+`startupModel: "current-limited-envelope"`, `vOut`, `rOut` and `currentLimit`.
+Its companions are limited to R/C, ground and static DC voltage sources;
+capture is at most **1.2 ms**, zero-state batch only. The same part/net/channel
+limits, explicit-initial-condition refusals and ideal-cycle admission still
+apply. The native cold model validates bonded VIN/VOUT leads, direct SENSE,
+open SS, fixed-output parameters, static enable and sufficient headroom. Its
+time-zero convergence is required, but no unsupported regulator DC operating
+point or initial storage bias is substituted. Earlier `datasheet-envelope`
+mode, a second regulator, inductors, controlled/current/waveform sources and
+other timed devices remain outside this precision domain.
+
+This domain calls the engine's one-shot `advanceToBounded`, which charges work
+**before execution**, across all timed-device subdivisions: at most 20,000
+adaptive attempts, 60,001 actual MNA solves and 200 integrator entries. The
+CLI requires a completed `transient.boundedAdvance` receipt matching the
+requested endpoint and exact limits, with valid in-budget actual counters.
+A missing API, failed work budget, incomplete receipt or local-step failure
+refuses before batch JSON/CSV publication; partial histories are not results.
+These limits are not a wall-time, Newton-iteration or global-error guarantee.
+Installed CLI overload (10 Ω/2.2 µF) and inrush (500 Ω/22 µF) fixtures compare
+120 timed observations each against an independent piecewise RC/clamp solution
+at 0.5 µV waveform and 1 µV window-mean tolerances. Signed current means also
+check load/storage delivery and KCL. Those bounded authored-model checks are
+not an ADI transistor-macromodel or arbitrary-circuit accuracy certificate.
+
 JSON reports and watch summaries include `requestedTransientProfile` and the
 engine's `transient` status: configured profile, integration mode, local step
 qualification, failure detail and work counters. Text reports also name the
@@ -442,8 +468,8 @@ profile and local check. The status is captured before resistance mode powers
 the circuit off. A local step check is not a global waveform-error bound or
 independent-oracle agreement; unknown (`null`) or unmet status stays explicit.
 
-Follow-up roadmap: add native whole-run work limits before enabling precision
-streaming and timed/non-passive models, then qualify explicit DC-bias and startup
+Follow-up roadmap: qualify additional bounded domains before enabling precision
+streaming and other timed/non-passive models, then qualify explicit DC-bias and startup
 initialization separately. Do not turn arbitrary durations into repeated budget
 allowances. Op-amp/device captures still use interactive measurement or their
 separately bounded source-analysis action, not this narrower precision batch.

@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-03 ADP7118 bounded CLI precision — CLAIM, Codex bwcx `/root`.
+2026-10-03 ADP7118 bounded CLI precision — DONE candidate, Codex bwcx `/root`.
 Isolated wt-cui-adp-cli-precision-20261003, branch
 fable/adp7118-cli-precision-20261003, exact CUI base
 6471bf44ec64c86384a6f48fdd9df625e6de5512. Ten paths: this ledger,
@@ -18,6 +18,23 @@ CLI waveform/window-mean against independent piecewise RC references, signed
 currents, named refusals and load-bearing boundary mutations. No importer,
 exporter, GUI, solver/physics, workflow, other dependency, Lite or deployment
 edit. Publish claim before implementation; qualify one final frozen head.
+Remote-first claim 4b8acd5 preceded all implementation. Package/lock and actual
+non-symlink installed artifact agree at runtime fingerprint
+310ac16b1b528678bdaa23ca1549ed075bb3615a663458a3f7f3f460c226f244.
+Six new focused tests pass without skips: overload and inrush CLI captures
+check 240 timed observations at 0.5 uV, means at 1 uV and independent storage/
+load delivery plus signed KCL; ten named domain/refusal cases publish no JSON
+or CSV. Real CLI missing-API, one-solve exhaustion and ordinary-advance bypass
+controls all refuse, and deleting the completion-receipt guard makes its oracle
+red. Proxy failure preserves actual partial clock rather than requested time.
+Installed provenance/meter adjacent suite 23/23 green, zero skips, including
+live ngspice sine/PULSE/inductor means. Earlier precision sweep 22/23 green
+with the only red a new test's floating-point timestamp equality; corrected
+that to the integer-nanosecond formula and all six new tests repeated green.
+The first fixture omission of explicit rOut/currentLimit was likewise a new
+test mistake, not a physics change. No reference bound or existing tolerance
+weakened. Hosted full exact-head qualification remains pending; no downstream
+Lite adoption or deployment is claimed by this upstream candidate.
 
 2026-10-02 Installed ADP7118 startup CLI adoption — DONE candidate (hosted pending), Codex bwcx `/root`.
 Clean reused wt-cui-measurement-receipt-20261001, branch

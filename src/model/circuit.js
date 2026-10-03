@@ -812,6 +812,15 @@ export class Circuit {
     this.board.advanceTo(tNs);
   }
 
+  /** One fresh bounded analysis capture; never substitute the ordinary advance. */
+  advanceToBounded(tNs, limits) {
+    if (!this.board || typeof this.board.advanceToBounded !== 'function') {
+      throw new Error('advanceToBounded: the injected bw-board engine does not provide whole-advance budgets');
+    }
+    try { return this.board.advanceToBounded(tNs, limits); }
+    finally { this.timeNs = this.board.timeNs; }
+  }
+
   /**
    * Advance by a delta.
    * @param {bigint} deltaNs

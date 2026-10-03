@@ -25,6 +25,11 @@ export function validatePrecisionCaptureInput(parts, scopeCount, meterModes) {
   if (meterModes.length>8 || meterModes.some(mode => !['voltage','current'].includes(mode))) {
     throw new Error('precision batch allows at most 8 voltage/current meters; resistance requires a second advance');
   }
+  const regulators = parts.filter(part => part.kind==='adp7118');
+  const boundedAdp = regulators.length===1
+    && regulators[0].params?.startupModel==='current-limited-envelope';
+  if (regulators.length>1) throw new Error('precision batch refuses multiple ADP7118 regulators');
+  const companions = new Set(['resistor','capacitor','cap','gnd','vsource']);
   for (const part of parts) {
     if (part.analysisBlockers?.length) {
       throw new Error(`precision batch refuses retained analysis blockers on ${part.id}`);
@@ -33,14 +38,18 @@ export function validatePrecisionCaptureInput(parts, scopeCount, meterModes) {
       Object.hasOwn(part.params ?? {},key))) {
       throw new Error(`precision batch refuses explicit initial conditions on ${part.id}`);
     }
-    if (!PRECISION_PARTS.has(part.kind)) {
-      throw new Error(`precision batch refuses part ${part.id} (${part.kind}); timed/non-passive models need a whole-run budget`);
+    if (!(boundedAdp ? part.kind==='adp7118' || companions.has(part.kind) : PRECISION_PARTS.has(part.kind))) {
+      throw new Error(`precision batch refuses part ${part.id} (${part.kind}); this model lacks a qualified bounded precision domain`);
+    }
+    if (boundedAdp && part.kind==='vsource' && (part.params?.wave ?? 'dc')!=='dc') {
+      throw new Error(`precision ADP7118 batch requires static DC source ${part.id}`);
     }
     if (['vsource','isource'].includes(part.kind)
         && !PRECISION_WAVES.has(part.params?.wave ?? 'dc')) {
       throw new Error(`precision batch refuses source ${part.id} waveform ${part.params.wave}`);
     }
   }
+  return boundedAdp ? 'adp7118-current-limited' : 'passive-source';
 }
 
 /** Conservative voltage-constraint admission, not another waveform parser. */
@@ -80,7 +89,13 @@ export function validatePrecisionVoltageTopology(parts, nets) {
   }
 }
 
-export function precisionCaptureBudget(clock, profile, netCount) {
+export function precisionCaptureBudget(clock, profile, netCount, domain = 'passive-source') {
+  if (!['passive-source','adp7118-current-limited'].includes(domain)) {
+    throw new Error('precision batch refuses unknown capture domain');
+  }
+  if (domain==='adp7118-current-limited' && clock.durationNs>1200000n) {
+    throw new Error('precision ADP7118 batch limits capture to 1.2 ms');
+  }
   if (!(Number.isSafeInteger(netCount) && netCount>=0 && netCount<=32)) {
     throw new Error('precision batch limits the resolved circuit to 32 nets');
   }
@@ -94,6 +109,13 @@ export function precisionCaptureBudget(clock, profile, netCount) {
   if (minimumAdaptiveAttempts>profile.maxAttempts) {
     throw new Error(`precision batch preflight needs ${minimumAdaptiveAttempts} adaptive attempts; limit is ${profile.maxAttempts}`);
   }
+  if (domain==='adp7118-current-limited') return {
+    maxAttempts:profile.maxAttempts,maxSolves:3*profile.maxAttempts+1,maxAdvances:200,
+    minimumAdaptiveAttempts,basis:'engine-whole-advance-adp7118-current-limited',
+    initialization:'zero-state-no-dc-operating-point',
+    admission:'native-cold-model-and-acyclic-voltage-graph; bias-not-adopted',
+    requestedTimeNs:String(clock.durationNs),
+  };
   return {maxAttempts:profile.maxAttempts,maxSolves:3*profile.maxAttempts+1,
     maxAdvances:1,minimumAdaptiveAttempts,basis:'single-advance-passive-source-domain',
     initialization:'zero-state-no-dc-operating-point',
@@ -116,6 +138,20 @@ export function validatePrecisionCaptureWork(status, budget) {
   if (status.failure || status.accuracyMet===false
       || (work.advances>0 && status.accuracyMet!==true)) {
     throw new Error(`precision batch did not qualify: ${status.failure?.code || 'local accuracy unmet or unassessed'}`);
+  }
+  if (budget.basis==='engine-whole-advance-adp7118-current-limited') {
+    const receipt = status.boundedAdvance;
+    if (!receipt || receipt.completed!==true || receipt.failure!==null
+        || receipt.requestedTimeNs!==budget.requestedTimeNs
+        || !['attempts','solves','advances'].every(key => {
+          const limitKey = `max${key[0].toUpperCase()}${key.slice(1)}`;
+          return receipt.limits?.[limitKey]===budget[limitKey]
+            && Number.isSafeInteger(receipt.work?.[key]) && receipt.work[key]>=0
+            && receipt.work[key]<=budget[limitKey]
+            && receipt.work[key]>=work[key];
+        })) {
+      throw new Error('precision ADP7118 batch returned missing or unqualified whole-advance receipt');
+    }
   }
 }
 
