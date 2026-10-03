@@ -1,5 +1,24 @@
 # Work lanes
 
+2026-10-03 ADP7118 bounded CLI precision — CLAIM, Codex bwcx `/root`.
+Isolated wt-cui-adp-cli-precision-20261003, branch
+fable/adp7118-cli-precision-20261003, exact CUI base
+6471bf44ec64c86384a6f48fdd9df625e6de5512. Ten paths: this ledger,
+package.json/package-lock.json, scripts/board-provenance.json, bin/bwc.mjs,
+src/model/circuit.js, src/model/instrument-report.js, test/cli-measure.test.js,
+the exact installed-pin assertion in test/meter-integral-consumer.test.js,
+and docs/CLI-INSTRUMENTS.md. Adopt landed Board
+0f0092051eefb24a364645edbb371d8755dd1ad6, whose runtime/test trees match
+qualified 919a7d05 (CI 37113874806 and Harris 37113874812 green).
+Admit only one explicitly selected current-limited-envelope ADP7118 with
+R/C/DC-voltage-source companions and <=1.2 ms zero-state batch capture.
+Use actual engine whole-advance limits and inspect its completion/work receipt;
+preserve existing passive/source precision admission and behavior. Test installed
+CLI waveform/window-mean against independent piecewise RC references, signed
+currents, named refusals and load-bearing boundary mutations. No importer,
+exporter, GUI, solver/physics, workflow, other dependency, Lite or deployment
+edit. Publish claim before implementation; qualify one final frozen head.
+
 2026-10-02 Installed ADP7118 startup CLI adoption — DONE candidate (hosted pending), Codex bwcx `/root`.
 Clean reused wt-cui-measurement-receipt-20261001, branch
 fable/adp7118-startup-installed-cli-20261002; exact CUI base
