@@ -1,5 +1,26 @@
 # Work lanes
 
+2026-10-03 Finite ADP7118 CLI precision stream — CLAIM, Codex bwcx `/root`.
+Clean reused wt-cui-adp-cli-precision-20261003, new branch
+fable/adp7118-cli-bounded-stream-20261003; exact CUI base
+494337a619aba4181a92f73ad2b8fc271ae83ad5. Ten paths: this ledger;
+package.json/package-lock.json; scripts/board-provenance.json; bin/bwc.mjs;
+src/model/circuit.js; src/model/instrument-report.js; test/cli-measure.test.js;
+test/meter-integral-consumer.test.js (installed pin assertion only);
+docs/CLI-INSTRUMENTS.md. Adopt landed Board31c6499a617e274505386dbbc9d3a955e8f527ac;
+stream runtime/tests match exact qualified3bcb4321 CI37145381419 and
+Harris37145381364. One finite native capture for the existing ADP/R/C/static-DC
+zero-state <=1.2ms domain, <=200 synchronous provisional observations and
+unchanged cumulative work ceilings. Bind final receipt to endpoint/limits/work/
+step/count; throw inside observers, explicitly fail partial output, publish no
+qualified summary/CSV/success receipt on capture failure. Preserve passive batch
+and interactive watch. Prove installed real CLI waveform/mean/current against
+independent RC/clamp references, shifted partitions, later-chunk exhaustion,
+missing API/bad receipts and load-bearing bypass/reset/success mutants. No
+Board/model/solver/tolerance/importer/exporter/GUI/workflow/other dependency,
+Lite/private corpus/deployment edits. Publish claim before implementation;
+one final exact-head hosted qualification and guarded normal landing.
+
 2026-10-03 ADP7118 bounded CLI precision — DONE candidate, Codex bwcx `/root`.
 Isolated wt-cui-adp-cli-precision-20261003, branch
 fable/adp7118-cli-precision-20261003, exact CUI base
