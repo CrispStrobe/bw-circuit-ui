@@ -468,19 +468,23 @@ profile and local check. The status is captured before resistance mode powers
 the circuit off. A local step check is not a global waveform-error bound or
 independent-oracle agreement; unknown (`null`) or unmet status stays explicit.
 
-Finite ADP precision streaming is the next consumer under qualification. It uses
+Finite ADP precision streaming uses
 one native `advanceToBoundedStream` call, not repeated fresh budget allowances.
-The proposed CLI contract is `--watch --profile precision-v1 --initial zero-state`
+Select `--watch --profile precision-v1 --initial zero-state`
 for this same ADP domain, at most 200 observation callbacks including a final
 short chunk. Each NDJSON sample has `qualified:false`; only a completed matching
 native endpoint/work/step/count receipt can produce a `qualified:true` summary.
-Failure after provisional samples produces a terminal `failure` record with
+Capture or qualification failure after provisional samples produces a terminal `failure` record with
 `qualified:false`, actual partial time and native status, never a successful
 summary or capture artifact. Qualification is local bounded-model capture, not
 independent-oracle agreement. The final short chunk reports the latest actual
 scope observation rather than inventing a sample at an unaligned endpoint.
-This consumer is not yet released: installed-package and real CLI tests must
-pass before landing. GUI precision streaming is not supplied by this API.
+The 200-callback admission bound is not a certificate that native work will fit:
+misaligned observation chunks can add integrator entries, and the unchanged
+aggregate ceiling may refuse later in the run. For example the 1.2 ms inrush
+fixture qualifies at 100 kHz and 45 kHz, but its 90 kHz partition reaches the
+200-entry ceiling and emits a terminal failure. No allowance is reset or raised.
+GUI precision streaming is not supplied by this API.
 
 Follow-up roadmap: qualify additional bounded domains before enabling their precision
 streaming and other timed/non-passive models, then qualify explicit DC-bias and startup

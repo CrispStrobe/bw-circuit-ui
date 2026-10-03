@@ -226,7 +226,7 @@ test('finite ADP precision watch publishes provisional actual-time readings and 
     for(const [name,ohms,farads] of [['overload',10,2.2e-6],['inrush',500,22e-6]]) {
       const source=join(dir,`${name}.json`);
       writeFileSync(source,JSON.stringify(adp7118StartupCliFixture({ohms,farads,startupModel:'current-limited-envelope'})));
-      for(const rate of ['100kHz','90kHz']) {
+      for(const rate of ['100kHz','45kHz']) {
         const result=spawnSync(process.execPath,[CLI,'measure',source,'--watch',
           '--scope','U.vout_1,G.gnd','--meter','voltage:U.vout_1,G.gnd',
           ...['vout_1','vout_2','vin_7','vin_8','gnd'].flatMap(t=>['--meter',`current:U.${t}`]),
@@ -235,7 +235,7 @@ test('finite ADP precision watch publishes provisional actual-time readings and 
         assert.equal(result.status,0,result.stderr);
         const rows=result.stdout.trim().split('\n').map(line=>JSON.parse(line));
         const summary=rows.pop(),reference=limitedStartupReference(ohms,farads);
-        const step=rate==='100kHz'?10000n:11111n;
+        const step=rate==='100kHz'?10000n:22222n;
         assert.equal(summary.recordType,'summary');assert.equal(summary.qualified,true);
         assert.equal(rows.length,Number((1200000n+step-1n)/step));
         for(const [index,row] of rows.entries()) {
@@ -244,6 +244,7 @@ test('finite ADP precision watch publishes provisional actual-time readings and 
           assert.equal(row.timeSeconds,Number(endpoint)/1e9);
           // A short final chunk may report the latest real scope point, not a fabricated endpoint sample.
           const scopeTime=Number(endpoint/step*step)/1e9;
+          assert.equal(row.scope[0].timeSeconds,scopeTime);
           assert.ok(Math.abs(row.scope[0].volts-reference.voltage(scopeTime))<.5e-6,`${name}/${rate}/${index}`);
         }
         const report=summary.report;
@@ -295,11 +296,11 @@ test('finite precision actual CLI fails late with a terminal receipt, and reset/
     const limited=`import {Circuit} from ${JSON.stringify(circuitUrl)};
       const original=Circuit.prototype.advanceToBoundedStream;
       Circuit.prototype.advanceToBoundedStream=function(t,limits,options){return original.call(this,t,{...limits,maxAdvances:2},options);};`;
-    const run=(name,preload)=>{
+    const run=(name,preload,rate='100kHz')=>{
       const module=join(dir,`${name}.mjs`),csv=join(dir,`${name}.csv`),receipt=join(dir,`${name}.json`);
       writeFileSync(module,preload);
       const result=spawnSync(process.execPath,['--import',module,CLI,'measure',source,
-        '--scope','U.vout_1,G.gnd','--watch','--duration','1200us','--rate','100kHz',
+        '--scope','U.vout_1,G.gnd','--watch','--duration','1200us','--rate',rate,
         '--profile','precision-v1','--initial','zero-state','--csv',csv,'--receipt',receipt],
       {encoding:'utf8',env,timeout:30000});
       const rows=result.stdout.trim().split('\n').filter(Boolean).map(line=>JSON.parse(line));
@@ -317,6 +318,8 @@ test('finite precision actual CLI fails late with a terminal receipt, and reset/
       assert.ok(rows.every(row=>row.recordType!=='summary'&&row.qualified===false));
     };
     lateOracle(run('late',limited));
+    // Misaligned chunks add native integrator entries; <=200 callbacks is not a work certificate.
+    lateOracle(run('unaligned-real-budget','', '90kHz'));
     const reset=`import {BoardImpl} from ${JSON.stringify(boardUrl)};
       const advance=BoardImpl.prototype.advanceTo;
       BoardImpl.prototype.advanceTo=function(t){const c=this._boundedAdvanceContext;
@@ -331,6 +334,26 @@ test('finite precision actual CLI fails late with a terminal receipt, and reset/
     const missing=run('missing',`import {BoardImpl} from ${JSON.stringify(boardUrl)};delete BoardImpl.prototype.advanceToBoundedStream;`);
     assert.equal(missing.result.status,2);assert.equal(missing.rows.length,1);
     assert.match(missing.rows[0].error,/does not provide bounded streams/);
+    const observerFailure=run('observer-failure',`import {BoardImpl} from ${JSON.stringify(boardUrl)};
+      const read=BoardImpl.prototype.getScopeData;let reads=0;
+      BoardImpl.prototype.getScopeData=function(...args){if(++reads===2)throw new Error('forced observer capture refusal');return read.apply(this,args);};`);
+    assert.equal(observerFailure.result.status,2);assert.equal(observerFailure.rows[0].recordType,'sample');
+    assert.equal(observerFailure.rows.at(-1).recordType,'failure');
+    assert.match(observerFailure.rows.at(-1).error,/forced observer capture refusal/);
+    assert.equal(observerFailure.rows.at(-1).transient.boundedAdvance.completed,false);
+    assert.equal(existsSync(observerFailure.csv),false);assert.equal(existsSync(observerFailure.receipt),false);
+    const badReceipt=run('bad-stream-receipt',`import {BoardImpl} from ${JSON.stringify(boardUrl)};
+      const capture=BoardImpl.prototype.advanceToBoundedStream;
+      BoardImpl.prototype.advanceToBoundedStream=function(...args){const result=capture.apply(this,args);
+        this._lastBoundedAdvance={...result,stream:{stepNs:'1',observerCalls:120}};return result;};`);
+    assert.equal(badReceipt.result.status,2);assert.equal(badReceipt.rows.length,121);
+    assert.equal(badReceipt.rows.at(-1).recordType,'failure');
+    assert.match(badReceipt.rows.at(-1).error,/finite stream receipt/);
+    assert.equal(existsSync(badReceipt.csv),false);assert.equal(existsSync(badReceipt.receipt),false);
+    const tooMany=run('too-many','', '200kHz');
+    assert.equal(tooMany.result.status,2);assert.equal(tooMany.rows.length,0);
+    assert.match(tooMany.result.stderr,/200 observations/);
+    assert.equal(existsSync(tooMany.csv),false);assert.equal(existsSync(tooMany.receipt),false);
   } finally {rmSync(dir,{recursive:true,force:true});}
 });
 

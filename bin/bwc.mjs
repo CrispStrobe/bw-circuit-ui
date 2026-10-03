@@ -148,7 +148,7 @@ const usage = () => {
     + '              [--meter voltage:<red>,<black>] [--meter current:<part>.<terminal>]\n'
     + '              [--meter resistance:<red>,<black>] [--duration 10ms] [--rate 10kHz]\n'
     + '              [--profile interactive-v1] [--watch] [--expect waveform.json] [--expect-meters meters.json] [--json] [--csv trace.csv] [--receipt capture.json]\n'
-    + '              precision batch: --profile precision-v1 --initial zero-state (passive/source or bounded ADP7118 current-limited envelope)\n'
+    + '              precision: --profile precision-v1 --initial zero-state (passive/source batch; bounded ADP7118 batch or finite --watch)\n'
     + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--expect-ac reference.json] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
     + '  bwc render  <file> [-o out.svg] [--dark]\n'
@@ -466,7 +466,7 @@ switch (cmd) {
       die('measure precision-v1 requires --initial zero-state; DC bias/startup is not implied');
     }
     if (!precision && opts.initial !== undefined) {
-      die('measure --initial is supported only for an explicit precision-v1 batch');
+      die('measure --initial is supported only for an explicit precision-v1 capture');
     }
     const precisionWatch = precision && Boolean(opts.watch);
     const scopeSpecs = (opts.scope || []).map(value => {
@@ -609,13 +609,13 @@ switch (cmd) {
       if (reading.note) die(`${row.mode} meter ${row.probes.join(',')} could not start capture: ${reading.note}`);
     }
     const endNs = startNs + durationNs;
-    const capturedData = row => {
-      try { return circ.board.getScopeData(row.handle); }
-      catch (captureError) { die(`scope ${row.spec.tip} capture unavailable: ${captureError.message}`); }
-    };
     let watchSamples = 0;
     // Inside the native observer, exit() would skip invalidation/unwinding.
     const captureDie = message => { if (precisionWatch) throw new Error(message); die(message); };
+    const capturedData = row => {
+      try { return circ.board.getScopeData(row.handle); }
+      catch (captureError) { captureDie(`scope ${row.spec.tip} capture unavailable: ${captureError.message}`); }
+    };
     try {
     try {
       if (opts.watch) {
@@ -623,7 +623,8 @@ switch (cmd) {
           const watchedScope = scope.map(row => {
             const sample = latestTimedScopeSample(capturedData(row));
             if (!sample) captureDie(`scope ${row.spec.tip} captured no sample at ${targetNs} ns`);
-            return { tip: row.spec.tip, reference: row.spec.reference || '', volts: sample.volts };
+            return { tip: row.spec.tip, reference: row.spec.reference || '', volts: sample.volts,
+              ...(precisionWatch ? {timeSeconds:sample.timeSeconds} : {}) };
           });
           const watchedMeters = poweredMeters.map(row => ({ mode: row.mode, probes: row.probes,
             reading: readMeter(row.meter, circ) }));

@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-03 Finite ADP7118 CLI precision stream — CLAIM, Codex bwcx `/root`.
+2026-10-03 Finite ADP7118 CLI precision stream — DONE candidate, Codex bwcx `/root`.
 Clean reused wt-cui-adp-cli-precision-20261003, new branch
 fable/adp7118-cli-bounded-stream-20261003; exact CUI base
 494337a619aba4181a92f73ad2b8fc271ae83ad5. Ten paths: this ledger;
@@ -20,6 +20,24 @@ missing API/bad receipts and load-bearing bypass/reset/success mutants. No
 Board/model/solver/tolerance/importer/exporter/GUI/workflow/other dependency,
 Lite/private corpus/deployment edits. Publish claim before implementation;
 one final exact-head hosted qualification and guarded normal landing.
+Canonical claim431cf2b preceded implementation; local checkpoint8f5d6b4
+was not pushed or treated as qualified. Final combined installed surface26/26,
+zero skips: four new stream tests plus adjacent batch/watch/refusal/provenance
+and meter checks. Two ADP loads at100kHz/45kHz verify350 provisional observations
+against independent continuous clamp/RC at0.5uV, mean at1uV and signed KCL.
+Native90kHz misaligned inrush honestly exhausts200 entries after actual output;
+no budget relaxed. Lowered later-chunk cap, observer read failure, missing API,
+ordinary-advance bypass, forged step/count and >200 admission all refuse with
+the intended terminal/no-artifact behavior. Reset and receipt-guard mutants red
+real refusal oracles; isolated processes/data modules preserve production bytes.
+Initial forged-receipt test wrote an unused field; corrected to actual
+_lastBoundedAdvance before qualification, rather than accepting a vacuous test.
+Package/lock names exact landed31c, loaded nonsymlink runtime hash
+df92359f3a61914ce3ce7c716052dc365c51946ca92afbe91cf7ddc58f50856f matches source.
+Local npm exited0 with ENOSPC warnings for non-runtime receipt payloads; runtime
+bytes independently verified. Full clean installation/suites belong to hosted
+CI, not a false whole-package local claim. Only task-owned cache/dependencies
+offloaded/backed up; no peer folder changed. No Lite/GUI precision/deploy claim.
 
 2026-10-03 ADP7118 bounded CLI precision — DONE candidate, Codex bwcx `/root`.
 Isolated wt-cui-adp-cli-precision-20261003, branch
