@@ -3,9 +3,10 @@
 2026-10-04 Static operating-point CLI KCL audit — CLAIM, Codex bwcx `/root`.
 Clean reused own isolated wt-cui-adp-cli-precision-20261003, branch
 fable/cli-op-kcl-20261004, exact base e3a3ffe6fa5eca6edac7aef249a90c46efb6a514.
-Six-path envelope ONLY this ledger, bin/bwc.mjs, new pure
+Seven-path envelope ONLY this ledger, bin/bwc.mjs, new pure
 src/model/operating-point-kcl.js, new test/operating-point-kcl.test.js,
-existing test/cli-measure.test.js and docs/CLI-INSTRUMENTS.md.
+existing test/cli-measure.test.js, docs/CLI-INSTRUMENTS.md and package.json
+(test:source-precision registration only; no dependency or package identity change).
 Add explicit op --kcl diagnostic using the actual resolved topology and strict
 OP positive-into-terminal maps, with text/JSON, complete current coverage,
 per-net/per-part residuals, and failed/unavailable/indeterminate refusals.
