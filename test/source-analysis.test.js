@@ -5,10 +5,91 @@ import './_setup.js';
 import { BoardImpl } from 'bw-board/board.js';
 import { importCircuit } from '../src/importers/index.js';
 import { runSourceAnalyses, sourceAnalysisDescriptors } from '../src/model/source-analysis.js';
+import { Circuit } from '../src/model/circuit.js';
 
 const imported = text => importCircuit('spice', text);
 
 describe('source-declared analysis adapter', () => {
+  it('opt-in conservation preserves default results and audits one identical OP solve', () => {
+    for (const voltage of [6, -6, 0]) {
+      const graph = imported(`conservation\nV1 in 0 ${voltage}\nR1 in out 1k\nR2 out 0 2k\n.op\n.end\n`);
+      const defaults = runSourceAnalyses(graph, { format: 'spice' });
+      assert.deepEqual(runSourceAnalyses(graph, { format: 'spice', nativeStaticKcl: false }), defaults);
+      assert.equal(Object.hasOwn(defaults[0], 'nativeStaticKcl'), false);
+      const original = Circuit.prototype.operatingPoint;
+      let calls = 0;
+      Circuit.prototype.operatingPoint = function(options) {
+        calls++;
+        assert.deepEqual(options, { waveformBias: 'dc-value' });
+        return original.call(this, options);
+      };
+      let audited;
+      try { audited = runSourceAnalyses(graph, { format: 'spice', nativeStaticKcl: true }); }
+      finally { Circuit.prototype.operatingPoint = original; }
+      assert.equal(calls, 1);
+      const { nativeStaticKcl: audit, ...ordinary } = audited[0];
+      assert.deepEqual(ordinary, defaults[0]);
+      assert.equal(audit.status, 'pass');
+      assert.equal(audit.pointAuthority, 'same-native-op-point');
+      assert.equal(audit.waveformBias, 'dc-value');
+      assert.equal(audit.counts.nets, 3);
+      assert.equal(audit.counts.parts, 3);
+      assert.equal(audit.counts.terminals, 6);
+      assert.equal(audit.observations.length, 6);
+      assert.equal(audit.claims.independentOracle, false);
+      assert.equal(audit.claims.transientConservation, false);
+      assert.ok(audit.observations.some(row => Math.abs(row.currentAmps - voltage / 3000) < 1e-10));
+    }
+  });
+
+  it('same-point evidence detects altered full current authority independently of ordinary status', () => {
+    const graph = imported('mutations\nV1 in 0 6\nR1 in out 1k\nR2 out 0 2k\n.op\n.end\n');
+    const original = Circuit.prototype.operatingPoint;
+    for (const mutation of ['reverse', 'omit', 'indeterminate']) {
+      Circuit.prototype.operatingPoint = function(options) {
+        const point = original.call(this, options);
+        const source = this.parts.find(part => part.kind === 'vsource');
+        const currents = point.branchCurrents.get(source.id);
+        if (mutation === 'reverse') for (const [terminal, current] of currents) currents.set(terminal, -current);
+        if (mutation === 'omit') currents.delete('neg');
+        if (mutation === 'indeterminate') point.indeterminateBranchCurrents.add(source.id);
+        return point;
+      };
+      let result;
+      try { result = runSourceAnalyses(graph, { format: 'spice', nativeStaticKcl: true })[0]; }
+      finally { Circuit.prototype.operatingPoint = original; }
+      assert.equal(result.status, 'pass');
+      assert.equal(result.nativeStaticKcl.status, mutation === 'reverse' ? 'fail' : 'refused');
+      assert.equal(result.nativeStaticKcl.claims.independentOracle, false);
+    }
+    assert.equal(runSourceAnalyses(graph, { format: 'spice', nativeStaticKcl: true })[0].nativeStaticKcl.status, 'pass');
+  });
+
+  it('labels waveform DC bias and refuses to invent static evidence for other analyses or blocked OP', () => {
+    const graph = imported('bias\nV1 in 0 DC 3 SIN(3 1 1k)\nR1 in 0 1k\n.op\n.ac lin 2 1 2\n.end\n');
+    const results = runSourceAnalyses(graph, { format: 'spice', nativeStaticKcl: true });
+    assert.equal(results[0].status, 'pass');
+    assert.equal(results[0].nativeStaticKcl.status, 'pass');
+    assert.equal(results[0].nativeStaticKcl.waveformBias, 'dc-value');
+    assert.ok(results[0].nativeStaticKcl.observations.some(row => Math.abs(row.currentAmps - 0.003) < 1e-10));
+    assert.equal(results[1].nativeStaticKcl.status, 'not-run');
+    assert.equal(results[1].nativeStaticKcl.reason, 'outside-static-op-scope');
+    const dynamic = imported('other kinds\nV1 in 0 1\nR1 in out 1k\nC1 out 0 1u\n.dc V1 0 1 1\n.tran 1u 2u UIC\n.end\n');
+    const otherRuns = runSourceAnalyses(dynamic, { format: 'spice', nativeStaticKcl: true });
+    assert.deepEqual(otherRuns.map(run => run.kind), ['dc', 'tran']);
+    for (const run of otherRuns) {
+      assert.equal(run.nativeStaticKcl.status, 'not-run');
+      assert.equal(run.nativeStaticKcl.reason, 'outside-static-op-scope');
+    }
+    graph.analysisBlockers = [{ reason: 'authored refusal control' }];
+    const blocked = runSourceAnalyses(graph, { format: 'spice', nativeStaticKcl: true })[0];
+    assert.equal(blocked.status, 'refused');
+    assert.equal(blocked.nativeStaticKcl.status, 'not-run');
+    assert.equal(blocked.nativeStaticKcl.reason, 'no-admitted-native-op-point');
+    assert.equal(runSourceAnalyses(graph, { nativeStaticKcl: 'true' })[0].code, 'invalid-native-static-kcl-option');
+    assert.deepEqual(runSourceAnalyses({ analyses: [] }, { nativeStaticKcl: true }), []);
+  });
+
   it('runs OP independently while retaining two distinct AC requests', () => {
     const result = imported(`analysis ids
 V1 in 0 DC 6 AC 1

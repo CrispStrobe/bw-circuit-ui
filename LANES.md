@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-04 Same-point source OP conservation evidence — CLAIM, Codex bwcx `/root`.
+2026-10-04 Same-point source OP conservation evidence — DONE candidate, Codex bwcx `/root`.
 Own clean wt-cui-adp-cli-precision-20261003, branch
 fable/source-op-kcl-evidence-20261004, exact base
 6cfe5561dd173655a857e5ab0c029b11c7f92b35. Four paths only: this ledger,
@@ -13,6 +13,17 @@ unavailable OP authority remain explicitly not-run. Prove default equivalence,
 one solve, positive/negative/zero controls, waveform DC bias, and actual signed
 current omission/reversal/indeterminate mutations. Remote claim precedes edits;
 one final exact-head automatic qualification, guarded normal FF on green.
+Remote claim1702e7d preceded implementation. Opt-in audit now uses the one
+existing dc-value solve before normalization; default shapes/values unchanged.
+Focused source adapter/KCL checks32/32; broader CLI/precision/adapter/KCL suite
+131/131, zero skips; provenance/registration10/10, zero skips. Final source
+adapter rerun27/27 includes explicit AC/DC/transient not-run assertions.
+Actual producer mutations reverse source current, omit a terminal, or mark
+indeterminate authority: separate conservation fails/refuses while ordinary
+status remains independently judged, then restored execution passes.
+No private corpus counts, oracle authority, solver tolerances or package pins
+moved. Automatic exact-head qualification pending; no main implementation push
+or deployment claim before green.
 
 2026-10-04 Static operating-point CLI KCL audit — DONE candidate, Codex bwcx `/root`.
 Clean reused own isolated wt-cui-adp-cli-precision-20261003, branch
@@ -47,7 +58,8 @@ No guard weakened, dependency/pin/model/solver/default output changed. CLI outpu
 includes every signed terminal, per-net and per-part residual, fixed diagnostic
 allowances and explicit non-oracle/nonphysical/nontransient claim boundaries.
 This does not retroactively turn the prior300 corpus KCL-not-run rows into passes.
-Candidate push awaits one automatic exact-head four-job CI before guarded landing.
+Landed6cfe556 after exact topic CI37198392169 passed all four jobs; automatic
+master alarm37200207991 also passed. Lite adoption is separately tracked.
 
 2026-10-03 Finite ADP7118 CLI precision stream — DONE candidate, Codex bwcx `/root`.
 Clean reused wt-cui-adp-cli-precision-20261003, new branch

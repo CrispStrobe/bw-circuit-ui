@@ -1,6 +1,7 @@
 import { Circuit } from './circuit.js';
 import { blockersFromImport } from './operating-point-view.js';
 import { parseSpiceValue } from './si.js';
+import { auditOperatingPointKcl } from './operating-point-kcl.js';
 
 const CARD = Object.freeze({
   resistor: { kind: 'R', terminals: ['a', 'b'] },
@@ -150,7 +151,7 @@ function solverRefusal(descriptor, error, conditions = null) {
   };
 }
 
-function runOp(imported, descriptor) {
+function runOp(imported, descriptor, nativeStaticKcl = false) {
   if (descriptor.normalized !== '.op') return sourceRefusal(descriptor, 'invalid-op-card', '.op takes no arguments');
   let circuit;
   try { circuit = circuitFor(imported); }
@@ -165,6 +166,12 @@ function runOp(imported, descriptor) {
       `DC operating point reported ${conflicts.length} conflicting fixed-voltage constraint(s)`);
   } catch (error) { return solverRefusal(descriptor, error); }
   try {
+    // Inspect this exact solved point, not normalized selected source currents
+    // or a second solve with potentially different source/bias conditions.
+    const conservation = nativeStaticKcl ? {
+      ...auditOperatingPointKcl(circuit, point),
+      pointAuthority: 'same-native-op-point', waveformBias: 'dc-value',
+    } : null;
     const canonical = canonicalCircuit(imported, circuit);
     const nodes = canonical.nodes.map(({ id, netId }) => ({ id, voltage: point.nodeVoltages.get(netId) }));
     if (nodes.some(node => !finite(node.voltage))) return solverRefusal(descriptor, 'DC operating point returned a non-finite node voltage');
@@ -185,6 +192,7 @@ function runOp(imported, descriptor) {
       evidence: 'original-direct', adapted: [],
       thermal: 'native-fixed-26.8267934421C; no oracle comparison performed',
       metadata: point.analysis || null,
+      ...(nativeStaticKcl ? { nativeStaticKcl: conservation } : {}),
     };
   } catch (error) { return mappingGap(descriptor, error); }
 }
@@ -935,10 +943,21 @@ export function runSourceAnalyses(imported, {
   maxObservations = 16384, transientProfile = 'interactive-v1',
   observationProfile = SOURCE_OBSERVATION_PROFILE,
   maxTotalAttempts = 1_000_000, maxTotalSolves = 100_000, maxTotalAdvances = 4096,
+  nativeStaticKcl = false,
 } = {}) {
   if (transientProfile == null) transientProfile = 'interactive-v1';
   const descriptors = sourceAnalysisDescriptors(imported?.analyses || []);
-  const tag = result => ({ ...result, requestedObservationProfile: observationProfile });
+  const tag = result => ({ ...result, requestedObservationProfile: observationProfile,
+    ...(nativeStaticKcl === true && !result.nativeStaticKcl ? {
+      nativeStaticKcl: { status: 'not-run',
+        reason: result.kind === 'op' ? 'no-admitted-native-op-point' : 'outside-static-op-scope',
+        claims: { independentOracle: false, physicalDeviceCertification: false, transientConservation: false } },
+    } : {}),
+  });
+  if (typeof nativeStaticKcl !== 'boolean') {
+    return descriptors.map(descriptor => tag(integrationGap(descriptor, 'invalid-native-static-kcl-option',
+      'nativeStaticKcl must be a boolean')));
+  }
   const budgets = [
     ['maxAnalyses', maxAnalyses, 64], ['maxPoints', maxPoints, 8192],
     ['maxObservations', maxObservations, 65536],
@@ -985,7 +1004,7 @@ export function runSourceAnalyses(imported, {
     ledger: { attempts: 0, solves: 0, advances: 0 } };
   return descriptors.map(descriptor => {
     let result;
-    if (descriptor.kind === 'op') result = runOp(imported, descriptor);
+    if (descriptor.kind === 'op') result = runOp(imported, descriptor, nativeStaticKcl);
     else if (descriptor.kind === 'ac') result = runAc(imported, descriptor, limits);
     else if (descriptor.kind === 'tran') result = runTran(imported, descriptor, limits);
     else if (descriptor.kind === 'dc') result = runDc(imported, descriptor, limits);

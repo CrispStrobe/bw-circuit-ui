@@ -81,6 +81,21 @@ can still conserve current. Focused tests separately compare signed observations
 with authored controls and ngspice; this does not imply that a corpus batch has
 been audited, or that the CLI itself invokes ngspice.
 
+Programmatic source-analysis consumers can request
+`runSourceAnalyses(imported, {nativeStaticKcl: true})`. For an admitted `.op`,
+the separate `nativeStaticKcl` field audits the **same** full solved point before
+selected observations are normalized; it adds no second solve. Its
+`pointAuthority: 'same-native-op-point'` and `waveformBias: 'dc-value'` identify
+the source-analysis adapter's existing DC bias semantics, including waveform
+sources evaluated at their authored DC bias—not their transient waveform.
+This differs from the narrower CLI `op --kcl` source admission above.
+
+Non-OP analyses and unavailable OP points explicitly report this diagnostic as
+`not-run`; failed/refused conservation does not overwrite ordinary analysis
+status or masquerade as oracle agreement. Callers must judge both fields.
+The option defaults to false, leaving ordinary result shapes unchanged, and
+requires a boolean. No corpus coverage is implied by enabling the API.
+
 ### Full-grid AC reference checks
 
 `analyze` can compare its existing source-declared AC results with an explicit
