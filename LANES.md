@@ -1,5 +1,19 @@
 # Work lanes
 
+2026-10-04 Same-point source OP conservation evidence — CLAIM, Codex bwcx `/root`.
+Own clean wt-cui-adp-cli-precision-20261003, branch
+fable/source-op-kcl-evidence-20261004, exact base
+6cfe5561dd173655a857e5ab0c029b11c7f92b35. Four paths only: this ledger,
+src/model/source-analysis.js, test/source-analysis.test.js,
+docs/CLI-INSTRUMENTS.md. Opt-in nativeStaticKcl must inspect the same full strict
+OP point before normalization, with explicit dc-value waveform bias provenance.
+No second solve, default output change, oracle-KCL promotion, solver/model,
+importer/GUI, package/pin, workflow, Lite or private corpus edits. Non-OP and
+unavailable OP authority remain explicitly not-run. Prove default equivalence,
+one solve, positive/negative/zero controls, waveform DC bias, and actual signed
+current omission/reversal/indeterminate mutations. Remote claim precedes edits;
+one final exact-head automatic qualification, guarded normal FF on green.
+
 2026-10-04 Static operating-point CLI KCL audit — DONE candidate, Codex bwcx `/root`.
 Clean reused own isolated wt-cui-adp-cli-precision-20261003, branch
 fable/cli-op-kcl-20261004, exact base e3a3ffe6fa5eca6edac7aef249a90c46efb6a514.
