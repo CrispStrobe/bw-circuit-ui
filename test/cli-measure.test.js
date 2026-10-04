@@ -26,6 +26,112 @@ const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json'
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
 
+test('actual static OP KCL CLI reports full signed coverage, genuine zero and unchanged legacy output', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bwc-op-kcl-'));
+  const env = {...process.env}; delete env.BW_BOARD;
+  try {
+    const file = join(dir, 'control.cir');
+    for (const volts of [6, -6, 0]) {
+      writeFileSync(file, `authored divider\nV1 in 0 ${volts}\nR1 in out 1k\nR2 out 0 2k\n.op\n.end\n`);
+      const child = spawnSync(process.execPath, [CLI, 'op', file, '--kcl', '--json'], {encoding: 'utf8', env});
+      assert.equal(child.status, 0, child.stderr);
+      const {kcl} = JSON.parse(child.stdout);
+      assert.equal(kcl.status, 'pass');
+      assert.equal(kcl.counts.nets, 3);
+      assert.equal(kcl.counts.parts, 3);
+      assert.equal(kcl.counts.terminals, 6);
+      assert.equal(kcl.observations.length, 6);
+      assert.equal(kcl.observations.find(row => row.part === 'V1' && row.terminal === 'pos').currentAmps,
+        volts === 0 ? 0 : -volts / 3000, 'JSON preserves a numeric zero, not the sign bit of -0');
+      assert.equal(kcl.claims.independentOracle, false);
+      const text = spawnSync(process.execPath, [CLI, 'op', file, '--kcl'], {encoding: 'utf8', env});
+      assert.equal(text.status, 0, text.stderr);
+      assert.match(text.stdout, /static OP KCL PASS/);
+      assert.match(text.stdout, /V1\.pos on .* A into part/);
+      assert.match(text.stdout, /not an independent oracle/);
+    }
+    const legacy = spawnSync(process.execPath, [CLI, 'op', file], {encoding: 'utf8', env});
+    assert.equal(legacy.status, 0, legacy.stderr);
+    assert.match(legacy.stdout, /DC operating point/);
+    assert.doesNotMatch(legacy.stdout, /static OP KCL|"kcl"/);
+    const unsupported = spawnSync(process.execPath, [CLI, 'measure', file, '--kcl'], {encoding: 'utf8', env});
+    assert.equal(unsupported.status, 2);
+    assert.match(unsupported.stderr, /supported only by static op/);
+    writeFileSync(file, 'waveform is not a static audit\nV1 in 0 SINE(0 1 1k)\nR1 in 0 1k\n.end\n');
+    const waveform = spawnSync(process.execPath, [CLI, 'op', file, '--kcl', '--json'], {encoding: 'utf8', env});
+    assert.equal(waveform.status, 2);
+    assert.equal(waveform.stdout, '');
+    assert.match(waveform.stderr, /time-varying source/);
+  } finally {rmSync(dir, {recursive: true, force: true});}
+});
+
+test('actual CLI three native-current mutations expose reversed, omitted and indeterminate authority', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bwc-op-kcl-mutants-'));
+  const env = {...process.env}; delete env.BW_BOARD;
+  try {
+    const file = join(dir, 'control.cir');
+    writeFileSync(file, 'signed mutation control\nV1 in 0 6\nR1 in out 1k\nR2 out 0 2k\n.op\n.end\n');
+    const engine = import.meta.resolve('bw-board/board.js');
+    for (const [name, mutation, exit, status] of [
+      ['reversed-source', "for(const [t,i] of p.branchCurrents.get('V1')) p.branchCurrents.get('V1').set(t,-i);", 1, 'fail'],
+      ['missing-source-terminal', "p.branchCurrents.get('V1').delete('pos');", 2, 'refused'],
+      ['indeterminate-source', "p.indeterminateBranchCurrents.add('V1');", 2, 'refused'],
+    ]) {
+      const preload = `import {BoardImpl} from ${JSON.stringify(engine)}; const original=BoardImpl.prototype.operatingPoint;
+        BoardImpl.prototype.operatingPoint=function(...args){const p=original.apply(this,args);${mutation}return p;};`;
+      const child = spawnSync(process.execPath, ['--import', `data:text/javascript,${encodeURIComponent(preload)}`,
+        CLI, 'op', file, '--kcl', '--json'], {encoding: 'utf8', env});
+      assert.equal(child.status, exit, `${name}: ${child.stderr}`);
+      const {kcl} = JSON.parse(child.stdout);
+      assert.equal(kcl.status, status, name);
+      if (status === 'fail') assert.equal(kcl.counts.failed, 2, 'whole-part cancellation must not hide two failed nets');
+      else assert.equal(kcl.counts.passed, 0, 'unavailable authority cannot retain partial passes');
+    }
+    const restored = spawnSync(process.execPath, [CLI, 'op', file, '--kcl', '--json'], {encoding: 'utf8', env});
+    assert.equal(restored.status, 0, restored.stderr);
+    assert.equal(JSON.parse(restored.stdout).kcl.status, 'pass');
+  } finally {rmSync(dir, {recursive: true, force: true});}
+});
+
+test('static KCL CLI signed terminal observations agree with live ngspice and authored controls', {
+  skip: spawnSync('ngspice', ['--version'], {encoding: 'utf8'}).status !== 0,
+}, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'bwc-op-kcl-oracle-'));
+  const env = {...process.env}; delete env.BW_BOARD;
+  try {
+    for (const [name, cards, sourceAmps, resistorAmps] of [
+      ['positive-divider', 'V1 in 0 6\nR1 in out 1k\nR2 out 0 2k', -.002, .002],
+      ['negative-divider', 'V1 in 0 -6\nR1 in out 1k\nR2 out 0 2k', .002, -.002],
+      ['zero-divider', 'V1 in 0 0\nR1 in out 1k\nR2 out 0 2k', 0, 0],
+      ['controlled-sink', 'V1 ctl 0 1\nG1 out 0 ctl 0 2m\nR1 out 0 1k', 0, -.002],
+    ]) {
+      const file = join(dir, 'control.cir');
+      const oracleOutput = `oracle-${name}.txt`;
+      writeFileSync(file, `${name}\n${cards}\n.op\n.end\n`);
+      writeFileSync(join(dir, 'oracle.cir'), `${name}\n${cards}\n.control\nset wr_vecnames\nset wr_singlescale\nop\nwrdata ${oracleOutput} i(v1) @r1[i]\n.endc\n.end\n`);
+      const oracle = spawnSync('ngspice', ['-b', 'oracle.cir'], {cwd: dir, encoding: 'utf8', timeout: 60000});
+      assert.equal(oracle.status, 0, oracle.stderr || oracle.stdout);
+      assert.ok(existsSync(join(dir, oracleOutput)), oracle.stderr || oracle.stdout);
+      const reference = readFileSync(join(dir, oracleOutput), 'utf8').trim().split('\n').slice(1)
+        .flatMap(line => line.trim().split(/\s+/).map(Number)).slice(-2);
+      assert.equal(reference.length, 2);
+      assert.ok(reference.every(Number.isFinite));
+      const child = spawnSync(process.execPath, [CLI, 'op', file, '--kcl', '--json'], {encoding: 'utf8', env});
+      assert.equal(child.status, 0, child.stderr);
+      const {kcl} = JSON.parse(child.stdout);
+      const actual = [['V1', 'pos'], ['R1', 'a']].map(([part, terminal]) =>
+        kcl.observations.find(row => row.part === part && row.terminal === terminal)?.currentAmps);
+      for (let index = 0; index < actual.length; index++) {
+        assert.ok(Number.isFinite(actual[index]));
+        assert.ok(Math.abs(actual[index] - reference[index]) <= 1e-9, `${name}: native vs ngspice`);
+        assert.ok(Math.abs(actual[index] - [sourceAmps, resistorAmps][index]) <= 1e-9, `${name}: authored control`);
+      }
+      assert.equal(kcl.status, 'pass');
+      assert.equal(kcl.claims.independentOracle, false, 'the CLI itself did not execute the external oracle');
+    }
+  } finally {rmSync(dir, {recursive: true, force: true});}
+});
+
 function adp7118StartupCliFixture({ohms = 500, farads = 2.2e-6,
   startupModel = 'datasheet-envelope'} = {}) {
   const wire = (from, fromTerminal, to, toTerminal) =>

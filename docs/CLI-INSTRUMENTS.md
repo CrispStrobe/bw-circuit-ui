@@ -55,6 +55,32 @@ Repeat `--scope` and `--meter` for multiple channels/readings. Scope traces
 can be checked with `--expect`; meter-only captures now also support
 `--expect-meters meter-reference.json` in batch and `--watch` modes.
 
+### Static operating-point conservation
+
+```sh
+bwc op divider.cir --kcl --json
+```
+
+This opt-in audit uses the native static operating point and actual resolved
+topology. It reports every mapped terminal current (positive **into** the part),
+and signed current sums for every net, including ground, and every part.
+Ground labels are references, not current injections. Missing, nonfinite,
+unmapped, conflicting or indeterminate authority refuses the audit; unavailable
+currents are never replaced with zero or counted as partial passes.
+
+Each sum must satisfy `abs(sum(I)) <= 1e-9 A + 1e-6 * sum(abs(I))`.
+These are diagnostic numerical allowances, not changed solver tolerances.
+Exit codes are 0 for complete conservation, 1 for a residual failure, and 2 for
+unavailable authority or invalid input. Text output is available without
+`--json`; ordinary `op` output is unchanged. Time-varying sources and `--kcl`
+on commands other than static `op` are refused.
+
+Conservation is not an independent oracle, a physical-device certificate or a
+transient check. Balanced model errors or uniformly reversed current conventions
+can still conserve current. Focused tests separately compare signed observations
+with authored controls and ngspice; this does not imply that a corpus batch has
+been audited, or that the CLI itself invokes ngspice.
+
 ### Full-grid AC reference checks
 
 `analyze` can compare its existing source-declared AC results with an explicit

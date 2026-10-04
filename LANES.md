@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-04 Static operating-point CLI KCL audit — CLAIM, Codex bwcx `/root`.
+2026-10-04 Static operating-point CLI KCL audit — DONE candidate, Codex bwcx `/root`.
 Clean reused own isolated wt-cui-adp-cli-precision-20261003, branch
 fable/cli-op-kcl-20261004, exact base e3a3ffe6fa5eca6edac7aef249a90c46efb6a514.
 Seven-path envelope ONLY this ledger, bin/bwc.mjs, new pure
@@ -17,6 +17,23 @@ signed I source, VCCS and R/L/C controls found complete finite current maps and
 Prove signed analytic/ngspice controls, missing/duplicate/nonfinite/overflow/
 indeterminate authority, and actual altered-current admission mutants.
 Remotely merge claim before edits; one frozen exact-head upstream qualification.
+Claims945d0287/9eaa1070 preceded their respective implementation paths. Complete
+source-precision suite127/127, zero skips; adjacent OP/UI/test-registration
+surface27/27, zero skips. Four authored ngspice controls independently compare
+eight signed source/resistor currents, including negative and genuine zero.
+Three isolated real CLI native-current mutations reverse source signs, omit a
+terminal or mark source current indeterminate: fail/refuse as intended, and the
+next ordinary process passes. Empty/duplicate/malformed topology, ground-current
+injection, nonfinite/overflow and missing maps refuse with no partial pass.
+Native ground labels legitimately expose empty maps; they are not injections.
+Local cold package symlink rejected provenance and lacked dependency resolution;
+restored an ordinary installed copy and independently verified unchanged runtime
+hashdf92359f3a61914ce3ce7c716052dc365c51946ca92afbe91cf7ddc58f50856f.
+No guard weakened, dependency/pin/model/solver/default output changed. CLI output
+includes every signed terminal, per-net and per-part residual, fixed diagnostic
+allowances and explicit non-oracle/nonphysical/nontransient claim boundaries.
+This does not retroactively turn the prior300 corpus KCL-not-run rows into passes.
+Candidate push awaits one automatic exact-head four-job CI before guarded landing.
 
 2026-10-03 Finite ADP7118 CLI precision stream — DONE candidate, Codex bwcx `/root`.
 Clean reused wt-cui-adp-cli-precision-20261003, new branch

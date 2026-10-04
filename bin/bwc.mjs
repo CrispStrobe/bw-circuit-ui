@@ -9,7 +9,7 @@
  * it behaves across three hundred real boards.
  *
  *   bwc info      <file>                    what is in it, and what did not map
- *   bwc op        <file>                    independent static DC operating point
+ *   bwc op        <file> [--kcl [--json]]    static DC operating point / conservation audit
  *   bwc measure   <file> --scope <tip>[,<ref>] [--meter <mode>:<probe>] [--receipt <file>]
  *   bwc analyze   <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1]
  *   bwc convert   <file> --to eagle|kicad-sch|kicad|spice|json [-o out]
@@ -136,10 +136,11 @@ for (let i = 1; i < args.length; i++) {
 const die = (m) => { console.error('bwc: ' + m); process.exit(2); };
 if (opts.receipt && cmd !== 'measure') die('--receipt is supported only by measure');
 if (opts['expect-ac'] !== undefined && cmd !== 'analyze') die('--expect-ac is supported only by analyze');
+if (opts.kcl && cmd !== 'op') die('--kcl is supported only by static op');
 const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
-    + '  bwc op      <file>\n'
+    + '  bwc op      <file> [--kcl [--json]]\n'
     + '  bwc dc-sweep <file> --source V1 --from -1 --to 1 --points 201\n'
     + '              [--observe <tip>[,<ref>]] [--current <part>.<terminal>] [--expect curve.json] [--json]\n'
     + '  bwc verify-receipt <receipt.json> --input <circuit> [--expect waveform.json]\n'
@@ -402,6 +403,27 @@ switch (cmd) {
     }
     if (result.railConflicts && result.railConflicts.length) {
       die('op found rail conflicts: ' + result.railConflicts.join('; '));
+    }
+
+    if (opts.kcl) {
+      const {auditOperatingPointKcl} = await import(join(SRC, 'model/operating-point-kcl.js'));
+      const kcl = auditOperatingPointKcl(circ, result);
+      if (opts.json) console.log(JSON.stringify({source: basename(file), format: c.format, kcl}, null, 2));
+      else {
+        console.log(`${basename(file)} [${c.format}] static OP KCL ${kcl.status.toUpperCase()}`);
+        console.log(`  ${kcl.counts.nets} nets, ${kcl.counts.parts} parts, ${kcl.counts.terminals} terminal observations`);
+        console.log(`  tolerance: ${kcl.tolerance.absoluteAmps} A + ${kcl.tolerance.relative} * sum(abs(I))`);
+        for (const row of kcl.observations) {
+          console.log(`  ${row.part}.${row.terminal} on ${row.net}: ${row.currentAmps} A into part`);
+        }
+        for (const row of [...kcl.nets, ...kcl.parts]) {
+          console.log(`  ${row.id}: ${row.status} residual=${row.residualAmps} A allowance=${row.allowedAmps} A`);
+        }
+        for (const row of kcl.unavailable) console.log(`  refused: ${row.code}: ${row.detail}`);
+        console.log('  Native static conservation only; not an independent oracle or physical-device certificate.');
+      }
+      process.exitCode = kcl.status === 'pass' ? 0 : kcl.status === 'fail' ? 1 : 2;
+      break;
     }
 
     console.log(basename(file) + '  [' + c.format + ']  DC operating point');
