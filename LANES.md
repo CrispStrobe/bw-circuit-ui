@@ -1,5 +1,22 @@
 # Work lanes
 
+2026-10-04 Static operating-point CLI KCL audit — CLAIM, Codex bwcx `/root`.
+Clean reused own isolated wt-cui-adp-cli-precision-20261003, branch
+fable/cli-op-kcl-20261004, exact base e3a3ffe6fa5eca6edac7aef249a90c46efb6a514.
+Six-path envelope ONLY this ledger, bin/bwc.mjs, new pure
+src/model/operating-point-kcl.js, new test/operating-point-kcl.test.js,
+existing test/cli-measure.test.js and docs/CLI-INSTRUMENTS.md.
+Add explicit op --kcl diagnostic using the actual resolved topology and strict
+OP positive-into-terminal maps, with text/JSON, complete current coverage,
+per-net/per-part residuals, and failed/unavailable/indeterminate refusals.
+Keep defaults, solver/models, source-analysis adapter, importer/GUI, pins/locks,
+workflows, private corpus and Lite unchanged. Native measurement of divider,
+signed I source, VCCS and R/L/C controls found complete finite current maps and
+0 to1pA residuals; this is feasibility evidence, not corpus/oracle qualification.
+Prove signed analytic/ngspice controls, missing/duplicate/nonfinite/overflow/
+indeterminate authority, and actual altered-current admission mutants.
+Remotely merge claim before edits; one frozen exact-head upstream qualification.
+
 2026-10-03 Finite ADP7118 CLI precision stream — DONE candidate, Codex bwcx `/root`.
 Clean reused wt-cui-adp-cli-precision-20261003, new branch
 fable/adp7118-cli-bounded-stream-20261003; exact CUI base
