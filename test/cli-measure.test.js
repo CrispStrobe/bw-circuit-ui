@@ -1195,16 +1195,18 @@ test('precision capture input and cumulative work policies refuse unsupported au
   assert.throws(() => validatePrecisionCaptureWork({...good,profile:{id:'interactive-v1'}},budget),/profile changed/);
 });
 
-test('precision CLI refuses absent initialization, streaming and budget/domain escapes', () => {
+test('precision CLI refuses absent initialization, unsupported streaming and budget/domain escapes', () => {
   const base = [CLI,'measure',PROBE_FIXTURE,'--scope','R2.a,V1.neg','--profile','precision-v1','--json'];
   for (const [extra,reason] of [
     [[],/requires --initial zero-state/],
     [['--initial','dc-operating-point'],/requires --initial zero-state/],
-    [['--initial','zero-state','--watch'],/refuses --watch/],
+    [['--initial','zero-state','--watch'],/precision watch requires the bounded ADP7118 current-limited domain/],
     [['--initial','zero-state','--meter','resistance:R1.a,R1.b'],/second advance/],
     [['--initial','zero-state','--duration','201ms','--rate','1kHz'],/preflight needs 20100/],
   ]) {
-    const result = spawnSync(process.execPath,[...base,...extra],{encoding:'utf8',timeout:15000});
+    // Do not let --watch + --json's format conflict conceal domain admission.
+    const requestBase = extra.includes('--watch') ? base.filter(arg=>arg!=='--json') : base;
+    const result = spawnSync(process.execPath,[...requestBase,...extra],{encoding:'utf8',timeout:15000});
     assert.equal(result.status,2,result.stderr);
     assert.equal(result.stdout,'');
     assert.match(result.stderr,reason);

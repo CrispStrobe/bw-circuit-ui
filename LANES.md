@@ -38,6 +38,12 @@ Local npm exited0 with ENOSPC warnings for non-runtime receipt payloads; runtime
 bytes independently verified. Full clean installation/suites belong to hosted
 CI, not a false whole-package local claim. Only task-owned cache/dependencies
 offloaded/backed up; no peer folder changed. No Lite/GUI precision/deploy claim.
+Hosted ff6e6c CI37148490635: standard3179 tests/3162pass/0fail/17skip;
+source-precision119 tests/118pass/1fail/0skip, with the sole red an old blanket
+precision-watch refusal expectation. SPICE/KiCad oracles and browser green.
+Forward test-only repair checks passive-domain refusal without --json, so a
+format conflict cannot mask missing admission. Runtime/package/tolerances
+unchanged; replacement needs fresh exact-head qualification, not an old rerun.
 
 2026-10-03 ADP7118 bounded CLI precision — DONE candidate, Codex bwcx `/root`.
 Isolated wt-cui-adp-cli-precision-20261003, branch
