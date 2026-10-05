@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><title>Stimulus controls test</title></head>
+<body>
+<div id="root"></div>
+<script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { StimulusControls } from '../src/components/StimulusControls.jsx';
+
+// Every onSetParam call, in order, so the test reads exactly what the board
+// would have been told.
+window.__calls = [];
+const onSetParam = (id, key, value) => window.__calls.push([id, key, value]);
+const parts = [
+  { id: 'PIR_pir', kind: 'pir', params: {} },
+  { id: 'SOUND_mic', kind: 'sound_module', params: {} },
+];
+const root = createRoot(document.getElementById('root'));
+root.render(React.createElement(StimulusControls, { parts, onSetParam }));
+window.__stimReady = true;
+</script>
+</body>
+</html>

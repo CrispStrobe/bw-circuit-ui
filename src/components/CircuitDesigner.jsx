@@ -1950,11 +1950,15 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
         {/* Orientation input — for accelerometer parts (mpu6050, adxl335, memsic2125) */}
         {parts.filter(p => ['mpu6050', 'adxl335', 'memsic2125'].includes(p.kind)).map(p => (
           <OrientationInput key={p.id} partId={p.id} kind={p.kind} lang={lang}
-            onSetParam={(id, key, val) => { if (circuit?.board?.setDeviceParam) circuit.board.setDeviceParam(id, key, val); }} />
+            onSetParam={handleSetPartParam} />
         ))}
-        {/* Stimulus controls — knock/tap and distance for sensors without fabric controls */}
-        <StimulusControls parts={parts} lang={lang}
-          onSetParam={(id, key, val) => { if (circuit?.board?.setDeviceParam) circuit.board.setDeviceParam(id, key, val); }} />
+        {/* Stimulus controls — knock/tap, distance, motion and sound for sensors
+            without fabric controls. Through handleSetPartParam, like every other
+            param write: these two panels called board.setDeviceParam, which no
+            board has ever defined, so the optional chain swallowed every tap,
+            distance and tilt — and never reached the external (debugger)
+            board either, which is the one the firmware actually polls. */}
+        <StimulusControls parts={parts} lang={lang} onSetParam={handleSetPartParam} />
         </div>
       </div>
       ) : (
