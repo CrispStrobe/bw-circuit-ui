@@ -173,6 +173,13 @@ const STRINGS = {
   stimKnockTitle:      { en: 'Simulate a knock/tap on the piezo sensor', de: 'Klopfen/Antippen am Piezosensor simulieren' },
   stimDistance:        { en: 'Distance', de: 'Entfernung' },
   stimDistanceTitle:   { en: 'Set ultrasonic target distance (cm)', de: 'Ultraschall-Zielentfernung einstellen (cm)' },
+  stimMotionOn:        { en: 'Motion', de: 'Bewegung' },
+  stimMotionOff:       { en: 'No motion', de: 'Keine Bewegung' },
+  stimMotionTitle:     { en: 'Toggle movement in front of the PIR motion sensor', de: 'Bewegung vor dem PIR-Bewegungsmelder ein-/ausschalten' },
+  stimSound:           { en: 'Sound', de: 'Geräusch' },
+  stimSoundTitle:      { en: 'Set the background sound level at the sound module', de: 'Grundgeräuschpegel am Geräuschmodul einstellen' },
+  stimClap:            { en: 'Clap', de: 'Klatschen' },
+  stimClapTitle:       { en: 'A short loud sound at the sound module', de: 'Ein kurzes lautes Geräusch am Geräuschmodul' },
 
   // ── Serial console ────────────────────────────────────────────────
   serialConsole:       { en: 'Serial Console', de: 'Serielle Konsole' },

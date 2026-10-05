@@ -100,4 +100,29 @@ describe('Sensor faces', { skip: !chromium && 'playwright not available' }, () =
 
     await page.close();
   });
+  it('StimulusControls: PIR motion toggles, sound level slides, a clap is a burst', async () => {
+    const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
+    await page.goto(`http://localhost:${PORT}/test/faces-stimulus.html`, { waitUntil: 'networkidle' });
+    await page.waitForFunction(() => window.__stimReady === true, { timeout: 15000 });
+    const calls = () => page.evaluate(() => window.__calls.slice());
+
+    await page.click('[data-stim-motion="PIR_pir"]');
+    await page.click('[data-stim-motion="PIR_pir"]');
+    assert.deepEqual(await calls(), [['PIR_pir', 'motion', 1], ['PIR_pir', 'motion', 0]],
+      'the toggle must switch motion on and back off');
+
+    await page.evaluate(() => { window.__calls.length = 0; });
+    await page.$eval('[data-stim-sound="SOUND_mic"]', (el) => {
+      const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      set.call(el, '0.3');
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.click('[data-stim-clap="SOUND_mic"]');
+    await page.waitForTimeout(400);
+    // The clap returns to the slider's level, not to silence: a clap in a
+    // noisy room ends in the same noisy room.
+    assert.deepEqual(await calls(), [
+      ['SOUND_mic', 'level', 0.3], ['SOUND_mic', 'level', 1], ['SOUND_mic', 'level', 0.3]]);
+    await page.close();
+  });
 });
