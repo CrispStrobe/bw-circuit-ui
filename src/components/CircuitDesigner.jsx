@@ -47,7 +47,7 @@ import { InferPanel } from './InferPanel.jsx';
 import { ExamplesBrowser } from './ExamplesBrowser.jsx';
 import { CodexBrowser } from './CodexBrowser.jsx';
 import { t } from '../i18n/strings.js';
-import { demoPinScriptApplies } from '../model/simulation.js';
+import { demoPinScriptApplies, armBoardForRun } from '../model/simulation.js';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
 import { SweepPanel } from './SweepPanel.jsx';
@@ -545,6 +545,17 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // already externally clocked and simply continue to receive the VM's pin writes.
   useEffect(() => {
     const onGreenFlag = () => {
+      // The CLEAR of the run happens HERE, synchronously, not in the [mode]
+      // effect below: the host dispatches this event before it starts the
+      // VM, so the program's first write lands on a board that has already
+      // been reset and armed (armBoardForRun says why that order is the
+      // contract). The effect the mode change triggers is told not to clear
+      // again; a run restarted while already simulating clears here too.
+      const live = liveRef.current;
+      if (!live.externalBoard && live.board) {
+        const armed = armBoardForRun({ board: live.board, parts: live.parts, wires: live.wires, setPin: live.setPin });
+        runArmedRef.current = live.mode === 'simulate' ? null : { board: live.board, armed };
+      }
       setMode('simulate');
       setRightOpen(true);
       setSimPaused(false);
@@ -600,8 +611,17 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // and the UI re-renders via onChange subscription.
   const simInterval = useRef(null);
   const simStep = useRef(0);
+  // What the green-flag handler (above) reads synchronously, and the run it
+  // already armed — consumed by the next run of the effect below.
+  const liveRef = useRef({});
+  liveRef.current = { board: circuit.board, parts, wires, setPin, externalBoard, mode };
+  const runArmedRef = useRef(null);
 
   useEffect(() => {
+    // Any run of this effect consumes the green flag's arming: it belongs to
+    // the transition that flag caused and to no later edit.
+    const armedByFlag = runArmedRef.current;
+    runArmedRef.current = null;
     // Skip scripted sim when external board drives the simulation
     if (externalBoard) return;
 
@@ -622,50 +642,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // RC charge) need the clock just as much. Only the demo pin script
     // below is MCU-conditional.
 
-    // Classify pins by what's connected to them
-    const outputPins = []; // pins with LEDs or buzzers connected
-    const inputPins = [];  // pins with buttons connected
-    const analogPins = []; // pins with pots connected
-
-    // Reset stale board state (cap voltages, LED history) for EVERY circuit.
-    if (circuit.board.reset) circuit.board.reset();
-
-    if (mcu) {
-      for (const pin of mcu.terminals) {
-        // Find what's wired to this pin
-        const connectedKinds = new Set();
-        for (const w of wires) {
-          const f = wireEndpoint(w, 'from');
-          const t = wireEndpoint(w, 'to');
-          if (!f || !t) continue;
-          let otherPart = null;
-          if (f.part === mcu.id && f.terminal === pin) {
-            otherPart = t.part;
-          } else if (t.part === mcu.id && t.terminal === pin) {
-            otherPart = f.part;
-          }
-          if (otherPart) {
-            const p = parts.find(pp => pp.id === otherPart);
-            if (p) connectedKinds.add(p.kind);
-          }
-        }
-
-        if (connectedKinds.has('led') || connectedKinds.has('buzzer') || connectedKinds.has('resistor')) {
-          outputPins.push(pin);
-        } else if (connectedKinds.has('button')) {
-          inputPins.push(pin);
-        } else if (connectedKinds.has('potentiometer')) {
-          analogPins.push(pin);
-        } else {
-          outputPins.push(pin); // default: treat as output
-        }
-      }
-
-
-      for (const pin of outputPins) setPin(pin, 'quasi', true);
-      for (const pin of inputPins) setPin(pin, 'quasi', true);
-      for (const pin of analogPins) setPin(pin, 'input', false);
-    }
+    // Reset stale board state (cap voltages, LED history) for EVERY circuit and
+    // arm the MCU pins — unless the green flag already did, before the program
+    // started; doing it again here, after the program's first write, wiped it.
+    const { outputPins } = armedByFlag && armedByFlag.board === circuit.board
+      ? armedByFlag.armed
+      : armBoardForRun({ board: circuit.board, parts, wires, setPin });
 
     simStep.current = 0;
 
