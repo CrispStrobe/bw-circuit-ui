@@ -7,7 +7,8 @@ import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { getEngine } from '../src/engine.js';
-import { demoPinScriptApplies } from '../src/model/simulation.js';
+import { demoPinScriptApplies, armBoardForRun } from '../src/model/simulation.js';
+import { readFileSync } from 'node:fs';
 
 // Inline the demo netlist (same as demo-netlist.js minus layout fields)
 const parts = [
@@ -112,5 +113,62 @@ describe('the demo pin script', () => {
     // the placeholder on every bench.
     assert.equal(demoPinScriptApplies({ hasMcu: true, stc: {} }), true);
     assert.equal(demoPinScriptApplies({ hasMcu: true, stc: { pins: 'nope' } }), true);
+  });
+});
+
+// A run is armed BEFORE the program writes (brickwright-lite task B7). The
+// designer's start-of-run clear (reset + arm every MCU pin) used to run in its
+// [mode] effect after the green flag's event arrived on a setTimeout(0), so it
+// could land after the Scratch VM's first write and wipe it — measured in a
+// real browser on production: `turn on led` at 68.7 ms, the reset at 174 ms,
+// the LED dark for the program's whole 2 s wait.
+describe('armBoardForRun: the clear of a run', () => {
+  const wires = [
+    { from: 'MCU', fromTerminal: 'P1.0', to: 'LED1', toTerminal: 'cathode' },
+    { from: 'MCU', fromTerminal: 'P3.2', to: 'B1', toTerminal: 'a' },
+    { from: 'MCU', fromTerminal: 'P1.1', to: 'POT', toTerminal: 'wiper' },
+  ];
+  const benchParts = [
+    { id: 'MCU', kind: 'mcu', terminals: ['P1.0', 'P3.2', 'P1.1', 'P2.7'] },
+    { id: 'LED1', kind: 'led' }, { id: 'B1', kind: 'button' }, { id: 'POT', kind: 'potentiometer' },
+  ];
+
+  it('resets the board and arms each MCU pin by what it is wired to', () => {
+    const calls = [];
+    let resets = 0;
+    const out = armBoardForRun({
+      board: { reset() { resets++; } }, parts: benchParts, wires,
+      setPin: (pin, mode, high) => calls.push([pin, mode, high]),
+    });
+    assert.equal(resets, 1);
+    assert.equal(out.mcu.id, 'MCU');
+    assert.deepEqual(out.outputPins, ['P1.0', 'P2.7'], 'an LED pin and an unwired pin are outputs');
+    assert.deepEqual(out.inputPins, ['P3.2']);
+    assert.deepEqual(out.analogPins, ['P1.1']);
+    assert.deepEqual(calls, [['P1.0', 'quasi', true], ['P2.7', 'quasi', true], ['P3.2', 'quasi', true], ['P1.1', 'input', false]]);
+  });
+
+  it('is a CLEAR: a program write before it is lost, one after it is kept — so it must run first', () => {
+    const { BoardImpl } = getEngine();
+    const fresh = () => { const b = new BoardImpl(5.0); b.setNetlist(parts, nets); b.setPower(true); return b; };
+    const arm = (b) => armBoardForRun({ board: b, parts, wires: [{ from: 'MCU', fromTerminal: 'P1.0', to: 'LED1', toTerminal: 'cathode' }], setPin: (p, m, h) => b.setPin(p, m, h) });
+    const writeFirst = fresh();
+    writeFirst.setPin('P1.0', 'pushpull', false);   // the program: turn on led (active low)
+    arm(writeFirst);                                  // the old order: the clear after it
+    assert.deepEqual([writeFirst.pinStates.get('p1.0').mode, writeFirst.pinStates.get('p1.0').driveHigh], ['quasi', true], 'wiped');
+    const armFirst = fresh();
+    arm(armFirst);
+    armFirst.setPin('P1.0', 'pushpull', false);
+    assert.deepEqual([armFirst.pinStates.get('p1.0').mode, armFirst.pinStates.get('p1.0').driveHigh], ['pushpull', false], 'kept');
+  });
+
+  it('the designer arms from the green-flag event itself, before it changes mode, and the effect does not arm again', () => {
+    const src = readFileSync(new URL('../src/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
+    const handler = src.slice(src.indexOf('const onGreenFlag = () => {'), src.indexOf("window.addEventListener('bw-green-flag', onGreenFlag);"));
+    assert.ok(handler.includes('armBoardForRun('), 'the green-flag handler arms the run synchronously');
+    assert.ok(handler.indexOf('armBoardForRun(') < handler.indexOf("setMode('simulate')"), 'and does so before the mode change');
+    const effect = src.slice(src.indexOf('const armedByFlag = runArmedRef.current;'));
+    assert.match(effect, /runArmedRef\.current = null;/, 'every run of the effect consumes the flag');
+    assert.match(effect, /armedByFlag && armedByFlag\.board === circuit\.board\s*\?\s*armedByFlag\.armed/, 'and reuses its arming instead of clearing again');
   });
 });

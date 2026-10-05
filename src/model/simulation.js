@@ -5,6 +5,7 @@
  * Nothing is fabricated.
  */
 
+import { wireEndpoint } from './wire-endpoints.js';
 import { getEngine } from '../engine.js';
 
 /**
@@ -119,4 +120,68 @@ export function demoPinScriptApplies({ hasMcu, stc }) {
   if (!hasMcu) return false;
   const declared = stc && Array.isArray(stc.pins) ? stc.pins.length : 0;
   return declared === 0;
+}
+
+/** The MCU-surface part kinds whose pins the designer arms at the start of a run. */
+export const RUN_MCU_KINDS = ['mcu', 'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge'];
+
+/**
+ * Begin a run on the designer's OWN board (no external, emulator-driven one):
+ * clear its stale state (capacitor voltages, LED history) and arm every pin of
+ * the circuit's MCU part so no net floats before the program's first write —
+ * outputs and inputs quasi-high (the 8051 idle level), analog inputs high-Z.
+ *
+ * A function, not effect code, because WHEN it runs is the whole contract: it
+ * is the CLEAR of a seed-then-clear pair, and the program's writes are the
+ * seed. It used to run in the designer's [mode] effect after the green flag's
+ * `bw-green-flag` arrived on a setTimeout(0) — unordered with the Scratch VM's
+ * first step, so a program's first write was wiped whenever the VM stepped
+ * first (measured in a real browser on production, brickwright-lite task B7:
+ * `turn on led` at 68.7 ms, the reset at 174 ms, the LED dark for the whole
+ * of the program's 2 s wait). The designer now calls it synchronously from
+ * the green-flag event, which the host dispatches BEFORE it starts the VM.
+ *
+ * @param {object} opts
+ * @param {{reset?: Function}} opts.board — the designer's board
+ * @param {Array} opts.parts
+ * @param {Array} opts.wires
+ * @param {(pin: string, mode: string, high: boolean) => void} opts.setPin
+ * @returns {{mcu: object|null, outputPins: string[], inputPins: string[], analogPins: string[]}}
+ */
+export function armBoardForRun({ board, parts, wires, setPin }) {
+  if (board && typeof board.reset === 'function') board.reset();
+  const mcu = (parts || []).find(p => RUN_MCU_KINDS.includes(p.kind)) || null;
+  const outputPins = [];
+  const inputPins = [];
+  const analogPins = [];
+  if (mcu) {
+    for (const pin of mcu.terminals || []) {
+      const connectedKinds = new Set();
+      for (const w of wires || []) {
+        const f = wireEndpoint(w, 'from');
+        const t = wireEndpoint(w, 'to');
+        if (!f || !t) continue;
+        let otherPart = null;
+        if (f.part === mcu.id && f.terminal === pin) otherPart = t.part;
+        else if (t.part === mcu.id && t.terminal === pin) otherPart = f.part;
+        if (otherPart) {
+          const p = parts.find(pp => pp.id === otherPart);
+          if (p) connectedKinds.add(p.kind);
+        }
+      }
+      if (connectedKinds.has('led') || connectedKinds.has('buzzer') || connectedKinds.has('resistor')) {
+        outputPins.push(pin);
+      } else if (connectedKinds.has('button')) {
+        inputPins.push(pin);
+      } else if (connectedKinds.has('potentiometer')) {
+        analogPins.push(pin);
+      } else {
+        outputPins.push(pin); // default: treat as output
+      }
+    }
+    for (const pin of outputPins) setPin(pin, 'quasi', true);
+    for (const pin of inputPins) setPin(pin, 'quasi', true);
+    for (const pin of analogPins) setPin(pin, 'input', false);
+  }
+  return { mcu, outputPins, inputPins, analogPins };
 }
