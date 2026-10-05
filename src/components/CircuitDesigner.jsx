@@ -47,7 +47,7 @@ import { InferPanel } from './InferPanel.jsx';
 import { ExamplesBrowser } from './ExamplesBrowser.jsx';
 import { CodexBrowser } from './CodexBrowser.jsx';
 import { t } from '../i18n/strings.js';
-import { demoPinScriptApplies, armBoardForRun } from '../model/simulation.js';
+import { demoPinScriptApplies, armBoardForRun, classifyRunPins, greenFlagArmsOwnBoard, designerClockPlan } from '../model/simulation.js';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
 import { SweepPanel } from './SweepPanel.jsx';
@@ -551,10 +551,16 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       // been reset and armed (armBoardForRun says why that order is the
       // contract). The effect the mode change triggers is told not to clear
       // again; a run restarted while already simulating clears here too.
+      //
+      // The OWN board is armed even while an external (debugger) board is on
+      // screen: the host's VM writes this board, and the host hands the display
+      // back to it when that debugger stops (greenFlagArmsOwnBoard says why).
+      // The arming is left for the effect to reuse whenever the effect will run
+      // again — on the mode change, or on the external board's release.
       const live = liveRef.current;
-      if (!live.externalBoard && live.board) {
+      if (greenFlagArmsOwnBoard({ ownBoard: live.board, externalBoard: live.externalBoard })) {
         const armed = armBoardForRun({ board: live.board, parts: live.parts, wires: live.wires, setPin: live.setPin });
-        runArmedRef.current = live.mode === 'simulate' ? null : { board: live.board, armed };
+        runArmedRef.current = live.mode === 'simulate' && !live.externalBoard ? null : { board: live.board, armed };
       }
       setMode('simulate');
       setRightOpen(true);
@@ -616,14 +622,20 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const liveRef = useRef({});
   liveRef.current = { board: circuit.board, parts, wires, setPin, externalBoard, mode };
   const runArmedRef = useRef(null);
+  // Whether the previous run of the effect below had an external board: its
+  // release is a hand-back mid-run, not a fresh start (designerClockPlan).
+  const hadExternalRef = useRef(!!externalBoard);
+  const hasExternalBoard = !!externalBoard;
 
   useEffect(() => {
     // Any run of this effect consumes the green flag's arming: it belongs to
     // the transition that flag caused and to no later edit.
     const armedByFlag = runArmedRef.current;
     runArmedRef.current = null;
+    const released = hadExternalRef.current && !hasExternalBoard;
+    hadExternalRef.current = hasExternalBoard;
     // Skip scripted sim when external board drives the simulation
-    if (externalBoard) return;
+    if (hasExternalBoard) return;
 
     if (mode !== 'simulate') {
       if (simInterval.current) clearInterval(simInterval.current);
@@ -645,9 +657,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // Reset stale board state (cap voltages, LED history) for EVERY circuit and
     // arm the MCU pins — unless the green flag already did, before the program
     // started; doing it again here, after the program's first write, wiped it.
-    const { outputPins } = armedByFlag && armedByFlag.board === circuit.board
-      ? armedByFlag.armed
-      : armBoardForRun({ board: circuit.board, parts, wires, setPin });
+    // A board handed back by an external engine mid-run resumes its clock with
+    // what the program wrote to it intact.
+    const plan = designerClockPlan({ armedByFlag, board: circuit.board, released });
+    const { outputPins } = plan === 'reuse' ? armedByFlag.armed
+      : plan === 'resume' ? classifyRunPins({ parts, wires })
+        : armBoardForRun({ board: circuit.board, parts, wires, setPin });
 
     simStep.current = 0;
 
@@ -682,7 +697,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     }, 50);
 
     return () => { if (simInterval.current) clearInterval(simInterval.current); };
-  }, [mode, parts, wires, stc]);
+    // hasExternalBoard: the clock must restart when an external board is
+    // released, or the board handed back stays unclocked (task B8).
+  }, [mode, parts, wires, stc, hasExternalBoard]);
 
   // Refs so pause/speed act immediately without restarting the interval.
   const simPausedRef = useRef(false); simPausedRef.current = simPaused;
