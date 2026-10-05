@@ -7,7 +7,7 @@ import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { getEngine } from '../src/engine.js';
-import { demoPinScriptApplies, armBoardForRun } from '../src/model/simulation.js';
+import { demoPinScriptApplies, armBoardForRun, classifyRunPins, greenFlagArmsOwnBoard, designerClockPlan } from '../src/model/simulation.js';
 import { readFileSync } from 'node:fs';
 
 // Inline the demo netlist (same as demo-netlist.js minus layout fields)
@@ -169,6 +169,57 @@ describe('armBoardForRun: the clear of a run', () => {
     assert.ok(handler.indexOf('armBoardForRun(') < handler.indexOf("setMode('simulate')"), 'and does so before the mode change');
     const effect = src.slice(src.indexOf('const armedByFlag = runArmedRef.current;'));
     assert.match(effect, /runArmedRef\.current = null;/, 'every run of the effect consumes the flag');
-    assert.match(effect, /armedByFlag && armedByFlag\.board === circuit\.board\s*\?\s*armedByFlag\.armed/, 'and reuses its arming instead of clearing again');
+    assert.match(effect, /designerClockPlan\(\{ armedByFlag, board: circuit\.board, released \}\)/, 'and decides through the tested plan');
+    assert.match(effect, /plan === 'reuse' \? armedByFlag\.armed/, 'and reuses its arming instead of clearing again');
+  });
+});
+
+// brickwright-lite task B8, measured in a real browser on production (54-motor-
+// driver, three green flags on one page): from the second flag on the designer
+// displayed a debugger's private board while the Scratch VM wrote the designer's
+// own board, which was never cleared (the flag skipped it while ANY external
+// board was on screen) and never clocked again (the simulation effect did not
+// re-run when the external board went away): frozen at 500 ms of board time
+// for every later run.
+describe('one board per run: the designer binding (task B8)', () => {
+  it('the green flag arms the own board unless it is the board the external engine drives', () => {
+    const own = {}; const other = {};
+    assert.equal(greenFlagArmsOwnBoard({ ownBoard: own, externalBoard: undefined }), true);
+    assert.equal(greenFlagArmsOwnBoard({ ownBoard: own, externalBoard: other }), true, 'a debugger board on screen does not exempt the VM board');
+    assert.equal(greenFlagArmsOwnBoard({ ownBoard: own, externalBoard: own }), false, 'a machine on the designer board is not cleared under its CPU');
+    assert.equal(greenFlagArmsOwnBoard({ ownBoard: null, externalBoard: undefined }), false);
+  });
+
+  it('the clock plan: reuse the flag, resume a handed-back board, arm otherwise', () => {
+    const b = {}; const stale = {};
+    assert.equal(designerClockPlan({ armedByFlag: { board: b }, board: b, released: false }), 'reuse');
+    assert.equal(designerClockPlan({ armedByFlag: { board: b }, board: b, released: true }), 'reuse', 'a flag that armed this board wins over the hand-back');
+    assert.equal(designerClockPlan({ armedByFlag: null, board: b, released: true }), 'resume');
+    assert.equal(designerClockPlan({ armedByFlag: { board: stale }, board: b, released: false }), 'arm', 'an arming of a rebuilt board is not reused');
+    assert.equal(designerClockPlan({ armedByFlag: null, board: b, released: false }), 'arm');
+  });
+
+  it('a resumed board keeps what the program wrote; classifyRunPins touches no board', () => {
+    const { BoardImpl } = getEngine();
+    const b = new BoardImpl(5.0); b.setNetlist(parts, nets); b.setPower(true);
+    const w = [{ from: 'MCU', fromTerminal: 'P1.0', to: 'LED1', toTerminal: 'cathode' }];
+    armBoardForRun({ board: b, parts, wires: w, setPin: (p, m, h) => b.setPin(p, m, h) });
+    b.setPin('P1.0', 'pushpull', false);
+    b.advanceTo(200_000_000n);
+    const pins = classifyRunPins({ parts, wires: w });
+    assert.deepEqual(pins.outputPins, ['P1.0']);
+    assert.deepEqual([b.pinStates.get('p1.0').mode, b.pinStates.get('p1.0').driveHigh], ['pushpull', false], 'the write survives');
+    assert.equal(b.timeNs, 200_000_000n, 'and board time is not reset');
+  });
+
+  it('the designer wires both: the flag through greenFlagArmsOwnBoard, the effect re-runs on the hand-back', () => {
+    const src = readFileSync(new URL('../src/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
+    const handler = src.slice(src.indexOf('const onGreenFlag = () => {'), src.indexOf("window.addEventListener('bw-green-flag', onGreenFlag);"));
+    assert.match(handler, /greenFlagArmsOwnBoard\(\{ ownBoard: live\.board, externalBoard: live\.externalBoard \}\)/);
+    assert.doesNotMatch(handler, /!live\.externalBoard && live\.board/, 'the old skip-while-anything-external rule');
+    assert.match(handler, /runArmedRef\.current = live\.mode === 'simulate' && !live\.externalBoard \? null/, 'the arming waits for the hand-back too');
+    const effect = src.slice(src.indexOf('const armedByFlag = runArmedRef.current;'));
+    assert.match(effect, /\}, \[mode, parts, wires, stc, hasExternalBoard\]\);/, 'the effect re-runs when the external board comes or goes');
+    assert.match(effect, /const released = hadExternalRef\.current && !hasExternalBoard;/);
   });
 });

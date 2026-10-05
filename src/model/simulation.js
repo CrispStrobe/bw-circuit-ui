@@ -150,6 +150,22 @@ export const RUN_MCU_KINDS = ['mcu', 'arduino_uno', 'arduino_nano', 'arduino_meg
  */
 export function armBoardForRun({ board, parts, wires, setPin }) {
   if (board && typeof board.reset === 'function') board.reset();
+  const pins = classifyRunPins({ parts, wires });
+  for (const pin of pins.outputPins) setPin(pin, 'quasi', true);
+  for (const pin of pins.inputPins) setPin(pin, 'quasi', true);
+  for (const pin of pins.analogPins) setPin(pin, 'input', false);
+  return pins;
+}
+
+/**
+ * What armBoardForRun arms, without touching any board: the circuit's MCU part
+ * and its pins, classified by what each is wired to. The designer needs the
+ * classification without the clear when its clock RESUMES on a board that is
+ * already mid-run (see designerClockPlan).
+ *
+ * @returns {{mcu: object|null, outputPins: string[], inputPins: string[], analogPins: string[]}}
+ */
+export function classifyRunPins({ parts, wires }) {
   const mcu = (parts || []).find(p => RUN_MCU_KINDS.includes(p.kind)) || null;
   const outputPins = [];
   const inputPins = [];
@@ -179,9 +195,49 @@ export function armBoardForRun({ board, parts, wires, setPin }) {
         outputPins.push(pin); // default: treat as output
       }
     }
-    for (const pin of outputPins) setPin(pin, 'quasi', true);
-    for (const pin of inputPins) setPin(pin, 'quasi', true);
-    for (const pin of analogPins) setPin(pin, 'input', false);
   }
   return { mcu, outputPins, inputPins, analogPins };
+}
+
+/**
+ * Does the green flag clear and arm the designer's OWN board?
+ *
+ * Every time, except when that board is the very board an external engine is
+ * driving (a machine bench attached to the designer's board): clearing it under
+ * a running emulator would split the board from its CPU. A DIFFERENT external
+ * board (a debugger's private one) is no reason to skip it. The host's Scratch
+ * VM writes the designer's own board whatever is displayed, and the host hands
+ * the display back when that debugger stops — so a flag that skipped the clear
+ * because a debugger board was on screen left the next run on an uncleared,
+ * unarmed board (brickwright-lite task B8, measured in a real browser: from the
+ * second green flag on, the VM's board was never cleared or clocked again).
+ *
+ * @param {{ownBoard: object|null|undefined, externalBoard: object|null|undefined}} opts
+ * @returns {boolean}
+ */
+export function greenFlagArmsOwnBoard({ ownBoard, externalBoard }) {
+  return !!ownBoard && ownBoard !== externalBoard;
+}
+
+/**
+ * What the designer's clock does when its simulation effect runs in simulate
+ * mode on its own board (no external board):
+ *
+ *   'reuse'  — the green flag already cleared and armed THIS board, before the
+ *              program's first write; clearing again would wipe that write.
+ *   'resume' — the board was on loan to an external engine and has just been
+ *              handed back mid-run; the program has been writing it all along,
+ *              so the clock resumes from the board's own time, no clear.
+ *   'arm'    — a fresh start (mode change, circuit edit): clear and arm.
+ *
+ * Before task B8 the effect did not even re-run when the external board was
+ * released, so the handed-back board stayed unclocked until a mode change.
+ *
+ * @param {{armedByFlag: {board: object}|null, board: object, released: boolean}} opts
+ * @returns {'reuse'|'resume'|'arm'}
+ */
+export function designerClockPlan({ armedByFlag, board, released }) {
+  if (armedByFlag && armedByFlag.board === board) return 'reuse';
+  if (released) return 'resume';
+  return 'arm';
 }
