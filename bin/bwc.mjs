@@ -116,7 +116,7 @@ const positional = [];
 const opts = {};
 const valueFlags = new Set(['-o', '--to', '--render', '--profile', '--observations', '--initial',
   '--scope', '--meter', '--probe', '--duration', '--rate', '--csv', '--expect', '--expect-meters',
-  '--abs-volts', '--rel', '--time-tolerance', '--receipt', '--input',
+  '--abs-volts', '--rel', '--time-tolerance', '--receipt', '--input', '--max-step',
   '--source', '--from', '--points', '--observe', '--current', '--expect-ac']);
 const repeatFlags = new Set(['scope', 'meter', 'observe', 'current']);
 for (let i = 1; i < args.length; i++) {
@@ -137,6 +137,7 @@ const die = (m) => { console.error('bwc: ' + m); process.exit(2); };
 if (opts.receipt && cmd !== 'measure') die('--receipt is supported only by measure');
 if (opts['expect-ac'] !== undefined && cmd !== 'analyze') die('--expect-ac is supported only by analyze');
 if (opts.kcl && cmd !== 'op') die('--kcl is supported only by static op');
+if (opts['max-step'] !== undefined && cmd !== 'measure') die('--max-step is supported only by measure');
 const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
@@ -148,7 +149,7 @@ const usage = () => {
     + '  bwc measure <file> --scope <tip>[,<ref>] [--probe ideal|10x|1x]\n'
     + '              [--meter voltage:<red>,<black>] [--meter current:<part>.<terminal>]\n'
     + '              [--meter resistance:<red>,<black>] [--duration 10ms] [--rate 10kHz]\n'
-    + '              [--profile interactive-v1] [--watch] [--expect waveform.json] [--expect-meters meters.json] [--json] [--csv trace.csv] [--receipt capture.json]\n'
+    + '              [--profile interactive-v1] [--max-step 2us] [--watch] [--expect waveform.json] [--expect-meters meters.json] [--json] [--csv trace.csv] [--receipt capture.json]\n'
     + '              precision: --profile precision-v1 --initial zero-state (passive/source batch; bounded ADP7118 batch or finite --watch)\n'
     + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--expect-ac reference.json] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
@@ -514,11 +515,18 @@ switch (cmd) {
       } catch (referenceError) { die(`measure meter reference failed: ${referenceError.message}`); }
     }
     const probe = opts.probe || 'ideal';
-    let durationSeconds; let rateHz;
+    let durationSeconds; let rateHz; let maxStepSec;
     try {
       durationSeconds = parseScaledNumber(opts.duration || '10ms', 'duration');
       rateHz = parseScaledNumber(opts.rate || '10kHz', 'rate');
     } catch (error) { die(error.message); }
+    if (opts['max-step'] !== undefined) {
+      try { maxStepSec = parseScaledNumber(opts['max-step'], 'duration'); }
+      catch (error) { die(`measure --max-step: ${error.message}`); }
+    }
+    if (maxStepSec !== undefined && !(Number.isFinite(maxStepSec) && maxStepSec > 0)) {
+      die('measure --max-step must be finite and positive');
+    }
     if (!(durationSeconds > 0 && durationSeconds <= 10)) die('measure duration must be > 0 and <= 10 s');
     if (!opts.watch && durationSeconds>2 && meterSpecs.some(spec => spec.mode!=='resistance')) {
       die('powered meter batch capture is limited to the 2 s watch lifetime; use --watch for longer captures');
@@ -555,8 +563,14 @@ switch (cmd) {
         parts: c.parts, wires: c.wires });
     } catch (modelError) { die(`measure model admission failed: ${modelError.message}`); }
     if (circ.netlistError) die('measure could not build an engine netlist (' + circ.netlistError + ')');
-    if (opts.profile) {
-      try { circ.configureTransientAnalysis(opts.profile); }
+    if (opts.profile || maxStepSec !== undefined) {
+      try {
+        const selected = circ.configureTransientAnalysis(opts.profile || 'interactive-v1',
+          maxStepSec === undefined ? undefined : { maxStepSec });
+        if (maxStepSec !== undefined && maxStepSec > selected.maxStepSec) {
+          throw new Error('--max-step cannot exceed the selected profile maximum');
+        }
+      }
       catch (profileError) { die(`measure profile selection failed: ${profileError.message}`); }
     }
     let precisionBudget = null;

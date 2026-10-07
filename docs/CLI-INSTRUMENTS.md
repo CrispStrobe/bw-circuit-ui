@@ -1,7 +1,17 @@
 # CLI oscilloscope and multimeter
 
 `bwc measure` runs the same circuit model and instrument APIs as the browser,
-but reports measurements as text or JSON. It accepts Brickwright circuit JSON
+with optional `--max-step 2us` to cap internal integration steps independently
+of the output sample grid. For example, `--rate 100kHz --max-step 2us` still
+observes every 10 microseconds, but integrates with steps no larger than
+2 microseconds. Smaller steps cost more work; existing solver work limits still
+apply, and the command may refuse rather than exceed them. The flag narrows
+the selected profile only: finite positive durations at least its minimum
+step and no larger than its maximum are accepted. Default behavior is unchanged
+when the flag is absent. This is not a tolerance override or a global-accuracy
+certificate; compare the resulting trace with a separately qualified reference.
+
+`bwc measure` reports measurements as text or JSON. It accepts Brickwright circuit JSON
 and every foreign schematic format already accepted by `bwc info`.
 
 Probe endpoints are explicit. Use `<part>.<terminal>` or `net:<engine-net-id>`;

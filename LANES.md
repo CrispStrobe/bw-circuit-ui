@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-07 CLI authored maximum integration step — CLAIM, Codex bwcx.
+2026-10-07 CLI authored maximum integration step — DONE candidate, Codex bwcx.
 Branch fable/cli-measure-max-step-20261007, exact base
 4f35519f156916bc30e7fcc2948e6dcc27fae394. Four paths only: this ledger,
 bin/bwc.mjs, existing test/cli-measure.test.js, docs/CLI-INSTRUMENTS.md.
@@ -14,6 +14,18 @@ widening its fixed envelope. Local accuracyMet remains local-step status, never
 a global/physical accuracy claim. No engine/model/importer/browser/source-analysis,
 package/pin/workflow/Lite/corpus edits here. One final automatic exact-head CI;
 normal guarded FF only after every enabled job succeeds.
+Remote claim b84114f preceded the four-path implementation. Local targeted
+controls pass3/3 (86 unrelated tests excluded by the name filter), using the
+existing compatible Board31c6499 installation to avoid a second dependency
+copy. These are mechanism checks, not exact-declared-package qualification;
+automatic hosted CI must install and verify the declared Boarda1126312.
+Controls cover both profiles, requested-clock preservation, invalid/oversized
+steps, wrong-command refusal and the actual RC pulse differential-voltage
+counterexample. Default-envelope failures remain explicit; 2us steps reduce
+worst error by more than4x within the original100uV+1e-4-relative envelope.
+Early test-only failures were an existing requested-profile metadata difference
+and binary64 rounding after explicit step refinement, not suppressed production
+failures. Metadata equality and numerical source agreement are checked separately.
 
 2026-10-04 Same-point source OP conservation evidence — DONE candidate, Codex bwcx `/root`.
 Own clean wt-cui-adp-cli-precision-20261003, branch

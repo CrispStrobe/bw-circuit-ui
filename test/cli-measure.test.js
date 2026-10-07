@@ -26,6 +26,83 @@ const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json'
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
 
+test('measure max-step preserves defaults and the requested observation clock',()=>{
+  const base=[CLI,'measure',SINE_FIXTURE,'--scope','V1.pos,V1.neg',
+    '--duration','100us','--rate','100kHz','--json'];
+  const invoke=extra=>{const r=spawnSync(process.execPath,[...base,...extra],{encoding:'utf8'});
+    assert.equal(r.status,0,r.stderr);return JSON.parse(r.stdout);};
+  const legacy=invoke([]),explicit=invoke(['--profile','interactive-v1']);
+  assert.equal(legacy.requestedTransientProfile,null);
+  assert.equal(explicit.requestedTransientProfile,'interactive-v1');
+  assert.deepEqual({...explicit,requestedTransientProfile:null},legacy,
+    'explicit profile differs only in its existing requested-profile metadata');
+  const bounded=invoke(['--max-step','2us']);
+  const {summary:boundedSummary,...boundedMetadata}=bounded.scope[0];
+  const {summary:legacySummary,...legacyMetadata}=legacy.scope[0];
+  assert.deepEqual(boundedMetadata,legacyMetadata,'same requested clock and probe identity');
+  for(const key of Object.keys(legacySummary)) {
+    assert.ok(Math.abs(boundedSummary[key]-legacySummary[key])<1e-12,
+      `ideal source summary ${key}; smaller integration steps can change binary64 rounding`);
+  }
+  assert.equal(bounded.transient.profile.authoredMaxStepSec,2e-6);
+  assert.equal(bounded.transient.stepBound.maxStepSec,2e-6);
+  assert.equal(bounded.transient.profile.maxAttempts,legacy.transient.profile.maxAttempts);
+  assert.equal(legacy.transient.profile.authoredMaxStepSec,undefined);
+  const precision=invoke(['--profile','precision-v1','--initial','zero-state','--max-step','2us']);
+  assert.equal(precision.transient.profile.authoredMaxStepSec,2e-6);
+  assert.equal(precision.transient.profile.id,'precision-v1');
+});
+
+test('measure max-step refuses invalid units, bounds and other commands',()=>{
+  const base=[CLI,'measure',SINE_FIXTURE,'--scope','V1.pos,V1.neg','--duration','10us','--json'];
+  for(const value of ['0','-1us','NaN','Infinity','1kHz','0.001ns','101us']) {
+    const r=spawnSync(process.execPath,[...base,'--max-step',value],{encoding:'utf8'});
+    assert.equal(r.status,2,`${value}: ${r.stderr}`);assert.match(r.stderr,/max-step|maxStepSec/);
+  }
+  const missing=spawnSync(process.execPath,[...base,'--max-step'],{encoding:'utf8'});
+  assert.equal(missing.status,2);assert.match(missing.stderr,/needs a value/);
+  const wrong=spawnSync(process.execPath,[CLI,'info',SINE_FIXTURE,'--max-step','2us'],{encoding:'utf8'});
+  assert.equal(wrong.status,2);assert.match(wrong.stderr,/supported only by measure/);
+  const precision=spawnSync(process.execPath,[...base,'--profile','precision-v1','--initial','zero-state',
+    '--max-step','11us'],{encoding:'utf8'});
+  assert.equal(precision.status,2);assert.match(precision.stderr,/cannot exceed the selected profile maximum/);
+});
+
+test('measure max-step refines actual RC pulse differential voltage without changing samples or tolerances',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-pulse-max-step-'));
+  try {
+    const file=join(dir,'pulse.cir');
+    writeFileSync(file,'* Authored RC\nV1 input 0 PULSE(0 2 200u 50u 100u 200u 1m)\n'
+      +'R1 input output 1k\nC1 output 0 100n\n.tran 100n 2m\n.end\n');
+    const base=[CLI,'measure',file,'--scope','R1.a,R1.b','--duration','2ms','--rate','100kHz','--watch'];
+    const invoke=extra=>{const r=spawnSync(process.execPath,[...base,...extra],{encoding:'utf8',timeout:15000});
+      assert.equal(r.status,0,r.stderr);return r.stdout.trim().split('\n').map(JSON.parse);};
+    const ordinary=invoke([]),refined=invoke(['--max-step','2us']);
+    const ramp=t=>{const u=Math.max(0,t);return u+1e-4*Math.expm1(-u/1e-4);};
+    const forcing=t=>{const p=t%1e-3;
+      if(p<200e-6||p>=550e-6)return 0;if(p<250e-6)return 2*(p-200e-6)/50e-6;
+      if(p<450e-6)return 2;return 2*(550e-6-p)/100e-6;};
+    const expected=t=>{let out=0;for(let n=0;n<2;n++) {
+      const u=t-200e-6-n*1e-3;out+=2/50e-6*(ramp(u)-ramp(u-50e-6))
+        -2/100e-6*(ramp(u-250e-6)-ramp(u-350e-6));}
+      return forcing(t)-out;};
+    let ordinaryWorst=0,refinedWorst=0,ordinaryFailures=0;
+    assert.equal(ordinary.length,201);assert.equal(refined.length,201);
+    for(let i=0;i<200;i++) {
+      const t=(i+1)*1e-5;assert.ok(Math.abs(refined[i].timeSeconds-t)<1e-15);
+      assert.equal(refined[i].timeSeconds,ordinary[i].timeSeconds);
+      const want=expected(t),limit=1e-4+1e-4*Math.abs(want);
+      const before=Math.abs(ordinary[i].scope[0].volts-want),after=Math.abs(refined[i].scope[0].volts-want);
+      ordinaryWorst=Math.max(ordinaryWorst,before);refinedWorst=Math.max(refinedWorst,after);
+      if(before>limit)ordinaryFailures++;assert.ok(after<=limit,`refined sample ${i}: ${after} > ${limit}`);
+    }
+    assert.ok(ordinaryFailures>0,'preserve the observed default-envelope limitation, not a universal default pass');
+    assert.ok(refinedWorst<ordinaryWorst/4,`${refinedWorst} vs ${ordinaryWorst}`);
+    assert.equal(refined.at(-1).report.transient.profile.authoredMaxStepSec,2e-6);
+    assert.equal(refined.at(-1).report.transient.profile.maxAttempts,20000);
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
 test('actual static OP KCL CLI reports full signed coverage, genuine zero and unchanged legacy output', () => {
   const dir = mkdtempSync(join(tmpdir(), 'bwc-op-kcl-'));
   const env = {...process.env}; delete env.BW_BOARD;
