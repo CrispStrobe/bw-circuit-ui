@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-07 meter probe placement rearm — CLAIM, Codex bwcx.
+2026-10-07 meter probe placement rearm — DONE candidate, Codex bwcx.
 Branch fable/meter-probe-rearm-20261007, exact base
 16749d6c9ac299e91571dff84d649d7834576b50. Three paths only: this ledger,
 src/components/CircuitDesigner.jsx, existing
@@ -13,6 +13,13 @@ Focused real-handler command test plus removal mutant; hosted upstream gates
 and downstream actual browser regression before claiming instrument acceptance.
 No solver/model/pin/lock/CLI/workflow/other renderer/Lite/deployment changes.
 Remote claim first, normal exact-head qualification/guarded FF only.
+Remote claim712ee42 preceded the three-path repair. Real handler command/order
+contract passes for rearming both A and B; actual production reset-omission
+mutation fails on the stale terminal receipt. Restoration plus adjacent
+rendering/LM741 suite16/16 passes, zero skips. The handler test does not claim
+React effect/browser integration: hosted downstream actual probe clicks remain
+the acceptance proof, preserving the original red and screenshot. Full upstream
+automatic exact-head CI and downstream browser acceptance pending.
 
 2026-10-07 SPICE node identity — DONE candidate, Codex bwcx. Branch
 fable/spice-node-casefold-20261007, exact base91ee6f73464381e2f48ff5f36f60a3a7235cd4b5.

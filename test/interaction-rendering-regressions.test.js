@@ -13,6 +13,24 @@ const boardHookSource = readFileSync(new URL('../src/hooks/useBoard.js', import.
 const paletteSource = readFileSync(new URL('../src/components/PartPalette.jsx', import.meta.url), 'utf8');
 const seatGeneratorSource = readFileSync(new URL('../scripts/seat-examples.mjs', import.meta.url), 'utf8');
 
+test('arming either meter probe clears the previous terminal receipt before placement', () => {
+  const handler = /const handleStartPlacing = useCallback\(\(which\) => \{([\s\S]*?)\}, \[\]\)/.exec(designerSource);
+  assert.ok(handler, 'exercise the real designer command, not a second helper');
+  // The actual handler is ordinary JS even though its owner is a JSX module.
+  // This is a command/order contract; the browser regression owns React's
+  // effect scheduling and real terminal hit delivery.
+  const start = new Function('setProbePlacement', 'setPlacingProbe', 'which', handler[1]);
+  for (const which of ['A', 'B']) {
+    let receipt = { netId: 'old-output', partId: 'RL', terminal: 'a' };
+    const commands = [];
+    start(value => { receipt = value; commands.push(['receipt', value]); }, value => {
+      assert.equal(receipt, null, 'old receipt must not be consumable by the newly armed probe');
+      commands.push(['arm', value]);
+    }, which);
+    assert.deepEqual(commands, [['receipt', null], ['arm', which]]);
+  }
+});
+
 test('placement bounds preserve full, half, and mini breadboard dimensions', () => {
   const bounds = size => partBounds({ kind: 'breadboard', x: 0, y: 0, params: { size } });
   const full = bounds('full'), half = bounds('half'), mini = bounds('mini');

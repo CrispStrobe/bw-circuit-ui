@@ -395,7 +395,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   const [simPaused, setSimPaused] = useState(false);
   const [simSpeed, setSimSpeed] = useState(1); // 0.25 | 1 | 4 x real time
   const [probePlacement, setProbePlacement] = useState(null);
-  const handleStartPlacing = useCallback((which) => setPlacingProbe(which), []);
+  const handleStartPlacing = useCallback((which) => {
+    // Multimeter consumes a placement receipt whenever a probe is armed.
+    // Never let the preceding click masquerade as this probe's new click.
+    setProbePlacement(null);
+    setPlacingProbe(which);
+  }, []);
   const handleStopPlacing = useCallback(() => setPlacingProbe(null), []);
 
   const handleTerminalClickForProbe = useCallback((partId, terminal) => {
