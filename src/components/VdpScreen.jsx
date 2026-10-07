@@ -91,7 +91,9 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, sendScancodeFn, lo
 
   const handleKeyDown = useCallback((e) => {
     if (useScancodes) {
-      const sc = BROWSER_TO_SCANCODE[e.code];
+      // React 16 omits `code` from SyntheticKeyboardEvent, but retains it on
+      // nativeEvent. Prefer the synthetic field when a newer React supplies it.
+      const sc = BROWSER_TO_SCANCODE[e.code ?? e.nativeEvent?.code];
       if (sc === undefined) return;
       e.preventDefault();
       heldCodesRef.current.add(sc);
@@ -115,7 +117,7 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, sendScancodeFn, lo
 
   const handleKeyUp = useCallback((e) => {
     if (useScancodes) {
-      const sc = BROWSER_TO_SCANCODE[e.code];
+      const sc = BROWSER_TO_SCANCODE[e.code ?? e.nativeEvent?.code];
       if (sc === undefined) return;
       e.preventDefault();
       heldCodesRef.current.delete(sc);

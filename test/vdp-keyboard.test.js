@@ -153,6 +153,49 @@ describe('VdpScreen keyboard input', { skip: !chromium && 'playwright not availa
     await page.close();
   });
 
+  it('accepts React 16 keyboard events whose code exists only on nativeEvent', async () => {
+    const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
+    await page.goto(`http://localhost:${PORT}/test/vdp-keyboard.html?scancodes`, { waitUntil: 'networkidle' });
+    await page.waitForFunction(() => window.__vdpReady === true, { timeout: 15000 });
+    await page.locator('canvas').first().click();
+    const observed = await page.evaluate(() => {
+      const wrap = document.querySelector('[data-vdp-screen]');
+      const fiberKey = Object.keys(wrap).find(key => key.startsWith('__reactFiber$'));
+      const props = wrap[fiberKey]?.memoizedProps;
+      if (typeof props?.onKeyDown !== 'function' || typeof props?.onKeyUp !== 'function' ||
+          typeof props?.onBlur !== 'function') throw new Error('mounted VdpScreen handlers unavailable');
+      const event = (code, nativeCode) => ({
+        code, nativeEvent: {code: nativeCode}, prevented: false,
+        preventDefault () { this.prevented = true; }
+      });
+      window.__scancodeCalls = [];
+      window.__buttonCalls = [];
+      const make = event(undefined, 'KeyA');
+      const breakCode = event(undefined, 'KeyA');
+      props.onKeyDown(make);
+      props.onKeyUp(breakCode);
+      const preferred = event('KeyB', 'KeyA');
+      props.onKeyDown(preferred);
+      const unknown = event('UnknownPosition', 'KeyA');
+      props.onKeyDown(unknown);
+      const missing = event(undefined, undefined);
+      props.onKeyDown(missing);
+      props.onBlur();
+      return {
+        calls: window.__scancodeCalls,
+        buttons: window.__buttonCalls,
+        prevented: [make.prevented, breakCode.prevented, preferred.prevented,
+          unknown.prevented, missing.prevented]
+      };
+    });
+    assert.deepEqual(observed.calls, [0x1e, 0x9e, 0x30, 0xb0],
+      'native-only A makes/breaks; synthetic B takes priority; blur releases held B');
+    assert.deepEqual(observed.prevented, [true, true, true, false, false],
+      'only recognized positions consume the event');
+    assert.deepEqual(observed.buttons, [], 'scancode path retains priority over pad input');
+    await page.close();
+  });
+
   it('click-to-play hint visible before first interaction', async () => {
     const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
     await page.goto(`http://localhost:${PORT}/test/vdp-keyboard.html`, { waitUntil: 'networkidle' });
