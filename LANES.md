@@ -1,5 +1,22 @@
 # Work lanes
 
+2026-10-07 SPICE node identity — CLAIM, Codex bwcx. Branch
+fable/spice-node-casefold-20261007, exact base91ee6f73464381e2f48ff5f36f60a3a7235cd4b5.
+Three paths only: this ledger, src/importers/spice.js and existing
+test/spice-import.test.js. Merge case-insensitive node spellings while retaining
+first spelling in netNames, including mapped subcircuit ports and instance-local
+nodes; keep different instances/numeric labels distinct. Replace the internal
+string ground sentinel with an unforgeable identity so authored __GND__ remains
+an ordinary node. Preserve true0/gnd policy and existing explicit fallback.
+Prove native OP/transient/round-trip behavior against authored ngspice controls,
+subcircuit scoping, unchanged no-case-variant imports, hostile names and actual
+case/port/ground production mutants. No solver/model/source-analysis guard,
+exporter/GUI/package/pin/workflow/Lite/private corpus change. Remote claim before
+implementation; one final automatic exact-head CI, all enabled jobs green before
+guarded normal FF. Prior max-step lane landed91ee6f7 on37591253487 all four green;
+its package/lock/provenance actually name Board31c6499, correcting the stale
+Boarda1126312 statement below without moving any package.
+
 2026-10-07 CLI authored maximum integration step — DONE candidate, Codex bwcx.
 Branch fable/cli-measure-max-step-20261007, exact base
 4f35519f156916bc30e7fcc2948e6dcc27fae394. Four paths only: this ledger,
