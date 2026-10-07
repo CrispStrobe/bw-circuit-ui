@@ -49,7 +49,7 @@ const NOT_IN_CI = new Map([
   ['test/debug-status.test.js', 'hard-imports playwright'],
   ['test/rendering.test.js', 'hard-imports playwright'],
   ['test/snapshot-render.test.js', 'hard-imports playwright'],
-  // These five LOOK safe for `npm test`: they wrap the import in try/catch and
+  // These four LOOK safe for `npm test`: they wrap the import in try/catch and
   // skip on `!chromium`. That guard asks whether the PACKAGE is importable,
   // not whether a BROWSER exists — and CI runs `npm install`, which installs
   // playwright (a devDependency) without downloading browsers. So in CI the
@@ -60,7 +60,6 @@ const NOT_IN_CI = new Map([
   ['test/serial-console.test.js', 'skip guard tests the package, not the browser'],
   ['test/snapshot-drop.test.js', 'skip guard tests the package, not the browser'],
   ['test/tilevga-face.test.js', 'skip guard tests the package, not the browser'],
-  ['test/vdp-keyboard.test.js', 'skip guard tests the package, not the browser'],
   // These two were inside `test:render`, which this lane wired into CI — and
   // CI went red on them for exactly the reason recorded above. They were
   // missed because the detector for "needs a browser" grepped two literal
