@@ -221,6 +221,68 @@ describe('DRC: supply-short', () => {
 
 // ── Edge cases: must NOT over-warn ──────────────────────────────
 
+describe('DRC: voltage sources have relative terminals', () => {
+  const wire = (from, fromTerminal, to, toTerminal) => ({from, fromTerminal, to, toTerminal});
+  const source = (id, volts = 5, extra = {}) => ({id, kind: 'vsource', params: {volts, ...extra}});
+  const ground = {id: 'G', kind: 'gnd', params: {}};
+  const resistor = {id: 'R', kind: 'resistor', params: {ohms: 1000}};
+  const safety = c => runDrc(c, c.board).filter(w => ['supply-short', 'supply-polarity'].includes(w.rule));
+
+  for (const [name, sources, wires, expected] of [
+    ['positive supply', [source('A')], [wire('A','pos','R','a'), wire('A','neg','G','gnd'), wire('R','b','G','gnd')], 5],
+    ['negative supply', [source('A')], [wire('A','pos','G','gnd'), wire('A','neg','R','a'), wire('R','b','G','gnd')], -5],
+    ['series sources', [source('A'),source('B')], [wire('A','pos','R','a'), wire('A','neg','B','pos'), wire('B','neg','G','gnd'), wire('R','b','G','gnd')], 10],
+    ['floating source', [source('A')], [wire('A','pos','R','a'), wire('A','neg','R','b')], 5],
+    ['negative signed source', [source('A',-5)], [wire('A','pos','R','a'), wire('A','neg','G','gnd'), wire('R','b','G','gnd')], -5],
+  ]) it(`no false warning for ${name}; native load voltage remains ${expected} V`, () => {
+    const c = Circuit.fromJSON({vcc: 5, parts: [...sources, ground, resistor], wires});
+    c.board.advanceTo(1000n);
+    const net = terminal => c.wires.find(w => [w.from,w.to].some(e => e.part === 'R' && e.terminal === terminal)).netId;
+    const actual = c.board.nodeVoltage(net('a')) - c.board.nodeVoltage(net('b'));
+    assert.ok(Math.abs(actual - expected) < 1e-8, `${actual} vs ${expected}`);
+    assert.deepEqual(safety(c), []);
+  });
+
+  it('warns on a real same-source short but not a redundant explicit zero DC source', () => {
+    for (const [volts, extra, expected] of [[5,{},1],[-5,{},1],[0,{},0],[0,{wave:'dc'},0],
+      [0,{wave:'spice-pulse',v1:0,v2:5,td:1e-3,tr:1e-6,tf:1e-6,pw:1e-3,per:3e-3},1]]) {
+      // This is the checker topology boundary, not a claim that the native
+      // solver accepts the deliberately inconsistent nonzero circuits.
+      const c = {parts:[source('A',volts,extra)],wires:[{netId:'short',
+        from:{part:'A',terminal:'pos'},to:{part:'A',terminal:'neg'}}]};
+      const warnings = runDrc(c,{powered:true});
+      assert.equal(findRule(warnings,'supply-short').length,expected);
+      if(expected)assert.equal(findRule(warnings,'supply-short')[0].partId,'A');
+    }
+  });
+
+  it('retains fixed board-rail shorts and distinguishes reversed signed DC supplies', () => {
+    const board = {id:'M',kind:'board-contract',terminals:['5v','gnd']};
+    const connection = (netId, from, fromTerminal, to, toTerminal) => ({netId,
+      from:{part:from,terminal:fromTerminal},to:{part:to,terminal:toTerminal}});
+    assert.equal(findRule(runDrc({parts:[board],wires:[connection('short','M','5v','M','gnd')]},
+      {powered:true}),'supply-short').length,1);
+    for(const [volts, reverse, expected] of [[5,false,0],[5,true,1],[-5,false,1],[-5,true,0]]) {
+      const warnings=runDrc({parts:[board,source('A',volts)],wires:[
+        connection('positive','M','5v','A',reverse?'neg':'pos'),
+        connection('ground','M','gnd','A',reverse?'pos':'neg'),
+      ]},{powered:true});
+      assert.equal(findRule(warnings,'supply-short').length,0);
+      assert.equal(findRule(warnings,'supply-polarity').length,expected);
+    }
+  });
+
+  it('does not invent a polarity or a short from missing nets or waveform DC bias', () => {
+    assert.deepEqual(runDrc({parts:[source('A')],wires:[]},{powered:true}),[]);
+    const c={parts:[source('A',5,{wave:'spice-sine',vo:0,va:5,freq:1000}),
+      {id:'V',kind:'vcc'},ground],wires:[
+      {netId:'ground',from:{part:'A',terminal:'pos'},to:{part:'G',terminal:'gnd'}},
+      {netId:'positive',from:{part:'A',terminal:'neg'},to:{part:'V',terminal:'vcc'}},
+    ]};
+    assert.deepEqual(runDrc(c,{powered:true}),[]);
+  });
+});
+
 describe('DRC: no false positives', () => {
   it('push-pull pin driving LED active-high does not trigger source-current', () => {
     const c = setup();

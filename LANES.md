@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-07 relative voltage-source DRC — CLAIM, Codex bwcx.
+2026-10-07 relative voltage-source DRC — DONE candidate, Codex bwcx.
 Branch fable/relative-source-drc-20261007, exact base
 ad05927ea68ae7c4c0e6f5640eb198342940c5ea. Three paths only: this ledger,
 src/model/drc.js, existing test/drc.test.js. Measured valid negative5V and
@@ -14,6 +14,15 @@ claim general voltage-constraint solving. Native valid topology/voltage tests,
 real short/fixed board conflict/reversed polarity controls and isolated mutants.
 No solver/model/UI component/CLI/pin/lock/workflow/importer/Lite/deployment edits.
 Remote claim before implementation; one exact-head upstream CI before guarded FF.
+Remote claimc65b3ca preceded the three-path implementation. Restored DRC/
+rendering/LM741 suite58 passes/0 fails/2 pre-existing skips (relay coil current
+and relay pin direction). Eight new tests cover native signed/floating/series
+load voltages and checker-only fault topology; invalid shorted sources are not
+claimed as accepted engine circuits. Four real one-line production mutants
+reject absolute source roles, omitted self-short detection, omitted polarity
+warning and false zero-source short, with restoration. Live wiring-target hints
+still have their own absolute-source assumption and are explicitly outside this
+DRC patch. Upstream full CI and actual browser no-false-SHORT proof pending.
 
 2026-10-07 meter probe placement rearm — DONE, Codex bwcx.
 Branch fable/meter-probe-rearm-20261007, exact base

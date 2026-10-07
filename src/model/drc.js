@@ -138,10 +138,10 @@ export function runDrc(circuit, board) {
     const term = String(member.terminal || '').toLowerCase();
     if (part.kind === 'vcc') return 'positive';
     if (part.kind === 'gnd') return 'ground';
-    if (part.kind === 'vsource') {
-      if (term === 'pos') return 'positive';
-      if (term === 'neg') return 'ground';
-    }
+    // Voltage-source terminals are RELATIVE, not absolute rail identities:
+    // pos may be grounded to produce a negative rail; series sources join
+    // one's neg to another's pos. Inspect each source separately below.
+    if (part.kind === 'vsource') return null;
     if (/^(gnd\d*|agnd|swd_gnd|vss)$/.test(term)) return 'ground';
     if (/^(vcc|avcc|vdd|5v|3v3|vin|vbus|vsys)$/.test(term)) return 'positive';
     return null;
@@ -428,6 +428,38 @@ export function runDrc(circuit, board) {
   }
 
   // ── Rule 5: Supply short ──────────────────────────────────────────
+  for (const part of parts.filter(p => p.kind === 'vsource')) {
+    const pos = netOf(part.id, 'pos'), neg = netOf(part.id, 'neg');
+    if (pos === undefined || neg === undefined) continue;
+    const params = part.params || {};
+    const dc = !params.wave || params.wave === 'dc';
+    // A declared zero-volt DC source across one net is redundant, not a
+    // nonzero supply short. Unknown/waveform sources remain conservative.
+    const zeroDc = dc && params.volts === 0;
+    if (pos === neg && !zeroDc) {
+      warnings.push({
+        severity: 'danger', rule: 'supply-short', partId: part.id, pinId: 'pos',
+        explanation: 'Both terminals of this voltage source are on the same electrical net. ' +
+          'A nonzero source voltage would be shorted by this connection.',
+        fix: 'Separate the source terminals and connect the load between them.',
+      });
+    }
+    // A signed, explicit DC source wired across known fixed rails has an
+    // observable polarity. Do not infer a waveform's polarity from its DC
+    // parameter or treat an otherwise floating source as an absolute rail.
+    if (pos !== neg && dc && Number.isFinite(params.volts) && params.volts !== 0) {
+      const roleOn = (net, role) => partsOnNet(net).some(m => supplyRole(m) === role);
+      const reversed = params.volts > 0
+        ? roleOn(pos, 'ground') && roleOn(neg, 'positive')
+        : roleOn(pos, 'positive') && roleOn(neg, 'ground');
+      if (reversed) warnings.push({
+        severity: 'danger', rule: 'supply-polarity', partId: part.id, pinId: 'pos',
+        explanation: 'This DC voltage source drives the fixed positive rail below its ground rail.',
+        fix: 'Check the source voltage sign and swap its terminals if required. ' +
+          'A floating negative supply is valid; reversing a fixed positive supply is not.',
+      });
+    }
+  }
   for (const [netId, members] of netMembers) {
     const positive = members.find(m => supplyRole(m) === 'positive');
     const ground = members.find(m => supplyRole(m) === 'ground');
