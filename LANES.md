@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-07 SPICE node identity — CLAIM, Codex bwcx. Branch
+2026-10-07 SPICE node identity — DONE candidate, Codex bwcx. Branch
 fable/spice-node-casefold-20261007, exact base91ee6f73464381e2f48ff5f36f60a3a7235cd4b5.
 Three paths only: this ledger, src/importers/spice.js and existing
 test/spice-import.test.js. Merge case-insensitive node spellings while retaining
@@ -16,6 +16,15 @@ implementation; one final automatic exact-head CI, all enabled jobs green before
 guarded normal FF. Prior max-step lane landed91ee6f7 on37591253487 all four green;
 its package/lock/provenance actually name Board31c6499, correcting the stale
 Boarda1126312 statement below without moving any package.
+Remote claim191defe preceded implementation. Combined importer/source-analysis/
+singleton/foreign-deck/controlled-source surface109/109 passes, zero skips.
+Six new controls cover no-variant equivalence, first spelling, mapped ports,
+independent instance internals, five ordinary ground-like names, round trips,
+actual ngspice DC plus every21 authored PULSE observations, and three isolated
+production mutants refusing through actual native topology/solve consequences
+with restoration. Early test harness repairs used the actual solver-refusal
+code, explicitly printed ngspice time, and read the existing voltage-array field;
+no production guard or tolerance was relaxed. One fresh exact-head CI pending.
 
 2026-10-07 CLI authored maximum integration step — DONE candidate, Codex bwcx.
 Branch fable/cli-measure-max-step-20261007, exact base
@@ -35,7 +44,7 @@ Remote claim b84114f preceded the four-path implementation. Local targeted
 controls pass3/3 (86 unrelated tests excluded by the name filter), using the
 existing compatible Board31c6499 installation to avoid a second dependency
 copy. These are mechanism checks, not exact-declared-package qualification;
-automatic hosted CI must install and verify the declared Boarda1126312.
+automatic hosted CI must install and verify the declared Board31c6499.
 Controls cover both profiles, requested-clock preservation, invalid/oversized
 steps, wrong-command refusal and the actual RC pulse differential-voltage
 counterexample. Default-envelope failures remain explicit; 2us steps reduce

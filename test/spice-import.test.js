@@ -34,6 +34,109 @@ import { importCircuit } from '../src/importers/index.js';
 import { parseSpiceValue, formatSpiceValue } from '../src/model/si.js';
 import { evaluateConstantExpression, resolveConstantParameters } from '../src/model/spice-constant.js';
 import { blockersFromImport } from '../src/model/operating-point-view.js';
+import { runSourceAnalyses } from '../src/model/source-analysis.js';
+
+describe('SPICE case-insensitive node identity', () => {
+  const mixed='* Authored case-fold divider\nV1 Rail 0 3\nR1 rail Mid[1] 1k\nR2 mID[1] 0 2k\n.op\n.end';
+  const sub='* Authored scoped divider\n.subckt div P N\nR1 p INNER 1k\nR2 inner n 1k\n.ends div\n'
+    +'V1 Rail 0 6\nV2 Other 0 -4\nX1 rAiL 0 div\nX2 other 0 div\n.op\n.end';
+  function solve(importer, deck) {
+    const imported=importer(deck);
+    assert.deepEqual(imported.losses,[]);assert.deepEqual(imported.unmapped,[]);
+    const run=runSourceAnalyses(imported,{format:'spice'})[0];
+    assert.equal(run.status,'pass',JSON.stringify({code:run.code,detail:run.detail}));
+    return {imported,run};
+  }
+  const near=(a,b)=>assert.ok(Number.isFinite(a)&&Math.abs(a-b)<1e-9,`${a} vs ${b}`);
+
+  it('merges top-level/indexed spellings, retains first labels and the no-variant import',()=>{
+    const {imported,run}=solve(importSpice,mixed);
+    const normalized=mixed.replace('R1 rail','R1 Rail').replace('R2 mID[1]','R2 Mid[1]');
+    assert.deepEqual(imported,importSpice(normalized),'case variation changes no imported topology or metadata');
+    assert.deepEqual(imported.netNames.map(n=>n.name),['Rail','0','Mid[1]']);
+    near(run.observables.nodes[0].voltage,3);near(run.observables.nodes[1].voltage,2);
+    const circuit=Circuit.fromJSON({parts:imported.parts,wires:imported.wires});
+    const round=importSpice(toSpice(extractNetlist(circuit),'case-fold round trip').text);
+    assert.equal(partition(round.parts,round.wires),partition(imported.parts,imported.wires));
+  });
+
+  it('merges mapped ports and internal spellings without sharing different instances',()=>{
+    const {imported,run}=solve(importSpice,sub);
+    const internals=imported.netNames.filter(n=>/\.INNER$/i.test(n.name));
+    assert.equal(internals.length,2);
+    assert.deepEqual(internals.map(n=>n.terminals.length),[2,2]);
+    assert.notEqual(internals[0].name.toLowerCase(),internals[1].name.toLowerCase());
+    const values=run.observables.nodes.map(n=>n.voltage);
+    for(const expected of [6,-4,3,-2])assert.ok(values.some(v=>Math.abs(v-expected)<1e-9));
+  });
+
+  it('keeps authored ground-sentinel names ordinary and only true reference aliases grounded',()=>{
+    for(const name of ['__GND__','gnd!','ground','vss','00']) {
+      const {imported,run}=solve(importSpice,`* Authored ground namespace\nV1 ${name} GnD 3\nR1 ${name.toLowerCase()} 0 1k\n.op\n.end`);
+      assert.equal(imported.netNames.filter(n=>n.name==='0').length,1);
+      assert.equal(imported.netNames.length,2);
+      near(run.observables.nodes[0].voltage,3);
+    }
+  });
+
+  it('agrees with actual ngspice for mixed-case top-level and scoped DC controls',()=>{
+    for(const [deck,checks] of [[mixed,[['rail',3],['mid[1]',2]]],[sub,[['x1.inner',3],['x2.inner',-2]]]]) {
+      const oracle=spawnSync('ngspice',['-b','-n'],{input:deck,encoding:'utf8',timeout:10000});
+      assert.equal(oracle.error,undefined,'ngspice must run, not skip the independent oracle');
+      assert.equal(oracle.status,0,oracle.stderr);
+      for(const [name,expected] of checks) {
+        const line=oracle.stdout.split('\n').find(line=>line.trim().toLowerCase().startsWith(`${name} `));
+        assert.ok(line,`${name}: actual ngspice node table required`);
+        near(Number(line.trim().split(/\s+/)[1]),expected);
+      }
+      solve(importSpice,deck);
+    }
+  });
+
+  it('retains the complete mixed-case PULSE observation clock against ngspice',()=>{
+    const cards='V1 Rail 0 PULSE(0 2 20u 10u 10u 20u 100u)\nR1 rAIL 0 1k';
+    const {run}=solve(importSpice,`* Authored case pulse\n${cards}\n.tran 10u 200u\n.end`);
+    const oracle=spawnSync('ngspice',['-b','-n'],{encoding:'utf8',timeout:10000,
+      input:`* Authored case pulse\n${cards}\n.control\ntran 10u 200u\nlinearize v(rail)\nprint time v(rail)\nquit\n.endc\n.end`});
+    assert.equal(oracle.error,undefined);assert.equal(oracle.status,0,oracle.stderr);
+    const points=oracle.stdout.split('\n').map(line=>line.trim().split(/\s+/))
+      .filter(f=>f.length===3&&/^\d+$/.test(f[0])&&f.slice(1).every(x=>Number.isFinite(Number(x))))
+      .map(f=>[Number(f[1]),Number(f[2])]);
+    assert.equal(points.length,21);
+    assert.equal(run.observables.nodes.length,1);
+    assert.equal(run.observables.axis.values.length,21);
+    for(let i=0;i<21;i++) {
+      near(run.observables.axis.values[i],i*1e-5);near(points[i][0],i*1e-5);
+      near(run.observables.nodes[0].voltage[i],points[i][1]);
+    }
+  });
+
+  it('three isolated production mutants fail real native consequences, then restore',async()=>{
+    const sourceURL=new URL('../src/importers/spice.js',import.meta.url);
+    const source=readFileSync(sourceURL,'utf8');
+    for(const [name,anchor,replacement,deck] of [
+      ['top-level-case','key = name.toLowerCase()','key = name',mixed],
+      ['mapped-port-case',': nodeName(mapped)',': String(mapped)',sub],
+      ['forgeable-ground',"Symbol('SPICE reference')","'__GND__'",
+        '* Authored ground collision\nV1 __GND__ 0 3\nR1 __gnd__ 0 1k\n.op\n.end'],
+    ]) {
+      assert.equal(source.split(anchor).length-1,1,`${name}: exact production anchor`);
+      const mutant=source.replace(anchor,replacement).replace(/from '([^']+)'/g,
+        (match,spec)=>spec.startsWith('.')?`from '${new URL(spec,sourceURL).href}'`:match);
+      const {importSpice:broken}=await import(`data:text/javascript;base64,${Buffer.from(mutant).toString('base64')}`);
+      if(name==='top-level-case') {
+        const plain=mixed.replace('R1 rail','R1 Rail').replace('R2 mID[1]','R2 Mid[1]');
+        assert.deepEqual(importSpice(plain),broken(plain),'no-variant import equals the old case-sensitive path');
+      }
+      const result=runSourceAnalyses(broken(deck),{format:'spice'})[0];
+      assert.notEqual(result.status,'pass',`${name}: mutation must prevent actual native qualification`);
+      assert.ok(['canonical-topology-unavailable','native-analysis-refused'].includes(result.code),
+        `${name}: meaningful topology/solve refusal, not module failure: ${result.code}`);
+      assert.match(result.detail,/DC-floating|case-folded|ideal.*(?:source|voltage)|inconsistent|conflict/i);
+      solve(importSpice,deck);
+    }
+  });
+});
 
 describe('strict SPICE constant expressions', () => {
   it('evaluates measured literals, grouping, precedence and unary signs', () => {

@@ -848,20 +848,29 @@ export function importSpice(text, opts = {}) {
   // ── pass 3: elements -> parts and nets ───────────────────────────
   const parts = [];
   const nets = new Map();   // net name -> [{partId, terminal}]
+  const groundNet = Symbol('SPICE reference');
+  // SPICE node identity ignores case; presentation retains the first spelling.
+  // Fold after port mapping/prefixing so distinct subcircuit instances stay apart.
+  const nodeSpellings = new Map();
+  const nodeName = raw => {
+    const name = String(raw), key = name.toLowerCase();
+    if (!nodeSpellings.has(key)) nodeSpellings.set(key, name);
+    return nodeSpellings.get(key);
+  };
   let groundUsed = false;
 
   const netOf = (raw, item) => {
     const n = String(raw);
-    if (GROUND_NODES.has(n.toLowerCase())) { groundUsed = true; return '__GND__'; }
+    if (GROUND_NODES.has(n.toLowerCase())) { groundUsed = true; return groundNet; }
     if (item.portMap) {
       const mapped = item.portMap.get(n.toLowerCase());
       if (mapped !== undefined) {
         return GROUND_NODES.has(String(mapped).toLowerCase())
-          ? (groundUsed = true, '__GND__') : String(mapped);
+          ? (groundUsed = true, groundNet) : nodeName(mapped);
       }
-      return `${item.prefix}${n}`;      // internal to this instance
+      return nodeName(`${item.prefix}${n}`); // case-fold only within this instance
     }
-    return n;
+    return nodeName(n);
   };
   const join = (net, partId, terminal) => {
     if (!nets.has(net)) nets.set(net, []);
@@ -1415,8 +1424,8 @@ export function importSpice(text, opts = {}) {
       const chosen = [...nets.keys()].find(k => k.toLowerCase() === present[0]);
       const members = nets.get(chosen) || [];
       nets.delete(chosen);
-      const existing = nets.get('__GND__') || [];
-      nets.set('__GND__', existing.concat(members));
+      const existing = nets.get(groundNet) || [];
+      nets.set(groundNet, existing.concat(members));
       groundUsed = true;
       warnings.push(`This deck names no node 0 and no gnd, so "${chosen}" is taken as the `
         + 'reference. ngspice does not alias that spelling — it would solve this deck with '
@@ -1427,7 +1436,7 @@ export function importSpice(text, opts = {}) {
   // ── ground becomes a part, the way the designer models it ────────
   if (groundUsed) {
     parts.push({ id: 'GND1', kind: 'gnd', params: {}, x: 0, y: 0 });
-    join('__GND__', 'GND1', 'gnd');
+    join(groundNet, 'GND1', 'gnd');
   }
 
   // ── nets -> star wiring ──────────────────────────────────────────
@@ -1449,7 +1458,7 @@ export function importSpice(text, opts = {}) {
   const singletons = [...nets.entries()].filter(([, m]) => m.length < 2);
   annotateImportedSingletonTerminals(parts, singletons.map(([, members]) => members));
   for (const [net] of singletons) {
-    warnings.push(`Net "${net === '__GND__' ? '0' : net}" has one connection — nothing to wire it to.`);
+    warnings.push(`Net "${net === groundNet ? '0' : net}" has one connection — nothing to wire it to.`);
   }
 
   // THE DECK'S OWN NODE NAMES, kept rather than thrown away.
@@ -1465,7 +1474,7 @@ export function importSpice(text, opts = {}) {
   // on it. A consumer joins that to the engine's netlist through any one
   // terminal, so no naming convention has to be shared.
   const netNames = [...nets.entries()].map(([net, members]) => ({
-    name: net === '__GND__' ? '0' : net,
+    name: net === groundNet ? '0' : net,
     terminals: members.map(m => ({ partId: m.partId, terminal: m.terminal })),
   }));
 
