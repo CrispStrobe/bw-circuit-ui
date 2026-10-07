@@ -1,11 +1,26 @@
 # Work lanes
 
-2026-10-07 meter probe placement rearm — DONE candidate, Codex bwcx.
+2026-10-07 relative voltage-source DRC — CLAIM, Codex bwcx.
+Branch fable/relative-source-drc-20261007, exact base
+ad05927ea68ae7c4c0e6f5640eb198342940c5ea. Three paths only: this ledger,
+src/model/drc.js, existing test/drc.test.js. Measured valid negative5V and
+series10V controls currently receive false supply-short warnings. Treat source
+pos/neg as relative terminals, retaining fixed VCC/board-rail-to-ground checks.
+Detect a source's own shorted terminals separately; explicit DC zero is a
+valid redundant constraint. Preserve dangerous reversed explicit DC supplies
+across fixed positive/ground rails with a named polarity warning, not a false
+short assertion. Keep waveform/unknown-source judgments conservative; do not
+claim general voltage-constraint solving. Native valid topology/voltage tests,
+real short/fixed board conflict/reversed polarity controls and isolated mutants.
+No solver/model/UI component/CLI/pin/lock/workflow/importer/Lite/deployment edits.
+Remote claim before implementation; one exact-head upstream CI before guarded FF.
+
+2026-10-07 meter probe placement rearm — DONE, Codex bwcx.
 Branch fable/meter-probe-rearm-20261007, exact base
 16749d6c9ac299e91571dff84d649d7834576b50. Three paths only: this ledger,
 src/components/CircuitDesigner.jsx, existing
-test/interaction-rendering-regressions.test.js. Actual standalone browser run
-37627365637 reproduced stale placement: after A is placed, arming B replays
+test/interaction-rendering-regressions.test.js. Actual standalone browser testing
+reproduced stale placement: after A is placed, arming B replays
 the old receipt and immediately stops placement; both visible probes name A's
 net. Clear the prior placement receipt before arming a new probe. Preserve
 probe identities, actual terminal-hit delivery and meter measurement semantics.
@@ -19,7 +34,9 @@ mutation fails on the stale terminal receipt. Restoration plus adjacent
 rendering/LM741 suite16/16 passes, zero skips. The handler test does not claim
 React effect/browser integration: hosted downstream actual probe clicks remain
 the acceptance proof, preserving the original red and screenshot. Full upstream
-automatic exact-head CI and downstream browser acceptance pending.
+automatic exact-head CI37628064822 passed all four enabled jobs; exactad05927
+landed master by normal guarded FF. Actual standalone browser probe/sign/zero/
+fault/restoration regression also passes; no installed Lite/deployment claim.
 
 2026-10-07 SPICE node identity — DONE candidate, Codex bwcx. Branch
 fable/spice-node-casefold-20261007, exact base91ee6f73464381e2f48ff5f36f60a3a7235cd4b5.
