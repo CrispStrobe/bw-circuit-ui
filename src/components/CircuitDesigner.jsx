@@ -47,7 +47,7 @@ import { InferPanel } from './InferPanel.jsx';
 import { ExamplesBrowser } from './ExamplesBrowser.jsx';
 import { CodexBrowser } from './CodexBrowser.jsx';
 import { t } from '../i18n/strings.js';
-import { demoPinScriptApplies, armBoardForRun, classifyRunPins, greenFlagArmsOwnBoard, designerClockPlan } from '../model/simulation.js';
+import { demoPinScriptApplies, armBoardForRun, classifyRunPins, greenFlagArmsOwnBoard, designerClockPlan, createDesignerLiveClock, designerDemoPhase } from '../model/simulation.js';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
 import { SweepPanel } from './SweepPanel.jsx';
@@ -101,7 +101,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     parts, wires, powered, rev,
     addPart, removePart, nudgeSeated, movePart, duplicatePart, rotatePart, flipPart, updateParams, bindPhysicalPackage, setCarrier, setPcbOverrides,
     addWire, removeWire, addHoleWire, addTapWire, updateWire,
-    setControl, setPartParam, setPin, advanceTo, advanceBy, setPower,
+    setControl, setPartParam, setPin, advanceTo, advanceBy, advanceToLive, setPower,
     loadInferred, undo, redo, canUndo, canRedo, saveHistory,
     ledBrightness, buzzerTone, nodeVoltage,
     circuit,
@@ -393,7 +393,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     return () => window.removeEventListener('bw-settings-change', onSettings);
   }, []);
   const [simPaused, setSimPaused] = useState(false);
-  const [simSpeed, setSimSpeed] = useState(1); // 0.25 | 1 | 4 x real time
+  const [simSpeed, setSimSpeed] = useState(1); // target rate; computation can run slower
+  const [simStepping, setSimStepping] = useState(false);
+  const [simClockError, setSimClockError] = useState(null);
   const [probePlacement, setProbePlacement] = useState(null);
   const handleStartPlacing = useCallback((which) => {
     // Multimeter consumes a placement receipt whenever a probe is armed.
@@ -563,16 +565,21 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       // The arming is left for the effect to reuse whenever the effect will run
       // again — on the mode change, or on the external board's release.
       const live = liveRef.current;
+      simClock.current?.pause(); // discard any target from the previous run
       if (greenFlagArmsOwnBoard({ ownBoard: live.board, externalBoard: live.externalBoard })) {
         const armed = armBoardForRun({ board: live.board, parts: live.parts, wires: live.wires, setPin: live.setPin });
         runArmedRef.current = live.mode === 'simulate' && !live.externalBoard ? null : { board: live.board, armed };
       }
       setMode('simulate');
       setRightOpen(true);
+      simPausedRef.current = false;
       setSimPaused(false);
+      simClock.current?.wake();
     };
     const onStopAll = () => {
+      simClock.current?.pause();
       setMode('build');
+      simPausedRef.current = false;
       setSimPaused(false);
     };
     window.addEventListener('bw-green-flag', onGreenFlag);
@@ -620,8 +627,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   // Only runs when no external board is provided (demo mode).
   // When an external board is present, the emulator drives pin events
   // and the UI re-renders via onChange subscription.
-  const simInterval = useRef(null);
-  const simStep = useRef(0);
+  const simClock = useRef(null);
   // What the green-flag handler (above) reads synchronously, and the run it
   // already armed — consumed by the next run of the effect below.
   const liveRef = useRef({});
@@ -640,12 +646,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const released = hadExternalRef.current && !hasExternalBoard;
     hadExternalRef.current = hasExternalBoard;
     // Skip scripted sim when external board drives the simulation
+    setSimStepping(false);
+    setSimClockError(null);
     if (hasExternalBoard) return;
-
-    if (mode !== 'simulate') {
-      if (simInterval.current) clearInterval(simInterval.current);
-      return;
-    }
 
     const mcu = parts.find(p => ['mcu', 'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge'].includes(p.kind));
     // A project that declares PINs has a program, and the program is the
@@ -665,55 +668,71 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     // A board handed back by an external engine mid-run resumes its clock with
     // what the program wrote to it intact.
     const plan = designerClockPlan({ armedByFlag, board: circuit.board, released });
-    const { outputPins } = plan === 'reuse' ? armedByFlag.armed
-      : plan === 'resume' ? classifyRunPins({ parts, wires })
-        : armBoardForRun({ board: circuit.board, parts, wires, setPin });
+    const { outputPins } = mode !== 'simulate' ? {outputPins: []}
+      : plan === 'reuse' ? armedByFlag.armed
+        : plan === 'resume' ? classifyRunPins({ parts, wires })
+          : armBoardForRun({ board: circuit.board, parts, wires, setPin });
 
-    simStep.current = 0;
-
-    simInterval.current = setInterval(() => {
-      if (simPausedRef.current) return; // frozen coherently; controls stay live
-      simStep.current++;
-      const step = simStep.current;
-
-      // THE DEMO BLINK IS A PLACEHOLDER AND MUST YIELD TO A REAL PROGRAM. It
-      // drives every pin it classified as an output from ONE shared on/off
-      // value, so it can only ever show one behaviour: all the LEDs together.
-      // For a project with no program that is a friendly sign of life. For a
-      // project that HAS one it is fiction, and it is fiction that looks
-      // convincing — on a single-LED example it is indistinguishable from the
-      // program working, which is why 12-dual-blink is where it was caught:
-      // two LEDs wired to alternate lit in unison instead.
-      //
-      // The pins are still ARMED above, so the nets do not float before the
-      // program's first write, and the clock below still advances for every
-      // circuit — a pure battery-LED or RC bench has no program and still needs
-      // time to pass.
-      if (demoBlinkApplies) {
-        // Blink all output pins at 2 Hz of SIM time (500 ms period)
-        for (const pin of outputPins) {
-          const on = (step % Math.max(1, Math.round(20 / simSpeedRef.current))) <
-            Math.max(1, Math.round(10 / simSpeedRef.current));
-          setPin(pin, 'quasi', on); // HIGH = LED off (active-low)
-        }
-      }
-
-      advanceBy(BigInt(Math.round(50 * simSpeedRef.current)) * MS);
-    }, 50);
-
-    return () => { if (simInterval.current) clearInterval(simInterval.current); };
+    // A demo pin script is only a placeholder for projects WITHOUT a program.
+    // Both its phase and its transitions follow processed simulation time.
+    let lastDemoLevel = null;
+    const applyDemo = timeNs => {
+      if (!demoBlinkApplies || mode !== 'simulate') return;
+      const {high} = designerDemoPhase(timeNs);
+      if (high === lastDemoLevel) return;
+      lastDemoLevel = high;
+      for (const pin of outputPins) setPin(pin, 'quasi', high);
+    };
+    const clock = createDesignerLiveClock({
+      getTime: () => circuit.board.getTime(),
+      advanceToLive,
+      isPaused: () => mode !== 'simulate' || simPausedRef.current,
+      getSpeed: () => simSpeedRef.current,
+      limitTarget: (now, target) => {
+        if (!demoBlinkApplies || mode !== 'simulate') return target;
+        const {nextNs} = designerDemoPhase(now);
+        return nextNs < target ? nextNs : target;
+      },
+      onBeforeAdvance: applyDemo,
+      onProgress: receipt => applyDemo(BigInt(receipt.processedTimeNs)),
+      onStepping: setSimStepping,
+      onError: error => {
+        simPausedRef.current = true;
+        setSimPaused(true);
+        setSimClockError(error.message);
+      },
+    });
+    simClock.current = clock;
+    clock.start();
+    return () => {
+      clock.stop();
+      if (simClock.current === clock) simClock.current = null;
+    };
     // hasExternalBoard: the clock must restart when an external board is
     // released, or the board handed back stays unclocked (task B8).
-  }, [mode, parts, wires, stc, hasExternalBoard]);
+  }, [mode, parts, wires, stc, hasExternalBoard, advanceToLive]);
 
-  // Refs so pause/speed act immediately without restarting the interval.
+  // Refs so pause/speed act immediately without rebuilding the clock.
   const simPausedRef = useRef(false); simPausedRef.current = simPaused;
   const simSpeedRef = useRef(1); simSpeedRef.current = simSpeed;
 
   const handleSimStep = useCallback(() => {
-    // One 50 ms tick while paused — the circuits half of single-stepping.
-    advanceBy(50n * MS);
-  }, [advanceBy]);
+    // One 50ms simulated tick, yielded asynchronously while remaining paused.
+    simClock.current?.step();
+  }, []);
+
+  const handleSimPause = useCallback(() => {
+    const paused = !simPausedRef.current;
+    simPausedRef.current = paused;
+    setSimPaused(paused);
+    if (paused) simClock.current?.pause();
+    else simClock.current?.wake();
+  }, []);
+
+  const requestControlSettling = useCallback(() => {
+    // An external emulator alone owns its clock. UI edits never advance it.
+    if (!externalBoard) simClock.current?.requestAdvance(1n * MS);
+  }, [externalBoard]);
 
   // ── Part placement — find empty space ────────────────────────────
   const handleAddPart = useCallback((kind, params) => {
@@ -879,8 +898,8 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     if (externalBoard && externalBoard.setControl) {
       try { externalBoard.setControl(partId, value); } catch { /* board mid-rebuild */ }
     }
-    advanceBy(1n * MS);
-  }, [setControl, advanceBy, externalBoard]);
+    requestControlSettling();
+  }, [setControl, requestControlSettling, externalBoard]);
 
   // Buttons follow the same one-board-one-truth WRITE rule as the pot
   // above. They didn't, and it was the last link in the pendant chain
@@ -892,16 +911,16 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     if (externalBoard && externalBoard.setControl) {
       try { externalBoard.setControl(partId, 1); } catch { /* board mid-rebuild */ }
     }
-    advanceBy(1n * MS);
-  }, [setControl, advanceBy, externalBoard]);
+    requestControlSettling();
+  }, [setControl, requestControlSettling, externalBoard]);
 
   const handleButtonUp = useCallback((partId) => {
     setControl(partId, 0);
     if (externalBoard && externalBoard.setControl) {
       try { externalBoard.setControl(partId, 0); } catch { /* board mid-rebuild */ }
     }
-    advanceBy(1n * MS);
-  }, [setControl, advanceBy, externalBoard]);
+    requestControlSettling();
+  }, [setControl, requestControlSettling, externalBoard]);
 
   // A keypad key press/release: sets the device's `pressed` param so the
   // engine stamps/unstamps the row-column bridge (-1 = none). Same
@@ -914,23 +933,23 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       if (externalBoard && externalBoard.setDeviceControl) {
         try { externalBoard.setDeviceControl(partId, verb, key.ps2); } catch { /* board mid-rebuild */ }
       }
-      advanceBy(1n * MS);
+      requestControlSettling();
       return;
     }
     setPartParam(partId, 'pressed', key);
     if (externalBoard && externalBoard.setPartParam) {
       try { externalBoard.setPartParam(partId, 'pressed', key); } catch { /* board mid-rebuild */ }
     }
-    advanceBy(1n * MS);
-  }, [setPartParam, advanceBy, externalBoard, circuit]);
+    requestControlSettling();
+  }, [setPartParam, requestControlSettling, externalBoard, circuit]);
 
   const handleSetPartParam = useCallback((partId, param, value) => {
     setPartParam(partId, param, value);
     if (externalBoard && externalBoard.setPartParam) {
       try { externalBoard.setPartParam(partId, param, value); } catch { /* board mid-rebuild */ }
     }
-    advanceBy(1n * MS);
-  }, [setPartParam, advanceBy, externalBoard]);
+    requestControlSettling();
+  }, [setPartParam, requestControlSettling, externalBoard]);
 
   const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
     loadInferred(inferredParts, inferredNets);
@@ -1942,16 +1961,18 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           <section data-simulation-controls style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
             <div style={{fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6}}>{/^de/i.test(lang) ? 'Simulationssteuerung' : 'Simulation controls'}</div>
             <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: 5}}>
-              <button onClick={() => setSimPaused(v => !v)} title={simPaused ? (/^de/i.test(lang) ? 'Simulation fortsetzen' : 'Resume simulation') : (/^de/i.test(lang) ? 'Simulation pausieren' : 'Pause simulation')}
+              <button onClick={handleSimPause} disabled={!!externalBoard || !!simClockError} title={simPaused ? (/^de/i.test(lang) ? 'Simulation fortsetzen' : 'Resume simulation') : (/^de/i.test(lang) ? 'Simulation pausieren' : 'Pause simulation')}
                 style={{minHeight: 32, padding: '5px 8px', cursor: 'pointer'}}>{simPaused ? (/^de/i.test(lang) ? '▶ Fortsetzen' : '▶ Resume simulation') : (/^de/i.test(lang) ? '⏸ Pausieren' : '⏸ Pause simulation')}</button>
-              <button onClick={handleSimStep} disabled={!simPaused} title={/^de/i.test(lang) ? 'Einen 50-ms-Takt vorspulen' : 'Advance one 50 ms tick'}
+              <button onClick={handleSimStep} disabled={!simPaused || simStepping || !!externalBoard || !!simClockError} title={/^de/i.test(lang) ? 'Einen 50-ms-Takt vorspulen' : 'Advance one 50 ms tick'}
                 style={{minHeight: 32, padding: '5px 8px', cursor: simPaused ? 'pointer' : 'default'}}>{/^de/i.test(lang) ? '⏭ Ein Takt' : '⏭ Step one tick'}</button>
             </div>
+            {simStepping && <div role="status">Advancing one simulation tick…</div>}
+            {simClockError && <div role="alert">Simulation stopped: {simClockError}</div>}
             <OperatingPointPanel board={activeBoard} blockers={circuit.analysisBlockers} lang={lang} />
             <SourceAnalysisPanel circuit={circuit} liveBoard={activeBoard} lang={lang} />
             <label style={{display: 'grid', gridTemplateColumns: '1fr', gap: 3, marginTop: 7, fontSize: 11, color: '#475569'}}>
               <span>Speed</span>
-              <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title="Simulation speed" style={{minHeight: 30}}>
+              <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title="Target simulation speed; complex circuits may run slower" style={{minHeight: 30}}>
                 <option value={0.25}>0.25×</option><option value={1}>1×</option><option value={4}>4×</option>
               </select>
             </label>

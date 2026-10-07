@@ -18,6 +18,25 @@ controls; real engine/browser waveform qualification remains separately required
 After upstream acceptance, exact package/lock adoption and one full CUI CI.
 No importer, device model, tolerance, finite CLI budget, scope/meter renderer,
 other target, Lite package or deployment change. Remote claim before edits.
+Remote claima374782 preceded local-only source preparation. One timer chain
+yields after native16-interval quanta and verifies each receipt against actual
+board time. Pause discards automatic backlog;50ms steps stay asynchronous,
+cannot stack and cannot be extended by a control-settling request. Cleanup and
+green-flag/stop cancel outstanding work. Model/hook proxies preserve actual
+partial/error time; there is no ordinary-advance fallback. Demo transitions
+follow250ms simulated half-periods, not timer callbacks; external emulator
+clocks are excluded. The same chain handles paused/build-mode control settling.
+Errors stop the chain and are visible; speed is explicitly a target rate.
+Sixteen new deterministic controller/proxy/actual command tests plus adjacent
+surface66/66 pass, zero skips. Seven isolated mutants reject synchronous
+draining, retained pause backlog, stale post-stop callbacks, wishful model time,
+external-clock collision, wrong demo scale and extended single-step horizon;
+all restored. Installed Rolldown parses all four changed source modules.
+These are scheduling/forwarding checks, not React/browser or waveform proof.
+Package files remain unchanged at Board31c6499. Keep this implementation local
+until Board44f2fe70 is accepted/landed, then adopt its exact package/lock, mark
+DONE in the final candidate and qualify full CUI CI before landing. No CUI
+candidate push, manual dispatch, consumer adoption or deployment occurred yet.
 
 2026-10-07 relative-source live wiring hints — DONE candidate, Codex bwcx.
 Branch fable/relative-source-wiring-hints-20261007, exact base

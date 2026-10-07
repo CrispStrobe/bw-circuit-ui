@@ -7,8 +7,221 @@ import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { getEngine } from '../src/engine.js';
-import { demoPinScriptApplies, armBoardForRun, classifyRunPins, greenFlagArmsOwnBoard, designerClockPlan } from '../src/model/simulation.js';
+import { demoPinScriptApplies, armBoardForRun, classifyRunPins, greenFlagArmsOwnBoard, designerClockPlan, createDesignerLiveClock, designerDemoPhase } from '../src/model/simulation.js';
+import { Circuit } from '../src/model/circuit.js';
 import { readFileSync } from 'node:fs';
+
+// Controller tests deliberately model clock receipts, not circuit physics.
+// Native device/solver behavior is qualified upstream and in the browser return.
+function clockHarness(options = {}) {
+  let time = 0n, paused = options.paused ?? false, speed = options.speed ?? 1;
+  let nextId = 0;
+  const pending = new Map(), requests = [], errors = [], busy = [];
+  const quantum = options.quantum ?? 10_000_000n;
+  const driver = createDesignerLiveClock({
+    getTime: () => time,
+    isPaused: () => paused,
+    getSpeed: () => speed,
+    schedule: (fn, delay) => { const id = nextId++; pending.set(id, {fn,delay}); return id; },
+    cancel: id => pending.delete(id),
+    advanceToLive: (target, limits) => {
+      requests.push({target,limits});
+      if (options.failure) throw options.failure;
+      const started = time;
+      time = time + quantum < target ? time + quantum : target;
+      const receipt = {startedTimeNs:started.toString(),requestedTimeNs:target.toString(),
+        processedTimeNs:time.toString(),completed:time===target,steps:1,maxSteps:limits.maxSteps};
+      return options.receipt ? options.receipt(receipt) : receipt;
+    },
+    limitTarget: options.limitTarget,
+    onBeforeAdvance: options.onBeforeAdvance,
+    onProgress: options.onProgress,
+    onStepping: value => busy.push(value),
+    onError: error => errors.push(error),
+  });
+  return {driver,pending,requests,errors,busy,
+    get time(){return time;},
+    setPaused(value){paused=value;},setSpeed(value){speed=value;},
+    tick(){
+      assert.equal(pending.size,1,'exactly one queued timer, never parallel chains');
+      const [id,event]=pending.entries().next().value;pending.delete(id);event.fn();
+      return event;
+    }};
+}
+
+describe('cooperative designer clock lifecycle (not a solver oracle)',()=>{
+  it('yields partial progress, pauses immediately, and resumes without old backlog',()=>{
+    const h=clockHarness();h.driver.start();
+    assert.equal(h.tick().delay,50);assert.equal(h.time,10_000_000n);
+    assert.equal(h.pending.values().next().value.delay,0,'yield, not synchronous draining');
+    h.setPaused(true);h.driver.pause();assert.equal(h.pending.size,0);
+    h.setPaused(false);h.driver.wake();h.tick();
+    assert.equal(h.requests.at(-1).target,60_000_000n,'new tick begins at actual10ms');
+    assert.equal(h.requests.at(-1).limits.maxSteps,16);
+    for(let i=0;i<4;i++)h.tick();
+    assert.equal(h.time,60_000_000n);
+    assert.equal(h.pending.values().next().value.delay,50);
+    h.driver.stop();
+  });
+
+  it('single step asynchronously completes50ms while staying paused and cannot stack',()=>{
+    const h=clockHarness({paused:true});h.driver.start();h.tick();
+    assert.equal(h.requests.length,0);assert.equal(h.pending.size,0);
+    assert.equal(h.driver.step(),true);assert.equal(h.driver.step(),false);
+    assert.deepEqual(h.busy,[true]);
+    for(let i=0;i<5;i++)h.tick();
+    assert.equal(h.time,50_000_000n);assert.deepEqual(h.busy,[true,false]);
+    assert.equal(h.pending.size,0,'no automatic tick after a paused step');
+    assert.equal(h.driver.step(),true);h.tick();
+    h.driver.pause();assert.equal(h.pending.size,0);assert.deepEqual(h.busy,[true,false,true,false]);
+  });
+
+  it('control settling uses the same yielded chain, including while paused',()=>{
+    const h=clockHarness({paused:true,quantum:100_000n});
+    h.driver.requestAdvance(1_000_000n);h.tick();
+    assert.equal(h.time,100_000n);assert.equal(h.pending.size,1);
+    h.driver.requestAdvance(1_000_000n);
+    for(let i=0;i<10;i++)h.tick();
+    assert.equal(h.time,1_100_000n);assert.equal(h.pending.size,0);
+    assert.throws(()=>h.driver.requestAdvance(0n),/positive live delta/);
+    assert.throws(()=>h.driver.requestAdvance(1000),/positive live delta/);
+  });
+
+  it('a control edit near the end of a single step cannot extend its50ms horizon',()=>{
+    const h=clockHarness({paused:true,quantum:9_900_000n});h.driver.step();
+    for(let i=0;i<5;i++)h.tick();
+    assert.equal(h.time,49_500_000n);
+    h.driver.requestAdvance(1_000_000n);h.tick();
+    assert.equal(h.time,50_000_000n);assert.equal(h.pending.size,0);
+    assert.deepEqual(h.busy,[true,false]);
+  });
+
+  it('speed changes affect the next tick, not unfinished work or physical time claims',()=>{
+    for(const [speed,target] of [[.25,12_500_000n],[1,50_000_000n],[4,200_000_000n]]){
+      const h=clockHarness({speed,quantum:1_000_000n});h.driver.start();h.tick();
+      assert.equal(h.requests[0].target,target);h.setSpeed(4);h.tick();
+      assert.equal(h.requests[1].target,target);h.driver.stop();
+    }
+  });
+
+  it('unmount/rebuild cancels pending work and a stale callback cannot advance',()=>{
+    const h=clockHarness();h.driver.start();const stale=h.pending.values().next().value.fn;
+    h.driver.stop();assert.equal(h.pending.size,0);stale();
+    assert.equal(h.time,0n);assert.equal(h.requests.length,0);
+    h.driver.wake();assert.equal(h.pending.size,0);assert.equal(h.driver.step(),false);
+    assert.equal(h.driver.requestAdvance(1n),false);
+  });
+
+  it('engine errors stop the chain with original identity and no bulk fallback',()=>{
+    const error=new Error('native integration refused');
+    const h=clockHarness({failure:error,paused:true});h.driver.step();h.tick();
+    assert.deepEqual(h.errors,[error]);assert.deepEqual(h.busy,[true,false]);
+    assert.equal(h.time,0n);assert.equal(h.pending.size,0);h.driver.wake();
+    assert.equal(h.pending.size,0);assert.equal(h.requests.length,1);
+  });
+
+  it('false/stale progress receipts stop rather than silently skipping work',()=>{
+    for(const receipt of [r=>({...r,completed:true}),r=>({...r,processedTimeNs:'50000000'}),
+      r=>({...r,requestedTimeNs:'1'})]){
+      const h=clockHarness({receipt});h.driver.start();h.tick();
+      assert.equal(h.errors.length,1,'an untrustworthy receipt must stop the clock');
+      assert.match(h.errors[0].message,/receipt does not match actual progress/);
+      assert.equal(h.pending.size,0);
+    }
+  });
+
+  it('a demo waveform changes at250ms boundaries even with200ms requested ticks',()=>{
+    const edges=[];let last=null;
+    const apply=time=>{const {high}=designerDemoPhase(time);if(high!==last){last=high;edges.push([time,high]);}};
+    const h=clockHarness({speed:4,quantum:200_000_000n,
+      limitTarget:(now,target)=>{const {nextNs}=designerDemoPhase(now);return nextNs<target?nextNs:target;},
+      onBeforeAdvance:apply,onProgress:r=>apply(BigInt(r.processedTimeNs))});
+    h.driver.start();for(let i=0;i<20&&h.time<600_000_000n;i++)h.tick();
+    assert.equal(h.time,600_000_000n);
+    assert.deepEqual(edges,[[0n,true],[250_000_000n,false],[500_000_000n,true]]);
+    h.driver.stop();
+  });
+
+  it('invalid speed/boundary refuses without calling the engine',()=>{
+    for(const options of [{speed:NaN},{limitTarget:()=>0n},{limitTarget:()=>60_000_000n}]){
+      const h=clockHarness(options);h.driver.start();h.tick();
+      assert.equal(h.errors.length,1);assert.equal(h.requests.length,0);assert.equal(h.pending.size,0);
+    }
+  });
+});
+
+describe('actual model proxy and designer clock command wiring',()=>{
+  it('the actual hook returns partial receipts and refreshes readings even after failure',()=>{
+    const src=readFileSync(new URL('../src/hooks/useCircuit.js',import.meta.url),'utf8');
+    const begin=src.indexOf('const advanceToLive = useCallback(');
+    const end=src.indexOf('}, [circuit, bump]);',begin)+'}, [circuit, bump]);'.length;
+    assert.ok(begin>=0&&end>begin);
+    const receipt={completed:false,processedTimeNs:'3'};let bumps=0;
+    const error=new Error('native failure');
+    const circuit={advanceToLive:(target,options)=>{assert.equal(target,10n);assert.equal(options.maxSteps,16);return receipt;}};
+    const hook=Function('circuit','bump','useCallback',src.slice(begin,end)+'return advanceToLive;')(
+      circuit,()=>bumps++,fn=>fn);
+    assert.equal(hook(10n,{maxSteps:16}),receipt);assert.equal(bumps,1);
+    circuit.advanceToLive=()=>{throw error;};
+    assert.throws(()=>hook(10n),actual=>actual===error);assert.equal(bumps,2);
+  });
+  it('the real Circuit proxy follows partial time and error time, not its requested target',()=>{
+    let time=0n;const receipt=Object.freeze({processedTimeNs:'3',completed:false});
+    const original=new Error('original native failure');
+    const model={timeNs:0n,board:{getTime:()=>time,
+      advanceToLive(target,options){assert.equal(target,10n);assert.equal(options.maxSteps,1);time=3n;return receipt;}}};
+    assert.equal(Circuit.prototype.advanceToLive.call(model,10n,{maxSteps:1}),receipt);
+    assert.equal(model.timeNs,3n);
+    model.board.advanceToLive=()=>{time=5n;throw original;};
+    assert.throws(()=>Circuit.prototype.advanceToLive.call(model,10n),error=>error===original);
+    assert.equal(model.timeNs,5n);
+    delete model.board.advanceToLive;
+    model.board.advanceTo=()=>assert.fail('unsafe bulk fallback');
+    assert.throws(()=>Circuit.prototype.advanceToLive.call(model,10n),/requires a bw-board engine/);
+  });
+
+  function callback(name,parameters){
+    const src=readFileSync(new URL('../src/components/CircuitDesigner.jsx',import.meta.url),'utf8');
+    const begin=src.indexOf(`const ${name} = useCallback(() => {`);
+    assert.ok(begin>=0,`actual ${name} callback exists`);
+    const body=src.indexOf('{',begin)+1,end=src.indexOf('\n  },',body);
+    assert.ok(end>body);return Function(...parameters,src.slice(body,end));
+  }
+
+  it('actual pause handler freezes its ref before cancelling; resume explicitly wakes',()=>{
+    const ref={current:false},events=[];
+    const clock={current:{pause(){assert.equal(ref.current,true);events.push('pause');},
+      wake(){assert.equal(ref.current,false);events.push('wake');}}};
+    const handler=callback('handleSimPause',['simPausedRef','setSimPaused','simClock']);
+    const run=()=>handler(ref,value=>events.push(value),clock);
+    run();run();assert.deepEqual(events,[true,'pause',false,'wake']);
+  });
+
+  it('actual step handler requests asynchronous work, never calls bulk advance',()=>{
+    let called=0;const handler=callback('handleSimStep',['simClock']);
+    handler({current:{step(){called++;}}});assert.equal(called,1);
+  });
+
+  it('actual control handler requests settling only on the locally clocked board',()=>{
+    const requests=[];const clock={current:{requestAdvance:delta=>requests.push(delta)}};
+    const handler=callback('requestControlSettling',['externalBoard','simClock','MS']);
+    handler(null,clock,1_000_000n);handler({},clock,1_000_000n);
+    assert.deepEqual(requests,[1_000_000n],'external emulator clock is not advanced');
+  });
+
+  it('the designer cancels before reset/stop and routes every automatic/control tick cooperatively',()=>{
+    const src=readFileSync(new URL('../src/components/CircuitDesigner.jsx',import.meta.url),'utf8');
+    const flag=src.slice(src.indexOf('const onGreenFlag = () => {'),src.indexOf('const onStopAll = () => {'));
+    assert.ok(flag.indexOf('simClock.current?.pause()')<flag.indexOf('armBoardForRun({'));
+    assert.match(flag,/simPausedRef\.current = false/);assert.match(flag,/simClock\.current\?\.wake\(\)/);
+    assert.doesNotMatch(src,/advanceBy\((?:1n|50n) \* MS\)/,'no unsafe GUI settling/step bypass');
+    assert.doesNotMatch(src,/simInterval|simStep\.current/,'no parallel interval clock');
+    const effect=src.slice(src.indexOf('const armedByFlag = runArmedRef.current;'),src.indexOf('// Refs so pause/speed'));
+    assert.ok(effect.indexOf('if (hasExternalBoard) return;')<effect.indexOf('createDesignerLiveClock({'));
+    assert.match(effect,/clock\.stop\(\)/);assert.match(effect,/advanceToLive,/);
+    assert.match(src,/simStepping \|\| !!externalBoard \|\| !!simClockError/,'disable stacked or externally clocked steps');
+  });
+});
 
 // Inline the demo netlist (same as demo-netlist.js minus layout fields)
 const parts = [
@@ -219,7 +432,7 @@ describe('one board per run: the designer binding (task B8)', () => {
     assert.doesNotMatch(handler, /!live\.externalBoard && live\.board/, 'the old skip-while-anything-external rule');
     assert.match(handler, /runArmedRef\.current = live\.mode === 'simulate' && !live\.externalBoard \? null/, 'the arming waits for the hand-back too');
     const effect = src.slice(src.indexOf('const armedByFlag = runArmedRef.current;'));
-    assert.match(effect, /\}, \[mode, parts, wires, stc, hasExternalBoard\]\);/, 'the effect re-runs when the external board comes or goes');
+    assert.match(effect, /\}, \[mode, parts, wires, stc, hasExternalBoard, advanceToLive\]\);/, 'the effect re-runs when the external board comes or goes');
     assert.match(effect, /const released = hadExternalRef\.current && !hasExternalBoard;/);
   });
 });

@@ -812,6 +812,15 @@ export class Circuit {
     this.board.advanceTo(tNs);
   }
 
+  /** Interactive partial advance: synchronize to actual progress even on error. */
+  advanceToLive(tNs, options) {
+    if (!this.board || typeof this.board.advanceToLive !== 'function') {
+      throw new Error('live simulation requires a bw-board engine with advanceToLive');
+    }
+    try { return this.board.advanceToLive(tNs, options); }
+    finally { this.timeNs = this.board.getTime(); }
+  }
+
   /** One fresh bounded analysis capture; never substitute the ordinary advance. */
   advanceToBounded(tNs, limits) {
     if (!this.board || typeof this.board.advanceToBounded !== 'function') {

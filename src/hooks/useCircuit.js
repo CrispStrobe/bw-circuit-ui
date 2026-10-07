@@ -155,6 +155,11 @@ export function useCircuit(vcc = 5.0) {
     bump();
   }, [circuit, bump]);
 
+  const advanceToLive = useCallback((tNs, options) => {
+    try { return circuit.advanceToLive(tNs, options); }
+    finally { bump(); }
+  }, [circuit, bump]);
+
   const setPower = useCallback((on) => {
     circuit.setPower(on);
     bump();
@@ -274,6 +279,7 @@ export function useCircuit(vcc = 5.0) {
     setPin,
     advanceTo,
     advanceBy,
+    advanceToLive,
     setPower,
     loadInferred,
     undo,

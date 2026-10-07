@@ -241,3 +241,81 @@ export function designerClockPlan({ armedByFlag, board, released }) {
   if (released) return 'resume';
   return 'arm';
 }
+
+/** The demo's 2Hz level and next edge are functions of SIMULATION time. */
+export function designerDemoPhase(timeNs) {
+  const halfPeriod = 250_000_000n;
+  return { high: (timeNs / halfPeriod) % 2n === 0n,
+    nextNs: (timeNs / halfPeriod + 1n) * halfPeriod };
+}
+
+/**
+ * One cancellable live clock. The engine owns event selection/integration;
+ * this controller only yields between small native quanta and manages intent.
+ * Timers and callbacks are injectable for deterministic scheduling tests.
+ */
+export function createDesignerLiveClock({ getTime, advanceToLive, isPaused,
+  getSpeed = () => 1, schedule = setTimeout, cancel = clearTimeout,
+  limitTarget = (_now, target) => target, onBeforeAdvance = () => {},
+  onProgress = () => {}, onStepping = () => {}, onError = () => {} }) {
+  let timer = null, stopped = false, target = null, manual = false, stepping = false;
+  const clear = () => { if (timer !== null) cancel(timer); timer = null; };
+  const finishStep = () => { if (stepping) { stepping = false; onStepping(false); } };
+  const queue = delay => { if (!stopped && timer === null) timer = schedule(pump, delay); };
+  function pump() {
+    timer = null;
+    if (stopped) return;
+    try {
+      if (target === null) {
+        if (isPaused()) return;
+        const speed = getSpeed();
+        if (![.25, 1, 4].includes(speed)) throw new Error('invalid simulation target speed');
+        target = getTime() + BigInt(Math.round(50_000_000 * speed));
+        manual = false;
+      } else if (isPaused() && !manual) {
+        target = null; finishStep(); return;
+      }
+      const before = getTime(), endpoint = limitTarget(before, target);
+      if (typeof endpoint !== 'bigint' || endpoint <= before || endpoint > target) {
+        throw new Error('invalid live clock boundary');
+      }
+      onBeforeAdvance(before);
+      const receipt = advanceToLive(endpoint, { maxSteps: 16 });
+      const after = getTime();
+      if (!receipt || after <= before || after > endpoint
+        || receipt.requestedTimeNs !== endpoint.toString()
+        || receipt.processedTimeNs !== after.toString()
+        || receipt.completed !== (after === endpoint)) {
+        throw new Error('live clock receipt does not match actual progress');
+      }
+      onProgress(receipt);
+      if (after === target) {
+        target = null; manual = false; finishStep();
+        if (!isPaused()) queue(50);
+      } else queue(0);
+    } catch (error) {
+      stopped = true; target = null; clear(); finishStep(); onError(error);
+    }
+  }
+  return {
+    start() { queue(50); },
+    wake() { clear(); queue(0); },
+    pause() { clear(); target = null; manual = false; finishStep(); },
+    step() {
+      if (stopped || !isPaused() || stepping) return false;
+      target = getTime() + 50_000_000n; manual = true; stepping = true;
+      onStepping(true); clear(); queue(0); return true;
+    },
+    requestAdvance(deltaNs) {
+      if (stopped) return false;
+      if (typeof deltaNs !== 'bigint' || deltaNs <= 0n) throw new Error('positive live delta required');
+      // A control write is already applied by its caller. Let the outstanding
+      // single step process it, without changing that step's promised horizon.
+      if (stepping) { clear(); queue(0); return true; }
+      const requested = getTime() + deltaNs;
+      if (target === null || requested > target) target = requested;
+      manual ||= isPaused(); clear(); queue(0); return true;
+    },
+    stop() { stopped = true; clear(); target = null; },
+  };
+}
