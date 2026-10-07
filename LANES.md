@@ -1,5 +1,17 @@
 # Work lanes
 
+2026-10-07 relative-source live wiring hints — CLAIM, Codex bwcx.
+Branch fable/relative-source-wiring-hints-20261007, exact base
+39f8ca8a025aaa451bda6e99fea0c8436e40b4ac. Three paths only: this ledger,
+src/components/BoardCanvas.jsx, existing test/interaction-rendering-regressions.test.js.
+Remove the absolute positive/ground classification of voltage-source terminals
+from live target hints; preserve fixed VCC/board-rail-to-ground warning hints.
+Execute the real ordinary-JS classifier and caller conflict expression with
+negative/series/floating source and fixed-rail controls, plus isolated mutants.
+No solver/DRC/model/CLI/package/lock/workflow/importer/Lite changes. This is a
+hint-policy contract, not a claim of browser pointer/rendering qualification.
+Remote claim before implementation; one exact-head full upstream CI, guarded FF.
+
 2026-10-07 relative voltage-source DRC — DONE candidate, Codex bwcx.
 Branch fable/relative-source-drc-20261007, exact base
 ad05927ea68ae7c4c0e6f5640eb198342940c5ea. Three paths only: this ledger,
@@ -22,7 +34,10 @@ claimed as accepted engine circuits. Four real one-line production mutants
 reject absolute source roles, omitted self-short detection, omitted polarity
 warning and false zero-source short, with restoration. Live wiring-target hints
 still have their own absolute-source assumption and are explicitly outside this
-DRC patch. Upstream full CI and actual browser no-false-SHORT proof pending.
+DRC patch. Exact39f8ca8 passed all four enabled jobs in CI37639516840 and
+landed master by guarded normal FF. Actual standalone browser proof accepts
+five valid dual-rail contexts without SHORT overlays and one deliberately
+shorted source retaining its visible warning; instrument controls unchanged.
 
 2026-10-07 meter probe placement rearm — DONE, Codex bwcx.
 Branch fable/meter-probe-rearm-20261007, exact base
