@@ -1,5 +1,24 @@
 # Work lanes
 
+2026-10-07 cooperative designer clock — CLAIM, Codex bwcx.
+Branch lane/cooperative-live-clock-20261007, exact base
+c19120365bca1a64ed802e3804274ddb5d587fbf. Nine paths only: this ledger,
+src/model/simulation.js, src/model/circuit.js, src/hooks/useCircuit.js,
+src/components/CircuitDesigner.jsx, test/simulation.test.js,
+test/interaction-rendering-regressions.test.js, package.json, package-lock.json.
+Local preparation while upstream Board44f2fe70 qualifies; no consumer candidate
+push/qualification/landing or pin edit until that exact engine is accepted and
+landed. Reuse its native live API, never copy scheduling/solver code downstream.
+Actual-time proxy synchronization; one cancellable timer chain, yielded quanta,
+pause/resume and asynchronous50ms single step; simulated-time demo transitions;
+control-settling requests through the same clock, external emulator excluded.
+Show errors rather than renew budgets or fall back to unsafe bulk advances.
+Deterministic fake-timer/controller and real proxy/handler tests with negative
+controls; real engine/browser waveform qualification remains separately required.
+After upstream acceptance, exact package/lock adoption and one full CUI CI.
+No importer, device model, tolerance, finite CLI budget, scope/meter renderer,
+other target, Lite package or deployment change. Remote claim before edits.
+
 2026-10-07 relative-source live wiring hints — DONE candidate, Codex bwcx.
 Branch fable/relative-source-wiring-hints-20261007, exact base
 39f8ca8a025aaa451bda6e99fea0c8436e40b4ac. Three paths only: this ledger,
