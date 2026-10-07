@@ -1805,7 +1805,10 @@ function terminalSupplyRole(part, terminal) {
   const term = String(terminal || '').toLowerCase();
   if (part?.kind === 'vcc') return 'positive';
   if (part?.kind === 'gnd') return 'ground';
-  if (part?.kind === 'vsource') return term === 'pos' ? 'positive' : term === 'neg' ? 'ground' : null;
+  // Source polarity is relative: pos may be grounded for a negative rail,
+  // and series sources legitimately join pos to neg. Completed-circuit DRC
+  // owns source-short/polarity checks; this hint only recognizes fixed rails.
+  if (part?.kind === 'vsource') return null;
   if (/^(gnd\d*|agnd|swd_gnd|vss)$/.test(term)) return 'ground';
   if (/^(vcc|avcc|vdd|5v|3v3|vin|vbus|vsys)$/.test(term)) return 'positive';
   return null;

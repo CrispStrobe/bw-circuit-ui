@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-07 relative-source live wiring hints — CLAIM, Codex bwcx.
+2026-10-07 relative-source live wiring hints — DONE candidate, Codex bwcx.
 Branch fable/relative-source-wiring-hints-20261007, exact base
 39f8ca8a025aaa451bda6e99fea0c8436e40b4ac. Three paths only: this ledger,
 src/components/BoardCanvas.jsx, existing test/interaction-rendering-regressions.test.js.
@@ -11,6 +11,17 @@ negative/series/floating source and fixed-rail controls, plus isolated mutants.
 No solver/DRC/model/CLI/package/lock/workflow/importer/Lite changes. This is a
 hint-policy contract, not a claim of browser pointer/rendering qualification.
 Remote claim before implementation; one exact-head full upstream CI, guarded FF.
+Remote claimf4890f8 preceded the three-path implementation. The classifier now
+returns no absolute rail identity for a voltage source; fixed rail behavior and
+the caller's valid-target gate remain unchanged. Three new real-policy/caller
+tests cover both gesture directions for relative sources, all existing fixed
+rail spellings, standalone symbols, unknown signals, same-role pairs and invalid
+targets. Restored adjacent suite61 passes/0 fails/2 pre-existing relay skips.
+Three isolated production mutants reject restored absolute source roles,
+removed fixed VCC identity and disabled caller warning, with restoration.
+This does not add graph-aware live source-short detection or classify new rail
+spellings; completed-circuit DRC remains the separate safety check. Full
+upstream hosted qualification pending; no actual pointer/rendering claim.
 
 2026-10-07 relative voltage-source DRC — DONE candidate, Codex bwcx.
 Branch fable/relative-source-drc-20261007, exact base

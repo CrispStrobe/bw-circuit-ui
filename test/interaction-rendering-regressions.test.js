@@ -13,6 +13,53 @@ const boardHookSource = readFileSync(new URL('../src/hooks/useBoard.js', import.
 const paletteSource = readFileSync(new URL('../src/components/PartPalette.jsx', import.meta.url), 'utf8');
 const seatGeneratorSource = readFileSync(new URL('../scripts/seat-examples.mjs', import.meta.url), 'utf8');
 
+// Execute the actual ordinary-JS policy and caller expression from the JSX
+// owner. These are hint-policy tests, not browser rendering/hit-test evidence.
+function liveSupplyConflict(sourcePart, sourceTerminal, targetPart, targetTerminal, isValidTarget = true) {
+  const classifier = /function terminalSupplyRole\(part, terminal\) \{[\s\S]*?\n\}/.exec(canvasSource);
+  const source = /const sourceSupplyRole = [^;]+;/.exec(canvasSource);
+  const target = /const targetSupplyRole = [^;]+;/.exec(canvasSource);
+  const conflict = /const isSupplyConflict = [^;]+;/.exec(canvasSource);
+  assert.ok(classifier && source && target && conflict, 'exercise the real canvas policy and caller');
+  return !!new Function('sourcePart', 'wiringFrom', 'part', 'term', 'isValidTarget',
+    `${classifier[0]}\n${source[0]}\n${target[0]}\n${conflict[0]}\nreturn isSupplyConflict;`)(
+    sourcePart, { terminal: sourceTerminal }, targetPart, targetTerminal, isValidTarget);
+}
+
+test('live wiring accepts relative source terminals for negative, series and floating rails', () => {
+  const source = { kind: 'vsource', params: { volts: 5 } };
+  const ground = { kind: 'gnd' }, positive = { kind: 'vcc' };
+  for (const [a, at, b, bt] of [
+    [source, 'pos', ground, 'gnd'], // grounded positive terminal: negative supply
+    [ground, 'gnd', source, 'pos'], // same wiring gesture, reverse direction
+    [source, 'neg', source, 'pos'], // series/floating source junction
+    [source, 'pos', source, 'neg'],
+    [source, 'neg', positive, 'vcc'], // a source may float above a fixed rail
+    [positive, 'vcc', source, 'neg'],
+  ]) assert.equal(liveSupplyConflict(a, at, b, bt), false);
+});
+
+test('live wiring still warns for fixed positive rails directly joined to ground', () => {
+  const board = { kind: 'arduino_nano' };
+  for (const positive of ['vcc', 'avcc', 'vdd', '5v', '3v3', 'vin', 'vbus', 'vsys']) {
+    for (const ground of ['gnd', 'gnd1', 'agnd', 'swd_gnd', 'vss']) {
+      assert.equal(liveSupplyConflict(board, positive, board, ground), true, `${positive} to ${ground}`);
+      assert.equal(liveSupplyConflict(board, ground, board, positive), true, `${ground} to ${positive}`);
+    }
+  }
+  assert.equal(liveSupplyConflict({ kind: 'vcc' }, 'a', { kind: 'gnd' }, 'a'), true);
+  assert.equal(liveSupplyConflict({ kind: 'gnd' }, 'a', { kind: 'vcc' }, 'a'), true);
+});
+
+test('live wiring conflict remains gated by valid target and fixed rail identities', () => {
+  const board = { kind: 'arduino_nano' };
+  assert.equal(liveSupplyConflict(board, '5v', board, 'gnd', false), false);
+  for (const [a, b] of [['5v', 'vcc'], ['gnd', 'agnd'], ['D2', 'gnd'], ['5v', 'D3']]) {
+    assert.equal(liveSupplyConflict(board, a, board, b), false);
+  }
+  assert.equal(liveSupplyConflict(null, 'pos', board, 'gnd'), false);
+});
+
 test('arming either meter probe clears the previous terminal receipt before placement', () => {
   const handler = /const handleStartPlacing = useCallback\(\(which\) => \{([\s\S]*?)\}, \[\]\)/.exec(designerSource);
   assert.ok(handler, 'exercise the real designer command, not a second helper');
