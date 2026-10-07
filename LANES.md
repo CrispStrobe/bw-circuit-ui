@@ -1,5 +1,20 @@
 # Work lanes
 
+2026-10-07 CLI authored maximum integration step — CLAIM, Codex bwcx.
+Branch fable/cli-measure-max-step-20261007, exact base
+4f35519f156916bc30e7fcc2948e6dcc27fae394. Four paths only: this ledger,
+bin/bwc.mjs, existing test/cli-measure.test.js, docs/CLI-INSTRUMENTS.md.
+Expose measure --max-step TIME through the existing engine-owned maxStepSec
+option before power/state exists. Optional only, strict finite positive parsing,
+measure-only, no profile/tolerance/work-limit changes, no default behavior change.
+Keep observation timestamps/sample rate independent of internal integration.
+Use real CLI positive/refusal/default-equivalence tests and the measured authored
+RC pulse differential-voltage case; finer steps must reduce error without
+widening its fixed envelope. Local accuracyMet remains local-step status, never
+a global/physical accuracy claim. No engine/model/importer/browser/source-analysis,
+package/pin/workflow/Lite/corpus edits here. One final automatic exact-head CI;
+normal guarded FF only after every enabled job succeeds.
+
 2026-10-04 Same-point source OP conservation evidence — DONE candidate, Codex bwcx `/root`.
 Own clean wt-cui-adp-cli-precision-20261003, branch
 fable/source-op-kcl-evidence-20261004, exact base
