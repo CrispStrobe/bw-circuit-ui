@@ -102,6 +102,7 @@ const MAKECODE_FACE_ART = {
 };
 import { dipTerminalPositions, dipPackageGeometry, DIP_PIN_PITCH, DIP_ROW_OFFSET } from '../model/dip-geometry.js';
 import useNarrowScreen from '../hooks/useNarrowScreen.js';
+import { BenchTemperature } from './BenchTemperature.jsx';
 
 // Default canvas dimensions — used for viewBox and layout calculations.
 // The actual rendered size fills the container via CSS.
@@ -3372,6 +3373,9 @@ export function BoardCanvas({
   fileAction, onFileActionDone,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
   performanceProbe = null,
+  // The host's bench temperature (whole degrees C) and its setter: when given,
+  // the "More circuit controls" menu carries the control (BenchTemperature.jsx).
+  benchTemperature, onBenchTemperatureChange,
 }) {
   // Seated parts render, hit-test and wire at their HOLES — resolved once,
   // consumed by everything below (partsRef included, so what you see is
@@ -4556,6 +4560,14 @@ export function BoardCanvas({
             {toolbarCramped && panelNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center', padding: '2px 0'}}>{panelNav}</div> : null}
             {toolbarCramped && viewNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center', padding: '2px 0'}}>{viewNav}</div> : null}
             {toolbarCramped && (panelNav || viewNav) ? <span style={{display: 'block', height: 1, background: '#334155', margin: '4px 0'}} /> : null}
+            {/* In the menu, not on the toolbar: the toolbar's groups are sized to fit
+                a 1024 px editor, and a control added there overlapped the view switcher. */}
+            {typeof onBenchTemperatureChange === 'function' ? (
+              <>
+                <BenchTemperature value={benchTemperature ?? 25} onChange={onBenchTemperatureChange} lang={lang} />
+                <span style={{display: 'block', height: 1, background: '#334155', margin: '4px 0'}} />
+              </>
+            ) : null}
             <FileMenu
               circuit={circuit} lang={lang}
               onLoad={onLoadCircuit} onSave={onSaveCircuit}
