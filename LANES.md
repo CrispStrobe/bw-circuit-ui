@@ -1,5 +1,22 @@
 # Work lanes
 
+2026-10-08 static parts-palette memoization — CLAIM, Codex bwcx.
+Branch fable/static-palette-memo-20261008, exact base
+c799dbc3dae7ccd2696b4c8e5160aa4768de4b14. Five paths only: this ledger,
+src/components/PartPalette.jsx, src/components/CircuitDesigner.jsx,
+test/interaction-rendering-regressions.test.js, scripts/verify-interaction.mjs.
+Production-source profiles in the corpus evidence show stable React41.3% and
+solver17.5–18.0% active shares, not an unprofiled speedup. Bound this candidate
+to React.memo for the static palette and a stable onStartPlace command. Retain
+default shallow comparison across all props, own search/LED/hover state, theme
+and callback invalidation; never hide changing props with a custom comparator.
+Actual-command/unit negative controls and hosted real-component rendering plus
+filter/color/placement interaction proof. No engine/model/clock/quanta, pins,
+lock, workflow, scope/meter math, other renderer, Lite or deployment changes.
+Remote claim before edits; one final automatic full exact-head CI. Landing is
+additionally held for a separately owned, unprofiled production comparison
+with unchanged waveform/semantic gates; no performance claim from unit counts.
+
 2026-10-08 imported-circuit simulation context — DONE candidate, Codex bwcx.
 Branch fable/import-simulation-context-20261008; exact base
 2974fe0ea3735560140a3b066bf60ef966f16b5c. Four paths only: this ledger,
