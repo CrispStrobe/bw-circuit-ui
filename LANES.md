@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-08 cooperative designer clock provenance envelope — CLAIM expansion,
+2026-10-08 cooperative designer clock provenance envelope — DONE candidate,
 Codex bwcx, existing lane/cooperative-live-clock-20261007 only. Exact current
 mastera374782d8f8b3ec2a9f7e2bfbdffbaa0e6d4f4dc. Add only
 scripts/board-provenance.json to that lane's nine-path envelope: the existing
@@ -12,7 +12,7 @@ implementation/test, workflow or additional production changes. The original
 engine landing and single final CUI qualification requirements remain intact.
 Publish this ledger-only expansion before editing the provenance record.
 
-2026-10-07 cooperative designer clock — CLAIM, Codex bwcx.
+2026-10-07 cooperative designer clock — DONE candidate, Codex bwcx.
 Branch lane/cooperative-live-clock-20261007, exact base
 c19120365bca1a64ed802e3804274ddb5d587fbf. Nine paths only: this ledger,
 src/model/simulation.js, src/model/circuit.js, src/hooks/useCircuit.js,
@@ -73,6 +73,33 @@ not installed-package verification; adoption must still check actual installed
 bytes with the unchanged provenance guard. The package range contains19 changed
 runtime/package paths, so full consumer qualification cannot be substituted by
 the focused clock tests. No shared node_modules install was modified.
+Final adoption update: exact engine60b2f395 passed CI37728820745 (test, corpus,
+vectors and vectors186; declared optional vectors-full skipped) and
+Harris37728820757, then guarded normal FF landed master at that same identity.
+This forward consumer candidate adopts that exact package/lock and the derived
+305-file runtime digest in the existing provenance record.
+The generated lock also carries the engine's existing transitive avr8js pin
+feea84c43e36e578841b5fce640202823b69b7f7 (0.21.1-bw.1), replacing registry0.21.1;
+this follows the accepted engine package, not an independent dependency choice.
+Remote expansionfea2f39 preceded that record edit; all four source modules parse and sibling
+pin/source-authority checks9/9 pass. Prior native source-bound67/67 and eight
+isolated restored mutants remain focused evidence, not installed dependency or
+browser qualification. Shared node_modules remains untouched; a fresh hosted
+install must pass the unchanged loaded-content provenance guard and all four
+CUI jobs. Push this exact final candidate once as
+fable/cooperative-live-clock-20261008 to use the existing automatic CI filter;
+no manual duplicate, PR-only trigger or workflow change. Freeze until terminal
+results, then recheck current master/ancestry before normal guarded landing.
+The separate absolute-time browser/ngspice return remains required and held
+for this consumer's qualification/landing. No Lite adoption/deployment claim.
+Private worktree dependency installation completed without changing the former
+shared dependency target. Actual installed-package provenance passes with
+logicalIsSymlink:false and the exact reviewed commit/lock/runtime digest.
+Focused installed-package suite85/85 passes, zero skips: controller/proxy/command
+and interactions, native LM741, UniversalOpamp2, loaded provenance, every called
+Board method and importer/exporter required engine fields. No module-resolution
+override was used. A wrong-runtime-digest mutant fails the actual loaded-package
+test by name; restored. Full hosted CI/browser remains the landing gate.
 
 2026-10-07 relative-source live wiring hints — DONE candidate, Codex bwcx.
 Branch fable/relative-source-wiring-hints-20261007, exact base
