@@ -174,6 +174,8 @@ const EXPECTED = [
   'adp151-place',
   'adp7118-place',
   'lt1763-place',
+  'analog-import-context',
+  'own-clock-status',
   'zero-page-errors',
 ];
 
@@ -2145,6 +2147,59 @@ try {
   failAll(FAULT_IDS, `real instrument fixture: ${String(error).split('\n')[0]}`);
 } finally {await faultPage.close();}
 // END instrument-fault-browser-proof
+
+// A fresh MCU starter must not lend its teaching notes or program claim to an
+// unrelated analog file. Use the actual chooser and transport, not load hooks.
+const CONTEXT_IDS = ['analog-import-context', 'own-clock-status'];
+const contextPage = await browser.newPage({viewport: {width: 1600, height: 1000}});
+contextPage.on('pageerror', e => errors.push(`analog import context: ${e.message}`));
+try {
+  await contextPage.goto(`http://localhost:${PORT}/?examples=none`, {waitUntil: 'domcontentloaded'});
+  await contextPage.waitForFunction(() => window.__circuit && window.__board);
+  const starterNote = contextPage.locator('[data-canvas-svg] text').filter({hasText: /STC12C5A60S2: seated/});
+  await starterNote.waitFor(); // positive control: absence after load cannot be vacuous
+  const fixture = {
+    parts: [
+      {id: 'analog-v', kind: 'vsource', x: 100, y: 100, params: {volts: 1}},
+      {id: 'analog-r', kind: 'resistor', x: 250, y: 100, params: {ohms: 1000}},
+      {id: 'analog-g', kind: 'gnd', x: 100, y: 230, params: {}},
+    ],
+    nets: [
+      {id: 'signal', terminals: [{part: 'analog-v', terminal: 'pos'}, {part: 'analog-r', terminal: 'a'}]},
+      {id: 'ground', terminals: [{part: 'analog-v', terminal: 'neg'}, {part: 'analog-r', terminal: 'b'}, {part: 'analog-g', terminal: 'gnd'}]},
+    ],
+  };
+  await contextPage.getByRole('button', {name: 'More circuit controls', exact: true}).click();
+  const choosing = contextPage.waitForEvent('filechooser');
+  await contextPage.getByRole('button', {name: /^📂 Open$/}).click();
+  await (await choosing).setFiles({name: 'analog-context.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(fixture))});
+  await contextPage.waitForFunction(() => window.__circuit.parts.length === 3
+    && window.__circuit.parts.some(p => p.id === 'analog-r'));
+  await starterNote.waitFor({state: 'detached'});
+  verdict(CONTEXT_IDS[0], await contextPage.locator('[data-canvas-svg] text').filter({hasText: /active.low|STC12C5A60S2/}).count() === 0,
+    'file chooser replaces MCU starter with analog circuit and removes starter notes', 'starter teaching context survived analog import');
+  await contextPage.getByRole('radio', {name: /Sim/i}).first().click();
+  await contextPage.getByText('SIMULATING — circuit', {exact: true}).waitFor();
+  if (!await contextPage.locator('[data-instruments-column]').count()) {
+    await contextPage.getByRole('button', {name: /Expand instruments panel/i}).click();
+  }
+  // Keyboard activation avoids waiting for visual stability during live ticks.
+  await contextPage.getByRole('button', {name: /Pause simulation/i}).press('Enter');
+  await contextPage.getByText('PAUSED — circuit simulation', {exact: true}).waitFor();
+  const pausedAt = await contextPage.evaluate(() => {
+    if (typeof window.__board.timeNs !== 'bigint') throw new Error('actual board clock unavailable');
+    return String(window.__board.timeNs);
+  });
+  await contextPage.waitForTimeout(150);
+  if (await contextPage.evaluate(() => String(window.__board.timeNs)) !== pausedAt) throw new Error('paused clock advanced');
+  await contextPage.getByRole('button', {name: /Resume simulation/i}).press('Enter');
+  await contextPage.getByText('SIMULATING — circuit', {exact: true}).waitFor();
+  await contextPage.waitForFunction(before => String(window.__board.timeNs) !== before, pausedAt);
+  verdict(CONTEXT_IDS[1], true, 'own-board status follows running/pause/resume and actual clock', 'unreachable');
+} catch (error) {
+  failAll(CONTEXT_IDS, `analog file context/transport: ${String(error).split('\n')[0]}`);
+} finally {await contextPage.close();}
 
 verdict('zero-page-errors', errors.length === 0,
   'zero page errors',

@@ -1030,6 +1030,9 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
       circuit._syncNetlist();
     }
     circuit._saveHistory();
+    // Inference notes describe the starter, not an independently loaded file.
+    // Clear only after parsing and installing the replacement have succeeded.
+    setAnnotations([]);
     setSelectedParts(new Set());
     setSelectedWire(null);
     setMode('build');
@@ -1254,7 +1257,12 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   } else if (externalBoard && halted) {
     statusText = 'PAUSED — program and board are frozen together';
   } else if (externalBoard) statusText = 'LIVE — emulator driving pins';
-  else if (mode === 'simulate') statusText = 'SIMULATING — scripted MCU demo';
+  else if (mode === 'simulate') {
+    statusText = simClockError ? 'STOPPED — simulation error'
+      : simStepping ? 'STEPPING — circuit simulation'
+      : simPaused ? 'PAUSED — circuit simulation'
+      : 'SIMULATING — circuit';
+  }
   else if (placingProbe) statusText = `Placing probe ${placingProbe} — click a terminal`;
 
   return (

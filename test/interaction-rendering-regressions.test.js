@@ -13,6 +13,67 @@ const boardHookSource = readFileSync(new URL('../src/hooks/useBoard.js', import.
 const paletteSource = readFileSync(new URL('../src/components/PartPalette.jsx', import.meta.url), 'utf8');
 const seatGeneratorSource = readFileSync(new URL('../scripts/seat-examples.mjs', import.meta.url), 'utf8');
 
+test('successful file loads clear starter annotations on both netlist paths', () => {
+  const handler = /const handleLoad = useCallback\(\(data\) => \{([\s\S]*?)\}, \[circuit\]\);/.exec(designerSource);
+  assert.ok(handler, 'execute the actual file-load command');
+  for (const nets of [undefined, [{ id: 'signal', terminals: [] }]]) {
+    let notes = ['old MCU instruction'];
+    const commands = [];
+    const circuit = {
+      _saveHistory() { commands.push('history'); },
+      _syncNetlist() { commands.push('wires'); },
+      syncWithExternalNets() { commands.push('nets'); },
+    };
+    const load = new Function('Circuit', 'circuit', 'setAnnotations',
+      'setSelectedParts', 'setSelectedWire', 'setMode', 'setFitToken', 'data', handler[1]);
+    const parsed = { parts: [{ id: 'analog-r' }], wires: [], breadboards: [] };
+    load({ fromJSON: () => parsed }, circuit, value => {
+      assert.equal(circuit.parts, parsed.parts, 'install replacement before clearing notes');
+      assert.equal(commands.at(-1), 'history', 'finish netlist/history first');
+      notes = value;
+    }, () => {}, () => {}, () => {}, () => {}, { parts: [], nets });
+    assert.deepEqual(notes, []);
+    assert.deepEqual(commands, ['history', nets ? 'nets' : 'wires', 'history']);
+  }
+});
+
+test('invalid file loads retain starter context and circuit state', () => {
+  const handler = /const handleLoad = useCallback\(\(data\) => \{([\s\S]*?)\}, \[circuit\]\);/.exec(designerSource);
+  assert.ok(handler);
+  const load = new Function('Circuit', 'circuit', 'setAnnotations',
+    'setSelectedParts', 'setSelectedWire', 'setMode', 'setFitToken', 'console', 'data', handler[1]);
+  const unexpected = () => assert.fail('invalid load must not mutate context');
+  for (const data of [null, {}, { parts: [] }]) {
+    const errors = [];
+    load({ fromJSON: () => { throw new Error('invalid fixture'); } }, {},
+      unexpected, unexpected, unexpected, unexpected, unexpected,
+      { error: (...args) => errors.push(args) }, data);
+    assert.equal(errors.length, data?.parts ? 1 : 0);
+  }
+});
+
+test('own simulation status follows actual transport state without claiming an MCU', () => {
+  const block = /  let statusText = null;([\s\S]*?)\n  return \(/.exec(designerSource);
+  assert.ok(block, 'execute the real status precedence block');
+  // Use named inputs so each asserted state reaches the actual expression.
+  const read = overrides => {
+    const state = { hasSimulation: true, externalBoard: false, halted: false,
+      staleBy: 0, mode: 'simulate', simClockError: null, simStepping: false,
+      simPaused: false, placingProbe: null, ...overrides };
+    return new Function(...Object.keys(state), `let statusText = null;${block[1]}\nreturn statusText;`)(...Object.values(state));
+  };
+  assert.equal(read({}), 'SIMULATING — circuit');
+  assert.equal(read({ simPaused: true }), 'PAUSED — circuit simulation');
+  assert.equal(read({ simPaused: true, simStepping: true }), 'STEPPING — circuit simulation');
+  assert.equal(read({ simPaused: true, simStepping: true, simClockError: 'fault' }), 'STOPPED — simulation error');
+  assert.equal(read({ externalBoard: true, simPaused: true }), 'LIVE — emulator driving pins');
+  assert.equal(read({ externalBoard: true, halted: true }), 'PAUSED — program and board are frozen together');
+  assert.match(read({ externalBoard: true, halted: true, staleBy: 1500 }), /^SNAPSHOT.*1\.5 s/);
+  assert.match(read({ externalBoard: true, hasSimulation: false, halted: true }), /^HARDWARE/);
+  assert.equal(read({ mode: 'build' }), null);
+  assert.equal(read({ mode: 'build', placingProbe: 'B' }), 'Placing probe B — click a terminal');
+});
+
 // Execute the actual ordinary-JS policy and caller expression from the JSX
 // owner. These are hint-policy tests, not browser rendering/hit-test evidence.
 function liveSupplyConflict(sourcePart, sourceTerminal, targetPart, targetTerminal, isValidTarget = true) {
