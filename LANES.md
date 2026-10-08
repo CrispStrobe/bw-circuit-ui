@@ -1,5 +1,19 @@
 # Work lanes
 
+2026-10-08 cooperative clock hosted red1 evidence — CLAIM expansion, Codex bwcx.
+Existing lane/cooperative-live-clock-20261007 only; exact master
+fea2f39cedd5cf29bb96993d796a70de88b6e2fb. Add only
+test/meter-integral-consumer.test.js to the existing source/package envelope.
+CI37732786208 atb208a205 passed spice-oracle, kicad-oracle and interaction-gate;
+test:source-precision passed129/130, with its sole failure an old literal
+31c6499 package-SHA assertion after the legitimate60b2f395 package adoption.
+Retain the real loaded-package provenance qualification and nonsymlink check;
+derive the expected identity from the existing reviewed provenance record, not
+a second stale hard-coded pin. Prove a wrong current record/loaded identity
+still fails. No production, pin, lock, digest, tolerance or workflow changes.
+Publish this claim-only expansion before editing the one test, preserve the
+original red and qualify one final forward replacement; browser return held.
+
 2026-10-08 cooperative designer clock provenance envelope — CLAIM expansion,
 Codex bwcx, existing lane/cooperative-live-clock-20261007 only. Exact current
 mastera374782d8f8b3ec2a9f7e2bfbdffbaa0e6d4f4dc. Add only
