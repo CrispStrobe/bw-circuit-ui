@@ -176,6 +176,7 @@ const EXPECTED = [
   'lt1763-place',
   'analog-import-context',
   'own-clock-status',
+  'scope-sim-reset-epoch',
   'zero-page-errors',
 ];
 
@@ -2150,7 +2151,7 @@ try {
 
 // A fresh MCU starter must not lend its teaching notes or program claim to an
 // unrelated analog file. Use the actual chooser and transport, not load hooks.
-const CONTEXT_IDS = ['analog-import-context', 'own-clock-status'];
+const CONTEXT_IDS = ['analog-import-context', 'own-clock-status', 'scope-sim-reset-epoch'];
 const contextPage = await browser.newPage({viewport: {width: 1600, height: 1000}});
 contextPage.on('pageerror', e => errors.push(`analog import context: ${e.message}`));
 try {
@@ -2197,6 +2198,43 @@ try {
   await contextPage.getByText('SIMULATING — circuit', {exact: true}).waitFor();
   await contextPage.waitForFunction(before => String(window.__board.timeNs) !== before, pausedAt);
   verdict(CONTEXT_IDS[1], true, 'own-board status follows running/pause/resume and actual clock', 'unreachable');
+  await contextPage.getByRole('button', {name: /Pause simulation/i}).press('Enter');
+  await contextPage.getByText('PAUSED — circuit simulation', {exact: true}).waitFor();
+  const scope = contextPage.locator('[data-scope-panel]');
+  if (!await scope.count()) await contextPage.getByRole('button', {name: /Scope/i}).first().click();
+  await scope.waitFor();
+  await scope.getByTestId('bw-scope-record').selectOption('100000');
+  const picker = scope.locator('select').last();
+  await picker.selectOption({index: 1});
+  await scope.getByText('+ channel', {exact: false}).click();
+  const handle = await contextPage.evaluate(() => {
+    const b = window.__board, handles = b.getScopeChannels();
+    if (handles.length !== 1 || b.getTime() <= 0n) throw new Error('late attached scope positive control missing');
+    return handles[0];
+  });
+  await contextPage.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+  await contextPage.waitForFunction(h => window.__board.getScopeData(h).count >= 5000, handle);
+  // These real mode controls invoke the designer's shared arming/reset path.
+  // Paused state is retained, so no timer can obscure the empty reset epoch.
+  await contextPage.getByRole('radio', {name: 'Build mode', exact: true}).click();
+  await contextPage.getByRole('radio', {name: 'Sim mode', exact: true}).click();
+  await contextPage.getByText('PAUSED — circuit simulation', {exact: true}).waitFor();
+  await contextPage.waitForFunction(() => window.__board.getTime() === 0n);
+  const reset = await contextPage.evaluate(h => {
+    const b = window.__board, d = b.getScopeData(h);
+    return b.getScopeChannels().length === 1 && b.getScopeChannels()[0] === h
+      && d.count === 0 && d.writeIndex === 0 && [...d.samples].every(Number.isNaN);
+  }, handle);
+  if (!reset) throw new Error('mode reset retained old scope history or replaced its handle');
+  await contextPage.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+  await contextPage.waitForFunction(() => window.__board.getTime() === 50000000n);
+  const complete = await contextPage.evaluate(h => {
+    const d = window.__board.getScopeData(h);
+    return d.count === 5000 && d.startTNs === 0n && [...d.samples.slice(0, 10000)].every(Number.isFinite);
+  }, handle);
+  verdict(CONTEXT_IDS[2], complete,
+    'real scope picker and Build/Sim reset retain handle and capture all first 5000 envelopes',
+    'first post-reset 50ms capture is incomplete or carries old timestamps');
 } catch (error) {
   failAll(CONTEXT_IDS, `analog file context/transport: ${String(error).split('\n')[0]}`);
 } finally {await contextPage.close();}

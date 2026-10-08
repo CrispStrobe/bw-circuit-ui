@@ -1,7 +1,7 @@
 # Work lanes
 
-2026-10-08 attached scope reset package adoption — CLAIM, Codex bwcx.
-Branch lane/scope-reset-package-20261008; exact base
+2026-10-08 attached scope reset package adoption — DONE candidate, Codex bwcx.
+Branch fable/scope-reset-package-20261008; exact base
 9279601388ea4177db8730469dfb8c1f226fd569. Six paths only: this ledger,
 package.json, package-lock.json, scripts/board-provenance.json,
 test/board-provenance.test.js and scripts/verify-interaction.mjs. Adopt exact
@@ -13,6 +13,20 @@ scope picker and Build/Sim controls: retained handle, empty reset epoch, first
 production UI/model/clock behavior. No palette optimization, engine source copy,
 solver tuning, Lite pin, workflow, deployment or performance claim. Remote
 claim before implementation; one final full automatic qualification and guarded FF.
+Remote claimba39b2e preceded edits; branch renamed to the existing fable/**
+automatic CI trigger without changing workflows. npm regenerated only the Board
+declaration/resolution/integrity. Installed nonsymlink package runtime hash
+3237d9e49be40d475e59a6b57c0d17fc454a3cf78bfe8cf4c65af58fe3abe2b2;
+all305 runtime files independently match exact promoted Git blobs. Do not derive
+package hashes from a sparse source tree: omitted runtime directories produced
+a rejected preliminary hash, corrected against the full installed artifact.
+Old installed engine genuinely fails the shared-arming reset assertion; an
+initial npm up-to-date result also retained old bytes, caught by provenance and
+semantic gates. Fresh package and affected suites pass42/42, zero skips.
+Browser roll-call adds actual chooser/picker, late nonempty capture, Build/Sim
+reset while paused, same handle with empty NaN ring, then exact50ms/5000 complete
+envelopes from zero. Browser qualification remains pending; no deployment,
+waveform-accuracy, palette or performance claim. Source/whitespace checks clean.
 
 2026-10-08 static parts-palette memoization — DONE rejected performance, Codex bwcx.
 Branch fable/static-palette-memo-20261008, exact base
