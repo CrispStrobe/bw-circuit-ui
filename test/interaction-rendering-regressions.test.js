@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { createHitTest, partBounds } from '../src/interaction/hittest.js';
 import { runDrc } from '../src/model/drc.js';
+import React from 'react';
+import { transformSync } from 'rolldown/experimental';
 
 const canvasSource = readFileSync(new URL('../src/components/BoardCanvas.jsx', import.meta.url), 'utf8');
 const breadboardSource = readFileSync(new URL('../src/components/BreadboardView.jsx', import.meta.url), 'utf8');
@@ -12,6 +14,31 @@ const designerSource = readFileSync(new URL('../src/components/CircuitDesigner.j
 const boardHookSource = readFileSync(new URL('../src/hooks/useBoard.js', import.meta.url), 'utf8');
 const paletteSource = readFileSync(new URL('../src/components/PartPalette.jsx', import.meta.url), 'utf8');
 const seatGeneratorSource = readFileSync(new URL('../scripts/seat-examples.mjs', import.meta.url), 'utf8');
+
+test('actual palette export uses default React memo comparison, not a stale-prop comparator', () => {
+  // Compile the real component without invoking hooks or replacing React.memo.
+  // Browser acceptance owns actual React state and render scheduling.
+  const source = paletteSource.replace(/^import .*;\n/gm, '').replace('export const PartPalette', 'const PartPalette');
+  const compiled = transformSync('PartPalette.jsx', source, {jsx: {runtime: 'classic'}});
+  assert.deepEqual(compiled.errors, []);
+  const palette = new Function('React', 'useState', 'PartThumbnail', `${compiled.code}\nreturn PartPalette;`)(React, React.useState, () => null);
+  assert.equal(palette.$$typeof, Symbol.for('react.memo'));
+  assert.equal(palette.compare, null, 'default comparator observes all props, including changed handlers/theme');
+  assert.equal(palette.type.name, 'PartPalette');
+});
+
+test('palette placement command is stable and forwards each fresh kind/params unchanged', () => {
+  const command = /const handleStartPlace = useCallback\(\(kind, params\) => \{([\s\S]*?)\}, \[\]\);/.exec(designerSource);
+  assert.ok(command, 'real command has no per-simulation dependency');
+  assert.ok(/<PartPalette[^>]*onStartPlace=\{handleStartPlace\}/.test(designerSource),
+    'the real palette caller must receive the stable command');
+  const execute = new Function('setPlacingPart', 'kind', 'params', command[1]);
+  for (const [kind, params] of [['led', {color: 'blue'}], ['resistor', {ohms: 4700}]]) {
+    let placed;
+    execute(value => { placed = value; }, kind, params);
+    assert.equal(placed.kind, kind); assert.equal(placed.params, params);
+  }
+});
 
 test('successful file loads clear starter annotations on both netlist paths', () => {
   const handler = /const handleLoad = useCallback\(\(data\) => \{([\s\S]*?)\}, \[circuit\]\);/.exec(designerSource);

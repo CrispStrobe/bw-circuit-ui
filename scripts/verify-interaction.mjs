@@ -176,6 +176,8 @@ const EXPECTED = [
   'lt1763-place',
   'analog-import-context',
   'own-clock-status',
+  'palette-clock-isolation',
+  'palette-state-placement',
   'zero-page-errors',
 ];
 
@@ -2150,7 +2152,7 @@ try {
 
 // A fresh MCU starter must not lend its teaching notes or program claim to an
 // unrelated analog file. Use the actual chooser and transport, not load hooks.
-const CONTEXT_IDS = ['analog-import-context', 'own-clock-status'];
+const CONTEXT_IDS = ['analog-import-context', 'own-clock-status', 'palette-clock-isolation', 'palette-state-placement'];
 const contextPage = await browser.newPage({viewport: {width: 1600, height: 1000}});
 contextPage.on('pageerror', e => errors.push(`analog import context: ${e.message}`));
 try {
@@ -2197,6 +2199,56 @@ try {
   await contextPage.getByText('SIMULATING — circuit', {exact: true}).waitFor();
   await contextPage.waitForFunction(before => String(window.__board.timeNs) !== before, pausedAt);
   verdict(CONTEXT_IDS[1], true, 'own-board status follows running/pause/resume and actual clock', 'unreachable');
+
+  await contextPage.getByRole('button', {name: /Pause simulation/i}).press('Enter');
+  await contextPage.getByText('PAUSED — circuit simulation', {exact: true}).waitFor();
+  const client = await contextPage.context().newCDPSession(contextPage);
+  await client.send('Debugger.enable');
+  const {result: paletteFunction} = await client.send('Runtime.evaluate', {
+    expression: "import('/src/components/PartPalette.jsx').then(m => m.PartPalette.type || m.PartPalette)",
+    awaitPromise: true,
+  });
+  if (!paletteFunction.objectId || paletteFunction.type !== 'function') throw new Error('actual palette render function unavailable');
+  const {breakpointId} = await client.send('Debugger.setBreakpointOnFunctionCall', {objectId: paletteFunction.objectId});
+  let paletteRenders = 0;
+  const debuggerErrors = [];
+  client.on('Debugger.paused', event => {
+    if (event.hitBreakpoints?.includes(breakpointId)) paletteRenders++;
+    else debuggerErrors.push('unexpected debugger pause');
+    client.send('Debugger.resume').catch(error => debuggerErrors.push(String(error)));
+  });
+  const palette = contextPage.locator('[data-parts-palette]');
+  const search = palette.getByPlaceholder('search...');
+  await search.fill('resistor');
+  await palette.getByRole('button', {name: 'Resistor 1kΩ', exact: true}).waitFor();
+  if (paletteRenders === 0) throw new Error('palette counter did not observe the real search-state render');
+  await search.fill('led');
+  await palette.getByRole('button', {name: 'LED', exact: true}).waitFor();
+  await palette.locator('div[style*="border-radius: 50%"][style*="background: blue"]').click();
+  await palette.getByRole('button', {name: 'LED', exact: true}).getByText('LED (blue)', {exact: true}).waitFor();
+  await search.fill('');
+  await palette.getByRole('button', {name: 'Resistor 1kΩ', exact: true}).waitFor();
+  const beforeRenders = paletteRenders;
+  const beforeClock = await contextPage.evaluate(() => String(window.__board.getTime()));
+  await contextPage.getByRole('button', {name: /Resume simulation/i}).press('Enter');
+  await contextPage.waitForFunction(before => window.__board.getTime() >= BigInt(before) + 150000000n, beforeClock);
+  await contextPage.getByRole('button', {name: /Pause simulation/i}).press('Enter');
+  await contextPage.getByText('PAUSED — circuit simulation', {exact: true}).waitFor();
+  verdict(CONTEXT_IDS[2], paletteRenders === beforeRenders && debuggerErrors.length === 0,
+    'actual palette render counter stays fixed through150ms live board progress after positive search/color controls',
+    `palette rendered ${paletteRenders-beforeRenders} times on clock/transport updates; ${debuggerErrors.join('; ')}`);
+  await client.send('Debugger.removeBreakpoint', {breakpointId});
+  await client.detach();
+  await contextPage.getByRole('radio', {name: 'Build mode', exact: true}).click();
+  await palette.getByRole('button', {name: 'LED', exact: true}).press('Enter');
+  const canvasBox = await contextPage.locator('[data-canvas-svg]').boundingBox();
+  if (!canvasBox) throw new Error('real placement canvas unavailable');
+  const placement = {x: canvasBox.x+canvasBox.width-40, y: canvasBox.y+canvasBox.height-40};
+  await contextPage.mouse.move(placement.x, placement.y);
+  await contextPage.locator('[data-placement-ghost="led"]').waitFor();
+  await contextPage.mouse.click(placement.x, placement.y);
+  await contextPage.waitForFunction(() => window.__circuit.parts.some(p => p.kind==='led' && p.params.color==='blue'));
+  verdict(CONTEXT_IDS[3], true, 'memoized palette retains search, LED color and real keyboard-to-pointer placement command', 'unreachable');
 } catch (error) {
   failAll(CONTEXT_IDS, `analog file context/transport: ${String(error).split('\n')[0]}`);
 } finally {await contextPage.close();}

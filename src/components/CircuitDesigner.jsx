@@ -735,6 +735,10 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
   }, [externalBoard]);
 
   // ── Part placement — find empty space ────────────────────────────
+  const handleStartPlace = useCallback((kind, params) => {
+    setPlacingPart({ kind, params });
+  }, []);
+
   const handleAddPart = useCallback((kind, params) => {
     // Find a position whose BODY does not overlap an existing body and does
     // not hang off the canvas.
@@ -1295,7 +1299,7 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
           <div data-parts-selector style={{position: 'relative', flex: partsOpen ? `${selectorSplit} 1 0` : '0 0 30px', minHeight: partsOpen ? 80 : 30, display: 'flex', minWidth: 0, overflow: 'hidden'}}>
             <button onClick={() => setPartsOpen(v => !v)} aria-label={partsOpen ? 'Collapse Parts' : 'Expand Parts'} aria-expanded={partsOpen} title={partsOpen ? 'Collapse Parts' : 'Expand Parts'} style={{position: 'absolute', zIndex: 4, left: 2, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{partsOpen ? '‹' : '›'}</button>
             {partsOpen ? (
-              <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
+              <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={handleStartPlace} />
             ) : (
               <div style={{padding: '6px 8px 6px 14px', color: '#334155', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%'}} onClick={() => setPartsOpen(true)}>Parts</div>
             )}

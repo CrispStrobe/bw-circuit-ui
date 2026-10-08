@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-08 static parts-palette memoization — CLAIM, Codex bwcx.
+2026-10-08 static parts-palette memoization — DONE candidate, Codex bwcx.
 Branch fable/static-palette-memo-20261008, exact base
 c799dbc3dae7ccd2696b4c8e5160aa4768de4b14. Five paths only: this ledger,
 src/components/PartPalette.jsx, src/components/CircuitDesigner.jsx,
@@ -16,6 +16,19 @@ lock, workflow, scope/meter math, other renderer, Lite or deployment changes.
 Remote claim before edits; one final automatic full exact-head CI. Landing is
 additionally held for a separately owned, unprofiled production comparison
 with unchanged waveform/semantic gates; no performance claim from unit counts.
+Remote claimf68d889 preceded the five-path implementation. Real JSX export is
+compiled in the unit test and evaluated against actual React.memo, requiring
+default comparison and no custom stale-prop comparator. The real stable command
+is executed for fresh LED/resistor parameter identities; its actual JSX binding
+is asserted. Restored adjacent suite72/72 passes, zero skips. Removing memo and
+restoring the inline caller independently fail their named controls; restored.
+Hosted browser roll-call adds real-component render counting via an isolated
+CDP function-call breakpoint, positive search/color renders, then150ms actual
+board progress with zero palette renders, followed by real blue-LED keyboard/
+pointer placement. Debugger counting is a semantic proof, not timing evidence;
+the breakpoint is removed before placement and never enters performance runs.
+Syntax/JSX/whitespace pass; no local browser, numerical change or speedup claim.
+One final exact full CI and separate unprofiled comparison remain mandatory.
 
 2026-10-08 imported-circuit simulation context — DONE candidate, Codex bwcx.
 Branch fable/import-simulation-context-20261008; exact base

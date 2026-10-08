@@ -311,7 +311,9 @@ const CATEGORIES = [
 
 const ALL_PARTS = CATEGORIES.flatMap(c => c.parts);
 
-export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark' }) {
+// Simulation readings live elsewhere. Default shallow comparison still
+// invalidates every changed command/theme; local filter/color state is live.
+export const PartPalette = React.memo(function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark' }) {
   const [filter, setFilter] = useState('');
   const [ledColor, setLedColor] = useState('red');
   const light = theme === 'light';
@@ -384,7 +386,7 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
       )}
     </div>
   );
-}
+});
 
 function PartButton({ part, palette, onAddPart, onDragPart, onStartPlace, ledColor, onLedColorChange }) {
   const { kind, label, params, color, tooltip, capability, hasColorPicker } = part;
