@@ -60,6 +60,19 @@ The exact installed package remains31c6499 pending upstream landing. Engine
 44f2fe70 passed CI37702752012 and Harris37702752065, but upstream master advanced
 with oracle-install time bounds only. Source-identical merge60b2f395 passed65/65
 locally and is awaiting fresh CI37728820745/Harris37728820757. No pin changes yet.
+2026-10-08 adoption preflight: remote expansionfea2f39 adds only the existing
+scripts/board-provenance.json record, then merges into this preparation without
+changing source. Harris37728820757 passed; CI37728820745 remains queued, so
+engine landing/package edits stay held. The sparse engine tree omits runtime
+files: refuse its partial filesystem digest. Exact git-object enumeration of
+all305 tracked package/source runtime files at60b2f395 yields SHA256
+ef4c964e4d46838700b8780097b716f2c9e1e0e34092e45853d25269aa9a32c7.
+The same independent object enumeration reproduces the existing reviewed
+31c6499 package digestdf92359f over302 files exactly. This is a source preview,
+not installed-package verification; adoption must still check actual installed
+bytes with the unchanged provenance guard. The package range contains19 changed
+runtime/package paths, so full consumer qualification cannot be substituted by
+the focused clock tests. No shared node_modules install was modified.
 
 2026-10-07 relative-source live wiring hints — DONE candidate, Codex bwcx.
 Branch fable/relative-source-wiring-hints-20261007, exact base
