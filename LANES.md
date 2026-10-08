@@ -37,6 +37,17 @@ Package files remain unchanged at Board31c6499. Keep this implementation local
 until Board44f2fe70 is accepted/landed, then adopt its exact package/lock, mark
 DONE in the final candidate and qualify full CUI CI before landing. No CUI
 candidate push, manual dispatch, consumer adoption or deployment occurred yet.
+Additional local source-bound integration exercises the real LM741 through
+the controller and Circuit proxy, not a receipt stub:250us of device work
+yields between timer callbacks, wraps a16-point sample ring, and every point
+agrees with its absolute-time finite-gain sine reference within4mV. Substituting
+an ordinary bulk advance in the proxy rejects at the actual controller receipt
+check; restored. Combined67/67 pass with an explicit module-resolution override
+to upstream source60b2f395; this is NOT installed-package or browser proof.
+The exact installed package remains31c6499 pending upstream landing. Engine
+44f2fe70 passed CI37702752012 and Harris37702752065, but upstream master advanced
+with oracle-install time bounds only. Source-identical merge60b2f395 passed65/65
+locally and is awaiting fresh CI37728820745/Harris37728820757. No pin changes yet.
 
 2026-10-07 relative-source live wiring hints — DONE candidate, Codex bwcx.
 Branch fable/relative-source-wiring-hints-20261007, exact base

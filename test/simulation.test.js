@@ -11,8 +11,8 @@ import { demoPinScriptApplies, armBoardForRun, classifyRunPins, greenFlagArmsOwn
 import { Circuit } from '../src/model/circuit.js';
 import { readFileSync } from 'node:fs';
 
-// Controller tests deliberately model clock receipts, not circuit physics.
-// Native device/solver behavior is qualified upstream and in the browser return.
+// Lifecycle tests model clock receipts, not circuit physics. The separate
+// native integration below exercises the installed package through the proxy.
 function clockHarness(options = {}) {
   let time = 0n, paused = options.paused ?? false, speed = options.speed ?? 1;
   let nextId = 0;
@@ -147,6 +147,69 @@ describe('cooperative designer clock lifecycle (not a solver oracle)',()=>{
       const h=clockHarness(options);h.driver.start();h.tick();
       assert.equal(h.errors.length,1);assert.equal(h.requests.length,0);assert.equal(h.pending.size,0);
     }
+  });
+});
+
+describe('installed native engine through the designer controller and Circuit proxy',()=>{
+  it('yields actual LM741 device work and preserves truthful scope samples',()=>{
+    const { BoardImpl } = getEngine();
+    const board = new BoardImpl(5);
+    const net = (id,...pins)=>({id,terminals:pins.map(([part,terminal])=>({part,terminal}))});
+    board.setNetlist([
+      {id:'VP',kind:'vsource',params:{volts:15},terminals:['pos','neg']},
+      {id:'VN',kind:'vsource',params:{volts:15},terminals:['pos','neg']},
+      {id:'VI',kind:'vsource',params:{wave:'spice-sine',offset:.25,amplitude:.5,
+        freq:100,td:0,theta:0,phase:0},terminals:['pos','neg']},
+      {id:'G',kind:'gnd',params:{},terminals:['gnd']},
+      {id:'U',kind:'lm741',params:{inputOffsetV:0},
+        terminals:['offset_1','inn','inp','vneg','offset_5','out','vpos','nc']},
+      {id:'R',kind:'resistor',params:{ohms:100000},terminals:['a','b']},
+    ],[
+      net('zero',['G','gnd'],['VP','neg'],['VN','pos'],['VI','neg'],['R','b']),
+      net('positive',['VP','pos'],['U','vpos']),net('negative',['VN','neg'],['U','vneg']),
+      net('input',['VI','pos'],['U','inp']),net('out',['U','out'],['U','inn'],['R','a']),
+    ]);
+    board.setPower(true);
+    const scope=board.addScopeChannel({type:'voltage',netId:'out',referenceNetId:'zero',
+      sampleRateHz:100000,depth:16,capture:'sample'});
+    const circuit=Object.assign(Object.create(Circuit.prototype),{board,timeNs:0n});
+    const pending=new Map(),receipts=[],errors=[];let next=0;
+    const driver=createDesignerLiveClock({
+      getTime:()=>circuit.timeNs,isPaused:()=>true,
+      advanceToLive:(target,options)=>circuit.advanceToLive(target,options),
+      schedule:fn=>{const id=next++;pending.set(id,fn);return id;},
+      cancel:id=>pending.delete(id),onProgress:r=>receipts.push(r),onError:e=>errors.push(e),
+    });
+    driver.requestAdvance(250000n);
+    let turns=0;
+    while(pending.size){
+      assert.equal(pending.size,1);
+      const [id,fn]=pending.entries().next().value;pending.delete(id);fn();
+      assert.equal(circuit.timeNs,board.getTime());
+      assert.deepEqual(errors,[]);
+      if(turns++===0){
+        assert.ok(circuit.timeNs>0n&&circuit.timeNs<250000n,'native work genuinely yields');
+        assert.equal(receipts[0].completed,false);
+        assert.equal(pending.size,1,'continuation returns to the timer queue');
+      }
+      assert.ok(turns<100,'bounded test invocation count');
+    }
+    assert.ok(turns>1);assert.equal(circuit.timeNs,250000n);
+    assert.equal(receipts.at(-1).completed,true);
+    assert.equal(board._deviceSubstepOverflow,false);
+    assert.equal(board.transientAnalysisStatus().failure,null);
+    const data=board.getScopeData(scope);
+    const depth=data.samples.length/2,count=Math.min(data.count,depth);
+    assert.equal(count,16);assert.ok(data.count>depth,'the capture really wrapped');
+    const oldest=((data.writeIndex-count)%depth+depth)%depth;
+    for(let i=0;i<count;i++){
+      const index=((oldest+i)%depth)*2;
+      assert.equal(data.samples[index],data.samples[index+1],'instant samples, not envelopes');
+      const t=Number(BigInt(data.startTNs)+BigInt(i)*BigInt(data.sampleIntervalNs))*1e-9;
+      const expected=(.25+.5*Math.sin(2*Math.PI*100*t))*200000/200001;
+      assert.ok(Math.abs(data.samples[index]-expected)<.004,`sample ${i} must match its own time`);
+    }
+    driver.stop();
   });
 });
 
