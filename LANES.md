@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-08 static parts-palette memoization — CLAIM, Codex bwcx.
+2026-10-08 static parts-palette memoization — DONE rejected performance, Codex bwcx.
 Branch fable/static-palette-memo-20261008, exact base
 c799dbc3dae7ccd2696b4c8e5160aa4768de4b14. Five paths only: this ledger,
 src/components/PartPalette.jsx, src/components/CircuitDesigner.jsx,
@@ -16,6 +16,14 @@ lock, workflow, scope/meter math, other renderer, Lite or deployment changes.
 Remote claim before edits; one final automatic full exact-head CI. Landing is
 additionally held for a separately owned, unprofiled production comparison
 with unchanged waveform/semantic gates; no performance claim from unit counts.
+Candidate57ae68167827d697971a4531506ce27b663708b3 passed all four semantic
+jobs in [CI37787653744](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/37787653744),
+including68/68 actual browser scenarios: real palette render isolation and
+search/color/placement remain correct. The separate fixed-workload production
+comparison missed its predeclared median performance gate. Candidate source
+stays frozen and UNMERGED; semantic green does not override that rejection.
+This closeout changes only the ledger, not source, packages or deployment.
+No unchanged performance rerun or lowered acceptance gate is authorized.
 
 2026-10-08 imported-circuit simulation context — DONE candidate, Codex bwcx.
 Branch fable/import-simulation-context-20261008; exact base
