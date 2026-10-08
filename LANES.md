@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-08 cooperative clock hosted red1 evidence — CLAIM expansion, Codex bwcx.
+2026-10-08 cooperative clock hosted red1 evidence — DONE candidate, Codex bwcx.
 Existing lane/cooperative-live-clock-20261007 only; exact master
 fea2f39cedd5cf29bb96993d796a70de88b6e2fb. Add only
 test/meter-integral-consumer.test.js to the existing source/package envelope.
@@ -13,6 +13,17 @@ a second stale hard-coded pin. Prove a wrong current record/loaded identity
 still fails. No production, pin, lock, digest, tolerance or workflow changes.
 Publish this claim-only expansion before editing the one test, preserve the
 original red and qualify one final forward replacement; browser return held.
+Remote expansion6021bd8 preceded the one-test repair. The hosted stale-SHA
+assertion reproduced locally on the actual installed60b2f395 package. Expected
+identity now comes from the existing reviewed provenance record; its40-hex
+format, actual loaded-content/lock qualification and nonsymlink checks remain
+mandatory. All22 meter-integral-consumer tests pass, zero skips, including actual
+CLI/live ngspice inductor means. Restoring the old identity in the reviewed
+record makes this same meter caller fail at the real record/package mismatch
+guard, even though its expected value also reads the record; restored. No
+production/package/lock/digest/workflow or numeric bound changed fromb208a205.
+The failed run remains evidence, not a rerun target. Qualify one forward exact
+candidate under the same automatic branch filter before any landing/browser run.
 
 2026-10-08 cooperative designer clock provenance envelope — DONE candidate,
 Codex bwcx, existing lane/cooperative-live-clock-20261007 only. Exact current
