@@ -1,5 +1,20 @@
 # Work lanes
 
+2026-10-08 imported-circuit simulation context — CLAIM, Codex bwcx.
+Branch fable/import-simulation-context-20261008; exact base
+2974fe0ea3735560140a3b066bf60ef966f16b5c. Four paths only: this ledger,
+src/components/CircuitDesigner.jsx,
+test/interaction-rendering-regressions.test.js, scripts/verify-interaction.mjs.
+Successful file imports clear starter teaching annotations; invalid imports
+retain the existing context. Own-board status distinguishes running, paused,
+stepping and stopped-on-error without claiming an MCU program exists.
+Preserve external hardware/live/snapshot status precedence. Execute the actual
+handler/status source in focused tests, reject annotation/status mutants, and
+exercise real file chooser plus running/pause/resume in hosted browser coverage.
+No engine/model/clock/instrument math, package/pin/lock, workflow, Lite or
+deployment changes. Publish this claim before implementation; final DONE
+candidate receives one automatic full exact-head CI before guarded normal FF.
+
 2026-10-08 cooperative clock hosted red1 evidence — DONE candidate, Codex bwcx.
 Existing lane/cooperative-live-clock-20261007 only; exact master
 fea2f39cedd5cf29bb96993d796a70de88b6e2fb. Add only
