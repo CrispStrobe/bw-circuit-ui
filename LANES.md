@@ -1,5 +1,19 @@
 # Work lanes
 
+2026-10-08 attached scope reset package adoption — CLAIM, Codex bwcx.
+Branch lane/scope-reset-package-20261008; exact base
+9279601388ea4177db8730469dfb8c1f226fd569. Six paths only: this ledger,
+package.json, package-lock.json, scripts/board-provenance.json,
+test/board-provenance.test.js and scripts/verify-interaction.mjs. Adopt exact
+bw-board ac7595b609daa75717c696830982f59940c97e8b, qualified by CI37805382935
+and Harris37805382883 and now on master. Installed nonsymlink runtime identity,
+real attached-channel reset through the shared arming helper, then hosted actual
+scope picker and Build/Sim controls: retained handle, empty reset epoch, first
+50ms step with no missing samples. Preserve native failure authority and all
+production UI/model/clock behavior. No palette optimization, engine source copy,
+solver tuning, Lite pin, workflow, deployment or performance claim. Remote
+claim before implementation; one final full automatic qualification and guarded FF.
+
 2026-10-08 static parts-palette memoization — DONE rejected performance, Codex bwcx.
 Branch fable/static-palette-memo-20261008, exact base
 c799dbc3dae7ccd2696b4c8e5160aa4768de4b14. Five paths only: this ledger,
