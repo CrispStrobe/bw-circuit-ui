@@ -1,5 +1,17 @@
 # Work lanes
 
+2026-10-08 cooperative designer clock provenance envelope — CLAIM expansion,
+Codex bwcx, existing lane/cooperative-live-clock-20261007 only. Exact current
+mastera374782d8f8b3ec2a9f7e2bfbdffbaa0e6d4f4dc. Add only
+scripts/board-provenance.json to that lane's nine-path envelope: the existing
+provenance guard requires its exact engine commit and runtime-tree digest to
+match package.json, lockfile and actually installed bytes. Derive the digest
+from the accepted exact source/package, never weaken the guard or use a source
+resolution override as installed-package evidence. No generator, provenance
+implementation/test, workflow or additional production changes. The original
+engine landing and single final CUI qualification requirements remain intact.
+Publish this ledger-only expansion before editing the provenance record.
+
 2026-10-07 cooperative designer clock — CLAIM, Codex bwcx.
 Branch lane/cooperative-live-clock-20261007, exact base
 c19120365bca1a64ed802e3804274ddb5d587fbf. Nine paths only: this ledger,
