@@ -128,3 +128,11 @@ Historical receipts remain in their detailed documents, not this introduction.
 ## License
 
 MIT. See [LICENSE](LICENSE) and [third-party notices](THIRD-PARTY.md).
+
+## Affiliation and trademarks
+
+bw-circuit-ui is an independent project and is not affiliated with, authorized
+by, or endorsed by the makers of the circuit and board file formats it imports
+and exports (among them SPICE, LTspice, KiCad, EAGLE, EasyEDA, Fritzing and
+Wokwi) or of any hardware it models. Those names describe file formats and
+devices only; all trademarks belong to their respective owners.
