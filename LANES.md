@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-14 precision meter engine package adoption — CLAIM, Codex bwcx.
+2026-10-14 precision meter engine package adoption — DONE candidate, Codex bwcx.
 Branch fable/precision-meter-package-20261014; exact base
 0122af83584ff3498deba11df30c12f4508d234a. Six paths only: this ledger,
 package.json, generated package-lock.json, scripts/board-provenance.json,
@@ -17,6 +17,16 @@ existing source-precision/CLI/provenance tests. Local work is metadata/pure
 source checks only; no engine, SPICE or browser execution. No Board source
 copy, importer/model/solver/profile/default, other dependency, workflow,
 Lite pin, corpus or deployment edit. Publish this claim before implementation.
+Canonical claim3fea055f preceded implementation. Lock-only generation changes
+only the Board declaration/resolution/integrity; all other package records stay
+unchanged. Full Git-source runtime fingerprint reproduces the old305-file
+control and derives new315-file identity13af8c4a34aeb22484328af9fb02adc5bbeede3fbdd42815352636164c662a2e;
+actual installed provenance still requires hosted qualification. Pure refined
+linear reference mean differs by0.105 nV from its independent25 ns quadrature;
+syntax/whitespace/metadata checks pass. Three installed CLI cases preserve
+360 actual CSV observations and signed means/work receipts for raw-log audit.
+No local engine/SPICE/browser execution or installed/GUI success claimed.
+Require every enabled exact-head CI job green before guarded normal landing.
 
 2026-10-08 attached scope reset package adoption — DONE candidate, Codex bwcx.
 Branch fable/scope-reset-package-20261008; exact base

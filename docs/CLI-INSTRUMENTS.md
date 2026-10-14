@@ -569,8 +569,13 @@ time, the maximum window and `independentIntegralCertificate: false`. Text outpu
 states the same distinction. Scope samples remain instantaneous; a source's
 last scope voltage generally differs from its meter mean.
 
-The engine integrates accepted solve points at their actual substep times using
-piecewise-linear quadrature, retaining the left/right limits of discrete changes.
+The engine integrates accepted solve points at their actual substep times,
+retaining the left/right limits of discrete changes. Interactive profiles retain
+piecewise-linear quadrature. In `precision-v1`, each successfully accepted
+adaptive pair can supply a quadratic integral through its already observed
+start, midpoint and endpoint. This adds no solves or acquisition points;
+rejected/failed steps cannot supply the descriptor. Existing analytic-source
+integrals take precedence, and missing start authority still refuses.
 The first direct API read still starts a watch and returns an instantaneous value;
 the CLI's priming read is not emitted as a sample. Histories do not predate that
 read. Idle watches expire after 2 s, so powered single-advance batches longer than
@@ -749,8 +754,16 @@ For the same fully bonded JSON circuit, configure the regulator explicitly:
 ```
 
 Then add `--profile precision-v1 --initial zero-state` to the 1200us batch
-command. The overload and 22 microfarad inrush fixtures are checked through
-this actual installed CLI path; other startup modes are not silently upgraded.
+command. The installed CLI test covers linear startup (500 ohms/2.2 microfarads),
+overload and 22 microfarad inrush against independent continuous RC waveforms
+and full-window voltage/current integrals. The linear case protects the
+precision mean quadrature repair; other startup modes are not silently upgraded.
+The package candidate pins Board `370be6994dcc6ffcef852f8f1d67861e3e98dd70`,
+whose executable bytes match the upstream qualified source `f7212733`.
+Upstream six-case numerical qualification is recorded in
+[the engine report](https://github.com/CrispStrobe/bw-board/blob/370be6994dcc6ffcef852f8f1d67861e3e98dd70/spec-updates/adp7118-native-instruments.md).
+Consumer qualification must run the installed CLI and existing browser gates;
+upstream agreement alone does not certify a deployed app or physical device.
 
 This slice supports only fixed 1.2–5 V outputs with direct SENSE and open SS.
 External soft-start capacitance, adjustable feedback, prebiased startup,

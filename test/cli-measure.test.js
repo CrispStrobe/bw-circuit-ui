@@ -274,7 +274,7 @@ test('bounded ADP7118 precision installed CLI qualifies actual work, RC waveform
   const dir=mkdtempSync(join(tmpdir(),'bwc-adp-precision-'));
   const env={...process.env};delete env.BW_BOARD;
   try {
-    for(const [name,ohms,farads] of [['overload',10,2.2e-6],['inrush',500,22e-6]]) {
+    for(const [name,ohms,farads] of [['linear',500,2.2e-6],['overload',10,2.2e-6],['inrush',500,22e-6]]) {
       const source=join(dir,`${name}.json`),csv=join(dir,`${name}.csv`);
       writeFileSync(source,JSON.stringify(adp7118StartupCliFixture({ohms,farads,startupModel:'current-limited-envelope'})));
       const currents=['vout_1','vout_2','vin_7','vin_8','gnd'];
@@ -311,7 +311,14 @@ test('bounded ADP7118 precision installed CLI qualifies actual work, RC waveform
       // Integral of C*dV/dt + V/R; independent of terminal current implementation.
       const expectedOutput=farads*reference.voltage(.0012)/.0012+reference.mean/ohms;
       assert.ok(Math.abs(output-expectedOutput)<1e-6,'independent load/storage mean current');
-      assert.ok(reference.entry>0);assert.equal(reference.release!==null,name==='inrush');
+      if(name==='linear') assert.equal(reference.entry,null,'linear control never reaches the current ceiling');
+      else assert.ok(reference.entry>0);
+      assert.equal(reference.release!==null,name==='inrush');
+      console.log(JSON.stringify({record:'cui-adp-precision-capture',name,ohms,farads,
+        samples:lines.slice(2).map(line=>{const [elapsed,voltage]=line.split(',').map(Number);
+          return {timeNs:Number(startNs)+Math.round(elapsed*1e9),voltage};}),
+        means:{voltage:values[0],outputCurrent:output,inputCurrent:-input,groundCurrent:ground},
+        receipt}));
     }
   } finally {rmSync(dir,{recursive:true,force:true});}
 });
