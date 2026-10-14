@@ -1,5 +1,23 @@
 # Work lanes
 
+2026-10-14 precision meter engine package adoption — CLAIM, Codex bwcx.
+Branch fable/precision-meter-package-20261014; exact base
+0122af83584ff3498deba11df30c12f4508d234a. Six paths only: this ledger,
+package.json, generated package-lock.json, scripts/board-provenance.json,
+test/cli-measure.test.js and docs/CLI-INSTRUMENTS.md. Adopt landed Board
+370be6994dcc6ffcef852f8f1d67861e3e98dd70, whose executable source exactly
+matches qualified f7212733 (CI38526574704, Harris38526574700 and
+xv638526574737 green). Bind the declared/locked/loaded runtime by full-source
+byte fingerprint, not a checkout override. Extend the existing installed CLI
+ADP startup test with the linear ideal-supply case that exposed the meter
+quadrature defect; retain independent waveform/window/current integrals,
+fixed bounds, whole work limits and existing overload/inrush controls.
+Run full hosted qualification, including actual browser interaction and
+existing source-precision/CLI/provenance tests. Local work is metadata/pure
+source checks only; no engine, SPICE or browser execution. No Board source
+copy, importer/model/solver/profile/default, other dependency, workflow,
+Lite pin, corpus or deployment edit. Publish this claim before implementation.
+
 2026-10-08 attached scope reset package adoption — DONE candidate, Codex bwcx.
 Branch fable/scope-reset-package-20261008; exact base
 9279601388ea4177db8730469dfb8c1f226fd569. Six paths only: this ledger,
