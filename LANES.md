@@ -2,9 +2,10 @@
 
 2026-10-14 precision meter engine package adoption — DONE candidate, Codex bwcx.
 Branch fable/precision-meter-package-20261014; exact base
-0122af83584ff3498deba11df30c12f4508d234a. Six paths only: this ledger,
+0122af83584ff3498deba11df30c12f4508d234a. Seven paths only: this ledger,
 package.json, generated package-lock.json, scripts/board-provenance.json,
-test/cli-measure.test.js and docs/CLI-INSTRUMENTS.md. Adopt landed Board
+test/cli-measure.test.js, test/source-analysis-precision.test.js and
+docs/CLI-INSTRUMENTS.md. Adopt landed Board
 370be6994dcc6ffcef852f8f1d67861e3e98dd70, whose executable source exactly
 matches qualified f7212733 (CI38526574704, Harris38526574700 and
 xv638526574737 green). Bind the declared/locked/loaded runtime by full-source
@@ -27,6 +28,20 @@ syntax/whitespace/metadata checks pass. Three installed CLI cases preserve
 360 actual CSV observations and signed means/work receipts for raw-log audit.
 No local engine/SPICE/browser execution or installed/GUI success claimed.
 Require every enabled exact-head CI job green before guarded normal landing.
+Red1 scope extension: add only test/source-analysis-precision.test.js to the
+six-path envelope, for seven paths total. Exact96f0061 CI38533234375 fails
+four stale interactive-v1 default assumptions (source-precision127 pass/4 fail,
+zero skips). The installed Board already defaults to interactive-v2, introduced
+by the qualified supplier's winding/history repair; explicit interactive-v1
+remains the legacy opt-in. No default/profile/solver or CLI implementation change.
+All three ADP CLI captures independently pass360 observations/12 signed means;
+browser67/67 and both oracle jobs pass, but cannot rescue the red candidate.
+Repair tests to distinguish implicit v2 from explicit legacy v1 while retaining
+full observed-scope and non-profile status/work equality on the ideal-source
+control, fixed mean/point gates, and before/after live GUI snapshot identity.
+Correct the existing owned CLI guide's same-policy claim. Publish this scope
+extension before the extra test edit; fresh full exact-head qualification is
+required. Preserve the original failure; no unchanged rerun or gate relaxation.
 
 2026-10-08 attached scope reset package adoption — DONE candidate, Codex bwcx.
 Branch fable/scope-reset-package-20261008; exact base
