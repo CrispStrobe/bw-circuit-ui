@@ -170,6 +170,45 @@ function migrateTerminals (kind, stored, params) {
   });
 }
 
+/**
+ * A seated part's legs are its terminals.
+ *
+ * The seat's leadMap is the chip's footprint applied to the board: every key
+ * is a leg standing in a hole, and the strip conducts through it. The engine,
+ * though, drives and reads ONLY a part's declared terminals — so a leg the
+ * stored list leaves out sits on the strip as a net member that nothing can
+ * drive. The gallery's A2 benches (79-82, one file per chip) store
+ * `"terminals": []` on a seated 8051 whose leadMap seats all 40 legs: they
+ * loaded with every port leg undeclared, and their programs drove nothing on
+ * the board (B17, measured 2026-10-14: 160 wired GPIO legs in 16 files, 0 of
+ * them swung when driven). A stored subset (`["P1.0"]`, the pins one program
+ * used) is the same shape at smaller scale: move the LED to P1.1 and the leg
+ * under it is dead.
+ *
+ * So every seated leg joins the list, spelled as the package spells it
+ * (`seatTerms`: the leg's own spelling when the package has it, else the
+ * package's case-blind match), after
+ * the stored entries, which keep their order and spelling. A data file never
+ * has to repeat the chip's pins.
+ *
+ * @param {string[]|undefined} stored - the part's terminal list after load
+ * @param {string[]} legs - seat.leadMap keys
+ * @param {string[]} seatTerms - the package's full terminal list
+ * @returns {string[]}
+ */
+function withSeatLegs (stored, legs, seatTerms) {
+  const out = Array.isArray(stored) ? [...stored] : [];
+  const have = new Set(out.map(t => String(t).toLowerCase()));
+  const pkg = Array.isArray(seatTerms) ? seatTerms : [];
+  for (const leg of legs) {
+    const key = String(leg).toLowerCase();
+    if (have.has(key)) continue;
+    out.push(pkg.includes(leg) ? leg : (pkg.find(t => String(t).toLowerCase() === key) ?? leg));
+    have.add(key);
+  }
+  return out;
+}
+
 function cloneSourceDocuments(value) {
   if (!Array.isArray(value)) return [];
   const out = [];
@@ -1440,7 +1479,8 @@ export class Circuit {
           delete p.seat.leadMap[term];
         }
       }
-      try { bb.occupy(p.id, p.seat.leadMap); } catch { delete p.seat; }
+      try { bb.occupy(p.id, p.seat.leadMap); } catch { delete p.seat; continue; }
+      p.terminals = withSeatLegs(p.terminals, Object.keys(p.seat.leadMap), seatTerms);
     }
     for (const jw of data.holeWires || []) {
       const bb = c.breadboards.get(jw.boardId);
