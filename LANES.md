@@ -42,6 +42,17 @@ control, fixed mean/point gates, and before/after live GUI snapshot identity.
 Correct the existing owned CLI guide's same-policy claim. Publish this scope
 extension before the extra test edit; fresh full exact-head qualification is
 required. Preserve the original failure; no unchanged rerun or gate relaxation.
+Scope extensiona2c5ada landed before the extra test edits. Forward evidence
+checks exact v2/v1 ids, floors and restart flag, plus equality of every other
+policy field and all non-profile status/work on the ideal-source controls.
+Five pure rollback/substitution/drift negatives reject; syntax/diff checks pass.
+The red96f0061 raw CLI audit accepts360 readings/12 means: maximum waveform
+error0.363054 uV, voltage mean30.863166 nV, output/input means75.643440/
+75.689602 nA. All three complete with115 charged advances and maximum1074
+attempts/3218 solves. Main unit suite3215 pass/0 fail/17 documented skips and
+loaded provenance guard pass; source-precision127/4/0 remains preserved red.
+No pin/production/profile/bound/work change in the forward repair. Fresh
+complete hosted qualification remains mandatory before landing.
 
 2026-10-08 attached scope reset package adoption — DONE candidate, Codex bwcx.
 Branch fable/scope-reset-package-20261008; exact base

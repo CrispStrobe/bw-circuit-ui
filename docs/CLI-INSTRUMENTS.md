@@ -405,8 +405,11 @@ readout work linear in the number of streamed samples; circuit integration and
 output transport have their own costs. The final summary still validates every
 retained point, so earlier nonfinite samples cannot be hidden by this fast path.
 
-Measurement defaults to the engine's live interactive integration profile. An
-explicit `--profile interactive-v1` selects the same policy. Unknown profiles
+Measurement defaults to the pinned engine's live `interactive-v2` integration
+profile. Explicit `--profile interactive-v1` selects the retained legacy policy,
+not the current default: v2 has a 1 fs step floor and floor-history restart;
+v1 keeps its 10 ns floor. Both retain the fixed attempt cap. Omitting the option
+does not force the legacy profile. Unknown profiles
 refuse instead of being silently ignored. Source-declared analyses remain a
 separate action: `bwc analyze --profile precision-v1`.
 

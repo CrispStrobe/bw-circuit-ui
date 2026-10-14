@@ -106,7 +106,7 @@ function persistedCircuit() {
 describe('precision-v1 source-analysis product entrypoints', () => {
   it('runs the GUI action on a fresh precision circuit without changing the live profile', () => {
     const circuit = persistedCircuit();
-    assert.equal(circuit.transientAnalysisStatus().profile.id, 'interactive-v1');
+    assert.equal(circuit.transientAnalysisStatus().profile.id, 'interactive-v2');
     const before = circuit.board.snapshot();
     const [result] = runPrecisionSourceAnalysis(circuit);
     assert.equal(result.status, 'pass');
@@ -122,7 +122,7 @@ describe('precision-v1 source-analysis product entrypoints', () => {
       'native-engine-source-edge-barriers');
     assert.equal(result.conditions.sourceBreakpoints.addedToObservationGrid, false);
     assert.match(result.thermal, /native-fixed.*no oracle/i);
-    assert.equal(circuit.transientAnalysisStatus().profile.id, 'interactive-v1');
+    assert.equal(circuit.transientAnalysisStatus().profile.id, 'interactive-v2');
     assert.deepEqual(circuit.board.snapshot(), before, 'independent source analysis must not mutate live GUI state');
   });
 

@@ -26,6 +26,28 @@ const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json'
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
 
+function assertDefaultAndLegacyProfiles(defaultPolicy,legacyPolicy) {
+  const {id:defaultId,minStepSec:defaultFloor,floorHistoryRestart,...defaultShared}=defaultPolicy;
+  const {id:legacyId,minStepSec:legacyFloor,...legacyShared}=legacyPolicy;
+  assert.equal(defaultId,'interactive-v2');assert.equal(defaultFloor,1e-15);
+  assert.equal(floorHistoryRestart,true);
+  assert.equal(legacyId,'interactive-v1');assert.equal(legacyFloor,1e-8);
+  assert.deepEqual(defaultShared,legacyShared,'all other fixed policy fields remain equal');
+}
+
+test('default/legacy profile controls reject rollback, substitution and unreviewed policy drift',()=>{
+  const shared={relativeTolerance:1e-4,absoluteVoltage:1e-6,absoluteCurrent:1e-9,
+    seedStepSec:1e-9,maxStepSec:1e-4,maxAttempts:20000};
+  const current={...shared,id:'interactive-v2',minStepSec:1e-15,floorHistoryRestart:true};
+  const legacy={...shared,id:'interactive-v1',minStepSec:1e-8};
+  assertDefaultAndLegacyProfiles(current,legacy);
+  for(const changed of [{...current,id:'interactive-v1'},{...current,minStepSec:1e-14},
+    {...current,floorHistoryRestart:false},{...current,maxAttempts:10000}]) {
+    assert.throws(()=>assertDefaultAndLegacyProfiles(changed,legacy),assert.AssertionError);
+  }
+  assert.throws(()=>assertDefaultAndLegacyProfiles(current,current),assert.AssertionError);
+});
+
 test('measure max-step preserves defaults and the requested observation clock',()=>{
   const base=[CLI,'measure',SINE_FIXTURE,'--scope','V1.pos,V1.neg',
     '--duration','100us','--rate','100kHz','--json'];
@@ -34,8 +56,10 @@ test('measure max-step preserves defaults and the requested observation clock',(
   const legacy=invoke([]),explicit=invoke(['--profile','interactive-v1']);
   assert.equal(legacy.requestedTransientProfile,null);
   assert.equal(explicit.requestedTransientProfile,'interactive-v1');
-  assert.deepEqual({...explicit,requestedTransientProfile:null},legacy,
-    'explicit profile differs only in its existing requested-profile metadata');
+  assertDefaultAndLegacyProfiles(legacy.transient.profile,explicit.transient.profile);
+  assert.deepEqual({...explicit,requestedTransientProfile:null,
+    transient:{...explicit.transient,profile:legacy.transient.profile}},legacy,
+    'ideal-source observations and non-profile status/work remain equal');
   const bounded=invoke(['--max-step','2us']);
   const {summary:boundedSummary,...boundedMetadata}=bounded.scope[0];
   const {summary:legacySummary,...legacyMetadata}=legacy.scope[0];
@@ -2058,21 +2082,22 @@ test('measure refuses ignored profile promises before executing a circuit', () =
   }
 });
 
-test('explicit interactive profile and default acquisition have identical scope values and disclose actual status', () => {
+test('explicit legacy and default v2 acquisition preserve ideal-source scope values and disclose distinct policies', () => {
   const args = [CLI,'measure',SINE_FIXTURE,'--scope','V1.pos,V1.neg',
     '--duration','50us','--rate','100kHz','--json'];
   const implicit = JSON.parse(execFileSync(process.execPath,args,{encoding:'utf8'}));
   const explicit = JSON.parse(execFileSync(process.execPath,[...args,'--profile','interactive-v1'],{encoding:'utf8'}));
   assert.equal(implicit.requestedTransientProfile,null);
   assert.equal(explicit.requestedTransientProfile,'interactive-v1');
+  assertDefaultAndLegacyProfiles(implicit.transient.profile,explicit.transient.profile);
   for (const report of [implicit,explicit]) {
-    assert.equal(report.transient.profile.id,'interactive-v1');
     assert.equal(typeof report.transient.work.advances,'number');
     assert.ok([null,true,false].includes(report.transient.accuracyMet));
     assert.equal(report.claims.independentOracle,false);
   }
   assert.deepEqual(explicit.scope,implicit.scope);
-  assert.deepEqual(explicit.transient,implicit.transient);
+  assert.deepEqual({...explicit.transient,profile:implicit.transient.profile},implicit.transient,
+    'only the explicitly checked policy differs, not work or qualification');
 });
 
 test('resistance power-off does not replace powered acquisition status', () => {
@@ -2300,7 +2325,8 @@ test('watch streams monotonic true samples and agrees exactly with batch capture
   assert.equal(samples.length, 5);
   assert.equal(summary.recordType, 'summary');
   assert.equal(summary.watchSamples, 5);
-  assert.equal(summary.report.transient.profile.id,'interactive-v1');
+  assert.equal(summary.report.transient.profile.id,'interactive-v2');
+  assert.equal(summary.report.requestedTransientProfile,null,'watch retains the engine default');
   for (let index = 0; index < samples.length; index++) {
     const row = samples[index];
     const time = (index + 1) * 10e-6;
