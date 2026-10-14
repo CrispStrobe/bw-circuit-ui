@@ -53,6 +53,16 @@ attempts/3218 solves. Main unit suite3215 pass/0 fail/17 documented skips and
 loaded provenance guard pass; source-precision127/4/0 remains preserved red.
 No pin/production/profile/bound/work change in the forward repair. Fresh
 complete hosted qualification remains mandatory before landing.
+Exact030df635 passes all four jobs in CI38538810966. Main unit suite3215
+pass/0 fail/17 unchanged skips, source-precision132/132 with zero skips;
+all four original default-profile regressions cleared. Independent raw audit
+again accepts the three captures/360 observations/12 means with identical
+numerical/work receipts. Browser roll-call67/67 and all four gates pass.
+Before landing, master advanced to9a1f06e5 with the separately owned seated-leg
+terminal repair in Circuit.fromJSON and its registered tests. Merge preserves
+that repair and this lane's pin/lock/provenance/CLI assertions byte-for-byte;
+combined executable behavior requires fresh qualification. Earlier030df635
+success is not a substitute for the combined head's full hosted checks.
 
 2026-10-08 attached scope reset package adoption — DONE candidate, Codex bwcx.
 Branch fable/scope-reset-package-20261008; exact base
