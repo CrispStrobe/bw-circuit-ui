@@ -761,12 +761,21 @@ command. The installed CLI test covers linear startup (500 ohms/2.2 microfarads)
 overload and 22 microfarad inrush against independent continuous RC waveforms
 and full-window voltage/current integrals. The linear case protects the
 precision mean quadrature repair; other startup modes are not silently upgraded.
-The package candidate pins Board `370be6994dcc6ffcef852f8f1d67861e3e98dd70`,
+The package pins Board `370be6994dcc6ffcef852f8f1d67861e3e98dd70`,
 whose executable bytes match the upstream qualified source `f7212733`.
 Upstream six-case numerical qualification is recorded in
 [the engine report](https://github.com/CrispStrobe/bw-board/blob/370be6994dcc6ffcef852f8f1d67861e3e98dd70/spec-updates/adp7118-native-instruments.md).
 Consumer qualification must run the installed CLI and existing browser gates;
 upstream agreement alone does not certify a deployed app or physical device.
+Consumer source `933633d16011c4d09292f6432c19895ceb4f33fe` passes all four
+jobs in [CI 38545121692](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/38545121692),
+including the installed provenance guard, 132 precision tests and 67 browser
+scenarios. An independent raw-log audit accepts all 360 CLI voltage readings
+and 12 signed means from the three startup cases: maximum point error
+0.363054 µV, voltage-mean error 30.863166 nV and current-mean error 75.689602 nA.
+All captures complete within the unchanged whole-run limits. This is bounded
+agreement with the authored startup law, not vendor/physical calibration.
+It does not establish Lite package adoption or a production deployment.
 
 This slice supports only fixed 1.2–5 V outputs with direct SENSE and open SS.
 External soft-start capacitance, adjustable feedback, prebiased startup,

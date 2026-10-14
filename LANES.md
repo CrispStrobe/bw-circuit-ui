@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-14 precision meter engine package adoption — DONE candidate, Codex bwcx.
+2026-10-14 precision meter engine package adoption — DONE qualified, Codex bwcx.
 Branch fable/precision-meter-package-20261014; exact base
 0122af83584ff3498deba11df30c12f4508d234a. Seven paths only: this ledger,
 package.json, generated package-lock.json, scripts/board-provenance.json,
@@ -63,6 +63,15 @@ terminal repair in Circuit.fromJSON and its registered tests. Merge preserves
 that repair and this lane's pin/lock/provenance/CLI assertions byte-for-byte;
 combined executable behavior requires fresh qualification. Earlier030df635
 success is not a substitute for the combined head's full hosted checks.
+Combined source933633d passes all four jobs in CI38545121692. Main unit suite
+3223 pass/0 fail/17 unchanged documented skips (eight new seated-leg tests);
+source-precision132/132, all remaining registered suites green. Independent
+raw audit accepts360 CLI readings/12 means with unchanged values/work; actual
+browser67/67 and four gates pass. Installed Board provenance qualifies at the
+declared315-file runtime identity. This failure/integration closeout changes
+only Markdown, preserving every executable/package/test byte of933633d.
+No Lite adoption, deployed application, physical accuracy or new LM741
+precision-CLI domain claim; those remain separately qualified work.
 
 2026-10-08 attached scope reset package adoption — DONE candidate, Codex bwcx.
 Branch fable/scope-reset-package-20261008; exact base
