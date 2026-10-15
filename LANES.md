@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-15 current circuit campaign documentation — CLAIM, Codex bwcx.
+2026-10-15 current circuit campaign documentation — DONE candidate, Codex bwcx.
 Branch docs/circuit-instrument-campaign-20261015; exact base
 1db1bb9ee565338672c7acfefec4cf94b27196e1. Six Markdown paths only: this ledger,
 README.md, PLAN.md, ROADMAP.md, docs/CLI-INSTRUMENTS.md and new
@@ -11,6 +11,11 @@ current-priority wording, retain historical receipt boundaries and corpus count
 semantics. No source, test, workflow, pin/lock, model/default or corpus change.
 Publish claim before edits, preserve unrelated work, qualify documentation and
 existing readers; exact normal landing only after required checks.
+Claim d4e248dace9b2c77cac011b810fe6d93002ffefd preceded edits. All source,
+tests, package/lock and workflow bytes equal qualified 1db1bb9. Documentation
+adds the ordered acceptance/stopping contract, actual independently read
+LM741 counts/errors, historical corpus denominators and the GUI100k/CLI2MHz
+distinction. Existing registration/reader controls pass 9/9; no runtime replay.
 
 2026-10-15 bounded LM741 linear-pole precision CLI — DONE candidate, Codex bwcx.
 Branch fable/lm741-precision-cli-20261015; exact base

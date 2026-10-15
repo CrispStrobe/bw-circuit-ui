@@ -8,10 +8,11 @@ turn a potentiometer and watch an LED dim, probe nodes with a virtual multimeter
 **UI only.** Every electrical value comes from `bw-board` (sibling repo, boundary B).
 No fabricated numbers, no placeholders that survive past the commit they appear in.
 
-**Next campaign is scoped: see `ROADMAP.md` (2026-08-23)** — export-path defect fixes
-(X0, do first: unsimulatable SPICE decks, mega/milli suffix, three dead exporters,
-silent menu no-op), new interchange formats (X1), and instrument post-processing in
-workers (X2). Engine prerequisites are cross-referenced to `../bw-board/ROADMAP.md`.
+**Current campaign: [five ordered circuit/instrument tasks](docs/CIRCUIT-INSTRUMENT-NEXT.md).**
+The LM741 precision CLI audit and landing are complete. Next: coordinated Lite
+adoption, current-pinned stratified regressions, cause-level repairs, and a bounded
+instrument-realism closure, then a user review. `ROADMAP.md` retains the detailed
+engineering backlog; its older scopes are not a fresh list of unimplemented work.
 
 The current real-parts campaign is `ROADMAP.md` X1.7. It ranks candidates from
 all 8,280 fixed LTspice rows and requires each promoted name to arrive as one
@@ -50,10 +51,10 @@ maps its deterministic parameters to a package-neutral native model, while nonze
 noise and unresolved/unknown attributes refuse by name. The first ROADMAP X2.7
 instrument slice now gives the scope an explicit shared reference plus ideal/debug,
 10x and 1x electrical probes; finite presets load the simulated circuit rather than
-decorating the trace. The next instrument work is the analogue front end, then honest
-ADC/acquisition and a
-bounded high-speed triggered burst so fast op-amp edges become visible without
-taxing every simulation.
+decorating the trace. Precision batch/finite CLI capture has separate bounded
+passive, ADP7118 startup and explicit LM741 linear-pole domains. Current task 5
+audits the actual instrument surface before selecting a bounded realism repair;
+the remaining front-end, ADC and triggered-burst backlog is detailed in X2.7.
 The official OP07 symbol actually netlists LT1001, the official OP27 symbol
 delegates to `OP27` in `ADI.lib`, every accepted ADP151 fixed-output symbol
 delegates to the proprietary `ADP151-x.x.sub`, and LT1006 delegates to
