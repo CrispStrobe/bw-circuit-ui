@@ -1,5 +1,15 @@
 # bw-circuit-ui — roadmap (scoped 2026-08-23)
 
+## Current circuit and instrument campaign — 2026-10-15
+
+The execution order and acceptance gates are in
+[CIRCUIT-INSTRUMENT-NEXT](docs/CIRCUIT-INSTRUMENT-NEXT.md): audited LM741
+landing complete; coordinated consumer adoption; at least 300 current-pinned
+stratified circuit cases; repairs classified by actual cause; demonstrated
+instrument-realism closure; then ask the user before further work. The corpus
+denominator and historical comparison counts are kept there with their limits.
+Historical item scopes below are not evidence that those items remain open.
+
 Actionable items from the 2026-08-23 format-surface and instrument audit. Each item
 names files, scope, and acceptance. House rules apply: every electrical value comes
 from bw-board; no fabricated numbers; importers never silently drop or silently
@@ -513,9 +523,12 @@ interactive; results identical to the synchronous path on fixtures.
 The existing scope is already evidence-based: its traces come from Board's ring,
 envelope and true-sample capture are distinct, each channel has its own scale,
 and edge trigger/cursors/FFT/CSV operate on recorded values. Its fastest offered
-acquisition is nevertheless 100 kS/s (50 kHz Nyquist), its probe is electrically
-ideal, and it has no analogue front end or ADC. That is sufficient for slow
-lessons but cannot honestly show the sub-microsecond edge of a 10 MHz op amp.
+GUI acquisition is nevertheless capped at 100 kS/s (50 kHz Nyquist), while the
+CLI separately permits up to 2 MHz in its bounded domains. The GUI offers ideal,
+10x and 1x electrical probes with an explicit shared reference; it is no longer
+correct to describe every probe as ideal. Remaining analogue-front-end and ADC
+work must be audited as distinct contracts. The GUI rate cannot honestly show
+the sub-microsecond edge of a 10 MHz op amp.
 
 Implement the remaining realism as separate switchable contracts, in this order:
 

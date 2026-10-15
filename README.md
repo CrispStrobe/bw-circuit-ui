@@ -62,6 +62,8 @@ voltage/current curves against a supplied reference.
 Read [CLI instruments](docs/CLI-INSTRUMENTS.md) for selectors, acquisition
 profiles, limits, schemas and exit codes, and
 [source analysis](docs/SOURCE-ANALYSIS.md) for supported analysis domains.
+The [current circuit campaign](docs/CIRCUIT-INSTRUMENT-NEXT.md) separates
+qualified model/CLI behavior from downstream package adoption and GUI evidence.
 A receipt verifies recorded identities and inputs; it is not a numerical
 oracle, hardware calibration or proof that a deployment contains this code.
 

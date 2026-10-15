@@ -862,3 +862,12 @@ corresponding 10 kΩ current bounds and load-terminal KCL. Phase and pole
 substitutions must fail the mean oracle. These are nominal linear-model tests,
 not the native fixture's separate 10 MHz observation/100 ns meter-start proof,
 vendor-macromodel agreement or a claim of real-device accuracy.
+
+Qualification: exact CUI `1db1bb9ee565338672c7acfefec4cf94b27196e1` passed
+[all four CI jobs](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/38677905766).
+Independent original-log audit accepts six cases, 960 batch/watch voltage values
+and 738 meter values, with maximum output/voltage-mean errors of 3.637 nV and
+0.282 nV. Whole-window receipts and provisional watch semantics pass; the
+precision surface passes 138/138 with no skips. This upstream result does not
+establish later Lite adoption, deployment or physical-device fidelity. Follow
+the [ordered consumer/regression campaign](CIRCUIT-INSTRUMENT-NEXT.md).
