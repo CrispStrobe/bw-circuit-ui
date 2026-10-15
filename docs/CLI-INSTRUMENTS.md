@@ -817,8 +817,48 @@ bandwidth and probe response; this capture exposes the stated engine model,
 not those additional instrument effects.
 
 These are bounded model checks, not certification of every imported circuit.
-`precision-v1` measurement admits the passive/source domain and the separately
-bounded ADP7118 current-limited startup domain above. Op-amp clipping,
-bandwidth/slew, other regulator startup modes and changing loads need their
-own model-specific dynamic qualification. An interactive waveform from such a
-part is not by itself evidence of physical-device accuracy.
+`precision-v1` measurement admits the passive/source domain, the separately
+bounded ADP7118 current-limited startup domain above, and the explicit LM741
+linear-pole domain below. Other op-amp models, clipping/slew-limited operation,
+regulator startup modes and changing loads need their own model-specific dynamic
+qualification. An interactive waveform is not evidence of physical accuracy.
+
+### Explicit LM741 linear-pole precision capture
+
+For a self-authored follower with fixed ideal +15 V and -15 V rails, a 10 kΩ
+load and a small input step, select the model explicitly on the LM741:
+
+```json
+{"transientModel":"linear-pole","inputOffsetV":0,
+ "supplyPositiveV":15,"supplyNegativeV":-15}
+```
+
+```sh
+bwc measure follower.json --profile precision-v1 --initial zero-state \
+  --scope U.out,G.gnd --scope VIN.pos,G.gnd \
+  --meter voltage:U.out,G.gnd --meter current:RL.a \
+  --duration 20us --rate 2MHz --csv follower.csv --json
+```
+
+Exactly one such amplifier is admitted, with resistor/capacitor/ground/voltage
+source companions. The native model requires an explicit zero offset, declared
+10–36 V rail span, matching fixed ideal supplies, connected inputs/output/rails,
+and open offset/NC pins. Native solved common-mode, swing, slew and 1 mA linear
+load-envelope checks remain authoritative; violations refuse rather than clip
+or silently switch models. No default op-amp behavior changes.
+
+Capture is capped at 20 µs; the existing 2 MHz CLI limit remains. Five hidden
+solver parts and two hidden nets count against the existing 32-part/32-net
+limits: at most 27 authored parts and 30 resolved nets. Batch and finite
+`--watch` require one native whole-window receipt with at most 20,000 attempts,
+60,001 solves and 200 advances. Watch observations are provisional until the
+terminal qualified summary; work limits do not renew at each observation.
+
+The registered qualification checks six signed 10 mV, 1 ns ramps at 0/33/67 ns
+offsets from 10 µs. It compares 40 observations on the legal 500 ns clock and
+signed meter means over 0–20 µs with independent loaded linear KCL/ramp
+integrals. Fixed gates are 100 µV for output samples and 2 µV for means, with
+corresponding 10 kΩ current bounds and load-terminal KCL. Phase and pole
+substitutions must fail the mean oracle. These are nominal linear-model tests,
+not the native fixture's separate 10 MHz observation/100 ns meter-start proof,
+vendor-macromodel agreement or a claim of real-device accuracy.

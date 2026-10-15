@@ -632,7 +632,7 @@ switch (cmd) {
           const admission = circ.operatingPoint({waveformBias:'time-zero'});
           if (admission.converged!==true) throw new Error('native time-zero constraint check did not converge');
         } else if (circ.board.deviceCompanions(circ.parts[0].id)?.converged!==true) {
-          throw new Error('native cold ADP7118 model admission did not converge');
+          throw new Error(`native cold ${precisionDomain} model admission did not converge`);
         }
         // Include physical probe loading in admission, but do NOT initialize
         // storage from this result: capture remains explicit zero-state.
@@ -687,7 +687,7 @@ switch (cmd) {
         }
         if (BigInt(circ.board.timeNs || 0) < endNs) circ.advanceTo(endNs);
         }
-      } else if (precisionDomain==='adp7118-current-limited') {
+      } else if (precisionDomain==='adp7118-current-limited' || precisionDomain==='lm741-linear-pole') {
         circ.advanceToBounded(endNs,{
           maxAttempts:precisionBudget.maxAttempts,maxSolves:precisionBudget.maxSolves,
           maxAdvances:precisionBudget.maxAdvances,

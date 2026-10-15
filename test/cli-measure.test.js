@@ -114,6 +114,189 @@ function assertDefaultAndLegacyProfiles(defaultPolicy,legacyPolicy) {
   assert.deepEqual(defaultShared,legacyShared,'all other fixed policy fields remain equal');
 }
 
+function lm741PrecisionFixture(sign=1,phaseNs=0) {
+  const wire=(from,fromTerminal,to,toTerminal)=>({from,fromTerminal,to,toTerminal});
+  return {vcc:5,parts:[
+    {id:'VP',kind:'vsource',params:{volts:15}},
+    {id:'VN',kind:'vsource',params:{volts:15}},
+    {id:'VIN',kind:'vsource',params:{wave:'spice-pulse',v1:0,v2:sign*.01,
+      td:(10000+phaseNs)*1e-9,tr:1e-9,tf:1e-9,pw:20e-6,per:100e-6}},
+    {id:'G',kind:'gnd',params:{}},
+    {id:'U',kind:'lm741',params:{transientModel:'linear-pole',inputOffsetV:0,
+      supplyPositiveV:15,supplyNegativeV:-15}},
+    {id:'RL',kind:'resistor',params:{ohms:10000}},
+  ],wires:[wire('VP','neg','G','gnd'),wire('VN','pos','G','gnd'),wire('VIN','neg','G','gnd'),
+    wire('RL','b','G','gnd'),wire('VP','pos','U','vpos'),wire('VN','neg','U','vneg'),
+    wire('VIN','pos','U','inp'),wire('U','out','U','inn'),wire('U','out','RL','a')]};
+}
+
+// Independent loaded follower H(s)=(k*A(s)+d)/(1+k*A(s)). Constants are
+// declared nominal card/load values, never imported from the engine or fitted.
+function lm741CliReference(sign,phaseNs,bandwidth=1e6) {
+  const total=1/600+1/2e6+1/10000,k=(1/600)/total,d=(1/2e6)/total;
+  const gain=(k*200000+d)/(1+k*200000),omega=2*Math.PI*bandwidth*(k+1/200000)*1e-9;
+  const area=t=>t<=0?0:gain*t+(d-gain)*-Math.expm1(-omega*t)/omega;
+  const primitive=t=>t<=0?0:gain*t*t/2+(d-gain)*(t/omega+Math.expm1(-omega*t)/(omega*omega));
+  const delay=10000+phaseNs;
+  return {
+    input:t=>sign*.01*Math.max(0,Math.min(1,t-delay)),
+    voltage:t=>sign*.01*(area(t-delay)-area(t-delay-1)),
+    mean:t=>t===0?0:sign*.01*(primitive(t-delay)-primitive(t-delay-1))/t,
+  };
+}
+
+test('LM741 precision CLI reference distinguishes phase and pole on the legal 2 MHz grid',()=>{
+  const reference=lm741CliReference(1,33),wrongPhase=lm741CliReference(1,0),wrongPole=lm741CliReference(1,33,5e5);
+  // Fixed gates declared before hosted results: 100 uV points, 2 uV means.
+  const meanOracle=mean=>assert.ok(Math.abs(mean-reference.mean(20000))<=2e-6);
+  meanOracle(reference.mean(20000));
+  assert.throws(()=>meanOracle(wrongPhase.mean(20000)),assert.AssertionError);
+  assert.throws(()=>meanOracle(wrongPole.mean(20000)),assert.AssertionError);
+  for(const sign of [1,-1]) for(const phase of [0,33,67]) {
+    const ref=lm741CliReference(sign,phase);let integral=0;
+    // Independent numerical quadrature control of the analytic window mean.
+    for(let i=0;i<=80000;i++) integral+=(i===0||i===80000?1:i%2?4:2)*ref.voltage(i*.25);
+    assert.ok(Math.abs(integral*.25/3/20000-ref.mean(20000))<1e-10);
+    assert.ok(Math.abs(ref.mean(20000))>.0048 && Math.abs(ref.mean(20000))<.005);
+  }
+});
+
+test('LM741 precision input, hidden resources and whole-capture receipts fail closed',async()=>{
+  const fixture=lm741PrecisionFixture(),parts=fixture.parts;
+  assert.equal(validatePrecisionCaptureInput(parts,2,['voltage','current']),'lm741-linear-pole');
+  for(const edit of [p=>{delete p[4].params.transientModel;},p=>{p[4].params.inputOffsetV=.001;},
+    p=>{delete p[4].params.inputOffsetV;},p=>{p[4].params.supplyPositiveV=Infinity;},
+    p=>p.push({...structuredClone(p[4]),id:'U2'}),
+    p=>p.push({id:'REG',kind:'adp7118',params:{startupModel:'current-limited-envelope'}}),
+    p=>{p[0].analysisBlockers=['retained'];},p=>{p[2].params.ic=0;},
+    p=>{while(p.length<28)p.push({id:`R${p.length}`,kind:'resistor',params:{ohms:1000}});}]) {
+    const changed=structuredClone(parts);edit(changed);
+    assert.throws(()=>validatePrecisionCaptureInput(changed,2,[]),/precision/);
+  }
+  const clock=measurementSampleClock(20e-6,2e6),profile={id:'precision-v1',maxAttempts:20000,maxStepSec:1e-5};
+  const budget=precisionCaptureBudget(clock,profile,5,'lm741-linear-pole');
+  assert.deepEqual(budget.hiddenSolverExpansion,{parts:5,nets:2});
+  const boundary=structuredClone(parts);
+  while(boundary.length<27)boundary.push({id:`R${boundary.length}`,kind:'resistor',params:{ohms:1000}});
+  assert.equal(validatePrecisionCaptureInput(boundary,2,[]),'lm741-linear-pole');
+  precisionCaptureBudget(clock,profile,30,'lm741-linear-pole');
+  assert.throws(()=>precisionCaptureBudget(measurementSampleClock(21e-6,2e6),profile,5,'lm741-linear-pole'),/20 us/);
+  assert.throws(()=>precisionCaptureBudget(clock,profile,31,'lm741-linear-pole'),/30/);
+  const status={profile,work:{attempts:1,solves:3,advances:1},accuracyMet:true,failure:null};
+  const receipt={completed:true,failure:null,requestedTimeNs:'20000',work:{...status.work},
+    limits:{maxAttempts:20000,maxSolves:60001,maxAdvances:200}};
+  validatePrecisionCaptureWork({...status,boundedAdvance:receipt},budget);
+  const streamBudget=precisionStreamBudget(clock,budget,'lm741-linear-pole');
+  const streamReceipt={...receipt,stream:{stepNs:'500',observerCalls:40}};
+  validatePrecisionStreamWork({...status,boundedAdvance:streamReceipt},streamBudget,40,20000n);
+  for(const [seen,time] of [[39,20000n],[40,19500n]]) {
+    assert.throws(()=>validatePrecisionStreamWork({...status,boundedAdvance:streamReceipt},streamBudget,seen,time),/stream receipt/);
+  }
+  for(const bad of [undefined,{...receipt,completed:false},{...receipt,requestedTimeNs:'19999'},
+    {...receipt,limits:{...receipt.limits,maxAttempts:20001}},
+    {...receipt,work:{...receipt.work,solves:2}}]) {
+    assert.throws(()=>validatePrecisionCaptureWork({...status,boundedAdvance:bad},budget),/whole-advance receipt/);
+  }
+  const anchor="if (budget.basis==='engine-whole-advance-lm741-linear-pole') {";
+  const source=readFileSync(join(ROOT,'src/model/instrument-report.js'),'utf8');
+  assert.equal(source.split(anchor).length,2);
+  const mutant=await import(`data:text/javascript;base64,${Buffer.from(source.replace(anchor,'if (false) {')).toString('base64')}`);
+  const oracle=judge=>assert.throws(()=>judge(status,budget),/whole-advance receipt/);
+  oracle(validatePrecisionCaptureWork);
+  assert.throws(()=>oracle(mutant.validatePrecisionCaptureWork),assert.AssertionError);
+});
+
+test('installed LM741 precision CLI proves six signed phase captures and finite watch without changing the sample cap',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-lm741-precision-'));
+  const env={...process.env};delete env.BW_BOARD;
+  try {
+    const file=join(dir,'follower.json'),csv=join(dir,'trace.csv');
+    for(const sign of [1,-1])for(const phaseNs of [0,33,67]) {
+      writeFileSync(file,JSON.stringify(lm741PrecisionFixture(sign,phaseNs)));
+      const args=['measure',file,'--profile','precision-v1','--initial','zero-state',
+        '--scope','U.out,G.gnd','--scope','VIN.pos,G.gnd',
+        '--meter','voltage:U.out,G.gnd','--meter','current:RL.a','--meter','current:RL.b',
+        '--duration','20us','--rate','2MHz'];
+      const run=extra=>spawnSync(process.execPath,[CLI,...args,...extra],{encoding:'utf8',env,timeout:30000});
+      const saved=join(dir,`receipt-${sign}-${phaseNs}.json`);
+      const result=run(['--csv',csv,'--receipt',saved,'--json']);assert.equal(result.status,0,result.stderr);
+      const report=JSON.parse(result.stdout),ref=lm741CliReference(sign,phaseNs);
+      const acquired=parseMeasurementReceipt(readFileSync(saved,'utf8'));
+      assert.deepEqual(acquired.clock,{startNs:'0',durationNs:'20000',intervalNs:'500'});
+      assert.deepEqual(acquired.report,report);
+      assert.equal(report.plannedSamples,40);assert.equal(report.transient.accuracyMet,true);
+      assert.equal(report.precisionCapture.basis,'engine-whole-advance-lm741-linear-pole');
+      validatePrecisionCaptureWork(report.transient,report.precisionCapture);
+      const sections=readFileSync(csv,'utf8').trim().split('\n\n');assert.equal(sections.length,2);
+      const observations=sections.map((section,channel)=>{
+        const lines=section.split('\n');assert.match(lines[0],/sampleIntervalNs=500 points=40/);
+        assert.match(lines[0],/startTimeNs=500(?:\s|$)/);
+        const samples=lines.slice(2).map((line,index)=>{
+          const [elapsed,volts]=line.split(',').map(Number),timeNs=(index+1)*500;
+          assert.ok(Math.abs(elapsed-index*500e-9)<1e-15);
+          const expected=channel===0?ref.voltage(timeNs):ref.input(timeNs);
+          assert.ok(Math.abs(volts-expected)<=(channel===0?1e-4:1e-10),`${sign}/${phaseNs} channel${channel} t${timeNs}: ${volts} vs ${expected}`);
+          return {timeNs,volts};
+        });assert.equal(samples.length,40);return samples;
+      });
+      const checkMeans=(meters,timeNs)=>{
+        const values=meters.map(m=>{assert.equal(m.reading.note,null);return m.reading.siValue;});
+        assert.ok(Math.abs(values[0]-ref.mean(timeNs))<=2e-6,`${sign}/${phaseNs} mean at${timeNs}: ${values[0]} vs ${ref.mean(timeNs)}`);
+        assert.ok(Math.abs(values[1]+ref.mean(timeNs)/10000)<=2e-10,'signed physical current mean');
+        assert.ok(Math.abs(values[1]+values[2])<1e-12,'load terminal KCL');
+      };
+      checkMeans(report.meters,20000);
+      const watched=run(['--watch']);assert.equal(watched.status,0,watched.stderr||watched.stdout);
+      const records=watched.stdout.trim().split('\n').map(line=>JSON.parse(line));
+      assert.equal(records.length,41);
+      for(const [i,row] of records.slice(0,-1).entries()) {
+        assert.equal(row.recordType,'sample');assert.equal(row.qualified,false);
+        const timeNs=(i+1)*500;assert.ok(Math.abs(row.timeSeconds-timeNs*1e-9)<1e-15);
+        assert.ok(Math.abs(row.scope[0].volts-ref.voltage(timeNs))<=1e-4);
+        checkMeans(row.meters,timeNs);
+      }
+      const terminal=records.at(-1);assert.equal(terminal.recordType,'summary');assert.equal(terminal.qualified,true);
+      validatePrecisionStreamWork(terminal.report.transient,terminal.report.precisionCapture,40,20000n);
+      checkMeans(terminal.report.meters,20000);
+      console.log(JSON.stringify({record:'cui-lm741-precision-cli',sign,phaseNs,
+        observations,meanReference:ref.mean(20000),meters:report.meters,
+        batch:report.transient.boundedAdvance,watch:terminal.report.transient.boundedAdvance,
+        watchSamples:records.slice(0,-1)}));
+    }
+    // Keep the actual final -10 mV/67 ns fixture unchanged: replacing only the
+    // independent meter reference must yield numerical, not structural, reds.
+    for(const [label,reference] of [['wrong-phase',lm741CliReference(-1,0)],
+      ['wrong-pole',lm741CliReference(-1,67,5e5)]]) {
+      const expected=join(dir,`${label}.json`);
+      const meters=[['voltage',['U.out','G.gnd'],'V',reference.mean(20000),2e-6],
+        ['current',['RL.a'],'A',-reference.mean(20000)/10000,2e-10],
+        ['current',['RL.b'],'A',reference.mean(20000)/10000,2e-10]];
+      writeFileSync(expected,JSON.stringify({schemaVersion:1,acquisition:'batch',meters:meters.map(
+        ([mode,probes,siUnit,siValue,absoluteTolerance])=>({mode,probes,siUnit,
+          quantity:'observed-dc-mean',absoluteTolerance,samples:[{timeSeconds:20e-6,siValue}]}))}));
+      const r=spawnSync(process.execPath,[CLI,'measure',file,'--scope','U.out,G.gnd',
+        '--meter','voltage:U.out,G.gnd','--meter','current:RL.a','--meter','current:RL.b',
+        '--duration','20us','--rate','2MHz','--profile','precision-v1','--initial','zero-state',
+        '--expect-meters',expected,'--json'],{encoding:'utf8',env,timeout:30000});
+      assert.equal(r.status,1,r.stderr);
+      const comparison=JSON.parse(r.stdout).meterComparison;
+      assert.equal(comparison.status,'fail');assert.equal(comparison.counts.structuralFailures,0);
+      assert.equal(comparison.counts.compared,3);assert.ok(comparison.counts.failed>=1,label);
+    }
+    const base=['measure',file,'--scope','U.out,G.gnd','--duration','20us','--rate','2MHz',
+      '--profile','precision-v1','--initial','zero-state','--json'];
+    for(const [edit,reason] of [c=>{delete c.parts[4].params.transientModel;},
+      c=>{c.parts[4].params.inputOffsetV=.001;},c=>{c.parts[0].params.rInternal=1;},
+      c=>{c.parts[0].params.volts=14;},c=>{c.parts[0].params.wave='sine';},
+      c=>{c.wires.push({from:'U',fromTerminal:'nc',to:'G',toTerminal:'gnd'});},
+      c=>{c.parts[2].params.v2=1;}].map(edit=>[edit,/precision|LM741|linear-pole|model admission/])) {
+      const fixture=lm741PrecisionFixture();edit(fixture);writeFileSync(file,JSON.stringify(fixture));
+      const r=spawnSync(process.execPath,[CLI,...base],{encoding:'utf8',env,timeout:30000});
+      assert.equal(r.status,2,r.stderr);assert.match(r.stderr,reason);assert.equal(r.stdout,'');
+    }
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
 test('default/legacy profile controls reject rollback, substitution and unreviewed policy drift',()=>{
   const shared={relativeTolerance:1e-4,absoluteVoltage:1e-6,absoluteCurrent:1e-9,
     seedStepSec:1e-9,maxStepSec:1e-4,maxAttempts:20000};

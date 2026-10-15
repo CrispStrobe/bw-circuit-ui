@@ -29,6 +29,21 @@ export function validatePrecisionCaptureInput(parts, scopeCount, meterModes) {
   const boundedAdp = regulators.length===1
     && regulators[0].params?.startupModel==='current-limited-envelope';
   if (regulators.length>1) throw new Error('precision batch refuses multiple ADP7118 regulators');
+  const amplifiers = parts.filter(part => part.kind==='lm741');
+  const boundedLm = amplifiers.length===1 && amplifiers[0].params?.transientModel==='linear-pole';
+  if (amplifiers.length>1 || (amplifiers.length && regulators.length)) {
+    throw new Error('precision batch refuses multiple or mixed active precision devices');
+  }
+  if (boundedLm) {
+    const p=amplifiers[0].params;
+    if (p.inputOffsetV!==0 || !Object.hasOwn(p,'inputOffsetV')
+        || !Number.isFinite(p.supplyPositiveV) || !Number.isFinite(p.supplyNegativeV)
+        || p.supplyPositiveV-p.supplyNegativeV<10 || p.supplyPositiveV-p.supplyNegativeV>36) {
+      throw new Error('precision LM741 requires explicit zero offset and fixed 10–36 V supply span');
+    }
+    // Native linear-pole expansion adds five solver parts, not five authored parts.
+    if (parts.length+5>32) throw new Error('precision LM741 limits authored parts to 27 including hidden solver expansion');
+  }
   const companions = new Set(['resistor','capacitor','cap','gnd','vsource']);
   for (const part of parts) {
     if (part.analysisBlockers?.length) {
@@ -38,7 +53,8 @@ export function validatePrecisionCaptureInput(parts, scopeCount, meterModes) {
       Object.hasOwn(part.params ?? {},key))) {
       throw new Error(`precision batch refuses explicit initial conditions on ${part.id}`);
     }
-    if (!(boundedAdp ? part.kind==='adp7118' || companions.has(part.kind) : PRECISION_PARTS.has(part.kind))) {
+    if (!(boundedAdp ? part.kind==='adp7118' || companions.has(part.kind)
+      : boundedLm ? part.kind==='lm741' || companions.has(part.kind) : PRECISION_PARTS.has(part.kind))) {
       throw new Error(`precision batch refuses part ${part.id} (${part.kind}); this model lacks a qualified bounded precision domain`);
     }
     if (boundedAdp && part.kind==='vsource' && (part.params?.wave ?? 'dc')!=='dc') {
@@ -49,7 +65,7 @@ export function validatePrecisionCaptureInput(parts, scopeCount, meterModes) {
       throw new Error(`precision batch refuses source ${part.id} waveform ${part.params.wave}`);
     }
   }
-  return boundedAdp ? 'adp7118-current-limited' : 'passive-source';
+  return boundedAdp ? 'adp7118-current-limited' : boundedLm ? 'lm741-linear-pole' : 'passive-source';
 }
 
 /** Conservative voltage-constraint admission, not another waveform parser. */
@@ -90,14 +106,20 @@ export function validatePrecisionVoltageTopology(parts, nets) {
 }
 
 export function precisionCaptureBudget(clock, profile, netCount, domain = 'passive-source') {
-  if (!['passive-source','adp7118-current-limited'].includes(domain)) {
+  if (!['passive-source','adp7118-current-limited','lm741-linear-pole'].includes(domain)) {
     throw new Error('precision batch refuses unknown capture domain');
   }
   if (domain==='adp7118-current-limited' && clock.durationNs>1200000n) {
     throw new Error('precision ADP7118 batch limits capture to 1.2 ms');
   }
+  if (domain==='lm741-linear-pole' && clock.durationNs>20000n) {
+    throw new Error('precision LM741 limits capture to 20 us');
+  }
   if (!(Number.isSafeInteger(netCount) && netCount>=0 && netCount<=32)) {
     throw new Error('precision batch limits the resolved circuit to 32 nets');
+  }
+  if (domain==='lm741-linear-pole' && netCount+2>32) {
+    throw new Error('precision LM741 limits resolved nets to 30 including hidden solver expansion');
   }
   if (profile?.id!=='precision-v1' || !Number.isSafeInteger(profile.maxAttempts)
       || profile.maxAttempts<1 || profile.maxAttempts>20000
@@ -115,6 +137,13 @@ export function precisionCaptureBudget(clock, profile, netCount, domain = 'passi
     initialization:'zero-state-no-dc-operating-point',
     admission:'native-cold-model-and-acyclic-voltage-graph; bias-not-adopted',
     requestedTimeNs:String(clock.durationNs),
+  };
+  if (domain==='lm741-linear-pole') return {
+    maxAttempts:profile.maxAttempts,maxSolves:3*profile.maxAttempts+1,maxAdvances:200,
+    minimumAdaptiveAttempts,basis:'engine-whole-advance-lm741-linear-pole',
+    initialization:'zero-state-no-dc-operating-point',
+    admission:'native-linear-pole-envelope-and-acyclic-voltage-graph; bias-not-adopted',
+    hiddenSolverExpansion:{parts:5,nets:2},requestedTimeNs:String(clock.durationNs),
   };
   return {maxAttempts:profile.maxAttempts,maxSolves:3*profile.maxAttempts+1,
     maxAdvances:1,minimumAdaptiveAttempts,basis:'single-advance-passive-source-domain',
@@ -140,7 +169,15 @@ export function validatePrecisionCaptureWork(status, budget) {
     throw new Error(`precision batch did not qualify: ${status.failure?.code || 'local accuracy unmet or unassessed'}`);
   }
   if (budget.basis==='engine-whole-advance-adp7118-current-limited') {
-    const receipt = status.boundedAdvance;
+    validateWholeAdvanceReceipt(status,budget,'ADP7118');
+  }
+  if (budget.basis==='engine-whole-advance-lm741-linear-pole') {
+    validateWholeAdvanceReceipt(status,budget,'LM741');
+  }
+}
+
+function validateWholeAdvanceReceipt(status,budget,device) {
+    const {boundedAdvance:receipt,work} = status;
     if (!receipt || receipt.completed!==true || receipt.failure!==null
         || receipt.requestedTimeNs!==budget.requestedTimeNs
         || !['attempts','solves','advances'].every(key => {
@@ -150,15 +187,14 @@ export function validatePrecisionCaptureWork(status, budget) {
             && receipt.work[key]<=budget[limitKey]
             && receipt.work[key]>=work[key];
         })) {
-      throw new Error('precision ADP7118 batch returned missing or unqualified whole-advance receipt');
+      throw new Error(`precision ${device} batch returned missing or unqualified whole-advance receipt`);
     }
-  }
 }
 
-/** Finite ADP stream admission is narrower than existing precision batch. */
+/** Finite active-domain streams share one whole-capture work authority. */
 export function precisionStreamBudget(clock, budget, domain) {
-  if (domain !== 'adp7118-current-limited') {
-    throw new Error('precision watch requires the bounded ADP7118 current-limited domain');
+  if (!['adp7118-current-limited','lm741-linear-pole'].includes(domain)) {
+    throw new Error('precision watch requires the bounded ADP7118 current-limited domain or LM741 linear-pole domain');
   }
   const observerCalls = Number((clock.durationNs + clock.intervalNs - 1n) / clock.intervalNs);
   if (!Number.isSafeInteger(observerCalls) || observerCalls < 1 || observerCalls > 200) {

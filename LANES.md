@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-15 bounded LM741 linear-pole precision CLI — CLAIM, Codex bwcx.
+2026-10-15 bounded LM741 linear-pole precision CLI — DONE candidate, Codex bwcx.
 Branch fable/lm741-precision-cli-20261015; exact base
 0581d52df5d38f37637e1d3e6e7410c418c32380. Five paths only: this ledger,
 src/model/instrument-report.js, bin/bwc.mjs, existing test/cli-measure.test.js
@@ -19,6 +19,18 @@ Publish claim before implementation; local syntax/pure-math checks only,
 actual engine/CLI/browser qualification hosted. No solver/model/default/profile,
 importer/GUI, dependency/pin/lock, workflow, corpus, Lite or deployment change.
 One automatic final-head qualification, every enabled check green, guarded FF.
+Canonical claim966d3fae8ec6f1c3fdeefaa37de9b862486d57d6 landed before edits.
+Separate domain has 27 authored-part/30 resolved-net limits, 20 us maximum,
+one native whole-window budget and unchanged 2 MHz CLI ceiling. Registered
+tests retain six signed/phase batch+watch cases, actual CSV and receipt clock
+identity, prefix means, signed load currents/KCL, native model refusals and
+numerically wrong phase/pole references with diagnostic nonzero CLI exits.
+Pure reference integration, input/resource/receipt negatives and both old ADP
+and new LM741 guard-omission oracles pass (three selected tests, other runtime
+tests deliberately filtered). Initial private helper refactor missed its work
+binding, caught by the pure test and repaired before qualification. Actual
+installed-engine/CLI/browser tests remain hosted pending. Fixed point/mean gates
+are 100 uV/2 uV; no post-result bound adjustment or physical accuracy claim.
 
 2026-10-15 command-scoped current selector refusal — DONE candidate, Codex bwcx.
 Branch fable/cli-current-selector-refusal-20261015; exact base
