@@ -26,6 +26,85 @@ const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json'
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
 
+test('command-scoped --current refuses before input or measurement output for batch, watch and precision', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-current-command-'));
+  const csv=join(dir,'capture.csv'), receipt=join(dir,'capture.receipt.json');
+  try {
+    for (const file of [SINE_FIXTURE,join(dir,'missing.cir')]) {
+      for (const mode of [[],['--watch'],['--profile','precision-v1','--initial','zero-state']]) {
+        const r=spawnSync(process.execPath,[CLI,'measure',file,'--scope','V1.pos,V1.neg',
+          '--duration','10us','--rate','100kHz',...mode,'--current','V1.pos',
+          '--current','V1.neg','--csv',csv,'--receipt',receipt],{encoding:'utf8',timeout:30000});
+        assert.equal(r.status,2,r.stderr);
+        assert.match(r.stderr,/--current is supported only by dc-sweep; measure uses --meter current:/);
+        assert.equal(r.stdout,'','no JSON, text or watch records on refusal');
+        assert.equal(existsSync(csv),false);assert.equal(existsSync(receipt),false);
+      }
+    }
+    for (const cmd of ['info','op','analyze','convert']) {
+      const r=spawnSync(process.execPath,[CLI,cmd,join(dir,'missing.cir'),'--current','V1.pos'],
+        {encoding:'utf8',timeout:30000});
+      assert.equal(r.status,2);assert.match(r.stderr,/--current is supported only by dc-sweep/);
+      assert.equal(r.stdout,'');
+    }
+    const missing=spawnSync(process.execPath,[CLI,'dc-sweep',SINE_FIXTURE,'--current'],
+      {encoding:'utf8',timeout:30000});
+    assert.equal(missing.status,2);assert.match(missing.stderr,/--current needs a value/);
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test('command-scoped --current preserves repeated signed DC observations', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-current-dc-'));
+  try {
+    const file=join(dir,'source.cir');
+    writeFileSync(file,'Authored signed current control\nV1 in 0 0\nR1 in 0 1k\n.op\n.end\n');
+    const r=spawnSync(process.execPath,[CLI,'dc-sweep',file,'--source','V1','--from','-1',
+      '--to','1','--points','3','--current','V1.pos','--current','V1.neg','--json'],
+      {encoding:'utf8',timeout:30000});
+    assert.equal(r.status,0,r.stderr);
+    const report=JSON.parse(r.stdout);
+    assert.deepEqual(report.observations,[
+      {kind:'current',selector:'V1.pos',reference:'',unit:'A'},
+      {kind:'current',selector:'V1.neg',reference:'',unit:'A'}]);
+    assert.deepEqual(report.samples.map(row=>row.sourceVolts),[-1,0,1]);
+    for (const row of report.samples) {
+      assert.equal(row.values.length,2);
+      assert.ok(Math.abs(row.values[0]+row.sourceVolts/1000)<1e-9);
+      assert.ok(Math.abs(row.values[1]-row.sourceVolts/1000)<1e-9);
+    }
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test('command-scoped --current guard omission reproduces successful unrequested measurement output', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-current-omission-'));
+  // Keep the mutant next to the real CLI so all relative imports are identical.
+  const mutant=join(dirname(CLI),`.bwc-current-omission-${process.pid}.mjs`);
+  const guard="if (opts.current !== undefined && cmd !== 'dc-sweep') die('--current is supported only by dc-sweep; measure uses --meter current:<part>.<terminal>');";
+  const source=readFileSync(CLI,'utf8');
+  assert.equal(source.split(guard).length,2,'exactly one live command guard');
+  const csv=join(dir,'capture.csv'), receipt=join(dir,'capture.receipt.json');
+  const args=['measure',SINE_FIXTURE,'--scope','V1.pos,V1.neg','--duration','10us',
+    '--rate','100kHz','--current','V1.pos','--csv',csv,'--receipt',receipt,'--json'];
+  let created=false;
+  try {
+    const real=spawnSync(process.execPath,[CLI,...args],{encoding:'utf8',timeout:30000});
+    const assertRefusal=r=>{
+      assert.equal(r.status,2,r.stderr);assert.match(r.stderr,/--current is supported only by dc-sweep/);
+      assert.equal(r.stdout,'');assert.equal(existsSync(csv),false);assert.equal(existsSync(receipt),false);
+    };
+    assertRefusal(real);
+    writeFileSync(mutant,source.replace(guard,''),{flag:'wx'});created=true;
+    const omitted=spawnSync(process.execPath,[mutant,...args],{encoding:'utf8',timeout:30000});
+    assert.equal(omitted.status,0,omitted.stderr);
+    assert.equal(JSON.parse(omitted.stdout).scope.length,1);
+    assert.equal(existsSync(csv),true);assert.equal(existsSync(receipt),true);
+    assert.throws(()=>assertRefusal(omitted),assert.AssertionError,'same caller oracle kills omitted guard');
+  } finally {
+    if(created) rmSync(mutant);
+    rmSync(dir,{recursive:true,force:true});
+  }
+});
+
 function assertDefaultAndLegacyProfiles(defaultPolicy,legacyPolicy) {
   const {id:defaultId,minStepSec:defaultFloor,floorHistoryRestart,...defaultShared}=defaultPolicy;
   const {id:legacyId,minStepSec:legacyFloor,...legacyShared}=legacyPolicy;

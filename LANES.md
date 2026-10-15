@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-15 command-scoped current selector refusal — CLAIM, Codex bwcx.
+2026-10-15 command-scoped current selector refusal — DONE candidate, Codex bwcx.
 Branch fable/cli-current-selector-refusal-20261015; exact base
 9593a12056e72c10686232bb448f97471f98feec. Four paths only: this ledger,
 bin/bwc.mjs, existing test/cli-measure.test.js and docs/CLI-INSTRUMENTS.md.
@@ -16,6 +16,17 @@ is syntax/pure-source checking only; actual CLI/engine cases run in hosted CI.
 No solver/model/profile/default, importer/GUI, dependency/pin/lock, workflow,
 corpus, Lite or deployment edits. One automatic exact-head qualification,
 every enabled check green, then guarded normal landing.
+Claim a3b7f0e4636f8f9a2582668492698ddd11fdc8bd landed before implementation.
+One command guard precedes input handling; unchanged global parsing retains
+repeatable DC selectors. Three registered tests cover ten actual refusal
+invocations plus missing-value handling, signed repeated DC observations at
+three source voltages, and an isolated executable guard-omission mutant. The
+mutant must reproduce exit-zero CSV/receipt output, while the identical real
+invocation must refuse with no output. Production CLI is never overwritten;
+exclusive temporary mutant creation and finally cleanup preserve other files.
+Syntax/whitespace and extracted pure guard controls pass (ten refusals, six
+acceptances); actual CLI/engine/mutation execution remains hosted pending.
+No local installed-engine or browser result is claimed.
 
 2026-10-14 precision meter engine package adoption — DONE qualified, Codex bwcx.
 Branch fable/precision-meter-package-20261014; exact base

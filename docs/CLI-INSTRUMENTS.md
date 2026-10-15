@@ -199,7 +199,10 @@ static curve, **not** a time trace, oscilloscope acquisition or temperature swee
 
 Repeat `--observe tip[,reference]` and `--current part.terminal`. Voltages are
 differential or relative to engine ground; currents retain the native signed
-terminal convention. Limits: 2–501 points, 1–32 parts, at most 32 nets and
+terminal convention. `--current` belongs only to `dc-sweep`; other commands
+refuse it before reading the input or creating measurement output. For transient
+current measurements, use `measure --meter current:<part>.<terminal>` instead.
+Limits: 2–501 points, 1–32 parts, at most 32 nets and
 1–8 observations, endpoints within ±1000 V. A grid that collapses at floating
 point resolution refuses. The engine's strict DC supported-kind/parameter
 domain remains authoritative. Non-DC source waveforms, selected-source explicit

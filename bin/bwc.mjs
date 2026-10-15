@@ -134,6 +134,7 @@ for (let i = 1; i < args.length; i++) {
   else positional.push(args[i]);
 }
 const die = (m) => { console.error('bwc: ' + m); process.exit(2); };
+if (opts.current !== undefined && cmd !== 'dc-sweep') die('--current is supported only by dc-sweep; measure uses --meter current:<part>.<terminal>');
 if (opts.receipt && cmd !== 'measure') die('--receipt is supported only by measure');
 if (opts['expect-ac'] !== undefined && cmd !== 'analyze') die('--expect-ac is supported only by analyze');
 if (opts.kcl && cmd !== 'op') die('--kcl is supported only by static op');
