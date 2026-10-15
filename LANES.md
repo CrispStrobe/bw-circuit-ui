@@ -1,5 +1,25 @@
 # Work lanes
 
+2026-10-15 bounded LM741 linear-pole precision CLI — CLAIM, Codex bwcx.
+Branch fable/lm741-precision-cli-20261015; exact base
+0581d52df5d38f37637e1d3e6e7410c418c32380. Five paths only: this ledger,
+src/model/instrument-report.js, bin/bwc.mjs, existing test/cli-measure.test.js
+and docs/CLI-INSTRUMENTS.md. Admit exactly one explicit LM741 linear-pole with
+zero offset and declared fixed rails, passive/source companions only. Account
+for five hidden solver parts/two nets within existing resource caps. Preserve
+native topology, parameter, common-mode, swing, slew and load refusals. Bound
+capture to 20 us, retain 2 MHz maximum, and require one whole-capture native
+receipt for batch and finite watch without renewing the budget per chunk.
+Qualify signed 10 mV/1 ns steps at phases 0/33/67 ns against independent loaded
+linear KCL and exact ramp/window integrals on the legal 500 ns observation
+grid; do not reuse the native 10 MHz sampling or 100 ns meter-start receipt.
+Include actual CLI CSV/receipt/watch checks, refusal/resource controls and
+load-bearing domain/receipt/phase/pole negatives. Preserve passive/ADP domains.
+Publish claim before implementation; local syntax/pure-math checks only,
+actual engine/CLI/browser qualification hosted. No solver/model/default/profile,
+importer/GUI, dependency/pin/lock, workflow, corpus, Lite or deployment change.
+One automatic final-head qualification, every enabled check green, guarded FF.
+
 2026-10-15 command-scoped current selector refusal — DONE candidate, Codex bwcx.
 Branch fable/cli-current-selector-refusal-20261015; exact base
 9593a12056e72c10686232bb448f97471f98feec. Four paths only: this ledger,
