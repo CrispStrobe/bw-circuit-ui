@@ -1,5 +1,22 @@
 # Work lanes
 
+2026-10-15 command-scoped current selector refusal — CLAIM, Codex bwcx.
+Branch fable/cli-current-selector-refusal-20261015; exact base
+9593a12056e72c10686232bb448f97471f98feec. Four paths only: this ledger,
+bin/bwc.mjs, existing test/cli-measure.test.js and docs/CLI-INSTRUMENTS.md.
+The shared parser accepts --current for every command, but only dc-sweep
+consumes it; measure can otherwise emit successful output without the requested
+observation. Refuse --current outside dc-sweep before input reads, engine work
+or output creation. Preserve repeatable signed DC sweep observations and
+measure's existing --meter current:<part>.<terminal> interface. Add actual CLI
+batch/watch/precision and other-command refusal checks, no CSV/receipt/output
+on refusal, valid repeated DC current controls, and a load-bearing isolated
+guard-omission mutation. Publish this claim before implementation. Local work
+is syntax/pure-source checking only; actual CLI/engine cases run in hosted CI.
+No solver/model/profile/default, importer/GUI, dependency/pin/lock, workflow,
+corpus, Lite or deployment edits. One automatic exact-head qualification,
+every enabled check green, then guarded normal landing.
+
 2026-10-14 precision meter engine package adoption — DONE qualified, Codex bwcx.
 Branch fable/precision-meter-package-20261014; exact base
 0122af83584ff3498deba11df30c12f4508d234a. Seven paths only: this ledger,
