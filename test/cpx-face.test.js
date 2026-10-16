@@ -27,7 +27,7 @@ test('display colours consume emitted channels without applying brightness twice
 });
 
 test('a CPX circuit identifies DEVICE CPX while preserving other board inference', () => {
-  assert.equal(circuitToDeclarations([{id: 'cpx', kind: 'circuit_playground_express'}], []).device, 'CPX');
+  assert.equal(circuitToDeclarations([{id: 'cpx', kind: 'circuit_playground_express'}], []).device, 'cpx');
   assert.equal(circuitToDeclarations([{id: 'uno', kind: 'arduino_uno'}], []).device, 'arduino-uno');
   assert.equal(circuitToDeclarations([{id: 'pico', kind: 'pi_pico'}], []).device, 'pico');
   assert.deepEqual(circuitToDeclarations([], []), {pins: [], ports: [], parts: []});

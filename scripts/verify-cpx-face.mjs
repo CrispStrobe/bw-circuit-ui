@@ -47,7 +47,7 @@ try {
                 onPointerDown: () => window.parentInputs++},
                 React.createElement('g', {transform: 'rotate(90)'},
                   React.createElement(CpxFace, {width: 250, height: 250, state,
-                    onInput: active ? onInput : null}))));
+                    onInput: active ? event => onInput(event) : null}))));
             }
             window.setFace = next => {state = next; render();};
             window.setActive = next => {active = next; render();};
