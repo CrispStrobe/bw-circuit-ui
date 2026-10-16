@@ -9,6 +9,18 @@ focused/actual-browser regression controls. Explicit circuitData/file-loaded
 precedence and every other device's starter/autosave policy stay unchanged.
 The real Lite program journey remains required; this claim adds no engine or
 pin-map change. Publish this expansion before implementing that branch.
+Published expansion f0bc711 precedes source changes. The production baseline
+records real native CPX blocks and ten emitted red pixels while the circuit
+contains only the generic breadboard/battery/resistor/LED starter. CPX now
+infers its board without external pins, including a device change reusing the
+same empty pins array. Explicit file-loaded precedence remains first; other
+devices retain their existing fallback. Expanded Chromium controls pass for
+both paths, preserve an explicitly loaded resistor circuit and reject a third
+executable mutant disabling onboard-only inference. The earlier Vite run
+labelled before received HMR during edits and is not a valid red control;
+the unchanged production baseline and isolated mutant are the retained reds.
+Expanded geometry/inference/load/registration controls pass 33/33 with no skips;
+production build passes. Final exact-head hosted results remain required.
 
 2026-10-16 A13 Circuit Playground Express live face — CLAIMED, Codex root.
 Isolated /tmp/bw-circuit-ui-a13-20261016, branch lane/a13-cpx-live-face-20261016,
