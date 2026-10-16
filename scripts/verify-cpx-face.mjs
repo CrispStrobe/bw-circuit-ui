@@ -7,7 +7,7 @@ import {chromium} from 'playwright';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const original = await readFile(new URL('../src/components/CpxFace.jsx', import.meta.url), 'utf8');
 const mutants = new Map([
-  ['callback', original.replace('input.current({button: name, down: true});', '/* omitted button callback */')],
+  ['callback', original.replace('held.current({button: name, down: true});', '/* omitted button callback */')],
   ['positions', original.replace('CPX_FACE.pixels.map((p, index)',
     '[CPX_FACE.pixels[1], CPX_FACE.pixels[0], ...CPX_FACE.pixels.slice(2)].map((p, index)')]
 ]);
@@ -104,7 +104,17 @@ try {
   await a.dispatchEvent('pointerdown', {pointerId: 1});
   await a.dispatchEvent('pointercancel', {pointerId: 1});
   assert.deepEqual(await page.evaluate(() => window.events), [{button: 'A', down: true}, {button: 'A', down: false}]);
-  await page.evaluate(() => { window.events = []; window.setActive(false); });
+  await page.evaluate(() => { window.events = []; });
+  const heldBox = await a.boundingBox();
+  await page.mouse.move(heldBox.x + heldBox.width / 2, heldBox.y + heldBox.height / 2);
+  await page.mouse.down();
+  assert.equal(await a.getAttribute('aria-pressed'), 'true');
+  await page.evaluate(() => window.setActive(false));
+  await page.locator('[data-cpx-button="A"][aria-disabled="true"]').waitFor();
+  assert.deepEqual(await page.evaluate(() => window.events), [{button: 'A', down: true}, {button: 'A', down: false}],
+    'Callback removal releases through the callback which received the press');
+  await page.mouse.up();
+  await page.evaluate(() => { window.events = []; });
   const passive = await page.locator('[data-cpx-button="A"][aria-disabled="true"]').boundingBox();
   await page.mouse.click(passive.x + passive.width / 2, passive.y + passive.height / 2);
   assert.deepEqual(await page.evaluate(() => window.events), [], 'Passive face must not write');

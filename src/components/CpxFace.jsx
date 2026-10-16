@@ -2,24 +2,22 @@ import React, {useEffect, useRef} from 'react';
 import {CPX_FACE, cpxPixelFill} from '../model/cpx-face.js';
 
 function CpxButton({name, position, down, onInput}) {
-  const held = useRef(false);
+  const held = useRef(null);
   const input = useRef(onInput);
   input.current = onInput;
   const release = event => {
     event?.stopPropagation();
     if (!held.current) return;
-    held.current = false;
-    input.current?.({button: name, down: false});
+    const sink = held.current;
+    held.current = null;
+    sink({button: name, down: false});
   };
-  useEffect(() => () => {
-    if (!held.current) return;
-    held.current = false;
-    onInput?.({button: name, down: false});
-  }, [name, onInput]);
+  useEffect(() => release, [name]);
+  useEffect(() => { if (!onInput) release(); }, [Boolean(onInput)]);
   const press = () => {
     if (!input.current || held.current) return;
-    held.current = true;
-    input.current({button: name, down: true});
+    held.current = input.current;
+    held.current({button: name, down: true});
   };
   return <circle cx={position.x} cy={position.y} r={6.5}
     data-cpx-button={name} role="button" aria-label={`CPX ${name}`}
