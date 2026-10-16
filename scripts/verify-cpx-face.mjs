@@ -8,6 +8,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const original = await readFile(new URL('../src/components/CpxFace.jsx', import.meta.url), 'utf8');
 const designerOriginal = await readFile(new URL('../src/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
 const mutants = new Map([
+  ['pointer-owner', original.replace('if (event?.pointerId !== undefined && owner.current !== `pointer:${event.pointerId}`) return;', '/* omitted pointer owner guard */')],
   ['callback', original.replace('held.current({button: name, down: true});', '/* omitted button callback */')],
   ['positions', original.replace('CPX_FACE.pixels.map((p, index)',
     '[CPX_FACE.pixels[1], CPX_FACE.pixels[0], ...CPX_FACE.pixels.slice(2)].map((p, index)')]
@@ -109,6 +110,38 @@ try {
     await page.locator('[data-cpx-button="A"]').click();
     assert.deepEqual(await page.evaluate(() => window.events), [{button: 'A', down: true}, {button: 'A', down: false}]);
   };
+  const touchHoldProof = async () => {
+    const a = page.locator('[data-cpx-button="A"]');
+    await page.evaluate(() => { window.events = []; });
+    const touchBox = await a.boundingBox();
+    const touch = {x: touchBox.x + touchBox.width / 2, y: touchBox.y + touchBox.height / 2, id: 11};
+    const secondTouch = {...touch, x: touch.x + 1, id: 12};
+    await page.evaluate(() => {
+      window.touchTrace = [];
+      for (const type of ['pointerdown', 'pointerup', 'pointercancel', 'lostpointercapture', 'blur', 'keydown', 'keyup']) {
+        document.addEventListener(type, event => window.touchTrace.push({type, id: event.pointerId,
+          key: event.key, button: event.target.getAttribute?.('data-cpx-button')}), true);
+      }
+    });
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [touch]});
+    await cdp.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [touch, secondTouch]});
+    await cdp.send('Input.dispatchTouchEvent', {type: 'touchEnd', touchPoints: [secondTouch]});
+    await page.waitForFunction(() => {
+      const downs = window.touchTrace.filter(event => event.type === 'pointerdown');
+      return downs.length === 2 && window.touchTrace.some(event => event.type === 'pointerup' && event.id === downs[1].id);
+    });
+    assert.equal(await page.evaluate(() => {
+      const first = window.touchTrace.find(event => event.type === 'pointerdown');
+      return window.touchTrace.some(event => event.type === 'pointerup' && event.id === first.id);
+    }), false, 'The touch driver must release only the second pointer');
+    assert.equal(await a.getAttribute('aria-pressed'), 'true',
+      `Releasing a second finger must not release the first finger hold: ${JSON.stringify(await page.evaluate(() => window.touchTrace))}`);
+    await cdp.send('Input.dispatchTouchEvent', {type: 'touchEnd', touchPoints: [touch]});
+    await page.waitForFunction(() => document.querySelector('[data-cpx-button="A"]').getAttribute('aria-pressed') === 'false');
+    assert.deepEqual(await page.evaluate(() => window.events), [{button: 'A', down: true}, {button: 'A', down: false}]);
+    await cdp.detach();
+  };
   await visit('');
   await pixelProof();
   assert.equal(await page.locator('[data-cpx-red-led]').getAttribute('data-cpx-red-led'), 'unavailable');
@@ -125,6 +158,20 @@ try {
   assert.equal(await page.locator('[data-cpx-switch]').getAttribute('aria-pressed'), 'true');
   await page.evaluate(() => { window.events = []; });
   const a = page.locator('[data-cpx-button="A"]');
+  await touchHoldProof();
+  await page.evaluate(() => { window.events = []; });
+  await a.click({button: 'right'});
+  assert.deepEqual(await page.evaluate(() => window.events), [], 'Context-menu input must not press A');
+  await page.keyboard.press('Escape');
+  await a.focus();
+  await page.keyboard.down('Space');
+  assert.equal(await a.getAttribute('aria-pressed'), 'true', 'Space starts the held press');
+  await page.keyboard.press('Enter');
+  assert.equal(await a.getAttribute('aria-pressed'), 'true',
+    `Only the held key releases a keyboard press: ${JSON.stringify(await page.evaluate(() => ({trace: window.touchTrace, events: window.events})))}`);
+  await page.keyboard.up('Space');
+  assert.deepEqual(await page.evaluate(() => window.events), [{button: 'A', down: true}, {button: 'A', down: false}]);
+  await page.evaluate(() => { window.events = []; });
   await a.dispatchEvent('pointerdown', {pointerId: 1});
   await a.dispatchEvent('pointercancel', {pointerId: 1});
   assert.deepEqual(await page.evaluate(() => window.events), [{button: 'A', down: true}, {button: 'A', down: false}]);
@@ -155,6 +202,8 @@ try {
   await assert.rejects(pixelProof, /pixel 0 physical x/);
   await visit('?mutant=callback');
   await assert.rejects(buttonProof, /Expected values to be strictly deep-equal/);
+  await visit('?mutant=pointer-owner');
+  await assert.rejects(touchHoldProof, /Releasing a second finger must not release the first finger hold/);
   await page.goto('http://127.0.0.1:3196/__cpx_face?designer=onboard&mutant=onboard');
   await page.waitForFunction(() => window.observedCircuit?.parts.some(p => p.kind === 'vsource'));
   const onboardProof = async () => assert.equal(await page.locator('[data-board-face="circuit_playground_express"]').count(), 1,
@@ -173,7 +222,7 @@ try {
   await page.waitForFunction(() => window.observedCircuit?.parts.some(p => p.id === 'kept'));
   assert.equal(await page.locator('[data-board-face="circuit_playground_express"]').count(), 0, 'Explicit circuit file wins');
   assert.deepEqual(errors, [], 'No page errors, including negative controls');
-  console.log('CPX face: physical pixels, host state, rotated mouse/touch/keyboard inputs, cancellation, passive face, onboard-only placement, explicit-file precedence and three source mutations pass');
+  console.log('CPX face: physical pixels, host state, rotated mouse/touch/keyboard inputs, cancellation, passive face, onboard-only placement, explicit-file precedence, owned multi-touch/key holds and four source mutations pass');
 } finally {
   await browser?.close();
   await server?.close();

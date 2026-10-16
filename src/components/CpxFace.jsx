@@ -3,19 +3,24 @@ import {CPX_FACE, cpxPixelFill} from '../model/cpx-face.js';
 
 function CpxButton({name, position, down, onInput}) {
   const held = useRef(null);
+  const owner = useRef(null);
   const input = useRef(onInput);
   input.current = onInput;
   const release = event => {
     event?.stopPropagation();
     if (!held.current) return;
+    if (event?.pointerId !== undefined && owner.current !== `pointer:${event.pointerId}`) return;
+    if (event?.type === 'keyup' && owner.current !== `key:${event.key}`) return;
     const sink = held.current;
     held.current = null;
+    owner.current = null;
     sink({button: name, down: false});
   };
   useEffect(() => release, [name]);
   useEffect(() => { if (!onInput) release(); }, [Boolean(onInput)]);
-  const press = () => {
+  const press = source => {
     if (!input.current || held.current) return;
+    owner.current = source;
     held.current = input.current;
     held.current({button: name, down: true});
   };
@@ -26,20 +31,20 @@ function CpxButton({name, position, down, onInput}) {
     style={{pointerEvents: 'auto', touchAction: 'none', cursor: onInput ? 'pointer' : 'default'}}
     onPointerDown={event => {
       event.stopPropagation();
-      if (!onInput) return;
+      if (!onInput || held.current || event.button !== 0) return;
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
-      press();
+      press(`pointer:${event.pointerId}`);
     }}
     onPointerUp={release} onPointerCancel={release} onLostPointerCapture={release}
     onBlur={release}
     onKeyDown={event => {
       if (event.key !== ' ' && event.key !== 'Enter') return;
-      event.preventDefault(); event.stopPropagation(); press();
+      event.preventDefault(); event.stopPropagation(); press(`key:${event.key}`);
     }}
     onKeyUp={event => {
       if (event.key !== ' ' && event.key !== 'Enter') return;
-      event.preventDefault(); event.stopPropagation(); release();
+      event.preventDefault(); event.stopPropagation(); release(event);
     }}
     onClick={event => event.stopPropagation()} />;
 }

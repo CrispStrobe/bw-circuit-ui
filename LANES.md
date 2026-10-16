@@ -1,5 +1,19 @@
 # Work lanes
 
+2026-10-16 A13 input ownership follow-up — implemented, final CI pending.
+Face buttons now bind each hold to the pointer or key that pressed it, ignore
+secondary/right mouse presses, and retain the original input callback for release.
+The Chromium proof verifies two actual touch pointers: the driver confirms that
+only pointer two ended before asserting pointer one remains pressed. It also
+checks mixed Space/Enter holds and rejects an executable omitted-pointer-owner
+mutation, alongside the three existing mutations. Earlier exploratory touch
+logs that ended pointer one are not regression evidence. All 34 focused tests
+and this browser proof pass under official, checksum-verified Node22.23.3.
+The Homebrew node@22 alias actually points to Node26; earlier local version
+labels using that alias are corrected. A broader local suite was interrupted
+with its owned children after high load; it is not a passing qualification.
+All enabled final-head hosted checks remain required before landing.
+
 2026-10-16 A13 envelope expansion — CLAIMED before further source edits.
 The actual Lite production baseline 2b6dced loads the native CPX blocks but
 shows no CPX board: CircuitDesigner routes every zero-pin program through
