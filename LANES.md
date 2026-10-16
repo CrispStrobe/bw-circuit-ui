@@ -1,5 +1,70 @@
 # Work lanes
 
+2026-10-16 A13 input ownership follow-up — implemented, final CI pending.
+Face buttons now bind each hold to the pointer or key that pressed it, ignore
+secondary/right mouse presses, and retain the original input callback for release.
+The Chromium proof verifies two actual touch pointers: the driver confirms that
+only pointer two ended before asserting pointer one remains pressed. It also
+checks mixed Space/Enter holds and rejects an executable omitted-pointer-owner
+mutation, alongside the three existing mutations. Earlier exploratory touch
+logs that ended pointer one are not regression evidence. All 34 focused tests
+and this browser proof pass under official, checksum-verified Node22.23.3.
+The Homebrew node@22 alias actually points to Node26; earlier local version
+labels using that alias are corrected. A broader local suite was interrupted
+with its owned children after high load; it is not a passing qualification.
+All enabled final-head hosted checks remain required before landing.
+
+2026-10-16 A13 envelope expansion — CLAIMED before further source edits.
+The actual Lite production baseline 2b6dced loads the native CPX blocks but
+shows no CPX board: CircuitDesigner routes every zero-pin program through
+saved wiring or the generic starter. Also own the CPX-only zero-external-pin
+inference branch and its previous-device guard in CircuitDesigner.jsx, plus
+focused/actual-browser regression controls. Explicit circuitData/file-loaded
+precedence and every other device's starter/autosave policy stay unchanged.
+The real Lite program journey remains required; this claim adds no engine or
+pin-map change. Publish this expansion before implementing that branch.
+Published expansion f0bc711 precedes source changes. The production baseline
+records real native CPX blocks and ten emitted red pixels while the circuit
+contains only the generic breadboard/battery/resistor/LED starter. CPX now
+infers its board without external pins, including a device change reusing the
+same empty pins array. Explicit file-loaded precedence remains first; other
+devices retain their existing fallback. Expanded Chromium controls pass for
+both paths, preserve an explicitly loaded resistor circuit and reject a third
+executable mutant disabling onboard-only inference. The earlier Vite run
+labelled before received HMR during edits and is not a valid red control;
+the unchanged production baseline and isolated mutant are the retained reds.
+Expanded geometry/inference/load/registration controls pass 33/33 with no skips;
+production build passes. Final exact-head hosted results remain required.
+
+2026-10-16 A13 Circuit Playground Express live face — CLAIMED, Codex root.
+Isolated /tmp/bw-circuit-ui-a13-20261016, branch lane/a13-cpx-live-face-20261016,
+base 753f849. Own the CPX-only face component and geometry, narrow prop forwarding
+in src/components/{CircuitDesigner,BoardCanvas}.jsx, the CPX BOARD_TO_DEVICE entry
+in src/model/declarations.js, focused face/declaration/browser controls, test
+registration and this ledger. Host supplies cpxState and onCpxInput; rendering
+reads the existing runtime snapshot and input callbacks drive that same runtime.
+No new engine state, polling simulation, electrical model, artwork replacement,
+package pin/lock or unrelated board changes. Preserve pad geometry and transforms.
+Acceptance: ten indexed physical pixel positions, shown RGB/brightness, D13,
+A/B press/release/cancel and switch, no-input-callback passive rendering, and
+circuit declarations identifying CPX. Require actual face interaction plus
+swapped-position and omitted-callback negative controls. Lite integration and
+its final browser proof follow separately through an immutable published pin.
+Publish this claim before implementation; preserve existing lanes and qualify
+all enabled exact-head checks before landing.
+Claim 796bd2c was published before source edits. The host contract is cpxState
+(the existing snapshot's shown[10], buttons, switchRight; optional boolean
+redLed) and onCpxInput({button,down}|{switchRight}). Displayed RGB is already
+brightness-scaled and receives the pane's perceptual curve only. Missing D13
+state is explicitly unavailable; the current Lite extension does not publish
+it, so downstream D13 closure remains open. No light is inferred from pixels.
+Local focused controls pass 28/28; production build passes with existing chunk
+warnings. Chromium verifies rotated mouse/touch/keyboard controls, cancel,
+unmount release, passive rendering and rejects executable pixel-index and
+button-callback mutants. The new proof is registered after browser installation
+in the existing interaction CI job; no job budget or threshold changes. This
+component proof is separate from the required final Lite program/face journey.
+
 2026-10-15 current circuit campaign documentation — DONE candidate, Codex bwcx.
 Branch docs/circuit-instrument-campaign-20261015; exact base
 1db1bb9ee565338672c7acfefec4cf94b27196e1. Six Markdown paths only: this ledger,
