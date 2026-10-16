@@ -16,6 +16,18 @@ swapped-position and omitted-callback negative controls. Lite integration and
 its final browser proof follow separately through an immutable published pin.
 Publish this claim before implementation; preserve existing lanes and qualify
 all enabled exact-head checks before landing.
+Claim 796bd2c was published before source edits. The host contract is cpxState
+(the existing snapshot's shown[10], buttons, switchRight; optional boolean
+redLed) and onCpxInput({button,down}|{switchRight}). Displayed RGB is already
+brightness-scaled and receives the pane's perceptual curve only. Missing D13
+state is explicitly unavailable; the current Lite extension does not publish
+it, so downstream D13 closure remains open. No light is inferred from pixels.
+Local focused controls pass 28/28; production build passes with existing chunk
+warnings. Chromium verifies rotated mouse/touch/keyboard controls, cancel,
+unmount release, passive rendering and rejects executable pixel-index and
+button-callback mutants. The new proof is registered after browser installation
+in the existing interaction CI job; no job budget or threshold changes. This
+component proof is separate from the required final Lite program/face journey.
 
 2026-10-15 current circuit campaign documentation — DONE candidate, Codex bwcx.
 Branch docs/circuit-instrument-campaign-20261015; exact base

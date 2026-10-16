@@ -95,6 +95,7 @@ import { boardTerminalOffsets, boardVisualGeometry } from '../model/board-geomet
 // ids and <style> stay inside it and two boards on one canvas cannot collide.
 import calliopeMiniArt from '../parts-data/calliopemini.svg';
 import circuitPlaygroundArt from '../parts-data/circuit_playground_express.svg';
+import { CpxFace } from './CpxFace.jsx';
 
 const MAKECODE_FACE_ART = {
   calliopemini: { href: calliopeMiniArt, title: 'Calliope mini' },
@@ -376,7 +377,7 @@ function fmtV(v) {
 // Standard 4×4 keypad key labels, row-major (key 0 = '1', key 15 = 'D').
 const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
 
-function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn, supplyVolts = 5 }) {
+function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn, supplyVolts = 5 }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -722,8 +723,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         // The board IS its MakeCode simulator art: the face, the LED matrix /
         // NeoPixels and the pad rings are all in the picture, and the sidecar's
         // terminals are that picture's pad centres (board-geometry.js), so the
-        // wire end sits in the ring it names. Only a pad marker and the
-        // part's name are drawn on top.
+        // wire end sits in the ring it names. CPX additionally projects the
+        // host's live device state and inputs; Calliope keeps its static art.
         const sc = getSidecar(kind);
         const geometry = boardVisualGeometry(kind, sc);
         const W = geometry?.w ?? 280;
@@ -739,6 +740,8 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
               fill="transparent" stroke={selStroke || 'none'} strokeWidth={isSelected ? 3 : 0} />
             <image href={art.href} x={-W / 2} y={-H / 2} width={W} height={H}
               preserveAspectRatio="none" style={{ pointerEvents: 'none' }} />
+            {kind === 'circuit_playground_express' && <CpxFace
+              width={W} height={H} state={cpxState} onInput={onCpxInput} />}
             {Object.entries(offsets).map(([name, p]) => (
               <circle key={name} cx={p.dx} cy={p.dy} r={2.5}
                 fill="none" stroke="#637381" strokeWidth={0.6} pointerEvents="none">
@@ -3357,6 +3360,7 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
 // ── Main BoardCanvas ─────────────────────────────────────────────
 
 export function BoardCanvas({
+  cpxState, onCpxInput,
   // The board's own supply. The VCC symbol used to print `params.volts ?? 5`,
   // so a 3.3 V board drew a cap reading "+5V" — a number nothing in the
   // circuit had. Passed in rather than guessed.
@@ -4952,7 +4956,7 @@ export function BoardCanvas({
               );
             });
           })}
-          <SvgParts parts={parts} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick}
+          <SvgParts cpxState={cpxState} onCpxInput={onCpxInput} parts={parts} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick}
             supplyVolts={supplyVolts}
             deviceStates={(() => {
               // Device faces follow the ACTIVE board — during a debug run
