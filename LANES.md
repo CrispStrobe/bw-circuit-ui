@@ -1,5 +1,22 @@
 # Work lanes
 
+2026-10-16 A13 Circuit Playground Express live face — CLAIMED, Codex root.
+Isolated /tmp/bw-circuit-ui-a13-20261016, branch lane/a13-cpx-live-face-20261016,
+base 753f849. Own the CPX-only face component and geometry, narrow prop forwarding
+in src/components/{CircuitDesigner,BoardCanvas}.jsx, the CPX BOARD_TO_DEVICE entry
+in src/model/declarations.js, focused face/declaration/browser controls, test
+registration and this ledger. Host supplies cpxState and onCpxInput; rendering
+reads the existing runtime snapshot and input callbacks drive that same runtime.
+No new engine state, polling simulation, electrical model, artwork replacement,
+package pin/lock or unrelated board changes. Preserve pad geometry and transforms.
+Acceptance: ten indexed physical pixel positions, shown RGB/brightness, D13,
+A/B press/release/cancel and switch, no-input-callback passive rendering, and
+circuit declarations identifying CPX. Require actual face interaction plus
+swapped-position and omitted-callback negative controls. Lite integration and
+its final browser proof follow separately through an immutable published pin.
+Publish this claim before implementation; preserve existing lanes and qualify
+all enabled exact-head checks before landing.
+
 2026-10-15 current circuit campaign documentation — DONE candidate, Codex bwcx.
 Branch docs/circuit-instrument-campaign-20261015; exact base
 1db1bb9ee565338672c7acfefec4cf94b27196e1. Six Markdown paths only: this ledger,
