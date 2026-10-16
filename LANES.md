@@ -1,5 +1,15 @@
 # Work lanes
 
+2026-10-16 A13 envelope expansion — CLAIMED before further source edits.
+The actual Lite production baseline 2b6dced loads the native CPX blocks but
+shows no CPX board: CircuitDesigner routes every zero-pin program through
+saved wiring or the generic starter. Also own the CPX-only zero-external-pin
+inference branch and its previous-device guard in CircuitDesigner.jsx, plus
+focused/actual-browser regression controls. Explicit circuitData/file-loaded
+precedence and every other device's starter/autosave policy stay unchanged.
+The real Lite program journey remains required; this claim adds no engine or
+pin-map change. Publish this expansion before implementing that branch.
+
 2026-10-16 A13 Circuit Playground Express live face — CLAIMED, Codex root.
 Isolated /tmp/bw-circuit-ui-a13-20261016, branch lane/a13-cpx-live-face-20261016,
 base 753f849. Own the CPX-only face component and geometry, narrow prop forwarding
