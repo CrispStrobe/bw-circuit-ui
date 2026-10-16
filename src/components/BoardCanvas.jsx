@@ -4956,7 +4956,7 @@ export function BoardCanvas({
               );
             });
           })}
-          <SvgParts cpxState={cpxState} onCpxInput={onCpxInput} parts={parts} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick}
+          <SvgParts parts={parts} cpxState={cpxState} onCpxInput={onCpxInput} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick}
             supplyVolts={supplyVolts}
             deviceStates={(() => {
               // Device faces follow the ACTIVE board — during a debug run
