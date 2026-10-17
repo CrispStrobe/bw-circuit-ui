@@ -11,8 +11,8 @@
  * circuitData path (window.__setCircuitData) and the page's body shapes are
  * counted: rect/path/polygon/polyline/ellipse/image/foreignObject in any
  * svg, plus wokwi-* elements. Terminal dots are circles and pin names are
- * text, and terminal stubs are lines, so none of those count. A kind that adds no body shape over an empty
- * circuit is faceless.
+ * text, and terminal stubs are lines, so none of those count. A kind that
+ * adds no body shape over an empty circuit is faceless.
  *
  *   node scripts/census-part-faces.mjs            report only (exit 0)
  *   node scripts/census-part-faces.mjs --json F   also write the list to F
@@ -24,7 +24,6 @@ import {chromium} from 'playwright';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const dataDir = new URL('../src/parts-data/', import.meta.url);
-const CONTROL = 'bw_census_ghost_control';
 const jsonOut = process.argv.includes('--json') ? process.argv[process.argv.indexOf('--json') + 1] : null;
 
 // kind -> terminal names. A loaded part carries its terminals, as the
@@ -54,7 +53,6 @@ try {
   page.on('pageerror', e => errors.push(String(e)));
   await page.goto('http://127.0.0.1:3197/', {waitUntil: 'domcontentloaded', timeout: 120000});
   await page.waitForFunction(() => window.__circuit && window.__setCircuitData, null, {timeout: 120000});
-  const settle = () => page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
   // Only the canvas counts: the largest svg on the page. Counting the whole
   // document let panels that react to ANY loaded part (inspector, lists)
   // supply "body" shapes, and the first CI run reported 0 of 287 faceless.
@@ -66,41 +64,45 @@ try {
     return canvas.querySelectorAll('rect, path, polygon, polyline, ellipse, image, foreignObject').length
       + [...document.querySelectorAll('*')].filter(e => e.tagName.startsWith('WOKWI-')).length;
   });
-  const shapeList = () => page.evaluate(() => {
+  // Drawing a loaded part takes about a second (measured ~1.3 s); a fixed
+  // two-frame wait sampled an undrawn canvas and listed every kind. Wait
+  // until the canvas element count holds steady for a second.
+  const canvasSize = () => page.evaluate(() => {
     const svgs = [...document.querySelectorAll('svg')].filter(svg => !svg.parentElement?.closest('svg'));
     const area = svg => { const r = svg.getBoundingClientRect(); return r.width * r.height; };
-    const canvas = svgs.sort((a, b) => area(b) - area(a))[0];
-    return canvas ? [...canvas.querySelectorAll('rect, path, polygon, polyline, ellipse, image, foreignObject')]
-      .map(e => e.outerHTML.replace(/>[\s\S]*$/, '>').slice(0, 220)) : [];
+    const canvas = svgs.sort((x, y) => area(y) - area(x))[0];
+    return (canvas ? canvas.querySelectorAll('*').length : 0)
+      + [...document.querySelectorAll('*')].filter(e => e.tagName.startsWith('WOKWI-')).length;
   });
   const load = async parts => {
     await page.evaluate(parts => window.__setCircuitData({version: 1, parts, wires: []}), parts);
     await page.waitForFunction(n => (window.__circuit?.parts?.length ?? -1) === n, parts.length, {timeout: 20000});
-    await settle();
+    let last = -1, steady = 0;
+    for (const started = Date.now(); Date.now() - started < 10000 && steady < 4;) {
+      await page.waitForTimeout(250);
+      const now = await canvasSize();
+      steady = now === last ? steady + 1 : 0;
+      last = now;
+    }
   };
   await load([]);
   const empty = await bodyShapes();
   // Control: a kind no renderer knows must come out faceless, or this census
   // cannot see a ghost at all and its list means nothing.
-  const emptyList = await shapeList();
-  await load([partOf(CONTROL)]);
-  const controlAdded = (await bodyShapes()) - empty;
-  const controlList = await shapeList();
-  await load([]);
-  // Calibration (report run): what does a part with no renderer still add?
-  console.log(`calibration: empty canvas ${empty} shapes, control kind adds ${controlAdded}`);
-  for (const html of controlList.filter(h => !emptyList.includes(h))) console.log(`  control adds: ${html}`);
-  // Positive control: a resistor certainly has a body.
+  // Positive control: a resistor has a body (a wokwi-resistor). If it reads
+  // as faceless the census is measuring an undrawn canvas.
   await load([partOf('resistor')]);
   const resistorAdded = (await bodyShapes()) - empty;
   await load([]);
-  console.log(`calibration: resistor adds ${resistorAdded}`);
+  if (empty < 0 || resistorAdded <= 0) {
+    throw new Error(`census sees no body even for a resistor (added ${resistorAdded}, empty canvas ${empty})`);
+  }
   for (const kind of kinds) {
     try {
       await load([partOf(kind)]);
       const added = (await bodyShapes()) - empty;
       counts.push([kind, added]);
-      if (added <= controlAdded) faceless.push(kind);
+      if (added <= 0) faceless.push(kind);
     } catch (e) {
       errors.push(`${kind}: ${e.message.split('\n')[0]}`);
     }
@@ -110,7 +112,7 @@ try {
   await browser.close();
   await server.close();
 }
-console.log(`part-face census: ${kinds.length} kinds, ${faceless.length} add no more than the control (${'<='} control)`);
+console.log(`part-face census: ${kinds.length} kinds, ${faceless.length} drawn without a body`);
 console.log('fewest added shapes: ' + counts.sort((a, b) => a[1] - b[1]).slice(0, 40).map(([k, n]) => `${k}=${n}`).join(' '));
 for (const kind of faceless) console.log(`  faceless: ${kind}`);
 for (const e of errors) console.log(`  error: ${e}`);
