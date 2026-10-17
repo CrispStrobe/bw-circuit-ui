@@ -71,7 +71,7 @@ export function DrcOverlay({ warnings, parts }) {
     const by = isDip ? part.y - 40 : part.y - 25;
 
     return (
-      <g key={`drc-${partId}`} style={{ pointerEvents: 'none' }}>
+      <g key={`drc-${partId}`} data-drc-badge={partId} style={{ pointerEvents: 'none' }}>
         <title>{w.explanation || w.rule}</title>
         <rect
           x={bx} y={by}
