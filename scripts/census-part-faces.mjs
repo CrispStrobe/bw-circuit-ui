@@ -27,12 +27,20 @@ const dataDir = new URL('../src/parts-data/', import.meta.url);
 const CONTROL = 'bw_census_ghost_control';
 const jsonOut = process.argv.includes('--json') ? process.argv[process.argv.indexOf('--json') + 1] : null;
 
-const kinds = [...new Set(readdirSync(dataDir).filter(f => f.endsWith('.json')).map(f => {
+// kind -> terminal names. A loaded part carries its terminals, as the
+// shipping save format does: without them the canvas drew nothing even for
+// a resistor (calibration run 3: resistor, led and battery all added 0).
+const terminalsOf = new Map();
+for (const f of readdirSync(dataDir).filter(f => f.endsWith('.json'))) {
   try {
     const sidecar = JSON.parse(readFileSync(new URL(f, dataDir), 'utf8'));
-    return sidecar.kind && Array.isArray(sidecar.terminals) && sidecar.terminals.length ? sidecar.kind : null;
-  } catch { return null; }
-}).filter(Boolean))].sort();
+    if (sidecar.kind && Array.isArray(sidecar.terminals) && sidecar.terminals.length && !terminalsOf.has(sidecar.kind)) {
+      terminalsOf.set(sidecar.kind, sidecar.terminals.map(t => t.name));
+    }
+  } catch { /* not a sidecar */ }
+}
+const kinds = [...terminalsOf.keys()].sort();
+const partOf = kind => ({id: 'P1', kind, params: {}, x: 420, y: 320, terminals: terminalsOf.get(kind) || ['a', 'b']});
 
 const server = await createServer({root, logLevel: 'error',
   server: {host: '127.0.0.1', port: 3197, strictPort: true}});
@@ -75,16 +83,21 @@ try {
   // Control: a kind no renderer knows must come out faceless, or this census
   // cannot see a ghost at all and its list means nothing.
   const emptyList = await shapeList();
-  await load([{id: 'P1', kind: CONTROL, params: {}, x: 420, y: 320}]);
+  await load([partOf(CONTROL)]);
   const controlAdded = (await bodyShapes()) - empty;
   const controlList = await shapeList();
   await load([]);
   // Calibration (report run): what does a part with no renderer still add?
   console.log(`calibration: empty canvas ${empty} shapes, control kind adds ${controlAdded}`);
   for (const html of controlList.filter(h => !emptyList.includes(h))) console.log(`  control adds: ${html}`);
+  // Positive control: a resistor certainly has a body.
+  await load([partOf('resistor')]);
+  const resistorAdded = (await bodyShapes()) - empty;
+  await load([]);
+  console.log(`calibration: resistor adds ${resistorAdded}`);
   for (const kind of kinds) {
     try {
-      await load([{id: 'P1', kind, params: {}, x: 420, y: 320}]);
+      await load([partOf(kind)]);
       const added = (await bodyShapes()) - empty;
       counts.push([kind, added]);
       if (added <= controlAdded) faceless.push(kind);
