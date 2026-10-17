@@ -1,5 +1,20 @@
 # Work lanes
 
+2026-10-17 B20 ghost-faced parts — CLAIMED, Claude (Lite Code tab lane).
+Branch lane/b20-ghost-faces-20261017 off master. The Lite owner reports the
+STM32F030 in the LED-dimmer example rendering as a semi-transparent outline
+with 20 floating pin names and no body: BoardCanvas's default branch returns no
+body for a kind without a DIP_CHIP_LABELS entry (the ATtiny88/555 pattern).
+Own: DIP_CHIP_LABELS entries and the default-branch body fallback in
+src/components/BoardCanvas.jsx, a new census test that renders one part of
+every parts-data kind and lists kinds drawn without a body (ratcheted baseline,
+shrinking only), and this ledger. Fix STM32F030 first, then census kinds in
+batches. No artwork replacement, terminal geometry, footprint, electrical
+model, engine or package pin/lock change. A13's CPX prop forwarding in the same
+file is not touched. Lite picks the fix up through a separate immutable pin
+bump. Publish this claim before implementation; all enabled exact-head hosted
+checks must pass before landing.
+
 2026-10-16 A13 input ownership follow-up — implemented, final CI pending.
 Face buttons now bind each hold to the pointer or key that pressed it, ignore
 secondary/right mouse presses, and retain the original input callback for release.
