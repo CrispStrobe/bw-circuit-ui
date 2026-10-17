@@ -113,10 +113,9 @@ jobs:
       - name: CPX live face and input callbacks
         run: npm run verify:cpx-face
 
-      # B20: lists every part kind the canvas draws without a body (a "ghost"
-      # of floating pin names). Report-only until its first list is reviewed
-      # and checked in as a shrinking baseline.
-      - name: Part-face census (report only)
+      # B20: fails if any part kind is drawn without a body (a "ghost" of
+      # floating pin names) or draws nothing at all. Baseline: empty.
+      - name: Part-face census gate (no ghost or empty part faces)
         run: npm run census:part-faces
 
       # Two-finger pinch/pan (the handlers were written, documented and never

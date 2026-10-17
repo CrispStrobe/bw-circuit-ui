@@ -22,6 +22,7 @@ import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
 import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interaction/seat-geometry.js';
 import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
+import { moduleTerminalLayout } from '../model/module-layout.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { breadboardFootprintForPart, carrierOptionsForPart } from '../model/carriers.js';
@@ -354,10 +355,29 @@ function terminalOffsetsForPart(part) {
           return offsets;
         }
       }
-      return { a: r(-15, 0), b: r(15, 0) };
+      // A sidecar kind with no renderer of its own gets the generic module
+      // layout (B20): today's a/b offsets when they already place every
+      // terminal, else the sidecar geometry, else one breakout-header row.
+      const legacy = { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
+      const msc = typeof getSidecar === 'function' ? getSidecar(part.kind) : null;
+      const base = msc?.terminals?.length ? moduleTerminalLayout(msc, { existing: legacy }).offsets : legacy;
+      return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
     }
   }
 }
+
+/** Generic module layout for a part in its unrotated frame, or null when the kind has no sidecar. */
+function genericModuleLayout(part) {
+  const sc = typeof getSidecar === 'function' ? getSidecar(part.kind) : null;
+  if (!sc?.terminals?.length) return null;
+  const existing = terminalOffsetsForPart({ ...part, rotation: 0, flipped: false });
+  return { sc, ...moduleTerminalLayout(sc, { existing }) };
+}
+
+// Kinds the Wokwi element layer draws; SvgParts must not add a second body.
+const WOKWI_LAYER_KINDS = new Set(['button', 'buzzer', 'capacitor', 'char_lcd', 'char_lcd_i2c', 'diode',
+  'eeprom', 'hd44780', 'ir_receiver', 'keypad_4x4', 'led', 'led_cube', 'led_matrix', 'meter',
+  'potentiometer', 'resistor', 'seven_seg_3', 'seven_seg_4', 'seven_segment', 'temp_sensor', 'vsource', 'zener']);
 
 function terminalPos(part, terminal) {
   // A seated part's terminals ARE its holes: wires, dots, stubs and hit
@@ -433,6 +453,41 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
         );
       }
     }
+
+    // Generic labelled module body (B20), shared by the default branch and
+    // the video chips' no-video path.
+    const genericFace = () => {
+      if (WOKWI_LAYER_KINDS.has(kind)) return null;
+      const mod = genericModuleLayout(part);
+      if (!mod) return null;
+      const { box, offsets: modOffsets, sc: modSc } = mod;
+      const modLabel = modSc.displayName || modSc.name || String(kind).toUpperCase();
+      const fit = Math.min(8, Math.max(4, (box.w - 6) / Math.max(1, modLabel.length) / 0.62));
+      return (
+        <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
+          data-part-face={kind} data-generic-module={kind} data-module-layout={mod.source}>
+          <rect x={box.x} y={box.y} width={box.w} height={box.h} rx={4}
+            fill="#1a1a1a" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.5} />
+          <text x={0} y={fit / 3} textAnchor="middle" fill="#ccc" fontSize={fit}
+            fontFamily="monospace" fontWeight="bold">{modLabel}</text>
+          {modSc.terminals.map(t => {
+            const pos = modOffsets[t.name];
+            if (!pos) return null;
+            const below = pos.dy >= 0;
+            return (
+              <g key={t.name}>
+                <rect x={pos.dx - 2} y={pos.dy - 2} width={4} height={4}
+                  fill="#d8dee4" stroke="#8090a0" strokeWidth={0.3} />
+                <text x={pos.dx} y={pos.dy + (below ? -4 : 7)} textAnchor="middle" fill="#94a3b8"
+                  fontSize={3.0} fontFamily="monospace">{t.name}</text>
+              </g>
+            );
+          })}
+          <text x={0} y={box.y + box.h + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+            fontFamily="monospace">{part.declName || id}</text>
+        </g>
+      );
+    };
 
     switch (kind) {
       case 'attiny88_qfn32': {
@@ -1480,7 +1535,7 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
       case 'simplevga_card':
       case 'tms9918': {
         // Fall through to default DIP body when no video available
-        if (typeof videoFn !== 'function') break;
+        if (typeof videoFn !== 'function') return genericFace();
         const chipLabel = kind === 'tms9918' ? 'TMS9918' : 'SimpleVGA';
         const vW = 48, vH = 36;
         return (
@@ -1756,7 +1811,7 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
             );
           }
         }
-        return null;
+        return genericFace();
       }
     }
   });

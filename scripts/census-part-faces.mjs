@@ -29,7 +29,19 @@
  *   ghost          body 0, at least one terminal dot drawn
  *   draws nothing  body 0, no terminal dot either
  *
- *   node scripts/census-part-faces.mjs                  report only (exit 0)
+ * Gate. Since B20 step 2 every sidecar kind without a renderer of its own
+ * gets BoardCanvas's generic labelled module body, so the ghost baseline is
+ * empty: the census exits 1 if ANY kind is a ghost or draws nothing, or if
+ * a kind could not be measured (each kind is retried once first).
+ *
+ * Mutation proof. Before the fallback, removing stm32f030 from
+ * DIP_CHIP_LABELS turned it back into a ghost. With the fallback that no
+ * longer happens (it then gets the generic body), so the proof is now:
+ * disable the generic-module fallback in SvgParts' default branch and the
+ * census lists the 131 ghosts again and exits 1. The resistor and capacitor
+ * positive controls still guard against measuring an undrawn canvas.
+ *
+ *   node scripts/census-part-faces.mjs                  gate (exit 1 on any)
  *   node scripts/census-part-faces.mjs --json F         also write lists to F
  *   node scripts/census-part-faces.mjs --shots DIR      clip of each listed kind
  *   node scripts/census-part-faces.mjs --kinds a,b,c    only these kinds
@@ -144,7 +156,9 @@ try {
 
   for (const kind of kinds) {
     try {
-      const {body, dots, box} = await classify(kind);
+      let measured;
+      try { measured = await classify(kind); } catch { measured = await classify(kind); }
+      const {body, dots, box} = measured;
       counts.push([kind, body, dots]);
       if (body <= 0) {
         (dots > 0 ? ghost : nothing).push(kind);
@@ -169,3 +183,7 @@ for (const kind of ghost) console.log(`  ghost: ${kind}`);
 for (const kind of nothing) console.log(`  draws nothing: ${kind}`);
 for (const e of errors) console.log(`  error: ${e}`);
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify({kinds: kinds.length, ghost, nothing, errors}, null, 2) + '\n');
+if (ghost.length || nothing.length || errors.length) {
+  console.error(`part-face census FAILED: ${ghost.length} ghost(s), ${nothing.length} draw nothing, ${errors.length} unmeasured`);
+  process.exit(1);
+}
