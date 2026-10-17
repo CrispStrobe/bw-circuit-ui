@@ -1881,7 +1881,7 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
       if (manyPins) r = Math.min(r, 5);
 
       dots.push(
-        <g key={`${part.id}:${term}`}>
+        <g key={`${part.id}:${term}`} data-terminal-dot={`${part.id}:${term}`}>
           {isSupplyConflict && <title>Danger: this directly connects a positive supply to ground</title>}
           {/* Invisible large hit area for touch */}
           <circle
@@ -4954,6 +4954,7 @@ export function BoardCanvas({
               const ny = dy / len;
               return (
                 <line key={`stub-${part.id}-${term}`}
+                  data-terminal-stub={`${part.id}:${term}`}
                   x1={pos.x} y1={pos.y}
                   x2={pos.x + nx * stubLen} y2={pos.y + ny * stubLen}
                   stroke="#7f8c8d" strokeWidth={2}
