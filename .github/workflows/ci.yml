@@ -113,6 +113,12 @@ jobs:
       - name: CPX live face and input callbacks
         run: npm run verify:cpx-face
 
+      # B20: lists every part kind the canvas draws without a body (a "ghost"
+      # of floating pin names). Report-only until its first list is reviewed
+      # and checked in as a shrinking baseline.
+      - name: Part-face census (report only)
+        run: npm run census:part-faces
+
       # Two-finger pinch/pan (the handlers were written, documented and never
       # attached — only a real multi-touch browser noticed) and the phone
       # layout (a 700px canvas floor beside a 190px rail inside a 430pt
