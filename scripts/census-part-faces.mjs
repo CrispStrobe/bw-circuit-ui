@@ -39,6 +39,7 @@ const server = await createServer({root, logLevel: 'error',
 await server.listen();
 const browser = await chromium.launch();
 const faceless = [];
+const counts = [];
 const errors = [];
 try {
   const page = await browser.newPage({viewport: {width: 1200, height: 800}});
@@ -57,6 +58,13 @@ try {
     return canvas.querySelectorAll('rect, path, polygon, polyline, ellipse, image, foreignObject').length
       + [...document.querySelectorAll('*')].filter(e => e.tagName.startsWith('WOKWI-')).length;
   });
+  const shapeList = () => page.evaluate(() => {
+    const svgs = [...document.querySelectorAll('svg')].filter(svg => !svg.parentElement?.closest('svg'));
+    const area = svg => { const r = svg.getBoundingClientRect(); return r.width * r.height; };
+    const canvas = svgs.sort((a, b) => area(b) - area(a))[0];
+    return canvas ? [...canvas.querySelectorAll('rect, path, polygon, polyline, ellipse, image, foreignObject')]
+      .map(e => e.outerHTML.replace(/>[\s\S]*$/, '>').slice(0, 220)) : [];
+  });
   const load = async parts => {
     await page.evaluate(parts => window.__setCircuitData({version: 1, parts, wires: []}), parts);
     await page.waitForFunction(n => (window.__circuit?.parts?.length ?? -1) === n, parts.length, {timeout: 20000});
@@ -66,17 +74,20 @@ try {
   const empty = await bodyShapes();
   // Control: a kind no renderer knows must come out faceless, or this census
   // cannot see a ghost at all and its list means nothing.
+  const emptyList = await shapeList();
   await load([{id: 'P1', kind: CONTROL, params: {}, x: 420, y: 320}]);
   const controlAdded = (await bodyShapes()) - empty;
+  const controlList = await shapeList();
   await load([]);
-  if (empty < 0 || controlAdded > 0) {
-    throw new Error(`census cannot see a ghost: control kind added ${controlAdded} body shapes (empty canvas ${empty})`);
-  }
+  // Calibration (report run): what does a part with no renderer still add?
+  console.log(`calibration: empty canvas ${empty} shapes, control kind adds ${controlAdded}`);
+  for (const html of controlList.filter(h => !emptyList.includes(h))) console.log(`  control adds: ${html}`);
   for (const kind of kinds) {
     try {
       await load([{id: 'P1', kind, params: {}, x: 420, y: 320}]);
       const added = (await bodyShapes()) - empty;
-      if (added <= 0) faceless.push(kind);
+      counts.push([kind, added]);
+      if (added <= controlAdded) faceless.push(kind);
     } catch (e) {
       errors.push(`${kind}: ${e.message.split('\n')[0]}`);
     }
@@ -86,7 +97,8 @@ try {
   await browser.close();
   await server.close();
 }
-console.log(`part-face census: ${kinds.length} kinds, ${faceless.length} drawn without a body`);
+console.log(`part-face census: ${kinds.length} kinds, ${faceless.length} add no more than the control (${'<='} control)`);
+console.log('fewest added shapes: ' + counts.sort((a, b) => a[1] - b[1]).slice(0, 40).map(([k, n]) => `${k}=${n}`).join(' '));
 for (const kind of faceless) console.log(`  faceless: ${kind}`);
 for (const e of errors) console.log(`  error: ${e}`);
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify({kinds: kinds.length, faceless, errors}, null, 2) + '\n');
