@@ -37,6 +37,9 @@ import { CIRCUIT_EXPORTS, runExport } from '../model/exporters/registry.js';
 import { IMPORT_FORMATS, importCircuit, pickKicadHierarchyRoot } from '../importers/index.js';
 import { blockersFromImport } from '../model/operating-point-view.js';
 
+// Generic-body kinds whose package is not a DIP: the subtitle names it.
+const CHIP_PACKAGE_LABELS = { stm32f030: 'TSSOP-20' };
+
 // DIP chip kinds that get a generic IC body renderer (not a custom SVG).
 // These are discrete retro/logic ICs placed on breadboards — without a
 // body they render as invisible dots, making bench circuits unreadable.
@@ -61,6 +64,9 @@ const DIP_CHIP_LABELS = {
   // 28 pin names floating around no body at all.
   attiny88: 'ATtiny88', attiny85: 'ATtiny85',
   attiny2313: 'ATtiny2313', attiny13: 'ATtiny13', at89c2051: 'AT89C2051',
+  // Seated as a bare chip by infer-seated; without a label it rendered as
+  // a ghost of 20 floating pin names in Lite's LED-dimmer example (B20).
+  stm32f030: 'STM32F030',
   // Discrete DIP ICs that were ghost-faced in bus-computer benches
   '555': 'NE555', tms9918: 'TMS9918',
   ns16c550: 'NS16C550', mc6845: 'MC6845',
@@ -1720,7 +1726,7 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
                 <text x={0} y={-2} textAnchor="middle" fill="#ccc" fontSize={8}
                   fontFamily="monospace" fontWeight="bold">{dipLabel}</text>
                 <text x={0} y={9} textAnchor="middle" fill="#777" fontSize={6}
-                  fontFamily="monospace">DIP-{pinCount}</text>
+                  fontFamily="monospace">{CHIP_PACKAGE_LABELS[kind] || `DIP-${pinCount}`}</text>
                 {/* Pin legs + sidecar labels */}
                 {sc.terminals.map(t => {
                   const pos = positions[t.name];
