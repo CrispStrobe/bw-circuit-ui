@@ -24,6 +24,7 @@ import {chromium} from 'playwright';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const dataDir = new URL('../src/parts-data/', import.meta.url);
+const CONTROL = 'bw_census_ghost_control';
 const jsonOut = process.argv.includes('--json') ? process.argv[process.argv.indexOf('--json') + 1] : null;
 
 const kinds = [...new Set(readdirSync(dataDir).filter(f => f.endsWith('.json')).map(f => {
@@ -45,9 +46,17 @@ try {
   await page.goto('http://127.0.0.1:3197/', {waitUntil: 'domcontentloaded', timeout: 120000});
   await page.waitForFunction(() => window.__circuit && window.__setCircuitData, null, {timeout: 120000});
   const settle = () => page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
-  const bodyShapes = () => page.evaluate(() =>
-    document.querySelectorAll('svg rect, svg path, svg polygon, svg polyline, svg ellipse, svg image, svg foreignObject').length
-    + [...document.querySelectorAll('*')].filter(e => e.tagName.startsWith('WOKWI-')).length);
+  // Only the canvas counts: the largest svg on the page. Counting the whole
+  // document let panels that react to ANY loaded part (inspector, lists)
+  // supply "body" shapes, and the first CI run reported 0 of 287 faceless.
+  const bodyShapes = () => page.evaluate(() => {
+    const svgs = [...document.querySelectorAll('svg')].filter(svg => !svg.parentElement?.closest('svg'));
+    const area = svg => { const r = svg.getBoundingClientRect(); return r.width * r.height; };
+    const canvas = svgs.sort((a, b) => area(b) - area(a))[0];
+    if (!canvas) return -1;
+    return canvas.querySelectorAll('rect, path, polygon, polyline, ellipse, image, foreignObject').length
+      + [...document.querySelectorAll('*')].filter(e => e.tagName.startsWith('WOKWI-')).length;
+  });
   const load = async parts => {
     await page.evaluate(parts => window.__setCircuitData({version: 1, parts, wires: []}), parts);
     await page.waitForFunction(n => (window.__circuit?.parts?.length ?? -1) === n, parts.length, {timeout: 20000});
@@ -55,6 +64,14 @@ try {
   };
   await load([]);
   const empty = await bodyShapes();
+  // Control: a kind no renderer knows must come out faceless, or this census
+  // cannot see a ghost at all and its list means nothing.
+  await load([{id: 'P1', kind: CONTROL, params: {}, x: 420, y: 320}]);
+  const controlAdded = (await bodyShapes()) - empty;
+  await load([]);
+  if (empty < 0 || controlAdded > 0) {
+    throw new Error(`census cannot see a ghost: control kind added ${controlAdded} body shapes (empty canvas ${empty})`);
+  }
   for (const kind of kinds) {
     try {
       await load([{id: 'P1', kind, params: {}, x: 420, y: 320}]);
