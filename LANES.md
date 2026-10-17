@@ -1,5 +1,18 @@
 # Work lanes
 
+2026-10-17 B20 envelope expansion — CLAIMED before further source edits.
+The census (draft #87) confirms 131 of 287 sidecar kinds draw no body (each
+confirmed by screenshot); many also have no pin geometry, so every pin name
+sits on one spot. Expand B20 to: a generic labelled module body in
+BoardCanvas's default branch for any sidecar kind with no renderer, and for
+kinds whose sidecar terminals carry no geometry a single-row pin layout
+(breakout-header style) used by both the body and its terminal dots. Kinds
+WITH sidecar geometry keep their positions exactly. Saved circuits keep their
+terminal names; only on-canvas positions of previously collapsed pins change.
+Also own the census markup attributes (data-terminal-dot, data-terminal-stub,
+data-drc-badge) and turning the census into a gate with an empty ghost
+baseline. Dedicated renderers per kind remain separate later work.
+
 2026-10-17 B20 ghost-faced parts — CLAIMED, Claude (Lite Code tab lane).
 Branch lane/b20-ghost-faces-20261017 off master. The Lite owner reports the
 STM32F030 in the LED-dimmer example rendering as a semi-transparent outline
