@@ -1,5 +1,17 @@
 # Work lanes
 
+2026-10-18 B21 crowded generic-module pin labels — CLAIMED, Claude.
+Branch lane/b21-dense-faces-20261018 off master. The B20 generic module body
+draws every pin name horizontally at font size 3, so on kinds whose pins sit
+closer than a name is wide (10 px header pitch, tight sidecar geometry) the
+names run into each other. Own: module-layout.js label placement (names turn
+perpendicular to their edge, inward, when neighbours are closer than the name
+is wide; the body grows to hold them and the title), the generic body's label
+drawing in BoardCanvas, a unit test, and a census check that fails when any
+two pin labels of one generic-module part overlap on screen. Terminal names,
+terminal positions and saved circuits do not change; kinds with dedicated
+renderers are untouched.
+
 2026-10-17 B20 envelope expansion — CLAIMED before further source edits.
 The census (draft #87) confirms 131 of 287 sidecar kinds draw no body (each
 confirmed by screenshot); many also have no pin geometry, so every pin name
