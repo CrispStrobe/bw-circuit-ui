@@ -111,3 +111,103 @@ export function moduleTerminalLayout(sidecar, { existing } = {}) {
   hw = Math.max(MIN_W / 2, hw); hh = Math.max(MIN_H / 2, hh);
   return { offsets, box: { x: -hw, y: -hh, w: 2 * hw, h: 2 * hh }, source, collapsed: false };
 }
+
+/*
+ * Pin labels (B21). Each name sits inside the body next to its pin. A pin on
+ * the top or bottom edge keeps a horizontal name while its neighbours on that
+ * edge leave room for it; otherwise the name turns perpendicular to the edge
+ * and reads inward. Names on the left and right edges run inward
+ * horizontally, at a font size their vertical pitch allows. The body grows
+ * away from pinless edges to hold turned names and leave the title its own
+ * band; pins never move.
+ */
+export const PIN_LABEL_FONT = 3;
+const CHAR_W = 0.62;      // monospace advance per font-size unit
+const LABEL_GAP = 4;      // pin centre to the near end of its name
+const TITLE_BAND = 12;
+
+function edgeOf(p, ext, pts) {
+  const fx = ext.hw ? Math.abs(p.dx) / ext.hw : 0;
+  const fy = ext.hh ? Math.abs(p.dy) / ext.hh : 0;
+  // A corner pin (equal pull) joins the row or column it lines up with.
+  const inRow = pts.filter(q => q.dy === p.dy).length, inCol = pts.filter(q => q.dx === p.dx).length;
+  if (fy > fx || (fy === fx && inRow > inCol)) return p.dy >= 0 ? 'bottom' : 'top';
+  return p.dx >= 0 ? 'right' : 'left';
+}
+
+/**
+ * @param {{terminals:Array<{name:string}>}} sidecar
+ * @param {{offsets:Record<string,{dx:number,dy:number}>, box:{x:number,y:number,w:number,h:number}}} layout
+ * @returns {{labels: Record<string,{x:number,y:number,anchor:'start'|'middle'|'end',rotate:number,size:number}>, box:{x:number,y:number,w:number,h:number}, titleY:number}}
+ */
+export function moduleLabelLayout(sidecar, { offsets, box }) {
+  const terms = (sidecar?.terminals || []).filter(t => offsets[t.name]);
+  const byEdge = { top: [], bottom: [], left: [], right: [] };
+  // Edges are judged by the pins' own extent: the body may be wider (MIN_W).
+  const ext = { hw: 0, hh: 0 };
+  for (const t of terms) {
+    ext.hw = Math.max(ext.hw, Math.abs(offsets[t.name].dx));
+    ext.hh = Math.max(ext.hh, Math.abs(offsets[t.name].dy));
+  }
+  const pts = terms.map(t => offsets[t.name]);
+  for (const t of terms) byEdge[edgeOf(offsets[t.name], ext, pts)].push(t.name);
+  const labels = {};
+  let topReach = box.y, bottomReach = box.y + box.h; // inner extent of names
+  const nearest = (name, list, axis) => {
+    let gap = Infinity;
+    for (const other of list) {
+      if (other === name) continue;
+      gap = Math.min(gap, Math.abs(offsets[other][axis] - offsets[name][axis]));
+    }
+    return gap;
+  };
+  for (const edge of ['top', 'bottom']) {
+    const list = byEdge[edge];
+    for (const name of list) {
+      const p = offsets[name];
+      const size = PIN_LABEL_FONT;
+      const width = name.length * size * CHAR_W;
+      const gap = nearest(name, list, 'dx');
+      if (width <= gap - 1) {
+        const y = edge === 'bottom' ? p.dy - LABEL_GAP : p.dy + LABEL_GAP + size;
+        labels[name] = { x: p.dx, y, anchor: 'middle', rotate: 0, size };
+        if (edge === 'bottom') bottomReach = Math.min(bottomReach, p.dy - LABEL_GAP - size);
+        else topReach = Math.max(topReach, y);
+      } else {
+        const size2 = Math.max(2, Math.min(size, gap - 0.5));
+        const len = name.length * size2 * CHAR_W;
+        // rotate(-90): text runs upward. Bottom edge: start just above the
+        // pin; top edge: end just below it, so both read inward.
+        labels[name] = edge === 'bottom'
+          ? { x: p.dx + size2 / 3, y: p.dy - LABEL_GAP, anchor: 'start', rotate: -90, size: size2 }
+          : { x: p.dx + size2 / 3, y: p.dy + LABEL_GAP, anchor: 'end', rotate: -90, size: size2 };
+        if (edge === 'bottom') bottomReach = Math.min(bottomReach, p.dy - LABEL_GAP - len);
+        else topReach = Math.max(topReach, p.dy + LABEL_GAP + len);
+      }
+    }
+  }
+  for (const edge of ['left', 'right']) {
+    const list = byEdge[edge];
+    for (const name of list) {
+      const p = offsets[name];
+      // Names from the left and the right meet in the middle: each gets at
+      // most half the span between the two pin columns.
+      const half = Math.max(0, ext.hw - LABEL_GAP - 0.5);
+      const byLen = half / Math.max(1, name.length * CHAR_W);
+      const size = Math.max(1.5, Math.min(PIN_LABEL_FONT, nearest(name, list, 'dy') - 0.5, byLen));
+      labels[name] = edge === 'left'
+        ? { x: p.dx + LABEL_GAP, y: p.dy + size / 3, anchor: 'start', rotate: 0, size }
+        : { x: p.dx - LABEL_GAP, y: p.dy + size / 3, anchor: 'end', rotate: 0, size };
+    }
+  }
+  // Grow away from pinless edges until the title has a band between the
+  // names reaching in from the top and from the bottom.
+  let { x, y, w, h } = box;
+  const free = bottomReach - topReach;
+  if (free < TITLE_BAND) {
+    const need = TITLE_BAND - free;
+    if (!byEdge.top.length) { y -= need; h += need; topReach -= need; }
+    else if (!byEdge.bottom.length) { h += need; bottomReach += need; }
+  }
+  return { labels, box: { x, y, w, h }, titleY: (topReach + bottomReach) / 2 };
+}

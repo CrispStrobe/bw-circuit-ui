@@ -22,7 +22,7 @@ import { FOOTPRINTS, partBounds } from '../interaction/hittest.js';
 import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootprint } from '../interaction/breadboard-snap.js';
 import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interaction/seat-geometry.js';
 import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
-import { moduleTerminalLayout } from '../model/module-layout.js';
+import { moduleLabelLayout, moduleTerminalLayout } from '../model/module-layout.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { breadboardFootprintForPart, carrierOptionsForPart } from '../model/carriers.js';
@@ -460,7 +460,8 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
       if (WOKWI_LAYER_KINDS.has(kind)) return null;
       const mod = genericModuleLayout(part);
       if (!mod) return null;
-      const { box, offsets: modOffsets, sc: modSc } = mod;
+      const { offsets: modOffsets, sc: modSc } = mod;
+      const { labels: pinLabels, box, titleY } = moduleLabelLayout(modSc, mod);
       const modLabel = modSc.displayName || modSc.name || String(kind).toUpperCase();
       const fit = Math.min(8, Math.max(4, (box.w - 6) / Math.max(1, modLabel.length) / 0.62));
       return (
@@ -468,18 +469,19 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
           data-part-face={kind} data-generic-module={kind} data-module-layout={mod.source}>
           <rect x={box.x} y={box.y} width={box.w} height={box.h} rx={4}
             fill="#1a1a1a" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.5} />
-          <text x={0} y={fit / 3} textAnchor="middle" fill="#ccc" fontSize={fit}
+          <text x={0} y={titleY + fit / 3} textAnchor="middle" fill="#ccc" fontSize={fit}
             fontFamily="monospace" fontWeight="bold">{modLabel}</text>
           {modSc.terminals.map(t => {
             const pos = modOffsets[t.name];
-            if (!pos) return null;
-            const below = pos.dy >= 0;
+            const lab = pinLabels[t.name];
+            if (!pos || !lab) return null;
             return (
               <g key={t.name}>
                 <rect x={pos.dx - 2} y={pos.dy - 2} width={4} height={4}
                   fill="#d8dee4" stroke="#8090a0" strokeWidth={0.3} />
-                <text x={pos.dx} y={pos.dy + (below ? -4 : 7)} textAnchor="middle" fill="#94a3b8"
-                  fontSize={3.0} fontFamily="monospace">{t.name}</text>
+                <text data-pin-label={t.name} x={lab.x} y={lab.y} textAnchor={lab.anchor} fill="#94a3b8"
+                  transform={lab.rotate ? `rotate(${lab.rotate} ${lab.x} ${lab.y})` : undefined}
+                  fontSize={lab.size} fontFamily="monospace">{t.name}</text>
               </g>
             );
           })}
