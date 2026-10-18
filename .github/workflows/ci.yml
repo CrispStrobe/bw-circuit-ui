@@ -115,8 +115,19 @@ jobs:
 
       # B20: fails if any part kind is drawn without a body (a "ghost" of
       # floating pin names) or draws nothing at all. Baseline: empty.
+      # B21/B22: it also fails on overlapping pin names, and clips every kind
+      # drawn by the generic module body or a chip face for visual review.
       - name: Part-face census gate (no ghost or empty part faces)
-        run: npm run census:part-faces
+        run: npm run census:part-faces -- --generic-shots part-face-shots --json part-face-shots/census.json
+
+      - name: Upload part-face review shots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: part-face-shots
+          path: part-face-shots/
+          if-no-files-found: ignore
+          retention-days: 14
 
       # Two-finger pinch/pan (the handlers were written, documented and never
       # attached — only a real multi-touch browser noticed) and the phone

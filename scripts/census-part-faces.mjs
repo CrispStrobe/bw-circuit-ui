@@ -50,6 +50,9 @@
  *   node scripts/census-part-faces.mjs --json F         also write lists to F
  *   node scripts/census-part-faces.mjs --shots DIR      clip of each listed kind
  *   node scripts/census-part-faces.mjs --kinds a,b,c    only these kinds
+ *   node scripts/census-part-faces.mjs --generic-shots DIR   clip of every
+ *        kind drawn by the generic module body or a chip face (review)
+ * --json also lists `generic` and `chips` (the kinds each face drew).
  */
 import {mkdirSync, readdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
@@ -61,8 +64,10 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const dataDir = new URL('../src/parts-data/', import.meta.url);
 const jsonOut = arg('--json');
 const shotDir = arg('--shots');
+const genericShotDir = arg('--generic-shots');
 const port = Number(arg('--port') || 3201);
 if (shotDir) mkdirSync(shotDir, {recursive: true});
+if (genericShotDir) mkdirSync(genericShotDir, {recursive: true});
 
 // kind -> terminal names, as the shipping save format carries them.
 const terminalsOf = new Map();
@@ -84,7 +89,7 @@ const server = await createServer({root, logLevel: 'error',
   server: {host: '127.0.0.1', port, strictPort: true}});
 await server.listen();
 const browser = await chromium.launch();
-const ghost = [], nothing = [], counts = [], errors = [], crowded = [];
+const ghost = [], nothing = [], counts = [], errors = [], crowded = [], generic = [], chips = [];
 try {
   const page = await browser.newPage({viewport: {width: 1200, height: 800}});
   page.on('pageerror', e => errors.push(String(e).split('\n')[0]));
@@ -168,7 +173,7 @@ try {
       // B21: on a generic module body, no two pin names may overlap on screen.
       const clash = await page.evaluate(() => {
         const out = [];
-        for (const g of document.querySelectorAll('[data-generic-module]')) {
+        for (const g of document.querySelectorAll('[data-generic-module], [data-chip-face]')) {
           const ls = [...g.querySelectorAll('[data-pin-label]')].map(e => [e.dataset.pinLabel, e.getBoundingClientRect()]);
           for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) {
             const [a, ra] = ls[i], [b, rb] = ls[j];
@@ -179,6 +184,21 @@ try {
         }
         return out;
       });
+      // Which face drew it: the generic module body or a B22 chip face.
+      const {face, fb} = await page.evaluate(() => {
+        const el = document.querySelector('[data-chip-face]') || document.querySelector('[data-generic-module]');
+        if (!el) return {face: null, fb: null};
+        const r = el.getBoundingClientRect();
+        return {face: el.hasAttribute('data-chip-face') ? 'chip' : 'generic', fb: {l: r.left, t: r.top, r: r.right, b: r.bottom}};
+      });
+      if (face === 'generic') generic.push(kind);
+      if (face === 'chip') chips.push(kind);
+      if (face && genericShotDir && fb) {
+        const cx = (fb.l + fb.r) / 2, cy = (fb.t + fb.b) / 2;
+        const w = Math.min(600, fb.r - fb.l + 60), h = Math.min(600, fb.b - fb.t + 60);
+        await page.screenshot({path: `${genericShotDir}/${face}-${kind}.png`,
+          clip: {x: Math.max(0, cx - w / 2), y: Math.max(0, cy - h / 2), width: w, height: h}});
+      }
       if (clash.length) crowded.push(`${kind}: ${clash.slice(0, 4).join(' ')}${clash.length > 4 ? ` (+${clash.length - 4})` : ''}`);
       if (body <= 0) {
         (dots > 0 ? ghost : nothing).push(kind);
@@ -201,9 +221,10 @@ console.log(`part-face census: ${kinds.length} kinds, ${ghost.length} ghosts, ${
 console.log('fewest added body elements: ' + counts.sort((a, b) => a[1] - b[1]).slice(0, 30).map(([k, n]) => `${k}=${n}`).join(' '));
 for (const kind of ghost) console.log(`  ghost: ${kind}`);
 for (const kind of nothing) console.log(`  draws nothing: ${kind}`);
+console.log(`generic module bodies: ${generic.length}, chip faces: ${chips.length} (${chips.join(' ')})`);
 for (const c of crowded) console.log(`  crowded pin names: ${c}`);
 for (const e of errors) console.log(`  error: ${e}`);
-if (jsonOut) writeFileSync(jsonOut, JSON.stringify({kinds: kinds.length, ghost, nothing, crowded, errors}, null, 2) + '\n');
+if (jsonOut) writeFileSync(jsonOut, JSON.stringify({kinds: kinds.length, ghost, nothing, crowded, generic, chips, errors}, null, 2) + '\n');
 if (ghost.length || nothing.length || crowded.length || errors.length) {
   console.error(`part-face census FAILED: ${ghost.length} ghost(s), ${nothing.length} draw nothing, ${crowded.length} with crowded pin names, ${errors.length} unmeasured`);
   process.exit(1);
