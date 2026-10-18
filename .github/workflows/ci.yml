@@ -76,6 +76,21 @@ jobs:
   # a collapsed column). A gate nobody runs is not a gate — this job runs it,
   # and the script's own roll-call fails the build if a scenario silently goes
   # missing, so "green" cannot mean "ran fewer".
+
+      # The SPICE oracle was its own job with the same ngspice + npm install;
+      # as a step here it costs no extra runner slot (free tier). It runs
+      # even when an earlier step failed, so its verdict is never lost.
+      # The script exits 0 with a loud SKIPPED banner where ngspice is absent,
+      # so this step asserts it actually RAN.
+      - name: SPICE oracle (ngspice vs the engine)
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail
+          ngspice --version | head -3
+          npm run oracle:spice 2>&1 | tee /tmp/spice-oracle.log
+          tail -1 /tmp/spice-oracle.log | grep -qE '^[0-9]+ decks simulated - [0-9]+ passed - 0 failed$' \
+            || { echo "::error::spice oracle did not report a clean run (skipped or failed)"; exit 1; }
+
   interaction-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -154,27 +169,3 @@ jobs:
   # test that reads our own output back can see that. Only a foreign parser
   # can. ngspice is GPL: a DEV/CI ORACLE ONLY, never bundled, never linked —
   # the same standing ucsim has for the 8051.
-  spice-oracle:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install ngspice (the foreign parser)
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y --no-install-recommends ngspice
-          ngspice --version | head -3
-      # The engine is the `bw-board` devDependency (a git sha in package.json);
-      # test/_setup.js imports it by name, so the install IS the checkout.
-      - run: npm install --no-audit --no-fund
-      # The script exits 0 with a loud SKIPPED banner where ngspice is absent,
-      # so this step asserts it actually RAN. A skip that reads as a pass is
-      # how the interaction gate sat red for months.
-      - name: Run the oracle
-        run: |
-          set -o pipefail
-          npm run oracle:spice 2>&1 | tee /tmp/spice-oracle.log
-          tail -1 /tmp/spice-oracle.log | grep -qE '^[0-9]+ decks simulated - [0-9]+ passed - 0 failed$' \
-            || { echo "::error::spice oracle did not report a clean run (skipped or failed)"; exit 1; }
