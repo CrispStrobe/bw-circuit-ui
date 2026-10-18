@@ -1,5 +1,12 @@
 # Work lanes
 
+2026-10-18 CI: fold the SPICE oracle job into test — CLAIMED and done in one PR, Claude.
+Free-tier runner slots: spice-oracle installed the same ngspice and npm
+dependencies as test and ran one script. It is now the last step of test
+(runs even after an earlier step fails, same clean-run assertion). Owns only
+.github/workflows/ci.yml's spice-oracle job and that new step; nothing else
+in the workflow changes. Checks per push: 4 -> 3.
+
 2026-10-18 B21 crowded generic-module pin labels — CLAIMED, Claude.
 Branch lane/b21-dense-faces-20261018 off master. The B20 generic module body
 draws every pin name horizontally at font size 3, so on kinds whose pins sit
