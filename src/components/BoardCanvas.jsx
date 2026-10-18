@@ -374,6 +374,16 @@ function genericModuleLayout(part) {
   return { sc, ...moduleTerminalLayout(sc, { existing }) };
 }
 
+// B22: chips drawn on the generic module layout (pins stay exactly where
+// the sidecar puts them) but with a chip outline: package notch at pin 1's
+// end, a pin-1 dot, part name and package. Pin 1 is the sidecar's first
+// terminal.
+const CHIP_FACES = {
+  stc15_mcu: { title: 'STC15', pkg: 'PDIP-40' },
+  stc_mcu: { title: 'STC MCU', pkg: 'DIP-40' },
+  tms9918: { title: 'TMS9918A', pkg: 'DIP-40' },
+};
+
 // Kinds the Wokwi element layer draws; SvgParts must not add a second body.
 const WOKWI_LAYER_KINDS = new Set(['button', 'buzzer', 'capacitor', 'char_lcd', 'char_lcd_i2c', 'diode',
   'eeprom', 'hd44780', 'ir_receiver', 'keypad_4x4', 'led', 'led_cube', 'led_matrix', 'meter',
@@ -462,15 +472,26 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
       if (!mod) return null;
       const { offsets: modOffsets, sc: modSc } = mod;
       const { labels: pinLabels, box, titleY } = moduleLabelLayout(modSc, mod);
-      const modLabel = modSc.displayName || modSc.name || String(kind).toUpperCase();
+      const chip = CHIP_FACES[kind];
+      const modLabel = chip?.title || modSc.displayName || modSc.name || String(kind).toUpperCase();
       const fit = Math.min(8, Math.max(4, (box.w - 6) / Math.max(1, modLabel.length) / 0.62));
+      const pin1 = chip && modOffsets[modSc.terminals[0]?.name];
+      // Notch on the box edge nearest pin 1 (top or bottom for a vertical DIP).
+      const notchY = pin1 && (pin1.dy < 0 ? box.y : box.y + box.h);
       return (
         <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
-          data-part-face={kind} data-generic-module={kind} data-module-layout={mod.source}>
-          <rect x={box.x} y={box.y} width={box.w} height={box.h} rx={4}
-            fill="#1a1a1a" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.5} />
-          <text x={0} y={titleY + fit / 3} textAnchor="middle" fill="#ccc" fontSize={fit}
+          data-part-face={kind} {...(chip ? { 'data-chip-face': kind, 'data-package': chip.pkg } : { 'data-generic-module': kind })}
+          data-module-layout={mod.source}>
+          <rect x={box.x} y={box.y} width={box.w} height={box.h} rx={chip ? 2 : 4}
+            fill={chip ? '#171717' : '#1a1a1a'} stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.5} />
+          {chip && pin1 && <>
+            <path d={`M ${-6} ${notchY} A 6 6 0 0 ${pin1.dy < 0 ? 0 : 1} ${6} ${notchY}`} fill="#0d0d0d" stroke="#555" strokeWidth={1} />
+            <circle cx={pin1.dx + (pin1.dx < 0 ? 7 : -7)} cy={notchY + (pin1.dy < 0 ? 4 : -4)} r={1.6} fill="#888" />
+          </>}
+          <text x={0} y={titleY + fit / 3} textAnchor="middle" fill={chip ? '#ddd' : '#ccc'} fontSize={fit}
             fontFamily="monospace" fontWeight="bold">{modLabel}</text>
+          {chip && <text x={0} y={titleY + fit / 3 + 8} textAnchor="middle" fill="#888" fontSize={5}
+            fontFamily="monospace">{chip.pkg}</text>}
           {modSc.terminals.map(t => {
             const pos = modOffsets[t.name];
             const lab = pinLabels[t.name];
