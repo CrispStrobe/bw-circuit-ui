@@ -7,6 +7,14 @@ dependencies as test and ran one script. It is now the last step of test
 .github/workflows/ci.yml's spice-oracle job and that new step; nothing else
 in the workflow changes. Checks per push: 4 -> 3.
 
+2026-10-18 B22 generic-face review shots and dedicated faces — CLAIMED, Claude.
+Own: a --generic-shots DIR option for scripts/census-part-faces.mjs that clips
+every kind drawn by the generic module body, uploaded by CI as an artifact for
+visual review; and dedicated renderers (own case in BoardCanvas SvgParts plus a
+face test) for the most-used crowded generic kinds, starting with stc15_mcu,
+stc_mcu and tms9918. Terminal names and positions do not change; saved
+circuits keep loading as before. The census gates stay as they are.
+
 2026-10-18 B21 crowded generic-module pin labels — CLAIMED, Claude.
 Branch lane/b21-dense-faces-20261018 off master. The B20 generic module body
 draws every pin name horizontally at font size 3, so on kinds whose pins sit
