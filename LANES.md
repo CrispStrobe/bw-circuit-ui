@@ -1,5 +1,12 @@
 # Work lanes
 
+2026-10-18 CI: fold the SPICE oracle job into test — CLAIMED and done in one PR, Claude.
+Free-tier runner slots: spice-oracle installed the same ngspice and npm
+dependencies as test and ran one script. It is now the last step of test
+(runs even after an earlier step fails, same clean-run assertion). Owns only
+.github/workflows/ci.yml's spice-oracle job and that new step; nothing else
+in the workflow changes. Checks per push: 4 -> 3.
+
 2026-10-18 B22 generic-face review shots and dedicated faces — CLAIMED, Claude.
 Own: a --generic-shots DIR option for scripts/census-part-faces.mjs that clips
 every kind drawn by the generic module body, uploaded by CI as an artifact for
