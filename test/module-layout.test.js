@@ -74,3 +74,78 @@ test('the canvas routes its default branch through the shared helper', () => {
   assert.match(canvas, /moduleTerminalLayout\(msc, \{ existing: legacy \}\)/);
   assert.match(canvas, /const mod = genericModuleLayout\(part\);/);
 });
+
+// B21: pin labels of the generic body must not run into each other.
+import { readdirSync } from 'node:fs';
+import { moduleLabelLayout, PIN_LABEL_FONT } from '../src/model/module-layout.js';
+
+const labelBox = (name, l) => {
+  const len = name.length * l.size * 0.62;
+  if (l.rotate === -90) {
+    // text runs upward from (x, y) for anchor start, ends at (x, y) for end
+    const y0 = l.anchor === 'start' ? l.y - len : l.y;
+    return { l: l.x - l.size, r: l.x, t: y0, b: y0 + len };
+  }
+  const x0 = l.anchor === 'start' ? l.x : l.anchor === 'end' ? l.x - len : l.x - len / 2;
+  return { l: x0, r: x0 + len, t: l.y - l.size, b: l.y };
+};
+const overlaps = (a, b) => Math.min(a.r, b.r) - Math.max(a.l, b.l) > 0.05 && Math.min(a.b, b.b) - Math.max(a.t, b.t) > 0.05;
+const clashes = (sc, labels) => {
+  const names = sc.terminals.map(t => t.name).filter(n => labels[n]);
+  const out = [];
+  for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
+    if (overlaps(labelBox(names[i], labels[names[i]]), labelBox(names[j], labels[names[j]]))) out.push(`${names[i]}/${names[j]}`);
+  }
+  return out;
+};
+const allKinds = () => readdirSync(new URL('../src/parts-data/', import.meta.url)).filter(f => f.endsWith('.json')).flatMap(f => {
+  try {
+    const sc = JSON.parse(readFileSync(new URL(`../src/parts-data/${f}`, import.meta.url), 'utf8'));
+    return sc.kind && sc.terminals?.length > 1 ? [sc] : [];
+  } catch { return []; }
+});
+const rowKinds = () => allKinds().filter(sc => moduleTerminalLayout(sc).source === 'row');
+// matrix16x8 has its own renderer (the generic body never draws it) and its
+// sidecar stacks three column pins at one x inside the body.
+const NOT_GENERIC = new Set(['matrix16x8']);
+
+test('every sidecar kind: no two generic-body pin labels overlap; pins never move', () => {
+  const kinds = allKinds().filter(sc => !NOT_GENERIC.has(sc.kind));
+  assert.ok(kinds.length > 250, `found ${kinds.length} kinds`);
+  const bad = [];
+  for (const sc of kinds) {
+    const lay = moduleTerminalLayout(sc);
+    const before = JSON.stringify(lay.offsets);
+    const { labels } = moduleLabelLayout(sc, lay);
+    assert.equal(JSON.stringify(lay.offsets), before, `${sc.kind}: pins moved`);
+    const c = clashes(sc, labels);
+    if (c.length) bad.push(`${sc.kind}: ${c.join(' ')}`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+test('header-row kinds: names stay inside the body and clear of the title', () => {
+  const kinds = rowKinds();
+  assert.ok(kinds.length >= 1);
+  for (const sc of kinds) {
+    const { labels, box, titleY } = moduleLabelLayout(sc, moduleTerminalLayout(sc));
+    for (const t of sc.terminals) {
+      const b = labelBox(t.name, labels[t.name]);
+      assert.ok(b.t >= box.y - 0.01 && b.b <= box.y + box.h + 0.01, `${sc.kind}:${t.name} inside body`);
+      assert.ok(b.b <= titleY - 4 || b.t >= titleY + 4, `${sc.kind}:${t.name} clear of title`);
+    }
+  }
+});
+
+test('control: the B20 drawing (horizontal names at font 3) does overlap', () => {
+  // The B20 body drew every name centred on its pin, 4 above (bottom half)
+  // or 7 below (top half). Some kinds must clash that way, or this suite
+  // proves nothing about crowding.
+  const b20 = (sc, lay) => Object.fromEntries(sc.terminals.map(t => {
+    const p = lay.offsets[t.name];
+    return [t.name, { x: p.dx, y: p.dy + (p.dy >= 0 ? -4 : 7), anchor: 'middle', rotate: 0, size: PIN_LABEL_FONT }];
+  }));
+  const crowded = allKinds().filter(sc => !NOT_GENERIC.has(sc.kind) && clashes(sc, b20(sc, moduleTerminalLayout(sc))).length);
+  assert.ok(crowded.length >= 10, `B20 drawing clashes on ${crowded.length} kinds`);
+  for (const sc of crowded) assert.deepEqual(clashes(sc, moduleLabelLayout(sc, moduleTerminalLayout(sc)).labels), [], sc.kind);
+});

@@ -41,6 +41,11 @@
  * census lists the 131 ghosts again and exits 1. The resistor and capacitor
  * positive controls still guard against measuring an undrawn canvas.
  *
+ * Crowding (B21). For every generic module body the census also compares
+ * the screen boxes of its pin names ([data-pin-label]) and fails when any
+ * two overlap. Mutation proof: draw the names the B20 way (horizontal,
+ * centred on the pin) and the crowded kinds are listed.
+ *
  *   node scripts/census-part-faces.mjs                  gate (exit 1 on any)
  *   node scripts/census-part-faces.mjs --json F         also write lists to F
  *   node scripts/census-part-faces.mjs --shots DIR      clip of each listed kind
@@ -79,7 +84,7 @@ const server = await createServer({root, logLevel: 'error',
   server: {host: '127.0.0.1', port, strictPort: true}});
 await server.listen();
 const browser = await chromium.launch();
-const ghost = [], nothing = [], counts = [], errors = [];
+const ghost = [], nothing = [], counts = [], errors = [], crowded = [];
 try {
   const page = await browser.newPage({viewport: {width: 1200, height: 800}});
   page.on('pageerror', e => errors.push(String(e).split('\n')[0]));
@@ -160,6 +165,21 @@ try {
       try { measured = await classify(kind); } catch { measured = await classify(kind); }
       const {body, dots, box} = measured;
       counts.push([kind, body, dots]);
+      // B21: on a generic module body, no two pin names may overlap on screen.
+      const clash = await page.evaluate(() => {
+        const out = [];
+        for (const g of document.querySelectorAll('[data-generic-module]')) {
+          const ls = [...g.querySelectorAll('[data-pin-label]')].map(e => [e.dataset.pinLabel, e.getBoundingClientRect()]);
+          for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) {
+            const [a, ra] = ls[i], [b, rb] = ls[j];
+            const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
+            const h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+            if (w > 0.5 && h > 0.5) out.push(`${a}/${b}`);
+          }
+        }
+        return out;
+      });
+      if (clash.length) crowded.push(`${kind}: ${clash.slice(0, 4).join(' ')}${clash.length > 4 ? ` (+${clash.length - 4})` : ''}`);
       if (body <= 0) {
         (dots > 0 ? ghost : nothing).push(kind);
         if (shotDir) {
@@ -181,9 +201,10 @@ console.log(`part-face census: ${kinds.length} kinds, ${ghost.length} ghosts, ${
 console.log('fewest added body elements: ' + counts.sort((a, b) => a[1] - b[1]).slice(0, 30).map(([k, n]) => `${k}=${n}`).join(' '));
 for (const kind of ghost) console.log(`  ghost: ${kind}`);
 for (const kind of nothing) console.log(`  draws nothing: ${kind}`);
+for (const c of crowded) console.log(`  crowded pin names: ${c}`);
 for (const e of errors) console.log(`  error: ${e}`);
-if (jsonOut) writeFileSync(jsonOut, JSON.stringify({kinds: kinds.length, ghost, nothing, errors}, null, 2) + '\n');
-if (ghost.length || nothing.length || errors.length) {
-  console.error(`part-face census FAILED: ${ghost.length} ghost(s), ${nothing.length} draw nothing, ${errors.length} unmeasured`);
+if (jsonOut) writeFileSync(jsonOut, JSON.stringify({kinds: kinds.length, ghost, nothing, crowded, errors}, null, 2) + '\n');
+if (ghost.length || nothing.length || crowded.length || errors.length) {
+  console.error(`part-face census FAILED: ${ghost.length} ghost(s), ${nothing.length} draw nothing, ${crowded.length} with crowded pin names, ${errors.length} unmeasured`);
   process.exit(1);
 }
