@@ -14,7 +14,7 @@ const offsets = kind => moduleTerminalLayout(JSON.parse(read(`src/parts-data/${k
 
 test('the faces are their own case, ahead of the generic default', () => {
   const canvas = read('src/components/BoardCanvas.jsx');
-  const at = canvas.indexOf("case 'npn': case 'pnp': case 'switch': case 'ldr': case 'dip_switch_spst': {");
+  const at = canvas.indexOf("case 'npn': case 'pnp': case 'switch': case 'ldr': case 'dip_switch_spst':\n      case 'dc_motor': case 'ntc': case 'inductor': case 'slide_switch': case 'tilt_sensor': case 'opamp': case 'relay': {");
   assert.ok(at > 0, 'discrete-face case present');
   assert.ok(at < canvas.indexOf('      default: {', at), 'before the default branch');
   assert.match(canvas, /data-part-face=\{kind\} data-discrete-face=\{kind\}/);
@@ -52,4 +52,25 @@ test('a kind that only aliases to one of these keeps the generic body', () => {
   assert.match(canvas, /if \(!needs\.every\(name => o\[name\] && part\.terminals\.includes\(name\)\)\) return genericFace\(\);/);
   const ls = JSON.parse(read('src/parts-data/light_sensor.json'));
   assert.deepEqual(ls.terminals.map(t => t.name), ['vcc', 'gnd', 'out']);
+});
+
+// B25: the next generic kinds by example use (decade counter 8, DC motor 7,
+// NTC 6, inductor 5, slide switch 4, tilt sensor 4, op-amp 3, relay 3).
+test('B25 symbols: the geometry each one assumes', () => {
+  for (const kind of ['ntc', 'inductor']) {
+    const o = offsets(kind);
+    assert.equal(o.a.dy, o.b.dy, kind);
+    assert.ok(o.a.dx < o.b.dx, kind);
+  }
+  const m = offsets('dc_motor');
+  assert.equal(m.a.dy, m.b.dy, 'motor leads on one row');
+  const s = offsets('slide_switch');
+  assert.ok(s.a.dx < s.com.dx && s.com.dx < s.b.dx && s.a.dy === s.b.dy, 'slide switch a-com-b in a row');
+  const t = offsets('tilt_sensor');
+  assert.equal(t.a.dx, t.b.dx, 'tilt sensor leads in a column');
+  const op = offsets('opamp');
+  assert.ok(op.inp.dx < op.out.dx && op.inn.dx < op.out.dx && op.inp.dy !== op.inn.dy, 'op-amp inputs left, output right');
+  const r = offsets('relay');
+  const xs = ['coil_a', 'coil_b', 'no', 'com', 'nc'].map(n => r[n].dx);
+  assert.deepEqual([...xs].sort((a, b) => a - b), xs, 'relay pins left to right: coil_a coil_b no com nc');
 });

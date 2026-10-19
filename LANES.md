@@ -1,6 +1,6 @@
 # Work lanes
 
-2026-10-19 B25 light_sensor is simulated as its own module — CLAIMED and done in one PR, Claude.
+2026-10-19 B26 light_sensor is simulated as its own module — CLAIMED and done in one PR, Claude.
 bw-board now models light_sensor (vcc/gnd/out): the ldr law from vcc to out
 plus a fixed 10 kOhm load from out to gnd, on the part's own light control.
 Own: the bw-board pin bump to that engine (package.json, package-lock.json,
@@ -9,6 +9,13 @@ KIND_ALIASES, and the honest update of test/aliased-sidecar.test.js (the alias
 is gone; the engine registers the module on vcc/gnd/out) and the
 discrete-faces comment. Drawing (B24 layoutSidecar/sidecarFallbackOffset) is
 unchanged.
+
+2026-10-19 B25 next symbol faces — CLAIMED and done in one PR, Claude.
+Next generic kinds by example use (Lite examples census): decade_counter 8
+(CD4017 chip face), dc_motor 7, ntc 6, inductor 5, slide_switch 4,
+tilt_sensor 4, opamp 3, relay 3 (symbol faces in the discrete-face case, drawn
+around the existing terminal offsets; a kind missing a symbol's terminals keeps
+the generic body). No pin moves; saved circuits unchanged.
 
 2026-10-19 B24 aliased kinds keep their own terminal geometry — CLAIMED and done in one PR, Claude.
 KIND_ALIASES maps light_sensor (a vcc/gnd/out module) to ldr; loading keeps

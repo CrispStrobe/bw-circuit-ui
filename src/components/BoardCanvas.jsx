@@ -405,6 +405,7 @@ const CHIP_FACES = {
   stc15_mcu: { title: 'STC15', pkg: 'PDIP-40' },
   stc_mcu: { title: 'STC MCU', pkg: 'DIP-40' },
   tms9918: { title: 'TMS9918A', pkg: 'DIP-40' },
+  decade_counter: { title: 'CD4017', pkg: 'DIP-16' },
 };
 
 // Kinds the Wokwi element layer draws; SvgParts must not add a second body.
@@ -1816,13 +1817,16 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
       // B23: symbols for the most-used discrete parts the generic body drew
       // (examples census: DIP switch 26, switch 19, LDR 16, NPN 16). Drawn
       // around the existing terminal offsets, so no pin moves.
-      case 'npn': case 'pnp': case 'switch': case 'ldr': case 'dip_switch_spst': {
+      case 'npn': case 'pnp': case 'switch': case 'ldr': case 'dip_switch_spst':
+      case 'dc_motor': case 'ntc': case 'inductor': case 'slide_switch': case 'tilt_sensor': case 'opamp': case 'relay': {
         const o = terminalOffsetsForPart({ ...part, rotation: 0, flipped: false });
         // Each symbol needs its own terminals. A kind that only aliases to one
         // of these (light_sensor -> ldr is a three-pin vcc/gnd/out module)
         // keeps the generic body.
         const needs = { npn: ['base', 'collector', 'emitter'], pnp: ['base', 'collector', 'emitter'], switch: ['a', 'b'], ldr: ['a', 'b'],
-          dip_switch_spst: ['1a', '2a', '3a', '4a', '1b', '2b', '3b', '4b'] }[kind];
+          dip_switch_spst: ['1a', '2a', '3a', '4a', '1b', '2b', '3b', '4b'],
+          dc_motor: ['a', 'b'], ntc: ['a', 'b'], inductor: ['a', 'b'], slide_switch: ['a', 'com', 'b'],
+          tilt_sensor: ['a', 'b'], opamp: ['inp', 'inn', 'out'], relay: ['coil_a', 'coil_b', 'no', 'com', 'nc'] }[kind];
         if (!needs.every(name => o[name] && part.terminals.includes(name))) return genericFace();
         const ink = selStroke || '#cbd5e1';
         const lead = '#9aa5b1';
@@ -1875,6 +1879,77 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
             </g>)}
           </>;
           captionY = 22;
+        } else if (kind === 'dc_motor') {
+          const a = o.a, b = o.b, cy = Math.min(a.dy, b.dy) - 20;
+          body = <>
+            <line x1={a.dx} y1={a.dy} x2={a.dx} y2={cy + 9} stroke={lead} strokeWidth={1.5} />
+            <line x1={b.dx} y1={b.dy} x2={b.dx} y2={cy + 9} stroke={lead} strokeWidth={1.5} />
+            <circle cx={(a.dx + b.dx) / 2} cy={cy} r={14} fill="#1a1a1a" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.4} />
+            <text x={(a.dx + b.dx) / 2} y={cy + 4.5} textAnchor="middle" fill={ink} fontSize={13} fontFamily="monospace" fontWeight="bold">M</text>
+          </>;
+          captionY = Math.max(a.dy, b.dy) + 12;
+        } else if (kind === 'ntc') {
+          const a = o.a, b = o.b;
+          body = <>
+            <line x1={a.dx} y1={a.dy} x2={-9} y2={a.dy} stroke={lead} strokeWidth={1.5} />
+            <line x1={9} y1={b.dy} x2={b.dx} y2={b.dy} stroke={lead} strokeWidth={1.5} />
+            <rect x={-9} y={a.dy - 4} width={18} height={8} fill="#1a1a1a" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.3} />
+            <polyline points={`-12,${a.dy + 8} -6,${a.dy + 8} 10,${a.dy - 8}`} fill="none" stroke="#e8a33d" strokeWidth={1.1} />
+            <text x={0} y={a.dy - 7} textAnchor="middle" fill="#94a3b8" fontSize={5} fontFamily="monospace">-t°</text>
+          </>;
+          captionY = a.dy + 18;
+        } else if (kind === 'inductor') {
+          const a = o.a, b = o.b, n = 4, x0 = a.dx + 5, x1 = b.dx - 5, w = (x1 - x0) / n;
+          const coil = Array.from({ length: n }, (_, i) => `A ${w / 2} ${w / 2} 0 0 1 ${x0 + (i + 1) * w} ${a.dy}`).join(' ');
+          body = <>
+            <line x1={a.dx} y1={a.dy} x2={x0} y2={a.dy} stroke={lead} strokeWidth={1.5} />
+            <line x1={x1} y1={b.dy} x2={b.dx} y2={b.dy} stroke={lead} strokeWidth={1.5} />
+            <path d={`M ${x0} ${a.dy} ${coil}`} fill="none" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.6} />
+          </>;
+          captionY = a.dy + 16;
+        } else if (kind === 'slide_switch') {
+          const a = o.a, c = o.com, b = o.b, top = Math.min(a.dy, c.dy, b.dy) - 14;
+          body = <>
+            <rect x={a.dx - 5} y={top} width={b.dx - a.dx + 10} height={9} rx={2} fill="#1a1a1a" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.2} />
+            <rect x={a.dx - 2} y={top + 2} width={(b.dx - a.dx) / 2} height={5} rx={1} fill="#cbd5e1" />
+            {[a, c, b].map((p, i) => <line key={i} x1={p.dx} y1={top + 9} x2={p.dx} y2={p.dy} stroke={lead} strokeWidth={1.3} />)}
+          </>;
+          captionY = Math.max(a.dy, b.dy) + 12;
+        } else if (kind === 'tilt_sensor') {
+          const a = o.a, b = o.b, x = a.dx, y0 = Math.min(a.dy, b.dy) + 7, y1 = Math.max(a.dy, b.dy) - 7;
+          body = <>
+            <line x1={x} y1={a.dy} x2={x} y2={a.dy < b.dy ? y0 : y1} stroke={lead} strokeWidth={1.5} />
+            <line x1={x} y1={b.dy} x2={x} y2={a.dy < b.dy ? y1 : y0} stroke={lead} strokeWidth={1.5} />
+            <rect x={x - 6} y={y0} width={12} height={y1 - y0} rx={6} fill="#1a1a1a" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.3} />
+            <circle cx={x} cy={y1 - 5} r={3.2} fill="#94a3b8" />
+          </>;
+          captionY = Math.max(a.dy, b.dy) + 12;
+        } else if (kind === 'opamp') {
+          const p = o.inp, n = o.inn, out = o.out, xl = Math.min(p.dx, n.dx) + 8, xr = out.dx - 8;
+          const yt = Math.min(p.dy, n.dy) - 10, yb = Math.max(p.dy, n.dy) + 10;
+          body = <>
+            <line x1={p.dx} y1={p.dy} x2={xl} y2={p.dy} stroke={lead} strokeWidth={1.5} />
+            <line x1={n.dx} y1={n.dy} x2={xl} y2={n.dy} stroke={lead} strokeWidth={1.5} />
+            <line x1={xr} y1={out.dy} x2={out.dx} y2={out.dy} stroke={lead} strokeWidth={1.5} />
+            <polygon points={`${xl},${yt} ${xl},${yb} ${xr},${out.dy}`} fill="#1a1a1a" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.4} />
+            <text x={xl + 3} y={p.dy + 2.5} fill={ink} fontSize={8} fontFamily="monospace">+</text>
+            <text x={xl + 3} y={n.dy + 2.5} fill={ink} fontSize={8} fontFamily="monospace">−</text>
+          </>;
+          captionY = yb + 10;
+        } else if (kind === 'relay') {
+          const ca = o.coil_a, cb = o.coil_b, no = o.no, com = o.com, nc = o.nc;
+          const top = Math.min(ca.dy, no.dy) - 30, bottom = Math.min(ca.dy, no.dy) - 6;
+          const left = ca.dx - 8, right = nc.dx + 8, mid = (cb.dx + no.dx) / 2;
+          body = <>
+            <rect x={left} y={top} width={right - left} height={bottom - top} rx={3} fill="#1e3a5f" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.2} />
+            {[ca, cb, no, com, nc].map((q, i) => <line key={i} x1={q.dx} y1={bottom} x2={q.dx} y2={q.dy} stroke={lead} strokeWidth={1.3} />)}
+            <rect x={ca.dx - 2} y={top + 6} width={cb.dx - ca.dx + 4} height={12} fill="none" stroke="#e8a33d" strokeWidth={1.2} />
+            <line x1={mid} y1={top + 3} x2={mid} y2={bottom - 3} stroke="#64748b" strokeWidth={0.8} strokeDasharray="2 2" />
+            <line x1={com.dx} y1={bottom - 3} x2={no.dx + 1} y2={top + 9} stroke={ink} strokeWidth={1.4} />
+            <text x={no.dx} y={bottom - 2} textAnchor="middle" fill="#94a3b8" fontSize={4} fontFamily="monospace">NO</text>
+            <text x={nc.dx} y={bottom - 2} textAnchor="middle" fill="#94a3b8" fontSize={4} fontFamily="monospace">NC</text>
+          </>;
+          captionY = Math.max(ca.dy, nc.dy) + 12;
         } else {
           // DIP switch: four slide switches, terminals 1a..4a top, 1b..4b bottom.
           const cols = ['1', '2', '3', '4'].map(n => o[`${n}a`]).filter(Boolean);
