@@ -1780,6 +1780,12 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
       // around the existing terminal offsets, so no pin moves.
       case 'npn': case 'pnp': case 'switch': case 'ldr': case 'dip_switch_spst': {
         const o = terminalOffsetsForPart({ ...part, rotation: 0, flipped: false });
+        // Each symbol needs its own terminals. A kind that only aliases to one
+        // of these (light_sensor -> ldr is a three-pin vcc/gnd/out module)
+        // keeps the generic body.
+        const needs = { npn: ['base', 'collector', 'emitter'], pnp: ['base', 'collector', 'emitter'], switch: ['a', 'b'], ldr: ['a', 'b'],
+          dip_switch_spst: ['1a', '2a', '3a', '4a', '1b', '2b', '3b', '4b'] }[kind];
+        if (!needs.every(name => o[name] && part.terminals.includes(name))) return genericFace();
         const ink = selStroke || '#cbd5e1';
         const lead = '#9aa5b1';
         const caption = (y) => (

@@ -45,3 +45,11 @@ test('DIP switch: 1a..4a on the top row, 1b..4b below, column by column', () => 
   }
   assert.ok([1, 2, 3].every(n => o[`${n}a`].dx < o[`${n + 1}a`].dx), 'switch 1 is leftmost');
 });
+
+test('a kind that only aliases to one of these keeps the generic body', () => {
+  // light_sensor aliases to ldr but has vcc/gnd/out: the LDR symbol needs a/b.
+  const canvas = read('src/components/BoardCanvas.jsx');
+  assert.match(canvas, /if \(!needs\.every\(name => o\[name\] && part\.terminals\.includes\(name\)\)\) return genericFace\(\);/);
+  const ls = JSON.parse(read('src/parts-data/light_sensor.json'));
+  assert.deepEqual(ls.terminals.map(t => t.name), ['vcc', 'gnd', 'out']);
+});

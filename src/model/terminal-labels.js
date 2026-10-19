@@ -8,10 +8,13 @@
  * body, chip face) already labels its pins.
  *
  * Positions are canvas coordinates of the dots. The box is the name's: centred
- * on the dot, `fontSize` tall, `CHAR_W * fontSize` per character.
+ * on the dot, `LINE_H * fontSize` tall, `CHAR_W * fontSize` per character.
  */
 export const TERMINAL_LABEL_FONT = 9;
 const CHAR_W = 0.62;
+// A text box on screen is taller than its font size (ascent + descent): a
+// 9 px name measures about 11 px, so names 10 px apart still touch.
+const LINE_H = 1.25;
 
 /**
  * @param {Array<{name: string, x: number, y: number}>} points
@@ -24,7 +27,7 @@ export function clashingTerminalLabels(points, fontSize = TERMINAL_LABEL_FONT) {
     for (let j = i + 1; j < points.length; j++) {
       const a = points[i], b = points[j];
       const halfWidths = (a.name.length + b.name.length) * CHAR_W * fontSize / 2;
-      if (Math.abs(a.x - b.x) < halfWidths + 1 && Math.abs(a.y - b.y) < fontSize + 1) {
+      if (Math.abs(a.x - b.x) < halfWidths + 1 && Math.abs(a.y - b.y) < fontSize * LINE_H + 1) {
         clash.add(a.name);
         clash.add(b.name);
       }
