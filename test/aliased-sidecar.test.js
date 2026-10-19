@@ -1,13 +1,20 @@
 /**
  * B24: an aliased kind keeps its own terminal geometry on the canvas.
- * Loading resolves light_sensor -> ldr but keeps the vcc/gnd/out terminals;
- * the ldr sidecar has only a/b, so all three were drawn on one point.
+ * Loading resolved light_sensor -> ldr but kept the vcc/gnd/out terminals;
+ * the ldr sidecar has only a/b, so all three were drawn on one point. Since
+ * the engine models the light_sensor module itself the alias is gone, and
+ * the part is drawn (and simulated) from its own three-terminal sidecar.
  */
+import './_setup.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { KIND_ALIASES } from '../src/model/terminal-aliases.js';
 import { moduleTerminalLayout } from '../src/model/module-layout.js';
+import { registerAllDevices } from 'bw-board/register-all.js';
+import { getDevice } from 'bw-board/devices.js';
+
+registerAllDevices();
 
 const read = rel => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
 const sidecar = kind => {
@@ -16,9 +23,16 @@ const sidecar = kind => {
 };
 const names = sc => (sc?.terminals || []).map(t => t.name);
 
+test('light_sensor: no longer aliased to ldr, the engine models the module on vcc/gnd/out', () => {
+  assert.equal(KIND_ALIASES.light_sensor, undefined, 'light_sensor must resolve to itself');
+  const model = getDevice('light_sensor');
+  assert.ok(model, 'bw-board registers a light_sensor device');
+  assert.deepEqual([...model.terminals].sort(), ['gnd', 'out', 'vcc']);
+});
+
 test('light_sensor: the ldr sidecar lacks its terminals, its own sidecar places them apart', () => {
-  const own = sidecar('light_sensor'), target = sidecar(KIND_ALIASES.light_sensor);
-  assert.equal(KIND_ALIASES.light_sensor, 'ldr');
+  const own = sidecar('light_sensor'), target = sidecar('ldr');
+  assert.deepEqual(names(own), ['vcc', 'gnd', 'out']);
   assert.ok(!names(own).every(n => names(target).includes(n)), 'ldr sidecar would not place vcc/gnd/out');
   const pts = Object.values(moduleTerminalLayout(own).offsets).map(p => `${p.dx},${p.dy}`);
   assert.equal(new Set(pts).size, names(own).length, 'its own sidecar gives every terminal its own point');
