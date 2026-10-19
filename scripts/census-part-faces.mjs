@@ -41,6 +41,9 @@
  * census lists the 131 ghosts again and exits 1. The resistor and capacitor
  * positive controls still guard against measuring an undrawn canvas.
  *
+ * Terminal-dot names (B23): the names drawn above unconnected terminals of
+ * any part ([data-terminal-label]) are compared the same way (dot:a/b).
+ *
  * Crowding (B21). For every generic module body the census also compares
  * the screen boxes of its pin names ([data-pin-label]) and fails when any
  * two overlap. Mutation proof: draw the names the B20 way (horizontal,
@@ -89,7 +92,7 @@ const server = await createServer({root, logLevel: 'error',
   server: {host: '127.0.0.1', port, strictPort: true}});
 await server.listen();
 const browser = await chromium.launch();
-const ghost = [], nothing = [], counts = [], errors = [], crowded = [], generic = [], chips = [];
+const ghost = [], nothing = [], counts = [], errors = [], crowded = [], generic = [], chips = [], discrete = [];
 try {
   const page = await browser.newPage({viewport: {width: 1200, height: 800}});
   page.on('pageerror', e => errors.push(String(e).split('\n')[0]));
@@ -182,17 +185,27 @@ try {
             if (w > 0.5 && h > 0.5) out.push(`${a}/${b}`);
           }
         }
+        // B23: the terminal-dot names above unconnected pins, on any part.
+        const tl = [...document.querySelectorAll('[data-terminal-label]')].map(e => [e.dataset.terminalLabel, e.getBoundingClientRect()]);
+        for (let i = 0; i < tl.length; i++) for (let j = i + 1; j < tl.length; j++) {
+          const [a, ra] = tl[i], [b, rb] = tl[j];
+          const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
+          const h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+          if (w > 0.5 && h > 0.5) out.push(`dot:${a}/${b}`);
+        }
         return out;
       });
       // Which face drew it: the generic module body or a B22 chip face.
       const {face, fb} = await page.evaluate(() => {
-        const el = document.querySelector('[data-chip-face]') || document.querySelector('[data-generic-module]');
+        const el = document.querySelector('[data-chip-face], [data-generic-module], [data-discrete-face]');
         if (!el) return {face: null, fb: null};
         const r = el.getBoundingClientRect();
-        return {face: el.hasAttribute('data-chip-face') ? 'chip' : 'generic', fb: {l: r.left, t: r.top, r: r.right, b: r.bottom}};
+        const face = el.hasAttribute('data-chip-face') ? 'chip' : el.hasAttribute('data-discrete-face') ? 'discrete' : 'generic';
+        return {face, fb: {l: r.left, t: r.top, r: r.right, b: r.bottom}};
       });
       if (face === 'generic') generic.push(kind);
       if (face === 'chip') chips.push(kind);
+      if (face === 'discrete') discrete.push(kind);
       if (face && genericShotDir && fb) {
         const cx = (fb.l + fb.r) / 2, cy = (fb.t + fb.b) / 2;
         const w = Math.min(600, fb.r - fb.l + 60), h = Math.min(600, fb.b - fb.t + 60);
@@ -221,10 +234,10 @@ console.log(`part-face census: ${kinds.length} kinds, ${ghost.length} ghosts, ${
 console.log('fewest added body elements: ' + counts.sort((a, b) => a[1] - b[1]).slice(0, 30).map(([k, n]) => `${k}=${n}`).join(' '));
 for (const kind of ghost) console.log(`  ghost: ${kind}`);
 for (const kind of nothing) console.log(`  draws nothing: ${kind}`);
-console.log(`generic module bodies: ${generic.length}, chip faces: ${chips.length} (${chips.join(' ')})`);
+console.log(`generic module bodies: ${generic.length}, chip faces: ${chips.length} (${chips.join(' ')}), discrete faces: ${discrete.length} (${discrete.join(' ')})`);
 for (const c of crowded) console.log(`  crowded pin names: ${c}`);
 for (const e of errors) console.log(`  error: ${e}`);
-if (jsonOut) writeFileSync(jsonOut, JSON.stringify({kinds: kinds.length, ghost, nothing, crowded, generic, chips, errors}, null, 2) + '\n');
+if (jsonOut) writeFileSync(jsonOut, JSON.stringify({kinds: kinds.length, ghost, nothing, crowded, generic, chips, discrete, errors}, null, 2) + '\n');
 if (ghost.length || nothing.length || crowded.length || errors.length) {
   console.error(`part-face census FAILED: ${ghost.length} ghost(s), ${nothing.length} draw nothing, ${crowded.length} with crowded pin names, ${errors.length} unmeasured`);
   process.exit(1);

@@ -1,5 +1,14 @@
 # Work lanes
 
+2026-10-19 B23 terminal-dot name crowding and discrete faces — CLAIMED and done in one PR, Claude.
+The examples census (Lite production-sw-probe, 2026-10-19) ranks the generic
+kinds by use: DIP switch 26 examples, switch 19, LDR 16, NPN 16. Own: the
+terminal-dot name rule in TerminalDots (src/model/terminal-labels.js: a name
+that would overlap a neighbour's stays the dot's hover title), the census
+check of those names ([data-terminal-label]) and its discrete-face shots, and
+symbol faces for npn, pnp, switch, ldr and dip_switch_spst drawn around the
+existing terminal offsets (no pin moves; saved circuits unchanged).
+
 2026-10-18 CI: fold the SPICE oracle job into test — CLAIMED and done in one PR, Claude.
 Free-tier runner slots: spice-oracle installed the same ngspice and npm
 dependencies as test and ran one script. It is now the last step of test
