@@ -419,8 +419,24 @@ function terminalPos(part, terminal) {
     return part._seatTerminals[terminal];
   }
   const offsets = terminalOffsetsForPart(part);
-  const offset = offsets[terminal] ?? { dx: 0, dy: 0 };
+  const offset = offsets[terminal] ?? sidecarFallbackOffset(part, terminal) ?? { dx: 0, dy: 0 };
   return { x: part.x + offset.dx, y: part.y + offset.dy };
+}
+
+/**
+ * B24: a terminal terminalOffsetsForPart does not place. Several of its cases
+ * list only some terminals (the eeprom places sda/scl, seven_segment a/b) or a
+ * target kind's names (an oscilloscope resolves to meter but keeps
+ * ch1/ch2/gnd); every unplaced terminal fell to the part centre, all on one
+ * point, which is where wires attach. Use the part's own sidecar layout,
+ * rotated like the rest. Placed terminals do not move.
+ */
+function sidecarFallbackOffset(part, terminal) {
+  const sc = layoutSidecar(part);
+  const o = sc?.terminals?.length ? moduleTerminalLayout(sc).offsets[terminal] : null;
+  if (!o) return null;
+  const rotated = rotateOffset(o.dx, o.dy, part.rotation || 0);
+  return part.flipped ? { dx: -rotated.dx, dy: rotated.dy } : rotated;
 }
 
 function fmtV(v) {

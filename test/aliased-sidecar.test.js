@@ -40,3 +40,13 @@ test('the canvas looks up the layout sidecar through the alias fallback', () => 
   assert.match(canvas, /const msc = layoutSidecar\(part\);/);
   assert.match(canvas, /function genericModuleLayout\(part\) \{\n  const sc = layoutSidecar\(part\);/);
 });
+
+test('a terminal the per-kind table does not place falls back to the sidecar, not the centre', () => {
+  // eeprom (sda/scl only), seven_segment (a/b only), oscilloscope -> meter and
+  // function_gen -> vsource (target names only) put the rest on one point.
+  const canvas = read('src/components/BoardCanvas.jsx');
+  assert.match(canvas, /const offset = offsets\[terminal\] \?\? sidecarFallbackOffset\(part, terminal\) \?\? \{ dx: 0, dy: 0 \};/);
+  const eeprom = sidecar('eeprom');
+  const pts = Object.values(moduleTerminalLayout(eeprom).offsets).map(p => `${p.dx},${p.dy}`);
+  assert.equal(new Set(pts).size, names(eeprom).length, 'the eeprom sidecar places vcc and gnd apart');
+});
