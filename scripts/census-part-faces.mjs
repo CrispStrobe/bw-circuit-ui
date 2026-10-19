@@ -41,6 +41,9 @@
  * census lists the 131 ghosts again and exits 1. The resistor and capacitor
  * positive controls still guard against measuring an undrawn canvas.
  *
+ * Same point (B24): two terminal dots of one part on one point (same-point:a/b)
+ * also count as crowded: every terminal must be reachable on its own.
+ *
  * Terminal-dot names (B23): the names drawn above unconnected terminals of
  * any part ([data-terminal-label]) are compared the same way (dot:a/b).
  *
@@ -184,6 +187,16 @@ try {
             const h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
             if (w > 0.5 && h > 0.5) out.push(`${a}/${b}`);
           }
+        }
+        // B24: no two terminal dots of the part on one point (an aliased kind
+        // once collapsed all three of its terminals onto one spot).
+        const spots = new Map();
+        for (const d of document.querySelectorAll('[data-terminal-dot]')) {
+          const c = d.querySelector('circle:not([fill="transparent"])');
+          if (!c) continue;
+          const key = `${c.getAttribute('cx')},${c.getAttribute('cy')}`;
+          const name = d.dataset.terminalDot.split(':').slice(1).join(':');
+          if (spots.has(key)) out.push(`same-point:${spots.get(key)}/${name}`); else spots.set(key, name);
         }
         // B23: the terminal-dot names above unconnected pins, on any part.
         const tl = [...document.querySelectorAll('[data-terminal-label]')].map(e => [e.dataset.terminalLabel, e.getBoundingClientRect()]);

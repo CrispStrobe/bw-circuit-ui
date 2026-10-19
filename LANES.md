@@ -1,5 +1,17 @@
 # Work lanes
 
+2026-10-19 B24 aliased kinds keep their own terminal geometry — CLAIMED and done in one PR, Claude.
+KIND_ALIASES maps light_sensor (a vcc/gnd/out module) to ldr; loading keeps
+the stored terminals, and the ldr sidecar knows only a/b, so the canvas drew
+all three terminals on one point (where wires attach). Own: layoutSidecar in
+BoardCanvas (drawing uses the alias's own sidecar when the resolved kind's
+lacks the part's terminals), a census check that no two terminal dots of one
+part share a point, sidecarFallbackOffset in terminalPos (a terminal the
+per-kind offset table does not place -- eeprom vcc/gnd, seven_segment c..g,
+oscilloscope and function_gen -- takes its sidecar position instead of the
+part centre; placed terminals do not move), and test/aliased-sidecar.test.js. KIND_ALIASES, the engine
+netlist and saved circuits are unchanged.
+
 2026-10-19 B23 terminal-dot name crowding and discrete faces — CLAIMED and done in one PR, Claude.
 The examples census (Lite production-sw-probe, 2026-10-19) ranks the generic
 kinds by use: DIP switch 26 examples, switch 19, LDR 16, NPN 16. Own: the
