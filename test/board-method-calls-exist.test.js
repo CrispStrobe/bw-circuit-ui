@@ -37,6 +37,18 @@ const PROBE = /\b(board|\w+Board)\??\.(\w+)\s*(?=\)|&&|\?(?!\.))/g;
  */
 const EXTERNAL_ONLY = new Map([]);
 
+// A method is a function-valued data property somewhere on the prototype
+// chain. Reading `BoardImpl.prototype[name]` instead would INVOKE an accessor
+// (bw-board's `temperatureC` getter reads this._world) on the bare prototype
+// and throw; an accessor is not a callable method either way.
+function isBoardMethod(name) {
+  for (let p = BoardImpl.prototype; p && p !== Object.prototype; p = Object.getPrototypeOf(p)) {
+    const d = Object.getOwnPropertyDescriptor(p, name);
+    if (d) return typeof d.value === 'function';
+  }
+  return false;
+}
+
 function scan() {
   const found = new Map();
   for (const dir of DIRS) {
@@ -50,7 +62,7 @@ function scan() {
           const [, receiver, method] = m;
           // `board.parts` and friends are properties, read as values: only a
           // name used as a callable or probed for existence is in scope.
-          if (re === PROBE && typeof BoardImpl.prototype[method] !== 'function'
+          if (re === PROBE && !isBoardMethod(method)
             && !/^(set|get|run|advance|read|write|on|off|clear|reset)/.test(method)) continue;
           const key = method;
           if (!found.has(key)) found.set(key, new Set());
@@ -66,7 +78,7 @@ test('every board method the designer calls exists on BoardImpl', () => {
   const found = scan();
   assert.ok(found.size >= 10, `only ${found.size} board methods found — the scan is reading nothing`);
   const missing = [...found]
-    .filter(([m]) => typeof BoardImpl.prototype[m] !== 'function' && !EXTERNAL_ONLY.has(m))
+    .filter(([m]) => !isBoardMethod(m) && !EXTERNAL_ONLY.has(m))
     .map(([m, where]) => `${m}  <- ${[...where].join(', ')}`);
   assert.deepEqual(missing, [],
     'these are called on a board but no board defines them; behind a `?.` or an existence '

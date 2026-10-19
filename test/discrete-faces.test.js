@@ -47,7 +47,7 @@ test('DIP switch: 1a..4a on the top row, 1b..4b below, column by column', () => 
 });
 
 test('a kind that only aliases to one of these keeps the generic body', () => {
-  // light_sensor aliases to ldr but has vcc/gnd/out: the LDR symbol needs a/b.
+  // light_sensor (its own kind, formerly aliased to ldr) has vcc/gnd/out: the LDR symbol needs a/b.
   const canvas = read('src/components/BoardCanvas.jsx');
   assert.match(canvas, /if \(!needs\.every\(name => o\[name\] && part\.terminals\.includes\(name\)\)\) return genericFace\(\);/);
   const ls = JSON.parse(read('src/parts-data/light_sensor.json'));

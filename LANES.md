@@ -1,5 +1,18 @@
 # Work lanes
 
+2026-10-19 B26 light_sensor is simulated as its own module — CLAIMED and done in one PR, Claude.
+bw-board now models light_sensor (vcc/gnd/out): the ldr law from vcc to out
+plus a fixed 10 kOhm load from out to gnd, on the part's own light control.
+Own: the bw-board pin bump to that engine (package.json, package-lock.json,
+scripts/board-provenance.json), removing `light_sensor: 'ldr'` from
+KIND_ALIASES, and the honest update of test/aliased-sidecar.test.js (the alias
+is gone; the engine registers the module on vcc/gnd/out) and the
+discrete-faces comment. Drawing (B24 layoutSidecar/sidecarFallbackOffset) is
+unchanged. The pin also brings the engine's shared World, so two tests are
+adapted to it: board-method-calls-exist reads property descriptors instead of
+invoking the new temperatureC getter on the bare prototype, and sweep-session
+accepts DataCloneError as the way a live board fails to cross a worker.
+
 2026-10-19 B25 next symbol faces — CLAIMED and done in one PR, Claude.
 Next generic kinds by example use (Lite examples census): decade_counter 8
 (CD4017 chip face), dc_motor 7, ntc 6, inductor 5, slide_switch 4,

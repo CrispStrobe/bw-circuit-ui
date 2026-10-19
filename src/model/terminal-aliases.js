@@ -32,7 +32,8 @@ export const KIND_ALIASES = {
   neopixel_ring: 'neopixel',
   neopixel_strip: 'neopixel',
   ky002: 'tilt_sensor',
-  light_sensor: 'ldr',
+  // light_sensor is NOT aliased: the engine models the vcc/gnd/out module
+  // itself (LDR vcc->out, fixed load out->gnd); ldr has only a/b.
   multimeter: 'meter',
   oscilloscope: 'meter',
   ultrasonic_3pin: 'ultrasonic',

@@ -184,8 +184,18 @@ describe('X2.6: what crosses a worker boundary', () => {
     // board and answering no method call — which is worse than refusing,
     // because it fails at the first `setNetlist` with a TypeError about
     // something that appears to be right there.
-    const clonedBoard = structuredClone(c.board);
+    // Since bw-board gave every board a shared World (fac3a5a9 and its
+    // parents), the board holds uncloneable state and structuredClone throws
+    // DataCloneError outright; before, it produced a method-less husk. Either
+    // way a live board does not cross the boundary.
     assert.equal(typeof c.board.setNetlist, 'function');
+    let clonedBoard;
+    try {
+      clonedBoard = structuredClone(c.board);
+    } catch (e) {
+      assert.equal(e.name, 'DataCloneError', `unexpected clone failure: ${e}`);
+      return;
+    }
     assert.equal(typeof clonedBoard.setNetlist, 'undefined',
       'a cloned board has no methods — this is why the netlist is what is sent');
   });
