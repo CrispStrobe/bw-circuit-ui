@@ -33,3 +33,14 @@ test('chip faces mark themselves for the census and are not counted as generic b
   assert.match(canvas, /chip \? \{ 'data-chip-face': kind, 'data-package': chip\.pkg \} : \{ 'data-generic-module': kind \}/);
   assert.match(read('scripts/census-part-faces.mjs'), /querySelectorAll\('\[data-generic-module\], \[data-chip-face\]'\)/);
 });
+
+test('decade_counter: a CD4017 chip face over its two-column sidecar, pin 1 (clk) top left', () => {
+  assert.ok(table.includes("decade_counter: { title: 'CD4017', pkg: 'DIP-16' },"));
+  const sc = JSON.parse(read('src/parts-data/decade_counter.json'));
+  const lay = moduleTerminalLayout(sc);
+  assert.equal(lay.source, 'sidecar');
+  assert.equal(new Set(sc.terminals.map(t => lay.offsets[t.name].dx)).size, 2);
+  const p1 = lay.offsets[sc.terminals[0].name];
+  assert.equal(sc.terminals[0].name, 'clk');
+  assert.ok(p1.dx < 0 && p1.dy < 0);
+});
