@@ -23,6 +23,7 @@ import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootpri
 import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interaction/seat-geometry.js';
 import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
 import { moduleLabelLayout, moduleTerminalLayout } from '../model/module-layout.js';
+import { clashingTerminalLabels } from '../model/terminal-labels.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { breadboardFootprintForPart, carrierOptionsForPart } from '../model/carriers.js';
@@ -1774,6 +1775,93 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
           </g>
         );
       }
+      // B23: symbols for the most-used discrete parts the generic body drew
+      // (examples census: DIP switch 26, switch 19, LDR 16, NPN 16). Drawn
+      // around the existing terminal offsets, so no pin moves.
+      case 'npn': case 'pnp': case 'switch': case 'ldr': case 'dip_switch_spst': {
+        const o = terminalOffsetsForPart({ ...part, rotation: 0, flipped: false });
+        // Each symbol needs its own terminals. A kind that only aliases to one
+        // of these (light_sensor -> ldr is a three-pin vcc/gnd/out module)
+        // keeps the generic body.
+        const needs = { npn: ['base', 'collector', 'emitter'], pnp: ['base', 'collector', 'emitter'], switch: ['a', 'b'], ldr: ['a', 'b'],
+          dip_switch_spst: ['1a', '2a', '3a', '4a', '1b', '2b', '3b', '4b'] }[kind];
+        if (!needs.every(name => o[name] && part.terminals.includes(name))) return genericFace();
+        const ink = selStroke || '#cbd5e1';
+        const lead = '#9aa5b1';
+        const caption = (y) => (
+          <text x={0} y={y} textAnchor="middle" fill="#7f8c8d" fontSize={7} fontFamily="monospace">{part.declName || id}</text>
+        );
+        let body = null, captionY = 24;
+        if (kind === 'npn' || kind === 'pnp') {
+          const b = o.base, c = o.collector, e = o.emitter;
+          const barX = b.dx + 14;
+          const pnp = kind === 'pnp';
+          // emitter arrow: out of the bar for NPN, into it for PNP
+          const ex0 = barX, ey0 = e.dy > 0 ? 5 : -5, ex1 = e.dx, ey1 = e.dy > 0 ? 12 : -12;
+          const [ax, ay, bx, by] = pnp ? [ex1, ey1, ex0, ey0] : [ex0, ey0, ex1, ey1];
+          const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len;
+          const tip = { x: ax + ux * len * 0.75, y: ay + uy * len * 0.75 };
+          body = <>
+            <circle cx={(barX + e.dx) / 2 + 1} cy={0} r={15} fill="#1a1a1a" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.2} />
+            <line x1={b.dx} y1={b.dy} x2={barX} y2={b.dy} stroke={lead} strokeWidth={1.5} />
+            <line x1={barX} y1={-9} x2={barX} y2={9} stroke={ink} strokeWidth={2.5} />
+            <polyline points={`${barX},${c.dy > 0 ? 5 : -5} ${c.dx},${c.dy > 0 ? 12 : -12} ${c.dx},${c.dy}`} fill="none" stroke={ink} strokeWidth={1.5} />
+            <polyline points={`${ex0},${ey0} ${ex1},${ey1} ${e.dx},${e.dy}`} fill="none" stroke={ink} strokeWidth={1.5} />
+            <polygon points={`${tip.x + ux * 4},${tip.y + uy * 4} ${tip.x - uy * 3},${tip.y + ux * 3} ${tip.x + uy * 3},${tip.y - ux * 3}`} fill={ink} />
+            <text x={b.dx + 2} y={b.dy - 4} fill="#94a3b8" fontSize={5} fontFamily="monospace">B</text>
+            <text x={c.dx + 3} y={c.dy + 7} fill="#94a3b8" fontSize={5} fontFamily="monospace">C</text>
+            <text x={e.dx + 3} y={e.dy - 3} fill="#94a3b8" fontSize={5} fontFamily="monospace">E</text>
+          </>;
+          captionY = Math.max(e.dy, c.dy) + 12;
+        } else if (kind === 'switch') {
+          const a = o.a, b = o.b, l = a.dx + 7, r = b.dx - 7;
+          body = <>
+            <line x1={a.dx} y1={a.dy} x2={l} y2={a.dy} stroke={lead} strokeWidth={1.5} />
+            <line x1={r} y1={b.dy} x2={b.dx} y2={b.dy} stroke={lead} strokeWidth={1.5} />
+            <circle cx={l} cy={a.dy} r={2} fill="#1a1a1a" stroke={ink} strokeWidth={1.2} />
+            <circle cx={r} cy={b.dy} r={2} fill="#1a1a1a" stroke={ink} strokeWidth={1.2} />
+            <line x1={l + 1.5} y1={a.dy - 1} x2={r - 1} y2={b.dy - 9} stroke={ink} strokeWidth={1.8} strokeLinecap="round" />
+            <rect x={a.dx - 2} y={-14} width={b.dx - a.dx + 4} height={28} fill="transparent" stroke={isSelected ? ink : 'none'} rx={3} />
+          </>;
+          captionY = 22;
+        } else if (kind === 'ldr') {
+          const a = o.a, b = o.b;
+          body = <>
+            <line x1={a.dx} y1={a.dy} x2={-8} y2={a.dy} stroke={lead} strokeWidth={1.5} />
+            <line x1={8} y1={b.dy} x2={b.dx} y2={b.dy} stroke={lead} strokeWidth={1.5} />
+            <circle cx={0} cy={0} r={11} fill="#1a1a1a" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.2} />
+            <rect x={-8} y={-3.5} width={16} height={7} fill="none" stroke="#e8a33d" strokeWidth={1.4} />
+            {[-4, 1].map(x => <g key={x}>
+              <line x1={x - 6} y1={-16} x2={x - 1} y2={-9} stroke="#f1c40f" strokeWidth={1} />
+              <polygon points={`${x},${-7.5} ${x - 3.4},${-9.4} ${x - 1.6},${-11.2}`} fill="#f1c40f" />
+            </g>)}
+          </>;
+          captionY = 22;
+        } else {
+          // DIP switch: four slide switches, terminals 1a..4a top, 1b..4b bottom.
+          const cols = ['1', '2', '3', '4'].map(n => o[`${n}a`]).filter(Boolean);
+          const top = Math.min(...cols.map(p => p.dy)), bottom = Math.max(...['1', '2', '3', '4'].map(n => o[`${n}b`]?.dy ?? 0));
+          const x0 = Math.min(...cols.map(p => p.dx)) - 6, x1 = Math.max(...cols.map(p => p.dx)) + 6;
+          body = <>
+            <rect x={x0} y={top + 3} width={x1 - x0} height={bottom - top - 6} rx={2} fill="#b91c1c" stroke={isSelected ? ink : '#7f1d1d'} strokeWidth={isSelected ? 2 : 1} />
+            {cols.map((p, i) => <g key={i}>
+              <rect x={p.dx - 2.4} y={top + 7} width={4.8} height={bottom - top - 14} fill="#f8fafc" />
+              <rect x={p.dx - 2.4} y={top + 7} width={4.8} height={(bottom - top - 14) / 2} fill="#cbd5e1" />
+              <text x={p.dx} y={bottom - 4} textAnchor="middle" fill="#fee2e2" fontSize={3.4} fontFamily="monospace">{i + 1}</text>
+            </g>)}
+            <text x={x0 + 1.5} y={top + 6.3} fill="#fee2e2" fontSize={3} fontFamily="monospace">ON</text>
+          </>;
+          captionY = bottom + 12;
+        }
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
+            data-part-face={kind} data-discrete-face={kind}>
+            {body}
+            {caption(captionY)}
+          </g>
+        );
+      }
+
       default: {
         // Generic DIP body for retro/logic ICs that have sidecars.
         // Pin-1-bottom convention: left column (pin 1 side) at bottom row,
@@ -1916,6 +2004,8 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
   const dots = [];
   for (const part of parts) {
     const isPartActive = selectedParts?.has(part.id) || hoveredPart === part.id;
+    // B23: names that would overlap a neighbour's are kept as the dot's title only.
+    const crowdedNames = clashingTerminalLabels(part.terminals.map(name => ({ name, ...terminalPos(part, name) })));
     for (const term of part.terminals) {
       const pos = terminalPos(part, term);
       const isSource = wiringFrom &&
@@ -1960,7 +2050,8 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
 
       dots.push(
         <g key={`${part.id}:${term}`} data-terminal-dot={`${part.id}:${term}`}>
-          {isSupplyConflict && <title>Danger: this directly connects a positive supply to ground</title>}
+          {isSupplyConflict ? <title>Danger: this directly connects a positive supply to ground</title>
+            : crowdedNames.has(term) && <title>{term}</title>}
           {/* Invisible large hit area for touch */}
           <circle
             cx={pos.x} cy={pos.y} r={Math.max(r, 16)}
@@ -1985,8 +2076,8 @@ function TerminalDots({ parts, wires, wiringFrom, onTerminalClick, onTerminalDow
           )}
           {/* Terminal label — free parts only; a seated leg's name would
               stamp itself over the board art */}
-          {!isConnected && !isSeated && !manyPins && (
-            <text
+          {!isConnected && !isSeated && !manyPins && !crowdedNames.has(term) && (
+            <text data-terminal-label={term}
               x={pos.x} y={pos.y - r - 4}
               textAnchor="middle" fill="#bdc3c7" fontSize={9}
               fontFamily="monospace" style={{ pointerEvents: 'none' }}
