@@ -24,6 +24,7 @@ import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interac
 import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
 import { moduleLabelLayout, moduleTerminalLayout } from '../model/module-layout.js';
 import { clashingTerminalLabels } from '../model/terminal-labels.js';
+import { KIND_ALIASES } from '../model/terminal-aliases.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { breadboardFootprintForPart, carrierOptionsForPart } from '../model/carriers.js';
@@ -360,16 +361,37 @@ function terminalOffsetsForPart(part) {
       // layout (B20): today's a/b offsets when they already place every
       // terminal, else the sidecar geometry, else one breakout-header row.
       const legacy = { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
-      const msc = typeof getSidecar === 'function' ? getSidecar(part.kind) : null;
+      const msc = layoutSidecar(part);
       const base = msc?.terminals?.length ? moduleTerminalLayout(msc, { existing: legacy }).offsets : legacy;
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
     }
   }
 }
 
+/**
+ * The sidecar that describes this part's terminals (B24). Loading resolves
+ * kind aliases but keeps the stored terminals: a light_sensor (a vcc/gnd/out
+ * module) becomes kind 'ldr', whose sidecar knows only a/b, so all three
+ * terminals collapsed onto one point. When the kind's own sidecar lacks the
+ * part's terminals, use the sidecar of a kind that aliases to it and has them.
+ * Drawing only: the engine sees the resolved kind exactly as before.
+ */
+function layoutSidecar(part) {
+  if (typeof getSidecar !== 'function') return null;
+  const own = getSidecar(part.kind);
+  const has = sc => !!sc?.terminals?.length && (part.terminals || []).every(name => sc.terminals.some(t => t.name === name));
+  if (!own || has(own)) return own;
+  for (const [alias, target] of Object.entries(KIND_ALIASES)) {
+    if (target !== part.kind) continue;
+    const sc = getSidecar(alias);
+    if (has(sc)) return sc;
+  }
+  return own;
+}
+
 /** Generic module layout for a part in its unrotated frame, or null when the kind has no sidecar. */
 function genericModuleLayout(part) {
-  const sc = typeof getSidecar === 'function' ? getSidecar(part.kind) : null;
+  const sc = layoutSidecar(part);
   if (!sc?.terminals?.length) return null;
   const existing = terminalOffsetsForPart({ ...part, rotation: 0, flipped: false });
   return { sc, ...moduleTerminalLayout(sc, { existing }) };
