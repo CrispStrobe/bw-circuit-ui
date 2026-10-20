@@ -1,5 +1,16 @@
 # Work lanes
 
+2026-10-20 B27 next symbol faces — CLAIMED and done in one PR, Claude.
+From the Lite examples census (17 kinds still on the generic module body):
+discrete faces for piezo, rgb_led, nmos, tip120 (TO-220), battery_aa,
+optocoupler and ds18b20 (TO-92), drawn around the existing terminal offsets
+behind the same `needs` guard, and a CHIP_FACES entry for ds1302 (DIP-8, its
+sidecar is in datasheet pin order). Breakout modules (ds3231, xpt2046,
+sound_module, ultrasonic, pir, neopixel, dip_switch, simplevga_card) and dff
+(already a labelled logic box) keep the module body. Own: those cases in
+src/components/BoardCanvas.jsx, test/discrete-faces.test.js,
+test/chip-faces.test.js, this entry.
+
 2026-10-19 B26 light_sensor is simulated as its own module — CLAIMED and done in one PR, Claude.
 bw-board now models light_sensor (vcc/gnd/out): the ldr law from vcc to out
 plus a fixed 10 kOhm load from out to gnd, on the part's own light control.

@@ -44,3 +44,13 @@ test('decade_counter: a CD4017 chip face over its two-column sidecar, pin 1 (clk
   assert.equal(sc.terminals[0].name, 'clk');
   assert.ok(p1.dx < 0 && p1.dy < 0);
 });
+
+test('ds1302: a DS1302 DIP-8 chip face, its sidecar in datasheet pin order (pin 1 VCC2 top left)', () => {
+  assert.ok(table.includes("ds1302: { title: 'DS1302', pkg: 'DIP-8' },"));
+  const sc = JSON.parse(read('src/parts-data/ds1302.json'));
+  assert.deepEqual(sc.terminals.map(t => t.name), ['vcc', 'x1', 'x2', 'gnd', 'ce', 'io', 'sclk', 'vcc1']);
+  const lay = moduleTerminalLayout(sc);
+  const p1 = lay.offsets.vcc;
+  assert.ok(p1.dx < 0 && p1.dy < 0, 'pin 1 top left');
+  assert.equal(new Set(sc.terminals.map(t => lay.offsets[t.name].dx)).size, 2, 'two columns of four');
+});
