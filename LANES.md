@@ -1,5 +1,23 @@
 # Work lanes
 
+2026-10-20 Seated wire names normalize on first load — CLAIM CANDIDATE, Codex Arcade integration.
+Publish and merge this claim before implementation. Own the ordering of the
+existing wire-terminal alias resolution and legacy net grouping inside
+src/model/circuit.js Circuit.fromJSON, focused tests beside the existing seated
+terminal/legacy-load controls, and scoped documentation. A valid seat may add
+previously omitted terminal declarations after the current wire-alias pass;
+first save therefore retains a case alias that only a second load resolves.
+Normalize against the final accepted terminal list before grouping legacy wires,
+using the existing unique-match resolver. Preserve stored terminal order, physical
+package/seat migrations, unknown/ambiguous names, breadboard endpoints, net and
+wire identities, source immutability, and the injected engine's stc_mcu passthrough.
+Do not rewrite the supplier gallery to hide a loader defect. No Board physics,
+solver, models, dependency pins, workflows, numeric thresholds or corpus
+expectations are changed. Qualification must retain first-load and repeated
+load/save/load identity, electrical connections and all existing migration
+controls; source inspection alone is not execution qualification. Downstream
+supplier adoption follows the normally merged, fully checked canonical revision.
+
 2026-10-20 B27 next symbol faces — CLAIMED and done in one PR, Claude.
 From the Lite examples census (17 kinds still on the generic module body):
 discrete faces for piezo, rgb_led, nmos, tip120 (TO-220), battery_aa,
