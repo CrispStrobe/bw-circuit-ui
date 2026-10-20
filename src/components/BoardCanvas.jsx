@@ -406,6 +406,7 @@ const CHIP_FACES = {
   stc_mcu: { title: 'STC MCU', pkg: 'DIP-40' },
   tms9918: { title: 'TMS9918A', pkg: 'DIP-40' },
   decade_counter: { title: 'CD4017', pkg: 'DIP-16' },
+  ds1302: { title: 'DS1302', pkg: 'DIP-8' },
 };
 
 // Kinds the Wokwi element layer draws; SvgParts must not add a second body.
@@ -1818,7 +1819,8 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
       // (examples census: DIP switch 26, switch 19, LDR 16, NPN 16). Drawn
       // around the existing terminal offsets, so no pin moves.
       case 'npn': case 'pnp': case 'switch': case 'ldr': case 'dip_switch_spst':
-      case 'dc_motor': case 'ntc': case 'inductor': case 'slide_switch': case 'tilt_sensor': case 'opamp': case 'relay': {
+      case 'dc_motor': case 'ntc': case 'inductor': case 'slide_switch': case 'tilt_sensor': case 'opamp': case 'relay':
+      case 'piezo': case 'rgb_led': case 'nmos': case 'tip120': case 'battery_aa': case 'optocoupler': case 'ds18b20': {
         const o = terminalOffsetsForPart({ ...part, rotation: 0, flipped: false });
         // Each symbol needs its own terminals. A kind that only aliases to one
         // of these (light_sensor -> ldr is a three-pin vcc/gnd/out module)
@@ -1826,7 +1828,10 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
         const needs = { npn: ['base', 'collector', 'emitter'], pnp: ['base', 'collector', 'emitter'], switch: ['a', 'b'], ldr: ['a', 'b'],
           dip_switch_spst: ['1a', '2a', '3a', '4a', '1b', '2b', '3b', '4b'],
           dc_motor: ['a', 'b'], ntc: ['a', 'b'], inductor: ['a', 'b'], slide_switch: ['a', 'com', 'b'],
-          tilt_sensor: ['a', 'b'], opamp: ['inp', 'inn', 'out'], relay: ['coil_a', 'coil_b', 'no', 'com', 'nc'] }[kind];
+          tilt_sensor: ['a', 'b'], opamp: ['inp', 'inn', 'out'], relay: ['coil_a', 'coil_b', 'no', 'com', 'nc'],
+          piezo: ['a', 'b'], rgb_led: ['r_anode', 'g_anode', 'b_anode', 'cathode'], nmos: ['gate', 'drain', 'source'],
+          tip120: ['base', 'collector', 'emitter'], battery_aa: ['pos', 'neg'],
+          optocoupler: ['anode', 'cathode', 'collector', 'emitter'], ds18b20: ['gnd', 'dq', 'vcc'] }[kind];
         if (!needs.every(name => o[name] && part.terminals.includes(name))) return genericFace();
         const ink = selStroke || '#cbd5e1';
         const lead = '#9aa5b1';
@@ -1950,6 +1955,102 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
             <text x={nc.dx} y={bottom - 2} textAnchor="middle" fill="#94a3b8" fontSize={4} fontFamily="monospace">NC</text>
           </>;
           captionY = Math.max(ca.dy, nc.dy) + 12;
+        } else if (kind === 'piezo') {
+          // Piezo disc: brass plate with the ceramic element, leads down to a/b.
+          const a = o.a, b = o.b, cy = Math.min(a.dy, b.dy) - 16;
+          body = <>
+            <line x1={a.dx} y1={a.dy} x2={a.dx} y2={cy + 8} stroke={lead} strokeWidth={1.3} />
+            <line x1={b.dx} y1={b.dy} x2={b.dx} y2={cy + 8} stroke={lead} strokeWidth={1.3} />
+            <circle cx={(a.dx + b.dx) / 2} cy={cy} r={12} fill="#b08d3c" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.2} />
+            <circle cx={(a.dx + b.dx) / 2} cy={cy} r={7} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={0.8} />
+          </>;
+          captionY = Math.max(a.dy, b.dy) + 12;
+        } else if (kind === 'rgb_led') {
+          // Common-cathode RGB LED: a dome with three dies, four legs down.
+          const legs = [o.r_anode, o.g_anode, o.b_anode, o.cathode];
+          const cx = (Math.min(...legs.map(p => p.dx)) + Math.max(...legs.map(p => p.dx))) / 2;
+          const base = Math.min(...legs.map(p => p.dy)) - 10, cy = base - 11;
+          const die = ['#ef4444', '#22c55e', '#3b82f6'];
+          body = <>
+            {legs.map((p, i) => <line key={i} x1={p.dx} y1={p.dy} x2={p.dx} y2={base} stroke={lead} strokeWidth={i === 3 ? 1.8 : 1.3} />)}
+            <path d={`M ${cx - 13} ${base} L ${cx - 13} ${cy} A 13 13 0 0 1 ${cx + 13} ${cy} L ${cx + 13} ${base} Z`}
+              fill="#e2e8f0" fillOpacity={0.25} stroke={ink} strokeWidth={isSelected ? 2.5 : 1.2} />
+            {die.map((c, i) => <circle key={c} cx={cx - 6 + i * 6} cy={cy + 2} r={2.4} fill={c} />)}
+            <text x={o.cathode.dx} y={base - 2} textAnchor="middle" fill="#94a3b8" fontSize={5} fontFamily="monospace">K</text>
+          </>;
+          captionY = Math.max(...legs.map(p => p.dy)) + 12;
+        } else if (kind === 'nmos') {
+          // Enhancement N-channel MOSFET: gate plate, broken channel, arrow in.
+          const g = o.gate, d = o.drain, s = o.source, gx = g.dx + 14, ch = gx + 4;
+          body = <>
+            <circle cx={ch + 2} cy={0} r={15} fill="#1a1a1a" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.2} />
+            <line x1={g.dx} y1={g.dy} x2={gx} y2={g.dy} stroke={lead} strokeWidth={1.5} />
+            <line x1={gx} y1={-8} x2={gx} y2={8} stroke={ink} strokeWidth={1.8} />
+            {[-8, -1.5, 5].map(y => <line key={y} x1={ch} y1={y} x2={ch} y2={y + 3.5} stroke={ink} strokeWidth={2} />)}
+            <polyline points={`${ch},-6 ${d.dx},-6 ${d.dx},${d.dy}`} fill="none" stroke={ink} strokeWidth={1.4} />
+            <polyline points={`${ch},6.5 ${s.dx},6.5 ${s.dx},${s.dy}`} fill="none" stroke={ink} strokeWidth={1.4} />
+            <line x1={ch} y1={0} x2={s.dx} y2={0} stroke={ink} strokeWidth={1.2} />
+            <line x1={s.dx} y1={0} x2={s.dx} y2={6.5} stroke={ink} strokeWidth={1.2} />
+            <polygon points={`${ch + 0.5},0 ${ch + 4.5},-2.4 ${ch + 4.5},2.4`} fill={ink} />
+            <text x={g.dx + 2} y={g.dy - 4} fill="#94a3b8" fontSize={5} fontFamily="monospace">G</text>
+            <text x={d.dx + 3} y={d.dy + 7} fill="#94a3b8" fontSize={5} fontFamily="monospace">D</text>
+            <text x={s.dx + 3} y={s.dy - 3} fill="#94a3b8" fontSize={5} fontFamily="monospace">S</text>
+          </>;
+          captionY = Math.max(s.dy, d.dy) + 12;
+        } else if (kind === 'tip120' || kind === 'ds18b20') {
+          // Through-hole packages seen from the front, legs down to the pins:
+          // TIP120 in TO-220 (B C E, tab with its mounting hole), DS18B20 in
+          // TO-92 (GND DQ VDD, flat face forward).
+          const legs = kind === 'tip120' ? [o.base, o.collector, o.emitter] : [o.gnd, o.dq, o.vcc];
+          const x0 = Math.min(...legs.map(p => p.dx)), x1 = Math.max(...legs.map(p => p.dx));
+          const foot = Math.min(...legs.map(p => p.dy)) - 8, cx = (x0 + x1) / 2;
+          const to220 = kind === 'tip120';
+          const w = to220 ? x1 - x0 + 14 : x1 - x0 + 10, h = to220 ? 16 : 14;
+          body = <>
+            {legs.map((p, i) => <line key={i} x1={p.dx} y1={p.dy} x2={p.dx} y2={foot} stroke={lead} strokeWidth={1.5} />)}
+            {to220 && <>
+              <rect x={cx - w / 2 + 1} y={foot - h - 11} width={w - 2} height={12} fill="#9ca3af" stroke={ink} strokeWidth={0.8} />
+              <circle cx={cx} cy={foot - h - 5} r={2.6} fill="#1a1a1a" />
+            </>}
+            {to220
+              ? <rect x={cx - w / 2} y={foot - h} width={w} height={h} fill="#111" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.2} />
+              : <path d={`M ${cx - w / 2} ${foot} L ${cx - w / 2} ${foot - h + w / 2} A ${w / 2} ${w / 2} 0 0 1 ${cx + w / 2} ${foot - h + w / 2} L ${cx + w / 2} ${foot} Z`}
+                  fill="#111" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.2} />}
+            <text x={cx} y={foot - 4} textAnchor="middle" fill="#cbd5e1" fontSize={to220 ? 5 : 3.6} fontFamily="monospace">{to220 ? 'TIP120' : 'DS18B20'}</text>
+          </>;
+          captionY = Math.max(...legs.map(p => p.dy)) + 12;
+        } else if (kind === 'battery_aa') {
+          // AA cell lying between its terminals, + nub on the pos side.
+          const p = o.pos, n = o.neg, l = Math.min(p.dx, n.dx) + 6, r = Math.max(p.dx, n.dx) - 6;
+          const posRight = p.dx > n.dx, nub = posRight ? r : l;
+          body = <>
+            <line x1={n.dx} y1={n.dy} x2={posRight ? l : r} y2={n.dy} stroke={lead} strokeWidth={1.5} />
+            <line x1={p.dx} y1={p.dy} x2={nub} y2={p.dy} stroke={lead} strokeWidth={1.5} />
+            <rect x={l + (posRight ? 0 : 3)} y={-8} width={r - l - 3} height={16} rx={2} fill="#1f2937" stroke={ink} strokeWidth={isSelected ? 2.5 : 1.2} />
+            <rect x={posRight ? r - 3 : l} y={-3.5} width={3} height={7} fill="#cbd5e1" />
+            <rect x={posRight ? r - 14 : l + 3} y={-8} width={11} height={16} fill="#b45309" />
+            <text x={(l + r) / 2 - (posRight ? 3 : -3)} y={2.5} textAnchor="middle" fill="#e5e7eb" fontSize={6} fontFamily="monospace">AA</text>
+            <text x={posRight ? r - 8.5 : l + 8.5} y={2.5} textAnchor="middle" fill="#fff" fontSize={7} fontFamily="monospace">+</text>
+          </>;
+          captionY = 20;
+        } else if (kind === 'optocoupler') {
+          // Package with the input LED (anode/cathode side) shining on the
+          // output phototransistor (collector/emitter side).
+          const an = o.anode, ka = o.cathode, co = o.collector, em = o.emitter;
+          const left = Math.min(an.dx, ka.dx) + 6, right = Math.max(co.dx, em.dx) - 6;
+          const top = Math.min(an.dy, co.dy) - 9, bottom = Math.max(ka.dy, em.dy) + 9;
+          const lx = left + 7, tx = right - 8;
+          body = <>
+            {[an, ka].map((q, i) => <line key={i} x1={q.dx} y1={q.dy} x2={lx} y2={q.dy} stroke={lead} strokeWidth={1.3} />)}
+            {[co, em].map((q, i) => <line key={i} x1={q.dx} y1={q.dy} x2={tx} y2={q.dy} stroke={lead} strokeWidth={1.3} />)}
+            <rect x={left} y={top} width={right - left} height={bottom - top} rx={2} fill="#111" fillOpacity={0.85} stroke={ink} strokeWidth={isSelected ? 2.5 : 1.2} />
+            <polygon points={`${lx - 3.5},${an.dy} ${lx + 3.5},${an.dy} ${lx},${ka.dy}`} fill={ink} />
+            <line x1={lx - 3.5} y1={ka.dy} x2={lx + 3.5} y2={ka.dy} stroke={ink} strokeWidth={1.2} />
+            <line x1={tx} y1={co.dy - 3} x2={tx} y2={em.dy + 3} stroke={ink} strokeWidth={1.6} />
+            {[-2, 2].map(dy => <line key={dy} x1={lx + 5} y1={(an.dy + ka.dy) / 2 + dy} x2={tx - 3} y2={(co.dy + em.dy) / 2 + dy}
+              stroke="#f1c40f" strokeWidth={0.8} />)}
+          </>;
+          captionY = bottom + 9;
         } else {
           // DIP switch: four slide switches, terminals 1a..4a top, 1b..4b bottom.
           const cols = ['1', '2', '3', '4'].map(n => o[`${n}a`]).filter(Boolean);
