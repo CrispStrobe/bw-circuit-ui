@@ -10,6 +10,11 @@
  */
 
 const STRINGS = {
+  scopeAudioPlay: {en: 'Replay capture', de: 'Aufnahme abspielen'},
+  scopeAudioStop: {en: 'Stop audio', de: 'Audio stoppen'},
+  scopeAudioNoChannel: {en: 'Add a spectrum channel first', de: 'Zuerst einen Spektrumkanal hinzufügen'},
+  scopeAudioFoot: {en: 'First spectrum channel · captured waveform · DC removed · 0.05 audio units/V · clipped at ±1 · replay, not live',
+    de: 'Erster Spektrumkanal · gemessene Wellenform · ohne Gleichanteil · 0,05 Audioeinheiten/V · begrenzt auf ±1 · Wiedergabe, nicht live'},
   // ── CircuitDesigner status bar ────────────────────────────────────
   statusHardware:      { en: 'HARDWARE — voltage/current readings need the simulator', de: 'HARDWARE — Spannungs-/Stromwerte brauchen den Simulator' },
   statusSnapshot:      { en: 'SNAPSHOT — the board kept running for {ms} while the program was stopped', de: 'SNAPSHOT — das Board lief {ms} weiter, während das Programm gestoppt war' },
