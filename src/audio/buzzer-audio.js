@@ -33,7 +33,7 @@ export function setSharedAudioContext(ctx) {
 /**
  * Get or create the AudioContext (lazy, needs user gesture).
  */
-function getAudioCtx() {
+export function getAudioCtx() {
   if (!audioCtx) {
     if (typeof window === 'undefined' || (!window.AudioContext && !window.webkitAudioContext)) {
       return null; // non-browser environment

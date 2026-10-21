@@ -45,6 +45,7 @@
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import {playScopeCapture, scopeAudioWav} from '../audio/scope-audio.js';
 import { t } from '../i18n/strings.js';
 import {
   cursorDeltaSeconds,
@@ -75,6 +76,13 @@ const H = 120;
 const SPECTRUM_PERIOD_MS = 250;
 
 export function ScopePanel({ board, nets = [], lang = 'en' }) {
+  const audioPlayback = useRef({generation: 0, stop: null});
+  const [audioError, setAudioError] = useState('');
+  const stopAudio = useCallback(() => {
+    audioPlayback.current.generation++;
+    audioPlayback.current.stop?.();
+    audioPlayback.current.stop = null;
+  }, []);
   const canvasRef = useRef(null);
   const [channels, setChannels] = useState([]); // [{netId, handle}]
   const [running, setRunning] = useState(true);
@@ -121,6 +129,37 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
   const specCanvasRef = useRef(null);
   const [captureErrors, setCaptureErrors] = useState([]);
 
+  useEffect(() => {
+    stopAudio();
+    setAudioError('');
+    return stopAudio;
+  }, [board, view, specChannels, stopAudio]);
+
+  const audioCapture = () => {
+    if (!specChannels.length) throw new Error(t('scopeAudioNoChannel', lang));
+    return board.getScopeData(specChannels[0].handle);
+  };
+  const replayAudio = async () => {
+    stopAudio();
+    setAudioError('');
+    const generation = audioPlayback.current.generation;
+    try {
+      const stop = await playScopeCapture(audioCapture());
+      if (generation !== audioPlayback.current.generation) stop();
+      else audioPlayback.current.stop = stop;
+    } catch (error) {
+      if (generation === audioPlayback.current.generation) setAudioError(String(error.message || error));
+    }
+  };
+  const exportAudio = () => {
+    try {
+      const url = URL.createObjectURL(new Blob([scopeAudioWav(audioCapture())], {type: 'audio/wav'}));
+      const a = document.createElement('a'); a.href = url; a.download = 'scope-capture.wav'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setAudioError('');
+    } catch (error) { setAudioError(String(error.message || error)); }
+  };
+
   // HOLD freezes a valid picture, not its validity. Check the actual engine
   // even when drawing/FFT are paused; never retain a plausible old trace or
   // cached spectrum after the underlying capture has been refused.
@@ -133,6 +172,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
         other.netId === c.netId && other.reason === c.reason) === i);
       setCaptureErrors(previous => JSON.stringify(previous) === JSON.stringify(unique) ? previous : unique);
       if (!unique.length) return;
+      stopAudio();
       triggeredRef.current = false;
       setTriggered(false);
       for (const ref of [canvasRef, specCanvasRef]) {
@@ -147,7 +187,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
     check();
     const id = setInterval(check, SPECTRUM_PERIOD_MS);
     return () => clearInterval(id);
-  }, [board, channels, specChannels]);
+  }, [board, channels, specChannels, stopAudio]);
 
   // (Re)attach channels whenever the board instance changes — an edit
   // rebuilds the engine and the old handles die with it — OR when the capture
@@ -549,6 +589,15 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
         );
       })}
 
+      {view === 'spectrum' && <div data-testid="bw-scope-audio" style={{color: '#aab', fontSize: 10, marginBottom: 6}}>
+        <button onClick={replayAudio} disabled={!specChannels.length || captureErrors.length > 0}
+          data-testid="bw-scope-audio-play">{t('scopeAudioPlay', lang)}</button>{' '}
+        <button onClick={stopAudio} data-testid="bw-scope-audio-stop">{t('scopeAudioStop', lang)}</button>{' '}
+        <button onClick={exportAudio} disabled={!specChannels.length || captureErrors.length > 0}
+          data-testid="bw-scope-audio-wav">WAV</button>
+        <div>{t('scopeAudioFoot', lang)}</div>
+        {audioError && <div role="alert">{audioError}</div>}
+      </div>}
       {view === 'spectrum' && (
         <div style={{ display: 'flex', gap: '4px', marginBottom: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
           <label>{t('scopeWindow', lang)}{' '}
