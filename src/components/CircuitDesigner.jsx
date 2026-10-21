@@ -1018,6 +1018,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
     }
     // Save current state first so Ctrl+Z recovers the previous circuit
     circuit._saveHistory();
+    circuit.vcc = parsed.vcc;
     circuit.parts = parsed.parts;
     circuit.wires = parsed.wires;
     circuit.breadboards = parsed.breadboards;

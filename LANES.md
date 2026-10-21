@@ -1,4 +1,4 @@
-2026-10-21 loaded supply preservation — CLAIMED, Codex school circuits.
+2026-10-21 loaded supply preservation — SOURCE CANDIDATE, Codex school circuits.
 Base 4be74ffa6809032dc25010cd803f3f847f429c79. Own the CircuitDesigner
 handleLoad replacement path, Circuit history supply snapshots if required,
 and focused executable loading/undo tests. Parsing preserves a saved 4.5 V
@@ -8,6 +8,13 @@ model identity and parsing behavior, and verify electrical readings plus
 undo/redo across 4.5/9 V circuits. No solver, tolerances, topology, dependency
 or workflow changes. Merge claim before implementation; downstream adopts
 only the exact qualified supplier revision.
+
+Claim 2b41e4e merged first as 9ac77d8. The actual Designer callback now
+preserves parsed supply before rebuilding; voltage is retained by history.
+All 50 affected load/history/circuit/breadboard controls pass, including
+4.5/9 V electrical measurements, voltage-only undo/redo, legacy default supply,
+engine-format nets and a missing-assignment mutant. Hosted qualification and
+installed downstream browser acceptance remain required.
 
 2026-10-21 DC spectrum peak readout — SOURCE CANDIDATE, Codex circuit projects.
 Base 1819246bc493d2bc0a436fb980fc51455dfe1663. Own peak readout in

@@ -120,3 +120,36 @@ describe('load precedence: model-level behavior', () => {
     assert.ok(c2.parts.some(p => p.kind === 'vsource'));
   });
 });
+
+describe('actual Designer load preserves supply voltage',()=>{
+  const start=designerSource.indexOf('const handleLoad = useCallback((data) => {');
+  const body=designerSource.slice(start+'const handleLoad = useCallback((data) => {'.length,
+    designerSource.indexOf('\n  }, [circuit]);',start));
+  const fixture=()=>{
+    const c=new Circuit(5),v=c.addPart('vcc',{},0,0),g=c.addPart('gnd',{},0,100),r=c.addPart('resistor',{ohms:1000},0,50);
+    c.addWire(v.id,'vcc',r.id,'a');c.addWire(r.id,'b',g.id,'gnd');return {c,r};
+  };
+  const loader=(c,source=body)=>new Function('Circuit','circuit','setAnnotations','setSelectedParts','setSelectedWire','setMode','setFitToken',
+    'return data => {'+source+'};')(Circuit,c,()=>{},()=>{},()=>{},()=>{},()=>{});
+  const check=(c,r,volts)=>{
+    assert.equal(c.vcc,volts);assert.equal(c.board.vcc,volts);
+    assert.ok(Math.abs(c.board.branchCurrent(r.id,'a')+volts/1000)<1e-9);
+    assert.equal(c.toJSON().vcc,volts);
+  };
+  it('loads 4.5 and 9 V electrically, preserves model identity and undoes voltage-only changes',()=>{
+    assert.ok(start>=0);const {c,r}=fixture(),same=c,data=c.toJSON(),load=loader(c);
+    for(const vcc of [4.5,9]){load({...data,vcc});assert.equal(c,same);check(c,r,vcc);}
+    assert.equal(c.undo(),true);check(c,r,4.5);
+    assert.equal(c.redo(),true);check(c,r,9);
+    const {vcc,...legacy}=data;load(legacy);check(c,r,5);
+  });
+  it('rejects omission of the actual parsed supply assignment',()=>{
+    const {c,r}=fixture(),mutant=body.replace('circuit.vcc = parsed.vcc;','');
+    assert.notEqual(mutant,body);loader(c,mutant)({...c.toJSON(),vcc:4.5});
+    assert.throws(()=>check(c,r,4.5),assert.AssertionError);
+  });
+  it('engine-format nets use the loaded supply too',()=>{
+    const {c,r}=fixture(),data=c.toJSON();
+    loader(c)({...data,vcc:9,wires:[],nets:c.board.getNets()});check(c,r,9);
+  });
+});

@@ -1,7 +1,7 @@
 /**
  * Undo/redo history for the circuit model.
  *
- * Stores snapshots of { parts, wires, analysisBlockers, sourceDocuments, sourceAnalysis }
+ * Stores snapshots of { vcc, parts, wires, analysisBlockers, sourceDocuments, sourceAnalysis }
  * after each mutation,
  * plus an optional engine snapshot (Maps, BigInts — not JSON-safe)
  * kept alongside for restore across undo/redo.
@@ -21,11 +21,12 @@ export class History {
 
   /**
    * Save a snapshot. Truncates any redo states.
-   * @param {{ parts: Array, wires: Array, analysisBlockers?: Array,
+   * @param {{ vcc?: number, parts: Array, wires: Array, analysisBlockers?: Array,
    * sourceDocuments?: Array, sourceAnalysis?: object, engineSnap?: object }} state
    */
   save(state) {
     const json = JSON.stringify({
+      vcc: state.vcc,
       parts: state.parts,
       wires: state.wires,
       analysisBlockers: state.analysisBlockers || [],
