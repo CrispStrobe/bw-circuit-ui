@@ -1,7 +1,8 @@
 # Work lanes
 
-2026-10-20 Seated wire names normalize on first load — CLAIM CANDIDATE, Codex Arcade integration.
-Publish and merge this claim before implementation. Own the ordering of the
+2026-10-20 Seated wire names normalize on first load — SOURCE CANDIDATE, Codex Arcade integration.
+Claim merged in PR100 before implementation; canonical execution and hosted
+qualification remain pending. Own the ordering of the
 existing wire-terminal alias resolution and legacy net grouping inside
 src/model/circuit.js Circuit.fromJSON, focused tests beside the existing seated
 terminal/legacy-load controls, and scoped documentation. A valid seat may add

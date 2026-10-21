@@ -1,0 +1,36 @@
+{
+  "repository": "https://github.com/CrispStrobe/sb3-creator",
+  "sourceCommit": "5a3977fb6333cf690f675ee1b5a7a3492f5195a8",
+  "licence": "MPL-2.0",
+  "note": "Exact unmodified public JSON input fixtures; source and MPL licence retained. No supplier gallery files are changed.",
+  "files": [
+    {
+      "file": "01-79-a2-sampler.json",
+      "sourcePath": "examples/79-a2-sampler/circuit.stc15f2k60s2.json",
+      "bytes": 4642,
+      "sha256": "3fdad37df1eb924c3df93f5c7080936b7cebec4feaa34b158e41a0663f88334c",
+      "url": "https://github.com/CrispStrobe/sb3-creator/blob/5a3977fb6333cf690f675ee1b5a7a3492f5195a8/examples/79-a2-sampler/circuit.stc15f2k60s2.json"
+    },
+    {
+      "file": "02-80-a2-lcd-moving-text.json",
+      "sourcePath": "examples/80-a2-lcd-moving-text/circuit.stc15f2k60s2.json",
+      "bytes": 3553,
+      "sha256": "abf499a1437813db035e4626af191697aaa3ea208e7d4cecf31d21a21305b1a2",
+      "url": "https://github.com/CrispStrobe/sb3-creator/blob/5a3977fb6333cf690f675ee1b5a7a3492f5195a8/examples/80-a2-lcd-moving-text/circuit.stc15f2k60s2.json"
+    },
+    {
+      "file": "03-81-8051-lcd1602-parallel.json",
+      "sourcePath": "examples/81-8051-lcd1602-parallel/circuit.stc15f2k60s2.json",
+      "bytes": 3552,
+      "sha256": "a68d4cf50035197c41ebe6c8dadd9edd3a88c9f63176daf15afe3616c812b6af",
+      "url": "https://github.com/CrispStrobe/sb3-creator/blob/5a3977fb6333cf690f675ee1b5a7a3492f5195a8/examples/81-8051-lcd1602-parallel/circuit.stc15f2k60s2.json"
+    },
+    {
+      "file": "04-82-a2-led-row.json",
+      "sourcePath": "examples/82-a2-led-row/circuit.stc15f2k60s2.json",
+      "bytes": 3636,
+      "sha256": "04d6dd864ced8445b86c628618b5cbcceab8a70ef67d4da561d1eca5009dfb41",
+      "url": "https://github.com/CrispStrobe/sb3-creator/blob/5a3977fb6333cf690f675ee1b5a7a3492f5195a8/examples/82-a2-led-row/circuit.stc15f2k60s2.json"
+    }
+  ]
+}

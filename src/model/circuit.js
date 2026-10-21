@@ -1370,49 +1370,6 @@ export class Circuit {
       // stable rendering offsets, so a missing one is a render crash.
       return [{ ...w, from, to, id: typeof w.id === 'string' ? w.id : genId('wire') }];
     });
-    // Resolve wire terminal aliases: a wire referencing "data" on a part
-    // whose sidecar-derived terminals say "ser" must resolve, or _syncNetlist
-    // silently produces 0 nets and the schematic draws 0 wires.
-    const partMap = new Map(c.parts.map(p => [p.id, p]));
-    for (const w of c.wires) {
-      for (const e of [w.from, w.to]) {
-        if (!e || e.board) continue;
-        const p = partMap.get(e.part);
-        if (p && !p.terminals.includes(e.terminal)) {
-          e.terminal = resolveTerminal(p.kind, e.terminal, p.terminals);
-        }
-      }
-    }
-    // Legacy wires also carry no netId — and _syncNetlist groups BY netId,
-    // so they all landed in one `undefined` group: the entire circuit became
-    // a single net, a silent short. Union wires that share an endpoint (the
-    // grouping addWire computes incrementally) and stamp group ids.
-    {
-      const parent = new Map();
-      const find = k => {
-        let r = k;
-        while (parent.get(r) !== r) r = parent.get(r);
-        parent.set(k, r);
-        return r;
-      };
-      const key = e => e.board ? `@bb:${e.board}:${e.hole}` : `${e.part}:${e.terminal}`;
-      const wireKey = (w, i) => `w${i}`;
-      const need = c.wires.filter(w => typeof w.netId !== 'string');
-      for (const [i, w] of need.entries()) {
-        for (const k of [wireKey(w, i), key(w.from), key(w.to)]) {
-          if (!parent.has(k)) parent.set(k, k);
-        }
-        const wr = find(wireKey(w, i));
-        parent.set(find(key(w.from)), wr);
-        parent.set(find(key(w.to)), wr);
-      }
-      const groups = new Map();
-      for (const [i, w] of need.entries()) {
-        const root = find(wireKey(w, i));
-        if (!groups.has(root)) groups.set(root, `net-lgc-${groups.size + 1}`);
-        w.netId = groups.get(root);
-      }
-    }
     // Rebuild what serialization flattens: every breadboard part gets its
     // occupancy model back, and every seated part re-occupies its holes.
     // Without this, a loaded save LOOKED right but the strips no longer
@@ -1481,6 +1438,52 @@ export class Circuit {
       }
       try { bb.occupy(p.id, p.seat.leadMap); } catch { delete p.seat; continue; }
       p.terminals = withSeatLegs(p.terminals, Object.keys(p.seat.leadMap), seatTerms);
+    }
+    // Accepted seats above can complete a previously empty terminal list.
+    // Resolve wires against that FINAL list before forming legacy net keys,
+    // so the first save already uses the same names as every later reload.
+    // Resolve wire terminal aliases: a wire referencing "data" on a part
+    // whose sidecar-derived terminals say "ser" must resolve, or _syncNetlist
+    // silently produces 0 nets and the schematic draws 0 wires.
+    const partMap = new Map(c.parts.map(p => [p.id, p]));
+    for (const w of c.wires) {
+      for (const e of [w.from, w.to]) {
+        if (!e || e.board) continue;
+        const p = partMap.get(e.part);
+        if (p && !p.terminals.includes(e.terminal)) {
+          e.terminal = resolveTerminal(p.kind, e.terminal, p.terminals);
+        }
+      }
+    }
+    // Legacy wires also carry no netId — and _syncNetlist groups BY netId,
+    // so they all landed in one `undefined` group: the entire circuit became
+    // a single net, a silent short. Union wires that share an endpoint (the
+    // grouping addWire computes incrementally) and stamp group ids.
+    {
+      const parent = new Map();
+      const find = k => {
+        let r = k;
+        while (parent.get(r) !== r) r = parent.get(r);
+        parent.set(k, r);
+        return r;
+      };
+      const key = e => e.board ? `@bb:${e.board}:${e.hole}` : `${e.part}:${e.terminal}`;
+      const wireKey = (w, i) => `w${i}`;
+      const need = c.wires.filter(w => typeof w.netId !== 'string');
+      for (const [i, w] of need.entries()) {
+        for (const k of [wireKey(w, i), key(w.from), key(w.to)]) {
+          if (!parent.has(k)) parent.set(k, k);
+        }
+        const wr = find(wireKey(w, i));
+        parent.set(find(key(w.from)), wr);
+        parent.set(find(key(w.to)), wr);
+      }
+      const groups = new Map();
+      for (const [i, w] of need.entries()) {
+        const root = find(wireKey(w, i));
+        if (!groups.has(root)) groups.set(root, `net-lgc-${groups.size + 1}`);
+        w.netId = groups.get(root);
+      }
     }
     for (const jw of data.holeWires || []) {
       const bb = c.breadboards.get(jw.boardId);
