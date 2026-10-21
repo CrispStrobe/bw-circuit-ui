@@ -11,7 +11,7 @@ only the exact qualified supplier revision.
 
 Claim 2b41e4e merged first as 9ac77d8. The actual Designer callback now
 preserves parsed supply before rebuilding; voltage is retained by history.
-All 50 affected load/history/circuit/breadboard controls pass, including
+All 83 affected load/history/circuit/breadboard controls pass, including
 4.5/9 V electrical measurements, voltage-only undo/redo, legacy default supply,
 engine-format nets and a missing-assignment mutant. Hosted qualification and
 installed downstream browser acceptance remain required.
