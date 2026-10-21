@@ -56,3 +56,23 @@ export function triggeredWindowStart(data, windowSamples, triggerIndex, pretrigg
 export function cursorDeltaSeconds(sampleIntervalNs, windowSamples, cursorA, cursorB) {
   return Number(sampleIntervalNs) * windowSamples * Math.abs(cursorB - cursorA) / 1e9;
 }
+
+/** Preserve every captured extremum represented by a display pixel. */
+export function scopeEnvelopeColumns(data, start, windowSamples, width) {
+  const samples = data.samples, depth = samples.length / 2;
+  if (!Number.isInteger(depth) || depth < 1 || !Number.isInteger(width) || width < 1
+    || !Number.isInteger(start) || !Number.isInteger(windowSamples) || windowSamples < 1
+    || windowSamples > depth) throw new Error('invalid scope envelope window');
+  return Array.from({length: width}, (_, px) => {
+    const first = Math.floor(px * windowSamples / width);
+    const end = Math.max(first + 1, Math.floor((px + 1) * windowSamples / width));
+    let min = Infinity, max = -Infinity, gap = false;
+    for (let offset = first; offset < end; offset++) {
+      const index = ((start + offset) % depth + depth) % depth;
+      const lo = samples[index * 2], hi = samples[index * 2 + 1];
+      if (!Number.isFinite(lo) || !Number.isFinite(hi)) { gap = true; continue; }
+      min = Math.min(min, lo); max = Math.max(max, hi);
+    }
+    return min === Infinity ? null : {min, max, gap};
+  });
+}

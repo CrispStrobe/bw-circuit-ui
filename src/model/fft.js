@@ -28,6 +28,9 @@
  * is not a measurement.
  */
 
+// The existing plotted/CSV dBV floor also bounds a reportable AC peak.
+const SPECTRUM_DISPLAY_FLOOR_VOLTS = 1e-12;
+
 /** Windows on offer. Hann by default: a rectangular window on a tone that is
  *  not exactly on a bin smears it across the whole axis. */
 export const WINDOWS = {
@@ -175,7 +178,7 @@ export function spectrum(values, sampleRateHz, opts = {}) {
     magV[k] = (single * mag) / sw;
     // dBV: 0 dB is one volt peak. Floored rather than -Infinity so a plot and
     // a CSV can both carry the number without special cases.
-    magDb[k] = magV[k] > 1e-12 ? 20 * Math.log10(magV[k]) : -240;
+    magDb[k] = magV[k] > SPECTRUM_DISPLAY_FLOOR_VOLTS ? 20 * Math.log10(magV[k]) : -240;
   }
   return {
     ok: true, freqs, magV, magDb, binHz, points: n,
@@ -233,7 +236,7 @@ export function peakBin(spec) {
   for (let k = 2; k < spec.magV.length; k++) {
     if (spec.magV[k] > bestV) { bestV = spec.magV[k]; best = k; }
   }
-  if (best < 0) return null;
+  if (best < 0 || bestV <= SPECTRUM_DISPLAY_FLOOR_VOLTS) return null;
   return {
     index: best,
     f: spec.freqs[best],

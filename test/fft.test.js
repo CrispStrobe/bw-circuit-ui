@@ -282,3 +282,19 @@ describe('D24: the export carries what a reader needs to redo it', () => {
     assert.equal(formatHz(2.5e6), '2.500 MHz');
   });
 });
+
+
+describe('the peak readout uses the existing spectrum display floor',()=>{
+ it('silence and non-binary DC produce no AC peak or invented THD',()=>{
+  for(const dc of [0,2.978362690152118,-2.978362690152118])for(const window of ['hann','rect']){
+   const spec=spectrum(new Float64Array(4096).fill(dc),RATE,{window});
+   assert.ok(Math.abs(spec.magV[0]-Math.abs(dc))<1e-12);
+   assert.equal(peakBin(spec),null);assert.equal(thd(spec),null);
+  }
+ });
+ it('an AC signal above the existing floor remains measurable on a DC offset',()=>{
+  const spec=spectrum(synth(t=>2.978362690152118+1e-9*Math.sin(2*Math.PI*1000*t)),RATE);
+  const peak=peakBin(spec);assert.ok(peak);assert.ok(Math.abs(peak.fInterp-1000)<2);
+  assert.ok(Math.abs(peak.amplitude-1e-9)<1e-11);
+ });
+});

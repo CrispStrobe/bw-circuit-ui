@@ -1,4 +1,4 @@
-2026-10-21 DC spectrum peak readout — CLAIM, Codex circuit projects.
+2026-10-21 DC spectrum peak readout — SOURCE CANDIDATE, Codex circuit projects.
 Base 1819246bc493d2bc0a436fb980fc51455dfe1663. Own peak readout in
 src/model/fft.js and focused test/fft.test.js controls. The actual AA LED
 DC capture displays a near-Nyquist peak at 0.0000 V from numerical residue.
@@ -9,7 +9,13 @@ existing floor. No solver tolerance, audio gain, FFT window, dependency or
 workflow change. Compose with the envelope-pixel lane and qualify the actual
 DC browser capture as no peak. Merge claim before implementation.
 
-2026-10-21 scope envelope pixel aggregation — CLAIM, Codex circuit projects.
+Claim 8209b1a landed first. The DC negative control fails before repair;
+54 focused scope/audio/FFT controls pass afterward. Actual LED browser scope
+shows a flat 2.978 V trace, no AC peak, silent replay and zero open currents.
+Amplifier browser capture measures 999.857 Hz; native gallery directions both
+measure 41.783x gain after startup. Hosted qualification pending.
+
+2026-10-21 scope envelope pixel aggregation — SOURCE CANDIDATE, Codex circuit projects.
 Base 7bd7e63b927a2e6c2c99e2b0c0b522637ad742bb. Own the time-view
 pixel aggregation in src/components/ScopePanel.jsx, a pure helper in
 src/model/scope-tools.js and focused executable scope-tools tests. The organ
@@ -21,6 +27,9 @@ change capture cadence, FFT, trigger behavior, scales or solver results.
 Prove extrema between formerly selected bins remain visible and actual native
 organ repetition is drawn. No dependencies or workflow changes. Merge claim
 before implementation; Lite adopts only after exact-head qualification.
+Claim 1819246 landed first. 47 scope/audio/scale/FFT controls pass. The
+native live-organ Chromium check displays twelve real captured pulses,
+measures 255.695 Hz, and passes replay/stop/WAV with no page errors.
 
 2026-10-21 sampled scope audio replay — SOURCE CANDIDATE, Codex circuit projects.
 Own src/audio/scope-audio.js (new), ScopePanel.jsx replay/stop and WAV export
