@@ -473,6 +473,7 @@ export class Circuit {
     // Save both circuit layout AND engine state (capacitor voltages, etc.)
     const engineSnap = this.board.snapshot ? this.board.snapshot() : null;
     this.history.save({
+      vcc: this.vcc,
       parts: this.parts,
       wires: this.wires,
       analysisBlockers: this.analysisBlockers,
@@ -486,6 +487,7 @@ export class Circuit {
   undo() {
     const state = this.history.undo();
     if (!state) return false;
+    this.vcc = state.vcc === undefined ? 5 : state.vcc;
     this.parts = state.parts.map(p => ({ ...p }));
     this.wires = state.wires.map(w => ({ ...w }));
     this.analysisBlockers = Array.isArray(state.analysisBlockers)
@@ -504,6 +506,7 @@ export class Circuit {
   redo() {
     const state = this.history.redo();
     if (!state) return false;
+    this.vcc = state.vcc === undefined ? 5 : state.vcc;
     this.parts = state.parts.map(p => ({ ...p }));
     this.wires = state.wires.map(w => ({ ...w }));
     this.analysisBlockers = Array.isArray(state.analysisBlockers)
