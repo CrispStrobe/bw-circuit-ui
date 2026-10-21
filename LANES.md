@@ -1,3 +1,20 @@
+2026-10-21 DC spectrum peak readout — SOURCE CANDIDATE, Codex circuit projects.
+Base 1819246bc493d2bc0a436fb980fc51455dfe1663. Own peak readout in
+src/model/fft.js and focused test/fft.test.js controls. The actual AA LED
+DC capture displays a near-Nyquist peak at 0.0000 V from numerical residue.
+Use the existing 1e-12 V / -240 dBV spectrum display floor consistently for
+peak reporting; do not invent a tone below the plotted floor. Preserve raw
+capture and FFT/CSV amplitudes, DC bins, and real small AC signals above the
+existing floor. No solver tolerance, audio gain, FFT window, dependency or
+workflow change. Compose with the envelope-pixel lane and qualify the actual
+DC browser capture as no peak. Merge claim before implementation.
+
+Claim 8209b1a landed first. The DC negative control fails before repair;
+54 focused scope/audio/FFT controls pass afterward. Actual LED browser scope
+shows a flat 2.978 V trace, no AC peak, silent replay and zero open currents.
+Amplifier browser capture measures 999.857 Hz; native gallery directions both
+measure 41.783x gain after startup. Hosted qualification pending.
+
 2026-10-21 scope envelope pixel aggregation — SOURCE CANDIDATE, Codex circuit projects.
 Base 7bd7e63b927a2e6c2c99e2b0c0b522637ad742bb. Own the time-view
 pixel aggregation in src/components/ScopePanel.jsx, a pure helper in
