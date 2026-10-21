@@ -1,3 +1,14 @@
+2026-10-21 loaded supply preservation — CLAIMED, Codex school circuits.
+Base 4be74ffa6809032dc25010cd803f3f847f429c79. Own the CircuitDesigner
+handleLoad replacement path, Circuit history supply snapshots if required,
+and focused executable loading/undo tests. Parsing preserves a saved 4.5 V
+supply but loading its parts into the current 5 V model loses that voltage.
+Restore the parsed supply before the normal board rebuild, retain existing
+model identity and parsing behavior, and verify electrical readings plus
+undo/redo across 4.5/9 V circuits. No solver, tolerances, topology, dependency
+or workflow changes. Merge claim before implementation; downstream adopts
+only the exact qualified supplier revision.
+
 2026-10-21 DC spectrum peak readout — SOURCE CANDIDATE, Codex circuit projects.
 Base 1819246bc493d2bc0a436fb980fc51455dfe1663. Own peak readout in
 src/model/fft.js and focused test/fft.test.js controls. The actual AA LED
