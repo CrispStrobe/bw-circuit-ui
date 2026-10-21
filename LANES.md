@@ -1,3 +1,17 @@
+2026-10-21 sampled scope audio replay — CLAIM, Codex circuit projects.
+Own src/audio/scope-audio.js (new), ScopePanel.jsx replay/stop and WAV export
+controls, their EN/DE strings, focused executable audio tests and test
+registration. Base f65e6cc0027397dea42528db9225a135b1c8e8c5.
+Replay the real sampled voltage capture, retaining waveform shape and fixed
+volts-to-audio scaling; remove DC and bound playback amplitude. Explicit finite
+capture replay, no claim of real-time microphone input or acoustic modelling.
+Refuse envelopes, nonfinite/gapped captures and absent channels. Use the
+host AudioContext when provided, release playback on replacement/unmount/board
+change and report audio errors. Verify actual browser rendered samples,
+frequency, stop and WAV bytes. No engine models, circuit topology, dependencies
+or workflow changes. Merge this claim before implementation. Lite adopts an
+exact qualified upstream revision after landing. Status CLAIMED.
+
 # Work lanes
 
 2026-10-20 Seated wire names normalize on first load — SOURCE CANDIDATE, Codex Arcade integration.
