@@ -1,4 +1,4 @@
-2026-10-21 scope envelope pixel aggregation — CLAIM, Codex circuit projects.
+2026-10-21 scope envelope pixel aggregation — SOURCE CANDIDATE, Codex circuit projects.
 Base 7bd7e63b927a2e6c2c99e2b0c0b522637ad742bb. Own the time-view
 pixel aggregation in src/components/ScopePanel.jsx, a pure helper in
 src/model/scope-tools.js and focused executable scope-tools tests. The organ
@@ -10,6 +10,9 @@ change capture cadence, FFT, trigger behavior, scales or solver results.
 Prove extrema between formerly selected bins remain visible and actual native
 organ repetition is drawn. No dependencies or workflow changes. Merge claim
 before implementation; Lite adopts only after exact-head qualification.
+Claim 1819246 landed first. 47 scope/audio/scale/FFT controls pass. The
+native live-organ Chromium check displays twelve real captured pulses,
+measures 255.695 Hz, and passes replay/stop/WAV with no page errors.
 
 2026-10-21 sampled scope audio replay — SOURCE CANDIDATE, Codex circuit projects.
 Own src/audio/scope-audio.js (new), ScopePanel.jsx replay/stop and WAV export

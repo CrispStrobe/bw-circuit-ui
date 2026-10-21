@@ -48,6 +48,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {playScopeCapture, scopeAudioWav} from '../audio/scope-audio.js';
 import { t } from '../i18n/strings.js';
 import {
+  scopeEnvelopeColumns,
   cursorDeltaSeconds,
   findTriggerIndex,
   triggeredWindowStart,
@@ -382,16 +383,18 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
         const yOf = (v) => Math.min(H - 1.5, Math.max(1.5, H - ((v - vLo) / (vHi - vLo)) * H));
         let started = false;
         g.beginPath();
+        const columns = scopeEnvelopeColumns(data, start, win, W);
         for (let px = 0; px < W; px++) {
-          const idx = (start + Math.floor((px / W) * win)) % depth;
-          const mn = samples[idx * 2];
-          const mx = samples[idx * 2 + 1];
-          if (Number.isNaN(mn) || Number.isNaN(mx)) { started = false; continue; }
+          const column = columns[px];
+          if (!column) { started = false; continue; }
+          if (column.gap) started = false;
+          const {min: mn, max: mx} = column;
           const yTop = yOf(mx);
           const yBot = yOf(mn);
           g.fillRect(px, yTop, 1, Math.max(1, yBot - yTop));
           if (!started) { g.moveTo(px, (yTop + yBot) / 2); started = true; }
           else g.lineTo(px, (yTop + yBot) / 2);
+          if (column.gap) started = false;
         }
         g.stroke();
       });
