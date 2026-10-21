@@ -1,3 +1,16 @@
+2026-10-21 scope envelope pixel aggregation — CLAIM, Codex circuit projects.
+Base 7bd7e63b927a2e6c2c99e2b0c0b522637ad742bb. Own the time-view
+pixel aggregation in src/components/ScopePanel.jsx, a pure helper in
+src/model/scope-tools.js and focused executable scope-tools tests. The organ
+browser screenshot exposed that selecting one envelope bin per pixel drops
+narrow captured pulses whenever the displayed ring is wider than the canvas.
+Aggregate the min/max of every represented bin, preserving ring wrap, zoom,
+uncaptured gaps and real capture identity. Do not invent interpolation or
+change capture cadence, FFT, trigger behavior, scales or solver results.
+Prove extrema between formerly selected bins remain visible and actual native
+organ repetition is drawn. No dependencies or workflow changes. Merge claim
+before implementation; Lite adopts only after exact-head qualification.
+
 2026-10-21 sampled scope audio replay — SOURCE CANDIDATE, Codex circuit projects.
 Own src/audio/scope-audio.js (new), ScopePanel.jsx replay/stop and WAV export
 controls, their EN/DE strings, focused executable audio tests and test
