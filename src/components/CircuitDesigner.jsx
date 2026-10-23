@@ -2011,7 +2011,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
             {showSweep ? (/^de/i.test(lang) ? '∿ Sweep verbergen' : '∿ Hide sweep') : '∿ Sweep'}
           </button>
         </div>
-        {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={activeBoard} nets={(activeBoard && activeBoard.getNets) ? activeBoard.getNets().map(n => n.id ?? n) : []} lang={lang} /></div>}
+        {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={activeBoard} audioEnabled={mode === 'simulate'} nets={(activeBoard && activeBoard.getNets) ? activeBoard.getNets().map(n => n.id ?? n) : []} lang={lang} /></div>}
         <button data-testid="bw-components-toggle" aria-pressed={showComponents}
           onClick={() => setShowComponents(value => !value)}
           style={{width: 280, padding: '5px 8px', border: '1px solid #38bdf8', borderRadius: 4,

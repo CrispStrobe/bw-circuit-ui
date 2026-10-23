@@ -24,6 +24,7 @@ const STRINGS = {
     de: 'Optionale positive Grenzwerte. Leer bedeutet unbekannt. Warnungen modellieren keine Erwärmung oder Schäden.'},
   scopeAudioPlay: {en: 'Replay capture', de: 'Aufnahme abspielen'},
   scopeStreamListen: {en: 'Listen continuously', de: 'Fortlaufend hören'},
+  scopeStreamStartSimulation: {en: 'Start the simulation to listen continuously', de: 'Für fortlaufenden Klang die Simulation starten'},
   scopeStream_playing: {en: 'Playing samples', de: 'Messwerte werden abgespielt'},
   scopeStream_buffering: {en: 'Buffering samples', de: 'Messwerte werden gepuffert'},
   scopeStream_error: {en: 'Audio stopped', de: 'Audio gestoppt'},

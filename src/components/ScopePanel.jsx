@@ -77,7 +77,7 @@ const H = 120;
  *  channel per animation frame would be 60 of them a second to look at four. */
 const SPECTRUM_PERIOD_MS = 250;
 
-export function ScopePanel({ board, nets = [], lang = 'en' }) {
+export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true }) {
   const audioPlayback = useRef({generation: 0, stop: null});
   const [audioError, setAudioError] = useState('');
   const [audioStream, setAudioStream] = useState(null);
@@ -139,7 +139,7 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
     stopAudio();
     setAudioError('');
     return stopAudio;
-  }, [board, view, specChannels, stopAudio]);
+  }, [board, view, specChannels, stopAudio, audioEnabled]);
 
   const audioCapture = () => {
     if (!specChannels.length) throw new Error(t('scopeAudioNoChannel', lang));
@@ -620,8 +620,9 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       {view === 'spectrum' && <div data-testid="bw-scope-audio" style={{color: '#aab', fontSize: 10, marginBottom: 6}}>
         <button onClick={replayAudio} disabled={!specChannels.length || captureErrors.length > 0}
           data-testid="bw-scope-audio-play">{t('scopeAudioPlay', lang)}</button>{' '}
-        <button onClick={listenAudio} disabled={!specChannels.length || captureErrors.length > 0}
-          title={t('scopeStreamFoot', lang)} data-testid="bw-scope-audio-listen">{t('scopeStreamListen', lang)}</button>{' '}
+        <button onClick={listenAudio} disabled={!audioEnabled || !specChannels.length || captureErrors.length > 0}
+          title={t(audioEnabled ? 'scopeStreamFoot' : 'scopeStreamStartSimulation', lang)}
+          data-testid="bw-scope-audio-listen">{t('scopeStreamListen', lang)}</button>{' '}
         <button onClick={stopAudio} data-testid="bw-scope-audio-stop">{t('scopeAudioStop', lang)}</button>{' '}
         <button onClick={exportAudio} disabled={!specChannels.length || captureErrors.length > 0}
           data-testid="bw-scope-audio-wav">WAV</button>
