@@ -177,6 +177,7 @@ const EXPECTED = [
   'analog-import-context',
   'own-clock-status',
   'scope-sim-reset-epoch',
+  'component-limit-editing',
   'zero-page-errors',
 ];
 
@@ -2151,7 +2152,7 @@ try {
 
 // A fresh MCU starter must not lend its teaching notes or program claim to an
 // unrelated analog file. Use the actual chooser and transport, not load hooks.
-const CONTEXT_IDS = ['analog-import-context', 'own-clock-status', 'scope-sim-reset-epoch'];
+const CONTEXT_IDS = ['analog-import-context', 'own-clock-status', 'scope-sim-reset-epoch', 'component-limit-editing'];
 const contextPage = await browser.newPage({viewport: {width: 1600, height: 1000}});
 contextPage.on('pageerror', e => errors.push(`analog import context: ${e.message}`));
 try {
@@ -2235,6 +2236,44 @@ try {
   verdict(CONTEXT_IDS[2], complete,
     'real scope picker and Build/Sim reset retain handle and capture all first 5000 envelopes',
     'first post-reset 50ms capture is incomplete or carries old timestamps');
+
+  await contextPage.getByTestId('bw-components-toggle').click();
+  const measurements = contextPage.getByTestId('bw-component-measurements');
+  const label = await contextPage.evaluate(() => {
+    const p = window.__circuit.getPart('analog-r'); return p.label || p.id;
+  });
+  await measurements.getByRole('button', {name: label, exact: true}).click();
+  const current = measurements.getByTestId('bw-component-limit-currentAmps');
+  const readLimit = () => contextPage.evaluate(() => window.__circuit.getPart('analog-r').limits);
+  await current.fill(''); await current.pressSequentially('0.001');
+  if (await current.inputValue() !== '0.001' || (await readLimit())?.currentAmps !== undefined) {
+    throw new Error('typing a fractional rating changed the saved limit or lost its draft');
+  }
+  await current.press('Enter');
+  await contextPage.waitForFunction(() => window.__circuit.getPart('analog-r').limits?.currentAmps === .001);
+  for (const bad of ['0', '-1', '1e']) {
+    await current.fill(bad); await current.press('Enter');
+    await measurements.getByRole('alert').filter({hasText: /Invalid component limit/}).waitFor();
+    if ((await readLimit()).currentAmps !== .001) throw new Error(`invalid ${bad} replaced the saved limit`);
+  }
+  await current.press('Escape');
+  if (await current.inputValue() !== '0.001') throw new Error('Escape did not restore the saved rating');
+  await measurements.getByRole('alert').filter({hasText: /Invalid component limit/}).waitFor({state: 'detached'});
+  const power = measurements.getByTestId('bw-component-limit-powerWatts');
+  await power.fill(''); await power.pressSequentially('0.125'); await power.press('Tab');
+  const restoredLimits = await contextPage.evaluate(async () => {
+    const {Circuit} = await import('/src/model/circuit.js');
+    return Circuit.fromJSON(window.__circuit.toJSON()).getPart('analog-r').limits;
+  });
+  if (restoredLimits.powerWatts !== .125 || restoredLimits.currentAmps !== .001) {
+    throw new Error('applied fractional ratings did not survive circuit Save/Open');
+  }
+  await current.fill(''); await current.press('Tab');
+  if ((await readLimit()).currentAmps !== undefined || (await readLimit()).powerWatts !== .125) {
+    throw new Error('clearing one rating did not preserve the other rating');
+  }
+  verdict(CONTEXT_IDS[3], true,
+    'real typing, Enter/blur, invalid drafts, Escape, clearing and circuit Save/Open preserve ratings', 'unreachable');
 } catch (error) {
   failAll(CONTEXT_IDS, `analog file context/transport: ${String(error).split('\n')[0]}`);
 } finally {await contextPage.close();}

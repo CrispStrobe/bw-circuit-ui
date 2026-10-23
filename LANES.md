@@ -63,6 +63,25 @@ starvation, replay and unmount controls pass. This is component-browser proof,
 not installed Brickwright or actual Safari/audio-hardware acceptance. Production
 build passes; exact-head hosted qualification remains pending.
 
+2026-10-23 component rating entry follow-up — SOURCE CANDIDATE, same circuit owner.
+Within the already merged measured-components claim #106. Real sequential typing
+of 0.001 A currently becomes 1 A because every partial keystroke is committed
+through positive-value validation. Keep an editable draft until Enter or blur;
+Escape restores the saved value. Invalid drafts preserve existing ratings, and
+selection changes discard the previous part's draft/error. Update EN/DE hints.
+Preserve Circuit validation, persistence/history and actual electrical models.
+Add the real-typing regression to the existing interaction gate and roll-call.
+Actual component Chromium and WebKit checks pass fractional/scientific entry,
+invalid/zero/negative refusal, Escape, selection changes, clearing one rating,
+serialized values and unchanged board time/electrical parameters. The original
+real-typing control fails on the prior source (1 instead of 0.001). All 82
+measurement/history/circuit/audio controls and the production build pass.
+The registered typing/Save/Open scenario passes. The full local interaction
+run is 60/68; a prior-editor comparison is 63/68 with the new typing scenario
+failing as expected and four other existing placement/transport failures.
+Original logs and all unchanged assertions are retained; do not claim the full
+interaction gate passes. Exact-head hosted qualification remains required.
+
 2026-10-21 loaded supply preservation — SOURCE CANDIDATE, Codex school circuits.
 Base 4be74ffa6809032dc25010cd803f3f847f429c79. Own the CircuitDesigner
 handleLoad replacement path, Circuit history supply snapshots if required,
