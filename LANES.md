@@ -1,3 +1,20 @@
+2026-10-23 measurement engine dependency alignment — CLAIMED, Codex circuit owner.
+Base2dc588c; same owned source worktree /private/tmp/bw-circuit-audio-audit-20261021.
+The designer's dev dependency remains bw-board fac3a5a, predating the qualified
+open-passive repair already used by Brickwright (b5650092). New actual component
+measurement controls expose its phantom open-resistor current: 85/86 scoped
+controls pass with the declared dependency; all pass with the fixed consumer
+engine. Preserve the original failed log and zero-current assertion; no display
+zero, tolerance change, skip, fixture rewrite or unchanged failed-source retry.
+Own only package/lock engine pin advancement to exactly
+b5650092695643622a53bcc40008133760e2d8a2, canonical derived Board provenance and
+any strictly corresponding source-identity references, and this claim.
+No engine source/model, workflow, other dependency or numerical expectation
+change. Compose this input repair with the same owner's measured-components /
+sampled-audio feature. Re-derive provenance using canonical tooling and require
+the unchanged open-terminal control plus source/affected exact-head checks.
+Merge claim before dependency implementation; preserve all other owners.
+
 2026-10-23 measured components and continuous sampled audio — CLAIMED, Codex circuit owner.
 Base603c0bd; isolated /private/tmp/bw-circuit-audio-audit-20261021.
 Own new component measurement helpers/panel and narrow CircuitDesigner wiring,
