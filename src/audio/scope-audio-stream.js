@@ -93,10 +93,29 @@ export async function createScopeAudioStream(readCapture, {
         const buffer = context.createBuffer(1, pending.length, rate);
         buffer.copyToChannel(Float32Array.from(pending), 0);
         const source = context.createBufferSource();
-        source.buffer = buffer; source.connect(context.destination); sources.add(source);
-        source.onended = () => { if (sources.delete(source)) source.disconnect(); };
-        source.start(nextAudio); nextAudio += duration;
-        pending = []; everPlayed = true; waiting = false;
+        try {
+          source.buffer = buffer; source.connect(context.destination);
+          // Buffer allocation, copying and node setup may stall JavaScript while
+          // the native audio clock keeps running. Recheck at the actual handoff.
+          if (context.state !== 'running') throw new Error('Audio context is no longer running');
+          const readyNow = context.currentTime;
+          if (nextAudio <= readyNow) {
+            if (everPlayed && !waiting) underruns++;
+            waiting = true;
+            if (pending.length / rate < STREAM_PREFILL_SECONDS) { notify('buffering'); return; }
+            nextAudio = readyNow + 0.02;
+          }
+          if (nextAudio - readyNow + duration > STREAM_MAX_SECONDS) throw new Error('Scheduled audio exceeds its queue bound');
+          sources.add(source);
+          source.onended = () => { if (sources.delete(source)) source.disconnect(); };
+          source.start(nextAudio); nextAudio += duration;
+          pending = []; everPlayed = true; waiting = false;
+        } finally {
+          // An interrupted or undersized late buffer never entered the queue.
+          if (!sources.has(source)) {
+            try { source.disconnect(); } catch { /* retain the original refusal */ }
+          }
+        }
       }
       notify('playing');
     } catch (error) {
