@@ -46,6 +46,23 @@ expectation or bound was changed. Canonical corpus selection and canonical temp
 paths resolve the other local setup failures. Hosted exact-head qualification
 and immutable downstream adoption remain pending.
 
+2026-10-23 sampled-audio scheduling follow-up — SOURCE CANDIDATE, same circuit owner.
+Within the already merged measured-components/audio claim above. Buffer creation
+and node connection can stall while the native audio clock advances. Recheck
+that clock and running state immediately before scheduling; late audio returns
+to the existing prefill policy, counts one starvation episode and retains all
+captured samples. Disconnect prepared nodes which never enter the queue.
+Preserve cadence, actual samples, filter history, fixed gain and queue limits.
+Five focused regressions cover allocation/connection stalls, retained sample
+identity, interruption cleanup and the following buffer's actual scheduled end;
+the first four fail on the prior source. All 92 affected scope/audio controls pass without skips.
+Actual Chromium and WebKit components pass with an injected 80 ms JavaScript
+preparation stall while the native audio clock advances: no recorded source
+starts in the past, rendered solver tone remains 1 kHz, and simulation Stop,
+starvation, replay and unmount controls pass. This is component-browser proof,
+not installed Brickwright or actual Safari/audio-hardware acceptance. Production
+build passes; exact-head hosted qualification remains pending.
+
 2026-10-21 loaded supply preservation — SOURCE CANDIDATE, Codex school circuits.
 Base 4be74ffa6809032dc25010cd803f3f847f429c79. Own the CircuitDesigner
 handleLoad replacement path, Circuit history supply snapshots if required,

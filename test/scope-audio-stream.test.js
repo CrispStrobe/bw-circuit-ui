@@ -82,3 +82,61 @@ test('failed resume and unsupported sample cadence cannot start audio',async()=>
  capture.data.sampleIntervalNs=1_000_000n;
  await assert.rejects(createScopeAudioStream(capture.read,{context:context(),autoPump:false}),/sample rate/);
 });
+
+for (const stage of ['buffer','connection']) test(`a stall during ${stage} preparation cannot schedule the first buffer in the past`,async()=>{
+ const f=await fixture();try{
+  if(stage==='buffer'){
+   const original=f.ctx.createBuffer.bind(f.ctx);f.ctx.createBuffer=(...args)=>{f.ctx.currentTime+=.08;return original(...args);};
+  }else{
+   const original=f.ctx.createBufferSource.bind(f.ctx);f.ctx.createBufferSource=()=>{const s=original(),connect=s.connect;s.connect=function(...args){f.ctx.currentTime+=.08;return connect.apply(this,args);};return s;};
+  }
+  f.capture.add(Array.from({length:500},(_,i)=>2.5+Math.sin(2*Math.PI*i/10)));f.stream.pump();
+  const source=f.ctx.sources.find(s=>s.at!==undefined);assert.ok(source);
+  assert.ok(source.at>=f.ctx.currentTime,`${source.at}s start precedes actual audio clock ${f.ctx.currentTime}s`);
+  assert.equal(source.buffer.length,500);assert.equal(source.buffer.sampleRate,10000);
+  assert.ok(Math.abs(f.states.at(-1).queuedSeconds-(source.at+source.buffer.length/10000-f.ctx.currentTime))<1e-12);
+  assert.equal(f.states.at(-1).underruns,0,'startup delay is not an underrun of audio already playing');
+ }finally{f.stream.stop();}
+});
+
+test('a preparation stall that exhausts playing audio waits for prefill and retains every captured sample',async()=>{
+ const f=await fixture(),reference=await fixture();try{
+  const values=Array.from({length:1000},(_,i)=>2.5+Math.sin(2*Math.PI*i/10));
+  for(const target of [f,reference]){target.capture.add(values.slice(0,500));target.stream.pump();target.ctx.currentTime=.04;}
+  const original=f.ctx.createBuffer.bind(f.ctx);let stalled=false;
+  f.ctx.createBuffer=(...args)=>{if(!stalled){stalled=true;f.ctx.currentTime+=.08;}return original(...args);};
+  for(const target of [f,reference]){target.capture.add(values.slice(500,600));target.stream.pump();}
+  assert.equal(f.states.at(-1).state,'buffering');assert.equal(f.states.at(-1).underruns,1);
+  assert.equal(f.ctx.sources.filter(s=>s.at!==undefined).length,1,'an undersized late buffer must not start');
+  assert.ok(f.ctx.sources.filter(s=>s.at===undefined).every(s=>s.disconnects===1),'unstarted prepared nodes are disconnected');
+  f.stream.pump();assert.equal(f.states.at(-1).underruns,1,'one starvation episode is counted once');
+  for(const target of [f,reference]){target.capture.add(values.slice(600));target.stream.pump();}
+  const played=f.ctx.sources.filter(s=>s.at!==undefined),expected=reference.ctx.sources.filter(s=>s.at!==undefined);
+  assert.equal(played.length,2);assert.equal(played[1].buffer.length,500);assert.ok(played[1].at>=f.ctx.currentTime);
+  assert.deepEqual(played.flatMap(s=>[...s.buffer.samples]),expected.flatMap(s=>[...s.buffer.samples]),'captured values, filter history and cadence are unchanged');
+  assert.equal(f.states.at(-1).state,'playing');assert.equal(f.states.at(-1).underruns,1);
+  assert.ok(f.states.at(-1).queuedSeconds<=STREAM_MAX_SECONDS);
+ }finally{f.stream.stop();reference.stream.stop();}
+});
+
+test('audio interruption during node preparation refuses before starting the new node',async()=>{
+ const f=await fixture();try{
+  const original=f.ctx.createBufferSource.bind(f.ctx);f.ctx.createBufferSource=()=>{const s=original();s.connect=()=>{f.ctx.state='suspended';};return s;};
+  f.capture.add(Array(500).fill(1));f.stream.pump();
+  assert.equal(f.states.at(-1).state,'error');assert.match(f.states.at(-1).reason,/no longer running/);
+  assert.ok(f.ctx.sources.every(s=>s.at===undefined&&s.disconnects===1));
+ }finally{f.stream.stop();}
+});
+
+test('after a late prepared batch, following audio begins at its actual scheduled end',async()=>{
+ const f=await fixture();try{
+  f.capture.add(Array(500).fill(1));f.stream.pump();f.ctx.currentTime=.04;
+  const original=f.ctx.createBufferSource.bind(f.ctx);let delayed=false;
+  f.ctx.createBufferSource=()=>{const s=original();if(!delayed){delayed=true;f.ctx.currentTime+=.08;}return s;};
+  f.capture.add(Array(500).fill(2));f.stream.pump();const second=f.ctx.sources.at(-1);
+  assert.ok(second.at>=f.ctx.currentTime);assert.equal(f.states.at(-1).underruns,1);
+  f.capture.add(Array(100).fill(3));f.stream.pump();const third=f.ctx.sources.at(-1);
+  assert.ok(Math.abs(third.at-(second.at+second.buffer.length/second.buffer.sampleRate))<1e-12);
+  assert.equal(f.states.at(-1).underruns,1);assert.equal(third.buffer.sampleRate,10000);
+ }finally{f.stream.stop();}
+});
