@@ -60,6 +60,13 @@ pending #665 and its versioned-oracle claim #666; this reader does not change th
 engine pin or the pulse comparison. Existing scripts register the new controls.
 Exact-head hosted qualification is still required for this test-only candidate.
 
+Reader follow-up: exact requested solver instants now retain their actual raw
+endpoint value, avoiding cancellation to zero or needless nonfinite subtraction.
+Both endpoint controls fail on the merged reader; all 13 reader controls and
+registration checks pass after repair. Original observation times, brackets,
+interpolation between observations and all numerical bounds remain unchanged.
+Every enabled exact-head hosted check remains required before landing.
+
 2026-10-23 measurement engine dependency alignment — DONE (source candidate), Codex circuit owner.
 Base2dc588c; same owned source worktree /private/tmp/bw-circuit-audio-audit-20261021.
 The designer's dev dependency remains bw-board fac3a5a, predating the qualified

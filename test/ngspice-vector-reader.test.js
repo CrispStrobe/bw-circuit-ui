@@ -34,3 +34,16 @@ test('real raw values satisfy the unchanged microvolt bound where rounded .meas 
  assert.deepEqual(result.identity.args.slice(0,2),['-n','-b']);
  assert.equal(readFileSync(join(result.identity.directory,'vector.txt'),'utf8'),result.raw);
 });
+
+test('an exact requested solver observation preserves its actual value without interpolation cancellation',()=>{
+ const points=parseNgspiceVector('time v(out)\n0.00000000000000000e+00 1.00000000000000000e+00\n1.00000000000000000e+00 1.00000000000000000e-17\n','v(out)');
+ const observations=observeVector(points,[0,1]);
+ assert.equal(observations[0].value,points[0].value);
+ assert.equal(observations[1].value,points[1].value);
+ assert.equal(observations[1].right.raw,points[1].raw);
+});
+
+test('exact endpoint observations do not manufacture nonfinite interpolation arithmetic',()=>{
+ const points=parseNgspiceVector('time v(out)\n0.00000000000000000e+00 -1.00000000000000000e+308\n1.00000000000000000e+00 1.00000000000000000e+308\n','v(out)');
+ assert.deepEqual(observeVector(points,[0,1]).map(p=>p.value),points.map(p=>p.value));
+});
