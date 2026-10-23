@@ -1,3 +1,31 @@
+2026-10-23 aperture audio and explicit spectrum acquisition — CLAIMED, same circuit owner.
+Base f9cfae50; consumer follow-up to the normally merged Board aperture claim667.
+Actual saved organ point acquisitions miss narrow pulses (5 of18 after startup)
+while envelope and qualified solver history retain them. The source producer's
+opt-in aperture mode integrates the actual accepted waveform, not a fitted tone.
+
+After the Board aperture producer normally lands and is qualified, own exact dev
+pin/lock/derived-provenance adoption, audio scope-handle lifecycle in ScopePanel,
+finite replay/WAV and continuous transport validation in src/audio/scope-audio.js
+and scope-audio-stream.js, a pure explicit aperture-series reader if needed,
+matching EN/DE labels and focused controls/registration, and this claim.
+Audio uses the actual interval means, validated against explicit apertureNs and
+sample cadence. Preserve fixed gain/clipping/DC policy, timing/queue bounds,
+reset/refusal/overrun reporting and cleanup on stop/change/unmount. Keep capture
+metadata truthful; no relabelling an envelope as a point sample or deriving notes.
+Allow an explicit labelled aperture acquisition choice in the spectrum UI;
+retain default point acquisition and unchanged FFT math/window/scaling. Both
+modes must show their own actual captured data and aperture identity. A boxcar
+aperture is not an ideal brick-wall anti-alias filter. No scheduler, source/model,
+tolerance/budget, hidden resynthesis, gain normalization, workflow or Lite edit.
+
+Require old point/envelope/audio guards, new incomplete/wrong-aperture refusals,
+ring/reset and lifecycle controls, actual saved organ pulse/pitch comparison,
+rendered WebAudio and real browser replay/WAV/spectrum selection checks, correct
+installed package identity and every enabled exact-head check. Preserve original
+point-alias evidence. Merge claim before consumer implementation and adopt only
+qualified canonical Board inputs; no private engine fork or loader alias.
+
 2026-10-23 precise source-analysis SPICE comparisons — CLAIMED, Codex circuit owner.
 Base2debbe3; follow-up to the measured-components adoption audit.
 Own a test-only ngspice measurement reader/helper and focused controls, the
