@@ -28,7 +28,10 @@ export function observeVector(points, times) {
     let low = 0, high = points.length-1;
     while (high-low > 1) {const mid = (low+high)>>1; if (points[mid].time <= time) low=mid; else high=mid;}
     const left=points[low], right=points[high];
-    const value=left.value+(right.value-left.value)*(time-left.time)/(right.time-left.time);
+    // Exact solver observations are already measured values. Reconstructing an
+    // endpoint can cancel a small value to zero or overflow a finite bracket.
+    const value=time === left.time ? left.value : time === right.time ? right.value :
+      left.value+(right.value-left.value)*(time-left.time)/(right.time-left.time);
     if (!Number.isFinite(value)) throw new Error('Nonfinite interpolated oracle value');
     return {time, value, left, right};
   });
