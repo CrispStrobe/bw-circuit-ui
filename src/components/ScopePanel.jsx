@@ -46,6 +46,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {playScopeCapture, scopeAudioWav} from '../audio/scope-audio.js';
+import {createScopeAudioStream} from '../audio/scope-audio-stream.js';
 import { t } from '../i18n/strings.js';
 import {
   scopeEnvelopeColumns,
@@ -79,10 +80,14 @@ const SPECTRUM_PERIOD_MS = 250;
 export function ScopePanel({ board, nets = [], lang = 'en' }) {
   const audioPlayback = useRef({generation: 0, stop: null});
   const [audioError, setAudioError] = useState('');
+  const [audioStream, setAudioStream] = useState(null);
+  const lastStreamStatus = useRef(null);
   const stopAudio = useCallback(() => {
     audioPlayback.current.generation++;
     audioPlayback.current.stop?.();
     audioPlayback.current.stop = null;
+    setAudioStream(null);
+    lastStreamStatus.current = null;
   }, []);
   const canvasRef = useRef(null);
   const [channels, setChannels] = useState([]); // [{netId, handle}]
@@ -148,6 +153,26 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       const stop = await playScopeCapture(audioCapture());
       if (generation !== audioPlayback.current.generation) stop();
       else audioPlayback.current.stop = stop;
+    } catch (error) {
+      if (generation === audioPlayback.current.generation) setAudioError(String(error.message || error));
+    }
+  };
+  const listenAudio = async () => {
+    stopAudio();
+    setAudioError('');
+    const generation = audioPlayback.current.generation;
+    try {
+      const stream = await createScopeAudioStream(audioCapture, {onStatus: status => {
+        if (generation !== audioPlayback.current.generation) return;
+        const previous = lastStreamStatus.current, now = Date.now();
+        if (!previous || previous.state !== status.state || previous.underruns !== status.underruns ||
+            previous.reason !== status.reason || now - previous.at >= 250) {
+          lastStreamStatus.current = {...status, at: now};
+          setAudioStream(status);
+        }
+      }});
+      if (generation !== audioPlayback.current.generation) stream.stop();
+      else audioPlayback.current.stop = stream.stop;
     } catch (error) {
       if (generation === audioPlayback.current.generation) setAudioError(String(error.message || error));
     }
@@ -595,10 +620,18 @@ export function ScopePanel({ board, nets = [], lang = 'en' }) {
       {view === 'spectrum' && <div data-testid="bw-scope-audio" style={{color: '#aab', fontSize: 10, marginBottom: 6}}>
         <button onClick={replayAudio} disabled={!specChannels.length || captureErrors.length > 0}
           data-testid="bw-scope-audio-play">{t('scopeAudioPlay', lang)}</button>{' '}
+        <button onClick={listenAudio} disabled={!specChannels.length || captureErrors.length > 0}
+          title={t('scopeStreamFoot', lang)} data-testid="bw-scope-audio-listen">{t('scopeStreamListen', lang)}</button>{' '}
         <button onClick={stopAudio} data-testid="bw-scope-audio-stop">{t('scopeAudioStop', lang)}</button>{' '}
         <button onClick={exportAudio} disabled={!specChannels.length || captureErrors.length > 0}
           data-testid="bw-scope-audio-wav">WAV</button>
         <div>{t('scopeAudioFoot', lang)}</div>
+        {audioStream && <div data-testid="bw-scope-audio-stream-status" role={audioStream.state === 'error' ? 'alert' : 'status'}>
+          {t(`scopeStream_${audioStream.state}`, lang)} · {Math.round(audioStream.queuedSeconds * 1000)} ms ·{' '}
+          {t('scopeStreamUnderruns', lang, {n: audioStream.underruns})}
+          {audioStream.reason && <div>{audioStream.reason}</div>}
+          <div>{t('scopeStreamFoot', lang)}</div>
+        </div>}
         {audioError && <div role="alert">{audioError}</div>}
       </div>}
       {view === 'spectrum' && (

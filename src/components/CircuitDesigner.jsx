@@ -50,6 +50,8 @@ import { t } from '../i18n/strings.js';
 import { demoPinScriptApplies, armBoardForRun, classifyRunPins, greenFlagArmsOwnBoard, designerClockPlan, createDesignerLiveClock, designerDemoPhase } from '../model/simulation.js';
 import { Multimeter } from './Multimeter.jsx';
 import { ScopePanel } from './ScopePanel.jsx';
+import {ComponentMeasurements} from './ComponentMeasurements.jsx';
+import {componentMeasurementAnnotations} from '../model/component-measurements.js';
 import { SweepPanel } from './SweepPanel.jsx';
 import { OperatingPointPanel } from './OperatingPointPanel.jsx';
 import { SourceAnalysisPanel } from './SourceAnalysisPanel.jsx';
@@ -99,7 +101,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
   const projectData = project || stc;
   const {
     parts, wires, powered, rev,
-    addPart, removePart, nudgeSeated, movePart, duplicatePart, rotatePart, flipPart, updateParams, bindPhysicalPackage, setCarrier, setPcbOverrides,
+    addPart, removePart, nudgeSeated, movePart, duplicatePart, rotatePart, flipPart, updateParams, setPartLimits, bindPhysicalPackage, setCarrier, setPcbOverrides,
     addWire, removeWire, addHoleWire, addTapWire, updateWire,
     setControl, setPartParam, setPin, advanceTo, advanceBy, advanceToLive, setPower,
     loadInferred, undo, redo, canUndo, canRedo, saveHistory,
@@ -287,6 +289,10 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
   });
   const toggleScope = () => setShowScope(v => { const n = !v; try { localStorage.setItem('bw-instr-scope', n ? '1' : '0'); } catch {} return n; });
   const toggleMeter = () => setShowMeter(v => { const n = !v; try { localStorage.setItem('bw-instr-meter', n ? '1' : '0'); } catch {} return n; });
+  const [showComponents, setShowComponents] = useState(false);
+  const [annotateComponents, setAnnotateComponents] = useState(true);
+  const [componentReadings, setComponentReadings] = useState({board: null, rows: []});
+  const onComponentReadings = useCallback((board, rows) => setComponentReadings({board, rows}), []);
   const [showSweep, setShowSweep] = useState(() => {
     try { return localStorage.getItem('bw-instr-sweep') === '1'; } catch { return false; }
   });
@@ -1571,7 +1577,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
           onUnseatPart={(partId) => { circuit.unseatPart(partId); }}
           circuit={circuit}
           warnings={warnings}
-          annotations={annotations}
+          annotations={[...annotations, ...(showComponents && annotateComponents && componentReadings.board === activeBoard ?
+            componentMeasurementAnnotations(componentReadings.rows, parts) : [])]}
           cubeScans={cubeScans}
           onUpdateParams={updateParams}
           onSaveHistory={saveHistory}
@@ -2004,7 +2011,18 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
             {showSweep ? (/^de/i.test(lang) ? '∿ Sweep verbergen' : '∿ Hide sweep') : '∿ Sweep'}
           </button>
         </div>
-        {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} lang={lang} /></div>}
+        {showScope && <div data-scope-module style={{width: 280, flex: '0 0 auto'}}><ScopePanel board={activeBoard} nets={(activeBoard && activeBoard.getNets) ? activeBoard.getNets().map(n => n.id ?? n) : []} lang={lang} /></div>}
+        <button data-testid="bw-components-toggle" aria-pressed={showComponents}
+          onClick={() => setShowComponents(value => !value)}
+          style={{width: 280, padding: '5px 8px', border: '1px solid #38bdf8', borderRadius: 4,
+            background: showComponents ? '#2c3e50' : '#16213e', color: '#7dd3fc', fontFamily: 'monospace'}}>
+          {t('componentsTitle', lang)}
+        </button>
+        {showComponents && <div style={{width: 280, flex: '0 0 auto'}}>
+          <ComponentMeasurements board={activeBoard} parts={parts} selectedPart={selectedPart}
+            onSelectPart={handleSelectPart} onLimitsChange={setPartLimits} onReadings={onComponentReadings}
+            annotate={annotateComponents} onAnnotateChange={setAnnotateComponents} lang={lang} />
+        </div>}
         {showMeter && <div data-meter-module style={{width: 280, flex: '0 0 auto'}}><Multimeter circuit={circuit} wires={wires} parts={parts} placingProbe={placingProbe} onStartPlacing={handleStartPlacing} onStopPlacing={handleStopPlacing} probePlacement={probePlacement} lang={lang} /></div>}
         {showSweep && <div data-sweep-module style={{width: 280, flex: '0 0 auto'}}><SweepPanel board={circuit.board} nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets().map(n => n.id ?? n) : []} lang={lang} /></div>}
         {/* Orientation input — for accelerometer parts (mpu6050, adxl335, memsic2125) */}
