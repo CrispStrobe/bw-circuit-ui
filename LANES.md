@@ -1,4 +1,4 @@
-2026-10-23 measurement engine dependency alignment — CLAIMED, Codex circuit owner.
+2026-10-23 measurement engine dependency alignment — DONE (source candidate), Codex circuit owner.
 Base2dc588c; same owned source worktree /private/tmp/bw-circuit-audio-audit-20261021.
 The designer's dev dependency remains bw-board fac3a5a, predating the qualified
 open-passive repair already used by Brickwright (b5650092). New actual component
@@ -15,7 +15,7 @@ sampled-audio feature. Re-derive provenance using canonical tooling and require
 the unchanged open-terminal control plus source/affected exact-head checks.
 Merge claim before dependency implementation; preserve all other owners.
 
-2026-10-23 measured components and continuous sampled audio — CLAIMED, Codex circuit owner.
+2026-10-23 measured components and continuous sampled audio — DONE (source candidate), Codex circuit owner.
 Base603c0bd; isolated /private/tmp/bw-circuit-audio-audit-20261021.
 Own new component measurement helpers/panel and narrow CircuitDesigner wiring,
 plus src/audio/scope-audio-stream.js (new), ScopePanel live sampled-audio controls,
@@ -33,6 +33,18 @@ firmware, supplier pin, workflow or unrelated source change. Extended physical
 and manual acceptance is deferred by user; require focused executable controls
 and actual automated browser paths before downstream adoption.
 Merge claim before implementation; Lite owns its separate Widgets/example work.
+
+Local candidate qualification: 117 focused measurement/audio/model/provenance
+controls pass without skips and the production build passes. The installed
+b5650092 runtime tree matches the independently reviewed source hash. Actual
+Chromium/WebKit components exercise bindings, scope/FFT, rendered 1 kHz sampled
+audio, buffering/underruns and Stop/unmount cleanup. No physical/acoustic or
+actual-Safari-audio qualification follows. Broader local checks preserve three
+inherited oracle/spec failures: the relay-isolator documented value and two
+ngspice 47 comparisons also fail with the previous fac3a5a engine. No numerical
+expectation or bound was changed. Canonical corpus selection and canonical temp
+paths resolve the other local setup failures. Hosted exact-head qualification
+and immutable downstream adoption remain pending.
 
 2026-10-21 loaded supply preservation — SOURCE CANDIDATE, Codex school circuits.
 Base 4be74ffa6809032dc25010cd803f3f847f429c79. Own the CircuitDesigner

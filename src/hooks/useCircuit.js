@@ -72,6 +72,12 @@ export function useCircuit(vcc = 5.0) {
     return ok;
   }, [circuit, bump]);
 
+  const setPartLimits = useCallback((partId, limits) => {
+    const ok = circuit.setPartLimits(partId, limits);
+    if (ok) bump();
+    return ok;
+  }, [circuit, bump]);
+
   const setCarrier = useCallback((partId, carrier) => {
     const ok = circuit.setCarrier(partId, carrier);
     if (ok) bump();
@@ -266,6 +272,7 @@ export function useCircuit(vcc = 5.0) {
     rotatePart,
     flipPart,
     updateParams,
+    setPartLimits,
     bindPhysicalPackage,
     setCarrier,
     setPcbOverrides,

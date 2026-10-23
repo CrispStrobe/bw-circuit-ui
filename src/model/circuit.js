@@ -10,6 +10,7 @@
 
 import { getEngine, engineTerminals, engineDevice } from '../engine.js';
 import { History } from './history.js';
+import {normalizeComponentLimits} from './component-measurements.js';
 import { mergeNets } from './merge-nets.js';
 import { BreadboardModel } from './breadboard.js';
 import { logicChipTerminals } from './dip-chips.js';
@@ -710,6 +711,15 @@ export class Circuit {
     if (!part) return false;
     Object.assign(part.params, newParams);
     this._syncNetlist();
+    this._saveHistory();
+    return true;
+  }
+
+  /** Display ratings are saved metadata; editing them must not reset the solver. */
+  setPartLimits(partId, limits) {
+    const part = this.getPart(partId);
+    if (!part) return false;
+    part.limits = normalizeComponentLimits(limits);
     this._saveHistory();
     return true;
   }
