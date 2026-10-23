@@ -16,7 +16,15 @@ metadata truthful; no relabelling an envelope as a point sample or deriving note
 Allow an explicit labelled aperture acquisition choice in the spectrum UI;
 retain default point acquisition and unchanged FFT math/window/scaling. Both
 modes must show their own actual captured data and aperture identity. A boxcar
-aperture is not an ideal brick-wall anti-alias filter. No scheduler, source/model,
+aperture is not an ideal brick-wall anti-alias filter. Also own an explicit
+labelled output-bandwidth choice for aperture audio, implemented by a bounded
+pure low-pass filter shared by replay/WAV and continuous output; preserve the
+existing point-audio path and fixed gain. Retain the unfiltered diagnostic and
+compare actual native rendered notes, amplitude and filter response independently.
+The actual C4 aperture data recovers its period through an explicit 8 kHz native
+low-pass in both Chromium and WebKit; unfiltered native playback remains
+unqualified. Do not present filtering as an ideal anti-alias guarantee.
+No scheduler, source/model,
 tolerance/budget, hidden resynthesis, gain normalization, workflow or Lite edit.
 
 Require old point/envelope/audio guards, new incomplete/wrong-aperture refusals,
