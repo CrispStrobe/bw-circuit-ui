@@ -33,6 +33,30 @@ rendered WebAudio and real browser replay/WAV/spectrum selection checks, correct
 installed package identity and every enabled exact-head check. Preserve original
 point-alias evidence. Merge claim before consumer implementation and adopt only
 qualified canonical Board inputs; no private engine fork or loader alias.
+2026-10-23 versioned literal-PULSE consumer qualification — CLAIMED, same circuit owner.
+Base f9cfae50; additive environment envelope for merged precision claim #109.
+The pending Board #665 producer now owns a source/hash/version-admitted separate
+ngspice47 installer. The distribution42 oracle and modern47 disagree on literal
+PW=0. Adopting that qualified engine without admitting its corresponding oracle
+would leave the consumer's unchanged pulse comparison against the wrong version.
+
+After the producer normally lands and its exact dev pin is qualified under #109,
+own only the narrow added installer/admission step in .github/workflows/ci.yml,
+the row5114 oracle selection in test/source-analysis-precision.test.js, necessary
+focused reader/admission controls, and this claim. Invoke only the installer
+from the exact installed canonical bw-board package. Use a separate prefix and
+explicit NGSPICE_LITERAL_ORACLE input for that literal-PULSE comparison. Retain
+actual source/binary/version/compatibility identity and original measurement
+times, topology, current signs and 2e-4 bound. The full-precision reader #112 is
+separately qualified; normally compose it before using its actual raw vectors.
+Preserve the distribution ngspice binary/PATH, every other source-family oracle,
+workflow triggers/tiers, assertions/budgets and all product source. No private
+installer copy, borrowed engine, substitution of PULSE with PWL, dependency
+advance before qualification or silent missing-oracle skip.
+Merge this additive claim before implementation. Require installed-package
+identity, wrong/missing/altered oracle refusals and actual public-adapter pulse
+readings against admitted47, plus unchanged default-oracle precision controls
+and every enabled exact-head check. Preserve all original version-drift evidence.
 
 2026-10-23 precise source-analysis SPICE comparisons — CLAIMED, Codex circuit owner.
 Base2debbe3; follow-up to the measured-components adoption audit.
@@ -53,6 +77,23 @@ lands. Retain previous immutable source and its negative evidence. No private
 engine alias/fork, broad solver/source-analysis change, corpus or workflow change,
 Lite adoption, hardware or physical-accuracy claim. Merge this claim before
 implementation; preserve other owners and require exact-head supplier checks.
+
+Claim #109 merged normally as 84b232ee before implementation. Reader source
+candidate now uses actual 17-digit wrdata time/value vectors, with interpolation
+between retained accepted solver points at the unchanged six authored instants.
+The one-microvolt assertion and integration ceiling are unchanged; no rounding
+or formatting of console scalars supplies precision. Missing/duplicate/nonfinite/
+rounded observations and error-reporting or failed processes refuse. Retain raw
+vector/deck/stdout/stderr, executable hash, version/compatibility, exact requested
+times and interpolation brackets. The independent real inductor control shows
+why the old rounded scalar fails the same bound. Reader controls and the full
+six-point source-constrained inductor row pass without skips.
+The full local precision cohort is 148/149; its one remaining original failure
+is the old installed engine's zero-PW interpretation against ngspice47. Preserve
+that original assertion and evidence. Qualified immutable Board adoption remains
+pending #665 and its versioned-oracle claim #666; this reader does not change the
+engine pin or the pulse comparison. Existing scripts register the new controls.
+Exact-head hosted qualification is still required for this test-only candidate.
 
 2026-10-23 measurement engine dependency alignment — DONE (source candidate), Codex circuit owner.
 Base2dc588c; same owned source worktree /private/tmp/bw-circuit-audio-audit-20261021.
