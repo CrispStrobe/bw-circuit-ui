@@ -1,3 +1,22 @@
+2026-10-23 measured components and continuous sampled audio — CLAIMED, Codex circuit owner.
+Base603c0bd; isolated /private/tmp/bw-circuit-audio-audit-20261021.
+Own new component measurement helpers/panel and narrow CircuitDesigner wiring,
+plus src/audio/scope-audio-stream.js (new), ScopePanel live sampled-audio controls,
+EN/DE strings, associated focused tests and registration. Display actual signed
+terminal measurements with public OUT-current convention converted explicitly
+for absorbed power; show unavailable/open-terminal state rather than substitute
+ground or fabricate data. Warn only against authored component limits; do not
+invent unspecified LED/resistor ratings. Preserve operating-point/transient
+accuracy authority, units, polarity, existing measurement instruments and models.
+Stream only contiguous actual sample captures through a bounded Web Audio queue,
+preserving cadence/pitch, DC removal and fixed gain/clipping. Explicit buffering,
+underrun/overrun/refusal and cleanup on board/channel change, stop and unmount.
+No oscillator approximation, precision/budget relaxation, engine model/scheduler,
+firmware, supplier pin, workflow or unrelated source change. Extended physical
+and manual acceptance is deferred by user; require focused executable controls
+and actual automated browser paths before downstream adoption.
+Merge claim before implementation; Lite owns its separate Widgets/example work.
+
 2026-10-21 loaded supply preservation — SOURCE CANDIDATE, Codex school circuits.
 Base 4be74ffa6809032dc25010cd803f3f847f429c79. Own the CircuitDesigner
 handleLoad replacement path, Circuit history supply snapshots if required,
