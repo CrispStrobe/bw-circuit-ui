@@ -18,6 +18,23 @@ engine alias/fork, broad solver/source-analysis change, corpus or workflow chang
 Lite adoption, hardware or physical-accuracy claim. Merge this claim before
 implementation; preserve other owners and require exact-head supplier checks.
 
+Claim #109 merged normally as 84b232ee before implementation. Reader source
+candidate now uses actual 17-digit wrdata time/value vectors, with interpolation
+between retained accepted solver points at the unchanged six authored instants.
+The one-microvolt assertion and integration ceiling are unchanged; no rounding
+or formatting of console scalars supplies precision. Missing/duplicate/nonfinite/
+rounded observations and error-reporting or failed processes refuse. Retain raw
+vector/deck/stdout/stderr, executable hash, version/compatibility, exact requested
+times and interpolation brackets. The independent real inductor control shows
+why the old rounded scalar fails the same bound. Reader controls and the full
+six-point source-constrained inductor row pass without skips.
+The full local precision cohort is 148/149; its one remaining original failure
+is the old installed engine's zero-PW interpretation against ngspice47. Preserve
+that original assertion and evidence. Qualified immutable Board adoption remains
+pending #665 and its versioned-oracle claim #666; this reader does not change the
+engine pin or the pulse comparison. Existing scripts register the new controls.
+Exact-head hosted qualification is still required for this test-only candidate.
+
 2026-10-23 measurement engine dependency alignment — DONE (source candidate), Codex circuit owner.
 Base2dc588c; same owned source worktree /private/tmp/bw-circuit-audio-audit-20261021.
 The designer's dev dependency remains bw-board fac3a5a, predating the qualified

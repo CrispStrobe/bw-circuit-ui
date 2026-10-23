@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
+import {runNgspiceVector} from './helpers/ngspice-vector.js';
 import { join } from 'node:path';
 import { importCircuit } from '../src/importers/index.js';
 import { Circuit } from '../src/model/circuit.js';
@@ -286,8 +287,6 @@ C2 out 0 14p
     skip: spawnSync('ngspice', ['--version'], { encoding: 'utf8' }).status !== 0,
   }, () => {
     const samples = [0.24, 0.51, 0.99, 1.5, 2.25, 3];
-    const measures = samples.map((time, index) =>
-      `.meas tran out${index} FIND v(1) AT=${time}`).join('\n');
     const deck = `ADI row 5158 source-constrained ideal inductor
 L1 1 0 1
 I1 0 1 SINE(0 1 1 0)
@@ -316,14 +315,9 @@ I1 0 1 SINE(0 1 1 0)
     // ngspice does not accept LTspice's one-argument `.tran TSTOP`, so spell
     // the same three-second interval with a deliberately fine independent
     // integration ceiling before asking for the six authored observations.
-    const oracleDeck = deck.replace('.tran 3', '.tran .001 3 0 .0001')
-      .replace('.end', `${measures}\n.end`);
-    const ng = spawnSync('ngspice', ['-b'], { input: oracleDeck, encoding: 'utf8' });
-    assert.equal(ng.status, 0, ng.stderr || ng.stdout);
-    const measured = new Map();
-    for (const match of ng.stdout.matchAll(/^\s*out(\d+)\s*=\s*([-+0-9.e]+)/gmi)) {
-      measured.set(Number(match[1]), Number(match[2]));
-    }
+    const oracleDeck = deck.replace('.tran 3', '.tran .001 3 0 .0001');
+    const oracle = runNgspiceVector({deck: oracleDeck, vector: 'v(1)', times: samples});
+    const measured = new Map(oracle.readings.map((point,index) => [index, point.value]));
     assert.equal(measured.size, samples.length);
     const output = result.observables.nodes[0].voltage;
     samples.forEach((time, index) => {
