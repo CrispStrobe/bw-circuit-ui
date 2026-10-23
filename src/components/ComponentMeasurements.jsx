@@ -5,6 +5,17 @@ import {t} from '../i18n/strings.js';
 const number = value => value === null || !Number.isFinite(value) ? '—' :
   (Math.abs(value) < 1e-12 ? '0' : Number(value.toPrecision(5)).toString());
 
+function LimitInput({value, onCommit, onCancel, ...props}) {
+  const [draft, setDraft] = useState(String(value ?? ''));
+  useEffect(() => setDraft(String(value ?? '')), [value]);
+  return <input {...props} type="text" inputMode="decimal" value={draft}
+    onChange={event => setDraft(event.target.value)}
+    onBlur={() => onCommit(draft)} onKeyDown={event => {
+      if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); }
+      if (event.key === 'Escape') { event.preventDefault(); setDraft(String(value ?? '')); onCancel?.(); }
+    }} />;
+}
+
 export function ComponentMeasurements({board, parts = [], selectedPart, onSelectPart, onLimitsChange,
   onReadings, annotate, onAnnotateChange, lang = 'en'}) {
   const [rows, setRows] = useState([]);
@@ -20,7 +31,9 @@ export function ComponentMeasurements({board, parts = [], selectedPart, onSelect
     return () => clearInterval(timer);
   }, [board, parts, onReadings]);
   const selected = parts.find(p => p.id === selectedPart);
+  useEffect(() => setLimitError(''), [selectedPart]);
   const editLimit = (key, value) => {
+    if (value === String(selected.limits?.[key] ?? '')) { setLimitError(''); return; }
     const limits = {...selected.limits};
     if (value === '') delete limits[key];
     else limits[key] = Number(value);
@@ -57,10 +70,10 @@ export function ComponentMeasurements({board, parts = [], selectedPart, onSelect
     {selected && onLimitsChange && <fieldset style={{marginTop: 8, border: '1px solid #475569'}}>
       <legend>{selected.label || selected.id} · {t('componentsLimits', lang)}</legend>
       {Object.entries({powerWatts: 'W', currentAmps: 'A'}).map(([key, unit]) => <label key={key}
-        style={{display: 'block', margin: 4}}>{unit}{' '}<input type="number" min="0" step="any"
+        style={{display: 'block', margin: 4}}>{unit}{' '}<LimitInput key={`${selected.id}:${key}`}
           aria-label={`${selected.label || selected.id} ${unit} limit`} data-testid={`bw-component-limit-${key}`}
           value={selected.limits?.[key] ?? ''} placeholder="—" style={{width: 100}}
-          onChange={event => editLimit(key, event.target.value)} /></label>)}
+          onCommit={value => editLimit(key, value)} onCancel={() => setLimitError('')} /></label>)}
       <small>{t('componentsLimitHint', lang)}</small>
     </fieldset>}
     {limitError && <div role="alert">{limitError}</div>}
