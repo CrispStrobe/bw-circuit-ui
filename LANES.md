@@ -1,3 +1,23 @@
+2026-10-23 precise source-analysis SPICE comparisons — CLAIMED, Codex circuit owner.
+Base2debbe3; follow-up to the measured-components adoption audit.
+Own a test-only ngspice measurement reader/helper and focused controls, the
+row-5158/5114 independent comparisons in test/source-analysis-precision.test.js,
+and this claim. The inductor's exact analytical voltage differs from the current
+oracle's six-digit console output by more than the existing one-microvolt bound.
+Read the oracle's actual full-precision values and retain exact measurement times,
+raw output, process/version/compatibility identity and all existing tolerances.
+Do not manufacture precision by formatting rounded console values, change source
+waveforms, weaken assertions, or interpret an oracle error as a numerical pass.
+Keep unsupported/missing oracles explicit. Require controls that reject rounded,
+missing, duplicate, nonfinite or failed observations and a real ngspice comparison.
+
+Also own canonical dev-dependency adoption and derived Board provenance for only
+the separately claimed and qualified literal-zero-PULSE producer repair, after it
+lands. Retain previous immutable source and its negative evidence. No private
+engine alias/fork, broad solver/source-analysis change, corpus or workflow change,
+Lite adoption, hardware or physical-accuracy claim. Merge this claim before
+implementation; preserve other owners and require exact-head supplier checks.
+
 2026-10-23 measurement engine dependency alignment — DONE (source candidate), Codex circuit owner.
 Base2dc588c; same owned source worktree /private/tmp/bw-circuit-audio-audit-20261021.
 The designer's dev dependency remains bw-board fac3a5a, predating the qualified
