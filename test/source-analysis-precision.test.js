@@ -5,6 +5,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import {runNgspiceVector} from './helpers/ngspice-vector.js';
+import {literalPulseOracle} from './helpers/literal-pulse-oracle.js';
 import { join } from 'node:path';
 import { importCircuit } from '../src/importers/index.js';
 import { Circuit } from '../src/model/circuit.js';
@@ -241,12 +242,10 @@ C1 out 0 1n
     assert.ok(accounted.conditions.executionProfile.work.attempts > 10);
   });
 
-  it('runs ADI row 5114 through the public adapter and matches ngspice', {
-    skip: spawnSync('ngspice', ['--version'], { encoding: 'utf8' }).status !== 0,
-  }, () => {
+  it('runs ADI row 5114 through the public adapter and matches admitted ngspice47', (t) => {
+    const oracle = literalPulseOracle();
+    t.diagnostic(JSON.stringify({oracle: oracle.binary, ...oracle.identity}));
     const samples = [0.1, 2.5, 4.9, 5.1, 7.5, 9.9];
-    const measures = samples.map((time, index) =>
-      `.meas tran out${index} FIND v(out) AT=${time}`).join('\n');
     const deck = `ADI row 5114 zero-width PULSE
 V1 N001 0 5
 I1 N001 out PULSE(20u 200u 0 4 1 0 5)
@@ -264,22 +263,16 @@ C2 out 0 14p
     assert.equal(result.conditions.points, 1001);
     assert.ok(result.executionProfile.work.attempts < 5000);
 
-    const ng = spawnSync('ngspice', ['-b'], {
-      input: deck.replace('.end', `${measures}\n.end`), encoding: 'utf8',
-    });
-    assert.equal(ng.status, 0, ng.stderr || ng.stdout);
-    const measured = new Map();
-    for (const match of ng.stdout.matchAll(/^\s*out(\d+)\s*=\s*([-+0-9.e]+)/gmi)) {
-      measured.set(Number(match[1]), Number(match[2]));
-    }
-    assert.equal(measured.size, samples.length);
+    const ng = runNgspiceVector({deck, vector: 'v(out)', times: samples, binary: oracle.binary});
+    const measured = ng.readings.map(reading => reading.value);
+    assert.equal(measured.length, samples.length);
     const output = result.observables.nodes.find(node => node.id === 'n1');
     samples.forEach((time, index) => {
       const sampleIndex = result.observables.axis.values.findIndex(value =>
         Math.abs(value - time) < 1e-10);
       assert.notEqual(sampleIndex, -1, `public result includes ${time}s`);
-      assert.ok(Math.abs(output.voltage[sampleIndex] - measured.get(index)) < 2e-4,
-        `${time}s: public adapter ${output.voltage[sampleIndex]} vs ngspice ${measured.get(index)}`);
+      assert.ok(Math.abs(output.voltage[sampleIndex] - measured[index]) < 2e-4,
+        `${time}s: public adapter ${output.voltage[sampleIndex]} vs ngspice ${measured[index]}`);
     });
   });
 

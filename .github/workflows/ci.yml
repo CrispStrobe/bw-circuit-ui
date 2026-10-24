@@ -47,6 +47,10 @@ jobs:
       - run: npm install
       - name: Loaded Board provenance guard
         run: npm run verify:board-provenance
+      - name: Admit the installed producer's literal-PULSE oracle
+        run: |
+          node node_modules/bw-board/scripts/install-ngspice-oracle.mjs --prefix "$RUNNER_TEMP/bw-ngspice47"
+          printf 'NGSPICE_LITERAL_ORACLE=%s/bin/ngspice\n' "$RUNNER_TEMP/bw-ngspice47" >> "$GITHUB_ENV"
       - run: npm test
       - run: npm run test:source-precision
 
