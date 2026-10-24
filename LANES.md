@@ -1,4 +1,4 @@
-2026-10-24 scope acquisition and viewport readout — CLAIMED, Codex circuit owner.
+2026-10-24 scope acquisition and viewport readout — DONE (source candidate), Codex circuit owner.
 Base9c53ef66b519c6417948ca867f453a98e2bbab91; isolated scope-display branch.
 Own only this ledger, src/components/ScopePanel.jsx, a new pure
 src/model/scope-display-status.js, test/scope-display-status.test.js,
@@ -28,6 +28,23 @@ consumer claim after this upstream source qualifies and lands. Merge this claim
 before implementation. Require exact-boundary/empty/gap/zoom/wrap/held controls,
 load-bearing negatives, real browser overrange/mode/limits checks and unchanged
 raw CSV records, plus every enabled exact-head check. No local heavy build.
+
+Implementation: additive EN/DE readouts take actual public capture metadata
+and the exact time-trace ring window/viewport, or the separate FFT sample window.
+Record origin, cadence, capacity, retained/selected finite counts and ring wrap
+are explicit. Only point captures receive a Nyquist value. Overrange labels
+refer to the viewport, not physical clipping. HOLD publishes its last drawn
+scalar snapshot while acquisition may advance; current capture refusal still
+clears the displayed metadata. No retained sample, CSV, tap or model is changed.
+Sixteen pure controls pass; three isolated source mutants fail their named
+boundary tests and restore exactly. JSX/browser-script syntax checks pass.
+An adjacent model-backed local suite could not load its declared engine package
+in the isolated source checkout; this is preserved as a setup limitation, not a
+passed or skipped model test. Hosted installed-package/Node22 qualification is
+mandatory. Three added real-browser scenarios cover prefix/wrap and separate
+sample metadata, actual V/div warning/clear with byte-identical CSV, and HOLD
+while the real source capture advances. No local build or browser was run.
+Final exact-head CI remains required before landing and Lite adoption.
 
 2026-10-23 versioned literal-PULSE consumer qualification — CLAIMED, same circuit owner.
 Base f9cfae50; additive environment envelope for merged precision claim #109.

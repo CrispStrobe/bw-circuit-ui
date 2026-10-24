@@ -177,6 +177,9 @@ const EXPECTED = [
   'analog-import-context',
   'own-clock-status',
   'scope-sim-reset-epoch',
+  'scope-acquisition-readout',
+  'scope-viewport-warning',
+  'scope-display-raw-and-hold',
   'component-limit-editing',
   'zero-page-errors',
 ];
@@ -2152,7 +2155,8 @@ try {
 
 // A fresh MCU starter must not lend its teaching notes or program claim to an
 // unrelated analog file. Use the actual chooser and transport, not load hooks.
-const CONTEXT_IDS = ['analog-import-context', 'own-clock-status', 'scope-sim-reset-epoch', 'component-limit-editing'];
+const CONTEXT_IDS = ['analog-import-context', 'own-clock-status', 'scope-sim-reset-epoch', 'component-limit-editing',
+  'scope-acquisition-readout', 'scope-viewport-warning', 'scope-display-raw-and-hold'];
 const contextPage = await browser.newPage({viewport: {width: 1600, height: 1000}});
 contextPage.on('pageerror', e => errors.push(`analog import context: ${e.message}`));
 try {
@@ -2206,7 +2210,10 @@ try {
   await scope.waitFor();
   await scope.getByTestId('bw-scope-record').selectOption('100000');
   const picker = scope.locator('select').last();
-  await picker.selectOption({index: 1});
+  const signalNet = await contextPage.evaluate(() => window.__board.getNets().find(n =>
+    n.terminals.some(t => t.part === 'analog-v' && t.terminal === 'pos'))?.id);
+  if (!signalNet) throw new Error('actual analog source net unavailable');
+  await picker.selectOption(signalNet);
   await scope.getByText('+ channel', {exact: false}).click();
   const handle = await contextPage.evaluate(() => {
     const b = window.__board, handles = b.getScopeChannels();
@@ -2236,6 +2243,77 @@ try {
   verdict(CONTEXT_IDS[2], complete,
     'real scope picker and Build/Sim reset retain handle and capture all first 5000 envelopes',
     'first post-reset 50ms capture is incomplete or carries old timestamps');
+
+  // Readouts describe this actual retained capture, not the rate selector.
+  const readout = scope.getByTestId('bw-scope-acquisition-0');
+  await contextPage.waitForFunction(() => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
+    ?.getAttribute('data-retained') === '5000');
+  if (await readout.getAttribute('data-capture') !== 'envelope'
+      || await readout.getAttribute('data-interval-ns') !== '10000'
+      || await readout.getAttribute('data-depth') !== '8192'
+      || !/Min\/max envelope.*10 µs.*5000\/8192 stored/.test(await readout.textContent())
+      || /Nyquist/.test(await readout.textContent())) throw new Error('scope prefix metadata does not match the actual capture');
+  const limits = await scope.getByTestId('bw-scope-sampling-limits').textContent();
+  if (!/alias above Nyquist/.test(limits) || !/no analog anti-alias filter/.test(limits)) {
+    throw new Error('sampling/anti-alias limits are absent');
+  }
+  const downloadCsv = async () => {
+    const [download] = await Promise.all([contextPage.waitForEvent('download'),
+      scope.getByTestId('bw-scope-trace-csv-download').click()]);
+    const stream = await download.createReadStream();
+    const chunks = []; for await (const chunk of stream) chunks.push(chunk);
+    return Buffer.concat(chunks).toString('utf8');
+  };
+  const beforeDisplay = await downloadCsv();
+  if (!beforeDisplay.includes('capture=envelope') || !beforeDisplay.includes('elapsed_seconds')) {
+    throw new Error('actual scope CSV positive control missing');
+  }
+  await scope.getByTestId('bw-scope-vdiv-0').selectOption('0.05');
+  await scope.getByTestId('bw-scope-center-0').fill('0');
+  const overrange = scope.getByTestId('bw-scope-overrange-0');
+  await overrange.filter({hasText: 'Above viewport'}).waitFor();
+  await scope.getByTestId('bw-scope-vdiv-0').selectOption('5');
+  await overrange.waitFor({state: 'detached'});
+  if (await downloadCsv() !== beforeDisplay) throw new Error('display controls altered raw scope CSV');
+  verdict(CONTEXT_IDS[5], true, 'real vertical controls warn and clear without changing raw CSV', 'unreachable');
+
+  await contextPage.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+  await contextPage.waitForFunction(() => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
+    ?.getAttribute('data-wrapped') === 'true');
+  const wrappedStart = await readout.getAttribute('data-start-time-ns');
+  const wrappedData = await contextPage.evaluate(h => {
+    const d = window.__board.getScopeData(h);
+    return {count: d.count, start: String(d.startTNs)};
+  }, handle);
+  if (wrappedData.count !== 10000 || wrappedData.start !== wrappedStart
+      || await readout.getAttribute('data-retained') !== '8192') throw new Error('ring-wrap readout is not the actual record');
+
+  await scope.getByTestId('bw-scope-hold').click();
+  const heldText = await readout.textContent();
+  const heldPixels = await scope.locator('canvas').evaluate(c => c.toDataURL());
+  await contextPage.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+  if (await contextPage.evaluate(h => window.__board.getScopeData(h).count, handle) !== 15000) {
+    throw new Error('HOLD positive control did not advance the actual capture');
+  }
+  if (await readout.textContent() !== heldText || await scope.locator('canvas').evaluate(c => c.toDataURL()) !== heldPixels) {
+    throw new Error('HOLD followed live data instead of the frozen display');
+  }
+  await scope.getByTestId('bw-scope-hold').click();
+  await contextPage.waitForFunction(old => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
+    ?.getAttribute('data-start-time-ns') !== old, wrappedStart);
+  verdict(CONTEXT_IDS[6], true, 'HOLD freezes real picture/readout while acquisition advances; RUN catches up', 'unreachable');
+
+  await scope.getByTestId('bw-scope-view-spectrum').click();
+  await contextPage.waitForFunction(() => window.__board.getScopeChannels()
+    .some(h => window.__board.getScopeData(h).capture === 'sample'));
+  await contextPage.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+  await contextPage.waitForFunction(() => {
+    const el = document.querySelector('[data-testid="bw-scope-acquisition-0"]');
+    return el?.getAttribute('data-capture') === 'sample' && /Point samples.*Nyquist/.test(el.textContent)
+      && Number(el.getAttribute('data-retained')) > 0;
+  });
+  verdict(CONTEXT_IDS[4], true, 'actual prefix, wrapped envelope and separate point-sample/Nyquist metadata are explicit', 'unreachable');
+  await scope.getByTestId('bw-scope-view-time').click();
 
   await contextPage.getByTestId('bw-components-toggle').click();
   const measurements = contextPage.getByTestId('bw-component-measurements');

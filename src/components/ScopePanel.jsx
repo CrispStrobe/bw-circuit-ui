@@ -65,6 +65,7 @@ import {
   formatHz, peakBin, seriesFromScopeData, spectrum, spectrumToCsv, thd,
 } from '../model/fft.js';
 import { scopeTracesToCsv } from '../model/scope-csv.js';
+import {scopeDisplayStatus, scopeDisplayLabel, scopeViewportWarning} from '../model/scope-display-status.js';
 import {
   SCOPE_PROBE_PRESETS, scopeProbeLabel, scopeProbeOptions,
 } from '../model/scope-probes.js';
@@ -92,6 +93,11 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   const canvasRef = useRef(null);
   const [channels, setChannels] = useState([]); // [{netId, handle}]
   const [running, setRunning] = useState(true);
+  const [timeReadouts, setTimeReadouts] = useState([]);
+  const [spectrumReadouts, setSpectrumReadouts] = useState([]);
+  // Scalar snapshots only: HOLD must not follow the live ring's later writes.
+  const displayedReadouts = useRef({time: [], spectrum: []});
+  const lastReadoutPublish = useRef(-Infinity);
   const [windowFrac, setWindowFrac] = useState(1); // 1 | 0.25 | 0.05 of the buffer
   // The ring's own length, as opposed to the window into it. Changing it
   // re-attaches the channels, because a channel's rate is fixed when it is
@@ -198,6 +204,8 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
         other.netId === c.netId && other.reason === c.reason) === i);
       setCaptureErrors(previous => JSON.stringify(previous) === JSON.stringify(unique) ? previous : unique);
       if (!unique.length) return;
+      displayedReadouts.current = {time: [], spectrum: []};
+      setTimeReadouts([]); setSpectrumReadouts([]);
       stopAudio();
       triggeredRef.current = false;
       setTriggered(false);
@@ -266,6 +274,11 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   // cost with no reading behind it.
   const netKey = channels.map(c => c.netId).join('|');
   useEffect(() => {
+    displayedReadouts.current = {time: [], spectrum: []};
+    setTimeReadouts([]); setSpectrumReadouts([]);
+    lastReadoutPublish.current = -Infinity;
+  }, [board, view, sampleRateHz, specRateHz, netKey, probePreset, referenceNetId]);
+  useEffect(() => {
     if (view !== 'spectrum' || !board || !board.addScopeChannel) { setSpecChannels([]); return undefined; }
     const opened = channels.map(c => ({
       netId: c.netId,
@@ -292,14 +305,22 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
     if (view !== 'spectrum' || specChannels.length === 0) { setSpectra([]); return undefined; }
     const tick = () => {
       if (!running) return;
-      setSpectra(specChannels.map((c) => {
+      const readouts = [];
+      const next = specChannels.map((c) => {
         let data = null;
         try { data = board.getScopeData(c.handle); } catch { data = null; }
         const series = seriesFromScopeData(data);
+        const depth = data?.samples?.length / 2;
+        const window = series.ok ? series.values.length : depth;
+        const start = data ? ((data.writeIndex - window) % depth + depth) % depth : 0;
+        readouts.push(scopeDisplayStatus(data, {start, windowSamples: window}));
         if (!series.ok) return { netId: c.netId, reason: series.reason };
         const spec = spectrum(series.values, series.sampleRateHz, { window: fftWindow });
         return spec.ok ? { netId: c.netId, spec } : { netId: c.netId, reason: spec.reason };
-      }));
+      });
+      displayedReadouts.current.spectrum = readouts;
+      setSpectrumReadouts(previous => JSON.stringify(previous) === JSON.stringify(readouts) ? previous : readouts);
+      setSpectra(next);
     };
     tick();
     const id = setInterval(tick, SPECTRUM_PERIOD_MS);
@@ -393,6 +414,18 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
       if (nextTriggered !== triggeredRef.current) {
         triggeredRef.current = nextTriggered;
         setTriggered(nextTriggered);
+      }
+      const readouts = chData.map((data, ci) => {
+        if (!data) return {ok: false};
+        const win = Math.max(16, Math.floor(data.samples.length / 2 * windowFrac));
+        return scopeDisplayStatus(data, {start: triggeredWindowStart(data, win, triggerIndex),
+          windowSamples: win, range: ranges[ci]});
+      });
+      displayedReadouts.current.time = readouts;
+      const now = performance.now();
+      if (now - lastReadoutPublish.current >= SPECTRUM_PERIOD_MS) {
+        lastReadoutPublish.current = now;
+        setTimeReadouts(previous => JSON.stringify(previous) === JSON.stringify(readouts) ? previous : readouts);
       }
       channels.forEach((c, ci) => {
         const data = chData[ci];
@@ -498,7 +531,14 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
         <strong style={{ color: '#ecf0f1', fontSize: '11px' }}>{t('oscilloscope', lang)}</strong>
         <span style={{ flex: 1 }} />
-        <button onClick={() => setRunning(r => !r)} style={{
+        <button data-testid="bw-scope-hold" aria-pressed={!running} onClick={() => {
+          // Publish the exact last drawn snapshot, even between slow readouts.
+          if (running) {
+            setTimeReadouts(displayedReadouts.current.time);
+            setSpectrumReadouts(displayedReadouts.current.spectrum);
+          } else lastReadoutPublish.current = -Infinity;
+          setRunning(r => !r);
+        }} style={{
           background: running ? '#2c3e50' : '#e67e22', color: running ? '#2ecc71' : '#000',
           border: '1px solid #2c3e50', borderRadius: '3px', padding: '1px 8px',
           cursor: 'pointer', fontSize: '9px', fontFamily: 'monospace',
@@ -617,6 +657,26 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
         );
       })}
 
+      {(view === 'time' ? timeReadouts : spectrumReadouts).map((status, ci) => (
+        <div key={ci} data-testid={`bw-scope-acquisition-${ci}`}
+          data-capture={status.capture} data-depth={status.depth} data-retained={status.retained}
+          data-visible={status.visible} data-wrapped={String(!!status.wrapped)}
+          data-start-time-ns={status.startTimeNs ?? ''} data-interval-ns={status.intervalNs}
+          style={{color: '#bdc3c7', fontSize: 9, overflowWrap: 'anywhere', marginBottom: 4}}>
+          {!running && <strong>{lang === 'de' ? 'Gehaltene Anzeige: ' : 'Held display: '}</strong>}
+          {scopeDisplayLabel(status, lang)}
+          {!running && status.viewport && <span>{` · ${status.viewport.vLo} … ${status.viewport.vHi} V`}</span>}
+          {scopeViewportWarning(status, lang) && <div role="status"
+            data-testid={`bw-scope-overrange-${ci}`} style={{color: '#f1c40f'}}>
+            {scopeViewportWarning(status, lang)}
+          </div>}
+        </div>
+      ))}
+      <div data-testid="bw-scope-sampling-limits" style={{color: '#95a5a6', fontSize: 9, marginBottom: 6}}>
+        {lang === 'de'
+          ? 'Eine Min/Max-Hüllkurve ist keine Punktabtastung. Punktabtastungen können oberhalb Nyquist aliasen; kein analoger Anti-Aliasing-Filter oder ADC-Modell.'
+          : 'A min/max envelope is not a point-sample record. Point samples can alias above Nyquist; no analog anti-alias filter or ADC model is applied.'}
+      </div>
       {view === 'spectrum' && <div data-testid="bw-scope-audio" style={{color: '#aab', fontSize: 10, marginBottom: 6}}>
         <button onClick={replayAudio} disabled={!specChannels.length || captureErrors.length > 0}
           data-testid="bw-scope-audio-play">{t('scopeAudioPlay', lang)}</button>{' '}
