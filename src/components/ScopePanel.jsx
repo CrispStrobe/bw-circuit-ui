@@ -38,7 +38,9 @@
  * the trace above it. The ring drawn above is a (min, max) envelope: its two
  * numbers are two different instants reported as one, so an FFT over it
  * describes a waveform that never existed and would look plausible doing it.
- * The spectrum channels are opened with `capture: 'sample'` (bw-board), live
+ * The spectrum defaults to `capture: 'sample'`; explicit interval means retain
+ * their aperture identity. Audio has a separate non-loading mean tap by default.
+ * Neither transforms the drawing envelope. The spectrum channels live
  * only while the view is open, and carry their own capture rate — a sample
  * channel puts a solve point on every sample instant, so the rate is a bill
  * the learner chooses, labelled by the bandwidth it buys.
@@ -123,7 +125,8 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   // transform of the trace above: the drawing ring stores a (min,max) envelope,
   // whose two numbers are two different instants, and an FFT over that
   // describes a waveform that never existed. These channels are opened with
-  // capture:'sample' and live only while the view is open.
+  // capture:'sample' by default; the optional 'average' path validates its
+  // actual aperture duration. Both live only while the view is open.
   const [view, setView] = useState('time'); // 'time' | 'spectrum'
   const [fftWindow, setFftWindow] = useState('hann');
   // The spectrum tap has its OWN capture rate, and the default is deliberately
@@ -137,10 +140,15 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   // which covers every tone the curriculum's function generator makes.
   const [specRateHz, setSpecRateHz] = useState(10_000);
   const [specCapture, setSpecCapture] = useState('sample');
+  const [audioInput, setAudioInput] = useState('average');
+  const [audioRateHz, setAudioRateHz] = useState(100_000);
+  const [audioChannel, setAudioChannel] = useState(null);
   const [audioBandwidthChoice, setAudioBandwidthChoice] = useState('auto');
-  const audioBandwidthHz = specCapture !== 'average' || audioBandwidthChoice === 'none' ? undefined
-    : audioBandwidthChoice === 'auto' ? Math.min(8000, specRateHz * .4) : Number(audioBandwidthChoice);
-  const invalidAudioBandwidth = audioBandwidthHz !== undefined && audioBandwidthHz > specRateHz * .45;
+  const audioCaptureKind = audioInput === 'average' ? 'average' : specCapture;
+  const audioCaptureRate = audioInput === 'average' ? audioRateHz : specRateHz;
+  const audioBandwidthHz = audioCaptureKind !== 'average' || audioBandwidthChoice === 'none' ? undefined
+    : audioBandwidthChoice === 'auto' ? Math.min(8000, audioCaptureRate * .4) : Number(audioBandwidthChoice);
+  const invalidAudioBandwidth = audioBandwidthHz !== undefined && audioBandwidthHz > audioCaptureRate * .45;
   const [specChannels, setSpecChannels] = useState([]); // [{netId, handle}]
   const [spectra, setSpectra] = useState([]); // [{netId, spec}|{netId, reason}]
   const [specCopied, setSpecCopied] = useState('');
@@ -151,12 +159,17 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
     stopAudio();
     setAudioError('');
     return stopAudio;
-  }, [board, view, specChannels, stopAudio, audioEnabled, audioBandwidthHz]);
+  }, [board, view, specChannels, audioChannel, audioInput, stopAudio, audioEnabled, audioBandwidthHz]);
 
   const audioCapture = () => {
-    if (!specChannels.length) throw new Error(t('scopeAudioNoChannel', lang));
-    return board.getScopeData(specChannels[0].handle);
+    const channel = audioInput === 'average' ? audioChannel : specChannels[0];
+    if (!channel) throw new Error(t('scopeAudioNoChannel', lang));
+    return board.getScopeData(channel.handle);
   };
+  const audioReady = audioInput === 'average' ? !!audioChannel : !!specChannels.length;
+  const audioAperture = audioInput === 'average'
+    ? audioChannel && readScopeCapture(board, audioChannel.handle).data?.apertureNs
+    : spectra[0]?.apertureNs;
   const replayAudio = async () => {
     stopAudio();
     setAudioError('');
@@ -193,7 +206,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
     try {
       const url = URL.createObjectURL(new Blob([scopeAudioWav(audioCapture(), {bandwidthHz: audioBandwidthHz})], {type: 'audio/wav'}));
       const a = document.createElement('a'); a.href = url;
-      a.download = specCapture === 'average' ? 'scope-interval-means.wav' : 'scope-capture.wav'; a.click();
+      a.download = audioCaptureKind === 'average' ? 'scope-interval-means.wav' : 'scope-capture.wav'; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setAudioError('');
     } catch (error) { setAudioError(String(error.message || error)); }
@@ -204,7 +217,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   // cached spectrum after the underlying capture has been refused.
   useEffect(() => {
     const check = () => {
-      const refused = [...channels, ...specChannels].map(c => ({
+      const refused = [...channels, ...specChannels, ...(audioChannel ? [audioChannel] : [])].map(c => ({
         netId: c.netId, reason: readScopeCapture(board, c.handle).reason,
       })).filter(c => c.reason);
       const unique = refused.filter((c, i) => refused.findIndex(other =>
@@ -228,7 +241,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
     check();
     const id = setInterval(check, SPECTRUM_PERIOD_MS);
     return () => clearInterval(id);
-  }, [board, channels, specChannels, stopAudio]);
+  }, [board, channels, specChannels, audioChannel, stopAudio]);
 
   // (Re)attach channels whenever the board instance changes — an edit
   // rebuilds the engine and the old handles die with it — OR when the capture
@@ -280,6 +293,20 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   // cadence, so leaving one open on a bench nobody is transforming would be a
   // cost with no reading behind it.
   const netKey = channels.map(c => c.netId).join('|');
+  const audioNet = channels[0]?.netId;
+  useEffect(() => {
+    if (view !== 'spectrum' || audioInput !== 'average' || !audioNet || !board?.addScopeChannel) {
+      setAudioChannel(null); return undefined;
+    }
+    const handle = board.addScopeChannel({type: 'voltage', netId: audioNet, capture: 'average',
+      sampleRateHz: audioRateHz, depth: SCOPE_DEPTH,
+      ...scopeProbeOptions(probePreset, referenceNetId, {load: false})});
+    setAudioChannel({netId: audioNet, handle});
+    return () => {
+      setAudioChannel(null);
+      try {board.removeScopeChannel(handle);} catch { /* board gone */ }
+    };
+  }, [board, view, audioInput, audioNet, audioRateHz, probePreset, referenceNetId]);
   useEffect(() => {
     displayedReadouts.current = {time: [], spectrum: []};
     setTimeReadouts([]); setSpectrumReadouts([]);
@@ -689,28 +716,40 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
           : 'A min/max envelope is not a point-sample record. Point samples can alias above Nyquist; no analog anti-alias filter or ADC model is applied.'}
       </div>
       {view === 'spectrum' && <div data-testid="bw-scope-audio" style={{color: '#aab', fontSize: 10, marginBottom: 6}}>
-        <button onClick={replayAudio} disabled={!specChannels.length || captureErrors.length > 0 || invalidAudioBandwidth}
+        <label>{t('scopeAudioInput', lang)}{' '}
+          <select data-testid="bw-scope-audio-input" value={audioInput} onChange={e => setAudioInput(e.target.value)}>
+            <option value="average">{t('scopeCaptureMean', lang)}</option>
+            <option value="spectrum">{t('scopeAudioSpectrumInput', lang)}</option>
+          </select>
+        </label>{' '}
+        {audioInput === 'average' && <label>{t('scopeAudioRate', lang)}{' '}
+          <select data-testid="bw-scope-audio-rate" value={audioRateHz}
+            onChange={e => setAudioRateHz(Number(e.target.value))}>
+            {[10000, 100000].map(hz => <option key={hz} value={hz}>{formatHz(hz)}</option>)}
+          </select>{' '}
+        </label>}
+        <button onClick={replayAudio} disabled={!audioReady || captureErrors.length > 0 || invalidAudioBandwidth}
           data-testid="bw-scope-audio-play">{t('scopeAudioPlay', lang)}</button>{' '}
-        <button onClick={listenAudio} disabled={!audioEnabled || !specChannels.length || captureErrors.length > 0 || invalidAudioBandwidth}
+        <button onClick={listenAudio} disabled={!audioEnabled || !audioReady || captureErrors.length > 0 || invalidAudioBandwidth}
           title={t(audioEnabled ? 'scopeStreamFoot' : 'scopeStreamStartSimulation', lang)}
           data-testid="bw-scope-audio-listen">{t('scopeStreamListen', lang)}</button>{' '}
         <button onClick={stopAudio} data-testid="bw-scope-audio-stop">{t('scopeAudioStop', lang)}</button>{' '}
-        <button onClick={exportAudio} disabled={!specChannels.length || captureErrors.length > 0 || invalidAudioBandwidth}
+        <button onClick={exportAudio} disabled={!audioReady || captureErrors.length > 0 || invalidAudioBandwidth}
           data-testid="bw-scope-audio-wav">WAV</button>
         <div>{t('scopeAudioFoot', lang)}</div>
-        {specCapture === 'average' && <>
+        {audioCaptureKind === 'average' && <>
           <label>{t('scopeOutputBandwidth', lang)}{' '}
             <select data-testid="bw-scope-audio-bandwidth" value={audioBandwidthChoice}
               onChange={e => setAudioBandwidthChoice(e.target.value)}>
-              <option value="auto">{t('scopeBandwidthAuto', lang)} ({formatHz(Math.min(8000, specRateHz * .4))})</option>
+              <option value="auto">{t('scopeBandwidthAuto', lang)} ({formatHz(Math.min(8000, audioCaptureRate * .4))})</option>
               <option value="none">{t('scopeBandwidthNone', lang)}</option>
               {[1000, 2000, 4000, 8000].map(hz => <option key={hz} value={String(hz)}
-                disabled={hz > specRateHz * .45}>{formatHz(hz)}</option>)}
+                disabled={hz > audioCaptureRate * .45}>{formatHz(hz)}</option>)}
             </select>
           </label>
           {invalidAudioBandwidth && <div role="alert">{t('scopeAudioBandwidthInvalid', lang)}</div>}
           <div data-testid="bw-scope-aperture-description">{t('scopeApertureFoot', lang, {
-            us: spectra[0]?.apertureNs ? Number(spectra[0].apertureNs) / 1000 : '—',
+            us: audioAperture ? Number(audioAperture) / 1000 : '—',
           })}</div>
           <div>{t('scopeApertureAudioFoot', lang)}</div>
         </>}

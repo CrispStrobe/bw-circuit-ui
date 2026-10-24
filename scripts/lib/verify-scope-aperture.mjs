@@ -9,6 +9,7 @@ export async function verifyScopeAperture(page, origin) {
     if (!Native) return;
     window.AudioContext = class extends Native {
       createBufferSource() {
+        window.__scopeNativeContext = this;
         const source = super.createBufferSource();
         const record = {started: false, disconnected: false};
         window.__scopeNativeSources.push(record);
@@ -43,6 +44,13 @@ export async function verifyScopeAperture(page, origin) {
   if (!await page.locator('[data-instruments-column]').count()) await page.getByRole('button', {name: /Expand instruments panel/i}).click();
   if (!await page.locator('[data-scope-panel]').count()) await page.getByRole('button', {name: /Scope/i}).first().click();
   const scope = page.locator('[data-scope-panel]');
+  const allReleased = () => page.waitForFunction(() => window.__scopeNativeSources.every(s => !s.started || s.disconnected));
+  const startLive = async () => {
+    const before = await page.evaluate(() => window.__scopeNativeSources.filter(s => s.started).length);
+    await scope.getByTestId('bw-scope-audio-listen').click();
+    await page.waitForFunction(before => window.__scopeNativeSources.filter(s => s.started).length > before
+      && window.__scopeNativeSources.some(s => s.started && !s.disconnected), before);
+  };
   await scope.locator('select').last().selectOption('signal');
   await scope.getByRole('button', {name: '+ channel', exact: true}).click();
   await scope.getByTestId('bw-scope-view-spectrum').click();
@@ -60,7 +68,18 @@ export async function verifyScopeAperture(page, origin) {
   await page.waitForFunction(() => [...window.__board._scopeChannels.values()].some(c => c.capture === 'sample' && c.count >= 1000));
   const points = (await records()).find(r => r.capture === 'sample');
   assert.ok(points.values.every(v => Math.abs(v) < 1e-8), 'point sampling misses these authored narrow pulses');
+  assert.equal(await scope.getByTestId('bw-scope-audio-input').inputValue(), 'average');
+  await scope.getByTestId('bw-scope-audio-play').click();
+  await page.waitForFunction(() => window.__scopeNativeSources.some(s => s.started && s.peak > 0));
+  await scope.getByTestId('bw-scope-audio-stop').click(); await allReleased();
+  assert.equal(await scope.getByTestId('bw-scope-capture-mode').inputValue(), 'sample',
+    'default interval-mean audio does not change the FFT acquisition');
+  await scope.getByTestId('bw-scope-audio-input').selectOption('spectrum');
+  await page.waitForFunction(() => [...window.__board._scopeChannels.values()].every(c => c.capture !== 'average'));
+  await scope.getByTestId('bw-scope-spectrum-0').filter({hasText: /pts, .*Hz\/bin/}).waitFor();
+  await scope.getByRole('button', {name: 'RUN', exact: true}).click();
   await scope.getByTestId('bw-scope-capture-mode').selectOption('average');
+  await scope.getByTestId('bw-scope-spectrum-0').waitFor({state: 'detached'});
   await page.waitForFunction(() => [...window.__board._scopeChannels.values()].some(c => c.capture === 'average' && c.count >= 1000));
   const mean = (await records()).find(r => r.capture === 'average');
   assert.equal(mean.aperture, mean.interval); assert.equal(mean.interval, '100000');
@@ -69,7 +88,9 @@ export async function verifyScopeAperture(page, origin) {
   assert.ok(Math.abs(area - complete / 10 * .000004) < 1e-9,
     'actual triangle area survives independently of capture phase');
   assert.equal((await records()).filter(r => r.capture === 'sample').length, 0);
+  await scope.getByRole('button', {name: 'HOLD', exact: true}).click();
   await scope.getByTestId('bw-scope-aperture-description').filter({hasText: /100 µs/}).waitFor();
+  await scope.getByTestId('bw-scope-acquisition-0').filter({hasText: /Interval means.*aperture 100 µs/}).waitFor();
   const downloading = page.waitForEvent('download');
   await scope.getByTestId('bw-scope-audio-wav').click();
   const download = await downloading, wav = await readFile(await download.path());
@@ -79,21 +100,25 @@ export async function verifyScopeAperture(page, origin) {
   await scope.getByTestId('bw-scope-audio-play').click();
   await page.waitForFunction(() => window.__scopeNativeSources.some(s => s.started && s.rate === 10000 && s.peak > 0));
   await scope.getByTestId('bw-scope-audio-stop').click();
-  const allReleased = () => page.waitForFunction(() => window.__scopeNativeSources.every(s => !s.started || s.disconnected));
   await allReleased();
-  await scope.getByTestId('bw-scope-audio-listen').click();
+  await startLive();
   await scope.getByTestId('bw-scope-audio-stream-status').filter({hasText: /Playing|Buffering/}).waitFor();
   const before = mean.handle;
   await scope.getByTestId('bw-scope-audio-bandwidth').selectOption('none');
   await allReleased();
   assert.equal((await records()).find(r => r.capture === 'average').handle, before, 'output filtering never replaces the acquisition');
-  await scope.getByTestId('bw-scope-audio-listen').click();
+  await startLive();
   await scope.getByTestId('bw-scope-capture-mode').selectOption('sample');
   await allReleased();
   await page.waitForFunction(() => [...window.__board._scopeChannels.values()].every(c => c.capture !== 'average'));
-  await scope.getByTestId('bw-scope-audio-listen').click();
+  await startLive();
   await page.getByRole('button', {name: /Scope/i}).first().click();
   await scope.waitFor({state: 'detached'}); await allReleased();
+  const closed = await page.evaluate(() => ({time: window.__scopeNativeContext.currentTime,
+    count: window.__scopeNativeSources.length}));
+  await page.waitForFunction(time => window.__scopeNativeContext.currentTime > time + .06, closed.time);
+  assert.equal(await page.evaluate(() => window.__scopeNativeSources.length), closed.count,
+    'unmounted listening cannot schedule new native nodes');
   return ['authored pulses survive explicit aperture acquisition and actual WAV/native replay',
     'filter, capture and unmount changes release native audio without changing acquisition'];
 }

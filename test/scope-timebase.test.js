@@ -107,17 +107,24 @@ describe('scope timebase', () => {
     // (`addScopeChannel({type, netId})`) to say what was wrong with it, and an
     // unanchored match counted that as another call site.
     //
-    // Three since 2026-08-29: the initial re-attach, Add Channel, and D24's
+    // Four: the initial re-attach, Add Channel, the dedicated non-loading
+    // interval-mean audio tap (audioRateHz), and D24's
     // spectrum tap, which opens `capture: 'sample'` channels on the same nets
     // while the spectrum view is open. That one carries its OWN rate
     // (`specRateHz`), because a sample-series channel puts a solve point on
     // every sample instant and the rate is therefore a bill.
     const calls = [...src.matchAll(/board\.addScopeChannel\(\{[\s\S]*?\}\)/g)].map(m => m[0]);
-    assert.equal(calls.length, 3, `expected three addScopeChannel call sites, found ${calls.length}`);
+    assert.equal(calls.length, 4, `expected four addScopeChannel call sites, found ${calls.length}`);
     for (const c of calls) {
       assert.match(c, /sampleRateHz/, `a channel is still created without a rate: ${c}`);
       assert.match(c, /depth: SCOPE_DEPTH/, `a channel is still created without a depth: ${c}`);
     }
+    const audio = calls.find(c => /sampleRateHz: audioRateHz/.test(c));
+    assert.ok(audio, 'audio has its own explicit capture cadence');
+    assert.match(audio, /capture: 'average'/);
+    assert.match(audio, /load: false/);
+    assert.match(src, /\}, \[board, view, audioInput, audioNet, audioRateHz, probePreset, referenceNetId\]\);/,
+      'audio rate, input and electrical reference changes must replace its tap');
     // A channel's cadence is fixed at creation, so changing the rate must
     // rebuild them. Without this the control would move the label and nothing else.
     assert.match(src, /\}, \[board, sampleRateHz, probePreset, referenceNetId\]\);/,

@@ -1,4 +1,6 @@
-/** Finite replay of measured samples. Never reconstruct sound from FFT peaks. */
+/** Finite replay of measured points or explicitly identified interval means.
+ * Never reconstruct sound from FFT peaks.
+ */
 import {seriesFromScopeData} from '../model/fft.js';
 import {getAudioCtx} from './buzzer-audio.js';
 import {seriesFromApertureData} from '../model/scope-aperture-series.js';
