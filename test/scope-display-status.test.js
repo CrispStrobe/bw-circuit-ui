@@ -52,7 +52,7 @@ test('invalid clock, ring and window metadata cannot invent an acquisition', () 
   assert.equal(read(record([[1, 2]]), {range: {vLo: 5, vHi: 0}}).viewport, null);
 });
 
-test('Nyquist belongs only to actual point samples, never envelopes or unknown modes', () => {
+test('Nyquist belongs to declared uniform series, never envelopes or unknown modes', () => {
   const envelope = read(record([[1, 2]]));
   assert.equal(envelope.nyquistHz, null); assert.doesNotMatch(scopeDisplayLabel(envelope), /Nyquist/);
   const sample = read(record([[1, 1]], {capture: 'sample'}));
@@ -70,4 +70,16 @@ test('display status is an independent scalar snapshot and leaves raw bytes unto
   assert.equal(s.above, true); assert.equal(s.below, true); assert.equal(s.startTimeNs, '18080000');
   assert.equal(Object.hasOwn(s, 'samples'), false);
   assert.match(scopeDisplayLabel(s, 'de'), /gespeichert/); assert.match(scopeViewportWarning(s, 'de'), /Unter und über/);
+});
+
+test('explicit voltage means retain their aperture identity and series Nyquist in both languages',()=>{
+ const d=record([[1,1],[2,2]],{capture:'average',channelType:'voltage',apertureNs:1000n});
+ const before=d.samples.slice(),status=read(d);
+ assert.equal(status.ok,true);assert.equal(status.apertureNs,1000);assert.equal(status.nyquistHz,500000);
+ assert.match(scopeDisplayLabel(status),/Interval means · aperture 1 µs/);
+ assert.match(scopeDisplayLabel(status,'de'),/Intervallmittelwerte · Zeitfenster 1 µs/);
+ assert.doesNotMatch(scopeDisplayLabel(status),/Point samples|Unknown/);assert.deepEqual(d.samples,before);
+ for(const extra of [{apertureNs:undefined},{apertureNs:2000n},{channelType:'current'}])assert.equal(read({...d,...extra}).ok,false);
+ const nonscalar=record([[1,2],[3,4]],{capture:'average',channelType:'voltage',apertureNs:1000n});
+ assert.equal(read(nonscalar).visible,0);
 });

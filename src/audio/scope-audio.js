@@ -1,11 +1,15 @@
-/** Finite replay of measured samples. Never reconstruct sound from FFT peaks. */
+/** Finite replay of measured points or explicitly identified interval means.
+ * Never reconstruct sound from FFT peaks.
+ */
 import {seriesFromScopeData} from '../model/fft.js';
 import {getAudioCtx} from './buzzer-audio.js';
+import {seriesFromApertureData} from '../model/scope-aperture-series.js';
+import {apertureAudioFilter} from './scope-audio-filter.js';
 
 export const AUDIO_PER_VOLT = 0.05;
 
-export function scopeAudio(data) {
-  const series = seriesFromScopeData(data);
+export function scopeAudio(data, {bandwidthHz} = {}) {
+  const series = data?.capture === 'average' ? seriesFromApertureData(data) : seriesFromScopeData(data);
   if (!series.ok) throw new Error(series.reason);
   const {values, sampleRateHz} = series;
   if (!Number.isFinite(sampleRateHz) || sampleRateHz < 3000 || sampleRateHz > 192000) {
@@ -16,13 +20,18 @@ export function scopeAudio(data) {
     if (!Number.isFinite(value)) throw new Error('Audio capture contains a nonfinite sample');
     dcVolts += value / values.length;
   }
-  const samples = Float32Array.from(values, value => Math.max(-1, Math.min(1, (value - dcVolts) * AUDIO_PER_VOLT)));
-  return {samples, sampleRateHz, dcVolts};
+  const lowPass = apertureAudioFilter(data.capture, sampleRateHz, bandwidthHz);
+  const samples = Float32Array.from(values, value => {
+    const gained = Math.max(-1, Math.min(1, (value - dcVolts) * AUDIO_PER_VOLT));
+    return lowPass ? Math.max(-1, Math.min(1, lowPass(gained))) : gained;
+  });
+  return {samples, sampleRateHz, dcVolts,
+    ...(data.capture === 'average' ? {capture: 'average', apertureNs: series.apertureNs, bandwidthHz: bandwidthHz || 0} : {})};
 }
 
 /** Caller owns the returned stop function and calls it on replacement/unmount. */
-export async function playScopeCapture(data, context) {
-  const audio = scopeAudio(data); // refuse before creating audio nodes
+export async function playScopeCapture(data, context, options) {
+  const audio = scopeAudio(data, options); // refuse before creating audio nodes
   if (context === undefined) context = getAudioCtx();
   if (!context) throw new Error('Audio is unavailable in this browser');
   if (context.state === 'suspended' && typeof context.startRendering !== 'function') await context.resume();
@@ -43,8 +52,8 @@ export async function playScopeCapture(data, context) {
 }
 
 /** Mono PCM16 WAV at the capture's cadence (integer WAV rate rounded to nearest Hz). */
-export function scopeAudioWav(data) {
-  const {samples, sampleRateHz} = scopeAudio(data);
+export function scopeAudioWav(data, options) {
+  const {samples, sampleRateHz} = scopeAudio(data, options);
   const bytes = new ArrayBuffer(44 + samples.length * 2), v = new DataView(bytes);
   const text = (at, word) => [...word].forEach((c, i) => v.setUint8(at + i, c.charCodeAt(0)));
   text(0, 'RIFF'); v.setUint32(4, bytes.byteLength - 8, true); text(8, 'WAVE');

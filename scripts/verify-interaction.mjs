@@ -26,6 +26,7 @@
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import {verifyScopeAperture} from './lib/verify-scope-aperture.mjs';
 
 const PORT = Number(process.env.BW_GATE_PORT || 3142);
 /**
@@ -181,6 +182,8 @@ const EXPECTED = [
   'scope-viewport-warning',
   'scope-display-raw-and-hold',
   'component-limit-editing',
+  'scope-aperture-acquisition',
+  'scope-aperture-audio-lifecycle',
   'zero-page-errors',
 ];
 
@@ -1328,15 +1331,36 @@ try {
   }
 }
 
-// 6b. Sim transport: pause freezes board time coherently; step advances
-//     exactly one 50 ms tick; resume flows again.
-//
-//     The four assertions here read the BOARD CLOCK, not the screen. The
-//     presses are aimed pointer presses (see aimedPress) rather than
-//     Playwright clicks, because a Playwright click waits for the sidebar to
-//     stop moving and the sidebar is re-rendering on every 50 ms tick — that
-//     wait, not the app, is what used to report these four as "unclickable".
-{
+// 6b. Own-board transport requires an explicit analog fixture. The earlier
+// carrier/FG bench retains an MCU whose debugger may own and pause its board;
+// its disabled analog controls cannot establish this separate clock contract.
+try {
+  const fixture = {parts: [
+    {id: 'transport-v', kind: 'vsource', x: 100, y: 100, params: {volts: 1}},
+    {id: 'transport-r', kind: 'resistor', x: 250, y: 100, params: {ohms: 1000}},
+    {id: 'transport-g', kind: 'gnd', x: 100, y: 230, params: {}},
+  ], nets: [
+    {id: 'signal', terminals: [{part: 'transport-v', terminal: 'pos'}, {part: 'transport-r', terminal: 'a'}]},
+    {id: 'ground', terminals: [{part: 'transport-v', terminal: 'neg'}, {part: 'transport-r', terminal: 'b'}, {part: 'transport-g', terminal: 'gnd'}]},
+  ]};
+  if (!await page.getByRole('button', {name: /^📂 Open$/}).isVisible()) {
+    await page.getByRole('button', {name: 'More circuit controls', exact: true}).click();
+  }
+  const choosing = page.waitForEvent('filechooser');
+  await page.getByRole('button', {name: /^📂 Open$/}).click();
+  await (await choosing).setFiles({name: 'own-clock-transport.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(fixture))});
+  await page.waitForFunction(() => window.__circuit.parts.length === 3
+    && window.__circuit.parts.some(p => p.id === 'transport-v'));
+  await page.getByRole('radio', {name: /Build/i}).first().click();
+  await page.getByRole('radio', {name: /Sim/i}).first().click();
+  await openInstruments();
+  const resume = transportBtn(/Resume simulation/i);
+  if (await resume.isVisible()) {
+    const starting = await aimedPress(resume);
+    if (!starting.ok) throw new Error(`own-clock fixture did not start: ${starting.why}`);
+  }
+  await page.getByText('SIMULATING — circuit', {exact: true}).waitFor();
   const t = async () => await page.evaluate(() => String(window.__board?.getTime?.() ?? 'none'));
   await openInstruments();
   const pauseRes = await aimedPress(transportBtn(/Pause simulation/i));
@@ -1370,6 +1394,10 @@ try {
       'resume: time flows again',
       `resume did not restart the clock (${t3} -> ${t4})`);
   } else fail('transport-resume', `resume button unreachable: ${resumeRes.why}`);
+
+} catch (error) {
+  failAll(['transport-pause', 'transport-step', 'transport-resume'],
+    `explicit own-clock fixture: ${String(error).split('\n')[0]}`);
 }
 
 // 7. Schematic projection: toggle it on — standard symbols render beside
@@ -2396,6 +2424,16 @@ try {
 } catch (error) {
   failAll(CONTEXT_IDS, `analog file context/transport: ${String(error).split('\n')[0]}`);
 } finally {await contextPage.close();}
+
+const APERTURE_IDS = ['scope-aperture-acquisition', 'scope-aperture-audio-lifecycle'];
+const aperturePage = await browser.newPage({viewport: {width: 1600, height: 1000}});
+aperturePage.on('pageerror', error => errors.push(`aperture scope: ${error.message}`));
+try {
+  const outcomes = await verifyScopeAperture(aperturePage, `http://localhost:${PORT}`);
+  APERTURE_IDS.forEach((id, i) => verdict(id, true, outcomes[i], 'unreachable'));
+} catch (error) {
+  failAll(APERTURE_IDS, `actual aperture scope: ${String(error).split('\n')[0]}`);
+} finally {await aperturePage.close();}
 
 verdict('zero-page-errors', errors.length === 0,
   'zero page errors',

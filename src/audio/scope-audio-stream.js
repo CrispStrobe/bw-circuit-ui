@@ -3,13 +3,18 @@
  */
 import {AUDIO_PER_VOLT} from './scope-audio.js';
 import {getAudioCtx} from './buzzer-audio.js';
+import {apertureCaptureInfo} from '../model/scope-aperture-series.js';
+import {apertureAudioFilter} from './scope-audio-filter.js';
 
 export const STREAM_MAX_SECONDS = 0.25;
 export const STREAM_PREFILL_SECONDS = 0.05;
 export const STREAM_HIGH_PASS_HZ = 20;
 
 function capture(data) {
-  if (!data?.samples || data.capture !== 'sample') throw new Error('Continuous audio needs a sample capture, not an envelope');
+  if (data?.capture === 'average') {
+    const info = apertureCaptureInfo(data);
+    if (!info.ok) throw new Error(info.reason);
+  } else if (!data?.samples || data.capture !== 'sample') throw new Error('Continuous audio needs a sample capture, not an envelope');
   if (data.channelType && data.channelType !== 'voltage') throw new Error('Continuous audio needs voltage samples');
   const depth = data.samples.length / 2;
   if (!Number.isInteger(depth) || depth < 1 || !Number.isSafeInteger(data.count) || data.count < 0 ||
@@ -24,9 +29,11 @@ function capture(data) {
 }
 
 export async function createScopeAudioStream(readCapture, {
-  context, onStatus = () => {}, autoPump = true,
+  context, onStatus = () => {}, autoPump = true, bandwidthHz,
 } = {}) {
   const initial = capture(readCapture());
+  const captureKind = initial.data.capture;
+  const lowPass = apertureAudioFilter(captureKind, initial.rate, bandwidthHz);
   if (context === undefined) context = getAudioCtx();
   if (!context) throw new Error('Audio is unavailable in this browser');
   if (context.state === 'suspended') await context.resume();
@@ -59,6 +66,7 @@ export async function createScopeAudioStream(readCapture, {
     try {
       if (context.state !== 'running') throw new Error('Audio context is no longer running');
       const c = capture(readCapture());
+      if (c.data.capture !== captureKind) throw new Error('Audio capture mode changed');
       if (c.interval !== interval) throw new Error('Audio capture cadence changed');
       if (!c.available) {
         if (cursor !== null) throw new Error('Audio capture reset');
@@ -76,7 +84,8 @@ export async function createScopeAudioStream(readCapture, {
           const filtered = alpha * (previousOutput + value - previousInput);
           if (!Number.isFinite(filtered)) throw new Error('Nonfinite audio filter result');
           previousInput = value; previousOutput = filtered;
-          pending.push(Math.max(-1, Math.min(1, filtered * AUDIO_PER_VOLT)));
+          const gained = Math.max(-1, Math.min(1, filtered * AUDIO_PER_VOLT));
+          pending.push(lowPass ? Math.max(-1, Math.min(1, lowPass(gained))) : gained);
         }
         cursor = c.end;
       }

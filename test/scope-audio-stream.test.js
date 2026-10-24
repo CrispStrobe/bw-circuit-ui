@@ -140,3 +140,40 @@ test('after a late prepared batch, following audio begins at its actual schedule
   assert.equal(f.states.at(-1).underruns,1);assert.equal(third.buffer.sampleRate,10000);
  }finally{f.stream.stop();}
 });
+
+async function apertureFixture(bandwidthHz) {
+ const capture=ring();capture.data.capture='average';capture.data.apertureNs=capture.data.sampleIntervalNs;
+ const ctx=context(),states=[];
+ const stream=await createScopeAudioStream(capture.read,{context:ctx,autoPump:false,bandwidthHz,onStatus:s=>states.push(s)});
+ return {capture,ctx,states,stream};
+}
+
+test('interval-mean live audio preserves shared filter history across transport chunks',async()=>{
+ const filtered=await apertureFixture(4000),plain=await apertureFixture();
+ try {
+  const {createScopeAudioLowPass}=await import('../src/audio/scope-audio-filter.js');
+  const values=Array.from({length:1000},(_,i)=>2.5+Math.sin(2*Math.PI*i/16));
+  for(const [start,end] of [[0,500],[500,600],[600,1000]]) for(const f of [filtered,plain]){
+   f.capture.add(values.slice(start,end));f.stream.pump();f.ctx.currentTime+=.01;
+  }
+  const actual=filtered.ctx.sources.flatMap(s=>[...s.buffer.samples]);
+  const reference=createScopeAudioLowPass(10000,4000);
+  const expected=plain.ctx.sources.flatMap(s=>[...s.buffer.samples]).map(reference);
+  assert.equal(actual.length,1000);assert.equal(actual.length,expected.length);
+  actual.forEach((v,i)=>assert.ok(Math.abs(v-expected[i])<1e-7,`sample ${i}`));
+  assert.equal(filtered.states.at(-1).state,'playing');assert.equal(filtered.states.at(-1).underruns,0);
+ } finally {filtered.stream.stop();plain.stream.stop();}
+});
+
+for(const fault of ['duration','mode','channel','scalar'])test(`changed aperture ${fault} refuses and releases live nodes`,async()=>{
+ const f=await apertureFixture(4000);
+ try {
+  f.capture.add(Array.from({length:500},(_,i)=>Math.sin(2*Math.PI*i/16)));f.stream.pump();
+  if(fault==='duration')f.capture.data.apertureNs=50000n;
+  if(fault==='mode')f.capture.data.capture='sample';
+  if(fault==='channel')f.capture.data.channelType='current';
+  if(fault==='scalar'){f.capture.add([1]);f.capture.data.samples[1001]=2;}
+  f.stream.pump();assert.equal(f.states.at(-1).state,'error');assert.equal(f.states.at(-1).queuedSeconds,0);
+  assert.ok(f.ctx.sources.every(s=>s.stops===1&&s.disconnects===1));
+ } finally {f.stream.stop();}
+});

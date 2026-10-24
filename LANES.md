@@ -1,4 +1,4 @@
-2026-10-23 aperture audio and explicit spectrum acquisition — CLAIMED, same circuit owner.
+2026-10-23 aperture audio and explicit spectrum acquisition — DONE (source candidate), same circuit owner.
 Base f9cfae50; consumer follow-up to the normally merged Board aperture claim667.
 Actual saved organ point acquisitions miss narrow pulses (5 of18 after startup)
 while envelope and qualified solver history retain them. The source producer's
@@ -33,6 +33,38 @@ rendered WebAudio and real browser replay/WAV/spectrum selection checks, correct
 installed package identity and every enabled exact-head check. Preserve original
 point-alias evidence. Merge claim before consumer implementation and adopt only
 qualified canonical Board inputs; no private engine fork or loader alias.
+Implementation follows normally merged claim #114 aa76d96 and qualified Board
+#665 merge761153ff. Exact canonical installed dev dependency, lock and derived
+runtime provenance agree. Dedicated non-loading audio interval means default to
+100 kHz independently of the unchanged 10 kHz point-spectrum default. Explicit
+spectrum means and audio-source/rate/bandwidth choices retain actual metadata.
+A bounded second-order Butterworth runs at capture cadence before native
+resampling, shared by replay, WAV and streaming; fixed gain, clipping and existing
+DC/queue/refusal policies remain. Readout/HOLD work from #117 is composed and
+preserved; validated scalar means receive their actual aperture identity.
+
+Actual saved-organ captures qualify all eight keys and releases. Independent
+native Chromium/WebKit rendering passes 16/16 pitch/correlation cases; actual
+native WAV decoding passes 16/16. The retained unfiltered E4 control detects its
+half-frequency at the same criterion. A fresh default-capture campaign passes
+all eight keys, with 28,373–48,068 solver attempts versus the previous point-grid
+123,735–153,874; this measures solver work, not whole-app real-time speed. Its
+actual captured means also pass all 16 native browser pitch cases. No note is
+synthesized or reconstructed from key names. Focused final instrument controls
+pass 87/87, zero skips, including separate capture cadence and teardown guards.
+The old timebase source census explicitly admits the new fourth creation site,
+retaining rate/depth checks and adding non-loading mean-tap/lifecycle assertions.
+
+The actual full component gate passed 73/73 after a causal fixture repair:
+the earlier function-generator fixture retained an MCU with clock ownership,
+so three analogue transport assertions could not run. Importing an explicit
+three-part analogue fixture restores the intended clock owner. Original
+pause, exact 50 ms step and resume assertions remain unchanged. The original
+70/73 failure is retained. Final 100 kHz-default component gate passes 73/73,
+with the exact roll-call and zero page errors. Every enabled exact-head hosted
+check remains a landing gate. Installed Lite/physical acceptance is
+separate; no physical acoustic or universal SPICE-equivalence claim is made.
+
 2026-10-24 scope acquisition and viewport readout — DONE (source candidate), Codex circuit owner.
 Base9c53ef66b519c6417948ca867f453a98e2bbab91; isolated scope-display branch.
 Own only this ledger, src/components/ScopePanel.jsx, a new pure
@@ -91,7 +123,7 @@ change during HOLD and a visible redraw on RUN keep pixel evidence sensitive.
 No model, expectation, tolerance or time budget was changed; the original red
 is retained. Final exact-head CI remains required before landing and adoption.
 
-2026-10-23 versioned literal-PULSE consumer qualification — CLAIMED, same circuit owner.
+2026-10-23 versioned literal-PULSE consumer qualification — DONE (source candidate), same circuit owner.
 Base f9cfae50; additive environment envelope for merged precision claim #109.
 The pending Board #665 producer now owns a source/hash/version-admitted separate
 ngspice47 installer. The distribution42 oracle and modern47 disagree on literal
@@ -115,6 +147,15 @@ Merge this additive claim before implementation. Require installed-package
 identity, wrong/missing/altered oracle refusals and actual public-adapter pulse
 readings against admitted47, plus unchanged default-oracle precision controls
 and every enabled exact-head check. Preserve all original version-drift evidence.
+
+Implementation invokes only the exact installed canonical Board761153ff
+installer in CI, under a separate prefix and explicit NGSPICE_LITERAL_ORACLE.
+The literal-PULSE row consumes its admitted actual 17-digit vectors at all six
+unchanged times and the original 2e-4 V bound. Default ngspice/PATH and every
+other family remain unchanged. Missing/wrong/hash-altered oracle controls refuse
+before execution. The combined precision/provenance/reader/admission cohort
+passes 33/33, zero skips, including the formerly failing pulse row. Hosted
+qualification remains required before landing or Lite adoption.
 
 2026-10-23 precise source-analysis SPICE comparisons — CLAIMED, Codex circuit owner.
 Base2debbe3; follow-up to the measured-components adoption audit.
