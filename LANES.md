@@ -44,7 +44,17 @@ passed or skipped model test. Hosted installed-package/Node22 qualification is
 mandatory. Three added real-browser scenarios cover prefix/wrap and separate
 sample metadata, actual V/div warning/clear with byte-identical CSV, and HOLD
 while the real source capture advances. No local build or browser was run.
-Final exact-head CI remains required before landing and Lite adoption.
+The first browser qualification at4ace29a
+[CI40064072807](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/40064072807)
+reported68/71 passes: the new HOLD proof read its 15000-count invariant before
+the asynchronous Step request completed, preventing three remaining outcomes.
+The actual clock queues cooperative work and ignores another Step while busy.
+The forward proof now clicks only an enabled control and waits for the exact
+public clock, unchanged capture count and ready state before inspecting it.
+Missing/stale resume readouts and canvases are refused; a requested viewport
+change during HOLD and a visible redraw on RUN keep pixel evidence sensitive.
+No model, expectation, tolerance or time budget was changed; the original red
+is retained. Final exact-head CI remains required before landing and adoption.
 
 2026-10-23 versioned literal-PULSE consumer qualification — CLAIMED, same circuit owner.
 Base f9cfae50; additive environment envelope for merged precision claim #109.

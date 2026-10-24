@@ -2244,6 +2244,28 @@ try {
     'real scope picker and Build/Sim reset retain handle and capture all first 5000 envelopes',
     'first post-reset 50ms capture is incomplete or carries old timestamps');
 
+  const stepCapture = async expectedCount => {
+    const control = contextPage.getByRole('button', {name: /Step one tick|Advance one 50/i});
+    const ready = async () => contextPage.waitForFunction(button =>
+      !!button && button.isConnected && !button.disabled, await control.elementHandle());
+    await ready();
+    const before = await contextPage.evaluate(() => String(window.__board.getTime()));
+    const target = String(BigInt(before) + 50000000n);
+    await control.click(); // actionability waits for the real enabled control
+    try {
+      await contextPage.waitForFunction(({h, count, time}) => {
+        const b = window.__board;
+        return String(b.getTime()) === time && b.getScopeData(h).count === count;
+      }, {h: handle, count: expectedCount, time: target});
+      await ready(); // cooperative completion, not merely return from the click
+    } catch (error) {
+      const actual = await contextPage.evaluate(h => {
+        try {return {time: String(window.__board.getTime()), count: window.__board.getScopeData(h).count};}
+        catch (e) {return {error: String(e)};}
+      }, handle);
+      throw new Error(`scope step expected time=${target}/count=${expectedCount}, actual=${JSON.stringify(actual)}: ${String(error).split('\n')[0]}`);
+    }
+  };
   // Readouts describe this actual retained capture, not the rate selector.
   const readout = scope.getByTestId('bw-scope-acquisition-0');
   await contextPage.waitForFunction(() => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
@@ -2277,7 +2299,7 @@ try {
   if (await downloadCsv() !== beforeDisplay) throw new Error('display controls altered raw scope CSV');
   verdict(CONTEXT_IDS[5], true, 'real vertical controls warn and clear without changing raw CSV', 'unreachable');
 
-  await contextPage.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+  await stepCapture(10000);
   await contextPage.waitForFunction(() => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
     ?.getAttribute('data-wrapped') === 'true');
   const wrappedStart = await readout.getAttribute('data-start-time-ns');
@@ -2294,7 +2316,7 @@ try {
   // A constant/periodic signal can redraw to the same pixels. Request a new
   // viewport during HOLD, then require a visibly different picture on RUN.
   await scope.getByTestId('bw-scope-center-0').fill('2');
-  await contextPage.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+  await stepCapture(15000);
   if (await contextPage.evaluate(h => window.__board.getScopeData(h).count, handle) !== 15000) {
     throw new Error('HOLD positive control did not advance the actual capture');
   }
@@ -2317,12 +2339,17 @@ try {
   await scope.getByTestId('bw-scope-view-spectrum').click();
   await contextPage.waitForFunction(() => window.__board.getScopeChannels()
     .some(h => window.__board.getScopeData(h).capture === 'sample'));
-  await contextPage.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+  await stepCapture(20000);
   await contextPage.waitForFunction(() => {
     const el = document.querySelector('[data-testid="bw-scope-acquisition-0"]');
     return el?.getAttribute('data-capture') === 'sample' && /Point samples.*Nyquist/.test(el.textContent)
       && Number(el.getAttribute('data-retained')) > 0;
   });
+  const point = await contextPage.evaluate(() => window.__board.getScopeChannels()
+    .map(h => window.__board.getScopeData(h)).find(d => d.capture === 'sample'));
+  if (point.count !== 500 || await readout.getAttribute('data-retained') !== '500') {
+    throw new Error('point readout did not retain the completed 50ms capture');
+  }
   verdict(CONTEXT_IDS[4], true, 'actual prefix, wrapped envelope and separate point-sample/Nyquist metadata are explicit', 'unreachable');
   await scope.getByTestId('bw-scope-view-time').click();
 
