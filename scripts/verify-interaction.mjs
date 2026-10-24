@@ -26,6 +26,7 @@
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import {verifyScopeAperture} from './lib/verify-scope-aperture.mjs';
 
 const PORT = Number(process.env.BW_GATE_PORT || 3142);
 /**
@@ -178,6 +179,8 @@ const EXPECTED = [
   'own-clock-status',
   'scope-sim-reset-epoch',
   'component-limit-editing',
+  'scope-aperture-acquisition',
+  'scope-aperture-audio-lifecycle',
   'zero-page-errors',
 ];
 
@@ -2277,6 +2280,16 @@ try {
 } catch (error) {
   failAll(CONTEXT_IDS, `analog file context/transport: ${String(error).split('\n')[0]}`);
 } finally {await contextPage.close();}
+
+const APERTURE_IDS = ['scope-aperture-acquisition', 'scope-aperture-audio-lifecycle'];
+const aperturePage = await browser.newPage({viewport: {width: 1600, height: 1000}});
+aperturePage.on('pageerror', error => errors.push(`aperture scope: ${error.message}`));
+try {
+  const outcomes = await verifyScopeAperture(aperturePage, `http://localhost:${PORT}`);
+  APERTURE_IDS.forEach((id, i) => verdict(id, true, outcomes[i], 'unreachable'));
+} catch (error) {
+  failAll(APERTURE_IDS, `actual aperture scope: ${String(error).split('\n')[0]}`);
+} finally {await aperturePage.close();}
 
 verdict('zero-page-errors', errors.length === 0,
   'zero page errors',

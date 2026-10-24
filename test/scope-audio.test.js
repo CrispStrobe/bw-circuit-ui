@@ -53,3 +53,23 @@ test('audio unavailability and resume failure reject rather than claim playback'
   await assert.rejects(playScopeCapture(signal(),null),/unavailable/);
   await assert.rejects(playScopeCapture(signal(),{state:'suspended',resume:async()=>{throw new Error('denied');}}),/denied/);
 });
+
+test('finite aperture replay and WAV use identical explicit filtering without changing raw measurements',()=>{
+ const raw={...signal(),capture:'average',channelType:'voltage',apertureNs:100000n,startTNs:100000n};
+ const before=raw.samples.slice(),options={bandwidthHz:4000};
+ const audio=scopeAudio(raw,options),wav=new DataView(scopeAudioWav(raw,options));
+ assert.equal(audio.capture,'average');assert.equal(audio.apertureNs,100000n);assert.equal(audio.bandwidthHz,4000);
+ audio.samples.forEach((v,i)=>assert.equal(wav.getInt16(44+i*2,true),Math.round(v*(v<0?32768:32767))));
+ assert.deepEqual(raw.samples,before);
+ const twice={...raw,samples:Float64Array.from(raw.samples,v=>2.5+2*(v-2.5))};
+ const louder=scopeAudio(twice,options);
+ audio.samples.forEach((v,i)=>assert.ok(Math.abs(louder.samples[i]-2*v)<1e-8,'fixed voltage gain, no normalization'));
+});
+
+test('aperture metadata and invalid output bandwidth refuse before native node allocation',async()=>{
+ const raw={...signal(),capture:'average',channelType:'voltage',apertureNs:50000n,startTNs:0n};
+ const ctx={state:'running',createBuffer(){throw new Error('audio nodes must not be allocated');}};
+ await assert.rejects(playScopeCapture(raw,ctx,{bandwidthHz:4000}),/Aperture duration/);
+ raw.apertureNs=100000n;
+ await assert.rejects(playScopeCapture(raw,ctx,{bandwidthHz:5000}),/bandwidth/);
+});
