@@ -2291,6 +2291,9 @@ try {
   await scope.getByTestId('bw-scope-hold').click();
   const heldText = await readout.textContent();
   const heldPixels = await scope.locator('canvas').evaluate(c => c.toDataURL());
+  // A constant/periodic signal can redraw to the same pixels. Request a new
+  // viewport during HOLD, then require a visibly different picture on RUN.
+  await scope.getByTestId('bw-scope-center-0').fill('2');
   await contextPage.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
   if (await contextPage.evaluate(h => window.__board.getScopeData(h).count, handle) !== 15000) {
     throw new Error('HOLD positive control did not advance the actual capture');
@@ -2301,7 +2304,8 @@ try {
   await scope.getByTestId('bw-scope-hold').click();
   await contextPage.waitForFunction(old => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
     ?.getAttribute('data-start-time-ns') !== old, wrappedStart);
-  verdict(CONTEXT_IDS[6], true, 'HOLD freezes real picture/readout while acquisition advances; RUN catches up', 'unreachable');
+  await contextPage.waitForFunction(old => document.querySelector('[data-scope-panel] canvas')?.toDataURL() !== old, heldPixels);
+  verdict(CONTEXT_IDS[6], true, 'HOLD freezes picture/readout despite live capture and viewport requests; RUN visibly redraws', 'unreachable');
 
   await scope.getByTestId('bw-scope-view-spectrum').click();
   await contextPage.waitForFunction(() => window.__board.getScopeChannels()
