@@ -33,6 +33,37 @@ rendered WebAudio and real browser replay/WAV/spectrum selection checks, correct
 installed package identity and every enabled exact-head check. Preserve original
 point-alias evidence. Merge claim before consumer implementation and adopt only
 qualified canonical Board inputs; no private engine fork or loader alias.
+2026-10-24 scope acquisition and viewport readout — CLAIMED, Codex circuit owner.
+Base9c53ef66b519c6417948ca867f453a98e2bbab91; isolated scope-display branch.
+Own only this ledger, src/components/ScopePanel.jsx, a new pure
+src/model/scope-display-status.js, test/scope-display-status.test.js,
+package.json test registration and the matching real-component checks in
+scripts/verify-interaction.mjs. Report actual capture mode, interval, depth and
+filled/displayed record, truthful sampled Nyquist and absent analog anti-alias
+filter; warn about finite values outside the displayed channel viewport without
+changing or clipping retained samples. Distinguish time min/max envelope from
+the separate sample-series spectrum. Preserve HOLD/prefix/ring-wrap/fault
+semantics and real CSV/probe/solver identities. No invented ADC resolution,
+noise, filtering, hardware bandwidth or physical-accuracy claim.
+
+The preceding fixed Lite CLI campaign40057471489 executed312 authored parameter
+cases across12 topologies:264 ngspice42 and48 explicitly nominal references.
+Independent original readers agree on312/312 and87488 numerical checks; all
+4448 original files reconcile. This is not imported-corpus or physical-device
+proof and provides no demonstrated model failure to patch. The remaining
+bounded task is honest instrument presentation plus actual GUI proof.
+
+Preserve open aperture-audio consumer claim#114: do not alter tap attachment,
+capture selection, FFT/audio calculations, audio scheduling or its future mode
+controls. This claim owns only additive readout/warning blocks and their pure
+helper; a future aperture mode must remain explicitly identified, never silently
+relabeled as point sampling. No model, engine, package pin/lock, workflow or
+other product source change. Lite pin/GUI integration follows under a separate
+consumer claim after this upstream source qualifies and lands. Merge this claim
+before implementation. Require exact-boundary/empty/gap/zoom/wrap/held controls,
+load-bearing negatives, real browser overrange/mode/limits checks and unchanged
+raw CSV records, plus every enabled exact-head check. No local heavy build.
+
 2026-10-23 versioned literal-PULSE consumer qualification — CLAIMED, same circuit owner.
 Base f9cfae50; additive environment envelope for merged precision claim #109.
 The pending Board #665 producer now owns a source/hash/version-admitted separate
@@ -94,6 +125,13 @@ that original assertion and evidence. Qualified immutable Board adoption remains
 pending #665 and its versioned-oracle claim #666; this reader does not change the
 engine pin or the pulse comparison. Existing scripts register the new controls.
 Exact-head hosted qualification is still required for this test-only candidate.
+
+Reader follow-up: exact requested solver instants now retain their actual raw
+endpoint value, avoiding cancellation to zero or needless nonfinite subtraction.
+Both endpoint controls fail on the merged reader; all 13 reader controls and
+registration checks pass after repair. Original observation times, brackets,
+interpolation between observations and all numerical bounds remain unchanged.
+Every enabled exact-head hosted check remains required before landing.
 
 2026-10-23 measurement engine dependency alignment — DONE (source candidate), Codex circuit owner.
 Base2dc588c; same owned source worktree /private/tmp/bw-circuit-audio-audit-20261021.
