@@ -2345,9 +2345,12 @@ try {
     return el?.getAttribute('data-capture') === 'sample' && /Point samples.*Nyquist/.test(el.textContent)
       && Number(el.getAttribute('data-retained')) > 0;
   });
-  const point = await contextPage.evaluate(() => window.__board.getScopeChannels()
-    .map(h => window.__board.getScopeData(h)).find(d => d.capture === 'sample'));
-  if (point.count !== 500 || await readout.getAttribute('data-retained') !== '500') {
+  const pointCount = await contextPage.evaluate(() => {
+    const point = window.__board.getScopeChannels().map(h => window.__board.getScopeData(h))
+      .find(d => d.capture === 'sample');
+    return point ? point.count : null;
+  });
+  if (pointCount !== 500 || await readout.getAttribute('data-retained') !== '500') {
     throw new Error('point readout did not retain the completed 50ms capture');
   }
   verdict(CONTEXT_IDS[4], true, 'actual prefix, wrapped envelope and separate point-sample/Nyquist metadata are explicit', 'unreachable');
