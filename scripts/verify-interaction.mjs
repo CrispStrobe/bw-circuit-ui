@@ -2301,10 +2301,17 @@ try {
   if (await readout.textContent() !== heldText || await scope.locator('canvas').evaluate(c => c.toDataURL()) !== heldPixels) {
     throw new Error('HOLD followed live data instead of the frozen display');
   }
+  const freshStart = await contextPage.evaluate(h => String(window.__board.getScopeData(h).startTNs), handle);
+  if (freshStart === wrappedStart) throw new Error('actual record origin did not advance');
   await scope.getByTestId('bw-scope-hold').click();
-  await contextPage.waitForFunction(old => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
-    ?.getAttribute('data-start-time-ns') !== old, wrappedStart);
-  await contextPage.waitForFunction(old => document.querySelector('[data-scope-panel] canvas')?.toDataURL() !== old, heldPixels);
+  await contextPage.waitForFunction(expected => {
+    const el = document.querySelector('[data-testid="bw-scope-acquisition-0"]');
+    return !!el && el.getAttribute('data-start-time-ns') === expected;
+  }, freshStart);
+  await contextPage.waitForFunction(old => {
+    const canvas = document.querySelector('[data-scope-panel] canvas');
+    return !!canvas && canvas.toDataURL() !== old;
+  }, heldPixels);
   verdict(CONTEXT_IDS[6], true, 'HOLD freezes picture/readout despite live capture and viewport requests; RUN visibly redraws', 'unreachable');
 
   await scope.getByTestId('bw-scope-view-spectrum').click();
