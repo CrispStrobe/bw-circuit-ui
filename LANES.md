@@ -60,8 +60,9 @@ the earlier function-generator fixture retained an MCU with clock ownership,
 so three analogue transport assertions could not run. Importing an explicit
 three-part analogue fixture restores the intended clock owner. Original
 pause, exact 50 ms step and resume assertions remain unchanged. The original
-70/73 failure is retained. Final 100 kHz-default gate and every enabled exact-head
-hosted check remain qualification gates. Installed Lite/physical acceptance is
+70/73 failure is retained. Final 100 kHz-default component gate passes 73/73,
+with the exact roll-call and zero page errors. Every enabled exact-head hosted
+check remains a landing gate. Installed Lite/physical acceptance is
 separate; no physical acoustic or universal SPICE-equivalence claim is made.
 
 2026-10-24 scope acquisition and viewport readout — DONE (source candidate), Codex circuit owner.
