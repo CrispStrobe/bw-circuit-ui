@@ -1,4 +1,4 @@
-2026-10-25 ideal ADC view of actual point captures — CLAIM, Codex circuit/instrument owner.
+2026-10-25 ideal ADC view of actual point captures — IMPLEMENTED (qualification required), Codex circuit/instrument owner.
 Exact base `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`; branch
 `claim/scope-digitizer-view-20261025`. Ordered campaign step5 follows the
 bounded LM741 assessment and qualified meter-current authority repair in
@@ -48,6 +48,30 @@ and prove raw samples/time/probe loading are untouched by the view. Every
 enabled exact-head source/browser check must succeed before matched merge.
 No Board law/source, other importer, profile/budget/tolerance, source payload,
 package/pin/lock, workflow, deployment, long-watch or physical-noise-model edit.
+
+Claim #121 merged before implementation. Exact integer arithmetic constructs
+ordered decision cuts and correctly rounded reconstruction levels; focused
+controls distinguish offset/subnormal adjacent inputs, genuine code zero,
+clipping, invalid grids and retained gaps. Nine source mutations are detected,
+including a wrongly rounded error bound; broader independent decimal/offset
+controls exposed that initial evidence gap before qualification.
+
+CLI batch/watch outputs retain raw voltage, means and waveform comparisons,
+with separately labelled codes/reconstructions. Optional CSV pairs raw and
+modeled values; receipt verification requires an external expected ADC range
+and resolution. The existing CLI complete-capture boundary refuses retained
+gaps; a GUI-derived view may retain and explicitly export gaps. Five new actual
+CLI controls and selected default paths pass. The unchanged installed-peer
+provenance control is tested with its declared old package, separately from
+explicit newer-engine controls; no provenance assertion or pin is weakened.
+
+The shipping primary time view uses the same transform for drawing, trigger,
+readout and CSV. It freezes the paired snapshot on HOLD and listens for actual
+reset/restore notifications. Eight added browser scenarios cover an imported
+bench with one loaded probe, raw/clock preservation, reconstructed triggering,
+held export, reset/advance ABA, source/capture refusals and three causal served
+UI mutations. Those actual browser scenarios and all enabled exact-head checks
+remain mandatory; local parse and scalar controls are not browser qualification.
 
 2026-10-25 imported measurement contract repairs — IMPLEMENTED (qualification pending), Codex circuit/instrument owner.
 Exact base91d8434a79d373cef2837c137ab356356f1a3b44; branch
