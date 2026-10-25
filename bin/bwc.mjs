@@ -522,6 +522,7 @@ switch (cmd) {
     const scopeSpecs = (opts.scope || []).map(value => {
       try { return parseScopeSpec(value); } catch (error) { return die(error.message); }
     });
+    if (adcModel&&!scopeSpecs.length) die('ADC view needs at least one --scope');
     const meterSpecs = (opts.meter || []).map(value => {
       try { return parseMeterSpec(value); } catch (error) { return die(error.message); }
     });
