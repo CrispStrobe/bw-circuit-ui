@@ -883,7 +883,9 @@ bwc verify-receipt modeled.receipt.json --input divider.cir --csv modeled.csv \
 ```
 
 The three ADC options are all-or-none and available only to `measure` and
-`verify-receipt`. They select one deterministic **ideal uniform reconstruction**
+`verify-receipt`. A measurement must select at least one `--scope`; meter-only
+ADC requests refuse before capture or artifact creation. They select one
+deterministic **ideal uniform reconstruction**
 of the actual voltage point samples. Bits must be an integer from 1 to 16;
 the finite input range must increase and admit distinct representable levels
 and decisions. Invalid or unrepresentable configurations refuse before capture
