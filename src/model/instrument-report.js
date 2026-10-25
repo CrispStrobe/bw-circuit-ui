@@ -126,8 +126,15 @@ export function precisionCaptureBudget(clock, profile, netCount, domain = 'passi
       || !(Number.isFinite(profile.maxStepSec) && profile.maxStepSec>0)) {
     throw new Error('precision batch requires the fixed bounded precision-v1 engine contract');
   }
+  const hasAuthoredStep = Object.hasOwn(profile,'authoredMaxStepSec');
+  const authoredMaxStepSec = profile.authoredMaxStepSec;
+  if (hasAuthoredStep && !(Number.isFinite(authoredMaxStepSec) && authoredMaxStepSec>0)) {
+    throw new Error('precision batch authoredMaxStepSec must be a positive finite number');
+  }
+  const effectiveMaxStepSec = hasAuthoredStep
+    ? Math.min(profile.maxStepSec,authoredMaxStepSec) : profile.maxStepSec;
   const minimumAdaptiveAttempts = Math.max(clock.captureSamples,
-    Math.ceil(Number(clock.durationNs)/1e9/profile.maxStepSec));
+    Math.ceil(Number(clock.durationNs)/1e9/effectiveMaxStepSec));
   if (minimumAdaptiveAttempts>profile.maxAttempts) {
     throw new Error(`precision batch preflight needs ${minimumAdaptiveAttempts} adaptive attempts; limit is ${profile.maxAttempts}`);
   }
