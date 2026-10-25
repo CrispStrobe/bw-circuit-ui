@@ -871,3 +871,63 @@ and 738 meter values, with maximum output/voltage-mean errors of 3.637 nV and
 precision surface passes 138/138 with no skips. This upstream result does not
 establish later Lite adoption, deployment or physical-device fidelity. Follow
 the [ordered consumer/regression campaign](CIRCUIT-INSTRUMENT-NEXT.md).
+
+### Opt-in ideal ADC view
+
+```sh
+bwc measure divider.cir --scope V1.pos,V1.neg --duration 4us --rate 1MHz \
+  --adc-bits 8 --adc-low -1 --adc-high 1 --csv modeled.csv \
+  --receipt modeled.receipt.json --json
+bwc verify-receipt modeled.receipt.json --input divider.cir --csv modeled.csv \
+  --adc-bits 8 --adc-low -1 --adc-high 1 --json
+```
+
+The three ADC options are all-or-none and available only to `measure` and
+`verify-receipt`. They select one deterministic **ideal uniform reconstruction**
+of the actual voltage point samples. Bits must be an integer from 1 to 16;
+the finite input range must increase and admit distinct representable levels
+and decisions. Invalid or unrepresentable configurations refuse before capture
+and artifact creation. Full scale is input-referred and independent of V/div.
+
+There are `2^bits` endpoint-inclusive levels, hence `2^bits - 1` intervals.
+Decisions compare the exact input to the exact rational midpoint thresholds;
+an exact half tie chooses the higher code. Reconstructed volts are correctly
+rounded binary64 ideal levels. This is not truncation, ties-to-even code
+selection, or a physical ADC noise/ENOB/bandwidth model. The descriptor publishes
+its ideal reconstruction-plus-rounding bound, not a solver or hardware error
+certificate. Out-of-range inputs retain their raw values and explicit `below`
+or `above` clipping; endpoint equality is not clipped. Missing source values
+remain gaps, never code zero. Existing acquisition failures remain failures.
+The reconstruction bound applies to an in-range input or its explicitly
+clamped value, not to arbitrary unclamped out-of-range voltage.
+
+Raw watch `volts`, scope summaries, waveform comparisons and meter means keep
+their existing meanings. Opt-in watch rows append `adc` with the descriptor,
+`inputVolts`, `code`, modeled `volts` and clipping direction. Reports append
+separate modeled summaries and clipping counts. `--expect` still compares raw
+voltage, not the quantized picture; it does not gain a relaxed ADC tolerance.
+The shared transform changes no raw ring, probe load, simulation clock, profile
+or work cap. It does not quantize meters, audio or spectrum taps.
+
+With ADC enabled, CSV sections contain actual source clocks and the model
+metadata, followed by:
+
+```text
+elapsed_seconds,input_volts,adc_code,volts,clipping
+```
+
+Here `volts` is the explicitly modeled reconstruction; `input_volts` remains
+the acquired value. Blank codes mark gaps, while `0` is a valid finite code.
+GUI exports may additionally label `held` and `observerEpoch`; that epoch is a
+local UI observer identity, not an engine-issued hardware epoch. Without ADC
+options, existing report fields and CSV bytes remain unchanged. A changed
+runtime source fingerprint is expected after any code update.
+
+Saved receipts bind the immutable descriptor to each channel's actual
+point-capture clock, count, ring position and ordinary runtime/input/CSV
+identities. Verification needs the externally supplied ADC options shown
+above; the receipt cannot choose its own expected model. A different bit depth
+or range mismatches, and malformed or inconsistent source metadata refuses.
+The verifier also checks the supplied CSV's declared descriptor/source headers.
+This remains identity-only verification, not proof that recorded samples are
+numerically correct, independently measured, signed or physically accurate.

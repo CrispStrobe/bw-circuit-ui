@@ -54,6 +54,7 @@ const { createMeterState, readMeter } = await import(join(SRC, 'model/multimeter
 const { operatingPointRows } = await import(join(SRC, 'model/operating-point-view.js'));
 const { scopeProbeOptions } = await import(join(SRC, 'model/scope-probes.js'));
 const { scopeTracesToCsv } = await import(join(SRC, 'model/scope-csv.js'));
+const {createScopeDigitizer, digitizeScopeCapture} = await import(join(SRC, 'model/scope-digitizer.js'));
 const {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
   parseExpectedMeters, createExpectedMeterComparison,
@@ -117,7 +118,8 @@ const opts = {};
 const valueFlags = new Set(['-o', '--to', '--render', '--profile', '--observations', '--initial',
   '--scope', '--meter', '--probe', '--duration', '--rate', '--csv', '--expect', '--expect-meters',
   '--abs-volts', '--rel', '--time-tolerance', '--receipt', '--input', '--max-step',
-  '--source', '--from', '--points', '--observe', '--current', '--expect-ac']);
+  '--source', '--from', '--points', '--observe', '--current', '--expect-ac',
+  '--adc-bits', '--adc-low', '--adc-high']);
 const repeatFlags = new Set(['scope', 'meter', 'observe', 'current']);
 for (let i = 1; i < args.length; i++) {
   // Value-taking flags must be listed, or the value silently becomes a
@@ -128,7 +130,10 @@ for (let i = 1; i < args.length; i++) {
     const value = args[++i];
     if (value == null) { console.error(`bwc: --${key} needs a value`); process.exit(2); }
     if (repeatFlags.has(key)) (opts[key] ||= []).push(value);
-    else opts[key] = value;
+    else {
+      if (key.startsWith('adc-') && Object.hasOwn(opts,key)) { console.error(`bwc: duplicate --${key}`); process.exit(2); }
+      opts[key] = value;
+    }
   }
   else if (args[i].startsWith('--')) opts[args[i].slice(2)] = true;
   else positional.push(args[i]);
@@ -139,6 +144,24 @@ if (opts.receipt && cmd !== 'measure') die('--receipt is supported only by measu
 if (opts['expect-ac'] !== undefined && cmd !== 'analyze') die('--expect-ac is supported only by analyze');
 if (opts.kcl && cmd !== 'op') die('--kcl is supported only by static op');
 if (opts['max-step'] !== undefined && cmd !== 'measure') die('--max-step is supported only by measure');
+const adcKeys=['adc-bits','adc-low','adc-high'];
+const unknownAdc=Object.keys(opts).find(key=>key.startsWith('adc-')&&!adcKeys.includes(key));
+if (unknownAdc) die(`unknown ADC option --${unknownAdc}`);
+const adcSelected=adcKeys.some(key=>Object.hasOwn(opts,key));
+let adcModel=null;
+if (adcSelected) {
+  if (!['measure','verify-receipt'].includes(cmd)) die('ADC options are supported only by measure or verify-receipt');
+  if (!adcKeys.every(key=>Object.hasOwn(opts,key))) die('ADC requires --adc-bits, --adc-low and --adc-high together');
+  const number=key=>{
+    const value=opts[key];
+    if (typeof value!=='string' || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value)
+      || !Number.isFinite(Number(value))) die(`--${key} must be a finite numeric value`);
+    return Number(value);
+  };
+  try {adcModel=createScopeDigitizer({bits:number('adc-bits'),lowVolts:number('adc-low'),highVolts:number('adc-high')});}
+  catch(error){die(`ADC configuration refused: ${error.message}`);}
+}
+
 const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
     + '  bwc info    <file>\n'
@@ -151,6 +174,7 @@ const usage = () => {
     + '              [--meter voltage:<red>,<black>] [--meter current:<part>.<terminal>]\n'
     + '              [--meter resistance:<red>,<black>] [--duration 10ms] [--rate 10kHz]\n'
     + '              [--profile interactive-v1] [--max-step 2us] [--watch] [--expect waveform.json] [--expect-meters meters.json] [--json] [--csv trace.csv] [--receipt capture.json]\n'
+    + '              ideal ADC view: --adc-bits 1..16 --adc-low <volts> --adc-high <volts> (all three; raw comparisons/meters unchanged)\n'
     + '              precision: --profile precision-v1 --initial zero-state (passive/source batch; bounded ADP7118 batch or finite --watch)\n'
     + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--expect-ac reference.json] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
@@ -319,12 +343,12 @@ switch (cmd) {
   }
   case 'verify-receipt': {
     if (!opts.input) die('verify-receipt requires an explicit --input circuit file');
-    const unsupported=Object.keys(opts).find(key=>!['input','expect','expect-meters','csv','json'].includes(key));
+    const unsupported=Object.keys(opts).find(key=>!['input','expect','expect-meters','csv','json',...adcKeys].includes(key));
     if (unsupported) die(`verify-receipt does not support --${unsupported}`);
     try {
       if (statSync(file).size>4*1024*1024) throw new Error('receipt exceeds 4 MiB');
       const { parseMeasurementReceipt, compareMeasurementReceiptIdentity,
-        fileReceipt, runtimeReceipt, importedCircuitSha256 } = await import(join(SRC,'model/measurement-receipt.js'));
+        fileReceipt, runtimeReceipt, importedCircuitSha256, scopeDigitizerCsvBindings } = await import(join(SRC,'model/measurement-receipt.js'));
       const receipt=parseMeasurementReceipt(readFileSync(file,'utf8'));
       const bytes=readFileSync(opts.input);
       const c=await load(opts.input,bytes);
@@ -337,7 +361,9 @@ switch (cmd) {
         engine:{selection:process.env.BW_BOARD?'BW_BOARD override':'installed package',
           declaredPackageSpec:pkg.devDependencies?.['bw-board'] ?? pkg.dependencies?.['bw-board'] ?? null,
           observed:runtimeReceipt(engineDir())},
-        cli:runtimeReceipt(join(HERE,'..'),['bin/bwc.mjs']),nodeVersion:process.version};
+        cli:runtimeReceipt(join(HERE,'..'),['bin/bwc.mjs']),nodeVersion:process.version,
+        ...(adcModel ? {scopeDigitizer:adcModel.descriptor} : {}),
+        ...(receipt.scopeDigitizer&&opts.csv ? {scopeDigitizerCsv:scopeDigitizerCsvBindings(readFileSync(opts.csv,'utf8'))} : {})};
       const result=compareMeasurementReceiptIdentity(receipt,observed);
       if (opts.json) console.log(JSON.stringify(result,null,2));
       else {
@@ -661,7 +687,8 @@ switch (cmd) {
             const sample = latestTimedScopeSample(capturedData(row));
             if (!sample) captureDie(`scope ${row.spec.tip} captured no sample at ${targetNs} ns`);
             return { tip: row.spec.tip, reference: row.spec.reference || '', volts: sample.volts,
-              ...(precisionWatch ? {timeSeconds:sample.timeSeconds} : {}) };
+              ...(precisionWatch ? {timeSeconds:sample.timeSeconds} : {}),
+              ...(adcModel ? {adc:{descriptor:adcModel.descriptor,...adcModel.quantize(sample.volts)}} : {}) };
           });
           const watchedMeters = poweredMeters.map(row => ({ mode: row.mode, probes: row.probes,
             reading: readMeter(row.meter, circ) }));
@@ -735,6 +762,7 @@ switch (cmd) {
     const scopeRows = scope.map((row, index) => {
       const data = capturedScopeData[index];
       const summary = summarizeScope(data);
+      const digitized = adcModel ? digitizeScopeCapture(data,adcModel) : null;
       if (!summary.samples) captureDie(`scope ${row.spec.tip} captured no finite samples`);
       return {
         tip: row.spec.tip,
@@ -748,6 +776,9 @@ switch (cmd) {
         startTimeSeconds: Number(data?.startTNs ?? 0n) / 1e9,
         sampleIntervalSeconds: Number(data?.sampleIntervalNs ?? 0) / 1e9,
         summary, selectorReference: row.spec.reference || '',
+        ...(digitized ? {adcData:digitized.data,adc:{descriptor:digitized.data.adc.descriptor,
+          source:digitized.data.adc.source,clippingCounts:digitized.data.adc.clippingCounts,
+          summary:summarizeScope(digitized.data)}} : {}),
         data,
       };
     });
@@ -778,7 +809,7 @@ switch (cmd) {
     const meterComparison=meterReference?.finish() ?? null;
     if (opts.csv) {
       if (!scopeRows.length) captureDie('--csv needs at least one --scope');
-      const csv = scopeTracesToCsv(scopeRows.map(row => ({ data: row.data,
+      const csv = scopeTracesToCsv(scopeRows.map(row => ({ data: row.adcData || row.data,
         netId: `${row.tip}${row.referenceNet ? ` - ${row.reference}` : ''}` })));
       writeFileSync(opts.csv, `${csv}\n`);
     }
@@ -790,7 +821,9 @@ switch (cmd) {
       requestedTransientProfile: opts.profile || null,
       transient,
       ...(precision ? {precisionCapture:precisionBudget} : {}),
-      scope: scopeRows.map(({ data, selectorReference, ...row }) => row),
+      scope: scopeRows.map(({ data, adcData, selectorReference, ...row }) => row),
+      ...(adcModel ? {scopeDigitizer:adcModel.descriptor,comparisonDomain:'raw-voltage',
+        instrumentModel:{physicalHardwareModel:false,meters:'unchanged raw observed means'}} : {}),
       meters: meterRows,
       ...(poweredMeters.length ? {poweredMeterAcquisition:{quantity:'observed-dc-mean',
         startTimeSeconds:Number(startNs)/1e9,maximumWindowSeconds:.1,
@@ -815,6 +848,8 @@ switch (cmd) {
           csv: opts.csv ? fileReceipt(opts.csv) : null,
           exitCode: comparison?.status==='fail' || meterComparison?.status==='fail' ? 1 : 0,
           report,
+          ...(adcModel ? {scopeDigitizer:{descriptor:adcModel.descriptor,
+            channels:scopeRows.map(row=>({tip:row.tip,reference:row.reference,source:row.adc.source}))}} : {}),
           limits: { independentOracle: false, hermeticExecution: false,
             importedDependencyClosure: false, runtimeFingerprintCaptured: 'before simulation',
             embeddedSourceOrWaveforms: false },
@@ -828,6 +863,7 @@ switch (cmd) {
     else {
       console.log(`${basename(file)}  [${c.format}]  instrument measurements`);
       console.log(`  simulated: ${report.simulatedDurationSeconds} s at ${effectiveRateHz} Hz (${captureSamples} planned samples; requested ${rateHz} Hz)`);
+      if (adcModel) console.log(`  scope ADC: ideal uniform ${adcModel.descriptor.bits}-bit, ${adcModel.descriptor.lowVolts}..${adcModel.descriptor.highVolts} V; raw comparisons and meters unchanged (not hardware accuracy)`);
       console.log(`  integration: ${transient.profile.id}; engine local step check ${transient.accuracyMet == null
         ? 'not assessed' : transient.accuracyMet ? 'met' : 'unmet'} (not an oracle check)`);
       if (precision) console.log('  initial state: zero stored energy; no DC operating-point initialization');
@@ -841,6 +877,7 @@ switch (cmd) {
       }
       if (report.poweredMeterAcquisition) console.log('  powered meters: observed DC mean since capture start, rolling window at most 100 ms; not true RMS or an independent integral certificate');
       if (opts.csv) console.log(`  wrote ${opts.csv}`);
+      if (adcModel) for (const row of report.scope) console.log(`  modeled ADC ${row.tip}: last ${row.adc.summary.lastVolts} V; below ${row.adc.clippingCounts.below}, above ${row.adc.clippingCounts.above}, gaps ${row.adc.clippingCounts.gaps}`);
       if (comparison) console.log(`  expected waveform: ${comparison.status.toUpperCase()} (${comparison.counts.passed}/${comparison.counts.compared} samples)`);
       if (meterComparison) console.log(`  expected meters: ${meterComparison.status.toUpperCase()} (${meterComparison.counts.passed}/${meterComparison.counts.compared} readings)`);
       if (!comparison && !meterComparison) console.log('  oracle: not performed; these are engine measurements');
