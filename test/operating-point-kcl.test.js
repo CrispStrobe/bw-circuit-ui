@@ -110,10 +110,10 @@ test('wrong signed currents fail actual net and part equations; numerical overfl
   assert.ok(refusal.unavailable.some(row => row.code === 'current-accumulation-overflow'));
 });
 
-function groundedBulkFixture() {
+function groundedBulkFixture(source = -0.5) {
   // The source/body diode is forward biased, so dropping its real current
   // cannot hide beneath the KCL allowance as an unloaded cutoff example can.
-  return fixture('VD drain 0 0\nVG gate 0 -1\nVS source 0 -0.5\n'
+  return fixture(`VD drain 0 0\nVG gate 0 -1\nVS source 0 ${source}\n`
     + 'M1 drain gate source 0 NM W=5u L=2u\n'
     + '.model NM NMOS(LEVEL=1 VTO=1 KP=100u LAMBDA=0.02)');
 }
@@ -158,10 +158,21 @@ test('nonzero implicit bulk on the wrong zero-volt net or omitted from the devic
   const misplaced = auditOperatingPointKcl(wrong, value.point);
   assert.equal(misplaced.status, 'fail');
   assert.ok(misplaced.nets.filter(row => row.status === 'fail').length >= 2);
-  value.point.branchCurrents.get('M1').delete('bulk');
+  value.point.branchCurrents.get('M1').set('bulk', 0);
   const omitted = inspect(value);
   assert.equal(omitted.status, 'fail');
   assert.ok(omitted.parts.some(row => row.id === 'M1' && row.status === 'fail'));
+});
+
+test('missing implicit bulk current refuses even when the actual body current is zero', () => {
+  const value = groundedBulkFixture(0);
+  assert.ok(Math.abs(value.point.branchCurrents.get('M1').get('bulk')) < 1e-12);
+  assert.equal(inspect(value).status, 'pass');
+  value.point.branchCurrents.get('M1').delete('bulk');
+  const result = inspect(value);
+  assert.equal(result.status, 'refused');
+  assert.equal(result.counts.checked, 0);
+  assert.ok(result.unavailable.some(row => row.code === 'missing-implicit-bulk-current'));
 });
 
 test('implicit bulk mapping refuses absent or ambiguous reference topology and broader current authority', () => {

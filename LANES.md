@@ -45,11 +45,13 @@ source- and ground-bulk controls agree with independent saturation/load-line
 solutions and ngspice; richer-model refusals remain. A real, nonzero strict
 NMOS body current is mapped only to the uniquely proven ground topology and
 included in both conservation sums, with derived-versus-physical provenance.
+A missing implicit-body current refuses even when its expected value is zero;
+missing coverage is distinct from a present, numerically wrong current.
 Authored maximum steps now tighten preflight without changing any work cap.
 
-Focused imported-model/UI/KCL controls pass 99/99 with zero skips; three focused
+Focused imported-model/UI/KCL controls pass 100/100 with zero skips; three focused
 budget controls include an actual CLI refusal before stream or file output.
-Ten isolated assertion mutations were detected and original source restored.
+Eleven isolated assertion mutations were detected and original source restored.
 Two actual CLI imported-PMOS conservation controls pass. The interaction gate
 retains its prior 73 scenarios and adds two real SPICE-chooser/DC-OP scenarios,
 checking actual bulk connectivity and displayed signed values against the

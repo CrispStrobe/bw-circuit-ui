@@ -101,7 +101,11 @@ export function auditOperatingPointKcl(circuit, point) {
     if (part.kind !== 'nmos' || part.params?.model !== 'level1'
         || part.params.bulkAtGround !== true || part.params.bulkOnSource === true
         || part.params.bulkUnplaced === true || !(currents instanceof Map)
-        || !currents.has('bulk') || seenTerminals.has(key(id, 'bulk'))) continue;
+        || seenTerminals.has(key(id, 'bulk'))) continue;
+    if (!currents.has('bulk')) {
+      refuse('missing-implicit-bulk-current', id);
+      continue;
+    }
     if (groundNetIds.size !== 1) {
       refuse('implicit-bulk-ground-unavailable', id);
       continue;
