@@ -1,3 +1,54 @@
+2026-10-25 ideal ADC view of actual point captures — CLAIM, Codex circuit/instrument owner.
+Exact base `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`; branch
+`claim/scope-digitizer-view-20261025`. Ordered campaign step5 follows the
+bounded LM741 assessment and qualified meter-current authority repair in
+owned bw-board. Merge this claim before implementation. Consumer adoption is
+one later coordinated Board+CUI package wave, not part of this source claim.
+
+Own exactly LANES.md, new src/model/scope-digitizer.js,
+src/model/scope-csv.js, src/model/measurement-receipt.js,
+src/components/ScopePanel.jsx, src/i18n/strings.js, bin/bwc.mjs,
+new test/scope-digitizer.test.js, test/cli-measure.test.js,
+scripts/verify-interaction.mjs and docs/CLI-INSTRUMENTS.md.
+Add one opt-in deterministic ideal uniform ADC reconstruction view of genuine
+voltage point samples. Expose primary time acquisition envelope (unchanged
+default) or sample only while no primary channel is attached; never auto-switch
+an existing capture. Keep one physical input probe per primary channel.
+ADC view settings must not reattach a probe, advance time or modify raw rings.
+
+Use explicit finite input range and 1–16 bits, endpoint levels N=2^bits-1,
+nearest decision with exact half ties upward, and correctly rounded binary64
+reconstructions. Exact rational comparisons or exactly upward-rounded cuts
+must distinguish adjacent binary64 inputs, including offset/negative thresholds.
+Refuse nonrepresentable grids; retain gaps, raw signed zero, finite code0 and
+explicit below/above clipping. State the ideal reconstruction/rounding bound
+without claiming hardware ADC accuracy, noise, ENOB or analog antialiasing.
+
+One pure helper supplies modeled samples to canvas, trigger, readouts and
+modeled CSV, and the same transform serves CLI batch/watch outputs. Preserve
+raw values beside codes/reconstructions and bind immutable descriptor/source
+clock metadata in optional receipts. Raw/default reports, CSV, meter means,
+FFT/audio and solver semantics remain unchanged. Keep physical comparison
+inputs distinct from an explicitly modeled display quantity.
+
+HOLD freezes paired raw/modeled snapshots and their descriptor; disable model
+edits while held. Export the held modeled snapshot, never newly acquired values
+under held metadata. Board reset/restore notifications, board/channel changes,
+time/count regression and actual capture refusal invalidate derived snapshots;
+retain actual acquisition clock/count and do not fabricate an epoch. Validate
+actual capture mode, refusing envelope/average/digital/current inputs even when
+their pairs happen to match. Full scale is independent of display V/div.
+
+Require independent integer/rational transfer controls, thresholds and adjacent
+floats, representability/gap/clipping tests and named causal mutations. Actual
+CLI checks must inspect raw/code/volts/CSV/receipt and unchanged no-option
+behavior. Actual browser checks must select primary point capture explicitly,
+exercise modeled drawing/trigger/readout/export, HOLD/reset/fault refusal,
+and prove raw samples/time/probe loading are untouched by the view. Every
+enabled exact-head source/browser check must succeed before matched merge.
+No Board law/source, other importer, profile/budget/tolerance, source payload,
+package/pin/lock, workflow, deployment, long-watch or physical-noise-model edit.
+
 2026-10-25 imported measurement contract repairs — IMPLEMENTED (qualification pending), Codex circuit/instrument owner.
 Exact base91d8434a79d373cef2837c137ab356356f1a3b44; branch
 `lane/imported-measurement-fixes-20261025`. Claim-only merge before source edits.
