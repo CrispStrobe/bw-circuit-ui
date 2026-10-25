@@ -898,6 +898,10 @@ its ideal reconstruction-plus-rounding bound, not a solver or hardware error
 certificate. Out-of-range inputs retain their raw values and explicit `below`
 or `above` clipping; endpoint equality is not clipped. Missing source values
 remain gaps, never code zero. Existing acquisition failures remain failures.
+The shared helper and modeled CSV can represent gaps, including in GUI
+snapshots. Completed CLI captures and receipts require every retained source
+point to be finite: their existing raw summaries refuse even one retained gap.
+Gap metadata cannot turn that refusal into a successful CLI measurement.
 The reconstruction bound applies to an in-range input or its explicitly
 clamped value, not to arbitrary unclamped out-of-range voltage.
 

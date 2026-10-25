@@ -121,6 +121,12 @@ test('ADC receipt refuses descriptor/source relabeling and external intent survi
     const input=adcInput(dir),receipt=join(dir,'capture.json'),csv=join(dir,'capture.csv');
     const r=adcRun(input,[...adcFlags,'--receipt',receipt,'--csv',csv,'--json']);assert.equal(r.status,0,r.stderr);
     const original=JSON.parse(readFileSync(receipt,'utf8'));
+    // Synthetic receipt-metadata fault, NOT an actual successful gap capture.
+    // The real CLI scope summary refuses retained nonfinite samples.
+    const gapped=structuredClone(original);
+    gapped.report.scope[0].adc.clippingCounts.gaps=1;
+    gapped.report.scope[0].adc.clippingCounts.finite--;
+    assert.throws(()=>parseMeasurementReceipt(JSON.stringify(gapped)),/ADC completed CLI capture cannot contain gaps/);
     for(const mutate of [p=>p.scopeDigitizer.descriptor.decision='ties-even',p=>p.scopeDigitizer.channels[0].source.count--,
       p=>p.report.scope[0].capture='envelope',p=>p.report.scope[0].adc.source.startTimeNs='0',
       p=>delete p.scopeDigitizer,p=>p.report.comparisonDomain='modeled-voltage',p=>p.scopeDigitizer.channels[0].source.writeIndex=0,

@@ -104,6 +104,9 @@ function validateScopeDigitizer(receipt,fail) {
     if (!c||Object.keys(c).sort().join(',')!=='above,below,finite,gaps'
       || ['below','above','gaps','finite'].some(k=>!Number.isSafeInteger(c[k])||c[k]<0)
       || c.gaps+c.finite!==source.count||c.below+c.above>c.finite) fail('ADC clipping counts mismatch');
+    // CLI scope summaries reject any retained nonfinite point; helper/GUI
+    // gap support does not widen the completed CLI acquisition domain.
+    if (c.gaps!==0||c.finite!==source.count) fail('ADC completed CLI capture cannot contain gaps');
   }
 }
 
