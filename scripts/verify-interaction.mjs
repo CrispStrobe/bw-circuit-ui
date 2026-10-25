@@ -184,6 +184,8 @@ const EXPECTED = [
   'component-limit-editing',
   'scope-aperture-acquisition',
   'scope-aperture-audio-lifecycle',
+  'pmos-source-bulk-import-op',
+  'pmos-ground-bulk-import-op',
   'zero-page-errors',
 ];
 
@@ -2424,6 +2426,70 @@ try {
 } catch (error) {
   failAll(CONTEXT_IDS, `analog file context/transport: ${String(error).split('\n')[0]}`);
 } finally {await contextPage.close();}
+
+// Import real SPICE files and click the actual OP control. Loaded saturation
+// witnesses have a unique load-line solution; no floating cutoff node or
+// engine-generated expected value is used as the acceptance oracle.
+for (const grounded of [false, true]) {
+  const id = grounded ? 'pmos-ground-bulk-import-op' : 'pmos-source-bulk-import-op';
+  const pmosPage = await browser.newPage({viewport: {width: 1600, height: 1000}});
+  pmosPage.on('pageerror', error => errors.push(`${id}: ${error.message}`));
+  try {
+    const source = grounded ? -2 : 10, rail = grounded ? -5 : 0;
+    const cards = ['* authored loaded PMOS browser control',
+      `VS source 0 ${source}`, `VG gate 0 ${source - 2}`,
+      ...(grounded ? ['VR rail 0 -5'] : []),
+      `R1 out ${grounded ? 'rail' : '0'} 4k`,
+      `M1 out gate source ${grounded ? '0' : 'source'} PM W=5u L=2u`,
+      '.model PM PMOS(LEVEL=1 VTO=-1 KP=100u LAMBDA=.02)', '.op', '.end'];
+    await pmosPage.goto(`http://localhost:${PORT}/?examples=none`, {waitUntil: 'domcontentloaded'});
+    await pmosPage.waitForFunction(() => window.__circuit && window.__board);
+    await pmosPage.getByRole('button', {name: 'More circuit controls', exact: true}).click();
+    await pmosPage.getByRole('button', {name: /^📥 Import/}).click();
+    const choosing = pmosPage.waitForEvent('filechooser');
+    await pmosPage.locator('[data-import-format="spice"]').click();
+    await (await choosing).setFiles({name: `${id}.cir`, mimeType: 'text/plain',
+      buffer: Buffer.from(cards.join('\n'))});
+    await pmosPage.waitForFunction(() => window.__circuit.parts.some(p => p.id === 'M1' && p.kind === 'pmos'));
+    const topology = await pmosPage.evaluate(() => {
+      const circuit = window.__circuit, part = circuit.getPart('M1');
+      const net = terminal => circuit.resolvedNets.find(n =>
+        n.terminals.some(t => t.part === 'M1' && t.terminal === terminal));
+      return {terminals: part.terminals, model: part.params.model,
+        legacy: part.params.bulkAtGround || part.params.bulkOnSource,
+        drain: net('drain')?.id, bulk: net('bulk')?.terminals,
+        grounds: circuit.parts.filter(p => p.kind === 'gnd').map(p => p.id)};
+    });
+    if (topology.model !== 'level1' || topology.legacy || !topology.terminals?.includes('bulk')
+        || !topology.drain || !topology.bulk?.some(t => grounded
+          ? topology.grounds.includes(t.part) : t.part === 'M1' && t.terminal === 'source')) {
+      throw new Error(`authored fourth-terminal identity lost: ${JSON.stringify(topology)}`);
+    }
+    await pmosPage.getByRole('radio', {name: /Sim/i}).first().click();
+    if (!await pmosPage.locator('[data-instruments-column]').count()) {
+      await pmosPage.getByRole('button', {name: /Expand instruments panel/i}).click();
+    }
+    await pmosPage.getByTestId('bw-operating-point-run').click();
+    const result = pmosPage.getByTestId('bw-operating-point-result');
+    await result.waitFor();
+    const shown = await result.innerText();
+    const read = (name, unit) => {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const match = shown.match(new RegExp(`${escaped}:\\s+([-+0-9.e]+) ${unit}(?:\\s|$)`));
+      if (!match || !Number.isFinite(Number(match[1]))) throw new Error(`missing actual ${name} ${unit}: ${shown}`);
+      return Number(match[1]);
+    };
+    const predicted = rail + .5 * (1 + .02 * (source - rail)) / 1.01;
+    if (!shown.includes('positive-into-part-terminal')
+        || Math.abs(read(topology.drain, 'V') - predicted) > 5e-6
+        || Math.abs(read('VS.pos', 'A') + (predicted - rail) / 4000) > 5e-10) {
+      throw new Error(`actual displayed OP violates independent loaded law: ${shown}`);
+    }
+    verdict(id, true, 'actual SPICE chooser, fourth bulk connection and displayed signed DC readings match loaded law', 'unreachable');
+  } catch (error) {
+    fail(id, `actual PMOS import/DC OP: ${String(error).split('\n')[0]}`);
+  } finally {await pmosPage.close();}
+}
 
 const APERTURE_IDS = ['scope-aperture-acquisition', 'scope-aperture-audio-lifecycle'];
 const aperturePage = await browser.newPage({viewport: {width: 1600, height: 1000}});

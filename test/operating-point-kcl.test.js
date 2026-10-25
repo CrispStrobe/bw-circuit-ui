@@ -109,3 +109,89 @@ test('wrong signed currents fail actual net and part equations; numerical overfl
   assert.equal(refusal.counts.passed, 0);
   assert.ok(refusal.unavailable.some(row => row.code === 'current-accumulation-overflow'));
 });
+
+function groundedBulkFixture(source = -0.5) {
+  // The source/body diode is forward biased, so dropping its real current
+  // cannot hide beneath the KCL allowance as an unloaded cutoff example can.
+  return fixture(`VD drain 0 0\nVG gate 0 -1\nVS source 0 ${source}\n`
+    + 'M1 drain gate source 0 NM W=5u L=2u\n'
+    + '.model NM NMOS(LEVEL=1 VTO=1 KP=100u LAMBDA=0.02)');
+}
+
+test('strict grounded-bulk NMOS includes its nonzero implicit current in net and part conservation', () => {
+  const value = groundedBulkFixture();
+  const before = [...value.point.branchCurrents].map(([id, map]) => [id, [...map]]);
+  const bulk = value.point.branchCurrents.get('M1').get('bulk');
+  assert.ok(Math.abs(bulk) > 1e-6, 'body-current witness must exceed the KCL allowance');
+  const result = inspect(value);
+  assert.equal(result.status, 'pass', JSON.stringify(result));
+  const observation = result.observations.find(row => row.part === 'M1' && row.terminal === 'bulk');
+  assert.equal(observation.origin, 'implicit-grounded-bulk');
+  assert.equal(observation.currentAmps, bulk);
+  const groundParts = new Set(value.circuit.parts.filter(part => part.kind === 'gnd').map(part => part.id));
+  const ground = value.circuit.resolvedNets.find(net => net.terminals.some(t => groundParts.has(t.part)));
+  assert.equal(observation.net, ground.id);
+  assert.equal(result.counts.terminals, 10);
+  assert.equal(result.observations.filter(row => row.origin === 'physical-terminal').length, 9);
+  assert.ok(result.nets.some(row => row.id === ground.id && row.status === 'pass'));
+  assert.ok(result.parts.some(row => row.id === 'M1' && row.status === 'pass'));
+  assert.deepEqual([...value.point.branchCurrents].map(([id, map]) => [id, [...map]]), before);
+
+  const renamed = {parts: value.circuit.parts, resolvedNets: value.circuit.resolvedNets.map(net =>
+    net.id === ground.id ? {...net, id: 'reference-with-an-arbitrary-name'} : net)};
+  const point = {...value.point, nodeVoltages: new Map(value.point.nodeVoltages)};
+  point.nodeVoltages.set('reference-with-an-arbitrary-name', point.nodeVoltages.get(ground.id));
+  point.nodeVoltages.delete(ground.id);
+  assert.equal(auditOperatingPointKcl(renamed, point).status, 'pass');
+});
+
+test('nonzero implicit bulk on the wrong zero-volt net or omitted from the device fails conservation', () => {
+  const value = groundedBulkFixture();
+  const groundParts = new Set(value.circuit.parts.filter(part => part.kind === 'gnd').map(part => part.id));
+  const ground = value.circuit.resolvedNets.find(net => net.terminals.some(t => groundParts.has(t.part)));
+  const drain = value.circuit.resolvedNets.find(net => net.terminals.some(t => t.part === 'M1' && t.terminal === 'drain'));
+  assert.equal(value.point.nodeVoltages.get(drain.id), 0, 'wrong-net control also reads zero volts');
+  const labels = ground.terminals.filter(t => groundParts.has(t.part));
+  const wrong = {parts: value.circuit.parts, resolvedNets: value.circuit.resolvedNets.map(net => ({...net,
+    terminals: net.id === ground.id ? net.terminals.filter(t => !groundParts.has(t.part))
+      : net.id === drain.id ? [...net.terminals, ...labels] : net.terminals}))};
+  const misplaced = auditOperatingPointKcl(wrong, value.point);
+  assert.equal(misplaced.status, 'fail');
+  assert.ok(misplaced.nets.filter(row => row.status === 'fail').length >= 2);
+  value.point.branchCurrents.get('M1').set('bulk', 0);
+  const omitted = inspect(value);
+  assert.equal(omitted.status, 'fail');
+  assert.ok(omitted.parts.some(row => row.id === 'M1' && row.status === 'fail'));
+});
+
+test('missing implicit bulk current refuses even when the actual body current is zero', () => {
+  const value = groundedBulkFixture(0);
+  assert.ok(Math.abs(value.point.branchCurrents.get('M1').get('bulk')) < 1e-12);
+  assert.equal(inspect(value).status, 'pass');
+  value.point.branchCurrents.get('M1').delete('bulk');
+  const result = inspect(value);
+  assert.equal(result.status, 'refused');
+  assert.equal(result.counts.checked, 0);
+  assert.ok(result.unavailable.some(row => row.code === 'missing-implicit-bulk-current'));
+});
+
+test('implicit bulk mapping refuses absent or ambiguous reference topology and broader current authority', () => {
+  for (const mutate of [
+    value => { value.circuit.parts.find(part => part.kind === 'gnd').kind = 'unproven-reference'; },
+    value => {
+      value.circuit.parts.push({id: 'OTHER_GROUND', kind: 'gnd'});
+      value.circuit.resolvedNets.find(net => net.terminals.some(t => t.part === 'M1' && t.terminal === 'drain'))
+        .terminals.push({part: 'OTHER_GROUND', terminal: 'gnd'});
+    },
+    value => { value.circuit.parts.find(part => part.id === 'M1').kind = 'pmos'; },
+    value => { value.circuit.parts.find(part => part.id === 'M1').params.model = 'unqualified'; },
+    value => { value.circuit.parts.find(part => part.id === 'M1').params.bulkAtGround = false; },
+    value => { value.circuit.parts.find(part => part.id === 'M1').params.bulkOnSource = true; },
+    value => { value.circuit.parts.find(part => part.id === 'M1').params.bulkUnplaced = true; },
+    value => { value.point.branchCurrents.get('M1').set('bulk', NaN); },
+    value => { value.point.branchCurrents.get('M1').set('unknown-reference', 0); },
+  ]) {
+    const value = groundedBulkFixture(); mutate(value);
+    assert.equal(inspect(value).status, 'refused');
+  }
+});

@@ -145,7 +145,7 @@ describe('strict grounded-bulk Level-1 NMOS source analysis', () => {
       ['duplicate geometry', { instance: 'W=100u W=200u L=1u' }],
       ['unparsed instance token', { instance: 'W=100u L=1u EXTRA' }],
       ['bulk on a third node', { bulk: 'body' }],
-      ['PMOS', { model: 'PMOS(Level=1 VTO=-1 KP=50u LAMBDA=0.01)' }],
+      ['PMOS with unrepresented body effect', { model: 'PMOS(Level=1 VTO=-1 KP=50u LAMBDA=0.01 GAMMA=0.5)' }],
     ];
     for (const [name, options] of cases) {
       const imported = importSpice(deck(options));
@@ -449,10 +449,62 @@ describe('strict explicit-bulk Level-1 PMOS source analysis', () => {
     assert.equal(point.converged, true);
   });
 
-  it('withholds the selector and physical bulk from every broader topology or law', () => {
+  for (const bulk of ['source', '0']) {
+    it(`keeps exact PMOS ${bulk === '0' ? 'grounded' : 'source-tied'} bulk wired and matches a loaded independent law`, () => {
+      const grounded = bulk === '0';
+      const source = grounded ? -2 : 10;
+      const rail = grounded ? -5 : 0;
+      const text = [
+        '* authored loaded PMOS control',
+        `VS source 0 ${source}`,
+        `VG gate 0 ${source - 2}`,
+        ...(grounded ? ['VR rail 0 -5'] : []),
+        `R1 out ${grounded ? 'rail' : '0'} 4k`,
+        `M1 out gate source ${bulk} PM W=5u L=2u`,
+        '.model PM PMOS(LEVEL=1 VTO=-1 KP=100u LAMBDA=.02)',
+        '.op', '.end',
+      ].join('\n');
+      const imported = importSpice(text);
+      const pmos = transistor(imported);
+      assert.deepEqual(imported.warnings, []);
+      assert.deepEqual(imported.losses, []);
+      assert.equal(pmos.params.model, 'level1');
+      assert.equal(pmos.params.bulkAtGround, undefined);
+      assert.equal(pmos.params.bulkOnSource, undefined);
+      assert.deepEqual(pmos.terminals, ['gate', 'drain', 'source', 'bulk']);
+      const circuit = Circuit.fromJSON({parts: imported.parts, wires: imported.wires});
+      const point = circuit.operatingPoint();
+      assert.equal(point.converged, true, JSON.stringify(point));
+      const netFor = terminal => circuit.resolvedNets.find(net =>
+        net.terminals.some(t => t.part === 'M1' && t.terminal === terminal));
+      assert.ok(netFor('bulk').terminals.some(t => grounded
+        ? circuit.parts.find(p => p.id === t.part)?.kind === 'gnd'
+        : t.part === 'M1' && t.terminal === 'source'));
+      // In saturation I=.5*KP*(W/L)*(VSG-|VTO|)^2*(1+lambda*VSD).
+      // Solving the resistor load line is independent of the native solver.
+      const expected = rail + 0.5 * (1 + .02 * (source - rail)) / 1.01;
+      const actual = point.nodeVoltages.get(netFor('drain').id);
+      assert.ok(Math.abs(actual - expected) < 1e-7, `${actual} != ${expected}`);
+      assert.equal(point.branchCurrents.get('M1').size, 4);
+      const [analysis] = runSourceAnalyses(imported, {format: 'spice'});
+      assert.equal(analysis.status, 'pass', JSON.stringify(analysis));
+      const exported = toSpice(extractNetlist(circuit));
+      assert.deepEqual(exported.skipped, []);
+      const roundTrip = importSpice(exported.text);
+      const roundTripPmos = roundTrip.parts.find(p => p.kind === 'pmos');
+      assert.deepEqual(roundTripPmos.terminals, pmos.terminals);
+      assert.equal(Circuit.fromJSON({parts: roundTrip.parts, wires: roundTrip.wires})
+        .operatingPoint().converged, true);
+      if (HAS_NGSPICE) {
+        const oracle = ngspiceSourceBulk(text);
+        assert.ok(Math.abs(actual - oracle.out) < 1e-7, `${actual} != ngspice ${oracle.out}`);
+        assert.ok(Math.abs(point.branchCurrents.get('VS').get('pos') - oracle.supply) < 1e-10);
+      }
+    });
+  }
+
+  it('withholds the selector and physical bulk from every broader law', () => {
     const cases = [
-      ['bulk at ground', { bulk: '0' }],
-      ['bulk on source', { bulk: 'source' }],
       ['missing LAMBDA', { model: 'PMOS(LEVEL=1 VTO=-1 KP=25u)' }],
       ['other level', { model: 'PMOS(LEVEL=2 VTO=-1 KP=25u LAMBDA=0.01)' }],
       ['wrong threshold sign', { model: 'PMOS(LEVEL=1 VTO=1 KP=25u LAMBDA=0.01)' }],

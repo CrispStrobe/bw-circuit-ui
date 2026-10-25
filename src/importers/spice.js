@@ -1317,13 +1317,14 @@ export function importSpice(text, opts = {}) {
           // the drain-bulk junction remains physically live.
           params.model = 'level1';
         } else if (exactInstanceLevel1Model && exactInstanceGeometry && model.type === 'PMOS'
-            && bulkIsThirdNode) {
-          // This is the only four-terminal MOS shape in the public contract.
-          // The landed engine stamps both bulk junctions and reports the real
-          // bulk current; retaining the terminal is therefore exact rather
-          // than an importer approximation.
+            && bulkField !== undefined && srcField !== undefined) {
+          // Strict PMOS always uses the authored fourth terminal, including
+          // source/ground aliases. The engine stamps both body junctions;
+          // the older implicit-bulk flags belong to its three-terminal NMOS.
           params.model = 'level1';
           explicitPmosBulk = true;
+          delete params.bulkAtGround;
+          delete params.bulkOnSource;
         } else if (bulkIsThirdNode) {
           // AND THE REFUSAL IS RECORDED IN THE PARAMS, not only in a warning.
           // A richer or incomplete third-node MOS still has no qualified law.

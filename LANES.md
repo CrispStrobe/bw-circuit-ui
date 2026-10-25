@@ -1,4 +1,4 @@
-2026-10-25 imported measurement contract repairs — CLAIMED, Codex circuit/instrument owner.
+2026-10-25 imported measurement contract repairs — IMPLEMENTED (qualification pending), Codex circuit/instrument owner.
 Exact base91d8434a79d373cef2837c137ab356356f1a3b44; branch
 `lane/imported-measurement-fixes-20261025`. Claim-only merge before source edits.
 This is ordered campaign step3, after the frozen current-consumer baseline and
@@ -38,6 +38,26 @@ Require focused controls, load-bearing wiring/current/budget mutations, actual
 CLI/ngspice exact-law checks, affected real-browser qualification, and EVERY
 enabled exact-head hosted check before matched normal merge. Keep original
 refusals and research limitations; no private paths or raw data in this repo.
+
+Claim merged in #119 before implementation. Exact PMOS bulk aliases now retain
+all four authored connections with incompatible implicit flags removed. Loaded
+source- and ground-bulk controls agree with independent saturation/load-line
+solutions and ngspice; richer-model refusals remain. A real, nonzero strict
+NMOS body current is mapped only to the uniquely proven ground topology and
+included in both conservation sums, with derived-versus-physical provenance.
+A missing implicit-body current refuses even when its expected value is zero;
+missing coverage is distinct from a present, numerically wrong current.
+Authored maximum steps now tighten preflight without changing any work cap.
+
+Focused imported-model/UI/KCL controls pass 100/100 with zero skips; three focused
+budget controls include an actual CLI refusal before stream or file output.
+Eleven isolated assertion mutations were detected and original source restored.
+Two actual CLI imported-PMOS conservation controls pass. The interaction gate
+retains its prior 73 scenarios and adds two real SPICE-chooser/DC-OP scenarios,
+checking actual bulk connectivity and displayed signed values against the
+independent loaded law. Its 75-scenario execution and all enabled exact-head
+checks remain required before source landing. Consumer adoption remains
+separate; this is no hardware, universal-corpus or deployment certificate.
 
 2026-10-23 aperture audio and explicit spectrum acquisition — DONE (source candidate), same circuit owner.
 Base f9cfae50; consumer follow-up to the normally merged Board aperture claim667.

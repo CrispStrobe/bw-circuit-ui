@@ -1671,6 +1671,49 @@ test('precision capture input and cumulative work policies refuse unsupported au
   assert.throws(() => validatePrecisionCaptureWork({...good,profile:{id:'interactive-v1'}},budget),/profile changed/);
 });
 
+test('precision capture preflight honors the authored step without widening fixed limits', () => {
+  const profile={id:'precision-v1',maxAttempts:20000,maxStepSec:1e-5};
+  const clock=measurementSampleClock(.005,1e6);
+  assert.deepEqual(precisionCaptureBudget(clock,profile,3),{
+    maxAttempts:20000,maxSolves:60001,maxAdvances:1,minimumAdaptiveAttempts:5000,
+    basis:'single-advance-passive-source-domain',
+    initialization:'zero-state-no-dc-operating-point',
+    admission:'native-time-zero-constraint-check-and-acyclic-voltage-graph; bias-not-adopted',
+  });
+  assert.throws(()=>precisionCaptureBudget(clock,{...profile,authoredMaxStepSec:50e-9},3),
+    /preflight needs 100000 adaptive attempts; limit is 20000/);
+  const sparseClock=measurementSampleClock(.005,1e4);
+  assert.equal(precisionCaptureBudget(sparseClock,{...profile,authoredMaxStepSec:1e-4},3)
+    .minimumAdaptiveAttempts,500,'a larger authored step cannot relax the profile');
+  const short=precisionCaptureBudget(measurementSampleClock(1e-6,1e6),
+    {...profile,authoredMaxStepSec:50e-9},3);
+  assert.equal(short.minimumAdaptiveAttempts,20);
+  assert.equal(short.maxAttempts,20000);assert.equal(short.maxSolves,60001);
+  assert.equal(short.maxAdvances,1);
+  for(const value of [undefined,null,0,-1,NaN,Infinity,-Infinity,true,false,'5e-8']) {
+    assert.throws(()=>precisionCaptureBudget(clock,{...profile,authoredMaxStepSec:value},3),
+      /authoredMaxStepSec must be a positive finite number/);
+  }
+});
+
+test('precision CLI authored-step preflight refuses before streaming and artifacts', () => {
+  const dir=mkdtempSync(join(tmpdir(),'bwc-authored-step-preflight-'));
+  try {
+    const file=join(dir,'authored-rc.cir'),csv=join(dir,'capture.csv'),receipt=join(dir,'capture.json');
+    writeFileSync(file,'Authored bounded RC control\nV1 in 0 PULSE(0 1 0 1n 1n 500u 1m)\n'
+      +'R1 in out 1k\nC1 out 0 100n\n.tran 1u 5m\n.end\n');
+    const env={...process.env};delete env.BW_BOARD;
+    const result=spawnSync(process.execPath,[CLI,'measure',file,'--watch',
+      '--profile','precision-v1','--initial','zero-state','--duration','5ms','--rate','1MHz',
+      '--max-step','50ns','--scope','R1.a,R1.b','--csv',csv,'--receipt',receipt],
+    {env,encoding:'utf8',timeout:15000});
+    assert.equal(result.status,2,result.stderr);
+    assert.match(result.stderr,/preflight needs 100000 adaptive attempts; limit is 20000/);
+    assert.equal(result.stdout,'','no provisional stream output on preflight refusal');
+    assert.equal(existsSync(csv),false);assert.equal(existsSync(receipt),false);
+  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
 test('precision CLI refuses absent initialization, unsupported streaming and budget/domain escapes', () => {
   const base = [CLI,'measure',PROBE_FIXTURE,'--scope','R2.a,V1.neg','--profile','precision-v1','--json'];
   for (const [extra,reason] of [
