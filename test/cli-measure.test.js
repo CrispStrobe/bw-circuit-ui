@@ -10,6 +10,8 @@ import { fileReceipt, runtimeReceipt, importedCircuitSha256,
   parseMeasurementReceipt, compareMeasurementReceiptIdentity } from '../src/model/measurement-receipt.js';
 import {dcSweepGrid,validateDcSweepInput,parseExpectedDcSweep,compareExpectedDcSweep} from '../src/model/dc-sweep-report.js';
 import {parseExpectedAc,compareExpectedAc} from '../src/model/ac-reference-report.js';
+import {createScopeDigitizer} from '../src/model/scope-digitizer.js';
+import {scopeTraceToCsv} from '../src/model/scope-csv.js';
 import {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
   parseExpectedMeters, createExpectedMeterComparison,
@@ -25,6 +27,150 @@ const CLI = join(ROOT, 'bin', 'bwc.mjs');
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-divider.json');
 const SINE_FIXTURE = join(import.meta.dirname, 'fixtures', 'cli-measure-sine.cir');
 const PROBE_FIXTURE = join(import.meta.dirname,'fixtures','cli-measure-probe.cir');
+
+const adcFlags=['--adc-bits','2','--adc-low','0','--adc-high','3'];
+const adcRun=(file,args=[],entry=CLI)=>spawnSync(process.execPath,[entry,'measure',file,
+  '--scope','V1.pos,V1.neg','--meter','voltage:V1.pos,V1.neg','--duration','4us','--rate','1MHz',...args],
+{encoding:'utf8',timeout:30000,maxBuffer:4*1024*1024});
+const adcInput=(dir,value=1.49)=>{
+  const file=join(dir,'input.cir');
+  writeFileSync(file,`Authored ideal ADC observer control\nV1 in 0 ${value}\nR1 in 0 1k\n.end\n`);
+  return file;
+};
+test('ADC actual batch/watch keeps raw measurements and adds modeled CSV/receipt with external authority',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-adc-actual-'));
+  try {
+    const input=adcInput(dir),rawCsv=join(dir,'raw.csv'),csv=join(dir,'modeled.csv'),receipt=join(dir,'capture.json');
+    const baseline=adcRun(input,['--csv',rawCsv,'--json']);assert.equal(baseline.status,0,baseline.stderr);
+    const raw=JSON.parse(baseline.stdout);assert.equal(Object.hasOwn(raw,'scopeDigitizer'),false);
+    assert.equal(Object.hasOwn(raw.scope[0],'adc'),false);
+    assert.match(readFileSync(rawCsv,'utf8'),/\nelapsed_seconds,volts\n/);
+    const expected=join(dir,'expected.json');writeFileSync(expected,JSON.stringify({schemaVersion:1,traces:[{
+      tip:'V1.pos',reference:'V1.neg',samples:[1,2,3,4].map(i=>({timeSeconds:i/1e6,volts:1.49}))}]}));
+    const modeled=adcRun(input,[...adcFlags,'--csv',csv,'--receipt',receipt,'--expect',expected,'--abs-volts','1e-12','--rel','0','--json']);
+    assert.equal(modeled.status,0,modeled.stderr);const report=JSON.parse(modeled.stdout);
+    assert.deepEqual(report.scope[0].summary,raw.scope[0].summary);
+    assert.deepEqual(report.meters,raw.meters,'ADC does not quantize meter means');
+    assert.equal(report.comparison.status,'pass','existing waveform comparison remains raw1.49, not modeled1');
+    assert.equal(report.comparisonDomain,'raw-voltage');assert.equal(report.scope[0].adc.summary.lastVolts,1);
+    assert.equal(report.scope[0].summary.lastVolts,1.49);assert.equal(report.scopeDigitizer.bits,2);
+    const lines=readFileSync(csv,'utf8').trim().split('\n');
+    assert.match(lines[0],/adc=\{"schemaVersion":1/);assert.equal(lines[1],'elapsed_seconds,input_volts,adc_code,volts,clipping');
+    assert.equal(lines.length,6);assert.deepEqual(lines.slice(2).map(line=>line.split(',').slice(1)),
+      Array.from({length:4},()=>['1.49','1','1','none']));
+    const parsed=parseMeasurementReceipt(readFileSync(receipt,'utf8'));
+    assert.equal(parsed.scopeDigitizer.channels[0].source.count,4);assert.equal(parsed.scopeDigitizer.channels[0].source.startTimeNs,'1000');
+    const verify=flags=>spawnSync(process.execPath,[CLI,'verify-receipt',receipt,'--input',input,
+      '--csv',csv,'--expect',expected,...flags,'--json'],{encoding:'utf8',timeout:30000});
+    const verified=verify(adcFlags);assert.equal(verified.status,0,verified.stderr);
+    assert.equal(JSON.parse(verified.stdout).limits.numericalAgreement,false);
+    const omitted=verify([]);assert.equal(omitted.status,1,'receipt cannot authorize its own ADC settings');
+    const wrong=verify(['--adc-bits','3','--adc-low','0','--adc-high','3']);assert.equal(wrong.status,1);
+    const wrongRange=verify(['--adc-bits','2','--adc-low','-1','--adc-high','3']);assert.equal(wrongRange.status,1);
+    const watch=adcRun(input,[...adcFlags,'--watch']);assert.equal(watch.status,0,watch.stderr);
+    const records=watch.stdout.trim().split('\n').map(JSON.parse);assert.equal(records.length,5);
+    for(const [i,row]of records.slice(0,-1).entries()) {
+      assert.equal(row.timeSeconds,(i+1)/1e6);assert.equal(row.scope[0].volts,1.49);
+      assert(row.scope[0].adc,'actual watch ADC fields must be present');
+      assert.deepEqual({...row.scope[0].adc,descriptor:undefined},
+        {descriptor:undefined,inputVolts:1.49,code:1,volts:1,clipping:'none'});
+      assert.equal(row.meters[0].reading.siValue,1.49);
+    }
+    assert.deepEqual(records.at(-1).report.scope[0].adc,report.scope[0].adc);
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('ADC actual codes distinguish threshold ties, finite zero and clipping directions',t=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-adc-codes-'));
+  try {
+    for(const [value,code,volts,clipping]of [[0,0,0,'none'],[.49,0,0,'none'],[1.5,2,2,'none'],[3,3,3,'none'],[-.01,0,0,'below'],[3.01,3,3,'above']]) {
+      const r=adcRun(adcInput(dir,value),[...adcFlags,'--watch']);assert.equal(r.status,0,r.stderr);
+      const rows=r.stdout.trim().split('\n').map(JSON.parse);
+      for(const row of rows.slice(0,-1)) {
+        assert.equal(row.scope[0].volts,value);assert.equal(row.scope[0].adc.code,code);
+        assert.equal(row.scope[0].adc.volts,volts);assert.equal(row.scope[0].adc.clipping,clipping);
+      }
+      const counts=rows.at(-1).report.scope[0].adc.clippingCounts;
+      assert.equal(counts.finite,4);assert.equal(counts.gaps,0);
+      assert.equal(counts.below,clipping==='below'?4:0);assert.equal(counts.above,clipping==='above'?4:0);
+      t.diagnostic(JSON.stringify({record:'authored-adc-control',inputVolts:value,
+        observed:rows[0].scope[0].adc,points:rows.length-1,clippingCounts:counts}));
+    }
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('ADC configuration refuses before input/capture/artifacts without changing old defaults',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-adc-refuse-'));
+  try {
+    const csv=join(dir,'bad.csv'),receipt=join(dir,'bad.json');
+    for(const flags of [['--adc-bits','2'],['--adc-bits','0','--adc-low','0','--adc-high','3'],
+      ['--adc-bits','2.5','--adc-low','0','--adc-high','3'],['--adc-bits','2','--adc-low','NaN','--adc-high','3'],
+      ['--adc-bits','2','--adc-low','3','--adc-high','0'],[...adcFlags,'--adc-bits','2'],['--adc-bitz','2']]) {
+      const r=adcRun(join(dir,'missing.cir'),[...flags,'--csv',csv,'--receipt',receipt,'--json']);
+      assert.equal(r.status,2);assert.equal(r.stdout,'');assert.match(r.stderr,/ADC|adc-/);
+      assert.equal(existsSync(csv),false);assert.equal(existsSync(receipt),false);
+    }
+    const wrongCommand=spawnSync(process.execPath,[CLI,'op',join(dir,'missing.cir'),...adcFlags],{encoding:'utf8',timeout:30000});
+    assert.equal(wrongCommand.status,2);assert.match(wrongCommand.stderr,/only by measure or verify-receipt/);
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('ADC receipt refuses descriptor/source relabeling and external intent survives coherent tampering',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-adc-receipt-'));
+  try {
+    const input=adcInput(dir),receipt=join(dir,'capture.json'),csv=join(dir,'capture.csv');
+    const r=adcRun(input,[...adcFlags,'--receipt',receipt,'--csv',csv,'--json']);assert.equal(r.status,0,r.stderr);
+    const original=JSON.parse(readFileSync(receipt,'utf8'));
+    // Synthetic receipt-metadata fault, NOT an actual successful gap capture.
+    // The real CLI scope summary refuses retained nonfinite samples.
+    const gapped=structuredClone(original);
+    gapped.report.scope[0].adc.clippingCounts.gaps=1;
+    gapped.report.scope[0].adc.clippingCounts.finite--;
+    assert.throws(()=>parseMeasurementReceipt(JSON.stringify(gapped)),/ADC completed CLI capture cannot contain gaps/);
+    for(const mutate of [p=>p.scopeDigitizer.descriptor.decision='ties-even',p=>p.scopeDigitizer.channels[0].source.count--,
+      p=>p.report.scope[0].capture='envelope',p=>p.report.scope[0].adc.source.startTimeNs='0',
+      p=>delete p.scopeDigitizer,p=>p.report.comparisonDomain='modeled-voltage',p=>p.scopeDigitizer.channels[0].source.writeIndex=0,
+      p=>p.report.scope[0].adc.summary.samples--]) {
+      const p=structuredClone(original);mutate(p);assert.throws(()=>parseMeasurementReceipt(JSON.stringify(p)),/ADC/);
+    }
+    const coherent=structuredClone(original),other=createScopeDigitizer({bits:3,lowVolts:0,highVolts:3}).descriptor;
+    coherent.scopeDigitizer.descriptor=other;coherent.report.scopeDigitizer=other;
+    coherent.report.scope[0].adc.descriptor=other;parseMeasurementReceipt(JSON.stringify(coherent));
+    writeFileSync(receipt,JSON.stringify(coherent));
+    const changed=spawnSync(process.execPath,[CLI,'verify-receipt',receipt,'--input',input,'--csv',csv,...adcFlags,'--json'],{encoding:'utf8',timeout:30000});
+    assert.equal(changed.status,1);const result=JSON.parse(changed.stdout);
+    assert(result.checks.some(row=>row.field==='scopeDigitizer.descriptor'&&!row.match));
+    assert(result.checks.some(row=>/scopeDigitizer\.csv.*descriptor/.test(row.field)&&!row.match));
+    assert.equal(result.limits.recordedInvocationExecuted,false);
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('ADC modeled CSV retains held/local observer metadata without changing raw CSV',()=>{
+  const data={samples:[1,1],startTNs:0n,sampleIntervalNs:1n,count:1,writeIndex:0,channelType:'voltage',capture:'sample'};
+  const descriptor=createScopeDigitizer({bits:2,lowVolts:0,highVolts:3}).descriptor;
+  const raw=scopeTraceToCsv(data,'signal');
+  const modeled={...data,adc:{descriptor,source:{startTimeNs:'0',sampleIntervalNs:'1',count:1,writeIndex:0,depth:1},
+    rawSamples:[1.49,1.49],codes:[1],clippingDirections:['none'],held:true,observerEpoch:7}};
+  const csv=scopeTraceToCsv(modeled,'signal');assert.match(csv,/held=true observerEpoch=7/);
+  assert.match(csv,/\n0,1.49,1,1,none$/);assert.equal(scopeTraceToCsv(data,'signal'),raw);
+});
+
+test('ADC meter-only requests refuse before capture, CSV, receipt or summary output',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-adc-no-scope-'));
+  try {
+    const input=adcInput(dir),csv=join(dir,'absent.csv'),receipt=join(dir,'absent.json');
+    for(const watch of [false,true])for(const withCsv of [false,true]) {
+      const args=[CLI,'measure',input,'--meter','voltage:V1.pos,V1.neg',
+        '--duration','4us','--rate','1MHz',...adcFlags,'--receipt',receipt,
+        ...(withCsv?['--csv',csv]:[]),...(watch?['--watch']:['--json'])];
+      const r=spawnSync(process.execPath,args,{encoding:'utf8',timeout:30000});
+      assert.equal(r.status,2,r.stderr);
+      assert.match(r.stderr,/ADC view needs at least one --scope/,'missing actual point capture is the named refusal');
+      assert.equal(r.stdout,'','no sample, summary, JSON report or success text');
+      assert.equal(existsSync(csv),false,'no CSV artifact');assert.equal(existsSync(receipt),false,'no receipt artifact');
+    }
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
 
 test('command-scoped --current refuses before input or measurement output for batch, watch and precision', () => {
   const dir=mkdtempSync(join(tmpdir(),'bwc-current-command-'));

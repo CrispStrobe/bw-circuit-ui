@@ -46,7 +46,7 @@
  * the learner chooses, labelled by the bandwidth it buys.
  */
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {playScopeCapture, scopeAudioWav} from '../audio/scope-audio.js';
 import {createScopeAudioStream} from '../audio/scope-audio-stream.js';
 import {seriesFromApertureData} from '../model/scope-aperture-series.js';
@@ -68,6 +68,7 @@ import {
   formatHz, peakBin, seriesFromScopeData, spectrum, spectrumToCsv, thd,
 } from '../model/fft.js';
 import { scopeTracesToCsv } from '../model/scope-csv.js';
+import {createScopeDigitizer, digitizeScopeCapture} from '../model/scope-digitizer.js';
 import {scopeDisplayStatus, scopeDisplayLabel, scopeViewportWarning} from '../model/scope-display-status.js';
 import {
   SCOPE_PROBE_PRESETS, scopeProbeLabel, scopeProbeOptions,
@@ -96,6 +97,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   const canvasRef = useRef(null);
   const [channels, setChannels] = useState([]); // [{netId, handle}]
   const [running, setRunning] = useState(true);
+  const runningRef = useRef(true);
   const [timeReadouts, setTimeReadouts] = useState([]);
   const [spectrumReadouts, setSpectrumReadouts] = useState([]);
   // Scalar snapshots only: HOLD must not follow the live ring's later writes.
@@ -108,6 +110,21 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   // rather than pretending the old samples belong to the new cadence.
   const [sampleRateHz, setSampleRateHz] = useState(SCOPE_RATES[0]);
   const [pickNet, setPickNet] = useState('');
+  const [timeCapture, setTimeCapture] = useState('envelope');
+  const [adcEnabled, setADCEnabled] = useState(false);
+  const [adcBits, setADCBits] = useState(8);
+  const [adcLow, setADCLow] = useState(0);
+  const [adcHigh, setADCHigh] = useState(5);
+  const [adcError, setADCError] = useState('');
+  const displayedCaptures = useRef([]);
+  // This is a UI observer generation, not an engine-issued epoch identifier.
+  const observerEpoch = useRef(0);
+  const previousADC = useRef(false);
+  const adc = useMemo(() => {
+    if (!adcEnabled) return {model: null, error: ''};
+    try {return {model: createScopeDigitizer({bits: adcBits, lowVolts: adcLow, highVolts: adcHigh}), error: ''};}
+    catch (error) {return {model: null, error: String(error.message || error)};}
+  }, [adcEnabled, adcBits, adcLow, adcHigh]);
   // A real two-channel bench scope normally shares one reference/earth lead.
   // Ideal keeps the historical zero-load debugger tap; 10x and 1x stamp their
   // finite resistance and capacitance into the circuit through bw-board.
@@ -154,6 +171,26 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   const [specCopied, setSpecCopied] = useState('');
   const specCanvasRef = useRef(null);
   const [captureErrors, setCaptureErrors] = useState([]);
+  const invalidateADC = useCallback(reason => {
+    displayedCaptures.current = [];
+    if (!adcEnabled) return;
+    displayedReadouts.current.time = [];
+    setTimeReadouts([]);
+    triggeredRef.current = false;
+    setTriggered(false);
+    setADCError(reason);
+    const canvas = canvasRef.current, g = canvas?.getContext('2d');
+    if (g) {g.fillStyle = '#0d1420'; g.fillRect(0, 0, canvas.width, canvas.height);}
+  }, [adcEnabled]);
+  useEffect(() => {
+    const changed = event => {
+      if (event.type !== 'reset' && event.type !== 'restore') return;
+      observerEpoch.current++;
+      invalidateADC(t('scopeADCReset', lang));
+    };
+    board?.onChange?.(changed);
+    return () => board?.offChange?.(changed);
+  }, [board, invalidateADC, lang]);
 
   useEffect(() => {
     stopAudio();
@@ -223,7 +260,18 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
       const unique = refused.filter((c, i) => refused.findIndex(other =>
         other.netId === c.netId && other.reason === c.reason) === i);
       setCaptureErrors(previous => JSON.stringify(previous) === JSON.stringify(unique) ? previous : unique);
+      if (adcEnabled && displayedCaptures.current.length) {
+        const stale = displayedCaptures.current.some(saved => {
+          const current = readScopeCapture(board, saved.handle).data;
+          return !current || current.capture !== 'sample' || current.count < saved.data.count
+            || current.sampleIntervalNs !== saved.data.sampleIntervalNs
+            || current.startTNs < saved.raw.startTNs
+            || (board.getTime?.() ?? board.timeNs) < saved.clockNs;
+        });
+        if (stale) invalidateADC(t('scopeADCReset', lang));
+      }
       if (!unique.length) return;
+      if (adcEnabled) invalidateADC(unique.map(c => c.reason).join('; '));
       displayedReadouts.current = {time: [], spectrum: []};
       setTimeReadouts([]); setSpectrumReadouts([]);
       stopAudio();
@@ -241,7 +289,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
     check();
     const id = setInterval(check, SPECTRUM_PERIOD_MS);
     return () => clearInterval(id);
-  }, [board, channels, specChannels, audioChannel, stopAudio]);
+  }, [board, channels, specChannels, audioChannel, stopAudio, adcEnabled, invalidateADC, lang]);
 
   // (Re)attach channels whenever the board instance changes — an edit
   // rebuilds the engine and the old handles die with it — OR when the capture
@@ -252,6 +300,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
       ...c,
       handle: board.addScopeChannel({
         type: 'voltage', netId: c.netId, sampleRateHz, depth: SCOPE_DEPTH,
+        ...(timeCapture === 'sample' ? {capture: 'sample'} : {}),
         ...scopeProbeOptions(probePreset, referenceNetId),
       }),
     }));
@@ -262,17 +311,18 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [board, sampleRateHz, probePreset, referenceNetId]);
+  }, [board, sampleRateHz, probePreset, referenceNetId, timeCapture]);
 
   const addChannel = useCallback(() => {
     if (!board || !pickNet || channels.length >= 2) return;
     if (channels.some(c => c.netId === pickNet)) return;
     const handle = board.addScopeChannel({
       type: 'voltage', netId: pickNet, sampleRateHz, depth: SCOPE_DEPTH,
+      ...(timeCapture === 'sample' ? {capture: 'sample'} : {}),
       ...scopeProbeOptions(probePreset, referenceNetId),
     });
     setChannels(cs => [...cs, { netId: pickNet, handle, scale: defaultScale() }]);
-  }, [board, pickNet, channels, sampleRateHz, probePreset, referenceNetId]);
+  }, [board, pickNet, channels, sampleRateHz, probePreset, referenceNetId, timeCapture]);
 
   /** Change one channel's vertical setting, leaving the other alone. */
   const setChannelScale = useCallback((netId, patch) => {
@@ -293,6 +343,22 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   // cadence, so leaving one open on a bench nobody is transforming would be a
   // cost with no reading behind it.
   const netKey = channels.map(c => c.netId).join('|');
+  useEffect(() => {
+    displayedCaptures.current = [];
+    setADCError(adc.error);
+    const wasActive = previousADC.current;
+    previousADC.current = adcEnabled;
+    if (!adcEnabled) {
+      if (wasActive) {
+        displayedReadouts.current.time = [];
+        setTimeReadouts([]);
+        lastReadoutPublish.current = -Infinity;
+      }
+      return;
+    }
+    invalidateADC(adc.error);
+    lastReadoutPublish.current = -Infinity;
+  }, [board, netKey, sampleRateHz, probePreset, referenceNetId, timeCapture, adc, adcEnabled, invalidateADC]);
   const audioNet = channels[0]?.netId;
   useEffect(() => {
     if (view !== 'spectrum' || audioInput !== 'average' || !audioNet || !board?.addScopeChannel) {
@@ -414,6 +480,9 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
     if (!running || channels.length === 0 || view !== 'time') return undefined;
     let raf;
     const draw = () => {
+      // A queued frame must not overwrite the paired snapshot after HOLD's
+      // click, even before React has run the previous effect cleanup.
+      if (adcEnabled && (!runningRef.current || !adc.model)) return;
       const canvas = canvasRef.current;
       if (!canvas || !board || !board.getScopeData) { raf = requestAnimationFrame(draw); return; }
       const g = canvas.getContext('2d');
@@ -434,8 +503,24 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
       // scale, so each channel labels its own edge in its own colour — CH1
       // left, CH2 right — and the readout under the canvas states both.
       const chData = channels.map((c) => {
-        try { return board.getScopeData(c.handle); } catch { return null; }
+        try {
+          const raw = board.getScopeData(c.handle);
+          if (!adcEnabled) return raw;
+          if (!adc.model) return null;
+          return digitizeScopeCapture(raw, adc.model).data;
+        } catch (error) {
+          if (adcEnabled) invalidateADC(String(error.message || error));
+          return null;
+        }
       });
+      if (adcEnabled && chData.every(Boolean) && adc.model) {
+        displayedCaptures.current = chData.map((data, index) => ({
+          data, raw: {startTNs: data.startTNs}, handle: channels[index].handle,
+          netId: channels[index].netId, observerEpoch: observerEpoch.current,
+          clockNs: board.getTime?.() ?? board.timeNs,
+        }));
+        setADCError(previous => previous ? '' : previous);
+      }
       const ranges = channels.map((c, ci) => channelRange(c.scale, chData[ci]));
       g.font = '8px monospace';
       ranges.forEach((r, ci) => {
@@ -456,8 +541,15 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
       const readouts = chData.map((data, ci) => {
         if (!data) return {ok: false};
         const win = Math.max(16, Math.floor(data.samples.length / 2 * windowFrac));
-        return scopeDisplayStatus(data, {start: triggeredWindowStart(data, win, triggerIndex),
+        const status = scopeDisplayStatus(data, {start: triggeredWindowStart(data, win, triggerIndex),
           windowSamples: win, range: ranges[ci]});
+        if (!data.adc) return status;
+        const depth = data.samples.length / 2;
+        const index = (data.writeIndex - Math.min(data.count, depth) + depth) % depth;
+        return {...status, adc: {descriptor: data.adc.descriptor, source: data.adc.source,
+          clippingCounts: data.adc.clippingCounts,
+          firstPoint: data.count ? {inputVolts: data.adc.rawSamples[index * 2], code: data.adc.codes[index],
+            volts: data.samples[index * 2], clipping: data.adc.clippingDirections[index]} : null}};
       });
       displayedReadouts.current.time = readouts;
       const now = performance.now();
@@ -506,7 +598,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
   }, [running, channels, board, windowFrac, view,
-    triggerMode, triggerLevel, cursorA, cursorB]);
+    triggerMode, triggerLevel, cursorA, cursorB, adcEnabled, adc, invalidateADC]);
 
   const copySpectrumCsv = useCallback(() => {
     if (specChannels.some(c => readScopeCapture(board, c.handle).reason)) return;
@@ -534,10 +626,18 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
     if (!board) return;
     const captures = channels.map(c => ({netId: c.netId, ...readScopeCapture(board, c.handle)}));
     if (captures.some(c => c.reason)) return;
-    const traces = captures.map(c => ({netId: c.netId, data: c.data}));
+    let traces;
+    if (adcEnabled) {
+      const saved = displayedCaptures.current;
+      if (adc.error || adcError || saved.length !== channels.length
+          || saved.some((c, index) => c.handle !== channels[index].handle
+            || c.observerEpoch !== observerEpoch.current)) return;
+      traces = saved.map(c => ({netId: c.netId, data: {...c.data,
+        adc: {...c.data.adc, held: !running, observerEpoch: c.observerEpoch}}}));
+    } else traces = captures.map(c => ({netId: c.netId, data: c.data}));
     const csv = scopeTracesToCsv(traces);
     if (csv) downloadText(csv, 'scope-trace.csv', 'text/csv');
-  }, [board, channels]);
+  }, [board, channels, adcEnabled, adc, adcError, running]);
 
   const timeLabel = (() => {
     if (!board || channels.length === 0) return '';
@@ -575,6 +675,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
             setTimeReadouts(displayedReadouts.current.time);
             setSpectrumReadouts(displayedReadouts.current.spectrum);
           } else lastReadoutPublish.current = -Infinity;
+          runningRef.current = !running;
           setRunning(r => !r);
         }} style={{
           background: running ? '#2c3e50' : '#e67e22', color: running ? '#2ecc71' : '#000',
@@ -654,6 +755,30 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
         </span>
       </div>
 
+      {view === 'time' && <div data-testid="bw-scope-digitizer-controls" style={{marginBottom: 6}}>
+        <label>{t('scopeTimeCapture', lang)}{' '}
+          <select data-testid="bw-scope-time-capture" value={timeCapture}
+            disabled={channels.length > 0 || !running} onChange={e => {
+              setTimeCapture(e.target.value); if (e.target.value !== 'sample') setADCEnabled(false);
+            }}>
+            <option value="envelope">{t('scopeCaptureEnvelope', lang)}</option>
+            <option value="sample">{t('scopeCapturePoint', lang)}</option>
+          </select>
+        </label>{' '}
+        <label><input type="checkbox" data-testid="bw-scope-adc-enabled" checked={adcEnabled}
+          disabled={!running || timeCapture !== 'sample'} onChange={e => setADCEnabled(e.target.checked)} />
+          {t('scopeADCView', lang)}</label>{' '}
+        {[[adcBits, setADCBits, 'bits'], [adcLow, setADCLow, 'low'], [adcHigh, setADCHigh, 'high']].map(([value, set, name]) =>
+          <label key={name}>{t(`scopeADC_${name}`, lang)}{' '}
+            <input type="number" data-testid={`bw-scope-adc-${name}`} value={value}
+              disabled={!running || !adcEnabled || timeCapture !== 'sample'}
+              min={name === 'bits' ? 1 : undefined} max={name === 'bits' ? 16 : undefined}
+              step={name === 'bits' ? 1 : 'any'} style={{width: 60}} onChange={e => set(Number(e.target.value))} />
+          </label>)}
+        <div>{t('scopeCaptureSetup', lang)}</div>
+        {adcError && adcEnabled && <div role="alert" data-testid="bw-scope-adc-error">{adcError}</div>}
+      </div>}
+
       {/* One vertical control set PER CHANNEL (D31). A single V/div could show
           a 5 V rail or a 50 mV shunt drop, never both; and in auto it ranged
           across all channels at once, so the small signal drew as a flat line
@@ -664,7 +789,8 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
       {view === 'time' && channels.map((c, ci) => {
         const scale = c.scale || defaultScale();
         let data = null;
-        try { data = board && board.getScopeData ? board.getScopeData(c.handle) : null; } catch { data = null; }
+        try { data = adcEnabled ? displayedCaptures.current.find(saved => saved.handle === c.handle)?.data
+          : board && board.getScopeData ? board.getScopeData(c.handle) : null; } catch { data = null; }
         const range = channelRange(scale, data);
         return (
           <div key={`scale-${c.netId}`} data-testid={`bw-scope-scale-${ci}`}
@@ -700,9 +826,16 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
           data-capture={status.capture} data-depth={status.depth} data-retained={status.retained}
           data-visible={status.visible} data-wrapped={String(!!status.wrapped)}
           data-start-time-ns={status.startTimeNs ?? ''} data-interval-ns={status.intervalNs}
+          data-adc-bits={status.adc?.descriptor.bits} data-adc-first-input={Number.isFinite(status.adc?.firstPoint?.inputVolts) ? status.adc.firstPoint.inputVolts : undefined}
+          data-adc-first-code={status.adc?.firstPoint?.code} data-adc-first-volts={Number.isFinite(status.adc?.firstPoint?.volts) ? status.adc.firstPoint.volts : undefined}
           style={{color: '#bdc3c7', fontSize: 9, overflowWrap: 'anywhere', marginBottom: 4}}>
           {!running && <strong>{lang === 'de' ? 'Gehaltene Anzeige: ' : 'Held display: '}</strong>}
           {scopeDisplayLabel(status, lang)}
+          {status.adc && <div data-testid={`bw-scope-adc-readout-${ci}`}>
+            {t('scopeADCView', lang)}: {status.adc.descriptor.bits} bit · {status.adc.descriptor.lowVolts} … {status.adc.descriptor.highVolts} V
+            {status.adc.firstPoint && <span>{' · '}{t('scopeADCFirst', lang)}: {status.adc.firstPoint.inputVolts} V → {status.adc.firstPoint.code ?? '—'} → {status.adc.firstPoint.volts} V</span>}
+            {' · '}{t('scopeADCClips', lang)}: {status.adc.clippingCounts.below}/{status.adc.clippingCounts.above}
+          </div>}
           {!running && status.viewport && <span>{` · ${status.viewport.vLo} … ${status.viewport.vHi} V`}</span>}
           {scopeViewportWarning(status, lang) && <div role="status"
             data-testid={`bw-scope-overrange-${ci}`} style={{color: '#f1c40f'}}>
@@ -711,7 +844,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
         </div>
       ))}
       <div data-testid="bw-scope-sampling-limits" style={{color: '#95a5a6', fontSize: 9, marginBottom: 6}}>
-        {lang === 'de'
+        {adcEnabled && view === 'time' ? t('scopeADCLimits', lang) : lang === 'de'
           ? 'Eine Min/Max-Hüllkurve ist keine Punktabtastung. Punktabtastungen können oberhalb Nyquist aliasen; kein analoger Anti-Aliasing-Filter oder ADC-Modell.'
           : 'A min/max envelope is not a point-sample record. Point samples can alias above Nyquist; no analog anti-alias filter or ADC model is applied.'}
       </div>
@@ -801,7 +934,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
       {view === 'time' && (
       <div style={{ display: 'flex', gap: '4px', marginBottom: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
         <label>{t('scopeTrigger', lang)}{' '}
-          <select value={triggerMode} onChange={e => setTriggerMode(e.target.value)}
+          <select data-testid="bw-scope-trigger-mode" value={triggerMode} onChange={e => setTriggerMode(e.target.value)}
             style={{ background: '#1a1a2e', color: '#bdc3c7', border: '1px solid #2c3e50', fontSize: '9px' }}>
             <option value="off">{t('scopeTriggerOff', lang)}</option>
             <option value="rising">{t('scopeTriggerRise', lang)}</option>
@@ -809,10 +942,10 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
           </select>
         </label>
         <label>{t('scopeLevel', lang)}{' '}
-          <input type="number" value={triggerLevel} step="0.1" onChange={e => setTriggerLevel(Number(e.target.value))}
+          <input data-testid="bw-scope-trigger-level" type="number" value={triggerLevel} step="0.1" onChange={e => setTriggerLevel(Number(e.target.value))}
             disabled={triggerMode === 'off'} style={{ width: 48, background: '#1a1a2e', color: '#bdc3c7', border: '1px solid #2c3e50', fontSize: '9px' }} />
         </label>
-        {triggerMode !== 'off' && <strong style={{ color: triggered ? '#2ecc71' : '#f39c12' }}>
+        {triggerMode !== 'off' && <strong data-testid="bw-scope-trigger-status" data-triggered={String(triggered)} style={{ color: triggered ? '#2ecc71' : '#f39c12' }}>
           {triggered ? t('scopeTriggered', lang) : t('scopeWaiting', lang)}
         </strong>}
       </div>
@@ -913,7 +1046,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
         <span style={{ marginLeft: 'auto' }}>{timeLabel}</span>
       </div>
       {view === 'time' && channels.length > 0 && (
-        <button onClick={downloadTraceCsv} disabled={captureErrors.length > 0} data-testid="bw-scope-trace-csv-download" style={{
+        <button onClick={downloadTraceCsv} disabled={captureErrors.length > 0 || (adcEnabled && (!!adcError || !timeReadouts.length))} data-testid="bw-scope-trace-csv-download" style={{
           width: '100%', marginTop: 5, padding: '3px 6px', background: '#0d1420',
           border: '1px solid #2c3e50', borderRadius: 3, color: '#5d6d7e',
           fontFamily: 'monospace', fontSize: 9, cursor: 'pointer',

@@ -186,6 +186,14 @@ const EXPECTED = [
   'scope-aperture-audio-lifecycle',
   'pmos-source-bulk-import-op',
   'pmos-ground-bulk-import-op',
+  'scope-adc-primary-selection',
+  'scope-adc-render-and-raw',
+  'scope-adc-trigger',
+  'scope-adc-csv-and-hold',
+  'scope-adc-reset-and-refusal',
+  'scope-adc-canvas-mutant',
+  'scope-adc-readout-mutant',
+  'scope-adc-export-mutant',
   'zero-page-errors',
 ];
 
@@ -2489,6 +2497,212 @@ for (const grounded of [false, true]) {
   } catch (error) {
     fail(id, `actual PMOS import/DC OP: ${String(error).split('\n')[0]}`);
   } finally {await pmosPage.close();}
+}
+
+// One actual imported bench, shipping ScopePanel and installed Board. Mutants
+// change exactly one served UI expression, then must reach its named assertion.
+const ADC_IDS = ['scope-adc-primary-selection', 'scope-adc-render-and-raw', 'scope-adc-trigger',
+  'scope-adc-csv-and-hold', 'scope-adc-reset-and-refusal'];
+async function exerciseADC(adcPage, report = () => {}) {
+  const requireADC = (condition, message) => {if (!condition) throw new Error(message);};
+  await adcPage.goto(`http://localhost:${PORT}/?examples=none`, {waitUntil: 'domcontentloaded'});
+  await adcPage.waitForFunction(() => window.__circuit && window.__board);
+  const fixture = {parts: [
+    {id:'adc-v',kind:'vsource',x:100,y:100,params:{volts:.4}},
+    {id:'adc-r',kind:'resistor',x:250,y:100,params:{ohms:1000}},
+    {id:'adc-g',kind:'gnd',x:100,y:230,params:{}},
+    {id:'adc-bad',kind:'vsource',x:320,y:230,params:{volts:0}},
+  ], nets: [
+    {id:'signal',terminals:[{part:'adc-v',terminal:'pos'},{part:'adc-r',terminal:'a'}]},
+    {id:'ground',terminals:[{part:'adc-v',terminal:'neg'},{part:'adc-r',terminal:'b'},
+      {part:'adc-g',terminal:'gnd'},{part:'adc-bad',terminal:'pos'},{part:'adc-bad',terminal:'neg'}]},
+  ]};
+  await adcPage.getByRole('button',{name:'More circuit controls',exact:true}).click();
+  const choosing=adcPage.waitForEvent('filechooser');
+  await adcPage.getByRole('button',{name:/^📂 Open$/}).click();
+  await (await choosing).setFiles({name:'ideal-adc-bench.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(fixture))});
+  await adcPage.waitForFunction(()=>window.__circuit.parts.some(p=>p.id==='adc-v'));
+  await adcPage.getByRole('radio',{name:/Sim/i}).first().click();
+  await adcPage.getByText('SIMULATING — circuit',{exact:true}).waitFor();
+  if (!await adcPage.locator('[data-instruments-column]').count()) await adcPage.getByRole('button',{name:/Expand instruments panel/i}).click();
+  await adcPage.getByRole('button',{name:/Pause simulation/i}).press('Enter');
+  await adcPage.getByText('PAUSED — circuit simulation',{exact:true}).waitFor();
+  const scope=adcPage.locator('[data-scope-panel]');
+  if (!await scope.count()) await adcPage.getByRole('button',{name:/Scope/i}).first().click();
+  await scope.waitFor();
+  // Start this finite imported bench at an actual fresh Board epoch. The
+  // designer remains paused; the later reset/advance ABA stays below 5ms.
+  await adcPage.evaluate(()=>window.__board.reset());
+  requireADC(await scope.getByTestId('bw-scope-time-capture').inputValue()==='envelope'
+    && await scope.getByTestId('bw-scope-adc-enabled').isDisabled(),'ADC_DEFAULT_CAPTURE_CHANGED');
+  await scope.getByTestId('bw-scope-time-capture').selectOption('sample');
+  await scope.getByTestId('bw-scope-record').selectOption('100000');
+  const nets=await adcPage.evaluate(()=>window.__board.getNets().reduce((r,n)=>{
+    if(n.terminals.some(t=>t.part==='adc-v'&&t.terminal==='pos'))r.signal=n.id;
+    if(n.terminals.some(t=>t.part==='adc-g'))r.ground=n.id;return r;
+  },{}));
+  requireADC(nets.signal&&nets.ground,'ADC_REAL_NETS_MISSING');
+  await scope.getByTestId('bw-scope-reference-net').selectOption(nets.ground);
+  await scope.getByTestId('bw-scope-probe-preset').selectOption('10x');
+  await scope.locator('select').last().selectOption(nets.signal);
+  await scope.getByText('+ channel',{exact:false}).click();
+  let handle=await adcPage.evaluate(()=>window.__board.getScopeChannels()[0]);
+  await adcPage.evaluate(()=>window.__board.advanceTo(window.__board.getTime()+1000000n));
+  await adcPage.waitForFunction(h=>window.__board.getScopeData(h).count>=90,handle);
+  requireADC(await adcPage.evaluate(h=>window.__board.getScopeData(h).capture==='sample',handle)
+    && await scope.getByTestId('bw-scope-time-capture').isDisabled(),'ADC_PRIMARY_SAMPLE_NOT_EXPLICIT');
+  report(ADC_IDS[0],'explicit primary point acquisition with one loaded probe; envelope remains default');
+  await scope.getByTestId('bw-scope-vdiv-0').selectOption('0.5');
+  await scope.getByTestId('bw-scope-center-0').fill('0');
+  await adcPage.waitForTimeout(300); // one real display publication, no engine advance
+  const tracePixels=()=>scope.locator('canvas').first().evaluate(c=>{
+    const image=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let found=0;
+    for(let y=12;y<c.height-12;y++)for(let x=0;x<c.width;x++){
+      const i=(y*c.width+x)*4;if(image[i+1]>70&&image[i+1]>image[i]*1.5&&image[i+1]>image[i+2]*1.2)found++;
+    }return found;
+  });
+  requireADC(await tracePixels()>0,'ADC_RAW_CANVAS_CONTROL_MISSING');
+  const rawCanvas=await scope.locator('canvas').first().evaluate(c=>c.toDataURL());
+  const rawIdentity=()=>adcPage.evaluate(h=>{
+    const b=window.__board,d=b.getScopeData(h);
+    return JSON.stringify({clock:String(b.getTime()),handles:b.getScopeChannels(),count:d.count,
+      writeIndex:d.writeIndex,start:String(d.startTNs),samples:Array.from(d.samples),
+      loads:b._solveParts.filter(p=>String(p.id).startsWith('@scope:')).map(p=>({id:p.id,kind:p.kind,params:p.params})),
+      caps:[...b.capVoltages].filter(([id])=>String(id).startsWith('@scope:'))});
+  },handle);
+  const before=await rawIdentity(), physical=JSON.parse(before);
+  requireADC(physical.handles.length===1 && physical.loads.length===2
+    && physical.loads.some(p=>p.kind==='resistor'&&p.params.ohms===10000000)
+    && physical.loads.some(p=>p.kind==='capacitor'&&p.params.farads===15e-12),'ADC_LOADED_PROBE_CONTROL_MISSING');
+  await scope.getByTestId('bw-scope-adc-enabled').check();
+  await scope.getByTestId('bw-scope-adc-bits').fill('1');
+  await scope.getByTestId('bw-scope-adc-high').fill('1');
+  await adcPage.waitForFunction(()=>document.querySelector('[data-testid="bw-scope-acquisition-0"]')?.getAttribute('data-adc-bits')==='1');
+  const readout=scope.getByTestId('bw-scope-acquisition-0');
+  requireADC(await readout.getAttribute('data-adc-first-code')==='0'
+    && Number(await readout.getAttribute('data-adc-first-volts'))===0
+    && Math.abs(Number(await readout.getAttribute('data-adc-first-input'))-.4)<1e-9,'ADC_READOUT_CODE');
+  requireADC(await rawIdentity()===before,'ADC_VIEW_ALTERED_RAW_CLOCK_OR_PROBE');
+  requireADC(await tracePixels()>0,'ADC_MODELED_CANVAS_EMPTY');
+  requireADC(await scope.locator('canvas').first().evaluate(c=>c.toDataURL())!==rawCanvas,'ADC_CANVAS_RAW_BYPASS');
+  report(ADC_IDS[1],'raw .4V becomes displayed code0/0V without changing clock, ring, handle or 10MΩ/15pF load');
+  const downloadCSV=async()=>{
+    const [download]=await Promise.all([adcPage.waitForEvent('download'),scope.getByTestId('bw-scope-trace-csv-download').click()]);
+    const stream=await download.createReadStream();const chunks=[];for await(const c of stream)chunks.push(c);
+    return Buffer.concat(chunks).toString('utf8');
+  };
+  const csv=await downloadCSV(), lines=csv.split('\n');
+  const header=lines.findIndex(line=>line==='elapsed_seconds,input_volts,adc_code,volts,clipping');
+  requireADC(header>=0&&csv.includes('ideal-uniform-adc'),'ADC_CSV_FORMAT');
+  const row=lines[header+1]?.split(',');
+  requireADC(row&&Math.abs(Number(row[1])-.4)<1e-9&&row[2]==='0'&&Number(row[3])===0&&row[4]==='none','ADC_CSV_VALUES');
+  await scope.getByTestId('bw-scope-adc-high').fill('0');
+  await scope.getByTestId('bw-scope-adc-error').waitFor();
+  const invalidRange={exportDisabled:await scope.getByTestId('bw-scope-trace-csv-download').isDisabled(),
+    readouts:await scope.getByTestId('bw-scope-acquisition-0').count()};
+  requireADC(invalidRange.exportDisabled&&invalidRange.readouts===0,
+    `ADC_INVALID_RANGE_EXPORTED ${JSON.stringify(invalidRange)}`);
+  await scope.getByTestId('bw-scope-adc-high').fill('1');
+  await adcPage.waitForFunction(()=>document.querySelector('[data-testid="bw-scope-acquisition-0"]')?.getAttribute('data-adc-bits')==='1');
+  requireADC(await rawIdentity()===before,'ADC_RANGE_REFUSAL_CHANGED_PHYSICS');
+  // The raw waveform never crosses .75V, while the reconstructed .4→.6
+  // transition is 0→1V. This is a digital-view trigger, not analog hardware.
+  await scope.getByTestId('bw-scope-trigger-mode').selectOption('rising');
+  await scope.getByTestId('bw-scope-trigger-level').fill('.75');
+  await adcPage.evaluate(()=>{window.__board.setControl('adc-v',.6);window.__board.advanceTo(window.__board.getTime()+1000000n);});
+  await adcPage.waitForFunction(()=>document.querySelector('[data-testid="bw-scope-trigger-status"]')?.getAttribute('data-triggered')==='true');
+  requireADC(await adcPage.evaluate(h=>{
+    const d=window.__board.getScopeData(h);return [...d.samples].filter(Number.isFinite).every(v=>v<.75);
+  },handle),'ADC_RAW_TRIGGER_CONTROL');
+  report(ADC_IDS[2],'trigger observes reconstructed 0→1V crossing while every raw point stays below .75V');
+  await scope.getByTestId('bw-scope-hold').click();
+  requireADC(await scope.getByTestId('bw-scope-adc-bits').isDisabled()
+    && await scope.getByTestId('bw-scope-adc-enabled').isDisabled(),'ADC_HELD_CONFIG_EDITABLE');
+  const held=await downloadCSV(), heldText=await readout.textContent();
+  const heldCanvas=await scope.locator('canvas').first().evaluate(c=>c.toDataURL());
+  await adcPage.evaluate(()=>{window.__board.setControl('adc-v',1.25);window.__board.advanceTo(window.__board.getTime()+1000000n);});
+  requireADC(await downloadCSV()===held&&await readout.textContent()===heldText
+    &&await scope.locator('canvas').first().evaluate(c=>c.toDataURL())===heldCanvas,'ADC_HOLD_RELABELLED_LIVE_CAPTURE');
+  await scope.getByTestId('bw-scope-hold').click();
+  await adcPage.waitForFunction(()=>{
+    const el=document.querySelector('[data-testid="bw-scope-adc-readout-0"]');return el&&/0\/[1-9]/.test(el.textContent);
+  });
+  requireADC((await downloadCSV()).split('\n').some(line=>{
+    const cells=line.split(',');return cells[4]==='above'&&Number(cells[1])>1&&cells[2]==='1'&&Number(cells[3])===1;
+  }),'ADC_SATURATION_NOT_EXPORTED');
+  report(ADC_IDS[3],'paired CSV carries raw/code/volts/clipping and HOLD remains byte-stable while real simulation advances');
+  await scope.getByTestId('bw-scope-hold').click();
+  await adcPage.evaluate(()=>{const b=window.__board,after=b.getTime()+1000000n;b.reset();b.advanceTo(after);});
+  await scope.getByTestId('bw-scope-adc-error').waitFor();
+  requireADC(await scope.getByTestId('bw-scope-trace-csv-download').isDisabled()
+    &&await scope.getByTestId('bw-scope-acquisition-0').count()===0,'ADC_RESET_ABA_RETAINED_HELD_CAPTURE');
+  await scope.getByTestId('bw-scope-hold').click();
+  await adcPage.waitForFunction(()=>document.querySelector('[data-testid="bw-scope-acquisition-0"]')?.getAttribute('data-adc-bits')==='1');
+  // Changing the actual acquisition mode is an explicit remove/rearm, unlike
+  // any ADC view update. Each new handle starts a new record with one R/C load.
+  const sampleHandle=handle;
+  await scope.getByText('✕',{exact:true}).click();
+  await scope.getByTestId('bw-scope-time-capture').selectOption('envelope');
+  requireADC(!await scope.getByTestId('bw-scope-adc-enabled').isChecked()
+    &&await scope.getByTestId('bw-scope-adc-enabled').isDisabled(),'ADC_MODE_CHANGE_NOT_EXPLICIT');
+  await scope.locator('select').last().selectOption(nets.signal);
+  await scope.getByText('+ channel',{exact:false}).click();
+  handle=await adcPage.evaluate(()=>window.__board.getScopeChannels()[0]);
+  requireADC(handle!==sampleHandle&&await adcPage.evaluate(h=>window.__board.getScopeData(h).capture==='envelope'
+    &&window.__board.getScopeData(h).count===0,handle),'ADC_ENVELOPE_REARM_REUSED_RECORD');
+  await adcPage.evaluate(()=>window.__board.advanceTo(window.__board.getTime()+1000000n));
+  const envelopeHandle=handle;
+  await scope.getByText('✕',{exact:true}).click();
+  await scope.getByTestId('bw-scope-time-capture').selectOption('sample');
+  await scope.locator('select').last().selectOption(nets.signal);
+  await scope.getByText('+ channel',{exact:false}).click();
+  handle=await adcPage.evaluate(()=>window.__board.getScopeChannels()[0]);
+  requireADC(handle!==envelopeHandle&&await adcPage.evaluate(h=>window.__board.getScopeData(h).capture==='sample'
+    &&window.__board.getScopeData(h).count===0,handle),'ADC_POINT_REARM_REUSED_RECORD');
+  await adcPage.evaluate(()=>window.__board.advanceTo(window.__board.getTime()+1000000n));
+  await scope.getByTestId('bw-scope-adc-enabled').check();
+  await adcPage.waitForFunction(()=>document.querySelector('[data-testid="bw-scope-acquisition-0"]')?.getAttribute('data-adc-bits')==='1');
+  requireADC(await adcPage.evaluate(()=>window.__board.getScopeChannels().length===1
+    &&window.__board._solveParts.filter(p=>String(p.id).startsWith('@scope:')).length===2),'ADC_REARM_DUPLICATED_PROBE');
+  // Deliberate metadata fault: keep the actual source values, but return an
+  // envelope label. The view must inspect the real returned mode, not UI state.
+  await adcPage.evaluate(()=>{const b=window.__board;window.__adcOriginalData=b.getScopeData;
+    b.getScopeData=function(h){const d=window.__adcOriginalData.call(this,h);return d?{...d,capture:'envelope'}:d;};});
+  await scope.getByTestId('bw-scope-adc-error').waitFor();
+  requireADC(await scope.getByTestId('bw-scope-trace-csv-download').isDisabled(),'ADC_ENVELOPE_RELABEL_ACCEPTED');
+  await adcPage.evaluate(()=>{window.__board.getScopeData=window.__adcOriginalData;delete window.__adcOriginalData;});
+  await adcPage.waitForFunction(()=>document.querySelector('[data-testid="bw-scope-acquisition-0"]')?.getAttribute('data-adc-bits')==='1');
+  await adcPage.evaluate(()=>{try{window.__board.setControl('adc-bad',5);}catch{/* actual failed solve remains observable */}});
+  await scope.getByTestId('bw-scope-capture-error').waitFor();
+  requireADC(await scope.getByTestId('bw-scope-trace-csv-download').isDisabled(),'ADC_FAILED_SOURCE_EXPORTED');
+  report(ADC_IDS[4],'reset/advance ABA, wrong capture label and actual ideal-source conflict invalidate the derived display');
+}
+const adcPage=await browser.newPage({viewport:{width:1600,height:1000}});
+adcPage.on('pageerror',e=>errors.push(`ideal ADC view: ${e.message}`));
+try {await exerciseADC(adcPage,(id,message)=>pass(id,message));}
+catch(error){failAll(ADC_IDS,`actual ADC view: ${String(error).split('\n')[0]}`);}
+finally{await adcPage.close();}
+for(const [name,expected] of [['canvas','ADC_CANVAS_RAW_BYPASS'],['readout','ADC_READOUT_CODE'],['export','ADC_CSV_FORMAT']]){
+  const id=`scope-adc-${name}-mutant`, mutatedPage=await browser.newPage({viewport:{width:1600,height:1000}});
+  const pageErrors=[];mutatedPage.on('pageerror',e=>pageErrors.push(e.message));let applied=0;
+  await mutatedPage.route('**/src/components/ScopePanel.jsx*',async route=>{
+    const response=await route.fetch();let body=await response.text();
+    const pattern=name==='canvas'? /const data = chData\[ci\];/g
+      :name==='readout'? /code: data\.adc\.codes\[index\],/g
+      :/data:\s*\{\s*\.\.\.c\.data,\s*adc:\s*\{\s*\.\.\.c\.data\.adc,\s*held:\s*!running,\s*observerEpoch:\s*c\.observerEpoch\s*\}\s*\}/g;
+    const matches=[...body.matchAll(pattern)];
+    if(matches.length!==1) {pageErrors.push(`mutant ${name} anchor count ${matches.length}`);await route.fulfill({response});return;}
+    const replacement=name==='canvas'?'const data = board.getScopeData(c.handle);'
+      :name==='readout'?'code: -9,'
+      :'data: {capture:c.data.capture,channelType:c.data.channelType,startTNs:c.data.startTNs,sampleIntervalNs:c.data.sampleIntervalNs,count:c.data.count,writeIndex:c.data.writeIndex,samples:c.data.adc.rawSamples}';
+    body=body.replace(pattern,replacement);applied++;await route.fulfill({response,body});
+  });
+  try{
+    let caught='';try{await exerciseADC(mutatedPage);}catch(error){caught=String(error.message||error);}
+    verdict(id,applied===1&&pageErrors.length===0&&caught===expected,
+      `one real served ${name} mutation reached named ${expected} assertion`,
+      `mutant did not reach its causal assertion: applied=${applied} errors=${pageErrors.join(';')} caught=${caught}`);
+  }finally{await mutatedPage.close();}
 }
 
 const APERTURE_IDS = ['scope-aperture-acquisition', 'scope-aperture-audio-lifecycle'];
