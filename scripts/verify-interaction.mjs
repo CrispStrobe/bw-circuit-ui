@@ -2546,7 +2546,7 @@ async function exerciseADC(adcPage, report = () => {}) {
   await scope.getByTestId('bw-scope-probe-preset').selectOption('10x');
   await scope.locator('select').last().selectOption(nets.signal);
   await scope.getByText('+ channel',{exact:false}).click();
-  const handle=await adcPage.evaluate(()=>window.__board.getScopeChannels()[0]);
+  let handle=await adcPage.evaluate(()=>window.__board.getScopeChannels()[0]);
   await adcPage.evaluate(()=>window.__board.advanceTo(window.__board.getTime()+1000000n));
   await adcPage.waitForFunction(h=>window.__board.getScopeData(h).count>=90,handle);
   requireADC(await adcPage.evaluate(h=>window.__board.getScopeData(h).capture==='sample',handle)
@@ -2638,6 +2638,32 @@ async function exerciseADC(adcPage, report = () => {}) {
     &&await scope.getByTestId('bw-scope-acquisition-0').count()===0,'ADC_RESET_ABA_RETAINED_HELD_CAPTURE');
   await scope.getByTestId('bw-scope-hold').click();
   await adcPage.waitForFunction(()=>document.querySelector('[data-testid="bw-scope-acquisition-0"]')?.getAttribute('data-adc-bits')==='1');
+  // Changing the actual acquisition mode is an explicit remove/rearm, unlike
+  // any ADC view update. Each new handle starts a new record with one R/C load.
+  const sampleHandle=handle;
+  await scope.getByText('✕',{exact:true}).click();
+  await scope.getByTestId('bw-scope-time-capture').selectOption('envelope');
+  requireADC(!await scope.getByTestId('bw-scope-adc-enabled').isChecked()
+    &&await scope.getByTestId('bw-scope-adc-enabled').isDisabled(),'ADC_MODE_CHANGE_NOT_EXPLICIT');
+  await scope.locator('select').last().selectOption(nets.signal);
+  await scope.getByText('+ channel',{exact:false}).click();
+  handle=await adcPage.evaluate(()=>window.__board.getScopeChannels()[0]);
+  requireADC(handle!==sampleHandle&&await adcPage.evaluate(h=>window.__board.getScopeData(h).capture==='envelope'
+    &&window.__board.getScopeData(h).count===0,handle),'ADC_ENVELOPE_REARM_REUSED_RECORD');
+  await adcPage.evaluate(()=>window.__board.advanceTo(window.__board.getTime()+1000000n));
+  const envelopeHandle=handle;
+  await scope.getByText('✕',{exact:true}).click();
+  await scope.getByTestId('bw-scope-time-capture').selectOption('sample');
+  await scope.locator('select').last().selectOption(nets.signal);
+  await scope.getByText('+ channel',{exact:false}).click();
+  handle=await adcPage.evaluate(()=>window.__board.getScopeChannels()[0]);
+  requireADC(handle!==envelopeHandle&&await adcPage.evaluate(h=>window.__board.getScopeData(h).capture==='sample'
+    &&window.__board.getScopeData(h).count===0,handle),'ADC_POINT_REARM_REUSED_RECORD');
+  await adcPage.evaluate(()=>window.__board.advanceTo(window.__board.getTime()+1000000n));
+  await scope.getByTestId('bw-scope-adc-enabled').check();
+  await adcPage.waitForFunction(()=>document.querySelector('[data-testid="bw-scope-acquisition-0"]')?.getAttribute('data-adc-bits')==='1');
+  requireADC(await adcPage.evaluate(()=>window.__board.getScopeChannels().length===1
+    &&window.__board._solveParts.filter(p=>String(p.id).startsWith('@scope:')).length===2),'ADC_REARM_DUPLICATED_PROBE');
   // Deliberate metadata fault: keep the actual source values, but return an
   // envelope label. The view must inspect the real returned mode, not UI state.
   await adcPage.evaluate(()=>{const b=window.__board;window.__adcOriginalData=b.getScopeData;
