@@ -55,6 +55,7 @@ export function auditOperatingPointKcl(circuit, point) {
     } else physical.set(part.id, part);
   }
   const seenTerminals = new Set(), seenNets = new Set(), netInputs = [];
+  const groundNetIds = new Set();
   for (const net of circuit.resolvedNets) {
     if (typeof net?.id !== 'string' || !net.id || seenNets.has(net.id) || !Array.isArray(net.terminals)) {
       refuse('duplicate-or-invalid-net', String(net?.id));
@@ -74,6 +75,7 @@ export function auditOperatingPointKcl(circuit, point) {
       seenTerminals.add(identity);
       // Ground is a reference label, not an invented current injection.
       if (part.kind === 'gnd') {
+        if (terminal.terminal === 'gnd') groundNetIds.add(net.id);
         const currents = point.branchCurrents.get(part.id);
         if (point.branchCurrents.has(part.id) && (!(currents instanceof Map) || currents.size)) {
           refuse('unexpected-ground-current-map', part.id);
@@ -85,11 +87,35 @@ export function auditOperatingPointKcl(circuit, point) {
       if (!finite(current)) refuse('missing-or-nonfinite-terminal-current', identity);
       else {
         values.push(current);
-        terminalObservations.push({part: part.id, terminal: terminal.terminal, net: net.id, currentAmps: current});
+        terminalObservations.push({part: part.id, terminal: terminal.terminal, net: net.id,
+          currentAmps: current, origin: 'physical-terminal'});
       }
     }
-    if (values.length) netInputs.push({id: net.id, values});
-    else refuse('empty-net-current-coverage', net.id);
+    netInputs.push({id: net.id, values});
+  }
+  // Grounded-bulk NMOS retains a real fourth current even when its symbol has
+  // three pins. Bind that current to the actual reference topology, never to
+  // a guessed net name or a net that merely happens to read zero volts.
+  for (const [id, part] of physical) {
+    const currents = point.branchCurrents.get(id);
+    if (part.kind !== 'nmos' || part.params?.model !== 'level1'
+        || part.params.bulkAtGround !== true || part.params.bulkOnSource === true
+        || part.params.bulkUnplaced === true || !(currents instanceof Map)
+        || !currents.has('bulk') || seenTerminals.has(key(id, 'bulk'))) continue;
+    if (groundNetIds.size !== 1) {
+      refuse('implicit-bulk-ground-unavailable', id);
+      continue;
+    }
+    const current = currents.get('bulk');
+    if (!finite(current)) continue; // The ordinary current checks refuse it below.
+    const net = groundNetIds.values().next().value;
+    netInputs.find(row => row.id === net).values.push(current);
+    seenTerminals.add(key(id, 'bulk'));
+    terminalObservations.push({part: id, terminal: 'bulk', net, currentAmps: current,
+      origin: 'implicit-grounded-bulk'});
+  }
+  for (const row of netInputs) {
+    if (!row.values.length) refuse('empty-net-current-coverage', row.id);
   }
   const partInputs = [];
   for (const [id, part] of physical) {
