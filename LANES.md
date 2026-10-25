@@ -9,7 +9,11 @@ Own exactly LANES.md, new src/model/scope-digitizer.js,
 src/model/scope-csv.js, src/model/measurement-receipt.js,
 src/components/ScopePanel.jsx, src/i18n/strings.js, bin/bwc.mjs,
 new test/scope-digitizer.test.js, test/cli-measure.test.js,
-scripts/verify-interaction.mjs and docs/CLI-INSTRUMENTS.md.
+scripts/verify-interaction.mjs and docs/CLI-INSTRUMENTS.md. The bounded hosted
+proof repair also owns package.json only to register the new test in the
+existing npm test command, and test/scope-timebase.test.js only to preserve
+attachment/rate/probe/reference checks while admitting explicit timeCapture
+and forbidding ADC-view settings from causing probe reattachment.
 Add one opt-in deterministic ideal uniform ADC reconstruction view of genuine
 voltage point samples. Expose primary time acquisition envelope (unchanged
 default) or sample only while no primary channel is attached; never auto-switch
@@ -47,7 +51,9 @@ exercise modeled drawing/trigger/readout/export, HOLD/reset/fault refusal,
 and prove raw samples/time/probe loading are untouched by the view. Every
 enabled exact-head source/browser check must succeed before matched merge.
 No Board law/source, other importer, profile/budget/tolerance, source payload,
-package/pin/lock, workflow, deployment, long-watch or physical-noise-model edit.
+dependency/pin/lock, workflow, deployment, long-watch or physical-noise-model edit.
+The package.json exception above changes test registration only, not package
+versions, dependencies, peer ranges, lifecycle scripts or distribution behavior.
 
 Claim #121 merged before implementation. Exact integer arithmetic constructs
 ordered decision cuts and correctly rounded reconstruction levels; focused
