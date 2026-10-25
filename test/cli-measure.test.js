@@ -155,6 +155,23 @@ test('ADC modeled CSV retains held/local observer metadata without changing raw 
   assert.match(csv,/\n0,1.49,1,1,none$/);assert.equal(scopeTraceToCsv(data,'signal'),raw);
 });
 
+test('ADC meter-only requests refuse before capture, CSV, receipt or summary output',()=>{
+  const dir=mkdtempSync(join(tmpdir(),'bwc-adc-no-scope-'));
+  try {
+    const input=adcInput(dir),csv=join(dir,'absent.csv'),receipt=join(dir,'absent.json');
+    for(const watch of [false,true])for(const withCsv of [false,true]) {
+      const args=[CLI,'measure',input,'--meter','voltage:V1.pos,V1.neg',
+        '--duration','4us','--rate','1MHz',...adcFlags,'--receipt',receipt,
+        ...(withCsv?['--csv',csv]:[]),...(watch?['--watch']:['--json'])];
+      const r=spawnSync(process.execPath,args,{encoding:'utf8',timeout:30000});
+      assert.equal(r.status,2,r.stderr);
+      assert.match(r.stderr,/ADC view needs at least one --scope/,'missing actual point capture is the named refusal');
+      assert.equal(r.stdout,'','no sample, summary, JSON report or success text');
+      assert.equal(existsSync(csv),false,'no CSV artifact');assert.equal(existsSync(receipt),false,'no receipt artifact');
+    }
+  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
 test('command-scoped --current refuses before input or measurement output for batch, watch and precision', () => {
   const dir=mkdtempSync(join(tmpdir(),'bwc-current-command-'));
   const csv=join(dir,'capture.csv'), receipt=join(dir,'capture.receipt.json');
