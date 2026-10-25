@@ -1,3 +1,44 @@
+2026-10-25 imported measurement contract repairs — CLAIMED, Codex circuit/instrument owner.
+Exact base91d8434a79d373cef2837c137ab356356f1a3b44; branch
+`lane/imported-measurement-fixes-20261025`. Claim-only merge before source edits.
+This is ordered campaign step3, after the frozen current-consumer baseline and
+307 distinct imported source inputs plus32 actual CLI cross-checks. Work only
+in owned CrispStrobe source repositories; do not patch third-party originals.
+
+Own exactly this ledger and these seven implementation/verification paths:
+- src/importers/spice.js and test/spice-nmos-operating-point.test.js:
+  admit only the existing exact Level1 PMOS model/WL domain for source-tied
+  and grounded bulk as well as third-node bulk; preserve the actual fourth
+  terminal/wire and remove incompatible legacy NMOS bulk flags. Preserve all
+  richer-model/field/geometry refusals, source identities and current signs.
+- src/model/operating-point-kcl.js and test/operating-point-kcl.test.js:
+  account for a real implicit bulk current ONLY for strict Level1 NMOS with
+  explicit bulkAtGround, attached to the uniquely proven physical ground net.
+  Include it in both net and part sums, label derived versus physical
+  observations, and retain refusal for other unknown terminals or ambiguous
+  ground. Require a nonzero body-current witness and wrong-ground/omitted-body
+  negatives; never hide the current to make conservation pass.
+- src/model/instrument-report.js and test/cli-measure.test.js:
+  validate optional authoredMaxStepSec and use the effective smaller step in
+  minimum-work preflight. Preserve the default20k attempt cap, all numerical
+  thresholds, sample clocks and actual integration semantics.
+- scripts/verify-interaction.mjs: add named roll-call scenarios using actual
+  SPICE file import and real DC-OP controls for strongly loaded source/ground
+  PMOS bulk cases. Preserve every existing scenario and assert actual bulk
+  connectivity plus independently predicted displayed readings.
+
+No Board physics, dependency pins/locks/provenance, physical package face,
+other importer families, workflow, solver tolerances, waveform/source rewrite,
+source-payload/corpus, release or deployment changes. An explicit four-terminal
+SPICE representation is not a new breadboard package or hardware-accuracy claim.
+Weakly anchored cutoff/common-mode numerical witnesses are NOT grounds for
+fitting ordinary model physics. The separate unsupported long passive-watch
+capability needs its own bounded design and claim; no silent budget widening.
+Require focused controls, load-bearing wiring/current/budget mutations, actual
+CLI/ngspice exact-law checks, affected real-browser qualification, and EVERY
+enabled exact-head hosted check before matched normal merge. Keep original
+refusals and research limitations; no private paths or raw data in this repo.
+
 2026-10-23 aperture audio and explicit spectrum acquisition — DONE (source candidate), same circuit owner.
 Base f9cfae50; consumer follow-up to the normally merged Board aperture claim667.
 Actual saved organ point acquisitions miss narrow pulses (5 of18 after startup)
