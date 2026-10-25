@@ -97,6 +97,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   const canvasRef = useRef(null);
   const [channels, setChannels] = useState([]); // [{netId, handle}]
   const [running, setRunning] = useState(true);
+  const runningRef = useRef(true);
   const [timeReadouts, setTimeReadouts] = useState([]);
   const [spectrumReadouts, setSpectrumReadouts] = useState([]);
   // Scalar snapshots only: HOLD must not follow the live ring's later writes.
@@ -479,6 +480,9 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
     if (!running || channels.length === 0 || view !== 'time') return undefined;
     let raf;
     const draw = () => {
+      // A queued frame must not overwrite the paired snapshot after HOLD's
+      // click, even before React has run the previous effect cleanup.
+      if (adcEnabled && !runningRef.current) return;
       const canvas = canvasRef.current;
       if (!canvas || !board || !board.getScopeData) { raf = requestAnimationFrame(draw); return; }
       const g = canvas.getContext('2d');
@@ -671,6 +675,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
             setTimeReadouts(displayedReadouts.current.time);
             setSpectrumReadouts(displayedReadouts.current.spectrum);
           } else lastReadoutPublish.current = -Infinity;
+          runningRef.current = !running;
           setRunning(r => !r);
         }} style={{
           background: running ? '#2c3e50' : '#e67e22', color: running ? '#2ecc71' : '#000',
