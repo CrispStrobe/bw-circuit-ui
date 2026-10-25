@@ -44,7 +44,7 @@ const STRINGS = {
   scopeADCFirst: {en: 'First stored point: raw → code → reconstructed', de: 'Erster gespeicherter Punkt: roh → Code → rekonstruiert'},
   scopeADCClips: {en: 'Stored clipped points low/high', de: 'Gespeicherte Übersteuerungen unten/oben'},
   scopeADCReset: {en: 'ADC display invalidated by a source reset; resume to capture again.', de: 'ADC-Anzeige nach Quellen-Reset ungültig; zum Neuaufnehmen fortsetzen.'},
-  scopeADCLimits: {en: 'Ideal uniform ADC reconstruction of point samples only. No hardware accuracy, noise or analog anti-alias filter; meters, spectrum and audio remain raw.', de: 'Nur ideale gleichmäßige ADC-Rekonstruktion von Punktwerten. Keine Hardwaregenauigkeit, kein Rauschen oder analoger Anti-Aliasing-Filter; Messgeräte, Spektrum und Audio bleiben unverändert.'},
+  scopeADCLimits: {en: 'Ideal uniform ADC reconstruction of point samples only. No hardware accuracy, noise or analog anti-alias filter; meters, spectrum and audio are unchanged by this view.', de: 'Nur ideale gleichmäßige ADC-Rekonstruktion von Punktwerten. Keine Hardwaregenauigkeit, kein Rauschen oder analoger Anti-Aliasing-Filter; Messgeräte, Spektrum und Audio bleiben von dieser Ansicht unverändert.'},
   scopeCaptureMode: {en: 'Acquisition', de: 'Aufnahme'},
   scopeCapturePoint: {en: 'Point samples', de: 'Punktabtastung'},
   scopeCaptureMean: {en: 'Interval means', de: 'Intervallmittelwerte'},
