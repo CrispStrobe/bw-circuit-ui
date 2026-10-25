@@ -482,7 +482,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
     const draw = () => {
       // A queued frame must not overwrite the paired snapshot after HOLD's
       // click, even before React has run the previous effect cleanup.
-      if (adcEnabled && !runningRef.current) return;
+      if (adcEnabled && (!runningRef.current || !adc.model)) return;
       const canvas = canvasRef.current;
       if (!canvas || !board || !board.getScopeData) { raf = requestAnimationFrame(draw); return; }
       const g = canvas.getContext('2d');

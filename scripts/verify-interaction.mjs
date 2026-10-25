@@ -2598,8 +2598,10 @@ async function exerciseADC(adcPage, report = () => {}) {
   requireADC(row&&Math.abs(Number(row[1])-.4)<1e-9&&row[2]==='0'&&Number(row[3])===0&&row[4]==='none','ADC_CSV_VALUES');
   await scope.getByTestId('bw-scope-adc-high').fill('0');
   await scope.getByTestId('bw-scope-adc-error').waitFor();
-  requireADC(await scope.getByTestId('bw-scope-trace-csv-download').isDisabled()
-    &&await scope.getByTestId('bw-scope-acquisition-0').count()===0,'ADC_INVALID_RANGE_EXPORTED');
+  const invalidRange={exportDisabled:await scope.getByTestId('bw-scope-trace-csv-download').isDisabled(),
+    readouts:await scope.getByTestId('bw-scope-acquisition-0').count()};
+  requireADC(invalidRange.exportDisabled&&invalidRange.readouts===0,
+    `ADC_INVALID_RANGE_EXPORTED ${JSON.stringify(invalidRange)}`);
   await scope.getByTestId('bw-scope-adc-high').fill('1');
   await adcPage.waitForFunction(()=>document.querySelector('[data-testid="bw-scope-acquisition-0"]')?.getAttribute('data-adc-bits')==='1');
   requireADC(await rawIdentity()===before,'ADC_RANGE_REFUSAL_CHANGED_PHYSICS');
