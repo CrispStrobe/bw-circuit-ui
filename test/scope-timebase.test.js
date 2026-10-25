@@ -28,6 +28,24 @@ import {
 } from '../src/model/scope-timebase.js';
 import { scopeTraceToCsv, scopeTracesToCsv } from '../src/model/scope-csv.js';
 
+function assertPrimaryAttachment(src) {
+  assert.match(src,/^  const \[timeCapture, setTimeCapture\] = useState\('envelope'\);$/m,
+    'primary acquisition state must be the stable primitive envelope string');
+  const anchor='  // (Re)attach channels whenever the board instance changes';
+  assert.equal(src.split(anchor).length,2,'one actual primary reattach block must be found');
+  const begin=src.indexOf(anchor),end=src.indexOf('\n  const addChannel = useCallback(',begin);
+  assert(end>begin,'primary reattach block must end before Add Channel');
+  const block=src.slice(begin,end),matched=/\},\s*\[([^\]]*)\]\);\s*$/.exec(block);
+  assert(matched,'the actual primary reattach effect has its own dependency array');
+  const deps=matched[1].split(',').map(value=>value.trim());
+  assert(!deps.some(value=>/adc|model|config/i.test(value)),
+    'ADC view/model/config changes must never reattach a physical probe');
+  assert.deepEqual(deps,['board','sampleRateHz','probePreset','referenceNetId','timeCapture'],
+    'primary attachment follows only board, rate, probe, reference and primitive acquisition mode');
+  assert.match(block,/timeCapture === 'sample' \? \{capture: 'sample'\} : \{\}/,
+    'explicit primary point mode must reach the actual attachment');
+}
+
 describe('scope timebase', () => {
   it('exports wrapped rings oldest-first and names envelope versus sample truthfully', () => {
     const envelope = scopeTraceToCsv({
@@ -127,13 +145,35 @@ describe('scope timebase', () => {
       'audio rate, input and electrical reference changes must replace its tap');
     // A channel's cadence is fixed at creation, so changing the rate must
     // rebuild them. Without this the control would move the label and nothing else.
-    assert.match(src, /\}, \[board, sampleRateHz, probePreset, referenceNetId\]\);/,
-        'the re-attach effect does not depend on rate and electrical probe settings');
+    assertPrimaryAttachment(src);
     assert.match(src, /data-testid="bw-scope-trace-csv-download"/,
       'the time-domain trace has no real download control');
     assert.match(src, /data-testid="bw-scope-spectrum-csv-download"/,
       'the spectrum has no real download control');
     assert.match(src, /downloadText\(csv, 'scope-trace\.csv', 'text\/csv'\)/,
       'the trace button does not download the measured CSV');
+  });
+
+  it('the primary attachment guard rejects omitted mode, ADC object dependencies and object state',t=>{
+    const source=readFileSync(join(import.meta.dirname,'..','src/components/ScopePanel.jsx'),'utf8');
+    assertPrimaryAttachment(source);
+    const deps='[board, sampleRateHz, probePreset, referenceNetId, timeCapture]';
+    assert.equal(source.split(deps).length,2,'unique actual primary dependency list');
+    for(const [name,mutant,reason]of [
+      ['omit-mode',source.replace(deps,'[board, sampleRateHz, probePreset, referenceNetId]'),/primitive acquisition mode/],
+      ['add-adc-object',source.replace(deps,'[board, sampleRateHz, probePreset, referenceNetId, timeCapture, adc]'),/ADC view\/model\/config/],
+      ['object-state',source.replace("useState('envelope')","useState({capture:'envelope'})"),/stable primitive envelope string/],
+    ]) {
+      assert.notEqual(mutant,source,'actual source anchor must change');
+      let namedFailure;
+      assert.throws(()=>assertPrimaryAttachment(mutant),error=>{
+        namedFailure=error.message;return error instanceof assert.AssertionError&&reason.test(error.message);
+      },
+        'mutated actual source must fail the named attachment contract');
+      t.diagnostic(JSON.stringify({record:'primary-attachment-mutant',name,assertionRed:true,
+        namedFailure:namedFailure.split('\n')[0]}));
+    }
+    assert.equal(readFileSync(join(import.meta.dirname,'..','src/components/ScopePanel.jsx'),'utf8'),source,
+      'the actual GUI source is never rewritten by proof controls');
   });
 });
