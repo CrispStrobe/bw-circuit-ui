@@ -1,4 +1,4 @@
-2026-10-26 explicit junction DC package adoption — CLAIM, Codex circuit/instrument owner.
+2026-10-26 explicit junction DC package adoption — IMPLEMENTED (qualification pending), Codex circuit/instrument owner.
 Exact base `1bc233c9297e03abb9b7eb603e045b4e92b0bb40`; branch
 `claim/junction-dc-package-adoption-20261026`. This is the consumer return for
 owned bw-board junction DC-anchor repair #710, within reference-study task1.
@@ -25,6 +25,17 @@ No Board source/model law, importer/exporter, GUI, measurement transforms,
 solver budgets/tolerances, workflows, corpus, other dependency, Lite file/pin,
 physical-accuracy, release or deployment change. Lite adoption is a separately
 claimed compatible Board+CUI package transaction after this consumer qualifies.
+
+Claim #123 merged at178d9764046a8b0ee0708a6d5538a06f74b99b74 before this
+implementation. Adopt qualified, normally merged bw-board
+`dfa4be8eff4cef22462ac508a67da5f706f7d72d` from repair #710. The source runtime
+fingerprint is derived from its clean, tree-identical checkout; actual installed
+non-symlink package identity, public Circuit and CLI behavior, and the full real
+browser suite remain required in this candidate's hosted qualification. The
+supplier preserves physical junction GMIN and existing numerical bounds; its
+matched ngspice reference explicitly ties zero-resistance BJT substrate to the
+collector instead of accepting an unintended grounded-substrate shunt.
+No current consumer, physical-accuracy or deployment claim follows from the pin.
 
 2026-10-25 ideal ADC view of actual point captures — IMPLEMENTED (qualification required), Codex circuit/instrument owner.
 Exact base `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`; branch
