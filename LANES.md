@@ -1,3 +1,31 @@
+2026-10-26 explicit junction DC package adoption — CLAIM, Codex circuit/instrument owner.
+Exact base `1bc233c9297e03abb9b7eb603e045b4e92b0bb40`; branch
+`claim/junction-dc-package-adoption-20261026`. This is the consumer return for
+owned bw-board junction DC-anchor repair #710, within reference-study task1.
+Merge this claim before implementation. Adopt only the exact normally merged,
+fully qualified supplier revision; the supplier target remains unresolved until
+that merge. Preserve the failed first study and its original supplier identities.
+
+Own exactly five paths: LANES.md; package.json only its bw-board devDependency;
+package-lock.json only the resulting canonical dependency refresh;
+scripts/board-provenance.json from the installed canonical package; and
+test/operating-point-reachability.test.js for public Circuit plus actual bwc op
+coverage of the explicit Shockley full bridge and differential-pair tail.
+Preserve package.json test registration and all other owners' changes.
+
+Require actual non-symlink installed-source identity, finite signed terminal
+currents, independently predicted bridge/tail readings and conservation, with
+unchanged Circuit state after operatingPoint. Use only the supplier's admitted
+explicit diode/LED/NPN domain; preserve disconnected/unsupported refusals.
+Retain existing installed-package provenance and CLI controls, and require every
+enabled exact-head CI job, including affected real-browser qualification, before
+matched normal merge. Hosted qualification must not silently omit ngspice.
+
+No Board source/model law, importer/exporter, GUI, measurement transforms,
+solver budgets/tolerances, workflows, corpus, other dependency, Lite file/pin,
+physical-accuracy, release or deployment change. Lite adoption is a separately
+claimed compatible Board+CUI package transaction after this consumer qualifies.
+
 2026-10-25 ideal ADC view of actual point captures — IMPLEMENTED (qualification required), Codex circuit/instrument owner.
 Exact base `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`; branch
 `claim/scope-digitizer-view-20261025`. Ordered campaign step5 follows the
