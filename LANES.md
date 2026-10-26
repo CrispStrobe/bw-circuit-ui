@@ -292,6 +292,20 @@ Missing/stale resume readouts and canvases are refused; a requested viewport
 change during HOLD and a visible redraw on RUN keep pixel evidence sensitive.
 No model, expectation, tolerance or time budget was changed; the original red
 is retained. Final exact-head CI remains required before landing and adoption.
+The later claim-only browser run40363418889 reported80/83 scenarios passing;
+its ring-wrap readout check blocked the remaining three outcomes. The original
+retains no exact live-versus-displayed mismatch values, so it does not establish
+the historical faulting frame. This existing claim's corrective proof now joins
+each wrapped readout atomically
+to the current public Board record: exact handle, count, origin, cadence, depth,
+retained count, capture kind and wrapped state must all agree. Its controlled
+HOLD case keeps the old wrapped flag visible while the live origin advances,
+and must refuse that stale identity before RUN republishes current metadata.
+This is proof repair only; the new junction package claim remains held with no
+implementation, product, model, pin, workflow, tolerance or timeout change.
+Thirteen focused source controls pass with zero skips; restoring the old
+wrapped-only predicate makes the stale-origin control fail, and exact source
+bytes were restored. Actual successor browser qualification remains pending.
 
 2026-10-23 versioned literal-PULSE consumer qualification — DONE (source candidate), same circuit owner.
 Base f9cfae50; additive environment envelope for merged precision claim #109.

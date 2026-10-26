@@ -28,6 +28,33 @@ import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import {verifyScopeAperture} from './lib/verify-scope-aperture.mjs';
 
+// BEGIN scopeReadoutMatchesActualRecord
+function scopeReadoutMatchesActualRecord({handle, channelIndex, count}) {
+  const board = window.__board;
+  if (!board || typeof board.getScopeChannels !== 'function' || typeof board.getScopeData !== 'function'
+      || !Number.isSafeInteger(channelIndex) || channelIndex < 0
+      || !Number.isSafeInteger(count) || count < 1) return false;
+  const channels = board.getScopeChannels();
+  if (!Array.isArray(channels) || channels[channelIndex] !== handle) return false;
+  const data = board.getScopeData(handle);
+  const readout = document.querySelector(`[data-testid="bw-scope-acquisition-${channelIndex}"]`);
+  const depth = Number(data?.samples?.length) / 2;
+  if (!readout || !Number.isSafeInteger(depth) || depth < 1
+      || typeof data.startTNs !== 'bigint' || data.startTNs < 0n
+      || !(typeof data.sampleIntervalNs === 'bigint'
+        ? data.sampleIntervalNs > 0n
+        : Number.isSafeInteger(data.sampleIntervalNs) && data.sampleIntervalNs > 0)
+      || typeof data.capture !== 'string' || data.capture.length === 0) return false;
+  return data.count === count
+    && readout.getAttribute('data-start-time-ns') === String(data.startTNs)
+    && readout.getAttribute('data-interval-ns') === String(data.sampleIntervalNs)
+    && readout.getAttribute('data-depth') === String(depth)
+    && readout.getAttribute('data-retained') === String(Math.min(count, depth))
+    && readout.getAttribute('data-capture') === data.capture
+    && readout.getAttribute('data-wrapped') === String(count > depth);
+}
+// END scopeReadoutMatchesActualRecord
+
 const PORT = Number(process.env.BW_GATE_PORT || 3142);
 /**
  * Refuse to run if ANYTHING already answers on this port.
@@ -2338,6 +2365,8 @@ try {
   verdict(CONTEXT_IDS[5], true, 'real vertical controls warn and clear without changing raw CSV', 'unreachable');
 
   await stepCapture(10000);
+  await contextPage.waitForFunction(scopeReadoutMatchesActualRecord,
+    {handle, channelIndex: 0, count: 10000});
   await contextPage.waitForFunction(() => document.querySelector('[data-testid="bw-scope-acquisition-0"]')
     ?.getAttribute('data-wrapped') === 'true');
   const wrappedStart = await readout.getAttribute('data-start-time-ns');
@@ -2363,7 +2392,14 @@ try {
   }
   const freshStart = await contextPage.evaluate(h => String(window.__board.getScopeData(h).startTNs), handle);
   if (freshStart === wrappedStart) throw new Error('actual record origin did not advance');
+  if (await readout.getAttribute('data-wrapped') !== 'true'
+      || await contextPage.evaluate(scopeReadoutMatchesActualRecord,
+        {handle, channelIndex: 0, count: 15000})) {
+    throw new Error('held wrapped readout was mistaken for the current actual record');
+  }
   await scope.getByTestId('bw-scope-hold').click();
+  await contextPage.waitForFunction(scopeReadoutMatchesActualRecord,
+    {handle, channelIndex: 0, count: 15000});
   await contextPage.waitForFunction(expected => {
     const el = document.querySelector('[data-testid="bw-scope-acquisition-0"]');
     return !!el && el.getAttribute('data-start-time-ns') === expected;
