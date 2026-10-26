@@ -1,3 +1,31 @@
+2026-10-26 explicit junction DC package adoption — CLAIM, Codex circuit/instrument owner.
+Exact base `1bc233c9297e03abb9b7eb603e045b4e92b0bb40`; branch
+`claim/junction-dc-package-adoption-20261026`. This is the consumer return for
+owned bw-board junction DC-anchor repair #710, within reference-study task1.
+Merge this claim before implementation. Adopt only the exact normally merged,
+fully qualified supplier revision; the supplier target remains unresolved until
+that merge. Preserve the failed first study and its original supplier identities.
+
+Own exactly five paths: LANES.md; package.json only its bw-board devDependency;
+package-lock.json only the resulting canonical dependency refresh;
+scripts/board-provenance.json from the installed canonical package; and
+test/operating-point-reachability.test.js for public Circuit plus actual bwc op
+coverage of the explicit Shockley full bridge and differential-pair tail.
+Preserve package.json test registration and all other owners' changes.
+
+Require actual non-symlink installed-source identity, finite signed terminal
+currents, independently predicted bridge/tail readings and conservation, with
+unchanged Circuit state after operatingPoint. Use only the supplier's admitted
+explicit diode/LED/NPN domain; preserve disconnected/unsupported refusals.
+Retain existing installed-package provenance and CLI controls, and require every
+enabled exact-head CI job, including affected real-browser qualification, before
+matched normal merge. Hosted qualification must not silently omit ngspice.
+
+No Board source/model law, importer/exporter, GUI, measurement transforms,
+solver budgets/tolerances, workflows, corpus, other dependency, Lite file/pin,
+physical-accuracy, release or deployment change. Lite adoption is a separately
+claimed compatible Board+CUI package transaction after this consumer qualifies.
+
 2026-10-25 ideal ADC view of actual point captures — IMPLEMENTED (qualification required), Codex circuit/instrument owner.
 Exact base `408c179a9bf5ffc28a4626e9ff5a78fc35cdc671`; branch
 `claim/scope-digitizer-view-20261025`. Ordered campaign step5 follows the
@@ -264,6 +292,20 @@ Missing/stale resume readouts and canvases are refused; a requested viewport
 change during HOLD and a visible redraw on RUN keep pixel evidence sensitive.
 No model, expectation, tolerance or time budget was changed; the original red
 is retained. Final exact-head CI remains required before landing and adoption.
+The later claim-only browser run40363418889 reported80/83 scenarios passing;
+its ring-wrap readout check blocked the remaining three outcomes. The original
+retains no exact live-versus-displayed mismatch values, so it does not establish
+the historical faulting frame. This existing claim's corrective proof now joins
+each wrapped readout atomically
+to the current public Board record: exact handle, count, origin, cadence, depth,
+retained count, capture kind and wrapped state must all agree. Its controlled
+HOLD case keeps the old wrapped flag visible while the live origin advances,
+and must refuse that stale identity before RUN republishes current metadata.
+This is proof repair only; the new junction package claim remains held with no
+implementation, product, model, pin, workflow, tolerance or timeout change.
+Thirteen focused source controls pass with zero skips; restoring the old
+wrapped-only predicate makes the stale-origin control fail, and exact source
+bytes were restored. Actual successor browser qualification remains pending.
 
 2026-10-23 versioned literal-PULSE consumer qualification — DONE (source candidate), same circuit owner.
 Base f9cfae50; additive environment envelope for merged precision claim #109.
