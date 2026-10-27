@@ -41,8 +41,21 @@ export function validatePrecisionCaptureInput(parts, scopeCount, meterModes) {
         || p.supplyPositiveV-p.supplyNegativeV<10 || p.supplyPositiveV-p.supplyNegativeV>36) {
       throw new Error('precision LM741 requires explicit zero offset and fixed 10–36 V supply span');
     }
-    // Native linear-pole expansion adds five solver parts, not five authored parts.
-    if (parts.length+5>32) throw new Error('precision LM741 limits authored parts to 27 including hidden solver expansion');
+    const biasSupply=lm741BiasSupplyRequested(parts);
+    if (biasSupply && (p.biasSupplyDomain!==LM741_BIAS_SUPPLY_DOMAIN
+        || ![1,-1].includes(p.inputOffsetCurrentSign)
+        || p.supplyPositiveV!==15 || p.supplyNegativeV!==-15)) {
+      throw new Error(`precision LM741 bias/supply admits only ${LM741_BIAS_SUPPLY_DOMAIN} at exactly ±15 V with explicit inputOffsetCurrentSign ±1`);
+    }
+    // Native linear-pole expansion adds five solver parts (six with the
+    // opt-in bias/supply rail-return element), not authored parts.
+    if (parts.length+(biasSupply?6:5)>32) {
+      throw new Error(biasSupply
+        ? 'precision LM741 bias/supply limits authored parts to 26 including hidden solver expansion'
+        : 'precision LM741 limits authored parts to 27 including hidden solver expansion');
+    }
+  } else if (lm741BiasSupplyRequested(parts)) {
+    throw new Error('precision LM741 bias/supply domain requires the linear-pole model');
   }
   const companions = new Set(['resistor','capacitor','cap','gnd','vsource']);
   for (const part of parts) {
@@ -105,7 +118,18 @@ export function validatePrecisionVoltageTopology(parts, nets) {
   }
 }
 
-export function precisionCaptureBudget(clock, profile, netCount, domain = 'passive-source') {
+// Opt-in nominal typical 25 C LM741 bias/supply domain (TI SNOSC25D typical
+// values, owned by the pinned bw-board model). Absent keys = unchanged default.
+export const LM741_BIAS_SUPPLY_DOMAIN='ti-snosc25d-typical-25c';
+export function lm741BiasSupplyRequested(parts) {
+  return parts.some(part => part.kind==='lm741' && part.params
+    && (Object.hasOwn(part.params,'biasSupplyDomain') || Object.hasOwn(part.params,'inputOffsetCurrentSign')));
+}
+
+export function precisionCaptureBudget(clock, profile, netCount, domain = 'passive-source', {biasSupply=false} = {}) {
+  if (biasSupply && domain!=='lm741-linear-pole') {
+    throw new Error('precision bias/supply budget requires the LM741 linear-pole domain');
+  }
   if (!['passive-source','adp7118-current-limited','lm741-linear-pole'].includes(domain)) {
     throw new Error('precision batch refuses unknown capture domain');
   }
@@ -149,8 +173,10 @@ export function precisionCaptureBudget(clock, profile, netCount, domain = 'passi
     maxAttempts:profile.maxAttempts,maxSolves:3*profile.maxAttempts+1,maxAdvances:200,
     minimumAdaptiveAttempts,basis:'engine-whole-advance-lm741-linear-pole',
     initialization:'zero-state-no-dc-operating-point',
-    admission:'native-linear-pole-envelope-and-acyclic-voltage-graph; bias-not-adopted',
-    hiddenSolverExpansion:{parts:5,nets:2},requestedTimeNs:String(clock.durationNs),
+    admission:biasSupply
+      ? 'native-linear-pole-envelope-and-acyclic-voltage-graph; nominal-typical-25c-bias-supply'
+      : 'native-linear-pole-envelope-and-acyclic-voltage-graph; bias-not-adopted',
+    hiddenSolverExpansion:{parts:biasSupply?6:5,nets:2},requestedTimeNs:String(clock.durationNs),
   };
   return {maxAttempts:profile.maxAttempts,maxSolves:3*profile.maxAttempts+1,
     maxAdvances:1,minimumAdaptiveAttempts,basis:'single-advance-passive-source-domain',
