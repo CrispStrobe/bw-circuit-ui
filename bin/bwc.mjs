@@ -60,7 +60,7 @@ const {
   parseExpectedMeters, createExpectedMeterComparison,
   parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
   measurementSampleClock, MEASUREMENT_MAX_SAMPLES,
-  validatePrecisionCaptureInput, precisionCaptureBudget, validatePrecisionCaptureWork,
+  validatePrecisionCaptureInput, precisionCaptureBudget, validatePrecisionCaptureWork, lm741BiasSupplyRequested,
   precisionStreamBudget, validatePrecisionStreamWork,
   validatePrecisionVoltageTopology,
 } = await import(join(SRC, 'model/instrument-report.js'));
@@ -604,7 +604,8 @@ switch (cmd) {
     let precisionBudget = null;
     if (precision) {
       try {
-        precisionBudget = precisionCaptureBudget(clock,circ.transientAnalysisStatus().profile,circ.resolvedNets.length,precisionDomain);
+        precisionBudget = precisionCaptureBudget(clock,circ.transientAnalysisStatus().profile,circ.resolvedNets.length,precisionDomain,
+          {biasSupply: precisionDomain==='lm741-linear-pole' && lm741BiasSupplyRequested(c.parts)});
         if (precisionWatch) precisionBudget = precisionStreamBudget(clock,precisionBudget,precisionDomain);
         validatePrecisionVoltageTopology(circ.parts,circ.resolvedNets);
       } catch (policyError) { die(`precision batch admission failed: ${policyError.message}`); }

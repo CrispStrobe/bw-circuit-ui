@@ -847,6 +847,22 @@ and open offset/NC pins. Native solved common-mode, swing, slew and 1 mA linear
 load-envelope checks remain authoritative; violations refuse rather than clip
 or silently switch models. No default op-amp behavior changes.
 
+#### Opt-in nominal 25 C bias/supply domain
+
+Adding `"biasSupplyDomain":"ti-snosc25d-typical-25c"` and an explicit
+`"inputOffsetCurrentSign":1` (or `-1`) to the linear-pole parameters selects
+the pinned Board law built from TI SNOSC25D **typical** LM741 values at 25 C
+and ±15 V: input bias 80 nA, input offset 20 nA, supply current 1.7 mA.
+Typical values are not guaranteed limits; the 2.8 mA warning budget is not a
+current law. Bias returns through V-, quiescent current flows V+ to V-, and
+output current is drawn from V+ (sourcing) or returned to V- (sinking), so
+`current:U.vpos`, `current:U.vneg`, `current:U.inp` and the rail sources are
+represented. Other domain names, rails other than exactly ±15 V, other bench
+temperatures and use without `linear-pole` refuse. The domain adds a sixth
+hidden solver part (26 authored parts maximum) and labels the receipt
+admission `nominal-typical-25c-bias-supply`. Without these keys the supply
+pins stay unrepresented and all outputs are unchanged.
+
 Capture is capped at 20 µs; the existing 2 MHz CLI limit remains. Five hidden
 solver parts and two hidden nets count against the existing 32-part/32-net
 limits: at most 27 authored parts and 30 resolved nets. Batch and finite
