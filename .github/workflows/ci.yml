@@ -123,6 +123,9 @@ jobs:
           node -e "import('playwright').then(({chromium}) => { if (!chromium) throw Error('missing Chromium API'); })"
           node --test test/vdp-keyboard.test.js
 
+      - name: Scope capture selector survives a re-render between input and change
+        run: node --test test/scope-capture-select.test.js
+
       # Fails the build on ANY scenario failure, on a missing scenario, and on
       # a duplicate one. The last line of its output is the count:
       #     N scenarios · P passed · F failed
