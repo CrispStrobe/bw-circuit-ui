@@ -198,6 +198,44 @@ function validateWholeAdvanceReceipt(status,budget,device) {
     }
 }
 
+/** Whole-capture resource preflight for a precision batch, evaluated before
+ * any scope ring is allocated or any artifact is written. It does not renew
+ * per chunk or per report: one bound covers the whole requested capture. */
+export const PRECISION_BATCH_MAX_RING_ENTRIES = 1_000_000;
+export const PRECISION_BATCH_MAX_OUTPUT_BYTES = 32 * 1024 * 1024;
+export const PRECISION_CSV_ROW_MAX_BYTES = 128;
+export const PRECISION_CSV_HEADER_MAX_BYTES = 4096;
+export const PRECISION_METER_HISTORY_MAX_ENTRIES = 100_000;
+export function precisionBatchResources(clock, budget, { scopeCount = 0, meterCount = 0, csv = false } = {}) {
+  if (!budget || budget.stream) throw new Error('precision batch resources need a non-stream whole-capture budget');
+  if (![scopeCount,meterCount].every(n => Number.isSafeInteger(n) && n>=0)) {
+    throw new Error('precision batch resources need non-negative channel counts');
+  }
+  const depth = clock.captureSamples + 2;
+  const ringEntries = scopeCount * depth;
+  if (ringEntries > PRECISION_BATCH_MAX_RING_ENTRIES) {
+    throw new Error(`precision batch preflight needs ${ringEntries} scope ring entries; limit is ${PRECISION_BATCH_MAX_RING_ENTRIES}`);
+  }
+  // Each accepted solve may add at most one meter-history entry; the engine
+  // independently fails a watch at its 100000-entry history limit.
+  const meterHistoryEntriesPerMeter = Math.min(budget.maxSolves, PRECISION_METER_HISTORY_MAX_ENTRIES);
+  const outputBytesBound = csv
+    ? scopeCount * (PRECISION_CSV_HEADER_MAX_BYTES + clock.captureSamples * PRECISION_CSV_ROW_MAX_BYTES) : 0;
+  if (outputBytesBound > PRECISION_BATCH_MAX_OUTPUT_BYTES) {
+    throw new Error(`precision batch preflight output bound ${outputBytesBound} bytes exceeds ${PRECISION_BATCH_MAX_OUTPUT_BYTES}`);
+  }
+  return { scopeCount, meterCount, ringDepth: depth, ringEntries,
+    meterHistoryEntriesPerMeter, outputBytesBound,
+    outputBytesLimit: PRECISION_BATCH_MAX_OUTPUT_BYTES, renewal: 'none-whole-capture' };
+}
+
+/** Refuse (no artifact) if a produced CSV exceeds its preflight bound. */
+export function validatePrecisionBatchOutput(bytes, resources) {
+  if (!Number.isSafeInteger(bytes) || bytes<0 || bytes>resources.outputBytesBound) {
+    throw new Error(`precision batch output ${bytes} bytes exceeds its preflight bound ${resources.outputBytesBound}`);
+  }
+}
+
 /** Finite active-domain streams share one whole-capture work authority. */
 export function precisionStreamBudget(clock, budget, domain) {
   if (!['adp7118-current-limited','lm741-linear-pole'].includes(domain)) {

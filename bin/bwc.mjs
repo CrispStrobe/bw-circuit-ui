@@ -62,6 +62,7 @@ const {
   measurementSampleClock, MEASUREMENT_MAX_SAMPLES,
   validatePrecisionCaptureInput, precisionCaptureBudget, validatePrecisionCaptureWork,
   precisionStreamBudget, validatePrecisionStreamWork,
+  precisionBatchResources, validatePrecisionBatchOutput,
   validatePrecisionVoltageTopology,
 } = await import(join(SRC, 'model/instrument-report.js'));
 
@@ -602,10 +603,13 @@ switch (cmd) {
       catch (profileError) { die(`measure profile selection failed: ${profileError.message}`); }
     }
     let precisionBudget = null;
+    let precisionResources = null;
     if (precision) {
       try {
         precisionBudget = precisionCaptureBudget(clock,circ.transientAnalysisStatus().profile,circ.resolvedNets.length,precisionDomain);
         if (precisionWatch) precisionBudget = precisionStreamBudget(clock,precisionBudget,precisionDomain);
+        else precisionResources = precisionBatchResources(clock,precisionBudget,
+          {scopeCount:scopeSpecs.length,meterCount:meterSpecs.length,csv:Boolean(opts.csv)});
         validatePrecisionVoltageTopology(circ.parts,circ.resolvedNets);
       } catch (policyError) { die(`precision batch admission failed: ${policyError.message}`); }
     }
@@ -812,6 +816,10 @@ switch (cmd) {
       if (!scopeRows.length) captureDie('--csv needs at least one --scope');
       const csv = scopeTracesToCsv(scopeRows.map(row => ({ data: row.adcData || row.data,
         netId: `${row.tip}${row.referenceNet ? ` - ${row.reference}` : ''}` })));
+      if (precisionResources) {
+        try { validatePrecisionBatchOutput(Buffer.byteLength(`${csv}\n`),precisionResources); }
+        catch (policyError) { captureDie(policyError.message); }
+      }
       writeFileSync(opts.csv, `${csv}\n`);
     }
     const report = {
@@ -822,6 +830,7 @@ switch (cmd) {
       requestedTransientProfile: opts.profile || null,
       transient,
       ...(precision ? {precisionCapture:precisionBudget} : {}),
+      ...(precisionResources ? {precisionResources} : {}),
       scope: scopeRows.map(({ data, adcData, selectorReference, ...row }) => row),
       ...(adcModel ? {scopeDigitizer:adcModel.descriptor,comparisonDomain:'raw-voltage',
         instrumentModel:{physicalHardwareModel:false,meters:'unchanged raw observed means'}} : {}),
