@@ -6,36 +6,26 @@
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
+import { startDevServer } from './_dev-server.js';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
 let chromium, browser, server;
 try { ({ chromium } = await import('playwright')); } catch { /* not installed */ }
-const PORT = 3191;
 
 describe('Scope time-capture selector', { skip: !chromium && 'playwright not available' }, () => {
   before(async () => {
-    server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], {
-      stdio: 'ignore', detached: false, cwd: path.join(here, '..'),
-    });
-    for (let i = 0; i < 40; i++) {
-      try { const r = await fetch(`http://localhost:${PORT}/`); if (r.ok) break; } catch {}
-      await new Promise(r => setTimeout(r, 500));
-    }
+    server = await startDevServer('scope-capture-select');
     browser = await chromium.launch();
   });
   after(async () => {
     if (browser) await browser.close();
-    if (server) try { server.kill('SIGTERM'); } catch {}
+    if (server) server.stop();
   });
 
   async function open() {
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
-    await page.goto(`http://localhost:${PORT}/test/scope-capture-select.html`, { waitUntil: 'networkidle' });
+    await page.goto(`${server.url}/test/scope-capture-select.html`, { waitUntil: 'networkidle' });
     await page.waitForFunction(() => window.__scopeReady === true, null, { timeout: 15000 });
     const select = page.getByTestId('bw-scope-time-capture');
     assert.equal(await select.inputValue(), 'envelope', 'envelope stays the default');
