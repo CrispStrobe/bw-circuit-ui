@@ -1,3 +1,19 @@
+2026-10-27 scope capture-select re-render race — IMPLEMENTED (claim+change, qualification pending), x86/Lite source owner.
+Exact base `66e3724020e795c3442f8da9a7af149dd5f74bd9`; branch
+`fix/scope-capture-select-rerender-20261027`. Lite CircuitUX gate
+ADC_POINT_MODE_PUBLICATION: after the selector's `input` event set "sample",
+the DOM value was already "envelope" when `change` fired, so onChange never
+saw the choice. A host re-render between the two events re-syncs a controlled
+`<select value>` to stale state. Own exactly LANES.md,
+src/components/ScopePanel.jsx (time-capture selector only), new
+test/scope-capture-select.html, new test/scope-capture-select.test.js,
+package.json (test:browser registration only), test/_dev-server.js (one
+reserved port) and .github/workflows/ci.yml
+(one added step). No gate, threshold or assertion is relaxed; default
+envelope, disable-while-attached and ADC clearing are unchanged. A test-only
+commit failed on hosted CI run 40471271088 (actual envelope, expected
+sample; plain-selection control passed) before the fix commit.
+
 2026-10-26 explicit junction DC package adoption — IMPLEMENTED (qualification pending), Codex circuit/instrument owner.
 Exact base `1bc233c9297e03abb9b7eb603e045b4e92b0bb40`; branch
 `claim/junction-dc-package-adoption-20261026`. This is the consumer return for

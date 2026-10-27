@@ -1,0 +1,33 @@
+<!doctype html>
+<html><head><title>Scope capture select re-render test</title></head>
+<body>
+<div id="root"></div>
+<script type="module">
+import React from 'react';
+import { flushSync } from 'react-dom';
+import { createRoot } from 'react-dom/client';
+import { ScopePanel } from '../src/components/ScopePanel.jsx';
+
+// Minimal scope-capable board. Records every attachment request so the test
+// can see which acquisition mode the panel actually asked for.
+window.__attach = [];
+let next = 1, time = 0n;
+const board = {
+  addScopeChannel(opts) { window.__attach.push({...opts}); return next++; },
+  removeScopeChannel() {},
+  getScopeData() { return {capture: 'envelope', count: 0, start: '0', interval: '10000', time: [], min: [], max: [], values: []}; },
+  getScopeChannels() { return []; },
+  getTime() { return time; },
+};
+const nets = ['n1', 'n2'];
+const root = createRoot(document.getElementById('root'));
+let lang = 'en';
+const render = () => root.render(React.createElement(ScopePanel, {board, nets, lang, audioEnabled: false}));
+flushSync(render);
+// A host re-render that lands between a select's input and change events,
+// as a legacy-root host flushing pending work on a discrete event does.
+window.__rerenderNow = () => flushSync(render);
+window.__scopeReady = true;
+</script>
+</body>
+</html>

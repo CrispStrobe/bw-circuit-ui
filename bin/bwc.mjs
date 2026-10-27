@@ -60,7 +60,7 @@ const {
   parseExpectedMeters, createExpectedMeterComparison,
   parseScopeSpec, resolveEndpointNet, summarizeScope, timedScopeSeries, latestTimedScopeSample,
   measurementSampleClock, MEASUREMENT_MAX_SAMPLES,
-  validatePrecisionCaptureInput, precisionCaptureBudget, validatePrecisionCaptureWork,
+  validatePrecisionCaptureInput, precisionCaptureBudget, validatePrecisionCaptureWork, lm741BiasSupplyRequested,
   precisionStreamBudget, validatePrecisionStreamWork,
   precisionBatchResources, validatePrecisionBatchOutput,
   validatePrecisionVoltageTopology,
@@ -606,7 +606,8 @@ switch (cmd) {
     let precisionResources = null;
     if (precision) {
       try {
-        precisionBudget = precisionCaptureBudget(clock,circ.transientAnalysisStatus().profile,circ.resolvedNets.length,precisionDomain);
+        precisionBudget = precisionCaptureBudget(clock,circ.transientAnalysisStatus().profile,circ.resolvedNets.length,precisionDomain,
+          {biasSupply: precisionDomain==='lm741-linear-pole' && lm741BiasSupplyRequested(c.parts)});
         if (precisionWatch) precisionBudget = precisionStreamBudget(clock,precisionBudget,precisionDomain);
         else precisionResources = precisionBatchResources(clock,precisionBudget,
           {scopeCount:scopeSpecs.length,meterCount:meterSpecs.length,csv:Boolean(opts.csv)});
