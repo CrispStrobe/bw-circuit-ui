@@ -1,3 +1,22 @@
+2026-10-28 grouped editor menus — CLAIMED, Codex Circuit menu UI.
+Exact base `373d562b741c69a5a1dd441c4f8d0ea1053b4fd3`; branch
+`lane/cui-menu-ux-20261028`. Canonical claim precedes source implementation.
+Own only this entry; FileMenu presentation and BoardCanvas overflow/menu action
+publication in src/components/BoardCanvas.jsx; narrow CircuitDesigner prop and
+history-availability wiring; new src/components/CircuitMenu.jsx and
+src/components/circuit-menu-actions.js; focused test/circuit-menu-actions.test.js;
+and package.json only registration of that pure test. Group actual file, edit
+and view commands with named icon rows, switches and accessible popup behavior.
+Expose optional onEditorMenuActions descriptors with stable name, label,
+location, submenu, enabled, run and checked for switches, calling current real
+callbacks with existing editing, selection and undo guards. Preserve file format
+IDs, import/export paths, simulations and instruments. No model/history
+algorithm, solver, scope/audio panel, dependency/pin/lock, workflow, Lite,
+release or deployment changes. Other owners retain their existing hunks.
+Local bounded pure controls and JSX parsing only; all enabled exact-head hosted
+checks and affected actual consumer/browser qualification gate source landing.
+No downstream adoption is included.
+
 2026-10-27 scope capture-select re-render race — IMPLEMENTED (claim+change, qualification pending), x86/Lite source owner.
 Exact base `66e3724020e795c3442f8da9a7af149dd5f74bd9`; branch
 `fix/scope-capture-select-rerender-20261027`. Lite CircuitUX gate
