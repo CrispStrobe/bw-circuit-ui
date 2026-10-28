@@ -6,36 +6,26 @@
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
+import { startDevServer } from './_dev-server.js';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
 let chromium, browser, server;
 try { ({ chromium } = await import('playwright')); } catch { /* not installed */ }
-const PORT = 3191;
 
 describe('Scope time-capture selector', { skip: !chromium && 'playwright not available' }, () => {
   before(async () => {
-    server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], {
-      stdio: 'ignore', detached: false, cwd: path.join(here, '..'),
-    });
-    for (let i = 0; i < 40; i++) {
-      try { const r = await fetch(`http://localhost:${PORT}/`); if (r.ok) break; } catch {}
-      await new Promise(r => setTimeout(r, 500));
-    }
+    server = await startDevServer('scope-capture-select');
     browser = await chromium.launch();
   });
   after(async () => {
     if (browser) await browser.close();
-    if (server) try { server.kill('SIGTERM'); } catch {}
+    if (server) server.stop();
   });
 
   async function open() {
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
-    await page.goto(`http://localhost:${PORT}/test/scope-capture-select.html`, { waitUntil: 'networkidle' });
+    await page.goto(`${server.url}/test/scope-capture-select.html`, { waitUntil: 'networkidle' });
     await page.waitForFunction(() => window.__scopeReady === true, null, { timeout: 15000 });
     const select = page.getByTestId('bw-scope-time-capture');
     assert.equal(await select.inputValue(), 'envelope', 'envelope stays the default');
@@ -74,6 +64,30 @@ describe('Scope time-capture selector', { skip: !chromium && 'playwright not ava
     await select.selectOption('envelope');
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-scope-adc-enabled"]').disabled === true);
     assert.equal(await select.inputValue(), 'envelope');
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
+  it('original Playwright path: selectOption with a host re-render on input keeps committed state', async () => {
+    // Same synthetic path the Lite publication run used (selectOption fires
+    // input then change). The host re-render is injected on `input`, the
+    // reported window in which the actual run saw sample -> envelope.
+    const {page, select, errors} = await open();
+    await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="bw-scope-time-capture"]');
+      window.__seen = {};
+      el.addEventListener('input', () => { window.__seen.input = el.value; window.__rerenderNow(); window.__seen.afterRerender = el.value; }, {once: true});
+      el.addEventListener('change', () => { window.__seen.change = el.value; }, {once: true, capture: true});
+    });
+    const returned = await select.selectOption('sample');
+    assert.deepEqual(returned, ['sample'], 'selectOption return is pre-commit and not evidence');
+    const seen = await page.evaluate(() => window.__seen);
+    assert.equal(seen.input, 'sample', 'input carries the selection');
+    assert.equal(seen.afterRerender, 'sample', 'host re-render kept the selection');
+    assert.equal(seen.change, 'sample', 'change carries the selection');
+    // Committed React state: sample mode enables the ADC control.
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-scope-adc-enabled"]').disabled === false,
+      null, {timeout: 5000});
+    assert.equal(await select.inputValue(), 'sample', 'published selector');
     assert.deepEqual(errors, []);
     await page.close();
   });
