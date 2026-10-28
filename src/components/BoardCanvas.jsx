@@ -11,6 +11,8 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
+import {CircuitMenuAction, CircuitMenuHeading, CircuitMenuIcon, CircuitMenuPopup, CircuitMenuStyles, useEditorMenuActions} from './CircuitMenu.jsx';
+import {circuitEditorActions} from './circuit-menu-actions.js';
 import { servoHasSignal } from '../model/servo-signal.js';
 import ReactDOM from 'react-dom';
 import { t } from '../i18n/strings.js';
@@ -3466,11 +3468,6 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
     }
   }, [fileAction, onFileActionDone]);
   const de = /^de/i.test(lang);
-  const itemStyle = { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '6px 10px', background: 'none', border: 'none', color: '#e2e8f0', fontSize: 12, fontFamily: 'system-ui, sans-serif', cursor: 'pointer', borderRadius: 3, textAlign: 'left' };
-  const itemHover = (e) => { e.currentTarget.style.background = '#1e293b'; };
-  const itemLeave = (e) => { e.currentTarget.style.background = 'none'; };
-  const subStyle = { ...itemStyle, paddingLeft: 24, fontSize: 11, color: '#94a3b8' };
-
   // Import needs a file picker — driven by a hidden <input>.
   const fileRef = useRef(null);
   const pendingFormat = useRef(null);
@@ -3667,81 +3664,42 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
   }, [circuit, onDone, say, de]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={handleImportFile} />
-      {/* Load / Open */}
-      {onLoad && (
-        <button onClick={() => { onLoad(); if (onDone) onDone(); }} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={itemStyle}>
-          <span style={{ width: 16, textAlign: 'center' }}>📂</span> {de ? 'Öffnen' : 'Open'}
+    <div style={{display: 'flex', flexDirection: 'column'}}>
+      <CircuitMenuStyles />
+      <input ref={fileRef} type="file" style={{display: 'none'}} onChange={handleImportFile} />
+      <CircuitMenuHeading>{de ? 'Datei' : 'File'}</CircuitMenuHeading>
+      {onLoad && <CircuitMenuAction action={{name: 'open', label: de ? 'Öffnen…' : 'Open…', enabled: true, run: onLoad}} onDone={onDone} />}
+      {onSave && <CircuitMenuAction action={{name: 'save', label: de ? 'Speichern' : 'Save', enabled: true, run: onSave}} onDone={onDone} />}
+      {onImport && <>
+        <button type="button" className="circuit-menu-row" aria-expanded={sub === 'import'}
+          onClick={() => setSub(sub === 'import' ? null : 'import')}>
+          <CircuitMenuIcon name="import" /><span className="circuit-menu-label">{de ? 'Importieren' : 'Import'}</span><span aria-hidden="true">{sub === 'import' ? '▾' : '▸'}</span>
         </button>
-      )}
-      {/* Save */}
-      {onSave && (
-        <button onClick={() => { onSave(); if (onDone) onDone(); }} onMouseEnter={itemHover} onMouseLeave={itemLeave} style={itemStyle}>
-          <span style={{ width: 16, textAlign: 'center' }}>💾</span> {de ? 'Speichern' : 'Save'}
+        {sub === 'import' && <div data-import-formats role="group" aria-label={de ? 'Importformate' : 'Import formats'}>
+          {IMPORT_FORMATS.map(fmt => <button type="button" className="circuit-menu-row" key={fmt.id || 'auto'}
+            data-import-format={fmt.id || 'auto'} onClick={() => pickImport(fmt)} style={{paddingLeft: 36}}>
+            <span>{de ? fmt.labelDe : fmt.label}
+              {fmt.hint && <small style={{display: 'block', marginTop: 2, color: '#94a3b8'}}>{de ? fmt.hintDe : fmt.hint}</small>}
+            </span>
+          </button>)}
+        </div>}
+      </>}
+      {circuit && <>
+        <button type="button" className="circuit-menu-row" aria-expanded={sub === 'export'}
+          onClick={() => setSub(sub === 'export' ? null : 'export')}>
+          <CircuitMenuIcon name="export" /><span className="circuit-menu-label">{de ? 'Exportieren' : 'Export'}</span><span aria-hidden="true">{sub === 'export' ? '▾' : '▸'}</span>
         </button>
-      )}
-      {/* Import ▸ (submenu) */}
-      {onImport && (
-        <>
-          <button onClick={() => setSub(sub === 'import' ? null : 'import')} onMouseEnter={itemHover} onMouseLeave={itemLeave}
-            style={{ ...itemStyle, justifyContent: 'space-between' }}>
-            <span><span style={{ width: 16, display: 'inline-block', textAlign: 'center' }}>📥</span> Import</span>
-            <span style={{ fontSize: 10, color: '#64748b' }}>{sub === 'import' ? '▾' : '▸'}</span>
-          </button>
-          {sub === 'import' && (
-            <div data-import-formats>
-              {IMPORT_FORMATS.map((fmt) => (
-                <button key={fmt.id || 'auto'} data-import-format={fmt.id || 'auto'}
-                  onClick={() => pickImport(fmt)} onMouseEnter={itemHover} onMouseLeave={itemLeave}
-                  style={{ ...subStyle, display: 'block' }}>
-                  {de ? fmt.labelDe : fmt.label}
-                  {fmt.hint && (
-                    <span style={{ display: 'block', fontSize: 10, color: '#64748b' }}>
-                      {de ? fmt.hintDe : fmt.hint}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-      {/* Export ▸ (submenu) */}
-      {circuit && (
-        <>
-          <button onClick={() => setSub(sub === 'export' ? null : 'export')} onMouseEnter={itemHover} onMouseLeave={itemLeave}
-            style={{ ...itemStyle, justifyContent: 'space-between' }}>
-            <span><span style={{ width: 16, display: 'inline-block', textAlign: 'center' }}>📤</span> Export</span>
-            <span style={{ fontSize: 10, color: '#64748b' }}>{sub === 'export' ? '▾' : '▸'}</span>
-          </button>
-          {sub === 'export' && (
-            <div data-export-formats>
-              {/* One button per registry entry, always. The previous version
-                  was a switch with four cases; the NATIVE EasyEDA writer had
-                  a case and no button (owner audit, 2026-08-25) and three
-                  more writers had neither. */}
-              {CIRCUIT_EXPORTS.map((entry) => (
-                <button key={entry.id} data-export-format={entry.id}
-                  onClick={() => handleExport(entry)} onMouseEnter={itemHover} onMouseLeave={itemLeave}
-                  style={{ ...subStyle, display: 'block' }}>
-                  {de ? entry.labelDe : entry.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-      {/* Separator + Clear */}
-      {onClear && (
-        <>
-          <span style={{ display: 'block', height: 1, background: '#334155', margin: '4px 0' }} />
-          <button onClick={() => { onClear(); if (onDone) onDone(); }} onMouseEnter={(e) => { e.currentTarget.style.background = '#2a1010'; }} onMouseLeave={itemLeave}
-            style={{ ...itemStyle, color: '#f87171' }}>
-            <span style={{ width: 16, textAlign: 'center' }}>🗑</span> {de ? 'Alles löschen' : 'Clear all'}
-          </button>
-        </>
-      )}
+        {sub === 'export' && <div data-export-formats role="group" aria-label={de ? 'Exportformate' : 'Export formats'}>
+          {CIRCUIT_EXPORTS.map(entry => <button type="button" className="circuit-menu-row" key={entry.id}
+            data-export-format={entry.id} onClick={() => handleExport(entry)} style={{paddingLeft: 36}}>
+            {de ? entry.labelDe : entry.label}
+          </button>)}
+        </div>}
+      </>}
+      {onClear && <>
+        <CircuitMenuHeading>{de ? 'Schaltung' : 'Circuit'}</CircuitMenuHeading>
+        <CircuitMenuAction action={{name: 'delete', label: de ? 'Schaltung leeren' : 'Clear circuit', enabled: true, run: onClear}} onDone={onDone} />
+      </>}
     </div>
   );
 }
@@ -3766,7 +3724,7 @@ export function BoardCanvas({
   circuit, engineBoard, videoFn, fitToken, sevenSegments, sevenSeg3,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onClearCircuit, onRewire, onImport,
-  fileAction, onFileActionDone,
+  fileAction, onFileActionDone, onEditorMenuActions, canUndo = false, canRedo = false, canPaste = true,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
   performanceProbe = null,
   // The host's bench temperature (whole degrees C) and its setter: when given,
@@ -4800,6 +4758,24 @@ export function BoardCanvas({
     twoFingerOnly: true,
   });
 
+  const [requestedFileMenu, setRequestedFileMenu] = useState(null);
+  const editorActions = circuitEditorActions({
+    de: /^de/i.test(lang), canEdit: canEditParts, canUndo, canRedo, canPaste,
+    parts, selectedParts, selectedWire, onUndo, onRedo, onCopy, onPaste, onSelectAll,
+    onDuplicatePart, onRotatePart, onFlipPart, onRemovePart, onRemoveWire, onSelectPart, onSelectWire,
+    fit: () => applyFit(partsRef.current, 'menu'),
+    resetView: () => { setZoom(1); setPan({x: 0, y: 0}); },
+    simulate, voltageView, toggleVoltageView,
+  });
+  const fileCommands = [
+    ['open', /^de/i.test(lang) ? 'Öffnen…' : 'Open…', onLoadCircuit],
+    ['save', /^de/i.test(lang) ? 'Speichern' : 'Save', onSaveCircuit],
+    ['import', /^de/i.test(lang) ? 'Importieren…' : 'Import…', onImport && (() => {setRequestedFileMenu('import'); setToolbarMoreOpen(true);})],
+    ['export', /^de/i.test(lang) ? 'Exportieren…' : 'Export…', circuit && (() => {setRequestedFileMenu('export'); setToolbarMoreOpen(true);})],
+    ['clear', /^de/i.test(lang) ? 'Schaltung leeren' : 'Clear circuit', canEditParts && onClearCircuit],
+  ].map(([name, label, run]) => ({name, label, location: 'file', submenu: 'file', enabled: Boolean(run), run}));
+  const publishedActions = useEditorMenuActions([...fileCommands, ...editorActions], onEditorMenuActions);
+
   return (
     <div
       // stretch + a real height chain: alignItems 'center' pinned the
@@ -4948,36 +4924,33 @@ export function BoardCanvas({
             {'V\u26a1'}
           </button>
         ) : null}
-        <div data-toolbar-more style={{position: 'relative', flex: '0 0 auto'}}>
-          <button onClick={() => setToolbarMoreOpen(v => !v)} title="More circuit controls: Save, Load, Zoom" aria-label="More circuit controls" aria-expanded={toolbarMoreOpen}
-            style={{width: 34, minWidth: 34, height: 34, padding: 0, background: toolbarMoreOpen ? '#1e3a5f' : '#2c3e50', border: '1px solid #64748b', borderRadius: 4, color: '#e2e8f0', fontSize: '17px', cursor: 'pointer'}}>⋯</button>
-          {toolbarMoreOpen && <div data-toolbar-more-menu style={{position: 'absolute', zIndex: 80, top: 40, right: 0, minWidth: 180, maxWidth: '92vw', padding: 4, background: '#0f172a', border: '1px solid #64748b', borderRadius: 5, boxShadow: '0 3px 10px rgba(0,0,0,.35)'}}>
-            {/* When the toolbar is cramped, the secondary nav groups live here instead of on a 2nd row. */}
-            {toolbarCramped && panelNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center', padding: '2px 0'}}>{panelNav}</div> : null}
-            {toolbarCramped && viewNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center', padding: '2px 0'}}>{viewNav}</div> : null}
-            {toolbarCramped && (panelNav || viewNav) ? <span style={{display: 'block', height: 1, background: '#334155', margin: '4px 0'}} /> : null}
-            {/* In the menu, not on the toolbar: the toolbar's groups are sized to fit
-                a 1024 px editor, and a control added there overlapped the view switcher. */}
-            {typeof onBenchTemperatureChange === 'function' ? (
-              <>
-                <BenchTemperature value={benchTemperature ?? 25} onChange={onBenchTemperatureChange} lang={lang} />
-                <span style={{display: 'block', height: 1, background: '#334155', margin: '4px 0'}} />
-              </>
-            ) : null}
-            <FileMenu
-              circuit={circuit} lang={lang}
-              onLoad={onLoadCircuit} onSave={onSaveCircuit}
-              onImport={onImport} onClear={onClearCircuit}
-              fileAction={fileAction} onFileActionDone={onFileActionDone}
-              onReport={setTransferReport}
-              onDone={() => setToolbarMoreOpen(false)}
-            />
-            <span style={{display: 'block', height: 1, background: '#334155', margin: '4px 0'}} />
-            <div style={{display: 'flex', justifyContent: 'flex-end', padding: '2px 0'}}>
-              <span data-zoom-indicator title="Canvas zoom" style={{height: 28, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
-            </div>
-          </div>}
-        </div>
+        <CircuitMenuPopup data-toolbar-more-menu open={toolbarMoreOpen} onOpenChange={setToolbarMoreOpen} lang={lang}>
+          <FileMenu circuit={circuit} lang={lang} onLoad={onLoadCircuit} onSave={onSaveCircuit}
+            onImport={onImport} onClear={canEditParts ? onClearCircuit : undefined}
+            fileAction={requestedFileMenu || fileAction}
+            onFileActionDone={() => {setRequestedFileMenu(null); onFileActionDone?.();}}
+            onReport={setTransferReport} onDone={() => setToolbarMoreOpen(false)} />
+          {[
+            ['history', /^de/i.test(lang) ? 'Bearbeiten' : 'Edit'],
+            ['clipboard', /^de/i.test(lang) ? 'Zwischenablage' : 'Clipboard'],
+            ['selection', /^de/i.test(lang) ? 'Auswahl' : 'Selection'],
+            ['view', /^de/i.test(lang) ? 'Ansicht' : 'View'],
+          ].map(([group, label]) => <div key={group} role="group" aria-label={label}>
+            <CircuitMenuHeading>{label}</CircuitMenuHeading>
+            {publishedActions.filter(action => action.location === 'edit' && action.submenu === group).map(action =>
+              <CircuitMenuAction key={action.name} action={action} onDone={() => setToolbarMoreOpen(false)} />)}
+          </div>)}
+          {toolbarCramped && (panelNav || viewNav) ? <>
+            <CircuitMenuHeading>{/^de/i.test(lang) ? 'Bereiche' : 'Panels'}</CircuitMenuHeading>
+            {panelNav ? <div data-circuit-control-group>{panelNav}</div> : null}
+            {viewNav ? <div data-circuit-control-group>{viewNav}</div> : null}
+          </> : null}
+          {typeof onBenchTemperatureChange === 'function' ? (<>
+            <CircuitMenuHeading>{/^de/i.test(lang) ? 'Werkbank' : 'Workbench'}</CircuitMenuHeading>
+            <BenchTemperature value={benchTemperature ?? 25} onChange={onBenchTemperatureChange} lang={lang} />
+          </>) : null}
+          <div data-zoom-indicator className="circuit-menu-heading">{/^de/i.test(lang) ? 'Zoom' : 'Zoom'}: {(zoom * 100).toFixed(0)}%</div>
+        </CircuitMenuPopup>
       </div>
 
       {/* Canvas — fills container, minimum 700×500 */}

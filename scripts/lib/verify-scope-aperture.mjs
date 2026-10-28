@@ -38,7 +38,7 @@ export async function verifyScopeAperture(page, origin) {
   ]};
   await page.getByRole('button', {name: 'More circuit controls', exact: true}).click();
   const choosing = page.waitForEvent('filechooser');
-  await page.getByRole('button', {name: /^📂 Open$/}).click();
+  await page.getByRole('button', {name: /^Open…$/}).click();
   await (await choosing).setFiles({name: 'aperture-pulses.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(fixture))});
   await page.waitForFunction(() => window.__circuit.parts.length === 3 && window.__circuit.getPart('pulse'));
   if (!await page.locator('[data-instruments-column]').count()) await page.getByRole('button', {name: /Expand instruments panel/i}).click();

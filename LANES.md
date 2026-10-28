@@ -1,4 +1,4 @@
-2026-10-28 grouped editor menus — CLAIMED, Codex Circuit menu UI.
+2026-10-28 grouped editor menus — SOURCE CANDIDATE, Codex Circuit menu UI.
 Exact base `373d562b741c69a5a1dd441c4f8d0ea1053b4fd3`; branch
 `lane/cui-menu-ux-20261028`. Canonical claim precedes source implementation.
 Own only this entry; FileMenu presentation and BoardCanvas overflow/menu action
@@ -19,7 +19,11 @@ algorithm, solver, scope/audio panel, dependency/pin/lock, workflow, Lite,
 release or deployment changes. Other owners retain their existing hunks.
 Local bounded pure controls and JSX parsing only; all enabled exact-head hosted
 checks and affected actual consumer/browser qualification gate source landing.
-No downstream adoption is included.
+No downstream adoption is included. Canonical claims e999f3f and 61e17f7
+preceded the corresponding implementation. Bounded command/navigation/file-owner/
+registration controls and JSX parsing pass; four isolated menu guard/state
+mutations are detected. Browser behavior and all exact-head hosted checks
+remain pending, and this supplier source is not merged or adopted.
 
 2026-10-27 scope capture-select re-render race — IMPLEMENTED (claim+change, qualification pending), x86/Lite source owner.
 Exact base `66e3724020e795c3442f8da9a7af149dd5f74bd9`; branch
