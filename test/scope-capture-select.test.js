@@ -67,4 +67,28 @@ describe('Scope time-capture selector', { skip: !chromium && 'playwright not ava
     assert.deepEqual(errors, []);
     await page.close();
   });
+  it('original Playwright path: selectOption with a host re-render on input keeps committed state', async () => {
+    // Same synthetic path the Lite publication run used (selectOption fires
+    // input then change). The host re-render is injected on `input`, the
+    // reported window in which the actual run saw sample -> envelope.
+    const {page, select, errors} = await open();
+    await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="bw-scope-time-capture"]');
+      window.__seen = {};
+      el.addEventListener('input', () => { window.__seen.input = el.value; window.__rerenderNow(); window.__seen.afterRerender = el.value; }, {once: true});
+      el.addEventListener('change', () => { window.__seen.change = el.value; }, {once: true, capture: true});
+    });
+    const returned = await select.selectOption('sample');
+    assert.deepEqual(returned, ['sample'], 'selectOption return is pre-commit and not evidence');
+    const seen = await page.evaluate(() => window.__seen);
+    assert.equal(seen.input, 'sample', 'input carries the selection');
+    assert.equal(seen.afterRerender, 'sample', 'host re-render kept the selection');
+    assert.equal(seen.change, 'sample', 'change carries the selection');
+    // Committed React state: sample mode enables the ADC control.
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-scope-adc-enabled"]').disabled === false,
+      null, {timeout: 5000});
+    assert.equal(await select.inputValue(), 'sample', 'published selector');
+    assert.deepEqual(errors, []);
+    await page.close();
+  });
 });
