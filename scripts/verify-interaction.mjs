@@ -2489,7 +2489,7 @@ for (const grounded of [false, true]) {
     await pmosPage.goto(`http://localhost:${PORT}/?examples=none`, {waitUntil: 'domcontentloaded'});
     await pmosPage.waitForFunction(() => window.__circuit && window.__board);
     await pmosPage.getByRole('button', {name: 'More circuit controls', exact: true}).click();
-    await pmosPage.getByRole('button', {name: /^Import…$/}).click();
+    await pmosPage.getByRole('button', {name: 'Import', exact: true}).click();
     const choosing = pmosPage.waitForEvent('filechooser');
     await pmosPage.locator('[data-import-format="spice"]').click();
     await (await choosing).setFiles({name: `${id}.cir`, mimeType: 'text/plain',
