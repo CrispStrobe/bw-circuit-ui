@@ -41,8 +41,21 @@ export function validatePrecisionCaptureInput(parts, scopeCount, meterModes) {
         || p.supplyPositiveV-p.supplyNegativeV<10 || p.supplyPositiveV-p.supplyNegativeV>36) {
       throw new Error('precision LM741 requires explicit zero offset and fixed 10–36 V supply span');
     }
-    // Native linear-pole expansion adds five solver parts, not five authored parts.
-    if (parts.length+5>32) throw new Error('precision LM741 limits authored parts to 27 including hidden solver expansion');
+    const biasSupply=lm741BiasSupplyRequested(parts);
+    if (biasSupply && (p.biasSupplyDomain!==LM741_BIAS_SUPPLY_DOMAIN
+        || ![1,-1].includes(p.inputOffsetCurrentSign)
+        || p.supplyPositiveV!==15 || p.supplyNegativeV!==-15)) {
+      throw new Error(`precision LM741 bias/supply admits only ${LM741_BIAS_SUPPLY_DOMAIN} at exactly ±15 V with explicit inputOffsetCurrentSign ±1`);
+    }
+    // Native linear-pole expansion adds five solver parts (six with the
+    // opt-in bias/supply rail-return element), not authored parts.
+    if (parts.length+(biasSupply?6:5)>32) {
+      throw new Error(biasSupply
+        ? 'precision LM741 bias/supply limits authored parts to 26 including hidden solver expansion'
+        : 'precision LM741 limits authored parts to 27 including hidden solver expansion');
+    }
+  } else if (lm741BiasSupplyRequested(parts)) {
+    throw new Error('precision LM741 bias/supply domain requires the linear-pole model');
   }
   const companions = new Set(['resistor','capacitor','cap','gnd','vsource']);
   for (const part of parts) {
@@ -105,7 +118,18 @@ export function validatePrecisionVoltageTopology(parts, nets) {
   }
 }
 
-export function precisionCaptureBudget(clock, profile, netCount, domain = 'passive-source') {
+// Opt-in nominal typical 25 C LM741 bias/supply domain (TI SNOSC25D typical
+// values, owned by the pinned bw-board model). Absent keys = unchanged default.
+export const LM741_BIAS_SUPPLY_DOMAIN='ti-snosc25d-typical-25c';
+export function lm741BiasSupplyRequested(parts) {
+  return parts.some(part => part.kind==='lm741' && part.params
+    && (Object.hasOwn(part.params,'biasSupplyDomain') || Object.hasOwn(part.params,'inputOffsetCurrentSign')));
+}
+
+export function precisionCaptureBudget(clock, profile, netCount, domain = 'passive-source', {biasSupply=false} = {}) {
+  if (biasSupply && domain!=='lm741-linear-pole') {
+    throw new Error('precision bias/supply budget requires the LM741 linear-pole domain');
+  }
   if (!['passive-source','adp7118-current-limited','lm741-linear-pole'].includes(domain)) {
     throw new Error('precision batch refuses unknown capture domain');
   }
@@ -149,8 +173,10 @@ export function precisionCaptureBudget(clock, profile, netCount, domain = 'passi
     maxAttempts:profile.maxAttempts,maxSolves:3*profile.maxAttempts+1,maxAdvances:200,
     minimumAdaptiveAttempts,basis:'engine-whole-advance-lm741-linear-pole',
     initialization:'zero-state-no-dc-operating-point',
-    admission:'native-linear-pole-envelope-and-acyclic-voltage-graph; bias-not-adopted',
-    hiddenSolverExpansion:{parts:5,nets:2},requestedTimeNs:String(clock.durationNs),
+    admission:biasSupply
+      ? 'native-linear-pole-envelope-and-acyclic-voltage-graph; nominal-typical-25c-bias-supply'
+      : 'native-linear-pole-envelope-and-acyclic-voltage-graph; bias-not-adopted',
+    hiddenSolverExpansion:{parts:biasSupply?6:5,nets:2},requestedTimeNs:String(clock.durationNs),
   };
   return {maxAttempts:profile.maxAttempts,maxSolves:3*profile.maxAttempts+1,
     maxAdvances:1,minimumAdaptiveAttempts,basis:'single-advance-passive-source-domain',
@@ -196,6 +222,44 @@ function validateWholeAdvanceReceipt(status,budget,device) {
         })) {
       throw new Error(`precision ${device} batch returned missing or unqualified whole-advance receipt`);
     }
+}
+
+/** Whole-capture resource preflight for a precision batch, evaluated before
+ * any scope ring is allocated or any artifact is written. It does not renew
+ * per chunk or per report: one bound covers the whole requested capture. */
+export const PRECISION_BATCH_MAX_RING_ENTRIES = 1_000_000;
+export const PRECISION_BATCH_MAX_OUTPUT_BYTES = 32 * 1024 * 1024;
+export const PRECISION_CSV_ROW_MAX_BYTES = 128;
+export const PRECISION_CSV_HEADER_MAX_BYTES = 4096;
+export const PRECISION_METER_HISTORY_MAX_ENTRIES = 100_000;
+export function precisionBatchResources(clock, budget, { scopeCount = 0, meterCount = 0, csv = false } = {}) {
+  if (!budget || budget.stream) throw new Error('precision batch resources need a non-stream whole-capture budget');
+  if (![scopeCount,meterCount].every(n => Number.isSafeInteger(n) && n>=0)) {
+    throw new Error('precision batch resources need non-negative channel counts');
+  }
+  const depth = clock.captureSamples + 2;
+  const ringEntries = scopeCount * depth;
+  if (ringEntries > PRECISION_BATCH_MAX_RING_ENTRIES) {
+    throw new Error(`precision batch preflight needs ${ringEntries} scope ring entries; limit is ${PRECISION_BATCH_MAX_RING_ENTRIES}`);
+  }
+  // Each accepted solve may add at most one meter-history entry; the engine
+  // independently fails a watch at its 100000-entry history limit.
+  const meterHistoryEntriesPerMeter = Math.min(budget.maxSolves, PRECISION_METER_HISTORY_MAX_ENTRIES);
+  const outputBytesBound = csv
+    ? scopeCount * (PRECISION_CSV_HEADER_MAX_BYTES + clock.captureSamples * PRECISION_CSV_ROW_MAX_BYTES) : 0;
+  if (outputBytesBound > PRECISION_BATCH_MAX_OUTPUT_BYTES) {
+    throw new Error(`precision batch preflight output bound ${outputBytesBound} bytes exceeds ${PRECISION_BATCH_MAX_OUTPUT_BYTES}`);
+  }
+  return { scopeCount, meterCount, ringDepth: depth, ringEntries,
+    meterHistoryEntriesPerMeter, outputBytesBound,
+    outputBytesLimit: PRECISION_BATCH_MAX_OUTPUT_BYTES, renewal: 'none-whole-capture' };
+}
+
+/** Refuse (no artifact) if a produced CSV exceeds its preflight bound. */
+export function validatePrecisionBatchOutput(bytes, resources) {
+  if (!Number.isSafeInteger(bytes) || bytes<0 || bytes>resources.outputBytesBound) {
+    throw new Error(`precision batch output ${bytes} bytes exceeds its preflight bound ${resources.outputBytesBound}`);
+  }
 }
 
 /** Finite active-domain streams share one whole-capture work authority. */

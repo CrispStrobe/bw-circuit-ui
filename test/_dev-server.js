@@ -44,6 +44,7 @@ export const PORTS = {
   'serial-console': 3195,
   'pendant-attiny88': 3196,
   'export-views': 3197,
+  'scope-capture-select': 3198,
 };
 
 {

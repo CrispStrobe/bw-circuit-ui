@@ -46,7 +46,7 @@
  * the learner chooses, labelled by the bandwidth it buys.
  */
 
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {playScopeCapture, scopeAudioWav} from '../audio/scope-audio.js';
 import {createScopeAudioStream} from '../audio/scope-audio-stream.js';
 import {seriesFromApertureData} from '../model/scope-aperture-series.js';
@@ -111,6 +111,17 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
   const [sampleRateHz, setSampleRateHz] = useState(SCOPE_RATES[0]);
   const [pickNet, setPickNet] = useState('');
   const [timeCapture, setTimeCapture] = useState('envelope');
+  // The time-capture <select> is UNCONTROLLED: a controlled `value` is re-applied
+  // on every render, so a host re-render that lands between the browser's
+  // `input` and `change` events (a legacy root flushing pending work on a
+  // discrete event does exactly that) would put the stale mode back before
+  // onChange reads it, silently discarding the user's choice. The DOM is
+  // written only when the mode state itself changes.
+  const timeCaptureSelect = useRef(null);
+  useLayoutEffect(() => {
+    const el = timeCaptureSelect.current;
+    if (el && el.value !== timeCapture) el.value = timeCapture;
+  }, [timeCapture]);
   const [adcEnabled, setADCEnabled] = useState(false);
   const [adcBits, setADCBits] = useState(8);
   const [adcLow, setADCLow] = useState(0);
@@ -757,7 +768,7 @@ export function ScopePanel({ board, nets = [], lang = 'en', audioEnabled = true 
 
       {view === 'time' && <div data-testid="bw-scope-digitizer-controls" style={{marginBottom: 6}}>
         <label>{t('scopeTimeCapture', lang)}{' '}
-          <select data-testid="bw-scope-time-capture" value={timeCapture}
+          <select data-testid="bw-scope-time-capture" ref={timeCaptureSelect} defaultValue={timeCapture}
             disabled={channels.length > 0 || !running} onChange={e => {
               setTimeCapture(e.target.value); if (e.target.value !== 'sample') setADCEnabled(false);
             }}>
