@@ -9,6 +9,12 @@ package.json only registration of that pure test; scripts/verify-interaction.mjs
 and scripts/lib/verify-scope-aperture.mjs only their five existing Open-button
 accessible-name selectors (decorative emoji becomes a local SVG). No browser
 scenario, expected result, acquisition, threshold or assertion is removed.
+Follow-up scope, 2026-10-28: the first actual menu browser run reported all
+83 scenarios, with the two PMOS import/OP scenarios failing on their shared
+obsolete emoji Import locator. Also own that one accessible-name selector in
+scripts/verify-interaction.mjs and its focused source control. Preserve the
+PMOS fixtures, topology/OP expectations, timeouts, IDs and roll-call; no
+production source change or measurement retry/waiver is included.
 Group actual file, edit
 and view commands with named icon rows, switches and accessible popup behavior.
 Expose optional onEditorMenuActions descriptors with stable name, label,
