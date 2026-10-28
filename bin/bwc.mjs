@@ -55,6 +55,7 @@ const { operatingPointRows } = await import(join(SRC, 'model/operating-point-vie
 const { scopeProbeOptions } = await import(join(SRC, 'model/scope-probes.js'));
 const { scopeTracesToCsv } = await import(join(SRC, 'model/scope-csv.js'));
 const {createScopeDigitizer, digitizeScopeCapture} = await import(join(SRC, 'model/scope-digitizer.js'));
+const {createScopeCoupling, coupleScopeCapture} = await import(join(SRC, 'model/scope-coupling.js'));
 const {
   compareExpectedWaveforms, parseExpectedWaveforms, parseMeterSpec, parseScaledNumber,
   parseExpectedMeters, createExpectedMeterComparison,
@@ -120,8 +121,8 @@ const valueFlags = new Set(['-o', '--to', '--render', '--profile', '--observatio
   '--scope', '--meter', '--probe', '--duration', '--rate', '--csv', '--expect', '--expect-meters',
   '--abs-volts', '--rel', '--time-tolerance', '--receipt', '--input', '--max-step',
   '--source', '--from', '--points', '--observe', '--current', '--expect-ac',
-  '--adc-bits', '--adc-low', '--adc-high']);
-const repeatFlags = new Set(['scope', 'meter', 'observe', 'current']);
+  '--adc-bits', '--adc-low', '--adc-high', '--ac-couple', '--ac-corner-hz', '--ac-rc', '--ac-initial']);
+const repeatFlags = new Set(['scope', 'meter', 'observe', 'current', 'ac-couple']);
 for (let i = 1; i < args.length; i++) {
   // Value-taking flags must be listed, or the value silently becomes a
   // positional and the flag reads as a bare boolean — which is how --render
@@ -162,6 +163,35 @@ if (adcSelected) {
   try {adcModel=createScopeDigitizer({bits:number('adc-bits'),lowVolts:number('adc-low'),highVolts:number('adc-high')});}
   catch(error){die(`ADC configuration refused: ${error.message}`);}
 }
+// Opt-in per-channel AC input coupling (ideal first-order RC high-pass view).
+const couplingKeys=['ac-couple','ac-corner-hz','ac-rc','ac-initial'];
+const unknownCoupling=Object.keys(opts).find(key=>key.startsWith('ac-')&&!couplingKeys.includes(key));
+if (unknownCoupling) die(`unknown AC coupling option --${unknownCoupling}`);
+let couplingModel=null;
+if (couplingKeys.some(key=>Object.hasOwn(opts,key))) {
+  if (cmd!=='measure') die('AC coupling options are supported only by measure');
+  if (!opts['ac-couple']) die('AC coupling parameters need at least one --ac-couple <tip>[,<reference>]');
+  for (const key of ['ac-corner-hz','ac-rc','ac-initial']) {
+    if (Object.hasOwn(opts,key)&&args.filter(a=>a===`--${key}`).length>1) die(`duplicate --${key}`);
+  }
+  const hasCorner=Object.hasOwn(opts,'ac-corner-hz'), hasRc=Object.hasOwn(opts,'ac-rc');
+  if (!hasCorner&&!hasRc) die('--ac-couple needs an explicit --ac-corner-hz or --ac-rc (no implied corner)');
+  if (hasCorner&&hasRc) die('AC coupling takes exactly one of --ac-corner-hz or --ac-rc');
+  const positive=key=>{
+    const value=opts[key];
+    if (typeof value!=='string' || !/^[+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value)
+      || !(Number(value)>0) || !Number.isFinite(Number(value))) die(`--${key} must be a finite positive number`);
+    return Number(value);
+  };
+  const initial=opts['ac-initial'];
+  if (initial!==undefined&&!['uncharged','settled'].includes(initial)) die('--ac-initial must be uncharged or settled');
+  if (adcModel) die('AC coupling cannot yet be combined with the ADC view');
+  if (opts.watch) die('AC coupling is not supported with --watch');
+  if (opts.receipt) die('AC coupling is not supported with --receipt (verify-receipt has no coupling replay)');
+  try { couplingModel=createScopeCoupling({...(hasCorner?{cornerHz:positive('ac-corner-hz')}:{tauSeconds:positive('ac-rc')}),
+    ...(initial?{initial}:{})}); }
+  catch(error){die(`AC coupling configuration refused: ${error.message}`);}
+}
 
 const usage = () => {
   console.log('bwc — circuit workshop CLI\n'
@@ -176,6 +206,7 @@ const usage = () => {
     + '              [--meter resistance:<red>,<black>] [--duration 10ms] [--rate 10kHz]\n'
     + '              [--profile interactive-v1] [--max-step 2us] [--watch] [--expect waveform.json] [--expect-meters meters.json] [--json] [--csv trace.csv] [--receipt capture.json]\n'
     + '              ideal ADC view: --adc-bits 1..16 --adc-low <volts> --adc-high <volts> (all three; raw comparisons/meters unchanged)\n'
+    + '              AC coupling view: --ac-couple <tip>[,<ref>] (repeatable) with --ac-corner-hz <Hz> | --ac-rc <s> [--ac-initial uncharged|settled]\n'
     + '              precision: --profile precision-v1 --initial zero-state (passive/source batch; bounded ADP7118 batch or finite --watch)\n'
     + '  bwc analyze <file> --profile precision-v1 [--observations source-declared-v1|bounded-research-v1] [--expect-ac reference.json] [--json]\n'
     + '  bwc convert <file> --to asc|eagle|kicad-sch|kicad|spice|json [-o out]\n'
@@ -524,6 +555,14 @@ switch (cmd) {
       try { return parseScopeSpec(value); } catch (error) { return die(error.message); }
     });
     if (adcModel&&!scopeSpecs.length) die('ADC view needs at least one --scope');
+    const scopeKey = spec => `${spec.tip},${spec.reference}`;
+    const coupledKeys = new Set();
+    for (const value of opts['ac-couple'] || []) {
+      let spec; try { spec = parseScopeSpec(value); } catch (error) { die(`--ac-couple: ${error.message}`); }
+      if (!scopeSpecs.some(row => scopeKey(row) === scopeKey(spec))) die(`--ac-couple ${value} does not name a --scope channel`);
+      if (coupledKeys.has(scopeKey(spec))) die(`duplicate --ac-couple ${value}`);
+      coupledKeys.add(scopeKey(spec));
+    }
     const meterSpecs = (opts.meter || []).map(value => {
       try { return parseMeterSpec(value); } catch (error) { return die(error.message); }
     });
@@ -770,6 +809,11 @@ switch (cmd) {
       const summary = summarizeScope(data);
       const digitized = adcModel ? digitizeScopeCapture(data,adcModel) : null;
       if (!summary.samples) captureDie(`scope ${row.spec.tip} captured no finite samples`);
+      let coupledData = null;
+      if (couplingModel && coupledKeys.has(scopeKey(row.spec))) {
+        try { coupledData = coupleScopeCapture(data, couplingModel); }
+        catch (couplingError) { captureDie(`scope ${row.spec.tip} AC coupling refused: ${couplingError.message}`); }
+      }
       return {
         tip: row.spec.tip,
         reference: row.spec.reference || 'engine ground',
@@ -785,6 +829,8 @@ switch (cmd) {
         ...(digitized ? {adcData:digitized.data,adc:{descriptor:digitized.data.adc.descriptor,
           source:digitized.data.adc.source,clippingCounts:digitized.data.adc.clippingCounts,
           summary:summarizeScope(digitized.data)}} : {}),
+        ...(coupledData ? {coupledData, coupling:{descriptor:couplingModel.descriptor,
+          summary:summarizeScope(coupledData)}} : {}),
         data,
       };
     });
@@ -815,7 +861,7 @@ switch (cmd) {
     const meterComparison=meterReference?.finish() ?? null;
     if (opts.csv) {
       if (!scopeRows.length) captureDie('--csv needs at least one --scope');
-      const csv = scopeTracesToCsv(scopeRows.map(row => ({ data: row.adcData || row.data,
+      const csv = scopeTracesToCsv(scopeRows.map(row => ({ data: row.adcData || row.coupledData || row.data,
         netId: `${row.tip}${row.referenceNet ? ` - ${row.reference}` : ''}` })));
       if (precisionResources) {
         try { validatePrecisionBatchOutput(Buffer.byteLength(`${csv}\n`),precisionResources); }
@@ -832,7 +878,7 @@ switch (cmd) {
       transient,
       ...(precision ? {precisionCapture:precisionBudget} : {}),
       ...(precisionResources ? {precisionResources} : {}),
-      scope: scopeRows.map(({ data, adcData, selectorReference, ...row }) => row),
+      scope: scopeRows.map(({ data, adcData, coupledData, selectorReference, ...row }) => row),
       ...(adcModel ? {scopeDigitizer:adcModel.descriptor,comparisonDomain:'raw-voltage',
         instrumentModel:{physicalHardwareModel:false,meters:'unchanged raw observed means'}} : {}),
       meters: meterRows,
