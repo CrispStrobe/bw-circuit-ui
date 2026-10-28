@@ -5,7 +5,11 @@ Own only this entry; FileMenu presentation and BoardCanvas overflow/menu action
 publication in src/components/BoardCanvas.jsx; narrow CircuitDesigner prop and
 history-availability wiring; new src/components/CircuitMenu.jsx and
 src/components/circuit-menu-actions.js; focused test/circuit-menu-actions.test.js;
-and package.json only registration of that pure test. Group actual file, edit
+package.json only registration of that pure test; scripts/verify-interaction.mjs
+and scripts/lib/verify-scope-aperture.mjs only their five existing Open-button
+accessible-name selectors (decorative emoji becomes a local SVG). No browser
+scenario, expected result, acquisition, threshold or assertion is removed.
+Group actual file, edit
 and view commands with named icon rows, switches and accessible popup behavior.
 Expose optional onEditorMenuActions descriptors with stable name, label,
 location, submenu, enabled, run and checked for switches, calling current real
