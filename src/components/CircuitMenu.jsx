@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import React from 'react';
 import ReactDOM from 'react-dom';
-import {navigateCircuitMenu} from './circuit-menu-actions.js';
+import {navigateCircuitMenu, runCurrentEditorAction} from './circuit-menu-actions.js';
 const menuCSS = `.circuit-menu-popup {position:fixed;z-index:3000;width:300px;max-width:calc(100vw - 16px);overflow-y:auto;box-sizing:border-box;padding:6px;color:#e2e8f0;background:#0f172a;border:1px solid #64748b;border-radius:9px;box-shadow:0 8px 28px #02061766;font:12px system-ui,sans-serif;}
 .circuit-menu-trigger {display:flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;color:#e2e8f0;background:#2c3e50;border:1px solid #64748b;border-radius:6px;cursor:pointer;}
 .circuit-menu-trigger[aria-expanded=true] {background:#1e3a5f;}
@@ -64,10 +64,7 @@ export function useEditorMenuActions(actions, publish) {
   const mounted = React.useRef(true);
   const signature = JSON.stringify(actions.map(({run, ...metadata}) => metadata));
   const descriptors = React.useMemo(() => latest.current.map(action => ({...action,
-    run: () => {
-      const current = latest.current.find(item => item.name === action.name);
-      if (mounted.current && current?.enabled) current.run();
-    },
+    run: () => runCurrentEditorAction(latest.current, mounted.current, action.name),
   })), [signature]);
   React.useEffect(() => {
     mounted.current = true;
@@ -82,6 +79,7 @@ export function useEditorMenuActions(actions, publish) {
 }
 
 /** A viewport-bounded popup, independent of the canvas overflow and key bindings. */
+let nextMenuId = 0;
 export function CircuitMenuPopup({open, onOpenChange, lang, children, ...panelAttributes}) {
   const anchor = React.useRef(null);
   const panel = React.useRef(null);
@@ -123,7 +121,9 @@ export function CircuitMenuPopup({open, onOpenChange, lang, children, ...panelAt
     };
   }, [open, close]);
   const label = /^de/i.test(lang) ? 'Weitere Schaltungsaktionen' : 'More circuit controls';
-  const id = React.useId();
+  const menuId = React.useRef(null);
+  if (menuId.current === null) menuId.current = `circuit-menu-${++nextMenuId}`;
+  const id = menuId.current;
   return <div data-toolbar-more><CircuitMenuStyles />
     <button ref={anchor} type="button" className="circuit-menu-trigger" title={label} aria-label={label}
       aria-haspopup="dialog" aria-controls={open ? id : undefined} aria-expanded={open}

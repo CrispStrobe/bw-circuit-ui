@@ -10,7 +10,7 @@ export function circuitEditorActions({de = false, canEdit, canUndo, canRedo, can
   const actions = [];
   const add = (name, en, german, submenu, enabled, run, shortcut, checked) => {
     actions.push({name, label: de ? german : en, location: 'edit', submenu,
-      enabled: Boolean(enabled), run: () => { if (enabled) run(); }, shortcut,
+      enabled: Boolean(enabled), run: () => enabled ? run() !== false : false, shortcut,
       ...(checked === undefined ? {} : {checked: Boolean(checked)})});
   };
   add('undo', 'Undo', 'Rückgängig', 'history', canEdit && canUndo && onUndo, onUndo, 'Ctrl+Z');
@@ -51,4 +51,11 @@ export function navigateCircuitMenu(event, panel, close) {
     event.key === 'ArrowDown' ? (current + 1) % buttons.length :
       (current < 0 ? buttons.length - 1 : (current - 1 + buttons.length) % buttons.length);
   buttons[index].focus();
+}
+
+// Retained menu descriptors must report refusal after edits/view teardown.
+export function runCurrentEditorAction(actions, mounted, name) {
+  const current = actions.find(action => action.name === name);
+  if (!mounted || current?.enabled !== true || typeof current.run !== 'function') return false;
+  return current.run() !== false;
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {circuitEditorActions, navigateCircuitMenu} from '../src/components/circuit-menu-actions.js';
+import {circuitEditorActions, navigateCircuitMenu, runCurrentEditorAction} from '../src/components/circuit-menu-actions.js';
 
 function editor(overrides = {}) {
   const calls = [];
@@ -129,4 +129,17 @@ test('embedded workbench inputs retain their native arrow and Home/End keys', ()
       preventDefault() {consumed++;}}, null, () => consumed++);
   }
   assert.equal(consumed, 0);
+});
+
+test('retained command execution reports current refusal and never calls stale or disposed actions', () => {
+  let calls = 0;
+  const action = {name: 'copy', enabled: true, run: () => {calls++;}};
+  assert.equal(runCurrentEditorAction([action], true, 'copy'), true);
+  assert.equal(calls, 1);
+  for (const [actions, mounted] of [[[{...action, enabled: false}], true], [[action], false], [[], true], [[{...action, run: null}], true]]) {
+    assert.equal(runCurrentEditorAction(actions, mounted, 'copy'), false);
+    assert.equal(calls, 1);
+  }
+  assert.equal(runCurrentEditorAction([{...action, run: () => false}], true, 'copy'), false);
+  assert.equal(editor({canEdit: false}).action('paste').run(), false);
 });
