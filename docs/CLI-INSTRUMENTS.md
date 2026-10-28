@@ -953,3 +953,35 @@ or range mismatches, and malformed or inconsistent source metadata refuses.
 The verifier also checks the supplied CSV's declared descriptor/source headers.
 This remains identity-only verification, not proof that recorded samples are
 numerically correct, independently measured, signed or physically accurate.
+
+### Opt-in AC input coupling view
+
+```sh
+bwc measure amp.cir --scope OUT --scope IN --duration 2s --rate 10kHz \
+  --ac-couple OUT --ac-corner-hz 10 --ac-initial uncharged --csv coupled.csv --json
+```
+
+`--ac-couple <tip>[,<reference>]` (repeatable) selects channels that must
+exactly match a `--scope`; other channels stay raw DC. The view is an ideal
+first-order RC high-pass `y' = x' - y/tau` — a **model choice, not a measured
+instrument**. There is no default corner: give exactly one of
+`--ac-corner-hz <fc>` or `--ac-rc <tau seconds>` (`fc = 1/(2*pi*tau)`).
+Bench scopes typically place AC coupling around 1–10 Hz; `10` above is only an
+illustrative explicit choice. `--ac-initial` states the coupling capacitor at
+the first retained sample: `uncharged` (default; `y0 = x0`, a step applied at
+capture start, decaying with `tau`) or `settled` (`y0 = 0`, the input had been
+at `x0` indefinitely).
+
+Discretisation treats the input as piecewise linear between samples; for such
+input `y1 = a*y0 + (x1-x0)*(tau/h)*(1-a)`, `a = exp(-h/tau)` is exact (constant
+and ramp inputs reproduce the closed form to rounding). It is not bilinear, so
+there is no frequency warping. The view refuses gaps, envelope captures,
+non-positive or non-finite corners/time constants, unknown `--ac-*` options,
+and (for now) `--watch`, `--receipt` and the ADC view, all before capture.
+
+Raw `summary`, waveform comparisons (`--expect`) and meters keep their raw
+meanings; coupled channels add `coupling: {descriptor, summary}`. Coupled CSV
+sections append `coupling=<descriptor>` to the header and use
+`elapsed_seconds,input_volts,volts`, where `volts` is the modeled output.
+Without `--ac-*` options, report fields and CSV bytes are unchanged. The model
+excludes probe/input capacitance, bandwidth limits and noise.

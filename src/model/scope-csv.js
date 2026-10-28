@@ -44,6 +44,20 @@ export function scopeTraceToCsv(data, netId = '') {
     }
     return modeled.join('\n');
   }
+  if (data.coupling) {
+    const coupling=data.coupling;
+    if (capture!=='sample' || data.channelType!=='voltage' || coupling.rawSamples?.length!==data.samples.length
+      || coupling.descriptor?.kind!=='first-order-rc-highpass' || coupling.descriptor.physicalHardwareModel!==false) {
+      throw new Error('AC coupling CSV source/descriptor mismatch');
+    }
+    const modeled=[`${rows[0]} coupling=${safeComment(JSON.stringify(coupling.descriptor))}`,
+      'elapsed_seconds,input_volts,volts'];
+    for(let offset=0;offset<count;offset++) {
+      const index=(oldest+offset)%depth;
+      modeled.push(`${offset*intervalNs/1e9},${cell(coupling.rawSamples[index*2])},${cell(data.samples[index*2])}`);
+    }
+    return modeled.join('\n');
+  }
   for (let offset = 0; offset < count; offset++) {
     const index = (oldest + offset) % depth;
     const elapsed = (offset * intervalNs) / 1e9;
