@@ -1,4 +1,10 @@
-2026-10-28 grouped editor menus — SOURCE CANDIDATE, Codex Circuit menu UI.
+2026-10-28 grouped editor menus — DONE, Codex Circuit menu UI.
+Qualified merge: PR #131 at `4b65f15485abbc039958d8e1a8a29ac3459b75f9`.
+All three checks passed at reviewed `3f1a5e2`; the independent browser
+readback reports 83/83 pass, no failures or skips, and all seven required
+browser/touch steps succeeded. Reviewed, CI and landed tree/parents matched.
+Qualification: https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/40802516708
+This qualifies the supplier UI; Lite adoption and production remain separate.
 Exact base `373d562b741c69a5a1dd441c4f8d0ea1053b4fd3`; branch
 `lane/cui-menu-ux-20261028`. Canonical claim precedes source implementation.
 Own only this entry; FileMenu presentation and BoardCanvas overflow/menu action
