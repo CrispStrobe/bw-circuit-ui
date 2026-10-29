@@ -45,7 +45,7 @@ try {
             document.querySelectorAll('[data-circuit-view-toggle]').length > 0);
         let viaMenu = false;
         if (!present) {
-            const more = page.locator('button', {hasText: '⋯'}).first();
+            const more = page.getByRole('button', {name: 'More circuit controls', exact: true});
             if (await more.count()) {
                 await more.click({timeout: 5000}).catch(() => {});
                 present = await page.waitForFunction(
