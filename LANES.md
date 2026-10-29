@@ -15,6 +15,12 @@ obsolete emoji Import locator. Also own that one accessible-name selector in
 scripts/verify-interaction.mjs and its focused source control. Preserve the
 PMOS fixtures, topology/OP expectations, timeouts, IDs and roll-call; no
 production source change or measurement retry/waiver is included.
+Touch follow-up scope, 2026-10-29: actual91 menu qualification passed all83
+main browser scenarios, then the phone-portrait view-toggle check could not
+find the old literal ellipsis trigger. Also own the one More-button locator
+in scripts/verify-view-toggle.mjs, using its actual accessible name. Preserve
+all15 reachability, width, hit-testing, all-three-view and return-path checks,
+viewports, waits and assertions. No view-selection or simulation code change.
 Group actual file, edit
 and view commands with named icon rows, switches and accessible popup behavior.
 Expose optional onEditorMenuActions descriptors with stable name, label,
