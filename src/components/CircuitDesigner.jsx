@@ -96,7 +96,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
+export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -816,6 +816,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
 
   // ── Copy/paste ────────────────────────────────────────────────────
   const clipboardRef = useRef(null);
+  const [canPaste, setCanPaste] = useState(false);
 
   const handleCopy = useCallback((partIds) => {
     if (!partIds || partIds.size === 0) return;
@@ -831,6 +832,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
       return [{ ...w, from, to }];
     });
     clipboardRef.current = { parts: copiedParts, wires: copiedWires };
+    setCanPaste(copiedParts.length > 0);
   }, [parts, wires]);
 
   const handlePaste = useCallback(() => {
@@ -1585,6 +1587,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
           onCopy={handleCopy}
           onPaste={handlePaste}
           onUpdateWire={updateWire}
+          onEditorMenuActions={onEditorMenuActions}
+          canUndo={canUndo} canRedo={canRedo} canPaste={canPaste}
           onUndo={handleUndo}
           onRedo={handleRedo}
           onSelectAll={handleSelectAll}

@@ -1380,11 +1380,11 @@ try {
     {id: 'signal', terminals: [{part: 'transport-v', terminal: 'pos'}, {part: 'transport-r', terminal: 'a'}]},
     {id: 'ground', terminals: [{part: 'transport-v', terminal: 'neg'}, {part: 'transport-r', terminal: 'b'}, {part: 'transport-g', terminal: 'gnd'}]},
   ]};
-  if (!await page.getByRole('button', {name: /^📂 Open$/}).isVisible()) {
+  if (!await page.getByRole('button', {name: /^Open…$/}).isVisible()) {
     await page.getByRole('button', {name: 'More circuit controls', exact: true}).click();
   }
   const choosing = page.waitForEvent('filechooser');
-  await page.getByRole('button', {name: /^📂 Open$/}).click();
+  await page.getByRole('button', {name: /^Open…$/}).click();
   await (await choosing).setFiles({name: 'own-clock-transport.json', mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(fixture))});
   await page.waitForFunction(() => window.__circuit.parts.length === 3
@@ -2242,7 +2242,7 @@ try {
   };
   await contextPage.getByRole('button', {name: 'More circuit controls', exact: true}).click();
   const choosing = contextPage.waitForEvent('filechooser');
-  await contextPage.getByRole('button', {name: /^📂 Open$/}).click();
+  await contextPage.getByRole('button', {name: /^Open…$/}).click();
   await (await choosing).setFiles({name: 'analog-context.json', mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(fixture))});
   await contextPage.waitForFunction(() => window.__circuit.parts.length === 3
@@ -2489,7 +2489,7 @@ for (const grounded of [false, true]) {
     await pmosPage.goto(`http://localhost:${PORT}/?examples=none`, {waitUntil: 'domcontentloaded'});
     await pmosPage.waitForFunction(() => window.__circuit && window.__board);
     await pmosPage.getByRole('button', {name: 'More circuit controls', exact: true}).click();
-    await pmosPage.getByRole('button', {name: /^📥 Import/}).click();
+    await pmosPage.getByRole('button', {name: 'Import', exact: true}).click();
     const choosing = pmosPage.waitForEvent('filechooser');
     await pmosPage.locator('[data-import-format="spice"]').click();
     await (await choosing).setFiles({name: `${id}.cir`, mimeType: 'text/plain',
@@ -2555,7 +2555,7 @@ async function exerciseADC(adcPage, report = () => {}) {
   ]};
   await adcPage.getByRole('button',{name:'More circuit controls',exact:true}).click();
   const choosing=adcPage.waitForEvent('filechooser');
-  await adcPage.getByRole('button',{name:/^📂 Open$/}).click();
+  await adcPage.getByRole('button',{name:/^Open…$/}).click();
   await (await choosing).setFiles({name:'ideal-adc-bench.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(fixture))});
   await adcPage.waitForFunction(()=>window.__circuit.parts.some(p=>p.id==='adc-v'));
   await adcPage.getByRole('radio',{name:/Sim/i}).first().click();
