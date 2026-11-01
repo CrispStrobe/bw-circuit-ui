@@ -1,3 +1,13 @@
+## ESP32-4848S040 physical board and live display/input consumer — CLAIMED, 2026-11-01
+
+Owner: ChatGPT ESP32 board lane, requested by CrispStrobe. Base: `48f0d3d5ebb7dfdd47bb50e13ee83eac5cfec14f`. Isolated implementation branch. Companion bw-parts claim: `spec-updates/009-esp32-4848s040.md`; engine models have a separate LabWired claim. Existing face/menu work keeps its own hunks.
+
+Own additive S040 cases only in `src/components/{BoardCanvas,CircuitDesigner,PartPalette,PartThumbnail}.jsx`, new `Esp32S040Face.jsx` and `src/model/esp32-s040-face.js`, additive `src/model/{board-geometry,circuit,simulation,declarations,infer-seated,bom,drc}.js` and `src/interaction/hittest.js` integration, generated `src/parts-data/{esp32_4848s040.json,esp32_4848s040.svg,index.js}` through the supplier sync, `docs/ESP32-4848S040.md`, focused board/face source tests and browser fixture, package test registration and this section. Use verified H1 terminals and rear-header inset. Permit 5 V board power while keeping GPIO at 3.3 V; refuse internal/nonexistent pins by name. Do not enter the legacy no-program synthetic MCU blink path.
+
+The face consumes actual supplied emulator video and sends pointer down/move/up/cancel/unmount through typed input callbacks, with explicit coordinate transform and one owning board. Until engine/supplier support qualifies, distinguish static board placement from running emulation. Preserve existing board/solver behavior and unrelated UI hunks. No synthetic firmware image, radio/SD/audio/relay or cycle-accurate claim.
+
+Qualify exact terminals/geometry/seating/DRC/save-load, no synthetic GPIO writes, decoder/transform controls, and Chromium pointer/mouse/touch/rotation/release behavior. Add the focused browser test after the existing verify:interaction gate without dropping any existing scenarios. All applicable source/build/hosted gates stay intact. Supplier art lands first; direct engine/bw-board/Lite adoption remains a separately qualified step.
+
 2026-10-28 grouped editor menus — DONE, Codex Circuit menu UI.
 Qualified merge: PR #131 at `4b65f15485abbc039958d8e1a8a29ac3459b75f9`.
 All three checks passed at reviewed `3f1a5e2`; the independent browser
