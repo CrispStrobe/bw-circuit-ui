@@ -80,6 +80,7 @@ import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { breadboardFootprintForPart } from '../model/carriers.js';
 import { buildSeatedFromDeclarations, makeCodeBoardFor } from '../model/infer-seated.js';
+import { isEsp32S040Device } from '../model/esp32-s040-face.js';
 import { runDrc } from '../model/drc.js';
 import { migrateStarterAutosave } from '../model/starter-migration.js';
 import './circuit-theme.css';
@@ -96,7 +97,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
+export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -425,6 +426,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
   // Re-infer when the project's pins change.
   const prevPinsRef = useRef(null);
   const prevCpxRef = useRef(false);
+  const prevS040Ref = useRef(false);
   // Set the moment a circuitData FILE is applied (the effect below).
   // Loading an example loads its PROGRAM first; the resulting project
   // change ripples new pins into THIS effect, which used to rebuild
@@ -450,14 +452,16 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
     // Onboard-only CPX programs still need their board. A device selection
     // can change while reusing the empty pins array.
     const onboardCpx = makeCodeBoardFor(projectData?.device)?.kind === 'circuit_playground_express';
-    if (pins === prevPinsRef.current && onboardCpx === prevCpxRef.current) return;
+    const onboardS040 = isEsp32S040Device(projectData?.device);
+    if (pins === prevPinsRef.current && onboardCpx === prevCpxRef.current && onboardS040 === prevS040Ref.current) return;
     prevPinsRef.current = pins;
     prevCpxRef.current = onboardCpx;
+    prevS040Ref.current = onboardS040;
     if (fileLoadedRef.current) return;
 
     // No declared pins: the last session's autosaved wiring beats the
     // canned demo - losing an evening's circuit to a reload was the bug.
-    if (!onboardCpx && !(pins?.length > 0) && typeof localStorage !== 'undefined') {
+    if (!onboardCpx && !onboardS040 && !(pins?.length > 0) && typeof localStorage !== 'undefined') {
       try {
         const saved = localStorage.getItem('bw-circuit-autosave');
         if (saved) {
@@ -474,7 +478,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
     // example has one visible positive wire and one visible return wire. A
     // rail-plus-jumper layout is electrically equivalent, but unnecessarily
     // draws four wires and makes the starter look duplicated.
-    if (!onboardCpx && !(pins?.length > 0)) {
+    if (!onboardCpx && !onboardS040 && !(pins?.length > 0)) {
       try {
         const bb = addPart('breadboard', {}, 470, 300);
         const bat = addPart('vsource', { variant: '9v', volts: 5 }, 130, 150);
@@ -488,7 +492,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
         return;
       } catch { /* fall through to the inferred demo */ }
     }
-    if (onboardCpx || pins?.length > 0) {
+    if (onboardCpx || onboardS040 || pins?.length > 0) {
       // The code PREFILLS the bench: declared pins arrive as a seated
       // breadboard build - chip above the board, parts in the strips,
       // taps from the pins, rails powered. Derivable is derived.
@@ -501,7 +505,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
         return;
       } catch { /* fall through to abstract inference */ }
     }
-    const inferStc = onboardCpx || pins?.length > 0
+    const inferStc = onboardCpx || onboardS040 || pins?.length > 0
       ? projectData
       : {
           device: 'STC12C5A60S2',
@@ -1449,6 +1453,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
         {profilePerformanceSubtree(performanceProbe, React, 'BoardCanvas', (<BoardCanvas
           cpxState={cpxState}
           onCpxInput={onCpxInput}
+          esp32S040PartId={esp32S040PartId}
+          onEsp32S040Input={onEsp32S040Input}
           supplyVolts={circuit.vcc}
           performanceProbe={performanceProbe}
           engineBoard={activeBoard}

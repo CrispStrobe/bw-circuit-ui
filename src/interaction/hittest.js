@@ -109,7 +109,7 @@ export const DEFAULT_FOOTPRINT = { w: 48, h: 48 };
 
 /** @param {{kind: string}} part */
 export function footprintOf(part) {
-  if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge', ...MAKECODE_FACE_KINDS].includes(part.kind)) {
+  if (['arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge', 'esp32_4848s040', ...MAKECODE_FACE_KINDS].includes(part.kind)) {
     const geometry = boardVisualGeometry(part.kind, getSidecar(part.kind));
     if (geometry) return { w: geometry.w, h: geometry.h };
   }

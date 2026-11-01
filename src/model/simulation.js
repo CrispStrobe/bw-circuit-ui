@@ -118,12 +118,16 @@ export function runDemoTrace(board) {
  */
 export function demoPinScriptApplies({ hasMcu, stc }) {
   if (!hasMcu) return false;
+  // Display firmware does not need GPIO declarations. Absence of PIN rows
+  // must never start the legacy illustrative blink script on this board.
+  if (String(stc?.device || '').toLowerCase().replace(/-/g, '_') === 'esp32_4848s040') return false;
   const declared = stc && Array.isArray(stc.pins) ? stc.pins.length : 0;
   return declared === 0;
 }
 
 /** The MCU-surface part kinds whose pins the designer arms at the start of a run. */
 export const RUN_MCU_KINDS = ['mcu', 'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge'];
+// esp32_4848s040 intentionally stays outside this legacy 8051-style arming.
 
 /**
  * Begin a run on the designer's OWN board (no external, emulator-driven one):

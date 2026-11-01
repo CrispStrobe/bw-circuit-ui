@@ -1,4 +1,4 @@
-## ESP32-4848S040 physical board and live display/input consumer — CLAIMED, 2026-11-01
+## ESP32-4848S040 physical board and live display/input consumer — IMPLEMENTED, qualification pending, 2026-11-01
 
 Owner: ChatGPT ESP32 board lane, requested by CrispStrobe. Base: `48f0d3d5ebb7dfdd47bb50e13ee83eac5cfec14f`. Isolated implementation branch. Companion bw-parts claim: `spec-updates/009-esp32-4848s040.md`; engine models have a separate LabWired claim. Existing face/menu work keeps its own hunks.
 
@@ -7,6 +7,24 @@ Own additive S040 cases only in `src/components/{BoardCanvas,CircuitDesigner,Par
 The face consumes actual supplied emulator video and sends pointer down/move/up/cancel/unmount through typed input callbacks, with explicit coordinate transform and one owning board. Until engine/supplier support qualifies, distinguish static board placement from running emulation. Preserve existing board/solver behavior and unrelated UI hunks. No synthetic firmware image, radio/SD/audio/relay or cycle-accurate claim.
 
 Qualify exact terminals/geometry/seating/DRC/save-load, no synthetic GPIO writes, decoder/transform controls, and Chromium pointer/mouse/touch/rotation/release behavior. Add the focused browser test after the existing verify:interaction gate without dropping any existing scenarios. All applicable source/build/hosted gates stay intact. Supplier art lands first; direct engine/bw-board/Lite adoption remains a separately qualified step.
+
+The supplier landed at `bw-parts@d38c65091aca746df8e0cfd00b81097aa5765fb9`;
+the generated JSON/SVG scoped sync has zero drift. Local `test:boards` passes
+65 controls, including nine new S040 controls. The focused browser fixture
+passes actual React/Designer paths for host RGBA, rotations/mirror, pointer
+capture, real single-contact touch, all release paths, owner isolation,
+onboard-only inference and explicit file precedence. The fixture supplies
+test pixels, not an emulator qualification. The local browser is isolated
+Chromium 134.0.6998.35 (Playwright build 1161), because the pinned 149.0.7827.55
+download mirror returned invalid archives. No dependency/lock was changed;
+the normal hosted browser gate remains required. Build and registration/
+palette/index controls pass; `test:a2` passes two controls. Local
+`test:render` has one pre-existing corpus failure: the unchanged claim base
+also reports four undrawn solver pairs in `school-miniorgan-107056/circuit.json`.
+No test was waived or changed. Local source precision has 160 passes, two
+failures requiring the absent source-admitted ngspice47 oracle, and 20 skips;
+the existing hosted workflow installs that oracle. Broader exact-head gates
+remain required before landing.
 
 2026-10-28 grouped editor menus — DONE, Codex Circuit menu UI.
 Qualified merge: PR #131 at `4b65f15485abbc039958d8e1a8a29ac3459b75f9`.

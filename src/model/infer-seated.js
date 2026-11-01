@@ -21,6 +21,7 @@
 
 import { FOOTPRINTS, computeLeadMap, straddleRefRow } from './footprints.js';
 import { wirableKind } from './declared-part-kind.js';
+import { ESP32_S040_GPIO, isEsp32S040Device } from './esp32-s040-face.js';
 
 /**
  * The MakeCode boards: device id → the board part a program for it seats.
@@ -72,7 +73,9 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
   // Device-specific board support
   const device = String(stc.device || '').toLowerCase();
   const makeCode = makeCodeBoardFor(device);
+  const isS040 = isEsp32S040Device(device);
   const controllerKind = makeCode ? makeCode.kind
+    : isS040 ? 'esp32_4848s040'
     : device === 'arduino-uno' ? 'arduino_uno'
     : device === 'arduino-nano' ? 'arduino_nano'
       : device === 'pico' ? 'pi_pico'
@@ -88,6 +91,12 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
   const powerPin = makeCode ? makeCode.power
     : controllerKind === 'pi_pico' ? 'vbus' : controllerKind === 'pybadge' ? '3v3' : isBareChip ? 'vcc' : isBoard ? '5v' : 'VCC';
   const groundPin = isBareChip ? 'gnd' : isBoard ? 'gnd' : 'GND';
+
+  if (isS040 && pins.length === 0) {
+    circuit.addPart(controllerKind, {}, 470, 240);
+    notes.push('ESP32-4848S040: front display and rear H1 connector. The display is pending until supported firmware and an emulator are bound to this board.');
+    return { notes };
+  }
 
   // ── Place and seat the breadboard + controller ───────────────────
   const bb = circuit.addPart('breadboard', {}, 470, 330);
@@ -116,7 +125,7 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
   // A MakeCode board brings its own supply: its 3V pad feeds the rails, so
   // there is no battery to add (5 V into that pad would be the wrong way round).
   if (!makeCode) {
-    const benchVolts = controllerKind === 'stm32f030' ? 3.3 : 5;
+    const benchVolts = controllerKind === 'stm32f030' || isS040 ? 3.3 : 5;
     const bat = circuit.addPart('vsource', { variant: '9v', volts: benchVolts }, 120, 150);
     circuit.addTapWire(bat.id, 'pos', bb.id, 't+2', '#e74c3c');
     circuit.addTapWire(bat.id, 'neg', bb.id, 't-2', '#2c3e50');
@@ -124,9 +133,18 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
 
   // The pads a MakeCode board actually has (its sidecar's, as bw-board knows
   // them). A declared pin that names none of them is refused by name below.
-  const boardPads = makeCode ? new Set(mcu.terminals || []) : null;
+  const boardPads = isS040 ? new Set(ESP32_S040_GPIO) : makeCode ? new Set(mcu.terminals || []) : null;
 
-  if (makeCode) {
+  if (isS040) {
+    // H1 has a 5 V board input but no 3V3 output. The external signal rail
+    // above is a separate 3.3 V supply, sharing ground, never the 5 V input.
+    const supply = circuit.addPart('vsource', { variant: 'bench', volts: 5 }, 760, 80);
+    circuit.addWire(supply.id, 'pos', mcu.id, '5v', '#e74c3c');
+    circuit.addTapWire(supply.id, 'neg', bb.id, 't-1', '#2c3e50');
+    circuit.addTapWire(mcu.id, 'gnd', bb.id, 't-5', '#2c3e50');
+    try { circuit.addHoleWire(bb.id, 't+3', 'b+3', '#e74c3c'); } catch { /* occupied */ }
+    try { circuit.addHoleWire(bb.id, 't-3', 'b-3', '#2c3e50'); } catch { /* occupied */ }
+  } else if (makeCode) {
     circuit.addTapWire(mcu.id, powerPin, bb.id, 't+1', '#e74c3c');
     circuit.addTapWire(mcu.id, groundPin, bb.id, 't-1', '#2c3e50');
     // Both halves of the breadboard get the board's supply (a button returns
@@ -163,7 +181,9 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
     circuit.addTapWire(mcu.id, groundPin, bb.id, 't-1', '#2c3e50');
   }
 
-  notes.push(makeCode
+  notes.push(isS040
+    ? 'ESP32-4848S040: rear H1 remains floating; a 5 V supply powers the board and a separate 3.3 V supply powers the signal rails, with shared ground. Check optional relay/audio assembly on GPIO40/2/1.'
+    : makeCode
     ? `${makeCode.label}: the board powers the breadboard — its ${powerPin.toUpperCase()} pad (3.3 V) to the + rails, GND to the − rails.`
     : seated
     ? `${stc.device || 'MCU'}: seated on the breadboard. Power from the rails through column jumpers.`
@@ -195,7 +215,13 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
 
     if (boardPads && !boardPads.has(pinName)) {
       const pads = [...boardPads].filter(t => t !== powerPin && !/^(gnd|3v|vout)/.test(t));
-      notes.push(`${pin.name}: ${pin.where || pin.pin || pinName} is not a pad of the ${makeCode.label} (${pads.join(', ')}) — not wired.`);
+      notes.push(isS040
+        ? `${pin.name}: ${pin.where || pin.pin || pinName} is not an accessible signal pad of ESP32-4848S040 H1 (${pads.join(', ')}) — not wired.`
+        : `${pin.name}: ${pin.where || pin.pin || pinName} is not a pad of the ${makeCode.label} (${pads.join(', ')}) — not wired.`);
+      continue;
+    }
+    if (isS040 && dir === 'analog' && !['gpio1', 'gpio2'].includes(pinName)) {
+      notes.push(`${pin.name}: ${pinName} has no ADC input on H1; use GPIO1 or GPIO2 — not wired.`);
       continue;
     }
 
@@ -264,7 +290,14 @@ export function buildSeatedFromDeclarations(circuit, stc, opts = {}) {
         circuit.addTapWire(mcu.id, pinName, bb.id, `d${col}`, '#f1c40f');
       }
       circuit.addHoleWire(bb.id, `g${col}`, `b-${col}`, '#2c3e50');
-      notes.push(`${pin.name}: the chip's internal pull-up holds the pin HIGH; pressing pulls it LOW.`);
+      if (isS040) {
+        const pullUp = circuit.addPart('resistor', { ohms: 10000 }, 0, 0);
+        circuit.seatPart(pullUp.id, bb.id, computeLeadMap(FOOTPRINTS.resistor, `c${col}`));
+        circuit.addHoleWire(bb.id, `b${col + 4}`, `t+${col + 4}`, '#e74c3c');
+        notes.push(`${pin.name}: an external 10k pull-up to 3.3 V holds ${pinName.toUpperCase()} HIGH; pressing pulls it LOW.`);
+      } else {
+        notes.push(`${pin.name}: the chip's internal pull-up holds the pin HIGH; pressing pulls it LOW.`);
+      }
     } else if (asserted === 'buzzer') {
       // Driven straight off the pin. A piezo buzzer is not a diode and takes no
       // series resistor, so the LED branch's resistor would be wrong here — it
