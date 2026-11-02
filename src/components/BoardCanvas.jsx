@@ -3791,6 +3791,8 @@ export function BoardCanvas({
   }, [canEditParts]);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
+  // Where the (portalled, fixed) warnings popover opens: under its chip.
+  const [warningsAnchor, setWarningsAnchor] = useState({left: 8, top: 60});
   const [toolbarMoreOpen, setToolbarMoreOpen] = useState(false);
   // What the last import or export had to say. Held HERE, not in FileMenu,
   // because the ⋯ popover unmounts the menu the moment an action runs and a
@@ -4789,6 +4791,13 @@ export function BoardCanvas({
     >
       {/* Status/action bar */}
       {/* Toolbar */}
+      {/* ONE ROW, scrolling sideways (the Robot Lab / Code-tab toolbar pattern). It used to
+          wrap onto a second and third row on narrow panes; now the controls scroll inside
+          [data-circuit-toolbar-scroll] and the ⋯ menu stays pinned at the right end, so it is
+          always reachable. Below the cramped width the rarely used groups (panel and view
+          navigation) still move into ⋯. Nothing that opens from this row may be positioned
+          inside the scroller (it would be clipped): the warnings popover and the ⋯ menu are
+          portalled and fixed. */}
       <div ref={toolbarRef} data-circuit-toolbar style={{
         display: 'flex', alignItems: 'center', gap: '6px',
         fontFamily: 'monospace', fontSize: '10px',
@@ -4796,16 +4805,31 @@ export function BoardCanvas({
         padding: '4px 6px',
         background: theme === 'light' ? '#f8fafc' : '#16213e',
         border: theme === 'light' ? '1px solid #cbd5e1' : '1px solid transparent', borderRadius: '4px',
-        flexWrap: 'wrap', alignContent: 'flex-start', rowGap: '8px',
-        overflow: 'visible', width: '100%', boxSizing: 'border-box',
+        flexWrap: 'nowrap',
+        overflow: 'hidden', width: '100%', boxSizing: 'border-box', flexShrink: 0,
       }}>
-        <div role="radiogroup" aria-label="Build or Sim mode" data-build-sim-toggle data-circuit-control-group style={{display: 'inline-flex', width: 70, height: 34, boxSizing: 'border-box', border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
-          <button data-circuit-toggle-state={mode === 'build' ? 'selected' : 'unselected'} role="radio" aria-checked={mode === 'build'} onClick={() => onModeChange?.('build')} title="Build mode" aria-label="Build mode"
+        <div data-circuit-toolbar-scroll role="group" aria-label={t('toolbarLabel', lang)}
+          onFocus={(event) => {
+            // Keep a focused control fully in view (keyboard users tab along the row).
+            const box = event.currentTarget;
+            const rect = event.target.getBoundingClientRect?.();
+            if (!rect || event.target === box) return;
+            const edge = box.getBoundingClientRect();
+            if (rect.left < edge.left) box.scrollLeft -= edge.left - rect.left + 8;
+            else if (rect.right > edge.right) box.scrollLeft += rect.right - edge.right + 8;
+          }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap',
+            flex: '1 1 0', minWidth: 0, minHeight: 40,
+            overflowX: 'auto', overflowY: 'hidden', scrollbarWidth: 'thin',
+          }}>
+        <div role="radiogroup" aria-label={lang === 'de' ? 'Bau- oder Simulationsmodus' : 'Build or Sim mode'} data-build-sim-toggle data-circuit-control-group style={{display: 'inline-flex', flex: '0 0 auto', width: 70, height: 34, boxSizing: 'border-box', border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
+          <button data-circuit-toggle-state={mode === 'build' ? 'selected' : 'unselected'} role="radio" aria-checked={mode === 'build'} onClick={() => onModeChange?.('build')} title={lang === 'de' ? 'Baumodus' : 'Build mode'} aria-label={lang === 'de' ? 'Baumodus' : 'Build mode'}
             style={{width: 34, minWidth: 34, height: 34, padding: 0, background: mode === 'build' ? '#2563eb' : '#475569', border: 'none', borderRight: '1px solid #cbd5e1', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>▦</button>
-          <button data-circuit-toggle-state={mode === 'simulate' ? 'selected' : 'unselected'} role="radio" aria-checked={mode === 'simulate'} onClick={() => onModeChange?.('simulate')} title="Simulation mode" aria-label="Sim mode"
+          <button data-circuit-toggle-state={mode === 'simulate' ? 'selected' : 'unselected'} role="radio" aria-checked={mode === 'simulate'} onClick={() => onModeChange?.('simulate')} title={lang === 'de' ? 'Simulationsmodus' : 'Simulation mode'} aria-label={lang === 'de' ? 'Simulationsmodus' : 'Sim mode'}
             style={{width: 34, minWidth: 34, height: 34, padding: 0, background: mode === 'simulate' ? '#16a34a' : '#475569', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 700, cursor: 'pointer'}}>▶</button>
         </div>
-        <div role="radiogroup" aria-label="Power state" data-power-toggle data-circuit-control-group style={{display: 'inline-flex', width: 70, height: 34, boxSizing: 'border-box', border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
+        <div role="radiogroup" aria-label={lang === 'de' ? 'Stromversorgung' : 'Power state'} data-power-toggle data-circuit-control-group style={{display: 'inline-flex', flex: '0 0 auto', width: 70, height: 34, boxSizing: 'border-box', border: '1px solid #64748b', borderRadius: 5, overflow: 'hidden', background: '#0f172a'}}>
           <button data-circuit-toggle-state={powered ? 'selected' : 'unselected'} role="radio" aria-checked={powered} onClick={() => onPowerToggle?.(true)}
             title={lang === 'de' ? 'Strom ein — VCC- und GND-Schienen versorgen die Bauteile. LEDs leuchten, Chips arbeiten, die Simulation löst den Stromkreis.' : 'Power on — VCC and GND rails energise the circuit. LEDs light, chips run, the simulation solves voltages and currents.'}
             aria-label={lang === 'de' ? 'Strom ein' : 'Power on'}
@@ -4828,6 +4852,7 @@ export function BoardCanvas({
         {!toolbarCramped && viewNav ? <div data-circuit-control-group style={{flex: '0 0 auto', width: 'auto', height: 34, minHeight: 34, display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
         {/* Mode indicator */}
         <span style={{
+          flex: '0 0 auto', whiteSpace: 'nowrap',
           padding: '2px 8px', borderRadius: '3px',
           background: wiringFrom ? '#f39c12' : '#2c3e50',
           color: wiringFrom ? '#000' : '#7f8c8d',
@@ -4843,9 +4868,13 @@ export function BoardCanvas({
           const chipBg = dangerCount > 0 ? '#451a1a' : '#451f0a';
           return (
             <div style={{position: 'relative', flex: '0 0 auto'}}>
-              <button data-warnings-chip onClick={() => setWarningsOpen(v => !v)}
-                title={`${drcWarnings.length} circuit finding${drcWarnings.length !== 1 ? 's' : ''}`}
-                aria-label={`${drcWarnings.length} circuit findings`} aria-expanded={warningsOpen}
+              <button data-warnings-chip onClick={(event) => {
+                  const r = event.currentTarget.getBoundingClientRect();
+                  setWarningsAnchor({left: Math.max(8, Math.min(r.left, window.innerWidth - 348)), top: r.bottom + 4});
+                  setWarningsOpen(v => !v);
+                }}
+                title={lang === 'de' ? `${drcWarnings.length} Befund${drcWarnings.length !== 1 ? 'e' : ''} zur Schaltung` : `${drcWarnings.length} circuit finding${drcWarnings.length !== 1 ? 's' : ''}`}
+                aria-label={lang === 'de' ? `${drcWarnings.length} Befunde zur Schaltung` : `${drcWarnings.length} circuit findings`} aria-expanded={warningsOpen}
                 style={{
                   // Same control height as every toolbar button (the UX
                   // gate asserts it); width is content-driven — a count-
@@ -4858,16 +4887,16 @@ export function BoardCanvas({
                 }}>
                 {dangerCount > 0 ? '\u26A0' : '!'}{' '}{drcWarnings.length}
               </button>
-              {warningsOpen && (
+              {warningsOpen && ReactDOM.createPortal(
                 <div data-warnings-popover style={{
-                  position: 'absolute', zIndex: 90, top: 38, left: 0,
+                  position: 'fixed', zIndex: 3000, top: warningsAnchor.top, left: warningsAnchor.left,
                   width: 340, maxHeight: 320, overflowY: 'auto',
                   background: '#0f172a', border: `1px solid ${chipColor}`,
                   borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,.5)',
                   padding: '8px', fontFamily: 'monospace', fontSize: '10px',
                 }}>
                   <div style={{color: '#ecf0f1', fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', display: 'flex', justifyContent: 'space-between'}}>
-                    <span>Circuit Check ({drcWarnings.length})</span>
+                    <span>{lang === 'de' ? 'Schaltungsprüfung' : 'Circuit Check'} ({drcWarnings.length})</span>
                     <button onClick={() => setWarningsOpen(false)} aria-label="Close"
                       style={{background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: '0 2px'}}>{'\u00D7'}</button>
                   </div>
@@ -4882,11 +4911,11 @@ export function BoardCanvas({
                       }} onClick={() => { if (w.partId) onSelectPart(w.partId, false); }}>
                         <span style={{fontWeight: 700}}>{w.severity === 'danger' || w.severity === 'error' ? '\u26A0' : w.severity === 'info' ? 'i' : '!'}</span>
                         {' '}{w.partKind ? `${w.partKind}: ` : ''}{w.explanation}
-                        {w.fix && <div style={{color: '#2ecc71', fontSize: 9, marginTop: 2}}>Fix: {w.fix}</div>}
+                        {w.fix && <div style={{color: '#2ecc71', fontSize: 9, marginTop: 2}}>{lang === 'de' ? 'Abhilfe' : 'Fix'}: {w.fix}</div>}
                       </div>
                     );
                   })}
-                </div>
+                </div>, document.body
               )}
             </div>
           );
@@ -4895,13 +4924,13 @@ export function BoardCanvas({
         {/* Compact status warning; click the triangle to reveal the full explanation. */}
         {statusText && /WIRING ONLY|HARDWARE|SNAPSHOT/.test(statusText) ? (
           <button onClick={() => setNoticeOpen(v => !v)} title={statusText} aria-label={statusText} aria-expanded={noticeOpen}
-            style={{border: 'none', background: 'transparent', color: /WIRING ONLY/.test(statusText) ? '#f59e0b' : '#ef4444', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 3px'}}>▲</button>
+            style={{flex: '0 0 auto', border: 'none', background: 'transparent', color: /WIRING ONLY/.test(statusText) ? '#f59e0b' : '#ef4444', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 3px'}}>▲</button>
         ) : null}
-        <span style={{ color: theme === 'light' ? '#334155' : '#cbd5e1', flex: 1, minWidth: 40, fontSize: '10px', fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+        <span data-circuit-status title={statusText || undefined} style={{ color: theme === 'light' ? '#334155' : '#cbd5e1', flex: '1 1 auto', minWidth: 40, fontSize: '10px', fontWeight: 600, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {wiringFrom
             ? `${wiringFrom.part}:${wiringFrom.terminal} → ?`
             : (noticeOpen || !statusText || !/WIRING ONLY|HARDWARE|SNAPSHOT/.test(statusText))
-              ? (statusText || (selectedParts?.size > 0 ? `${selectedParts.size} selected` : ''))
+              ? (statusText || (selectedParts?.size > 0 ? t('nSelected', lang, {n: selectedParts.size}) : ''))
               : ''}
         </span>
 
@@ -4914,9 +4943,9 @@ export function BoardCanvas({
         {simulate ? (
           <button type="button" data-voltage-view-toggle
             aria-pressed={voltageView} onClick={toggleVoltageView}
-            title={voltageView ? 'Hide voltages (wire colors, labels, legend)' : 'Show voltages on wires'}
-            aria-label={voltageView ? 'Hide voltages' : 'Show voltages'}
-            style={{height: 30, boxSizing: 'border-box', padding: '4px 8px',
+            title={voltageView ? t('hideVoltagesTitle', lang) : t('showVoltagesTitle', lang)}
+            aria-label={voltageView ? t('hideVoltages', lang) : t('showVoltages', lang)}
+            style={{flex: '0 0 auto', height: 30, boxSizing: 'border-box', padding: '4px 8px',
               fontSize: 12, fontWeight: 700, fontFamily: 'monospace',
               color: voltageView ? '#0f172a' : '#e2e8f0',
               background: voltageView ? '#f1c40f' : '#334155',
@@ -4924,6 +4953,8 @@ export function BoardCanvas({
             {'V\u26a1'}
           </button>
         ) : null}
+        </div>
+        {/* Pinned at the end, outside the scroller: always reachable. */}
         <CircuitMenuPopup data-toolbar-more-menu open={toolbarMoreOpen} onOpenChange={setToolbarMoreOpen} lang={lang}>
           <FileMenu circuit={circuit} lang={lang} onLoad={onLoadCircuit} onSave={onSaveCircuit}
             onImport={onImport} onClear={canEditParts ? onClearCircuit : undefined}

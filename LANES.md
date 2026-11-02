@@ -1,3 +1,9 @@
+## Circuit toolbar as one scrolling row + German for palette/examples/rails — CLAIMED 2026-11-02
+
+Owner: Claude (Brickwright Circuit-tab unification, Lite PR #1633), approved by CrispStrobe. Base: the Lite pin `4b65f15485abbc039958d8e1a8a29ac3459b75f9`, so the Lite pin move carries only this change (not the S040 work above, which keeps its own qualification).
+
+Own: the `[data-circuit-toolbar]` row in `src/components/BoardCanvas.jsx` (one non-wrapping row; controls in `[data-circuit-toolbar-scroll]`, the ⋯ menu pinned outside it; the warnings popover portalled and fixed; the cramped-width move of panel/view navigation into ⋯ is kept), German for the toolbar labels, `PartPalette.jsx` (new `src/i18n/palette-de.js`), `ExamplesBrowser.jsx` chrome and the selectors rail / view switcher / captions in `CircuitDesigner.jsx` (lang threaded to the palette and the examples browser), `test/toolbar-row-i18n.test.js` and its registration. English text and every existing test id, aria name (in English) and data attribute are unchanged. DRC finding texts and part-number names are out of scope.
+
 2026-10-28 grouped editor menus — SOURCE CANDIDATE, Codex Circuit menu UI.
 Exact base `373d562b741c69a5a1dd441c4f8d0ea1053b4fd3`; branch
 `lane/cui-menu-ux-20261028`. Canonical claim precedes source implementation.

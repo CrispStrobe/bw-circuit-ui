@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { PartThumbnail } from './PartThumbnail.jsx';
+import { paletteText, paletteUi, ledColorName } from '../i18n/palette-de.js';
 
 const LED_COLORS = ['red', 'green', 'yellow', 'blue', 'white', 'orange'];
 
@@ -311,7 +312,7 @@ const CATEGORIES = [
 
 const ALL_PARTS = CATEGORIES.flatMap(c => c.parts);
 
-export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark' }) {
+export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark', lang = 'en' }) {
   const [filter, setFilter] = useState('');
   const [ledColor, setLedColor] = useState('red');
   const light = theme === 'light';
@@ -325,11 +326,15 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
     cardBorder: '#6383a8', muted: '#cbd5e1'
   };
 
+  // Search finds a part by its English AND its shown (translated) words.
+  const needle = filter.toLowerCase();
   const matchingParts = filter
     ? ALL_PARTS.filter(p =>
-        p.label.toLowerCase().includes(filter.toLowerCase()) ||
-        p.kind.includes(filter.toLowerCase()) ||
-        (p.tooltip || '').toLowerCase().includes(filter.toLowerCase()))
+        p.label.toLowerCase().includes(needle) ||
+        paletteText(p.label, lang).toLowerCase().includes(needle) ||
+        p.kind.includes(needle) ||
+        (p.tooltip || '').toLowerCase().includes(needle) ||
+        paletteText(p.tooltip || '', lang).toLowerCase().includes(needle))
     : null;
 
   return (
@@ -349,14 +354,15 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
       overscrollBehavior: 'contain',
     }}>
       <div style={{ color: palette.text, fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>
-        Parts
+        {paletteUi('parts', lang)}
       </div>
 
       <input
         type="text"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
-        placeholder="search..."
+        placeholder={paletteUi('search', lang)}
+        aria-label={paletteUi('search', lang)}
         style={{
           width: '100%', padding: '4px 6px', marginBottom: '6px',
           background: palette.input, border: `1px solid ${palette.cardBorder}`,
@@ -368,17 +374,17 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
 
       {matchingParts ? (
         matchingParts.length === 0 ? (
-          <div style={{ color: palette.muted, fontSize: '9px', padding: '4px' }}>No matches</div>
+          <div style={{ color: palette.muted, fontSize: '9px', padding: '4px' }}>{paletteUi('noMatches', lang)}</div>
         ) : (
-          matchingParts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)
+          matchingParts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} lang={lang} />)
         )
       ) : (
         CATEGORIES.map(cat => (
           <div key={cat.name}>
             <div style={{ color: palette.category, fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '.04em', fontWeight: 700 }}>
-              {cat.name}
+              {paletteText(cat.name, lang)}
             </div>
-            {cat.parts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} />)}
+            {cat.parts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} lang={lang} />)}
           </div>
         ))
       )}
@@ -386,8 +392,12 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
   );
 }
 
-function PartButton({ part, palette, onAddPart, onDragPart, onStartPlace, ledColor, onLedColorChange }) {
-  const { kind, label, params, color, tooltip, capability, hasColorPicker } = part;
+function PartButton({ part, palette, onAddPart, onDragPart, onStartPlace, ledColor, onLedColorChange, lang = 'en' }) {
+  const { kind, params, color, hasColorPicker } = part;
+  // Shown words follow the language; `part` itself (and its English) is untouched.
+  const label = paletteText(part.label, lang);
+  const tooltip = paletteText(part.tooltip, lang);
+  const capability = paletteText(part.capability, lang);
   const [hovered, setHovered] = useState(false);
 
   // For LEDs, use the selected color
@@ -441,11 +451,11 @@ function PartButton({ part, palette, onAddPart, onDragPart, onStartPlace, ledCol
           lineHeight: '1.2',
           marginTop: '2px',
         }}>
-          {kind === 'led' ? `LED (${ledColor})` : label}
+          {kind === 'led' ? paletteUi('led', lang, {color: ledColorName(ledColor, lang)}) : label}
         </div>
         {capability && (
           <div style={{
-            color: capability === 'wiring only' ? '#a16207' : '#047857',
+            color: part.capability === 'wiring only' ? '#a16207' : '#047857',
             fontSize: '7px', textAlign: 'center', marginTop: '2px',
             letterSpacing: '.02em',
           }}>

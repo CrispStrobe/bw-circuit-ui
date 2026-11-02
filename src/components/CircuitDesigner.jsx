@@ -1306,14 +1306,14 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
       {selectorsOpen ? (
         <div data-selectors-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 auto', width: '100%', minWidth: 0, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
           <div data-parts-selector style={{position: 'relative', flex: partsOpen ? `${selectorSplit} 1 0` : '0 0 30px', minHeight: partsOpen ? 80 : 30, display: 'flex', minWidth: 0, overflow: 'hidden'}}>
-            <button onClick={() => setPartsOpen(v => !v)} aria-label={partsOpen ? 'Collapse Parts' : 'Expand Parts'} aria-expanded={partsOpen} title={partsOpen ? 'Collapse Parts' : 'Expand Parts'} style={{position: 'absolute', zIndex: 4, left: 2, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{partsOpen ? '‹' : '›'}</button>
+            <button onClick={() => setPartsOpen(v => !v)} aria-label={/^de/i.test(lang) ? (partsOpen ? 'Bauteile einklappen' : 'Bauteile ausklappen') : (partsOpen ? 'Collapse Parts' : 'Expand Parts')} aria-expanded={partsOpen} title={/^de/i.test(lang) ? (partsOpen ? 'Bauteile einklappen' : 'Bauteile ausklappen') : (partsOpen ? 'Collapse Parts' : 'Expand Parts')} style={{position: 'absolute', zIndex: 4, left: 2, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{partsOpen ? '‹' : '›'}</button>
             {partsOpen ? (
-              <PartPalette theme={theme} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
+              <PartPalette theme={theme} lang={lang} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
             ) : (
-              <div style={{padding: '6px 8px 6px 14px', color: '#334155', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%'}} onClick={() => setPartsOpen(true)}>Parts</div>
+              <div style={{padding: '6px 8px 6px 14px', color: '#334155', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%'}} onClick={() => setPartsOpen(true)}>{/^de/i.test(lang) ? 'Bauteile' : 'Parts'}</div>
             )}
           </div>
-          <div data-selector-divider role="separator" aria-label="Resize Parts and Examples selectors" tabIndex={0}
+          <div data-selector-divider role="separator" aria-label={/^de/i.test(lang) ? 'Größe von Bauteilen und Beispielen ändern' : 'Resize Parts and Examples selectors'} tabIndex={0}
             onPointerDown={event => {
               event.preventDefault();
               const startY = event.clientY;
@@ -1329,7 +1329,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
             <span style={{display: 'block', width: 42, height: 2, margin: '2px auto', background: '#475569', borderRadius: 2}} />
           </div>
           <div data-examples-selector style={{position: 'relative', flex: examplesOpen ? `${1 - selectorSplit} 1 0` : '0 0 30px', minHeight: examplesOpen ? 70 : 30, overflowY: examplesOpen ? 'auto' : 'hidden', display: 'flex', flexDirection: 'column'}}>
-            <button onClick={() => setExamplesOpen(v => !v)} aria-label={examplesOpen ? 'Collapse Examples' : 'Expand Examples'} aria-expanded={examplesOpen} title={examplesOpen ? 'Collapse Examples' : 'Expand Examples'} style={{position: 'absolute', zIndex: 4, left: 2, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{examplesOpen ? '‹' : '›'}</button>
+            <button onClick={() => setExamplesOpen(v => !v)} aria-label={/^de/i.test(lang) ? (examplesOpen ? 'Beispiele einklappen' : 'Beispiele ausklappen') : (examplesOpen ? 'Collapse Examples' : 'Expand Examples')} aria-expanded={examplesOpen} title={/^de/i.test(lang) ? (examplesOpen ? 'Beispiele einklappen' : 'Beispiele ausklappen') : (examplesOpen ? 'Collapse Examples' : 'Expand Examples')} style={{position: 'absolute', zIndex: 4, left: 2, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{examplesOpen ? '‹' : '›'}</button>
             {examplesOpen ? (<>
             {/* Codex / Gallery toggle — only shown when both examples and curriculum are available */}
             {examples && onLoadExample && curriculum && (
@@ -1340,14 +1340,14 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
                     background: codexMode ? 'transparent' : 'rgba(59,130,246,0.15)',
                     color: codexMode ? '#8a8a8a' : '#3b82f6',
                     border: 'none', borderRadius: '3px 0 0 3px',
-                  }}>▦ Gallery</button>
+                  }}>{/^de/i.test(lang) ? '▦ Galerie' : '▦ Gallery'}</button>
                 <button type="button" onClick={() => setCodexMode(true)}
                   style={{flex: 1, padding: '3px 6px', fontSize: 9, fontWeight: codexMode ? 700 : 400,
                     fontFamily: 'Georgia, "Times New Roman", serif', cursor: 'pointer',
                     background: codexMode ? 'rgba(212,165,116,0.15)' : 'transparent',
                     color: codexMode ? '#d4a574' : '#8a8a8a',
                     border: 'none', borderRadius: '0 3px 3px 0',
-                  }}>☙ Codex</button>
+                  }}>{/^de/i.test(lang) ? '☙ Kodex' : '☙ Codex'}</button>
               </div>
             )}
             {/* Import moved to the ⋯ toolbar menu (BoardCanvas FileMenu) */}
@@ -1360,7 +1360,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
                     if (onProgramChange && ex.program) onProgramChange(ex.program, opts);
                   }} theme={theme} />
               ) : (
-                <ExamplesBrowser examples={examples} onLoadExample={(ex, opts) => {
+                <ExamplesBrowser examples={examples} lang={lang} onLoadExample={(ex, opts) => {
                   onLoadExample(ex, opts);
                   if (onProgramChange && ex.program) onProgramChange(ex.program, opts);
                 }} theme={theme} />
@@ -1370,7 +1370,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
             )}
             </div>
             </>) : (
-              <div style={{padding: '6px 8px 6px 14px', color: '#334155', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%'}} onClick={() => setExamplesOpen(true)}>Examples</div>
+              <div style={{padding: '6px 8px 6px 14px', color: '#334155', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%'}} onClick={() => setExamplesOpen(true)}>{/^de/i.test(lang) ? 'Beispiele' : 'Examples'}</div>
             )}
           </div>
         </div>
@@ -1381,7 +1381,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
           background: 'rgba(255,255,255,.96)', border: '1px solid #94a3b8',
           boxShadow: '0 2px 8px rgba(15,23,42,.24)', borderRadius: '999px',
           color: '#334155', cursor: 'pointer', fontFamily: 'system-ui, sans-serif', fontSize: 20, lineHeight: 1,
-        }} aria-label={selectorsOpen ? 'Collapse Selectors Panel' : 'Expand Selectors Panel'} aria-expanded={selectorsOpen} title={selectorsOpen ? 'Collapse Selectors Panel' : 'Expand Selectors Panel'}>{selectorsOpen ? '‹' : '›'}</button>
+        }} aria-label={/^de/i.test(lang) ? (selectorsOpen ? 'Auswahlleiste einklappen' : 'Auswahlleiste ausklappen') : (selectorsOpen ? 'Collapse Selectors Panel' : 'Expand Selectors Panel')} aria-expanded={selectorsOpen} title={/^de/i.test(lang) ? (selectorsOpen ? 'Auswahlleiste einklappen' : 'Auswahlleiste ausklappen') : (selectorsOpen ? 'Collapse Selectors Panel' : 'Expand Selectors Panel')}>{selectorsOpen ? '‹' : '›'}</button>
       </div>
 
       {/* A snapshot must not LOOK like a live board. Desaturating it is the
@@ -1411,7 +1411,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
             fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold',
             pointerEvents: 'none',
           }}>
-            {staleBy < 1000 ? `${staleBy.toFixed(0)} ms stale` : `${(staleBy / 1000).toFixed(1)} s stale`}
+            {staleBy < 1000 ? `${staleBy.toFixed(0)} ms ${/^de/i.test(lang) ? 'veraltet' : 'stale'}` : `${(staleBy / 1000).toFixed(1)} s ${/^de/i.test(lang) ? 'veraltet' : 'stale'}`}
           </div>
         )}
         {/* Hardware-only badge */}
@@ -1423,17 +1423,17 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
             fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold',
             pointerEvents: 'none',
           }}>
-            wiring only — no sim
+            {/^de/i.test(lang) ? 'nur Verdrahtung — keine Simulation' : 'wiring only — no sim'}
           </div>
         )}
         <div data-designer-main style={{ flex: '1 1 auto', width: 'auto', minHeight: 0, minWidth: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
         {(showSchematic || showBoard) && (
           <div data-schematic-escape data-circuit-view-switcher style={{display: 'inline-flex', gap: 4, alignItems: 'center', marginBottom: 8}}>
-            <button onClick={() => { setShowSchematic(false); setShowBoard(false); }} aria-label="Realistic view" aria-pressed={false} title="Realistic view"
+            <button onClick={() => { setShowSchematic(false); setShowBoard(false); }} aria-label={/^de/i.test(lang) ? 'Realistische Ansicht' : 'Realistic view'} aria-pressed={false} title={/^de/i.test(lang) ? 'Realistische Ansicht' : 'Realistic view'}
               style={{width: 34, height: 30, cursor: 'pointer', background: '#16213e', color: '#fff', border: '1px solid #3498db', borderRadius: 4}}>◉</button>
-            <button onClick={() => { setShowSchematic(true); setShowBoard(false); }} aria-label="Schematic view" aria-pressed={showSchematic && !showBoard} title="Schematic view"
+            <button onClick={() => { setShowSchematic(true); setShowBoard(false); }} aria-label={/^de/i.test(lang) ? 'Schaltplan-Ansicht' : 'Schematic view'} aria-pressed={showSchematic && !showBoard} title={/^de/i.test(lang) ? 'Schaltplan-Ansicht' : 'Schematic view'}
               style={{width: 34, height: 30, cursor: 'pointer', background: showSchematic && !showBoard ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>⌁</button>
-            <button data-board-view-button onClick={() => { setShowSchematic(false); setShowBoard(true); }} aria-label="Board view" aria-pressed={showBoard} title="Board view (PCB)"
+            <button data-board-view-button onClick={() => { setShowSchematic(false); setShowBoard(true); }} aria-label={/^de/i.test(lang) ? 'Platinen-Ansicht' : 'Board view'} aria-pressed={showBoard} title={/^de/i.test(lang) ? 'Platinen-Ansicht (Leiterplatte)' : 'Board view (PCB)'}
               style={{width: 34, height: 30, cursor: 'pointer', background: showBoard ? '#3498db' : '#16213e', color: '#fff', border: '1px solid #2c3e50', borderRadius: 4}}>▦</button>
           </div>
         )}
@@ -1441,7 +1441,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
           <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'auto', overscrollBehavior: 'contain',
             background: '#16213e', borderRadius: 8, border: '1px solid #2c3e50', padding: 8, display: 'flex', flexDirection: 'column' }}>
             <div style={{ color: '#7f8c8d', fontFamily: 'monospace', fontSize: 10, marginBottom: 4 }}>
-              Board — auto-placed and routed from the circuit above. Drag parts to move them; connectivity is edited in Realistic view.
+              {/^de/i.test(lang) ? 'Platine — automatisch aus der Schaltung oben platziert und geroutet. Bauteile zum Verschieben ziehen; Verbindungen werden in der realistischen Ansicht bearbeitet.' : 'Board — auto-placed and routed from the circuit above. Drag parts to move them; connectivity is edited in Realistic view.'}
             </div>
             <BoardPanel circuit={circuit} overrides={circuit.pcb} onOverridesChange={setPcbOverrides} />
           </div>
@@ -1615,7 +1615,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
           rightOpen={rightOpen}
           lang={lang}
           viewNav={(
-            <div role="radiogroup" aria-label="Circuit view" data-circuit-view-toggle data-circuit-view-switcher style={{
+            <div role="radiogroup" aria-label={/^de/i.test(lang) ? 'Schaltungsansicht' : 'Circuit view'} data-circuit-view-toggle data-circuit-view-switcher style={{
               display: 'inline-flex',
               // flexShrink 0 AND border-box, together. This sits in a flex row
               // that overflows, so the default flex-shrink:1 squeezed the box
@@ -1633,11 +1633,11 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
               border: '1px solid #64748b', borderRadius: 5,
               overflow: 'hidden', background: '#0f172a',
           }}>
-              <button data-circuit-toggle-state={!showSchematic && !showBoard ? 'selected' : 'unselected'} role="radio" aria-checked={!showSchematic && !showBoard} onClick={() => { setShowSchematic(false); setShowBoard(false); }} aria-label="Realistic view" title="Realistic view"
+              <button data-circuit-toggle-state={!showSchematic && !showBoard ? 'selected' : 'unselected'} role="radio" aria-checked={!showSchematic && !showBoard} onClick={() => { setShowSchematic(false); setShowBoard(false); }} aria-label={/^de/i.test(lang) ? 'Realistische Ansicht' : 'Realistic view'} title={/^de/i.test(lang) ? 'Realistische Ansicht' : 'Realistic view'}
                 style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: !showSchematic && !showBoard ? '#2563eb' : '#475569', color: '#fff', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: 17}}>◉</button>
-              <button data-circuit-toggle-state={showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={showSchematic} onClick={() => { setShowSchematic(true); setShowBoard(false); }} aria-label="Schematic view" title="Schematic view"
+              <button data-circuit-toggle-state={showSchematic ? 'selected' : 'unselected'} role="radio" aria-checked={showSchematic} onClick={() => { setShowSchematic(true); setShowBoard(false); }} aria-label={/^de/i.test(lang) ? 'Schaltplan-Ansicht' : 'Schematic view'} title={/^de/i.test(lang) ? 'Schaltplan-Ansicht' : 'Schematic view'}
                 style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: showSchematic ? '#2563eb' : '#475569', color: '#fff', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: 17}}>⌁</button>
-              <button data-circuit-toggle-state={showBoard ? 'selected' : 'unselected'} role="radio" aria-checked={showBoard} onClick={() => { setShowSchematic(false); setShowBoard(true); }} aria-label="Board view" title="Board view (PCB)"
+              <button data-circuit-toggle-state={showBoard ? 'selected' : 'unselected'} role="radio" aria-checked={showBoard} onClick={() => { setShowSchematic(false); setShowBoard(true); }} aria-label={/^de/i.test(lang) ? 'Platinen-Ansicht' : 'Board view'} title={/^de/i.test(lang) ? 'Platinen-Ansicht (Leiterplatte)' : 'Board view (PCB)'}
                 style={{width: 34, minWidth: 34, height: 34, padding: 0, cursor: 'pointer', background: showBoard ? '#2563eb' : '#475569', color: '#fff', border: 'none', fontSize: 17}}>▦</button>
             </div>
           )}
@@ -1646,7 +1646,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
           <div style={{ flex: 1, minWidth: 0, overflow: 'auto', overscrollBehavior: 'contain',
             background: '#16213e', borderRadius: 8, border: '1px solid #2c3e50', padding: 8 }}>
             <div style={{ color: '#7f8c8d', fontFamily: 'monospace', fontSize: 10, marginBottom: 4 }}>
-              Schematic — read-only projection of the circuit above. Edit in Realistic view.
+              {/^de/i.test(lang) ? 'Schaltplan — schreibgeschützte Darstellung der Schaltung oben. Bearbeiten in der realistischen Ansicht.' : 'Schematic — read-only projection of the circuit above. Edit in Realistic view.'}
             </div>
             <SchematicPanel parts={parts} lang={lang}
               nets={(circuit.board && circuit.board.getNets) ? circuit.board.getNets() : []} />
@@ -1764,7 +1764,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
           <section style={{width: '100%', flex: '0 0 auto', padding: 8, borderRadius: 6,
             background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-              <span style={{fontSize: 11, color: '#94a3b8'}}>Debugger in right pane</span>
+              <span style={{fontSize: 11, color: '#94a3b8'}}>{/^de/i.test(lang) ? 'Debugger im rechten Bereich' : 'Debugger in right pane'}</span>
               <button type="button" onClick={() => onDebugDockChange('top')}
                 title="Move debugger back to instruments"
                 style={{padding: '1px 6px', fontSize: 10, background: '#1e293b', color: '#94a3b8',
@@ -1997,8 +1997,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
             <OperatingPointPanel board={activeBoard} blockers={circuit.analysisBlockers} lang={lang} />
             <SourceAnalysisPanel circuit={circuit} liveBoard={activeBoard} lang={lang} />
             <label style={{display: 'grid', gridTemplateColumns: '1fr', gap: 3, marginTop: 7, fontSize: 11, color: '#475569'}}>
-              <span>Speed</span>
-              <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title="Target simulation speed; complex circuits may run slower" style={{minHeight: 30}}>
+              <span>{/^de/i.test(lang) ? 'Tempo' : 'Speed'}</span>
+              <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title={/^de/i.test(lang) ? 'Ziel-Simulationstempo; aufwendige Schaltungen können langsamer laufen' : 'Target simulation speed; complex circuits may run slower'} style={{minHeight: 30}}>
                 <option value={0.25}>0.25×</option><option value={1}>1×</option><option value={4}>4×</option>
               </select>
             </label>
