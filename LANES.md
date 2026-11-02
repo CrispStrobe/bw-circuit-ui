@@ -1,4 +1,4 @@
-## ESP32-4848S040 physical board and live display/input consumer — IMPLEMENTED, qualification pending, 2026-11-01
+## ESP32-4848S040 physical board and live display/input consumer — IMPLEMENTED, qualification pending, 2026-11-02
 
 Owner: ChatGPT ESP32 board lane, requested by CrispStrobe. Base: `48f0d3d5ebb7dfdd47bb50e13ee83eac5cfec14f`. Isolated implementation branch. Companion bw-parts claim: `spec-updates/009-esp32-4848s040.md`; engine models have a separate LabWired claim. Existing face/menu work keeps its own hunks.
 
@@ -7,6 +7,29 @@ Own additive S040 cases only in `src/components/{BoardCanvas,CircuitDesigner,Par
 Scope extension (2026-11-01, approved task continuation): own the bounded shared `CircuitDesigner.handleLoad` file-authority repair discovered by real S040 File → Open qualification. Arm file authority only after successful parsing and before publication; preserve invalid-file state and explicit Infer/Clear release. Own focused load-precedence/interaction regressions and the S040 real File-menu browser case, plus this section and its board documentation. Preserve other Designer behavior, generated parts, pins, and emulator qualification gates. Publish this bounded claim before implementation.
 
 Continuation (2026-11-02): the actual PR133 interaction gate exposed a saved-file reload boundary and dishonest independent starter setup. Own only saved-file restoration and inference precedence in `src/components/CircuitDesigner.jsx`, explicit `?nopins` project selection in `src/main.jsx`, independent starter-context boundaries in `scripts/verify-interaction.mjs`, and the focused file/reload/interaction controls and board documentation. Qualify valid and empty saved files, corrupt or stale saved state, ordinary inferred autosaves, explicit Infer/Clear, and the real no-MCU starter. Preserve every existing interaction scenario, assertion, timeout, program and instrument behavior; do not weaken the 83-case roll-call or replace it with the S040-only fixture. The existing source-owned S040 face browser remains required. This is a bounded repair of failures observed in run 41370780080, not permission for unrelated Designer or demo changes.
+
+Paint lifetime repair (2026-11-02), within the claimed S040 face boundary:
+the actual clean Lite production build at
+`19a4e02a22b07f3806581b90012d11a7a9a24a8d` passed 36 checks and five full
+480-by-480 guest framebuffer comparisons, then failed after held-contact
+Stop/Run. The debugger showed the guest pattern while the placed face was dark.
+Real React 16 and React 18 legacy-root component reproductions identify an
+old animation callback that schedules itself after its effect cleanup runs
+inside status publication. That released owner then clears the new face.
+The face now fences disposed callbacks before painting and rescheduling.
+
+The existing required S040 browser fixture retains every prior scene and adds
+eight assertions plus an unmount drain check for pending-cleanup delivery,
+exactly one held-contact release, restart pixels, late retired callbacks,
+ordinary later frames and single-loop ownership. All scenes pass locally;
+removing only the cleanup's disposal assignment fails the new no-reschedule
+assertion with one pending callback instead of zero. The source is restored
+byte-for-byte after that mutation. Existing `test:boards` passes 65/65 with
+zero skips. Local browser evidence uses explicit Chromium 151.0.7922.34 with
+locked Playwright 1.61.1 and is provisional; all three ordinary exact-head
+hosted jobs remain required. No dependency, lock, package pin, workflow,
+emulator gate or Lite firmware witness changes. The failed Lite result stays
+a failure until normal supplier adoption and fresh consumer qualification.
 
 The face consumes actual supplied emulator video and sends pointer down/move/up/cancel/unmount through typed input callbacks, with explicit coordinate transform and one owning board. Until engine/supplier support qualifies, distinguish static board placement from running emulation. Preserve existing board/solver behavior and unrelated UI hunks. No synthetic firmware image, radio/SD/audio/relay or cycle-accurate claim.
 

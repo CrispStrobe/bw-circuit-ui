@@ -20,6 +20,7 @@ export function Esp32S040Face({ width, height, videoFn, onInput }) {
   useEffect(() => {
     const ctx = canvas.current?.getContext('2d');
     let request;
+    let disposed = false;
     let frameNumber;
     const clear = () => {
       if (ctx) { ctx.fillStyle = '#080d15'; ctx.fillRect(0, 0, 480, 480); }
@@ -27,6 +28,7 @@ export function Esp32S040Face({ width, height, videoFn, onInput }) {
     };
     clear();
     const render = () => {
+      if (disposed) return;
       let video;
       try { video = typeof videoFn === 'function' ? videoFn() : null; } catch { video = null; }
       const next = s040VideoStatus(video);
@@ -34,16 +36,20 @@ export function Esp32S040Face({ width, height, videoFn, onInput }) {
         lastStatus.current = next;
         setStatus(next);
       }
+      // A legacy React root can flush this effect's pending cleanup inside
+      // setStatus. The callback already running must then neither paint over
+      // the replacement owner nor schedule another frame after cancellation.
+      if (disposed) return;
       if (next !== 'live') { clear(); release(); }
       else if (ctx && (frameNumber === undefined || video.frame !== frameNumber)) {
         const rgba = new Uint8ClampedArray(video.rgba.buffer, video.rgba.byteOffset, video.rgba.byteLength);
         ctx.putImageData(new ImageData(rgba, 480, 480), 0, 0);
         frameNumber = Number.isFinite(video.frame) ? video.frame : undefined;
       }
-      if (typeof videoFn === 'function') request = requestAnimationFrame(render);
+      if (!disposed && typeof videoFn === 'function') request = requestAnimationFrame(render);
     };
     render();
-    return () => { cancelAnimationFrame(request); clear(); };
+    return () => { disposed = true; cancelAnimationFrame(request); clear(); };
   }, [videoFn]);
   const pointFor = event => {
     const matrix = event.currentTarget.getScreenCTM();

@@ -13,11 +13,23 @@ try {
         try {
           const html = `<!doctype html><html><body style="margin:0"><button id="file-open" style="display:none">Open circuit</button><div id="root"></div><script type="module">
             import React from 'react';
+            import ReactDOM from 'react-dom';
             import {createRoot} from 'react-dom/client';
             import {Esp32S040Face} from '/src/components/Esp32S040Face.jsx';
             const mode = new URLSearchParams(location.search).get('mode');
+            const legacyLifetime = mode === 'lifetime';
+            const pendingFrames = new Map();
+            let nextFrameRequest = 0;
+            if (legacyLifetime) {
+              // Control only the browser's frame delivery, not React hooks or
+              // component methods. A due callback can precede passive cleanup.
+              window.requestAnimationFrame = callback => {
+                const id = ++nextFrameRequest;pendingFrames.set(id,callback);return id;
+              };
+              window.cancelAnimationFrame = id => pendingFrames.delete(id);
+            }
             let Designer;
-            if (mode) {
+            if (mode && !legacyLifetime) {
               const [{setEngine}, {BoardImpl}, {inferNetlist, checkWiring}, {getDevice}, {registerAllDevices}] = await Promise.all([
                 import('/src/engine.js'), import('bw-board/board.js'), import('bw-board/infer-netlist.js'),
                 import('bw-board/devices.js'), import('bw-board/register-all.js')]);
@@ -25,7 +37,13 @@ try {
               await import('/src/model/sidecar-loader.js');
               Designer = (await import('/src/components/CircuitDesigner.jsx')).CircuitDesigner;
             }
-            const root = createRoot(document.getElementById('root'));
+            const container = document.getElementById('root');
+            // Lite uses a legacy React root. Keep the supplier's normal React
+            // dependency while exercising that synchronous publication mode.
+            const root = legacyLifetime ? {
+              render: view => ReactDOM.render(view,container),
+              unmount: () => ReactDOM.unmountComponentAtNode(container)
+            } : createRoot(container);
             const rgba = new Uint8Array(480*480*4);
             for (let y=0; y<480; y++) for(let x=0; x<480; x++) {
               const k=(y*480+x)*4;
@@ -35,6 +53,8 @@ try {
             let frame={width:480,height:480,rgba,frame:1,signal:true,
               panel:{displayOn:true,sleeping:false,backlightOn:true,powered:true,framesReceived:1}};
             const video=()=>frame;
+            let oldOwnerLive=true;
+            let videoSource=legacyLifetime?()=>oldOwnerLive?frame:null:video;
             window.events=[];window.otherEvents=[];window.parentInputs=0;
             const input=changes=>window.events.push(changes);
             const otherInput=changes=>window.otherEvents.push(changes);
@@ -64,7 +84,7 @@ try {
               } else {
                 root.render(React.createElement('svg',{width:900,height:650,viewBox:'0 0 900 650',onPointerDown:()=>window.parentInputs++},
                   React.createElement('g',{transform:'translate(450 325) rotate('+rotation+') scale('+(flip?-1:1)+' 1)'},
-                    React.createElement(Esp32S040Face,{width:420,height:280,videoFn:video,onInput:active?sink:null}))));
+                    React.createElement(Esp32S040Face,{width:420,height:280,videoFn:videoSource,onInput:active?sink:null}))));
               }
             }
             window.setFrame=next=>{frame=next===null?null:{...frame,...next};};
@@ -75,6 +95,34 @@ try {
             window.bindOwner=value=>{owner=value;render();};
             window.pickS040=()=>{project={...project,device:'esp32-4848s040'};render();};
             window.unmountFace=()=>{mounted=false;render();};
+            if (legacyLifetime) {
+              let retiredCallback;
+              window.lifetimeSnapshot=()=>({pending:pendingFrames.size,
+                status:container.querySelector('[data-esp32-s040-live-face]')?.getAttribute('data-esp32-s040-live-face'),
+                pixel:container.querySelector('canvas')?Array.from(container.querySelector('canvas')
+                  .getContext('2d').getImageData(0,0,1,1).data):null});
+              window.retirePaintOwner=()=>{
+                if(pendingFrames.size!==1)throw new Error('expected exactly one live paint callback');
+                const [id,callback]=pendingFrames.entries().next().value;
+                retiredCallback=callback;oldOwnerLive=false;videoSource=null;active=false;
+                render(); // Commit the null owner; its passive cleanup is pending.
+                if(!pendingFrames.has(id))throw new Error('old callback was not pending before passive cleanup');
+                pendingFrames.delete(id);callback(performance.now());
+                return window.lifetimeSnapshot();
+              };
+              window.restartPaintOwner=()=>{videoSource=()=>frame;active=true;sink=otherInput;render();};
+              window.tickPaint=()=>{
+                for(const [id,callback] of [...pendingFrames]){
+                  if(!pendingFrames.delete(id))continue;callback(performance.now());
+                }
+                return window.lifetimeSnapshot();
+              };
+              window.deliverRetiredPaint=()=>{retiredCallback(performance.now());return window.lifetimeSnapshot();};
+              window.nextPaintFrame=()=>{
+                const next=frame.rgba.slice();next.set([0,255,0,255]);
+                frame={...frame,rgba:next,frame:frame.frame+1};return window.tickPaint();
+              };
+            }
             render();
           </script></body></html>`;
           res.setHeader('Content-Type', 'text/html');
@@ -178,6 +226,22 @@ try {
   await visit();await live().waitFor();await down(100,200);await page.evaluate(()=>window.unmountFace());await page.mouse.up();
   assert.deepEqual(await events(),[expectedDown(100,200),up],'unmount releases to the captured target');
 
+  await visit('?mode=lifetime');await live().waitFor();await down(100,200);
+  const retired=await page.evaluate(()=>window.retirePaintOwner());
+  assert.equal(retired.pending,0,'cleanup during an executing paint callback must prevent stale rescheduling');
+  assert.equal(retired.status,'unavailable');
+  assert.deepEqual(retired.pixel,[8,13,21,255]);
+  await page.mouse.up();
+  assert.deepEqual(await events(),[expectedDown(100,200),up],'in-flight cleanup releases the held contact once');
+  await page.evaluate(()=>window.restartPaintOwner());await live().waitFor();
+  const restarted=await page.evaluate(()=>window.tickPaint());
+  assert.deepEqual(restarted,{pending:1,status:'live',pixel:[255,0,0,255]},'restart retains the new owner frame with one paint loop');
+  assert.deepEqual(await page.evaluate(()=>window.deliverRetiredPaint()),restarted,'a late retired callback cannot clear or reschedule over the new owner');
+  assert.deepEqual(await page.evaluate(()=>window.nextPaintFrame()),{pending:1,status:'live',pixel:[0,255,0,255]},'ordinary later frames still paint');
+  assert.deepEqual(await page.evaluate(()=>window.otherEvents),[],'the restarted target inherits no held input');
+  await page.evaluate(()=>window.unmountFace());
+  await page.waitForFunction(()=>window.lifetimeSnapshot().pending===0);
+
   await visit('?mode=owners');await live().waitFor();
   assert.equal(await page.locator('[data-board-face="esp32_4848s040"]').count(),2);
   assert.equal(await page.locator('[data-esp32-s040-live-face="live"]').count(),1,'only the exact owning board gets target video');
@@ -226,7 +290,7 @@ try {
     wires:window.observedCircuit.wires,nets:window.observedCircuit.board.getNets()}));
   assert.deepEqual(restored,loaded,'File-menu ownership and electrical connections survive a real document reload');
   assert.deepEqual(errors,[],'no browser runtime errors');
-  console.log(`S040 face: host RGBA, rotated/mirrored mouse, captured drag, single-contact touch, cancel/lost capture, owner replacement, callback removal, blanking, unmount, explicit board ownership, onboard-only placement, target transition, explicit-file precedence and real File-menu load/reload with declaration feedback pass; ${await browser.version()}`);
+  console.log(`S040 face: host RGBA, rotated/mirrored mouse, captured drag, single-contact touch, cancel/lost capture, owner replacement, callback removal, blanking, unmount, legacy-root in-flight cleanup/restart, explicit board ownership, onboard-only placement, target transition, explicit-file precedence and real File-menu load/reload with declaration feedback pass; ${await browser.version()}`);
 } finally {
   await browser?.close();
   await server?.close();
