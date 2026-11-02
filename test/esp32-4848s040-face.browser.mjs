@@ -11,7 +11,7 @@ try {
       s.middlewares.use(async (req, res, next) => {
         if (!req.url?.startsWith('/__s040_face') || req.url.includes('html-proxy')) return next();
         try {
-          const html = `<!doctype html><html><body style="margin:0"><div id="root"></div><script type="module">
+          const html = `<!doctype html><html><body style="margin:0"><button id="file-open" style="display:none">Open circuit</button><div id="root"></div><script type="module">
             import React from 'react';
             import {createRoot} from 'react-dom/client';
             import {Esp32S040Face} from '/src/components/Esp32S040Face.jsx';
@@ -39,17 +39,27 @@ try {
             const input=changes=>window.events.push(changes);
             const otherInput=changes=>window.otherEvents.push(changes);
             let sink=input, active=true, mounted=true, rotation=0, flip=false, owner='panel-a';
-            let project={device:mode==='transition'?'pico':'esp32-4848s040',pins:[]};
+            let project={device:mode==='transition'||mode==='file-load'?'pico':'esp32-4848s040',pins:[]};
             const file={vcc:5,fileOnly:true,parts:mode==='explicit-file' ?
               [{id:'kept',kind:'resistor',params:{ohms:470},x:150,y:150,terminals:['a','b']}] :
               [{id:'panel-a',kind:'esp32_4848s040',params:{},x:300,y:240},
                {id:'panel-b',kind:'esp32_4848s040',params:{},x:770,y:240}],wires:[],holeWires:[]};
             const ready=circuit=>{window.observedCircuit=circuit;};
+            window.hostDeclarationEchoes=0;
+            const declarations=decls=>{
+              if (!decls.device) return;
+              project={...project,...decls};window.hostDeclarationEchoes++;render();
+            };
+            if (mode==='file-load') {
+              const button=document.getElementById('file-open');button.style.display='';
+              button.onclick=()=>window.dispatchEvent(new CustomEvent('bw-circuit-file',{detail:{action:'load'}}));
+            }
             function render() {
               if (!mounted) {root.unmount();return;}
               if (Designer) {
                 root.render(React.createElement(Designer,{project,debugState:{video},esp32S040PartId:owner,
                   onEsp32S040Input:active?sink:null,onCircuitReady:ready,
+                  onDeclarationChange:mode==='file-load'?declarations:undefined,
                   ...(mode==='owners'||mode==='explicit-file'?{circuitData:file}:{})}));
               } else {
                 root.render(React.createElement('svg',{width:900,height:650,viewBox:'0 0 900 650',onPointerDown:()=>window.parentInputs++},
@@ -75,13 +85,26 @@ try {
   await server.listen();
   const port = server.httpServer.address().port;
   browser = await chromium.launch(process.env.BW_S040_CHROMIUM ? { executablePath: process.env.BW_S040_CHROMIUM } : {});
-  const page = await browser.newPage({ viewport: { width: 1200, height: 850 }, hasTouch: true });
-  page.setDefaultTimeout(15000);
-  await page.addInitScript(() => localStorage.clear());
+  let page;
   const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
+  const navigate = async query => {
+    // Each scene starts from empty storage and a new document. Give that
+    // scene its own context too: the full unbundled parts catalog must not
+    // retain the previous scene's thousands of module requests. Pointer and
+    // ownership controls within one scene keep the same live page.
+    await page?.close();
+    page = await browser.newPage({ viewport: { width: 1200, height: 850 }, hasTouch: true });
+    page.setDefaultTimeout(15000);
+    await page.addInitScript(() => localStorage.clear());
+    page.on('pageerror', error => { errors.push(error.message); console.error('S040 page error:', error.stack || error.message); });
+    page.on('requestfailed', request => console.error('S040 request failed:', request.url(), request.failure()));
+    page.on('response', response => {
+      if (response.status() >= 400) console.error('S040 response failed:', response.status(), response.url());
+    });
+    await page.goto(`http://127.0.0.1:${port}/__s040_face${query || ''}`, {waitUntil:'networkidle'});
+  };
   const visit = async query => {
-    await page.goto(`http://127.0.0.1:${port}/__s040_face${query || ''}`);
+    await navigate(query);
     await page.locator('[data-esp32-s040-live-face]').first().waitFor();
   };
   const live = () => page.locator('[data-esp32-s040-live-face="live"]').first();
@@ -174,16 +197,30 @@ try {
   await visit('?mode=onboard');
   await page.waitForFunction(()=>window.observedCircuit?.parts.some(p=>p.kind==='esp32_4848s040'));
   assert.deepEqual(await page.evaluate(()=>window.observedCircuit.parts.map(p=>p.kind)),['esp32_4848s040'],'display-only program places its board without a canned blink bench');
-  await page.goto(`http://127.0.0.1:${port}/__s040_face?mode=transition`);
+  await navigate('?mode=transition');
   await page.waitForFunction(()=>window.observedCircuit?.parts.some(p=>p.kind==='led'));
   await page.evaluate(()=>window.pickS040());
   await page.locator('[data-board-face="esp32_4848s040"]').waitFor();
   assert.deepEqual(await page.evaluate(()=>window.observedCircuit.parts.map(p=>p.kind)),['esp32_4848s040']);
-  await page.goto(`http://127.0.0.1:${port}/__s040_face?mode=explicit-file`);
+  await navigate('?mode=explicit-file');
   await page.waitForFunction(()=>window.observedCircuit?.parts.some(p=>p.id==='kept'));
   assert.equal(await page.locator('[data-board-face="esp32_4848s040"]').count(),0,'explicit circuit file takes precedence');
+  await navigate('?mode=file-load');
+  await page.waitForFunction(()=>window.observedCircuit?.parts.some(p=>p.kind==='led'));
+  const imported = {vcc:3.3,parts:[{id:'imported-panel',kind:'esp32_4848s040',params:{},x:300,y:240}],
+    wires:[{id:'h1-ground',from:{part:'imported-panel',terminal:'gpio1'},to:{part:'imported-panel',terminal:'gnd'}}]};
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'),page.getByRole('button',{name:'Open circuit',exact:true}).click()]);
+  await chooser.setFiles({name:'s040-wired.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(imported))});
+  await page.waitForFunction(()=>window.hostDeclarationEchoes>0 && localStorage.getItem('bw-circuit-file-loaded')==='1');
+  await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+  const loaded = await page.evaluate(()=>({parts:window.observedCircuit.parts.map(p=>p.id),
+    wires:window.observedCircuit.wires,nets:window.observedCircuit.board.getNets()}));
+  assert.deepEqual(loaded.parts,['imported-panel'],'real File-menu load keeps its owner after host declaration feedback');
+  assert.equal(loaded.wires.length,1,'inference must not erase the imported H1 wire');
+  assert.ok(loaded.nets.some(net=>net.terminals.some(t=>t.part==='imported-panel'&&t.terminal==='gpio1') &&
+    net.terminals.some(t=>t.part==='imported-panel'&&t.terminal==='gnd')),'the actual Board retains the electrical connection');
   assert.deepEqual(errors,[],'no browser runtime errors');
-  console.log(`S040 face: host RGBA, rotated/mirrored mouse, captured drag, single-contact touch, cancel/lost capture, owner replacement, callback removal, blanking, unmount, explicit board ownership, onboard-only placement, target transition and explicit-file precedence pass; ${await browser.version()}`);
+  console.log(`S040 face: host RGBA, rotated/mirrored mouse, captured drag, single-contact touch, cancel/lost capture, owner replacement, callback removal, blanking, unmount, explicit board ownership, onboard-only placement, target transition, explicit-file precedence and real File-menu load with declaration feedback pass; ${await browser.version()}`);
 } finally {
   await browser?.close();
   await server?.close();

@@ -467,7 +467,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
         if (saved) {
           const data = JSON.parse(saved);
           if (data && Array.isArray(data.parts) && data.parts.length > 0) {
-            handleLoad(migrateStarterAutosave(data));
+            handleLoad(migrateStarterAutosave(data), { fileAuthority: false });
             return;
           }
         }
@@ -1015,7 +1015,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   }, [circuit]);
 
   // Load circuit from JSON file
-  const handleLoad = useCallback((data) => {
+  const handleLoad = useCallback((data, { fileAuthority = true } = {}) => {
     if (!data || !Array.isArray(data.parts)) return;
     // fromJSON owns the parsing: it normalizes the gallery's legacy flat
     // wire format, drops malformed wires instead of crashing, and restores
@@ -1027,6 +1027,15 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     } catch (e) {
       console.error('circuit load rejected:', e);
       return; // a bad file must never take the designer down
+    }
+    // File-menu and canvas loads also use this handler directly.
+    // Establish file authority before publishing any model change: a host
+    // can echo the derived device/pins back during that publication, and
+    // inference must not replace the circuit the user just opened.
+    // Inferred autosaves keep their existing lower priority than new pins.
+    if (fileAuthority) {
+      fileLoadedRef.current = true;
+      try { localStorage.setItem('bw-circuit-file-loaded', '1'); } catch { /* full */ }
     }
     // Save current state first so Ctrl+Z recovers the previous circuit
     circuit._saveHistory();
