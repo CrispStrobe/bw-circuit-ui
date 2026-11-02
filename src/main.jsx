@@ -98,10 +98,9 @@ function App() {
       minHeight: '100vh',
     }}>
       <CircuitDesigner
-        {...(new URLSearchParams(location.search).has('nopins') ? { project: { pins: [] } } : {})}
         onBoardReady={(b) => { window.__board = b; }}
         onCircuitReady={(c) => { window.__circuit = c; }}
-        project={{
+        project={new URLSearchParams(location.search).has('nopins') ? { pins: [] } : {
           device: new URLSearchParams(location.search).get('device') || 'STC12C5A60S2',
           clock: 11059200,
           pins: [

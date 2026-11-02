@@ -322,9 +322,14 @@ const clickOrFail = async (locator, id, what, opts = {}) => {
 await waitForServer();
 const browser = await chromium.launch();
 browserRef = browser;
-const page = await browser.newPage({ viewport: { width: 1400, height: 800 } });
 const errors = [];
-page.on('pageerror', e => errors.push(String(e)));
+let page;
+const newStarterSession = async () => {
+  await page?.close();
+  page = await browser.newPage({ viewport: { width: 1400, height: 800 } });
+  page.on('pageerror', e => errors.push(String(e)));
+};
+await newStarterSession();
 
 /**
  * The instruments column (scope, meter, sweep, simulation transport) is
@@ -1510,6 +1515,10 @@ try {
 // 8. Pure-circuit Sim: the no-declarations starter must SIMULATE without
 //    crashing (the tap-wire/no-MCU landing is production's first screen).
 {
+  // This is a first-open starter, independent of the transport file opened
+  // above. A returning user must recover that file; do not erase its storage
+  // or mistake its persistence for the starter fixture.
+  await newStarterSession();
   if (!await gotoOrFailRest(`http://localhost:${PORT}/?nopins=1`)) await rollCall();
   if (!await readyOrFailRest(() => window.__circuit && window.__circuit.parts.length > 0,
     60000, 'the no-MCU starter never mounted')) await rollCall();
@@ -1519,9 +1528,11 @@ try {
   if (ok) {
     await page.waitForTimeout(700);
     const mode = await page.evaluate(() => document.querySelector('[data-sim-mode]')?.getAttribute('data-sim-mode'));
-    verdict('nomcu-sim', mode === 'simulate',
+    const kinds = await page.evaluate(() => window.__circuit.parts.map(p => p.kind).sort());
+    const isStarter = JSON.stringify(kinds) === JSON.stringify(['breadboard','led','resistor','vsource']);
+    verdict('nomcu-sim', mode === 'simulate' && isStarter,
       'no-MCU starter enters Sim without crashing',
-      `Sim on the pure starter: mode=${mode ?? 'DESIGNER UNMOUNTED'}`);
+      `Sim on the pure starter: mode=${mode ?? 'DESIGNER UNMOUNTED'}, parts=${kinds.join(',')}`);
   }
   const t1 = await page.evaluate(() => String(window.__board?.getTime?.() ?? 'none'));
   await page.waitForTimeout(600);
@@ -1535,6 +1546,7 @@ try {
 // never start a jumper wire from a free hole hiding under the body. This
 // was the potentiometer complaint: selected, dragged, and wires appeared.
 {
+  await newStarterSession();
   if (!await gotoOrFailRest(`http://localhost:${PORT}`)) await rollCall();
   if (!await readyOrFailRest(() => window.__circuit && window.__circuit.parts.length > 0
     && document.querySelector('wokwi-led'), 60000, 'the demo circuit never remounted')) await rollCall();

@@ -95,7 +95,6 @@ try {
     await page?.close();
     page = await browser.newPage({ viewport: { width: 1200, height: 850 }, hasTouch: true });
     page.setDefaultTimeout(15000);
-    await page.addInitScript(() => localStorage.clear());
     page.on('pageerror', error => { errors.push(error.message); console.error('S040 page error:', error.stack || error.message); });
     page.on('requestfailed', request => console.error('S040 request failed:', request.url(), request.failure()));
     page.on('response', response => {
@@ -219,8 +218,15 @@ try {
   assert.equal(loaded.wires.length,1,'inference must not erase the imported H1 wire');
   assert.ok(loaded.nets.some(net=>net.terminals.some(t=>t.part==='imported-panel'&&t.terminal==='gpio1') &&
     net.terminals.some(t=>t.part==='imported-panel'&&t.terminal==='gnd')),'the actual Board retains the electrical connection');
+  // Reload this same session: the marker must restore the circuit it owns,
+  // including its H1 connectivity, before the new mount sees host feedback.
+  await page.reload({waitUntil:'networkidle'});
+  await page.waitForFunction(()=>window.observedCircuit?.parts.some(p=>p.id==='imported-panel') && window.hostDeclarationEchoes>0);
+  const restored = await page.evaluate(()=>({parts:window.observedCircuit.parts.map(p=>p.id),
+    wires:window.observedCircuit.wires,nets:window.observedCircuit.board.getNets()}));
+  assert.deepEqual(restored,loaded,'File-menu ownership and electrical connections survive a real document reload');
   assert.deepEqual(errors,[],'no browser runtime errors');
-  console.log(`S040 face: host RGBA, rotated/mirrored mouse, captured drag, single-contact touch, cancel/lost capture, owner replacement, callback removal, blanking, unmount, explicit board ownership, onboard-only placement, target transition, explicit-file precedence and real File-menu load with declaration feedback pass; ${await browser.version()}`);
+  console.log(`S040 face: host RGBA, rotated/mirrored mouse, captured drag, single-contact touch, cancel/lost capture, owner replacement, callback removal, blanking, unmount, explicit board ownership, onboard-only placement, target transition, explicit-file precedence and real File-menu load/reload with declaration feedback pass; ${await browser.version()}`);
 } finally {
   await browser?.close();
   await server?.close();
