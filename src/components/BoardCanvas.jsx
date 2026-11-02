@@ -11,6 +11,8 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
+import { Esp32S040Face } from './Esp32S040Face.jsx';
+import esp32S040Art from '../parts-data/esp32_4848s040.svg';
 import {CircuitMenuAction, CircuitMenuHeading, CircuitMenuIcon, CircuitMenuPopup, CircuitMenuStyles, useEditorMenuActions} from './CircuitMenu.jsx';
 import {circuitEditorActions} from './circuit-menu-actions.js';
 import { servoHasSignal } from '../model/servo-signal.js';
@@ -293,6 +295,7 @@ function terminalOffsetsForPart(part) {
     case 'pi_pico':
     case 'tang_nano_20k':
     case 'pybadge':
+    case 'esp32_4848s040':
     case 'calliopemini':
     case 'circuit_playground_express': {
       const sc = getSidecar(part.kind);
@@ -456,7 +459,7 @@ function fmtV(v) {
 // Standard 4×4 keypad key labels, row-major (key 0 = '1', key 15 = 'D').
 const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
 
-function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn, supplyVolts = 5 }) {
+function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn, supplyVolts = 5 }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -844,6 +847,25 @@ function SvgParts({ cpxState, onCpxInput, parts, selectedParts, onSelectPart, on
           </g>
           </React.Fragment>
         );
+      }
+      case 'esp32_4848s040': {
+        const sc = getSidecar(kind);
+        const geometry = boardVisualGeometry(kind, sc);
+        const W = geometry?.w ?? 420;
+        const H = geometry?.h ?? 280;
+        const ownsTarget = id === esp32S040PartId;
+        return <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
+          data-board-face={kind} data-board-face-license="original" data-esp32-s040-owner={ownsTarget ? id : ''}>
+          <title>ESP32-4848S040 front display and rear H1 inset; GPIO 3.3 V, board power 5 V</title>
+          <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={8} fill="transparent"
+            stroke={selStroke || 'none'} strokeWidth={isSelected ? 3 : 0} />
+          <image href={esp32S040Art} x={-W / 2} y={-H / 2} width={W} height={H}
+            preserveAspectRatio="none" style={{ pointerEvents: 'none' }} />
+          <Esp32S040Face width={W} height={H} videoFn={ownsTarget ? videoFn : null}
+            onInput={ownsTarget ? onEsp32S040Input : null} />
+          <text x={0} y={H / 2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+            fontFamily="monospace">{part.declName || id}</text>
+        </g>;
       }
       case 'calliopemini':
       case 'circuit_playground_express': {
@@ -3708,6 +3730,7 @@ export function FileMenu({ circuit, lang, onLoad, onSave, onImport, onClear, onD
 
 export function BoardCanvas({
   cpxState, onCpxInput,
+  esp32S040PartId, onEsp32S040Input,
   // The board's own supply. The VCC symbol used to print `params.volts ?? 5`,
   // so a 3.3 V board drew a cap reading "+5V" — a number nothing in the
   // circuit had. Passed in rather than guessed.
@@ -5351,6 +5374,7 @@ export function BoardCanvas({
             });
           })}
           <SvgParts parts={parts} cpxState={cpxState} onCpxInput={onCpxInput} selectedParts={selectedParts} onSelectPart={onSelectPart} onPartBodyClick={handlePartBodyClick}
+            esp32S040PartId={esp32S040PartId} onEsp32S040Input={onEsp32S040Input}
             supplyVolts={supplyVolts}
             deviceStates={(() => {
               // Device faces follow the ACTIVE board — during a debug run

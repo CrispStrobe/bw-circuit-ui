@@ -76,11 +76,17 @@ export const MAKECODE_FACE_KINDS = Object.freeze(['calliopemini', 'circuit_playg
 /** Every kind drawn as a whole board (face + pads) rather than a symbol. */
 export const BOARD_FACE_KINDS = Object.freeze([
   'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'tang_nano_20k', 'pybadge',
+  'esp32_4848s040',
   ...MAKECODE_FACE_KINDS,
 ]);
 
 /** Dimensions in circuit-world units, before part rotation. */
 export function boardVisualGeometry(kind, sidecar) {
+  // Combined front/rear inset, explicitly not a mechanical scale. It has no
+  // breadboard pitch to infer; keep art, terminals and hit bounds together.
+  if (kind === 'esp32_4848s040' && sidecar?.w && sidecar?.h) return {
+    scale: 1.75, transpose: false, w: sidecar.w * 1.75, h: sidecar.h * 1.75, source: 'sidecar',
+  };
   const spec = WOKWI_BOARD_SPECS[kind];
   if (spec) {
     return {

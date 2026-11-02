@@ -23,6 +23,7 @@ import { applyMeterLoads } from './meter-load.js';
 import { withImportedSingletonNets } from './import-singleton-nets.js';
 import { breadboardFootprintForPart, carrierForPart } from './carriers.js';
 import { physicalPackageBindingForPart } from './physical-package-bindings.js';
+import { ESP32_S040_TERMINALS } from './esp32-s040-face.js';
 
 let _nextId = 1;
 function genId(prefix) { return `${prefix}_${_nextId++}`; }
@@ -39,6 +40,8 @@ const PASSTHROUGH_KINDS = new Set([
   // MCU boards
   'stc_mcu', 'stc15_mcu', 'at89c2051', 'arduino_nano', 'arduino_uno', 'arduino_mega',
   'pi_pico', 'pybadge', 'attiny85', 'attiny88', 'attiny88_qfn32', 'attiny13', 'attiny2313', 'microbit', 'stm32f030',
+  // Static physical board on older engines; do not invent firmware activity.
+  'esp32_4848s040',
   // MakeCode boards. bw-board registers them (board-kinds.js) and they keep
   // their identity; an engine without that model collapses them to 'mcu'.
   'calliopemini', 'circuit_playground_express',
@@ -162,6 +165,8 @@ export function resetIds() { _nextId = 1; }
  */
 function migrateTerminals (kind, stored, params) {
   const live = terminalsForKind(kind, params);
+  // The S040 is a fixed H1 connector, never a generic whole-SoC pin list.
+  if (kind === 'esp32_4848s040') return live;
   if (!Array.isArray(stored)) return live;
   if (!Array.isArray(live) || live.length === 0) return stored;
   return stored.map((t) => {
@@ -288,6 +293,7 @@ export class Circuit {
     const bb = this.breadboards.get(boardId);
     const part = this.parts.find(p => p.id === partId);
     if (!bb || !part) return false;
+    if (part.kind === 'esp32_4848s040') return false;
     this.unseatPart(partId);
     try {
       bb.occupy(partId, leadMap);
@@ -1568,6 +1574,7 @@ export function terminalsForKind(kind, params) {
     if (sc && sc.length > 0) return sc;
   }
   switch (kind) {
+    case 'esp32_4848s040': return [...ESP32_S040_TERMINALS];
     case 'vcc': return ['vcc'];
     case 'gnd': return ['gnd'];
     case 'resistor': return ['a', 'b'];

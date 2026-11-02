@@ -5,6 +5,45 @@ Owner: Claude (Brickwright Circuit-tab unification, Lite PR #1633), approved by 
 Own: the `[data-circuit-toolbar]` row in `src/components/BoardCanvas.jsx` (one non-wrapping row; controls in `[data-circuit-toolbar-scroll]`, the ⋯ menu pinned outside it; the warnings popover portalled and fixed; the cramped-width move of panel/view navigation into ⋯ is kept), German for the toolbar labels, `PartPalette.jsx` (new `src/i18n/palette-de.js`), `ExamplesBrowser.jsx` chrome and the selectors rail / view switcher / captions in `CircuitDesigner.jsx` (lang threaded to the palette and the examples browser), `test/toolbar-row-i18n.test.js` and its registration. English text and every existing test id, aria name (in English) and data attribute are unchanged. DRC finding texts and part-number names are out of scope.
 
 2026-10-28 grouped editor menus — SOURCE CANDIDATE, Codex Circuit menu UI.
+## ESP32-4848S040 physical board and live display/input consumer — IMPLEMENTED, qualification pending, 2026-11-01
+
+Owner: ChatGPT ESP32 board lane, requested by CrispStrobe. Base: `48f0d3d5ebb7dfdd47bb50e13ee83eac5cfec14f`. Isolated implementation branch. Companion bw-parts claim: `spec-updates/009-esp32-4848s040.md`; engine models have a separate LabWired claim. Existing face/menu work keeps its own hunks.
+
+Own additive S040 cases only in `src/components/{BoardCanvas,CircuitDesigner,PartPalette,PartThumbnail}.jsx`, new `Esp32S040Face.jsx` and `src/model/esp32-s040-face.js`, additive `src/model/{board-geometry,circuit,simulation,declarations,infer-seated,bom,drc}.js` and `src/interaction/hittest.js` integration, generated `src/parts-data/{esp32_4848s040.json,esp32_4848s040.svg,index.js}` through the supplier sync, `docs/ESP32-4848S040.md`, focused board/face source tests and browser fixture, package test registration and this section. Use verified H1 terminals and rear-header inset. Permit 5 V board power while keeping GPIO at 3.3 V; refuse internal/nonexistent pins by name. Do not enter the legacy no-program synthetic MCU blink path.
+
+Scope extension (2026-11-01, approved task continuation): own the bounded shared `CircuitDesigner.handleLoad` file-authority repair discovered by real S040 File → Open qualification. Arm file authority only after successful parsing and before publication; preserve invalid-file state and explicit Infer/Clear release. Own focused load-precedence/interaction regressions and the S040 real File-menu browser case, plus this section and its board documentation. Preserve other Designer behavior, generated parts, pins, and emulator qualification gates. Publish this bounded claim before implementation.
+
+Continuation (2026-11-02): the actual PR133 interaction gate exposed a saved-file reload boundary and dishonest independent starter setup. Own only saved-file restoration and inference precedence in `src/components/CircuitDesigner.jsx`, explicit `?nopins` project selection in `src/main.jsx`, independent starter-context boundaries in `scripts/verify-interaction.mjs`, and the focused file/reload/interaction controls and board documentation. Qualify valid and empty saved files, corrupt or stale saved state, ordinary inferred autosaves, explicit Infer/Clear, and the real no-MCU starter. Preserve every existing interaction scenario, assertion, timeout, program and instrument behavior; do not weaken the 83-case roll-call or replace it with the S040-only fixture. The existing source-owned S040 face browser remains required. This is a bounded repair of failures observed in run 41370780080, not permission for unrelated Designer or demo changes.
+
+The face consumes actual supplied emulator video and sends pointer down/move/up/cancel/unmount through typed input callbacks, with explicit coordinate transform and one owning board. Until engine/supplier support qualifies, distinguish static board placement from running emulation. Preserve existing board/solver behavior and unrelated UI hunks. No synthetic firmware image, radio/SD/audio/relay or cycle-accurate claim.
+
+Qualify exact terminals/geometry/seating/DRC/save-load, no synthetic GPIO writes, decoder/transform controls, and Chromium pointer/mouse/touch/rotation/release behavior. Add the focused browser test after the existing verify:interaction gate without dropping any existing scenarios. All applicable source/build/hosted gates stay intact. Supplier art lands first; direct engine/bw-board/Lite adoption remains a separately qualified step.
+
+The supplier landed at `bw-parts@d38c65091aca746df8e0cfd00b81097aa5765fb9`;
+the generated JSON/SVG scoped sync has zero drift. Local `test:boards` passes
+65 controls, including nine new S040 controls. The focused browser fixture
+passes actual React/Designer paths for host RGBA, rotations/mirror, pointer
+capture, real single-contact touch, all release paths, owner isolation,
+onboard-only inference and explicit file precedence. The fixture supplies
+test pixels, not an emulator qualification. The local browser is isolated
+Chromium 134.0.6998.35 (Playwright build 1161), because the pinned 149.0.7827.55
+download mirror returned invalid archives. No dependency/lock was changed;
+the normal hosted browser gate remains required. Build and registration/
+palette/index controls pass; `test:a2` passes two controls. Local
+`test:render` has one pre-existing corpus failure: the unchanged claim base
+also reports four undrawn solver pairs in `school-miniorgan-107056/circuit.json`.
+No test was waived or changed. Local source precision has 160 passes, two
+failures requiring the absent source-admitted ngspice47 oracle, and 20 skips;
+the existing hosted workflow installs that oracle. Broader exact-head gates
+remain required before landing.
+
+2026-10-28 grouped editor menus — DONE, Codex Circuit menu UI.
+Qualified merge: PR #131 at `4b65f15485abbc039958d8e1a8a29ac3459b75f9`.
+All three checks passed at reviewed `3f1a5e2`; the independent browser
+readback reports 83/83 pass, no failures or skips, and all seven required
+browser/touch steps succeeded. Reviewed, CI and landed tree/parents matched.
+Qualification: https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/40802516708
+This qualifies the supplier UI; Lite adoption and production remain separate.
 Exact base `373d562b741c69a5a1dd441c4f8d0ea1053b4fd3`; branch
 `lane/cui-menu-ux-20261028`. Canonical claim precedes source implementation.
 Own only this entry; FileMenu presentation and BoardCanvas overflow/menu action

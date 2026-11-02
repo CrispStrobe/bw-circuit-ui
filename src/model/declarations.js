@@ -14,6 +14,7 @@
  * comes back "active-high" for an active-low LED.
  */
 import { wireEndpoint } from './wire-endpoints.js';
+import { ESP32_S040_GPIO } from './esp32-s040-face.js';
 
 /**
  * Generate a unique name for a part.
@@ -196,7 +197,8 @@ export function partToDeclaration(part, pin, context) {
       // ANALOG capability is per-device: P1.x on the STC parts, the An
       // header on Arduinos, GP26-28 on the Pico (the only ADC-capable GPs).
       if (where) {
-        const analog = /^A\d+$/.test(where) || /^GP2[678]$/.test(where);
+        const analog = /^A\d+$/.test(where) || /^GP2[678]$/.test(where)
+          || (context?.device === 'esp32-4848s040' && /^GPIO[12]$/.test(where));
         return { ...base, direction: analog ? 'analog' : 'input', activeLow: false };
       }
       if (port !== 1) return { ...base, direction: 'input', activeLow: false };
@@ -243,7 +245,8 @@ function indexNets(nets, parts) {
  *  or across exactly one resistor (the series-R idiom). */
 function mcuPinViaNets(part, mcu, idx) {
   const gpioOn = net => {
-    const t = net.terminals.find(t => t.part === mcu.id && GPIO_TERMINAL.test(t.terminal));
+    const t = net.terminals.find(t => t.part === mcu.id && (GPIO_TERMINAL.test(t.terminal)
+      || (mcu.kind === 'esp32_4848s040' && ESP32_S040_GPIO.includes(t.terminal))));
     return t && t.terminal;
   };
   const nets = idx.byPart.get(part.id) || [];
@@ -295,6 +298,7 @@ const BOARD_TO_DEVICE = {
   arduino_uno: 'arduino-uno', arduino_nano: 'arduino-nano',
   arduino_mega: 'arduino-mega', pi_pico: 'pico', pybadge: 'pybadge',
   circuit_playground_express: 'cpx',
+  esp32_4848s040: 'esp32-4848s040',
 };
 const MCU_KINDS = new Set(['mcu', ...Object.keys(BOARD_TO_DEVICE)]);
 
@@ -307,7 +311,7 @@ export function circuitToDeclarations(parts, wires, nets = null) {
 
   const idx = nets ? indexNets(nets, parts) : null;
   let toneAlreadyClaimed = false;
-  const context = { parts, wires, nets: idx, toneAlreadyClaimed: false };
+  const context = { parts, wires, nets: idx, toneAlreadyClaimed: false, device };
 
   for (const part of parts) {
     if (!part.declName) continue;
@@ -342,6 +346,7 @@ export function circuitToDeclarations(parts, wires, nets = null) {
     if (!mcuPin && idx) mcuPin = mcuPinViaNets(part, mcu, idx);
 
     if (mcuPin) {
+      if (mcu.kind === 'esp32_4848s040' && !ESP32_S040_GPIO.includes(mcuPin)) continue;
       const decl = partToDeclaration(part, mcuPin, context);
       if (decl) {
         if (decl.direction === 'tone') context.toneAlreadyClaimed = true;

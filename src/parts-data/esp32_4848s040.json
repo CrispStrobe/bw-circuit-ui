@@ -1,0 +1,56 @@
+{
+  "kind": "esp32_4848s040",
+  "w": 240,
+  "h": 160,
+  "terminals": [
+    { "name": "gnd", "x": 180, "y": 48, "functions": [] },
+    { "name": "gnd2", "x": 216, "y": 48, "functions": [] },
+    { "name": "gpio40", "x": 180, "y": 72, "functions": ["gpio"] },
+    { "name": "gpio44", "x": 216, "y": 72, "functions": ["gpio", "rxd0"] },
+    { "name": "gpio2", "x": 180, "y": 96, "functions": ["gpio", "adc1_ch1"] },
+    { "name": "gpio43", "x": 216, "y": 96, "functions": ["gpio", "txd0"] },
+    { "name": "gpio1", "x": 180, "y": 120, "functions": ["gpio", "adc1_ch0"] },
+    { "name": "5v", "x": 216, "y": 120, "functions": [] }
+  ],
+  "footprint": null,
+  "variants": null,
+  "_note": "GUITION ESP32-4848S040 common C_I display/touch configuration, ESP32-S3 with 16 MB flash and 8 MB octal PSRAM. Original stylised front view plus a labelled rear H1 connector inset; not a mechanical drawing or a breadboard footprint. Only the actual H1 header is exposed. P1 duplicates UART0/GND/5V. GPIO is 3.3 V logic, not 5 V tolerant; 5v is board power, not a GPIO reference. Optional relay/audio assembly uses GPIO40/2/1 and is not represented. Internal LCD/touch/SD/memory pins are metadata, not expansion terminals. See docs/pin-table-esp32-4848s040.md.",
+  "boardProfile": {
+    "id": "guition-esp32-4848s040-ci",
+    "soc": "esp32s3",
+    "flashBytes": 16777216,
+    "psramBytes": 8388608,
+    "gpioVolts": 3.3,
+    "supplyVolts": 5,
+    "connector": "rear H1, two columns by four rows",
+    "groundTerminals": ["gnd", "gnd2"],
+    "optionalSharedGpio": [40, 2, 1],
+    "internalGpio": [0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 41, 42, 45, 46, 47, 48],
+    "lcd": {
+      "controller": "st7701",
+      "width": 480,
+      "height": 480,
+      "dataFormat": "rgb565",
+      "control": { "cs": 39, "sck": 48, "mosi": 47 },
+      "de": 18,
+      "vsync": 17,
+      "hsync": 16,
+      "pclk": 21,
+      "redLsbFirst": [11, 12, 13, 14, 0],
+      "greenLsbFirst": [8, 20, 3, 46, 9, 10],
+      "blueLsbFirst": [4, 5, 6, 7, 15],
+      "backlight": 38,
+      "backlightActiveHigh": true
+    },
+    "touch": { "controller": "gt911", "sda": 19, "scl": 45, "address": 93, "interrupt": null, "reset": null },
+    "sd": { "cs": 42, "miso": 41, "mosi": 47, "sck": 48 },
+    "usb": "USB-C UART bridge; native S3 USB GPIO19/20 are used internally"
+  },
+  "screen": { "x": 16, "y": 16, "w": 124, "h": 124 },
+  "sources": [
+    "https://www.guition.com/-download",
+    "https://github.com/moononournation/Arduino_GFX/blob/6da54cb7f7ce6fde1ef8435186eb60406ea4caa0/examples/PDQgraphicstest/Arduino_GFX_dev_device.h",
+    "https://devices.esphome.io/devices/guition-esp32-s3-4848s040/",
+    "https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/gpio.html"
+  ]
+}
