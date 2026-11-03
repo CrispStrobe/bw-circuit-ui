@@ -209,6 +209,7 @@ export function runDrc(circuit, board) {
             explanation: `${pin.toUpperCase()} is ${spec.what}. `
               + `This connection reaches ${spec.kind === 'esp32_4848s040' ? 'a source above 3.6 V' : 'a 5 V-or-higher source'} and ${spec.damage}.`,
             fix: spec.fix,
+            msg: spec.rule, args: { pin: pin.toUpperCase() },
           });
         }
       }
@@ -223,7 +224,8 @@ export function runDrc(circuit, board) {
     if (!s040Boards.has(partId) || ESP32_S040_TERMINALS.includes(pinId)) continue;
     warnings.push({ severity: 'danger', rule: 'esp32-s040-reserved-pin', partId, pinId,
       explanation: `${pinId} is not an accessible H1 terminal of ESP32-4848S040. Internal LCD/touch/memory pins and GPIO22–25 cannot be expansion connections.`,
-      fix: 'Use H1 GPIO1, GPIO2, GPIO40, GPIO43 or GPIO44, and check any optional relay/audio assembly.' });
+      fix: 'Use H1 GPIO1, GPIO2, GPIO40, GPIO43 or GPIO44, and check any optional relay/audio assembly.',
+      msg: 'esp32-s040-reserved-pin', args: { pin: pinId } });
   }
 
   // ── Rule 0b: a board's power pins are not a simulated rail ────────
@@ -256,6 +258,7 @@ export function runDrc(circuit, board) {
           + 'a loop returning through here reads as an open circuit, not as ground.',
         fix: 'Wire the return leg to a GND part (and a supply to a VCC part) for the '
           + 'simulated bench. On the real board the pin is fine.',
+        msg: 'board-rail-not-simulated', args: { pin: pin.toUpperCase(), kind: part.kind },
       });
     }
   }
@@ -294,6 +297,7 @@ export function runDrc(circuit, board) {
               fix: 'Add a transistor (NPN or TIP120) to switch the load. ' +
                 'The pin drives the transistor base; the transistor switches the load current from VCC.',
               fixPart: 'npn',
+              msg: 'source-current/load', args: { pin, load: loadPart.kind },
             });
           }
 
@@ -315,6 +319,7 @@ export function runDrc(circuit, board) {
                   `pin → resistor → LED cathode, LED anode → VCC. ` +
                   `The pin sinks 20 mA, which is plenty.`,
                 fix: 'Rewire active-low: LED anode to VCC, cathode through resistor to pin.',
+                msg: 'source-current/led', args: { pin },
               });
             }
           }
@@ -364,6 +369,7 @@ export function runDrc(circuit, board) {
               `far above the 20 mA maximum. The LED will burn out.`,
             fix: 'Add a resistor (220 Ω–1 kΩ) in series. For 5V and a red LED: R = (5 − 2) / 0.015 = 200 Ω.',
             fixPart: 'resistor',
+            msg: 'missing-resistor', args: { kind: part.kind },
           });
         }
       }
@@ -410,6 +416,7 @@ export function runDrc(circuit, board) {
           `A flyback diode across the coil clamps this spike safely.`,
         fix: 'Add a diode across the load, cathode toward VCC (reverse-biased during normal operation).',
         fixPart: 'diode',
+        msg: 'missing-flyback', args: { kind: part.kind, driver: hasDriver },
       });
     }
   }
@@ -432,6 +439,7 @@ export function runDrc(circuit, board) {
             `A floating input reads random noise and can cause unpredictable behavior.`,
           fix: 'Connect a pull-up or pull-down resistor, or use input-pullup mode, ' +
             'or wire it to a signal source (button, sensor, etc.).',
+          msg: 'floating-input/unwired', args: { pin },
         });
         continue;
       }
@@ -447,6 +455,7 @@ export function runDrc(circuit, board) {
           explanation: `${pin} is configured as an input but nothing else is on its net. ` +
             `The pin is electrically floating and will read noise.`,
           fix: 'Wire a signal source (button, sensor) or add a pull-up/pull-down resistor.',
+          msg: 'floating-input/alone', args: { pin },
         });
       }
     }
@@ -467,6 +476,7 @@ export function runDrc(circuit, board) {
         explanation: 'Both terminals of this voltage source are on the same electrical net. ' +
           'A nonzero source voltage would be shorted by this connection.',
         fix: 'Separate the source terminals and connect the load between them.',
+        msg: 'supply-short/source', args: {},
       });
     }
     // A signed, explicit DC source wired across known fixed rails has an
@@ -482,6 +492,7 @@ export function runDrc(circuit, board) {
         explanation: 'This DC voltage source drives the fixed positive rail below its ground rail.',
         fix: 'Check the source voltage sign and swap its terminals if required. ' +
           'A floating negative supply is valid; reversing a fixed positive supply is not.',
+        msg: 'supply-polarity', args: {},
       });
     }
   }
@@ -497,6 +508,7 @@ export function runDrc(circuit, board) {
         explanation: `${positive.terminal.toUpperCase()} and ${ground.terminal.toUpperCase()} are on the same electrical net. ` +
           'This directly shorts the positive supply to ground and can damage the board, battery, or power supply.',
         fix: 'Check the wiring. Every path from VCC to GND should go through a load (resistor, LED, motor, etc.).',
+        msg: 'supply-short/net', args: { positive: positive.terminal.toUpperCase(), ground: ground.terminal.toUpperCase() },
       });
     }
   }
@@ -524,6 +536,7 @@ export function runDrc(circuit, board) {
             `${posV.toFixed(1)}V, positive at ${negV.toFixed(1)}V). ` +
             `An electrolytic capacitor can rupture or explode when reverse-biased.`,
           fix: 'Swap the capacitor terminals so the + side is at higher voltage.',
+          msg: 'polarity', args: { plusVolts: posV, minusVolts: negV },
         });
       }
     } catch { /* voltage not available yet */ }
@@ -551,6 +564,7 @@ export function runDrc(circuit, board) {
             `the signal cannot go high and communication will fail.`,
           fix: `Add a 4.7 kΩ resistor from ${line.toUpperCase()} to VCC.`,
           fixPart: 'resistor',
+          msg: 'missing-pullup', args: { kind: part.kind, line: line.toUpperCase() },
         });
       }
     }
@@ -578,6 +592,7 @@ export function runDrc(circuit, board) {
             'The simulator powers the MCU implicitly so everything still runs - ' +
             'on a real bench, an unpowered chip does nothing.',
           fix: 'Wire VCC (pin 40) to the +5 V rail and GND (pin 20) to ground, the way the real board needs.',
+          msg: 'mcu-power-pins', args: { missing },
         });
       }
     }
@@ -646,6 +661,8 @@ export function runDrc(circuit, board) {
           (hasUnrated ? ` Some parts (${unratedKinds.join(', ')}) cannot be rated — the real total may be higher.` : ''),
         fix: 'Reduce the number of simultaneously active loads, or use external drivers ' +
           '(transistors, shift registers) to power them from VCC rather than from MCU pins.',
+        msg: 'aggregate-current/over',
+        args: { atLeast: hasUnrated, totalMa, chip: chipName, limitMa, top: top.map(c => ({ kind: c.kind, mA: c.mA })), unrated: hasUnrated ? unratedKinds.slice() : [] },
       });
     } else if (hasUnrated && totalA > CHIP_CURRENT_LIMIT_A * 0.7) {
       // Close to the limit with unrated parts — warn conservatively
@@ -659,6 +676,7 @@ export function runDrc(circuit, board) {
           `but ${unratedKinds.join(', ')} cannot be rated — ` +
           `the total is a lower bound, not a sum. The actual current may exceed the limit.`,
         fix: 'Check the current through unrated parts with the multimeter.',
+        msg: 'aggregate-current/near', args: { totalMa, chip: chipName, limitMa, unrated: unratedKinds.slice() },
       });
     }
   }
@@ -683,6 +701,7 @@ export function runDrc(circuit, board) {
             partId: parts.find(p => p.kind === 'w65c02')?.id,
             explanation: reason,
             fix: 'Check the address decode wiring on the breadboard.',
+            msg: 'bus-extract-6502', args: { reason },
           });
         }
         for (const note of result.notes || []) {
@@ -690,6 +709,7 @@ export function runDrc(circuit, board) {
             severity: 'info', rule: 'bus-extract-6502-note',
             partId: parts.find(p => p.kind === 'w65c02')?.id,
             explanation: note,
+            msg: 'bus-extract-6502-note', args: { note },
           });
         }
       }
@@ -701,6 +721,7 @@ export function runDrc(circuit, board) {
             partId: parts.find(p => p.kind === 'z80')?.id,
             explanation: reason,
             fix: 'Check the address decode wiring on the breadboard.',
+            msg: 'bus-extract-z80', args: { reason },
           });
         }
         for (const note of result.notes || []) {
@@ -708,6 +729,7 @@ export function runDrc(circuit, board) {
             severity: 'info', rule: 'bus-extract-z80-note',
             partId: parts.find(p => p.kind === 'z80')?.id,
             explanation: note,
+            msg: 'bus-extract-z80-note', args: { note },
           });
         }
       }
@@ -715,6 +737,7 @@ export function runDrc(circuit, board) {
       warnings.push({
         severity: 'warning', rule: 'bus-extract-error',
         explanation: `Bus extractor failed: ${e.message}`,
+        msg: 'bus-extract-error', args: { message: e.message },
       });
     }
 
@@ -746,6 +769,7 @@ export function runDrc(circuit, board) {
             partId: cpu.id,
             explanation: `${pin.toUpperCase()} is floating (no net). ${symptom}`,
             fix: `Add a 3.3 kΩ pull-up resistor from ${pin.toUpperCase()} to VCC.`,
+            msg: 'floating-control-6502', args: { pin: pin.toUpperCase() },
           });
         }
       }
@@ -766,6 +790,7 @@ export function runDrc(circuit, board) {
           partId: cpu.id,
           explanation: 'RESB is wired but has no RC reset circuit. At 1 MHz the CPU may not reset cleanly on power-up — tebl/BE6502 errata documents this.',
           fix: 'Add a 1 µF capacitor from RESB to GND and a 1 kΩ resistor from RESB to VCC for a reliable power-on reset.',
+          msg: 'bare-reset-6502', args: {},
         });
       }
     }
@@ -785,6 +810,7 @@ export function runDrc(circuit, board) {
             partId: cpu.id,
             explanation: `${pin.toUpperCase()} is floating (no net). ${symptom}`,
             fix: `Add a 3.3 kΩ pull-up resistor from ${pin.toUpperCase()} to VCC.`,
+            msg: 'floating-control-z80', args: { pin: pin.toUpperCase() },
           });
         }
       }

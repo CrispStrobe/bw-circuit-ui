@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import { localizeDrcWarning, DRC_BADGE_DE } from '../i18n/drc-de.js';
 
 const SEVERITY_FILL = {
   danger: '#e74c3c',
@@ -41,7 +42,8 @@ const PILL_SUPPRESSED = new Set(['mcu-power-pins']);
 /**
  * @param {{ warnings: Array, parts: Array }} props
  */
-export function DrcOverlay({ warnings, parts }) {
+export function DrcOverlay({ warnings, parts, lang = 'en' }) {
+  const de = /^de/i.test(String(lang || ''));
   if (!warnings || warnings.length === 0) return null;
 
   // Group warnings by partId, take worst severity per part.
@@ -60,7 +62,8 @@ export function DrcOverlay({ warnings, parts }) {
     if (!part) return null;
 
     const fill = SEVERITY_FILL[w.severity] || '#7f8c8d';
-    const label = RULE_SHORT[w.rule] || w.rule;
+    const label = (de && DRC_BADGE_DE[w.rule]) || RULE_SHORT[w.rule] || w.rule;
+    const tip = localizeDrcWarning(w, lang);
 
     // Offset badge to the part's top-left, not directly on the body.
     // For DIP chips on crowded benches, the center-offset overlaps
@@ -72,7 +75,7 @@ export function DrcOverlay({ warnings, parts }) {
 
     return (
       <g key={`drc-${partId}`} data-drc-badge={partId} style={{ pointerEvents: 'none' }}>
-        <title>{w.explanation || w.rule}</title>
+        <title>{tip.explanation || w.rule}</title>
         <rect
           x={bx} y={by}
           width={label.length * 6 + 10} height={14}
