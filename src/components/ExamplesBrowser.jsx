@@ -45,6 +45,27 @@ const CATEGORY_COLORS = {
 
 const DIFFICULTY_LABELS = ['', 'Beginner', 'Intermediate', 'Advanced'];
 
+// The browser's own words in German. Catalogue keys stay English; only what is SHOWN moves.
+const EB_DE = {
+  'Basics': 'Grundlagen', 'Analog': 'Analog', 'Digital': 'Digital', 'Motors & Actuators': 'Motoren & Aktoren',
+  'Pure circuits': 'Reine Schaltungen', 'No MCU': 'Ohne MCU', 'Any MCU': 'Beliebige MCU',
+  'Beginner': 'Einsteiger', 'Intermediate': 'Fortgeschritten', 'Advanced': 'Experte',
+  'All': 'Alle', 'Level': 'Stufe', 'Parts': 'Bauteile', 'Target': 'Zielchip', 'Examples': 'Beispiele',
+  'Example info': 'Beispiel-Info', 'Info for {title}': 'Info zu {title}',
+  'Show information for the loaded example': 'Informationen zum geladenen Beispiel anzeigen',
+  'Load an example to see information': 'Lade ein Beispiel, um Informationen zu sehen',
+  'Search {n} examples\u2026': '{n} Beispiele durchsuchen\u2026', 'Clear search': 'Suche leeren',
+  'No examples match these filters.': 'Keine Beispiele passen zu diesen Filtern.',
+  'level {n}': 'Stufe {n}', 'Open \u201c{title}\u201d?': '\u201e{title}\u201c öffnen?', 'Chip': 'Chip',
+  'Cancel': 'Abbrechen', 'OK': 'OK', ' — unavailable: ': ' — nicht verfügbar: ',
+};
+/** `text` in `lang` (German from EB_DE, else the English), with {placeholders} filled. */
+function ebt(text, lang, vars) {
+  let s = (/^de/i.test(lang || '') && EB_DE[text]) || text;
+  for (const [k, v] of Object.entries(vars || {})) s = s.replace(`{${k}}`, String(v));
+  return s;
+}
+
 
 function examplePartTags(example) {
   const explicit = example.parts || example.partTags || example.components;
@@ -55,8 +76,8 @@ function examplePartTags(example) {
   return [...new Set(tags)];
 }
 
-function partLabel(part) {
-  if (PART_LABELS[part]) return PART_LABELS[part];
+function partLabel(part, lang) {
+  if (PART_LABELS[part]) return ebt(PART_LABELS[part], lang);
   return part.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
@@ -80,8 +101,8 @@ function exampleTargetTags(example) {
   return ['no-mcu'];
 }
 
-function targetLabel(target) {
-  return TARGET_LABELS[target] || target.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+function targetLabel(target, lang) {
+  return (TARGET_LABELS[target] && ebt(TARGET_LABELS[target], lang)) || target.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 /**
@@ -207,10 +228,10 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       {/* Collapse control now lives in CircuitDesigner at left: -13,
          aligned with the Parts panel's control. */}
       <div style={{ color: palette.heading, fontSize: '16px', marginBottom: '8px', fontWeight: 700, paddingLeft: 34, letterSpacing: '.01em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span>Examples <span style={{color: palette.muted, fontSize: '12px', fontWeight: 400}}>({filtered.length}/{examples.length})</span></span>
+        <span>{ebt('Examples', lang)} <span style={{color: palette.muted, fontSize: '12px', fontWeight: 400}}>({filtered.length}/{examples.length})</span></span>
         <button type="button" onClick={() => setShowInfo(v => !v)} disabled={!lastLoaded}
-          aria-label={lastLoaded ? `Info for ${lastLoaded.title?.[lang] || lastLoaded.title?.en || lastLoaded.id}` : 'Example info'}
-          title={lastLoaded ? 'Show information for the loaded example' : 'Load an example to see information'}
+          aria-label={lastLoaded ? ebt('Info for {title}', lang, {title: lastLoaded.title?.[lang] || lastLoaded.title?.en || lastLoaded.id}) : ebt('Example info', lang)}
+          title={lastLoaded ? ebt('Show information for the loaded example', lang) : ebt('Load an example to see information', lang)}
           style={{width: 22, height: 22, padding: 0, borderRadius: '50%', border: `1px solid ${palette.buttonBorder}`,
             background: lastLoaded ? palette.button : 'transparent', color: palette.text,
             cursor: lastLoaded ? 'pointer' : 'default', fontWeight: 700, fontSize: 12}}>i</button>
@@ -220,7 +241,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
           border: `1px solid ${palette.border}`, color: palette.text, fontSize: 11, lineHeight: 1.4}}>
           <strong>{lastLoaded.title?.[lang] || lastLoaded.title?.en || lastLoaded.id}</strong>
           {lastLoaded.desc ? <div>{lastLoaded.desc?.[lang] || lastLoaded.desc?.en || String(lastLoaded.desc)}</div> : null}
-          <div style={{color: palette.muted}}>{lastLoaded.category}{lastLoaded.level ? ` · level ${lastLoaded.level}` : ''}</div>
+          <div style={{color: palette.muted}}>{lastLoaded.category}{lastLoaded.level ? ` · ${ebt('level {n}', lang, {n: lastLoaded.level})}` : ''}</div>
         </div>
       )}
 
@@ -234,7 +255,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
           type="text"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder={`Search ${examples.length} examples\u2026`}
+          placeholder={ebt('Search {n} examples\u2026', lang, {n: examples.length})}
           style={{
             width: '100%', padding: '6px 8px 6px 28px',
             background: palette.input, border: `1px solid ${palette.border}`,
@@ -247,7 +268,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
           style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
             background: 'none', border: 'none', color: palette.muted, cursor: 'pointer',
             fontSize: '14px', padding: '0 2px', lineHeight: 1 }}
-          aria-label="Clear search">&times;</button>}
+          aria-label={ebt('Clear search', lang)}>&times;</button>}
       </div>
 
       {/* Filter toolbar: each group stays compact and the groups share rows.
@@ -271,7 +292,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
             color: !selectedCategory ? '#fff' : palette.text,
             border: `1px solid ${!selectedCategory ? palette.accent : palette.buttonBorder}`,
           }}
-        >All</button>
+        >{ebt('All', lang)}</button>
         {categories.map(cat => (
           <button
             key={cat}
@@ -283,38 +304,38 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
               color: selectedCategory === cat ? '#fff' : (dark ? (CATEGORY_COLORS[cat] || palette.text) : palette.text),
               border: `1px solid ${selectedCategory === cat ? (CATEGORY_COLORS[cat] || palette.accent) : palette.buttonBorder}`,
             }}
-          >{CATEGORY_LABELS[cat] || cat}</button>
+          >{CATEGORY_LABELS[cat] ? ebt(CATEGORY_LABELS[cat], lang) : cat}</button>
         ))}
       </div>
 
-      <FilterRow label="Level" palette={palette}>
-        <FilterButton palette={palette} active={!selectedDifficulty} onClick={() => setSelectedDifficulty(null)}>All</FilterButton>
+      <FilterRow label={ebt('Level', lang)} palette={palette}>
+        <FilterButton palette={palette} active={!selectedDifficulty} onClick={() => setSelectedDifficulty(null)}>{ebt('All', lang)}</FilterButton>
         {[1, 2, 3].map(level => (
           <FilterButton palette={palette} key={level} active={selectedDifficulty === level} color={DIFFICULTY_COLORS[level]}
             onClick={() => setSelectedDifficulty(selectedDifficulty === level ? null : level)}>
-            {DIFFICULTY_LABELS[level]}
+            {ebt(DIFFICULTY_LABELS[level], lang)}
           </FilterButton>
         ))}
       </FilterRow>
 
-      <FilterRow label="Parts" palette={palette}>
-        <FilterButton palette={palette} active={!selectedPart} onClick={() => setSelectedPart(null)}>All</FilterButton>
+      <FilterRow label={ebt('Parts', lang)} palette={palette}>
+        <FilterButton palette={palette} active={!selectedPart} onClick={() => setSelectedPart(null)}>{ebt('All', lang)}</FilterButton>
         {partTags.map(part => (
           <FilterButton palette={palette} key={part} active={selectedPart === part}
             color={part === 'mcu' ? '#38bdf8' : '#14b8a6'}
             onClick={() => setSelectedPart(selectedPart === part ? null : part)}>
-            {partLabel(part)}
+            {partLabel(part, lang)}
           </FilterButton>
         ))}
       </FilterRow>
 
-      <FilterRow label="Target" palette={palette}>
-        <FilterButton palette={palette} active={!selectedTarget} onClick={() => setSelectedTarget(null)}>All</FilterButton>
+      <FilterRow label={ebt('Target', lang)} palette={palette}>
+        <FilterButton palette={palette} active={!selectedTarget} onClick={() => setSelectedTarget(null)}>{ebt('All', lang)}</FilterButton>
         {targetTags.map(target => (
           <FilterButton palette={palette} key={target} active={selectedTarget === target}
             color={target === 'no-mcu' ? '#14b8a6' : '#6366f1'}
             onClick={() => setSelectedTarget(selectedTarget === target ? null : target)}>
-            {targetLabel(target)}
+            {targetLabel(target, lang)}
           </FilterButton>
         ))}
       </FilterRow>
@@ -322,7 +343,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
 
       {/* Example cards */}
       {filtered.length === 0 ? (
-        <div style={{ color: palette.muted, fontSize: '13px', padding: '8px 4px' }}>No examples match these filters.</div>
+        <div style={{ color: palette.muted, fontSize: '13px', padding: '8px 4px' }}>{ebt('No examples match these filters.', lang)}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
           {filtered.map(ex => {
@@ -410,12 +431,12 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
               boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
             }} onClick={e => e.stopPropagation()}>
               <div style={{ color: palette.heading, fontSize: 14, fontWeight: 700, marginBottom: 12 }}>
-                Open &ldquo;{pTitle}&rdquo;?
+                {ebt('Open \u201c{title}\u201d?', lang, {title: pTitle})}
               </div>
               {hasDevices && (
                 <div style={{ marginBottom: 12 }}>
                   <label style={{ color: palette.muted, fontSize: 11, display: 'block', marginBottom: 4 }}>
-                    Chip
+                    {ebt('Chip', lang)}
                   </label>
                   <select data-device-chooser-select
                     value={pDev || ''}
@@ -434,7 +455,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                       return (
                         <option key={d} value={d} disabled={!!refusal}
                           title={refusal || undefined}>
-                          {(DEVICE_LABELS[d] || d) + (refusal ? ' — unavailable: ' + refusal : '')}
+                          {(DEVICE_LABELS[d] || d) + (refusal ? ebt(' — unavailable: ', lang) + refusal : '')}
                         </option>
                       );
                     })}
@@ -447,7 +468,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                     padding: '5px 14px', fontSize: 12, borderRadius: 4, cursor: 'pointer',
                     background: palette.button, color: palette.text,
                     border: `1px solid ${palette.buttonBorder}`,
-                  }}>Cancel</button>
+                  }}>{ebt('Cancel', lang)}</button>
                 <button type="button" onClick={handleOk}
                   style={{
                     padding: '5px 14px', fontSize: 12, borderRadius: 4, cursor: 'pointer',
