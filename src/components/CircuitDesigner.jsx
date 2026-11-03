@@ -80,6 +80,7 @@ import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { breadboardFootprintForPart } from '../model/carriers.js';
 import { buildSeatedFromDeclarations, makeCodeBoardFor } from '../model/infer-seated.js';
+import { isEsp32S040Device } from '../model/esp32-s040-face.js';
 import { runDrc } from '../model/drc.js';
 import { migrateStarterAutosave } from '../model/starter-migration.js';
 import './circuit-theme.css';
@@ -96,7 +97,7 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
-export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
+export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -425,6 +426,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
   // Re-infer when the project's pins change.
   const prevPinsRef = useRef(null);
   const prevCpxRef = useRef(false);
+  const prevS040Ref = useRef(false);
   // Set the moment a circuitData FILE is applied (the effect below).
   // Loading an example loads its PROGRAM first; the resulting project
   // change ripples new pins into THIS effect, which used to rebuild
@@ -445,26 +447,46 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
     // not run — the circuitData effect will load the file momentarily.
     || !!circuitData
   );
+  const fileRestoreAttemptedRef = useRef(false);
   useEffect(() => {
     const pins = projectData?.pins;
+    // The ownership marker protects a loaded file from declaration feedback,
+    // but a fresh Circuit starts empty. Restore its paired snapshot BEFORE
+    // that marker suppresses inference. A new host file takes precedence.
+    // Attempt this only on mount, never after a later File → Open operation.
+    if (!fileRestoreAttemptedRef.current) {
+      fileRestoreAttemptedRef.current = true;
+      if (fileLoadedRef.current && !circuitData) {
+        let restored = false;
+        try {
+          const saved = localStorage.getItem('bw-circuit-autosave');
+          restored = !!saved && handleLoad(JSON.parse(saved));
+        } catch { /* missing or corrupt storage cannot claim an empty canvas */ }
+        if (!restored) {
+          fileLoadedRef.current = false;
+          try { localStorage.removeItem('bw-circuit-file-loaded'); } catch { /* blocked */ }
+        }
+      }
+    }
     // Onboard-only CPX programs still need their board. A device selection
     // can change while reusing the empty pins array.
     const onboardCpx = makeCodeBoardFor(projectData?.device)?.kind === 'circuit_playground_express';
-    if (pins === prevPinsRef.current && onboardCpx === prevCpxRef.current) return;
+    const onboardS040 = isEsp32S040Device(projectData?.device);
+    if (pins === prevPinsRef.current && onboardCpx === prevCpxRef.current && onboardS040 === prevS040Ref.current) return;
     prevPinsRef.current = pins;
     prevCpxRef.current = onboardCpx;
+    prevS040Ref.current = onboardS040;
     if (fileLoadedRef.current) return;
 
     // No declared pins: the last session's autosaved wiring beats the
     // canned demo - losing an evening's circuit to a reload was the bug.
-    if (!onboardCpx && !(pins?.length > 0) && typeof localStorage !== 'undefined') {
+    if (!onboardCpx && !onboardS040 && !(pins?.length > 0) && typeof localStorage !== 'undefined') {
       try {
         const saved = localStorage.getItem('bw-circuit-autosave');
         if (saved) {
           const data = JSON.parse(saved);
           if (data && Array.isArray(data.parts) && data.parts.length > 0) {
-            handleLoad(migrateStarterAutosave(data));
-            return;
+            if (handleLoad(migrateStarterAutosave(data), { fileAuthority: false })) return;
           }
         }
       } catch { /* corrupt autosave: fall through to the demo */ }
@@ -474,7 +496,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
     // example has one visible positive wire and one visible return wire. A
     // rail-plus-jumper layout is electrically equivalent, but unnecessarily
     // draws four wires and makes the starter look duplicated.
-    if (!onboardCpx && !(pins?.length > 0)) {
+    if (!onboardCpx && !onboardS040 && !(pins?.length > 0)) {
       try {
         const bb = addPart('breadboard', {}, 470, 300);
         const bat = addPart('vsource', { variant: '9v', volts: 5 }, 130, 150);
@@ -488,7 +510,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
         return;
       } catch { /* fall through to the inferred demo */ }
     }
-    if (onboardCpx || pins?.length > 0) {
+    if (onboardCpx || onboardS040 || pins?.length > 0) {
       // The code PREFILLS the bench: declared pins arrive as a seated
       // breadboard build - chip above the board, parts in the strips,
       // taps from the pins, rails powered. Derivable is derived.
@@ -501,7 +523,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
         return;
       } catch { /* fall through to abstract inference */ }
     }
-    const inferStc = onboardCpx || pins?.length > 0
+    const inferStc = onboardCpx || onboardS040 || pins?.length > 0
       ? projectData
       : {
           device: 'STC12C5A60S2',
@@ -526,8 +548,12 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     autosaveTimer.current = setTimeout(() => {
       try {
-        if (parts.length > 0) {
-          localStorage.setItem('bw-circuit-autosave', JSON.stringify(circuit.toJSON()));
+        if (parts.length > 0 || fileLoadedRef.current) {
+          const saved = circuit.toJSON();
+          // File imports may describe connectivity with engine-format nets
+          // instead of wires. Keep that connectivity across later autosaves.
+          if (fileLoadedRef.current) saved.nets = circuit.resolvedNets;
+          localStorage.setItem('bw-circuit-autosave', JSON.stringify(saved));
         }
       } catch { /* storage full/blocked: the explicit save still works */ }
     }, 800);
@@ -1011,8 +1037,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
   }, [circuit]);
 
   // Load circuit from JSON file
-  const handleLoad = useCallback((data) => {
-    if (!data || !Array.isArray(data.parts)) return;
+  const handleLoad = useCallback((data, { fileAuthority = true } = {}) => {
+    if (!data || !Array.isArray(data.parts)) return false;
     // fromJSON owns the parsing: it normalizes the gallery's legacy flat
     // wire format, drops malformed wires instead of crashing, and restores
     // breadboard occupancy AND hole wires (this inline copy used to lose
@@ -1022,7 +1048,28 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
       parsed = Circuit.fromJSON(data);
     } catch (e) {
       console.error('circuit load rejected:', e);
-      return; // a bad file must never take the designer down
+      return false; // a bad file must never take the designer down
+    }
+    // File-menu and canvas loads also use this handler directly.
+    // Establish file authority before publishing any model change: a host
+    // can echo the derived device/pins back during that publication, and
+    // inference must not replace the circuit the user just opened.
+    // Inferred autosaves keep their existing lower priority than new pins.
+    if (fileAuthority) {
+      fileLoadedRef.current = true;
+      try {
+        // Pair the marker with this successfully parsed file synchronously:
+        // an immediate reload, or an intentionally empty file, must not
+        // recover the previous circuit while the debounce is still pending.
+        const saved = parsed.toJSON();
+        if (Array.isArray(data.nets) && data.nets.length > 0) saved.nets = data.nets;
+        localStorage.setItem('bw-circuit-autosave', JSON.stringify(saved));
+        localStorage.setItem('bw-circuit-file-loaded', '1');
+      } catch {
+        // In-memory ownership still protects this session. A failed write
+        // must not leave an older snapshot marked as the newly opened file.
+        try { localStorage.removeItem('bw-circuit-file-loaded'); } catch { /* blocked */ }
+      }
     }
     // Save current state first so Ctrl+Z recovers the previous circuit
     circuit._saveHistory();
@@ -1053,6 +1100,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
     // COUNT skipped it whenever the new file matched the old project's
     // count (SOS opened half off-screen, self-taken screenshot).
     setFitToken(t => t + 1);
+    return true;
   }, [circuit]);
 
   // ── circuitData prop: load an example or saved circuit declaratively ──
@@ -1121,20 +1169,19 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
     // under React 16, where the four handleLoad state updates plus this
     // annotation clear would otherwise flush as separate full-designer
     // commits. They describe one atomic file load, so commit them together.
+    let loaded = false;
     ReactDOM.unstable_batchedUpdates(() => {
-      handleLoad(circuitData);
+      loaded = handleLoad(circuitData);
       // The file's canvas is CLEAN: annotations from a previous inference
       // run must not survive onto it (the pendant showed the curated
       // build with the inferred bench's '8 of 18 pins' notes still
       // underneath — owner screenshot; they are SVG text, which even the
       // deployed verifier's innerText probe could not see).
-      setAnnotations([]);
+      if (loaded) setAnnotations([]);
     });
-    // A file is now on the canvas: the pin-inference effect must not
-    // rebuild over it when the example's program load ripples new pins
-    // through projectData a tick later (the pendant race).
-    fileLoadedRef.current = true;
-    try { localStorage.setItem('bw-circuit-file-loaded', '1'); } catch { /* full */ }
+    // The shared loader owns both precedence and persistence. Do not re-arm
+    // a stale marker after a rejected file or a failed storage write.
+    if (!loaded) return;
     // Auto-seat: if a breadboard and an unseated MCU-class part both exist,
     // seat the MCU onto the breadboard. Many legacy examples ship the MCU
     // floating off the breadboard; this is the leveraged fix rather than
@@ -1449,6 +1496,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
         {profilePerformanceSubtree(performanceProbe, React, 'BoardCanvas', (<BoardCanvas
           cpxState={cpxState}
           onCpxInput={onCpxInput}
+          esp32S040PartId={esp32S040PartId}
+          onEsp32S040Input={onEsp32S040Input}
           supplyVolts={circuit.vcc}
           performanceProbe={performanceProbe}
           engineBoard={activeBoard}

@@ -20,6 +20,7 @@
 
 import { getEngine } from '../engine.js';
 import { flatWire, wireEndpoint } from './wire-endpoints.js';
+import { ESP32_S040_TERMINALS } from './esp32-s040-face.js';
 
 /**
  * Read current-rating data from the injected engine if available.
@@ -154,6 +155,14 @@ export function runDrc(circuit, board) {
   // from 5 V arriving BACK on an I/O pin, which is what this rule catches.
   const THREE_VOLT_IO_BOARDS = [
     {
+      kind: 'esp32_4848s040',
+      ioPin: /^gpio\d+$/i,
+      rule: 'esp32-s040-voltage',
+      what: 'an ESP32-S3 GPIO at 3.3 V',
+      damage: 'can damage the ESP32-S3',
+      fix: 'Use a 3.3 V signal source or a level shifter. H1 5V powers the board regulator; it is not a GPIO supply or logic reference.',
+    },
+    {
       kind: 'pi_pico',
       ioPin: /^gp\d+$/i,
       rule: 'pico-voltage',
@@ -183,6 +192,11 @@ export function runDrc(circuit, board) {
         const fiveVoltSource = members.some(member => {
           const source = partById(member.part);
           if (!source) return false;
+          if (spec.kind === 'esp32_4848s040') {
+            if (source.kind === 'vcc') return Number(source.params?.volts ?? circuit.vcc ?? 5) > 3.6;
+            if (source.kind === 'vsource') return member.terminal === 'pos' && Number(source.params?.volts) > 3.6;
+            return /^(5v|vin|vbus)$/i.test(member.terminal);
+          }
           if (source.kind === 'vcc' || /^(5v|vin)$/i.test(member.terminal)) return true;
           return source.kind === 'vsource' && Number(source.params?.volts) > 3.6;
         });
@@ -193,13 +207,25 @@ export function runDrc(circuit, board) {
             partId: board3v3.id,
             pinId: pin,
             explanation: `${pin.toUpperCase()} is ${spec.what}. `
-              + `This connection reaches a 5 V-or-higher source and ${spec.damage}.`,
+              + `This connection reaches ${spec.kind === 'esp32_4848s040' ? 'a source above 3.6 V' : 'a 5 V-or-higher source'} and ${spec.damage}.`,
             fix: spec.fix,
             msg: spec.rule, args: { pin: pin.toUpperCase() },
           });
         }
       }
     }
+  }
+
+  // Imported/stale circuits may name a pin absent from the current sidecar.
+  // Internal LCD/touch/memory and nonexistent S3 pins are never H1 terminals.
+  const s040Boards = new Set(parts.filter(p => p.kind === 'esp32_4848s040').map(p => p.id));
+  for (const [key] of terminalToNet) {
+    const [partId, pinId] = key.split(':');
+    if (!s040Boards.has(partId) || ESP32_S040_TERMINALS.includes(pinId)) continue;
+    warnings.push({ severity: 'danger', rule: 'esp32-s040-reserved-pin', partId, pinId,
+      explanation: `${pinId} is not an accessible H1 terminal of ESP32-4848S040. Internal LCD/touch/memory pins and GPIO22–25 cannot be expansion connections.`,
+      fix: 'Use H1 GPIO1, GPIO2, GPIO40, GPIO43 or GPIO44, and check any optional relay/audio assembly.',
+      msg: 'esp32-s040-reserved-pin', args: { pin: pinId } });
   }
 
   // ── Rule 0b: a board's power pins are not a simulated rail ────────

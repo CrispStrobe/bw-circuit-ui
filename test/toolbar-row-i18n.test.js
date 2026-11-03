@@ -38,7 +38,8 @@ test('the warnings popover is portalled and fixed, so the scroller cannot clip i
 test('every palette string has German', () => {
   const src = read('src/components/PartPalette.jsx');
   const block = src.slice(src.indexOf('const CATEGORIES = ['), src.indexOf('const ALL_PARTS'));
-  const strings = [...block.matchAll(/(?:name|label|tooltip|capability):\s*'((?:[^'\\]|\\.)*)'/g)].map(m => m[1]);
+  // \x27 is the quote: a bare ' in this regex unbalances the vacuity scanner's quote tracking.
+  const strings = [...block.matchAll(/(?:name|label|tooltip|capability):\s*\x27((?:[^\x27\\]|\\.)*)\x27/g)].map(m => m[1]);
   assert.ok(strings.length > 200, `found ${strings.length}`);
   // Proper names and part numbers stay as they are; they need no entry.
   const sameEverywhere = /^(?:[A-Z0-9][A-Z0-9-]*(?: [A-Z0-9][A-Za-z0-9-]*)?|Arduino \w+|Raspberry Pi Pico|Sipeed Tang Nano 20K|Adafruit PyBadge|Calliope mini|Circuit Playground Express|Intel 8086|ATtiny\w+(?: QFN-32)?|74HC\d+ [A-Z]+|CD4093 NAND|LED|NPN|PNP|N-MOSFET|P-MOSFET|MCU \(STC12\)|LDR|NeoPixel|LCD 16×2|LCD I²C|OLED 128×64|24C64 EEPROM|MCP4725 DAC|8255 PPI|1N\d+A?|2N\d+|TIP120|L293D|USB-A|TMP36|DHT22)$/;

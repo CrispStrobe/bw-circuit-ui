@@ -14,7 +14,7 @@ const paletteSource = readFileSync(new URL('../src/components/PartPalette.jsx', 
 const seatGeneratorSource = readFileSync(new URL('../scripts/seat-examples.mjs', import.meta.url), 'utf8');
 
 test('successful file loads clear starter annotations on both netlist paths', () => {
-  const handler = /const handleLoad = useCallback\(\(data\) => \{([\s\S]*?)\}, \[circuit\]\);/.exec(designerSource);
+  const handler = /const handleLoad = useCallback\(\(data, \{ fileAuthority = true \} = \{\}\) => \{([\s\S]*?)\}, \[circuit\]\);/.exec(designerSource);
   assert.ok(handler, 'execute the actual file-load command');
   for (const nets of [undefined, [{ id: 'signal', terminals: [] }]]) {
     let notes = ['old MCU instruction'];
@@ -25,28 +25,28 @@ test('successful file loads clear starter annotations on both netlist paths', ()
       syncWithExternalNets() { commands.push('nets'); },
     };
     const load = new Function('Circuit', 'circuit', 'setAnnotations',
-      'setSelectedParts', 'setSelectedWire', 'setMode', 'setFitToken', 'data', handler[1]);
+      'setSelectedParts', 'setSelectedWire', 'setMode', 'setFitToken', 'fileLoadedRef', 'localStorage', 'data', 'fileAuthority = true', handler[1]);
     const parsed = { parts: [{ id: 'analog-r' }], wires: [], breadboards: [] };
     load({ fromJSON: () => parsed }, circuit, value => {
       assert.equal(circuit.parts, parsed.parts, 'install replacement before clearing notes');
       assert.equal(commands.at(-1), 'history', 'finish netlist/history first');
       notes = value;
-    }, () => {}, () => {}, () => {}, () => {}, { parts: [], nets });
+    }, () => {}, () => {}, () => {}, () => {}, {current:false}, {setItem(){}}, { parts: [], nets });
     assert.deepEqual(notes, []);
     assert.deepEqual(commands, ['history', nets ? 'nets' : 'wires', 'history']);
   }
 });
 
 test('invalid file loads retain starter context and circuit state', () => {
-  const handler = /const handleLoad = useCallback\(\(data\) => \{([\s\S]*?)\}, \[circuit\]\);/.exec(designerSource);
+  const handler = /const handleLoad = useCallback\(\(data, \{ fileAuthority = true \} = \{\}\) => \{([\s\S]*?)\}, \[circuit\]\);/.exec(designerSource);
   assert.ok(handler);
   const load = new Function('Circuit', 'circuit', 'setAnnotations',
-    'setSelectedParts', 'setSelectedWire', 'setMode', 'setFitToken', 'console', 'data', handler[1]);
+    'setSelectedParts', 'setSelectedWire', 'setMode', 'setFitToken', 'fileLoadedRef', 'localStorage', 'console', 'data', 'fileAuthority = true', handler[1]);
   const unexpected = () => assert.fail('invalid load must not mutate context');
   for (const data of [null, {}, { parts: [] }]) {
     const errors = [];
     load({ fromJSON: () => { throw new Error('invalid fixture'); } }, {},
-      unexpected, unexpected, unexpected, unexpected, unexpected,
+      unexpected, unexpected, unexpected, unexpected, unexpected, {current:false}, {setItem:unexpected},
       { error: (...args) => errors.push(args) }, data);
     assert.equal(errors.length, data?.parts ? 1 : 0);
   }

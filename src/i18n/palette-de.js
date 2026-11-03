@@ -34,6 +34,7 @@ export const PALETTE_DE = {
   'MakeCode pins': 'MakeCode-Pins',
   'wiring only': 'nur Verdrahtung',
   'i8086 simulation': 'i8086-Simulation',
+  'Board wiring; display requires emulator': 'Platinenverdrahtung; Anzeige braucht den Emulator',
 
   // Part names (proper names and part numbers stay as they are)
   'Breadboard': 'Steckbrett',
@@ -118,6 +119,7 @@ export const PALETTE_DE = {
   'DIP-8 MCU — 1 KB flash, 4-ch ADC, Timer0': 'DIP-8-Mikrocontroller — 1 KB Flash, 4-Kanal-ADC, Timer0',
   'DIP-20 8051-core — 2 KB flash, UART, 15 I/O (emu config pending)': 'DIP-20 mit 8051-Kern — 2 KB Flash, UART, 15 E/A (Emulator-Konfiguration ausstehend)',
   'DIP-40 16-bit CPU — no GPIO of its own; I/O goes through an 8255 on the bus': 'DIP-40-16-Bit-CPU — ohne eigene GPIOs; Ein-/Ausgabe läuft über einen 8255 am Bus',
+  'GUITION C_I panel — rear H1 only, 3.3 V GPIO and 5 V board power; 480×480 display/touch uses an explicitly bound emulator': 'GUITION-C_I-Panel — nur rückseitiger H1, 3,3-V-GPIO und 5-V-Platinenversorgung; 480×480-Anzeige/Touch nutzt einen ausdrücklich gebundenen Emulator',
   'Programmable Peripheral Interface — 24 I/O pins in three ports (A/B/C)': 'Programmierbarer Peripheriebaustein — 24 E/A-Pins in drei Ports (A/B/C)',
   'Real battery - click to adjust voltage': 'Echte Batterie – klicken, um die Spannung einzustellen',
   '1.5 V cell': '1,5-V-Zelle',

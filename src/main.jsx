@@ -99,12 +99,11 @@ function App() {
       minHeight: '100vh',
     }}>
       <CircuitDesigner
-        {...(new URLSearchParams(location.search).has('nopins') ? { project: { pins: [] } } : {})}
         // ?lang=de shows the German designer (the host passes its locale the same way).
         lang={new URLSearchParams(location.search).get('lang') === 'de' ? 'de' : 'en'}
         onBoardReady={(b) => { window.__board = b; }}
         onCircuitReady={(c) => { window.__circuit = c; }}
-        project={{
+        project={new URLSearchParams(location.search).has('nopins') ? { pins: [] } : {
           device: new URLSearchParams(location.search).get('device') || 'STC12C5A60S2',
           clock: 11059200,
           pins: [

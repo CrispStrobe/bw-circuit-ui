@@ -10,6 +10,7 @@ import { getSidecar, resolveArtSlug } from '../model/parts-registry.js';
 import { boardVisualGeometry } from '../model/board-geometry.js';
 import { WokwiArduinoUno, WokwiArduinoNano, WokwiArduinoMega } from '../wokwi-wrappers/index.js';
 import pybadgeArt from '../parts-data/pybadge.svg';
+import esp32S040Art from '../parts-data/esp32_4848s040.svg';
 // MakeCode simulator board art (MIT) — the same files BoardCanvas draws.
 import calliopeMiniArt from '../parts-data/calliopemini.svg';
 import circuitPlaygroundArt from '../parts-data/circuit_playground_express.svg';
@@ -38,6 +39,9 @@ export function PartThumbnail({ kind, color, params, displaySize }) {
 
   if (kind === 'pybadge') {
     return <img src={pybadgeArt} width={w} height={h} alt="Adafruit PyBadge" style={{objectFit: 'contain'}} />;
+  }
+  if (kind === 'esp32_4848s040') {
+    return <img src={esp32S040Art} width={w} height={h} alt="ESP32-4848S040 front and rear H1 inset" style={{ objectFit: 'contain' }} />;
   }
   if (kind === 'calliopemini') {
     return <img src={calliopeMiniArt} width={w} height={h} alt="Calliope mini" style={{objectFit: 'contain'}} />;

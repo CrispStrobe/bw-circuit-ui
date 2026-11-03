@@ -164,6 +164,7 @@ export const KIND_LABELS = {
   arduino_nano: 'Arduino Nano',
   pi_pico: 'Raspberry Pi Pico',
   pybadge: 'Adafruit PyBadge',
+  esp32_4848s040: 'GUITION ESP32-4848S040',
   calliopemini: 'Calliope mini',
   circuit_playground_express: 'Adafruit Circuit Playground Express',
 };
