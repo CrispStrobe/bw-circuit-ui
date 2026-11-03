@@ -1,3 +1,9 @@
+## German for design-rule findings, canvas notes and the remaining designer chrome — CLAIMED 2026-11-03
+
+Owner: Claude (Brickwright Circuit-tab German, follow-up to #134), approved by CrispStrobe. Base: the Lite pin `64351efcf2e1b0c93a9778814646bd55fe6b628a` (#134's lane head), so the Lite pin move carries only this change and not the S040 work, which keeps its own qualification.
+
+Own: `msg`/`args` on every `runDrc` warning in `src/model/drc.js` (English `explanation`/`fix` unchanged); new `src/i18n/drc-de.js` (German per DRC message id, engine-warning German by English shape, canvas badge and panel words), `src/i18n/canvas-notes-de.js` (declared-bench notes), `src/i18n/bom-de.js` (parts list); `lang` threaded into `DrcPanel`, `DrcOverlay`, the warnings popover, `BomPanel`, `ContextMenu`, `PartTooltip`, `InlineEditor`; German for the starter and blocked-move notes, the debugger dock tooltips, the selected-part actions, the simulation status lines, the machine loader and the board view's chrome (`strings.js`, `BoardPanel.jsx`); `?lang=de` in the dev harness; `test/drc-i18n.test.js` (fails when a DRC rule or message id has no German) and its registration. English text, test ids and data attributes are unchanged. Left English: a bus extractor's own reasons and notes, an engine refusal's reason, PCB (board view) DRC findings and fabrication check labels, part-number descriptions in the parts list, and the CSV export.
+
 ## Circuit toolbar as one scrolling row + German for palette/examples/rails — CLAIMED 2026-11-02
 
 Owner: Claude (Brickwright Circuit-tab unification, Lite PR #1633), approved by CrispStrobe. Base: the Lite pin `4b65f15485abbc039958d8e1a8a29ac3459b75f9`, so the Lite pin move carries only this change (not the S040 work above, which keeps its own qualification).

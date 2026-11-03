@@ -34,7 +34,7 @@ const PARAM_LABELS = {
   color: { unit: '', format: v => v },
 };
 
-const KIND_LABELS = {
+export const KIND_LABELS = {
   // Logic and computer ladder parts. Without these a shopping list reads
   // "74hc283" — the slug, not the thing you buy — so a learner cannot
   // order the board they just simulated.

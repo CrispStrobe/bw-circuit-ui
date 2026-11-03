@@ -484,7 +484,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
         circuit.seatPart(led.id, bb.id, computeLeadMap(BB_FOOTPRINTS.led, 'c9'));
         addTapWire(bat.id, 'pos', bb.id, 'a5', '#e74c3c');
         addTapWire(bat.id, 'neg', bb.id, 'a10', '#2c3e50');
-        setAnnotations([{ x: 470, y: 130, text: 'a complete circuit — battery + → resistor → LED → battery −', color: '#7f8c8d' }]);
+        setAnnotations([{ x: 470, y: 130, key: 'starterCircuitNote', text: t('starterCircuitNote', 'en'), color: '#7f8c8d' }]);
         return;
       } catch { /* fall through to the inferred demo */ }
     }
@@ -1509,7 +1509,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
               const part = circuit.parts.find(q => q.id === id);
               setAnnotations(a => [...a.filter(n => !n.transient), {
                 x: (part?.x ?? 400), y: (part?.y ?? 300) - 46,
-                text: 'move blocked — target holes occupied, gutter, or board edge',
+                key: 'moveBlockedNote', text: t('moveBlockedNote', 'en'),
                 color: '#e67e22', transient: true,
               }]);
               setTimeout(() => setAnnotations(a => a.filter(n => !n.transient)), 1600);
@@ -1663,7 +1663,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
           BoardCanvas is absent in Schematic and Board view, so keeping this
           picker inside it made an export event a silent, deferred no-op. */}
       {fileAction && (
-        <div data-host-file-command role="dialog" aria-label="Circuit file formats"
+        <div data-host-file-command role="dialog" aria-label={t('fileFormatsDialog', lang)}
           onPointerDown={e => { if (e.target === e.currentTarget) setFileAction(null); }}
           style={{position: 'fixed', inset: 0, zIndex: 1000, display: 'grid', placeItems: 'center',
             background: 'rgba(2,6,23,.62)'}}>
@@ -1750,7 +1750,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
               <span style={{fontSize: 12, fontWeight: 700, color: '#e2e8f0'}}>Debugger</span>
               {onDebugDockChange && (
                 <button type="button" onClick={() => onDebugDockChange('right')}
-                  title="Move debugger to full-size right pane"
+                  title={t('debuggerToRightTitle', lang)}
                   style={{padding: '1px 6px', fontSize: 10, background: '#1e293b', color: '#94a3b8',
                     border: '1px solid #475569', borderRadius: 3, cursor: 'pointer'}}>&gt;&gt;</button>
               )}
@@ -1766,7 +1766,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
               <span style={{fontSize: 11, color: '#94a3b8'}}>{/^de/i.test(lang) ? 'Debugger im rechten Bereich' : 'Debugger in right pane'}</span>
               <button type="button" onClick={() => onDebugDockChange('top')}
-                title="Move debugger back to instruments"
+                title={t('debuggerToInstrumentsTitle', lang)}
                 style={{padding: '1px 6px', fontSize: 10, background: '#1e293b', color: '#94a3b8',
                   border: '1px solid #475569', borderRadius: 3, cursor: 'pointer'}}>&lt;&lt;</button>
             </div>
@@ -1938,11 +1938,11 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
               return (
                 <div style={{marginTop: 8, padding: 6, borderRadius: 4, background: '#1e293b', border: '1px solid #334155'}}>
                   <div style={{fontSize: 10, color: '#94a3b8', fontWeight: 600, marginBottom: 4}}>
-                    Load onto machine
+                    {t('machineLoadHeading', lang)}
                   </div>
                   <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
                     {presets.map(p => (
-                      <button key={p.id} onClick={() => loadPreset(p)} title={p.hint}
+                      <button key={p.id} onClick={() => loadPreset(p)} title={/^de/i.test(lang) ? t(`machinePresetHint_${p.id}`, 'de') : p.hint}
                         data-testid={`bw-machine-preset-${p.id}`}
                         style={{padding: '4px 8px', cursor: 'pointer', fontSize: 10,
                           background: '#0f172a', border: '1px solid #475569', borderRadius: 3,
@@ -1953,7 +1953,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
                     <label style={{padding: '4px 8px', cursor: 'pointer', fontSize: 10,
                       background: '#0f172a', border: '1px solid #475569', borderRadius: 3,
                       color: '#a5b4fc', fontFamily: 'monospace'}}>
-                      📁 Load .hex / .bin file…
+                      📁 {t('machineLoadFile', lang)}
                       {/* The only named way to put an arbitrary ROM image on the
                           bench, and until now it had no handle a gate could take.
                           For kind 'i8086' loadFile dispatches slot 'rom' with a null
@@ -1969,7 +1969,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
                         onChange={e => { if (e.target.files[0]) loadFile(e.target.files[0]); }} />
                     </label>
                     <div style={{fontSize: 9, color: '#64748b', marginTop: 2}}>
-                      …or write ASM in the Code tab and Assemble &amp; Run
+                      {t('machineLoadAsmHint', lang)}
                     </div>
                     {loaderNote && (
                       <div data-loader-note style={{fontSize: 9, marginTop: 2,
@@ -1992,8 +1992,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, project, stc, board: ext
               <button onClick={handleSimStep} disabled={!simPaused || simStepping || !!externalBoard || !!simClockError} title={/^de/i.test(lang) ? 'Einen 50-ms-Takt vorspulen' : 'Advance one 50 ms tick'}
                 style={{minHeight: 32, padding: '5px 8px', cursor: simPaused ? 'pointer' : 'default'}}>{/^de/i.test(lang) ? '⏭ Ein Takt' : '⏭ Step one tick'}</button>
             </div>
-            {simStepping && <div role="status">Advancing one simulation tick…</div>}
-            {simClockError && <div role="alert">Simulation stopped: {simClockError}</div>}
+            {simStepping && <div role="status">{t('simAdvancingTick', lang)}</div>}
+            {simClockError && <div role="alert">{t('simStopped', lang)} {simClockError}</div>}
             <OperatingPointPanel board={activeBoard} blockers={circuit.analysisBlockers} lang={lang} />
             <SourceAnalysisPanel circuit={circuit} liveBoard={activeBoard} lang={lang} />
             <label style={{display: 'grid', gridTemplateColumns: '1fr', gap: 3, marginTop: 7, fontSize: 11, color: '#475569'}}>

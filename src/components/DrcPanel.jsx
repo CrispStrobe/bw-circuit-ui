@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import { PartThumbnail } from './PartThumbnail.jsx';
 import { summariseSeverities } from './drc-severity.js';
+import { localizeDrcWarning, drcUi } from '../i18n/drc-de.js';
 
 const SEVERITY_COLORS = {
   danger: '#e74c3c',
@@ -16,9 +17,9 @@ const SEVERITY_COLORS = {
 };
 
 const SEVERITY_LABELS = {
-  danger: 'Problem',
-  warning: 'Check',
-  info: 'Note',
+  danger: 'problem',
+  warning: 'check',
+  info: 'note',
 };
 
 const RULE_ICONS = {
@@ -34,8 +35,10 @@ const RULE_ICONS = {
   'engine': '⚠',
 };
 
-export function DrcPanel({ warnings, onSelectPart, onAddFixPart }) {
+export function DrcPanel({ warnings: found, onSelectPart, onAddFixPart, lang = 'en' }) {
   const [expanded, setExpanded] = useState(null);
+  // Worded for the language; English returns each warning unchanged.
+  const warnings = found && found.map(w => localizeDrcWarning(w, lang));
 
   if (!warnings || warnings.length === 0) {
     return (
@@ -43,7 +46,7 @@ export function DrcPanel({ warnings, onSelectPart, onAddFixPart }) {
         background: '#1a2e1a', border: '1px solid #2ecc71', borderRadius: '8px',
         padding: '8px 12px', fontFamily: 'monospace', fontSize: '10px', color: '#2ecc71',
       }}>
-        No issues found
+        {drcUi('clean', lang)}
       </div>
     );
   }
@@ -63,9 +66,9 @@ export function DrcPanel({ warnings, onSelectPart, onAddFixPart }) {
         color: '#ecf0f1', fontSize: '11px', fontWeight: 'bold', marginBottom: '6px',
         display: 'flex', justifyContent: 'space-between',
       }}>
-        <span>Circuit Check ({warnings.length})</span>
+        <span>{drcUi('title', lang)} ({warnings.length})</span>
         <span style={{ color: warnings.some(w => w.severity === 'danger') ? '#e74c3c' : '#f39c12' }}>
-          {summariseSeverities(warnings)}
+          {summariseSeverities(warnings, lang)}
         </span>
       </div>
 
@@ -103,7 +106,7 @@ export function DrcPanel({ warnings, onSelectPart, onAddFixPart }) {
                 {RULE_ICONS[w.rule] || (w.severity === 'info' ? 'i' : '!')}
               </span>
               <span style={{ color, fontSize: '9px', flexShrink: 0 }}>
-                {SEVERITY_LABELS[w.severity]}
+                {SEVERITY_LABELS[w.severity] && drcUi(SEVERITY_LABELS[w.severity], lang)}
               </span>
               <span style={{ color: '#bdc3c7', fontSize: '9px', flex: 1 }}>
                 {/* The MESSAGE is the row: three collapsed rows all reading
@@ -128,7 +131,7 @@ export function DrcPanel({ warnings, onSelectPart, onAddFixPart }) {
                     padding: '4px 8px', background: '#0a1a0a', borderRadius: '4px',
                     display: 'flex', alignItems: 'center', gap: '6px',
                   }}>
-                    <span style={{ flexShrink: 0 }}>Fix:</span>
+                    <span style={{ flexShrink: 0 }}>{drcUi('fix', lang)}:</span>
                     <span style={{ flex: 1 }}>{w.fix}</span>
                     {w.fixPart && onAddFixPart && (
                       <button
@@ -142,7 +145,7 @@ export function DrcPanel({ warnings, onSelectPart, onAddFixPart }) {
                         }}
                       >
                         <PartThumbnail kind={w.fixPart} displaySize={14} />
-                        Add {w.fixPart}
+                        {drcUi('add', lang, { part: w.fixPart })}
                       </button>
                     )}
                   </div>

@@ -16,6 +16,8 @@ import {circuitEditorActions} from './circuit-menu-actions.js';
 import { servoHasSignal } from '../model/servo-signal.js';
 import ReactDOM from 'react-dom';
 import { t } from '../i18n/strings.js';
+import { localizeDrcWarning, engineMessageDe } from '../i18n/drc-de.js';
+import { canvasNote } from '../i18n/canvas-notes-de.js';
 import { InteractionMachine } from '../interaction/machine.js';
 import { createHitTest } from '../interaction/hittest.js';
 import { classifyWheel, computeFitView, retainEqualPan } from '../interaction/transform.js';
@@ -4897,10 +4899,11 @@ export function BoardCanvas({
                 }}>
                   <div style={{color: '#ecf0f1', fontSize: '11px', fontWeight: 'bold', marginBottom: '6px', display: 'flex', justifyContent: 'space-between'}}>
                     <span>{lang === 'de' ? 'Schaltungsprüfung' : 'Circuit Check'} ({drcWarnings.length})</span>
-                    <button onClick={() => setWarningsOpen(false)} aria-label="Close"
+                    <button onClick={() => setWarningsOpen(false)} aria-label={lang === 'de' ? 'Schließen' : 'Close'}
                       style={{background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, padding: '0 2px'}}>{'\u00D7'}</button>
                   </div>
-                  {drcWarnings.map((w, i) => {
+                  {drcWarnings.map((found, i) => {
+                    const w = localizeDrcWarning(found, lang);
                     const c = w.severity === 'danger' || w.severity === 'error' ? '#e74c3c' : w.severity === 'warning' ? '#f39c12' : '#3498db';
                     return (
                       <div key={i} style={{
@@ -5101,35 +5104,35 @@ export function BoardCanvas({
           <div data-selection-actions style={{position: 'absolute', left: `${((selectedPartModel.x - pan.x) / (containerSize.w / zoom)) * 100}%`, top: `${((selectedPartModel.y - pan.y) / (containerSize.h / zoom)) * 100}%`, transform: 'translate(18px, -50%)', zIndex: 60, display: 'flex', gap: 4,
             padding: 4, borderRadius: 6, background: 'rgba(22,33,62,.92)', boxShadow: '0 2px 8px rgba(0,0,0,.35)'}}
             onPointerDown={e => e.stopPropagation()}>
-            {onRotatePart && <button onClick={() => onRotatePart(selectedPartId)} title="Rotate (R)" aria-label="Rotate selected part"
+            {onRotatePart && <button onClick={() => onRotatePart(selectedPartId)} title={t('rotatePartTitle', lang)} aria-label={t('rotatePart', lang)}
               style={{width: 30, height: 30, cursor: 'pointer'}}>↻</button>}
-            {onDuplicatePart && <button onClick={() => onDuplicatePart(selectedPartId)} title="Duplicate (Ctrl+D)" aria-label="Duplicate selected part"
+            {onDuplicatePart && <button onClick={() => onDuplicatePart(selectedPartId)} title={t('duplicatePartTitle', lang)} aria-label={t('duplicatePart', lang)}
               style={{width: 30, height: 30, cursor: 'pointer'}}>⧉</button>}
             {onBindPhysicalPackage && physicalPackageBindingsForPart(selectedPartModel).length > 0 && (
-              <select data-physical-package-binding aria-label="Exact physical part"
+              <select data-physical-package-binding aria-label={t('physicalPart', lang)}
                 value={selectedPartModel.physicalBinding?.id || ''}
                 onChange={(e) => { if (e.target.value) onBindPhysicalPackage(selectedPartId, e.target.value); }}
-                title="Bind this logical device to a reviewed orderable part"
+                title={t('physicalPartTitle', lang)}
                 style={{height: 30, maxWidth: 205, cursor: 'pointer'}}>
-                <option value="">Choose exact physical part…</option>
+                <option value="">{t('physicalPartChoose', lang)}</option>
                 {physicalPackageBindingsForPart(selectedPartModel).map(option => (
                   <option key={option.id} value={option.id}>{option.orderCode} · {option.package}</option>
                 ))}
               </select>
             )}
             {onSetCarrier && carrierOptionsForPart(selectedPartModel).length > 0 && (
-              <select data-carrier-select aria-label="Breadboard carrier"
+              <select data-carrier-select aria-label={t('carrier', lang)}
                 value={selectedPartModel.carrier || ''}
                 onChange={(e) => onSetCarrier(selectedPartId, e.target.value || null)}
-                title="Mount on breadboard breakout"
+                title={t('carrierTitle', lang)}
                 style={{height: 30, maxWidth: 170, cursor: 'pointer'}}>
-                <option value="">Bare SMD package</option>
+                <option value="">{t('carrierBare', lang)}</option>
                 {carrierOptionsForPart(selectedPartModel).map(option => (
                   <option key={option.id} value={option.id}>{option.label}</option>
                 ))}
               </select>
             )}
-            <button onClick={() => { onRemovePart(selectedPartId); onSelectPart(null); }} title="Remove (Del)" aria-label="Remove selected part"
+            <button onClick={() => { onRemovePart(selectedPartId); onSelectPart(null); }} title={t('removePartTitle', lang)} aria-label={t('removePart', lang)}
               style={{width: 30, height: 30, cursor: 'pointer', color: '#b91c1c'}}>✕</button>
           </div>
         )}
@@ -5201,7 +5204,7 @@ export function BoardCanvas({
               textAnchor="middle" fill={ann.color || '#7f8c8d'}
               fontSize={11} fontFamily="monospace" fontWeight="bold"
               style={{ pointerEvents: 'none' }}>
-              {ann.text}
+              {ann.key ? t(ann.key, lang) : canvasNote(ann.text, lang)}
             </text>
           ))}
           <WiringPreview wiringFrom={wiringFrom} mousePos={mousePos} parts={parts} />
@@ -5609,7 +5612,7 @@ export function BoardCanvas({
                 <text x={part.x + 20} y={part.y - 21} textAnchor="middle"
                   fill="#fff" fontSize={12} fontWeight="bold"
                   fontFamily="monospace" style={{ pointerEvents: 'none' }}>!</text>
-                <title>{w.message}</title>
+                <title>{lang === 'de' ? engineMessageDe(w.message) : w.message}</title>
               </g>
             );
           })}
@@ -5640,7 +5643,7 @@ export function BoardCanvas({
 
           {/* DRC warning badges on parts */}
           {drcWarnings && drcWarnings.length > 0 && (
-            <DrcOverlay warnings={drcWarnings} parts={parts} />
+            <DrcOverlay warnings={drcWarnings} parts={parts} lang={lang} />
           )}
         </svg>
 
@@ -5740,6 +5743,7 @@ export function BoardCanvas({
             y={inlineEdit.y}
             onUpdateParams={onUpdateParams}
             onClose={() => setInlineEdit(null)}
+            lang={lang}
           />
         )}
 
@@ -5796,11 +5800,13 @@ export function BoardCanvas({
             visible={true}
             x={hoverPos.x}
             y={hoverPos.y}
+            lang={lang}
           />
         )}
 
         {/* Context menu (right-click / long-press) */}
         <ContextMenu
+          lang={lang}
           x={contextMenu?.x}
           y={contextMenu?.y}
           type={contextMenu?.type}

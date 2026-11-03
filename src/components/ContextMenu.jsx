@@ -60,15 +60,21 @@ function MenuItem({ label, shortcut, onClick, danger }) {
 }
 
 const WIRE_COLORS = [
-  { label: 'Auto (voltage)', value: null },
-  { label: 'Red (+)', value: '#e74c3c' },
-  { label: 'Black (GND)', value: '#1a1a1a' },
-  { label: 'Green', value: '#2ecc71' },
-  { label: 'Blue', value: '#3498db' },
-  { label: 'Yellow', value: '#f1c40f' },
-  { label: 'White', value: '#ecf0f1' },
-  { label: 'Orange', value: '#e67e22' },
+  { label: 'Auto (voltage)', de: 'Automatisch (Spannung)', value: null },
+  { label: 'Red (+)', de: 'Rot (+)', value: '#e74c3c' },
+  { label: 'Black (GND)', de: 'Schwarz (GND)', value: '#1a1a1a' },
+  { label: 'Green', de: 'Grün', value: '#2ecc71' },
+  { label: 'Blue', de: 'Blau', value: '#3498db' },
+  { label: 'Yellow', de: 'Gelb', value: '#f1c40f' },
+  { label: 'White', de: 'Weiß', value: '#ecf0f1' },
+  { label: 'Orange', de: 'Orange', value: '#e67e22' },
 ];
+
+const MENU_DE = {
+  Duplicate: 'Duplizieren', Rotate: 'Drehen', Flip: 'Spiegeln', Delete: 'Löschen',
+  'Wire color': 'Leitungsfarbe', 'Delete wire': 'Leitung löschen',
+  'Ctrl+D': 'Strg+D', Del: 'Entf',
+};
 
 const swatchStyle = {
   display: 'inline-block',
@@ -80,7 +86,9 @@ const swatchStyle = {
   verticalAlign: 'middle',
 };
 
-export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRotate, onFlip, onSetWireColor }) {
+export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRotate, onFlip, onSetWireColor, lang = 'en' }) {
+  const de = /^de/i.test(String(lang || ''));
+  const w = text => (de && MENU_DE[text]) || text;
   React.useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -101,16 +109,16 @@ export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRota
       <div style={{ ...menuStyle, left: x, top: y }}>
         {type === 'part' && (
           <>
-            <MenuItem label="Duplicate" shortcut="Ctrl+D" onClick={onDuplicate} />
-            <MenuItem label="Rotate" shortcut="R" onClick={onRotate} />
-            <MenuItem label="Flip" shortcut="H" onClick={onFlip} />
+            <MenuItem label={w('Duplicate')} shortcut={w('Ctrl+D')} onClick={onDuplicate} />
+            <MenuItem label={w('Rotate')} shortcut="R" onClick={onRotate} />
+            <MenuItem label={w('Flip')} shortcut="H" onClick={onFlip} />
             <div style={{ height: 1, background: '#2c3e50', margin: '4px 0' }} />
-            <MenuItem label="Delete" shortcut="Del" onClick={onDelete} danger />
+            <MenuItem label={w('Delete')} shortcut={w('Del')} onClick={onDelete} danger />
           </>
         )}
         {type === 'wire' && (
           <>
-            <div style={{ padding: '4px 14px', color: '#7f8c8d', fontSize: '10px' }}>Wire color</div>
+            <div style={{ padding: '4px 14px', color: '#7f8c8d', fontSize: '10px' }}>{w('Wire color')}</div>
             {WIRE_COLORS.map(c => (
               <button
                 key={c.label}
@@ -120,11 +128,11 @@ export function ContextMenu({ x, y, type, onClose, onDelete, onDuplicate, onRota
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
               >
                 <span style={{ ...swatchStyle, background: c.value || 'linear-gradient(135deg, #e74c3c, #3498db)' }} />
-                {c.label}
+                {de ? c.de : c.label}
               </button>
             ))}
             <div style={{ height: 1, background: '#2c3e50', margin: '4px 0' }} />
-            <MenuItem label="Delete wire" shortcut="Del" onClick={onDelete} danger />
+            <MenuItem label={w('Delete wire')} shortcut={w('Del')} onClick={onDelete} danger />
           </>
         )}
       </div>
