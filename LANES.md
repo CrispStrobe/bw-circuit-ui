@@ -1,3 +1,16 @@
+## German for design-rule findings, canvas notes and the remaining designer chrome — CLAIMED 2026-11-03
+
+Owner: Claude (Brickwright Circuit-tab German, follow-up to #134), approved by CrispStrobe. Base: the Lite pin `64351efcf2e1b0c93a9778814646bd55fe6b628a` (#134's lane head), so the Lite pin move carries only this change and not the S040 work, which keeps its own qualification.
+
+Own: `msg`/`args` on every `runDrc` warning in `src/model/drc.js` (English `explanation`/`fix` unchanged); new `src/i18n/drc-de.js` (German per DRC message id, engine-warning German by English shape, canvas badge and panel words), `src/i18n/canvas-notes-de.js` (declared-bench notes), `src/i18n/bom-de.js` (parts list); `lang` threaded into `DrcPanel`, `DrcOverlay`, the warnings popover, `BomPanel`, `ContextMenu`, `PartTooltip`, `InlineEditor`; German for the starter and blocked-move notes, the debugger dock tooltips, the selected-part actions, the simulation status lines, the machine loader and the board view's chrome (`strings.js`, `BoardPanel.jsx`); `?lang=de` in the dev harness; `test/drc-i18n.test.js` (fails when a DRC rule or message id has no German) and its registration. English text, test ids and data attributes are unchanged. Left English: a bus extractor's own reasons and notes, an engine refusal's reason, PCB (board view) DRC findings and fabrication check labels, part-number descriptions in the parts list, and the CSV export.
+
+## Circuit toolbar as one scrolling row + German for palette/examples/rails — CLAIMED 2026-11-02
+
+Owner: Claude (Brickwright Circuit-tab unification, Lite PR #1633), approved by CrispStrobe. Base: the Lite pin `4b65f15485abbc039958d8e1a8a29ac3459b75f9`, so the Lite pin move carries only this change (not the S040 work above, which keeps its own qualification).
+
+Own: the `[data-circuit-toolbar]` row in `src/components/BoardCanvas.jsx` (one non-wrapping row; controls in `[data-circuit-toolbar-scroll]`, the ⋯ menu pinned outside it; the warnings popover portalled and fixed; the cramped-width move of panel/view navigation into ⋯ is kept), German for the toolbar labels, `PartPalette.jsx` (new `src/i18n/palette-de.js`), `ExamplesBrowser.jsx` chrome and the selectors rail / view switcher / captions in `CircuitDesigner.jsx` (lang threaded to the palette and the examples browser), `test/toolbar-row-i18n.test.js` and its registration. English text and every existing test id, aria name (in English) and data attribute are unchanged. DRC finding texts and part-number names are out of scope.
+
+2026-10-28 grouped editor menus — SOURCE CANDIDATE, Codex Circuit menu UI.
 ## ESP32-4848S040 physical board and live display/input consumer — IMPLEMENTED, qualification pending, 2026-11-02
 
 Owner: ChatGPT ESP32 board lane, requested by CrispStrobe. Base: `48f0d3d5ebb7dfdd47bb50e13ee83eac5cfec14f`. Isolated implementation branch. Companion bw-parts claim: `spec-updates/009-esp32-4848s040.md`; engine models have a separate LabWired claim. Existing face/menu work keeps its own hunks.
@@ -30,6 +43,13 @@ locked Playwright 1.61.1 and is provisional; all three ordinary exact-head
 hosted jobs remain required. No dependency, lock, package pin, workflow,
 emulator gate or Lite firmware witness changes. The failed Lite result stays
 a failure until normal supplier adoption and fresh consumer qualification.
+
+
+Continuation 2026-11-05: at the operator’s request the Circuit integration
+maintainer carries the existing PR135 repair forward with current master. Preserve
+the original source and browser fixture, all unrelated lanes and the failed Lite
+result. Fresh current-head hosted qualification and the later consumer firmware
+journey remain required; the old-head green result is not transferred.
 
 The face consumes actual supplied emulator video and sends pointer down/move/up/cancel/unmount through typed input callbacks, with explicit coordinate transform and one owning board. Until engine/supplier support qualifies, distinguish static board placement from running emulation. Preserve existing board/solver behavior and unrelated UI hunks. No synthetic firmware image, radio/SD/audio/relay or cycle-accurate claim.
 

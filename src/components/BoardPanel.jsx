@@ -40,6 +40,7 @@ export default function BoardPanel({
   circuit = null, parts = [], wires = [], board = null,
   overrides = null, onOverridesChange = null, lang = 'en',
 }) {
+  const de = /^de/i.test(String(lang || ''));
   const [hidden, setHidden] = useState(() => new Set());
   const [showFindings, setShowFindings] = useState(false);
   const [showBom, setShowBom] = useState(false);
@@ -222,7 +223,7 @@ export default function BoardPanel({
         {editable && selected && (
           <span data-board-part-tools style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
             <span style={{ color: '#f1c40f', fontFamily: 'monospace', fontSize: 10 }}>{selected}</span>
-            <button onClick={rotateSelected} title="Rotate 90°"
+            <button onClick={rotateSelected} title={de ? 'Um 90° drehen' : 'Rotate 90°'}
               style={{ background: '#1e293b', color: '#9ab0c4', border: '1px solid #475569', borderRadius: 4, fontSize: 11, cursor: 'pointer', padding: '1px 6px' }}>⟳</button>
             {variants.length > 1 && (
               <select value={(effOverrides?.parts || {})[selected]?.package || variants[0]}
@@ -236,12 +237,12 @@ export default function BoardPanel({
         {findings.length > 0 && (
           <button data-board-findings-chip onClick={() => setShowFindings((v) => !v)}
             style={{ background: 'transparent', border: `1px solid ${SEVERITY_COLOR[worst]}`, color: SEVERITY_COLOR[worst], borderRadius: 10, fontFamily: 'monospace', fontSize: 10, padding: '1px 8px', cursor: 'pointer' }}>
-            {findings.length} finding{findings.length === 1 ? '' : 's'}
+            {de ? `${findings.length} Befund${findings.length === 1 ? '' : 'e'}` : `${findings.length} finding${findings.length === 1 ? '' : 's'}`}
           </button>
         )}
         {projected.unrouted.length > 0 && (
           <span style={{ color: '#f39c12', fontFamily: 'monospace', fontSize: 10 }}>
-            {projected.unrouted.length} net(s) unrouted
+            {de ? `${projected.unrouted.length} Netz(e) nicht geroutet` : `${projected.unrouted.length} net(s) unrouted`}
           </span>
         )}
         <span style={{ position: 'relative', display: 'inline-block' }}>
@@ -269,9 +270,9 @@ export default function BoardPanel({
         <TransferReport report={report} lang={lang} onClose={() => setReport(null)} />
       </div>
       {pendingExport && (
-        <div data-fabrication-preflight role="dialog" aria-label="Fabrication preflight"
+        <div data-fabrication-preflight role="dialog" aria-label={de ? 'Fertigungsprüfung' : 'Fabrication preflight'}
           style={{ background: '#0f172a', border: `1px solid ${preflight.ready ? '#2ecc71' : '#e74c3c'}`, borderRadius: 6, padding: 8, color: '#cbd5e1', fontFamily: 'monospace', fontSize: 10 }}>
-          <strong>Fabrication preflight · {pendingExport.label}</strong>
+          <strong>{de ? 'Fertigungsprüfung' : 'Fabrication preflight'} · {de ? pendingExport.labelDe || pendingExport.label : pendingExport.label}</strong>
           <div data-fabrication-checks>
             {preflight.checks.map((check) => (
               <div key={check.id} data-fabrication-check={check.id} data-check-ok={check.ok ? 'true' : 'false'}>
@@ -280,33 +281,37 @@ export default function BoardPanel({
             ))}
           </div>
           <div data-fabrication-drills>
-            Drills: {preflight.drills.roundCount} round, {preflight.drills.slotCount} slot(s), {preflight.drills.platedCount} plated, {preflight.drills.unplatedCount} unplated
+            {de
+              ? `Bohrungen: ${preflight.drills.roundCount} rund, ${preflight.drills.slotCount} Langloch/-löcher, ${preflight.drills.platedCount} durchkontaktiert, ${preflight.drills.unplatedCount} nicht durchkontaktiert`
+              : <>Drills: {preflight.drills.roundCount} round, {preflight.drills.slotCount} slot(s), {preflight.drills.platedCount} plated, {preflight.drills.unplatedCount} unplated</>}
           </div>
           <div data-fabrication-stackup>
-            Stackup: {preflight.stackup.copperLayerCount} copper layer(s) ({preflight.stackup.layerNames.join(', ')})
+            {de
+              ? `Lagenaufbau: ${preflight.stackup.copperLayerCount} Kupferlage(n) (${preflight.stackup.layerNames.join(', ')})`
+              : <>Stackup: {preflight.stackup.copperLayerCount} copper layer(s) ({preflight.stackup.layerNames.join(', ')})</>}
           </div>
           <div data-fabrication-provenance>
-            Provenance: {preflight.provenance.generator}/{preflight.provenance.contract} · source {preflight.provenance.boardFormat} · export {preflight.provenance.exportId}
+            {de ? 'Herkunft' : 'Provenance'}: {preflight.provenance.generator}/{preflight.provenance.contract} · source {preflight.provenance.boardFormat} · export {preflight.provenance.exportId}
           </div>
           <label style={{ display: 'flex', gap: 5, marginTop: 6, alignItems: 'flex-start' }}>
             <input data-fabrication-acknowledge type="checkbox" checked={fabricationAcknowledged}
               onChange={(event) => setFabricationAcknowledgement(event.target.checked
                 ? fabricationReceipt
                 : null)} />
-            I reviewed this exact board's DRC, routing, drill and layer summary.
+            {de ? 'Ich habe DRC, Routing, Bohrungen und Lagen genau dieser Platine geprüft.' : 'I reviewed this exact board\'s DRC, routing, drill and layer summary.'}
           </label>
           <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-            <button data-fabrication-cancel onClick={() => setPendingExport(null)}>Cancel</button>
+            <button data-fabrication-cancel onClick={() => setPendingExport(null)}>{de ? 'Abbrechen' : 'Cancel'}</button>
             <button data-fabrication-download disabled={!preflight.ready || !fabricationAcknowledged}
               onClick={() => { const entry = pendingExport; setPendingExport(null); doExport(entry); }}>
-              Download {pendingExport.label}
+              {de ? `${pendingExport.labelDe || pendingExport.label} herunterladen` : `Download ${pendingExport.label}`}
             </button>
           </div>
         </div>
       )}
       {showBom && (
         <div data-board-bom-panel style={{ maxHeight: 240, overflow: 'auto' }}>
-          <BomPanel parts={circuit ? circuit.parts : parts} />
+          <BomPanel parts={circuit ? circuit.parts : parts} lang={lang} />
         </div>
       )}
       {showFindings && findings.length > 0 && (
@@ -326,7 +331,7 @@ export default function BoardPanel({
         dangerouslySetInnerHTML={{ __html: svg }} />
       {projected.unplaced.length > 0 && (
         <div style={{ color: '#7f8c8d', fontFamily: 'monospace', fontSize: 10 }}>
-          Not placed (no land pattern yet): {projected.unplaced.join(', ')}
+          {de ? 'Nicht platziert (noch kein Footprint)' : 'Not placed (no land pattern yet)'}: {projected.unplaced.join(', ')}
         </div>
       )}
     </div>

@@ -10,8 +10,9 @@ import { partLabel, fmtOhms } from '../model/format.js';
 /**
  * @param {{ part, circuit, visible, x, y }} props
  */
-export function PartTooltip({ part, circuit, visible, x, y }) {
+export function PartTooltip({ part, circuit, visible, x, y, lang = 'en' }) {
   if (!visible || !part) return null;
+  const de = /^de/i.test(String(lang || ''));
 
   const lines = [];
   lines.push(partLabel(part));
@@ -21,22 +22,22 @@ export function PartTooltip({ part, circuit, visible, x, y }) {
     switch (part.kind) {
       case 'led': {
         const b = circuit.ledBrightness(part.id);
-        lines.push(`Brightness: ${(b * 100).toFixed(1)}%`);
+        lines.push(de ? `Helligkeit: ${(b * 100).toFixed(1).replace('.', ',')} %` : `Brightness: ${(b * 100).toFixed(1)}%`);
         if (b > 0.001) {
-          lines.push(`Current: ${(b * 20).toFixed(2)} mA`);
+          lines.push(de ? `Strom: ${(b * 20).toFixed(2).replace('.', ',')} mA` : `Current: ${(b * 20).toFixed(2)} mA`);
         }
         break;
       }
       case 'buzzer': {
         const tone = circuit.buzzerTone(part.id);
-        lines.push(tone.on ? `${tone.hz.toFixed(0)} Hz` : 'Off');
+        lines.push(tone.on ? `${tone.hz.toFixed(0)} Hz` : (de ? 'Aus' : 'Off'));
         break;
       }
       case 'resistor':
         lines.push(`${fmtOhms(part.params.ohms)}`);
         break;
       case 'potentiometer':
-        lines.push(`${fmtOhms(part.params.ohms)} pot`);
+        lines.push(`${fmtOhms(part.params.ohms)} ${de ? 'Poti' : 'pot'}`);
         break;
       case 'capacitor':
         lines.push(`${part.params.farads} F`);

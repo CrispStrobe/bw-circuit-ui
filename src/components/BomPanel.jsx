@@ -6,12 +6,13 @@
  */
 
 import React, { useMemo, useCallback } from 'react';
-import { generateBom, bomToCsv } from '../model/bom.js';
+import { generateBom, bomToCsv, KIND_LABELS } from '../model/bom.js';
+import { bomLabel, bomUi } from '../i18n/bom-de.js';
 import { carrierAssemblySvg } from '../model/carrier-assembly-svg.js';
 import { downloadText } from '../model/exporters/download.js';
 import { PartThumbnail } from './PartThumbnail.jsx';
 
-export function BomPanel({ parts }) {
+export function BomPanel({ parts, lang = 'en' }) {
   const bom = useMemo(() => generateBom(parts || []), [parts]);
 
   const handleExport = useCallback(() => {
@@ -36,7 +37,7 @@ export function BomPanel({ parts }) {
         background: '#1a1a2e', border: '1px solid #2c3e50', borderRadius: '8px',
         padding: '12px', fontFamily: 'monospace', fontSize: '11px', color: '#556',
       }}>
-        No parts to list
+        {bomUi('empty', lang)}
       </div>
     );
   }
@@ -57,7 +58,7 @@ export function BomPanel({ parts }) {
         marginBottom: '6px',
       }}>
         <span style={{ color: '#ecf0f1', fontSize: '11px', fontWeight: 'bold' }}>
-          Bill of Materials ({totalParts} parts)
+          {bomUi('title', lang, { n: totalParts })}
         </span>
         <button onClick={handleExport} style={{
           background: '#16213e', border: '1px solid #2c3e50', borderRadius: '4px',
@@ -69,9 +70,9 @@ export function BomPanel({ parts }) {
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #2c3e50' }}>
-            <th style={{ textAlign: 'right', padding: '3px 6px', color: '#7f8c8d' }}>Qty</th>
+            <th style={{ textAlign: 'right', padding: '3px 6px', color: '#7f8c8d' }}>{bomUi('qty', lang)}</th>
             <th style={{ textAlign: 'left', padding: '3px 6px', color: '#7f8c8d' }}></th>
-            <th style={{ textAlign: 'left', padding: '3px 6px', color: '#7f8c8d' }}>Part</th>
+            <th style={{ textAlign: 'left', padding: '3px 6px', color: '#7f8c8d' }}>{bomUi('part', lang)}</th>
           </tr>
         </thead>
         <tbody>
@@ -84,19 +85,19 @@ export function BomPanel({ parts }) {
                 <PartThumbnail kind={line.kind} displaySize={20} />
               </td>
               <td style={{ padding: '4px 6px', color: '#bdc3c7' }}>
-                {line.label}
+                {bomLabel(line, KIND_LABELS[line.kind], lang)}
                 {line.carrier && (
                   <div style={{ marginTop: 3, color: '#7f8c8d', fontSize: 9 }}>
                     {line.carrier.inputPackage} {line.carrier.inputPitchMm} mm →{' '}
-                    {line.carrier.headerPitchMm} mm header · {line.carrier.sourcing}
+                    {line.carrier.headerPitchMm} mm {bomUi('header', lang)} · {line.carrier.sourcing}
                     {line.assemblyKinds.map(kind => (
                       <button key={kind} data-carrier-assembly={kind}
                         onClick={() => handleAssemblyExport(line, kind)}
-                        title={`Download printable ${kind} pin legend`}
+                        title={bomUi('legendTitle', lang, { kind })}
                         style={{ marginLeft: 6, border: '1px solid #2c3e50', borderRadius: 3,
                           background: '#16213e', color: '#9fb3c8', cursor: 'pointer',
                           fontFamily: 'monospace', fontSize: 8 }}>
-                        {kind} legend SVG
+                        {bomUi('legend', lang, { kind })}
                       </button>
                     ))}
                   </div>

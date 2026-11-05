@@ -9,7 +9,7 @@
 import React, { useEffect, useRef } from 'react';
 import { partLabel } from '../model/format.js';
 
-export function InlineEditor({ part, x, y, onUpdateParams, onClose, supplyVolts = 5 }) {
+export function InlineEditor({ part, x, y, onUpdateParams, onClose, supplyVolts = 5, lang = 'en' }) {
   const ref = useRef(null);
   const firstInput = useRef(null);
 
@@ -67,7 +67,7 @@ export function InlineEditor({ part, x, y, onUpdateParams, onClose, supplyVolts 
       {/* Declaration name */}
       {part.declName != null && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-          <span style={{ color: '#7f8c8d', fontSize: '10px' }}>name:</span>
+          <span style={{ color: '#7f8c8d', fontSize: '10px' }}>{/^de/i.test(String(lang || '')) ? 'Name:' : 'name:'}</span>
           <input
             type="text"
             value={part.declName}

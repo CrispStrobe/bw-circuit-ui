@@ -15,6 +15,7 @@
  *                      the simulator exists to make. Adding three curriculum
  *                      examples to this harness displaced that panel, and the
  *                      tests had no way back to it.
+ *   ?lang=de         — the German designer
  *   (default)        — standalone demo mode
  */
 
@@ -98,6 +99,8 @@ function App() {
       minHeight: '100vh',
     }}>
       <CircuitDesigner
+        // ?lang=de shows the German designer (the host passes its locale the same way).
+        lang={new URLSearchParams(location.search).get('lang') === 'de' ? 'de' : 'en'}
         onBoardReady={(b) => { window.__board = b; }}
         onCircuitReady={(c) => { window.__circuit = c; }}
         project={new URLSearchParams(location.search).has('nopins') ? { pins: [] } : {

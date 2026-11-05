@@ -37,14 +37,23 @@ const PLURAL = {
   info: ['note', 'notes'],
 };
 
-export function summariseSeverities (warnings) {
+// German uses the row labels' words too (Problem / Prüfen / Hinweis).
+const PLURAL_DE = {
+  danger: ['Problem', 'Probleme'],
+  warning: ['zu prüfen', 'zu prüfen'],
+  info: ['Hinweis', 'Hinweise'],
+};
+
+export function summariseSeverities (warnings, lang = 'en') {
+  const de = /^de/i.test(String(lang || ''));
+  const words = de ? PLURAL_DE : PLURAL;
   const counts = severityCounts(warnings);
   const parts = [];
   for (const key of ['danger', 'warning', 'info']) {
     const n = counts[key];
-    if (n > 0) parts.push(`${n} ${PLURAL[key][n === 1 ? 0 : 1]}`);
+    if (n > 0) parts.push(`${n} ${words[key][n === 1 ? 0 : 1]}`);
   }
   // Unreachable from the panel, which returns early when there are none, but
   // a helper that lies when handed an empty array is a trap for its next caller.
-  return parts.length ? parts.join(', ') : 'nothing to report';
+  return parts.length ? parts.join(', ') : (de ? 'nichts zu melden' : 'nothing to report');
 }
