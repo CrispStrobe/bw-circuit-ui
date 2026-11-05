@@ -48,8 +48,10 @@ a failure until normal supplier adoption and fresh consumer qualification.
 Continuation 2026-11-05: at the operator’s request the Circuit integration
 maintainer carries the existing PR135 repair forward with current master. Preserve
 the original source and browser fixture, all unrelated lanes and the failed Lite
-result. Fresh current-head hosted qualification and the later consumer firmware
-journey remain required; the old-head green result is not transferred.
+result. Supplier PR135 merged as `9d7a9a260d00d3c26a77e749aec55ceddbe29a52`:
+all three hosted checks passed on continuation `3f154d684506ec53d0d4e7afc5d661638576dee3`,
+and post-merge CI passed. The separate Lite package adoption and actual consumer
+firmware journey remain required; the original failed Lite result is unchanged.
 
 The face consumes actual supplied emulator video and sends pointer down/move/up/cancel/unmount through typed input callbacks, with explicit coordinate transform and one owning board. Until engine/supplier support qualifies, distinguish static board placement from running emulation. Preserve existing board/solver behavior and unrelated UI hunks. No synthetic firmware image, radio/SD/audio/relay or cycle-accurate claim.
 
