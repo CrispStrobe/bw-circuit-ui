@@ -1,3 +1,8 @@
+## One autosave record per circuit (Lite I5) — CLAIMED 2026-11-11
+Owner: Lite browser-shard I-task lane (I5). Base: `9724589`. Claim and change in one PR.
+Scope: new `src/model/autosave-record.js`; the two `bw-circuit-autosave` writes in `CircuitDesigner.jsx` (handleLoad and the debounced autosave); new `test/one-autosave-record.test.js` and its `package.json` test listing. No other Designer behavior.
+Defect: handleLoad wrote a wire-based file without nets, the debounced autosave added `resolvedNets` to every file-owned circuit, so a remount after a load rewrote the same circuit into a second, larger record. Fix: one record builder; nets only for files that carried their own nets.
+
 ## German for design-rule findings, canvas notes and the remaining designer chrome — CLAIMED 2026-11-03
 
 Owner: Claude (Brickwright Circuit-tab German, follow-up to #134), approved by CrispStrobe. Base: the Lite pin `64351efcf2e1b0c93a9778814646bd55fe6b628a` (#134's lane head), so the Lite pin move carries only this change and not the S040 work, which keeps its own qualification.

@@ -83,6 +83,7 @@ import { buildSeatedFromDeclarations, makeCodeBoardFor } from '../model/infer-se
 import { isEsp32S040Device } from '../model/esp32-s040-face.js';
 import { runDrc } from '../model/drc.js';
 import { migrateStarterAutosave } from '../model/starter-migration.js';
+import { autosaveRecord, carriesFileNets } from '../model/autosave-record.js';
 import './circuit-theme.css';
 import { narrowScreenNow } from '../hooks/narrow-screen.js';
 import useNarrowScreen from '../hooks/useNarrowScreen.js';
@@ -440,6 +441,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   // window where the inference effect could rebuild an "mcu1" bench
   // between mount and the circuitData load. Seeding it from a
   // localStorage flag (written beside the autosave) closes that window.
+  // Whether the file that owns the canvas brought its own engine nets.
+  const fileNetsRef = useRef(false);
   const fileLoadedRef = useRef(
     // Seed from localStorage so the flag survives remounts.
     (() => { try { return localStorage.getItem('bw-circuit-file-loaded') === '1'; } catch { return false; } })()
@@ -549,11 +552,11 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     autosaveTimer.current = setTimeout(() => {
       try {
         if (parts.length > 0 || fileLoadedRef.current) {
-          const saved = circuit.toJSON();
           // File imports may describe connectivity with engine-format nets
-          // instead of wires. Keep that connectivity across later autosaves.
-          if (fileLoadedRef.current) saved.nets = circuit.resolvedNets;
-          localStorage.setItem('bw-circuit-autosave', JSON.stringify(saved));
+          // instead of wires. Keep that connectivity across later autosaves,
+          // in the same record shape handleLoad wrote (model/autosave-record.js).
+          localStorage.setItem('bw-circuit-autosave', autosaveRecord(circuit.toJSON(),
+            { fileNets: fileLoadedRef.current && fileNetsRef.current, nets: circuit.resolvedNets }));
         }
       } catch { /* storage full/blocked: the explicit save still works */ }
     }, 800);
@@ -1061,9 +1064,9 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
         // Pair the marker with this successfully parsed file synchronously:
         // an immediate reload, or an intentionally empty file, must not
         // recover the previous circuit while the debounce is still pending.
-        const saved = parsed.toJSON();
-        if (Array.isArray(data.nets) && data.nets.length > 0) saved.nets = data.nets;
-        localStorage.setItem('bw-circuit-autosave', JSON.stringify(saved));
+        fileNetsRef.current = carriesFileNets(data);
+        localStorage.setItem('bw-circuit-autosave', autosaveRecord(parsed.toJSON(),
+          { fileNets: fileNetsRef.current, nets: data.nets }));
         localStorage.setItem('bw-circuit-file-loaded', '1');
       } catch {
         // In-memory ownership still protects this session. A failed write
