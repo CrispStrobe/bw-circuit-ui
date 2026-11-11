@@ -16,6 +16,7 @@ import { Circuit, resetIds } from '../src/model/circuit.js';
 import { buildSeatedFromDeclarations, makeCodeBoardFor } from '../src/model/infer-seated.js';
 import { isEsp32S040Device } from '../src/model/esp32-s040-face.js';
 import { migrateStarterAutosave } from '../src/model/starter-migration.js';
+import { autosaveRecord, carriesFileNets } from '../src/model/autosave-record.js';
 import { isLegacyFlatWire } from '../src/model/wire-endpoints.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../src/model/footprints.js';
 
@@ -136,8 +137,8 @@ describe('actual Designer load preserves supply voltage',()=>{
     const c=new Circuit(5),v=c.addPart('vcc',{},0,0),g=c.addPart('gnd',{},0,100),r=c.addPart('resistor',{ohms:1000},0,50);
     c.addWire(v.id,'vcc',r.id,'a');c.addWire(r.id,'b',g.id,'gnd');return {c,r};
   };
-  const loader=(c,source=body)=>new Function('Circuit','circuit','setAnnotations','setSelectedParts','setSelectedWire','setMode','setFitToken','fileLoadedRef','localStorage',
-    'return (data, { fileAuthority = true } = {}) => {'+source+'};')(Circuit,c,()=>{},()=>{},()=>{},()=>{},()=>{},{current:false},{setItem(){}});
+  const loader=(c,source=body)=>new Function('Circuit','circuit','setAnnotations','setSelectedParts','setSelectedWire','setMode','setFitToken','fileLoadedRef','localStorage','autosaveRecord','carriesFileNets','fileNetsRef',
+    'return (data, { fileAuthority = true } = {}) => {'+source+'};')(Circuit,c,()=>{},()=>{},()=>{},()=>{},()=>{},{current:false},{setItem(){}},autosaveRecord,carriesFileNets,{current:false});
   const check=(c,r,volts)=>{
     assert.equal(c.vcc,volts);assert.equal(c.board.vcc,volts);
     assert.ok(Math.abs(c.board.branchCurrent(r.id,'a')+volts/1000)<1e-9);
@@ -167,11 +168,12 @@ describe('direct file load keeps authority through host declaration feedback', (
   const noop = () => {};
   const fixture = (values = new Map()) => {
     const circuit = new Circuit(3.3), fileLoadedRef = {current:values.get('bw-circuit-file-loaded') === '1'};
+    const fileNetsRef = {current:false};
     const localStorage = {setItem:(key,value)=>values.set(key,value),
       getItem:key=>values.get(key) || null, removeItem:key=>values.delete(key)};
     const load = new Function('Circuit','circuit','setAnnotations','setSelectedParts','setSelectedWire',
-      'setMode','setFitToken','fileLoadedRef','localStorage','console', 'return (data, { fileAuthority = true } = {}) => {' + body + '};')(
-      Circuit,circuit,noop,noop,noop,noop,noop,fileLoadedRef,localStorage,{error:noop});
+      'setMode','setFitToken','fileLoadedRef','localStorage','console','autosaveRecord','carriesFileNets','fileNetsRef', 'return (data, { fileAuthority = true } = {}) => {' + body + '};')(
+      Circuit,circuit,noop,noop,noop,noop,noop,fileLoadedRef,localStorage,{error:noop},autosaveRecord,carriesFileNets,fileNetsRef);
     const data = {vcc:3.3,parts:[{id:'panel-a',kind:'esp32_4848s040',params:{},x:320,y:260}],
       wires:[{id:'h1-ground',from:{part:'panel-a',terminal:'gpio1'},to:{part:'panel-a',terminal:'gnd'}}]};
     const inferState = {projectData:null,makeCodeBoardFor,isEsp32S040Device,
@@ -185,8 +187,8 @@ describe('direct file load keeps authority through host declaration feedback', (
     const autosaveBody = /const autosaveTimer = useRef\(null\);\n  useEffect\(\(\) => \{([\s\S]*?)\n  \}, \[rev\]\);/.exec(designerSource)?.[1];
     const autosave = () => {
       assert.ok(autosaveBody, 'execute the actual debounced autosave callback');
-      new Function('localStorage','autosaveTimer','setTimeout','clearTimeout','parts','circuit','fileLoadedRef',autosaveBody)(
-        localStorage,{current:null},fn=>{fn();return 1;},noop,circuit.parts,circuit,fileLoadedRef);
+      new Function('localStorage','autosaveTimer','setTimeout','clearTimeout','parts','circuit','fileLoadedRef','autosaveRecord','fileNetsRef',autosaveBody)(
+        localStorage,{current:null},fn=>{fn();return 1;},noop,circuit.parts,circuit,fileLoadedRef,autosaveRecord,fileNetsRef);
     };
     const declarativeLoad = circuitData => {
       const args = {circuitData,prevCircuitDataRef:{current:null},projectData:{pins:[]},
