@@ -95,7 +95,16 @@ const CATEGORIES = [
     name: 'Passive',
     parts: [
       { kind: 'resistor', label: 'Resistor 1kΩ', params: { ohms: 1000 }, color: '#e67e22' },
+      // The thermal model is OPT-IN per part (bw-board src/thermal.js): rth
+      // (K/W to the air) and thermalTau (s) make a part warm up from what it
+      // dissipates; a part whose heatedBy names this one feels a share
+      // (thermalCoupling 0..1) of its rise. The params ride here so the
+      // inspector shows them.
+      { kind: 'resistor', label: 'Heater 100Ω', params: { ohms: 100, rth: 100, thermalTau: 10 }, color: '#c0392b',
+        tooltip: 'Resistor that warms up from its own power: rth (K/W) and thermalTau (s). Set heatedBy on a sensor to the id of this part to heat it' },
       { kind: 'capacitor', label: 'Capacitor 100µF', params: { farads: 0.0001 }, color: '#34495e' },
+      { kind: 'polarized_cap', label: 'Electrolytic 100µF', params: { farads: 0.0001 }, color: '#2c3e50',
+        tooltip: 'Polarized capacitor — + lead to the more positive side; reverse bias is flagged' },
       { kind: 'inductor', label: 'Inductor 10mH', params: { henrys: 0.01 }, color: '#9b59b6', tooltip: 'Coil' },
       { kind: 'diode', label: 'Diode', params: { vf: 0.7 }, color: '#95a5a6' },
       // NAMED PARTS: `params.part` names a card in bw-board's parts library, which is
@@ -127,6 +136,8 @@ const CATEGORIES = [
     parts: [
       { kind: 'npn', label: 'NPN', params: { beta: 100, vbe: 0.7 }, color: '#8e44ad', tooltip: '2N2222 type' },
       { kind: 'npn', label: '2N2222', params: { part: '2N2222' }, color: '#8e44ad', tooltip: 'Named NPN — numbers from the parts library' },
+      { kind: 'npn', label: 'NPN thermometer', params: { beta: 100, vbe: 0.7, rth: 200, thermalTau: 10, heatedBy: '', thermalCoupling: 0.5 },
+        color: '#8e44ad', tooltip: 'NPN at its own temperature: VBE falls about 2 mV per kelvin. Set heatedBy to the id of a heater' },
       { kind: 'pnp', label: 'PNP', params: { beta: 100, vbe: 0.7 }, color: '#8e44ad', tooltip: '2N2907 type' },
       { kind: 'pnp', label: '2N2907', params: { part: '2N2907' }, color: '#8e44ad', tooltip: 'Named PNP — numbers from the parts library' },
       { kind: 'nmos', label: 'N-MOSFET', params: { vth: 2.0 }, color: '#27ae60' },
@@ -165,6 +176,8 @@ const CATEGORIES = [
     parts: [
       { kind: 'ldr', label: 'LDR', params: { rDark: 200000, rLight: 500 }, color: '#e67e22', tooltip: 'Light-dependent resistor' },
       { kind: 'ntc', label: 'NTC Thermistor', params: { rCold: 10000, rHot: 1000 }, color: '#16a085', tooltip: 'Temperature sensor' },
+      { kind: 'ntc', label: 'NTC 10k (thermal)', params: { r25: 10000, beta: 3950, rth: 500, thermalTau: 10, heatedBy: '', thermalCoupling: 0.5 },
+        color: '#16a085', tooltip: 'Thermistor at its own temperature (beta equation): follows the bench, its own self-heating, airflow, and the part named in heatedBy' },
       { kind: 'tmp36', label: 'TMP36', params: {}, color: '#16a085', tooltip: 'Analog temp — 10 mV/°C' },
       { kind: 'pir_sensor', label: 'PIR Sensor', params: {}, color: '#27ae60', tooltip: 'Motion detector' },
       { kind: 'ultrasonic', label: 'Ultrasonic', params: {}, color: '#3498db', tooltip: 'HC-SR04 distance sensor' },
@@ -182,7 +195,9 @@ const CATEGORIES = [
     parts: [
       { kind: 'dc_motor', label: 'DC Motor', params: {}, color: '#3498db' },
       { kind: 'gearmotor', label: 'Gearmotor', params: {}, color: '#3498db' },
-      { kind: 'motor_encoder', label: 'Motor + Encoder', params: {}, color: '#3498db', tooltip: 'Quadrature output' },
+      // J (kg·m², rotor inertia), loadTorque (N·m) and friction (N·m·s/rad):
+      // the engine's defaults, here so the inspector can load the shaft.
+      { kind: 'motor_encoder', label: 'Motor + Encoder', params: { J: 5e-7, loadTorque: 0, friction: 0 }, color: '#3498db', tooltip: 'Quadrature output' },
       { kind: 'servo', label: 'Micro Servo', params: {}, color: '#f39c12' },
       { kind: 'vibration_motor', label: 'Vibration Motor', params: {}, color: '#e67e22' },
     ],
@@ -296,6 +311,11 @@ const CATEGORIES = [
       // lesson that wants the error large dials the meter down (D21).
       { kind: 'meter', label: 'Multimeter', params: { mode: 'voltage', inputOhms: 10e6 }, color: '#f1c40f',
         tooltip: 'V / A / Ω probe. In V mode it loads the circuit through inputOhms (10 MΩ default)' },
+      // A moving-coil panel meter: coilOhms and ifs (full-scale coil current)
+      // set how much it loads the circuit -- fullScale / ifs in voltage mode
+      // (5 kΩ for 1 mA on 5 V), a shunt to fullScale amps in current mode.
+      { kind: 'analog_meter', label: 'Analog Meter', params: { mode: 'voltage', fullScale: 5, ifs: 0.001, coilOhms: 100 }, color: '#f1c40f',
+        tooltip: 'Moving-coil meter (1 mA / 100 Ω movement) — loads the circuit like the real one; mode voltage or current' },
       { kind: 'vsource', label: 'Function Gen', color: '#2ecc71',
         params: { wave: 'sine', freq: 1000, amplitude: 2, offset: 2.5 },
         tooltip: 'Waveform source - sine, square, triangle, pulse, dc; edit params after placing' },
