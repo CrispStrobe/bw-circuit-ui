@@ -64,3 +64,14 @@ test('a terminal the per-kind table does not place falls back to the sidecar, no
   const pts = Object.values(moduleTerminalLayout(eeprom).offsets).map(p => `${p.dx},${p.dy}`);
   assert.equal(new Set(pts).size, names(eeprom).length, 'the eeprom sidecar places vcc and gnd apart');
 });
+
+test('a terminal-less breadboard never borrows the breadboard_psu module face', () => {
+  // Every alias "has" an empty terminal list, so the fallback drew each
+  // breadboard a second time as the psu's 5v/3v3/gnd box labelled BREADBOARD.
+  assert.equal(KIND_ALIASES.breadboard_psu, 'breadboard');
+  assert.deepEqual(names(sidecar('breadboard_psu')), ['5v', '3v3', 'gnd']);
+  const canvas = read('src/components/BoardCanvas.jsx');
+  const body = canvas.slice(canvas.indexOf('function layoutSidecar(part)'), canvas.indexOf('function genericModuleLayout'));
+  assert.match(body, /if \(!own \|\| !wanted\.length \|\| has\(own\)\) return own;/,
+    'a part without terminals keeps its own sidecar and borrows nothing');
+});

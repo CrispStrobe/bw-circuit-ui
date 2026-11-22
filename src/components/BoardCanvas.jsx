@@ -386,8 +386,12 @@ function terminalOffsetsForPart(part) {
 function layoutSidecar(part) {
   if (typeof getSidecar !== 'function') return null;
   const own = getSidecar(part.kind);
-  const has = sc => !!sc?.terminals?.length && (part.terminals || []).every(name => sc.terminals.some(t => t.name === name));
-  if (!own || has(own)) return own;
+  const wanted = part.terminals || [];
+  const has = sc => !!sc?.terminals?.length && wanted.every(name => sc.terminals.some(t => t.name === name));
+  // Borrow only for terminals the part has. A terminal-less part (a structural
+  // breadboard) matched any alias vacuously and was drawn as breadboard_psu's
+  // 5v/3v3/gnd module, a black "BREADBOARD" box in the middle of every board.
+  if (!own || !wanted.length || has(own)) return own;
   for (const [alias, target] of Object.entries(KIND_ALIASES)) {
     if (target !== part.kind) continue;
     const sc = getSidecar(alias);
