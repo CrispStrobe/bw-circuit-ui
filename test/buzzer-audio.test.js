@@ -125,6 +125,25 @@ describe('tone level scales the oscillator gain', () => {
     stopAllBuzzers();
   });
 
+  it('a noisy coil current plays white noise at its level, and back to a tone', () => {
+    const sources = [];
+    fakeCtx.sampleRate = 1000;
+    fakeCtx.createBuffer = (ch, len) => { const data = new Float32Array(len); return { getChannelData: () => data, data }; };
+    fakeCtx.createBufferSource = () => { const s = { loop: false, started: 0, stopped: 0, connect() {}, disconnect() {}, start() { s.started++; }, stop() { s.stopped++; } }; sources.push(s); return s; };
+    updateBuzzerAudio('lvl-noise', { hz: 812, on: true, level: 0.5, noise: true });
+    assert.equal(sources.length, 1, 'a buffer source, not an oscillator');
+    assert.equal(sources[0].loop, true);
+    assert.ok(sources[0].buffer.data.some(v => v !== 0), 'the buffer holds noise');
+    assert.equal(gainOf(), 0.025, 'at the coil\'s level');
+    updateBuzzerAudio('lvl-noise', { hz: 1530, on: true, level: 1, noise: true });
+    assert.equal(sources.length, 1, 'still the same noise source');
+    assert.equal(gainOf(), 0.05);
+    updateBuzzerAudio('lvl-noise', { hz: 400, on: true, level: 1, noise: false });
+    assert.equal(sources[0].stopped, 1, 'a regular tone replaces the noise');
+    stopAllBuzzers();
+    delete fakeCtx.createBuffer; delete fakeCtx.createBufferSource;
+  });
+
   it('level is clamped to 0..1: an overdriven coil is not louder than full scale', () => {
     updateBuzzerAudio('lvl-hot', { hz: 500, on: true, level: 3 });
     assert.equal(gainOf(), 0.05);

@@ -166,6 +166,24 @@ const CATEGORIES = [
     ],
   },
   {
+    // The room's electric fields and junction noise (bw-board src/fields.js):
+    // a bare wire whose knob is how close the field source is, and a
+    // transistor whose base-emitter junction is driven into breakdown.
+    name: 'Fields & noise',
+    parts: [
+      { kind: 'field_probe', label: 'Field probe (mains wiring)', params: { source: 'mains', position: 0, maxFarads: 2e-12, mainsVolts: 230, mainsHz: 50 }, color: '#b87333',
+        tooltip: 'Bare wire near a live mains cable: the knob is how close (0 far, 1 on the cable); a few pF of coupling, so only a high-impedance input hums' },
+      { kind: 'field_probe', label: 'Field probe (charged ruler)', params: { source: 'charge', position: 0, maxFarads: 1e-13, rodVolts: 10000 }, color: '#b87333',
+        tooltip: 'Bare wire and a rubbed plastic ruler at rodVolts: the knob moves the ruler closer; a moving ruler drives a current, a still one leaves its charge' },
+      { kind: 'field_probe', label: 'Touch plate (finger)', params: { source: 'body', contact: 'skin', position: 0, skinOhms: 1e6 }, color: '#b87333',
+        tooltip: 'Metal plate your finger touches: the knob is the touch; your body carries a few volts of mains hum through skinOhms' },
+      { kind: 'field_probe', label: 'Touch plate through paper', params: { source: 'body', contact: 'paper', position: 0, paperFarads: 20e-12 }, color: '#b87333',
+        tooltip: 'Plate under a sheet of paper: the finger couples only through paperFarads; works best when the circuit runs from a mains adaptor (adaptorFarads)' },
+      { kind: 'npn', label: 'Noise transistor (B-E breakdown)', params: { beta: 200, bvEbo: 7.5 }, color: '#7f8c8d',
+        tooltip: 'NPN whose base-emitter junction breaks down at bvEbo volts: fed backwards through a resistor it hisses (avalanche noise); noiseFactor, noiseBandwidthHz' },
+    ],
+  },
+  {
     name: 'Transistors',
     parts: [
       { kind: 'npn', label: 'NPN', params: { beta: 100, vbe: 0.7 }, color: '#8e44ad', tooltip: '2N2222 type' },

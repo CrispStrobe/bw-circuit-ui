@@ -362,7 +362,9 @@ function terminalOffsetsForPart(part) {
     case 'antenna':
     case 'earth':
     case 'tuning_cap':
-    case 'ferrite_coil': {
+    case 'ferrite_coil':
+    // The field probe: one lead, from its sidecar like the antenna.
+    case 'field_probe': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
@@ -3020,6 +3022,38 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
             </div>
+          </div>
+        );
+      }
+      // The field probe's knob: how close the field source is (0 far, 1 as
+      // close as it gets). Its art is drawn by SvgParts; the knob sits to
+      // its right, above its lead, at two thirds of the pot's size, and
+      // turns exactly like the potentiometer (onControlChange, read-back).
+      case 'field_probe': {
+        const lead = part.seat && part._seatTerminals?.a ? part._seatTerminals.a : { x, y: y + 35 };
+        const knobScale = 0.66;
+        return (
+          <div key={id}
+            data-pot-control={id}
+            style={{ ...baseStyle, left: lead.x + 10, top: lead.y - 70,
+              transform: `scale(${knobScale})`, transformOrigin: 'top left',
+              cursor: simulate ? 'pointer' : 'move',
+              pointerEvents: simulate ? 'auto' : 'none',
+              width: 60, height: 60 }}
+            onClick={simulate ? (e) => e.stopPropagation() : (e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
+            onPointerDown={simulate ? (e) => e.stopPropagation() : undefined}
+            onPointerMove={simulate ? (e) => e.stopPropagation() : undefined}
+            onPointerUp={simulate ? (e) => e.stopPropagation() : undefined}
+            onPointerCancel={simulate ? (e) => e.stopPropagation() : undefined}
+            onContextMenu={simulate ? (e) => e.preventDefault() : undefined}>
+            <WokwiPotentiometer
+              style={{ display: 'block', transform: 'scale(0.79375)', transformOrigin: 'top left' }}
+              min={0} max={1} step={0.01} value={controlValues?.get(id) ?? part.params?.position ?? 0}
+              onInput={(e) => {
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val)) onControlChange(id, val);
+              }}
+            />
           </div>
         );
       }
@@ -5822,7 +5856,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'potentiometer' || p.kind === 'tuning_cap') {
+                if (p.kind === 'potentiometer' || p.kind === 'tuning_cap' || p.kind === 'field_probe') {
                   const v = eb.getControl(p.id);
                   if (v != null) m.set(p.id, v);
                 }

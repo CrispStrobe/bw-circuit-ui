@@ -27,6 +27,9 @@ export const ART_FACE_KINDS = Object.freeze([
   'oscilloscope',
   'function_gen',
   'polarized_cap',
+  // The field probe's art is its body; its distance knob sits beside it
+  // (BoardCanvas WokwiParts), so the art never has to show a setting.
+  'field_probe',
 ]);
 
 /**

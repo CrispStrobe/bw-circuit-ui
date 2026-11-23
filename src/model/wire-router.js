@@ -86,6 +86,7 @@ export function getPartBBox(p) {
     case 'led': return { x: p.x - 20, y: p.y - 25, w: 40, h: 55 };
     case 'potentiometer':
     case 'tuning_cap': return { x: p.x - 30, y: p.y - 30, w: 60, h: 65 };
+    case 'field_probe': return { x: p.x - 15, y: p.y - 35, w: 30, h: 70 };
     case 'buzzer': return { x: p.x - 20, y: p.y - 20, w: 40, h: 45 };
     case 'button': return { x: p.x - 18, y: p.y - 18, w: 36, h: 40 };
     case 'seven_segment': return { x: p.x - 30, y: p.y - 35, w: 60, h: 75 };
