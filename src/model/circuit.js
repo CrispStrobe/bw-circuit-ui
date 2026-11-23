@@ -1436,10 +1436,18 @@ export class Circuit {
       // engine's word for the physics, not the package — a bench vsource has
       // no breadboard footprint, and asking for one dropped every seated
       // battery's seat on load (47-battery-led, 48-breadboard-basics).
+      //
+      // The part then REMEMBERS that kind as `footprintKind`. Without it the
+      // save writes `vsource`, the reload finds no footprint for it and drops
+      // the seat: load -> save -> load was not a fixed point (2026-11-23,
+      // sb3 examples 47, 48, 52). breadboardFootprintForPart reads the field,
+      // so a reload, a rotation and a drag all find the battery's package.
       const savedKind = savedKinds.get(p.id);
-      const storedFootprint = breadboardFootprintForPart(p, BB_FOOTPRINTS_FOR_ROTATE)
-        ?? (savedKind && savedKind !== p.kind
-          ? breadboardFootprintForPart({ ...p, kind: savedKind }, BB_FOOTPRINTS_FOR_ROTATE) : null);
+      let storedFootprint = breadboardFootprintForPart(p, BB_FOOTPRINTS_FOR_ROTATE);
+      if (!storedFootprint && savedKind && savedKind !== p.kind) {
+        storedFootprint = breadboardFootprintForPart({ ...p, kind: savedKind }, BB_FOOTPRINTS_FOR_ROTATE);
+        if (storedFootprint) p.footprintKind = savedKind;
+      }
       if (!storedFootprint) { delete p.seat; continue; }
       if (p.carrier) {
         const expected = Object.keys(storedFootprint.leads).sort();
