@@ -112,6 +112,7 @@ const CATEGORIES = [
       // card reachable from here and every sidecar free of electrical values).
       { kind: 'diode', label: '1N4148', params: { part: '1N4148' }, color: '#95a5a6', tooltip: 'Small-signal silicon diode — numbers from the parts library' },
       { kind: 'diode', label: '1N4001', params: { part: '1N4001' }, color: '#95a5a6', tooltip: 'Rectifier diode — numbers from the parts library' },
+      { kind: 'diode', label: 'Germanium diode 1N34A', params: { part: '1N34A' }, color: '#95a5a6', tooltip: 'Germanium point-contact diode, the crystal-set detector: about 0.3 V forward — numbers from the parts library' },
       { kind: 'zener', label: 'Zener Diode', params: { vf: 0.7, vz: 5.1 }, color: '#e67e22', tooltip: 'Voltage regulator diode' },
       { kind: 'zener', label: '1N4733A', params: { part: '1N4733A' }, color: '#e67e22', tooltip: '5.1 V zener — numbers from the parts library' },
       // Initial contact state rides in params so the inspector offers it;
@@ -137,6 +138,31 @@ const CATEGORIES = [
       { kind: 'rgb_led', label: 'RGB LED', params: { vf_r: 2.0, vf_g: 2.2, vf_b: 3.0 }, color: '#e74c3c', tooltip: 'Common cathode' },
       { kind: 'neopixel', label: 'NeoPixel', params: {}, color: '#2ecc71', tooltip: 'WS2812B addressable LED' },
       { kind: 'buzzer', label: 'Buzzer', params: {}, color: '#1abc9c' },
+      // Sound from the coil CURRENT (bw-board transducers): pitch and loudness
+      // come from buzzerTone() — {hz, on, level, amps}. ohms + henrys are the
+      // voice coil, ratedWatts sets level 1. The speaker's optional motional
+      // impedance (resonanceHz, motionalOhms, qm) is off until resonanceHz is set.
+      { kind: 'speaker', label: 'Speaker', params: { ohms: 8, henrys: 0.0002, ratedWatts: 0.5 }, color: '#1abc9c',
+        tooltip: 'Dynamic loudspeaker, 8 Ω voice coil: loudness follows the coil current; drive it with AC (an amplifier or a coupling capacitor)' },
+      { kind: 'earphone', label: 'Earphone', params: { type: 'magnetic', ohms: 2000, henrys: 0.1, ratedWatts: 0.001 }, color: '#1abc9c',
+        tooltip: 'High-impedance magnetic earphone (2 kΩ): hears microwatts — the crystal-set earpiece' },
+      { kind: 'earphone', label: 'Crystal earphone', params: { type: 'crystal', capacitance: 10e-9, leakOhms: 10e6, ratedWatts: 0.001 }, color: '#1abc9c',
+        tooltip: 'Crystal (piezo) earphone: a capacitor with no DC path — put a resistor across it in a crystal set' },
+    ],
+  },
+  {
+    // The crystal set: antenna against earth, a tuned circuit from the
+    // ferrite coil and the tuning capacitor, the 1N34A (Passive) as detector.
+    name: 'Radio',
+    parts: [
+      { kind: 'antenna', label: 'Antenna (long wire)', params: { heightM: 5, ohms: 50, farads: 200e-12 }, color: '#b87333',
+        tooltip: 'Long-wire antenna: picks up the bench broadcast stations; heightM is the effective height (m). Wire its earth to the Earth part' },
+      { kind: 'earth', label: 'Earth', params: { ohms: 30 }, color: '#b87333',
+        tooltip: 'Earth stake: the reference the antenna works against, with its own resistance (ohms)' },
+      { kind: 'tuning_cap', label: 'Tuning capacitor', params: { minFarads: 10e-12, maxFarads: 500e-12, position: 0.5 }, color: '#7f8c8d',
+        tooltip: 'Variable capacitor with a knob: turn it like a pot to sweep minFarads..maxFarads and tune the station' },
+      { kind: 'ferrite_coil', label: 'Ferrite-rod coil (MW)', params: { henrys: 250e-6, tap: 0.25, couplingRatio: 0.1, k: 0.98, couplingK: 0.9, q: 120 }, color: '#b87333',
+        tooltip: 'Medium-wave ferrite-rod coil: main winding a–b with a tap, coupling winding c1–c2; with the tuning capacitor across a–b it tunes the MW band' },
     ],
   },
   {

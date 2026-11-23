@@ -23,7 +23,10 @@ const build = pins => {
 test('a declared name asserts a kind only when it really names one', () => {
   assert.equal(declaredPartKind('ldr', kinds), 'ldr');
   assert.equal(declaredPartKind('buzzer', kinds), 'buzzer');
-  assert.equal(declaredPartKind('speaker', kinds), 'buzzer', 'synonym');
+  assert.equal(declaredPartKind('spk', kinds), 'buzzer', 'synonym');
+  // `speaker` is a part of its own since 2026-11-23, so the name asserts it;
+  // agreement with a placed speaker is not a contradiction.
+  assert.equal(declaredPartKind('speaker', kinds), 'speaker');
   assert.equal(declaredPartKind('lightsense', kinds), 'ldr', 'synonym inside a longer name');
   // Asserting NOTHING is the important half: the direction default must stand.
   assert.equal(declaredPartKind('btn', kinds), null);
@@ -36,6 +39,9 @@ test('a declared name asserts a kind only when it really names one', () => {
 test('only kinds this path can honestly wire are wirable', () => {
   assert.equal(wirableKind('ldr', kinds, 'analog'), 'ldr');
   assert.equal(wirableKind('buzzer', kinds, 'output'), 'buzzer');
+  // ...but a bare pin cannot drive an 8 Ω speaker, so a pin declared
+  // `speaker` is still drawn as the buzzer it always was.
+  assert.equal(wirableKind('speaker', kinds, 'output'), 'buzzer');
   // A motor or relay coil needs a transistor and a flyback diode. Synthesising
   // one here would be inventing electrical behaviour from a name, so the
   // default stands — wrongly, but visibly, and by decision.

@@ -253,6 +253,18 @@ const BUILTIN_FOOTPRINTS = {
   // LM386 audio amplifier, PDIP-8, pin 1 bottom-left like the DIPs above:
   // 1 GAIN, 2 −IN, 3 +IN, 4 GND along row f; 8 GAIN, 7 BYPASS, 6 VS, 5 VOUT
   // along row e. Kept here as well as in its sidecar for the same reason.
+  // Speaker, earphone and the crystal-set parts (bw-parts 2026-11-23), kept
+  // here as well as in their sidecars for the same headless-load reason and
+  // held equal to them by test/speaker-radio-parts.test.js. All one row:
+  // antenna and earth are one-lead parts; the tuning capacitor's two leads sit
+  // at the potentiometer's outer columns; the ferrite coil's five leads run
+  // a, tap, b (main winding) then c1, c2 (coupling winding).
+  speaker: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  earphone: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
+  antenna: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 } } },
+  earth: { refTerminal: 'earth', leads: { earth: { dRow: 0, dCol: 0 } } },
+  tuning_cap: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 4 } } },
+  ferrite_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, tap: { dRow: 0, dCol: 1 }, b: { dRow: 0, dCol: 2 }, c1: { dRow: 0, dCol: 3 }, c2: { dRow: 0, dCol: 4 } } },
   lm386: { refTerminal: 'gain8', straddlesGutter: true, leads: { gain1: { dRow: 5, dCol: 0 }, inn: { dRow: 5, dCol: 1 }, inp: { dRow: 5, dCol: 2 }, gnd: { dRow: 5, dCol: 3 }, vout: { dRow: 0, dCol: 3 }, vs: { dRow: 0, dCol: 2 }, bypass: { dRow: 0, dCol: 1 }, gain8: { dRow: 0, dCol: 0 } } },
   // Logic gates: 3-pin inline (2-input gates) or 2-pin inline (NOT)
   gate_and:  { refTerminal: 'in0', leads: { in0: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 3 } } },
