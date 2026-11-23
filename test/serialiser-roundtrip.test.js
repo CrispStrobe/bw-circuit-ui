@@ -226,7 +226,9 @@ describe('serialiser round-trip over gallery corpus', () => {
    * loss — counted separately so the limitation is visible instead of inflating
    * the number above, which is exactly what it used to do.
    */
-  const KNOWN_UNATTACHED = 731;
+  // 731 -> 1375 on 2026-11-23: sb3-creator added 88 breadboard-seated lab-*
+  // examples (PRs #186/#187), every one wired hole-to-hole.
+  const KNOWN_UNATTACHED = 1375;
 
   it('summary: report all losses across corpus', () => {
     console.log(`  Serialiser round-trip: ${filesChecked} files checked`);
