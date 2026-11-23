@@ -362,7 +362,9 @@ function terminalOffsetsForPart(part) {
     case 'antenna':
     case 'earth':
     case 'tuning_cap':
-    case 'ferrite_coil': {
+    case 'ferrite_coil':
+    case 'air_coil':
+    case 'varicap': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
@@ -3019,6 +3021,37 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
+            </div>
+          </div>
+        );
+      }
+      // The ferrite rod turns (direction finding: its pickup goes with the
+      // cosine of the angle to the station). Its art stays the face (SvgParts);
+      // while simulating, a small dial above it turns the rod: the engine lists
+      // it in getControls(), 0..1 = 0..360°.
+      case 'ferrite_coil': {
+        if (!simulate) return null;
+        const seat = part.seat && part._seatTerminals;
+        const ax = seat ? (seat.a?.x ?? x) : x - 28;
+        const ay = seat ? (seat.a?.y ?? y) : y + 22;
+        const val = controlValues?.get(id) ?? ((params?.angleDeg ?? 0) / 360);
+        return (
+          <div key={`${id}-rod`} data-rod-control={id}
+            style={{ position: 'absolute', left: ax + 8, top: ay - 78, width: 40, height: 46, pointerEvents: 'auto', cursor: 'pointer' }}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerMove={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}>
+            <WokwiPotentiometer
+              style={{ display: 'block', transform: 'scale(0.5)', transformOrigin: 'top left' }}
+              min={0} max={1} step={0.005} value={val}
+              onInput={(e) => {
+                const v = parseFloat(e.target.value);
+                if (!isNaN(v)) onControlChange(id, v);
+              }}
+            />
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {`${Math.round(val * 360)}°`}
             </div>
           </div>
         );
@@ -5822,7 +5855,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'potentiometer' || p.kind === 'tuning_cap') {
+                if (p.kind === 'potentiometer' || p.kind === 'tuning_cap' || p.kind === 'ferrite_coil') {
                   const v = eb.getControl(p.id);
                   if (v != null) m.set(p.id, v);
                 }

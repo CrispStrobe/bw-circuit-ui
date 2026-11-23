@@ -163,6 +163,12 @@ const CATEGORIES = [
         tooltip: 'Variable capacitor with a knob: turn it like a pot to sweep minFarads..maxFarads and tune the station' },
       { kind: 'ferrite_coil', label: 'Ferrite-rod coil (MW)', params: { henrys: 250e-6, tap: 0.25, couplingRatio: 0.1, k: 0.98, couplingK: 0.9, q: 120 }, color: '#b87333',
         tooltip: 'Medium-wave ferrite-rod coil: main winding a–b with a tap, coupling winding c1–c2; with the tuning capacitor across a–b it tunes the MW band' },
+      { kind: 'air_coil', label: 'Air-core coil (VHF)', params: { henrys: 0.15e-6, q: 80 }, color: '#c87533',
+        tooltip: 'A few turns of copper wire: with about 18 pF it tunes the FM band near 100 MHz' },
+      { kind: 'varicap', label: 'Varicap diode BB910', params: { part: 'BB910' }, color: '#95a5a6',
+        tooltip: 'Tuning diode: reverse-biased, its capacitance falls as the voltage rises — tune a circuit with a pot instead of a tuning capacitor' },
+      { kind: 'npn', label: 'VHF transistor BF199', params: { part: 'BF199' }, color: '#8e44ad',
+        tooltip: 'NPN transistor fast enough for VHF (about 550 MHz transition frequency) — numbers from the parts library' },
     ],
   },
   {

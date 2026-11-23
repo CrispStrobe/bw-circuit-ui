@@ -44,6 +44,9 @@ const KINDS = {
   earth: ['earth'],
   tuning_cap: ['a', 'b'],
   ferrite_coil: ['a', 'tap', 'b', 'c1', 'c2'],
+  // Round 4: the VHF coil and the varicap.
+  air_coil: ['a', 'b'],
+  varicap: ['anode', 'cathode'],
 };
 
 test('headless: no sidecars are registered in this file', () => {
@@ -161,4 +164,21 @@ test('the tuning capacitor turns like the potentiometer knob', () => {
   assert.ok(wokwiLayer.includes("'tuning_cap'"), 'tuning_cap is drawn by the Wokwi layer');
   assert.match(CANVAS, /case 'tuning_cap':\s*case 'potentiometer':\s*\{/, 'one knob face for both kinds');
   assert.match(CANVAS, /p\.kind === 'potentiometer' \|\| p\.kind === 'tuning_cap'/, 'controlValues reads the tuning cap back');
+});
+
+test('the ferrite rod turns: the engine lists it as a control and the canvas draws its dial', () => {
+  const b = new BoardImpl(5);
+  b.setNetlist([{ id: 'L1', kind: 'ferrite_coil', params: { angleDeg: 90 }, terminals: ['a', 'tap', 'b', 'c1', 'c2'] }], []);
+  const ctl = b.getControls().find(c => c.id === 'L1');
+  assert.ok(ctl, 'ferrite_coil is a control');
+  assert.equal(ctl.value, 0.25, 'its rest value is the authored angle (90° = 0.25)');
+  assert.match(CANVAS, /case 'ferrite_coil': \{\n\s+if \(!simulate\) return null;/, 'a dial while simulating');
+  assert.match(CANVAS, /p\.kind === 'ferrite_coil'\) \{\n\s+const v = eb\.getControl/, 'the dial reads the live angle back');
+});
+
+test('VHF parts in the palette with German labels', () => {
+  for (const label of ['Air-core coil (VHF)', 'Varicap diode BB910', 'VHF transistor BF199']) {
+    assert.ok(PALETTE.includes(`label: '${label}'`), `${label}: palette entry`);
+    assert.ok(PALETTE_DE[label], `${label}: German`);
+  }
 });
