@@ -53,7 +53,7 @@
     }
   ],
   "variants": null,
-  "_note": "LM386 low-voltage audio power amplifier, PDIP-8 (TI SNAS545): 1 GAIN, 2 -IN, 3 +IN, 4 GND, 5 VOUT, 6 VS, 7 BYPASS, 8 GAIN. Gain 20 with pins 1/8 open, 200 with 10 uF across them; output biased at VS/2. Electrical model: bw-board src/lm386.js. Added in bw-circuit-ui 2026-11-23 pending upstream bw-parts.",
+  "_note": "LM386 low-voltage audio power amplifier, PDIP-8 (TI SNAS545): 1 GAIN, 2 -IN, 3 +IN, 4 GND, 5 VOUT, 6 VS, 7 BYPASS, 8 GAIN. Gain 20 with pins 1/8 open, 200 with 10 uF across them; output biased at VS/2. Electrical model: bw-board src/lm386.js.",
   "footprint": {
     "refTerminal": "gain8",
     "straddlesGutter": true,
