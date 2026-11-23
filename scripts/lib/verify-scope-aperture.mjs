@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
+/**
+ * The instruments column's scope show/hide toggle, by its WHOLE accessible
+ * name ("▣ Scope" / "▣ Hide scope", German "▣ Oszilloskop" / "▣ Oszilloskop
+ * verbergen"). A bare /Scope/i also matches the palette's "Oscilloscope" part
+ * card (role=button, added with the bench-instrument devices in #140), which
+ * comes first in the document: the gate then armed a part placement instead of
+ * opening the panel, and every scope scenario timed out waiting for it.
+ */
+export const SCOPE_TOGGLE = /^▣ (?:Scope|Hide scope|Oszilloskop(?: verbergen)?)$/;
+
 /** Real chooser, installed engine, scope controls and native audio nodes. */
 export async function verifyScopeAperture(page, origin) {
   await page.addInitScript(() => {
@@ -42,7 +52,7 @@ export async function verifyScopeAperture(page, origin) {
   await (await choosing).setFiles({name: 'aperture-pulses.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(fixture))});
   await page.waitForFunction(() => window.__circuit.parts.length === 3 && window.__circuit.getPart('pulse'));
   if (!await page.locator('[data-instruments-column]').count()) await page.getByRole('button', {name: /Expand instruments panel/i}).click();
-  if (!await page.locator('[data-scope-panel]').count()) await page.getByRole('button', {name: /Scope/i}).first().click();
+  if (!await page.locator('[data-scope-panel]').count()) await page.getByRole('button', {name: SCOPE_TOGGLE}).first().click();
   const scope = page.locator('[data-scope-panel]');
   const allReleased = () => page.waitForFunction(() => window.__scopeNativeSources.every(s => !s.started || s.disconnected));
   const startLive = async () => {
@@ -112,7 +122,7 @@ export async function verifyScopeAperture(page, origin) {
   await allReleased();
   await page.waitForFunction(() => [...window.__board._scopeChannels.values()].every(c => c.capture !== 'average'));
   await startLive();
-  await page.getByRole('button', {name: /Scope/i}).first().click();
+  await page.getByRole('button', {name: SCOPE_TOGGLE}).first().click();
   await scope.waitFor({state: 'detached'}); await allReleased();
   const closed = await page.evaluate(() => ({time: window.__scopeNativeContext.currentTime,
     count: window.__scopeNativeSources.length}));
