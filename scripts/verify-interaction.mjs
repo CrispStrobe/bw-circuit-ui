@@ -26,7 +26,7 @@
 import { spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import {verifyScopeAperture} from './lib/verify-scope-aperture.mjs';
+import {verifyScopeAperture, SCOPE_TOGGLE} from './lib/verify-scope-aperture.mjs';
 
 // BEGIN scopeReadoutMatchesActualRecord
 function scopeReadoutMatchesActualRecord({handle, channelIndex, count}) {
@@ -1237,7 +1237,7 @@ try {
   const panelSel = '[data-scope-panel], [data-scope-module]';
   const showScope = async () => {
     if (await page.locator(panelSel).count()) return;
-    const btn = page.getByRole('button', { name: /Scope/i }).first();
+    const btn = page.getByRole('button', { name: SCOPE_TOGGLE }).first();
     if (await btn.count() === 0) return;
     try { await btn.click({ timeout: 20000 }); } catch { /* reported below */ }
     // Readiness is a CONDITION, not a sleep.
@@ -1324,7 +1324,7 @@ try {
     await page.waitForTimeout(300);
     // Show scope panel if hidden (the toggle keeps it behind a button)
     if (await page.locator('[data-scope-panel], [data-scope-module]').count() === 0) {
-      const scopeShowBtn = page.getByRole('button', { name: /Scope/i }).first();
+      const scopeShowBtn = page.getByRole('button', { name: SCOPE_TOGGLE }).first();
       if (await scopeShowBtn.count()) {
         try { await scopeShowBtn.click({ timeout: 20000 }); } catch { /* reported below */ }
         await page.locator('[data-scope-panel], [data-scope-module]').first()
@@ -1830,7 +1830,7 @@ try {
 
   // 13. D31 — two channels, two INDEPENDENT vertical scales, both stated.
   if (await page.locator('[data-scope-panel]').count() === 0) {
-    await clickOrFail(page.getByRole('button', { name: /Scope/i }).first(),
+    await clickOrFail(page.getByRole('button', { name: SCOPE_TOGGLE }).first(),
       'scope-vdiv-per-channel', 'scope toggle unclickable', { timeout: 20000 });
     await page.locator('[data-scope-panel]')
       .waitFor({ state: 'attached', timeout: 20000 }).catch(() => { /* reported below */ });
@@ -2283,7 +2283,7 @@ try {
   await contextPage.getByRole('button', {name: /Pause simulation/i}).press('Enter');
   await contextPage.getByText('PAUSED — circuit simulation', {exact: true}).waitFor();
   const scope = contextPage.locator('[data-scope-panel]');
-  if (!await scope.count()) await contextPage.getByRole('button', {name: /Scope/i}).first().click();
+  if (!await scope.count()) await contextPage.getByRole('button', {name: SCOPE_TOGGLE}).first().click();
   await scope.waitFor();
   await scope.getByTestId('bw-scope-record').selectOption('100000');
   const picker = scope.locator('select').last();
@@ -2576,7 +2576,7 @@ async function exerciseADC(adcPage, report = () => {}) {
   await adcPage.getByRole('button',{name:/Pause simulation/i}).press('Enter');
   await adcPage.getByText('PAUSED — circuit simulation',{exact:true}).waitFor();
   const scope=adcPage.locator('[data-scope-panel]');
-  if (!await scope.count()) await adcPage.getByRole('button',{name:/Scope/i}).first().click();
+  if (!await scope.count()) await adcPage.getByRole('button',{name:SCOPE_TOGGLE}).first().click();
   await scope.waitFor();
   // Start this finite imported bench at an actual fresh Board epoch. The
   // designer remains paused; the later reset/advance ABA stays below 5ms.
