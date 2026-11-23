@@ -343,7 +343,9 @@ function terminalOffsetsForPart(part) {
     }
     case 'adp151':
     case 'adp7118':
-    case 'lt1763': {
+    case 'lt1763':
+    // The electrolytic: pos/neg from its sidecar (bw-parts polarized_cap).
+    case 'polarized_cap': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
