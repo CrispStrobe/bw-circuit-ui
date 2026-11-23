@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 48" width="56" height="48">
+  <!-- Hand-wound air coil: enamelled copper wire on a cardboard tube, side view -->
+  <!-- Tube -->
+  <rect x="4" y="8" width="48" height="22" rx="3" fill="#d9c7a3" stroke="#8b7a5a" stroke-width="0.8"/>
+  <!-- Windings -->
+  <g stroke="#b5651d" stroke-width="2.2" stroke-linecap="round">
+    <line x1="9" y1="7" x2="11" y2="31"/>
+    <line x1="13" y1="7" x2="15" y2="31"/>
+    <line x1="17" y1="7" x2="19" y2="31"/>
+    <line x1="21" y1="7" x2="23" y2="31"/>
+    <line x1="25" y1="7" x2="27" y2="31"/>
+    <line x1="29" y1="7" x2="31" y2="31"/>
+    <line x1="33" y1="7" x2="35" y2="31"/>
+    <line x1="37" y1="7" x2="39" y2="31"/>
+    <line x1="41" y1="7" x2="43" y2="31"/>
+    <line x1="45" y1="7" x2="47" y2="31"/>
+  </g>
+  <g stroke="#e8a15a" stroke-width="0.6">
+    <line x1="9.5" y1="9" x2="10.5" y2="29"/>
+    <line x1="25.5" y1="9" x2="26.5" y2="29"/>
+    <line x1="41.5" y1="9" x2="42.5" y2="29"/>
+  </g>
+  <!-- Wire ends to the leads -->
+  <path d="M10 31 C 8 36, 7 38, 7 42" fill="none" stroke="#b5651d" stroke-width="1.4"/>
+  <path d="M46 31 C 48 36, 49 38, 49 42" fill="none" stroke="#b5651d" stroke-width="1.4"/>
+  <line x1="7" y1="42" x2="7" y2="48" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="49" y1="42" x2="49" y2="48" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="7" cy="48" r="2" fill="#c0c0c0"/>
+  <circle cx="49" cy="48" r="2" fill="#c0c0c0"/>
+</svg>

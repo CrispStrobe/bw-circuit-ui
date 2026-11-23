@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 56" width="44" height="56">
+  <!-- Electrolysis cell: a small glass dish of electrolyte with two electrodes -->
+  <!-- Glass -->
+  <path d="M5 14 L 7 42 Q 7 46 11 46 L 33 46 Q 37 46 37 42 L 39 14" fill="#e8f4fb" stroke="#7fa7bf" stroke-width="1"/>
+  <!-- Electrolyte -->
+  <path d="M6.2 24 L 7.4 42 Q 7.4 45 11 45 L 33 45 Q 36.6 45 36.6 42 L 37.8 24 Z" fill="#9ccbe6" opacity="0.85"/>
+  <!-- Electrodes -->
+  <rect x="11" y="6" width="4" height="34" fill="#9a9a9a" stroke="#555" stroke-width="0.6"/>
+  <rect x="29" y="6" width="4" height="34" fill="#9a9a9a" stroke="#555" stroke-width="0.6"/>
+  <!-- Bubbles at the electrodes -->
+  <circle cx="16.5" cy="36" r="0.9" fill="#fff"/>
+  <circle cx="17" cy="31" r="0.7" fill="#fff"/>
+  <circle cx="27.5" cy="34" r="0.9" fill="#fff"/>
+  <circle cx="27" cy="29" r="0.6" fill="#fff"/>
+  <!-- Leads from the electrode tops -->
+  <path d="M13 6 C 13 2, 8 2, 8 8 L 8 56" fill="none" stroke="#aaa" stroke-width="1.5"/>
+  <path d="M31 6 C 31 2, 36 2, 36 8 L 36 56" fill="none" stroke="#aaa" stroke-width="1.5"/>
+  <circle cx="8" cy="56" r="2" fill="#c0c0c0"/>
+  <circle cx="36" cy="56" r="2" fill="#c0c0c0"/>
+</svg>
