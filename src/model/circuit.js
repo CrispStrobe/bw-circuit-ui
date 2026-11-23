@@ -1346,6 +1346,7 @@ export class Circuit {
     // as the wire-format crash). Derive it exactly as addPart does.
     // Legacy kind names the engine never had: 'battery' is a vsource with
     // pos/neg terminals and a volts param — same physics, older word.
+    const savedKinds = new Map(data.parts.map(p => [p.id, p.kind]));
     c.parts = data.parts.map(p => {
       const kind = resolveKind(p.kind, engineHasModel);
       return {
@@ -1430,7 +1431,15 @@ export class Circuit {
       // headers so the pin rects are skipped; seated legs go into holes so
       // the lead stubs are skipped), leaving wire ends floating over the
       // artwork with nothing joining them — the owner's screenshot.
-      const storedFootprint = breadboardFootprintForPart(p, BB_FOOTPRINTS_FOR_ROTATE);
+      // A part whose saved kind is an ALIAS (battery -> vsource) is seated by
+      // the footprint of the kind the file names: the alias target is the
+      // engine's word for the physics, not the package — a bench vsource has
+      // no breadboard footprint, and asking for one dropped every seated
+      // battery's seat on load (47-battery-led, 48-breadboard-basics).
+      const savedKind = savedKinds.get(p.id);
+      const storedFootprint = breadboardFootprintForPart(p, BB_FOOTPRINTS_FOR_ROTATE)
+        ?? (savedKind && savedKind !== p.kind
+          ? breadboardFootprintForPart({ ...p, kind: savedKind }, BB_FOOTPRINTS_FOR_ROTATE) : null);
       if (!storedFootprint) { delete p.seat; continue; }
       if (p.carrier) {
         const expected = Object.keys(storedFootprint.leads).sort();

@@ -228,6 +228,32 @@ const BUILTIN_FOOTPRINTS = {
   // Uno and Mega are NOT breadboard-seatable (female headers, standoff feet);
   // they float beside the board and connect by explicit wires — exactly how
   // the Mega, which never had a builtin entry, has always behaved.
+  // Two-lead parts whose only footprint was their sidecar's (2026-11-23).
+  // The FOOTPRINTS proxy below finds a sidecar footprint only when the
+  // sidecars are REGISTERED, and a headless loader that does not register
+  // them (the gallery gates, any script that injects just the engine) found
+  // none — so Circuit.fromJSON dropped the seat and a seated electrolytic sat
+  // on no net at all (sb3 lab-charge-pump with `cres` as a polarized_cap).
+  // Copied verbatim from the sidecars; the seating contract test holds them
+  // equal (test/two-lead-builtin-footprints.test.js).
+  polarized_cap: { refTerminal: 'pos', leads: { pos: { dRow: 0, dCol: 0 }, neg: { dRow: 0, dCol: 2 } } },
+  battery: { refTerminal: 'pos', leads: { pos: { dRow: 0, dCol: 0 }, neg: { dRow: 0, dCol: 1 } } },
+  piezo: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
+  phototransistor: { refTerminal: 'collector', leads: { collector: { dRow: 0, dCol: 0 }, emitter: { dRow: 0, dCol: 3 } } },
+  ir_transmitter: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 1 } } },
+  led_7color: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, k: { dRow: 0, dCol: 1 } } },
+  flex_sensor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 4 } } },
+  force_sensor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 4 } } },
+  fuse: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 4 } } },
+  reed_switch: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
+  ammeter: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
+  voltmeter: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
+  analog_meter: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
+  spectrum_display: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 } } },
+  // LM386 audio amplifier, PDIP-8, pin 1 bottom-left like the DIPs above:
+  // 1 GAIN, 2 −IN, 3 +IN, 4 GND along row f; 8 GAIN, 7 BYPASS, 6 VS, 5 VOUT
+  // along row e. Kept here as well as in its sidecar for the same reason.
+  lm386: { refTerminal: 'gain8', straddlesGutter: true, leads: { gain1: { dRow: 5, dCol: 0 }, inn: { dRow: 5, dCol: 1 }, inp: { dRow: 5, dCol: 2 }, gnd: { dRow: 5, dCol: 3 }, vout: { dRow: 0, dCol: 3 }, vs: { dRow: 0, dCol: 2 }, bypass: { dRow: 0, dCol: 1 }, gain8: { dRow: 0, dCol: 0 } } },
   // Logic gates: 3-pin inline (2-input gates) or 2-pin inline (NOT)
   gate_and:  { refTerminal: 'in0', leads: { in0: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 3 } } },
   gate_or:   { refTerminal: 'in0', leads: { in0: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 3 } } },
