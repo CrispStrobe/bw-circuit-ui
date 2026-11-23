@@ -253,8 +253,10 @@ describe('serialiser round-trip over gallery corpus', () => {
    * the number above, which is exactly what it used to do.
    */
   // 731 -> 1375 on 2026-11-23: sb3-creator added 88 breadboard-seated lab-*
-  // examples (PRs #186/#187), every one wired hole-to-hole.
-  const KNOWN_UNATTACHED = 1375;
+  // examples (PRs #186/#187), every one wired hole-to-hole. 1375 -> 1310 the
+  // same day: the lab breadboard layout pass rerouted those benches (jumpers
+  // to part legs where a strip already joins them) and added 5 radio benches.
+  const KNOWN_UNATTACHED = 1310;
 
   it('summary: report all losses across corpus', () => {
     console.log(`  Serialiser round-trip: ${filesChecked} files checked`);
