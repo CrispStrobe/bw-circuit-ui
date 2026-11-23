@@ -44,6 +44,19 @@ export const KIND_ALIASES = {
   breadboard_psu: 'breadboard',
 };
 
+/**
+ * Params an alias must carry so the target kind means the same thing. A
+ * potato cell collapsed onto a bare `vsource` had no `volts`, so it solved as
+ * the board's 5 V through zero ohms. Only fills params the part did not set;
+ * the numbers mirror bw-board's potato_battery / lemon_battery devices, which
+ * are used instead whenever the engine has them (ENGINE_MODEL_WINS).
+ * @type {Record<string, Record<string, number>>}
+ */
+export const ALIAS_PARAM_DEFAULTS = {
+  potato_battery: { volts: 0.85, rInternal: 5000 },
+  lemon_battery: { volts: 0.9, rInternal: 2000 },
+};
+
 /** @type {Record<string, Record<string, string>>} */
 export const TERMINAL_ALIASES = {
   // attiny88 pin 22: the PDIP-28 does not bond out port A (PA0-PA3 reach a pad
@@ -116,6 +129,20 @@ export const TERMINAL_ALIASES = {
   '28c256': {
     csb: 'ceb',
   },
+  // function_gen -> vsource (the alias an engine WITHOUT a function_gen model
+  // still applies): the instrument's leads are out/gnd, the source's pos/neg.
+  // Without this the wires to out/gnd were dropped at load and the collapsed
+  // source sat on the bench driving nothing.
+  vsource: {
+    out: 'pos',
+    gnd: 'neg',
+  },
+  // oscilloscope -> meter on the same kind of engine: channel 1 is the
+  // probe, the ground clip the reference lead. (ch2 has no meter terminal.)
+  meter: {
+    ch1: 'probe_a',
+    gnd: 'probe_b',
+  },
   // Future renames go here. Never remove an entry — old files may exist.
 };
 
@@ -143,7 +170,11 @@ export const TERMINAL_ALIASES = {
  *
  * @type {Set<string>}
  */
-export const ENGINE_MODEL_WINS = new Set(['74hc595']);
+// function_gen, oscilloscope, potato_battery and lemon_battery are bw-board
+// devices since fix/engine-gaps-4 (2026-11-23): out/gnd, ch1/ch2/gnd leads,
+// and the cells' own EMF and internal resistance instead of a 5 V vsource.
+export const ENGINE_MODEL_WINS = new Set(['74hc595', 'function_gen', 'oscilloscope',
+  'potato_battery', 'lemon_battery']);
 
 /**
  * Resolve a kind name, applying aliases.
