@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { toSpice, junctionModel } from '../src/model/exporters/spice.js';
 import { spiceModelFor, cardFor, resolveParams, allCards, cardAliases, classDefaults } from 'bw-board/parts-library.js';
+import { ledVf } from 'bw-board/led-color.js';
 
 const netlistWith = (parts) => ({
   parts,
@@ -109,6 +110,26 @@ test('a named diode takes its junction numbers from the card; a bare one takes t
   assert.notEqual(classDefaults('led').rs, classDefaults('diode').rs, 'the two classes differ, so this is not vacuous');
   // An explicit number still wins over the card: a user who typed it meant it.
   assert.equal(junctionModel({ kind: 'diode', params: { part: '1N4148', rs: 3 } }).rs, 3);
+});
+
+test('an LED without vf exports the forward voltage the engine solves it at: its colour\'s', () => {
+  // bw-board ed9bd4d (2026-11-23): an LED with no `vf` takes its colour's
+  // typical drop (led-color.js, red 1.9 V), which is what mna.js calibrates
+  // the junction at. The exporter kept classDefaults('led').vf = 2.0, so the
+  // canonical red-LED bench solved 1.650 V in the engine and 1.748 V in
+  // ngspice, and the SPICE oracle went red.
+  for (const [color, vf] of Object.entries({ red: 1.9, blue: 3.1, ir: 1.3 })) {
+    assert.equal(junctionModel({ kind: 'led', params: { color } }).vf, ledVf({ params: { color } }), color);
+    assert.equal(ledVf({ params: { color } }), vf, `${color}: the engine's table`);
+  }
+  assert.notEqual(ledVf({ params: { color: 'red' } }), classDefaults('led').vf,
+    'red differs from the class default, so this is not vacuous');
+  // No colour, an unknown colour, and an explicit vf behave as in the engine.
+  assert.equal(junctionModel({ kind: 'led', params: {} }).vf, ledVf({ params: {} }));
+  assert.equal(junctionModel({ kind: 'led', params: { color: 'chartreuse' } }).vf, ledVf({ params: { color: 'chartreuse' } }));
+  assert.equal(junctionModel({ kind: 'led', params: { color: 'red', vf: 2.4 } }).vf, 2.4);
+  // A plain diode is not an LED: its default is untouched.
+  assert.equal(junctionModel({ kind: 'diode', params: { color: 'red' } }).vf, classDefaults('diode').vf ?? 0.7);
 });
 
 test('a bare transistor exports the GENERIC card, with the beta the solver uses', () => {
