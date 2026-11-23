@@ -70,5 +70,11 @@ export function wirableKind(declName, kinds, dir) {
   const asserted = declaredPartKind(declName, kinds);
   if (!asserted) return null;
   const group = dir === 'analog' ? WIRABLE.analog : WIRABLE.output;
-  return group.has(asserted) ? asserted : null;
+  if (group.has(asserted)) return asserted;
+  // A real kind this path cannot wire honestly, whose word is also a synonym
+  // for one it can: `speaker` became a part of its own (an 8 Ω coil needs an
+  // amplifier, not a bare pin) on 2026-11-23, and a pin declared `speaker`
+  // keeps the buzzer it was always drawn as rather than losing to the default.
+  const standIn = NAME_SYNONYMS[asserted];
+  return standIn && group.has(standIn) ? standIn : null;
 }

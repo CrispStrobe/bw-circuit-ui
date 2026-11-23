@@ -10,6 +10,7 @@ import './_setup.js';
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Circuit, resetIds } from '../src/model/circuit.js';
+import { setSharedAudioContext, updateBuzzerAudio, stopAllBuzzers } from '../src/audio/buzzer-audio.js';
 
 const MS = 1_000_000n;
 
@@ -78,5 +79,57 @@ describe('buzzer tone from engine', () => {
     assert.ok(tone.on, 'buzzer should be on');
     assert.ok(tone.hz > 200 && tone.hz < 300,
       `freq ${tone.hz} should be ~250 Hz`);
+  });
+});
+
+// The speaker and earphone report `level` (0..1, amplitude proportional to
+// coil current, 1 at rated power) alongside {hz, on}; the buzzer and piezo do
+// not. The oscillator's gain follows `level` when it is present and stays at
+// the fixed teaching-tool volume when it is absent. Driven through a fake
+// AudioContext that records every gain the module sets.
+describe('tone level scales the oscillator gain', () => {
+  const made = [];
+  const param = (value) => ({ value, targets: [], setTargetAtTime(v) { this.targets.push(v); this.value = v; } });
+  const fakeCtx = {
+    state: 'running',
+    currentTime: 0,
+    destination: {},
+    resume() {},
+    createOscillator() {
+      return { type: 'sine', frequency: param(0), connect() {}, start() {}, stop() {}, disconnect() {} };
+    },
+    createGain() {
+      const g = { gain: param(1), connect() {}, disconnect() {} };
+      made.push(g);
+      return g;
+    },
+  };
+  setSharedAudioContext(fakeCtx);
+  const gainOf = () => made[made.length - 1].gain.value;
+
+  it('no level (buzzer/piezo): today\'s fixed gain', () => {
+    updateBuzzerAudio('lvl-bz', { hz: 440, on: true });
+    assert.equal(gainOf(), 0.05);
+    updateBuzzerAudio('lvl-bz', { hz: 880, on: true });
+    assert.equal(gainOf(), 0.05, 'an update without level leaves the gain alone');
+    stopAllBuzzers();
+  });
+
+  it('level scales the gain, and follows it on update', () => {
+    updateBuzzerAudio('lvl-spk', { hz: 1000, on: true, level: 0.5, amps: 0.1 });
+    assert.equal(gainOf(), 0.025, 'half level, half the full gain');
+    updateBuzzerAudio('lvl-spk', { hz: 1000, on: true, level: 1, amps: 0.25 });
+    assert.equal(gainOf(), 0.05, 'level 1 is the full gain');
+    updateBuzzerAudio('lvl-spk', { hz: 1000, on: true, level: 0.1, amps: 0.025 });
+    assert.ok(Math.abs(gainOf() - 0.005) < 1e-12, 'a quieter coil current is quieter');
+    stopAllBuzzers();
+  });
+
+  it('level is clamped to 0..1: an overdriven coil is not louder than full scale', () => {
+    updateBuzzerAudio('lvl-hot', { hz: 500, on: true, level: 3 });
+    assert.equal(gainOf(), 0.05);
+    updateBuzzerAudio('lvl-hot', { hz: 500, on: true, level: -1 });
+    assert.equal(gainOf(), 0);
+    stopAllBuzzers();
   });
 });

@@ -8,6 +8,12 @@
  * The frequency comes from the engine (toggle period measurement).
  * Nothing is fabricated.
  *
+ * The coil transducers (speaker, earphone) also report `level`, 0..1 with
+ * the amplitude proportional to the coil current (1 at rated power). When it
+ * is present the gain is FULL_GAIN × level, clamped to 0..1, and follows it
+ * on every update; when it is absent (buzzer, piezo) the gain stays at
+ * FULL_GAIN exactly as before.
+ *
  * The AudioContext is SHARED: if the host (Scratch) already owns one,
  * call setSharedAudioContext() and every oscillator will use it instead
  * of creating a second context that fights for the browser's audio
@@ -15,6 +21,8 @@
  */
 
 let audioCtx = null;
+/** The gain of a tone at full level — quiet: a teaching tool, not an alarm. */
+const FULL_GAIN = 0.05;
 const oscillators = new Map(); // partId → { osc, gain }
 
 /**
@@ -53,7 +61,7 @@ export function getAudioCtx() {
  * Update the buzzer audio for a given part.
  *
  * @param {string} partId
- * @param {{ hz: number, on: boolean }} tone — from board.buzzerTone()
+ * @param {{ hz: number, on: boolean, level?: number }} tone — from board.buzzerTone()
  */
 export function updateBuzzerAudio(partId, tone) {
   if (!tone || !tone.on) {
@@ -69,13 +77,15 @@ export function updateBuzzerAudio(partId, tone) {
   if (ctx.state === 'suspended') ctx.resume();
 
   let entry = oscillators.get(partId);
+  const hasLevel = typeof tone.level === 'number' && Number.isFinite(tone.level);
+  const gainValue = hasLevel ? FULL_GAIN * Math.min(1, Math.max(0, tone.level)) : FULL_GAIN;
 
   if (!entry) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'square';
     osc.frequency.value = tone.hz;
-    gain.gain.value = 0.05; // quiet — this is a teaching tool, not an alarm
+    gain.gain.value = gainValue;
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start();
@@ -85,6 +95,8 @@ export function updateBuzzerAudio(partId, tone) {
 
   // Update frequency smoothly
   entry.osc.frequency.setTargetAtTime(tone.hz, ctx.currentTime, 0.01);
+  // Loudness follows the coil current; a tone without a level keeps its gain.
+  if (hasLevel) entry.gain.gain.setTargetAtTime(gainValue, ctx.currentTime, 0.01);
 }
 
 /**

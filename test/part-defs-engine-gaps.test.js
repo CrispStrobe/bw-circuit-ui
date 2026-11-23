@@ -83,7 +83,13 @@ test('the palette offers initial contact state and the two bench instruments', (
 
 test('the designer plays a piezo through the same tone surface as a buzzer', () => {
   const src = readFileSync(new URL('../src/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
-  assert.match(src, /p\.kind === 'buzzer' \|\| p\.kind === 'piezo'/);
+  // One set names every kind the tone effect plays (speaker and earphone
+  // joined it 2026-11-23); piezo is in it beside the buzzer.
+  const set = src.match(/const TONE_KINDS = new Set\(\[([^\]]*)\]\)/);
+  assert.ok(set, 'TONE_KINDS declared');
+  assert.match(set[1], /'buzzer'/);
+  assert.match(set[1], /'piezo'/);
+  assert.match(src, /parts\.filter\(p => TONE_KINDS\.has\(p\.kind\)\)/);
 });
 
 test('against an engine WITHOUT the models, collapsed instruments keep their wires and cells their EMF', () => {

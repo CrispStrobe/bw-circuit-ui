@@ -1,0 +1,24 @@
+{
+  "kind": "antenna",
+  "w": 30,
+  "h": 70,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 15,
+      "y": 70,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Long-wire receiving antenna. 1-terminal: a (the lead-in). Engine (bw-board antenna): picks up the board's broadcast stations; heightM (effective height in m), ohms and farads describe the wire. Its reference is the earth part; wire a to the tuned circuit. Drawn as the lead-in wire rising to the aerial with insulators.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      }
+    }
+  }
+}

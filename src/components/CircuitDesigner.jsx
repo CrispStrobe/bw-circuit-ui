@@ -98,6 +98,13 @@ function snapToGrid(v) {
   return Math.round(v / GRID) * GRID;
 }
 
+/**
+ * Parts whose board.buzzerTone(id) is played through buzzer-audio: piezo,
+ * speaker and earphone share the buzzer's tone surface, and the two coil
+ * transducers also report `level` (0..1), which scales the gain.
+ */
+const TONE_KINDS = new Set(['buzzer', 'piezo', 'speaker', 'earphone']);
+
 export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
@@ -631,7 +638,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
 
   useEffect(() => {
     if (mode !== 'simulate') return; // only produce audio while simulating
-    const buzzers = parts.filter(p => p.kind === 'buzzer' || p.kind === 'piezo'); // piezo: same tone surface
+    const buzzers = parts.filter(p => TONE_KINDS.has(p.kind));
     for (const bz of buzzers) {
       try {
         const tone = readBuzzerTone(bz.id);

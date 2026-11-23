@@ -1,0 +1,64 @@
+{
+  "kind": "ferrite_coil",
+  "w": 84,
+  "h": 44,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 14,
+      "y": 44,
+      "functions": []
+    },
+    {
+      "name": "tap",
+      "x": 28,
+      "y": 44,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 42,
+      "y": 44,
+      "functions": []
+    },
+    {
+      "name": "c1",
+      "x": 56,
+      "y": 44,
+      "functions": []
+    },
+    {
+      "name": "c2",
+      "x": 70,
+      "y": 44,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Ferrite-rod medium-wave coil with a tap and a coupling winding. 5-terminal, one row: a, tap, b (main winding, tap at a fraction of its turns from a) and c1, c2 (the coupling winding). Engine (bw-board ferrite_coil): henrys (a-b), tap fraction, couplingRatio (coupling turns / main), k (tap coupling), couplingK, q (unloaded Q). Tunes the medium-wave band with the tuning_cap across a-b.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "tap": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "c1": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "c2": {
+        "dRow": 0,
+        "dCol": 4
+      }
+    }
+  }
+}

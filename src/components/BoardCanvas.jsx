@@ -351,7 +351,16 @@ function terminalOffsetsForPart(part) {
     case 'function_gen':
     case 'oscilloscope':
     // LM386 audio amp: its eight DIP pins from its sidecar.
-    case 'lm386': {
+    case 'lm386':
+    // Speaker, earphone and the crystal-set parts: leads from their sidecars
+    // (bw-parts), on the breadboard pitch of their footprints. The tuning
+    // capacitor's a/b land where the potentiometer's outer legs do.
+    case 'speaker':
+    case 'earphone':
+    case 'antenna':
+    case 'earth':
+    case 'tuning_cap':
+    case 'ferrite_coil': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
@@ -431,7 +440,9 @@ const CHIP_FACES = {
 // Kinds the Wokwi element layer draws; SvgParts must not add a second body.
 const WOKWI_LAYER_KINDS = new Set(['button', 'buzzer', 'capacitor', 'char_lcd', 'char_lcd_i2c', 'diode',
   'eeprom', 'hd44780', 'ir_receiver', 'keypad_4x4', 'led', 'led_cube', 'led_matrix', 'meter',
-  'potentiometer', 'resistor', 'seven_seg_3', 'seven_seg_4', 'seven_segment', 'temp_sensor', 'vsource', 'zener']);
+  'potentiometer', 'resistor', 'seven_seg_3', 'seven_seg_4', 'seven_segment', 'temp_sensor', 'vsource', 'zener',
+  // The tuning capacitor turns the potentiometer's knob face (WokwiParts).
+  'tuning_cap']);
 
 function terminalPos(part, terminal) {
   // A seated part's terminals ARE its holes: wires, dots, stubs and hit
@@ -2904,6 +2915,10 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
           </div>
         );
       }
+      // The tuning capacitor is a knob control exactly like the pot: the
+      // engine lists it in getControls() and reads its position 0..1. Same
+      // face, same onControlChange, same read-back (controlValues below).
+      case 'tuning_cap':
       case 'potentiometer': {
         // When seated, size and position the knob above its occupied row.
         // The separate seated-leg layer connects its three electrical holes,
@@ -5297,7 +5312,7 @@ export function BoardCanvas({
               selectedPartId={selectedParts?.size === 1 ? [...selectedParts][0] : null} />
           ))}
 
-          {parts.filter(q => ['led', 'potentiometer', 'button'].includes(q.kind) && q.seat && q._seatTerminals).map(q => (
+          {parts.filter(q => ['led', 'potentiometer', 'tuning_cap', 'button'].includes(q.kind) && q.seat && q._seatTerminals).map(q => (
             <g key={`ledlegs-${q.id}`} style={{ pointerEvents: 'none' }}>
               {Object.values(q._seatTerminals).map((pos, i) => (
                 <g key={i}>
@@ -5759,7 +5774,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'potentiometer') {
+                if (p.kind === 'potentiometer' || p.kind === 'tuning_cap') {
                   const v = eb.getControl(p.id);
                   if (v != null) m.set(p.id, v);
                 }

@@ -1,0 +1,34 @@
+{
+  "kind": "speaker",
+  "w": 56,
+  "h": 60,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 14,
+      "y": 60,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 42,
+      "y": 60,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Dynamic loudspeaker (moving coil), small 8 ohm / 0.5 W type. 2-terminal: a, b (voice-coil tags; not polarised electrically, the + tag only sets cone phase). Engine (bw-board speaker): voice coil Re (ohms) + Le (henrys) in series, ratedWatts for the loudness scale, optional motional impedance (resonanceHz, motionalOhms, qm). Sound follows the coil current: buzzerTone() reports hz, on, level (0..1) and amps (RMS). Wire leads to the breadboard; drawn top view of the frame and cone.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
+}

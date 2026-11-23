@@ -28,9 +28,23 @@ export function PartTooltip({ part, circuit, visible, x, y, lang = 'en' }) {
         }
         break;
       }
-      case 'buzzer': {
+      case 'buzzer':
+      case 'piezo':
+      // The coil transducers also report loudness (level 0..1, 1 = rated
+      // power) and the RMS coil current that sets it.
+      case 'speaker':
+      case 'earphone': {
         const tone = circuit.buzzerTone(part.id);
-        lines.push(tone.on ? `${tone.hz.toFixed(0)} Hz` : (de ? 'Aus' : 'Off'));
+        lines.push(tone?.on ? `${tone.hz.toFixed(0)} Hz` : (de ? 'Aus' : 'Off'));
+        if (tone?.on && typeof tone.level === 'number') {
+          const pct = (tone.level * 100).toFixed(0);
+          lines.push(de ? `Lautstärke: ${pct} %` : `Level: ${pct}%`);
+        }
+        if (tone?.on && typeof tone.amps === 'number') {
+          const mA = tone.amps * 1000;
+          const s = mA >= 1 ? mA.toFixed(1) : mA.toFixed(3);
+          lines.push(de ? `Strom: ${s.replace('.', ',')} mA eff.` : `Current: ${s} mA RMS`);
+        }
         break;
       }
       case 'resistor':

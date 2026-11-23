@@ -90,6 +90,11 @@ export const FOOTPRINTS = {
   header: { w: 80, h: 20 }, usb_a: { w: 50, h: 30 },
   ir_remote: { w: 36, h: 44 }, solar_cell: { w: 60, h: 50 },
   light_bulb: { w: 36, h: 50 },
+  // Speaker, earphone and crystal-set parts: their sidecar bodies. The tuning
+  // capacitor wears the potentiometer's 60 px knob face.
+  speaker: { w: 56, h: 60 }, earphone: { w: 44, h: 50 },
+  antenna: { w: 30, h: 70 }, earth: { w: 36, h: 44 },
+  tuning_cap: { w: 60, h: 60 }, ferrite_coil: { w: 84, h: 44 },
   // DIP ICs from the matrix burn-down
   '74hc02': { w: 120, h: 80 }, '74hc86': { w: 120, h: 80 },
   '74hc132': { w: 120, h: 80 }, '74hc165': { w: 130, h: 80 },
