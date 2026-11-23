@@ -362,7 +362,11 @@ function terminalOffsetsForPart(part) {
     case 'antenna':
     case 'earth':
     case 'tuning_cap':
-    case 'ferrite_coil': {
+    case 'ferrite_coil':
+    // Sensing transducers: thermocouple, hand-wound coil, electrolysis cell.
+    case 'thermocouple':
+    case 'air_coil':
+    case 'electrolysis_cell': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));

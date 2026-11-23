@@ -272,6 +272,18 @@ const STRINGS = {
   stimSoundTitle:      { en: 'Set the background sound level at the sound module', de: 'Grundgeräuschpegel am Geräuschmodul einstellen' },
   stimClap:            { en: 'Clap', de: 'Klatschen' },
   stimClapTitle:       { en: 'A short loud sound at the sound module', de: 'Ein kurzes lautes Geräusch am Geräuschmodul' },
+  stimVoice:           { en: 'Sound', de: 'Schall' },
+  stimVoiceTitle:      { en: 'How loud the sound is at this speaker or earphone (dB SPL): 60 talking, 85 speaking close, 110 a bell right beside it', de: 'Wie laut der Schall an diesem Lautsprecher oder Ohrhörer ist (dB SPL): 60 Unterhaltung, 85 nah hineinsprechen, 110 eine Klingel direkt daneben' },
+  stimHearsTitle:      { en: 'Distance to the speaker or earphone this one hears (cm)', de: 'Abstand zum Lautsprecher oder Ohrhörer, den dieser hört (cm)' },
+  stimHeat:            { en: 'Heat', de: 'Hitze' },
+  stimHeatTitle:       { en: 'Temperature of the thermocouple\'s hot junction (°C)', de: 'Temperatur der heißen Lötstelle des Thermoelements (°C)' },
+  stimMatch:           { en: 'Match', de: 'Streichholz' },
+  stimLighter:         { en: 'Lighter', de: 'Feuerzeug' },
+  stimRoom:            { en: 'Room', de: 'Raum' },
+  stimDrop:            { en: 'Drop magnet', de: 'Magnet fallen lassen' },
+  stimDropTitle:       { en: 'Drop a bar magnet through the coil, north pole first', de: 'Einen Stabmagneten durch die Spule fallen lassen, Nordpol voran' },
+  stimMetal:           { en: 'Metal', de: 'Metall' },
+  stimMetalTitle:      { en: 'Distance of a piece of metal from the coil (cm); 20 = far away', de: 'Abstand eines Metallstücks von der Spule (cm); 20 = weit weg' },
 
   // ── Serial console ────────────────────────────────────────────────
   serialConsole:       { en: 'Serial Console', de: 'Serielle Konsole' },

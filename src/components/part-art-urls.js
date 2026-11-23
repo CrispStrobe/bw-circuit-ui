@@ -13,7 +13,11 @@ import speaker from '../parts-data/speaker.svg';
 import oscilloscope from '../parts-data/oscilloscope.svg';
 import function_gen from '../parts-data/function_gen.svg';
 import polarized_cap from '../parts-data/polarized_cap.svg';
+import thermocouple from '../parts-data/thermocouple.svg';
+import air_coil from '../parts-data/air_coil.svg';
+import electrolysis_cell from '../parts-data/electrolysis_cell.svg';
 
 export const PART_ART_URLS = Object.freeze({
   antenna, earth, ferrite_coil, earphone, speaker, oscilloscope, function_gen, polarized_cap,
+  thermocouple, air_coil, electrolysis_cell,
 });

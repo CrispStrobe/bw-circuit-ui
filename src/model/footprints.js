@@ -265,6 +265,11 @@ const BUILTIN_FOOTPRINTS = {
   earth: { refTerminal: 'earth', leads: { earth: { dRow: 0, dCol: 0 } } },
   tuning_cap: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 4 } } },
   ferrite_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, tap: { dRow: 0, dCol: 1 }, b: { dRow: 0, dCol: 2 }, c1: { dRow: 0, dCol: 3 }, c2: { dRow: 0, dCol: 4 } } },
+  // Sensing transducers (bw-parts 2026-11-23), same headless-load reason,
+  // held equal to their sidecars by test/sensing-transducer-parts.test.js.
+  thermocouple: { refTerminal: 'pos', leads: { pos: { dRow: 0, dCol: 0 }, neg: { dRow: 0, dCol: 1 } } },
+  air_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
+  electrolysis_cell: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
   lm386: { refTerminal: 'gain8', straddlesGutter: true, leads: { gain1: { dRow: 5, dCol: 0 }, inn: { dRow: 5, dCol: 1 }, inp: { dRow: 5, dCol: 2 }, gnd: { dRow: 5, dCol: 3 }, vout: { dRow: 0, dCol: 3 }, vs: { dRow: 0, dCol: 2 }, bypass: { dRow: 0, dCol: 1 }, gain8: { dRow: 0, dCol: 0 } } },
   // Logic gates: 3-pin inline (2-input gates) or 2-pin inline (NOT)
   gate_and:  { refTerminal: 'in0', leads: { in0: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 3 } } },

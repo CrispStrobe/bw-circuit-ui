@@ -27,6 +27,9 @@ export const ART_FACE_KINDS = Object.freeze([
   'oscilloscope',
   'function_gen',
   'polarized_cap',
+  'thermocouple',
+  'air_coil',
+  'electrolysis_cell',
 ]);
 
 /**
