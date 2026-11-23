@@ -128,6 +128,12 @@ const CATEGORIES = [
     parts: [
       { kind: 'led', label: 'LED', params: { vf: 2.0, color: 'red' }, color: '#2ecc71', hasColorPicker: true },
       { kind: 'led', label: 'Red LED (LED_RED)', params: { part: 'LED_RED', color: 'red' }, color: '#2ecc71', tooltip: 'Standard red LED — numbers from the parts library' },
+      // An LED used backwards as a light sensor (bw-board led_photocurrent):
+      // photoSensitivity is the photocurrent in amps at full light, and the
+      // part takes the LDR's light control (0..1). An LED answers light at or
+      // shorter than its own colour's wavelength.
+      { kind: 'led', label: 'LED (light sensor)', params: { color: 'red', photoSensitivity: 5e-6, light: 0.5 }, color: '#2ecc71',
+        tooltip: 'LED used as a light sensor: a photocurrent of photoSensitivity amps at full light; the light slider sets 0..1' },
       { kind: 'rgb_led', label: 'RGB LED', params: { vf_r: 2.0, vf_g: 2.2, vf_b: 3.0 }, color: '#e74c3c', tooltip: 'Common cathode' },
       { kind: 'neopixel', label: 'NeoPixel', params: {}, color: '#2ecc71', tooltip: 'WS2812B addressable LED' },
       { kind: 'buzzer', label: 'Buzzer', params: {}, color: '#1abc9c' },
@@ -196,6 +202,10 @@ const CATEGORIES = [
     name: 'Motors',
     parts: [
       { kind: 'dc_motor', label: 'DC Motor', params: {}, color: '#3498db' },
+      // A fan: airflowGain (m/s of air per rad/s of shaft speed) adds to the
+      // airflow the thermal model reads, so it can cool a self-heated part.
+      { kind: 'dc_motor', label: 'Fan', params: { airflowGain: 0.004, J: 1e-5 }, color: '#3498db',
+        tooltip: 'DC motor that moves air: airflowGain (m/s per rad/s) adds to the bench airflow and cools thermal-model parts' },
       { kind: 'gearmotor', label: 'Gearmotor', params: {}, color: '#3498db' },
       // J (kg·m², rotor inertia), loadTorque (N·m) and friction (N·m·s/rad):
       // the engine's defaults, here so the inspector can load the shaft.
@@ -294,6 +304,8 @@ const CATEGORIES = [
         tooltip: 'Real 200 mA low-noise LDO — SOIC-8, fixed/adjustable feedback, enable and current limit' },
       { kind: 'lt1763', label: 'LT1763', params: {}, color: '#148f77',
         tooltip: 'Real 500 mA low-noise LDO — SO-8, fixed/adjustable feedback, shutdown and current limit' },
+      { kind: 'lm386', label: 'LM386', params: {}, color: '#7b3f00',
+        tooltip: 'Audio power amplifier — PDIP-8, gain 20 (200 with 10 µF across pins 1–8), output at Vs/2, drives an 8 Ω speaker through a coupling capacitor' },
       { kind: '555', label: '555 Timer', params: {}, color: '#e74c3c' },
       { kind: 'shift_register', label: '74HC595', params: {}, color: '#8e44ad', tooltip: 'Shift register — 8 outputs' },
       { kind: 'ir_receiver', label: 'IR Receiver', params: {}, color: '#c0392b', tooltip: 'drawable — IrDA' },

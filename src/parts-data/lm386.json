@@ -1,0 +1,96 @@
+{
+  "kind": "lm386",
+  "w": 60,
+  "h": 48,
+  "terminals": [
+    {
+      "name": "gain1",
+      "x": 0,
+      "y": 8,
+      "functions": []
+    },
+    {
+      "name": "inn",
+      "x": 0,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "inp",
+      "x": 0,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 0,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "vout",
+      "x": 60,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "vs",
+      "x": 60,
+      "y": 28,
+      "functions": []
+    },
+    {
+      "name": "bypass",
+      "x": 60,
+      "y": 18,
+      "functions": []
+    },
+    {
+      "name": "gain8",
+      "x": 60,
+      "y": 8,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "LM386 low-voltage audio power amplifier, PDIP-8 (TI SNAS545): 1 GAIN, 2 -IN, 3 +IN, 4 GND, 5 VOUT, 6 VS, 7 BYPASS, 8 GAIN. Gain 20 with pins 1/8 open, 200 with 10 uF across them; output biased at VS/2. Electrical model: bw-board src/lm386.js. Added in bw-circuit-ui 2026-11-23 pending upstream bw-parts.",
+  "footprint": {
+    "refTerminal": "gain8",
+    "straddlesGutter": true,
+    "minCols": 4,
+    "leads": {
+      "gain1": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "inn": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "inp": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "gnd": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "vout": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "vs": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "bypass": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "gain8": {
+        "dRow": 0,
+        "dCol": 0
+      }
+    }
+  }
+}

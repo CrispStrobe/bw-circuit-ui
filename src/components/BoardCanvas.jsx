@@ -349,7 +349,9 @@ function terminalOffsetsForPart(part) {
     // The bench instruments are engine devices with their own leads now
     // (out/gnd, ch1/ch2/gnd); the sidecar places them.
     case 'function_gen':
-    case 'oscilloscope': {
+    case 'oscilloscope':
+    // LM386 audio amp: its eight DIP pins from its sidecar.
+    case 'lm386': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
