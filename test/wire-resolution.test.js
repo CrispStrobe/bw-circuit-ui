@@ -13,8 +13,8 @@
 import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { Circuit, resetIds } from '../src/model/circuit.js';
-import { resolveTerminal, resolveKind, TERMINAL_ALIASES } from '../src/model/terminal-aliases.js';
+import { Circuit, resetIds, resolveLoadedKind } from '../src/model/circuit.js';
+import { resolveTerminal, TERMINAL_ALIASES } from '../src/model/terminal-aliases.js';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -88,7 +88,9 @@ describe('gallery circuit.json: every wire terminal resolves', () => {
       const c = new Circuit(circuit.vcc || 5.0);
       const idMap = new Map();
       for (const p of circuit.parts || []) {
-        const resolvedKind = resolveKind(p.kind);
+        // As Circuit.fromJSON resolves it: an engine model (74hc595) wins
+        // over its alias (shift_register, which has no vcc/gnd/ser/qa..qh).
+        const resolvedKind = resolveLoadedKind(p.kind);
         const part = c.addPart(resolvedKind, p.params || {}, p.x || 0, p.y || 0);
         idMap.set(p.id, { realId: part.id, terminals: part.terminals, kind: resolvedKind });
       }

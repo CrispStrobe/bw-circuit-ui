@@ -129,6 +129,20 @@ function engineParamsFor(part) {
 export function resetIds() { _nextId = 1; }
 
 /**
+ * The kind a saved part loads as: its alias target, unless the engine has a
+ * model for the saved kind itself (ENGINE_MODEL_WINS in terminal-aliases.js).
+ * fromJSON is the load path; any other loader that rebuilds a saved circuit
+ * (test harnesses that go through addPart) must resolve kinds the same way,
+ * or a `74hc595` collapses onto the power-less `shift_register` and every wire
+ * to its vcc/gnd/ser/srclk/rclk/srclr/qa..qh is refused by addWire.
+ * @param {string} kind
+ * @returns {string}
+ */
+export function resolveLoadedKind(kind) {
+  return resolveKind(kind, (k) => Boolean(engineDevice(k)));
+}
+
+/**
  * @typedef {object} PlacedPart
  * @property {string} id
  * @property {string} kind
@@ -1333,7 +1347,6 @@ export class Circuit {
     // ENGINE_MODEL_WINS in terminal-aliases.js: `74hc595` was aliased to the
     // power-less built-in `shift_register`, so every vcc/gnd wire on a real
     // 595 was dropped at load.
-    const engineHasModel = (k) => Boolean(engineDevice(k));
     c.pcb = data.pcb ?? null;
     c.analysisBlockers = Array.isArray(data.analysisBlockers)
       ? data.analysisBlockers.filter(b => b && typeof b === 'object').map(b => ({ ...b }))
@@ -1348,7 +1361,7 @@ export class Circuit {
     // pos/neg terminals and a volts param — same physics, older word.
     const savedKinds = new Map(data.parts.map(p => [p.id, p.kind]));
     c.parts = data.parts.map(p => {
-      const kind = resolveKind(p.kind, engineHasModel);
+      const kind = resolveLoadedKind(p.kind);
       return {
         ...p,
         kind,
