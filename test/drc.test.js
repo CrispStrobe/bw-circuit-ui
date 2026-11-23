@@ -468,17 +468,22 @@ describe('DRC: aggregate-current', () => {
   });
 
   it('keeps sub-floor contributors out of the list', () => {
-    // Hand oracle: I = (5 − 1.8) / (10 + 10 + 25) = 71.111 mA per LED, where 1.8
-    // is the knee (vf − 0.020·rd) under bw-board's datasheet vf convention, 10 the
-    // resistor, 10 the LED's rd and 25 the push-pull pin. It read 66.7 mA (= 3/45,
-    // the same formula with the knee at a flat 2.0) until 2026-09-13.
+    // Hand oracle: 69.818 mA per LED, the root of
+    //     5 = (10 + 25 + 10)·I + n·Vt·ln(I/Is + 1),
+    //     Is = 0.020 / (exp((2.0 − 0.020·10) / (n·Vt)) − 1),  n = 1.8, Vt = 0.02585 V
+    // with 10 the resistor, 25 the push-pull pin and 10 the LED's bulk rs: the
+    // Shockley junction bw-board solves LEDs with by default since 74d4233
+    // (2026-11-23), calibrated to drop vf = 2.0 at the rated 20 mA. It read
+    // 71.111 mA (= 3.2/45, the piecewise knee vf − 0.020·rd = 1.8) until then,
+    // and 66.7 mA (the knee at a flat 2.0) until 2026-09-13. RE-DERIVED to the
+    // model the engine solves; the assertion keeps its form and its rounding.
     //
     // In between, one engine revision read 80.4 mA each, and that number was NOT
     // re-derived to: a netlist-wide headroom sum was flipping each LED's model
     // because the OTHER LED existed, so it was a defect's output, not a
     // measurement. See BLOCKED.md.
     // The anti-vacuity control for the test above: `>=` must not have become
-    // `>= 0`. Two LEDs through 10 ohm draw 71.1 mA each (142 mA
+    // `>= 0`. Two LEDs through 10 ohm draw 69.8 mA each (140 mA
     // total) and fill only TWO of the three "largest consumers" slots, so a
     // dropped floor is visible: soil_moisture is rated 0.05 mA and would take
     // the third slot, rendering as the useless "soil_moisture (0 mA)".
@@ -502,8 +507,8 @@ describe('DRC: aggregate-current', () => {
 
     const w = runDrc(c, c.board);
     const hits = findRule(w, 'aggregate-current');
-    assert.equal(hits.length, 1, '2 x 71.1 mA = 142 mA must trip the danger');
-    assert.match(hits[0].explanation, /Largest consumers: led \(71 mA\), led \(71 mA\)\./,
+    assert.equal(hits.length, 1, '2 x 69.8 mA = 140 mA must trip the danger');
+    assert.match(hits[0].explanation, /Largest consumers: led \(70 mA\), led \(70 mA\)\./,
       'exactly the two above-floor parts, and nothing else');
     assert.doesNotMatch(hits[0].explanation, /soil_moisture/,
       'a 0.05 mA part is below the listing floor and must stay out of it');

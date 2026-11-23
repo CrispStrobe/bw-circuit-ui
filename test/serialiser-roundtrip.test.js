@@ -27,6 +27,7 @@ import { Circuit, resetIds, resolveLoadedKind } from '../src/model/circuit.js';
 import { resolveTerminal, resolveKind, ENGINE_MODEL_WINS } from '../src/model/terminal-aliases.js';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { corpusRoots } from './corpus-root.mjs';
 
@@ -252,11 +253,39 @@ describe('serialiser round-trip over gallery corpus', () => {
    * loss — counted separately so the limitation is visible instead of inflating
    * the number above, which is exactly what it used to do.
    */
-  // 731 -> 1375 on 2026-11-23: sb3-creator added 88 breadboard-seated lab-*
-  // examples (PRs #186/#187), every one wired hole-to-hole. 1375 -> 1310 the
-  // same day: the lab breadboard layout pass rerouted those benches (jumpers
-  // to part legs where a strip already joins them) and added 5 radio benches.
-  const KNOWN_UNATTACHED = 1310;
+  // The count is a property of the CORPUS REVISION, so it is recorded per
+  // revision. CI checks out the reviewed pin (docs/schematic-baselines/
+  // CORPUS.json corpusSha), and that pin's entry is mandatory. 2026-11-23:
+  // sb3-creator added 88 breadboard-seated lab-* examples (PRs #186/#187), every
+  // one wired hole-to-hole, then rerouted them and added 5 radio benches. The
+  // single number was raised 731 -> 1375 -> 1310 from a checkout of sb3-creator
+  // master, while CI still read the pin, where it is 731 — so the test went red
+  // on every master run from #142 on. Measured with EXAMPLES_DIR on fetched
+  // checkouts of each revision:
+  //   c593574 (the CI pin)        255 files   731
+  //   01e1280 (master 2026-11-23) 360 files  1310
+  // A revision not listed here is compared with the pin's count and fails with
+  // its own revision in the message: record it here deliberately, never widen.
+  const KNOWN_UNATTACHED_BY_CORPUS = {
+    c593574367179132aa193d7f5a4477c0299e3ab3: 731,
+    '01e1280652a95a147a24b00cf72a7dfbc04702d9': 1310,
+  };
+  const PINNED_CORPUS = JSON.parse(readFileSync(
+    path.join(here, '..', 'docs', 'schematic-baselines', 'CORPUS.json'), 'utf8')).corpusSha;
+  const corpusRevision = (() => {
+    try {
+      return execFileSync('git', ['-C', examplesDir, 'rev-parse', 'HEAD'],
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    } catch { return null; }
+  })();
+  const KNOWN_UNATTACHED = KNOWN_UNATTACHED_BY_CORPUS[corpusRevision]
+    ?? KNOWN_UNATTACHED_BY_CORPUS[PINNED_CORPUS];
+
+  it('the pinned corpus revision has a recorded hole-wire count', () => {
+    assert.ok(Number.isInteger(KNOWN_UNATTACHED_BY_CORPUS[PINNED_CORPUS]),
+      `CORPUS.json pins ${PINNED_CORPUS}, which has no entry in KNOWN_UNATTACHED_BY_CORPUS: `
+      + 'measure it on that revision (EXAMPLES_DIR) and record it with the pin bump');
+  });
 
   it('summary: report all losses across corpus', () => {
     console.log(`  Serialiser round-trip: ${filesChecked} files checked`);
@@ -283,7 +312,9 @@ describe('serialiser round-trip over gallery corpus', () => {
 
     console.log(`  Hole-terminated wires this loader cannot carry: ${totalUnattached}`);
     assert.equal(totalUnattached, KNOWN_UNATTACHED,
-      `${totalUnattached} hole-terminated wires vs ${KNOWN_UNATTACHED} recorded. Not a serialiser `
+      `${totalUnattached} hole-terminated wires vs ${KNOWN_UNATTACHED} recorded `
+      + `(corpus ${corpusRevision ?? 'not a git checkout'}; recorded for `
+      + `${corpusRevision in KNOWN_UNATTACHED_BY_CORPUS ? 'this revision' : `the pin ${PINNED_CORPUS}`}). Not a serialiser `
       + 'loss — but it moved, so either the corpus changed or the loader learned/forgot how to '
       + 'seat a wire. Update the number deliberately.');
     assert.ok(filesChecked >= 200,

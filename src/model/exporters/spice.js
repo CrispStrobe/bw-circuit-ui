@@ -50,6 +50,7 @@ import { optionsCard } from 'bw-board/ngspice.js';
 // a deck is the exponential model — importing the wrong one of the two is how
 // the spice-oracle job reddened.)
 import { spiceModelFor, resolveParams, cardFor, classDefaults, allCards } from 'bw-board/parts-library.js';
+import { ledVf } from 'bw-board/led-color.js';
 import { formatSpiceValue } from '../si.js';
 import {
   validateStrictSpiceExpParams, validateStrictSpicePulseParams,
@@ -109,7 +110,9 @@ export function junctionModel(part) {
   const cls = classDefaults(part.kind);
   const n = Number(params.n ?? cls.n ?? 1.0);
   const rs = Number(params.rs ?? cls.rs ?? 0);
-  const vf = Number(params.vf ?? cls.vf ?? 0.7);
+  // An LED's default drop is its COLOUR's (bw-board led-color.js, the same
+  // ledVf mna.js calibrates the junction at), not classDefaults('led').vf.
+  const vf = Number(part.kind === 'led' ? ledVf({ params }) : (params.vf ?? cls.vf ?? 0.7));
   const nVt = n * VT_25C;
   let is = params.is;
   if (is === undefined) {

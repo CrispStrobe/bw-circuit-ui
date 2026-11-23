@@ -7,6 +7,23 @@ import assert from 'node:assert/strict';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { FOOTPRINTS, computeLeadMap } from '../src/model/footprints.js';
 
+// Hand oracles, 5 V through 1 kOhm into one LED, brightness = I / 20 mA.
+//
+// bw-board 74d4233 (2026-11-23) made LEDs exponential by default: Shockley,
+// n = 1.8, bulk rs = 10 ohm, with Is calibrated so the junction plus rs drop
+// the LED's vf at the rated 20 mA. Since ed9bd4d that vf follows the colour
+// (led-color.js: red 1.9 V; no colour keeps 2.0 V). The current is the root of
+//     5 = (1000 + 10)·I + n·Vt·ln(I/Is + 1),
+//     Is = 0.020 / (exp((vf − 0.020·10) / (n·Vt)) − 1),   Vt = 0.02585 V,
+// solved by bisection: red 3.349647 mA, colourless 3.252000 mA. The same red
+// bench is the SPICE oracle's canonical-bench, where ngspice reads 3.349640 mA.
+// The old 0.158416 was the PIECEWISE knee (5 − 1.8) / 1010 and stopped being
+// the model the engine solves. RE-DERIVED, not widened: the tolerance below is
+// unchanged. Every circuit here holds ONE LED — see LANES for the two-LED
+// interaction that is NOT re-derived.
+const RED_LIT = 0.167482;
+const COLOURLESS_LIT = 0.162600;
+
 test('seated LED circuit lights through strips alone — no drawn wires', () => {
   resetIds();
   const c = new Circuit(5.0);
@@ -24,19 +41,11 @@ test('seated LED circuit lights through strips alone — no drawn wires', () => 
   assert.ok(c.seatPart(gnd.id, bb.id, computeLeadMap(FOOTPRINTS.gnd, 'd10')));
   assert.equal(c.wires.length, 0, 'the whole point: no drawn wires');
 
-  // Hand oracle: I = (5 − 1.8) / (1000 + 10) = 3.16832 mA → brightness 0.158416.
-  // The 1.8 is the LED's KNEE, not its datasheet Vf. bw-board's junction
-  // convention was corrected on 2026-09-13: a card's `vf` is the drop at the
-  // rated 20 mA (the datasheet reading, which the SPICE exporter and importer
-  // always used), so the piecewise knee is vf − 0.020·rd = 2.0 − 0.020·10 = 1.8.
-  // This expectation read 0.1485 while the knee was read as 2.0 flat. RE-DERIVED,
-  // not widened: the tolerance is unchanged and the formula above is the whole
-  // derivation. Every circuit here holds ONE LED — see LANES for the two-LED
-  // interaction that is NOT re-derived.
+  // Hand oracle: see RED_LIT at the top of this file (3.349647 mA → 0.167482).
   c.board.advanceTo(25_000_000n); // one brightness window
   const brightness = c.board.ledBrightness(led.id);
-  assert.ok(Math.abs(brightness - 0.158416) < 0.005,
-    `brightness ${brightness}, expected ≈0.158416 — the strips must conduct`);
+  assert.ok(Math.abs(brightness - RED_LIT) < 0.005,
+    `brightness ${brightness}, expected ≈${RED_LIT} — the strips must conduct`);
 
   // Unseat the resistor: the loop breaks, the LED must go dark. Refusing to
   // keep stale conduction is as important as conducting.
@@ -52,7 +61,7 @@ test('seated LED circuit lights through strips alone — no drawn wires', () => 
   c.addWire(r1.id, 'b', led.id, 'anode');    // wire: R.b (b24 strip) → LED
   c.board.advanceTo(80_000_000n);
   const b2 = c.board.ledBrightness(led.id);
-  assert.ok(Math.abs(b2 - 0.158416) < 0.005, `mixed wires+strips: ${b2}`);
+  assert.ok(Math.abs(b2 - RED_LIT) < 0.005, `mixed wires+strips: ${b2}`);
 });
 
 test('two boards are independent occupancy worlds', () => {
@@ -109,7 +118,7 @@ test('a jumper wire completes a dark circuit — the classic first fix', () => {
   assert.ok(ref && ref.startsWith('bbw:'), `jumper ref: ${ref}`);
   c.board.advanceTo(50_000_000n);
   const lit = c.board.ledBrightness(led.id);
-  assert.ok(Math.abs(lit - 0.158416) < 0.005, `jumper closed the loop: ${lit}`);
+  assert.ok(Math.abs(lit - RED_LIT) < 0.005, `jumper closed the loop: ${lit}`);
 
   // Occupied holes refuse a jumper; removal restores darkness.
   assert.equal(c.addHoleWire(bb.id, 'a5', 'e9'), null, 'occupied end refused');
@@ -172,8 +181,8 @@ test('tap wires: a source wired INTO the rails powers the seated circuit', () =>
   assert.ok(c.addHoleWire(bb.id, 'a10', 't-8'));
   c.board.advanceTo(25_000_000n);
   const lit = c.board.ledBrightness(led.id);
-  // I = (5 − 2) / (1000 + 10) — the battery drives it through rails+strips.
-  assert.ok(Math.abs(lit - 0.158416) < 0.005, `rail-powered LED: ${lit}`);
+  // RED_LIT — the battery drives it through rails+strips.
+  assert.ok(Math.abs(lit - RED_LIT) < 0.005, `rail-powered LED: ${lit}`);
   // An occupied hole refuses a tap.
   assert.equal(c.addTapWire(bat.id, 'pos', bb.id, 'b5'), null, 'leg hole refused');
   // Removing a tap breaks the loop.
@@ -200,7 +209,7 @@ test('save/load round-trip: the seated circuit comes back LIT', () => {
   restored.board.advanceTo(25_000_000n);
   const rl = restored.parts.find(p => p.kind === 'led');
   const lit = restored.board.ledBrightness(rl.id);
-  assert.ok(Math.abs(lit - 0.158416) < 0.005,
+  assert.ok(Math.abs(lit - COLOURLESS_LIT) < 0.005,
     `restored circuit must still conduct through its strips: ${lit}`);
   // And its holes are genuinely occupied again - double-seating refuses.
   const r2 = restored.parts.find(p => p.kind === 'resistor');
