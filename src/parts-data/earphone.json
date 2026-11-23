@@ -1,0 +1,34 @@
+{
+  "kind": "earphone",
+  "w": 44,
+  "h": 50,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 15,
+      "y": 50,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 29,
+      "y": 50,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "High-impedance earphone, the crystal-set classic. 2-terminal: a, b. Engine (bw-board earphone): type magnetic (2 kohm coil, 0.1 H) or crystal (piezo element: capacitance with a high leak resistance, no DC path, so a crystal set needs a resistor across it). Sound from the coil current like the speaker: buzzerTone() reports hz, on, level, amps. Drawn as the earpiece on its two-wire lead.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "kind": "earth",
+  "w": 36,
+  "h": 44,
+  "terminals": [
+    {
+      "name": "earth",
+      "x": 18,
+      "y": 0,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Earth connection (ground stake / water pipe). 1-terminal: earth. Engine (bw-board earth): the reference the antenna works against; ohms is the stake's resistance. Not the gnd symbol: a real earth has resistance. Drawn as the earth symbol under its lead.",
+  "footprint": {
+    "refTerminal": "earth",
+    "leads": {
+      "earth": {
+        "dRow": 0,
+        "dCol": 0
+      }
+    }
+  }
+}
