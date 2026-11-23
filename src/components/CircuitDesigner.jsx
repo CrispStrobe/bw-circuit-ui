@@ -631,7 +631,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
 
   useEffect(() => {
     if (mode !== 'simulate') return; // only produce audio while simulating
-    const buzzers = parts.filter(p => p.kind === 'buzzer');
+    const buzzers = parts.filter(p => p.kind === 'buzzer' || p.kind === 'piezo'); // piezo: same tone surface
     for (const bz of buzzers) {
       try {
         const tone = readBuzzerTone(bz.id);

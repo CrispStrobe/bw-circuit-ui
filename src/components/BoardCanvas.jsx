@@ -345,7 +345,11 @@ function terminalOffsetsForPart(part) {
     case 'adp7118':
     case 'lt1763':
     // The electrolytic: pos/neg from its sidecar (bw-parts polarized_cap).
-    case 'polarized_cap': {
+    case 'polarized_cap':
+    // The bench instruments are engine devices with their own leads now
+    // (out/gnd, ch1/ch2/gnd); the sidecar places them.
+    case 'function_gen':
+    case 'oscilloscope': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));

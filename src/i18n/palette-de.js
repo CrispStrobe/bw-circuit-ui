@@ -104,6 +104,11 @@ export const PALETTE_DE = {
   'Temp Sensor': 'Temperatursensor',
   'Multimeter': 'Multimeter',
   'Function Gen': 'Funktionsgenerator',
+  'Function Generator': 'Funktionsgenerator (Gerät)',
+  'Oscilloscope': 'Oszilloskop',
+  'Bench generator: out against gnd through 50 ohm; sine, square, triangle, pulse, dc': 'Labor-Generator: out gegen gnd über 50 Ohm; Sinus, Rechteck, Dreieck, Puls, Gleichspannung',
+  'Two channels (ch1, ch2) against gnd, each a 1 MOhm input: it loads the circuit like a real scope': 'Zwei Kanäle (ch1, ch2) gegen gnd, je 1 MOhm Eingang: belastet die Schaltung wie ein echtes Oszilloskop',
+  'SPDT: position 0 = com-a, 1 = com-b': 'Umschalter (SPDT): Stellung 0 = com-a, 1 = com-b',
   'VCVS (E)': 'VCVS (E)',
   'VCCS (G)': 'VCCS (G)',
 

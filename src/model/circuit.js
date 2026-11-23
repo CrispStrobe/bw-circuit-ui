@@ -14,7 +14,7 @@ import {normalizeComponentLimits} from './component-measurements.js';
 import { mergeNets } from './merge-nets.js';
 import { BreadboardModel } from './breadboard.js';
 import { logicChipTerminals } from './dip-chips.js';
-import { resolveKind, resolveTerminal } from './terminal-aliases.js';
+import { resolveKind, resolveTerminal, ALIAS_PARAM_DEFAULTS } from './terminal-aliases.js';
 import { wireEndpoint } from './wire-endpoints.js';
 import { sidecarTerminals } from './parts-registry.js';
 import { computeLeadMap, rotateFootprint, FOOTPRINTS as BB_FOOTPRINTS_FOR_ROTATE } from './footprints.js';
@@ -167,7 +167,7 @@ function migrateTerminals (kind, stored, params) {
   const live = terminalsForKind(kind, params);
   // The S040 is a fixed H1 connector, never a generic whole-SoC pin list.
   if (kind === 'esp32_4848s040') return live;
-  if (!Array.isArray(stored)) return live;
+  if (!Array.isArray(stored)) return Array.isArray(live) ? live : [];
   if (!Array.isArray(live) || live.length === 0) return stored;
   return stored.map((t) => {
     if (live.includes(t)) return t;
@@ -213,6 +213,13 @@ function withSeatLegs (stored, legs, seatTerms) {
     have.add(key);
   }
   return out;
+}
+
+/** A part's params, plus what its kind alias needs to mean the same thing. */
+function withAliasDefaults(p, kind) {
+  const params = (p.params && typeof p.params === 'object') ? p.params : {};
+  const defaults = kind !== p.kind ? ALIAS_PARAM_DEFAULTS[p.kind] : undefined;
+  return defaults ? { ...defaults, ...params } : params;
 }
 
 function cloneSourceDocuments(value) {
@@ -539,6 +546,10 @@ export class Circuit {
    */
   addPart(kind, params, x, y, declName) {
     const terminals = terminalsForKind(kind, params);
+    if (!Array.isArray(terminals)) {
+      throw new Error(`addPart: unknown part kind "${kind}" — no terminal list in the engine, `
+        + 'the parts catalogue or the built-in table');
+    }
     const part = { id: genId(kind), kind, params: { ...params }, terminals, x, y, rotation: 0 };
     if (declName) part.declName = declName;
     this.parts.push(part);
@@ -1347,7 +1358,7 @@ export class Circuit {
         // over parts and a missing object took the whole app down).
         // Guarantee the object here, at the one choke point every load
         // shares, so no downstream reader needs to re-learn this.
-        params: (p.params && typeof p.params === 'object') ? p.params : {},
+        params: withAliasDefaults(p, kind),
         rotation: p.rotation ?? 0,
         terminals: migrateTerminals(kind, p.terminals, p.params || {}),
       };
@@ -1551,6 +1562,14 @@ const ENGINE_AUTHORITY_EXEMPT = new Set(['header']);
  * was renamed to the engine's names wherever the two describe the same
  * physical pin (see test/hd44780-terminal-parity.test.js's ledger).
  */
+const _warnedUnknownTerminals = new Set();
+function warnUnknownTerminals(kind) {
+  if (_warnedUnknownTerminals.has(kind)) return;
+  _warnedUnknownTerminals.add(kind);
+  console.warn(`[circuit] no terminal list for part kind "${kind}": not in the engine, `
+    + 'the parts catalogue (sidecars) or the built-in table');
+}
+
 /** @internal Exported for the contract test only. */
 export function terminalsForKind(kind, params) {
   if (!ENGINE_AUTHORITY_EXEMPT.has(kind)) {
@@ -1712,7 +1731,13 @@ export function terminalsForKind(kind, params) {
       // Sidecar fallback — for kinds without explicit switch-case entries
       const sc = sidecarTerminals(kind);
       if (sc && sc.length > 0) return sc;
-      return ['a', 'b'];
+      // NO SILENT a/b. A kind that neither the engine, a sidecar, the 74HC
+      // chip table nor this catalogue knows has no terminal list, and
+      // inventing two terminals named a/b turned every such part into a
+      // phantom resistor-shaped thing whose real pins dropped their wires.
+      // Say so (once per kind) and return null; addPart refuses the kind.
+      warnUnknownTerminals(kind);
+      return null;
     }
   }
 }

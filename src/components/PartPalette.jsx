@@ -114,8 +114,10 @@ const CATEGORIES = [
       { kind: 'diode', label: '1N4001', params: { part: '1N4001' }, color: '#95a5a6', tooltip: 'Rectifier diode — numbers from the parts library' },
       { kind: 'zener', label: 'Zener Diode', params: { vf: 0.7, vz: 5.1 }, color: '#e67e22', tooltip: 'Voltage regulator diode' },
       { kind: 'zener', label: '1N4733A', params: { part: '1N4733A' }, color: '#e67e22', tooltip: '5.1 V zener — numbers from the parts library' },
-      { kind: 'switch', label: 'Switch', params: {}, color: '#bdc3c7' },
-      { kind: 'slide_switch', label: 'Slide Switch', params: {}, color: '#bdc3c7', tooltip: 'SPDT' },
+      // Initial contact state rides in params so the inspector offers it;
+      // the engine seeds the switch's control from it (setControl still wins).
+      { kind: 'switch', label: 'Switch', params: { closed: 0 }, color: '#bdc3c7' },
+      { kind: 'slide_switch', label: 'Slide Switch', params: { position: 0 }, color: '#bdc3c7', tooltip: 'SPDT: position 0 = com-a, 1 = com-b' },
       { kind: 'photodiode', label: 'Photodiode', params: { vf: 0.7 }, color: '#f39c12' },
       { kind: 'solar_cell', label: 'Solar Cell', params: {}, color: '#f1c40f' },
       { kind: 'light_bulb', label: 'Light Bulb', params: {}, color: '#f39c12', tooltip: 'Resistive' },
@@ -149,7 +151,7 @@ const CATEGORIES = [
     name: 'I/O',
     parts: [
       { kind: 'potentiometer', label: 'Pot 10kΩ', params: { ohms: 10000 }, color: '#9b59b6' },
-      { kind: 'button', label: 'Button', params: {}, color: '#f39c12' },
+      { kind: 'button', label: 'Button', params: { pressed: 0 }, color: '#f39c12' },
       { kind: 'dip_switch', label: 'DIP Switch', params: { switches: 4 }, color: '#bdc3c7', tooltip: '4-position SPST' },
       { kind: 'keypad', label: '4×4 Keypad', params: {}, color: '#7f8c8d' },
       { kind: 'ir_remote', label: 'IR Remote', params: {}, color: '#c0392b', tooltip: 'Transmitter' },
@@ -319,6 +321,13 @@ const CATEGORIES = [
       { kind: 'vsource', label: 'Function Gen', color: '#2ecc71',
         params: { wave: 'sine', freq: 1000, amplitude: 2, offset: 2.5 },
         tooltip: 'Waveform source - sine, square, triangle, pulse, dc; edit params after placing' },
+      // The instrument itself: OUT/GND leads behind a 50 ohm output, the same
+      // waveform params as the source above (bw-board function_gen device).
+      { kind: 'function_gen', label: 'Function Generator', color: '#2ecc71',
+        params: { wave: 'sine', freq: 1000, amplitude: 1, offset: 0, rOut: 50 },
+        tooltip: 'Bench generator: out against gnd through 50 ohm; sine, square, triangle, pulse, dc' },
+      { kind: 'oscilloscope', label: 'Oscilloscope', params: { inputOhms: 1e6 }, color: '#f1c40f',
+        tooltip: 'Two channels (ch1, ch2) against gnd, each a 1 MOhm input: it loads the circuit like a real scope' },
       // The two dependent sources. `params` is deliberately EMPTY: bw-board's
       // stamps already default the gain and the transconductance, and a copy
       // here would be a second home for an electrical number -- the defect
