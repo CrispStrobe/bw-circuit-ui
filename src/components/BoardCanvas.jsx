@@ -363,7 +363,7 @@ function terminalOffsetsForPart(part) {
     case 'earth':
     case 'tuning_cap':
     case 'ferrite_coil':
-    case 'air_coil':
+    case 'vhf_coil':
     case 'varicap': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};

@@ -45,7 +45,7 @@ const KINDS = {
   tuning_cap: ['a', 'b'],
   ferrite_coil: ['a', 'tap', 'b', 'c1', 'c2'],
   // Round 4: the VHF coil and the varicap.
-  air_coil: ['a', 'b'],
+  vhf_coil: ['a', 'b'],
   varicap: ['anode', 'cathode'],
 };
 

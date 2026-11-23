@@ -265,7 +265,7 @@ const BUILTIN_FOOTPRINTS = {
   earth: { refTerminal: 'earth', leads: { earth: { dRow: 0, dCol: 0 } } },
   tuning_cap: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 4 } } },
   ferrite_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, tap: { dRow: 0, dCol: 1 }, b: { dRow: 0, dCol: 2 }, c1: { dRow: 0, dCol: 3 }, c2: { dRow: 0, dCol: 4 } } },
-  air_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  vhf_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
   varicap: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 4 } } },
   lm386: { refTerminal: 'gain8', straddlesGutter: true, leads: { gain1: { dRow: 5, dCol: 0 }, inn: { dRow: 5, dCol: 1 }, inp: { dRow: 5, dCol: 2 }, gnd: { dRow: 5, dCol: 3 }, vout: { dRow: 0, dCol: 3 }, vs: { dRow: 0, dCol: 2 }, bypass: { dRow: 0, dCol: 1 }, gain8: { dRow: 0, dCol: 0 } } },
   // Logic gates: 3-pin inline (2-input gates) or 2-pin inline (NOT)

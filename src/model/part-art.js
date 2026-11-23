@@ -22,7 +22,7 @@ export const ART_FACE_KINDS = Object.freeze([
   'antenna',
   'earth',
   'ferrite_coil',
-  'air_coil',
+  'vhf_coil',
   'varicap',
   'earphone',
   'speaker',

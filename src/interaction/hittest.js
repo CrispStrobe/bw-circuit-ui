@@ -95,7 +95,7 @@ export const FOOTPRINTS = {
   speaker: { w: 56, h: 60 }, earphone: { w: 44, h: 50 },
   antenna: { w: 30, h: 70 }, earth: { w: 36, h: 44 },
   tuning_cap: { w: 60, h: 60 }, ferrite_coil: { w: 84, h: 44 },
-  air_coil: { w: 44, h: 40 }, varicap: { w: 60, h: 20 },
+  vhf_coil: { w: 44, h: 40 }, varicap: { w: 60, h: 20 },
   // Bench instruments and the electrolytic draw their sidecar art
   // (src/model/part-art.js): the hit box is the art's viewBox.
   oscilloscope: { w: 90, h: 64 }, function_gen: { w: 80, h: 56 },
