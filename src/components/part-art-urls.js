@@ -13,7 +13,9 @@ import speaker from '../parts-data/speaker.svg';
 import oscilloscope from '../parts-data/oscilloscope.svg';
 import function_gen from '../parts-data/function_gen.svg';
 import polarized_cap from '../parts-data/polarized_cap.svg';
+import laser_diode from '../parts-data/laser_diode.svg';
 
 export const PART_ART_URLS = Object.freeze({
   antenna, earth, ferrite_coil, earphone, speaker, oscilloscope, function_gen, polarized_cap,
+  laser_diode,
 });

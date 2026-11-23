@@ -362,7 +362,12 @@ function terminalOffsetsForPart(part) {
     case 'antenna':
     case 'earth':
     case 'tuning_cap':
-    case 'ferrite_coil': {
+    case 'ferrite_coil':
+    // Optics palette: laser module, IR LED and phototransistor, leads from
+    // their sidecars (bw-parts).
+    case 'laser_diode':
+    case 'ir_transmitter':
+    case 'phototransistor': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
@@ -443,8 +448,9 @@ const CHIP_FACES = {
 const WOKWI_LAYER_KINDS = new Set(['button', 'buzzer', 'capacitor', 'char_lcd', 'char_lcd_i2c', 'diode',
   'eeprom', 'hd44780', 'ir_receiver', 'keypad_4x4', 'led', 'led_cube', 'led_matrix', 'meter',
   'potentiometer', 'resistor', 'seven_seg_3', 'seven_seg_4', 'seven_segment', 'temp_sensor', 'vsource', 'zener',
-  // The tuning capacitor turns the potentiometer's knob face (WokwiParts).
-  'tuning_cap']);
+  // The tuning capacitor turns the potentiometer's knob face (WokwiParts),
+  // and so does a light path: its knob moves the path's geometry.
+  'tuning_cap', 'light_path']);
 
 function terminalPos(part, terminal) {
   // A seated part's terminals ARE its holes: wires, dots, stubs and hit
@@ -2966,6 +2972,9 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
       // The tuning capacitor is a knob control exactly like the pot: the
       // engine lists it in getControls() and reads its position 0..1. Same
       // face, same onControlChange, same read-back (controlValues below).
+      // A light path (bw-board optics.js) has no leads; its knob moves the
+      // geometry param it names (distance, bend, gap, slit angle, level).
+      case 'light_path':
       case 'tuning_cap':
       case 'potentiometer': {
         // When seated, size and position the knob above its occupied row.
@@ -5824,6 +5833,12 @@ export function BoardCanvas({
               for (const p of parts) {
                 if (p.kind === 'potentiometer' || p.kind === 'tuning_cap') {
                   const v = eb.getControl(p.id);
+                  if (v != null) m.set(p.id, v);
+                }
+                // A light path rests where its geometry param sits in its
+                // knob range; the engine's getControls() says where.
+                if (p.kind === 'light_path') {
+                  const v = eb.getControl(p.id) ?? eb.getControls?.().find(c => c.id === p.id)?.value;
                   if (v != null) m.set(p.id, v);
                 }
               }

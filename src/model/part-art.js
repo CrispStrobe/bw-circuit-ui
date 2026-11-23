@@ -27,6 +27,8 @@ export const ART_FACE_KINDS = Object.freeze([
   'oscilloscope',
   'function_gen',
   'polarized_cap',
+  // Optics: the laser module's brass barrel and beam.
+  'laser_diode',
 ]);
 
 /**
@@ -44,6 +46,12 @@ export const ART_FACE_EXCEPTIONS = Object.freeze({
   // seated it straddles the gutter on the 14-unit breadboard pitch in two
   // rows: the art's legs cannot meet the holes without redrawing the package.
   lm386: 'DIP: seated pins straddle the gutter on the 14-unit row pitch, the art has 10-unit side columns',
+  // The IR LED's art puts its two leads 10 units apart; seated they sit one
+  // 14-unit column apart. Labelled box until bw-parts redraws it on the pitch.
+  ir_transmitter: 'two-lead art 10 units apart, seated leads on the 14-unit pitch: needs a redraw in bw-parts',
+  // The phototransistor's art runs its leads top to bottom; seated they sit
+  // three columns apart in one row.
+  phototransistor: 'art leads vertical, seated leads three columns apart in one row: needs a redraw in bw-parts',
 });
 
 const finite = v => typeof v === 'number' && Number.isFinite(v);

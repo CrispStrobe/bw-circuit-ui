@@ -1,0 +1,34 @@
+{
+  "kind": "laser_diode",
+  "w": 30,
+  "h": 44,
+  "terminals": [
+    {
+      "name": "anode",
+      "x": 8,
+      "y": 44,
+      "functions": []
+    },
+    {
+      "name": "cathode",
+      "x": 22,
+      "y": 44,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Red laser diode module (650 nm), 2-terminal: anode, cathode. Engine (bw-board laser_diode): solved as an LED junction (2.2 V); its light is a threshold law, slopeWPerA x (I - thresholdA) above about 20 mA, falling with temperature, in a narrow Gaussian beam (divergenceMrad). Its light reaches a receiver through a light_path part. Leads one column apart.",
+  "footprint": {
+    "refTerminal": "anode",
+    "leads": {
+      "anode": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "cathode": {
+        "dRow": 0,
+        "dCol": 1
+      }
+    }
+  }
+}
