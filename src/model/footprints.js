@@ -166,9 +166,12 @@ const BUILTIN_FOOTPRINTS = {
   slide_switch: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, com: { dRow: 0, dCol: 1 }, b: { dRow: 0, dCol: 2 } } },
   tip120: { refTerminal: 'emitter', leads: { emitter: { dRow: 0, dCol: 0 }, base: { dRow: 0, dCol: 1 }, collector: { dRow: 0, dCol: 2 } } },
   // 3-pin sensors (TO-92 or module)
-  soil_moisture: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, sig: { dRow: 0, dCol: 2 } } },
+  // Lead names are the part's terminals (its sidecar's footprint): these three
+  // said sig / vout / vcc,d_minus,d_plus, names the part does not have, so one
+  // leg of each seated on no hole (fixed 2026-11-23 with the art faces).
+  soil_moisture: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 2 } } },
   pir_sensor: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, out: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 } } },
-  tmp36: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, vout: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 } } },
+  tmp36: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, out: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 } } },
   ir_remote: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, signal: { dRow: 0, dCol: 2 } } },
   clock_display: { refTerminal: 'clk', leads: { clk: { dRow: 0, dCol: 0 }, dio: { dRow: 0, dCol: 1 }, vcc: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
   neopixel: { refTerminal: 'din', leads: { din: { dRow: 0, dCol: 0 }, vcc: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 }, dout: { dRow: 0, dCol: 3 } } },
@@ -190,7 +193,7 @@ const BUILTIN_FOOTPRINTS = {
       p4: { dRow: 5, dCol: 7 }, p5: { dRow: 5, dCol: 6 }, p6: { dRow: 5, dCol: 5 }, p7: { dRow: 5, dCol: 4 } },
   },
   header: { refTerminal: 'p1', leads: { p1: { dRow: 0, dCol: 0 }, p2: { dRow: 0, dCol: 1 }, p3: { dRow: 0, dCol: 2 }, p4: { dRow: 0, dCol: 3 }, p5: { dRow: 0, dCol: 4 }, p6: { dRow: 0, dCol: 5 }, p7: { dRow: 0, dCol: 6 }, p8: { dRow: 0, dCol: 7 } } },
-  usb_a: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, d_minus: { dRow: 0, dCol: 1 }, d_plus: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
+  usb_a: { refTerminal: 'vbus', leads: { vbus: { dRow: 0, dCol: 0 }, dm: { dRow: 0, dCol: 1 }, dp: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
   keypad: {
     refTerminal: 'r1', straddlesGutter: true,
     leads: { r1: { dRow: 0, dCol: 0 }, r2: { dRow: 0, dCol: 1 }, r3: { dRow: 0, dCol: 2 }, r4: { dRow: 0, dCol: 3 },
