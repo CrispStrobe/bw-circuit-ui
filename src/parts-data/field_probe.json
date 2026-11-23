@@ -1,0 +1,24 @@
+{
+  "kind": "field_probe",
+  "w": 30,
+  "h": 70,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 15,
+      "y": 70,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Field probe: a short bare wire or metal plate exposed to the electric fields of the room. 1-terminal: a. Engine (bw-board field_probe): a knob control 0..1, how close the field source is. params.source picks the source: 'mains' (a live cable in the wall, mainsVolts/mainsHz), 'charge' (a rubbed ruler at rodVolts) or 'body' (the learner's finger, contact 'skin' through skinOhms or 'paper' through paperFarads); maxFarads is the coupling at the closest approach, strayFarads the wire's own capacitance to the room, adaptorFarads > 0 means the circuit runs from a mains adaptor. Drawn as a bare copper wire with a stripped tip and a field symbol.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      }
+    }
+  }
+}
