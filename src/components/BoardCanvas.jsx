@@ -29,6 +29,8 @@ import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootpri
 import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interaction/seat-geometry.js';
 import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
 import { moduleLabelLayout, moduleTerminalLayout } from '../model/module-layout.js';
+import { ART_FACE_KINDS, artFaceLayout } from '../model/part-art.js';
+import { PART_ART_URLS } from './part-art-urls.js';
 import { clashingTerminalLabels } from '../model/terminal-labels.js';
 import { KIND_ALIASES } from '../model/terminal-aliases.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
@@ -535,10 +537,56 @@ function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, par
       }
     }
 
+    // A kind with vendored bw-parts art draws that art (src/model/part-art.js),
+    // not the generic box: the art's leg ends are the sidecar's terminal x/y,
+    // which is where terminalOffsetsForPart puts these pins. Seated, the art
+    // moves onto its holes and any leg end that still misses its hole gets a
+    // lead to it. Null when the pins are not on the art's legs (a saved part
+    // with other terminals), which keeps the generic box.
+    const artFace = () => {
+      const href = ART_FACE_KINDS.includes(kind) ? PART_ART_URLS[kind] : null;
+      const sc = href && typeof getSidecar === 'function' ? getSidecar(kind) : null;
+      if (!sc) return null;
+      const pins = terminalOffsetsForPart({ ...part, rotation: 0, flipped: false });
+      const free = artFaceLayout(sc);
+      if (!free || !(part.terminals || []).every(n => free.legs[n] && pins[n]
+        && Math.hypot(pins[n].dx - free.legs[n].dx, pins[n].dy - free.legs[n].dy) < 0.5)) return null;
+      // Seated holes in the face's own frame: undo translate, rotate and flip.
+      let holes = null;
+      if (part._seatTerminals) {
+        holes = {};
+        for (const [name, p] of Object.entries(part._seatTerminals)) {
+          const q = rotateOffset(p.x - x, p.y - y, (360 - (((rot % 360) + 360) % 360)) % 360);
+          holes[name] = flip ? { dx: -q.dx, dy: q.dy } : q;
+        }
+      }
+      const art = holes ? artFaceLayout(sc, holes) : free;
+      const bottom = Math.max(art.y + art.h, ...art.leads.map(l => l.to.dy));
+      return (
+        <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
+          data-part-face={kind} data-art-face={kind}>
+          {/* Hit/selection box first: the art is transparent around its outline. */}
+          <rect x={art.x} y={art.y} width={art.w} height={art.h} rx={3}
+            fill="transparent" stroke={selStroke || 'none'} strokeWidth={isSelected ? 2 : 0} />
+          {art.leads.map(l => (
+            <line key={l.name} data-art-lead={l.name} x1={l.from.dx} y1={l.from.dy} x2={l.to.dx} y2={l.to.dy}
+              stroke="#aab2ba" strokeWidth={1.4} strokeLinecap="round" />
+          ))}
+          <image href={href} x={art.x} y={art.y} width={art.w} height={art.h}
+            preserveAspectRatio="none" style={{ pointerEvents: 'none' }} />
+          {/* Seated, the seat layer already names the part under its holes. */}
+          {!holes && <text x={art.x + art.w / 2} y={bottom + 14} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+            fontFamily="monospace">{part.declName || id}</text>}
+        </g>
+      );
+    };
+
     // Generic labelled module body (B20), shared by the default branch and
     // the video chips' no-video path.
     const genericFace = () => {
       if (WOKWI_LAYER_KINDS.has(kind)) return null;
+      const artBody = artFace();
+      if (artBody) return artBody;
       const mod = genericModuleLayout(part);
       if (!mod) return null;
       const { offsets: modOffsets, sc: modSc } = mod;
