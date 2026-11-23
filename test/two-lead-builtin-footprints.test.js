@@ -89,6 +89,36 @@ test('a seated battery (aliased to vsource) keeps its seat', () => {
   assert.ok(netOf(c, 'bat1', 'pos') && netOf(c, 'bat1', 'neg'));
 });
 
+// The first load seats the battery by the footprint of the kind the FILE names,
+// then aliases the part to vsource. A save writes `vsource`, and vsource has no
+// footprint, so before 2026-11-23 the RELOAD dropped the seat: load -> save ->
+// load was not a fixed point (sb3 examples 47, 48, 52 had to give up their
+// seats). The part now carries the kind its seat was taken from.
+test('a seated battery survives load -> save -> load, and the save is a fixed point', () => {
+  const first = Circuit.fromJSON(bench({ id: 'bat1', kind: 'battery', params: { volts: 3 },
+    seat: { boardId: 'bb1', leadMap: { pos: 'a9', neg: 'a10' } } }));
+  const saved = JSON.parse(JSON.stringify(first.toJSON()));
+  const second = Circuit.fromJSON(saved);
+  const p = second.parts.find((q) => q.id === 'bat1');
+  assert.equal(p.kind, 'vsource');
+  assert.deepEqual(p.seat, { boardId: 'bb1', leadMap: { pos: 'a9', neg: 'a10' } }, 'seat kept on reload');
+  assert.ok(netOf(second, 'bat1', 'pos') && netOf(second, 'bat1', 'neg'));
+  assert.notEqual(netOf(second, 'bat1', 'pos'), netOf(second, 'bat1', 'neg'));
+  assert.deepEqual(second.board.getNets().map((n) => n.terminals.map((t) => `${t.part}.${t.terminal}`).sort()).sort(),
+    first.board.getNets().map((n) => n.terminals.map((t) => `${t.part}.${t.terminal}`).sort()).sort(),
+    'same nets after the round trip');
+  assert.deepEqual(JSON.parse(JSON.stringify(second.toJSON())), saved, 'the second save equals the first');
+  // The seat stays a real seat after the reload: the board knows its holes.
+  assert.deepEqual(second.breadboards.get('bb1').occupantOf('a9'), { kind: 'lead', partId: 'bat1', terminal: 'pos' });
+});
+
+test('an unseated battery gains no footprint field and still loads as a vsource', () => {
+  const c = Circuit.fromJSON(bench({ id: 'bat1', kind: 'battery', params: { volts: 3 } }));
+  const saved = c.toJSON().parts.find((q) => q.id === 'bat1');
+  assert.equal(saved.kind, 'vsource');
+  assert.equal('footprintKind' in saved, false);
+});
+
 test('a seated piezo and phototransistor keep their seats', () => {
   for (const [kind, leadMap] of [['piezo', { a: 'a15', b: 'a16' }], ['phototransistor', { collector: 'c3', emitter: 'c6' }]]) {
     const c = Circuit.fromJSON(bench({ id: 'p', kind, params: {}, seat: { boardId: 'bb1', leadMap } }));

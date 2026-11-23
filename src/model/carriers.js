@@ -90,5 +90,11 @@ export function carrierFootprintForPart(part) {
 /** Bare THT sidecar footprint, or an explicit carrier footprint. */
 export function breadboardFootprintForPart(part, bareFootprints) {
   if (!part) return null;
-  return bareFootprints?.[part.kind] || carrierFootprintForPart(part);
+  // `footprintKind` is the kind a seated part's package was taken from when a
+  // load aliased the part to a kind without one (battery -> vsource): the
+  // alias names the physics, the package is still the battery's. See
+  // Circuit.fromJSON.
+  return bareFootprints?.[part.kind]
+    || (part.footprintKind ? bareFootprints?.[part.footprintKind] : null)
+    || carrierFootprintForPart(part);
 }

@@ -23,8 +23,8 @@
 import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { Circuit, resetIds } from '../src/model/circuit.js';
-import { resolveKind, resolveTerminal } from '../src/model/terminal-aliases.js';
+import { Circuit, resetIds, resolveLoadedKind } from '../src/model/circuit.js';
+import { resolveTerminal, resolveKind, ENGINE_MODEL_WINS } from '../src/model/terminal-aliases.js';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -39,14 +39,19 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const CORPUS_ROOTS = corpusRoots(here);
 const examplesDir = CORPUS_ROOTS.find((r) => existsSync(r)) || null;
 
-function loadGalleryCircuit(filePath) {
-  const raw = JSON.parse(readFileSync(filePath, 'utf-8'));
+// Kinds resolve exactly as Circuit.fromJSON resolves them (resolveLoadedKind):
+// the engine's own model wins over an alias. This loader used the bare
+// resolveKind, so a `74hc595` collapsed onto `shift_register`, which has none
+// of vcc/gnd/ser/srclk/rclk/srclr/qa..qh; addWire refused all 14 wires to it
+// in board-prechin-a2-learning-board and the gate reported 375 "losses" for a
+// file the real loader round-trips intact.
+function loadGalleryRaw(raw) {
   resetIds();
   const c = new Circuit(raw.vcc || 5.0);
   const idMap = new Map(); // original id → model id
 
   for (const p of raw.parts || []) {
-    const resolvedKind = resolveKind(p.kind);
+    const resolvedKind = resolveLoadedKind(p.kind);
     const part = c.addPart(resolvedKind, p.params || {}, p.x || 0, p.y || 0);
     idMap.set(p.id, part.id);
   }
@@ -57,6 +62,11 @@ function loadGalleryCircuit(filePath) {
   // part-to-part loader, NOT a serialiser loss, and counting it as one is what
   // made this gate report 2432 losses the day it started running again.
   let unattached = 0;
+  // One entry per attachable raw wire, in raw order: the wire addWire
+  // returned, or null when it refused it. The comparator matches on this, so
+  // a refused wire is reported as ONE loss instead of shifting every later
+  // positional comparison.
+  const placed = [];
   for (const w of raw.wires || []) {
     const fromId = idMap.get(w.from);
     const toId = idMap.get(w.to);
@@ -70,11 +80,125 @@ function loadGalleryCircuit(filePath) {
       const toTerm = toPart
         ? resolveTerminal(toPart.kind, w.toTerminal, toPart.terminals)
         : w.toTerminal;
-      c.addWire(fromId, fromTerm, toId, toTerm);
+      placed.push(c.addWire(fromId, fromTerm, toId, toTerm));
     }
   }
 
-  return { circuit: c, raw, idMap, unattached };
+  return { circuit: c, raw, idMap, unattached, placed };
+}
+
+/**
+ * Everything that does not survive load -> serialise for one gallery file,
+ * plus how many wires this part-to-part loader could not attach (hole wires).
+ */
+function galleryLosses(raw) {
+  const { circuit, idMap, unattached, placed } = loadGalleryRaw(raw);
+  const saved = circuit.toJSON();
+  const losses = [];
+
+  // ── Check VCC voltage ────────────────────────────────────
+  if (raw.vcc !== undefined && saved.vcc !== raw.vcc) {
+    losses.push(`vcc: ${raw.vcc} → ${saved.vcc}`);
+  }
+
+  // ── Check part count ─────────────────────────────────────
+  if (saved.parts.length !== (raw.parts || []).length) {
+    losses.push(`part count: ${(raw.parts || []).length} → ${saved.parts.length}`);
+  }
+
+  // ── Check each part's fields ─────────────────────────────
+  for (const orig of raw.parts || []) {
+    const modelId = idMap.get(orig.id);
+    const savedPart = saved.parts.find(p => p.id === modelId);
+    if (!savedPart) {
+      losses.push(`part ${orig.id} (${orig.kind}): MISSING after round-trip`);
+      continue;
+    }
+
+    const resolvedKind = resolveLoadedKind(orig.kind);
+    if (savedPart.kind !== resolvedKind) {
+      losses.push(`part ${orig.id}: kind ${orig.kind} → ${savedPart.kind}`);
+    }
+
+    // Coordinates
+    const origX = orig.x || 0;
+    const origY = orig.y || 0;
+    if (savedPart.x !== origX) losses.push(`part ${orig.id}: x ${origX} → ${savedPart.x}`);
+    if (savedPart.y !== origY) losses.push(`part ${orig.id}: y ${origY} → ${savedPart.y}`);
+
+    // Parameters — the critical one
+    for (const [key, val] of Object.entries(orig.params || {})) {
+      const savedVal = savedPart.params?.[key];
+      if (JSON.stringify(savedVal) !== JSON.stringify(val)) {
+        losses.push(`part ${orig.id}: params.${key} ${JSON.stringify(val)} → ${JSON.stringify(savedVal)}`);
+      }
+    }
+  }
+
+  // ── Check wire count ─────────────────────────────────────
+  // Against what the loader could actually take, not the raw file: the
+  // difference is hole-terminated wires, which never reached the circuit
+  // and so cannot have been lost by serialising it.
+  if (saved.wires.length !== (raw.wires || []).length - unattached) {
+    losses.push(`wire count: ${(raw.wires || []).length - unattached} → ${saved.wires.length}`);
+  }
+
+  // ── Check each wire's endpoints ──────────────────────────
+  // Compared over the wires the loader could take, each against the saved
+  // wire with the id addWire gave it — never by position. One skipped
+  // hole-terminated wire shifted every index after it (2260 of this gate's
+  // 2432 "losses" once), and so did one wire addWire refused (375 in
+  // board-prechin-a2-learning-board): a single loss must read as one.
+  const attachable = (raw.wires || []).filter((w) => idMap.get(w.from) && idMap.get(w.to));
+  for (let i = 0; i < attachable.length; i++) {
+    const origW = attachable[i];
+    if (!placed[i]) {
+      losses.push(`wire[${i}]: ${origW.from}.${origW.fromTerminal} -> ${origW.to}.${origW.toTerminal} `
+        + 'refused at load (no such terminal on the loaded kind, or a duplicate)');
+      continue;
+    }
+    const savedW = saved.wires.find((sw) => sw.id === placed[i].id);
+    if (!savedW) {
+      losses.push(`wire[${i}]: MISSING after round-trip`);
+      continue;
+    }
+
+    // Resolve original IDs to model IDs for comparison
+    const origFrom = idMap.get(origW.from);
+    const origTo = idMap.get(origW.to);
+    const savedFrom = savedW.from?.part || savedW.from;
+    const savedTo = savedW.to?.part || savedW.to;
+
+    if (origFrom && savedFrom !== origFrom) {
+      losses.push(`wire[${i}]: from ${origW.from} mapped to ${origFrom} but saved as ${savedFrom}`);
+    }
+    if (origTo && savedTo !== origTo) {
+      losses.push(`wire[${i}]: to ${origW.to} mapped to ${origTo} but saved as ${savedTo}`);
+    }
+
+    // Terminal names — compare after alias resolution (aliases are
+    // a known, documented transformation, not a loss)
+    const savedFromTerm = savedW.from?.terminal || savedW.fromTerminal;
+    const savedToTerm = savedW.to?.terminal || savedW.toTerminal;
+    const fromPart = raw.parts.find(p => p.id === origW.from);
+    const toPart = raw.parts.find(p => p.id === origW.to);
+    const expectedFromTerm = fromPart
+      ? resolveTerminal(resolveLoadedKind(fromPart.kind), origW.fromTerminal,
+          circuit.parts.find(p => p.id === origFrom)?.terminals || [])
+      : origW.fromTerminal;
+    const expectedToTerm = toPart
+      ? resolveTerminal(resolveLoadedKind(toPart.kind), origW.toTerminal,
+          circuit.parts.find(p => p.id === origTo)?.terminals || [])
+      : origW.toTerminal;
+    if (savedFromTerm !== expectedFromTerm) {
+      losses.push(`wire[${i}]: fromTerminal ${origW.fromTerminal} → ${savedFromTerm} (expected ${expectedFromTerm})`);
+    }
+    if (savedToTerm !== expectedToTerm) {
+      losses.push(`wire[${i}]: toTerminal ${origW.toTerminal} → ${savedToTerm} (expected ${expectedToTerm})`);
+    }
+  }
+
+  return { losses, unattached };
 }
 
 describe('serialiser round-trip over gallery corpus', () => {
@@ -102,106 +226,8 @@ describe('serialiser round-trip over gallery corpus', () => {
     it(`${dir}: load → save preserves content`, () => {
       const filePath = path.join(examplesDir, dir, 'circuit.json');
       const raw = JSON.parse(readFileSync(filePath, 'utf-8'));
-      const { circuit, idMap, unattached } = loadGalleryCircuit(filePath);
-      const saved = circuit.toJSON();
-      const losses = [];
-
-      // ── Check VCC voltage ────────────────────────────────────
-      if (raw.vcc !== undefined && saved.vcc !== raw.vcc) {
-        losses.push(`vcc: ${raw.vcc} → ${saved.vcc}`);
-      }
-
-      // ── Check part count ─────────────────────────────────────
-      if (saved.parts.length !== (raw.parts || []).length) {
-        losses.push(`part count: ${(raw.parts || []).length} → ${saved.parts.length}`);
-      }
-
-      // ── Check each part's fields ─────────────────────────────
-      for (const orig of raw.parts || []) {
-        const modelId = idMap.get(orig.id);
-        const savedPart = saved.parts.find(p => p.id === modelId);
-        if (!savedPart) {
-          losses.push(`part ${orig.id} (${orig.kind}): MISSING after round-trip`);
-          continue;
-        }
-
-        const resolvedKind = resolveKind(orig.kind);
-        if (savedPart.kind !== resolvedKind) {
-          losses.push(`part ${orig.id}: kind ${orig.kind} → ${savedPart.kind}`);
-        }
-
-        // Coordinates
-        const origX = orig.x || 0;
-        const origY = orig.y || 0;
-        if (savedPart.x !== origX) losses.push(`part ${orig.id}: x ${origX} → ${savedPart.x}`);
-        if (savedPart.y !== origY) losses.push(`part ${orig.id}: y ${origY} → ${savedPart.y}`);
-
-        // Parameters — the critical one
-        for (const [key, val] of Object.entries(orig.params || {})) {
-          const savedVal = savedPart.params?.[key];
-          if (JSON.stringify(savedVal) !== JSON.stringify(val)) {
-            losses.push(`part ${orig.id}: params.${key} ${JSON.stringify(val)} → ${JSON.stringify(savedVal)}`);
-          }
-        }
-      }
-
-      // ── Check wire count ─────────────────────────────────────
-      // Against what the loader could actually take, not the raw file: the
-      // difference is hole-terminated wires, which never reached the circuit
-      // and so cannot have been lost by serialising it.
+      const { losses, unattached } = galleryLosses(raw);
       totalUnattached += unattached;
-      if (saved.wires.length !== (raw.wires || []).length - unattached) {
-        losses.push(`wire count: ${(raw.wires || []).length - unattached} → ${saved.wires.length}`);
-      }
-
-      // ── Check each wire's endpoints ──────────────────────────
-      // Positional comparison only works over the wires the loader actually
-      // took. One skipped hole-terminated wire shifts every index after it, so
-      // comparing raw.wires[i] to saved.wires[i] reports every later wire as
-      // wrong — 2260 of this gate's 2432 "losses" were that shift.
-      const attachable = (raw.wires || []).filter((w) => idMap.get(w.from) && idMap.get(w.to));
-      for (let i = 0; i < attachable.length; i++) {
-        const origW = attachable[i];
-        if (i >= saved.wires.length) {
-          losses.push(`wire[${i}]: MISSING`);
-          continue;
-        }
-        const savedW = saved.wires[i];
-
-        // Resolve original IDs to model IDs for comparison
-        const origFrom = idMap.get(origW.from);
-        const origTo = idMap.get(origW.to);
-        const savedFrom = savedW.from?.part || savedW.from;
-        const savedTo = savedW.to?.part || savedW.to;
-
-        if (origFrom && savedFrom !== origFrom) {
-          losses.push(`wire[${i}]: from ${origW.from} mapped to ${origFrom} but saved as ${savedFrom}`);
-        }
-        if (origTo && savedTo !== origTo) {
-          losses.push(`wire[${i}]: to ${origW.to} mapped to ${origTo} but saved as ${savedTo}`);
-        }
-
-        // Terminal names — compare after alias resolution (aliases are
-        // a known, documented transformation, not a loss)
-        const savedFromTerm = savedW.from?.terminal || savedW.fromTerminal;
-        const savedToTerm = savedW.to?.terminal || savedW.toTerminal;
-        const fromPart = raw.parts.find(p => p.id === origW.from);
-        const toPart = raw.parts.find(p => p.id === origW.to);
-        const expectedFromTerm = fromPart
-          ? resolveTerminal(resolveKind(fromPart.kind), origW.fromTerminal,
-              circuit.parts.find(p => p.id === origFrom)?.terminals || [])
-          : origW.fromTerminal;
-        const expectedToTerm = toPart
-          ? resolveTerminal(resolveKind(toPart.kind), origW.toTerminal,
-              circuit.parts.find(p => p.id === origTo)?.terminals || [])
-          : origW.toTerminal;
-        if (savedFromTerm !== expectedFromTerm) {
-          losses.push(`wire[${i}]: fromTerminal ${origW.fromTerminal} → ${savedFromTerm} (expected ${expectedFromTerm})`);
-        }
-        if (savedToTerm !== expectedToTerm) {
-          losses.push(`wire[${i}]: toTerminal ${origW.toTerminal} → ${savedToTerm} (expected ${expectedToTerm})`);
-        }
-      }
 
       if (losses.length > 0) {
         allLosses.push({ file: dir, losses });
@@ -226,7 +252,9 @@ describe('serialiser round-trip over gallery corpus', () => {
    * loss — counted separately so the limitation is visible instead of inflating
    * the number above, which is exactly what it used to do.
    */
-  const KNOWN_UNATTACHED = 731;
+  // 731 -> 1375 on 2026-11-23: sb3-creator added 88 breadboard-seated lab-*
+  // examples (PRs #186/#187), every one wired hole-to-hole.
+  const KNOWN_UNATTACHED = 1375;
 
   it('summary: report all losses across corpus', () => {
     console.log(`  Serialiser round-trip: ${filesChecked} files checked`);
@@ -295,7 +323,7 @@ function compareRoundTrip(raw, circuit, idMap) {
     const modelId = idMap.get(orig.id);
     const savedPart = saved.parts.find(p => p.id === modelId);
     if (!savedPart) { losses.push(`part ${orig.id}: MISSING`); continue; }
-    const rk = resolveKind(orig.kind);
+    const rk = resolveLoadedKind(orig.kind);
     if (savedPart.kind !== rk) losses.push(`part ${orig.id}: kind ${orig.kind} → ${savedPart.kind}`);
     if (savedPart.x !== (orig.x || 0)) losses.push(`part ${orig.id}: x changed`);
     if (savedPart.y !== (orig.y || 0)) losses.push(`part ${orig.id}: y changed`);
@@ -335,7 +363,7 @@ describe('negative controls: comparator detects mutations', () => {
     const c = new Circuit(raw.vcc || 5.0);
     const idMap = new Map();
     for (const p of raw.parts) {
-      const part = c.addPart(resolveKind(p.kind), p.params || {}, p.x || 0, p.y || 0);
+      const part = c.addPart(resolveLoadedKind(p.kind), p.params || {}, p.x || 0, p.y || 0);
       idMap.set(p.id, part.id);
     }
     for (const w of raw.wires) {
@@ -365,7 +393,7 @@ describe('negative controls: comparator detects mutations', () => {
     const c = new Circuit(raw.vcc);
     const idMap = new Map();
     for (const p of raw.parts) {
-      const part = c.addPart(resolveKind(p.kind), p.params || {}, p.x, p.y);
+      const part = c.addPart(resolveLoadedKind(p.kind), p.params || {}, p.x, p.y);
       idMap.set(p.id, part.id);
     }
     // Tamper: pretend the original had ohms=2200 — the saved circuit has 1000
@@ -384,7 +412,7 @@ describe('negative controls: comparator detects mutations', () => {
     const c = new Circuit(raw.vcc);
     const idMap = new Map();
     for (const p of raw.parts) {
-      const part = c.addPart(resolveKind(p.kind), p.params || {}, p.x, p.y);
+      const part = c.addPart(resolveLoadedKind(p.kind), p.params || {}, p.x, p.y);
       idMap.set(p.id, part.id);
     }
     // Tamper: shift original's recorded x by 1 after loading
@@ -407,7 +435,7 @@ describe('negative controls: comparator detects mutations', () => {
     const c = new Circuit(fullRaw.vcc);
     const idMap = new Map();
     for (const p of fullRaw.parts) {
-      const part = c.addPart(resolveKind(p.kind), p.params || {}, p.x, p.y);
+      const part = c.addPart(resolveLoadedKind(p.kind), p.params || {}, p.x, p.y);
       idMap.set(p.id, part.id);
     }
     for (const w of fullRaw.wires) {
@@ -427,7 +455,7 @@ describe('negative controls: comparator detects mutations', () => {
     const c = new Circuit(raw.vcc);
     const idMap = new Map();
     for (const p of raw.parts) {
-      const part = c.addPart(resolveKind(p.kind), p.params || {}, p.x, p.y);
+      const part = c.addPart(resolveLoadedKind(p.kind), p.params || {}, p.x, p.y);
       idMap.set(p.id, part.id);
     }
     // Tamper: pretend original was 3.3V
@@ -435,5 +463,75 @@ describe('negative controls: comparator detects mutations', () => {
     const losses = compareRoundTrip(raw, c, idMap);
     assert.ok(losses.some(l => l.includes('vcc')),
       `comparator must detect VCC change, got: ${losses.join('; ')}`);
+  });
+});
+
+// ── Regression: an engine-modelled alias kind (corpus-independent) ──
+// board-prechin-a2-learning-board reported 375 losses: wire count 123 -> 109
+// and "wire[2]: from vcc1 mapped to vcc_1 but saved as gnd_2". The file has a
+// `74hc595`; this harness resolved it with the bare resolveKind, which
+// collapses it onto the built-in `shift_register` (no vcc/gnd/ser/srclk/rclk/
+// srclr/qa..qh), so addWire refused all 14 of its wires and every later wire
+// was compared against the wrong saved one. Circuit.fromJSON asks the engine
+// first and kept the chip; the harness now resolves kinds the same way.
+describe('regression: a 74hc595 round-trips through the harness loader', () => {
+  function fixture() {
+    return {
+      vcc: 5,
+      parts: [
+        { id: 'vcc1', kind: 'vcc', params: {}, x: 40, y: 40 },
+        { id: 'gnd1', kind: 'gnd', params: {}, x: 40, y: 640 },
+        { id: 'sr1', kind: '74hc595', params: {}, x: 820, y: 190 },
+        { id: 'r1', kind: 'resistor', params: { ohms: 330 }, x: 900, y: 190 },
+        { id: 'led1', kind: 'led', params: { color: 'red' }, x: 960, y: 190 },
+      ],
+      wires: [
+        { from: 'vcc1', fromTerminal: 'vcc', to: 'sr1', toTerminal: 'vcc' },
+        { from: 'gnd1', fromTerminal: 'gnd', to: 'sr1', toTerminal: 'gnd' },
+        { from: 'vcc1', fromTerminal: 'vcc', to: 'sr1', toTerminal: 'srclr' },
+        { from: 'gnd1', fromTerminal: 'gnd', to: 'sr1', toTerminal: 'oe' },
+        { from: 'sr1', fromTerminal: 'qa', to: 'r1', toTerminal: 'a' },
+        { from: 'r1', fromTerminal: 'b', to: 'led1', toTerminal: 'anode' },
+        { from: 'led1', fromTerminal: 'cathode', to: 'gnd1', toTerminal: 'gnd' },
+      ],
+    };
+  }
+
+  it('the fixture exercises the alias: bare resolveKind would collapse the chip', () => {
+    assert.equal(resolveKind('74hc595'), 'shift_register');
+    assert.equal(resolveLoadedKind('74hc595'), '74hc595',
+      'the engine registers 74hc595, so the load path must keep it');
+  });
+
+  it('load -> save through the harness loader loses nothing', () => {
+    const { losses, unattached } = galleryLosses(fixture());
+    assert.equal(unattached, 0);
+    assert.deepEqual(losses, []);
+  });
+
+  it('Circuit.fromJSON agrees: same kind, every wire kept, fixed point on reload', () => {
+    const saved = Circuit.fromJSON(fixture()).toJSON();
+    assert.equal(saved.parts.find((p) => p.id === 'sr1').kind, '74hc595');
+    assert.equal(saved.wires.length, fixture().wires.length);
+    const again = Circuit.fromJSON(JSON.parse(JSON.stringify(saved))).toJSON();
+    assert.equal(again.wires.length, saved.wires.length);
+  });
+
+  it('the harness resolves every engine-wins kind exactly as fromJSON does', () => {
+    for (const kind of ENGINE_MODEL_WINS) {
+      const loaded = Circuit.fromJSON({ vcc: 5, parts: [{ id: 'p', kind, params: {}, x: 0, y: 0 }], wires: [] });
+      assert.equal(resolveLoadedKind(kind), loaded.parts[0].kind, kind);
+    }
+  });
+
+  it('negative control: one refused wire is one wire loss, not a cascade', () => {
+    const raw = fixture();
+    // A terminal no resistor has, in the middle of the list.
+    raw.wires.splice(1, 0, { from: 'vcc1', fromTerminal: 'vcc', to: 'r1', toTerminal: 'nope' });
+    const { losses } = galleryLosses(raw);
+    const perWire = losses.filter((l) => l.startsWith('wire['));
+    assert.equal(perWire.length, 1, losses.join('\n'));
+    assert.match(perWire[0], /^wire\[1\]: vcc1\.vcc -> r1\.nope refused at load/);
+    assert.ok(losses.some((l) => l.startsWith('wire count: 8 → 7')), losses.join('\n'));
   });
 });

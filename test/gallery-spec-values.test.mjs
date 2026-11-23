@@ -112,10 +112,13 @@ describe('gallery values their own specs pin', { skip: SKIP }, () => {
   test('the isolator matches both rows of its own table', () => {
     // Both of these were wrong before, in opposite directions: the coil read
     // 2.5 V where the doc says 0, and the contact read 0 where it says 2.00.
+    // The open contact's 2.00 V became 1.775 V when bw-board learned per-colour
+    // LED forward voltages (blue led1 with vf 2 now leaks its knee differently
+    // through the open contact); EXPECTED.md was re-measured to 1.775 V.
     const { at } = solveExample('pc25-relay-isolator');
     assert.ok(Math.abs(at('relay1.coil_a') - 0) < 0.01,
       `coil_a = ${at('relay1.coil_a')} V, EXPECTED.md says 0 V with the switch open`);
-    assert.ok(Math.abs(at('relay1.no') - 2) < 0.05,
-      `relay1.no = ${at('relay1.no')} V, EXPECTED.md says 2.00 V`);
+    assert.ok(Math.abs(at('relay1.no') - 1.775) < 0.05,
+      `relay1.no = ${at('relay1.no')} V, EXPECTED.md says 1.775 V`);
   });
 });

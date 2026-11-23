@@ -12,9 +12,8 @@
 import './_setup.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { Circuit, resetIds } from '../src/model/circuit.js';
+import { Circuit, resetIds, resolveLoadedKind } from '../src/model/circuit.js';
 import { runDrc } from '../src/model/drc.js';
-import { resolveKind } from '../src/model/terminal-aliases.js';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -90,7 +89,7 @@ describe('safety-lesson canary: 31-no-resistor-led', () => {
     const c = new Circuit(raw.vcc || 5.0);
     const idMap = new Map();
     for (const p of raw.parts) {
-      const part = c.addPart(resolveKind(p.kind), p.params || {}, p.x, p.y);
+      const part = c.addPart(resolveLoadedKind(p.kind), p.params || {}, p.x, p.y);
       idMap.set(p.id, part.id);
     }
     for (const w of raw.wires) {
@@ -121,7 +120,7 @@ describe('safety-lesson canary: 31-no-resistor-led', () => {
   it('round-trip preserves the mistake (no auto-fix)', () => {
     resetIds();
     const c = new Circuit(raw.vcc || 5.0);
-    for (const p of raw.parts) c.addPart(resolveKind(p.kind), p.params || {}, p.x, p.y);
+    for (const p of raw.parts) c.addPart(resolveLoadedKind(p.kind), p.params || {}, p.x, p.y);
     for (const w of raw.wires) {
       const fromId = c.parts.find(pp => pp.x === raw.parts.find(rp => rp.id === w.from)?.x)?.id;
       const toId = c.parts.find(pp => pp.x === raw.parts.find(rp => rp.id === w.to)?.x)?.id;
