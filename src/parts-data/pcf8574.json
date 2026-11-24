@@ -1,53 +1,57 @@
 {
   "kind": "pcf8574",
-  "w": 70,
-  "h": 51,
+  "w": 118,
+  "h": 38,
+  "dip": {
+    "label": "PCF8574",
+    "subtitle": "I2C EXPAND"
+  },
   "terminals": [
     {
       "name": "a0",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "a1",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "a2",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "p0",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "p1",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "p2",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "p3",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": [
         "gpio"
@@ -55,137 +59,137 @@
     },
     {
       "name": "gnd",
-      "x": 0,
-      "y": 43,
+      "x": 108,
+      "y": 38,
       "functions": []
     },
     {
       "name": "p4",
-      "x": 70,
-      "y": 43,
+      "x": 108,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "p5",
-      "x": 70,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "p6",
-      "x": 70,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "p7",
-      "x": 70,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "int",
-      "x": 70,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "scl",
-      "x": 70,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": [
         "scl"
       ]
     },
     {
       "name": "sda",
-      "x": 70,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": [
         "sda"
       ]
     },
     {
       "name": "vcc",
-      "x": 70,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "a0",
+    "refTerminal": "vcc",
     "leads": {
       "a0": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "a1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "a2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "p0": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "p1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "p2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "p3": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "gnd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 7
       },
       "p4": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 7
       },
       "p5": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "p6": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "p7": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "int": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "scl": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "sda": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "vcc": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

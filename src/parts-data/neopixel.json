@@ -1,30 +1,30 @@
 {
   "kind": "neopixel",
-  "w": 20,
-  "h": 20,
+  "w": 32,
+  "h": 40,
   "terminals": [
     {
       "name": "din",
-      "x": 0,
-      "y": 4,
+      "x": 4,
+      "y": 40,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 20,
-      "y": 4,
+      "x": 12,
+      "y": 40,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 0,
-      "y": 16,
+      "x": 20,
+      "y": 40,
       "functions": []
     },
     {
       "name": "dout",
-      "x": 20,
-      "y": 16,
+      "x": 28,
+      "y": 40,
       "functions": []
     }
   ],

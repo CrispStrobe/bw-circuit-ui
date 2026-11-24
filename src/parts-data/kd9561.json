@@ -1,24 +1,29 @@
 {
   "kind": "kd9561",
-  "w": 40,
-  "h": 48,
+  "w": 48,
+  "h": 38,
+  "dip": {
+    "label": "KD9561",
+    "subtitle": "SOUND",
+    "style": "board"
+  },
   "terminals": [
-    { "name": "vdd", "x": 0, "y": 10, "functions": [] },
-    { "name": "gnd", "x": 0, "y": 20, "functions": [] },
-    { "name": "out", "x": 0, "y": 30, "functions": [] },
-    { "name": "sel1", "x": 40, "y": 10, "functions": [] },
-    { "name": "sel2", "x": 40, "y": 20, "functions": [] }
+    { "name": "vdd", "x": 10, "y": 38, "functions": [] },
+    { "name": "gnd", "x": 24, "y": 38, "functions": [] },
+    { "name": "out", "x": 38, "y": 38, "functions": [] },
+    { "name": "sel1", "x": 10, "y": 0, "functions": [] },
+    { "name": "sel2", "x": 24, "y": 0, "functions": [] }
   ],
   "variants": null,
   "_note": "KD9561 4-sound effect IC. 5-pin: VDD, GND, OUT (square-wave), SEL1, SEL2 (effect select, pulled low internally). Effects: 00=siren, 01=fire, 10=ambulance, 11=machine gun.",
   "footprint": {
-    "refTerminal": "vdd",
+    "refTerminal": "sel1",
     "leads": {
-      "vdd":  { "dRow": 0, "dCol": 0 },
-      "gnd":  { "dRow": 0, "dCol": 1 },
-      "out":  { "dRow": 0, "dCol": 2 },
-      "sel1": { "dRow": 5, "dCol": 0 },
-      "sel2": { "dRow": 5, "dCol": 1 }
+      "vdd":  { "dRow": 5, "dCol": 0 },
+      "gnd":  { "dRow": 5, "dCol": 1 },
+      "out":  { "dRow": 5, "dCol": 2 },
+      "sel1": { "dRow": 0, "dCol": 0 },
+      "sel2": { "dRow": 0, "dCol": 1 }
     },
     "straddlesGutter": true
   }

@@ -1,92 +1,96 @@
 {
   "kind": "lm358",
-  "w": 60,
-  "h": 48,
+  "w": 62,
+  "h": 38,
+  "dip": {
+    "label": "LM358",
+    "subtitle": "DUAL OP AMP"
+  },
   "terminals": [
     {
       "name": "vcc",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1_pos",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1_neg",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1_out",
-      "x": 60,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2_pos",
-      "x": 60,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2_neg",
-      "x": 60,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2_out",
-      "x": 60,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "_note": "LM358 dual operational amplifier. DIP-8. Two independent op-amps.",
   "footprint": {
-    "refTerminal": "vcc",
+    "refTerminal": "1_out",
     "leads": {
       "vcc": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "gnd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "1_pos": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "1_neg": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "1_out": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       },
       "2_pos": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "2_neg": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "2_out": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       }
     },

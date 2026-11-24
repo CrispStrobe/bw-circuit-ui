@@ -123,7 +123,9 @@ function verifyBoard(kind, vcc, gpioPin, enginePinName) {
       const gndHole = leadMap[gndTerminals[0]];
       const gndCol = parseInt(gndHole.slice(1));
       const gndRow = gndHole[0];
-      c.addHoleWire(bb.id, (gndRow <= 'e' ? 'a' : 'f') + gndCol,
+      // A free row of the pin's block: a above the gutter, j below it (f is the
+      // pin's own row when the chip is seated pin 1 bottom-left).
+      c.addHoleWire(bb.id, (gndRow <= 'e' ? 'a' : 'j') + gndCol,
         (gndRow <= 'e' ? 't-' : 'b-') + gndCol, '#000');
 
       const gpioHole = leadMap[gpioPin];
@@ -188,7 +190,9 @@ function verifyDIP(kind, vcc, testPin) {
       const pinHole = leadMap[testPin];
       const pinCol = parseInt(pinHole.slice(1));
       const pinRow = pinHole[0];
-      const freeRow = pinRow <= 'e' ? 'a' : 'f';
+      // A free row of the pin's block (row f is the pin's own when pin 1 is
+      // bottom-left, which every DIP footprint is since 2026-11-24).
+      const freeRow = pinRow <= 'e' ? 'a' : 'j';
 
       const r = c.addPart('resistor', { ohms: 1000 }, 0, 0);
       c.addTapWire(r.id, 'a', bb.id, freeRow + pinCol, '#f00');

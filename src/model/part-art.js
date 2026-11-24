@@ -24,9 +24,9 @@
  * set and the electrolytic first (2026-11-23), then every kind whose pins
  * already sat on its art's leg ends (sensor and breakout modules, regulators,
  * meters, batteries, motors, displays on a carrier) and the two-lead parts
- * whose pins moved onto their art's legs (terminalOffsetsForPart).
+ * whose pins moved onto their art's legs.
  */
-export const ART_FACE_KINDS = Object.freeze([
+const FIRST_ART_FACES = [
   '74ls193', 'adxl335', 'ambient_light', 'ammeter', 'analog_meter', 'antenna', 'battery',
   'battery_9v', 'battery_coin', 'breadboard_psu', 'clock_display', 'dc_motor_encoder',
   'dfplayer_mini', 'dht11', 'dht22', 'dip_switch_dpst', 'ds3231', 'earphone', 'earth',
@@ -54,17 +54,42 @@ export const ART_FACE_KINDS = Object.freeze([
   // Radio: the VHF tank coil and the varicap.
   'vhf_coil',
   'varicap',
-]);
+];
 
-const DIP_ART = 'DIP art (pins on two side columns of a chip body): seated, the package straddles the gutter on the 14-unit pitch, so its legs would run across the chip into the holes; the chip box with a notch is the honest face';
-const TWO_EDGES = 'pins on two edges of the art go into ONE row of holes: seated, the legs from the far edge would run back across the body';
+/**
+ * 2026-11-24: the DIPs, re-laid by bw-parts on the breadboard pitch (`dip` in
+ * the sidecar: legs 14 apart, rows 38 apart across the gutter, pin 1
+ * bottom-left), so seated their legs ARE the holes; the breakouts redrawn with
+ * one header row; and the parts whose sidecars put several pins on one point,
+ * or had no legs where the engine has terminals.
+ */
+const BREADBOARD_ART_FACES = [
+  '28c256', '555', '556', '62256', '74c922', '74hc00', '74hc02', '74hc04', '74hc08', '74hc10',
+  '74hc11', '74hc125', '74hc132', '74hc138', '74hc14', '74hc165', '74hc20', '74hc21',
+  '74hc244', '74hc245', '74hc27', '74hc283', '74hc32', '74hc34', '74hc373', '74hc374',
+  '74hc4050', '74hc595', '74hc688', '74hc73', '74hc74', '74hc75', '74hc86', '74hc93', '74hc95',
+  '74ls04', '74ls107', '74ls157', '74ls161', '74ls173', '74ls189', '74ls32', '74ls373',
+  'ad711', 'at24c02', 'at24c64', 'at89c2051', 'attiny13', 'attiny2313', 'attiny85', 'attiny88',
+  'ay8912', 'cd4017', 'cd4093', 'cd4511', 'cd74hc4067', 'darlington_driver', 'decade_counter',
+  'dff', 'dip_switch', 'ds1302', 'h_bridge', 'i8086', 'i8088', 'i8251', 'i8254', 'i8255',
+  'i8259', 'i8284', 'jkff', 'kd9561', 'l293d', 'level_shifter4', 'lm324', 'lm339', 'lm358',
+  'lm386', 'lm3915', 'lm393', 'lm741', 'lt1001', 'lt1007', 'lt1014', 'm6532', 'max232',
+  'mc6845', 'mc6850', 'mcp3008', 'mos6532', 'ns16c550', 'op07', 'op27', 'osc_can', 'pcf8574',
+  'r6507', 'stc15_mcu', 'stc_mcu', 'stm32f030', 'tang_nano_20k', 'timer_555', 'timer_556',
+  'transformer', 'um245r', 'w65c02', 'w65c22', 'w65c51', 'z80', 'as5600', 'bmp280', 'ina219',
+  'tcs34725', 'vl53l0x', 'neopixel', 'pmos', 'usb_a', 'solar_cell', 'tcs3200', 'eater6502',
+  'ir_remote', 'gas_sensor', 'stepper', 'mcp4725', 'rnet_sip',
+];
+
+/** Kinds whose canvas face is their vendored art. */
+export const ART_FACE_KINDS = Object.freeze([...FIRST_ART_FACES, ...BREADBOARD_ART_FACES]);
+
+const SMD = 'surface-mount package (SOIC/TSOT): it reaches a breadboard only on a DIP carrier adapter (carriers.js), drawn as the carrier\'s DIP body; its own art is the bare package, which has no breadboard legs';
 
 /**
  * Kinds with vendored art that deliberately do NOT draw it, and why. Each
  * entry is a decision, not an oversight; removing one means drawing its art
- * (and test/art-coverage.test.js then holds it to the same checks). Kinds
- * drawn by DIP_CHIP_LABELS' DIP body or CHIP_FACES' chip box (BoardCanvas)
- * are excepted as a group in that test, for the DIP_ART reason.
+ * (and test/art-coverage.test.js then holds it to the same checks).
  */
 export const ART_FACE_EXCEPTIONS = Object.freeze({
   // A knob control (position 0..1 sets the capacitance). The Wokwi
@@ -72,53 +97,24 @@ export const ART_FACE_EXCEPTIONS = Object.freeze({
   // live position (controlValues read-back); tuning_cap.svg's knob is painted
   // at one fixed angle and would show the wrong setting the moment it turns.
   tuning_cap: 'knob control: the turnable potentiometer face shows its live position; the art knob is static',
-  // An 8-pin DIP whose art has its pins on two 10-unit side columns, while
-  // seated it straddles the gutter on the 14-unit breadboard pitch in two
-  // rows: the art's legs cannot meet the holes without redrawing the package.
-  lm386: DIP_ART,
-  cd4017: DIP_ART,
-  darlington_driver: DIP_ART,
-  dff: DIP_ART,
-  jkff: DIP_ART,
-  h_bridge: DIP_ART,
-  l293d: DIP_ART,
-  kd9561: DIP_ART,
-  level_shifter4: DIP_ART,
-  lm3915: DIP_ART,
-  mcp3008: DIP_ART,
-  timer_555: DIP_ART,
-  timer_556: DIP_ART,
-  // Breakouts with a header on each of two edges, seated in one row.
-  as5600: TWO_EDGES,
-  bmp280: TWO_EDGES,
-  ina219: TWO_EDGES,
-  tcs34725: TWO_EDGES,
-  vl53l0x: TWO_EDGES,
-  neopixel: 'one leg at each corner of the art, seated in one row: the legs from the top corners would cross the pixel',
-  phototransistor: 'collector and emitter leave the top and bottom of the art, seated in one row: the top lead would cross the body',
-  pmos: 'gate, drain and source leave three sides of the art, seated in one row: the drain lead would cross the package',
-  dip_switch: 'the footprint seats two of the eight legs (s1_a/s1_b); the other six would hang off the art over no hole',
-  // The art is not drawn in the sidecar's coordinates.
-  usb_a: 'viewBox 24x16 is not the sidecar\'s 40x30 and the pads sit 4 apart where the pins are 8: no rescale puts the pads on the pins',
-  solar_cell: 'viewBox 56x48 is not the sidecar\'s 50x40 and the leads end 20 apart where the pins are 30: no rescale puts the leads on the pins',
-  // The pins are not the art's legs.
-  gas_sensor: 'the engine\'s terminals (a, b, heater_a, heater_b: the bare element) are not the art\'s module legs (vcc, gnd, aout, dout)',
-  stepper: 'the engine\'s terminals (coil1..coil4, com) are not the art\'s legs (coil_a1, coil_b1, coil_a2, coil_b2)',
-  ir_remote: 'the sidecar has no legs while the engine models the IR LED (anode, cathode): there is no point on the art to put a pin',
-  eater6502: 'the sidecar gives several pins one point, so they get a breakout row of their own, not the art\'s legs',
-  tcs3200: 'oe and out share one point in the sidecar, so the pins get a breakout row of their own, not the art\'s legs',
-  tang_nano_20k: 'a dev board: its pins come from its board geometry (boardTerminalOffsets), not the sidecar art',
   breadboard_full: 'the breadboard is the substrate BreadboardView draws, not a part face',
   breadboard_half: 'the breadboard is the substrate BreadboardView draws, not a part face',
   breadboard_mini: 'the breadboard is the substrate BreadboardView draws, not a part face',
+  // Redrawn by the optics lane (2026-11-24), not here.
+  phototransistor: 'collector and emitter leave the top and bottom of the art, seated in one row: the top lead would cross the body (its redraw belongs to the optics lane)',
+  ad8541: SMD, ad8602: SMD, ada4522_1: SMD, adtl082: SMD, lt1006: SMD, lt1678: SMD, op747: SMD, adp151: SMD,
 });
 
-/** The reason for kinds drawn as a DIP or chip box (DIP_CHIP_LABELS, CHIP_FACES). */
-export const ART_FACE_CHIP_REASON = DIP_ART;
+/**
+ * The reason for kinds still drawn as a DIP body or chip box: the DIP_CHIP_LABELS
+ * and CHIP_FACES kinds that have no re-laid art (none with vendored art today
+ * except the surface-mount parts above).
+ */
+export const ART_FACE_CHIP_REASON = 'DIP body: no breadboard-pitch art for this package yet';
 
 const finite = v => typeof v === 'number' && Number.isFinite(v);
 
-/** Sidecar terminal positions relative to the art centre. */
+/** Sidecar terminal positions relative to the art centre (physical pins only). */
 export function artTerminalOffsets(sidecar) {
   if (!sidecar?.terminals?.length || !finite(sidecar.w) || !finite(sidecar.h)) return null;
   const out = {};
@@ -127,6 +123,42 @@ export function artTerminalOffsets(sidecar) {
     out[t.name] = { dx: t.x - sidecar.w / 2, dy: t.y - sidecar.h / 2 };
   }
   return out;
+}
+
+/**
+ * The canvas pins of an art face: every terminal at its art leg, and every
+ * alias (a second name bw-board accepts for the same leg) at its twin's.
+ */
+export function artPinOffsets(sidecar) {
+  const out = artTerminalOffsets(sidecar);
+  if (!out) return null;
+  for (const t of sidecar.terminals) {
+    for (const a of Array.isArray(t.aliases) ? t.aliases : []) {
+      if (!out[a]) out[a] = { ...out[t.name] };
+    }
+  }
+  return out;
+}
+
+/**
+ * The geometry a part's art face is drawn with: the sidecar itself, or the
+ * `variantArt` entry its params select. bw-board models some parts in two
+ * forms behind a param (the MQ gas sensor as a bare element or a module, the
+ * stepper unipolar or bipolar); each form has its own legs and its own art.
+ * An entry marked `default` is the engine's form when the param is unset.
+ *
+ * @returns {{sc: {kind:string,w:number,h:number,terminals:Array}, slug: string}|null}
+ *   slug is the art file's name without `.svg`
+ */
+export function artSidecarFor(sidecar, params = {}) {
+  if (!sidecar) return null;
+  for (const v of Array.isArray(sidecar.variantArt) ? sidecar.variantArt : []) {
+    const set = params?.[v.param];
+    if (set === v.value || (set == null && v.default)) {
+      return { sc: { kind: sidecar.kind, w: v.w, h: v.h, terminals: v.terminals }, slug: String(v.art).replace(/\.svg$/, '') };
+    }
+  }
+  return { sc: sidecar, slug: sidecar.kind };
 }
 
 /** How far seated art with leads stands off its holes (half a breadboard pitch). */
@@ -153,7 +185,8 @@ function scaleOntoHoles(art, holes, names) {
     den += px * px + py * py;
   }
   if (!(den > 0)) return null;
-  const s = num / den;
+  let s = num / den;
+  if (Math.abs(s - 1) < 1e-9) s = 1; // on pitch: exactly the art's own size
   for (const n of names) {
     const ex = hx + (art[n].dx - ax) * s - holes[n].dx, ey = hy + (art[n].dy - ay) * s - holes[n].dy;
     if (Math.hypot(ex, ey) > 0.5) return null;
@@ -223,4 +256,31 @@ export function artFaceLayout(sidecar, holes = null) {
   }
   const corner = map({ dx: -w / 2, dy: -h / 2 });
   return { x: corner.dx, y: corner.dy, w: w * scale, h: h * scale, scale, legs, leads };
+}
+
+/** True when segments p1-p2 and q1-q2 properly cross. */
+function segmentsCross(p1, p2, q1, q2) {
+  const o = (a, b, c) => Math.sign((b.dx - a.dx) * (c.dy - a.dy) - (b.dy - a.dy) * (c.dx - a.dx));
+  return o(p1, p2, q1) * o(p1, p2, q2) < 0 && o(q1, q2, p1) * o(q1, q2, p2) < 0;
+}
+
+/**
+ * Whether a seated layout is honest to draw: every lead leaves the art
+ * outward (never back across its body) and no two leads cross. A saved
+ * circuit can seat a part in holes its art cannot reach that way (a DIP seated
+ * mirror-image by an old footprint); the canvas then keeps the part's box.
+ */
+export function seatedArtClean(art) {
+  if (!art) return false;
+  const c = { dx: art.x + art.w / 2, dy: art.y + art.h / 2 };
+  for (const l of art.leads) {
+    if ((l.to.dx - l.from.dx) * (l.from.dx - c.dx) + (l.to.dy - l.from.dy) * (l.from.dy - c.dy) <= 0) return false;
+  }
+  for (let i = 0; i < art.leads.length; i++) {
+    for (let j = i + 1; j < art.leads.length; j++) {
+      const [a, b] = [art.leads[i], art.leads[j]];
+      if (segmentsCross(a.from, a.to, b.from, b.to)) return false;
+    }
+  }
+  return true;
 }

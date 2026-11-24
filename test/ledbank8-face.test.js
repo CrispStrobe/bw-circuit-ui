@@ -56,7 +56,7 @@ test('ledbank8 is included in the SvgParts deviceStates gathering', () => {
 test('ledbank8 has terminal offsets for 10 pins (vcc, gnd, d0-d7)', () => {
   const offsets = boardSrc.slice(
     boardSrc.indexOf('function terminalOffsetsForPart'),
-    boardSrc.indexOf('function terminalOffsetsForPart') + 6000,
+    boardSrc.indexOf('function layoutSidecar'),
   );
   assert.ok(offsets.includes("case 'ledbank8':"), 'ledbank8 in terminal offsets switch');
   for (const pin of ['vcc', 'gnd', 'd0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']) {

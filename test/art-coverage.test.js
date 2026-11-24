@@ -10,7 +10,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { artCoverage, registeredKinds, sidecarCenterOffsets, getSidecar, resolveArtSlug } from '../src/model/parts-registry.js';
-import { ART_FACE_KINDS, ART_FACE_EXCEPTIONS, ART_FACE_CHIP_REASON, artFaceLayout } from '../src/model/part-art.js';
+import { ART_FACE_KINDS, ART_FACE_EXCEPTIONS, ART_FACE_CHIP_REASON, artFaceLayout, artSidecarFor, artPinOffsets, seatedArtClean } from '../src/model/part-art.js';
 import { moduleTerminalLayout } from '../src/model/module-layout.js';
 import { FOOTPRINTS, computeLeadMap, straddleRefRow } from '../src/model/footprints.js';
 import { holeWorldPos } from '../src/interaction/seat-geometry.js';
@@ -94,7 +94,7 @@ const read = rel => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
 const CANVAS = read('src/components/BoardCanvas.jsx');
 const LOADER = read('src/components/part-art-loader.js');
 const DATA = new URL('../src/parts-data/', import.meta.url);
-const hasArt = kind => existsSync(new URL(`${resolveArtSlug(kind)}.svg`, DATA))
+const hasArt = kind => existsSync(new URL(`${getSidecar(kind)?.kind ?? kind}.svg`, DATA))
   && !!getSidecar(kind);
 const sidecarOf = kind => getSidecar(kind);
 const stripComments = src => src.replace(/\/\/[^\n]*/g, '');
@@ -103,18 +103,6 @@ const block = (startMarker, endMarker) => {
   assert.ok(at > 0, `BoardCanvas has ${startMarker}`);
   return stripComments(CANVAS.slice(at, CANVAS.indexOf(endMarker, at)));
 };
-
-/** terminalOffsetsForPart's explicit cases: kind -> 'sidecar' | 'other'. */
-function explicitCases() {
-  const body = CANVAS.slice(CANVAS.indexOf('function terminalOffsetsForPart'), CANVAS.indexOf('function layoutSidecar'));
-  const out = new Map();
-  for (const m of body.matchAll(/case '([^']+)':/g)) {
-    const rest = body.slice(m.index);
-    const ret = rest.search(/\breturn\b/);
-    out.set(m[1], ret > 0 && rest.slice(0, ret).includes('sidecarCenterOffsets(') ? 'sidecar' : 'other');
-  }
-  return out;
-}
 
 /** Kinds SvgParts or the Wokwi layer draws with a face of their own. */
 function kindsWithOwnFace() {
@@ -133,21 +121,22 @@ function chipKinds() {
 }
 
 /**
- * The canvas's free pins for a kind, relative to the body centre, as
- * terminalOffsetsForPart places them: an explicit sidecarCenterOffsets case,
- * or the default branch's generic module layout (legacy a/b offsets when
- * they place every terminal, else the sidecar's own geometry). Null when the
- * pins come from anywhere else (a hand-placed case, a DIP layout).
+ * terminalOffsetsForPart places an art face's pins at its art's legs: the
+ * rule sits before every other layout (the DIP labels, the explicit cases,
+ * the generic module) and applies whenever every terminal is a leg.
  */
-function canvasPins(kind, cases, chips) {
-  if (cases.get(kind) === 'sidecar') return sidecarCenterOffsets(kind);
-  if (cases.has(kind) || chips.has(kind)) return null;
-  const legacy = { a: { dx: -15, dy: 0 }, b: { dx: 15, dy: 0 } };
-  const lay = moduleTerminalLayout(sidecarOf(kind), { existing: legacy });
-  return lay.source === 'sidecar' ? lay.offsets : null;
+function artPinRuleFirst() {
+  const body = CANVAS.slice(CANVAS.indexOf('function terminalOffsetsForPart'), CANVAS.indexOf('function layoutSidecar'));
+  const rule = body.indexOf('ART_FACE_KINDS.includes(part.kind)');
+  return rule > 0 && rule < body.indexOf('switch (part.kind)') && /artSidecarFor\(getSidecar\(part\.kind\), part\.params\)/.test(body)
+    && /artPinOffsets\(face\.sc\)/.test(body);
 }
 
-const viewBoxOf = kind => read(`src/parts-data/${resolveArtSlug(kind)}.svg`).match(/viewBox="([^"]+)"/)[1].trim().split(/[\s,]+/).map(Number);
+const viewBoxOf = slug => read(`src/parts-data/${slug}.svg`).match(/viewBox="([^"]+)"/)[1].trim().split(/[\s,]+/).map(Number);
+
+/** Every geometry a kind's art face can take: the sidecar and its variantArt. */
+const faces = sc => [{ sc, slug: sc.kind },
+  ...(sc.variantArt || []).map(v => artSidecarFor(sc, { [v.param]: v.value }))];
 
 /** Holes of a seated part in its own frame (centroid = part origin), on the real lattice. */
 function seatedHoles(kind) {
@@ -162,13 +151,7 @@ function seatedHoles(kind) {
   return Object.fromEntries(names.map(n => [n, { dx: pts[n].x - cx, dy: pts[n].y - cy }]));
 }
 
-const segmentsCross = (p1, p2, q1, q2) => {
-  const o = (a, b, c) => Math.sign((b.dx - a.dx) * (c.dy - a.dy) - (b.dy - a.dy) * (c.dx - a.dx));
-  return o(p1, p2, q1) * o(p1, p2, q2) < 0 && o(q1, q2, p1) * o(q1, q2, p2) < 0;
-};
-
 describe('vendored part art on the canvas', () => {
-  const cases = explicitCases();
   const chips = chipKinds();
   const own = kindsWithOwnFace();
   const artKinds = readdirSync(DATA).filter(f => f.endsWith('.svg')).map(f => f.slice(0, -4))
@@ -176,17 +159,22 @@ describe('vendored part art on the canvas', () => {
 
   it('every kind with vendored art draws it, has a face of its own, or is a documented exception', () => {
     assert.ok(artKinds.length > 250, `the census sees the vendored art (${artKinds.length})`);
-    const missing = artKinds.filter(k => !own.has(k) && !chips.has(k)
-      && !ART_FACE_KINDS.includes(k) && !(k in ART_FACE_EXCEPTIONS));
+    const missing = artKinds.filter(k => !own.has(k) && !ART_FACE_KINDS.includes(k) && !(k in ART_FACE_EXCEPTIONS));
     assert.deepEqual(missing, [], `drawn without their vendored art and not excepted: ${missing.join(', ')}`);
     // Guards against an empty scan.
     assert.ok(own.has('resistor') && chips.has('74hc00') && chips.has('ds1302'), 'own faces and chip faces are recognised');
-    assert.ok(ART_FACE_KINDS.length >= 90, `${ART_FACE_KINDS.length} art faces`);
+    assert.ok(ART_FACE_KINDS.length >= 220, `${ART_FACE_KINDS.length} art faces`);
+    // Only the substrate, the knob and parts with no breadboard legs stay excepted.
+    assert.ok(Object.keys(ART_FACE_EXCEPTIONS).length <= 13, Object.keys(ART_FACE_EXCEPTIONS).join(', '));
   });
 
   it('the brief\'s parts are art faces; the exceptions are deliberate and explained', () => {
     for (const k of ['antenna', 'earth', 'ferrite_coil', 'earphone', 'speaker', 'oscilloscope', 'function_gen', 'polarized_cap',
-      'dht11', 'hc05', 'lm7805', 'battery_9v', 'gearmotor', 'ammeter', 'light_bulb']) {
+      'dht11', 'hc05', 'lm7805', 'battery_9v', 'gearmotor', 'ammeter', 'light_bulb',
+      // 2026-11-24: DIPs on the breadboard pitch, one-row breakouts, fixed sidecars.
+      '74hc00', '555', 'lm386', 'z80', 'stc15_mcu', 'ds1302', 'at24c64', 'lm339', 'lm393', 'cd4017', 'mcp3008',
+      'as5600', 'bmp280', 'neopixel', 'pmos', 'dip_switch', 'usb_a', 'solar_cell', 'gas_sensor', 'stepper', 'ir_remote',
+      'eater6502', 'tcs3200', 'tang_nano_20k']) {
       assert.ok(ART_FACE_KINDS.includes(k), `${k} draws its art`);
     }
     assert.equal(new Set(ART_FACE_KINDS).size, ART_FACE_KINDS.length, 'no kind listed twice');
@@ -194,22 +182,29 @@ describe('vendored part art on the canvas', () => {
       assert.ok(hasArt(k), `${k}: an exception must have art to be excepted from`);
       assert.ok(typeof why === 'string' && why.length > 20, `${k}: the exception says why`);
       assert.ok(!ART_FACE_KINDS.includes(k), `${k} is either an art face or an exception`);
-      // An own face is a reason (tuning_cap's turnable knob); a chip box is the group's.
-      assert.ok(!chips.has(k), `${k} is a chip face already; the exception is dead`);
+    }
+    // The surface-mount exceptions really are surface-mount art with no breadboard legs.
+    for (const [k, why] of Object.entries(ART_FACE_EXCEPTIONS).filter(([, w]) => /surface-mount/.test(w))) {
+      assert.match(read(`src/parts-data/${k}.svg`), /SOIC|TSOT/, `${k}: surface-mount art`);
+      assert.ok(!sidecarOf(k).footprint && !sidecarOf(k).dip, `${k}: no breadboard footprint`);
     }
     assert.ok(ART_FACE_CHIP_REASON.length > 20);
-    for (const k of ART_FACE_KINDS) assert.ok(!own.has(k) && !chips.has(k), `${k}: an art face cannot also have its own face`);
+    for (const k of ART_FACE_KINDS) assert.ok(!own.has(k), `${k}: an art face cannot also have its own face`);
     // The tuning capacitor keeps the turnable knob face.
     assert.match(stripComments(CANVAS.slice(CANVAS.indexOf('const WOKWI_LAYER_KINDS'))), /^[^;]*'tuning_cap'/);
   });
 
-  it('the canvas fallback draws the art before it would draw the box', () => {
+  it('the canvas draws the art before it would draw the box, the DIP body or the chip box', () => {
     const at = CANVAS.indexOf('const genericFace = () => {');
     assert.ok(at > 0);
     const head = CANVAS.slice(at, CANVAS.indexOf('genericModuleLayout(part)', at));
     assert.match(head, /const artBody = artFace\(\);\s*if \(artBody\) return artBody;/);
+    const dip = CANVAS.indexOf('const dipLabel = DIP_CHIP_LABELS[kind];');
+    assert.match(CANVAS.slice(dip - 200, dip), /const dipArt = artFace\(\);\s*if \(dipArt\) return dipArt;/);
     assert.match(CANVAS, /data-part-face=\{kind\} data-art-face=\{kind\}/);
     assert.match(CANVAS, /<image href=\{href\} x=\{art\.x\} y=\{art\.y\} width=\{art\.w\} height=\{art\.h\}/);
+    // Seated where the legs cannot honestly reach, the part keeps its box.
+    assert.match(CANVAS, /if \(holes && !seatedArtClean\(art\)\) return null;/);
   });
 
   it('the art loads lazily: one dynamic import per kind, no static import of any art face', () => {
@@ -220,58 +215,67 @@ describe('vendored part art on the canvas', () => {
     assert.match(LOADER, /import\(\/\* webpackChunkName: "part-art-\[request\]" \*\/ `\.\.\/parts-data\/\$\{slug\}\.svg`\)/);
     assert.doesNotMatch(stripComments(LOADER), /^\s*import\s+\w+\s+from\s+'[^']*\.svg'/m, 'the loader imports no SVG statically');
     assert.ok(!existsSync(new URL('../src/components/part-art-urls.js', import.meta.url)), 'the static URL map is gone');
-    // No module under src imports an art face's SVG statically.
     const walk = dir => readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory()
       ? walk(new URL(`${e.name}/`, dir)) : /\.(jsx?|mjs)$/.test(e.name) ? [new URL(e.name, dir)] : []);
-    const artSlugs = new Set(ART_FACE_KINDS.map(resolveArtSlug));
+    const artSlugs = new Set(ART_FACE_KINDS.flatMap(k => faces(sidecarOf(k)).map(f => f.slug)));
     for (const file of walk(new URL('../src/', import.meta.url))) {
       const src = readFileSync(file, 'utf8');
-      for (const m of src.matchAll(/^\s*import\s+[^;]*?from\s+'[^']*parts-data\/([a-z0-9_]+)\.svg'/gm)) {
+      for (const m of src.matchAll(/^\s*import\s+[^;]*?from\s+'[^']*parts-data\/([a-z0-9_.]+)\.svg'/gm)) {
         assert.ok(!artSlugs.has(m[1]), `${file.pathname.split('/src/')[1]} imports ${m[1]}.svg statically`);
       }
     }
-    // The canvas asks for the art of the kinds on it and redraws when it lands;
-    // until then it draws the same layout without the picture.
     assert.match(CANVAS, /import \{ partArtUrl, loadPartArt, onPartArtLoaded \} from '\.\/part-art-loader\.js';/);
     assert.match(CANVAS, /onPartArtLoaded\(\(\) => setArtLoads\(n => n \+ 1\)\)/);
-    assert.match(CANVAS, /ART_FACE_KINDS\.includes\(p\.kind\) && !partArtUrl\(p\.kind\)\) loadPartArt\(p\.kind\)/);
+    assert.match(CANVAS, /const slug = artSidecarFor\(getSidecar\(p\.kind\), p\.params\)\?\.slug;\s*if \(slug && !partArtUrl\(slug\)\) loadPartArt\(slug\);/);
     assert.match(CANVAS, /\{href && <image href=\{href\}/);
+    // A variant's art file name is a valid slug for the loader.
+    assert.match(LOADER, /const SLUG = \/\^\[a-z0-9_\]\+\(\\\.\[a-z0-9_\]\+\)\?\$\//);
   });
 
-  it('the art viewBox is the sidecar box, so its leg ends are the canvas pins', () => {
+  it('every art face\'s viewBox is its box and its legs are the canvas pins, for every variant', () => {
+    assert.ok(artPinRuleFirst(), 'terminalOffsetsForPart puts an art face\'s pins on its legs before any other layout');
+    let variants = 0;
     for (const k of ART_FACE_KINDS) {
       const sc = sidecarOf(k);
       assert.ok(sc && hasArt(k), `${k}: vendored art and sidecar`);
-      assert.deepEqual(viewBoxOf(k), [0, 0, sc.w, sc.h], `${k} viewBox`);
-      const art = artFaceLayout(sc);
-      const pins = canvasPins(k, cases, chips);
-      assert.ok(pins, `${k}: the canvas places its pins at the sidecar geometry`);
-      // Every terminal the part is created with is an art leg on its pin.
-      const terminals = new Circuit().addPart(k, {}, 0, 0).terminals;
-      for (const n of terminals) {
-        assert.ok(art.legs[n], `${k}.${n} is a leg of the art`);
-        assert.ok(Math.hypot(art.legs[n].dx - pins[n].dx, art.legs[n].dy - pins[n].dy) < 1e-9, `${k}.${n}: art leg = canvas pin`);
+      for (const face of faces(sc)) {
+        if (face.slug !== k) variants++;
+        const label = face.slug;
+        assert.ok(existsSync(new URL(`${face.slug}.svg`, DATA)), `${label}: art file`);
+        assert.deepEqual(viewBoxOf(face.slug), [0, 0, face.sc.w, face.sc.h], `${label} viewBox`);
+        const art = artFaceLayout(face.sc);
+        const seen = new Set();
+        for (const t of face.sc.terminals) {
+          assert.ok(t.x >= 0 && t.x <= face.sc.w && t.y >= 0 && t.y <= face.sc.h, `${label}.${t.name} inside the art`);
+          const key = `${t.x},${t.y}`;
+          assert.ok(!seen.has(key), `${label}.${t.name}: shares a point with another pin`);
+          seen.add(key);
+        }
+        assert.deepEqual(art.leads, [], `${label}: free, no extra leads`);
+        assert.deepEqual([art.x, art.y, art.scale], [-face.sc.w / 2, -face.sc.h / 2, 1], `${label}: free art centred on the part`);
       }
-      for (const t of sc.terminals) {
-        assert.ok(t.x >= 0 && t.x <= sc.w && t.y >= 0 && t.y <= sc.h, `${k}.${t.name} inside the art`);
-      }
-      assert.deepEqual(art.leads, [], `${k}: free, no extra leads`);
-      assert.deepEqual([art.x, art.y, art.scale], [-sc.w / 2, -sc.h / 2, 1], `${k}: free art centred on the part`);
+      // The terminals a part of this kind is created with (default params) are
+      // all legs of its default face, so the pin rule applies to it.
+      const face = artSidecarFor(sc, {});
+      const legs = artPinOffsets(face.sc);
+      for (const n of new Circuit().addPart(k, {}, 0, 0).terminals) assert.ok(legs[n], `${k}.${n} is a leg of ${face.slug}`);
     }
+    assert.ok(variants >= 2, `variant faces checked: ${variants}`);
   });
 
   it('seated, every leg ends in its hole and no lead crosses the body or another lead', () => {
-    let seatedKinds = 0, scaled = 0;
+    let seatedKinds = 0, scaled = 0, dips = 0;
     for (const k of ART_FACE_KINDS) {
       const holes = seatedHoles(k);
       if (!holes) continue; // bench instruments and batteries are wired, not seated
       seatedKinds++;
-      const sc = sidecarOf(k);
-      const art = artFaceLayout(sc, holes);
-      const legNames = Object.keys(art.legs);
-      for (const n of Object.keys(holes)) assert.ok(legNames.includes(n), `${k}: footprint lead ${n} is a leg of the art`);
-      for (const n of legNames) {
-        assert.ok(holes[n], `${k}.${n}: every leg of the art has a hole`);
+      // The face whose legs the footprint names (a variant has its own legs).
+      const face = faces(sidecarOf(k)).find(f => Object.keys(holes).every(n => artPinOffsets(f.sc)[n]));
+      assert.ok(face, `${k}: every footprint lead is a leg of the art`);
+      const art = artFaceLayout(face.sc, holes);
+      for (const n of Object.keys(art.legs)) {
+        // A pin no footprint seats (a DIP's not-connected pin) sits where its hole would.
+        if (!holes[n]) { assert.match(n, /^nc\d*$/, `${k}.${n}: every leg of the art has a hole`); continue; }
         const lead = art.leads.find(l => l.name === n);
         const end = lead ? lead.to : art.legs[n];
         assert.ok(Math.hypot(end.dx - holes[n].dx, end.dy - holes[n].dy) < 1e-9, `${k}.${n} ends in its hole`);
@@ -282,51 +286,31 @@ describe('vendored part art on the canvas', () => {
         assert.equal(art.leads.length, 0, `${k}: scaled onto its holes, no leads`);
         assert.ok(art.scale >= 1 && art.scale <= 2, `${k}: scale ${art.scale}`);
       }
-      // Leads leave the art outward, never back across its body...
-      const c = { dx: art.x + art.w / 2, dy: art.y + art.h / 2 };
-      for (const l of art.leads) {
-        const out = (l.to.dx - l.from.dx) * (l.from.dx - c.dx) + (l.to.dy - l.from.dy) * (l.from.dy - c.dy);
-        assert.ok(out > 0, `${k}.${l.name}: the lead runs back across the body`);
-      }
-      // ...and never across each other.
-      for (let i = 0; i < art.leads.length; i++) {
-        for (let j = i + 1; j < art.leads.length; j++) {
-          const [a, b] = [art.leads[i], art.leads[j]];
-          assert.ok(!segmentsCross(a.from, a.to, b.from, b.to), `${k}: leads ${a.name} and ${b.name} cross`);
-        }
+      assert.ok(seatedArtClean(art), `${k}: a lead runs back across the body or crosses another`);
+      if (face.sc.dip) {
+        dips++;
+        assert.deepEqual([art.scale, art.leads.length], [1, 0], `${k}: a breadboard-pitch DIP's legs ARE its holes`);
       }
     }
-    assert.ok(seatedKinds > 60, `${seatedKinds} seatable art faces checked`);
+    assert.ok(seatedKinds > 150, `${seatedKinds} seatable art faces checked`);
     assert.ok(scaled > 30, `${scaled} modules sit scaled over their holes`);
-    // On-pitch art needs neither scale nor leads; the electrolytic's legs are
-    // 8 apart on a 2-hole (28) footprint, too far apart to scale onto.
+    assert.ok(dips > 80, `${dips} DIPs seated leg-in-hole`);
     for (const k of ['speaker', 'earphone', 'ferrite_coil', 'antenna', 'earth']) {
       const art = artFaceLayout(sidecarOf(k), seatedHoles(k));
       assert.deepEqual([art.scale, art.leads.length], [1, 0], `${k}: on pitch`);
     }
     assert.equal(artFaceLayout(sidecarOf('polarized_cap'), seatedHoles('polarized_cap')).leads.length, 2);
-    // A header-pitch module (8 units) sits 1.75x over its 14-unit holes.
     assert.equal(artFaceLayout(sidecarOf('dht11'), seatedHoles('dht11')).scale, 1.75);
   });
 
-  it('each excepted seating failure really fails the seated checks (an exception that heals must go)', () => {
-    const fails = k => {
-      const holes = seatedHoles(k);
-      if (!holes) return false;
-      const art = artFaceLayout(sidecarOf(k), holes);
-      if (Object.keys(art.legs).some(n => !holes[n])) return true;
-      const c = { dx: art.x + art.w / 2, dy: art.y + art.h / 2 };
-      if (art.leads.some(l => (l.to.dx - l.from.dx) * (l.from.dx - c.dx) + (l.to.dy - l.from.dy) * (l.from.dy - c.dy) <= 0)) return true;
-      return art.leads.some((a, i) => art.leads.slice(i + 1).some(b => segmentsCross(a.from, a.to, b.from, b.to)));
-    };
-    for (const k of ['as5600', 'bmp280', 'ina219', 'tcs34725', 'vl53l0x', 'neopixel', 'phototransistor', 'pmos', 'dip_switch',
-      'lm386', 'dff', 'jkff', 'h_bridge', 'level_shifter4', 'lm3915', 'mcp3008', 'timer_556', 'kd9561', 'darlington_driver']) {
-      assert.ok(k in ART_FACE_EXCEPTIONS, `${k} is excepted`);
-      assert.ok(fails(k), `${k}: seated art would pass now; draw it instead of excepting it`);
-    }
-    for (const k of ['usb_a', 'solar_cell']) {
-      const sc = sidecarOf(k);
-      assert.notDeepEqual(viewBoxOf(k), [0, 0, sc.w, sc.h], `${k}: the viewBox now matches; draw it`);
-    }
+  it('a DIP seated mirror-image by an old footprint keeps its box (the legs cannot reach)', () => {
+    // 74HC02 with pins 1..7 in row e, as the bw-parts footprint had it until
+    // 2026-11-24 and 400-odd saved circuits still seat it.
+    const sc = sidecarOf('74hc02');
+    const holes = seatedHoles('74hc02');
+    const mirrored = Object.fromEntries(Object.entries(holes).map(([n, h]) => [n, { dx: h.dx, dy: -h.dy }]));
+    assert.ok(seatedArtClean(artFaceLayout(sc, holes)), 'seated as the footprint says: clean');
+    assert.ok(!seatedArtClean(artFaceLayout(sc, mirrored)), 'seated mirror-image: not drawn as art');
   });
+
 });

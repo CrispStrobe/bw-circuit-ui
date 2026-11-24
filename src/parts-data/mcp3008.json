@@ -1,162 +1,166 @@
 {
   "kind": "mcp3008",
-  "w": 60,
-  "h": 48,
+  "w": 118,
+  "h": 38,
+  "dip": {
+    "label": "MCP3008",
+    "subtitle": "8-CH ADC"
+  },
   "terminals": [
     {
       "name": "vcc",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "vref",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "csb",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "clk",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "din",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "dout",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "ch0",
-      "x": 60,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     },
     {
       "name": "ch1",
-      "x": 60,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "ch2",
-      "x": 60,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "ch3",
-      "x": 60,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "ch4",
-      "x": 60,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "ch5",
-      "x": 60,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "ch6",
-      "x": 60,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": []
     },
     {
       "name": "ch7",
-      "x": 60,
-      "y": 43,
+      "x": 108,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "_note": "MCP3008 10-bit 8-channel SPI ADC. DIP-16. SPI interface: CSB, CLK, DIN, DOUT. 8 analog inputs CH0-CH7.",
   "footprint": {
-    "refTerminal": "vcc",
+    "refTerminal": "ch0",
     "leads": {
       "vcc": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "gnd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "vref": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "csb": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "clk": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "din": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "dout": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "ch0": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       },
       "ch1": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "ch2": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "ch3": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "ch4": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "ch5": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "ch6": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "ch7": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 7
       }
     },

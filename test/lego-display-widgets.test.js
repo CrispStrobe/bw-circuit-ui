@@ -59,7 +59,7 @@ describe('mono_lcd (graphical mono LCD)', () => {
   test('has terminal offsets', () => {
     const offsets = boardSrc.slice(
       boardSrc.indexOf('function terminalOffsetsForPart'),
-      boardSrc.indexOf('function terminalOffsetsForPart') + 5000,
+      boardSrc.indexOf('function layoutSidecar'),
     );
     assert.ok(offsets.includes("case 'mono_lcd':"), 'mono_lcd in terminal offsets');
   });
@@ -101,7 +101,7 @@ describe('rgb_light (RGB status indicator)', () => {
   test('has terminal offsets', () => {
     const offsets = boardSrc.slice(
       boardSrc.indexOf('function terminalOffsetsForPart'),
-      boardSrc.indexOf('function terminalOffsetsForPart') + 5000,
+      boardSrc.indexOf('function layoutSidecar'),
     );
     assert.ok(offsets.includes("case 'rgb_light':"), 'rgb_light in terminal offsets');
   });

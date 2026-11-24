@@ -1,152 +1,156 @@
 {
   "kind": "74hc00",
-  "w": 70,
-  "h": 46,
+  "w": 104,
+  "h": 38,
+  "dip": {
+    "label": "74HC00",
+    "subtitle": "QUAD NAND"
+  },
   "terminals": [
     {
       "name": "1a",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1b",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1y",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "2a",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "2b",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "2y",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "3y",
-      "x": 70,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": []
     },
     {
       "name": "3a",
-      "x": 70,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "3b",
-      "x": 70,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "4y",
-      "x": 70,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "4a",
-      "x": 70,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "4b",
-      "x": 70,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 70,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "_note": "74HC00 Quad 2-input NAND gate. Pin table per TI SN74HC00N datasheet (SCLS024I). DIP-14 package. Four independent NAND gates: 1A/1B/1Y, 2A/2B/2Y, 3A/3B/3Y, 4A/4B/4Y. GND=pin 7, VCC=pin 14.",
   "footprint": {
-    "refTerminal": "1a",
+    "refTerminal": "vcc",
     "leads": {
       "1a": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "1b": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "1y": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "2a": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "2b": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "2y": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "gnd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "3y": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "3a": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "3b": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "4y": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "4a": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "4b": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "vcc": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

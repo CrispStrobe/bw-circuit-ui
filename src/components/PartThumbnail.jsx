@@ -27,7 +27,9 @@ const BOARD_ART_KINDS = new Set(['pybadge', 'esp32_4848s040', 'calliopemini', 'c
   'arduino_uno', 'arduino_nano', 'arduino_mega']);
 
 function useCardArt(kind) {
-  const wanted = kind && !BOARD_ART_KINDS.has(kind) ? kind : null;
+  // The art file is the one the kind's sidecar names (a palette alias such as
+  // pir_sensor draws pir's).
+  const wanted = kind && !BOARD_ART_KINDS.has(kind) ? (getSidecar(kind)?.kind || kind) : null;
   const [url, setUrl] = React.useState(() => (wanted ? partArtUrl(wanted) : null));
   React.useEffect(() => {
     if (!wanted) { setUrl(null); return undefined; }

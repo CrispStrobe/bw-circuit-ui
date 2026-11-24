@@ -29,7 +29,7 @@ import { snapGhost, seatSnapHole, BB_PITCH, bbHoleOrigin, nearestHole, bbFootpri
 import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interaction/seat-geometry.js';
 import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
 import { moduleLabelLayout, moduleTerminalLayout } from '../model/module-layout.js';
-import { ART_FACE_KINDS, artFaceLayout } from '../model/part-art.js';
+import { ART_FACE_KINDS, artFaceLayout, artSidecarFor, artPinOffsets, seatedArtClean } from '../model/part-art.js';
 import { partArtUrl, loadPartArt, onPartArtLoaded } from './part-art-loader.js';
 import { clashingTerminalLabels } from '../model/terminal-labels.js';
 import { KIND_ALIASES } from '../model/terminal-aliases.js';
@@ -199,6 +199,18 @@ function terminalOffsetsForPart(part) {
     const rotated = rotateOffset(dx, dy, rot);
     return flip ? { dx: -rotated.dx, dy: rotated.dy } : rotated;
   };
+
+  // An art face's pins are its art's legs (src/model/part-art.js): the
+  // sidecar's terminal x/y about the body centre, or those of the variant
+  // its params select. Only when every terminal the part has is a leg; a
+  // saved part with other terminals keeps the layouts below.
+  if (part.sourcePackage !== 'unspecified' && ART_FACE_KINDS.includes(part.kind) && typeof getSidecar === 'function') {
+    const face = artSidecarFor(getSidecar(part.kind), part.params);
+    const legs = face && artPinOffsets(face.sc);
+    if (legs && (part.terminals || []).every(n => legs[n])) {
+      return Object.fromEntries(Object.entries(legs).map(([name, o]) => [name, r(o.dx, o.dy)]));
+    }
+  }
 
   if (part.sourcePackage === 'unspecified') {
     const neutral = packageNeutralOffsets(part.kind);
@@ -522,7 +534,9 @@ function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, par
   React.useEffect(() => onPartArtLoaded(() => setArtLoads(n => n + 1)), []);
   React.useEffect(() => {
     for (const p of parts) {
-      if (ART_FACE_KINDS.includes(p.kind) && !partArtUrl(p.kind)) loadPartArt(p.kind);
+      if (!ART_FACE_KINDS.includes(p.kind) || typeof getSidecar !== 'function') continue;
+      const slug = artSidecarFor(getSidecar(p.kind), p.params)?.slug;
+      if (slug && !partArtUrl(slug)) loadPartArt(slug);
     }
   }, [parts]);
   return parts.map(part => {
@@ -584,13 +598,17 @@ function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, par
     // generic box. The art loads lazily: until it arrives the same layout is
     // drawn without the picture, so nothing moves when it does.
     const artFace = () => {
-      const sc = ART_FACE_KINDS.includes(kind) && typeof getSidecar === 'function' ? getSidecar(kind) : null;
+      if (part.sourcePackage === 'unspecified') return null;
+      const face = ART_FACE_KINDS.includes(kind) && typeof getSidecar === 'function'
+        ? artSidecarFor(getSidecar(kind), part.params) : null;
+      const sc = face?.sc;
       if (!sc) return null;
-      const href = partArtUrl(kind);
+      const href = partArtUrl(face.slug);
       const pins = terminalOffsetsForPart({ ...part, rotation: 0, flipped: false });
       const free = artFaceLayout(sc);
-      if (!free || !(part.terminals || []).every(n => free.legs[n] && pins[n]
-        && Math.hypot(pins[n].dx - free.legs[n].dx, pins[n].dy - free.legs[n].dy) < 0.5)) return null;
+      const legs = artPinOffsets(sc);
+      if (!free || !legs || !(part.terminals || []).every(n => legs[n] && pins[n]
+        && Math.hypot(pins[n].dx - legs[n].dx, pins[n].dy - legs[n].dy) < 0.5)) return null;
       // Seated holes in the face's own frame: undo translate, rotate and flip.
       let holes = null;
       if (part._seatTerminals) {
@@ -601,10 +619,15 @@ function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, par
         }
       }
       const art = holes ? artFaceLayout(sc, holes) : free;
+      // Seated where its legs cannot honestly reach (a DIP a saved circuit
+      // seated mirror-image): keep the part's box rather than cross leads.
+      if (holes && !seatedArtClean(art)) return null;
       const bottom = Math.max(art.y + art.h, ...art.leads.map(l => l.to.dy));
       return (
         <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
-          data-part-face={kind} data-art-face={kind} data-art-loaded={href ? 'true' : 'false'}>
+          data-part-face={kind} data-art-face={kind} data-art-slug={face.slug} data-part-id={id}
+          {...(sc.dip ? { 'data-dip-body': kind, 'data-dip-art': kind } : {})}
+          data-art-loaded={href ? 'true' : 'false'}>
           {/* Hit/selection box first: the art is transparent around its outline. */}
           <rect x={art.x} y={art.y} width={art.w} height={art.h} rx={3}
             fill="transparent" stroke={selStroke || (href ? 'none' : '#3a4048')} strokeWidth={isSelected ? 2 : href ? 0 : 1}
@@ -2218,6 +2241,9 @@ function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, par
         // Generic DIP body for retro/logic ICs that have sidecars.
         // Pin-1-bottom convention: left column (pin 1 side) at bottom row,
         // right column at top row. Notch at left end, pin-1 dot bottom-left.
+        // A DIP re-laid on the breadboard pitch draws its art first.
+        const dipArt = artFace();
+        if (dipArt) return dipArt;
         const dipLabel = DIP_CHIP_LABELS[kind];
         if (dipLabel) {
           // Friendly-name kinds may share a sidecar with the real IC name

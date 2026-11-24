@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 48" width="44" height="48">
+  <!-- Gas Sensor MQ-2 — the bare element: can with mesh, legs A, H, H, B -->
+  <!-- Can body -->
+  <circle cx="22" cy="20" r="16" fill="#c0c0c0" stroke="#999" stroke-width="0.8"/>
+  <!-- Mesh cap -->
+  <circle cx="22" cy="20" r="12" fill="#ddd" stroke="#bbb" stroke-width="0.5"/>
+  <g stroke="#ccc" stroke-width="0.3">
+    <line x1="12" y1="14" x2="32" y2="14"/>
+    <line x1="12" y1="18" x2="32" y2="18"/>
+    <line x1="12" y1="22" x2="32" y2="22"/>
+    <line x1="12" y1="26" x2="32" y2="26"/>
+    <line x1="16" y1="10" x2="16" y2="30"/>
+    <line x1="22" y1="10" x2="22" y2="30"/>
+    <line x1="28" y1="10" x2="28" y2="30"/>
+  </g>
+  <!-- Heater element visible -->
+  <circle cx="22" cy="20" r="4" fill="#e08060" opacity="0.5"/>
+  <!-- Bakelite base -->
+  <rect x="6" y="33" width="32" height="4" rx="1.5" fill="#3a3a3a" stroke="#222" stroke-width="0.5"/>
+  <g font-family="monospace" font-size="2.6" fill="#555" text-anchor="middle">
+    <text x="10" y="42">A</text><text x="18" y="42">H</text><text x="26" y="42">H</text><text x="34" y="42">B</text>
+  </g>
+  <!-- Pins (4) -->
+  <line x1="10" y1="36" x2="10" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="18" y1="36" x2="18" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="26" y1="36" x2="26" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="34" y1="36" x2="34" y2="48" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="10" cy="48" r="1.5" fill="#c0c0c0"/>
+  <circle cx="18" cy="48" r="1.5" fill="#c0c0c0"/>
+  <circle cx="26" cy="48" r="1.5" fill="#c0c0c0"/>
+  <circle cx="34" cy="48" r="1.5" fill="#c0c0c0"/>
+</svg>

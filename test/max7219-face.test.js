@@ -54,7 +54,7 @@ test('max7219 is included in the SvgParts deviceStates gathering', () => {
 test('max7219 has terminal offsets (not falling through to default)', () => {
   const offsets = src.slice(
     src.indexOf('function terminalOffsetsForPart'),
-    src.indexOf('function terminalOffsetsForPart') + 3000,
+    src.indexOf('function layoutSidecar'),
   );
   assert.ok(offsets.includes("case 'max7219':"), 'max7219 in terminal offsets switch');
   assert.ok(offsets.includes('din'), 'DIN terminal defined');

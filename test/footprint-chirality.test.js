@@ -40,6 +40,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { FOOTPRINTS } from '../src/model/footprints.js';
+import { getSidecar } from '../src/model/parts-registry.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -88,9 +89,12 @@ function loadSidecarFootprints() {
  * so the number cannot grow quietly. MAY ONLY SHRINK — fix a kind and delete
  * its line; never add one to make this pass.
  */
+// 2026-11-24: thirteen kinds left this list together. bw-parts re-laid its
+// DIP sidecars on the breadboard pitch and put pin 1's row below the gutter,
+// as the built-ins already had it; the sidecar footprints had been the chip
+// seen from underneath.
 const KNOWN_MIRRORED = new Set([
-  '62256', 'w65c02', 'z80', '28c256', 'w65c22', 'w65c51', 'mc6850',
-  '74hc00', '74hc595', 'attiny85', 'attiny2313', 'attiny13', 'at24c64', 'mcu',
+  'mcu',
 ]);
 
 describe('footprint chirality: built-in and sidecar describe the same package', () => {
@@ -139,14 +143,16 @@ describe('footprint chirality: built-in and sidecar describe the same package', 
   // ── mutation proofs ────────────────────────────────────────────────
 
   test('MUTATION: 74hc595 mirrored is DETECTED — the case that defeated design 3', () => {
-    // Not a hypothetical: 74hc595's built-in and sidecar are mirrors in the
-    // shipped tree right now, and this detector says so. The withdrawn gate
-    // was green on exactly this input.
+    // 74hc595's built-in and sidecar were mirrors in the shipped tree until
+    // 2026-11-24, and the withdrawn gate was green on exactly that input. They
+    // agree now; mirroring the sidecar again must be seen.
     const tri = chiralityOf(FOOTPRINTS['74hc595'].leads);
     assert.ok(tri, '74hc595 must have a measurable handedness');
-    const s = signOn(sidecars['74hc595'].leads, tri);
-    assert.equal(s, -tri.sign,
-      '74hc595 is the documented mirror case; this detector must see it as mirrored');
+    const leads = JSON.parse(JSON.stringify(sidecars['74hc595'].leads));
+    assert.equal(signOn(leads, tri), tri.sign, '74hc595: built-in and sidecar agree');
+    for (const v of Object.values(leads)) v.dRow = 5 - v.dRow;
+    assert.equal(signOn(leads, tri), -tri.sign,
+      '74hc595 mirrored is the documented case; this detector must see it as mirrored');
   });
 
   test('MUTATION: mirroring a currently-AGREEING footprint turns it red', () => {
@@ -173,14 +179,21 @@ describe('footprint chirality: built-in and sidecar describe the same package', 
 
   test('INSTRUMENT: mutating a shadowed sidecar does NOT reach the seating path', () => {
     // The fact that invalidates the earlier "provably useless" verdict. Kept as
-    // a test so the precedence cannot change without someone noticing.
+    // a test so the precedence cannot change without someone noticing. The
+    // built-in and the registered sidecar agree today, so the sidecar is made
+    // to differ for the length of the test.
     const before = FOOTPRINTS['74hc595'].refTerminal;
-    const sc = sidecars['74hc595'];
-    assert.notEqual(before, sc.refTerminal,
-      'built-in and sidecar must differ here for this to demonstrate anything');
-    assert.equal(FOOTPRINTS['74hc595'].refTerminal, before,
-      'FOOTPRINTS must keep returning the BUILT-IN for a built-in kind — if this ever '
-      + 'starts returning the sidecar, every shadowed sidecar suddenly becomes live and the '
-      + '14 known mirrors become real seating defects');
+    const sc = getSidecar('74hc595');
+    assert.ok(sc?.footprint, '74hc595 has a registered sidecar footprint');
+    const saved = sc.footprint.refTerminal;
+    sc.footprint.refTerminal = 'gnd';
+    try {
+      assert.notEqual(before, sc.footprint.refTerminal, 'built-in and sidecar differ for this demonstration');
+      assert.equal(FOOTPRINTS['74hc595'].refTerminal, before,
+        'FOOTPRINTS must keep returning the BUILT-IN for a built-in kind — if this ever '
+        + 'starts returning the sidecar, every shadowed sidecar suddenly becomes live');
+    } finally {
+      sc.footprint.refTerminal = saved;
+    }
   });
 });

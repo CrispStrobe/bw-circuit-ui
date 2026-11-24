@@ -31,7 +31,7 @@ const BUILTIN_FOOTPRINTS = {
   '62256': {refTerminal: 'vcc', straddlesGutter: true, leads: {'a14': {dRow: 5, dCol: 0}, 'a12': {dRow: 5, dCol: 1}, 'a7': {dRow: 5, dCol: 2}, 'a6': {dRow: 5, dCol: 3}, 'a5': {dRow: 5, dCol: 4}, 'a4': {dRow: 5, dCol: 5}, 'a3': {dRow: 5, dCol: 6}, 'a2': {dRow: 5, dCol: 7}, 'a1': {dRow: 5, dCol: 8}, 'a0': {dRow: 5, dCol: 9}, 'd0': {dRow: 5, dCol: 10}, 'd1': {dRow: 5, dCol: 11}, 'd2': {dRow: 5, dCol: 12}, 'gnd': {dRow: 5, dCol: 13}, 'vcc': {dRow: 0, dCol: 0}, 'web': {dRow: 0, dCol: 1}, 'a13': {dRow: 0, dCol: 2}, 'a8': {dRow: 0, dCol: 3}, 'a9': {dRow: 0, dCol: 4}, 'a11': {dRow: 0, dCol: 5}, 'oeb': {dRow: 0, dCol: 6}, 'a10': {dRow: 0, dCol: 7}, 'csb': {dRow: 0, dCol: 8}, 'd7': {dRow: 0, dCol: 9}, 'd6': {dRow: 0, dCol: 10}, 'd5': {dRow: 0, dCol: 11}, 'd4': {dRow: 0, dCol: 12}, 'd3': {dRow: 0, dCol: 13}}},
   w65c02: {refTerminal: 'resb', straddlesGutter: true, leads: {'vpb': {dRow: 5, dCol: 0}, 'rdy': {dRow: 5, dCol: 1}, 'phi1o': {dRow: 5, dCol: 2}, 'irqb': {dRow: 5, dCol: 3}, 'mlb': {dRow: 5, dCol: 4}, 'nmib': {dRow: 5, dCol: 5}, 'sync': {dRow: 5, dCol: 6}, 'vdd': {dRow: 5, dCol: 7}, 'a0': {dRow: 5, dCol: 8}, 'a1': {dRow: 5, dCol: 9}, 'a2': {dRow: 5, dCol: 10}, 'a3': {dRow: 5, dCol: 11}, 'a4': {dRow: 5, dCol: 12}, 'a5': {dRow: 5, dCol: 13}, 'a6': {dRow: 5, dCol: 14}, 'a7': {dRow: 5, dCol: 15}, 'a8': {dRow: 5, dCol: 16}, 'a9': {dRow: 5, dCol: 17}, 'a10': {dRow: 5, dCol: 18}, 'a11': {dRow: 5, dCol: 19}, 'resb': {dRow: 0, dCol: 0}, 'phi2o': {dRow: 0, dCol: 1}, 'sob': {dRow: 0, dCol: 2}, 'phi2': {dRow: 0, dCol: 3}, 'be': {dRow: 0, dCol: 4}, 'rwb': {dRow: 0, dCol: 6}, 'd0': {dRow: 0, dCol: 7}, 'd1': {dRow: 0, dCol: 8}, 'd2': {dRow: 0, dCol: 9}, 'd3': {dRow: 0, dCol: 10}, 'd4': {dRow: 0, dCol: 11}, 'd5': {dRow: 0, dCol: 12}, 'd6': {dRow: 0, dCol: 13}, 'd7': {dRow: 0, dCol: 14}, 'a15': {dRow: 0, dCol: 15}, 'a14': {dRow: 0, dCol: 16}, 'a13': {dRow: 0, dCol: 17}, 'a12': {dRow: 0, dCol: 18}, 'vss': {dRow: 0, dCol: 19}}},
   z80: {refTerminal: 'a10', straddlesGutter: true, leads: {'a11': {dRow: 5, dCol: 0}, 'a12': {dRow: 5, dCol: 1}, 'a13': {dRow: 5, dCol: 2}, 'a14': {dRow: 5, dCol: 3}, 'a15': {dRow: 5, dCol: 4}, 'clk': {dRow: 5, dCol: 5}, 'd4': {dRow: 5, dCol: 6}, 'd3': {dRow: 5, dCol: 7}, 'd5': {dRow: 5, dCol: 8}, 'd6': {dRow: 5, dCol: 9}, 'vcc': {dRow: 5, dCol: 10}, 'd2': {dRow: 5, dCol: 11}, 'd7': {dRow: 5, dCol: 12}, 'd0': {dRow: 5, dCol: 13}, 'd1': {dRow: 5, dCol: 14}, 'intb': {dRow: 5, dCol: 15}, 'nmib': {dRow: 5, dCol: 16}, 'haltb': {dRow: 5, dCol: 17}, 'mreqb': {dRow: 5, dCol: 18}, 'iorqb': {dRow: 5, dCol: 19}, 'a10': {dRow: 0, dCol: 0}, 'a9': {dRow: 0, dCol: 1}, 'a8': {dRow: 0, dCol: 2}, 'a7': {dRow: 0, dCol: 3}, 'a6': {dRow: 0, dCol: 4}, 'a5': {dRow: 0, dCol: 5}, 'a4': {dRow: 0, dCol: 6}, 'a3': {dRow: 0, dCol: 7}, 'a2': {dRow: 0, dCol: 8}, 'a1': {dRow: 0, dCol: 9}, 'a0': {dRow: 0, dCol: 10}, 'gnd': {dRow: 0, dCol: 11}, 'rfshb': {dRow: 0, dCol: 12}, 'm1b': {dRow: 0, dCol: 13}, 'resetb': {dRow: 0, dCol: 14}, 'busrqb': {dRow: 0, dCol: 15}, 'waitb': {dRow: 0, dCol: 16}, 'busakb': {dRow: 0, dCol: 17}, 'wrb': {dRow: 0, dCol: 18}, 'rdb': {dRow: 0, dCol: 19}}},
-  i8086: {refTerminal: 'a0', straddlesGutter: true, leads: {'a0': {dRow: 0, dCol: 0}, 'a1': {dRow: 0, dCol: 1}, 'a2': {dRow: 0, dCol: 2}, 'a3': {dRow: 0, dCol: 3}, 'a4': {dRow: 0, dCol: 4}, 'a5': {dRow: 0, dCol: 5}, 'a6': {dRow: 0, dCol: 6}, 'a7': {dRow: 0, dCol: 7}, 'a8': {dRow: 0, dCol: 8}, 'a9': {dRow: 0, dCol: 9}, 'a10': {dRow: 0, dCol: 10}, 'a11': {dRow: 0, dCol: 11}, 'a12': {dRow: 0, dCol: 12}, 'a13': {dRow: 0, dCol: 13}, 'a14': {dRow: 0, dCol: 14}, 'a15': {dRow: 0, dCol: 15}, 'a16': {dRow: 0, dCol: 16}, 'a17': {dRow: 0, dCol: 17}, 'a18': {dRow: 0, dCol: 18}, 'a19': {dRow: 0, dCol: 19}, 'vcc': {dRow: 5, dCol: 0}, 'gnd': {dRow: 5, dCol: 1}, 'intab': {dRow: 5, dCol: 2}, 'nmi': {dRow: 5, dCol: 3}, 'intr': {dRow: 5, dCol: 4}, 'ready': {dRow: 5, dCol: 5}, 'reset': {dRow: 5, dCol: 6}, 'clk': {dRow: 5, dCol: 7}, 'ale': {dRow: 5, dCol: 8}, 'wrb': {dRow: 5, dCol: 9}, 'rdb': {dRow: 5, dCol: 10}, 'mio': {dRow: 5, dCol: 11}, 'd7': {dRow: 5, dCol: 12}, 'd6': {dRow: 5, dCol: 13}, 'd5': {dRow: 5, dCol: 14}, 'd4': {dRow: 5, dCol: 15}, 'd3': {dRow: 5, dCol: 16}, 'd2': {dRow: 5, dCol: 17}, 'd1': {dRow: 5, dCol: 18}, 'd0': {dRow: 5, dCol: 19}}},
+  i8086: { refTerminal: 'vcc', straddlesGutter: true, leads: { a0: { dRow: 5, dCol: 0 }, a1: { dRow: 5, dCol: 1 }, a2: { dRow: 5, dCol: 2 }, a3: { dRow: 5, dCol: 3 }, a4: { dRow: 5, dCol: 4 }, a5: { dRow: 5, dCol: 5 }, a6: { dRow: 5, dCol: 6 }, a7: { dRow: 5, dCol: 7 }, a8: { dRow: 5, dCol: 8 }, a9: { dRow: 5, dCol: 9 }, a10: { dRow: 5, dCol: 10 }, a11: { dRow: 5, dCol: 11 }, a12: { dRow: 5, dCol: 12 }, a13: { dRow: 5, dCol: 13 }, a14: { dRow: 5, dCol: 14 }, a15: { dRow: 5, dCol: 15 }, a16: { dRow: 5, dCol: 16 }, a17: { dRow: 5, dCol: 17 }, a18: { dRow: 5, dCol: 18 }, a19: { dRow: 5, dCol: 19 }, d0: { dRow: 0, dCol: 19 }, d1: { dRow: 0, dCol: 18 }, d2: { dRow: 0, dCol: 17 }, d3: { dRow: 0, dCol: 16 }, d4: { dRow: 0, dCol: 15 }, d5: { dRow: 0, dCol: 14 }, d6: { dRow: 0, dCol: 13 }, d7: { dRow: 0, dCol: 12 }, mio: { dRow: 0, dCol: 11 }, rdb: { dRow: 0, dCol: 10 }, wrb: { dRow: 0, dCol: 9 }, ale: { dRow: 0, dCol: 8 }, clk: { dRow: 0, dCol: 7 }, reset: { dRow: 0, dCol: 6 }, ready: { dRow: 0, dCol: 5 }, intr: { dRow: 0, dCol: 4 }, nmi: { dRow: 0, dCol: 3 }, intab: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 1 }, vcc: { dRow: 0, dCol: 0 } } },
   '28c256': {refTerminal: 'vcc', straddlesGutter: true, leads: {'a14': {dRow: 5, dCol: 0}, 'a12': {dRow: 5, dCol: 1}, 'a7': {dRow: 5, dCol: 2}, 'a6': {dRow: 5, dCol: 3}, 'a5': {dRow: 5, dCol: 4}, 'a4': {dRow: 5, dCol: 5}, 'a3': {dRow: 5, dCol: 6}, 'a2': {dRow: 5, dCol: 7}, 'a1': {dRow: 5, dCol: 8}, 'a0': {dRow: 5, dCol: 9}, 'd0': {dRow: 5, dCol: 10}, 'd1': {dRow: 5, dCol: 11}, 'd2': {dRow: 5, dCol: 12}, 'gnd': {dRow: 5, dCol: 13}, 'vcc': {dRow: 0, dCol: 0}, 'web': {dRow: 0, dCol: 1}, 'a13': {dRow: 0, dCol: 2}, 'a8': {dRow: 0, dCol: 3}, 'a9': {dRow: 0, dCol: 4}, 'a11': {dRow: 0, dCol: 5}, 'oeb': {dRow: 0, dCol: 6}, 'a10': {dRow: 0, dCol: 7}, 'ceb': {dRow: 0, dCol: 8}, 'd7': {dRow: 0, dCol: 9}, 'd6': {dRow: 0, dCol: 10}, 'd5': {dRow: 0, dCol: 11}, 'd4': {dRow: 0, dCol: 12}, 'd3': {dRow: 0, dCol: 13}}},
   w65c22: {refTerminal: 'ca1', straddlesGutter: true, leads: {'vss': {dRow: 5, dCol: 0}, 'pa0': {dRow: 5, dCol: 1}, 'pa1': {dRow: 5, dCol: 2}, 'pa2': {dRow: 5, dCol: 3}, 'pa3': {dRow: 5, dCol: 4}, 'pa4': {dRow: 5, dCol: 5}, 'pa5': {dRow: 5, dCol: 6}, 'pa6': {dRow: 5, dCol: 7}, 'pa7': {dRow: 5, dCol: 8}, 'pb0': {dRow: 5, dCol: 9}, 'pb1': {dRow: 5, dCol: 10}, 'pb2': {dRow: 5, dCol: 11}, 'pb3': {dRow: 5, dCol: 12}, 'pb4': {dRow: 5, dCol: 13}, 'pb5': {dRow: 5, dCol: 14}, 'pb6': {dRow: 5, dCol: 15}, 'pb7': {dRow: 5, dCol: 16}, 'cb1': {dRow: 5, dCol: 17}, 'cb2': {dRow: 5, dCol: 18}, 'vdd': {dRow: 5, dCol: 19}, 'ca1': {dRow: 0, dCol: 0}, 'ca2': {dRow: 0, dCol: 1}, 'rs0': {dRow: 0, dCol: 2}, 'rs1': {dRow: 0, dCol: 3}, 'rs2': {dRow: 0, dCol: 4}, 'rs3': {dRow: 0, dCol: 5}, 'resb': {dRow: 0, dCol: 6}, 'd0': {dRow: 0, dCol: 7}, 'd1': {dRow: 0, dCol: 8}, 'd2': {dRow: 0, dCol: 9}, 'd3': {dRow: 0, dCol: 10}, 'd4': {dRow: 0, dCol: 11}, 'd5': {dRow: 0, dCol: 12}, 'd6': {dRow: 0, dCol: 13}, 'd7': {dRow: 0, dCol: 14}, 'phi2': {dRow: 0, dCol: 15}, 'cs1': {dRow: 0, dCol: 16}, 'cs2b': {dRow: 0, dCol: 17}, 'rwb': {dRow: 0, dCol: 18}, 'irqb': {dRow: 0, dCol: 19}}},
   w65c51: {refTerminal: 'vdd', straddlesGutter: true, leads: {'vss': {dRow: 5, dCol: 0}, 'cs0': {dRow: 5, dCol: 1}, 'cs1b': {dRow: 5, dCol: 2}, 'resb': {dRow: 5, dCol: 3}, 'rwb': {dRow: 5, dCol: 4}, 'irqb': {dRow: 5, dCol: 5}, 'phi2': {dRow: 5, dCol: 6}, 'd0': {dRow: 5, dCol: 7}, 'd1': {dRow: 5, dCol: 8}, 'd2': {dRow: 5, dCol: 9}, 'd3': {dRow: 5, dCol: 10}, 'd4': {dRow: 5, dCol: 11}, 'd5': {dRow: 5, dCol: 12}, 'd6': {dRow: 5, dCol: 13}, 'vdd': {dRow: 0, dCol: 0}, 'xtli': {dRow: 0, dCol: 1}, 'xtlo': {dRow: 0, dCol: 2}, 'dcdb': {dRow: 0, dCol: 3}, 'dsrb': {dRow: 0, dCol: 4}, 'rxd': {dRow: 0, dCol: 5}, 'dtrb': {dRow: 0, dCol: 6}, 'ctsb': {dRow: 0, dCol: 7}, 'rtsb': {dRow: 0, dCol: 8}, 'txd': {dRow: 0, dCol: 10}, 'rs1': {dRow: 0, dCol: 11}, 'rs0': {dRow: 0, dCol: 12}, 'd7': {dRow: 0, dCol: 13}}},
@@ -130,20 +130,13 @@ const BUILTIN_FOOTPRINTS = {
   npn: { refTerminal: 'emitter', leads: { emitter: { dRow: 0, dCol: 0 }, base: { dRow: 0, dCol: 1 }, collector: { dRow: 0, dCol: 2 } } },
   pnp: { refTerminal: 'emitter', leads: { emitter: { dRow: 0, dCol: 0 }, base: { dRow: 0, dCol: 1 }, collector: { dRow: 0, dCol: 2 } } },
   nmos: { refTerminal: 'source', leads: { source: { dRow: 0, dCol: 0 }, gate: { dRow: 0, dCol: 1 }, drain: { dRow: 0, dCol: 2 } } },
-  pmos: { refTerminal: 'source', leads: { source: { dRow: 0, dCol: 0 }, gate: { dRow: 0, dCol: 1 }, drain: { dRow: 0, dCol: 2 } } },
+  pmos: { refTerminal: 'gate', leads: { gate: { dRow: 0, dCol: 0 }, drain: { dRow: 0, dCol: 1 }, source: { dRow: 0, dCol: 2 } } },
   opamp: {
     refTerminal: 'inn',
     straddlesGutter: true,
     leads: { inn: { dRow: 0, dCol: 0 }, inp: { dRow: 0, dCol: 1 }, out: { dRow: 5, dCol: 0 } },
   },
-  '555': {
-    refTerminal: 'gnd',
-    straddlesGutter: true,
-    leads: {
-      gnd: { dRow: 0, dCol: 0 }, trigger: { dRow: 0, dCol: 1 }, output: { dRow: 0, dCol: 2 }, reset: { dRow: 0, dCol: 3 },
-      control: { dRow: 5, dCol: 3 }, threshold: { dRow: 5, dCol: 2 }, discharge: { dRow: 5, dCol: 1 }, vcc: { dRow: 5, dCol: 0 },
-    },
-  },
+  '555': { refTerminal: 'vcc', straddlesGutter: true, leads: { gnd: { dRow: 5, dCol: 0 }, trigger: { dRow: 5, dCol: 1 }, output: { dRow: 5, dCol: 2 }, reset: { dRow: 5, dCol: 3 }, vcc: { dRow: 0, dCol: 0 }, discharge: { dRow: 0, dCol: 1 }, threshold: { dRow: 0, dCol: 2 }, control: { dRow: 0, dCol: 3 } } },
   ldr: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
   ntc: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
   relay: { refTerminal: 'coil_a', leads: { coil_a: { dRow: 0, dCol: 0 }, coil_b: { dRow: 0, dCol: 1 }, no: { dRow: 0, dCol: 3 }, com: { dRow: 0, dCol: 4 }, nc: { dRow: 0, dCol: 5 } } },
@@ -154,7 +147,7 @@ const BUILTIN_FOOTPRINTS = {
   inductor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
   // New tier-1 parts
   photodiode: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 1 } } },
-  solar_cell: { refTerminal: 'pos', leads: { pos: { dRow: 0, dCol: 0 }, neg: { dRow: 0, dCol: 3 } } },
+  solar_cell: { refTerminal: 'pos', leads: { pos: { dRow: 0, dCol: 0 }, neg: { dRow: 0, dCol: 1 } } },
   light_bulb: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
   vibration_motor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
   gearmotor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
@@ -172,7 +165,7 @@ const BUILTIN_FOOTPRINTS = {
   soil_moisture: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 2 } } },
   pir_sensor: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, out: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 } } },
   tmp36: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, out: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 } } },
-  ir_remote: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, signal: { dRow: 0, dCol: 2 } } },
+  ir_remote: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 1 } } },
   clock_display: { refTerminal: 'clk', leads: { clk: { dRow: 0, dCol: 0 }, dio: { dRow: 0, dCol: 1 }, vcc: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
   neopixel: { refTerminal: 'din', leads: { din: { dRow: 0, dCol: 0 }, vcc: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 }, dout: { dRow: 0, dCol: 3 } } },
   char_lcd_i2c: { refTerminal: 'gnd', leads: { gnd: { dRow: 0, dCol: 0 }, vcc: { dRow: 0, dCol: 1 }, sda: { dRow: 0, dCol: 2 }, scl: { dRow: 0, dCol: 3 } } },
@@ -180,18 +173,13 @@ const BUILTIN_FOOTPRINTS = {
   // 4-pin sensors/modules
   ultrasonic: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, trig: { dRow: 0, dCol: 1 }, echo: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
   gas_sensor: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, dout: { dRow: 0, dCol: 2 }, aout: { dRow: 0, dCol: 3 } } },
-  // DIP ICs (straddle gutter)
-  l293d: {
-    refTerminal: 'en1', straddlesGutter: true,
-    leads: { en1: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out1: { dRow: 0, dCol: 2 }, gnd1: { dRow: 0, dCol: 3 }, gnd2: { dRow: 0, dCol: 4 }, out2: { dRow: 0, dCol: 5 }, in2: { dRow: 0, dCol: 6 }, en2: { dRow: 0, dCol: 7 },
-      vs: { dRow: 5, dCol: 7 }, vcc: { dRow: 5, dCol: 0 } },
-  },
+  // DIP ICs (straddle gutter). 2026-11-24: the 555, PCF8574, L293D and 8086
+  // entries had pins 1..N/2 in row e, the chip seen from underneath; they are
+  // now the bw-parts footprints (pin 1 bottom-left in row f), which is also
+  // where their breadboard-pitch art puts the legs.
+  l293d: { refTerminal: 'vcc1', straddlesGutter: true, leads: { en1: { dRow: 5, dCol: 0 }, in1: { dRow: 5, dCol: 1 }, out1: { dRow: 5, dCol: 2 }, gnd1: { dRow: 5, dCol: 3 }, gnd2: { dRow: 5, dCol: 4 }, out2: { dRow: 5, dCol: 5 }, in2: { dRow: 5, dCol: 6 }, vcc2: { dRow: 5, dCol: 7 }, en2: { dRow: 0, dCol: 7 }, in3: { dRow: 0, dCol: 6 }, out3: { dRow: 0, dCol: 5 }, gnd3: { dRow: 0, dCol: 4 }, gnd4: { dRow: 0, dCol: 3 }, out4: { dRow: 0, dCol: 2 }, in4: { dRow: 0, dCol: 1 }, vcc1: { dRow: 0, dCol: 0 } } },
   relay_dpdt: { refTerminal: 'coil_a', leads: { coil_a: { dRow: 0, dCol: 0 }, coil_b: { dRow: 0, dCol: 1 }, no1: { dRow: 0, dCol: 3 }, com1: { dRow: 0, dCol: 4 }, nc1: { dRow: 0, dCol: 5 }, no2: { dRow: 0, dCol: 7 }, com2: { dRow: 0, dCol: 8 }, nc2: { dRow: 0, dCol: 9 } } },
-  pcf8574: {
-    refTerminal: 'p0', straddlesGutter: true,
-    leads: { p0: { dRow: 0, dCol: 0 }, p1: { dRow: 0, dCol: 1 }, p2: { dRow: 0, dCol: 2 }, p3: { dRow: 0, dCol: 3 }, gnd: { dRow: 0, dCol: 4 }, vcc: { dRow: 0, dCol: 5 }, sda: { dRow: 0, dCol: 6 }, scl: { dRow: 0, dCol: 7 },
-      p4: { dRow: 5, dCol: 7 }, p5: { dRow: 5, dCol: 6 }, p6: { dRow: 5, dCol: 5 }, p7: { dRow: 5, dCol: 4 } },
-  },
+  pcf8574: { refTerminal: 'vcc', straddlesGutter: true, leads: { a0: { dRow: 5, dCol: 0 }, a1: { dRow: 5, dCol: 1 }, a2: { dRow: 5, dCol: 2 }, p0: { dRow: 5, dCol: 3 }, p1: { dRow: 5, dCol: 4 }, p2: { dRow: 5, dCol: 5 }, p3: { dRow: 5, dCol: 6 }, gnd: { dRow: 5, dCol: 7 }, p4: { dRow: 0, dCol: 7 }, p5: { dRow: 0, dCol: 6 }, p6: { dRow: 0, dCol: 5 }, p7: { dRow: 0, dCol: 4 }, int: { dRow: 0, dCol: 3 }, scl: { dRow: 0, dCol: 2 }, sda: { dRow: 0, dCol: 1 }, vcc: { dRow: 0, dCol: 0 } } },
   header: { refTerminal: 'p1', leads: { p1: { dRow: 0, dCol: 0 }, p2: { dRow: 0, dCol: 1 }, p3: { dRow: 0, dCol: 2 }, p4: { dRow: 0, dCol: 3 }, p5: { dRow: 0, dCol: 4 }, p6: { dRow: 0, dCol: 5 }, p7: { dRow: 0, dCol: 6 }, p8: { dRow: 0, dCol: 7 } } },
   usb_a: { refTerminal: 'vbus', leads: { vbus: { dRow: 0, dCol: 0 }, dm: { dRow: 0, dCol: 1 }, dp: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
   keypad: {
@@ -199,7 +187,7 @@ const BUILTIN_FOOTPRINTS = {
     leads: { r1: { dRow: 0, dCol: 0 }, r2: { dRow: 0, dCol: 1 }, r3: { dRow: 0, dCol: 2 }, r4: { dRow: 0, dCol: 3 },
       c1: { dRow: 5, dCol: 0 }, c2: { dRow: 5, dCol: 1 }, c3: { dRow: 5, dCol: 2 }, c4: { dRow: 5, dCol: 3 } },
   },
-  dip_switch: { refTerminal: 's1_a', leads: { s1_a: { dRow: 0, dCol: 0 }, s1_b: { dRow: 0, dCol: 1 } } },
+  dip_switch: { refTerminal: 's0_b', straddlesGutter: true, leads: { s0_a: { dRow: 5, dCol: 0 }, s1_a: { dRow: 5, dCol: 1 }, s2_a: { dRow: 5, dCol: 2 }, s3_a: { dRow: 5, dCol: 3 }, s0_b: { dRow: 0, dCol: 0 }, s1_b: { dRow: 0, dCol: 1 }, s2_b: { dRow: 0, dCol: 2 }, s3_b: { dRow: 0, dCol: 3 } } },
   // MERGED after the 930000d vendor sync: upstream's gate footprints
   // arrived, but the sync also deleted lite's mcu/dev-board entries and
   // the gutter-straddle mapping — both restored below. Upstream owes

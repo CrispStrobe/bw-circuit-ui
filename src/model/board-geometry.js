@@ -61,7 +61,6 @@ export const WOKWI_BOARD_SPECS = Object.freeze({
 // introduces no third-party artwork or restrictive asset licence.
 const CODE_BOARD_SPECS = Object.freeze({
   pi_pico: { mmW: 51, mmH: 21, transpose: true },
-  tang_nano_20k: { mmW: 54.04, mmH: 22.55, transpose: true },
   pybadge: { mmW: 85.6, mmH: 54, transpose: false },
 });
 
@@ -73,9 +72,13 @@ const CODE_BOARD_SPECS = Object.freeze({
  */
 export const MAKECODE_FACE_KINDS = Object.freeze(['calliopemini', 'circuit_playground_express']);
 
-/** Every kind drawn as a whole board (face + pads) rather than a symbol. */
+/**
+ * Every kind drawn as a whole board (face + pads) rather than a symbol. The
+ * Tang Nano 20K left this list on 2026-11-24: its sidecar is laid out on the
+ * breadboard pitch it seats on and it draws that art (src/model/part-art.js).
+ */
 export const BOARD_FACE_KINDS = Object.freeze([
-  'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'tang_nano_20k', 'pybadge',
+  'arduino_uno', 'arduino_nano', 'arduino_mega', 'pi_pico', 'pybadge',
   'esp32_4848s040',
   ...MAKECODE_FACE_KINDS,
 ]);

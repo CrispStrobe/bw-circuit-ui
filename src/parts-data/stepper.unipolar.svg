@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70" width="70" height="70">
+  <!-- Stepper motor — bench-style front view -->
+  <!-- Unipolar (28BYJ-48 class): five wires, coil1-coil4 and the red common -->
+  <!-- Motor body (square with rounded corners, typical NEMA shape) -->
+  <rect x="8" y="8" width="54" height="54" rx="4" fill="#444" stroke="#333" stroke-width="0.8"/>
+  <!-- Mounting holes (4 corners) -->
+  <circle cx="14" cy="14" r="2" fill="#333" stroke="#555" stroke-width="0.3"/>
+  <circle cx="56" cy="14" r="2" fill="#333" stroke="#555" stroke-width="0.3"/>
+  <circle cx="14" cy="56" r="2" fill="#333" stroke="#555" stroke-width="0.3"/>
+  <circle cx="56" cy="56" r="2" fill="#333" stroke="#555" stroke-width="0.3"/>
+  <!-- Central shaft circle -->
+  <circle cx="35" cy="35" r="12" fill="#555" stroke="#666" stroke-width="0.5"/>
+  <circle cx="35" cy="35" r="4" fill="#888" stroke="#777" stroke-width="0.5"/>
+  <!-- Shaft -->
+  <circle cx="35" cy="35" r="2" fill="#c0c0c0"/>
+  <!-- Wire leads (5 wires coming from top) -->
+  <g stroke-width="1.2">
+    <line x1="19" y1="8" x2="19" y2="0" stroke="#3b6fd8"/>
+    <line x1="27" y1="8" x2="27" y2="0" stroke="#e879a8"/>
+    <line x1="35" y1="8" x2="35" y2="0" stroke="#e6c229"/>
+    <line x1="43" y1="8" x2="43" y2="0" stroke="#f08a24"/>
+    <line x1="51" y1="8" x2="51" y2="0" stroke="#d93434"/>
+  </g>
+  <g font-family="monospace" font-size="3" fill="#ccc" text-anchor="middle">
+    <text x="19" y="22">1</text>
+    <text x="27" y="22">2</text>
+    <text x="35" y="22">3</text>
+    <text x="43" y="22">4</text>
+    <text x="51" y="22">C</text>
+  </g>
+  <circle cx="19" cy="0" r="2" fill="#3b6fd8"/>
+  <circle cx="27" cy="0" r="2" fill="#e879a8"/>
+  <circle cx="35" cy="0" r="2" fill="#e6c229"/>
+  <circle cx="43" cy="0" r="2" fill="#f08a24"/>
+  <circle cx="51" cy="0" r="2" fill="#d93434"/>
+  <!-- Label -->
+  <text x="35" y="50" text-anchor="middle" font-family="monospace" font-size="4" fill="#aaa">STEPPER</text>
+</svg>

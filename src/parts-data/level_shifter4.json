@@ -1,126 +1,131 @@
 {
   "kind": "level_shifter4",
-  "w": 56,
-  "h": 35,
+  "w": 90,
+  "h": 38,
+  "dip": {
+    "label": "LEVEL SHIFT",
+    "subtitle": "4-CH",
+    "style": "board"
+  },
   "terminals": [
     {
       "name": "lv",
-      "x": 0,
-      "y": 8,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "lv1",
-      "x": 0,
-      "y": 14,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "lv2",
-      "x": 0,
-      "y": 20,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "lv3",
-      "x": 0,
-      "y": 26,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "lv4",
-      "x": 0,
-      "y": 32,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "hv",
-      "x": 56,
-      "y": 8,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "hv1",
-      "x": 56,
-      "y": 14,
+      "x": 10,
+      "y": 0,
       "functions": []
     },
     {
       "name": "hv2",
-      "x": 56,
-      "y": 20,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "hv3",
-      "x": 56,
-      "y": 26,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "hv4",
-      "x": 56,
-      "y": 32,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 28,
-      "y": 35,
+      "x": 52,
+      "y": 38,
       "functions": []
     }
   ],
   "variants": null,
-  "_note": "Bi-directional 4-channel logic level shifter module. 11-terminal: LV (low-voltage ref), HV (high-voltage ref), GND, LV1-LV4, HV1-HV4.",
+  "_note": "Bi-directional 4-channel logic level shifter module. 11-terminal: LV (low-voltage ref), HV (high-voltage ref), GND, LV1-LV4, HV1-HV4. Two 6-pin headers as on the common BSS138 breakout: LV1 LV2 LV GND LV3 LV4 and HV1 HV2 HV GND HV3 HV4; the HV-side GND is the same net and is not modelled as a second terminal.",
   "footprint": {
-    "refTerminal": "lv",
+    "refTerminal": "hv1",
     "leads": {
       "lv": {
-        "dRow": 0,
-        "dCol": 0
+        "dRow": 5,
+        "dCol": 2
       },
       "lv1": {
-        "dRow": 0,
-        "dCol": 1
-      },
-      "lv2": {
-        "dRow": 0,
-        "dCol": 2
-      },
-      "lv3": {
-        "dRow": 0,
-        "dCol": 3
-      },
-      "lv4": {
-        "dRow": 0,
-        "dCol": 4
-      },
-      "hv": {
         "dRow": 5,
         "dCol": 0
       },
-      "hv1": {
+      "lv2": {
         "dRow": 5,
         "dCol": 1
       },
-      "hv2": {
-        "dRow": 5,
-        "dCol": 2
-      },
-      "hv3": {
-        "dRow": 5,
-        "dCol": 3
-      },
-      "hv4": {
+      "lv3": {
         "dRow": 5,
         "dCol": 4
       },
-      "gnd": {
-        "dRow": 3,
+      "lv4": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "hv": {
+        "dRow": 0,
         "dCol": 2
+      },
+      "hv1": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "hv2": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "hv3": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "hv4": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "gnd": {
+        "dRow": 5,
+        "dCol": 3
       }
     },
     "straddlesGutter": true,
-    "minCols": 5
+    "minCols": 6
   }
 }

@@ -17,17 +17,59 @@
     },
     {
       "name": "aout",
-      "x": 26,
+      "x": 34,
       "y": 48,
       "functions": []
     },
     {
       "name": "dout",
-      "x": 34,
+      "x": 26,
       "y": 48,
       "functions": []
     }
   ],
-  "variants": null,
-  "footprint": null
+  "variantArt": [
+    {
+      "param": "package",
+      "value": "element",
+      "default": true,
+      "w": 44,
+      "h": 48,
+      "art": "gas_sensor.element.svg",
+      "_note": "The bare MQ element the engine models by default (params.package unset or 'element'): sensing electrodes a, b and the heater heater_a, heater_b, on four legs.",
+      "terminals": [
+        {
+          "name": "a",
+          "x": 10,
+          "y": 48
+        },
+        {
+          "name": "heater_a",
+          "x": 18,
+          "y": 48
+        },
+        {
+          "name": "heater_b",
+          "x": 26,
+          "y": 48
+        },
+        {
+          "name": "b",
+          "x": 34,
+          "y": 48
+        }
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "param": "package",
+      "values": [
+        "element",
+        "module"
+      ]
+    }
+  ],
+  "footprint": null,
+  "_note": "MQ-series gas sensor, the 4-pin breakout MODULE: vcc, gnd, an analog divider output and a comparator output; header order VCC GND DOUT AOUT as on the common FC-22 board. The engine models both packages behind params.package and defaults to `element`, the bare sensor with its own heater (a, b, heater_a, heater_b) — see variants."
 }

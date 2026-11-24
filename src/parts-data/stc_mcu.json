@@ -1,12 +1,16 @@
 {
   "kind": "stc_mcu",
-  "w": 80,
-  "h": 111,
+  "w": 286,
+  "h": 38,
+  "dip": {
+    "label": "STC12",
+    "subtitle": "C5A60S2"
+  },
   "terminals": [
     {
       "name": "P1.0",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": [
         "gpio",
         "adc0",
@@ -15,8 +19,8 @@
     },
     {
       "name": "P1.1",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": [
         "gpio",
         "adc1"
@@ -24,8 +28,8 @@
     },
     {
       "name": "P1.2",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": [
         "gpio",
         "adc2",
@@ -34,8 +38,8 @@
     },
     {
       "name": "P1.3",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": [
         "gpio",
         "adc3",
@@ -45,8 +49,8 @@
     },
     {
       "name": "P1.4",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": [
         "gpio",
         "adc4",
@@ -56,8 +60,8 @@
     },
     {
       "name": "P1.5",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": [
         "gpio",
         "adc5",
@@ -66,7 +70,7 @@
     },
     {
       "name": "P1.6",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": [
         "gpio",
@@ -76,8 +80,8 @@
     },
     {
       "name": "P1.7",
-      "x": 0,
-      "y": 43,
+      "x": 108,
+      "y": 38,
       "functions": [
         "gpio",
         "adc7",
@@ -86,14 +90,14 @@
     },
     {
       "name": "RST",
-      "x": 0,
-      "y": 48,
+      "x": 122,
+      "y": 38,
       "functions": []
     },
     {
       "name": "P3.0",
-      "x": 0,
-      "y": 53,
+      "x": 136,
+      "y": 38,
       "functions": [
         "gpio",
         "rxd0"
@@ -101,8 +105,8 @@
     },
     {
       "name": "P3.1",
-      "x": 0,
-      "y": 58,
+      "x": 150,
+      "y": 38,
       "functions": [
         "gpio",
         "txd0"
@@ -110,8 +114,8 @@
     },
     {
       "name": "P3.2",
-      "x": 0,
-      "y": 63,
+      "x": 164,
+      "y": 38,
       "functions": [
         "gpio",
         "int0"
@@ -119,8 +123,8 @@
     },
     {
       "name": "P3.3",
-      "x": 0,
-      "y": 68,
+      "x": 178,
+      "y": 38,
       "functions": [
         "gpio",
         "int1"
@@ -128,8 +132,8 @@
     },
     {
       "name": "P3.4",
-      "x": 0,
-      "y": 73,
+      "x": 192,
+      "y": 38,
       "functions": [
         "gpio",
         "t0",
@@ -138,8 +142,8 @@
     },
     {
       "name": "P3.5",
-      "x": 0,
-      "y": 78,
+      "x": 206,
+      "y": 38,
       "functions": [
         "gpio",
         "t1",
@@ -148,146 +152,146 @@
     },
     {
       "name": "P3.6",
-      "x": 0,
-      "y": 83,
+      "x": 220,
+      "y": 38,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P3.7",
-      "x": 0,
-      "y": 88,
+      "x": 234,
+      "y": 38,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "XTAL2",
-      "x": 0,
-      "y": 93,
+      "x": 248,
+      "y": 38,
       "functions": []
     },
     {
       "name": "XTAL1",
-      "x": 0,
-      "y": 98,
+      "x": 262,
+      "y": 38,
       "functions": []
     },
     {
       "name": "GND",
-      "x": 0,
-      "y": 103,
+      "x": 276,
+      "y": 38,
       "functions": []
     },
     {
       "name": "P2.0",
-      "x": 80,
-      "y": 103,
+      "x": 276,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P2.1",
-      "x": 80,
-      "y": 98,
+      "x": 262,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P2.2",
-      "x": 80,
-      "y": 93,
+      "x": 248,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P2.3",
-      "x": 80,
-      "y": 88,
+      "x": 234,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P2.4",
-      "x": 80,
-      "y": 83,
+      "x": 220,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P2.5",
-      "x": 80,
-      "y": 78,
+      "x": 206,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P2.6",
-      "x": 80,
-      "y": 73,
+      "x": 192,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P2.7",
-      "x": 80,
-      "y": 68,
+      "x": 178,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P4.4",
-      "x": 80,
-      "y": 63,
+      "x": 164,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P4.5",
-      "x": 80,
-      "y": 58,
+      "x": 150,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P4.6",
-      "x": 80,
-      "y": 53,
+      "x": 136,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P0.7",
-      "x": 80,
-      "y": 48,
+      "x": 122,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P0.6",
-      "x": 80,
-      "y": 43,
+      "x": 108,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P0.5",
-      "x": 80,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": [
         "gpio"
       ]
@@ -295,212 +299,212 @@
     {
       "name": "P0.4",
       "x": 80,
-      "y": 33,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P0.3",
-      "x": 80,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P0.2",
-      "x": 80,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P0.1",
-      "x": 80,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "P0.0",
-      "x": 80,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": [
         "gpio"
       ]
     },
     {
       "name": "VCC",
-      "x": 80,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "P1.0",
+    "refTerminal": "VCC",
     "leads": {
       "P1.0": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "P1.1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "P1.2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "P1.3": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "P1.4": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "P1.5": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "P1.6": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "P1.7": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 7
       },
       "RST": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 8
       },
       "P3.0": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 9
       },
       "P3.1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 10
       },
       "P3.2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 11
       },
       "P3.3": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 12
       },
       "P3.4": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 13
       },
       "P3.5": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 14
       },
       "P3.6": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 15
       },
       "P3.7": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 16
       },
       "XTAL2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 17
       },
       "XTAL1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 18
       },
       "GND": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 19
       },
       "P2.0": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 19
       },
       "P2.1": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 18
       },
       "P2.2": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 17
       },
       "P2.3": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 16
       },
       "P2.4": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 15
       },
       "P2.5": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 14
       },
       "P2.6": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 13
       },
       "P2.7": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 12
       },
       "P4.4": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 11
       },
       "P4.5": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 10
       },
       "P4.6": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 9
       },
       "P0.7": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 8
       },
       "P0.6": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 7
       },
       "P0.5": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "P0.4": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "P0.3": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "P0.2": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "P0.1": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "P0.0": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "VCC": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

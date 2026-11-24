@@ -1,92 +1,97 @@
 {
   "kind": "dip_switch",
-  "w": 40,
-  "h": 30,
+  "w": 62,
+  "h": 38,
+  "dip": {
+    "label": "DIP SWITCH",
+    "subtitle": "4-WAY",
+    "style": "switch"
+  },
   "terminals": [
     {
       "name": "s0_a",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "s1_a",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "s2_a",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "s3_a",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "s0_b",
-      "x": 40,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     },
     {
       "name": "s1_b",
-      "x": 40,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "s2_b",
-      "x": 40,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "s3_b",
-      "x": 40,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "_note": "DIP switch 4-position. 8-terminal: S0_A/B, S1_A/B, S2_A/B, S3_A/B.",
   "footprint": {
-    "refTerminal": "s0_a",
+    "refTerminal": "s0_b",
     "leads": {
       "s0_a": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "s1_a": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "s2_a": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "s3_a": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "s0_b": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       },
       "s1_b": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "s2_b": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "s3_b": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       }
     },

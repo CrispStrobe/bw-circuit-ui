@@ -1,151 +1,155 @@
 {
   "kind": "74hc04",
-  "w": 70,
-  "h": 46,
+  "w": 104,
+  "h": 38,
+  "dip": {
+    "label": "74HC04",
+    "subtitle": "HEX INV"
+  },
   "terminals": [
     {
       "name": "1a",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1y",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "2a",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "2y",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "3a",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "3y",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "4y",
-      "x": 70,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": []
     },
     {
       "name": "4a",
-      "x": 70,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "5y",
-      "x": 70,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "5a",
-      "x": 70,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "6y",
-      "x": 70,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "6a",
-      "x": 70,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 70,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "1a",
+    "refTerminal": "vcc",
     "leads": {
       "1a": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "1y": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "2a": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "2y": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "3a": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "3y": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "gnd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "4y": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "4a": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "5y": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "5a": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "6y": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "6a": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "vcc": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

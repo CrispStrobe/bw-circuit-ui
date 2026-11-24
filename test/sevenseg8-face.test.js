@@ -85,7 +85,7 @@ test('sevenseg8 is included in the SvgParts deviceStates gathering', () => {
 test('sevenseg8 has terminal offsets for all 13 pins', () => {
   const offsets = boardSrc.slice(
     boardSrc.indexOf('function terminalOffsetsForPart'),
-    boardSrc.indexOf('function terminalOffsetsForPart') + 5000,
+    boardSrc.indexOf('function layoutSidecar'),
   );
   assert.ok(offsets.includes("case 'sevenseg8':"), 'sevenseg8 in terminal offsets switch');
   for (const pin of ['vcc', 'gnd', 'seg_a', 'seg_b', 'seg_c', 'seg_d',

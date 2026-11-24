@@ -1,14 +1,14 @@
 {
   "kind": "ina219",
-  "w": 50,
-  "h": 36,
+  "w": 56,
+  "h": 44,
   "terminals": [
-    { "name": "vcc",   "x": 8,  "y": 36, "functions": [] },
-    { "name": "gnd",   "x": 16, "y": 36, "functions": [] },
-    { "name": "sda",   "x": 24, "y": 36, "functions": ["sda"] },
-    { "name": "scl",   "x": 32, "y": 36, "functions": ["scl"] },
-    { "name": "vin_p", "x": 8,  "y": 0,  "functions": [] },
-    { "name": "vin_n", "x": 16, "y": 0,  "functions": [] }
+    { "name": "vcc",   "x": 8,  "y": 44, "functions": [] },
+    { "name": "gnd",   "x": 16, "y": 44, "functions": [] },
+    { "name": "sda",   "x": 24, "y": 44, "functions": ["sda"] },
+    { "name": "scl",   "x": 32, "y": 44, "functions": ["scl"] },
+    { "name": "vin_p", "x": 40,  "y": 44,  "functions": [] },
+    { "name": "vin_n", "x": 48, "y": 44,  "functions": [] }
   ],
   "variants": null,
   "_note": "INA219 high-side current/power monitor module (TI). I2C interface, default address 0x40 (A0/A1 straps on module PCB). 6-pin breakout: VCC, GND, SDA, SCL on bottom; VIN+ and VIN- (sense resistor terminals, series with load) on top. Measures bus voltage (0-26V), shunt voltage, current and power. 12-bit ADC. Onboard 0.1 ohm shunt resistor on most modules.",
