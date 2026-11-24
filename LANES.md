@@ -1,3 +1,20 @@
+## Kosmos CP1 circuit and front-panel surfaces — CLAIMED, 2026-11-24
+
+Owner: Brickwright CP1 implementation lane, requested by CrispStrobe.
+Base: `4c57f3a6458a3f385b87c2d9213d02062fe0918d`.
+Feature branch: `feat/kosmos-cp1-20261124`; isolated checkout.
+Own additive CP1 board/terminal/declaration/palette/render/extractor integration,
+new CP1 face/model modules, original circuit fixtures and scoped tests/docs.
+Coordinate shared component/model behavior with the bw-board CP1 lane.
+Respect supplier-generated assets and existing package/provenance/mirror gates.
+No edits to unrelated controls, solver, source analysis or other owners' hunks.
+
+GPL code is research/oracle only, with fresh independent authorship from specs;
+do not copy GPL implementation, historical ROM or manual artwork. Preserve work
+incrementally on remote feature branches. Qualify real electrical connections,
+shared runtime ownership, input release, display segments, save/load and browser
+behavior before claiming a runnable circuit. Source checkpoints remain candidates.
+
 ## One autosave record per circuit (Lite I5) — CLAIMED 2026-11-11
 Owner: Lite browser-shard I-task lane (I5). Base: `9724589`. Claim and change in one PR.
 Scope: new `src/model/autosave-record.js`; the two `bw-circuit-autosave` writes in `CircuitDesigner.jsx` (handleLoad and the debounced autosave); new `test/one-autosave-record.test.js` and its `package.json` test listing. No other Designer behavior.
