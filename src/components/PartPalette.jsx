@@ -106,6 +106,11 @@ const CATEGORIES = [
       { kind: 'polarized_cap', label: 'Electrolytic 100µF', params: { farads: 0.0001 }, color: '#2c3e50',
         tooltip: 'Polarized capacitor — + lead to the more positive side; reverse bias is flagged' },
       { kind: 'inductor', label: 'Inductor 10mH', params: { henrys: 0.01 }, color: '#9b59b6', tooltip: 'Coil' },
+      // A coil you wind yourself (bw-board air_coil): R and L from turns, size
+      // and wire; its current's field turns a compass; a magnet dropped
+      // through it makes a pulse; metal nearby shifts its inductance.
+      { kind: 'air_coil', label: 'Hand-wound coil', params: { turns: 200, radiusM: 0.015, lengthM: 0.03, wireMm: 0.25 }, color: '#b5651d',
+        tooltip: 'Air coil wound from copper wire: its current makes a magnetic field (a compass on its axis turns), a magnet dropped through it induces a pulse, metal nearby changes its inductance' },
       { kind: 'diode', label: 'Diode', params: { vf: 0.7 }, color: '#95a5a6' },
       // NAMED PARTS: `params.part` names a card in bw-board's parts library, which is
       // the only home of the electrical numbers (test/parts-cards.test.js keeps every
@@ -148,6 +153,14 @@ const CATEGORIES = [
         tooltip: 'High-impedance magnetic earphone (2 kΩ): hears microwatts — the crystal-set earpiece' },
       { kind: 'earphone', label: 'Crystal earphone', params: { type: 'crystal', capacitance: 10e-9, leakOhms: 10e6, ratedWatts: 0.001 }, color: '#1abc9c',
         tooltip: 'Crystal (piezo) earphone: a capacitor with no DC path — put a resistor across it in a crystal set' },
+      // A speaker or earphone that LISTENS (bw-board acoustics.js): sound at
+      // soundDb (dB SPL; a slider in the stimulus panel) makes an EMF in its
+      // coil, 0.5 mV/Pa for the speaker, 3 mV/Pa for the magnetic earphone.
+      // `hears` + distanceCm couple it to another speaker or earphone.
+      { kind: 'speaker', label: 'Speaker as microphone', params: { ohms: 8, henrys: 0.0002, ratedWatts: 0.5, soundDb: 85, soundWave: 'voice' }, color: '#1abc9c',
+        tooltip: 'A loudspeaker used backwards: sound moves the cone and the coil makes a small voltage (0.5 mV per pascal). The sound panel sets how loud you speak' },
+      { kind: 'earphone', label: 'Earphone as microphone', params: { type: 'magnetic', ohms: 2000, henrys: 0.1, ratedWatts: 0.001, soundDb: 85, soundWave: 'voice' }, color: '#1abc9c',
+        tooltip: 'A magnetic earphone used backwards: about 3 mV per pascal. Set hears to a speaker id and distanceCm to hold it over that speaker' },
     ],
   },
   {
@@ -231,6 +244,16 @@ const CATEGORIES = [
       { kind: 'ntc', label: 'NTC 10k (thermal)', params: { r25: 10000, beta: 3950, rth: 500, thermalTau: 10, heatedBy: '', thermalCoupling: 0.5 },
         color: '#16a085', tooltip: 'Thermistor at its own temperature (beta equation): follows the bench, its own self-heating, airflow, and the part named in heatedBy' },
       { kind: 'tmp36', label: 'TMP36', params: {}, color: '#16a085', tooltip: 'Analog temp — 10 mV/°C' },
+      // Seebeck EMF E(hotC) − E(bench) (bw-board thermocouple); the hot
+      // junction's temperature is a slider (match, lighter) in the stimulus panel.
+      { kind: 'thermocouple', label: 'Thermocouple type K', params: { type: 'K', hotC: 25, ohms: 5 }, color: '#c0392b',
+        tooltip: 'Two different metals joined at a hot junction: about 41 µV per kelvin of difference to the bench — amplify it with an op-amp' },
+      { kind: 'thermocouple', label: 'Thermocouple copper/constantan', params: { type: 'T', hotC: 25, ohms: 5 }, color: '#c0392b',
+        tooltip: 'A thermocouple made from a copper and a constantan wire twisted together: about 40 µV per kelvin near room temperature' },
+      // Electrolyte between two electrodes (bw-board electrolysis_cell):
+      // the battery-on-the-tongue experiment as a circuit.
+      { kind: 'electrolysis_cell', label: 'Electrolyte (tongue)', params: { ohms: 2000, farads: 2e-6, onsetV: 1.7 }, color: '#d98880',
+        tooltip: 'Two electrodes on a wet tongue: a resistance, and electrolysis only above about 1.7 V — then the tongue tastes it (sour at the + contact)' },
       { kind: 'pir_sensor', label: 'PIR Sensor', params: {}, color: '#27ae60', tooltip: 'Motion detector' },
       { kind: 'ultrasonic', label: 'Ultrasonic', params: {}, color: '#3498db', tooltip: 'HC-SR04 distance sensor' },
       { kind: 'soil_moisture', label: 'Soil Moisture', params: {}, color: '#8B4513' },

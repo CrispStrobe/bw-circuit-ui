@@ -1,0 +1,34 @@
+{
+  "kind": "air_coil",
+  "w": 56,
+  "h": 48,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 7,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 49,
+      "y": 48,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Hand-wound air coil (single-layer solenoid of enamelled copper wire). 2-terminal: a, b (the winding ends). Engine (bw-board air_coil): turns, radiusM, lengthM, wireMm give R (copper) and L (Wheeler); its current makes a field (fieldT at the centre, compassDeg for a compass on the axis compassCm away against earthT). A magnet dropped through it (control 'drop', or bumping params.drops) induces e = -dPhi/dt; metal at metalCm (metalKind nonferrous/ferrous, metalCoupling) shifts L.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
+}

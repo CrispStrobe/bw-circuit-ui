@@ -50,6 +50,40 @@ export function PartTooltip({ part, circuit, visible, x, y, lang = 'en' }) {
       case 'resistor':
         lines.push(`${fmtOhms(part.params.ohms)}`);
         break;
+      // Sensing transducers (bw-board sensing-transducers.js): the readouts
+      // their device models publish on the device state.
+      case 'thermocouple': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.emfV)) {
+          const mv = (s.emfV * 1000).toFixed(2);
+          lines.push(de ? `Thermospannung: ${mv.replace('.', ',')} mV` : `EMF: ${mv} mV`);
+          lines.push(de ? `Lötstelle ${Math.round(s.hotC)} °C, Umgebung ${Math.round(s.coldC)} °C`
+            : `Junction ${Math.round(s.hotC)} °C, bench ${Math.round(s.coldC)} °C`);
+        }
+        break;
+      }
+      case 'air_coil': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.amps)) {
+          const mA = (s.amps * 1000).toFixed(1);
+          const mT = (s.fieldT * 1000).toFixed(3);
+          lines.push(de ? `Strom: ${mA.replace('.', ',')} mA` : `Current: ${mA} mA`);
+          lines.push(de ? `Feld innen: ${mT.replace('.', ',')} mT` : `Field inside: ${mT} mT`);
+          lines.push(de ? `Kompass: ${s.compassDeg.toFixed(0)}° ausgelenkt` : `Compass: ${s.compassDeg.toFixed(0)}° deflected`);
+        }
+        break;
+      }
+      case 'electrolysis_cell': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.amps)) {
+          const uA = Math.abs(s.faradaicAmps * 1e6);
+          const shown = uA >= 100 ? uA.toFixed(0) : uA.toFixed(2);
+          lines.push(de ? `Elektrolyse: ${shown.replace('.', ',')} µA` : `Electrolysis: ${shown} µA`);
+          const taste = { none: de ? 'nichts' : 'nothing', faint: de ? 'schwach' : 'faint', strong: de ? 'deutlich' : 'strong' }[s.taste];
+          lines.push(de ? `Geschmack: ${taste}` : `Taste: ${taste}`);
+        }
+        break;
+      }
       case 'potentiometer':
         lines.push(`${fmtOhms(part.params.ohms)} ${de ? 'Poti' : 'pot'}`);
         break;

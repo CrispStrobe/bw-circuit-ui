@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 64" width="30" height="64">
+  <!-- Thermocouple: two dissimilar wires twisted together at a welded bead -->
+  <!-- Hot junction bead -->
+  <circle cx="15" cy="7" r="3.2" fill="#8a7a66" stroke="#4a3f33" stroke-width="0.8"/>
+  <!-- Copper-coloured leg (pos) and silvery constantan/alumel leg (neg) -->
+  <path d="M15 9 C 13 14, 9 16, 9 22 L 8 40" fill="none" stroke="#b87333" stroke-width="1.6"/>
+  <path d="M15 9 C 17 14, 21 16, 21 22 L 22 40" fill="none" stroke="#b9bdc2" stroke-width="1.6"/>
+  <!-- Twist below the bead -->
+  <path d="M13 11 L 17 13 M 17 11 L 13 13" stroke="#6b5a48" stroke-width="0.6"/>
+  <!-- Insulating sleeves (cold end) -->
+  <rect x="5" y="40" width="6" height="14" rx="1.5" fill="#c0392b" stroke="#7b241c" stroke-width="0.6"/>
+  <rect x="19" y="40" width="6" height="14" rx="1.5" fill="#2c3e50" stroke="#17202a" stroke-width="0.6"/>
+  <text x="8" y="49" text-anchor="middle" font-family="monospace" font-size="4" fill="#fff">+</text>
+  <text x="22" y="49" text-anchor="middle" font-family="monospace" font-size="4" fill="#fff">-</text>
+  <!-- Leads -->
+  <line x1="8" y1="54" x2="8" y2="64" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="54" x2="22" y2="64" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="8" cy="64" r="2" fill="#c0c0c0"/>
+  <circle cx="22" cy="64" r="2" fill="#c0c0c0"/>
+</svg>

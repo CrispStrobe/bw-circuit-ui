@@ -45,6 +45,10 @@ export const ART_FACE_KINDS = Object.freeze([
   // The field probe's art is its body; its distance knob sits beside it
   // (BoardCanvas WokwiParts), so the art never has to show a setting.
   'field_probe',
+  // Sensing transducers: their art is the part itself.
+  'thermocouple',
+  'air_coil',
+  'electrolysis_cell',
 ]);
 
 const DIP_ART = 'DIP art (pins on two side columns of a chip body): seated, the package straddles the gutter on the 14-unit pitch, so its legs would run across the chip into the holes; the chip box with a notch is the honest face';
