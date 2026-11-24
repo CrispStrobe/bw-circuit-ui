@@ -111,7 +111,7 @@ export function junctionModel(part) {
   const n = Number(params.n ?? cls.n ?? 1.0);
   const rs = Number(params.rs ?? cls.rs ?? 0);
   // An LED's default drop is its COLOUR's (bw-board led-color.js, the same
-  // ledVf mna.js calibrates the junction at), not classDefaults('led').vf.
+  // ledVf mna.js calibrates the junction at), not the vf of the led class defaults.
   const vf = Number(part.kind === 'led' ? ledVf({ params }) : (params.vf ?? cls.vf ?? 0.7));
   const nVt = n * VT_25C;
   let is = params.is;
