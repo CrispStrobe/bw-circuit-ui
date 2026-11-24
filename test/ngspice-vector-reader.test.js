@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {parseNgspiceVector,observeVector,validateOracleProcess,runNgspiceVector} from './helpers/ngspice-vector.js';
+import {parseNgspiceVector,observeVector,validateOracleProcess,runNgspiceVector,parseNgspiceRelease} from './helpers/ngspice-vector.js';
 const raw='time v(out)\n0.00000000000000000e+00 1.00000000000000000e+00\n1.00000000000000000e+00 3.00000000000000000e+00\n';
 test('full-precision observations preserve solver brackets and authored times',()=>{
  const points=parseNgspiceVector(raw,'v(out)'),r=observeVector(points,[0,.25,1]);
@@ -22,6 +22,13 @@ test('absent, duplicate and invalid requested instants refuse',()=>{
 test('a failed or error-reporting process cannot supply measurements even with zero exit',()=>{
  validateOracleProcess({status:0,stdout:'No. of Data Rows : 2',stderr:''});
  for(const p of [{status:1},{status:0,stdout:'Error: transient aborted'},{status:0,stderr:'Fatal: missing model'}])assert.throws(()=>validateOracleProcess(p));
+});
+test('ngspice release banners parse with and without a point release',()=>{
+ const banner=r=>`******\n** ngspice-${r} : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n******\n`;
+ assert.deepEqual(parseNgspiceRelease(banner('42')),{release:'42',major:42});
+ assert.deepEqual(parseNgspiceRelease(banner('45.2')),{release:'45.2',major:45});
+ assert.deepEqual(parseNgspiceRelease(banner('47')),{release:'47',major:47});
+ for(const text of ['',banner('42')+banner('47'),'** ngspice : Circuit level simulation program'])assert.throws(()=>parseNgspiceRelease(text),/Ambiguous ngspice version/);
 });
 test('real raw values satisfy the unchanged microvolt bound where rounded .meas text does not',{
  skip:spawnSync('ngspice',['--version']).status!==0?'ngspice unavailable: independent comparison did not run':false,
