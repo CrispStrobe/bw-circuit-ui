@@ -84,6 +84,36 @@ export function PartTooltip({ part, circuit, visible, x, y, lang = 'en' }) {
         }
         break;
       }
+      case 'ptc_sensor': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.ohms)) {
+          const k = (s.ohms / 1000).toFixed(3);
+          lines.push(de ? `${k.replace('.', ',')} kΩ bei ${s.celsius.toFixed(1).replace('.', ',')} °C` : `${k} kΩ at ${s.celsius.toFixed(1)} °C`);
+        }
+        break;
+      }
+      case 'bending_ruler': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.deflectionMm)) {
+          const f = (x, n) => (de ? x.toFixed(n).replace('.', ',') : x.toFixed(n));
+          lines.push(de ? `Last ${Math.round(s.loadG)} g, Durchbiegung ${f(s.deflectionMm, 2)} mm` : `Load ${Math.round(s.loadG)} g, bend ${f(s.deflectionMm, 2)} mm`);
+          lines.push(de ? `Magnet ${f(s.distanceMm, 1)} mm über dem Sensor, ${f(s.fieldMt, 1)} mT` : `Magnet ${f(s.distanceMm, 1)} mm above the sensor, ${f(s.fieldMt, 1)} mT`);
+        }
+        break;
+      }
+      case 'spark_gap': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.sparks)) lines.push(de ? `Funken: ${s.sparks}` : `Sparks: ${s.sparks}`);
+        break;
+      }
+      case 'cd4046': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.vcoHz)) {
+          lines.push(`VCO: ${s.vcoHz.toFixed(0)} Hz`);
+          lines.push(s.locked ? (de ? 'eingerastet' : 'locked') : (de ? 'nicht eingerastet' : 'not locked'));
+        }
+        break;
+      }
       case 'electrolysis_cell': {
         const s = circuit.board?.getDeviceState?.(part.id);
         if (s && Number.isFinite(s.amps)) {

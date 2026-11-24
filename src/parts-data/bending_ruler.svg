@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 52" width="60" height="52">
+  <!-- Ruler scale: clamp, steel rule, magnet at the tip, Hall sensor board below -->
+  <rect x="1" y="3" width="8" height="12" fill="#5a5a5a"/>
+  <path d="M8 7 L56 9 L56 11 L8 9 Z" fill="#c8ccd0" stroke="#7d8287" stroke-width="0.5"/>
+  <line x1="16" y1="8" x2="16" y2="9.4" stroke="#333" stroke-width="0.5"/>
+  <line x1="24" y1="8.3" x2="24" y2="9.7" stroke="#333" stroke-width="0.5"/>
+  <line x1="32" y1="8.6" x2="32" y2="10" stroke="#333" stroke-width="0.5"/>
+  <line x1="40" y1="9" x2="40" y2="10.4" stroke="#333" stroke-width="0.5"/>
+  <rect x="48" y="11" width="7" height="5" fill="#b03030"/>
+  <rect x="48" y="16" width="7" height="2" fill="#3050b0"/>
+  <path d="M51.5 18 L51.5 22" stroke="#666" stroke-width="0.6" stroke-dasharray="1 1"/>
+  <rect x="2" y="24" width="56" height="15" rx="2" fill="#1f5f8b" stroke="#123a55" stroke-width="0.8"/>
+  <rect x="48" y="25" width="7" height="4" fill="#222"/>
+  <text x="24" y="34" font-family="sans-serif" font-size="5" fill="#e8e8e8" text-anchor="middle">HALL</text>
+  <!-- Leads -->
+  <line x1="8" y1="39" x2="8" y2="52" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="8" cy="52" r="2" fill="#c0c0c0"/>
+  <line x1="22" y1="39" x2="22" y2="52" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="22" cy="52" r="2" fill="#c0c0c0"/>
+  <line x1="36" y1="39" x2="36" y2="52" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="36" cy="52" r="2" fill="#c0c0c0"/>
+</svg>
