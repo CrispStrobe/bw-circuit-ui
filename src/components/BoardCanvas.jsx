@@ -30,7 +30,7 @@ import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interac
 import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
 import { moduleLabelLayout, moduleTerminalLayout } from '../model/module-layout.js';
 import { ART_FACE_KINDS, artFaceLayout } from '../model/part-art.js';
-import { PART_ART_URLS } from './part-art-urls.js';
+import { partArtUrl, loadPartArt, onPartArtLoaded } from './part-art-loader.js';
 import { clashingTerminalLabels } from '../model/terminal-labels.js';
 import { KIND_ALIASES } from '../model/terminal-aliases.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
@@ -362,7 +362,35 @@ function terminalOffsetsForPart(part) {
     case 'antenna':
     case 'earth':
     case 'tuning_cap':
-    case 'ferrite_coil': {
+    case 'ferrite_coil':
+    // Two-lead parts whose a/b sat at the generic +/-15 (module-layout's
+    // "existing" offsets) although their art puts the leads elsewhere: their
+    // pins are the art's leg ends now, so the art face can draw them.
+    case 'ammeter':
+    case 'voltmeter':
+    case 'analog_meter':
+    case 'flex_sensor':
+    case 'force_sensor':
+    case 'fuse':
+    case 'gearmotor':
+    case 'light_bulb':
+    case 'reed_switch':
+    case 'tilt_switch':
+    case 'tilt_switch_v2':
+    case 'vibration_motor':
+    // The field probe: one lead, from its sidecar like the antenna.
+    case 'field_probe':
+    // Sensing transducers: thermocouple, hand-wound coil, electrolysis cell.
+    case 'thermocouple':
+    case 'air_coil':
+    case 'electrolysis_cell':
+    // Optics palette: laser module, IR LED and phototransistor, leads from
+    // their sidecars (bw-parts).
+    case 'laser_diode':
+    case 'ir_transmitter':
+    case 'phototransistor':
+    case 'vhf_coil':
+    case 'varicap': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
@@ -443,8 +471,9 @@ const CHIP_FACES = {
 const WOKWI_LAYER_KINDS = new Set(['button', 'buzzer', 'capacitor', 'char_lcd', 'char_lcd_i2c', 'diode',
   'eeprom', 'hd44780', 'ir_receiver', 'keypad_4x4', 'led', 'led_cube', 'led_matrix', 'meter',
   'potentiometer', 'resistor', 'seven_seg_3', 'seven_seg_4', 'seven_segment', 'temp_sensor', 'vsource', 'zener',
-  // The tuning capacitor turns the potentiometer's knob face (WokwiParts).
-  'tuning_cap']);
+  // The tuning capacitor turns the potentiometer's knob face (WokwiParts),
+  // and so does a light path: its knob moves the path's geometry.
+  'tuning_cap', 'light_path']);
 
 function terminalPos(part, terminal) {
   // A seated part's terminals ARE its holes: wires, dots, stubs and hit
@@ -487,6 +516,15 @@ function fmtV(v) {
 const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
 
 function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn, supplyVolts = 5 }) {
+  // Part art loads lazily (part-art-loader.js): request it for the art-face
+  // kinds on the canvas, and draw again when a file arrives.
+  const [, setArtLoads] = useState(0);
+  React.useEffect(() => onPartArtLoaded(() => setArtLoads(n => n + 1)), []);
+  React.useEffect(() => {
+    for (const p of parts) {
+      if (ART_FACE_KINDS.includes(p.kind) && !partArtUrl(p.kind)) loadPartArt(p.kind);
+    }
+  }, [parts]);
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -540,13 +578,15 @@ function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, par
     // A kind with vendored bw-parts art draws that art (src/model/part-art.js),
     // not the generic box: the art's leg ends are the sidecar's terminal x/y,
     // which is where terminalOffsetsForPart puts these pins. Seated, the art
-    // moves onto its holes and any leg end that still misses its hole gets a
-    // lead to it. Null when the pins are not on the art's legs (a saved part
-    // with other terminals), which keeps the generic box.
+    // moves onto its holes (scaled onto them when one scale fits, else with a
+    // lead from each leg end that misses its hole). Null when the pins are not
+    // on the art's legs (a saved part with other terminals), which keeps the
+    // generic box. The art loads lazily: until it arrives the same layout is
+    // drawn without the picture, so nothing moves when it does.
     const artFace = () => {
-      const href = ART_FACE_KINDS.includes(kind) ? PART_ART_URLS[kind] : null;
-      const sc = href && typeof getSidecar === 'function' ? getSidecar(kind) : null;
+      const sc = ART_FACE_KINDS.includes(kind) && typeof getSidecar === 'function' ? getSidecar(kind) : null;
       if (!sc) return null;
+      const href = partArtUrl(kind);
       const pins = terminalOffsetsForPart({ ...part, rotation: 0, flipped: false });
       const free = artFaceLayout(sc);
       if (!free || !(part.terminals || []).every(n => free.legs[n] && pins[n]
@@ -564,16 +604,17 @@ function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, par
       const bottom = Math.max(art.y + art.h, ...art.leads.map(l => l.to.dy));
       return (
         <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
-          data-part-face={kind} data-art-face={kind}>
+          data-part-face={kind} data-art-face={kind} data-art-loaded={href ? 'true' : 'false'}>
           {/* Hit/selection box first: the art is transparent around its outline. */}
           <rect x={art.x} y={art.y} width={art.w} height={art.h} rx={3}
-            fill="transparent" stroke={selStroke || 'none'} strokeWidth={isSelected ? 2 : 0} />
+            fill="transparent" stroke={selStroke || (href ? 'none' : '#3a4048')} strokeWidth={isSelected ? 2 : href ? 0 : 1}
+            strokeDasharray={!isSelected && !href ? '3 2' : undefined} />
           {art.leads.map(l => (
             <line key={l.name} data-art-lead={l.name} x1={l.from.dx} y1={l.from.dy} x2={l.to.dx} y2={l.to.dy}
               stroke="#aab2ba" strokeWidth={1.4} strokeLinecap="round" />
           ))}
-          <image href={href} x={art.x} y={art.y} width={art.w} height={art.h}
-            preserveAspectRatio="none" style={{ pointerEvents: 'none' }} />
+          {href && <image href={href} x={art.x} y={art.y} width={art.w} height={art.h}
+            preserveAspectRatio="none" style={{ pointerEvents: 'none' }} />}
           {/* Seated, the seat layer already names the part under its holes. */}
           {!holes && <text x={art.x + art.w / 2} y={bottom + 14} textAnchor="middle" fill="#7f8c8d" fontSize={7}
             fontFamily="monospace">{part.declName || id}</text>}
@@ -2966,6 +3007,9 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
       // The tuning capacitor is a knob control exactly like the pot: the
       // engine lists it in getControls() and reads its position 0..1. Same
       // face, same onControlChange, same read-back (controlValues below).
+      // A light path (bw-board optics.js) has no leads; its knob moves the
+      // geometry param it names (distance, bend, gap, slit angle, level).
+      case 'light_path':
       case 'tuning_cap':
       case 'potentiometer': {
         // When seated, size and position the knob above its occupied row.
@@ -3019,6 +3063,69 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
             />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
               {partLabel(part)}
+            </div>
+          </div>
+        );
+      }
+      // The field probe's knob: how close the field source is (0 far, 1 as
+      // close as it gets). Its art is drawn by SvgParts; the knob sits to
+      // its right, above its lead, at two thirds of the pot's size, and
+      // turns exactly like the potentiometer (onControlChange, read-back).
+      case 'field_probe': {
+        const lead = part.seat && part._seatTerminals?.a ? part._seatTerminals.a : { x, y: y + 35 };
+        const knobScale = 0.66;
+        return (
+          <div key={id}
+            data-pot-control={id}
+            style={{ ...baseStyle, left: lead.x + 10, top: lead.y - 70,
+              transform: `scale(${knobScale})`, transformOrigin: 'top left',
+              cursor: simulate ? 'pointer' : 'move',
+              pointerEvents: simulate ? 'auto' : 'none',
+              width: 60, height: 60 }}
+            onClick={simulate ? (e) => e.stopPropagation() : (e) => { e.stopPropagation(); onSelectPart(id, e.shiftKey); }}
+            onPointerDown={simulate ? (e) => e.stopPropagation() : undefined}
+            onPointerMove={simulate ? (e) => e.stopPropagation() : undefined}
+            onPointerUp={simulate ? (e) => e.stopPropagation() : undefined}
+            onPointerCancel={simulate ? (e) => e.stopPropagation() : undefined}
+            onContextMenu={simulate ? (e) => e.preventDefault() : undefined}>
+            <WokwiPotentiometer
+              style={{ display: 'block', transform: 'scale(0.79375)', transformOrigin: 'top left' }}
+              min={0} max={1} step={0.01} value={controlValues?.get(id) ?? part.params?.position ?? 0}
+              onInput={(e) => {
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val)) onControlChange(id, val);
+              }}
+            />
+          </div>
+        );
+      }
+      // The ferrite rod turns (direction finding: its pickup goes with the
+      // cosine of the angle to the station). Its art stays the face (SvgParts);
+      // while simulating, a small dial above it turns the rod: the engine lists
+      // it in getControls(), 0..1 = 0..360°.
+      case 'ferrite_coil': {
+        if (!simulate) return null;
+        const seat = part.seat && part._seatTerminals;
+        const ax = seat ? (seat.a?.x ?? x) : x - 28;
+        const ay = seat ? (seat.a?.y ?? y) : y + 22;
+        const val = controlValues?.get(id) ?? ((params?.angleDeg ?? 0) / 360);
+        return (
+          <div key={`${id}-rod`} data-rod-control={id}
+            style={{ position: 'absolute', left: ax + 8, top: ay - 78, width: 40, height: 46, pointerEvents: 'auto', cursor: 'pointer' }}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerMove={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}>
+            <WokwiPotentiometer
+              style={{ display: 'block', transform: 'scale(0.5)', transformOrigin: 'top left' }}
+              min={0} max={1} step={0.005} value={val}
+              onInput={(e) => {
+                const v = parseFloat(e.target.value);
+                if (!isNaN(v)) onControlChange(id, v);
+              }}
+            />
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {`${Math.round(val * 360)}°`}
             </div>
           </div>
         );
@@ -5822,8 +5929,14 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'potentiometer' || p.kind === 'tuning_cap') {
+                if (p.kind === 'potentiometer' || p.kind === 'tuning_cap' || p.kind === 'field_probe' || p.kind === 'ferrite_coil') {
                   const v = eb.getControl(p.id);
+                  if (v != null) m.set(p.id, v);
+                }
+                // A light path rests where its geometry param sits in its
+                // knob range; the engine's getControls() says where.
+                if (p.kind === 'light_path') {
+                  const v = eb.getControl(p.id) ?? eb.getControls?.().find(c => c.id === p.id)?.value;
                   if (v != null) m.set(p.id, v);
                 }
               }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 40" width="80" height="40">
+  <!-- Optical path: a plastic light guide between two holders, light travelling along it -->
+  <rect x="2" y="13" width="12" height="14" rx="2" fill="#3b3b3b" stroke="#222" stroke-width="0.8"/>
+  <rect x="66" y="13" width="12" height="14" rx="2" fill="#3b3b3b" stroke="#222" stroke-width="0.8"/>
+  <path d="M14 20 C30 4, 50 36, 66 20" fill="none" stroke="#1d1d1d" stroke-width="4" stroke-linecap="round"/>
+  <path d="M14 20 C30 4, 50 36, 66 20" fill="none" stroke="#ff5a4a" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="3 3"/>
+  <circle cx="8" cy="20" r="2.5" fill="#ff7a6a"/>
+  <circle cx="72" cy="20" r="2.5" fill="#7a8a99"/>
+  <text x="40" y="38" text-anchor="middle" font-family="monospace" font-size="5" fill="#888">LIGHT PATH</text>
+</svg>

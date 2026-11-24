@@ -1,0 +1,34 @@
+{
+  "kind": "electrolysis_cell",
+  "w": 44,
+  "h": 56,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 8,
+      "y": 56,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 36,
+      "y": 56,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Electrolysis cell: two electrodes in an electrolyte (salt water, or a battery's terminals on a wet tongue). 2-terminal: a, b (the electrodes). Engine (bw-board electrolysis_cell): electrolyte resistance ohms in series with the electrode interfaces: double-layer farads in parallel with the Faradaic (electrolysis) current, negligible below the decomposition voltage (onsetV ~1.7 V) and Tafel-exponential above it (tafelV, i0). Reports faradaicAmps, polarisationV, chargeC, hydrogenMol and a taste level (Faradaic current over tasteAmps, 20 uA).",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
+}

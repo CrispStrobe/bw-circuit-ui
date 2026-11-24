@@ -106,6 +106,11 @@ const CATEGORIES = [
       { kind: 'polarized_cap', label: 'Electrolytic 100µF', params: { farads: 0.0001 }, color: '#2c3e50',
         tooltip: 'Polarized capacitor — + lead to the more positive side; reverse bias is flagged' },
       { kind: 'inductor', label: 'Inductor 10mH', params: { henrys: 0.01 }, color: '#9b59b6', tooltip: 'Coil' },
+      // A coil you wind yourself (bw-board air_coil): R and L from turns, size
+      // and wire; its current's field turns a compass; a magnet dropped
+      // through it makes a pulse; metal nearby shifts its inductance.
+      { kind: 'air_coil', label: 'Hand-wound coil', params: { turns: 200, radiusM: 0.015, lengthM: 0.03, wireMm: 0.25 }, color: '#b5651d',
+        tooltip: 'Air coil wound from copper wire: its current makes a magnetic field (a compass on its axis turns), a magnet dropped through it induces a pulse, metal nearby changes its inductance' },
       { kind: 'diode', label: 'Diode', params: { vf: 0.7 }, color: '#95a5a6' },
       // NAMED PARTS: `params.part` names a card in bw-board's parts library, which is
       // the only home of the electrical numbers (test/parts-cards.test.js keeps every
@@ -148,6 +153,14 @@ const CATEGORIES = [
         tooltip: 'High-impedance magnetic earphone (2 kΩ): hears microwatts — the crystal-set earpiece' },
       { kind: 'earphone', label: 'Crystal earphone', params: { type: 'crystal', capacitance: 10e-9, leakOhms: 10e6, ratedWatts: 0.001 }, color: '#1abc9c',
         tooltip: 'Crystal (piezo) earphone: a capacitor with no DC path — put a resistor across it in a crystal set' },
+      // A speaker or earphone that LISTENS (bw-board acoustics.js): sound at
+      // soundDb (dB SPL; a slider in the stimulus panel) makes an EMF in its
+      // coil, 0.5 mV/Pa for the speaker, 3 mV/Pa for the magnetic earphone.
+      // `hears` + distanceCm couple it to another speaker or earphone.
+      { kind: 'speaker', label: 'Speaker as microphone', params: { ohms: 8, henrys: 0.0002, ratedWatts: 0.5, soundDb: 85, soundWave: 'voice' }, color: '#1abc9c',
+        tooltip: 'A loudspeaker used backwards: sound moves the cone and the coil makes a small voltage (0.5 mV per pascal). The sound panel sets how loud you speak' },
+      { kind: 'earphone', label: 'Earphone as microphone', params: { type: 'magnetic', ohms: 2000, henrys: 0.1, ratedWatts: 0.001, soundDb: 85, soundWave: 'voice' }, color: '#1abc9c',
+        tooltip: 'A magnetic earphone used backwards: about 3 mV per pascal. Set hears to a speaker id and distanceCm to hold it over that speaker' },
     ],
   },
   {
@@ -163,6 +176,60 @@ const CATEGORIES = [
         tooltip: 'Variable capacitor with a knob: turn it like a pot to sweep minFarads..maxFarads and tune the station' },
       { kind: 'ferrite_coil', label: 'Ferrite-rod coil (MW)', params: { henrys: 250e-6, tap: 0.25, couplingRatio: 0.1, k: 0.98, couplingK: 0.9, q: 120 }, color: '#b87333',
         tooltip: 'Medium-wave ferrite-rod coil: main winding a–b with a tap, coupling winding c1–c2; with the tuning capacitor across a–b it tunes the MW band' },
+      { kind: 'vhf_coil', label: 'Air-core coil (VHF)', params: { henrys: 0.15e-6, q: 80 }, color: '#c87533',
+        tooltip: 'A few turns of copper wire: with about 18 pF it tunes the FM band near 100 MHz' },
+      { kind: 'varicap', label: 'Varicap diode BB910', params: { part: 'BB910' }, color: '#95a5a6',
+        tooltip: 'Tuning diode: reverse-biased, its capacitance falls as the voltage rises — tune a circuit with a pot instead of a tuning capacitor' },
+      { kind: 'npn', label: 'VHF transistor BF199', params: { part: 'BF199' }, color: '#8e44ad',
+        tooltip: 'NPN transistor fast enough for VHF (about 550 MHz transition frequency) — numbers from the parts library' },
+    ],
+  },
+  {
+    // The room's electric fields and junction noise (bw-board src/fields.js):
+    // a bare wire whose knob is how close the field source is, and a
+    // transistor whose base-emitter junction is driven into breakdown.
+    name: 'Fields & noise',
+    parts: [
+      { kind: 'field_probe', label: 'Field probe (mains wiring)', params: { source: 'mains', position: 0, maxFarads: 2e-12, mainsVolts: 230, mainsHz: 50 }, color: '#b87333',
+        tooltip: 'Bare wire near a live mains cable: the knob is how close (0 far, 1 on the cable); a few pF of coupling, so only a high-impedance input hums' },
+      { kind: 'field_probe', label: 'Field probe (charged ruler)', params: { source: 'charge', position: 0, maxFarads: 1e-13, rodVolts: 10000 }, color: '#b87333',
+        tooltip: 'Bare wire and a rubbed plastic ruler at rodVolts: the knob moves the ruler closer; a moving ruler drives a current, a still one leaves its charge' },
+      { kind: 'field_probe', label: 'Touch plate (finger)', params: { source: 'body', contact: 'skin', position: 0, skinOhms: 1e6 }, color: '#b87333',
+        tooltip: 'Metal plate your finger touches: the knob is the touch; your body carries a few volts of mains hum through skinOhms' },
+      { kind: 'field_probe', label: 'Touch plate through paper', params: { source: 'body', contact: 'paper', position: 0, paperFarads: 20e-12 }, color: '#b87333',
+        tooltip: 'Plate under a sheet of paper: the finger couples only through paperFarads; works best when the circuit runs from a mains adaptor (adaptorFarads)' },
+      { kind: 'npn', label: 'Noise transistor (B-E breakdown)', params: { beta: 200, bvEbo: 7.5 }, color: '#7f8c8d',
+        tooltip: 'NPN whose base-emitter junction breaks down at bvEbo volts: fed backwards through a resistor it hisses (avalanche noise); noiseFactor, noiseBandwidthHz' },
+      ],
+    },
+    {
+    // Optical links (bw-board optics.js): any LED, the IR LED or the laser
+    // shines on a phototransistor / photodiode / solar cell / photo-LED
+    // through a light path. A path names its emitter and receiver (from, to;
+    // with neither set it links the bench's only pair) and its knob moves the
+    // geometry param named by knob between knobMin and knobMax.
+    name: 'Optics',
+    parts: [
+      { kind: 'laser_diode', label: 'Laser diode', params: {}, color: '#e8302a',
+        tooltip: 'Red laser module (650 nm): lights above about 20 mA and keeps a narrow beam over metres' },
+      { kind: 'ir_transmitter', label: 'IR LED', params: {}, color: '#8e44ad',
+        tooltip: 'Infrared LED (940 nm): invisible, but a phototransistor sees it best' },
+      { kind: 'phototransistor', label: 'Phototransistor', params: {}, color: '#f39c12',
+        tooltip: 'Light-controlled transistor: collector current grows with the light on it' },
+      { kind: 'light_path', label: 'Optical bench (air)', params: { from: '', to: '', medium: 'air', distanceCm: 5, angleDeg: 0, knob: 'distanceCm', knobMin: 1, knobMax: 30 }, color: '#f1c40f',
+        tooltip: 'Free beam from the emitter to the receiver: the knob sets the distance (1–30 cm); light falls with the square of the distance' },
+      { kind: 'light_path', label: 'Light guide (fibre)', params: { from: '', to: '', medium: 'fibre', lengthM: 1, bendRadiusCm: 0, cutQuality: 1, outGapMm: 1, knob: 'outGapMm', knobMin: 0, knobMax: 20 }, color: '#e74c3c',
+        tooltip: 'Plastic light guide: bends, a rough cut, gaps, offsets and length cost light; the knob sets the gap at the receiver (0–20 mm)' },
+      { kind: 'light_path', label: 'Lens on the bench', params: { from: '', to: '', medium: 'air', lensFocalCm: 10, lensAtCm: 15, distanceCm: 40, knob: 'distanceCm', knobMin: 20, knobMax: 70 }, color: '#3498db',
+        tooltip: 'A lens images the LED: the receiver sees most light where 1/f = 1/u + 1/v puts the image; the knob moves the receiver' },
+      { kind: 'light_path', label: 'Coloured surface', params: { from: '', to: '', medium: 'reflect', surface: 'red', distanceCm: 1, knob: 'distanceCm', knobMin: 0.3, knobMax: 5 }, color: '#c0392b',
+        tooltip: 'Light reflected by a coloured surface (red, green, blue, yellow, white, black): a red surface reflects red light, a green one hardly' },
+      { kind: 'light_path', label: 'Prism and slit', params: { from: '', to: '', medium: 'prism', material: 'acrylic', slitAngleDeg: 37.5, knob: 'slitAngleDeg', knobMin: 36.5, knobMax: 39.5 }, color: '#9b59b6',
+        tooltip: 'A prism bends blue more than red: turn the slit (knob) across the spectrum to pick one colour' },
+      { kind: 'light_path', label: 'Glass of liquid', params: { from: '', to: '', medium: 'liquid', level: 0, distanceCm: 15, knob: 'level', knobMin: 0, knobMax: 1 }, color: '#1abc9c',
+        tooltip: 'A beam through a round glass: once the liquid reaches the beam it is refracted away from the receiver; the knob fills the glass' },
+      { kind: 'light_path', label: 'Plucked string', params: { from: '', to: '', medium: 'string', distanceCm: 2, stringHz: 110, decayS: 1.5, pluckPeriodS: 1, knob: 'stringHz', knobMin: 80, knobMax: 330 }, color: '#d35400',
+        tooltip: 'A string half in the beam: plucked, it shades the light at its own pitch; the knob tunes it (80–330 Hz)' },
     ],
   },
   {
@@ -213,6 +280,16 @@ const CATEGORIES = [
       { kind: 'ntc', label: 'NTC 10k (thermal)', params: { r25: 10000, beta: 3950, rth: 500, thermalTau: 10, heatedBy: '', thermalCoupling: 0.5 },
         color: '#16a085', tooltip: 'Thermistor at its own temperature (beta equation): follows the bench, its own self-heating, airflow, and the part named in heatedBy' },
       { kind: 'tmp36', label: 'TMP36', params: {}, color: '#16a085', tooltip: 'Analog temp — 10 mV/°C' },
+      // Seebeck EMF E(hotC) − E(bench) (bw-board thermocouple); the hot
+      // junction's temperature is a slider (match, lighter) in the stimulus panel.
+      { kind: 'thermocouple', label: 'Thermocouple type K', params: { type: 'K', hotC: 25, ohms: 5 }, color: '#c0392b',
+        tooltip: 'Two different metals joined at a hot junction: about 41 µV per kelvin of difference to the bench — amplify it with an op-amp' },
+      { kind: 'thermocouple', label: 'Thermocouple copper/constantan', params: { type: 'T', hotC: 25, ohms: 5 }, color: '#c0392b',
+        tooltip: 'A thermocouple made from a copper and a constantan wire twisted together: about 40 µV per kelvin near room temperature' },
+      // Electrolyte between two electrodes (bw-board electrolysis_cell):
+      // the battery-on-the-tongue experiment as a circuit.
+      { kind: 'electrolysis_cell', label: 'Electrolyte (tongue)', params: { ohms: 2000, farads: 2e-6, onsetV: 1.7 }, color: '#d98880',
+        tooltip: 'Two electrodes on a wet tongue: a resistance, and electrolysis only above about 1.7 V — then the tongue tastes it (sour at the + contact)' },
       { kind: 'pir_sensor', label: 'PIR Sensor', params: {}, color: '#27ae60', tooltip: 'Motion detector' },
       { kind: 'ultrasonic', label: 'Ultrasonic', params: {}, color: '#3498db', tooltip: 'HC-SR04 distance sensor' },
       { kind: 'soil_moisture', label: 'Soil Moisture', params: {}, color: '#8B4513' },

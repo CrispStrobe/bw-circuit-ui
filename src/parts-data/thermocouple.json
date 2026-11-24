@@ -1,0 +1,34 @@
+{
+  "kind": "thermocouple",
+  "w": 30,
+  "h": 64,
+  "terminals": [
+    {
+      "name": "pos",
+      "x": 8,
+      "y": 64,
+      "functions": []
+    },
+    {
+      "name": "neg",
+      "x": 22,
+      "y": 64,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Thermocouple: two wires of different metals joined at a hot junction (the bead at the top); the free ends are the cold junction at bench temperature. 2-terminal: pos, neg (for a hot junction hotter than the bench, pos is positive). Engine (bw-board thermocouple): Seebeck EMF E(hotC) - E(coldC) from the ITS-90 reference table of its type (K chromel/alumel ~41 uV/K, T copper/constantan ~40-60 uV/K, J, E) in series with ohms (5). hotC is the learner's flame/heat control; coldC defaults to the bench temperature.",
+  "footprint": {
+    "refTerminal": "pos",
+    "leads": {
+      "pos": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "neg": {
+        "dRow": 0,
+        "dCol": 1
+      }
+    }
+  }
+}

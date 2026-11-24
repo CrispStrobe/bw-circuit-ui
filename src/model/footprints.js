@@ -166,9 +166,12 @@ const BUILTIN_FOOTPRINTS = {
   slide_switch: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, com: { dRow: 0, dCol: 1 }, b: { dRow: 0, dCol: 2 } } },
   tip120: { refTerminal: 'emitter', leads: { emitter: { dRow: 0, dCol: 0 }, base: { dRow: 0, dCol: 1 }, collector: { dRow: 0, dCol: 2 } } },
   // 3-pin sensors (TO-92 or module)
-  soil_moisture: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, sig: { dRow: 0, dCol: 2 } } },
+  // Lead names are the part's terminals (its sidecar's footprint): these three
+  // said sig / vout / vcc,d_minus,d_plus, names the part does not have, so one
+  // leg of each seated on no hole (fixed 2026-11-23 with the art faces).
+  soil_moisture: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 2 } } },
   pir_sensor: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, out: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 } } },
-  tmp36: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, vout: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 } } },
+  tmp36: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, out: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 } } },
   ir_remote: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, signal: { dRow: 0, dCol: 2 } } },
   clock_display: { refTerminal: 'clk', leads: { clk: { dRow: 0, dCol: 0 }, dio: { dRow: 0, dCol: 1 }, vcc: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
   neopixel: { refTerminal: 'din', leads: { din: { dRow: 0, dCol: 0 }, vcc: { dRow: 0, dCol: 1 }, gnd: { dRow: 0, dCol: 2 }, dout: { dRow: 0, dCol: 3 } } },
@@ -190,7 +193,7 @@ const BUILTIN_FOOTPRINTS = {
       p4: { dRow: 5, dCol: 7 }, p5: { dRow: 5, dCol: 6 }, p6: { dRow: 5, dCol: 5 }, p7: { dRow: 5, dCol: 4 } },
   },
   header: { refTerminal: 'p1', leads: { p1: { dRow: 0, dCol: 0 }, p2: { dRow: 0, dCol: 1 }, p3: { dRow: 0, dCol: 2 }, p4: { dRow: 0, dCol: 3 }, p5: { dRow: 0, dCol: 4 }, p6: { dRow: 0, dCol: 5 }, p7: { dRow: 0, dCol: 6 }, p8: { dRow: 0, dCol: 7 } } },
-  usb_a: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, d_minus: { dRow: 0, dCol: 1 }, d_plus: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
+  usb_a: { refTerminal: 'vbus', leads: { vbus: { dRow: 0, dCol: 0 }, dm: { dRow: 0, dCol: 1 }, dp: { dRow: 0, dCol: 2 }, gnd: { dRow: 0, dCol: 3 } } },
   keypad: {
     refTerminal: 'r1', straddlesGutter: true,
     leads: { r1: { dRow: 0, dCol: 0 }, r2: { dRow: 0, dCol: 1 }, r3: { dRow: 0, dCol: 2 }, r4: { dRow: 0, dCol: 3 },
@@ -264,7 +267,19 @@ const BUILTIN_FOOTPRINTS = {
   antenna: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 } } },
   earth: { refTerminal: 'earth', leads: { earth: { dRow: 0, dCol: 0 } } },
   tuning_cap: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 4 } } },
+  // Field probe (bw-parts 2026-11-23): a one-lead bare wire, like the antenna.
+  field_probe: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 } } },
   ferrite_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, tap: { dRow: 0, dCol: 1 }, b: { dRow: 0, dCol: 2 }, c1: { dRow: 0, dCol: 3 }, c2: { dRow: 0, dCol: 4 } } },
+  // Sensing transducers (bw-parts 2026-11-23), same headless-load reason,
+  // held equal to their sidecars by test/sensing-transducer-parts.test.js.
+  thermocouple: { refTerminal: 'pos', leads: { pos: { dRow: 0, dCol: 0 }, neg: { dRow: 0, dCol: 1 } } },
+  air_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
+  electrolysis_cell: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  // Laser diode module (bw-parts optical-link parts, 2026-11-23): two leads
+  // one column apart, like an LED. light_path has no leads and no footprint.
+  laser_diode: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 1 } } },
+  vhf_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  varicap: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 4 } } },
   lm386: { refTerminal: 'gain8', straddlesGutter: true, leads: { gain1: { dRow: 5, dCol: 0 }, inn: { dRow: 5, dCol: 1 }, inp: { dRow: 5, dCol: 2 }, gnd: { dRow: 5, dCol: 3 }, vout: { dRow: 0, dCol: 3 }, vs: { dRow: 0, dCol: 2 }, bypass: { dRow: 0, dCol: 1 }, gain8: { dRow: 0, dCol: 0 } } },
   // Logic gates: 3-pin inline (2-input gates) or 2-pin inline (NOT)
   gate_and:  { refTerminal: 'in0', leads: { in0: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 3 } } },
