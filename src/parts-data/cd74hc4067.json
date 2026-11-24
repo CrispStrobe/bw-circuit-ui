@@ -8,49 +8,49 @@
   },
   "terminals": [
     {
-      "name": "vcc",
+      "name": "z",
       "x": 10,
       "y": 38,
       "functions": []
     },
     {
-      "name": "gnd",
+      "name": "c7",
       "x": 24,
       "y": 38,
       "functions": []
     },
     {
-      "name": "s0",
+      "name": "c6",
       "x": 38,
       "y": 38,
       "functions": []
     },
     {
-      "name": "s1",
+      "name": "c5",
       "x": 52,
       "y": 38,
       "functions": []
     },
     {
-      "name": "s2",
+      "name": "c4",
       "x": 66,
       "y": 38,
       "functions": []
     },
     {
-      "name": "s3",
+      "name": "c3",
       "x": 80,
       "y": 38,
       "functions": []
     },
     {
-      "name": "eb",
+      "name": "c2",
       "x": 94,
       "y": 38,
       "functions": []
     },
     {
-      "name": "z",
+      "name": "c1",
       "x": 108,
       "y": 38,
       "functions": []
@@ -62,92 +62,92 @@
       "functions": []
     },
     {
-      "name": "c1",
+      "name": "s0",
       "x": 136,
       "y": 38,
       "functions": []
     },
     {
-      "name": "c2",
+      "name": "s1",
       "x": 150,
       "y": 38,
       "functions": []
     },
     {
-      "name": "c3",
+      "name": "gnd",
       "x": 164,
       "y": 38,
       "functions": []
     },
     {
-      "name": "c4",
-      "x": 10,
+      "name": "s3",
+      "x": 164,
       "y": 0,
       "functions": []
     },
     {
-      "name": "c5",
-      "x": 24,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "c6",
-      "x": 38,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "c7",
-      "x": 52,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "c8",
-      "x": 66,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "c9",
-      "x": 80,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "c10",
-      "x": 94,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "c11",
-      "x": 108,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "c12",
-      "x": 122,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "c13",
-      "x": 136,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "c14",
+      "name": "s2",
       "x": 150,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "eb",
+      "x": 136,
       "y": 0,
       "functions": []
     },
     {
       "name": "c15",
-      "x": 164,
+      "x": 122,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "c14",
+      "x": 108,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "c13",
+      "x": 94,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "c12",
+      "x": 80,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "c11",
+      "x": 66,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "c10",
+      "x": 52,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "c9",
+      "x": 38,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "c8",
+      "x": 24,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 10,
       "y": 0,
       "functions": []
     }
@@ -155,37 +155,37 @@
   "variants": null,
   "_note": "CD74HC4067 16-channel analog multiplexer. DIP-24. 4-bit select S0-S3, enable EB (active low), common Z, 16 channels C0-C15.",
   "footprint": {
-    "refTerminal": "c4",
+    "refTerminal": "vcc",
     "leads": {
-      "vcc": {
+      "z": {
         "dRow": 5,
         "dCol": 0
       },
-      "gnd": {
+      "c7": {
         "dRow": 5,
         "dCol": 1
       },
-      "s0": {
+      "c6": {
         "dRow": 5,
         "dCol": 2
       },
-      "s1": {
+      "c5": {
         "dRow": 5,
         "dCol": 3
       },
-      "s2": {
+      "c4": {
         "dRow": 5,
         "dCol": 4
       },
-      "s3": {
+      "c3": {
         "dRow": 5,
         "dCol": 5
       },
-      "eb": {
+      "c2": {
         "dRow": 5,
         "dCol": 6
       },
-      "z": {
+      "c1": {
         "dRow": 5,
         "dCol": 7
       },
@@ -193,65 +193,65 @@
         "dRow": 5,
         "dCol": 8
       },
-      "c1": {
+      "s0": {
         "dRow": 5,
         "dCol": 9
       },
-      "c2": {
+      "s1": {
         "dRow": 5,
         "dCol": 10
       },
-      "c3": {
+      "gnd": {
         "dRow": 5,
         "dCol": 11
       },
-      "c4": {
+      "s3": {
         "dRow": 0,
-        "dCol": 0
+        "dCol": 11
       },
-      "c5": {
-        "dRow": 0,
-        "dCol": 1
-      },
-      "c6": {
-        "dRow": 0,
-        "dCol": 2
-      },
-      "c7": {
-        "dRow": 0,
-        "dCol": 3
-      },
-      "c8": {
-        "dRow": 0,
-        "dCol": 4
-      },
-      "c9": {
-        "dRow": 0,
-        "dCol": 5
-      },
-      "c10": {
-        "dRow": 0,
-        "dCol": 6
-      },
-      "c11": {
-        "dRow": 0,
-        "dCol": 7
-      },
-      "c12": {
-        "dRow": 0,
-        "dCol": 8
-      },
-      "c13": {
-        "dRow": 0,
-        "dCol": 9
-      },
-      "c14": {
+      "s2": {
         "dRow": 0,
         "dCol": 10
+      },
+      "eb": {
+        "dRow": 0,
+        "dCol": 9
       },
       "c15": {
         "dRow": 0,
-        "dCol": 11
+        "dCol": 8
+      },
+      "c14": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "c13": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "c12": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "c11": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "c10": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "c9": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "c8": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
       }
     },
     "straddlesGutter": true,

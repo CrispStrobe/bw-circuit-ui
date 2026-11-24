@@ -56,62 +56,62 @@
       "functions": []
     },
     {
-      "name": "out0",
+      "name": "gnd",
       "x": 122,
       "y": 38,
       "functions": []
     },
     {
-      "name": "out1",
-      "x": 10,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "out2",
-      "x": 24,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "out3",
-      "x": 38,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "out4",
-      "x": 52,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "out5",
-      "x": 66,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "out6",
-      "x": 80,
+      "name": "com",
+      "x": 122,
       "y": 0,
       "functions": []
     },
     {
       "name": "out7",
-      "x": 94,
-      "y": 0,
-      "functions": []
-    },
-    {
-      "name": "com",
       "x": 108,
       "y": 0,
       "functions": []
     },
     {
-      "name": "gnd",
-      "x": 122,
+      "name": "out6",
+      "x": 94,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out5",
+      "x": 80,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out4",
+      "x": 66,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out3",
+      "x": 52,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out2",
+      "x": 38,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out1",
+      "x": 24,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out0",
+      "x": 10,
       "y": 0,
       "functions": []
     }
@@ -119,7 +119,7 @@
   "variants": null,
   "_note": "ULN2003/2803 Darlington driver array. DIP-18. 8 channels: IN0-IN7 inputs, OUT0-OUT7 open-collector outputs, COM (flyback diode common).",
   "footprint": {
-    "refTerminal": "out1",
+    "refTerminal": "out0",
     "leads": {
       "in0": {
         "dRow": 5,
@@ -153,45 +153,45 @@
         "dRow": 5,
         "dCol": 7
       },
-      "out0": {
+      "gnd": {
         "dRow": 5,
         "dCol": 8
       },
-      "out1": {
+      "com": {
         "dRow": 0,
-        "dCol": 0
-      },
-      "out2": {
-        "dRow": 0,
-        "dCol": 1
-      },
-      "out3": {
-        "dRow": 0,
-        "dCol": 2
-      },
-      "out4": {
-        "dRow": 0,
-        "dCol": 3
-      },
-      "out5": {
-        "dRow": 0,
-        "dCol": 4
-      },
-      "out6": {
-        "dRow": 0,
-        "dCol": 5
+        "dCol": 8
       },
       "out7": {
         "dRow": 0,
-        "dCol": 6
-      },
-      "com": {
-        "dRow": 0,
         "dCol": 7
       },
-      "gnd": {
+      "out6": {
         "dRow": 0,
-        "dCol": 8
+        "dCol": 6
+      },
+      "out5": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "out4": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "out3": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "out2": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "out1": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "out0": {
+        "dRow": 0,
+        "dCol": 0
       }
     },
     "straddlesGutter": true,

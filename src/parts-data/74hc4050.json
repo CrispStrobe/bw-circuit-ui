@@ -86,19 +86,19 @@
       "functions": []
     },
     {
-      "name": "nc2",
+      "name": "6a",
       "x": 38,
       "y": 0,
       "functions": []
     },
     {
-      "name": "6a",
+      "name": "6y",
       "x": 24,
       "y": 0,
       "functions": []
     },
     {
-      "name": "6y",
+      "name": "nc2",
       "x": 10,
       "y": 0,
       "functions": []
@@ -107,7 +107,7 @@
   "variants": null,
   "_note": "Clean-room from the TI/Nexperia datasheet pinout, cross-checked against bw-board src/devices/tier3-parts.js, whose terminal array is the DIP package order and whose header comment spells the same pinout out. 74HC4050 hex non-inverting buffer / level shifter, DIP-16: VCC 1Y 1A 2Y 2A 3Y 3A GND | 4A 4Y 5A 5Y NC NC 6A 6Y. Pins 13 and 14 are the two no-connects; the engine models them as terminals nc1/nc2 so the package is complete.",
   "footprint": {
-    "refTerminal": "6y",
+    "refTerminal": "nc2",
     "leads": {
       "vcc": {
         "dRow": 5,
@@ -161,15 +161,15 @@
         "dRow": 0,
         "dCol": 3
       },
-      "nc2": {
+      "6a": {
         "dRow": 0,
         "dCol": 2
       },
-      "6a": {
+      "6y": {
         "dRow": 0,
         "dCol": 1
       },
-      "6y": {
+      "nc2": {
         "dRow": 0,
         "dCol": 0
       }

@@ -8,25 +8,25 @@
   },
   "terminals": [
     {
-      "name": "clk_a",
+      "name": "clk_b",
       "x": 10,
       "y": 38,
       "functions": []
     },
     {
-      "name": "nc1",
+      "name": "r0_1",
       "x": 24,
       "y": 38,
       "functions": []
     },
     {
-      "name": "nc2",
+      "name": "r0_2",
       "x": 38,
       "y": 38,
       "functions": []
     },
     {
-      "name": "nc3",
+      "name": "nc1",
       "x": 52,
       "y": 38,
       "functions": []
@@ -38,25 +38,25 @@
       "functions": []
     },
     {
-      "name": "r0_1",
+      "name": "nc2",
       "x": 80,
       "y": 38,
       "functions": []
     },
     {
-      "name": "r0_2",
+      "name": "nc3",
       "x": 94,
       "y": 38,
       "functions": []
     },
     {
-      "name": "qd",
+      "name": "qc",
       "x": 94,
       "y": 0,
       "functions": []
     },
     {
-      "name": "qc",
+      "name": "qb",
       "x": 80,
       "y": 0,
       "functions": []
@@ -68,7 +68,7 @@
       "functions": []
     },
     {
-      "name": "qb",
+      "name": "qd",
       "x": 52,
       "y": 0,
       "functions": []
@@ -86,7 +86,7 @@
       "functions": []
     },
     {
-      "name": "clk_b",
+      "name": "clk_a",
       "x": 10,
       "y": 0,
       "functions": []
@@ -94,21 +94,21 @@
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "clk_b",
+    "refTerminal": "clk_a",
     "leads": {
-      "clk_a": {
+      "clk_b": {
         "dRow": 5,
         "dCol": 0
       },
-      "nc1": {
+      "r0_1": {
         "dRow": 5,
         "dCol": 1
       },
-      "nc2": {
+      "r0_2": {
         "dRow": 5,
         "dCol": 2
       },
-      "nc3": {
+      "nc1": {
         "dRow": 5,
         "dCol": 3
       },
@@ -116,19 +116,19 @@
         "dRow": 5,
         "dCol": 4
       },
-      "r0_1": {
+      "nc2": {
         "dRow": 5,
         "dCol": 5
       },
-      "r0_2": {
+      "nc3": {
         "dRow": 5,
         "dCol": 6
       },
-      "qd": {
+      "qc": {
         "dRow": 0,
         "dCol": 6
       },
-      "qc": {
+      "qb": {
         "dRow": 0,
         "dCol": 5
       },
@@ -136,7 +136,7 @@
         "dRow": 0,
         "dCol": 4
       },
-      "qb": {
+      "qd": {
         "dRow": 0,
         "dCol": 3
       },
@@ -148,7 +148,7 @@
         "dRow": 0,
         "dCol": 1
       },
-      "clk_b": {
+      "clk_a": {
         "dRow": 0,
         "dCol": 0
       }
