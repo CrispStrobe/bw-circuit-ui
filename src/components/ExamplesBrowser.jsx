@@ -6,7 +6,7 @@
  * Presentation-only: no canvas interaction.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 // The intro document's parser, renderer and labels now live in one place so the
@@ -569,6 +569,34 @@ export function DevicePicker({ devices, selected, onSelect, palette }) {
   );
 }
 
+let artworkObserver;
+function ExampleArtwork({ url }) {
+  const image = useRef(null);
+  useEffect(() => {
+    const element = image.current;
+    if (typeof IntersectionObserver === 'undefined') {
+      element.src = url;
+      return;
+    }
+    // Native lazy loading can fetch the whole catalogue inside nested panes.
+    // Share one observer and let the viewport and scrolling panes clip its targets.
+    artworkObserver ??= new IntersectionObserver(entries => {
+      for (const { target, isIntersecting } of entries) {
+        if (isIntersecting && target.isConnected) {
+          target.src = target.dataset.exampleArtwork;
+          artworkObserver.unobserve(target);
+        }
+      }
+    }, { rootMargin: '160px' });
+    artworkObserver.observe(element);
+    return () => artworkObserver.unobserve(element);
+  }, [url]);
+
+  return <img ref={image} data-example-artwork={url} alt="" width={60} height={40}
+    loading="lazy" decoding="async" draggable={false}
+    style={{ objectFit: 'contain', flexShrink: 0, borderRadius: 3 }} />;
+}
+
 function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason }) {
   const [hovered, setHovered] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
@@ -616,10 +644,7 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
-        {example.artworkUrl && (
-          <img src={example.artworkUrl} alt="" width={60} height={40} loading="lazy" decoding="async"
-            draggable={false} style={{ objectFit: 'contain', flexShrink: 0, borderRadius: 3 }} />
-        )}
+        {example.artworkUrl && <ExampleArtwork key={example.artworkUrl} url={example.artworkUrl} />}
         <div style={{ color: palette.heading, fontSize: '12px', fontWeight: 650, cursor: 'pointer', flex: 1, lineHeight: 1.3 }}
           onClick={() => onClick()}>{title}</div>
         {diff && <span style={{ color: palette.muted, fontSize: '9px', flexShrink: 0 }}>
