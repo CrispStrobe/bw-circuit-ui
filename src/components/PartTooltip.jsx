@@ -125,6 +125,24 @@ export function PartTooltip({ part, circuit, visible, x, y, lang = 'en' }) {
         }
         break;
       }
+      case 'humidity_comb': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.ohms) && s.ohms > 0) {
+          lines.push(de ? `Luftfeuchte: ${Math.round(s.humidityPct)} %` : `Humidity: ${Math.round(s.humidityPct)} %`);
+          lines.push(de ? `Salzfilm: ${fmtOhms(s.ohms)}` : `Salt film: ${fmtOhms(s.ohms)}`);
+        }
+        break;
+      }
+      case 'dual_gate_mosfet': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.vg1s)) {
+          const f = (v) => (de ? v.toFixed(2).replace('.', ',') : v.toFixed(2));
+          lines.push(`U(G1S) ${f(s.vg1s)} V, U(G2S) ${f(s.vg2s)} V, U(DS) ${f(s.vds)} V`);
+          const by = { gate1: 'Gate 1', gate2: 'Gate 2', both: de ? 'beide Gates' : 'both gates' }[s.pinchedBy];
+          lines.push(by ? (de ? `Kanal abgeschnürt von ${by}` : `Channel pinched off by ${by}`) : (de ? 'Kanal leitet' : 'Channel conducts'));
+        }
+        break;
+      }
       case 'potentiometer':
         lines.push(`${fmtOhms(part.params.ohms)} ${de ? 'Poti' : 'pot'}`);
         break;

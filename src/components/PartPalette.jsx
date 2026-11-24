@@ -246,6 +246,10 @@ const CATEGORIES = [
       { kind: 'pnp', label: 'PNP', params: { beta: 100, vbe: 0.7 }, color: '#8e44ad', tooltip: '2N2907 type' },
       { kind: 'pnp', label: '2N2907', params: { part: '2N2907' }, color: '#8e44ad', tooltip: 'Named PNP — numbers from the parts library' },
       { kind: 'nmos', label: 'N-MOSFET', params: { vth: 2.0 }, color: '#27ae60' },
+      // Depletion-mode dual-gate MOSFET (bw-board dual_gate_mosfet): two
+      // channel halves in series, either gate pinches it off.
+      { kind: 'dual_gate_mosfet', label: 'Dual-gate MOSFET', params: { vp: -1.2, k: 0.005 }, color: '#27ae60',
+        tooltip: 'Depletion-mode MOSFET with two gates: it conducts with both gates at the source and either gate, taken below about -1.2 V, pinches the channel off' },
       { kind: 'pmos', label: 'P-MOSFET', params: { vth: 2.0 }, color: '#27ae60' },
       { kind: 'tip120', label: 'TIP120', params: { beta: 1000 }, color: '#8e44ad', tooltip: 'Darlington — high beta, 2× Vbe' },
     ],
@@ -304,6 +308,10 @@ const CATEGORIES = [
       // the battery-on-the-tongue experiment as a circuit.
       { kind: 'electrolysis_cell', label: 'Electrolyte (tongue)', params: { ohms: 2000, farads: 2e-6, onsetV: 1.7 }, color: '#d98880',
         tooltip: 'Two electrodes on a wet tongue: a resistance, and electrolysis only above about 1.7 V — then the tongue tastes it (sour at the + contact)' },
+      // Salt-film humidity comb (bw-board humidity_comb): the humidity at
+      // the film is a slider (breath) in the stimulus panel.
+      { kind: 'humidity_comb', label: 'Humidity comb', params: { humidity: 50 }, color: '#2f6b3a',
+        tooltip: 'Two copper combs under a salt film: about 10 MΩ in a room at 50 % humidity, a few kΩ when you breathe on it' },
       { kind: 'pir_sensor', label: 'PIR Sensor', params: {}, color: '#27ae60', tooltip: 'Motion detector' },
       { kind: 'ultrasonic', label: 'Ultrasonic', params: {}, color: '#3498db', tooltip: 'HC-SR04 distance sensor' },
       { kind: 'soil_moisture', label: 'Soil Moisture', params: {}, color: '#8B4513' },

@@ -396,6 +396,8 @@ function terminalOffsetsForPart(part) {
     case 'thermocouple':
     case 'air_coil':
     case 'electrolysis_cell':
+    case 'humidity_comb':
+    case 'dual_gate_mosfet':
     // Silicon PTC sensor, spark gap and the ruler scale (bw-parts #28).
     case 'ptc_sensor':
     case 'spark_gap':

@@ -49,6 +49,9 @@ const FIRST_ART_FACES = [
   'thermocouple',
   'air_coil',
   'electrolysis_cell',
+  // The salt-film humidity comb and the dual-gate MOSFET package.
+  'humidity_comb',
+  'dual_gate_mosfet',
   // Silicon PTC sensor, spark gap, ruler scale: their art is the part.
   'ptc_sensor',
   'spark_gap',
