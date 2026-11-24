@@ -97,7 +97,7 @@ const which = spawnSync('kicad-cli', ['version'], { encoding: 'utf8' });
 const haveKicad = which.status === 0;
 if (!haveKicad) {
   console.log('kicad-cli not found — oracle SKIPPED (the CI job runs it with KiCad installed).');
-  process.exit(0);
+  process.exit(process.env.KICAD_ORACLE_REQUIRED ? 1 : 0);
 }
 const version = which.stdout.trim();
 console.log(`kicad-cli ${version}`);
@@ -106,7 +106,7 @@ if (Number(version.split('.')[0]) < 8) {
   // Found the hard way: ubuntu-latest's apt ships 7.0.11 and the missing
   // subcommand surfaced as a missing report file, not as a message.
   console.log(`kicad-cli ${version} has no 'pcb drc' — oracle SKIPPED (needs KiCad 8+).`);
-  process.exit(0);
+  process.exit(process.env.KICAD_ORACLE_REQUIRED ? 1 : 0);
 }
 
 const dir = mkdtempSync(join(tmpdir(), 'bw-kicad-oracle-'));
