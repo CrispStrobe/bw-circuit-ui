@@ -264,11 +264,15 @@ describe('serialiser round-trip over gallery corpus', () => {
   // checkouts of each revision:
   //   c593574 (the CI pin)        255 files   731
   //   01e1280 (master 2026-11-23) 360 files  1310
+  //   539a3d9 (main 2026-11-23, #192)        1310
+  //   cafdfb1 (main 2026-11-24, #193: 38 round-4 lab benches)  1426
   // A revision not listed here is compared with the pin's count and fails with
   // its own revision in the message: record it here deliberately, never widen.
   const KNOWN_UNATTACHED_BY_CORPUS = {
     c593574367179132aa193d7f5a4477c0299e3ab3: 731,
     '01e1280652a95a147a24b00cf72a7dfbc04702d9': 1310,
+    '539a3d9eefd6d6be804f8f6b48e83465861d99ce': 1310,
+    cafdfb1a673e38e0fee853bbd9dddfaef2286fe7: 1426,
   };
   const PINNED_CORPUS = JSON.parse(readFileSync(
     path.join(here, '..', 'docs', 'schematic-baselines', 'CORPUS.json'), 'utf8')).corpusSha;
