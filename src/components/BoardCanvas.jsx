@@ -30,7 +30,7 @@ import { resolveSeatedParts, holeWorldPos, seatedFaceRotation } from '../interac
 import { getSidecar, sidecarCenterOffsets } from '../model/parts-registry.js';
 import { moduleLabelLayout, moduleTerminalLayout } from '../model/module-layout.js';
 import { ART_FACE_KINDS, artFaceLayout } from '../model/part-art.js';
-import { PART_ART_URLS } from './part-art-urls.js';
+import { partArtUrl, loadPartArt, onPartArtLoaded } from './part-art-loader.js';
 import { clashingTerminalLabels } from '../model/terminal-labels.js';
 import { KIND_ALIASES } from '../model/terminal-aliases.js';
 import { distToSegment as distToSeg } from '../interaction/hittest.js';
@@ -362,7 +362,22 @@ function terminalOffsetsForPart(part) {
     case 'antenna':
     case 'earth':
     case 'tuning_cap':
-    case 'ferrite_coil': {
+    case 'ferrite_coil':
+    // Two-lead parts whose a/b sat at the generic +/-15 (module-layout's
+    // "existing" offsets) although their art puts the leads elsewhere: their
+    // pins are the art's leg ends now, so the art face can draw them.
+    case 'ammeter':
+    case 'voltmeter':
+    case 'analog_meter':
+    case 'flex_sensor':
+    case 'force_sensor':
+    case 'fuse':
+    case 'gearmotor':
+    case 'light_bulb':
+    case 'reed_switch':
+    case 'tilt_switch':
+    case 'tilt_switch_v2':
+    case 'vibration_motor': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
@@ -487,6 +502,15 @@ function fmtV(v) {
 const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
 
 function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn, supplyVolts = 5 }) {
+  // Part art loads lazily (part-art-loader.js): request it for the art-face
+  // kinds on the canvas, and draw again when a file arrives.
+  const [, setArtLoads] = useState(0);
+  React.useEffect(() => onPartArtLoaded(() => setArtLoads(n => n + 1)), []);
+  React.useEffect(() => {
+    for (const p of parts) {
+      if (ART_FACE_KINDS.includes(p.kind) && !partArtUrl(p.kind)) loadPartArt(p.kind);
+    }
+  }, [parts]);
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -540,13 +564,15 @@ function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, par
     // A kind with vendored bw-parts art draws that art (src/model/part-art.js),
     // not the generic box: the art's leg ends are the sidecar's terminal x/y,
     // which is where terminalOffsetsForPart puts these pins. Seated, the art
-    // moves onto its holes and any leg end that still misses its hole gets a
-    // lead to it. Null when the pins are not on the art's legs (a saved part
-    // with other terminals), which keeps the generic box.
+    // moves onto its holes (scaled onto them when one scale fits, else with a
+    // lead from each leg end that misses its hole). Null when the pins are not
+    // on the art's legs (a saved part with other terminals), which keeps the
+    // generic box. The art loads lazily: until it arrives the same layout is
+    // drawn without the picture, so nothing moves when it does.
     const artFace = () => {
-      const href = ART_FACE_KINDS.includes(kind) ? PART_ART_URLS[kind] : null;
-      const sc = href && typeof getSidecar === 'function' ? getSidecar(kind) : null;
+      const sc = ART_FACE_KINDS.includes(kind) && typeof getSidecar === 'function' ? getSidecar(kind) : null;
       if (!sc) return null;
+      const href = partArtUrl(kind);
       const pins = terminalOffsetsForPart({ ...part, rotation: 0, flipped: false });
       const free = artFaceLayout(sc);
       if (!free || !(part.terminals || []).every(n => free.legs[n] && pins[n]
@@ -564,16 +590,17 @@ function SvgParts({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, par
       const bottom = Math.max(art.y + art.h, ...art.leads.map(l => l.to.dy));
       return (
         <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}
-          data-part-face={kind} data-art-face={kind}>
+          data-part-face={kind} data-art-face={kind} data-art-loaded={href ? 'true' : 'false'}>
           {/* Hit/selection box first: the art is transparent around its outline. */}
           <rect x={art.x} y={art.y} width={art.w} height={art.h} rx={3}
-            fill="transparent" stroke={selStroke || 'none'} strokeWidth={isSelected ? 2 : 0} />
+            fill="transparent" stroke={selStroke || (href ? 'none' : '#3a4048')} strokeWidth={isSelected ? 2 : href ? 0 : 1}
+            strokeDasharray={!isSelected && !href ? '3 2' : undefined} />
           {art.leads.map(l => (
             <line key={l.name} data-art-lead={l.name} x1={l.from.dx} y1={l.from.dy} x2={l.to.dx} y2={l.to.dy}
               stroke="#aab2ba" strokeWidth={1.4} strokeLinecap="round" />
           ))}
-          <image href={href} x={art.x} y={art.y} width={art.w} height={art.h}
-            preserveAspectRatio="none" style={{ pointerEvents: 'none' }} />
+          {href && <image href={href} x={art.x} y={art.y} width={art.w} height={art.h}
+            preserveAspectRatio="none" style={{ pointerEvents: 'none' }} />}
           {/* Seated, the seat layer already names the part under its holes. */}
           {!holes && <text x={art.x + art.w / 2} y={bottom + 14} textAnchor="middle" fill="#7f8c8d" fontSize={7}
             fontFamily="monospace">{part.declName || id}</text>}
