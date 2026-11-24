@@ -473,7 +473,14 @@ export function projectSchematic(parts, nets) {
           if (isFlip && crossesAnyBody(a, b2)) continue;
           const b = textBox(l, nudge, dir);
           if (boxTouchesForeignConductor(b.x1, b.y1, b.x2, b.y2, r.netId)) continue;
-          if (isFlip && boxCrossesAnyBody(b)) continue;
+          // The primary direction points away from the pin's OWN body, not
+          // from every body: a top-facing pin with a symbol stacked above it
+          // put its text on that symbol (sb3 lab-beats: potentiometer
+          // `tune`'s wiper label N10 over resistor rmB, 18px of row gap).
+          // So the text clears every body in every direction; a shorter
+          // leader or a nudge usually fits, and only when nothing does is the
+          // fallback below allowed to land it there.
+          if (boxCrossesAnyBody(b)) continue;
           chosen = {len: l, box: b, dir};
           break;
         }
@@ -660,6 +667,19 @@ export function projectSchematic(parts, nets) {
       for (const pin of s.pins) {
         const edgeX = pin.side === 'left' ? s.x - 26 : s.x + 26;
         consider({x: edgeX, y: pin.y}, {x: pin.x, y: pin.y});
+      }
+      // The generic box's OUTLINE is drawn copper lying exactly ON the body
+      // box, and segmentCrossesBody is strict (an edge is not inside), so a
+      // route could run along it. sb3 lab-meissner-am: net n-col-t42 ran
+      // y=343 from x=240 to 540 straight along the bottom edge of the generic
+      // transformer box (393..446, 293..343) — a wire drawn on a symbol's
+      // outline reads as joined to it (class S). Register the outline as
+      // foreign to every net, so the collinear and contact rules keep routes
+      // off it like any other conductor.
+      const {left, right, top, bottom} = box;
+      for (const [a, b] of [[{x: left, y: top}, {x: right, y: top}], [{x: right, y: top}, {x: right, y: bottom}],
+        [{x: left, y: bottom}, {x: right, y: bottom}], [{x: left, y: top}, {x: left, y: bottom}]]) {
+        out.push([a, b, SYMBOL_NET]);
       }
     }
     return out;
