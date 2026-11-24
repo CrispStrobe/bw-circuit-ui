@@ -23,6 +23,13 @@
  *   temperature with match and lighter presets; a magnet to drop through a
  *   hand-wound coil (bumps params.drops) and the distance of metal from it.
  *
+ * - Temperature of a part's own surroundings (bw-board thermal.js
+ *   params.surroundC): a sensor transistor, diode or PTC held in the fingers,
+ *   in ice water or in hot water while the rest of the bench stays put.
+ *
+ * - The load on a ruler scale (bending_ruler.loadG, grams) and the gap of a
+ *   spark gap (spark_gap.gapMm).
+ *
  * These controls appear in the instruments column when the circuit
  * contains the relevant sensor parts.
  */
@@ -45,10 +52,14 @@ export function StimulusControls({ parts, onSetParam, lang = 'en' }) {
     && (p.params?.soundDb !== undefined || p.params?.listen === true || typeof p.params?.hears === 'string'));
   const thermocouples = parts.filter(p => p.kind === 'thermocouple');
   const coils = parts.filter(p => p.kind === 'air_coil');
+  const surrounds = parts.filter(p => p.params?.surroundC !== undefined && p.params?.surroundC !== null && p.params?.surroundC !== '');
+  const rulers = parts.filter(p => p.kind === 'bending_ruler');
+  const gaps = parts.filter(p => p.kind === 'spark_gap');
 
   if (piezoSensors.length === 0 && ultrasonics.length === 0
     && pirs.length === 0 && sounds.length === 0 && listeners.length === 0
-    && thermocouples.length === 0 && coils.length === 0) return null;
+    && thermocouples.length === 0 && coils.length === 0
+    && surrounds.length === 0 && rulers.length === 0 && gaps.length === 0) return null;
 
   return (
     <div data-stimulus-controls style={{
@@ -88,6 +99,20 @@ export function StimulusControls({ parts, onSetParam, lang = 'en' }) {
         <ParamSlider key={p.id} partId={p.id} param="hotC" onSetParam={onSetParam} initial={p.params?.hotC ?? 25}
           min={0} max={1200} step={5} unit="°C" icon="🔥" label={t('stimHeat', lang)} title={t('stimHeatTitle', lang)}
           presets={[[t('stimMatch', lang), 600], [t('stimLighter', lang), 900], [t('stimRoom', lang), 25]]} />
+      ))}
+      {surrounds.map(p => (
+        <ParamSlider key={`${p.id}.surroundC`} partId={p.id} param="surroundC" onSetParam={onSetParam} initial={Number(p.params.surroundC)}
+          min={-10} max={100} step={1} unit="°C" icon="🌡" label={t('stimTemp', lang)} title={t('stimTempTitle', lang)}
+          presets={[[t('stimIce', lang), 0], [t('stimRoom', lang), 25], [t('stimFingers', lang), 33], [t('stimHotWater', lang), 70]]} />
+      ))}
+      {rulers.map(p => (
+        <ParamSlider key={p.id} partId={p.id} param="loadG" onSetParam={onSetParam} initial={p.params?.loadG ?? 0}
+          min={0} max={500} step={5} unit="g" icon="⚖" label={t('stimLoad', lang)} title={t('stimLoadTitle', lang)}
+          presets={[['0', 0], ['50', 50], ['100', 100], ['200', 200]]} />
+      ))}
+      {gaps.map(p => (
+        <ParamSlider key={p.id} partId={p.id} param="gapMm" onSetParam={onSetParam} initial={p.params?.gapMm ?? 1}
+          min={0.1} max={5} step={0.1} unit="mm" icon="⚡" label={t('stimGap', lang)} title={t('stimGapTitle', lang)} />
       ))}
       {coils.map(p => (
         <React.Fragment key={p.id}>

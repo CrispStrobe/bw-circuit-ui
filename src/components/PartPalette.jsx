@@ -111,6 +111,10 @@ const CATEGORIES = [
       // through it makes a pulse; metal nearby shifts its inductance.
       { kind: 'air_coil', label: 'Hand-wound coil', params: { turns: 200, radiusM: 0.015, lengthM: 0.03, wireMm: 0.25 }, color: '#b5651d',
         tooltip: 'Air coil wound from copper wire: its current makes a magnetic field (a compass on its axis turns), a magnet dropped through it induces a pulse, metal nearby changes its inductance' },
+      // Two electrodes in air (bw-board spark_gap): breaks down at about
+      // 3 kV per mm of gap, then an arc until the current dies.
+      { kind: 'spark_gap', label: 'Spark gap', params: { gapMm: 1 }, color: '#9a8f74',
+        tooltip: 'Two electrodes in air: nothing flows until the voltage reaches about 3 kV per millimetre of gap (plus 1.35 kV), then a spark empties whatever was charged' },
       { kind: 'diode', label: 'Diode', params: { vf: 0.7 }, color: '#95a5a6' },
       // NAMED PARTS: `params.part` names a card in bw-board's parts library, which is
       // the only home of the electrical numbers (test/parts-cards.test.js keeps every
@@ -286,6 +290,16 @@ const CATEGORIES = [
         tooltip: 'Two different metals joined at a hot junction: about 41 µV per kelvin of difference to the bench — amplify it with an op-amp' },
       { kind: 'thermocouple', label: 'Thermocouple copper/constantan', params: { type: 'T', hotC: 25, ohms: 5 }, color: '#c0392b',
         tooltip: 'A thermocouple made from a copper and a constantan wire twisted together: about 40 µV per kelvin near room temperature' },
+      // Silicon PTC (bw-board ptc_sensor): R rises with temperature; with
+      // surroundC it sits in surroundings of its own (a slider: fingers, ice
+      // water, hot water) while the bench stays put.
+      { kind: 'ptc_sensor', label: 'Silicon PTC sensor', params: { r25: 2000, surroundC: 25, thermalTau: 3 }, color: '#2c3e50',
+        tooltip: 'Silicon temperature sensor: 2 kΩ at 25 °C, about 0.8 % more per kelvin. The temperature slider puts it in your fingers, ice water or hot water' },
+      { kind: 'npn', label: 'NPN on a lead (thermometer)', params: { beta: 100, surroundC: 25, thermalTau: 3 }, color: '#8e44ad',
+        tooltip: 'A transistor on long leads used as a thermometer: its base-emitter voltage falls about 2 mV per kelvin. The temperature slider sets its surroundings' },
+      // Weighing with a ruler (bw-board bending_ruler): load in grams is a slider.
+      { kind: 'bending_ruler', label: 'Ruler scale (Hall)', params: { loadG: 0, gapMm: 15, magnetAm2: 0.1 }, color: '#1f5f8b',
+        tooltip: 'A steel ruler clamped at one end, a magnet at its tip over a linear Hall sensor: a load bends the ruler, the magnet comes closer, the output rises (not linearly — calibrate it)' },
       // Electrolyte between two electrodes (bw-board electrolysis_cell):
       // the battery-on-the-tongue experiment as a circuit.
       { kind: 'electrolysis_cell', label: 'Electrolyte (tongue)', params: { ohms: 2000, farads: 2e-6, onsetV: 1.7 }, color: '#d98880',
@@ -410,6 +424,10 @@ const CATEGORIES = [
       { kind: 'lm386', label: 'LM386', params: {}, color: '#7b3f00',
         tooltip: 'Audio power amplifier — PDIP-8, gain 20 (200 with 10 µF across pins 1–8), output at Vs/2, drives an 8 Ω speaker through a coupling capacitor' },
       { kind: '555', label: '555 Timer', params: {}, color: '#e74c3c' },
+      // 4046-type PLL (bw-board cd4046): the VCO runs on the external R1 (pin
+      // 11), C1 (pins 6-7) and optional R2 (pin 12); comparator II locks it.
+      { kind: 'cd4046', label: '4046 PLL', params: {}, color: '#8e44ad',
+        tooltip: 'Phase-locked loop — DIP-16: a VCO set by R1, R2 and C1, an XOR and an edge phase comparator; pin 1 is HIGH while the loop is locked' },
       { kind: 'shift_register', label: '74HC595', params: {}, color: '#8e44ad', tooltip: 'Shift register — 8 outputs' },
       { kind: 'ir_receiver', label: 'IR Receiver', params: {}, color: '#c0392b', tooltip: 'drawable — IrDA' },
       { kind: 'temp_sensor', label: 'Temp Sensor', params: {}, color: '#16a085', tooltip: 'drawable — DS18B20' },

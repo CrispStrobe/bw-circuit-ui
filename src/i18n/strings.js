@@ -284,6 +284,15 @@ const STRINGS = {
   stimDropTitle:       { en: 'Drop a bar magnet through the coil, north pole first', de: 'Einen Stabmagneten durch die Spule fallen lassen, Nordpol voran' },
   stimMetal:           { en: 'Metal', de: 'Metall' },
   stimMetalTitle:      { en: 'Distance of a piece of metal from the coil (cm); 20 = far away', de: 'Abstand eines Metallstücks von der Spule (cm); 20 = weit weg' },
+  stimTemp:            { en: 'Temp.', de: 'Temp.' },
+  stimTempTitle:       { en: 'Temperature of this part\'s own surroundings (°C): fingers, ice water, hot water', de: 'Temperatur der eigenen Umgebung dieses Bauteils (°C): Finger, Eiswasser, heißes Wasser' },
+  stimIce:             { en: 'Ice', de: 'Eis' },
+  stimFingers:         { en: 'Fingers', de: 'Finger' },
+  stimHotWater:        { en: 'Hot', de: 'Heiß' },
+  stimLoad:            { en: 'Load', de: 'Last' },
+  stimLoadTitle:       { en: 'Mass hung at the tip of the ruler (g)', de: 'An die Linealspitze gehängte Masse (g)' },
+  stimGap:             { en: 'Gap', de: 'Abstand' },
+  stimGapTitle:        { en: 'Distance between the spark gap\'s electrodes (mm)', de: 'Abstand der Elektroden der Funkenstrecke (mm)' },
 
   // ── Serial console ────────────────────────────────────────────────
   serialConsole:       { en: 'Serial Console', de: 'Serielle Konsole' },

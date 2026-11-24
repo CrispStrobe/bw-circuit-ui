@@ -1,0 +1,180 @@
+{
+  "kind": "cd4046",
+  "w": 118,
+  "h": 38,
+  "dip": {
+    "label": "CD4046",
+    "subtitle": "PLL"
+  },
+  "terminals": [
+    {
+      "name": "pcp_out",
+      "x": 10,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "pc1_out",
+      "x": 24,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "comp_in",
+      "x": 38,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "vco_out",
+      "x": 52,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "inh",
+      "x": 66,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "c1a",
+      "x": 80,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "c1b",
+      "x": 94,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "vss",
+      "x": 108,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "vco_in",
+      "x": 108,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "dem_out",
+      "x": 94,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "r1",
+      "x": 80,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "r2",
+      "x": 66,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "pc2_out",
+      "x": 52,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "sig_in",
+      "x": 38,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "zener",
+      "x": 24,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "vdd",
+      "x": 10,
+      "y": 0,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "4046-type CMOS phase-locked loop (CD4046B pinout). Engine (bw-board cd4046): VCO on the external R1 (pin 11), R2 (pin 12) and C1 (pins 6-7), f = (V(vco_in)/R1 + (VDD/2)/R2)/(2 C1 VDD); comparator I (XOR) on pin 2; comparator II (three-state phase-frequency detector) on pin 13 with pcp_out (pin 1) HIGH while it rests (locked); sig_in self-biased at half supply; dem_out follows vco_in; inh HIGH stops the VCO; zener pin not modelled. Reports vcoHz, edges, locked.",
+  "footprint": {
+    "refTerminal": "vdd",
+    "leads": {
+      "pcp_out": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "pc1_out": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "comp_in": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "vco_out": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "inh": {
+        "dRow": 5,
+        "dCol": 4
+      },
+      "c1a": {
+        "dRow": 5,
+        "dCol": 5
+      },
+      "c1b": {
+        "dRow": 5,
+        "dCol": 6
+      },
+      "vss": {
+        "dRow": 5,
+        "dCol": 7
+      },
+      "vco_in": {
+        "dRow": 0,
+        "dCol": 7
+      },
+      "dem_out": {
+        "dRow": 0,
+        "dCol": 6
+      },
+      "r1": {
+        "dRow": 0,
+        "dCol": 5
+      },
+      "r2": {
+        "dRow": 0,
+        "dCol": 4
+      },
+      "pc2_out": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "sig_in": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "zener": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "vdd": {
+        "dRow": 0,
+        "dCol": 0
+      }
+    },
+    "straddlesGutter": true,
+    "minCols": 8
+  }
+}

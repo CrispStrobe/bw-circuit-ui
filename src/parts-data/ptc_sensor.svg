@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 48" width="44" height="48">
+  <!-- Silicon PTC sensor: a TO-92 body, flat face forward -->
+  <path d="M8 31 L8 14 A14 13 0 0 1 36 14 L36 31 Z" fill="#26323a" stroke="#11181d" stroke-width="0.8"/>
+  <text x="22" y="22" font-family="sans-serif" font-size="6" fill="#e8e8e8" text-anchor="middle">PTC</text>
+  <text x="22" y="29" font-family="sans-serif" font-size="5" fill="#b8c4cc" text-anchor="middle">+&#952;</text>
+  <!-- Leads -->
+  <line x1="8" y1="35" x2="8" y2="48" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="8" cy="48" r="2" fill="#c0c0c0"/>
+  <line x1="36" y1="35" x2="36" y2="48" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="36" cy="48" r="2" fill="#c0c0c0"/>
+</svg>
