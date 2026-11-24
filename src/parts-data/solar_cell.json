@@ -5,13 +5,13 @@
   "terminals": [
     {
       "name": "pos",
-      "x": 10,
+      "x": 18,
       "y": 40,
       "functions": []
     },
     {
       "name": "neg",
-      "x": 40,
+      "x": 32,
       "y": 40,
       "functions": []
     }

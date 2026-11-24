@@ -1,246 +1,250 @@
 {
   "kind": "m6532",
-  "w": 80,
-  "h": 111,
+  "w": 286,
+  "h": 38,
+  "dip": {
+    "label": "M6532",
+    "subtitle": "RIOT"
+  },
   "terminals": [
     {
       "name": "vss",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "a5",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "a4",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "a3",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "a2",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "a1",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "a0",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "pa0",
-      "x": 0,
-      "y": 43,
+      "x": 108,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pa1",
-      "x": 0,
-      "y": 48,
+      "x": 122,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pa2",
-      "x": 0,
-      "y": 53,
+      "x": 136,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pa3",
-      "x": 0,
-      "y": 58,
+      "x": 150,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pa4",
-      "x": 0,
-      "y": 63,
+      "x": 164,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pa5",
-      "x": 0,
-      "y": 68,
+      "x": 178,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pa6",
-      "x": 0,
-      "y": 73,
+      "x": 192,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pa7",
-      "x": 0,
-      "y": 78,
+      "x": 206,
+      "y": 38,
       "functions": []
     },
     {
       "name": "phi2",
-      "x": 0,
-      "y": 83,
+      "x": 220,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pb7",
-      "x": 0,
-      "y": 88,
+      "x": 234,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pb6",
-      "x": 0,
-      "y": 93,
+      "x": 248,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pb5",
-      "x": 0,
-      "y": 98,
+      "x": 262,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pb4",
-      "x": 0,
-      "y": 103,
+      "x": 276,
+      "y": 38,
       "functions": []
     },
     {
       "name": "pb3",
-      "x": 80,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     },
     {
       "name": "pb2",
-      "x": 80,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "pb1",
-      "x": 80,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "pb0",
-      "x": 80,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "irqb",
-      "x": 80,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "d7",
       "x": 80,
-      "y": 33,
+      "y": 0,
       "functions": []
     },
     {
       "name": "d6",
-      "x": 80,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": []
     },
     {
       "name": "d5",
-      "x": 80,
-      "y": 43,
+      "x": 108,
+      "y": 0,
       "functions": []
     },
     {
       "name": "d4",
-      "x": 80,
-      "y": 48,
+      "x": 122,
+      "y": 0,
       "functions": []
     },
     {
       "name": "d3",
-      "x": 80,
-      "y": 53,
+      "x": 136,
+      "y": 0,
       "functions": []
     },
     {
       "name": "d2",
-      "x": 80,
-      "y": 58,
+      "x": 150,
+      "y": 0,
       "functions": []
     },
     {
       "name": "d1",
-      "x": 80,
-      "y": 63,
+      "x": 164,
+      "y": 0,
       "functions": []
     },
     {
       "name": "d0",
-      "x": 80,
-      "y": 68,
+      "x": 178,
+      "y": 0,
       "functions": []
     },
     {
       "name": "resb",
-      "x": 80,
-      "y": 73,
+      "x": 192,
+      "y": 0,
       "functions": []
     },
     {
       "name": "rwb",
-      "x": 80,
-      "y": 78,
+      "x": 206,
+      "y": 0,
       "functions": []
     },
     {
       "name": "a6",
-      "x": 80,
-      "y": 83,
+      "x": 220,
+      "y": 0,
       "functions": []
     },
     {
       "name": "cs2b",
-      "x": 80,
-      "y": 88,
+      "x": 234,
+      "y": 0,
       "functions": []
     },
     {
       "name": "cs1",
-      "x": 80,
-      "y": 93,
+      "x": 248,
+      "y": 0,
       "functions": []
     },
     {
       "name": "rs0b",
-      "x": 80,
-      "y": 98,
+      "x": 262,
+      "y": 0,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 80,
-      "y": 103,
+      "x": 276,
+      "y": 0,
       "functions": []
     }
   ],

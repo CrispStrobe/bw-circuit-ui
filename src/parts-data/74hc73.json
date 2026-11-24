@@ -1,151 +1,155 @@
 {
   "kind": "74hc73",
-  "w": 70,
-  "h": 46,
+  "w": 104,
+  "h": 38,
+  "dip": {
+    "label": "74HC73",
+    "subtitle": "DUAL JK-FF"
+  },
   "terminals": [
     {
       "name": "1clk",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1clr",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1k",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "2clk",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "2clr",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "2k",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "2q",
-      "x": 70,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2q_bar",
-      "x": 70,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2j",
-      "x": 70,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 70,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "1q",
-      "x": 70,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "1q_bar",
-      "x": 70,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "1j",
-      "x": 70,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "1clk",
+    "refTerminal": "1j",
     "leads": {
       "1clk": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "1clr": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "1k": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "vcc": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "2clk": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "2clr": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "2k": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "2q": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "2q_bar": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "2j": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "gnd": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "1q": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "1q_bar": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "1j": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

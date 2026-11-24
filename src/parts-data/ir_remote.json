@@ -1,8 +1,34 @@
 {
   "kind": "ir_remote",
   "w": 32,
-  "h": 56,
-  "terminals": [],
+  "h": 64,
+  "terminals": [
+    {
+      "name": "anode",
+      "x": 12,
+      "y": 64,
+      "functions": []
+    },
+    {
+      "name": "cathode",
+      "x": 20,
+      "y": 64,
+      "functions": []
+    }
+  ],
   "variants": null,
-  "footprint": null
+  "footprint": {
+    "refTerminal": "anode",
+    "leads": {
+      "anode": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "cathode": {
+        "dRow": 0,
+        "dCol": 1
+      }
+    }
+  },
+  "_note": "Handheld IR remote. The engine (bw-board ir_remote) models its emitter: an IR LED, anode and cathode, transmitting while forward-biased. Its two leads are drawn out of the bottom of the remote so it can be wired and seated like the LED it is."
 }

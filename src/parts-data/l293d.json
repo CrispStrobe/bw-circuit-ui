@@ -1,171 +1,175 @@
 {
   "kind": "l293d",
-  "w": 70,
-  "h": 51,
+  "w": 118,
+  "h": 38,
+  "dip": {
+    "label": "L293D",
+    "subtitle": "H-BRIDGE"
+  },
   "terminals": [
     {
       "name": "en1",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "in1",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "out1",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "gnd1",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "gnd2",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "out2",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "in2",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "vcc2",
-      "x": 0,
-      "y": 43,
-      "functions": []
-    },
-    {
-      "name": "en2",
-      "x": 70,
-      "y": 43,
-      "functions": []
-    },
-    {
-      "name": "in3",
-      "x": 70,
+      "x": 108,
       "y": 38,
       "functions": []
     },
     {
+      "name": "en2",
+      "x": 108,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "in3",
+      "x": 94,
+      "y": 0,
+      "functions": []
+    },
+    {
       "name": "out3",
-      "x": 70,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "gnd3",
-      "x": 70,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "gnd4",
-      "x": 70,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "out4",
-      "x": 70,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "in4",
-      "x": 70,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "vcc1",
-      "x": 70,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "en1",
+    "refTerminal": "vcc1",
     "leads": {
       "en1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "in1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "out1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "gnd1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "gnd2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "out2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "in2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "vcc2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 7
       },
       "en2": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 7
       },
       "in3": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "out3": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "gnd3": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "gnd4": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "out4": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "in4": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "vcc1": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

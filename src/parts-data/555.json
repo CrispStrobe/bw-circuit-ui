@@ -1,91 +1,95 @@
 {
   "kind": "555",
-  "w": 60,
-  "h": 48,
+  "w": 62,
+  "h": 38,
+  "dip": {
+    "label": "NE555",
+    "subtitle": "TIMER"
+  },
   "terminals": [
     {
       "name": "gnd",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "trigger",
-      "x": 0,
-      "y": 18,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "output",
-      "x": 0,
-      "y": 28,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "reset",
-      "x": 0,
+      "x": 52,
       "y": 38,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 60,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     },
     {
       "name": "discharge",
-      "x": 60,
-      "y": 18,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "threshold",
-      "x": 60,
-      "y": 28,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "control",
-      "x": 60,
-      "y": 38,
+      "x": 52,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "gnd",
+    "refTerminal": "vcc",
     "leads": {
       "gnd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "trigger": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "output": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "reset": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "vcc": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       },
       "discharge": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "threshold": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "control": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       }
     },

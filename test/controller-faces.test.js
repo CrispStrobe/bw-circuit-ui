@@ -63,7 +63,7 @@ test('joystick springs back to center on release', () => {
 test('joystick has terminal offsets for 5 pins', () => {
   const offsets = boardSrc.slice(
     boardSrc.indexOf('function terminalOffsetsForPart'),
-    boardSrc.indexOf('function terminalOffsetsForPart') + 6000,
+    boardSrc.indexOf('function layoutSidecar'),
   );
   assert.ok(offsets.includes("case 'joystick':"), 'joystick in terminal offsets');
   for (const pin of ['vcc', 'gnd', 'vrx', 'vry', 'sw']) {
@@ -104,7 +104,7 @@ test('slider normalises value to track position', () => {
 test('slider has terminal offsets for 3 pins', () => {
   const offsets = boardSrc.slice(
     boardSrc.indexOf('function terminalOffsetsForPart'),
-    boardSrc.indexOf('function terminalOffsetsForPart') + 6000,
+    boardSrc.indexOf('function layoutSidecar'),
   );
   assert.ok(offsets.includes("case 'slider':"), 'slider in terminal offsets');
   for (const pin of ['a', 'wiper', 'b']) {
@@ -153,7 +153,7 @@ test('gauge is read-only (no interactive handlers)', () => {
 test('gauge has terminal offsets for 3 pins', () => {
   const offsets = boardSrc.slice(
     boardSrc.indexOf('function terminalOffsetsForPart'),
-    boardSrc.indexOf('function terminalOffsetsForPart') + 6000,
+    boardSrc.indexOf('function layoutSidecar'),
   );
   assert.ok(offsets.includes("case 'gauge':"), 'gauge in terminal offsets');
   for (const pin of ['signal', 'vcc', 'gnd']) {

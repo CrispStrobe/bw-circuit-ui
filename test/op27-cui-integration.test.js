@@ -17,7 +17,7 @@ import { Circuit } from '../src/model/circuit.js';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = rel => readFileSync(join(root, rel), 'utf8');
 const terminals = ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 'nc'];
-const partsSha = '897eee90699d8d01cfabca294f7d5d6703bb01fb';
+const partsSha = 'ccfe94d61c46572f8b8bb76d514553daeab51563';
 const symbolSha = '93f2fa1510bfb884a5d5f987ad4b7325531536dd62a723a401fb96746c32ac5c';
 
 registerAllDevices();
@@ -26,8 +26,10 @@ test('the vendored OP27 is the exact P-suffix PDIP-8 sibling part', () => {
   const sidecar = getSidecar('op27');
   assert.ok(sidecar, 'generated parts-data index exposes OP27 to every bundler');
   assert.deepEqual(sidecar.terminals.map(t => t.name), terminals);
-  assert.deepEqual(sidecar.footprint.leads.offset_5, { dRow: 5, dCol: 3 });
-  assert.deepEqual(sidecar.footprint.leads.vpos, { dRow: 5, dCol: 1 });
+  // Pins 5-8 sit above the gutter (row e, dRow 0): pin 1 is bottom-left, notch
+  // left, since bw-parts re-laid its DIPs on the breadboard pitch (2026-11-24).
+  assert.deepEqual(sidecar.footprint.leads.offset_5, { dRow: 0, dCol: 3 });
+  assert.deepEqual(sidecar.footprint.leads.vpos, { dRow: 0, dCol: 1 });
   assert.equal(JSON.parse(read('.github/ci-siblings.json'))['bw-parts'].sha, partsSha);
   assert.match(read('src/parts-data/op27.svg'), />OP27</);
   assert.match(sidecar._note,

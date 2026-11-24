@@ -18,7 +18,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = rel => readFileSync(join(root, rel), 'utf8');
 const physicalTerminals = ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 'nc'];
 const channelTerminals = ['inp', 'inn', 'vpos', 'vneg', 'out'];
-const partsSha = '897eee90699d8d01cfabca294f7d5d6703bb01fb';
+const partsSha = 'ccfe94d61c46572f8b8bb76d514553daeab51563';
 const sourceSha = '661d0a0e03267c8b0cebcedae656689402c82941fe998bea5e100ebcb7b543e5';
 
 registerAllDevices();
@@ -27,8 +27,10 @@ test('the vendored AD711 is exactly the production N8 PDIP sibling part', () => 
   const sidecar = getSidecar('ad711');
   assert.ok(sidecar, 'generated parts-data index exposes AD711');
   assert.deepEqual(sidecar.terminals.map(t => t.name), physicalTerminals);
-  assert.deepEqual(sidecar.footprint.leads.offset_5, { dRow: 5, dCol: 3 });
-  assert.deepEqual(sidecar.footprint.leads.nc, { dRow: 5, dCol: 0 });
+  // Pins 5-8 sit above the gutter (row e, dRow 0): pin 1 is bottom-left, notch
+  // left, since bw-parts re-laid its DIPs on the breadboard pitch (2026-11-24).
+  assert.deepEqual(sidecar.footprint.leads.offset_5, { dRow: 0, dCol: 3 });
+  assert.deepEqual(sidecar.footprint.leads.nc, { dRow: 0, dCol: 0 });
   assert.equal(JSON.parse(read('.github/ci-siblings.json'))['bw-parts'].sha, partsSha);
   assert.match(read('src/parts-data/ad711.svg'), />AD711</);
   assert.match(sidecar._note, /RN-8 SOIC, Q-8 ceramic DIP and H-08A metal-can parts must not borrow this face/);

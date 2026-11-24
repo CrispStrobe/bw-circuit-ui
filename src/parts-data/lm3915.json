@@ -1,152 +1,156 @@
 {
   "kind": "lm3915",
-  "w": 60,
-  "h": 48,
+  "w": 104,
+  "h": 38,
+  "dip": {
+    "label": "LM3915",
+    "subtitle": "BAR DRIVER"
+  },
   "terminals": [
     {
       "name": "vcc",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "sig",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "mode",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "l1",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "l2",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "l3",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "l4",
-      "x": 60,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     },
     {
       "name": "l5",
-      "x": 60,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "l6",
-      "x": 60,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "l7",
-      "x": 60,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "l8",
-      "x": 60,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "l9",
-      "x": 60,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "l10",
-      "x": 60,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "_note": "LM3915 logarithmic dot/bar display driver. DIP-18. 10 LED outputs L1-L10, SIG analog input, MODE (dot/bar select).",
   "footprint": {
-    "refTerminal": "vcc",
+    "refTerminal": "l4",
     "leads": {
       "vcc": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "gnd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "sig": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "mode": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "l1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "l2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "l3": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "l4": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       },
       "l5": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "l6": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "l7": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "l8": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "l9": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "l10": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       }
     },

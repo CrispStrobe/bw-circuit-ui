@@ -1,246 +1,250 @@
 {
   "kind": "ns16c550",
-  "w": 80,
-  "h": 111,
+  "w": 286,
+  "h": 38,
+  "dip": {
+    "label": "NS16C550",
+    "subtitle": "UART"
+  },
   "terminals": [
     {
       "name": "d0",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "d1",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "d2",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "d3",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "d4",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "d5",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "d6",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "d7",
-      "x": 0,
-      "y": 43,
+      "x": 108,
+      "y": 38,
       "functions": []
     },
     {
       "name": "rclk",
-      "x": 0,
-      "y": 48,
+      "x": 122,
+      "y": 38,
       "functions": []
     },
     {
       "name": "sin",
-      "x": 0,
-      "y": 53,
+      "x": 136,
+      "y": 38,
       "functions": []
     },
     {
       "name": "sout",
-      "x": 0,
-      "y": 58,
+      "x": 150,
+      "y": 38,
       "functions": []
     },
     {
       "name": "cs0",
-      "x": 0,
-      "y": 63,
+      "x": 164,
+      "y": 38,
       "functions": []
     },
     {
       "name": "cs1",
-      "x": 0,
-      "y": 68,
+      "x": 178,
+      "y": 38,
       "functions": []
     },
     {
       "name": "cs2b",
-      "x": 0,
-      "y": 73,
+      "x": 192,
+      "y": 38,
       "functions": []
     },
     {
       "name": "baudoutb",
-      "x": 0,
-      "y": 78,
+      "x": 206,
+      "y": 38,
       "functions": []
     },
     {
       "name": "xin",
-      "x": 0,
-      "y": 83,
+      "x": 220,
+      "y": 38,
       "functions": []
     },
     {
       "name": "xout",
-      "x": 0,
-      "y": 88,
+      "x": 234,
+      "y": 38,
       "functions": []
     },
     {
       "name": "wrb",
-      "x": 0,
-      "y": 93,
+      "x": 248,
+      "y": 38,
       "functions": []
     },
     {
       "name": "wr",
-      "x": 0,
-      "y": 98,
+      "x": 262,
+      "y": 38,
       "functions": []
     },
     {
       "name": "vss",
-      "x": 0,
-      "y": 103,
+      "x": 276,
+      "y": 38,
       "functions": []
     },
     {
       "name": "rd",
-      "x": 80,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     },
     {
       "name": "rdb",
-      "x": 80,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "ddis",
-      "x": 80,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "txrdyb",
-      "x": 80,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "adsb",
-      "x": 80,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "a2",
       "x": 80,
-      "y": 33,
+      "y": 0,
       "functions": []
     },
     {
       "name": "a1",
-      "x": 80,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": []
     },
     {
       "name": "a0",
-      "x": 80,
-      "y": 43,
+      "x": 108,
+      "y": 0,
       "functions": []
     },
     {
       "name": "rxrdyb",
-      "x": 80,
-      "y": 48,
+      "x": 122,
+      "y": 0,
       "functions": []
     },
     {
       "name": "intr",
-      "x": 80,
-      "y": 53,
+      "x": 136,
+      "y": 0,
       "functions": []
     },
     {
       "name": "out2b",
-      "x": 80,
-      "y": 58,
+      "x": 150,
+      "y": 0,
       "functions": []
     },
     {
       "name": "rtsb",
-      "x": 80,
-      "y": 63,
+      "x": 164,
+      "y": 0,
       "functions": []
     },
     {
       "name": "dtrb",
-      "x": 80,
-      "y": 68,
+      "x": 178,
+      "y": 0,
       "functions": []
     },
     {
       "name": "out1b",
-      "x": 80,
-      "y": 73,
+      "x": 192,
+      "y": 0,
       "functions": []
     },
     {
       "name": "mr",
-      "x": 80,
-      "y": 78,
+      "x": 206,
+      "y": 0,
       "functions": []
     },
     {
       "name": "ctsb",
-      "x": 80,
-      "y": 83,
+      "x": 220,
+      "y": 0,
       "functions": []
     },
     {
       "name": "dsrb",
-      "x": 80,
-      "y": 88,
+      "x": 234,
+      "y": 0,
       "functions": []
     },
     {
       "name": "dcdb",
-      "x": 80,
-      "y": 93,
+      "x": 248,
+      "y": 0,
       "functions": []
     },
     {
       "name": "rib",
-      "x": 80,
-      "y": 98,
+      "x": 262,
+      "y": 0,
       "functions": []
     },
     {
       "name": "vdd",
-      "x": 80,
-      "y": 103,
+      "x": 276,
+      "y": 0,
       "functions": []
     }
   ],

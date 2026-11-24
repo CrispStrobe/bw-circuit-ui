@@ -68,7 +68,7 @@ test('keypad is included in the SvgParts deviceStates gathering', () => {
 test('keypad has terminal offsets for 8 pins (r1-r4, c1-c4)', () => {
   const offsets = boardSrc.slice(
     boardSrc.indexOf('function terminalOffsetsForPart'),
-    boardSrc.indexOf('function terminalOffsetsForPart') + 4000,
+    boardSrc.indexOf('function layoutSidecar'),
   );
   assert.ok(offsets.includes("case 'keypad':"), 'keypad in terminal offsets switch');
   for (const pin of ['r1', 'r2', 'r3', 'r4', 'c1', 'c2', 'c3', 'c4']) {

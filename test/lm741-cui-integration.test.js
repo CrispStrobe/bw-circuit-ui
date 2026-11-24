@@ -22,10 +22,12 @@ test('the vendored LM741 is the exact physical PDIP-8 sibling part', () => {
   const sidecar = getSidecar('lm741');
   assert.ok(sidecar, 'generated parts-data index exposes LM741 to every bundler');
   assert.deepEqual(sidecar.terminals.map(t => t.name), terminals);
-  assert.deepEqual(sidecar.footprint.leads.out, {dRow: 5, dCol: 2});
-  assert.deepEqual(sidecar.footprint.leads.vpos, {dRow: 5, dCol: 1});
+  // Pins 5-8 sit above the gutter (row e, dRow 0): pin 1 is bottom-left, notch
+  // left, since bw-parts re-laid its DIPs on the breadboard pitch (2026-11-24).
+  assert.deepEqual(sidecar.footprint.leads.out, {dRow: 0, dCol: 2});
+  assert.deepEqual(sidecar.footprint.leads.vpos, {dRow: 0, dCol: 1});
   const pins = JSON.parse(read('.github/ci-siblings.json'));
-  assert.equal(pins['bw-parts'].sha, '897eee90699d8d01cfabca294f7d5d6703bb01fb');
+  assert.equal(pins['bw-parts'].sha, 'ccfe94d61c46572f8b8bb76d514553daeab51563');
   const sibling = process.env.BW_PARTS_DIR || join(root, '..', 'bw-parts', 'parts');
   if (existsSync(sibling)) {
     assert.equal(read('src/parts-data/lm741.json'), readFileSync(join(sibling, 'lm741.json'), 'utf8'));

@@ -174,7 +174,12 @@ export function moduleLabelLayout(sidecar, { offsets, box }) {
         if (edge === 'bottom') bottomReach = Math.min(bottomReach, p.dy - LABEL_GAP - size);
         else topReach = Math.max(topReach, y);
       } else {
-        const size2 = Math.max(2, Math.min(size, gap - 0.5));
+        // Turned names from a top row and a bottom row run toward each
+        // other: with both rows populated each gets at most half the span
+        // between them (a DIP's rows are only 38 apart).
+        const both = byEdge.top.length && byEdge.bottom.length;
+        const half = both ? Math.max(0, ext.hh - LABEL_GAP - 0.5) / Math.max(1, name.length * CHAR_W) : Infinity;
+        const size2 = Math.max(1.5, Math.min(size, gap - 0.5, half));
         const len = name.length * size2 * CHAR_W;
         // rotate(-90): text runs upward. Bottom edge: start just above the
         // pin; top edge: end just below it, so both read inward.

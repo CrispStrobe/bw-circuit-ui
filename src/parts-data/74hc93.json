@@ -1,151 +1,155 @@
 {
   "kind": "74hc93",
-  "w": 70,
-  "h": 46,
+  "w": 104,
+  "h": 38,
+  "dip": {
+    "label": "74HC93",
+    "subtitle": "4-BIT CTR"
+  },
   "terminals": [
     {
       "name": "clk_a",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "nc1",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "nc2",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "nc3",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "r0_1",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "r0_2",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "qd",
-      "x": 70,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": []
     },
     {
       "name": "qc",
-      "x": 70,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 70,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "qb",
-      "x": 70,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "qa",
-      "x": 70,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "nc4",
-      "x": 70,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "clk_b",
-      "x": 70,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "clk_a",
+    "refTerminal": "clk_b",
     "leads": {
       "clk_a": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "nc1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "nc2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "nc3": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "vcc": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "r0_1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "r0_2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "qd": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "qc": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "gnd": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "qb": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "qa": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "nc4": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "clk_b": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

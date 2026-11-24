@@ -1,14 +1,14 @@
 {
   "kind": "vl53l0x",
-  "w": 40,
-  "h": 36,
+  "w": 56,
+  "h": 44,
   "terminals": [
-    { "name": "vcc",   "x": 8,  "y": 36, "functions": [] },
-    { "name": "gnd",   "x": 16, "y": 36, "functions": [] },
-    { "name": "sda",   "x": 24, "y": 36, "functions": ["sda"] },
-    { "name": "scl",   "x": 32, "y": 36, "functions": ["scl"] },
-    { "name": "xshut", "x": 8,  "y": 0,  "functions": [] },
-    { "name": "gpio1", "x": 16, "y": 0,  "functions": [] }
+    { "name": "vcc",   "x": 8,  "y": 44, "functions": [] },
+    { "name": "gnd",   "x": 16, "y": 44, "functions": [] },
+    { "name": "sda",   "x": 24, "y": 44, "functions": ["sda"] },
+    { "name": "scl",   "x": 32, "y": 44, "functions": ["scl"] },
+    { "name": "xshut", "x": 40,  "y": 44,  "functions": [] },
+    { "name": "gpio1", "x": 48, "y": 44,  "functions": [] }
   ],
   "variants": null,
   "_note": "VL53L0X time-of-flight laser ranging sensor module (STMicroelectronics). I2C interface, default address 0x29 (changeable via software after XSHUT sequence). 6-pin breakout: VCC, GND, SDA, SCL on bottom; XSHUT (active-low shutdown/reset, pull low to put in standby, release for multi-sensor address assignment), GPIO1 (interrupt output, active low, signals measurement ready) on top. Range 30-2000 mm, 940 nm VCSEL laser class 1. GY-VL53L0X module includes 2.8V regulator and level shifters.",

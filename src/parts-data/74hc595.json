@@ -1,12 +1,16 @@
 {
   "kind": "74hc595",
-  "w": 70,
-  "h": 51,
+  "w": 118,
+  "h": 38,
+  "dip": {
+    "label": "74HC595",
+    "subtitle": "SHIFT REG"
+  },
   "terminals": [
     {
       "name": "qb",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": [],
       "aliases": [
         "q1",
@@ -15,8 +19,8 @@
     },
     {
       "name": "qc",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": [],
       "aliases": [
         "q2",
@@ -25,8 +29,8 @@
     },
     {
       "name": "qd",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": [],
       "aliases": [
         "q3",
@@ -35,8 +39,8 @@
     },
     {
       "name": "qe",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": [],
       "aliases": [
         "q4",
@@ -45,8 +49,8 @@
     },
     {
       "name": "qf",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": [],
       "aliases": [
         "q5",
@@ -55,8 +59,8 @@
     },
     {
       "name": "qg",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": [],
       "aliases": [
         "q6",
@@ -65,7 +69,7 @@
     },
     {
       "name": "qh",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": [],
       "aliases": [
@@ -75,26 +79,26 @@
     },
     {
       "name": "gnd",
-      "x": 0,
-      "y": 43,
-      "functions": []
-    },
-    {
-      "name": "qh_s",
-      "x": 70,
-      "y": 43,
-      "functions": []
-    },
-    {
-      "name": "srclr",
-      "x": 70,
+      "x": 108,
       "y": 38,
       "functions": []
     },
     {
+      "name": "qh_s",
+      "x": 108,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "srclr",
+      "x": 94,
+      "y": 0,
+      "functions": []
+    },
+    {
       "name": "srclk",
-      "x": 70,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": [],
       "aliases": [
         "clock"
@@ -102,8 +106,8 @@
     },
     {
       "name": "rclk",
-      "x": 70,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": [],
       "aliases": [
         "latch"
@@ -111,14 +115,14 @@
     },
     {
       "name": "oe",
-      "x": 70,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "ser",
-      "x": 70,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": [],
       "aliases": [
         "data"
@@ -126,8 +130,8 @@
     },
     {
       "name": "qa",
-      "x": 70,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": [],
       "aliases": [
         "q0",
@@ -136,77 +140,77 @@
     },
     {
       "name": "vcc",
-      "x": 70,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "qb",
+    "refTerminal": "vcc",
     "leads": {
       "qb": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "qc": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "qd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "qe": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "qf": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "qg": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "qh": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "gnd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 7
       },
       "qh_s": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 7
       },
       "srclr": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "srclk": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "rclk": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "oe": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "ser": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "qa": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "vcc": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

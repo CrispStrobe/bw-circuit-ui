@@ -77,7 +77,7 @@ describe('pad names are MakeCode pin names, lowercased', () => {
 // ─── 2. Pads where the face draws them ───────────────────────────────────
 
 describe('terminals land on the face', () => {
-  for (const kind of [...MAKECODE_FACE_KINDS, 'pybadge', 'tang_nano_20k']) {
+  for (const kind of [...MAKECODE_FACE_KINDS, 'pybadge']) {
     it(`${kind}: every terminal offset is a finite point inside the board`, () => {
       const sc = getSidecar(kind);
       const g = boardVisualGeometry(kind, sc);

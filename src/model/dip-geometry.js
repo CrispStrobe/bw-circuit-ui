@@ -6,6 +6,13 @@ export const DIP_ROW_OFFSET = 19;
 /** Physical body envelope used by both the DIP renderer and hit testing. */
 export function dipPackageGeometry(sidecar) {
   if (!sidecar?.terminals?.length) return null;
+  if (sidecar.dip) {
+    // Re-laid on the breadboard pitch (bw-parts generate-dip-art.js): the
+    // sidecar box IS the package across the gutter.
+    const top = sidecar.terminals.filter(t => t.y === 0).length;
+    const pinsPerSide = Math.max(top, sidecar.terminals.length - top);
+    return { w: Math.max(34, sidecar.w), h: 52, pinsPerSide };
+  }
   const left = sidecar.terminals.filter(t => t.x <= sidecar.w / 2).length;
   const right = sidecar.terminals.length - left;
   const pinsPerSide = Math.max(left, right);
@@ -37,6 +44,20 @@ export function dipPackageGeometry(sidecar) {
 export function dipTerminalPositions(sidecar) {
   const positions = {};
   if (!sidecar?.terminals) return positions;
+  if (sidecar.dip) {
+    // Re-laid on the breadboard pitch: every terminal x/y is its leg tip, on
+    // the same 14-unit columns and +/-19 rows the upright layout below
+    // derives, so the positions are the sidecar's own, about its centre.
+    for (const t of sidecar.terminals) {
+      positions[t.name] = { dx: t.x - sidecar.w / 2, dy: t.y - sidecar.h / 2 };
+    }
+    for (const t of sidecar.terminals) {
+      for (const a of Array.isArray(t.aliases) ? t.aliases : []) {
+        if (positions[t.name]) positions[a] = { ...positions[t.name] };
+      }
+    }
+    return positions;
+  }
   const left = sidecar.terminals.filter(t => t.x <= sidecar.w / 2).sort((a, b) => a.y - b.y);
   const right = sidecar.terminals.filter(t => t.x > sidecar.w / 2).sort((a, b) => a.y - b.y);
   const put = (items, y) => items.forEach((t, i) => {

@@ -1,41 +1,85 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 111" width="80" height="111">
-  <!-- EATER6502 — bench-style -->
-  <rect x="2" y="2" width="76" height="99" rx="2" fill="#1a1a6b" stroke="#0d0d4d" stroke-width="0.8"/>
-  <text x="40" y="51.5" text-anchor="middle" font-family="monospace" font-size="4" fill="#aaa">EATER6502</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 152 111" width="152" height="111">
+  <!-- Eater 6502 breadboard computer as one board: CPU, VIA, EEPROM, SRAM; VIA ports A/B, 5V and GND on one 18-pin header -->
+  <rect x="2" y="2" width="148" height="99" rx="2" fill="#e8e2d0" stroke="#b9b09a" stroke-width="0.8"/>
+  <rect x="8" y="10" width="62" height="20" rx="1.5" fill="#2b2b2b" stroke="#141414" stroke-width="0.8"/>
+  <text x="39" y="22.5" text-anchor="middle" font-family="monospace" font-size="5" fill="#d6d6d6">W65C02</text>
+  <rect x="8" y="52" width="62" height="20" rx="1.5" fill="#2b2b2b" stroke="#141414" stroke-width="0.8"/>
+  <text x="39" y="64.5" text-anchor="middle" font-family="monospace" font-size="5" fill="#d6d6d6">W65C22</text>
+  <rect x="82" y="10" width="62" height="20" rx="1.5" fill="#2b2b2b" stroke="#141414" stroke-width="0.8"/>
+  <text x="113" y="22.5" text-anchor="middle" font-family="monospace" font-size="5" fill="#d6d6d6">28C256</text>
+  <rect x="82" y="52" width="62" height="20" rx="1.5" fill="#2b2b2b" stroke="#141414" stroke-width="0.8"/>
+  <text x="113" y="64.5" text-anchor="middle" font-family="monospace" font-size="5" fill="#d6d6d6">62256</text>
+  <text x="76" y="86" text-anchor="middle" font-family="monospace" font-size="5" fill="#555">EATER 6502</text>
+  <rect x="5.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
   <line x1="8" y1="101" x2="8" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
   <circle cx="8" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="8" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PA0</text>
+  <rect x="13.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
   <line x1="16" y1="101" x2="16" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
   <circle cx="16" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="16" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PA1</text>
+  <rect x="21.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
   <line x1="24" y1="101" x2="24" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
   <circle cx="24" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="24" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PA2</text>
+  <rect x="29.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
   <line x1="32" y1="101" x2="32" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
   <circle cx="32" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="32" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PA3</text>
+  <rect x="37.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
   <line x1="40" y1="101" x2="40" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
   <circle cx="40" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="40" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PA4</text>
+  <rect x="45.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
   <line x1="48" y1="101" x2="48" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
   <circle cx="48" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="48" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PA5</text>
+  <rect x="53.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
   <line x1="56" y1="101" x2="56" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
   <circle cx="56" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="56" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PA6</text>
+  <rect x="61.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
   <line x1="64" y1="101" x2="64" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
   <circle cx="64" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="64" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PA7</text>
+  <rect x="69.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
   <line x1="72" y1="101" x2="72" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
   <circle cx="72" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="72" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PB0</text>
+  <rect x="77.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
   <line x1="80" y1="101" x2="80" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
   <circle cx="80" cy="111" r="1.5" fill="#c0c0c0"/>
-  <line x1="80" y1="101" x2="80" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="80" cy="111" r="1.5" fill="#c0c0c0"/>
-  <line x1="80" y1="101" x2="80" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="80" cy="111" r="1.5" fill="#c0c0c0"/>
-  <line x1="80" y1="101" x2="80" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="80" cy="111" r="1.5" fill="#c0c0c0"/>
-  <line x1="80" y1="101" x2="80" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="80" cy="111" r="1.5" fill="#c0c0c0"/>
-  <line x1="80" y1="101" x2="80" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="80" cy="111" r="1.5" fill="#c0c0c0"/>
-  <line x1="80" y1="101" x2="80" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="80" cy="111" r="1.5" fill="#c0c0c0"/>
-  <line x1="80" y1="101" x2="80" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="80" cy="111" r="1.5" fill="#c0c0c0"/>
-  <line x1="80" y1="101" x2="80" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="80" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="80" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PB1</text>
+  <rect x="85.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="88" y1="101" x2="88" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="88" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="88" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PB2</text>
+  <rect x="93.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="96" y1="101" x2="96" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="96" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="96" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PB3</text>
+  <rect x="101.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="104" y1="101" x2="104" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="104" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="104" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PB4</text>
+  <rect x="109.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="112" y1="101" x2="112" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="112" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="112" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PB5</text>
+  <rect x="117.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="120" y1="101" x2="120" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="120" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="120" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PB6</text>
+  <rect x="125.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="128" y1="101" x2="128" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="128" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="128" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">PB7</text>
+  <rect x="133.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="136" y1="101" x2="136" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="136" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="136" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">5V</text>
+  <rect x="141.8" y="95.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="144" y1="101" x2="144" y2="111" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="144" cy="111" r="1.5" fill="#c0c0c0"/>
+  <text x="144" y="94.6" text-anchor="middle" font-family="monospace" font-size="1.8" fill="#444">GND</text>
 </svg>

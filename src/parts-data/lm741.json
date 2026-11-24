@@ -1,30 +1,34 @@
 {
   "kind": "lm741",
-  "w": 60,
-  "h": 48,
+  "w": 62,
+  "h": 38,
+  "dip": {
+    "label": "LM741",
+    "subtitle": "SINGLE OP AMP"
+  },
   "terminals": [
-    { "name": "offset_1", "x": 0, "y": 8, "functions": [] },
-    { "name": "inn", "x": 0, "y": 18, "functions": [] },
-    { "name": "inp", "x": 0, "y": 28, "functions": [] },
-    { "name": "vneg", "x": 0, "y": 38, "functions": [] },
-    { "name": "offset_5", "x": 60, "y": 38, "functions": [] },
-    { "name": "out", "x": 60, "y": 28, "functions": [] },
-    { "name": "vpos", "x": 60, "y": 18, "functions": [] },
-    { "name": "nc", "x": 60, "y": 8, "functions": [] }
+    { "name": "offset_1", "x": 10, "y": 38, "functions": [] },
+    { "name": "inn", "x": 24, "y": 38, "functions": [] },
+    { "name": "inp", "x": 38, "y": 38, "functions": [] },
+    { "name": "vneg", "x": 52, "y": 38, "functions": [] },
+    { "name": "offset_5", "x": 52, "y": 0, "functions": [] },
+    { "name": "out", "x": 38, "y": 0, "functions": [] },
+    { "name": "vpos", "x": 24, "y": 0, "functions": [] },
+    { "name": "nc", "x": 10, "y": 0, "functions": [] }
   ],
   "variants": null,
   "_note": "LM741 single operational amplifier, PDIP-8 top view. Physical pin order and functions audited against TI SNOSC25D section 5.",
   "footprint": {
-    "refTerminal": "offset_1",
+    "refTerminal": "nc",
     "leads": {
-      "offset_1": { "dRow": 0, "dCol": 0 },
-      "inn": { "dRow": 0, "dCol": 1 },
-      "inp": { "dRow": 0, "dCol": 2 },
-      "vneg": { "dRow": 0, "dCol": 3 },
-      "offset_5": { "dRow": 5, "dCol": 3 },
-      "out": { "dRow": 5, "dCol": 2 },
-      "vpos": { "dRow": 5, "dCol": 1 },
-      "nc": { "dRow": 5, "dCol": 0 }
+      "offset_1": { "dRow": 5, "dCol": 0 },
+      "inn": { "dRow": 5, "dCol": 1 },
+      "inp": { "dRow": 5, "dCol": 2 },
+      "vneg": { "dRow": 5, "dCol": 3 },
+      "offset_5": { "dRow": 0, "dCol": 3 },
+      "out": { "dRow": 0, "dCol": 2 },
+      "vpos": { "dRow": 0, "dCol": 1 },
+      "nc": { "dRow": 0, "dCol": 0 }
     },
     "straddlesGutter": true,
     "minCols": 4

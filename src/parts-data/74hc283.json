@@ -1,171 +1,175 @@
 {
   "kind": "74hc283",
-  "w": 70,
-  "h": 51,
+  "w": 118,
+  "h": 38,
+  "dip": {
+    "label": "74HC283",
+    "subtitle": "4-BIT ADDER"
+  },
   "terminals": [
     {
       "name": "s1",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "b1",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "a1",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "s0",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "a0",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "b0",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "cin",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 0,
-      "y": 43,
-      "functions": []
-    },
-    {
-      "name": "cout",
-      "x": 70,
-      "y": 43,
-      "functions": []
-    },
-    {
-      "name": "s3",
-      "x": 70,
+      "x": 108,
       "y": 38,
       "functions": []
     },
     {
+      "name": "cout",
+      "x": 108,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "s3",
+      "x": 94,
+      "y": 0,
+      "functions": []
+    },
+    {
       "name": "b3",
-      "x": 70,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "a3",
-      "x": 70,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "s2",
-      "x": 70,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "a2",
-      "x": 70,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "b2",
-      "x": 70,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 70,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "s1",
+    "refTerminal": "vcc",
     "leads": {
       "s1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "b1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "a1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "s0": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "a0": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "b0": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "cin": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "gnd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 7
       },
       "cout": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 7
       },
       "s3": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "b3": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "a3": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "s2": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "a2": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "b2": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "vcc": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

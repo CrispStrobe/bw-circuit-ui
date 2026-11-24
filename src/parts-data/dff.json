@@ -1,72 +1,76 @@
 {
   "kind": "dff",
-  "w": 30,
-  "h": 24,
+  "w": 48,
+  "h": 38,
+  "dip": {
+    "label": "D-FF",
+    "subtitle": ""
+  },
   "terminals": [
     {
       "name": "d",
-      "x": 0,
-      "y": 6,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "clk",
-      "x": 0,
-      "y": 12,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "set",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "rst",
-      "x": 30,
-      "y": 6,
+      "x": 10,
+      "y": 0,
       "functions": []
     },
     {
       "name": "q",
-      "x": 30,
-      "y": 12,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "q_bar",
-      "x": 30,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "_note": "D flip-flop (single). 6-terminal: D, CLK, SET, RST, Q, Q_BAR. Edge-triggered on rising CLK.",
   "footprint": {
-    "refTerminal": "d",
+    "refTerminal": "rst",
     "leads": {
       "d": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "clk": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "set": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "rst": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       },
       "q": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "q_bar": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       }
     },

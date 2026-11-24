@@ -18,7 +18,6 @@
  *
  * @module
  */
-import { resolveArtSlug } from '../model/parts-registry.js';
 
 /** art slug -> URL, once resolved */
 const urls = new Map();
@@ -28,21 +27,24 @@ const pending = new Map();
 const failed = new Set();
 const listeners = new Set();
 
-const SLUG = /^[a-z0-9_]+$/;
+const SLUG = /^[a-z0-9_]+(\.[a-z0-9_]+)?$/; // kind, or kind.variant (variantArt)
 
-/** The art URL for a part kind if it has already loaded, else null. */
-export function partArtUrl(kind) {
-  return urls.get(resolveArtSlug(kind)) ?? null;
+/**
+ * The URL of an art file (its name without `.svg`: the sidecar's kind, or a
+ * variant's `kind.value`) if it has already loaded, else null. Callers name
+ * the file; the sidecar a kind resolves to (getSidecar) says which.
+ */
+export function partArtUrl(slug) {
+  return urls.get(slug) ?? null;
 }
 
 /**
  * Load a part kind's art. Resolves to its URL; concurrent calls share one
  * import, and a loaded kind resolves from the cache.
- * @param {string} kind
+ * @param {string} slug
  * @returns {Promise<string|null>}
  */
-export function loadPartArt(kind) {
-  const slug = resolveArtSlug(kind);
+export function loadPartArt(slug) {
   if (urls.has(slug)) return Promise.resolve(urls.get(slug));
   if (failed.has(slug) || !SLUG.test(slug)) return Promise.resolve(null);
   if (!pending.has(slug)) {

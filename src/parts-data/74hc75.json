@@ -1,171 +1,175 @@
 {
   "kind": "74hc75",
-  "w": 70,
-  "h": 51,
+  "w": 118,
+  "h": 38,
+  "dip": {
+    "label": "74HC75",
+    "subtitle": "QUAD LATCH"
+  },
   "terminals": [
     {
       "name": "1q",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1q_bar",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1d",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "2e",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "3d",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "3q_bar",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "3q",
-      "x": 0,
-      "y": 43,
-      "functions": []
-    },
-    {
-      "name": "4q",
-      "x": 70,
-      "y": 43,
-      "functions": []
-    },
-    {
-      "name": "4q_bar",
-      "x": 70,
+      "x": 108,
       "y": 38,
       "functions": []
     },
     {
+      "name": "4q",
+      "x": 108,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "4q_bar",
+      "x": 94,
+      "y": 0,
+      "functions": []
+    },
+    {
       "name": "4d",
-      "x": 70,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 70,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "1e",
-      "x": 70,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2d",
-      "x": 70,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2q_bar",
-      "x": 70,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2q",
-      "x": 70,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "1q",
+    "refTerminal": "2q",
     "leads": {
       "1q": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "1q_bar": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "1d": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "2e": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "vcc": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "3d": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "3q_bar": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "3q": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 7
       },
       "4q": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 7
       },
       "4q_bar": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "4d": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "gnd": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "1e": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "2d": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "2q_bar": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "2q": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

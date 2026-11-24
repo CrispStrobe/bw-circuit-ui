@@ -14,18 +14,20 @@ test('555 DIP-8 straddles gutter correctly', () => {
   const bb = c.addPart('breadboard', {}, 500, 300);
 
   const timer = c.addPart('555', {}, 0, 0);
-  // Place with GND (pin 1) at e10 — pins 1-4 on top, 5-8 on bottom
+  // Seen from above with the notch left: pins 1-4 below the gutter (row f)
+  // left to right, pins 8-5 above it (row e). The reference is pin 8 (VCC),
+  // top-left. Until 2026-11-24 pins 1-4 sat in row e: the chip seen from
+  // underneath.
   const leadMap = computeLeadMap(FOOTPRINTS['555'], 'e10');
 
-  // Verify the lead map straddles: top rows (e) and bottom rows (f)
-  assert.equal(leadMap.gnd, 'e10');       // pin 1
-  assert.equal(leadMap.trigger, 'e11');  // pin 2
-  assert.equal(leadMap.output, 'e12');   // pin 3
-  assert.equal(leadMap.reset, 'e13');    // pin 4
-  assert.equal(leadMap.vcc, 'f10');      // pin 8 (gutter straddle: e→f)
-  assert.equal(leadMap.discharge, 'f11');// pin 7
-  assert.equal(leadMap.threshold, 'f12');// pin 6
-  assert.equal(leadMap.control, 'f13'); // pin 5
+  assert.equal(leadMap.gnd, 'f10');       // pin 1
+  assert.equal(leadMap.trigger, 'f11');  // pin 2
+  assert.equal(leadMap.output, 'f12');   // pin 3
+  assert.equal(leadMap.reset, 'f13');    // pin 4
+  assert.equal(leadMap.vcc, 'e10');      // pin 8, across the gutter from pin 1
+  assert.equal(leadMap.discharge, 'e11');// pin 7
+  assert.equal(leadMap.threshold, 'e12');// pin 6
+  assert.equal(leadMap.control, 'e13'); // pin 5
 
   assert.ok(c.seatPart(timer.id, bb.id, leadMap), 'should seat successfully');
   assert.equal(timer.seat.boardId, bb.id);

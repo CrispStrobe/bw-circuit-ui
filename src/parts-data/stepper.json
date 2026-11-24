@@ -28,7 +28,53 @@
       "functions": []
     }
   ],
-  "variants": null,
-  "_note": "4-wire bipolar stepper. For unipolar (5/6-wire), center taps would need additional terminals. bw-board models 4-wire bipolar.",
+  "variantArt": [
+    {
+      "param": "wiring",
+      "value": "unipolar",
+      "default": true,
+      "w": 70,
+      "h": 70,
+      "art": "stepper.unipolar.svg",
+      "_note": "The unipolar (centre-tapped, 28BYJ-48 class) motor the engine models by default (params.wiring unset or 'unipolar'): coil1-coil4 and the common com, five wires.",
+      "terminals": [
+        {
+          "name": "coil1",
+          "x": 19,
+          "y": 0
+        },
+        {
+          "name": "coil2",
+          "x": 27,
+          "y": 0
+        },
+        {
+          "name": "coil3",
+          "x": 35,
+          "y": 0
+        },
+        {
+          "name": "coil4",
+          "x": 43,
+          "y": 0
+        },
+        {
+          "name": "com",
+          "x": 51,
+          "y": 0
+        }
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "param": "wiring",
+      "values": [
+        "unipolar",
+        "bipolar"
+      ]
+    }
+  ],
+  "_note": "4-wire bipolar stepper. For unipolar (5/6-wire), center taps would need additional terminals. bw-board models 4-wire bipolar. Terminals here are the BIPOLAR four-wire motor (two coils, H-bridge driven). The engine models both wirings behind params.wiring and defaults to unipolar (coil1-coil4 + com, five wires, centre-tapped) — see variants.",
   "footprint": null
 }

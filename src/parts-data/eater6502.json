@@ -1,6 +1,6 @@
 {
   "kind": "eater6502",
-  "w": 80,
+  "w": 152,
   "h": 111,
   "terminals": [
     {
@@ -65,49 +65,49 @@
     },
     {
       "name": "via1.pb2",
-      "x": 80,
+      "x": 88,
       "y": 111,
       "functions": []
     },
     {
       "name": "via1.pb3",
-      "x": 80,
+      "x": 96,
       "y": 111,
       "functions": []
     },
     {
       "name": "via1.pb4",
-      "x": 80,
+      "x": 104,
       "y": 111,
       "functions": []
     },
     {
       "name": "via1.pb5",
-      "x": 80,
+      "x": 112,
       "y": 111,
       "functions": []
     },
     {
       "name": "via1.pb6",
-      "x": 80,
+      "x": 120,
       "y": 111,
       "functions": []
     },
     {
       "name": "via1.pb7",
-      "x": 80,
+      "x": 128,
       "y": 111,
       "functions": []
     },
     {
       "name": "5v",
-      "x": 80,
+      "x": 136,
       "y": 111,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 80,
+      "x": 144,
       "y": 111,
       "functions": []
     }

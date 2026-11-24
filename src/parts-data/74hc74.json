@@ -1,151 +1,155 @@
 {
   "kind": "74hc74",
-  "w": 70,
-  "h": 46,
+  "w": 104,
+  "h": 38,
+  "dip": {
+    "label": "74HC74",
+    "subtitle": "DUAL D-FF"
+  },
   "terminals": [
     {
       "name": "1clr",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1d",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1clk",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1pre",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1q",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1q_bar",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "2q_bar",
-      "x": 70,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2q",
-      "x": 70,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2pre",
-      "x": 70,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2clk",
-      "x": 70,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2d",
-      "x": 70,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2clr",
-      "x": 70,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 70,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "1clr",
+    "refTerminal": "vcc",
     "leads": {
       "1clr": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "1d": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "1clk": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "1pre": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "1q": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "1q_bar": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "gnd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "2q_bar": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "2q": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "2pre": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "2clk": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "2d": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "2clr": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "vcc": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

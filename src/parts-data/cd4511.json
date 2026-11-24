@@ -1,171 +1,175 @@
 {
   "kind": "cd4511",
-  "w": 70,
-  "h": 51,
+  "w": 118,
+  "h": 38,
+  "dip": {
+    "label": "CD4511",
+    "subtitle": "BCD-7SEG"
+  },
   "terminals": [
     {
       "name": "b",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "c",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "lt",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "bl",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "le",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "d",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "a",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 0,
-      "y": 43,
-      "functions": []
-    },
-    {
-      "name": "qe",
-      "x": 70,
-      "y": 43,
-      "functions": []
-    },
-    {
-      "name": "qd",
-      "x": 70,
+      "x": 108,
       "y": 38,
       "functions": []
     },
     {
+      "name": "qe",
+      "x": 108,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "qd",
+      "x": 94,
+      "y": 0,
+      "functions": []
+    },
+    {
       "name": "qc",
-      "x": 70,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "qb",
-      "x": 70,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "qa",
-      "x": 70,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "qg",
-      "x": 70,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "qf",
-      "x": 70,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 70,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "footprint": {
-    "refTerminal": "b",
+    "refTerminal": "vcc",
     "leads": {
       "b": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "c": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "lt": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "bl": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "le": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "d": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "a": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "gnd": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 7
       },
       "qe": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 7
       },
       "qd": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "qc": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "qb": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "qa": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "qg": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "qf": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "vcc": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       }
     },

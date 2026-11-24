@@ -1,152 +1,156 @@
 {
   "kind": "timer_556",
-  "w": 60,
-  "h": 48,
+  "w": 104,
+  "h": 38,
+  "dip": {
+    "label": "NE556",
+    "subtitle": "DUAL TIMER"
+  },
   "terminals": [
     {
       "name": "1_trigger",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1_threshold",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1_control",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1_discharge",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1_output",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "1_reset",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "2_trigger",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "2_threshold",
-      "x": 60,
-      "y": 8,
+      "x": 10,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2_control",
-      "x": 60,
-      "y": 13,
+      "x": 24,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2_discharge",
-      "x": 60,
-      "y": 18,
+      "x": 38,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2_output",
-      "x": 60,
-      "y": 23,
+      "x": 52,
+      "y": 0,
       "functions": []
     },
     {
       "name": "2_reset",
-      "x": 60,
-      "y": 28,
+      "x": 66,
+      "y": 0,
       "functions": []
     },
     {
       "name": "vcc",
-      "x": 60,
-      "y": 33,
+      "x": 80,
+      "y": 0,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 60,
-      "y": 38,
+      "x": 94,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "_note": "Dual 555 timer (556). DIP-14. Two independent timer sections with shared VCC/GND.",
   "footprint": {
-    "refTerminal": "1_trigger",
+    "refTerminal": "2_threshold",
     "leads": {
       "1_trigger": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "1_threshold": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "1_control": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "1_discharge": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "1_output": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "1_reset": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "2_trigger": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "2_threshold": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       },
       "2_control": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "2_discharge": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "2_output": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "2_reset": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "vcc": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "gnd": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       }
     },

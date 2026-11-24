@@ -1,29 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 36" width="40" height="36">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 44" width="56" height="44">
   <!-- VL53L0X Time-of-Flight Laser Distance Sensor Module — bench-style -->
-  <!-- PCB (purple, typical GY-VL53L0X) -->
-  <rect x="2" y="4" width="36" height="24" rx="2" fill="#4a1a6b" stroke="#2d0d4d" stroke-width="0.8"/>
-  <!-- VL53L0X sensor package (metal can with aperture) -->
-  <rect x="11" y="7" width="14" height="10" rx="1" fill="#555" stroke="#444" stroke-width="0.5"/>
-  <!-- Dual aperture (emitter + detector) -->
-  <circle cx="15" cy="12" r="2.5" fill="#222" stroke="#333" stroke-width="0.4"/>
-  <circle cx="15" cy="12" r="1" fill="#440000" opacity="0.8"/>
-  <circle cx="22" cy="12" r="2.5" fill="#222" stroke="#333" stroke-width="0.4"/>
-  <circle cx="22" cy="12" r="1" fill="#111"/>
-  <!-- Labels -->
-  <text x="20" y="22" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#ccc">VL53L0X</text>
-  <text x="20" y="26" text-anchor="middle" font-family="monospace" font-size="2" fill="#888">ToF laser</text>
-  <!-- Bottom pins: VCC, GND, SDA, SCL -->
-  <line x1="8" y1="28" x2="8" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
-  <circle cx="8" cy="36" r="1.2" fill="#c0c0c0"/>
-  <line x1="16" y1="28" x2="16" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
-  <circle cx="16" cy="36" r="1.2" fill="#c0c0c0"/>
-  <line x1="24" y1="28" x2="24" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
-  <circle cx="24" cy="36" r="1.2" fill="#c0c0c0"/>
-  <line x1="32" y1="28" x2="32" y2="36" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
-  <circle cx="32" cy="36" r="1.2" fill="#c0c0c0"/>
-  <!-- Top pins: XSHUT, GPIO1 -->
-  <line x1="8" y1="4" x2="8" y2="0" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
-  <circle cx="8" cy="0" r="1.2" fill="#c0c0c0"/>
-  <line x1="16" y1="4" x2="16" y2="0" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
-  <circle cx="16" cy="0" r="1.2" fill="#c0c0c0"/>
+  <!-- One 6-pin header along the bottom edge, as on the breakout board (VCC, GND, SDA, SCL, XSHUT, GPIO1) -->
+  <rect x="2" y="4" width="52" height="34" rx="2" fill="#4a1a6b" stroke="#2d0d4d" stroke-width="0.8"/>
+  <g transform="translate(8 0)">
+    <!-- PCB (purple, typical GY-VL53L0X) -->
+    <!-- VL53L0X sensor package (metal can with aperture) -->
+    <rect x="11" y="7" width="14" height="10" rx="1" fill="#555" stroke="#444" stroke-width="0.5"/>
+    <!-- Dual aperture (emitter + detector) -->
+    <circle cx="15" cy="12" r="2.5" fill="#222" stroke="#333" stroke-width="0.4"/>
+    <circle cx="15" cy="12" r="1" fill="#440000" opacity="0.8"/>
+    <circle cx="22" cy="12" r="2.5" fill="#222" stroke="#333" stroke-width="0.4"/>
+    <circle cx="22" cy="12" r="1" fill="#111"/>
+    <!-- Labels -->
+    <text x="20" y="22" text-anchor="middle" font-family="monospace" font-size="2.5" fill="#ccc">VL53L0X</text>
+    <text x="20" y="26" text-anchor="middle" font-family="monospace" font-size="2" fill="#888">ToF laser</text>
+  </g>
+  <rect x="5.8" y="32.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="8" y1="38" x2="8" y2="44" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="8" cy="44" r="1.2" fill="#c0c0c0"/>
+  <text x="8" y="31.6" text-anchor="middle" font-family="monospace" font-size="1.9" fill="#ddd">VCC</text>
+  <rect x="13.8" y="32.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="16" y1="38" x2="16" y2="44" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="16" cy="44" r="1.2" fill="#c0c0c0"/>
+  <text x="16" y="31.6" text-anchor="middle" font-family="monospace" font-size="1.9" fill="#ddd">GND</text>
+  <rect x="21.8" y="32.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="24" y1="38" x2="24" y2="44" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="24" cy="44" r="1.2" fill="#c0c0c0"/>
+  <text x="24" y="31.6" text-anchor="middle" font-family="monospace" font-size="1.9" fill="#ddd">SDA</text>
+  <rect x="29.8" y="32.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="32" y1="38" x2="32" y2="44" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="32" cy="44" r="1.2" fill="#c0c0c0"/>
+  <text x="32" y="31.6" text-anchor="middle" font-family="monospace" font-size="1.9" fill="#ddd">SCL</text>
+  <rect x="37.8" y="32.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="40" y1="38" x2="40" y2="44" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="40" cy="44" r="1.2" fill="#c0c0c0"/>
+  <text x="40" y="31.6" text-anchor="middle" font-family="monospace" font-size="1.9" fill="#ddd">XSHUT</text>
+  <rect x="45.8" y="32.8" width="4.4" height="4.4" fill="#d9b44a" stroke="#8a6d1d" stroke-width="0.4"/>
+  <line x1="48" y1="38" x2="48" y2="44" stroke="#aaa" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="48" cy="44" r="1.2" fill="#c0c0c0"/>
+  <text x="48" y="31.6" text-anchor="middle" font-family="monospace" font-size="1.9" fill="#ddd">GPIO1</text>
 </svg>

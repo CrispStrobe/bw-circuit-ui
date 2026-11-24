@@ -1,42 +1,46 @@
 {
  "kind": "stm32f030",
- "w": 64,
- "h": 80,
+ "w": 146,
+ "h": 38,
+ "dip": {
+   "label": "STM32F030",
+   "subtitle": "TSSOP-20"
+ },
  "terminals": [
   {
    "name": "boot0",
-   "x": 0,
-   "y": 8,
+   "x": 10,
+   "y": 38,
    "functions": []
   },
   {
    "name": "pf0",
-   "x": 0,
-   "y": 15,
+   "x": 24,
+   "y": 38,
    "functions": []
   },
   {
    "name": "pf1",
-   "x": 0,
-   "y": 22,
+   "x": 38,
+   "y": 38,
    "functions": []
   },
   {
    "name": "nrst",
-   "x": 0,
-   "y": 29,
+   "x": 52,
+   "y": 38,
    "functions": []
   },
   {
    "name": "vcc2",
-   "x": 0,
-   "y": 36,
+   "x": 66,
+   "y": 38,
    "functions": []
   },
   {
    "name": "pa0",
-   "x": 0,
-   "y": 43,
+   "x": 80,
+   "y": 38,
    "functions": [
     "gpio",
     "adc0"
@@ -44,8 +48,8 @@
   },
   {
    "name": "pa1",
-   "x": 0,
-   "y": 50,
+   "x": 94,
+   "y": 38,
    "functions": [
     "gpio",
     "adc1"
@@ -53,8 +57,8 @@
   },
   {
    "name": "pa2",
-   "x": 0,
-   "y": 57,
+   "x": 108,
+   "y": 38,
    "functions": [
     "gpio",
     "adc2",
@@ -63,8 +67,8 @@
   },
   {
    "name": "pa3",
-   "x": 0,
-   "y": 64,
+   "x": 122,
+   "y": 38,
    "functions": [
     "gpio",
     "adc3",
@@ -73,8 +77,8 @@
   },
   {
    "name": "pa4",
-   "x": 0,
-   "y": 71,
+   "x": 136,
+   "y": 38,
    "functions": [
     "gpio",
     "adc4"
@@ -82,24 +86,24 @@
   },
   {
    "name": "pa14",
-   "x": 64,
-   "y": 8,
+   "x": 10,
+   "y": 0,
    "functions": [
     "swclk"
    ]
   },
   {
    "name": "pa13",
-   "x": 64,
-   "y": 15,
+   "x": 24,
+   "y": 0,
    "functions": [
     "swdio"
    ]
   },
   {
    "name": "pa10",
-   "x": 64,
-   "y": 22,
+   "x": 38,
+   "y": 0,
    "functions": [
     "gpio",
     "rxd1"
@@ -107,8 +111,8 @@
   },
   {
    "name": "pa9",
-   "x": 64,
-   "y": 29,
+   "x": 52,
+   "y": 0,
    "functions": [
     "gpio",
     "txd1"
@@ -116,20 +120,20 @@
   },
   {
    "name": "vcc",
-   "x": 64,
-   "y": 36,
+   "x": 66,
+   "y": 0,
    "functions": []
   },
   {
    "name": "gnd",
-   "x": 64,
-   "y": 43,
+   "x": 80,
+   "y": 0,
    "functions": []
   },
   {
    "name": "pb1",
-   "x": 64,
-   "y": 50,
+   "x": 94,
+   "y": 0,
    "functions": [
     "gpio",
     "pwm_tim3ch4"
@@ -137,8 +141,8 @@
   },
   {
    "name": "pa7",
-   "x": 64,
-   "y": 57,
+   "x": 108,
+   "y": 0,
    "functions": [
     "gpio",
     "adc7",
@@ -147,8 +151,8 @@
   },
   {
    "name": "pa6",
-   "x": 64,
-   "y": 64,
+   "x": 122,
+   "y": 0,
    "functions": [
     "gpio",
     "adc6",
@@ -157,8 +161,8 @@
   },
   {
    "name": "pa5",
-   "x": 64,
-   "y": 71,
+   "x": 136,
+   "y": 0,
    "functions": [
     "gpio",
     "adc5"

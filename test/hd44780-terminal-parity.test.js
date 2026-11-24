@@ -143,7 +143,6 @@ test('EVERY sidecar with an engine device agrees on terminals', () => {
     // open-drain pin actually driven), and bw-parts 315f606 drew it.
     // (b) different device: an engine change, not a catalog one.
     ['gas_sensor', 'sidecar is the 4-pin breakout MODULE (vcc gnd aout dout); the engine models the bare MQ element and its heater (a b heater_a heater_b)'],
-    ['ir_remote', 'sidecar is art only — it declares NO terminals at all; the engine models the emitting LED (anode cathode)'],
     ['stepper', 'sidecar is a 4-wire BIPOLAR motor (coil_a1 coil_b1 coil_a2 coil_b2); the engine models a 5-wire UNIPOLAR one (coil1..coil4 com)'],
   ]);
   const dir = path.join(here, '..', 'src', 'parts-data');
@@ -276,18 +275,18 @@ test('74hc595 and stc15_mcu place every engine name on a real leg', async () => 
   }
   // PINOUT-STC15.md's traps, pinned as geometry: VCC is pin 18 and GND pin
   // 20 (NOT the STC12's 40/20), RST is pin 17 = P5.4, and P0 runs ASCENDING
-  // from pin 1. Pins 1..20 are the sidecar's left column, so they share a
-  // row and step one pitch at a time.
+  // from pin 1. The sidecar lies on the breadboard pitch (notch left): pins
+  // 1..20 are the bottom row left to right, pins 40..21 the top row.
   const side15 = load('stc15_mcu');
-  const leftCol = side15.terminals.filter(t => t.x <= side15.w / 2).sort((a, b) => a.y - b.y);
-  assert.deepEqual(leftCol.slice(0, 8).map(t => t.name),
+  const bottom = side15.terminals.filter(t => t.y === side15.h).sort((a, b) => a.x - b.x);
+  assert.deepEqual(bottom.slice(0, 8).map(t => t.name),
     ['P0.0', 'P0.1', 'P0.2', 'P0.3', 'P0.4', 'P0.5', 'P0.6', 'P0.7'], 'P0 ascends from pin 1');
-  assert.equal(leftCol[16].name, 'P5.4', 'pin 17 is RST/P5.4');
-  assert.equal(leftCol[17].name, 'VCC', 'pin 18 is VCC — not pin 40');
-  assert.equal(leftCol[19].name, 'GND', 'pin 20 is GND');
-  const rightCol = side15.terminals.filter(t => t.x > side15.w / 2).sort((a, b) => a.y - b.y);
-  assert.equal(rightCol[0].name, 'P4.5', 'the right column starts at pin 40 and runs 40→21');
-  assert.equal(rightCol[19].name, 'P3.0', 'and ends at pin 21');
+  assert.equal(bottom[16].name, 'P5.4', 'pin 17 is RST/P5.4');
+  assert.equal(bottom[17].name, 'VCC', 'pin 18 is VCC — not pin 40');
+  assert.equal(bottom[19].name, 'GND', 'pin 20 is GND');
+  const top = side15.terminals.filter(t => t.y === 0).sort((a, b) => a.x - b.x);
+  assert.equal(top[0].name, 'P4.5', 'the top row starts at pin 40, above pin 1, and runs 40→21');
+  assert.equal(top[19].name, 'P3.0', 'and ends at pin 21, above pin 20');
 });
 
 /**

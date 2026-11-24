@@ -39,10 +39,10 @@ test('existing offsets that miss a terminal do not win', () => {
 });
 
 test('collapsed terminals get distinct single-row positions at a fixed pitch, names unchanged', () => {
-  // A real sidecar whose last two pins share one point (oe/out at 56,45),
-  // and synthetic ones with no coordinates or all on one spot.
+  // Two pins sharing one point (as tcs3200's oe/out did until bw-parts gave
+  // each its own leg, 2026-11-24), and ones with no coordinates or all on one spot.
   const cases = [
-    sidecar('tcs3200'),
+    { w: 56, h: 45, terminals: [['vcc', 8], ['gnd', 16], ['oe', 56], ['out', 56]].map(([name, x]) => ({ name, x, y: 45 })) },
     { terminals: [{ name: 'vcc' }, { name: 'gnd' }, { name: 'sig' }] },
     { w: 10, h: 10, terminals: ['p1', 'p2', 'p3', 'p4'].map(name => ({ name, x: 5, y: 5 })) },
   ];
@@ -125,7 +125,10 @@ test('every sidecar kind: no two generic-body pin labels overlap; pins never mov
 });
 
 test('header-row kinds: names stay inside the body and clear of the title', () => {
-  const kinds = rowKinds();
+  // No vendored sidecar collapses any more (tcs3200 and eater6502 got a leg
+  // per pin on 2026-11-24), so a collapsed one is made up to keep the check.
+  const made = { kind: 'collapsed', w: 80, h: 111, terminals: ['via1.pa0', 'via1.pb7', '5v', 'gnd', 'out', 'oe'].map(name => ({ name, x: 80, y: 111 })) };
+  const kinds = [...rowKinds(), made];
   assert.ok(kinds.length >= 1);
   for (const sc of kinds) {
     const { labels, box, titleY } = moduleLabelLayout(sc, moduleTerminalLayout(sc));

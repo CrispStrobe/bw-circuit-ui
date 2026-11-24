@@ -1,192 +1,196 @@
 {
   "kind": "darlington_driver",
-  "w": 60,
-  "h": 48,
+  "w": 132,
+  "h": 38,
+  "dip": {
+    "label": "DARLINGTON",
+    "subtitle": "8-CH DRIVER"
+  },
   "terminals": [
     {
       "name": "in0",
-      "x": 0,
-      "y": 8,
+      "x": 10,
+      "y": 38,
       "functions": []
     },
     {
       "name": "in1",
-      "x": 0,
-      "y": 13,
+      "x": 24,
+      "y": 38,
       "functions": []
     },
     {
       "name": "in2",
-      "x": 0,
-      "y": 18,
+      "x": 38,
+      "y": 38,
       "functions": []
     },
     {
       "name": "in3",
-      "x": 0,
-      "y": 23,
+      "x": 52,
+      "y": 38,
       "functions": []
     },
     {
       "name": "in4",
-      "x": 0,
-      "y": 28,
+      "x": 66,
+      "y": 38,
       "functions": []
     },
     {
       "name": "in5",
-      "x": 0,
-      "y": 33,
+      "x": 80,
+      "y": 38,
       "functions": []
     },
     {
       "name": "in6",
-      "x": 0,
+      "x": 94,
       "y": 38,
       "functions": []
     },
     {
       "name": "in7",
-      "x": 0,
-      "y": 43,
-      "functions": []
-    },
-    {
-      "name": "out0",
-      "x": 0,
-      "y": 48,
-      "functions": []
-    },
-    {
-      "name": "out1",
-      "x": 60,
-      "y": 8,
-      "functions": []
-    },
-    {
-      "name": "out2",
-      "x": 60,
-      "y": 13,
-      "functions": []
-    },
-    {
-      "name": "out3",
-      "x": 60,
-      "y": 18,
-      "functions": []
-    },
-    {
-      "name": "out4",
-      "x": 60,
-      "y": 23,
-      "functions": []
-    },
-    {
-      "name": "out5",
-      "x": 60,
-      "y": 28,
-      "functions": []
-    },
-    {
-      "name": "out6",
-      "x": 60,
-      "y": 33,
-      "functions": []
-    },
-    {
-      "name": "out7",
-      "x": 60,
+      "x": 108,
       "y": 38,
       "functions": []
     },
     {
+      "name": "out0",
+      "x": 122,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "out1",
+      "x": 10,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out2",
+      "x": 24,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out3",
+      "x": 38,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out4",
+      "x": 52,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out5",
+      "x": 66,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out6",
+      "x": 80,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "out7",
+      "x": 94,
+      "y": 0,
+      "functions": []
+    },
+    {
       "name": "com",
-      "x": 60,
-      "y": 43,
+      "x": 108,
+      "y": 0,
       "functions": []
     },
     {
       "name": "gnd",
-      "x": 60,
-      "y": 48,
+      "x": 122,
+      "y": 0,
       "functions": []
     }
   ],
   "variants": null,
   "_note": "ULN2003/2803 Darlington driver array. DIP-18. 8 channels: IN0-IN7 inputs, OUT0-OUT7 open-collector outputs, COM (flyback diode common).",
   "footprint": {
-    "refTerminal": "in0",
+    "refTerminal": "out1",
     "leads": {
       "in0": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 0
       },
       "in1": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 1
       },
       "in2": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 2
       },
       "in3": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 3
       },
       "in4": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 4
       },
       "in5": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 5
       },
       "in6": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 6
       },
       "in7": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 7
       },
       "out0": {
-        "dRow": 0,
+        "dRow": 5,
         "dCol": 8
       },
       "out1": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 0
       },
       "out2": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 1
       },
       "out3": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 2
       },
       "out4": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 3
       },
       "out5": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 4
       },
       "out6": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 5
       },
       "out7": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 6
       },
       "com": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 7
       },
       "gnd": {
-        "dRow": 5,
+        "dRow": 0,
         "dCol": 8
       }
     },
