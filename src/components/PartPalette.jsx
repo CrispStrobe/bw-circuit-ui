@@ -194,6 +194,36 @@ const CATEGORIES = [
         tooltip: 'Plate under a sheet of paper: the finger couples only through paperFarads; works best when the circuit runs from a mains adaptor (adaptorFarads)' },
       { kind: 'npn', label: 'Noise transistor (B-E breakdown)', params: { beta: 200, bvEbo: 7.5 }, color: '#7f8c8d',
         tooltip: 'NPN whose base-emitter junction breaks down at bvEbo volts: fed backwards through a resistor it hisses (avalanche noise); noiseFactor, noiseBandwidthHz' },
+      ],
+    },
+    {
+    // Optical links (bw-board optics.js): any LED, the IR LED or the laser
+    // shines on a phototransistor / photodiode / solar cell / photo-LED
+    // through a light path. A path names its emitter and receiver (from, to;
+    // with neither set it links the bench's only pair) and its knob moves the
+    // geometry param named by knob between knobMin and knobMax.
+    name: 'Optics',
+    parts: [
+      { kind: 'laser_diode', label: 'Laser diode', params: {}, color: '#e8302a',
+        tooltip: 'Red laser module (650 nm): lights above about 20 mA and keeps a narrow beam over metres' },
+      { kind: 'ir_transmitter', label: 'IR LED', params: {}, color: '#8e44ad',
+        tooltip: 'Infrared LED (940 nm): invisible, but a phototransistor sees it best' },
+      { kind: 'phototransistor', label: 'Phototransistor', params: {}, color: '#f39c12',
+        tooltip: 'Light-controlled transistor: collector current grows with the light on it' },
+      { kind: 'light_path', label: 'Optical bench (air)', params: { from: '', to: '', medium: 'air', distanceCm: 5, angleDeg: 0, knob: 'distanceCm', knobMin: 1, knobMax: 30 }, color: '#f1c40f',
+        tooltip: 'Free beam from the emitter to the receiver: the knob sets the distance (1–30 cm); light falls with the square of the distance' },
+      { kind: 'light_path', label: 'Light guide (fibre)', params: { from: '', to: '', medium: 'fibre', lengthM: 1, bendRadiusCm: 0, cutQuality: 1, outGapMm: 1, knob: 'outGapMm', knobMin: 0, knobMax: 20 }, color: '#e74c3c',
+        tooltip: 'Plastic light guide: bends, a rough cut, gaps, offsets and length cost light; the knob sets the gap at the receiver (0–20 mm)' },
+      { kind: 'light_path', label: 'Lens on the bench', params: { from: '', to: '', medium: 'air', lensFocalCm: 10, lensAtCm: 15, distanceCm: 40, knob: 'distanceCm', knobMin: 20, knobMax: 70 }, color: '#3498db',
+        tooltip: 'A lens images the LED: the receiver sees most light where 1/f = 1/u + 1/v puts the image; the knob moves the receiver' },
+      { kind: 'light_path', label: 'Coloured surface', params: { from: '', to: '', medium: 'reflect', surface: 'red', distanceCm: 1, knob: 'distanceCm', knobMin: 0.3, knobMax: 5 }, color: '#c0392b',
+        tooltip: 'Light reflected by a coloured surface (red, green, blue, yellow, white, black): a red surface reflects red light, a green one hardly' },
+      { kind: 'light_path', label: 'Prism and slit', params: { from: '', to: '', medium: 'prism', material: 'acrylic', slitAngleDeg: 37.5, knob: 'slitAngleDeg', knobMin: 36.5, knobMax: 39.5 }, color: '#9b59b6',
+        tooltip: 'A prism bends blue more than red: turn the slit (knob) across the spectrum to pick one colour' },
+      { kind: 'light_path', label: 'Glass of liquid', params: { from: '', to: '', medium: 'liquid', level: 0, distanceCm: 15, knob: 'level', knobMin: 0, knobMax: 1 }, color: '#1abc9c',
+        tooltip: 'A beam through a round glass: once the liquid reaches the beam it is refracted away from the receiver; the knob fills the glass' },
+      { kind: 'light_path', label: 'Plucked string', params: { from: '', to: '', medium: 'string', distanceCm: 2, stringHz: 110, decayS: 1.5, pluckPeriodS: 1, knob: 'stringHz', knobMin: 80, knobMax: 330 }, color: '#d35400',
+        tooltip: 'A string half in the beam: plucked, it shades the light at its own pitch; the knob tunes it (80–330 Hz)' },
     ],
   },
   {

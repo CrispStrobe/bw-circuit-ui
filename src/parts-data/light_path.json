@@ -1,0 +1,9 @@
+{
+  "kind": "light_path",
+  "w": 80,
+  "h": 40,
+  "terminals": [],
+  "variants": null,
+  "_note": "Optical path, no leads. Engine (bw-board light_path, src/optics.js): carries the light of the emitter named in params.from (led, ir_transmitter, laser_diode) to the receiver named in params.to (phototransistor, photodiode, solar_cell, LED with photoSensitivity); with neither named it links the bench's only emitter and only receiver. params.medium: air (optical bench, optional lens), fibre (plastic light guide: bends, joint gap/offset/angle, cut quality, length), reflect (coloured surface), prism (slit angle), liquid (glass of liquid, level), string (plucked string shading the beam). params.knob names the geometry param the knob control (0..1) moves between knobMin and knobMax. Drawn as a light guide between two holders.",
+  "footprint": null
+}

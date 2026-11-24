@@ -45,6 +45,9 @@ const STAMPED = new Set([
   // seven_seg_4: same composite generalized to 4 digits (the Prechin A2
   // tube), sevenSeg3Brightness(id, 4) reader — engine sibling of _3.
   'seven_seg_4',
+  // light_path: no leads, a built-in kind of bw-board's validator; the
+  // optics model (src/optics.js) reads it at setNetlist, nothing stamps it.
+  'light_path',
 ]);
 
 // The debt ledger — kinds with NO engine path today. Every entry is a

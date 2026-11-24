@@ -992,6 +992,11 @@ export class Circuit {
     return this.board.buzzerTone(partId);
   }
 
+  /** Optical links (bw-board optics.js): emitters' mW, receivers' light; null without a light path. */
+  opticalReport() {
+    return this.board.opticalReport ? this.board.opticalReport() : null;
+  }
+
   /**
    * @param {string} netId
    * @returns {number} volts
@@ -1624,6 +1629,9 @@ export function terminalsForKind(kind, params) {
   }
   switch (kind) {
     case 'esp32_4848s040': return [...ESP32_S040_TERMINALS];
+    // An optical path has no leads: it names its emitter and receiver
+    // (params.from / params.to) and carries the geometry (bw-board optics.js).
+    case 'light_path': return [];
     case 'vcc': return ['vcc'];
     case 'gnd': return ['gnd'];
     case 'resistor': return ['a', 'b'];

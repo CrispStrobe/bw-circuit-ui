@@ -20,6 +20,17 @@ export function PartTooltip({ part, circuit, visible, x, y, lang = 'en' }) {
   // Live readings from the engine (if available)
   try {
     switch (part.kind) {
+      // A light path: the light its receiver gets through it (full light = 100 %).
+      case 'light_path': {
+        const rep = circuit.opticalReport?.();
+        const rx = rep && (Object.entries(rep.receivers).find(([id]) => id === part.params?.to)
+          ?? Object.entries(rep.receivers)[0]);
+        if (rx) {
+          const pct = (rx[1].light * 100).toFixed(1);
+          lines.push(de ? `Licht am Empfänger: ${pct.replace('.', ',')} %` : `Light at receiver: ${pct}%`);
+        }
+        break;
+      }
       case 'led': {
         const b = circuit.ledBrightness(part.id);
         lines.push(de ? `Helligkeit: ${(b * 100).toFixed(1).replace('.', ',')} %` : `Brightness: ${(b * 100).toFixed(1)}%`);
