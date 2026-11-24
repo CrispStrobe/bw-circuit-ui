@@ -5,7 +5,7 @@
  * Parts with minimal electrical models are labeled "(drawable)".
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PartThumbnail } from './PartThumbnail.jsx';
 import { paletteText, paletteUi, ledColorName } from '../i18n/palette-de.js';
 
@@ -459,6 +459,41 @@ const CATEGORIES = [
 
 const ALL_PARTS = CATEGORIES.flatMap(c => c.parts);
 
+const thumbnailCallbacks = new WeakMap();
+let thumbnailObserver;
+
+function PalettePartThumbnail({ kind, color, params }) {
+  const container = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (visible) return undefined;
+    if (typeof IntersectionObserver === 'undefined') {
+      setVisible(true);
+      return undefined;
+    }
+    const target = container.current;
+    // The scrolling palette clips targets outside its viewport, even when the
+    // card remains mounted for keyboard navigation and search.
+    thumbnailObserver ??= new IntersectionObserver(entries => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        thumbnailCallbacks.get(entry.target)?.(true);
+      }
+    });
+    thumbnailCallbacks.set(target, setVisible);
+    thumbnailObserver.observe(target);
+    return () => {
+      thumbnailObserver.unobserve(target);
+      thumbnailCallbacks.delete(target);
+    };
+  }, [visible]);
+  return (
+    <div ref={container} style={{ width: 48, height: 48, display: 'flex' }}>
+      {visible && <PartThumbnail kind={kind} color={color} params={params} />}
+    </div>
+  );
+}
+
 export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark', lang = 'en' }) {
   const [filter, setFilter] = useState('');
   const [ledColor, setLedColor] = useState('red');
@@ -589,7 +624,7 @@ function PartButton({ part, palette, onAddPart, onDragPart, onStartPlace, ledCol
           transition: 'border-color 80ms, background 80ms',
         }}
       >
-        <PartThumbnail kind={kind} color={color} params={effectiveParams} />
+        <PalettePartThumbnail kind={kind} color={color} params={effectiveParams} />
         <div style={{
           color: palette.text,
           fontFamily: 'inherit',
