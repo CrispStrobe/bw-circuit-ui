@@ -49,8 +49,10 @@ const FIRST_ART_FACES = [
   'thermocouple',
   'air_coil',
   'electrolysis_cell',
-  // Optics: the laser module's brass barrel and beam.
+  // Optics: the laser module's brass barrel and beam, and the phototransistor
+  // (bw-parts 2026-11-24: its leads splay out to the footprint's columns).
   'laser_diode',
+  'phototransistor',
   // Radio: the VHF tank coil and the varicap.
   'vhf_coil',
   'varicap',
@@ -100,8 +102,6 @@ export const ART_FACE_EXCEPTIONS = Object.freeze({
   breadboard_full: 'the breadboard is the substrate BreadboardView draws, not a part face',
   breadboard_half: 'the breadboard is the substrate BreadboardView draws, not a part face',
   breadboard_mini: 'the breadboard is the substrate BreadboardView draws, not a part face',
-  // Redrawn by the optics lane (2026-11-24), not here.
-  phototransistor: 'collector and emitter leave the top and bottom of the art, seated in one row: the top lead would cross the body (its redraw belongs to the optics lane)',
   ad8541: SMD, ad8602: SMD, ada4522_1: SMD, adtl082: SMD, lt1006: SMD, lt1678: SMD, op747: SMD, adp151: SMD,
 });
 

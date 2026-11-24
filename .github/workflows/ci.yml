@@ -170,15 +170,32 @@ jobs:
           node-version: 22
       # The independent DRC oracle: our router's output judged by a
       # checker nobody here wrote. kicad-cli 8+ has `pcb drc --format json`.
-      - name: Install kicad-cli (KiCad 8 — `pcb drc` does not exist in the 7.x that plain apt ships)
+      # `pcb drc` needs KiCad 8+. ubuntu-24.04's own archive ships 7.0.11, so
+      # this step used to add ppa:kicad/kicad-8.0-releases unconditionally.
+      # ubuntu-latest became ubuntu-26.04 ("resolute") in Nov 2026; that PPA
+      # never published a resolute suite, so `apt-get update` 404'd and the
+      # job died here. resolute's own universe ships kicad 9.x, so the PPA is
+      # now only a fallback for a runner whose archive is older than 8.
+      - name: Install kicad-cli (KiCad 8+; `pcb drc` does not exist in 7.x)
         run: |
-          sudo add-apt-repository -y ppa:kicad/kicad-8.0-releases
           sudo apt-get update -q
+          candidate=$(apt-cache policy kicad | awk '/Candidate:/{print $2}')
+          major=${candidate#*:}; major=${major%%.*}
+          echo "archive kicad candidate: ${candidate:-none}"
+          if ! [ "${major:-0}" -ge 8 ] 2>/dev/null; then
+            sudo add-apt-repository -y ppa:kicad/kicad-8.0-releases
+            sudo apt-get update -q
+          fi
           sudo apt-get install -y --no-install-recommends kicad
+          kicad-cli version
       # The engine is the `bw-board` devDependency (a git sha in package.json);
       # test/_setup.js imports it by name, so the install IS the checkout.
       - run: npm install --no-audit --no-fund
       - name: Run the oracle
+        # Here a missing or pre-8 kicad-cli is a failure, not a skip: a
+        # silently skipped oracle reads as a pass.
+        env:
+          KICAD_ORACLE_REQUIRED: '1'
         run: node scripts/kicad-oracle.mjs
 
   # The SPICE oracle: a real simulator judges our exporter (ROADMAP X0.1).

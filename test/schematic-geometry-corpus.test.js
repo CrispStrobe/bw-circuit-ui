@@ -111,6 +111,7 @@ import './_setup.js';
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyse, discover, wireThroughForeignPinOf, crossingsOf, foreignContactOf,
@@ -164,7 +165,13 @@ const KNOWN_UNCONNECTED_PINS = new Map([
  * the lie. Recorded per KIND so the number cannot grow quietly.
  * MAY ONLY SHRINK.
  */
-const KNOWN_UNUSED_LEADS = new Map([
+// A census of the CORPUS, so it is recorded per corpus REVISION, the way the
+// serialiser round-trip records its hole-wire count: CI checks out the pin in
+// docs/schematic-baselines/CORPUS.json (corpusSha), and that pin's entry is
+// mandatory. A checkout at a revision not listed here is held to the pin's
+// numbers and fails with its own revision named: record it deliberately.
+const KNOWN_UNUSED_LEADS_BY_CORPUS = {
+  c593574367179132aa193d7f5a4477c0299e3ab3: new Map([
   // 70-calculator-simple's `pwr` is wired com + a: the second throw is spare,
   // and the SPDT drawing shows it, which is the point of drawing an SPDT.
   //
@@ -182,7 +189,39 @@ const KNOWN_UNUSED_LEADS = new Map([
   ['potentiometer', 18],
   // pc25-relay-isolator: the armature end, drawn mid-swing between contacts.
   ['relay', 2],
-]);
+]),
+  // sb3-creator main de3c53c8 (2026-11-24): 130 lab-* benches and the school-*
+  // set arrived (cc3ea69d is an ancestor). Every one of the 46 new unreached
+  // leads was checked against resolvedNets: in each the terminal is OPEN in
+  // the source circuit, so drawing its lead unconnected is the honest drawing,
+  // the same shape the entries above record. Three kinds are new here and
+  // were admitted for that reason only, not to get green:
+  //   npn (7)       lab-noise-drum/-hiss/steam-train use a B-E junction as a
+  //                 noise source, collector open; lab-transistor-two-diodes
+  //                 uses each transistor as two diodes, one leg open.
+  //   diode (5), resistor (5)  school-led-people-dog x5: diode_19's cathode
+  //                 and resistor_4's `b` are wired to nothing in the file.
+  // Grown kinds: slide_switch +12 (one throw used: lab-capacitive-level x3,
+  // lab-lamp-monitor x2, ...), potentiometer +14 (rheostat use; eight in
+  // school-miniorgan-107056, `a` open), relay +1 (lab-ring-relay, nc open).
+  de3c53c83ba4df23478b35645b47ead76c43e2e6: new Map([
+    ['slide_switch', 37], ['potentiometer', 32], ['relay', 3],
+    ['npn', 7], ['diode', 5], ['resistor', 5],
+  ]),
+};
+const PINNED_CORPUS = JSON.parse(readFileSync(
+  path.join(here, '..', 'docs', 'schematic-baselines', 'CORPUS.json'), 'utf8')).corpusSha;
+const corpusRevision = (() => {
+  if (!examplesRoot) return null;
+  try {
+    return execFileSync('git', ['-C', examplesRoot, 'rev-parse', 'HEAD'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch { return null; }
+})();
+const KNOWN_UNUSED_LEADS = KNOWN_UNUSED_LEADS_BY_CORPUS[corpusRevision]
+  ?? KNOWN_UNUSED_LEADS_BY_CORPUS[PINNED_CORPUS] ?? new Map();
+const unusedLeadsRecordedFor = corpusRevision in KNOWN_UNUSED_LEADS_BY_CORPUS
+  ? `corpus ${corpusRevision}` : `the pin ${PINNED_CORPUS} (checkout is ${corpusRevision ?? 'not a git checkout'})`;
 
 /**
  * The TEXT ratchets. Fourth-pass finding: classes A-T all read geometry, and
@@ -210,10 +249,14 @@ const TEXT_RATCHET = { pinNameCollisions: 0, labelTextOnCopper: 0 };
  * wide symbols whose own pin rows put their labels there; neither is caused
  * by label placement. MAY ONLY SHRINK.
  */
-const KNOWN_LABEL_ON_BODY = new Map([
-  ['char_lcd_i2c', 6],
-  ['lm358', 2],
-]);
+// EMPTY since 2026-11-24. labelPin used to clear bodies only for the
+// non-primary directions, on the ground that the primary one points away from
+// the pin's own body — but not from a NEIGHBOUR's. A top-facing wiper with a
+// resistor 18px above it put its text on the resistor (sb3 lab-beats, rmB).
+// Clearing every body in every direction also removed the two recorded wide
+// symbols (char_lcd_i2c 6, lm358 2): a shorter leader or a nudge fit there
+// too. A new entry needs the same evidence as before: no candidate fits.
+const KNOWN_LABEL_ON_BODY = new Map();
 
 describe('schematic geometry across the whole shipped corpus', () => {
   const files = examplesRoot ? discover(examplesRoot) : null;
@@ -402,6 +445,12 @@ describe('schematic geometry across the whole shipped corpus', () => {
       + 'schematic-symbols.js); the labelled generic box draws a lead to every pin by construction.');
   });
 
+  test('Q2: the pinned corpus revision has a recorded unused-lead census', () => {
+    assert.ok(KNOWN_UNUSED_LEADS_BY_CORPUS[PINNED_CORPUS] instanceof Map,
+      `CORPUS.json pins ${PINNED_CORPUS}, which has no entry in KNOWN_UNUSED_LEADS_BY_CORPUS: `
+      + 'measure it on that revision (EXAMPLES_DIR) and record it with the pin bump');
+  });
+
   test('Q2: the unused-lead ratchet matches the corpus by kind, and may only shrink', () => {
     const q2 = report('Q2 symbol lead reaching no pin', r => r.orphanLeads);
     const byKind = new Map();
@@ -412,7 +461,8 @@ describe('schematic geometry across the whole shipped corpus', () => {
         + 'symbol acquired a lead its pins cannot reach, or a kind started falling back to art '
         + 'that does not fit it. Fix the cause; do NOT add an entry to make this pass.');
       assert.equal(n, KNOWN_UNUSED_LEADS.get(kind),
-        `${kind} now leaves ${n} lead(s) unreached, recorded as ${KNOWN_UNUSED_LEADS.get(kind)}`);
+        `${kind} now leaves ${n} lead(s) unreached, recorded as ${KNOWN_UNUSED_LEADS.get(kind)} `
+        + `for ${unusedLeadsRecordedFor}`);
     }
     for (const kind of KNOWN_UNUSED_LEADS.keys()) {
       assert.ok(byKind.has(kind),

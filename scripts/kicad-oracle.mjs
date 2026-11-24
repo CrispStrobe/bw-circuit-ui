@@ -97,7 +97,7 @@ const which = spawnSync('kicad-cli', ['version'], { encoding: 'utf8' });
 const haveKicad = which.status === 0;
 if (!haveKicad) {
   console.log('kicad-cli not found — oracle SKIPPED (the CI job runs it with KiCad installed).');
-  process.exit(0);
+  process.exit(process.env.KICAD_ORACLE_REQUIRED ? 1 : 0);
 }
 const version = which.stdout.trim();
 console.log(`kicad-cli ${version}`);
@@ -106,7 +106,7 @@ if (Number(version.split('.')[0]) < 8) {
   // Found the hard way: ubuntu-latest's apt ships 7.0.11 and the missing
   // subcommand surfaced as a missing report file, not as a message.
   console.log(`kicad-cli ${version} has no 'pcb drc' — oracle SKIPPED (needs KiCad 8+).`);
-  process.exit(0);
+  process.exit(process.env.KICAD_ORACLE_REQUIRED ? 1 : 0);
 }
 
 const dir = mkdtempSync(join(tmpdir(), 'bw-kicad-oracle-'));
@@ -141,6 +141,20 @@ for (const [name, circuit] of CASES) {
       }],
     },
   }));
+  // The same rules as a custom-rules file. KiCad 9 does not apply the
+  // .kicad_pro netclass above: under 9.0.8 (ubuntu-26.04's archive) every SMD
+  // case reported "clearance 0.2000 mm; actual 0.1950 mm" — the 0.2 mm
+  // default — on boards KiCad 8.0.9 judged clean at 0.127. A .kicad_dru
+  // beside the board is read by `pcb drc` in 8 and 9 alike, and a custom
+  // rule takes precedence over the netclass, so both versions judge by the
+  // same numbers. Not a relaxation: these are the rules the oracle always
+  // stated (min_clearance / Default netclass above).
+  writeFileSync(join(dir, `${name}.kicad_dru`), [
+    '(version 1)',
+    '(rule "bw clearance" (constraint clearance (min 0.127mm)))',
+    '(rule "bw track width" (constraint track_width (min 0.2mm)))',
+    '',
+  ].join('\n'));
   const report = join(dir, `${name}.drc.json`);
   const run = spawnSync('kicad-cli', ['pcb', 'drc', '--format', 'json', '--output', report,
     '--severity-error', '--severity-warning', pcbPath], { encoding: 'utf8' });
