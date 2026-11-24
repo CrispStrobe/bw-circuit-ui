@@ -105,7 +105,7 @@ function snapToGrid(v) {
  */
 const TONE_KINDS = new Set(['buzzer', 'piezo', 'speaker', 'earphone']);
 
-export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, curriculum, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
+export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, examplesError, curriculum, onOpenExamples, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -280,7 +280,12 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   const narrowScreen = useNarrowScreen();
   const [selectorsOpen, setSelectorsOpen] = useState(!embedded && !narrowScreenNow());
   const [partsOpen, setPartsOpen] = useState(!embedded);
-  const [examplesOpen, setExamplesOpen] = useState(true);
+  // Hosts that provide onOpenExamples opt in to loading this rail on demand.
+  const [examplesOpen, setExamplesOpen] = useState(!onOpenExamples);
+  const openExamples = () => {
+    setExamplesOpen(true);
+    onOpenExamples?.();
+  };
   const [selectorSplit, setSelectorSplit] = useState(0.68);
   const [codexMode, setCodexMode] = useState(false);
   // Owner requirement: every fresh designer prioritizes bench space. A
@@ -1386,7 +1391,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
             <span style={{display: 'block', width: 42, height: 2, margin: '2px auto', background: '#475569', borderRadius: 2}} />
           </div>
           <div data-examples-selector style={{position: 'relative', flex: examplesOpen ? `${1 - selectorSplit} 1 0` : '0 0 30px', minHeight: examplesOpen ? 70 : 30, overflowY: examplesOpen ? 'auto' : 'hidden', display: 'flex', flexDirection: 'column'}}>
-            <button onClick={() => setExamplesOpen(v => !v)} aria-label={/^de/i.test(lang) ? (examplesOpen ? 'Beispiele einklappen' : 'Beispiele ausklappen') : (examplesOpen ? 'Collapse Examples' : 'Expand Examples')} aria-expanded={examplesOpen} title={/^de/i.test(lang) ? (examplesOpen ? 'Beispiele einklappen' : 'Beispiele ausklappen') : (examplesOpen ? 'Collapse Examples' : 'Expand Examples')} style={{position: 'absolute', zIndex: 4, left: 2, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{examplesOpen ? '‹' : '›'}</button>
+            <button onClick={examplesOpen ? () => setExamplesOpen(false) : openExamples} aria-label={/^de/i.test(lang) ? (examplesOpen ? 'Beispiele einklappen' : 'Beispiele ausklappen') : (examplesOpen ? 'Collapse Examples' : 'Expand Examples')} aria-expanded={examplesOpen} title={/^de/i.test(lang) ? (examplesOpen ? 'Beispiele einklappen' : 'Beispiele ausklappen') : (examplesOpen ? 'Collapse Examples' : 'Expand Examples')} style={{position: 'absolute', zIndex: 4, left: 2, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{examplesOpen ? '‹' : '›'}</button>
             {examplesOpen ? (<>
             {/* Codex / Gallery toggle — only shown when both examples and curriculum are available */}
             {examples && onLoadExample && curriculum && (
@@ -1422,12 +1427,16 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                   if (onProgramChange && ex.program) onProgramChange(ex.program, opts);
                 }} theme={theme} />
               )
+            ) : onOpenExamples ? (
+              <div role="status" style={{padding: '5px 8px 5px 30px', fontSize: 11}}>
+                {examplesError || (/^de/i.test(lang) ? 'Beispiele werden geladen …' : 'Loading examples…')}
+              </div>
             ) : (
               <InferPanel onLoadCircuit={handleLoadCircuit} />
             )}
             </div>
             </>) : (
-              <div style={{padding: '6px 8px 6px 14px', color: '#334155', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%'}} onClick={() => setExamplesOpen(true)}>{/^de/i.test(lang) ? 'Beispiele' : 'Examples'}</div>
+              <div style={{padding: '6px 8px 6px 14px', color: '#334155', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%'}} onClick={openExamples}>{/^de/i.test(lang) ? 'Beispiele' : 'Examples'}</div>
             )}
           </div>
         </div>
