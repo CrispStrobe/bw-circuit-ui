@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -252,10 +252,17 @@ test('command-scoped --current guard omission reproduces successful unrequested 
 });
 
 function assertDefaultAndLegacyProfiles(defaultPolicy,legacyPolicy) {
-  const {id:defaultId,minStepSec:defaultFloor,floorHistoryRestart,...defaultShared}=defaultPolicy;
+  // v2-only policy fields. richardsonLte arrived with bw-board 74d42338
+  // (2026-11-23, Richardson-corrected step control: the step-doubling
+  // difference is scaled by 1/(2^p-1) in interactive-v2 only; v1 and
+  // precision-v1 keep their recorded behaviour). It is pulled out here so the
+  // remaining fields are still required to match v1 exactly, and the legacy
+  // side's rest still fails if v1 ever grows it.
+  const {id:defaultId,minStepSec:defaultFloor,floorHistoryRestart,richardsonLte,...defaultShared}=defaultPolicy;
   const {id:legacyId,minStepSec:legacyFloor,...legacyShared}=legacyPolicy;
   assert.equal(defaultId,'interactive-v2');assert.equal(defaultFloor,1e-15);
   assert.equal(floorHistoryRestart,true);
+  assert.equal(richardsonLte,true);
   assert.equal(legacyId,'interactive-v1');assert.equal(legacyFloor,1e-8);
   assert.deepEqual(defaultShared,legacyShared,'all other fixed policy fields remain equal');
 }
@@ -446,11 +453,12 @@ test('installed LM741 precision CLI proves six signed phase captures and finite 
 test('default/legacy profile controls reject rollback, substitution and unreviewed policy drift',()=>{
   const shared={relativeTolerance:1e-4,absoluteVoltage:1e-6,absoluteCurrent:1e-9,
     seedStepSec:1e-9,maxStepSec:1e-4,maxAttempts:20000};
-  const current={...shared,id:'interactive-v2',minStepSec:1e-15,floorHistoryRestart:true};
+  const current={...shared,id:'interactive-v2',minStepSec:1e-15,floorHistoryRestart:true,richardsonLte:true};
   const legacy={...shared,id:'interactive-v1',minStepSec:1e-8};
   assertDefaultAndLegacyProfiles(current,legacy);
   for(const changed of [{...current,id:'interactive-v1'},{...current,minStepSec:1e-14},
-    {...current,floorHistoryRestart:false},{...current,maxAttempts:10000}]) {
+    {...current,floorHistoryRestart:false},{...current,richardsonLte:false},
+    {...current,richardsonLte:undefined},{...current,maxAttempts:10000}]) {
     assert.throws(()=>assertDefaultAndLegacyProfiles(changed,legacy),assert.AssertionError);
   }
   assert.throws(()=>assertDefaultAndLegacyProfiles(current,current),assert.AssertionError);
@@ -1742,7 +1750,9 @@ test('actual CLI receipts bind batch/watch, overrides, rounded clock and failed 
       '--json','--receipt',snapshotPath],{BW_BOARD:override});
     assert.equal(snapshot.status,0,snapshot.stderr);
     const snapshotReceipt=JSON.parse(readFileSync(snapshotPath,'utf8'));
-    assert.equal(snapshotReceipt.engine.observed.root,override);
+    // runtimeReceipt() records the canonical root (realpathSync). On macOS
+    // tmpdir() is /var/... -> /private/var/..., so the raw join() is not it.
+    assert.equal(snapshotReceipt.engine.observed.root,realpathSync(override));
     assert.notEqual(snapshotReceipt.engine.observed.jsJsonTreeSha256,receipt.engine.observed.jsJsonTreeSha256);
     assert.equal(snapshotReceipt.engine.observed.jsJsonTreeSha256,runtimeReceipt(override).jsJsonTreeSha256);
     assert.equal(snapshotReceipt.engine.declaredPackageSpec,receipt.engine.declaredPackageSpec);

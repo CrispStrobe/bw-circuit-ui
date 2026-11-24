@@ -41,6 +41,14 @@ export function validateOracleProcess(process) {
     throw new Error(`ngspice did not complete successfully: ${process.error || process.stderr || process.stdout}`);
   }
 }
+// Distribution builds carry point releases in the banner ("ngspice-45.2 :",
+// Ubuntu 26.04's apt package); source builds print the bare major
+// ("ngspice-47 :"). Exactly one banner line must name the release.
+export function parseNgspiceRelease(banner) {
+  const releases=[...String(banner).matchAll(/\bngspice-(\d+(?:\.\d+)*)\s*:/g)].map(m=>m[1]);
+  if (releases.length !== 1) throw new Error('Ambiguous ngspice version');
+  return {release:releases[0], major:Number(releases[0].split('.')[0])};
+}
 function executablePath(binary) {
   const paths=isAbsolute(binary)?[binary]:(process.env.PATH||'').split(delimiter).map(p=>join(p,binary));
   for (const path of paths) try {accessSync(path,constants.X_OK); return realpathSync(path);} catch {/* next PATH entry */}
@@ -52,15 +60,14 @@ export function runNgspiceVector({deck, vector, times, binary='ngspice'}) {
   const executable=executablePath(binary);
   const version=spawnSync(executable,['--version'],{encoding:'utf8',timeout:30_000});
   validateOracleProcess(version);
-  const versions=[...version.stdout.matchAll(/\bngspice-(\d+)\s*:/g)].map(m=>Number(m[1]));
-  if (versions.length !== 1) throw new Error('Ambiguous ngspice version');
+  const release=parseNgspiceRelease(version.stdout);
   const directory=mkdtempSync(join(tmpdir(),'cui-spice-vector-'));
   const vectorFile=join(directory,'vector.txt'), deckFile=join(directory,'input.cir');
   const input=deck.replace(/^\s*\.end\s*$/im,`.control\nset numdgt=17\nset wr_vecnames\nset wr_singlescale\nrun\nwrdata vector.txt ${vector}\nquit\n.endc\n.end`);
   writeFileSync(deckFile,input);
   const result=spawnSync(executable,['-n','-b',deckFile],{cwd:directory,encoding:'utf8',timeout:60_000,maxBuffer:16*1024*1024});
   writeFileSync(join(directory,'stdout.txt'),result.stdout||''); writeFileSync(join(directory,'stderr.txt'),result.stderr||'');
-  const identity={executable, executableSha256:hash(readFileSync(executable)), version:versions[0], versionBanner:version.stdout,
+  const identity={executable, executableSha256:hash(readFileSync(executable)), version:release.major, release:release.release, versionBanner:version.stdout,
     args:['-n','-b',deckFile], cwd:directory, compatibility:'personal initialization disabled', vector, times, deckSha256:hash(input), directory, status:result.status};
   writeFileSync(join(directory,'identity.json'),JSON.stringify(identity,null,2)+'\n');
   try {
