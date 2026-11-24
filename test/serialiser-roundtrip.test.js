@@ -266,6 +266,10 @@ describe('serialiser round-trip over gallery corpus', () => {
   //   01e1280 (master 2026-11-23) 360 files  1310
   //   539a3d9 (main 2026-11-23, #192)        1310
   //   cafdfb1 (main 2026-11-24, #193: 38 round-4 lab benches)  1426
+  //   de3c53c (main 2026-11-24, the CI pin from bw-circuit-ui's corpus bump;
+  //            397 files)                                           1423
+  //            Same with and without that bump's loader change (an unstamped
+  //            wire adopting a stamped net), so the -3 is the corpus.
   // A revision not listed here is compared with the pin's count and fails with
   // its own revision in the message: record it here deliberately, never widen.
   const KNOWN_UNATTACHED_BY_CORPUS = {
@@ -273,6 +277,7 @@ describe('serialiser round-trip over gallery corpus', () => {
     '01e1280652a95a147a24b00cf72a7dfbc04702d9': 1310,
     '539a3d9eefd6d6be804f8f6b48e83465861d99ce': 1310,
     cafdfb1a673e38e0fee853bbd9dddfaef2286fe7: 1426,
+    de3c53c83ba4df23478b35645b47ead76c43e2e6: 1423,
   };
   const PINNED_CORPUS = JSON.parse(readFileSync(
     path.join(here, '..', 'docs', 'schematic-baselines', 'CORPUS.json'), 'utf8')).corpusSha;
