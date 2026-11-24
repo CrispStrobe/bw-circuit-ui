@@ -12,7 +12,9 @@
  * the amplitude proportional to the coil current (1 at rated power). When it
  * is present the gain is FULL_GAIN × level, clamped to 0..1, and follows it
  * on every update; when it is absent (buzzer, piezo) the gain stays at
- * FULL_GAIN exactly as before.
+ * FULL_GAIN exactly as before. A tone flagged `noise` (an irregular coil
+ * current, e.g. a junction in avalanche breakdown) plays looped white noise
+ * at that gain instead of an oscillator.
  *
  * The AudioContext is SHARED: if the host (Scratch) already owns one,
  * call setSharedAudioContext() and every oscillator will use it instead
@@ -79,6 +81,32 @@ export function updateBuzzerAudio(partId, tone) {
   let entry = oscillators.get(partId);
   const hasLevel = typeof tone.level === 'number' && Number.isFinite(tone.level);
   const gainValue = hasLevel ? FULL_GAIN * Math.min(1, Math.max(0, tone.level)) : FULL_GAIN;
+  // A coil whose current crosses at random intervals is NOISE (bw-board
+  // reports `noise` from the irregularity of its periods: a breakdown
+  // junction's hiss). An oscillator at its momentary "pitch" would warble;
+  // play white noise at the same loudness instead. Switching between a
+  // tone and noise rebuilds the source.
+  const noisy = tone.noise === true;
+  if (entry && (entry.noise === true) !== noisy) {
+    stopBuzzer(partId);
+    entry = null;
+  }
+
+  if (!entry && noisy) {
+    const src = createNoiseSource(ctx);
+    if (!src) return;
+    const gain = ctx.createGain();
+    gain.gain.value = gainValue;
+    src.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+    entry = { osc: src, gain, noise: true };
+    oscillators.set(partId, entry);
+  }
+  if (entry?.noise) {
+    if (hasLevel) entry.gain.gain.setTargetAtTime(gainValue, ctx.currentTime, 0.01);
+    return;
+  }
 
   if (!entry) {
     const osc = ctx.createOscillator();
@@ -97,6 +125,29 @@ export function updateBuzzerAudio(partId, tone) {
   entry.osc.frequency.setTargetAtTime(tone.hz, ctx.currentTime, 0.01);
   // Loudness follows the coil current; a tone without a level keeps its gain.
   if (hasLevel) entry.gain.gain.setTargetAtTime(gainValue, ctx.currentTime, 0.01);
+}
+
+/** One second of white noise, made once per context and looped. */
+let noiseBuffer = null;
+let noiseBufferCtx = null;
+function createNoiseSource(ctx) {
+  if (typeof ctx.createBuffer !== 'function' || typeof ctx.createBufferSource !== 'function') return null;
+  if (!noiseBuffer || noiseBufferCtx !== ctx) {
+    const rate = ctx.sampleRate || 44100;
+    noiseBuffer = ctx.createBuffer(1, rate, rate);
+    const data = noiseBuffer.getChannelData(0);
+    // A fixed linear-congruential sequence: the same hiss every time.
+    let x = 12345;
+    for (let i = 0; i < data.length; i++) {
+      x = (Math.imul(x, 1103515245) + 12345) >>> 0;
+      data[i] = (x / 4294967296) * 2 - 1;
+    }
+    noiseBufferCtx = ctx;
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer;
+  src.loop = true;
+  return src;
 }
 
 /**

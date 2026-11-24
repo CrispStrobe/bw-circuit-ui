@@ -42,6 +42,9 @@ export const ART_FACE_KINDS = Object.freeze([
   'st7920', 'tilevga', 'tilt_switch', 'tilt_switch_v2', 'tm1637', 'tmp36', 'touch_ttp223',
   'ultrasonic', 'ultrasonic_3pin', 'um66t', 'veml7700', 'vga_prop_card', 'vibration_motor',
   'voltmeter', 'vreg', 'xpt2046', 'ze08_ch2o', 'pir_sensor', 'motor_encoder',
+  // The field probe's art is its body; its distance knob sits beside it
+  // (BoardCanvas WokwiParts), so the art never has to show a setting.
+  'field_probe',
 ]);
 
 const DIP_ART = 'DIP art (pins on two side columns of a chip body): seated, the package straddles the gutter on the 14-unit pitch, so its legs would run across the chip into the holes; the chip box with a notch is the honest face';
