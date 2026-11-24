@@ -44,6 +44,7 @@ const CATEGORY_COLORS = {
 };
 
 const DIFFICULTY_LABELS = ['', 'Beginner', 'Intermediate', 'Advanced'];
+const EXAMPLES_PER_PAGE = 32;
 
 // The browser's own words in German. Catalogue keys stay English; only what is SHOWN moves.
 const EB_DE = {
@@ -56,6 +57,8 @@ const EB_DE = {
   'Load an example to see information': 'Lade ein Beispiel, um Informationen zu sehen',
   'Search {n} examples\u2026': '{n} Beispiele durchsuchen\u2026', 'Clear search': 'Suche leeren',
   'No examples match these filters.': 'Keine Beispiele passen zu diesen Filtern.',
+  'Example pages': 'Beispielseiten', 'Previous page': 'Vorherige Seite', 'Next page': 'Nächste Seite',
+  'Page {page} of {total}': 'Seite {page} von {total}',
   'level {n}': 'Stufe {n}', 'Open \u201c{title}\u201d?': '\u201e{title}\u201c öffnen?', 'Chip': 'Chip',
   'Cancel': 'Abbrechen', 'OK': 'OK', ' — unavailable: ': ' — nicht verfügbar: ',
 };
@@ -110,6 +113,8 @@ function targetLabel(target, lang) {
  */
 export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: themeProp, currentDevice }) {
   const [filter, setFilter] = useState('');
+  const [requestedPage, setRequestedPage] = useState(0);
+  const scrollArea = useRef(null);
   // The on-demand example info lived in InferPanel and was LOST when
   // this browser took over examples mode — restored here: load an
   // example, the i button shows its details compactly.
@@ -199,6 +204,19 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
     return list;
   }, [examples, filter, selectedCategory, selectedDifficulty, selectedPart, selectedTarget, lang]);
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / EXAMPLES_PER_PAGE));
+  const page = Math.min(requestedPage, pageCount - 1);
+  const pageStart = page * EXAMPLES_PER_PAGE;
+  const pageExamples = filtered.slice(pageStart, pageStart + EXAMPLES_PER_PAGE);
+  const changeFilter = (setter, value) => {
+    setRequestedPage(0);
+    setter(value);
+  };
+  const goToPage = nextPage => {
+    setRequestedPage(nextPage);
+    if (scrollArea.current) scrollArea.current.scrollTop = 0;
+  };
+
   if (!examples || examples.length === 0) {
     return (
       <div style={{
@@ -245,7 +263,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         </div>
       )}
 
-      {!open ? null : <div data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, maxHeight: 'none', overflowY: 'auto', overscrollBehavior: 'contain'}}>
+      {!open ? null : <div ref={scrollArea} data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, maxHeight: 'none', overflowY: 'auto', overscrollBehavior: 'contain'}}>
 
       {/* Search — prominent for large catalogues */}
       <div style={{ position: 'relative', marginBottom: '6px' }}>
@@ -254,7 +272,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         <input
           type="text"
           value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          onChange={(e) => changeFilter(setFilter, e.target.value)}
           placeholder={ebt('Search {n} examples\u2026', lang, {n: examples.length})}
           style={{
             width: '100%', padding: '6px 8px 6px 28px',
@@ -264,7 +282,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
             boxSizing: 'border-box',
           }}
         />
-        {filter && <button type="button" onClick={() => setFilter('')}
+        {filter && <button type="button" onClick={() => changeFilter(setFilter, '')}
           style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
             background: 'none', border: 'none', color: palette.muted, cursor: 'pointer',
             fontSize: '14px', padding: '0 2px', lineHeight: 1 }}
@@ -284,7 +302,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', rowGap: '6px', paddingBottom: '4px', marginBottom: '4px'}}>
       <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap', rowGap: '4px' }}>
         <button
-          onClick={() => setSelectedCategory(null)}
+          onClick={() => changeFilter(setSelectedCategory, null)}
           style={{
             padding: '5px 9px', borderRadius: '5px', fontSize: '12px',
             fontFamily: 'inherit', cursor: 'pointer',
@@ -296,7 +314,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         {categories.map(cat => (
           <button
             key={cat}
-            onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+            onClick={() => changeFilter(setSelectedCategory, selectedCategory === cat ? null : cat)}
             style={{
               padding: '5px 9px', borderRadius: '5px', fontSize: '12px',
               fontFamily: 'inherit', cursor: 'pointer',
@@ -309,32 +327,32 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       </div>
 
       <FilterRow label={ebt('Level', lang)} palette={palette}>
-        <FilterButton palette={palette} active={!selectedDifficulty} onClick={() => setSelectedDifficulty(null)}>{ebt('All', lang)}</FilterButton>
+        <FilterButton palette={palette} active={!selectedDifficulty} onClick={() => changeFilter(setSelectedDifficulty, null)}>{ebt('All', lang)}</FilterButton>
         {[1, 2, 3].map(level => (
           <FilterButton palette={palette} key={level} active={selectedDifficulty === level} color={DIFFICULTY_COLORS[level]}
-            onClick={() => setSelectedDifficulty(selectedDifficulty === level ? null : level)}>
+            onClick={() => changeFilter(setSelectedDifficulty, selectedDifficulty === level ? null : level)}>
             {ebt(DIFFICULTY_LABELS[level], lang)}
           </FilterButton>
         ))}
       </FilterRow>
 
       <FilterRow label={ebt('Parts', lang)} palette={palette}>
-        <FilterButton palette={palette} active={!selectedPart} onClick={() => setSelectedPart(null)}>{ebt('All', lang)}</FilterButton>
+        <FilterButton palette={palette} active={!selectedPart} onClick={() => changeFilter(setSelectedPart, null)}>{ebt('All', lang)}</FilterButton>
         {partTags.map(part => (
           <FilterButton palette={palette} key={part} active={selectedPart === part}
             color={part === 'mcu' ? '#38bdf8' : '#14b8a6'}
-            onClick={() => setSelectedPart(selectedPart === part ? null : part)}>
+            onClick={() => changeFilter(setSelectedPart, selectedPart === part ? null : part)}>
             {partLabel(part, lang)}
           </FilterButton>
         ))}
       </FilterRow>
 
       <FilterRow label={ebt('Target', lang)} palette={palette}>
-        <FilterButton palette={palette} active={!selectedTarget} onClick={() => setSelectedTarget(null)}>{ebt('All', lang)}</FilterButton>
+        <FilterButton palette={palette} active={!selectedTarget} onClick={() => changeFilter(setSelectedTarget, null)}>{ebt('All', lang)}</FilterButton>
         {targetTags.map(target => (
           <FilterButton palette={palette} key={target} active={selectedTarget === target}
             color={target === 'no-mcu' ? '#14b8a6' : '#6366f1'}
-            onClick={() => setSelectedTarget(selectedTarget === target ? null : target)}>
+            onClick={() => changeFilter(setSelectedTarget, selectedTarget === target ? null : target)}>
             {targetLabel(target, lang)}
           </FilterButton>
         ))}
@@ -346,7 +364,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         <div style={{ color: palette.muted, fontSize: '13px', padding: '8px 4px' }}>{ebt('No examples match these filters.', lang)}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          {filtered.map(ex => {
+          {pageExamples.map(ex => {
             // THE DEVICE IS CHOSEN AFTER THE EXAMPLE, so the catalogue must not
             // narrow or annotate by whatever chip happens to be selected now.
             // This greyed a card and labelled it "Benötigt: STC12, STC15, …"
@@ -391,6 +409,20 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         </div>
       )}
       </div>}
+
+      {pageCount > 1 && (
+        <div role="group" aria-label={ebt('Example pages', lang)}
+          style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+            gap: 8, paddingTop: 4, color: palette.text, fontSize: 12 }}>
+          <ExamplePageButton label={ebt('Previous page', lang)} disabled={page === 0}
+            onClick={() => goToPage(page - 1)} palette={palette}>‹</ExamplePageButton>
+          <span role="status" aria-label={ebt('Page {page} of {total}', lang, {page: page + 1, total: pageCount})}>
+            {page + 1} / {pageCount}
+          </span>
+          <ExamplePageButton label={ebt('Next page', lang)} disabled={page + 1 === pageCount}
+            onClick={() => goToPage(page + 1)} palette={palette}>›</ExamplePageButton>
+        </div>
+      )}
 
       {/* ── Confirm dialog with device chooser ─────────────────── */}
       {pendingLoad && (() => {
@@ -597,6 +629,13 @@ function ExampleArtwork({ url }) {
     style={{ objectFit: 'contain', flexShrink: 0, borderRadius: 3 }} />;
 }
 
+function ExamplePageButton({ label, disabled, onClick, palette, children }) {
+  return <button type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick}
+    style={{ minWidth: 36, minHeight: 32, borderRadius: 5, fontSize: 18, padding: 0,
+      border: `1px solid ${palette.buttonBorder}`, background: palette.button,
+      color: disabled ? palette.muted : palette.text, cursor: disabled ? 'default' : 'pointer' }}>{children}</button>;
+}
+
 function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason }) {
   const [hovered, setHovered] = useState(false);
   const [introOpen, setIntroOpen] = useState(false);
@@ -631,6 +670,7 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
 
   return (
     <div
+      data-example-id={example.id}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       title={disabledReason || ''}
