@@ -1543,10 +1543,30 @@ export class Circuit {
         parent.set(find(key(w.from)), wr);
         parent.set(find(key(w.to)), wr);
       }
+      // A file can MIX stamped and unstamped wires (sb3-creator's
+      // school-miniorgan-107056: 36 wires carry netIds, its `supply-return`
+      // vcc_2:neg -> gnd_1:gnd does not). An unstamped wire that touches an
+      // endpoint a stamped wire already names is ON that net: minting a fresh
+      // `net-lgc-*` for it put gnd_1:gnd into two resolved nets, so the
+      // schematic drew the ground pin on one and the supply's return on
+      // neither (classes E/T, the rendered-netlist COMPLETENESS drop).
+      const stampedNetOf = new Map();
+      for (const w of c.wires) {
+        if (typeof w.netId !== 'string') continue;
+        for (const e of [w.from, w.to]) if (e && !stampedNetOf.has(key(e))) stampedNetOf.set(key(e), w.netId);
+      }
+      const adopted = new Map();
+      for (const [i, w] of need.entries()) {
+        const root = find(wireKey(w, i));
+        for (const e of [w.from, w.to]) {
+          const net = e && stampedNetOf.get(key(e));
+          if (net && !adopted.has(root)) adopted.set(root, net);
+        }
+      }
       const groups = new Map();
       for (const [i, w] of need.entries()) {
         const root = find(wireKey(w, i));
-        if (!groups.has(root)) groups.set(root, `net-lgc-${groups.size + 1}`);
+        if (!groups.has(root)) groups.set(root, adopted.get(root) ?? `net-lgc-${groups.size + 1}`);
         w.netId = groups.get(root);
       }
     }
