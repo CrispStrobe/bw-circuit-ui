@@ -319,7 +319,7 @@ describe('vendored part art on the canvas', () => {
       if (art.leads.some(l => (l.to.dx - l.from.dx) * (l.from.dx - c.dx) + (l.to.dy - l.from.dy) * (l.from.dy - c.dy) <= 0)) return true;
       return art.leads.some((a, i) => art.leads.slice(i + 1).some(b => segmentsCross(a.from, a.to, b.from, b.to)));
     };
-    for (const k of ['as5600', 'bmp280', 'ina219', 'tcs34725', 'vl53l0x', 'neopixel', 'phototransistor', 'pmos', 'dip_switch',
+    for (const k of ['as5600', 'bmp280', 'ina219', 'tcs34725', 'vl53l0x', 'neopixel', 'pmos', 'dip_switch',
       'lm386', 'dff', 'jkff', 'h_bridge', 'level_shifter4', 'lm3915', 'mcp3008', 'timer_556', 'kd9561', 'darlington_driver']) {
       assert.ok(k in ART_FACE_EXCEPTIONS, `${k} is excepted`);
       assert.ok(fails(k), `${k}: seated art would pass now; draw it instead of excepting it`);

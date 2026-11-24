@@ -5,13 +5,13 @@
   "terminals": [
     {
       "name": "anode",
-      "x": 10,
+      "x": 8,
       "y": 44,
       "functions": []
     },
     {
       "name": "cathode",
-      "x": 20,
+      "x": 22,
       "y": 44,
       "functions": []
     }

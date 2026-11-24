@@ -74,3 +74,15 @@ test('canvas: the light path turns the potentiometer knob face', () => {
   assert.match(CANVAS, /'tuning_cap', 'light_path'\]\);/);
   assert.match(CANVAS, /case 'light_path':\n\s+case 'tuning_cap':\n\s+case 'potentiometer': \{/);
 });
+
+test('IR LED and phototransistor: art faces with their leads on the seated pitch, no exception', async () => {
+  const { ART_FACE_KINDS, ART_FACE_EXCEPTIONS } = await import('../src/model/part-art.js');
+  for (const kind of ['ir_transmitter', 'phototransistor']) {
+    assert.ok(ART_FACE_KINDS.includes(kind), `${kind} draws its art`);
+    assert.ok(!(kind in ART_FACE_EXCEPTIONS), `${kind} is not excepted`);
+    const sc = sidecar(kind);
+    const lead = (n) => sc.terminals.find(t => t.name === n);
+    const [a, b] = Object.keys(sc.footprint.leads);
+    assert.equal(lead(b).x - lead(a).x, (sc.footprint.leads[b].dCol - sc.footprint.leads[a].dCol) * 14, `${kind} on the pitch`);
+  }
+});
