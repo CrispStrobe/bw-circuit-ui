@@ -1,0 +1,250 @@
+{
+  "kind": "kosmos-cp1",
+  "w": 300,
+  "h": 400,
+  "terminals": [
+    {
+      "name": "P1.0",
+      "x": 6,
+      "y": 64,
+      "functions": []
+    },
+    {
+      "name": "P1.1",
+      "x": 6,
+      "y": 78,
+      "functions": []
+    },
+    {
+      "name": "P1.2",
+      "x": 6,
+      "y": 92,
+      "functions": []
+    },
+    {
+      "name": "P1.3",
+      "x": 6,
+      "y": 106,
+      "functions": []
+    },
+    {
+      "name": "P1.4",
+      "x": 6,
+      "y": 120,
+      "functions": []
+    },
+    {
+      "name": "P1.5",
+      "x": 6,
+      "y": 134,
+      "functions": []
+    },
+    {
+      "name": "P1.6",
+      "x": 6,
+      "y": 148,
+      "functions": []
+    },
+    {
+      "name": "P1.7",
+      "x": 6,
+      "y": 162,
+      "functions": []
+    },
+    {
+      "name": "P2.0",
+      "x": 6,
+      "y": 218,
+      "functions": []
+    },
+    {
+      "name": "P2.1",
+      "x": 6,
+      "y": 232,
+      "functions": []
+    },
+    {
+      "name": "P2.2",
+      "x": 6,
+      "y": 246,
+      "functions": []
+    },
+    {
+      "name": "P2.3",
+      "x": 6,
+      "y": 260,
+      "functions": []
+    },
+    {
+      "name": "P2.4",
+      "x": 6,
+      "y": 274,
+      "functions": []
+    },
+    {
+      "name": "P2.5",
+      "x": 6,
+      "y": 288,
+      "functions": []
+    },
+    {
+      "name": "P2.6",
+      "x": 6,
+      "y": 302,
+      "functions": []
+    },
+    {
+      "name": "P2.7",
+      "x": 6,
+      "y": 316,
+      "functions": []
+    },
+    {
+      "name": "P3.0",
+      "x": 294,
+      "y": 64,
+      "functions": []
+    },
+    {
+      "name": "P3.1",
+      "x": 294,
+      "y": 78,
+      "functions": []
+    },
+    {
+      "name": "P3.2",
+      "x": 294,
+      "y": 92,
+      "functions": []
+    },
+    {
+      "name": "P3.3",
+      "x": 294,
+      "y": 106,
+      "functions": []
+    },
+    {
+      "name": "P3.4",
+      "x": 294,
+      "y": 120,
+      "functions": []
+    },
+    {
+      "name": "P3.5",
+      "x": 294,
+      "y": 134,
+      "functions": []
+    },
+    {
+      "name": "P3.6",
+      "x": 294,
+      "y": 148,
+      "functions": []
+    },
+    {
+      "name": "P3.7",
+      "x": 294,
+      "y": 162,
+      "functions": []
+    },
+    {
+      "name": "P4.0",
+      "x": 294,
+      "y": 218,
+      "functions": []
+    },
+    {
+      "name": "P4.1",
+      "x": 294,
+      "y": 232,
+      "functions": []
+    },
+    {
+      "name": "P4.2",
+      "x": 294,
+      "y": 246,
+      "functions": []
+    },
+    {
+      "name": "P4.3",
+      "x": 294,
+      "y": 260,
+      "functions": []
+    },
+    {
+      "name": "P4.4",
+      "x": 294,
+      "y": 274,
+      "functions": []
+    },
+    {
+      "name": "P4.5",
+      "x": 294,
+      "y": 288,
+      "functions": []
+    },
+    {
+      "name": "P4.6",
+      "x": 294,
+      "y": 302,
+      "functions": []
+    },
+    {
+      "name": "P4.7",
+      "x": 294,
+      "y": 316,
+      "functions": []
+    },
+    {
+      "name": "P5.0",
+      "x": 154,
+      "y": 394,
+      "functions": []
+    },
+    {
+      "name": "P5.1",
+      "x": 178,
+      "y": 394,
+      "functions": []
+    },
+    {
+      "name": "P5.2",
+      "x": 202,
+      "y": 394,
+      "functions": []
+    },
+    {
+      "name": "P5.3",
+      "x": 226,
+      "y": 394,
+      "functions": []
+    },
+    {
+      "name": "P5.4",
+      "x": 250,
+      "y": 394,
+      "functions": []
+    },
+    {
+      "name": "P5.5",
+      "x": 274,
+      "y": 394,
+      "functions": []
+    },
+    {
+      "name": "5v",
+      "x": 44,
+      "y": 394,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 92,
+      "y": 394,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "footprint": null,
+  "_note": "Original system-connector schematic abstraction; not product artwork. P3/P4/P5 require CP3. Pin .0 corresponds to physical contact 1."
+}

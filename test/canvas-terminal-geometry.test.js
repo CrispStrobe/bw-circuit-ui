@@ -31,6 +31,8 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { FOOTPRINTS } from '../src/model/footprints.js';
+import { ART_FACE_KINDS, artPinOffsets } from '../src/model/part-art.js';
+import { getSidecar } from '../src/model/parts-registry.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = rel => readFileSync(path.join(here, '..', rel), 'utf8');
@@ -45,11 +47,8 @@ const PALETTE = read('src/components/PartPalette.jsx');
  * Shrink-only. Remove a name in the commit that gives it a geometry case.
  */
 const SEATED_ONLY = new Set([
-  'slide_switch', 'photodiode', 'solar_cell', 'rgb_led', 'neopixel',
-  'npn', 'pnp', 'nmos', 'pmos', 'tip120', 'dip_switch', 'ir_remote',
-  'relay', 'relay_dpdt', 'l293d', 'header', 'usb_a', 'tmp36',
-  'pir_sensor', 'ultrasonic', 'soil_moisture', 'gas_sensor', 'dht22',
-  'ky002', 'motor_encoder', 'servo', 'char_lcd_i2c', 'clock_display',
+  'slide_switch', 'rgb_led', 'npn', 'pnp', 'nmos', 'tip120',
+  'relay', 'servo', 'char_lcd_i2c', 'gas_sensor',
   'simplevga_card', 'ps2', 'opamp',
 ]);
 
@@ -108,6 +107,11 @@ function withoutFreeGeometry() {
     const terms = terminalsOf(kind);
     if (terms.length <= 1) continue;                       // nothing to collide
     if (cases.has(kind) || dips.has(kind)) continue;
+    // The art-face path now runs before the switch. Its real pin coordinates
+    // count as free geometry too; scanning case labels alone falsely marked
+    // the CP1 connector (and the migrated art faces above) as collapsed.
+    const art = ART_FACE_KINDS.includes(kind) ? artPinOffsets(getSidecar(kind)) : null;
+    if (art && terms.every(term => art[term])) continue;
     if (terms.every(t => t === 'a' || t === 'b')) continue; // the default arm is correct
     out.push(kind);
   }

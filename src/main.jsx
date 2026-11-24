@@ -29,6 +29,7 @@ import { inferNetlist, checkWiring } from 'bw-board/infer-netlist.js';
 import { registerAllDevices } from 'bw-board/register-all.js';
 import { getDevice } from 'bw-board/devices.js';
 import { runDcSweep, runAcSweep, logSpace } from 'bw-board/sweep.js';
+import { extractCp1Machine } from 'bw-board/cp1-extract.js';
 
 // The dev app must register devices like production (lite) does, or every
 // registered kind (keypad_4x4, at24c02, …) rejects the netlist and the
@@ -47,7 +48,7 @@ registerAllDevices();
 // and the canvas keeps dragging through a slow point; without it the panel
 // falls back to running the same points chunked on this one.
 setEngine({
-  BoardImpl, inferNetlist, checkWiring, getDevice,
+  BoardImpl, inferNetlist, checkWiring, getDevice, extractCp1Machine,
   runDcSweep, runAcSweep, logSpace,
   createSweepWorker: () =>
     new Worker(new URL('../dev/sweep-worker.js', import.meta.url), { type: 'module' }),

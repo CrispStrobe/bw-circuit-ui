@@ -56,6 +56,8 @@ const FIRST_ART_FACES = [
   // Radio: the VHF tank coil and the varicap.
   'vhf_coil',
   'varicap',
+  // Locally authored whole-system connector, with contacts in sidecar coordinates.
+  'kosmos-cp1',
 ];
 
 /**
