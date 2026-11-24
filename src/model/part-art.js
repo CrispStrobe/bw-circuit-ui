@@ -49,6 +49,9 @@ const FIRST_ART_FACES = [
   'thermocouple',
   'air_coil',
   'electrolysis_cell',
+  // The salt-film humidity comb and the dual-gate MOSFET package.
+  'humidity_comb',
+  'dual_gate_mosfet',
   // Optics: the laser module's brass barrel and beam, and the phototransistor
   // (bw-parts 2026-11-24: its leads splay out to the footprint's columns).
   'laser_diode',

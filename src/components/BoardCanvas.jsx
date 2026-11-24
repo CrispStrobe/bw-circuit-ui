@@ -396,6 +396,8 @@ function terminalOffsetsForPart(part) {
     case 'thermocouple':
     case 'air_coil':
     case 'electrolysis_cell':
+    case 'humidity_comb':
+    case 'dual_gate_mosfet':
     // Optics palette: laser module, IR LED and phototransistor, leads from
     // their sidecars (bw-parts).
     case 'laser_diode':

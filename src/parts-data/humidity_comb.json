@@ -1,0 +1,34 @@
+{
+  "kind": "humidity_comb",
+  "w": 44,
+  "h": 48,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 8,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 36,
+      "y": 48,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Humidity comb: two interleaved copper combs on a small board under a thin salt film. 2-terminal: a, b. Engine (bw-board humidity_comb): film resistance r50 (10 MOhm at 50 % RH) falling one decade per decadePct (12) % RH; the relative humidity at the comb is its control (0..1 = 0..100 % RH; breath ~0.9), else params.humidity (%), else the world. Reports humidityPct, ohms, amps.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
+}

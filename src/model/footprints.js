@@ -263,6 +263,10 @@ const BUILTIN_FOOTPRINTS = {
   thermocouple: { refTerminal: 'pos', leads: { pos: { dRow: 0, dCol: 0 }, neg: { dRow: 0, dCol: 1 } } },
   air_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
   electrolysis_cell: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  // Salt-film humidity comb and the dual-gate MOSFET (bw-parts 2026-11-24),
+  // held equal to their sidecars by test/mosfet-humidity-parts.test.js.
+  humidity_comb: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  dual_gate_mosfet: { refTerminal: 'drain', leads: { drain: { dRow: 0, dCol: 0 }, gate2: { dRow: 0, dCol: 1 }, gate1: { dRow: 0, dCol: 2 }, source: { dRow: 0, dCol: 3 } } },
   // Laser diode module (bw-parts optical-link parts, 2026-11-23): two leads
   // one column apart, like an LED. light_path has no leads and no footprint.
   laser_diode: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 1 } } },

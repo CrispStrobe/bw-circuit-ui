@@ -45,10 +45,11 @@ export function StimulusControls({ parts, onSetParam, lang = 'en' }) {
     && (p.params?.soundDb !== undefined || p.params?.listen === true || typeof p.params?.hears === 'string'));
   const thermocouples = parts.filter(p => p.kind === 'thermocouple');
   const coils = parts.filter(p => p.kind === 'air_coil');
+  const combs = parts.filter(p => p.kind === 'humidity_comb');
 
   if (piezoSensors.length === 0 && ultrasonics.length === 0
     && pirs.length === 0 && sounds.length === 0 && listeners.length === 0
-    && thermocouples.length === 0 && coils.length === 0) return null;
+    && thermocouples.length === 0 && coils.length === 0 && combs.length === 0) return null;
 
   return (
     <div data-stimulus-controls style={{
@@ -88,6 +89,11 @@ export function StimulusControls({ parts, onSetParam, lang = 'en' }) {
         <ParamSlider key={p.id} partId={p.id} param="hotC" onSetParam={onSetParam} initial={p.params?.hotC ?? 25}
           min={0} max={1200} step={5} unit="°C" icon="🔥" label={t('stimHeat', lang)} title={t('stimHeatTitle', lang)}
           presets={[[t('stimMatch', lang), 600], [t('stimLighter', lang), 900], [t('stimRoom', lang), 25]]} />
+      ))}
+      {combs.map(p => (
+        <ParamSlider key={p.id} partId={p.id} param="humidity" onSetParam={onSetParam} initial={p.params?.humidity ?? 50}
+          min={0} max={100} step={1} unit="%" icon="💧" label={t('stimHumidity', lang)} title={t('stimHumidityTitle', lang)}
+          presets={[[t('stimDry', lang), 30], [t('stimRoom', lang), 50], [t('stimBreath', lang), 90]]} />
       ))}
       {coils.map(p => (
         <React.Fragment key={p.id}>
