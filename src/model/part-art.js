@@ -51,6 +51,9 @@ export const ART_FACE_KINDS = Object.freeze([
   'electrolysis_cell',
   // Optics: the laser module's brass barrel and beam.
   'laser_diode',
+  // Radio: the VHF tank coil and the varicap.
+  'vhf_coil',
+  'varicap',
 ]);
 
 const DIP_ART = 'DIP art (pins on two side columns of a chip body): seated, the package straddles the gutter on the 14-unit pitch, so its legs would run across the chip into the holes; the chip box with a notch is the honest face';

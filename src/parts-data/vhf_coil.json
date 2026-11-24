@@ -1,0 +1,34 @@
+{
+  "kind": "vhf_coil",
+  "w": 44,
+  "h": 40,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 8,
+      "y": 40,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 36,
+      "y": 40,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Air-core VHF coil: a few turns of stiff copper wire, self-supporting. 2-terminal: a, b. Engine (bw-board vhf_coil): henrys (default 0.15 uH: with about 18 pF it tunes the FM band near 100 MHz), q (unloaded Q, default 80). Leads two columns apart.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
+}

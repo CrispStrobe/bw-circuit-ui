@@ -1,0 +1,34 @@
+{
+  "kind": "varicap",
+  "w": 60,
+  "h": 20,
+  "terminals": [
+    {
+      "name": "anode",
+      "x": 2,
+      "y": 10,
+      "functions": []
+    },
+    {
+      "name": "cathode",
+      "x": 58,
+      "y": 10,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Varicap (tuning) diode: a silicon junction used reverse-biased, its capacitance falling as the reverse voltage rises. 2-terminal: anode, cathode. Engine (bw-board varicap): a diode whose junction capacitance cjo/(1+Vr/vj)^m the RF network sees (defaults cjo 40 pF, vj 0.7 V, m 0.5; named part BB910). Leads four columns apart, like a diode.",
+  "footprint": {
+    "refTerminal": "anode",
+    "leads": {
+      "anode": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "cathode": {
+        "dRow": 0,
+        "dCol": 4
+      }
+    }
+  }
+}

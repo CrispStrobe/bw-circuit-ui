@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 40" width="44" height="40">
+  <!-- Air-core VHF coil: four turns of bare copper wire, no former -->
+  <path d="M8 40 V22 C8 10 14 10 14 22 C14 10 20 10 20 22 C20 10 26 10 26 22 C26 10 32 10 32 22 C32 14 36 14 36 22 V40"
+        fill="none" stroke="#c87533" stroke-width="2" stroke-linecap="round"/>
+  <path d="M11 22 C11 30 17 30 17 22 M17 22 C17 30 23 30 23 22 M23 22 C23 30 29 30 29 22"
+        fill="none" stroke="#8a5523" stroke-width="1.2" opacity="0.7"/>
+  <text x="22" y="6" text-anchor="middle" font-family="monospace" font-size="4" fill="#888">UKW</text>
+  <circle cx="8" cy="40" r="2" fill="#c0c0c0"/>
+  <circle cx="36" cy="40" r="2" fill="#c0c0c0"/>
+</svg>
