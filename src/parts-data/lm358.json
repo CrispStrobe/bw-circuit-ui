@@ -8,13 +8,13 @@
   },
   "terminals": [
     {
-      "name": "vcc",
+      "name": "1_out",
       "x": 10,
       "y": 38,
       "functions": []
     },
     {
-      "name": "gnd",
+      "name": "1_neg",
       "x": 24,
       "y": 38,
       "functions": []
@@ -26,20 +26,14 @@
       "functions": []
     },
     {
-      "name": "1_neg",
+      "name": "gnd",
       "x": 52,
       "y": 38,
       "functions": []
     },
     {
-      "name": "1_out",
-      "x": 10,
-      "y": 0,
-      "functions": []
-    },
-    {
       "name": "2_pos",
-      "x": 24,
+      "x": 52,
       "y": 0,
       "functions": []
     },
@@ -51,7 +45,13 @@
     },
     {
       "name": "2_out",
-      "x": 52,
+      "x": 24,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 10,
       "y": 0,
       "functions": []
     }
@@ -59,13 +59,13 @@
   "variants": null,
   "_note": "LM358 dual operational amplifier. DIP-8. Two independent op-amps.",
   "footprint": {
-    "refTerminal": "1_out",
+    "refTerminal": "vcc",
     "leads": {
-      "vcc": {
+      "1_out": {
         "dRow": 5,
         "dCol": 0
       },
-      "gnd": {
+      "1_neg": {
         "dRow": 5,
         "dCol": 1
       },
@@ -73,17 +73,13 @@
         "dRow": 5,
         "dCol": 2
       },
-      "1_neg": {
+      "gnd": {
         "dRow": 5,
         "dCol": 3
       },
-      "1_out": {
-        "dRow": 0,
-        "dCol": 0
-      },
       "2_pos": {
         "dRow": 0,
-        "dCol": 1
+        "dCol": 3
       },
       "2_neg": {
         "dRow": 0,
@@ -91,7 +87,11 @@
       },
       "2_out": {
         "dRow": 0,
-        "dCol": 3
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
       }
     },
     "straddlesGutter": true,

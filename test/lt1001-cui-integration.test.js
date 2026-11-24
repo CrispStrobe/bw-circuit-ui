@@ -27,7 +27,7 @@ test('the vendored LT1001 is the exact physical PDIP-8 sibling part', () => {
   assert.deepEqual(sidecar.footprint.leads.out, { dRow: 0, dCol: 2 });
   assert.deepEqual(sidecar.footprint.leads.vpos, { dRow: 0, dCol: 1 });
   const pins = JSON.parse(read('.github/ci-siblings.json'));
-  assert.equal(pins['bw-parts'].sha, 'ccfe94d61c46572f8b8bb76d514553daeab51563');
+  assert.equal(pins['bw-parts'].sha, '61e16380b11a58674a41c748abdcf9594deb9cdc');
   assert.match(read('src/parts-data/lt1001.svg'), />LT1001</);
 });
 

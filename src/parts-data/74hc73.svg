@@ -26,10 +26,10 @@
   <text x="52" y="29.4" text-anchor="middle" font-family="monospace" font-size="2.6" fill="#7d8790">vcc</text>
   <text x="66" y="29.4" text-anchor="middle" font-family="monospace" font-size="2.6" fill="#7d8790">2clk</text>
   <text x="80" y="29.4" text-anchor="middle" font-family="monospace" font-size="2.6" fill="#7d8790">2clr</text>
-  <text x="94" y="29.4" text-anchor="middle" font-family="monospace" font-size="2.6" fill="#7d8790">2k</text>
-  <text x="94" y="10.6" text-anchor="middle" font-family="monospace" font-size="2.6" fill="#7d8790">2q</text>
-  <text x="80" y="10.6" text-anchor="middle" font-family="monospace" font-size="2.2" fill="#7d8790">2q_bar</text>
-  <text x="66" y="10.6" text-anchor="middle" font-family="monospace" font-size="2.6" fill="#7d8790">2j</text>
+  <text x="94" y="29.4" text-anchor="middle" font-family="monospace" font-size="2.6" fill="#7d8790">2j</text>
+  <text x="94" y="10.6" text-anchor="middle" font-family="monospace" font-size="2.2" fill="#7d8790">2q_bar</text>
+  <text x="80" y="10.6" text-anchor="middle" font-family="monospace" font-size="2.6" fill="#7d8790">2q</text>
+  <text x="66" y="10.6" text-anchor="middle" font-family="monospace" font-size="2.6" fill="#7d8790">2k</text>
   <text x="52" y="10.6" text-anchor="middle" font-family="monospace" font-size="2.6" fill="#7d8790">gnd</text>
   <text x="38" y="10.6" text-anchor="middle" font-family="monospace" font-size="2.6" fill="#7d8790">1q</text>
   <text x="24" y="10.6" text-anchor="middle" font-family="monospace" font-size="2.2" fill="#7d8790">1q_bar</text>

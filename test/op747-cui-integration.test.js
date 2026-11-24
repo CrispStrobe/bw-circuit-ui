@@ -20,7 +20,7 @@ const physicalTerminals = [
   '4_neg', '4_pos', 'vneg', '3_pos', '3_neg', '3_out', '1_out',
 ];
 const channelTerminals = ['inp', 'inn', 'vpos', 'vneg', 'out'];
-const partsSha = 'ccfe94d61c46572f8b8bb76d514553daeab51563';
+const partsSha = '61e16380b11a58674a41c748abdcf9594deb9cdc';
 const symbolSha = 'bb7e907e13d16c3c72452f4527fbf4f8abdfea25e9745478b0319dab13ae1db4';
 
 registerAllDevices();

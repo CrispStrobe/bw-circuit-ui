@@ -44,25 +44,25 @@
       "functions": []
     },
     {
-      "name": "2k",
+      "name": "2j",
       "x": 94,
       "y": 38,
       "functions": []
     },
     {
-      "name": "2q",
+      "name": "2q_bar",
       "x": 94,
       "y": 0,
       "functions": []
     },
     {
-      "name": "2q_bar",
+      "name": "2q",
       "x": 80,
       "y": 0,
       "functions": []
     },
     {
-      "name": "2j",
+      "name": "2k",
       "x": 66,
       "y": 0,
       "functions": []
@@ -120,19 +120,19 @@
         "dRow": 5,
         "dCol": 5
       },
-      "2k": {
+      "2j": {
         "dRow": 5,
-        "dCol": 6
-      },
-      "2q": {
-        "dRow": 0,
         "dCol": 6
       },
       "2q_bar": {
         "dRow": 0,
+        "dCol": 6
+      },
+      "2q": {
+        "dRow": 0,
         "dCol": 5
       },
-      "2j": {
+      "2k": {
         "dRow": 0,
         "dCol": 4
       },
