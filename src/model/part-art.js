@@ -49,8 +49,10 @@ export const ART_FACE_KINDS = Object.freeze([
   'thermocouple',
   'air_coil',
   'electrolysis_cell',
-  // Optics: the laser module's brass barrel and beam.
+  // Optics: the laser module's brass barrel and beam, and the phototransistor
+  // (bw-parts 2026-11-24: its leads splay out to the footprint's columns).
   'laser_diode',
+  'phototransistor',
   // Radio: the VHF tank coil and the varicap.
   'vhf_coil',
   'varicap',
@@ -95,7 +97,6 @@ export const ART_FACE_EXCEPTIONS = Object.freeze({
   tcs34725: TWO_EDGES,
   vl53l0x: TWO_EDGES,
   neopixel: 'one leg at each corner of the art, seated in one row: the legs from the top corners would cross the pixel',
-  phototransistor: 'collector and emitter leave the top and bottom of the art, seated in one row: the top lead would cross the body',
   pmos: 'gate, drain and source leave three sides of the art, seated in one row: the drain lead would cross the package',
   dip_switch: 'the footprint seats two of the eight legs (s1_a/s1_b); the other six would hang off the art over no hole',
   // The art is not drawn in the sidecar's coordinates.

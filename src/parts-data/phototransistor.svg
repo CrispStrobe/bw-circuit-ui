@@ -1,9 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 36" width="20" height="36">
-  <!-- PHOTOTRANSISTOR — bench-style -->
-  <rect x="4" y="8" width="12" height="20" rx="3" fill="#1a1a1a" stroke="#333" stroke-width="0.6"/>
-  <text x="10" y="18" text-anchor="middle" font-family="monospace" font-size="3" fill="#aaa">PHOTOTRANSIS</text>
-  <line x1="10" y1="0" x2="10" y2="8" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="10" cy="0" r="1.5" fill="#c0c0c0"/>
-  <line x1="10" y1="28" x2="10" y2="36" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="10" cy="36" r="1.5" fill="#c0c0c0"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 40" width="56" height="40">
+  <!-- Phototransistor, 5 mm clear package, side view; leads splay out to holes three columns (42) apart -->
+  <!-- Leads: collector (long), emitter -->
+  <path d="M24 26 L24 30 L7 36 L7 40" fill="none" stroke="#c0c0c0" stroke-width="1.2" stroke-linejoin="round"/>
+  <path d="M32 26 L32 30 L49 36 L49 40" fill="none" stroke="#c0c0c0" stroke-width="1.2" stroke-linejoin="round"/>
+  <!-- Clear dome with the die and its lens -->
+  <path d="M18 26 L18 13 Q18 3 28 3 Q38 3 38 13 L38 26 Z" fill="#dfe6ee" opacity="0.5" stroke="#8899aa" stroke-width="0.6"/>
+  <rect x="17" y="24" width="22" height="2.5" rx="0.8" fill="#c8d0da" stroke="#8899aa" stroke-width="0.5"/>
+  <rect x="26.5" y="15" width="3" height="3" fill="#333"/>
+  <!-- Incoming light -->
+  <g stroke="#e6b422" stroke-width="0.8" fill="none">
+    <path d="M6 4 L14 10"/><path d="M14 10 L11.2 9.6 M14 10 L13 7.4"/>
+    <path d="M4 10 L12 16"/><path d="M12 16 L9.2 15.6 M12 16 L11 13.4"/>
+  </g>
+  <!-- Flat on the collector side -->
+  <line x1="18" y1="20" x2="18" y2="26" stroke="#556677" stroke-width="1"/>
+  <text x="7" y="33" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#888">C</text>
+  <text x="49" y="33" text-anchor="middle" font-family="monospace" font-size="3.5" fill="#888">E</text>
+  <!-- Terminal pads -->
+  <circle cx="7" cy="40" r="1.5" fill="#c0c0c0"/>
+  <circle cx="49" cy="40" r="1.5" fill="#c0c0c0"/>
 </svg>
