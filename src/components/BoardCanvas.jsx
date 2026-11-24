@@ -396,6 +396,10 @@ function terminalOffsetsForPart(part) {
     case 'thermocouple':
     case 'air_coil':
     case 'electrolysis_cell':
+    // Silicon PTC sensor, spark gap and the ruler scale (bw-parts #28).
+    case 'ptc_sensor':
+    case 'spark_gap':
+    case 'bending_ruler':
     // Optics palette: laser module, IR LED and phototransistor, leads from
     // their sidecars (bw-parts).
     case 'laser_diode':
