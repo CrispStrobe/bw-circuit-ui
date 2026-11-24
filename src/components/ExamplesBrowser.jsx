@@ -616,6 +616,10 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
+        {example.artworkUrl && (
+          <img src={example.artworkUrl} alt="" width={60} height={40} loading="lazy" decoding="async"
+            draggable={false} style={{ objectFit: 'contain', flexShrink: 0, borderRadius: 3 }} />
+        )}
         <div style={{ color: palette.heading, fontSize: '12px', fontWeight: 650, cursor: 'pointer', flex: 1, lineHeight: 1.3 }}
           onClick={() => onClick()}>{title}</div>
         {diff && <span style={{ color: palette.muted, fontSize: '9px', flexShrink: 0 }}>
