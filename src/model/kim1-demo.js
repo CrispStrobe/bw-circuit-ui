@@ -27,18 +27,18 @@ export function kim1DemoCircuit() {
     parts.push({id:`bias${bit}`,kind:'resistor',x:650,y:y+25,
       params:{ohms:33000},terminals:['a','b']});
     wire('kim1','5v',`input${bit}`,'a','#ef4444',
-      [{x:370,y:510},{x:820,y:510},{x:820,y}]);
+      [{x:370,y:510},{x:780,y:510},{x:780,y}]);
     wire(`input${bit}`,'b','kim1',`PB${bit}`,'#38bdf8');
     wire(`input${bit}`,'b',`bias${bit}`,'a');
     wire(`bias${bit}`,'b','kim1','gnd','#64748b',
-      [{x:790,y:y+25},{x:790,y:470},{x:470,y:470}]);
+      [{x:770,y:y+25},{x:770,y:470},{x:470,y:470}]);
     parts.push({id:`limit${bit}`,kind:'resistor',x:190,y,flipped:true,params:{ohms:1000},terminals:['a','b']});
     parts.push({id:`lamp${bit}`,kind:'led',declName:`PA${bit}`,x:90,y,flipped:true,
       params:{color:['red','yellow','green','blue'][bit]},terminals:['anode','cathode']});
     wire('kim1',`PA${bit}`,`limit${bit}`,'a','#f59e0b');
     wire(`limit${bit}`,'b',`lamp${bit}`,'anode');
     wire(`lamp${bit}`,'cathode','kim1','gnd','#64748b',
-      [{x:40,y},{x:40,y:470},{x:470,y:470}]);
+      [{x:65,y},{x:65,y:470},{x:470,y:470}]);
   }
   return {vcc:5,fileOnly:true,parts,wires,holeWires:[]};
 }

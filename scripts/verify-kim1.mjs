@@ -98,8 +98,17 @@ try {
       board.ledBrightness('lamp0')>0.01&&board.ledBrightness('lamp2')>0.01&&board.ledBrightness('lamp1')===0;
   });
   await panel.scrollIntoViewIfNeeded();
+  const clippedWires=await page.evaluate(()=>{
+    const canvas=document.querySelector('[data-canvas-svg]').getBoundingClientRect();
+    return [...document.querySelectorAll('[data-canvas-svg] [data-wire] path')].flatMap(path=>{
+      const bounds=path.getBoundingClientRect();
+      return bounds.left<canvas.left-1||bounds.right>canvas.right+1||bounds.top<canvas.top-1||bounds.bottom>canvas.bottom+1
+        ?[path.closest('[data-wire]').getAttribute('data-wire')]:[];
+    });
+  });
+  assert.deepEqual(clippedWires,[],'the wired lesson fits without clipping its supply rails');
   await page.screenshot({path:path.join(output,'kim1-desktop.png'),fullPage:true});
-  checks.push('visible switches drive PB0/PB2 and the CPU lights real external PA0/PA2 LED circuits');
+  checks.push('visible switches drive PB0/PB2 and real PA0/PA2 LEDs; all lesson wires fit in the canvas');
 
   await panel.locator('[data-kim1-key="ST"]').click();
   const stopped=await page.evaluate(()=>{const b=window.__board,s=b.getDeviceState('kim1');return{pc:s.pc,portA:s.portA,t:String(b.getTime())};});
