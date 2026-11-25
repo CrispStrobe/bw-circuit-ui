@@ -66,6 +66,10 @@ const FIRST_ART_FACES = [
   // Radio: the VHF tank coil and the varicap.
   'vhf_coil',
   'varicap',
+  // Radio: the ceramic IF filter, the FM IF IC and the dipole (bw-parts, r7).
+  'ceramic_filter',
+  'fm_if',
+  'dipole',
 ];
 
 /**
@@ -90,7 +94,7 @@ const BREADBOARD_ART_FACES = [
   'r6507', 'stc15_mcu', 'stc_mcu', 'stm32f030', 'tang_nano_20k', 'timer_555', 'timer_556',
   'transformer', 'um245r', 'w65c02', 'w65c22', 'w65c51', 'z80', 'as5600', 'bmp280', 'ina219',
   'tcs34725', 'vl53l0x', 'neopixel', 'pmos', 'usb_a', 'solar_cell', 'tcs3200', 'eater6502',
-  'ir_remote', 'gas_sensor', 'stepper', 'mcp4725', 'rnet_sip',
+  'ir_remote', 'gas_sensor', 'stepper', 'mcp4725', 'rnet_sip', 'sa612',
 ];
 
 /** Kinds whose canvas face is their vendored art. */

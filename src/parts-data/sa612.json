@@ -1,0 +1,99 @@
+{
+  "kind": "sa612",
+  "w": 62,
+  "h": 38,
+  "dip": {
+    "label": "SA612",
+    "subtitle": "MIXER"
+  },
+  "terminals": [
+    {
+      "name": "in_a",
+      "x": 10,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "in_b",
+      "x": 24,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 38,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "out_a",
+      "x": 52,
+      "y": 38,
+      "functions": []
+    },
+    {
+      "name": "out_b",
+      "x": 52,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "osc_b",
+      "x": 38,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "osc_e",
+      "x": 24,
+      "y": 0,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 10,
+      "y": 0,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Double-balanced mixer with its own oscillator transistor (SA612/NE602 pinout). Engine (bw-board sa612): Gilbert cell, i_a - i_b = I_T tanh(gm v_rf / I_T) tanh(v_lo / 2Vt) with v_rf = in_a - in_b (1.5 kOhm each to an internal bias) and v_lo the oscillator base (osc_b, 18 kOhm to its bias); outputs out_a, out_b 1.5 kOhm to vcc; osc_b/osc_e are an npn (collector at vcc, 4 kOhm emitter load) for a Colpitts or Hartley oscillator. At RF the products land in the bands at f_rf +- f_lo; RF and LO in one band beat at audio (direct conversion, synchronous detection). Params itail (1 mA), gm (8 mS), rin, rout. Reports vRf, vLo, iTail, iOutA, iOutB.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "straddlesGutter": true,
+    "leads": {
+      "in_a": {
+        "dRow": 5,
+        "dCol": 0
+      },
+      "in_b": {
+        "dRow": 5,
+        "dCol": 1
+      },
+      "gnd": {
+        "dRow": 5,
+        "dCol": 2
+      },
+      "out_a": {
+        "dRow": 5,
+        "dCol": 3
+      },
+      "out_b": {
+        "dRow": 0,
+        "dCol": 3
+      },
+      "osc_b": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "osc_e": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      }
+    }
+  }
+}

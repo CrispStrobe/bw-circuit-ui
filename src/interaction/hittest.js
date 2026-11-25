@@ -105,6 +105,7 @@ export const FOOTPRINTS = {
   // potentiometer's 60 px knob face (its geometry knob).
   laser_diode: { w: 30, h: 44 }, light_path: { w: 60, h: 60 },
   vhf_coil: { w: 44, h: 40 }, varicap: { w: 60, h: 20 },
+  ceramic_filter: { w: 44, h: 40 }, fm_if: { w: 66, h: 44 }, dipole: { w: 120, h: 40 },
   // Bench instruments and the electrolytic draw their sidecar art
   // (src/model/part-art.js): the hit box is the art's viewBox.
   oscilloscope: { w: 90, h: 64 }, function_gen: { w: 80, h: 56 },
