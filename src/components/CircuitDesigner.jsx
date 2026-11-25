@@ -1386,7 +1386,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
       <div data-selectors-rail style={{position: 'relative', display: 'flex', flex: selectorsOpen ? '0 0 190px' : '0 0 0px', width: selectorsOpen ? 190 : 0, minWidth: selectorsOpen ? 190 : 0, minHeight: 0, height: '100%', overflow: 'visible'}}>
       {selectorsOpen ? (
         <div data-selectors-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 auto', width: '100%', minWidth: 0, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
-          <div data-parts-selector style={{position: 'relative', flex: partsOpen ? `${selectorSplit} 1 0` : '0 0 30px', minHeight: partsOpen ? 80 : 30, display: 'flex', minWidth: 0, overflow: 'hidden'}}>
+          <div data-parts-selector style={{position: 'relative', flex: partsOpen ? `${examplesOpen ? selectorSplit : 1} 1 0` : '0 0 30px', minHeight: partsOpen ? 80 : 30, display: 'flex', minWidth: 0, overflow: 'hidden'}}>
             {partsOpen ? (
               <PartPalette theme={theme} lang={lang} headingControl={partsToggle}
                 onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({kind, params})} />
@@ -1412,7 +1412,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
             style={{height: 10, flex: '0 0 10px', cursor: 'row-resize', borderTop: '2px solid #94a3b8', borderBottom: '2px solid #94a3b8', background: '#e2e8f0', margin: '1px 0'}}>
             <span style={{display: 'block', width: 42, height: 2, margin: '2px auto', background: '#475569', borderRadius: 2}} />
           </div>}
-          <div data-examples-rail-section style={{flex: examplesOpen ? `${1 - selectorSplit} 1 0` : '0 0 30px',
+          <div data-examples-rail-section style={{flex: examplesOpen ? `${partsOpen ? 1 - selectorSplit : 1} 1 0` : '0 0 30px',
             minHeight: examplesOpen ? 70 : 30, minWidth: 0, marginTop: examplesOpen ? 0 : 'auto',
             display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
             {examplesOpen ? (<>
