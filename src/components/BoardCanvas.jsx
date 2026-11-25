@@ -3182,15 +3182,21 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
       // of the angle to the station); the FM IF IC's dial tunes its
       // quadrature coil (0.5 = aligned on quadHz). Their art stays the face;
       // while simulating, a small dial above the first lead sets the engine
-      // control, as for the ferrite rod.
+      // control, as for the ferrite rod. An antenna with a clock (bw-board
+      // `params.clock`) carries the hour of the day on the same dial
+      // (0..1 = 00:00..24:00): distant stations' sky wave comes in at night.
+      case 'antenna':
+        if (!params?.clock) return null;
+      // falls through
       case 'dipole':
       case 'fm_if': {
         if (!simulate) return null;
         const seat = part.seat && part._seatTerminals;
-        const first = kind === 'dipole' ? 'a' : 'in';
+        const first = kind === 'fm_if' ? 'in' : 'a';
         const ax = seat ? (seat[first]?.x ?? x) : x - 28;
         const ay = seat ? (seat[first]?.y ?? y) : y + 22;
-        const val = controlValues?.get(id) ?? (kind === 'dipole' ? (params?.angleDeg ?? 0) / 360 : 0.5);
+        const val = controlValues?.get(id) ?? (kind === 'dipole' ? (params?.angleDeg ?? 0) / 360
+          : kind === 'antenna' ? (params?.hourOfDay ?? 12) / 24 : 0.5);
         return (
           <div key={`${id}-dial`} data-rod-control={id}
             style={{ position: 'absolute', left: ax + 8, top: ay - 78, width: 40, height: 46, pointerEvents: 'auto', cursor: 'pointer' }}
@@ -3207,7 +3213,9 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
               }}
             />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
-              {kind === 'dipole' ? `${Math.round(val * 360)}°` : `${Math.round((val - 0.5) * 300)} kHz`}
+              {kind === 'dipole' ? `${Math.round(val * 360)}°`
+                : kind === 'antenna' ? `${String(Math.floor(val * 24) % 24).padStart(2, '0')}:${String(Math.floor((val * 24 * 60) % 60)).padStart(2, '0')}`
+                  : `${Math.round((val - 0.5) * 300)} kHz`}
             </div>
           </div>
         );
@@ -6074,7 +6082,7 @@ export function BoardCanvas({
                 }
                 // The magnetic field source's distance, the dipole's turn and
                 // the FM IF IC's quadrature tuning.
-                if (p.kind === 'dipole' || p.kind === 'fm_if' || p.kind === 'induction_loop') {
+                if (p.kind === 'dipole' || p.kind === 'fm_if' || p.kind === 'induction_loop' || (p.kind === 'antenna' && p.params?.clock)) {
                   const v = eb.getControl(p.id);
                   if (v != null) m.set(p.id, v);
                 }

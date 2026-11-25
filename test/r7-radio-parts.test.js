@@ -103,3 +103,11 @@ test('the dipole\'s and the FM IF IC\'s dials are engine controls; the sliding r
   assert.equal(controls.get('L')?.value, 0.25, 'the sliding rod rests at its winding\'s position');
   for (const kind of ['dipole', 'fm_if']) assert.match(CANVAS, new RegExp(`p.kind === '${kind}'`), `${kind}: the canvas reads its dial from the engine`);
 });
+
+test('an antenna with a clock carries the hour on a dial the engine lists; a plain antenna has none', () => {
+  // bw-board: params.clock on an antenna makes it a control (0..1 = 00:00..24:00),
+  // the sky wave of distant stations coming in after dark.
+  assert.match(CANVAS, /case 'antenna':\n\s*if \(!params\?\.clock\) return null;/, 'the dial only for an antenna with a clock');
+  assert.match(CANVAS, /p\.kind === 'antenna' && p\.params\?\.clock/, 'the canvas reads the hour from the engine');
+  assert.match(CANVAS, /kind === 'antenna' \? \(params\?\.hourOfDay \?\? 12\) \/ 24/, 'it rests at the antenna\'s own hour');
+});
