@@ -1,4 +1,4 @@
-## Busch Microtronic Circuits — CLAIMED, 2026-11-25
+## Busch Microtronic Circuits — IMPLEMENTED candidate, 2026-11-25
 
 Owner: Brickwright Microtronic Circuits lane, requested by CrispStrobe.
 Base: `e2918352c4d17ec33a6f0c7896ea74dfd8bd2666`.
@@ -10,6 +10,26 @@ clock. The native TMS1600 firmware rewrite is deferred. No historical ROM,
 manual scan, external emulator code or unrelated interface changes.
 Qualify real input/output wiring, program persistence, independent instances,
 run/halt/step/reset, geometry and a full CircuitDesigner browser journey.
+
+Implementation: original connector/sidecar and 4×6 keypad, active-Board panel,
+canonical program persistence, local program files, wired switches/LED/clock
+example, English/German controls and scoped responsive layout. The panel reuses
+the shared simulation clock and preserves an accepted RUN on Build→Sim.
+Structural Build edits reset runtime; saved programs survive. Local checks:
+102 focused tests pass, production Vite build passes, and the full designer
+browser gate passes on Chromium 158.0.8127.0 (including desktop/390px review,
+real I/O, editor rerenders, save/load, independent trainers and 88 transformed
+contact checks). Board candidate tested via sibling package link; exact package
+qualification followed with the published package below. Full Brickwright
+qualification remains the consumer lane's work.
+
+Installed-package qualification: Board is pinned and locked to
+`5245f882709b975e0712a9517abceff6b4cd83cc`. Its runtime SHA-256 is
+`2e654982952125bbc5bd7248c4b256ea633beaab78cb932688fcd19270fb66f1`,
+computed from the identified clean source tree and matched against the real
+npm-installed package (no symlink). All 109 focused/provenance/capability checks
+pass with no skips, and the complete Microtronic browser gate passes again
+against that installed package. No runtime changes were needed for qualification.
 
 ## Kosmos CP1 circuit and front-panel surfaces — CLAIMED, 2026-11-24
 

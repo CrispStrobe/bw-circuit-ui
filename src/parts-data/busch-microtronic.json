@@ -1,0 +1,76 @@
+{
+  "kind": "busch-microtronic",
+  "w": 260,
+  "h": 300,
+  "terminals": [
+    {
+      "name": "IN1",
+      "x": 6,
+      "y": 90,
+      "functions": []
+    },
+    {
+      "name": "IN2",
+      "x": 6,
+      "y": 132,
+      "functions": []
+    },
+    {
+      "name": "IN3",
+      "x": 6,
+      "y": 174,
+      "functions": []
+    },
+    {
+      "name": "IN4",
+      "x": 6,
+      "y": 216,
+      "functions": []
+    },
+    {
+      "name": "OUT1",
+      "x": 254,
+      "y": 90,
+      "functions": []
+    },
+    {
+      "name": "OUT2",
+      "x": 254,
+      "y": 132,
+      "functions": []
+    },
+    {
+      "name": "OUT3",
+      "x": 254,
+      "y": 174,
+      "functions": []
+    },
+    {
+      "name": "OUT4",
+      "x": 254,
+      "y": 216,
+      "functions": []
+    },
+    {
+      "name": "CLOCK",
+      "x": 64,
+      "y": 294,
+      "functions": []
+    },
+    {
+      "name": "5v",
+      "x": 130,
+      "y": 294,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 196,
+      "y": 294,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "footprint": null,
+  "_note": "Original whole-system connector abstraction. Live program, display and keys are in the Microtronic controls. Behavioral teaching-machine model; TMS1600 firmware execution is not included."
+}

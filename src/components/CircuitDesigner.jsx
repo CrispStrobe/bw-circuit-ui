@@ -76,6 +76,9 @@ import { SerialConsole } from './SerialConsole.jsx';
 import { ArchitectureFace } from './ArchitectureFace.jsx';
 import { FramebufferFace } from './FramebufferFace.jsx';
 import { StimulusControls } from './StimulusControls.jsx';
+import { MicrotronicPanel } from './MicrotronicPanel.jsx';
+import { MICROTRONIC_KIND, saveMicrotronicProgram } from '../model/microtronic-controls.js';
+import { microtronicDemoCircuit } from '../model/microtronic-demo.js';
 import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
 import { breadboardFootprintForPart } from '../model/carriers.js';
@@ -318,6 +321,16 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
 
   // Detect retro CPU on the board for the Build Machine action
   const hasCp1 = parts.some(p => p.kind === 'kosmos-cp1');
+  const microtronics = parts.filter(p => p.kind === MICROTRONIC_KIND);
+  const microtronicIds = microtronics.map(p => p.id).join('\0');
+  useEffect(() => {
+    if (microtronicIds) setRightOpen(true);
+  }, [microtronicIds]);
+  useEffect(() => {
+    // The six-column keypad needs the phone's instrument width. A palette
+    // opened on desktop must not consume half that width after rotation.
+    if (microtronicIds && rightOpen && narrowScreen) setSelectorsOpen(false);
+  }, [microtronicIds, rightOpen, narrowScreen]);
   const hasRetroCpu = hasCp1 || parts.some(p => p.kind === 'w65c02' || p.kind === 'z80'
     || p.kind === 'i8086' || p.kind === '8086' || p.kind === 'i8088' || p.kind === '8088');
   useEffect(() => {
@@ -1002,6 +1015,28 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     }
     requestControlSettling();
   }, [setPartParam, requestControlSettling, externalBoard]);
+
+  const handleMicrotronicProgram = useCallback((partId, source) => {
+    if (saveMicrotronicProgram(circuit, partId, source)) {
+      // The hook publishes an edit revision for autosave. The canonical source
+      // is already in the model; the device treats this repeat as idempotent.
+      setPartParam(partId, 'program', source);
+      if (externalBoard && externalBoard !== circuit.board) externalBoard.setPartParam?.(partId, 'program', source);
+    }
+  }, [circuit, setPartParam, externalBoard]);
+
+  const handleMicrotronicRun = useCallback(() => {
+    if (!externalBoard && mode !== 'simulate') {
+      // The device has already accepted RUN. Reusing this board is essential:
+      // normal fresh simulation arming resets it, erasing that accepted run.
+      runArmedRef.current = {board: circuit.board, armed: classifyRunPins({parts, wires})};
+    }
+    setMode('simulate');
+    setRightOpen(true);
+    simPausedRef.current = false;
+    setSimPaused(false);
+    if (!externalBoard) simClock.current?.wake();
+  }, [circuit, parts, wires, mode, externalBoard]);
 
   const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
     loadInferred(inferredParts, inferredNets);
@@ -1787,6 +1822,9 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
         }}>›</button>
         <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 36, padding: '36px 6px 6px', boxSizing: 'border-box'}}>
+        {microtronics.map(part => <MicrotronicPanel key={part.id} part={part} board={activeBoard} lang={lang}
+          externalClock={!!externalBoard} onProgramChange={handleMicrotronicProgram}
+          onRunClock={handleMicrotronicRun} onOpenExample={() => handleLoad(microtronicDemoCircuit())} />)}
         {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins).
             The FACES below gate on capability, not on pins: a machine-class
             bench (6502/Z80) has no PIN concept, yet its booted machine has

@@ -68,6 +68,7 @@ const FIRST_ART_FACES = [
   'varicap',
   // Locally authored whole-system connector, with contacts in sidecar coordinates.
   'kosmos-cp1',
+  'busch-microtronic',
   // Radio: the ceramic IF filter, the FM IF IC and the dipole (bw-parts, r7).
   'ceramic_filter',
   'fm_if',

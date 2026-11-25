@@ -115,3 +115,13 @@ you see.
 `pybadge` (also LOCAL_ONLY) is not copied art. Its face is drawn in code in
 `BoardCanvas.jsx`, and `pybadge.svg` is an original thumbnail. Official
 PyBadge art (pxt-arcade) was not available to extract.
+
+## Original Microtronic connector
+
+`busch-microtronic.svg` is original MIT-licensed functional artwork generated
+by `scripts/generate-microtronic-connector.mjs`. Its eleven contact coordinates
+come from the same data as its sidecar. The key labels and four-by-six layout
+are facts from the original Busch block diagram; no photograph, manual scan,
+logo artwork, or external emulator art was traced or copied. Busch Microtronic
+2090 identifies the modeled hardware. See `docs/MICROTRONIC-CIRCUITS.md` for
+sources and the behavioral model boundary.

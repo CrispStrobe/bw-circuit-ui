@@ -8,6 +8,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PartThumbnail } from './PartThumbnail.jsx';
 import { paletteText, paletteUi, ledColorName } from '../i18n/palette-de.js';
+import { MICROTRONIC_EXAMPLES } from '../model/microtronic-demo.js';
 
 const LED_COLORS = ['red', 'green', 'yellow', 'blue', 'white', 'orange'];
 
@@ -51,6 +52,10 @@ const CATEGORIES = [
       { kind: 'kosmos-cp1', label: 'Kosmos CP1', params: {expansion: false, clockHz: 6000000},
         color: '#e4a138', capability: '8049 trainer',
         tooltip: 'CP1 system connector. Ports 1/2; CP3 enables ports 3/4/5. Use the built-in monitor or import a ROM in the debugger.' },
+      { kind: 'busch-microtronic', label: 'Busch Microtronic 2090',
+        params: {program: MICROTRONIC_EXAMPLES[0].source, instructionHz: 20}, color: '#d99432',
+        capability: 'Behavioral model',
+        tooltip: '4-bit learning computer. Hex keypad, 256 program words, four inputs and outputs, 1 Hz clock. Opens live Microtronic controls.' },
       { kind: 'kosmos-cp1', label: 'Kosmos CP1 + CP3', params: {expansion: true, clockHz: 6000000},
         color: '#e4a138', capability: '8049 trainer',
         tooltip: 'CP1 with 256 program cells and ports 3/4/5. Use the built-in monitor or import a ROM in the debugger.' },
