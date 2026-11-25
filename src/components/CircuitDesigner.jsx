@@ -1438,7 +1438,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
             )}
             {/* Import moved to the ⋯ toolbar menu (BoardCanvas FileMenu) */}
             <div style={{flex: '1 1 auto', minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column',
-              overflowY: codexMode ? 'auto' : 'hidden', scrollbarWidth: 'thin'}}>
+              overflowY: examples && onLoadExample && !codexMode ? 'hidden' : 'auto', scrollbarWidth: 'thin'}}>
             {examples && onLoadExample ? (
               codexMode && curriculum ? (
                 <CodexBrowser curriculum={curriculum} examples={examples} lang={lang}
