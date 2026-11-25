@@ -61,6 +61,10 @@ export const PALETTE_DE = {
 
   // Part names (proper names and part numbers stay as they are)
   'Kosmos CP1': 'Kosmos CP1',
+  'Busch Microtronic 2090': 'Busch Microtronic 2090',
+  'Behavioral model': 'Verhaltensmodell',
+  '4-bit learning computer. Hex keypad, 256 program words, four inputs and outputs, 1 Hz clock. Opens live Microtronic controls.':
+    '4-Bit-Lerncomputer. Hex-Tastatur, 256 Programmwörter, vier Ein- und Ausgänge, 1-Hz-Takt. Öffnet die aktiven Microtronic-Bedienelemente.',
   'Kosmos CP1 + CP3': 'Kosmos CP1 + CP3',
   'CP1 system connector. Ports 1/2; CP3 enables ports 3/4/5. Use the built-in monitor or import a ROM in the debugger.':
     'CP1-Systemanschluss. Ports 1/2; CP3 aktiviert Ports 3/4/5. Im Debugger den eingebauten Monitor verwenden oder ein ROM laden.',

@@ -1,4 +1,4 @@
-## Busch Microtronic Circuits — CLAIMED, 2026-11-25
+## Busch Microtronic Circuits — IMPLEMENTED candidate, 2026-11-25
 
 Owner: Brickwright Microtronic Circuits lane, requested by CrispStrobe.
 Base: `e2918352c4d17ec33a6f0c7896ea74dfd8bd2666`.
@@ -10,6 +10,47 @@ clock. The native TMS1600 firmware rewrite is deferred. No historical ROM,
 manual scan, external emulator code or unrelated interface changes.
 Qualify real input/output wiring, program persistence, independent instances,
 run/halt/step/reset, geometry and a full CircuitDesigner browser journey.
+
+Implementation: original connector/sidecar and 4×6 keypad, active-Board panel,
+canonical program persistence, local program files, wired switches/LED/clock
+example, English/German controls and scoped responsive layout. The panel reuses
+the shared simulation clock and preserves an accepted RUN on Build→Sim.
+Structural Build edits reset runtime; saved programs survive. Local checks:
+102 focused tests pass, production Vite build passes, and the full designer
+browser gate passes on Chromium 158.0.8127.0 (including desktop/390px review,
+real I/O, editor rerenders, save/load, independent trainers and 88 transformed
+contact checks). Board candidate tested via sibling package link; exact package
+qualification followed with the published package below. Full Brickwright
+qualification remains the consumer lane's work.
+
+Installed-package qualification: Board is pinned and locked to
+`5245f882709b975e0712a9517abceff6b4cd83cc`. Its runtime SHA-256 is
+`2e654982952125bbc5bd7248c4b256ea633beaab78cb932688fcd19270fb66f1`,
+computed from the identified clean source tree and matched against the real
+npm-installed package (no symlink). All 109 focused/provenance/capability checks
+pass with no skips, and the complete Microtronic browser gate passes again
+against that installed package. No runtime changes were needed for qualification.
+
+Concurrent CP1 integration: combined the published Microtronic candidate
+`29aa4f0bf7cba6bdb66fe3c215e6bf9961b66e39` with master
+`11532a80eee13b7dad4451e167dc6780bd546ea0`, retaining its compact machine bench,
+bundled-monitor help and collapsed custom-ROM override. The CP1 browser gate
+now selects the nested Build Machine action by its accessible name and checks
+the new help/override interactions. All 109 focused tests and both complete
+Microtronic/CP1 connector browser gates pass on the combined tree. The latter
+checks 320 transformed CP1 contacts, machine handoff and synthetic custom-ROM
+refusal/import; full-host bundled-monitor execution is a separate host gate.
+
+Hosted gate follow-up (run 45686653502, candidate c1ec54d): two stale test
+readers also fail on incoming master 11532a80 with its original installed
+Board ddd77e4e. The status reader included unrelated rail JSX; magnetic face
+checks assumed standalone kind conditions instead of the existing grouped
+readbacks. Tests now isolate the actual source statements with Vite's declared
+JSX parser and execute the real magnetic renderer/input callback against Board.
+All transport assertions remain. Both repaired files pass 22/22 on old and
+candidate engines; 140 adjacent checks pass, with no skips. Three isolated
+readback/callback/status-precedence mutants each fail their intended assertion.
+No runtime, engine pin, workflow or gate exclusion changed.
 
 ## Kosmos CP1 circuit and front-panel surfaces — CLAIMED, 2026-11-24
 

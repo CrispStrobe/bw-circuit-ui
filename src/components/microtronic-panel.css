@@ -1,0 +1,42 @@
+/* Class-token attributes keep these scoped styles literal in both CSS-module hosts and plain CSS bundlers. */
+[class~="microtronic-panel"] { flex:0 0 auto; min-width:0; width:100%; box-sizing:border-box; padding:12px; border:1px solid #a76727; border-radius:10px; background:#202735; color:#e2e8f0; font:12px/1.45 system-ui,sans-serif; }
+[class~="microtronic-panel"]:focus-visible { outline:2px solid #fb923c; outline-offset:2px; }
+[class~="microtronic-panel"] header { display:flex; align-items:start; justify-content:space-between; gap:5px; margin-bottom:10px; }
+[class~="microtronic-panel"] header strong { display:block; font-size:11px; letter-spacing:.06em; color:#fed7aa; }
+[class~="microtronic-panel"] header small { display:block; color:#aab8ca; overflow-wrap:anywhere; }
+[class~="microtronic-model"] { max-width:77px; padding:2px 5px; border-radius:4px; background:#334155; color:#cbd5e1; font-size:9px; text-align:center; }
+[class~="microtronic-display"] { display:block; width:100%; height:auto; max-height:80px; border-radius:5px; background:#0c1019; border:1px solid #475569; box-sizing:border-box; }
+[class~="microtronic-status"] { display:flex; align-items:center; gap:7px; padding:7px 0 5px; font:11px monospace; }
+[class~="microtronic-status"] strong { flex:1; font-size:10px; }
+[class~="microtronic-status"] [data-active] { color:#64748b; }
+[class~="microtronic-status"] [data-active="true"] { color:#fdba74; }
+[class~="microtronic-io"] { display:flex; flex-wrap:wrap; gap:5px 12px; justify-content:space-between; margin:3px 0 9px; }
+[class~="microtronic-bits"] { display:flex; align-items:center; gap:6px; font:10px monospace; }
+[class~="microtronic-bits"] > span { display:flex; align-items:center; gap:2px; }
+[class~="microtronic-bits"] i { width:5px; height:5px; border-radius:50%; background:#475569; }
+[class~="microtronic-bits"] [data-high="true"] i { background:#fb923c; box-shadow:0 0 4px #fb923c; }
+[class~="microtronic-panel"] button { min-width:0; padding:6px 3px; border:1px solid #64748b; border-radius:4px; background:#334155; color:#f1f5f9; cursor:pointer; font:inherit; touch-action:manipulation; }
+[class~="microtronic-panel"] button:hover { background:#475569; border-color:#fdba74; }
+[class~="microtronic-panel"] button:focus-visible, [class~="microtronic-panel"] select:focus-visible, [class~="microtronic-panel"] textarea:focus-visible { outline:2px solid #fb923c; outline-offset:2px; }
+[class~="microtronic-panel"] button:disabled { opacity:.5; cursor:not-allowed; }
+[class~="microtronic-actions"] { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; margin-bottom:10px; }
+[class~="microtronic-actions"] [data-microtronic-action="run"] { background:#315444; border-color:#72a38c; }
+[class~="microtronic-keypad"] { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:4px; }
+[class~="microtronic-keypad"] button { padding:7px 1px; font:13px/1.2 monospace; min-height:32px; }
+[class~="microtronic-keypad"] button[class~="microtronic-function"] { font:9px/1.2 system-ui,sans-serif; color:#fed7aa; }
+[class~="microtronic-mode"] { color:#aab8ca; font-size:10px; margin:6px 0; }
+[class~="microtronic-panel"] details { margin-top:10px; }
+[class~="microtronic-panel"] summary { cursor:pointer; color:#fed7aa; font-weight:600; }
+[class~="microtronic-panel"] summary span { color:#cbd5e1; font-size:10px; font-weight:400; }
+[class~="microtronic-editor"] label { display:flex; flex-wrap:wrap; gap:4px; align-items:center; margin:8px 0 5px; }
+[class~="microtronic-editor"] select { width:100%; min-width:0; padding:5px; border:1px solid #64748b; border-radius:4px; background:#0f172a; color:#e2e8f0; font:inherit; }
+[class~="microtronic-editor"] textarea { display:block; box-sizing:border-box; width:100%; min-height:100px; padding:7px; border:1px solid #64748b; border-radius:4px; background:#0f172a; color:#e2e8f0; resize:vertical; font:12px/1.45 monospace; }
+[class~="microtronic-editor"] small { display:block; margin:6px 0; color:#aab8ca; font-size:10px; }
+[class~="microtronic-editor-actions"] { display:flex; flex-wrap:wrap; gap:5px; }
+[class~="microtronic-editor-actions"] button { flex:1; padding:6px; font-size:11px; }
+[class~="microtronic-example"] { width:100%; margin-top:10px; font-size:11px!important; }
+[class~="microtronic-registers"] { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px; padding-top:7px; font:11px monospace; }
+[class~="microtronic-registers"] b { color:#fdba74; }
+[class~="microtronic-error"] { padding:7px; border:1px solid #b45353; border-radius:4px; background:#47282e; color:#fecaca; overflow-wrap:anywhere; }
+[class~="microtronic-notice"] { color:#a7d8bf; font-size:11px; }
+[class~="microtronic-help"] p { font-size:11px; color:#cbd5e1; }

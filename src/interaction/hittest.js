@@ -62,6 +62,7 @@ export const FOOTPRINTS = {
   w65c51: { w: 220, h: 90 }, z80: { w: 300, h: 90 },
   // Whole CP1 connector art uses this portrait sidecar/viewBox, not a DIP body.
   'kosmos-cp1': { w: 300, h: 400 },
+  'busch-microtronic': { w: 260, h: 300 },
   '62256': { w: 220, h: 90 }, '28c256': { w: 220, h: 90 },
   mc6850: { w: 200, h: 90 }, r6507: { w: 220, h: 90 }, mos6532: { w: 300, h: 90 },
   '74hc00': { w: 120, h: 80 }, '74hc04': { w: 120, h: 80 },

@@ -23,6 +23,8 @@ embedding the library in another app requires the setup below.
 ## What you can do
 
 - Place parts, wire breadboards, interact with controls and inspect circuit warnings.
+- Run the [Busch Microtronic learner computer](docs/MICROTRONIC-CIRCUITS.md)
+  with its hex keypad, program editor and real circuit input/output connections.
 - View generated schematics, bills of materials and examples, including
   the logic ladder (l0..l10) and computer ladder (c0..c17).
 - Use oscilloscope traces, voltage/current/resistance meters, DC operating points

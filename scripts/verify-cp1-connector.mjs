@@ -73,13 +73,21 @@ try {
       first: event.detail.bytes[0], name: event.detail.name,
     }); });
   });
-  await page.locator('[data-build-machine] > button').click();
+  await page.getByRole('button', {name: 'Machine bench help', exact: true}).click();
+  const help = page.getByRole('dialog', {name: 'Machine bench', exact: true});
+  await help.waitFor();
+  assert.match(await help.innerText(), /built-in monitor/);
+  await help.getByRole('button', {name: 'Close', exact: true}).click();
+  checks.push('compact machine bench help describes the bundled CP1 monitor');
+  await page.locator('[data-build-machine]').getByRole('button', {name: /Build Machine$/}).click();
   await page.waitForFunction(() => window.__cp1Build?.kind === 'cp1');
   assert.deepEqual(await page.evaluate(() => window.__cp1Build),
     {kind: 'cp1', config: {partId: 'computer', expansion: true, clockHz: 6000000}});
   checks.push('Build Machine configuration handoff');
   assert.equal(await page.locator('[data-build-machine] [data-testid^="bw-machine-preset-"]').count(), 0,
-    'firmware is supplied by the user');
+    'CP1 firmware overrides use the custom ROM input');
+  assert.equal(await page.locator('[data-build-machine] details').filter({hasText: 'Open custom ROM'}).getAttribute('open'), null,
+    'the custom ROM override stays collapsed until requested');
   await page.getByText('Open custom ROM', {exact: true}).click();
   const upload = page.getByTestId('bw-machine-load-file');
   await upload.setInputFiles({name: 'wrong-size.bin', mimeType: 'application/octet-stream', buffer: Buffer.alloc(17)});
