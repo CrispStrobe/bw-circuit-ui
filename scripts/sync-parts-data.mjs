@@ -88,6 +88,7 @@ const LOCAL_ONLY = new Set([
   // Original whole-system schematic connector, generated locally; no product artwork.
   'kosmos-cp1.json', 'kosmos-cp1.svg',
   'busch-microtronic.json', 'busch-microtronic.svg',
+  'kim-1.json', 'kim-1.svg',
   'stm32f030.json', 'stm32f030.svg',
   // The MakeCode boards. Their faces are pxt-calliope / pxt-adafruit simulator
   // art (MIT); provenance is recorded in ART-PROVENANCE.md and THIRD-PARTY.md
