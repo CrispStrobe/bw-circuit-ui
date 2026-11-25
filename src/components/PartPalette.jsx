@@ -587,13 +587,11 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
       minHeight: 0,
       fontFamily: 'inherit',
       flex: '1 1 0',
-      flexShrink: 1,
-      overflowY: 'auto',
-      overflowX: 'hidden',
-      scrollbarWidth: 'thin',
-      overscrollBehavior: 'contain',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
     }}>
-      <div style={{ color: palette.text, fontSize: '11px', marginBottom: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div style={{ color: palette.text, fontSize: '11px', marginBottom: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
         {headingControl}<span>{paletteUi('parts', lang)}</span>
       </div>
 
@@ -604,7 +602,7 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
         placeholder={paletteUi('search', lang)}
         aria-label={paletteUi('search', lang)}
         style={{
-          width: '100%', padding: '4px 6px', marginBottom: '6px',
+          width: '100%', padding: '4px 6px', marginBottom: '6px', flexShrink: 0,
           background: palette.input, border: `1px solid ${palette.cardBorder}`,
           borderRadius: '4px', color: palette.inputText,
           fontFamily: 'inherit', fontSize: '10px',
@@ -612,22 +610,25 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
         }}
       />
 
-      {matchingParts ? (
-        matchingParts.length === 0 ? (
-          <div style={{ color: palette.muted, fontSize: '9px', padding: '4px' }}>{paletteUi('noMatches', lang)}</div>
+      <div data-parts-list style={{flex: '1 1 auto', minHeight: 0, overflowY: 'auto',
+        overflowX: 'hidden', scrollbarWidth: 'thin', overscrollBehavior: 'contain'}}>
+        {matchingParts ? (
+          matchingParts.length === 0 ? (
+            <div style={{ color: palette.muted, fontSize: '9px', padding: '4px' }}>{paletteUi('noMatches', lang)}</div>
+          ) : (
+            matchingParts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} lang={lang} />)
+          )
         ) : (
-          matchingParts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} lang={lang} />)
-        )
-      ) : (
-        CATEGORIES.map(cat => (
-          <div key={cat.name}>
-            <div style={{ color: palette.category, fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '.04em', fontWeight: 700 }}>
-              {paletteText(cat.name, lang)}
+          CATEGORIES.map(cat => (
+            <div key={cat.name}>
+              <div style={{ color: palette.category, fontSize: '8px', marginTop: '4px', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '.04em', fontWeight: 700 }}>
+                {paletteText(cat.name, lang)}
+              </div>
+              {cat.parts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} lang={lang} />)}
             </div>
-            {cat.parts.map((p, i) => <PartButton key={`${p.kind}-${p.label}-${i}`} palette={palette} part={p} onAddPart={onAddPart} onDragPart={onDragPart} onStartPlace={onStartPlace} ledColor={ledColor} onLedColorChange={setLedColor} lang={lang} />)}
-          </div>
-        ))
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }
