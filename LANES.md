@@ -1,3 +1,16 @@
+## Busch Microtronic Circuits — CLAIMED, 2026-11-25
+
+Owner: Brickwright Microtronic Circuits lane, requested by CrispStrobe.
+Base: `e2918352c4d17ec33a6f0c7896ea74dfd8bd2666`.
+Feature branch: `feat/busch-microtronic-circuits`; isolated checkout.
+Own additive Microtronic palette, original connector artwork/sidecar, geometry,
+Circuits controls and panel, original example, scoped tests and documentation.
+Execution belongs to the bw-board behavioral device and the existing circuit
+clock. The native TMS1600 firmware rewrite is deferred. No historical ROM,
+manual scan, external emulator code or unrelated interface changes.
+Qualify real input/output wiring, program persistence, independent instances,
+run/halt/step/reset, geometry and a full CircuitDesigner browser journey.
+
 ## Kosmos CP1 circuit and front-panel surfaces — CLAIMED, 2026-11-24
 
 Owner: Brickwright CP1 implementation lane, requested by CrispStrobe.
