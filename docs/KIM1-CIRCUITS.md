@@ -33,17 +33,18 @@ buttons keep their ordinary keyboard behavior.
 
 ## Programs and persistence
 
-The program editor accepts addressed hexadecimal bytes, for example:
+The program editor accepts addressed hex, Intel HEX, and MOS paper tape (.pap/.ptp). An addressed-hex example follows.
 
 ```text
 0200: A9 2A 8D 00 03 00
 ```
 
-Every data line starts with a four-digit address and colon, followed by
-two-digit bytes. Semicolon and hash comments are supported. Loading is atomic:
-invalid input does not replace the accepted program. GO also applies a dirty
-editor before running. Reset retains memory. Loading a new source image clears
-the prior user image as an explicit replacement.
+Use **Open…** and **Load program** to import a file. The loader validates the
+whole file before applying it. Paper-tape and Intel HEX imports can enable
+expansion RAM, which stays enabled when the program is saved. GO applies a
+dirty editor before running. In the learning monitor, loading replaces the
+current image and selects its entry address. In hardware mode, select the
+entry on the keypad after loading.
 
 Accepted program bytes and keypad RAM edits persist with each part's parameters,
 including circuit save/load, duplication and undo. Unloaded editor text remains
@@ -69,11 +70,13 @@ digital voltage model; this is not a transistor model of the original board.
 
 ## Scope and provenance
 
-The historical MOS ROM is not bundled. The front-panel learning monitor is an
-independent implementation of documented behavior; archived software that calls
-historical cassette or TTY ROM routines is outside this initial Circuits model.
-Unsupported execution reports an error. Instruction execution and peripheral
-time are modeled; cycle-by-cycle bus transactions are not claimed.
+The learning monitor is selected by default. Under **Firmware and TTY**, mount
+two 1 KiB files named for 6530-003 and 6530-002 or one 2 KiB file in that order.
+The hardware monitor runs on the 1 MHz circuit clock and drives the keypad,
+six display digits and TTY via the 6530 registers. The optional TTY terminal
+runs at 300 baud. ST and SST use the original monitor’s NMI path, which requires
+the program’s `$17FA–17FB` soft vector to be set. The ROM files stay in the
+active session. The circuit saves the program image and its RAM configuration.
 
 New KIM-specific UI, controls, programs, tests and connector artwork are original
 MIT-licensed work. Existing repository files retain their own licensing; the

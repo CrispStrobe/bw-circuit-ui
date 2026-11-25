@@ -37,3 +37,10 @@
 [class~="kim1-error"] { padding:7px; background:#51292b; border:1px solid #ce7c72; border-radius:4px; color:#ffdbd3; overflow-wrap:anywhere; }
 [class~="kim1-notice"] { color:#cce9b9; font-size:11px; }
 [class~="kim1-help"] p { color:#d1ddd3; font-size:11px; }
+
+.kim1-panel [data-kim1-tty-output] {
+  max-height: 11rem;
+  min-height: 3rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}

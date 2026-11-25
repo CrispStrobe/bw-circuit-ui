@@ -28,14 +28,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Read exact engine revision
-        id: pin
-        run: |
-          node --input-type=module -e "import fs from 'node:fs'; const p=JSON.parse(fs.readFileSync('package.json','utf8')); const m=/#([a-f0-9]{40})$/.exec(p.devDependencies['bw-board']); if(!m) throw Error('Unpinned engine'); fs.appendFileSync(process.env.GITHUB_OUTPUT,'sha='+m[1]+'\n');"
       - uses: actions/checkout@v4
         with:
           repository: CrispStrobe/bw-board
-          ref: ${{ steps.pin.outputs.sha }}
+          ref: 0e3231e71f5123d5f9ee294324d04d091fea716a
           path: engine-source
           sparse-checkout: |
             src

@@ -49,7 +49,7 @@ try {
   await panel.locator('[data-kim1-load]').click();
   await panel.getByRole('alert').waitFor();
   assert.equal(await page.evaluate(id=>window.__circuit.getPart(id).params.program,firstId),accepted);
-  await panel.locator('input[type="file"]').setInputFiles({name:'authored-step.hex',mimeType:'text/plain',buffer:Buffer.from('0200: A9 17 A2 42 00')});
+  await panel.locator('input[accept*=".ptp"]').setInputFiles({name:'authored-step.hex',mimeType:'text/plain',buffer:Buffer.from('0200: A9 17 A2 42 00')});
   await page.waitForFunction(()=>document.querySelector('[data-kim1-panel] textarea')?.value==='0200: A9 17 A2 42 00');
   await panel.locator('[data-kim1-load]').click();
   assert.equal(await panel.getByRole('alert').count(),0);
@@ -155,6 +155,32 @@ try {
   await page.waitForFunction(()=>window.__board.getDeviceState('one')?.cpu.a===0x5a);
   assert.deepEqual(await page.evaluate(()=>{const s=window.__board.getDeviceState('two');return[s.cpu.a,s.pc,s.running];}),[0,0x0200,false]);
   checks.push('two KIM-1 panels control independent computers on one circuit');
+
+  panel=page.locator('[data-kim1-panel="one"]');
+  await panel.locator('input[accept*=".ptp"]').setInputFiles({
+    name:'authored.ptp',mimeType:'text/plain',buffer:Buffer.from(';032000A94200010E\r\n;0000010001\r\n')
+  });
+  await page.waitForFunction(()=>document.querySelector('[data-kim1-panel="one"] textarea')?.value.startsWith(';03'));
+  await panel.locator('[data-kim1-load]').click();
+  await page.waitForFunction(()=>window.__board.getDeviceState('one')?.expansion?.[0x2000]===0xa9);
+  assert.match(await panel.getByRole('textbox',{name:'KIM-1 program',exact:true}).inputValue(), /2000: A9 42 00/);
+  checks.push('the file picker imports checked MOS paper tape into persistent expansion RAM');
+
+  const roms=Buffer.alloc(2048);
+  // Original test program: set the segment pattern and select digit 0, then loop.
+  const rom=Buffer.from([0xa9,0x7f,0x8d,0x41,0x17,0xa9,0x1e,0x8d,0x43,0x17,
+    0xa9,0x3f,0x8d,0x40,0x17,0xa9,8,0x8d,0x42,0x17,0x4c,0x14,0x1c]);
+  rom.copy(roms,1024); roms[2045]=0x1c;
+  await panel.getByText('Firmware and TTY',{exact:true}).click();
+  await panel.locator('[data-kim1-rom-input]').setInputFiles({
+    name:'authored.rom',mimeType:'application/octet-stream',buffer:roms
+  });
+  await page.waitForFunction(()=>window.__board.getDeviceState('one')?.segments?.[0]===0x3f,undefined,{timeout:12000});
+  assert.equal(await panel.locator('[data-kim1-display]').getAttribute('data-kim1-display'),'0     ');
+  assert.equal(await page.evaluate(()=>JSON.stringify(window.__circuit.toJSON()).includes('roms')), false);
+  await panel.getByRole('button',{name:'Learning monitor',exact:true}).click();
+  await page.waitForFunction(()=>window.__board.getDeviceState('one')?.roms===null);
+  checks.push('session-only ROM upload drives the real 6530 display and can return to the learning monitor');
 
   await page.setViewportSize({width:390,height:844});
   await page.waitForFunction(()=>document.querySelector('[data-kim1-panel="one"]')?.getBoundingClientRect().width>=300);
