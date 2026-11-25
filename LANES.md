@@ -31,6 +31,16 @@ npm-installed package (no symlink). All 109 focused/provenance/capability checks
 pass with no skips, and the complete Microtronic browser gate passes again
 against that installed package. No runtime changes were needed for qualification.
 
+Concurrent CP1 integration: combined the published Microtronic candidate
+`29aa4f0bf7cba6bdb66fe3c215e6bf9961b66e39` with master
+`11532a80eee13b7dad4451e167dc6780bd546ea0`, retaining its compact machine bench,
+bundled-monitor help and collapsed custom-ROM override. The CP1 browser gate
+now selects the nested Build Machine action by its accessible name and checks
+the new help/override interactions. All 109 focused tests and both complete
+Microtronic/CP1 connector browser gates pass on the combined tree. The latter
+checks 320 transformed CP1 contacts, machine handoff and synthetic custom-ROM
+refusal/import; full-host bundled-monitor execution is a separate host gate.
+
 ## Kosmos CP1 circuit and front-panel surfaces — CLAIMED, 2026-11-24
 
 Owner: Brickwright CP1 implementation lane, requested by CrispStrobe.
