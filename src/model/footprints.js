@@ -263,11 +263,29 @@ const BUILTIN_FOOTPRINTS = {
   thermocouple: { refTerminal: 'pos', leads: { pos: { dRow: 0, dCol: 0 }, neg: { dRow: 0, dCol: 1 } } },
   air_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
   electrolysis_cell: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  // Salt-film humidity comb and the dual-gate MOSFET (bw-parts 2026-11-24),
+  // held equal to their sidecars by test/mosfet-humidity-parts.test.js.
+  humidity_comb: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  dual_gate_mosfet: { refTerminal: 'drain', leads: { drain: { dRow: 0, dCol: 0 }, gate2: { dRow: 0, dCol: 1 }, gate1: { dRow: 0, dCol: 2 }, source: { dRow: 0, dCol: 3 } } },
+  // New kinds of 2026-11-24 (bw-parts #28), held equal to their sidecars by
+  // test/r6-new-parts.test.js.
+  ptc_sensor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  spark_gap: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
+  bending_ruler: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, ao: { dRow: 0, dCol: 2 } } },
+  // Magnetic field source and coil pendulum (bw-parts, 2026-11-25), held
+  // equal to their sidecars by test/magnetic-field-parts.test.js.
+  induction_loop: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
+  coil_pendulum: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
   // Laser diode module (bw-parts optical-link parts, 2026-11-23): two leads
   // one column apart, like an LED. light_path has no leads and no footprint.
   laser_diode: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 1 } } },
   vhf_coil: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
   varicap: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 4 } } },
+  // The VHF receiver's IF parts and the dipole (bw-parts, r7), held equal to
+  // their sidecars by test/r7-radio-parts.test.js.
+  ceramic_filter: { refTerminal: 'in', leads: { in: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 2 } } },
+  fm_if: { refTerminal: 'in', leads: { in: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, vcc: { dRow: 0, dCol: 2 }, out: { dRow: 0, dCol: 3 } } },
+  dipole: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 1 } } },
   lm386: { refTerminal: 'gain8', straddlesGutter: true, leads: { gain1: { dRow: 5, dCol: 0 }, inn: { dRow: 5, dCol: 1 }, inp: { dRow: 5, dCol: 2 }, gnd: { dRow: 5, dCol: 3 }, vout: { dRow: 0, dCol: 3 }, vs: { dRow: 0, dCol: 2 }, bypass: { dRow: 0, dCol: 1 }, gain8: { dRow: 0, dCol: 0 } } },
   // Logic gates: 3-pin inline (2-input gates) or 2-pin inline (NOT)
   gate_and:  { refTerminal: 'in0', leads: { in0: { dRow: 0, dCol: 0 }, in1: { dRow: 0, dCol: 1 }, out: { dRow: 0, dCol: 3 } } },

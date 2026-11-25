@@ -1,0 +1,34 @@
+{
+  "kind": "dipole",
+  "w": 120,
+  "h": 40,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 8,
+      "y": 40,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 22,
+      "y": 40,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Half-wave folded dipole for the VHF band (balanced, two leads a, b). Engine (bw-board dipole): EMF = field x heightM (0.95 m, lambda/pi at 100 MHz) x cos(turn - station bearing) behind ohms (300 Ohm folded) between a and b; the turn is a knob (0..1 = 0..360 degrees): a two-sided figure-eight. No earth needed.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 1
+      }
+    }
+  }
+}

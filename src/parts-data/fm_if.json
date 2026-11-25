@@ -1,0 +1,54 @@
+{
+  "kind": "fm_if",
+  "w": 66,
+  "h": 44,
+  "terminals": [
+    {
+      "name": "in",
+      "x": 8,
+      "y": 44,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 22,
+      "y": 44,
+      "functions": []
+    },
+    {
+      "name": "vcc",
+      "x": 36,
+      "y": 44,
+      "functions": []
+    },
+    {
+      "name": "out",
+      "x": 50,
+      "y": 44,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "FM IF IC: limiting amplifier and quadrature detector (SIL-4: in, gnd, vcc, out). Engine (bw-board fm_if): input 330 Ohm to an internal bias (the ceramic filter's termination); output behind 5 kOhm at half the supply plus Kd atan(2Q (f_i - f_q)/f_q) A^2/(A^2 + A_lim^2), f_i the IF's instantaneous frequency, Q 20, Kd 1 V/rad, limiting from 30 uV; the knob tunes the quadrature tank f_q +-150 kHz around quadHz (10.7 MHz). Reports detector, quadHz.",
+  "footprint": {
+    "refTerminal": "in",
+    "leads": {
+      "in": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "vcc": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "out": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
+}

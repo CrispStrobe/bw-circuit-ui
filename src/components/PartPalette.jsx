@@ -117,6 +117,20 @@ const CATEGORIES = [
       // through it makes a pulse; metal nearby shifts its inductance.
       { kind: 'air_coil', label: 'Hand-wound coil', params: { turns: 200, radiusM: 0.015, lengthM: 0.03, wireMm: 0.25 }, color: '#b5651d',
         tooltip: 'Air coil wound from copper wire: its current makes a magnetic field (a compass on its axis turns), a magnet dropped through it induces a pulse, metal nearby changes its inductance' },
+      // A conductor carrying the circuit's audio current whose magnetic field
+      // a hand-wound pickup coil overhears (bw-board induction_loop; `pickup`
+      // names the coil, the knob is the distance).
+      { kind: 'induction_loop', label: 'Magnetic field source (loop)', params: { shape: 'loop', turns: 50, radiusM: 0.02, position: 0.5 }, color: '#b5651d',
+        tooltip: 'A loop of wire carrying an audio current: its magnetic field reaches a hand-wound pickup coil (set its pickup), falling off with distance — the knob moves it' },
+      { kind: 'induction_loop', label: 'Mains cable (two cores)', params: { shape: 'cable', spacingMm: 6, position: 0.5 }, color: '#7f8c8d',
+        tooltip: 'A two-core cable: only the current it carries makes a field, and go and return nearly cancel — a pickup coil hears it only close by and only while a load is on' },
+      // An electromagnet kicking a paper-clip pendulum (bw-board coil_pendulum).
+      { kind: 'coil_pendulum', label: 'Coil pendulum', params: { bob: 'iron', lengthM: 0.15 }, color: '#3c3c3c',
+        tooltip: 'A wound rod with a paper clip hanging beside its pole: each current pulse pulls the clip; pulses in step with its swing (about 1.3 Hz) make it swing wide' },
+      // Two electrodes in air (bw-board spark_gap): breaks down at about
+      // 3 kV per mm of gap, then an arc until the current dies.
+      { kind: 'spark_gap', label: 'Spark gap', params: { gapMm: 1 }, color: '#9a8f74',
+        tooltip: 'Two electrodes in air: nothing flows until the voltage reaches about 3 kV per millimetre of gap (plus 1.35 kV), then a spark empties whatever was charged' },
       { kind: 'diode', label: 'Diode', params: { vf: 0.7 }, color: '#95a5a6' },
       // NAMED PARTS: `params.part` names a card in bw-board's parts library, which is
       // the only home of the electrical numbers (test/parts-cards.test.js keeps every
@@ -188,6 +202,20 @@ const CATEGORIES = [
         tooltip: 'Tuning diode: reverse-biased, its capacitance falls as the voltage rises — tune a circuit with a pot instead of a tuning capacitor' },
       { kind: 'npn', label: 'VHF transistor BF199', params: { part: 'BF199' }, color: '#8e44ad',
         tooltip: 'NPN transistor fast enough for VHF (about 550 MHz transition frequency) — numbers from the parts library' },
+      // A short coupling winding that slides along the rod (bw-board
+      // slideWinding): the rod's dial moves it instead of turning the rod.
+      { kind: 'ferrite_coil', label: 'Ferrite rod, sliding winding', params: { henrys: 250e-6, tap: 0.25, couplingRatio: 0.3, k: 0.98, couplingK: 0.9, q: 120, slideWinding: true, slide: 0 }, color: '#b87333',
+        tooltip: 'Ferrite rod whose small winding c1–c2 slides along it: in the middle it has the most inductance, towards the end less. Wire the two windings in series one way or the other to add or subtract them' },
+      // Double-balanced mixer with its own oscillator transistor (bw-board sa612).
+      { kind: 'sa612', label: 'Mixer IC SA612', params: {}, color: '#2c3e50',
+        tooltip: 'Double-balanced mixer — DIP-8: the outputs carry the product of the two inputs (RF on pins 1–2, the oscillator on pin 6); pins 6–7 are a transistor for its own oscillator' },
+      // The VHF receiver's IF: 10.7 MHz ceramic filter and the FM IF IC.
+      { kind: 'ceramic_filter', label: 'Ceramic filter 10.7 MHz', params: { hz: 10.7e6, bandwidthHz: 280e3, ohms: 330 }, color: '#2f6fb0',
+        tooltip: 'Ceramic IF filter: passes 10.7 MHz ± about 140 kHz and stops the rest; in, gnd, out' },
+      { kind: 'fm_if', label: 'FM IF IC (limiter + detector)', params: { quadHz: 10.7e6 }, color: '#2b2b2b',
+        tooltip: 'FM IF chip: limits the 10.7 MHz IF and turns its frequency swing into audio with a quadrature detector; its dial tunes the quadrature coil' },
+      { kind: 'dipole', label: 'Folded dipole (VHF)', params: { heightM: 0.95, ohms: 300, angleDeg: 0 }, color: '#8a6a3e',
+        tooltip: 'Half-wave folded dipole for the FM band: strongest broadside to the station, nothing end-on; its dial turns it' },
     ],
   },
   {
@@ -248,6 +276,10 @@ const CATEGORIES = [
       { kind: 'pnp', label: 'PNP', params: { beta: 100, vbe: 0.7 }, color: '#8e44ad', tooltip: '2N2907 type' },
       { kind: 'pnp', label: '2N2907', params: { part: '2N2907' }, color: '#8e44ad', tooltip: 'Named PNP — numbers from the parts library' },
       { kind: 'nmos', label: 'N-MOSFET', params: { vth: 2.0 }, color: '#27ae60' },
+      // Depletion-mode dual-gate MOSFET (bw-board dual_gate_mosfet): two
+      // channel halves in series, either gate pinches it off.
+      { kind: 'dual_gate_mosfet', label: 'Dual-gate MOSFET', params: { vp: -1.2, k: 0.005 }, color: '#27ae60',
+        tooltip: 'Depletion-mode MOSFET with two gates: it conducts with both gates at the source and either gate, taken below about -1.2 V, pinches the channel off' },
       { kind: 'pmos', label: 'P-MOSFET', params: { vth: 2.0 }, color: '#27ae60' },
       { kind: 'tip120', label: 'TIP120', params: { beta: 1000 }, color: '#8e44ad', tooltip: 'Darlington — high beta, 2× Vbe' },
     ],
@@ -292,10 +324,24 @@ const CATEGORIES = [
         tooltip: 'Two different metals joined at a hot junction: about 41 µV per kelvin of difference to the bench — amplify it with an op-amp' },
       { kind: 'thermocouple', label: 'Thermocouple copper/constantan', params: { type: 'T', hotC: 25, ohms: 5 }, color: '#c0392b',
         tooltip: 'A thermocouple made from a copper and a constantan wire twisted together: about 40 µV per kelvin near room temperature' },
+      // Silicon PTC (bw-board ptc_sensor): R rises with temperature; with
+      // surroundC it sits in surroundings of its own (a slider: fingers, ice
+      // water, hot water) while the bench stays put.
+      { kind: 'ptc_sensor', label: 'Silicon PTC sensor', params: { r25: 2000, surroundC: 25, thermalTau: 3 }, color: '#2c3e50',
+        tooltip: 'Silicon temperature sensor: 2 kΩ at 25 °C, about 0.8 % more per kelvin. The temperature slider puts it in your fingers, ice water or hot water' },
+      { kind: 'npn', label: 'NPN on a lead (thermometer)', params: { beta: 100, surroundC: 25, thermalTau: 3 }, color: '#8e44ad',
+        tooltip: 'A transistor on long leads used as a thermometer: its base-emitter voltage falls about 2 mV per kelvin. The temperature slider sets its surroundings' },
+      // Weighing with a ruler (bw-board bending_ruler): load in grams is a slider.
+      { kind: 'bending_ruler', label: 'Ruler scale (Hall)', params: { loadG: 0, gapMm: 15, magnetAm2: 0.1 }, color: '#1f5f8b',
+        tooltip: 'A steel ruler clamped at one end, a magnet at its tip over a linear Hall sensor: a load bends the ruler, the magnet comes closer, the output rises (not linearly — calibrate it)' },
       // Electrolyte between two electrodes (bw-board electrolysis_cell):
       // the battery-on-the-tongue experiment as a circuit.
       { kind: 'electrolysis_cell', label: 'Electrolyte (tongue)', params: { ohms: 2000, farads: 2e-6, onsetV: 1.7 }, color: '#d98880',
         tooltip: 'Two electrodes on a wet tongue: a resistance, and electrolysis only above about 1.7 V — then the tongue tastes it (sour at the + contact)' },
+      // Salt-film humidity comb (bw-board humidity_comb): the humidity at
+      // the film is a slider (breath) in the stimulus panel.
+      { kind: 'humidity_comb', label: 'Humidity comb', params: { humidity: 50 }, color: '#2f6b3a',
+        tooltip: 'Two copper combs under a salt film: about 10 MΩ in a room at 50 % humidity, a few kΩ when you breathe on it' },
       { kind: 'pir_sensor', label: 'PIR Sensor', params: {}, color: '#27ae60', tooltip: 'Motion detector' },
       { kind: 'ultrasonic', label: 'Ultrasonic', params: {}, color: '#3498db', tooltip: 'HC-SR04 distance sensor' },
       { kind: 'soil_moisture', label: 'Soil Moisture', params: {}, color: '#8B4513' },
@@ -416,6 +462,10 @@ const CATEGORIES = [
       { kind: 'lm386', label: 'LM386', params: {}, color: '#7b3f00',
         tooltip: 'Audio power amplifier — PDIP-8, gain 20 (200 with 10 µF across pins 1–8), output at Vs/2, drives an 8 Ω speaker through a coupling capacitor' },
       { kind: '555', label: '555 Timer', params: {}, color: '#e74c3c' },
+      // 4046-type PLL (bw-board cd4046): the VCO runs on the external R1 (pin
+      // 11), C1 (pins 6-7) and optional R2 (pin 12); comparator II locks it.
+      { kind: 'cd4046', label: '4046 PLL', params: {}, color: '#8e44ad',
+        tooltip: 'Phase-locked loop — DIP-16: a VCO set by R1, R2 and C1, an XOR and an edge phase comparator; pin 1 is HIGH while the loop is locked' },
       { kind: 'shift_register', label: '74HC595', params: {}, color: '#8e44ad', tooltip: 'Shift register — 8 outputs' },
       { kind: 'ir_receiver', label: 'IR Receiver', params: {}, color: '#c0392b', tooltip: 'drawable — IrDA' },
       { kind: 'temp_sensor', label: 'Temp Sensor', params: {}, color: '#16a085', tooltip: 'drawable — DS18B20' },

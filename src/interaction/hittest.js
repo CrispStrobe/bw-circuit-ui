@@ -99,11 +99,15 @@ export const FOOTPRINTS = {
   tuning_cap: { w: 60, h: 60 }, ferrite_coil: { w: 84, h: 44 },
   field_probe: { w: 30, h: 70 },
   // Sensing transducers: their sidecar bodies.
+  ptc_sensor: { w: 44, h: 48 }, spark_gap: { w: 44, h: 48 }, bending_ruler: { w: 60, h: 52 },
+  induction_loop: { w: 56, h: 48 }, coil_pendulum: { w: 56, h: 64 },
   thermocouple: { w: 30, h: 64 }, air_coil: { w: 56, h: 48 }, electrolysis_cell: { w: 44, h: 56 },
+  humidity_comb: { w: 44, h: 48 }, dual_gate_mosfet: { w: 58, h: 44 },
   // Optical links: the laser's sidecar body; a light path wears the
   // potentiometer's 60 px knob face (its geometry knob).
   laser_diode: { w: 30, h: 44 }, light_path: { w: 60, h: 60 },
   vhf_coil: { w: 44, h: 40 }, varicap: { w: 60, h: 20 },
+  ceramic_filter: { w: 44, h: 40 }, fm_if: { w: 66, h: 44 }, dipole: { w: 120, h: 40 },
   // Bench instruments and the electrolytic draw their sidecar art
   // (src/model/part-art.js): the hit box is the art's viewBox.
   oscilloscope: { w: 90, h: 64 }, function_gen: { w: 80, h: 56 },

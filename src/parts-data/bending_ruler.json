@@ -1,0 +1,44 @@
+{
+  "kind": "bending_ruler",
+  "w": 60,
+  "h": 52,
+  "terminals": [
+    {
+      "name": "vcc",
+      "x": 8,
+      "y": 52,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 22,
+      "y": 52,
+      "functions": []
+    },
+    {
+      "name": "ao",
+      "x": 36,
+      "y": 52,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Ruler scale: a steel rule clamped at one end, a magnet glued to its free end above a linear Hall sensor on a small board. 3-pin: vcc, gnd, ao. Engine (bw-board bending_ruler): a load loadG (its knob, grams) at the tip deflects it by F L^3/(3 E I) (12.5 mm/N by default), the magnet nears the sensor and its dipole field mu0 m/(2 pi d^3) (5.9 mT at the 15 mm rest gap) raises ao = vcc/2 + 14 mV/mT x vcc/5. Reports loadG, deflectionMm, distanceMm, fieldMt, touching.",
+  "footprint": {
+    "refTerminal": "vcc",
+    "leads": {
+      "vcc": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "ao": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
+}

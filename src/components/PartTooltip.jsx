@@ -84,6 +84,72 @@ export function PartTooltip({ part, circuit, visible, x, y, lang = 'en' }) {
         }
         break;
       }
+      case 'induction_loop': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.distanceCm)) {
+          const f = (x, n) => (de ? x.toFixed(n).replace('.', ',') : x.toFixed(n));
+          lines.push(de ? `Abstand zur Aufnahmespule ${f(s.distanceCm, 1)} cm` : `${f(s.distanceCm, 1)} cm from the pickup coil`);
+          if (s.mutualH) lines.push(de ? `Gegeninduktivität ${f(s.mutualH * 1e6, 2)} µH` : `Mutual inductance ${f(s.mutualH * 1e6, 2)} µH`);
+        }
+        break;
+      }
+      case 'coil_pendulum': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.angleDeg)) {
+          const f = (x, n) => (de ? x.toFixed(n).replace('.', ',') : x.toFixed(n));
+          lines.push(de ? `Ausschlag ${f(s.amplitudeDeg, 1)}°, jetzt ${f(s.angleDeg, 1)}°` : `Swing ${f(s.amplitudeDeg, 1)}°, now ${f(s.angleDeg, 1)}°`);
+          lines.push(de ? `Eigenfrequenz ${f(s.naturalHz, 2)} Hz${s.periodSec > 0 ? `, Periode ${f(s.periodSec, 2)} s` : ''}`
+            : `Natural ${f(s.naturalHz, 2)} Hz${s.periodSec > 0 ? `, period ${f(s.periodSec, 2)} s` : ''}`);
+        }
+        break;
+      }
+      case 'ptc_sensor': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.ohms)) {
+          const k = (s.ohms / 1000).toFixed(3);
+          lines.push(de ? `${k.replace('.', ',')} kΩ bei ${s.celsius.toFixed(1).replace('.', ',')} °C` : `${k} kΩ at ${s.celsius.toFixed(1)} °C`);
+        }
+        break;
+      }
+      case 'bending_ruler': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.deflectionMm)) {
+          const f = (x, n) => (de ? x.toFixed(n).replace('.', ',') : x.toFixed(n));
+          lines.push(de ? `Last ${Math.round(s.loadG)} g, Durchbiegung ${f(s.deflectionMm, 2)} mm` : `Load ${Math.round(s.loadG)} g, bend ${f(s.deflectionMm, 2)} mm`);
+          lines.push(de ? `Magnet ${f(s.distanceMm, 1)} mm über dem Sensor, ${f(s.fieldMt, 1)} mT` : `Magnet ${f(s.distanceMm, 1)} mm above the sensor, ${f(s.fieldMt, 1)} mT`);
+        }
+        break;
+      }
+      case 'spark_gap': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.sparks)) lines.push(de ? `Funken: ${s.sparks}` : `Sparks: ${s.sparks}`);
+        break;
+      }
+      case 'sa612': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.iTail)) {
+          const f = (x, n) => (de ? x.toFixed(n).replace('.', ',') : x.toFixed(n));
+          lines.push(de ? `Strom ${f(s.iTail * 1e3, 2)} mA, Ausgänge ${f(s.iOutA * 1e3, 2)} / ${f(s.iOutB * 1e3, 2)} mA`
+            : `Tail ${f(s.iTail * 1e3, 2)} mA, outputs ${f(s.iOutA * 1e3, 2)} / ${f(s.iOutB * 1e3, 2)} mA`);
+        }
+        break;
+      }
+      case 'fm_if': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.quadHz)) {
+          const mhz = (s.quadHz / 1e6).toFixed(3);
+          lines.push(de ? `Quadraturkreis ${mhz.replace('.', ',')} MHz` : `Quadrature coil ${mhz} MHz`);
+        }
+        break;
+      }
+      case 'cd4046': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.vcoHz)) {
+          lines.push(`VCO: ${s.vcoHz.toFixed(0)} Hz`);
+          lines.push(s.locked ? (de ? 'eingerastet' : 'locked') : (de ? 'nicht eingerastet' : 'not locked'));
+        }
+        break;
+      }
       case 'electrolysis_cell': {
         const s = circuit.board?.getDeviceState?.(part.id);
         if (s && Number.isFinite(s.amps)) {
@@ -92,6 +158,24 @@ export function PartTooltip({ part, circuit, visible, x, y, lang = 'en' }) {
           lines.push(de ? `Elektrolyse: ${shown.replace('.', ',')} µA` : `Electrolysis: ${shown} µA`);
           const taste = { none: de ? 'nichts' : 'nothing', faint: de ? 'schwach' : 'faint', strong: de ? 'deutlich' : 'strong' }[s.taste];
           lines.push(de ? `Geschmack: ${taste}` : `Taste: ${taste}`);
+        }
+        break;
+      }
+      case 'humidity_comb': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.ohms) && s.ohms > 0) {
+          lines.push(de ? `Luftfeuchte: ${Math.round(s.humidityPct)} %` : `Humidity: ${Math.round(s.humidityPct)} %`);
+          lines.push(de ? `Salzfilm: ${fmtOhms(s.ohms)}` : `Salt film: ${fmtOhms(s.ohms)}`);
+        }
+        break;
+      }
+      case 'dual_gate_mosfet': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.vg1s)) {
+          const f = (v) => (de ? v.toFixed(2).replace('.', ',') : v.toFixed(2));
+          lines.push(`U(G1S) ${f(s.vg1s)} V, U(G2S) ${f(s.vg2s)} V, U(DS) ${f(s.vds)} V`);
+          const by = { gate1: 'Gate 1', gate2: 'Gate 2', both: de ? 'beide Gates' : 'both gates' }[s.pinchedBy];
+          lines.push(by ? (de ? `Kanal abgeschnürt von ${by}` : `Channel pinched off by ${by}`) : (de ? 'Kanal leitet' : 'Channel conducts'));
         }
         break;
       }

@@ -1,0 +1,54 @@
+{
+  "kind": "dual_gate_mosfet",
+  "w": 58,
+  "h": 44,
+  "terminals": [
+    {
+      "name": "drain",
+      "x": 8,
+      "y": 44,
+      "functions": []
+    },
+    {
+      "name": "gate2",
+      "x": 22,
+      "y": 44,
+      "functions": []
+    },
+    {
+      "name": "gate1",
+      "x": 36,
+      "y": 44,
+      "functions": []
+    },
+    {
+      "name": "source",
+      "x": 50,
+      "y": 44,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Dual-gate N-channel MOSFET (MOS tetrode), depletion mode: one channel under two gates in series, gate 1 next to the source, gate 2 next to the drain. 4-terminal: drain, gate2, gate1, source. Engine (bw-board dual_gate_mosfet): two level-1 nmos halves on an internal node, pinch-off vp (default -1.2 V, vp1/vp2 per half) and k (default 5 mA/V^2 per half, k1/k2), lambda 0.02. Conducts with both gates at the source potential; either gate below pinch-off cuts the channel; at small Vds the channel is a voltage-controlled resistor. Reports vg1s, vg2s, vds and which gate pinched it.",
+  "footprint": {
+    "refTerminal": "drain",
+    "leads": {
+      "drain": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gate2": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "gate1": {
+        "dRow": 0,
+        "dCol": 2
+      },
+      "source": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
+}

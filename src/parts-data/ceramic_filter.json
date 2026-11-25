@@ -1,0 +1,44 @@
+{
+  "kind": "ceramic_filter",
+  "w": 44,
+  "h": 40,
+  "terminals": [
+    {
+      "name": "in",
+      "x": 8,
+      "y": 40,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 22,
+      "y": 40,
+      "functions": []
+    },
+    {
+      "name": "out",
+      "x": 36,
+      "y": 40,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Ceramic IF filter, 10.7 MHz (three leads: in, gnd, out). Engine (bw-board ceramic_filter): two piezo resonators coupled through a shunt capacitance, a two-pole Butterworth band-pass designed for hz (10.7 MHz), bandwidthHz (280 kHz) and ohms (330 Ohm terminations), resonator q (1500); in the RF bands only, open at audio and DC.",
+  "footprint": {
+    "refTerminal": "in",
+    "leads": {
+      "in": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "gnd": {
+        "dRow": 0,
+        "dCol": 1
+      },
+      "out": {
+        "dRow": 0,
+        "dCol": 2
+      }
+    }
+  }
+}

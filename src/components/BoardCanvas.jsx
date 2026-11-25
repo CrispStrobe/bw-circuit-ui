@@ -370,6 +370,10 @@ function terminalOffsetsForPart(part) {
     case 'oscilloscope':
     // LM386 audio amp: its eight DIP pins from its sidecar.
     case 'lm386':
+    // DIP chips drawn from their sidecars: the mixer IC and the 4046 PLL
+    // (the PLL's dots had all sat on one pixel since it arrived).
+    case 'sa612':
+    case 'cd4046':
     // Speaker, earphone and the crystal-set parts: leads from their sidecars
     // (bw-parts), on the breadboard pitch of their footprints. The tuning
     // capacitor's a/b land where the potentiometer's outer legs do.
@@ -400,13 +404,26 @@ function terminalOffsetsForPart(part) {
     case 'thermocouple':
     case 'air_coil':
     case 'electrolysis_cell':
+    case 'humidity_comb':
+    case 'dual_gate_mosfet':
+    // Silicon PTC sensor, spark gap and the ruler scale (bw-parts #28).
+    case 'ptc_sensor':
+    case 'spark_gap':
+    case 'bending_ruler':
+    // Magnetic field source and coil pendulum (bw-parts, 2026-11-25).
+    case 'induction_loop':
+    case 'coil_pendulum':
     // Optics palette: laser module, IR LED and phototransistor, leads from
     // their sidecars (bw-parts).
     case 'laser_diode':
     case 'ir_transmitter':
     case 'phototransistor':
     case 'vhf_coil':
-    case 'varicap': {
+    case 'varicap':
+    // The VHF receiver's IF parts and the dipole (bw-parts, r7).
+    case 'ceramic_filter':
+    case 'fm_if':
+    case 'dipole': {
       const base = sidecarCenterOffsets(part.kind);
       if (!base) return {};
       return Object.fromEntries(Object.entries(base).map(([name, o]) => [name, r(o.dx, o.dy)]));
@@ -3138,7 +3155,8 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
         const seat = part.seat && part._seatTerminals;
         const ax = seat ? (seat.a?.x ?? x) : x - 28;
         const ay = seat ? (seat.a?.y ?? y) : y + 22;
-        const val = controlValues?.get(id) ?? ((params?.angleDeg ?? 0) / 360);
+        const slide = !!params?.slideWinding;
+        const val = controlValues?.get(id) ?? (slide ? (params?.slide ?? 0) : (params?.angleDeg ?? 0) / 360);
         return (
           <div key={`${id}-rod`} data-rod-control={id}
             style={{ position: 'absolute', left: ax + 8, top: ay - 78, width: 40, height: 46, pointerEvents: 'auto', cursor: 'pointer' }}
@@ -3155,7 +3173,98 @@ function WokwiParts({ parts, ledBrightness, buzzerTones, meterReadings, cubeScan
               }}
             />
             <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
-              {`${Math.round(val * 360)}°`}
+              {slide ? `${Math.round(val * 100)} %` : `${Math.round(val * 360)}°`}
+            </div>
+          </div>
+        );
+      }
+      // The dipole turns (0..1 = 0..360°, its pickup goes with the cosine
+      // of the angle to the station); the FM IF IC's dial tunes its
+      // quadrature coil (0.5 = aligned on quadHz). Their art stays the face;
+      // while simulating, a small dial above the first lead sets the engine
+      // control, as for the ferrite rod.
+      case 'dipole':
+      case 'fm_if': {
+        if (!simulate) return null;
+        const seat = part.seat && part._seatTerminals;
+        const first = kind === 'dipole' ? 'a' : 'in';
+        const ax = seat ? (seat[first]?.x ?? x) : x - 28;
+        const ay = seat ? (seat[first]?.y ?? y) : y + 22;
+        const val = controlValues?.get(id) ?? (kind === 'dipole' ? (params?.angleDeg ?? 0) / 360 : 0.5);
+        return (
+          <div key={`${id}-dial`} data-rod-control={id}
+            style={{ position: 'absolute', left: ax + 8, top: ay - 78, width: 40, height: 46, pointerEvents: 'auto', cursor: 'pointer' }}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerMove={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}>
+            <WokwiPotentiometer
+              style={{ display: 'block', transform: 'scale(0.5)', transformOrigin: 'top left' }}
+              min={0} max={1} step={0.005} value={val}
+              onInput={(e) => {
+                const v = parseFloat(e.target.value);
+                if (!isNaN(v)) onControlChange(id, v);
+              }}
+            />
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {kind === 'dipole' ? `${Math.round(val * 360)}°` : `${Math.round((val - 0.5) * 300)} kHz`}
+            </div>
+          </div>
+        );
+      }
+      // A magnetic field source's distance to its pickup coil (bw-board
+      // induction_loop: 0 = far, 1 = near). Its art is the face; while
+      // simulating, a small dial above it moves it, labelled in centimetres.
+      case 'induction_loop': {
+        if (!simulate) return null;
+        const seat = part.seat && part._seatTerminals;
+        const ax = seat ? (seat.a?.x ?? x) : x - 28;
+        const ay = seat ? (seat.a?.y ?? y) : y + 24;
+        const val = controlValues?.get(id) ?? (params?.position ?? 0.5);
+        const near = Number(params?.nearCm ?? 1), far = Number(params?.farCm ?? 30);
+        return (
+          <div key={`${id}-dist`} data-distance-control={id}
+            style={{ position: 'absolute', left: ax + 8, top: ay - 78, width: 40, height: 46, pointerEvents: 'auto', cursor: 'pointer' }}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerMove={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}>
+            <WokwiPotentiometer
+              style={{ display: 'block', transform: 'scale(0.5)', transformOrigin: 'top left' }}
+              min={0} max={1} step={0.005} value={val}
+              onInput={(e) => {
+                const v = parseFloat(e.target.value);
+                if (!isNaN(v)) onControlChange(id, v);
+              }}
+            />
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {`${(far + (near - far) * val).toFixed(1)} cm`}
+            </div>
+          </div>
+        );
+      }
+      // The coil pendulum swings (bw-board coil_pendulum: angleDeg in its
+      // device state): while simulating, a thread and bob drawn above the
+      // part at the engine's angle.
+      case 'coil_pendulum': {
+        if (!simulate) return null;
+        const ds = deviceStates?.get(id);
+        const seat = part.seat && part._seatTerminals;
+        const ax = seat ? (seat.a?.x ?? x) : x - 28;
+        const ay = seat ? (seat.a?.y ?? y) : y + 32;
+        const deg = Number.isFinite(ds?.angleDeg) ? ds.angleDeg : 0;
+        const r = (deg * Math.PI) / 180, L = 34;
+        const bx = 24 + L * Math.sin(r), by = 4 + L * Math.cos(r);
+        return (
+          <div key={`${id}-swing`} data-pendulum={id}
+            style={{ position: 'absolute', left: ax - 6, top: ay - 112, width: 48, height: 56, pointerEvents: 'none' }}>
+            <svg width="48" height="44" viewBox="0 0 48 44">
+              <line x1="10" y1="4" x2="38" y2="4" stroke="#8b6f47" strokeWidth="2" />
+              <line x1="24" y1="4" x2={bx} y2={by} stroke="#666" strokeWidth="0.8" />
+              <circle cx={bx} cy={by} r="3.2" fill="#9aa5ad" />
+            </svg>
+            <div style={{ textAlign: 'center', color: '#667', fontSize: 9, fontFamily: 'monospace', opacity: 0.8 }}>
+              {`${deg.toFixed(0)}°`}
             </div>
           </div>
         );
@@ -5944,7 +6053,7 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c') {
+                if (p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'coil_pendulum') {
                   const ds = eb.getDeviceState(p.id);
                   if (ds) m.set(p.id, ds);
                 }
@@ -5960,6 +6069,12 @@ export function BoardCanvas({
               const m = new Map();
               for (const p of parts) {
                 if (p.kind === 'potentiometer' || p.kind === 'tuning_cap' || p.kind === 'field_probe' || p.kind === 'ferrite_coil') {
+                  const v = eb.getControl(p.id);
+                  if (v != null) m.set(p.id, v);
+                }
+                // The magnetic field source's distance, the dipole's turn and
+                // the FM IF IC's quadrature tuning.
+                if (p.kind === 'dipole' || p.kind === 'fm_if' || p.kind === 'induction_loop') {
                   const v = eb.getControl(p.id);
                   if (v != null) m.set(p.id, v);
                 }

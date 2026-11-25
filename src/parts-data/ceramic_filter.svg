@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 40" width="44" height="40">
+  <!-- Ceramic filter: a flat blue body with three leads -->
+  <rect x="2" y="4" width="40" height="22" rx="3" fill="#2f6fb0" stroke="#1d4a78" stroke-width="0.8"/>
+  <text x="22" y="14" font-family="sans-serif" font-size="6" fill="#f2f2f2" text-anchor="middle">10.7</text>
+  <text x="22" y="21" font-family="sans-serif" font-size="4.5" fill="#d8e6f5" text-anchor="middle">MHz</text>
+  <!-- Leads -->
+  <line x1="8" y1="26" x2="8" y2="40" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="8" cy="40" r="2" fill="#c0c0c0"/>
+  <line x1="22" y1="26" x2="22" y2="40" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="22" cy="40" r="2" fill="#c0c0c0"/>
+  <line x1="36" y1="26" x2="36" y2="40" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="36" cy="40" r="2" fill="#c0c0c0"/>
+</svg>

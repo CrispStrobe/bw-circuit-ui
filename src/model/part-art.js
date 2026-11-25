@@ -49,6 +49,16 @@ const FIRST_ART_FACES = [
   'thermocouple',
   'air_coil',
   'electrolysis_cell',
+  // The salt-film humidity comb and the dual-gate MOSFET package.
+  'humidity_comb',
+  'dual_gate_mosfet',
+  // Silicon PTC sensor, spark gap, ruler scale: their art is the part.
+  'ptc_sensor',
+  'spark_gap',
+  'bending_ruler',
+  // Magnetic field source and coil pendulum: their art is the part.
+  'induction_loop',
+  'coil_pendulum',
   // Optics: the laser module's brass barrel and beam, and the phototransistor
   // (bw-parts 2026-11-24: its leads splay out to the footprint's columns).
   'laser_diode',
@@ -58,6 +68,10 @@ const FIRST_ART_FACES = [
   'varicap',
   // Locally authored whole-system connector, with contacts in sidecar coordinates.
   'kosmos-cp1',
+  // Radio: the ceramic IF filter, the FM IF IC and the dipole (bw-parts, r7).
+  'ceramic_filter',
+  'fm_if',
+  'dipole',
 ];
 
 /**
@@ -74,7 +88,7 @@ const BREADBOARD_ART_FACES = [
   '74hc4050', '74hc595', '74hc688', '74hc73', '74hc74', '74hc75', '74hc86', '74hc93', '74hc95',
   '74ls04', '74ls107', '74ls157', '74ls161', '74ls173', '74ls189', '74ls32', '74ls373',
   'ad711', 'at24c02', 'at24c64', 'at89c2051', 'attiny13', 'attiny2313', 'attiny85', 'attiny88',
-  'ay8912', 'cd4017', 'cd4093', 'cd4511', 'cd74hc4067', 'darlington_driver', 'decade_counter',
+  'ay8912', 'cd4017', 'cd4046', 'cd4093', 'cd4511', 'cd74hc4067', 'darlington_driver', 'decade_counter',
   'dff', 'dip_switch', 'ds1302', 'h_bridge', 'i8086', 'i8088', 'i8251', 'i8254', 'i8255',
   'i8259', 'i8284', 'jkff', 'kd9561', 'l293d', 'level_shifter4', 'lm324', 'lm339', 'lm358',
   'lm386', 'lm3915', 'lm393', 'lm741', 'lt1001', 'lt1007', 'lt1014', 'm6532', 'max232',
@@ -82,7 +96,7 @@ const BREADBOARD_ART_FACES = [
   'r6507', 'stc15_mcu', 'stc_mcu', 'stm32f030', 'tang_nano_20k', 'timer_555', 'timer_556',
   'transformer', 'um245r', 'w65c02', 'w65c22', 'w65c51', 'z80', 'as5600', 'bmp280', 'ina219',
   'tcs34725', 'vl53l0x', 'neopixel', 'pmos', 'usb_a', 'solar_cell', 'tcs3200', 'eater6502',
-  'ir_remote', 'gas_sensor', 'stepper', 'mcp4725', 'rnet_sip',
+  'ir_remote', 'gas_sensor', 'stepper', 'mcp4725', 'rnet_sip', 'sa612',
 ];
 
 /** Kinds whose canvas face is their vendored art. */

@@ -1,0 +1,34 @@
+{
+  "kind": "induction_loop",
+  "w": 56,
+  "h": 48,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 7,
+      "y": 48,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 49,
+      "y": 48,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Magnetic field source: a loop of wire (or a straight wire, or a two-core mains cable) carrying the circuit's audio-frequency current, whose stray field a hand-wound pickup coil overhears. 2-terminal: a, b. Engine (bw-board induction_loop, src/magnetic-coupling.js): shape loop (turns, radiusM; on-axis field muN r^2/2(r^2+d^2)^1.5), wire (mu/2 pi d) or cable (spacingMm; mu s/2 pi (d^2+s^2/4)); pickup names an air_coil, coupled by M = N2 pi r2^2 (B/I) cos(angleDeg). Its control is the distance (0 = farCm 30, 1 = nearCm 1; rest params.position 0.5). Reports amps, distanceCm, mutualH, k.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
+}
