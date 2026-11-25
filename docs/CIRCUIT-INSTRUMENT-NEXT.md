@@ -105,8 +105,8 @@ Do not add a decorative part or silently substitute a model to improve a count.
 ## Other fronts
 
 The [Board x86 lanes](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-NEXT-LANES.md),
-[Lite SPIKE lanes](https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/SPIKE-STATUS-AND-LANES.md),
-[target lanes](https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/TARGET-NEXT-LANES.md)
-and [Arcade handoff](https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/ARCADE-AGENT-HANDOFF.md)
+[Brickwright SPIKE lanes](https://github.com/CrispStrobe/brickwright/blob/main/docs/SPIKE-STATUS-AND-LANES.md),
+[target lanes](https://github.com/CrispStrobe/brickwright/blob/main/docs/TARGET-NEXT-LANES.md)
+and [Arcade handoff](https://github.com/CrispStrobe/brickwright/blob/main/docs/ARCADE-AGENT-HANDOFF.md)
 remain their owners' authorities. This campaign does not take their executable
 paths or promote their upstream progress into a shipped-app claim.
