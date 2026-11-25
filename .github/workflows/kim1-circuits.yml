@@ -12,6 +12,10 @@ on:
       - 'package.json'
       - 'package-lock.json'
 
+concurrency:
+  group: kim1-circuits-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -43,7 +47,9 @@ jobs:
         run: node scripts/qualify-kim1-board.mjs engine-source
       - name: KIM-1 engine and circuit integration
         id: unit
-        run: npm run verify:kim1
+        run: |
+          node --test node_modules/bw-board/test/kim1-*.test.mjs
+          npm run verify:kim1
       - name: Install Chromium
         if: ${{ !cancelled() && steps.evidence.outcome == 'success' }}
         run: npx playwright install --with-deps chromium

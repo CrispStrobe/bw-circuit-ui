@@ -95,6 +95,21 @@ test('keypad memory edits persist; + preserves data mode and RS retains RAM',()=
   assert.equal(restored.parts[0].params.program,part.params.program);
 });
 
+test('keypad access reaches real I/O registers without adding them to the saved RAM image',()=>{
+  const {circuit,part}=make('0200: EA');
+  command(circuit,part,'loadProgram','0200: EA');
+  const image=part.params.program;
+  for(const key of ['AD','1','7','0','1','DA','F','F','AD','1','7','0','0','DA','A','5']) {
+    command(circuit,part,'key',key);
+  }
+  const state=circuit.board.getDeviceState(part.id);
+  assert.equal(state.ddrA,0xff);
+  assert.equal(state.portA,0xa5);
+  assert.equal(state.running,false);
+  assert.equal(part.params.program,image);
+  assert.equal(state.programSource,image);
+});
+
 test('single-step GO executes one instruction and PC returns to the stopped execution address',()=>{
   const {circuit,part}=make('0200: A9 2A A2 17 00');
   command(circuit,part,'setSst',true);

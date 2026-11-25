@@ -35,6 +35,14 @@ try {
     return state?.ram[0x300]===42&&!state.running&&state.cpu.a===42;
   },firstId);
   checks.push('GO applies the dirty editor and the actual NMOS CPU stores 42 in RAM before BRK stops');
+  const beforeIo=await page.evaluate(id=>window.__circuit.getPart(id).params.program,firstId);
+  for(const key of ['AD','1','7','0','1','DA','F','F','AD','1','7','0','0','DA','A','5']) {
+    await panel.locator('[data-kim1-key="'+key+'"]').click();
+  }
+  assert.deepEqual(await page.evaluate(id=>{const s=window.__board.getDeviceState(id);return[s.ddrA,s.portA,s.running];},firstId),[255,165,false]);
+  assert.equal(await page.evaluate(id=>window.__circuit.getPart(id).params.program,firstId),beforeIo);
+  checks.push('AD/DA writes actual DDR and port registers while preserving the saved RAM image');
+
 
   const accepted=await page.evaluate(id=>window.__circuit.getPart(id).params.program,firstId);
   await panel.getByRole('textbox',{name:'KIM-1 program',exact:true}).fill('0200: WRONG');

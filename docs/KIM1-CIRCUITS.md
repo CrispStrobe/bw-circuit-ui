@@ -45,7 +45,7 @@ invalid input does not replace the accepted program. GO also applies a dirty
 editor before running. Reset retains memory. Loading a new source image clears
 the prior user image as an explicit replacement.
 
-Accepted program bytes and keypad edits persist with each part's parameters,
+Accepted program bytes and keypad RAM edits persist with each part's parameters,
 including circuit save/load, duplication and undo. Unloaded editor text remains
 a local draft until Load or GO. Electrical Build edits recreate runtime state,
 as they do for other Circuits devices.
@@ -62,6 +62,8 @@ not offered as a user terminal. The public port register addresses are:
 | $1702 | Port B |
 | $1703 | Port B direction; a set bit selects output |
 
+AD/DA can also write these I/O registers directly while the computer is stopped.
+I/O writes affect the live device and are not inserted into the saved RAM image.
 The 5v and gnd terminals power external experiments. I/O uses the circuit's
 digital voltage model; this is not a transistor model of the original board.
 
