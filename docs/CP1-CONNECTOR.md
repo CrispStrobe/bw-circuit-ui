@@ -50,6 +50,10 @@ files when upstream catalogue assets are refreshed.
   contact positions, palette, Build Machine event, and ROM file validation in
   Chromium. Install Playwright Chromium first, or set
   `BW_CHROMIUM_EXECUTABLE` to an existing Chromium executable.
+  The gate writes `result.json` and a desktop screenshot under
+  `test-results/cp1-connector-browser` (override with `BW_CP1_BROWSER_OUT`).
+  A launch or assertion failure remains fatal and records the error; a page
+  screenshot is also preserved when a page exists.
 
 Server rendering does not test pointer interaction, browser layout, or execution
 of firmware. The browser gate and the engine's external-circuit tests cover
