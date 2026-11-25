@@ -24,10 +24,10 @@ const CATEGORY_LABELS = {
   'pure-circuit': 'Pure circuits',
 };
 
-const DIFFICULTY_COLORS = ['#64748b', '#22c55e', '#f59e0b', '#f97316'];
 const PART_LABELS = {mcu: 'MCU', 'no-mcu': 'No MCU'};
 const TARGET_LABELS = {
   'no-mcu': 'No MCU',
+  'kosmos-cp1': 'Kosmos CP1',
   generic: 'Any MCU',
   stc12: 'STC12',
   stc89: 'STC89',
@@ -52,6 +52,7 @@ const EB_DE = {
   'Pure circuits': 'Reine Schaltungen', 'No MCU': 'Ohne MCU', 'Any MCU': 'Beliebige MCU',
   'Beginner': 'Einsteiger', 'Intermediate': 'Fortgeschritten', 'Advanced': 'Experte',
   'All': 'Alle', 'Level': 'Stufe', 'Parts': 'Bauteile', 'Target': 'Zielchip', 'Examples': 'Beispiele',
+  'Category': 'Kategorie', 'Type': 'Typ', 'Lvl': 'Stufe',
   'Example info': 'Beispiel-Info', 'Info for {title}': 'Info zu {title}',
   'Show information for the loaded example': 'Informationen zum geladenen Beispiel anzeigen',
   'Load an example to see information': 'Lade ein Beispiel, um Informationen zu sehen',
@@ -289,74 +290,20 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
           aria-label={ebt('Clear search', lang)}>&times;</button>}
       </div>
 
-      {/* Filter toolbar: each group stays compact and the groups share rows.
-          THEY NOW ACTUALLY DO. `flexWrap: nowrap` with `overflowX: auto`
-          contradicted that comment: the four groups (554 + 312 + 192 + 507px)
-          were laid side by side inside a rail whose content box is 172px, so the
-          toolbar was 1595px wide — NINE AND A THIRD SCREENS of sideways
-          scrolling to reach the Target filter. Measured identically at 1440,
-          1024 and on a phone, because the rail is ~190px at every screen size:
-          this was never a small-screen bug. Wrapping costs vertical space in a
-          column that already scrolls vertically, which is the cheap direction
-          here. */}
-      <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', rowGap: '6px', paddingBottom: '4px', marginBottom: '4px'}}>
-      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap', rowGap: '4px' }}>
-        <button
-          onClick={() => changeFilter(setSelectedCategory, null)}
-          style={{
-            padding: '5px 9px', borderRadius: '5px', fontSize: '12px',
-            fontFamily: 'inherit', cursor: 'pointer',
-            background: !selectedCategory ? palette.accent : palette.button,
-            color: !selectedCategory ? '#fff' : palette.text,
-            border: `1px solid ${!selectedCategory ? palette.accent : palette.buttonBorder}`,
-          }}
-        >{ebt('All', lang)}</button>
-        {categories.map(cat => (
-          <button
-            key={cat}
-            onClick={() => changeFilter(setSelectedCategory, selectedCategory === cat ? null : cat)}
-            style={{
-              padding: '5px 9px', borderRadius: '5px', fontSize: '12px',
-              fontFamily: 'inherit', cursor: 'pointer',
-              background: selectedCategory === cat ? (CATEGORY_COLORS[cat] || palette.accent) : palette.button,
-              color: selectedCategory === cat ? '#fff' : (dark ? (CATEGORY_COLORS[cat] || palette.text) : palette.text),
-              border: `1px solid ${selectedCategory === cat ? (CATEGORY_COLORS[cat] || palette.accent) : palette.buttonBorder}`,
-            }}
-          >{CATEGORY_LABELS[cat] ? ebt(CATEGORY_LABELS[cat], lang) : cat}</button>
-        ))}
-      </div>
-
-      <FilterRow label={ebt('Level', lang)} palette={palette}>
-        <FilterButton palette={palette} active={!selectedDifficulty} onClick={() => changeFilter(setSelectedDifficulty, null)}>{ebt('All', lang)}</FilterButton>
-        {[1, 2, 3].map(level => (
-          <FilterButton palette={palette} key={level} active={selectedDifficulty === level} color={DIFFICULTY_COLORS[level]}
-            onClick={() => changeFilter(setSelectedDifficulty, selectedDifficulty === level ? null : level)}>
-            {ebt(DIFFICULTY_LABELS[level], lang)}
-          </FilterButton>
-        ))}
-      </FilterRow>
-
-      <FilterRow label={ebt('Parts', lang)} palette={palette}>
-        <FilterButton palette={palette} active={!selectedPart} onClick={() => changeFilter(setSelectedPart, null)}>{ebt('All', lang)}</FilterButton>
-        {partTags.map(part => (
-          <FilterButton palette={palette} key={part} active={selectedPart === part}
-            color={part === 'mcu' ? '#38bdf8' : '#14b8a6'}
-            onClick={() => changeFilter(setSelectedPart, selectedPart === part ? null : part)}>
-            {partLabel(part, lang)}
-          </FilterButton>
-        ))}
-      </FilterRow>
-
-      <FilterRow label={ebt('Target', lang)} palette={palette}>
-        <FilterButton palette={palette} active={!selectedTarget} onClick={() => changeFilter(setSelectedTarget, null)}>{ebt('All', lang)}</FilterButton>
-        {targetTags.map(target => (
-          <FilterButton palette={palette} key={target} active={selectedTarget === target}
-            color={target === 'no-mcu' ? '#14b8a6' : '#6366f1'}
-            onClick={() => changeFilter(setSelectedTarget, selectedTarget === target ? null : target)}>
-            {targetLabel(target, lang)}
-          </FilterButton>
-        ))}
-      </FilterRow>
+      <div data-example-filters style={{display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+        gap: 4, marginBottom: 6}}>
+        <FilterSelect title={ebt('Category', lang)} label={ebt('Type', lang)} value={selectedCategory}
+          onChange={value => changeFilter(setSelectedCategory, value)} palette={palette}
+          options={categories.map(key => [key, ebt(CATEGORY_LABELS[key] || key, lang)])} />
+        <FilterSelect title={ebt('Level', lang)} label={ebt('Lvl', lang)} value={selectedDifficulty}
+          onChange={value => changeFilter(setSelectedDifficulty, value ? Number(value) : null)} palette={palette}
+          options={[1, 2, 3].map(key => [key, ebt(DIFFICULTY_LABELS[key], lang)])} />
+        <FilterSelect title={ebt('Parts', lang)} label={ebt('Parts', lang)} value={selectedPart}
+          onChange={value => changeFilter(setSelectedPart, value)} palette={palette}
+          options={partTags.map(key => [key, partLabel(key, lang)])} />
+        <FilterSelect title={ebt('Target', lang)} label={ebt('Chip', lang)} value={selectedTarget}
+          onChange={value => changeFilter(setSelectedTarget, value)} palette={palette}
+          options={targetTags.map(key => [key, targetLabel(key, lang)])} />
       </div>
 
       {/* Example cards */}
@@ -516,27 +463,19 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
   );
 }
 
-function FilterRow({label, children, palette}) {
+function FilterSelect({title, label, value, onChange, options, palette}) {
+  const selectedLabel = options.find(([key]) => key === value)?.[1];
   return (
-    // Wraps for the same reason as the toolbar that holds it: a group wider
-    // than the rail is unreachable, not merely cramped.
-    <div style={{display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', rowGap: '4px'}}>
-      <span style={{color: palette.muted, fontSize: '12px', minWidth: 'auto', fontWeight: 600}}>{label}</span>
-      {children}
-    </div>
-  );
-}
-
-function FilterButton({active, color = '#3b82f6', onClick, children, palette}) {
-  return (
-    <button type="button" onClick={onClick} style={{
-      padding: '5px 9px', borderRadius: '5px', fontSize: '12px',
-      fontFamily: 'inherit', cursor: 'pointer',
-      background: active ? color : palette.button,
-      color: active ? '#fff' : palette.text,
-      border: `1px solid ${active ? color : palette.buttonBorder}`,
-      boxShadow: active ? '0 1px 2px rgba(0,0,0,.25)' : 'none',
-    }}>{children}</button>
+    <select aria-label={title} title={selectedLabel ? `${title} · ${selectedLabel}` : title}
+      value={value ?? ''} onChange={event => onChange(event.target.value || null)}
+      style={{width: '100%', minWidth: 0, height: 28, boxSizing: 'border-box',
+        appearance: 'none', textAlign: 'center', textOverflow: 'ellipsis', padding: '0 3px',
+        borderRadius: 5, border: `1px solid ${value ? palette.accent : palette.buttonBorder}`,
+        background: value ? palette.accent : palette.button, color: value ? '#fff' : palette.text,
+        font: '11px system-ui, sans-serif', cursor: 'pointer'}}>
+      <option value="">{label}</option>
+      {options.map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+    </select>
   );
 }
 

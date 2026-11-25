@@ -2,13 +2,7 @@
 /**
  * The examples filter toolbar fits the rail it lives in.
  *
- * Its four groups — category, Level, Parts, Target — were laid out in a single
- * `flex-wrap: nowrap` row with `overflow-x: auto`, inside a rail whose content
- * box is 172px. Measured: the toolbar was 838px wide, 4.9 screens of sideways
- * scrolling, with only 3 of its 11 buttons inside the rail at rest. Identical at
- * 1440, 1024 and on a phone, because the rail is ~190px at every screen size —
- * this was never a small-screen bug, which is why the gate checks a desktop
- * viewport too.
+ * Search and all four filters fit on two rows at desktop and phone widths.
  *
  *   node scripts/verify-examples-filters.mjs http://127.0.0.1:PORT
  */
@@ -51,45 +45,22 @@ try {
         const r = await page.evaluate(() => {
             const box = document.querySelector('[data-examples-selector-content]');
             if (!box) return {noBox: true};
-            // The toolbar is the flex row that holds BOTH the Level and Target
-            // groups; identified by content rather than by class, because the
-            // classes here are inline styles with no stable hook.
-            const bars = [...box.querySelectorAll('div')].filter(e => {
-                const s = getComputedStyle(e);
-                return s.display === 'flex' &&
-                    /Level/.test(e.innerText || '') && /Target/.test(e.innerText || '');
-            });
-            const bar = bars[bars.length - 1];
+            const bar = box.querySelector('[data-example-filters]');
             if (!bar) return {noBar: true, boxW: box.clientWidth};
-            const b = box.getBoundingClientRect();
-            const btns = [...bar.querySelectorAll('button')];
-            const inside = btns.filter(x => {
-                const r = x.getBoundingClientRect();
-                return r.width > 0 && r.left >= b.left - 1 && r.right <= b.right + 1;
-            }).length;
+            const bounds = box.getBoundingClientRect();
+            const search = box.querySelector('input[type="text"]').getBoundingClientRect();
+            const filters = [...bar.querySelectorAll('select')].map(select => select.getBoundingClientRect());
             return {
-                boxW: box.clientWidth,
-                barSW: bar.scrollWidth, barCW: bar.clientWidth,
-                wrap: getComputedStyle(bar).flexWrap,
-                buttons: btns.length, inside,
+                total: filters.length,
+                rows: new Set([search, ...filters].map(rect => Math.round(rect.top))).size,
+                inside: filters.every(rect => rect.width > 0 && rect.left >= bounds.left - 1 &&
+                    rect.right <= bounds.right + 1),
+                overflow: bar.scrollWidth - bar.clientWidth
             };
         });
-        check(!r.noBox && !r.noBar,
-            `${v.label}: the examples filter toolbar is present`,
-            r.noBox ? 'no selector content' : (r.noBar ? `no toolbar in a ${r.boxW}px box` : ''));
-        if (r.noBox || r.noBar) { await ctx.close(); continue; }
-
-        check(r.barSW <= r.barCW + 1,
-            `${v.label}: the toolbar does not overflow its rail`,
-            `${r.barSW}px of content in ${r.barCW}px (${(r.barSW / Math.max(r.barCW, 1)).toFixed(1)} screens)`);
-        // The consequence that matters: a filter you cannot see is a filter you
-        // will not use. Overflow alone could be excused as "scrollable".
-        check(r.inside === r.buttons && r.buttons > 0,
-            `${v.label}: every filter button sits inside the rail`,
-            `${r.inside}/${r.buttons}`);
-        check(r.wrap === 'wrap',
-            `${v.label}: the toolbar wraps rather than scrolling sideways`,
-            `flex-wrap: ${r.wrap}`);
+        check(r.total === 4, `${v.label}: all four filter selectors are present`);
+        check(r.rows === 2, `${v.label}: search and filters occupy two rows`, String(r.rows));
+        check(r.inside && r.overflow <= 1, `${v.label}: filters fit the rail without horizontal scrolling`);
         await ctx.close();
     }
 } finally {
