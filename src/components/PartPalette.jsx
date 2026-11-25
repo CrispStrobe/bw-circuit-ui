@@ -15,12 +15,6 @@ const CATEGORIES = [
   {
     name: 'Boards',
     parts: [
-      { kind: 'kosmos-cp1', label: 'Kosmos CP1', params: {expansion: false, clockHz: 6000000},
-        color: '#e4a138', capability: 'Experimental 8049 firmware machine',
-        tooltip: 'CP1 system connector. Ports 1/2; CP3 enables ports 3/4/5. Supply a 2 KB firmware ROM in the debugger.' },
-      { kind: 'kosmos-cp1', label: 'Kosmos CP1 + CP3', params: {expansion: true, clockHz: 6000000},
-        color: '#e4a138', capability: 'Experimental 8049 firmware machine',
-        tooltip: 'CP1 with 256 program cells and ports 3/4/5. Supply a 2 KB firmware ROM in the debugger.' },
       { kind: 'breadboard', label: 'Breadboard', params: {}, color: '#e8e4d8',
         tooltip: 'Full-size breadboard (63 columns) - legs snap into holes, rows and rails conduct' },
       { kind: 'breadboard', label: 'Breadboard ½', params: { size: 'half' }, color: '#e8e4d8',
@@ -54,6 +48,12 @@ const CATEGORIES = [
       { kind: 'circuit_playground_express', label: 'Circuit Playground Express', params: {}, color: '#111111',
         capability: 'MakeCode pins',
         tooltip: 'ATSAMD21 board — pads A0–A7 (A1–A7 touch, A0 true analog out), 3.3V, GND, VOUT; 3.3 V logic' },
+      { kind: 'kosmos-cp1', label: 'Kosmos CP1', params: {expansion: false, clockHz: 6000000},
+        color: '#e4a138', capability: '8049 trainer',
+        tooltip: 'CP1 system connector. Ports 1/2; CP3 enables ports 3/4/5. Use the built-in monitor or import a ROM in the debugger.' },
+      { kind: 'kosmos-cp1', label: 'Kosmos CP1 + CP3', params: {expansion: true, clockHz: 6000000},
+        color: '#e4a138', capability: '8049 trainer',
+        tooltip: 'CP1 with 256 program cells and ports 3/4/5. Use the built-in monitor or import a ROM in the debugger.' },
     ],
   },
   {
@@ -550,7 +550,7 @@ function PalettePartThumbnail({ kind, color, params }) {
   );
 }
 
-export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark', lang = 'en' }) {
+export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark', lang = 'en', headingControl }) {
   const [filter, setFilter] = useState('');
   const [ledColor, setLedColor] = useState('red');
   const light = theme === 'light';
@@ -589,10 +589,12 @@ export function PartPalette({ onAddPart, onDragPart, onStartPlace, theme = 'dark
       flex: '1 1 0',
       flexShrink: 1,
       overflowY: 'auto',
+      overflowX: 'hidden',
+      scrollbarWidth: 'thin',
       overscrollBehavior: 'contain',
     }}>
-      <div style={{ color: palette.text, fontSize: '11px', marginBottom: '4px', fontWeight: 'bold' }}>
-        {paletteUi('parts', lang)}
+      <div style={{ color: palette.text, fontSize: '11px', marginBottom: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 4 }}>
+        {headingControl}<span>{paletteUi('parts', lang)}</span>
       </div>
 
       <input
