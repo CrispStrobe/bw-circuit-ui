@@ -56,6 +56,9 @@ const FIRST_ART_FACES = [
   'ptc_sensor',
   'spark_gap',
   'bending_ruler',
+  // Magnetic field source and coil pendulum: their art is the part.
+  'induction_loop',
+  'coil_pendulum',
   // Optics: the laser module's brass barrel and beam, and the phototransistor
   // (bw-parts 2026-11-24: its leads splay out to the footprint's columns).
   'laser_diode',
