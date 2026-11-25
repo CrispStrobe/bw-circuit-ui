@@ -49,6 +49,7 @@ export const PALETTE_DE = {
   'A string half in the beam: plucked, it shades the light at its own pitch; the knob tunes it (80–330 Hz)': 'Eine Saite halb im Strahl: gezupft schattet sie das Licht in ihrer eigenen Tonhöhe ab; der Knopf stimmt sie (80–330 Hz)',
 
   // Capability badges
+  '8049 trainer': '8049-Lerncomputer',
   'AVR simulation': 'AVR-Simulation',
   'RP2040 simulation': 'RP2040-Simulation',
   'FPGA board part (no simulation yet)': 'FPGA-Platine (noch keine Simulation)',
@@ -59,6 +60,12 @@ export const PALETTE_DE = {
   'Board wiring; display requires emulator': 'Platinenverdrahtung; Anzeige braucht den Emulator',
 
   // Part names (proper names and part numbers stay as they are)
+  'Kosmos CP1': 'Kosmos CP1',
+  'Kosmos CP1 + CP3': 'Kosmos CP1 + CP3',
+  'CP1 system connector. Ports 1/2; CP3 enables ports 3/4/5. Use the built-in monitor or import a ROM in the debugger.':
+    'CP1-Systemanschluss. Ports 1/2; CP3 aktiviert Ports 3/4/5. Im Debugger den eingebauten Monitor verwenden oder ein ROM laden.',
+  'CP1 with 256 program cells and ports 3/4/5. Use the built-in monitor or import a ROM in the debugger.':
+    'CP1 mit 256 Programmzellen und Ports 3/4/5. Im Debugger den eingebauten Monitor verwenden oder ein ROM laden.',
   'Breadboard': 'Steckbrett',
   'Breadboard ½': 'Steckbrett ½',
   'Breadboard mini': 'Steckbrett mini',

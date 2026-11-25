@@ -44,7 +44,7 @@ const CATEGORY_COLORS = {
 };
 
 const DIFFICULTY_LABELS = ['', 'Beginner', 'Intermediate', 'Advanced'];
-const EXAMPLES_PER_PAGE = 32;
+const EXAMPLE_BATCH_SIZE = 32;
 
 // The browser's own words in German. Catalogue keys stay English; only what is SHOWN moves.
 const EB_DE = {
@@ -58,8 +58,6 @@ const EB_DE = {
   'Load an example to see information': 'Lade ein Beispiel, um Informationen zu sehen',
   'Search {n} examples\u2026': '{n} Beispiele durchsuchen\u2026', 'Clear search': 'Suche leeren',
   'No examples match these filters.': 'Keine Beispiele passen zu diesen Filtern.',
-  'Example pages': 'Beispielseiten', 'Previous page': 'Vorherige Seite', 'Next page': 'Nächste Seite',
-  'Page {page} of {total}': 'Seite {page} von {total}',
   'level {n}': 'Stufe {n}', 'Open \u201c{title}\u201d?': '\u201e{title}\u201c öffnen?', 'Chip': 'Chip',
   'Cancel': 'Abbrechen', 'OK': 'OK', ' — unavailable: ': ' — nicht verfügbar: ',
 };
@@ -112,9 +110,10 @@ function targetLabel(target, lang) {
 /**
  * @param {{ examples: Array, lang?: string, onLoadExample?: function, currentDevice?: string }} props
  */
-export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: themeProp, currentDevice }) {
+export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: themeProp, currentDevice, headingControl }) {
   const [filter, setFilter] = useState('');
-  const [requestedPage, setRequestedPage] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(EXAMPLE_BATCH_SIZE);
+  const endOfExamples = useRef(null);
   const scrollArea = useRef(null);
   // The on-demand example info lived in InferPanel and was LOST when
   // this browser took over examples mode — restored here: load an
@@ -153,7 +152,6 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
   }, []);
   // Collapse is now managed by the host (CircuitDesigner) — ExamplesBrowser
   // always renders its full content when mounted.
-  const open = true;
 
   const categories = useMemo(() => {
     if (!examples) return [];
@@ -205,17 +203,23 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
     return list;
   }, [examples, filter, selectedCategory, selectedDifficulty, selectedPart, selectedTarget, lang]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / EXAMPLES_PER_PAGE));
-  const page = Math.min(requestedPage, pageCount - 1);
-  const pageStart = page * EXAMPLES_PER_PAGE;
-  const pageExamples = filtered.slice(pageStart, pageStart + EXAMPLES_PER_PAGE);
+  const showMore = () => setVisibleCount(count => Math.min(count + EXAMPLE_BATCH_SIZE, filtered.length));
+  const hasMore = visibleCount < filtered.length;
+  useEffect(() => {
+    if (!hasMore || !endOfExamples.current || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        observer.disconnect();
+        setVisibleCount(count => Math.min(count + EXAMPLE_BATCH_SIZE, filtered.length));
+      }
+    }, {root: scrollArea.current, rootMargin: '120px 0px'});
+    observer.observe(endOfExamples.current);
+    return () => observer.disconnect();
+  }, [filtered.length, hasMore, visibleCount]);
   const changeFilter = (setter, value) => {
-    setRequestedPage(0);
-    setter(value);
-  };
-  const goToPage = nextPage => {
-    setRequestedPage(nextPage);
+    setVisibleCount(EXAMPLE_BATCH_SIZE);
     if (scrollArea.current) scrollArea.current.scrollTop = 0;
+    setter(value);
   };
 
   if (!examples || examples.length === 0) {
@@ -236,7 +240,8 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       borderRadius: '8px',
       padding: '8px',
       fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
-      height: '100%',
+      boxSizing: 'border-box',
+      minWidth: 0,
       flex: '1 1 auto',
       overflow: 'hidden',
       minHeight: 0,
@@ -244,14 +249,16 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       display: 'flex',
       flexDirection: 'column',
     }}>
-      {/* Collapse control now lives in CircuitDesigner at left: -13,
-         aligned with the Parts panel's control. */}
-      <div style={{ color: palette.heading, fontSize: '16px', marginBottom: '8px', fontWeight: 700, paddingLeft: 34, letterSpacing: '.01em', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span>{ebt('Examples', lang)} <span style={{color: palette.muted, fontSize: '12px', fontWeight: 400}}>({filtered.length}/{examples.length})</span></span>
+      <div data-example-heading style={{color: palette.heading, marginBottom: 6, display: 'flex',
+        gap: 4, alignItems: 'center', flexShrink: 0}}>
+        {headingControl}
+        <span style={{fontSize: 13, fontWeight: 700, minWidth: 0, flex: 1, whiteSpace: 'nowrap'}}>
+          {ebt('Examples', lang)} <span style={{color: palette.muted, fontSize: 10, fontWeight: 400}}>({filtered.length}/{examples.length})</span>
+        </span>
         <button type="button" onClick={() => setShowInfo(v => !v)} disabled={!lastLoaded}
           aria-label={lastLoaded ? ebt('Info for {title}', lang, {title: lastLoaded.title?.[lang] || lastLoaded.title?.en || lastLoaded.id}) : ebt('Example info', lang)}
           title={lastLoaded ? ebt('Show information for the loaded example', lang) : ebt('Load an example to see information', lang)}
-          style={{width: 22, height: 22, padding: 0, borderRadius: '50%', border: `1px solid ${palette.buttonBorder}`,
+          style={{width: 18, height: 18, flexShrink: 0, padding: 0, borderRadius: '50%', border: `1px solid ${palette.buttonBorder}`,
             background: lastLoaded ? palette.button : 'transparent', color: palette.text,
             cursor: lastLoaded ? 'pointer' : 'default', fontWeight: 700, fontSize: 12}}>i</button>
       </div>
@@ -264,10 +271,10 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         </div>
       )}
 
-      {!open ? null : <div ref={scrollArea} data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, maxHeight: 'none', overflowY: 'auto', overscrollBehavior: 'contain'}}>
+      <div data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column'}}>
 
       {/* Search — prominent for large catalogues */}
-      <div style={{ position: 'relative', marginBottom: '6px' }}>
+      <div style={{ position: 'relative', marginBottom: '6px', flexShrink: 0 }}>
         <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
           color: palette.muted, fontSize: '13px', pointerEvents: 'none' }}>&#x1F50D;</span>
         <input
@@ -291,7 +298,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       </div>
 
       <div data-example-filters style={{display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-        gap: 4, marginBottom: 6}}>
+        gap: 4, marginBottom: 6, flexShrink: 0}}>
         <FilterSelect title={ebt('Category', lang)} label={ebt('Type', lang)} value={selectedCategory}
           onChange={value => changeFilter(setSelectedCategory, value)} palette={palette}
           options={categories.map(key => [key, ebt(CATEGORY_LABELS[key] || key, lang)])} />
@@ -306,12 +313,19 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
           options={targetTags.map(key => [key, targetLabel(key, lang)])} />
       </div>
 
+      <div ref={scrollArea} data-example-list tabIndex={0} aria-label={ebt('Examples', lang)}
+        onScroll={event => {
+          const {scrollTop, scrollHeight, clientHeight} = event.currentTarget;
+          if (hasMore && typeof IntersectionObserver === 'undefined' && scrollHeight - scrollTop - clientHeight < 120) showMore();
+        }}
+        style={{minWidth: 0, minHeight: 0, flex: '1 1 auto', overflowY: 'auto', overflowX: 'hidden',
+          scrollbarWidth: 'thin', overscrollBehavior: 'contain'}}>
       {/* Example cards */}
       {filtered.length === 0 ? (
         <div style={{ color: palette.muted, fontSize: '13px', padding: '8px 4px' }}>{ebt('No examples match these filters.', lang)}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          {pageExamples.map(ex => {
+          {filtered.slice(0, visibleCount).map(ex => {
             // THE DEVICE IS CHOSEN AFTER THE EXAMPLE, so the catalogue must not
             // narrow or annotate by whatever chip happens to be selected now.
             // This greyed a card and labelled it "Benötigt: STC12, STC15, …"
@@ -355,21 +369,9 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
           })}
         </div>
       )}
-      </div>}
-
-      {pageCount > 1 && (
-        <div role="group" aria-label={ebt('Example pages', lang)}
-          style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0,
-            gap: 8, paddingTop: 4, color: palette.text, fontSize: 12 }}>
-          <ExamplePageButton label={ebt('Previous page', lang)} disabled={page === 0}
-            onClick={() => goToPage(page - 1)} palette={palette}>‹</ExamplePageButton>
-          <span role="status" aria-label={ebt('Page {page} of {total}', lang, {page: page + 1, total: pageCount})}>
-            {page + 1} / {pageCount}
-          </span>
-          <ExamplePageButton label={ebt('Next page', lang)} disabled={page + 1 === pageCount}
-            onClick={() => goToPage(page + 1)} palette={palette}>›</ExamplePageButton>
-        </div>
-      )}
+      {hasMore && <div ref={endOfExamples} aria-hidden="true" style={{height: 1}} />}
+      </div>
+      </div>
 
       {/* ── Confirm dialog with device chooser ─────────────────── */}
       {pendingLoad && (() => {
@@ -563,16 +565,9 @@ function ExampleArtwork({ url }) {
     return () => artworkObserver.unobserve(element);
   }, [url]);
 
-  return <img ref={image} data-example-artwork={url} alt="" width={60} height={40}
+  return <img ref={image} data-example-artwork={url} alt="" width={44} height={34}
     loading="lazy" decoding="async" draggable={false}
     style={{ objectFit: 'contain', flexShrink: 0, borderRadius: 3 }} />;
-}
-
-function ExamplePageButton({ label, disabled, onClick, palette, children }) {
-  return <button type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick}
-    style={{ minWidth: 36, minHeight: 32, borderRadius: 5, fontSize: 18, padding: 0,
-      border: `1px solid ${palette.buttonBorder}`, background: palette.button,
-      color: disabled ? palette.muted : palette.text, cursor: disabled ? 'default' : 'pointer' }}>{children}</button>;
 }
 
 function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason }) {
@@ -612,29 +607,21 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
       data-example-id={example.id}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      title={disabledReason || ''}
+      title={disabledReason || ebt(CATEGORY_LABELS[example.category] || example.category, lang)}
       style={{
         padding: '4px 6px',
         background: hovered && !disabled ? palette.cardHover : palette.card,
-        border: `1px solid ${hovered && !disabled ? catColor : palette.cardBorder}`,
+        border: `1px solid ${catColor}`,
         borderRadius: '4px',
         transition: 'border-color 80ms, background 80ms',
         opacity: disabled ? 0.7 : 1,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
-        {example.artworkUrl && <ExampleArtwork key={example.artworkUrl} url={example.artworkUrl} />}
-        <div style={{ color: palette.heading, fontSize: '12px', fontWeight: 650, cursor: 'pointer', flex: 1, lineHeight: 1.3 }}
-          onClick={() => onClick()}>{title}</div>
-        {diff && <span style={{ color: palette.muted, fontSize: '9px', flexShrink: 0 }}>
+      <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 18}}>
+        {diff ? <span aria-label={ebt(diff, lang)} title={ebt(diff, lang)}
+          style={{color: palette.muted, fontSize: 9, letterSpacing: '.06em'}}>
           {'★'.repeat(example.difficulty)}{'☆'.repeat(3 - example.difficulty)}
-        </span>}
-        <span style={{
-          fontSize: '9px', color: palette.text,
-          background: `${catColor}22`, padding: '1px 4px',
-          borderRadius: '2px', flexShrink: 0,
-        }}>{example.category}</span>
-        {/* Intro toggle — ℹ icon */}
+        </span> : <span />}
         <button type="button" onClick={e => { e.stopPropagation(); loadIntro(); }}
           title={t.intro}
           style={{
@@ -646,6 +633,12 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
           }}
           data-testid="bw-example-intro-toggle">i</button>
       </div>
+      <button type="button" onClick={onClick} style={{display: 'flex', alignItems: 'center', textAlign: 'start',
+        width: '100%', minWidth: 0, gap: 6, padding: 0, border: 0, background: 'transparent',
+        color: palette.heading, fontSize: 12, fontWeight: 650, cursor: 'pointer', lineHeight: 1.3}}>
+        {example.artworkUrl && <ExampleArtwork key={example.artworkUrl} url={example.artworkUrl} />}
+        <span style={{minWidth: 0, overflowWrap: 'anywhere'}}>{title}</span>
+      </button>
       {disabled && disabledReason && (
         <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px', fontStyle: 'italic',
           cursor: 'pointer' }} onClick={() => onClick()}

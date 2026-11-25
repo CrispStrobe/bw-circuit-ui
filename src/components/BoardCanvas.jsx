@@ -5291,10 +5291,24 @@ export function BoardCanvas({
 
         {/* Always-visible history controls. Persistence and zoom live under one
             overflow button so the toolbar keeps a usable footprint on narrow panes. */}
-        <button onClick={() => onUndo && onUndo()} title={t('undoTitle', lang)} aria-label={t('undo', lang)}
-          style={{ width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↶</button>
-        <button onClick={() => onRedo && onRedo()} title={t('redoTitle', lang)} aria-label={t('redo', lang)}
-          style={{ width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #7f8c8d', borderRadius: '3px', color: '#bdc3c7', fontSize: '15px', cursor: 'pointer' }}>↷</button>
+        <div data-circuit-history role="group" aria-label={`${t('undo', lang)} / ${t('redo', lang)}`}
+          style={{display: 'inline-flex', flex: '0 0 auto', borderRadius: 5, overflow: 'hidden',
+            border: `1px solid ${theme === 'light' ? '#cbd5e1' : '#64748b'}`}}>
+          {[['undo', onUndo, canUndo], ['redo', onRedo, canRedo]].map(([action, run, enabled], index) => (
+            <button key={action} type="button" onClick={run} disabled={!enabled}
+              title={t(`${action}Title`, lang)} aria-label={t(action, lang)}
+              style={{display: 'grid', placeItems: 'center', width: 31, height: 30, padding: 0, border: 0,
+                borderInlineStart: index ? `1px solid ${theme === 'light' ? '#cbd5e1' : '#64748b'}` : 0,
+                background: theme === 'light' ? '#fff' : '#263448', color: theme === 'light' ? '#855cd6' : '#d1bbff',
+                opacity: enabled ? 1 : .55, cursor: enabled ? 'pointer' : 'default'}}>
+              <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor"
+                strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                <path transform={index ? 'translate(20 0) scale(-1 1)' : undefined}
+                  d="M7 5 3 9l4 4M3 9h8a5 5 0 0 1 5 5" />
+              </svg>
+            </button>
+          ))}
+        </div>
         {simulate ? (
           <button type="button" data-voltage-view-toggle
             aria-pressed={voltageView} onClick={toggleVoltageView}

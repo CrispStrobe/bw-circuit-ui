@@ -1339,6 +1339,26 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   }
   else if (placingProbe) statusText = `Placing probe ${placingProbe} — click a terminal`;
 
+  const german = /^de/i.test(lang);
+  const railToggle = (name, open, onClick) => {
+    const label = german ? `${name} ${open ? 'einklappen' : 'ausklappen'}` :
+      `${open ? 'Collapse' : 'Expand'} ${name}`;
+    return <button type="button" onClick={onClick} aria-label={label} aria-expanded={open} title={label}
+      style={{width: 20, height: 20, flex: '0 0 20px', padding: 0, border: '1px solid #94a3b8',
+        borderRadius: 6, background: theme === 'dark' ? '#263448' : '#fff',
+        color: theme === 'dark' ? '#e2e8f0' : '#334155', cursor: 'pointer'}}>
+      {open ? '⌄' : '›'}
+    </button>;
+  };
+  const partsLabel = german ? 'Bauteile' : 'Parts';
+  const examplesLabel = german ? 'Beispiele' : 'Examples';
+  const partsToggle = railToggle(partsLabel, partsOpen, () => setPartsOpen(value => !value));
+  const examplesToggle = railToggle(examplesLabel, examplesOpen, examplesOpen ? () => setExamplesOpen(false) : openExamples);
+  const collapsedRail = (toggle, label) => <div style={{display: 'flex', alignItems: 'center',
+    gap: 5, padding: '3px 8px', fontSize: 12, fontWeight: 700, color: theme === 'dark' ? '#e2e8f0' : '#334155'}}>
+    {toggle}<span>{label}</span>
+  </div>;
+
   return (
     <div
       className="bw-circuit-designer"
@@ -1367,14 +1387,17 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
       {selectorsOpen ? (
         <div data-selectors-panel style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '6px', flex: '1 1 auto', width: '100%', minWidth: 0, minHeight: 0, height: '100%', overflow: 'visible', overscrollBehavior: 'contain' }}>
           <div data-parts-selector style={{position: 'relative', flex: partsOpen ? `${selectorSplit} 1 0` : '0 0 30px', minHeight: partsOpen ? 80 : 30, display: 'flex', minWidth: 0, overflow: 'hidden'}}>
-            <button onClick={() => setPartsOpen(v => !v)} aria-label={/^de/i.test(lang) ? (partsOpen ? 'Bauteile einklappen' : 'Bauteile ausklappen') : (partsOpen ? 'Collapse Parts' : 'Expand Parts')} aria-expanded={partsOpen} title={/^de/i.test(lang) ? (partsOpen ? 'Bauteile einklappen' : 'Bauteile ausklappen') : (partsOpen ? 'Collapse Parts' : 'Expand Parts')} style={{position: 'absolute', zIndex: 4, left: 2, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{partsOpen ? '‹' : '›'}</button>
             {partsOpen ? (
-              <PartPalette theme={theme} lang={lang} onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({ kind, params })} />
-            ) : (
-              <div style={{padding: '6px 8px 6px 14px', color: '#334155', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%'}} onClick={() => setPartsOpen(true)}>{/^de/i.test(lang) ? 'Bauteile' : 'Parts'}</div>
-            )}
+              <PartPalette theme={theme} lang={lang} headingControl={partsToggle}
+                onAddPart={handleAddPart} onStartPlace={(kind, params) => setPlacingPart({kind, params})} />
+            ) : collapsedRail(partsToggle, partsLabel)}
           </div>
-          <div data-selector-divider role="separator" aria-label={/^de/i.test(lang) ? 'Größe von Bauteilen und Beispielen ändern' : 'Resize Parts and Examples selectors'} tabIndex={0}
+          {partsOpen && examplesOpen && <div data-selector-divider role="separator" aria-label={/^de/i.test(lang) ? 'Größe von Bauteilen und Beispielen ändern' : 'Resize Parts and Examples selectors'} tabIndex={0}
+            onKeyDown={event => {
+              if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+              event.preventDefault();
+              setSelectorSplit(value => Math.max(0.2, Math.min(0.85, value + (event.key === 'ArrowDown' ? 0.05 : -0.05))));
+            }}
             onPointerDown={event => {
               event.preventDefault();
               const startY = event.clientY;
@@ -1388,13 +1411,15 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
             }}
             style={{height: 10, flex: '0 0 10px', cursor: 'row-resize', borderTop: '2px solid #94a3b8', borderBottom: '2px solid #94a3b8', background: '#e2e8f0', margin: '1px 0'}}>
             <span style={{display: 'block', width: 42, height: 2, margin: '2px auto', background: '#475569', borderRadius: 2}} />
-          </div>
-          <div data-examples-selector style={{position: 'relative', flex: examplesOpen ? `${1 - selectorSplit} 1 0` : '0 0 30px', minHeight: examplesOpen ? 70 : 30, overflowY: examplesOpen ? 'auto' : 'hidden', display: 'flex', flexDirection: 'column'}}>
-            <button onClick={examplesOpen ? () => setExamplesOpen(false) : openExamples} aria-label={/^de/i.test(lang) ? (examplesOpen ? 'Beispiele einklappen' : 'Beispiele ausklappen') : (examplesOpen ? 'Collapse Examples' : 'Expand Examples')} aria-expanded={examplesOpen} title={/^de/i.test(lang) ? (examplesOpen ? 'Beispiele einklappen' : 'Beispiele ausklappen') : (examplesOpen ? 'Collapse Examples' : 'Expand Examples')} style={{position: 'absolute', zIndex: 4, left: 2, top: 4, width: 24, height: 24, padding: 0, border: '1px solid #94a3b8', borderRadius: 999, background: '#fff', color: '#334155', cursor: 'pointer'}}>{examplesOpen ? '‹' : '›'}</button>
+          </div>}
+          <div data-examples-rail-section style={{flex: examplesOpen ? `${1 - selectorSplit} 1 0` : '0 0 30px',
+            minHeight: examplesOpen ? 70 : 30, minWidth: 0, marginTop: examplesOpen ? 0 : 'auto',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
             {examplesOpen ? (<>
             {/* Codex / Gallery toggle — only shown when both examples and curriculum are available */}
             {examples && onLoadExample && curriculum && (
-              <div style={{display: 'flex', gap: 0, padding: '3px 4px 2px', borderBottom: '1px solid #2c3e50', flexShrink: 0}}>
+              <div style={{display: 'flex', alignItems: 'center', gap: 2, padding: '3px 4px 2px', borderBottom: '1px solid #2c3e50', flexShrink: 0}}>
+                {codexMode && examplesToggle}
                 <button type="button" onClick={() => setCodexMode(false)}
                   style={{flex: 1, padding: '3px 6px', fontSize: 9, fontWeight: codexMode ? 400 : 700,
                     fontFamily: 'system-ui, sans-serif', cursor: 'pointer',
@@ -1412,7 +1437,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
               </div>
             )}
             {/* Import moved to the ⋯ toolbar menu (BoardCanvas FileMenu) */}
-            <div style={{flex: 1, overflowY: 'auto'}}>
+            <div style={{flex: '1 1 auto', minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column',
+              overflowY: codexMode ? 'auto' : 'hidden', scrollbarWidth: 'thin'}}>
             {examples && onLoadExample ? (
               codexMode && curriculum ? (
                 <CodexBrowser curriculum={curriculum} examples={examples} lang={lang}
@@ -1421,22 +1447,20 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                     if (onProgramChange && ex.program) onProgramChange(ex.program, opts);
                   }} theme={theme} />
               ) : (
-                <ExamplesBrowser examples={examples} lang={lang} onLoadExample={(ex, opts) => {
+                <ExamplesBrowser examples={examples} lang={lang} headingControl={examplesToggle} onLoadExample={(ex, opts) => {
                   onLoadExample(ex, opts);
                   if (onProgramChange && ex.program) onProgramChange(ex.program, opts);
                 }} theme={theme} />
               )
             ) : onOpenExamples ? (
-              <div role="status" style={{padding: '5px 8px 5px 30px', fontSize: 11}}>
+              <>{collapsedRail(examplesToggle, examplesLabel)}<div role="status" style={{padding: '5px 8px 5px 30px', fontSize: 11}}>
                 {examplesError || (/^de/i.test(lang) ? 'Beispiele werden geladen …' : 'Loading examples…')}
-              </div>
+              </div></>
             ) : (
-              <InferPanel onLoadCircuit={handleLoadCircuit} />
+              <>{collapsedRail(examplesToggle, examplesLabel)}<InferPanel onLoadCircuit={handleLoadCircuit} /></>
             )}
             </div>
-            </>) : (
-              <div style={{padding: '6px 8px 6px 14px', color: '#334155', fontSize: 13, fontWeight: 700, cursor: 'pointer', width: '100%'}} onClick={openExamples}>{/^de/i.test(lang) ? 'Beispiele' : 'Examples'}</div>
-            )}
+            </>) : collapsedRail(examplesToggle, examplesLabel)}
           </div>
         </div>
       ) : null}
