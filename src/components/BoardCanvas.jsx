@@ -366,6 +366,10 @@ function terminalOffsetsForPart(part) {
     case 'oscilloscope':
     // LM386 audio amp: its eight DIP pins from its sidecar.
     case 'lm386':
+    // DIP chips drawn from their sidecars: the mixer IC and the 4046 PLL
+    // (the PLL's dots had all sat on one pixel since it arrived).
+    case 'sa612':
+    case 'cd4046':
     // Speaker, earphone and the crystal-set parts: leads from their sidecars
     // (bw-parts), on the breadboard pitch of their footprints. The tuning
     // capacitor's a/b land where the potentiometer's outer legs do.
