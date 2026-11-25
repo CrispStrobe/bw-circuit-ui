@@ -15,6 +15,16 @@ incrementally on remote feature branches. Qualify real electrical connections,
 shared runtime ownership, input release, display segments, save/load and browser
 behavior before claiming a runnable circuit. Source checkpoints remain candidates.
 
+Continuation 2026-11-25: the connected CP5-style teaching example exposed that
+ordinary `switch` faces only select parts and Build property editing is excluded
+in Sim mode. Own the narrow live-control route: a new ordinary-switch control
+component and pure readback helper, additive `StimulusControls` props/rendering,
+its `CircuitDesigner` binding to the existing active board/handleControlChange,
+and focused behavioral/component tests plus registration. Read the actual board
+control on every activation; preserve all other stimulus devices, circuit time
+ownership, editable parameter defaults and existing browser gates. Coordinate
+the real click-to-firmware-to-LED browser case with the CP1 browser lane.
+
 ## One autosave record per circuit (Lite I5) — CLAIMED 2026-11-11
 Owner: Lite browser-shard I-task lane (I5). Base: `9724589`. Claim and change in one PR.
 Scope: new `src/model/autosave-record.js`; the two `bw-circuit-autosave` writes in `CircuitDesigner.jsx` (handleLoad and the debounced autosave); new `test/one-autosave-record.test.js` and its `package.json` test listing. No other Designer behavior.
