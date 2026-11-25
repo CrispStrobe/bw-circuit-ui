@@ -7,6 +7,8 @@
  */
 
 import { wireEndpoint } from './wire-endpoints.js';
+import { getSidecar } from './parts-registry.js';
+import { ART_FACE_KINDS, artSidecarFor, artPinOffsets } from './part-art.js';
 
 const SNAP_DISTANCE = 25; // pixels — how close before snapping
 
@@ -50,6 +52,15 @@ function baseOffsets(kind, terminals) {
 }
 
 function terminalPos(part, terminal) {
+  if (part.sourcePackage !== 'unspecified' && ART_FACE_KINDS.includes(part.kind)) {
+    const face = artSidecarFor(getSidecar(part.kind), part.params);
+    const legs = face && artPinOffsets(face.sc);
+    if (legs && (part.terminals || []).every(name => legs[name]) && legs[terminal]) {
+      const offset = legs[terminal];
+      const rot = rotateOffset(part.flipped ? -offset.dx : offset.dx, offset.dy, part.rotation || 0);
+      return {x: part.x + rot.dx, y: part.y + rot.dy};
+    }
+  }
   const raw = baseOffsets(part.kind, part.terminals);
   const offset = raw[terminal] ?? { dx: 0, dy: 0 };
   const rot = rotateOffset(offset.dx, offset.dy, part.rotation || 0);

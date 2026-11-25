@@ -16,7 +16,7 @@ import { flatWire } from './wire-endpoints.js';
  * Extract a machine config from a circuit.
  *
  * @param {{ parts: Array, wires: Array }} circuit — the designer's circuit
- * @param {{ extract6502Machine?: Function, extractZ80Machine?: Function }} extractors
+ * @param {{ extract6502Machine?: Function, extractZ80Machine?: Function, extract8086Machine?: Function, extractCp1Machine?: Function }} extractors
  * @returns {{ ok: boolean, kind?: string, config?: object, lines?: string[], notes: string[], reasons: string[] }}
  */
 export function extractMachine(circuit, extractors = {}) {
@@ -26,7 +26,12 @@ export function extractMachine(circuit, extractors = {}) {
   // the ONE canonical dialect reader (wire-endpoints.js), not another
   // hand-rolled adapter.
   const wires = (circuit.wires || []).map(flatWire);
-  const flatCircuit = { parts, wires };
+  const flatCircuit = { parts, wires, ...(Array.isArray(circuit.nets) ? {nets: circuit.nets} : {}) };
+
+  if (parts.some(p => p.kind === 'kosmos-cp1')) {
+    if (extractors.extractCp1Machine) return {...extractors.extractCp1Machine(flatCircuit), kind: 'cp1'};
+    return {ok: false, kind: 'cp1', notes: [], reasons: ['The CP1 is present, but this build has no CP1 extractor.']};
+  }
 
   // Detect which CPU family is on the board
   const has6502 = parts.some(p => p.kind === 'w65c02');
@@ -66,4 +71,14 @@ export function extractMachine(circuit, extractors = {}) {
     notes: [],
     reasons: ['no retro CPU found — place a W65C02 or Z80 with address-decoded memory and I/O chips'],
   };
+}
+
+/** Preserve a whole-system config as well as the legacy decoded-bus fields. */
+export function machineBootDetail(result) {
+  if (!result?.ok) return null;
+  const config = {...result.config};
+  for (const field of ['regions', 'chips', 'ports']) {
+    if (result[field] !== undefined) config[field] = result[field];
+  }
+  return {kind: result.kind, config};
 }

@@ -66,6 +66,8 @@ const FIRST_ART_FACES = [
   // Radio: the VHF tank coil and the varicap.
   'vhf_coil',
   'varicap',
+  // Locally authored whole-system connector, with contacts in sidecar coordinates.
+  'kosmos-cp1',
   // Radio: the ceramic IF filter, the FM IF IC and the dipole (bw-parts, r7).
   'ceramic_filter',
   'fm_if',

@@ -208,7 +208,11 @@ function terminalOffsetsForPart(part) {
     const face = artSidecarFor(getSidecar(part.kind), part.params);
     const legs = face && artPinOffsets(face.sc);
     if (legs && (part.terminals || []).every(n => legs[n])) {
-      return Object.fromEntries(Object.entries(legs).map(([name, o]) => [name, r(o.dx, o.dy)]));
+      // SVG's translate/rotate/scale mirrors in the local frame before
+      // rotating. Reversing those operations displaces a mirrored connector
+      // at 90/270 degrees even though its unrotated contacts look correct.
+      return Object.fromEntries(Object.entries(legs).map(([name, o]) =>
+        [name, rotateOffset(flip ? -o.dx : o.dx, o.dy, rot)]));
     }
   }
 

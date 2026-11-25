@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" width="300" height="400" role="img" aria-label="Kosmos CP1 system connector">
+<rect x="12" y="12" width="276" height="376" rx="10" fill="#252a35" stroke="#e4a138" stroke-width="2"/>
+<g fill="#edf0f5" font-family="monospace">
+<text x="150" y="32" text-anchor="middle" font-size="9" fill="#abb3c2">Pin .0 = physical contact 1</text>
+<text x="20" y="49" font-size="9" fill="#e4a138">PORT 1</text>
+<text x="280" y="49" text-anchor="end" font-size="9" fill="#7bb4d3">CP3 / PORT 3</text>
+<text x="20" y="203" font-size="9" fill="#e4a138">PORT 2</text>
+<text x="280" y="203" text-anchor="end" font-size="9" fill="#7bb4d3">CP3 / PORT 4</text>
+<g data-terminal="P1.0"><line x1="6" y1="64" x2="16" y2="64" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="64" r="3" fill="#e4a138"/>
+<text x="20" y="67" text-anchor="start" font-size="9" fill="#e4a138">P1.0</text></g>
+<g data-terminal="P1.1"><line x1="6" y1="78" x2="16" y2="78" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="78" r="3" fill="#e4a138"/>
+<text x="20" y="81" text-anchor="start" font-size="9" fill="#e4a138">P1.1</text></g>
+<g data-terminal="P1.2"><line x1="6" y1="92" x2="16" y2="92" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="92" r="3" fill="#e4a138"/>
+<text x="20" y="95" text-anchor="start" font-size="9" fill="#e4a138">P1.2</text></g>
+<g data-terminal="P1.3"><line x1="6" y1="106" x2="16" y2="106" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="106" r="3" fill="#e4a138"/>
+<text x="20" y="109" text-anchor="start" font-size="9" fill="#e4a138">P1.3</text></g>
+<g data-terminal="P1.4"><line x1="6" y1="120" x2="16" y2="120" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="120" r="3" fill="#e4a138"/>
+<text x="20" y="123" text-anchor="start" font-size="9" fill="#e4a138">P1.4</text></g>
+<g data-terminal="P1.5"><line x1="6" y1="134" x2="16" y2="134" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="134" r="3" fill="#e4a138"/>
+<text x="20" y="137" text-anchor="start" font-size="9" fill="#e4a138">P1.5</text></g>
+<g data-terminal="P1.6"><line x1="6" y1="148" x2="16" y2="148" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="148" r="3" fill="#e4a138"/>
+<text x="20" y="151" text-anchor="start" font-size="9" fill="#e4a138">P1.6</text></g>
+<g data-terminal="P1.7"><line x1="6" y1="162" x2="16" y2="162" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="162" r="3" fill="#e4a138"/>
+<text x="20" y="165" text-anchor="start" font-size="9" fill="#e4a138">P1.7</text></g>
+<g data-terminal="P2.0"><line x1="6" y1="218" x2="16" y2="218" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="218" r="3" fill="#e4a138"/>
+<text x="20" y="221" text-anchor="start" font-size="9" fill="#e4a138">P2.0</text></g>
+<g data-terminal="P2.1"><line x1="6" y1="232" x2="16" y2="232" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="232" r="3" fill="#e4a138"/>
+<text x="20" y="235" text-anchor="start" font-size="9" fill="#e4a138">P2.1</text></g>
+<g data-terminal="P2.2"><line x1="6" y1="246" x2="16" y2="246" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="246" r="3" fill="#e4a138"/>
+<text x="20" y="249" text-anchor="start" font-size="9" fill="#e4a138">P2.2</text></g>
+<g data-terminal="P2.3"><line x1="6" y1="260" x2="16" y2="260" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="260" r="3" fill="#e4a138"/>
+<text x="20" y="263" text-anchor="start" font-size="9" fill="#e4a138">P2.3</text></g>
+<g data-terminal="P2.4"><line x1="6" y1="274" x2="16" y2="274" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="274" r="3" fill="#e4a138"/>
+<text x="20" y="277" text-anchor="start" font-size="9" fill="#e4a138">P2.4</text></g>
+<g data-terminal="P2.5"><line x1="6" y1="288" x2="16" y2="288" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="288" r="3" fill="#e4a138"/>
+<text x="20" y="291" text-anchor="start" font-size="9" fill="#e4a138">P2.5</text></g>
+<g data-terminal="P2.6"><line x1="6" y1="302" x2="16" y2="302" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="302" r="3" fill="#e4a138"/>
+<text x="20" y="305" text-anchor="start" font-size="9" fill="#e4a138">P2.6</text></g>
+<g data-terminal="P2.7"><line x1="6" y1="316" x2="16" y2="316" stroke="#e4a138" stroke-width="2"/>
+<circle cx="6" cy="316" r="3" fill="#e4a138"/>
+<text x="20" y="319" text-anchor="start" font-size="9" fill="#e4a138">P2.7</text></g>
+<g data-terminal="P3.0"><line x1="294" y1="64" x2="284" y2="64" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="64" r="3" fill="#7bb4d3"/>
+<text x="280" y="67" text-anchor="end" font-size="9" fill="#7bb4d3">P3.0</text></g>
+<g data-terminal="P3.1"><line x1="294" y1="78" x2="284" y2="78" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="78" r="3" fill="#7bb4d3"/>
+<text x="280" y="81" text-anchor="end" font-size="9" fill="#7bb4d3">P3.1</text></g>
+<g data-terminal="P3.2"><line x1="294" y1="92" x2="284" y2="92" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="92" r="3" fill="#7bb4d3"/>
+<text x="280" y="95" text-anchor="end" font-size="9" fill="#7bb4d3">P3.2</text></g>
+<g data-terminal="P3.3"><line x1="294" y1="106" x2="284" y2="106" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="106" r="3" fill="#7bb4d3"/>
+<text x="280" y="109" text-anchor="end" font-size="9" fill="#7bb4d3">P3.3</text></g>
+<g data-terminal="P3.4"><line x1="294" y1="120" x2="284" y2="120" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="120" r="3" fill="#7bb4d3"/>
+<text x="280" y="123" text-anchor="end" font-size="9" fill="#7bb4d3">P3.4</text></g>
+<g data-terminal="P3.5"><line x1="294" y1="134" x2="284" y2="134" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="134" r="3" fill="#7bb4d3"/>
+<text x="280" y="137" text-anchor="end" font-size="9" fill="#7bb4d3">P3.5</text></g>
+<g data-terminal="P3.6"><line x1="294" y1="148" x2="284" y2="148" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="148" r="3" fill="#7bb4d3"/>
+<text x="280" y="151" text-anchor="end" font-size="9" fill="#7bb4d3">P3.6</text></g>
+<g data-terminal="P3.7"><line x1="294" y1="162" x2="284" y2="162" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="162" r="3" fill="#7bb4d3"/>
+<text x="280" y="165" text-anchor="end" font-size="9" fill="#7bb4d3">P3.7</text></g>
+<g data-terminal="P4.0"><line x1="294" y1="218" x2="284" y2="218" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="218" r="3" fill="#7bb4d3"/>
+<text x="280" y="221" text-anchor="end" font-size="9" fill="#7bb4d3">P4.0</text></g>
+<g data-terminal="P4.1"><line x1="294" y1="232" x2="284" y2="232" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="232" r="3" fill="#7bb4d3"/>
+<text x="280" y="235" text-anchor="end" font-size="9" fill="#7bb4d3">P4.1</text></g>
+<g data-terminal="P4.2"><line x1="294" y1="246" x2="284" y2="246" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="246" r="3" fill="#7bb4d3"/>
+<text x="280" y="249" text-anchor="end" font-size="9" fill="#7bb4d3">P4.2</text></g>
+<g data-terminal="P4.3"><line x1="294" y1="260" x2="284" y2="260" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="260" r="3" fill="#7bb4d3"/>
+<text x="280" y="263" text-anchor="end" font-size="9" fill="#7bb4d3">P4.3</text></g>
+<g data-terminal="P4.4"><line x1="294" y1="274" x2="284" y2="274" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="274" r="3" fill="#7bb4d3"/>
+<text x="280" y="277" text-anchor="end" font-size="9" fill="#7bb4d3">P4.4</text></g>
+<g data-terminal="P4.5"><line x1="294" y1="288" x2="284" y2="288" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="288" r="3" fill="#7bb4d3"/>
+<text x="280" y="291" text-anchor="end" font-size="9" fill="#7bb4d3">P4.5</text></g>
+<g data-terminal="P4.6"><line x1="294" y1="302" x2="284" y2="302" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="302" r="3" fill="#7bb4d3"/>
+<text x="280" y="305" text-anchor="end" font-size="9" fill="#7bb4d3">P4.6</text></g>
+<g data-terminal="P4.7"><line x1="294" y1="316" x2="284" y2="316" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="294" cy="316" r="3" fill="#7bb4d3"/>
+<text x="280" y="319" text-anchor="end" font-size="9" fill="#7bb4d3">P4.7</text></g>
+<g data-terminal="P5.0"><line x1="154" y1="394" x2="154" y2="382" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="154" cy="394" r="3" fill="#7bb4d3"/>
+<text x="154" y="378" text-anchor="middle" font-size="9" fill="#7bb4d3">P5.0</text></g>
+<g data-terminal="P5.1"><line x1="178" y1="394" x2="178" y2="382" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="178" cy="394" r="3" fill="#7bb4d3"/>
+<text x="178" y="378" text-anchor="middle" font-size="9" fill="#7bb4d3">P5.1</text></g>
+<g data-terminal="P5.2"><line x1="202" y1="394" x2="202" y2="382" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="202" cy="394" r="3" fill="#7bb4d3"/>
+<text x="202" y="378" text-anchor="middle" font-size="9" fill="#7bb4d3">P5.2</text></g>
+<g data-terminal="P5.3"><line x1="226" y1="394" x2="226" y2="382" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="226" cy="394" r="3" fill="#7bb4d3"/>
+<text x="226" y="378" text-anchor="middle" font-size="9" fill="#7bb4d3">P5.3</text></g>
+<g data-terminal="P5.4"><line x1="250" y1="394" x2="250" y2="382" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="250" cy="394" r="3" fill="#7bb4d3"/>
+<text x="250" y="378" text-anchor="middle" font-size="9" fill="#7bb4d3">P5.4</text></g>
+<g data-terminal="P5.5"><line x1="274" y1="394" x2="274" y2="382" stroke="#7bb4d3" stroke-width="2"/>
+<circle cx="274" cy="394" r="3" fill="#7bb4d3"/>
+<text x="274" y="378" text-anchor="middle" font-size="9" fill="#7bb4d3">P5.5</text></g>
+<g data-terminal="5v"><line x1="44" y1="394" x2="44" y2="382" stroke="#e88d76" stroke-width="2"/>
+<circle cx="44" cy="394" r="3" fill="#e88d76"/>
+<text x="44" y="378" text-anchor="middle" font-size="9" fill="#e88d76">5v</text></g>
+<g data-terminal="gnd"><line x1="92" y1="394" x2="92" y2="382" stroke="#b2b8c4" stroke-width="2"/>
+<circle cx="92" cy="394" r="3" fill="#b2b8c4"/>
+<text x="92" y="378" text-anchor="middle" font-size="9" fill="#b2b8c4">gnd</text></g>
+<text x="150" y="118" text-anchor="middle" font-size="18">KOSMOS</text>
+<text x="150" y="155" text-anchor="middle" font-size="32" font-weight="bold">CP1</text>
+<text x="150" y="178" text-anchor="middle" font-size="9" fill="#c8d0de">SYSTEM CONNECTOR</text>
+<line x1="80" y1="191" x2="220" y2="191" stroke="#596171"/>
+<text x="150" y="219" text-anchor="middle" font-size="10">8049 / 8155</text>
+<text x="150" y="241" text-anchor="middle" font-size="9" fill="#c8d0de">Firmware-controlled I/O</text>
+<text x="150" y="273" text-anchor="middle" font-size="9" fill="#7bb4d3">Blue contacts need CP3</text>
+<text x="210" y="351" text-anchor="middle" font-size="9" fill="#7bb4d3">CP3 / PORT 5</text>
+<text x="68" y="351" text-anchor="middle" font-size="9" fill="#c8d0de">SUPPLY</text>
+</g></svg>

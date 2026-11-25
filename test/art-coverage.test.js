@@ -228,8 +228,8 @@ describe('vendored part art on the canvas', () => {
     assert.match(CANVAS, /onPartArtLoaded\(\(\) => setArtLoads\(n => n \+ 1\)\)/);
     assert.match(CANVAS, /const slug = artSidecarFor\(getSidecar\(p\.kind\), p\.params\)\?\.slug;\s*if \(slug && !partArtUrl\(slug\)\) loadPartArt\(slug\);/);
     assert.match(CANVAS, /\{href && <image href=\{href\}/);
-    // A variant's art file name is a valid slug for the loader.
-    assert.match(LOADER, /const SLUG = \/\^\[a-z0-9_\]\+\(\\\.\[a-z0-9_\]\+\)\?\$\//);
+    // Variant names and the locally authored kosmos-cp1 are valid slugs.
+    assert.match(LOADER, /const SLUG = \/\^\[a-z0-9_-\]\+\(\\\.\[a-z0-9_-\]\+\)\?\$\//);
   });
 
   it('every art face\'s viewBox is its box and its legs are the canvas pins, for every variant', () => {

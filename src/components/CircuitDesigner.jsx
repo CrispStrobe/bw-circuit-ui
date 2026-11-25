@@ -70,7 +70,7 @@ import { CubeScanAccumulator } from '../model/cube-scan.js';
 import { DebugStatus } from './DebugStatus.jsx';
 import { VdpScreen } from './VdpScreen.jsx';
 import { Circuit } from '../model/circuit.js';
-import { extractMachine } from '../model/machine-extract.js';
+import { extractMachine, machineBootDetail } from '../model/machine-extract.js';
 import { OrientationInput } from './OrientationInput.jsx';
 import { SerialConsole } from './SerialConsole.jsx';
 import { ArchitectureFace } from './ArchitectureFace.jsx';
@@ -317,7 +317,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   const [loaderNote, setLoaderNote] = useState(null); // Machine Loader feedback line
 
   // Detect retro CPU on the board for the Build Machine action
-  const hasRetroCpu = parts.some(p => p.kind === 'w65c02' || p.kind === 'z80'
+  const hasCp1 = parts.some(p => p.kind === 'kosmos-cp1');
+  const hasRetroCpu = hasCp1 || parts.some(p => p.kind === 'w65c02' || p.kind === 'z80'
     || p.kind === 'i8086' || p.kind === '8086' || p.kind === 'i8088' || p.kind === '8088');
   useEffect(() => {
     // Machine-class examples need Build Machine and their program loader,
@@ -345,6 +346,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
       extract6502Machine: eng.extract6502Machine,
       extractZ80Machine: eng.extractZ80Machine,
       extract8086Machine: eng.extract8086Machine,
+      extractCp1Machine: eng.extractCp1Machine,
     };
 
     const result = extractMachine(flatCircuit, extractors);
@@ -355,11 +357,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     // chips, the Z80 decodes I/O ports — so both fields travel and the
     // machine constructor reads the one its architecture has.
     if (result.ok && typeof window !== 'undefined') {
-      const config = { regions: result.regions };
-      if (result.chips) config.chips = result.chips;
-      if (result.ports) config.ports = result.ports;
       window.dispatchEvent(new CustomEvent('bw-machine-extracted', {
-        detail: { kind: result.kind, config },
+        detail: machineBootDetail(result),
       }));
     }
   }, [parts, wires]);
@@ -708,7 +707,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     // authors on one pin. The rule is a named predicate in model/simulation.js
     // because inside this effect there is no way to test it but to render the
     // whole designer.
-    const demoBlinkApplies = demoPinScriptApplies({ hasMcu: !!mcu, stc });
+    const demoBlinkApplies = !hasCp1 && demoPinScriptApplies({ hasMcu: !!mcu, stc });
     // No MCU is NOT "no simulation": pure circuits (battery+LED, FG+scope,
     // RC charge) need the clock just as much. Only the demo pin script
     // below is MCU-conditional.
@@ -1869,9 +1868,12 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
             background: '#eff6ff', border: '1px solid #93c5fd', color: '#1e40af',
             fontSize: 12, lineHeight: 1.35, marginTop: 4}}>
             <strong>{/^de/i.test(lang) ? 'Maschinen-Werkbank' : 'Machine bench'}</strong>
-            <div>{/^de/i.test(lang)
-              ? 'Dieser Rechner hat keine Pins — er hat einen Bus. „Build Machine" bootet ihn aus der Verdrahtung; das Programm kommt aus dem ASM-Tab.'
-              : 'This computer has no pins — it has a bus. "Build Machine" boots it from the wiring; the program comes from the ASM tab.'}</div>
+            <div>{hasCp1 ? (/^de/i.test(lang)
+              ? 'Die CP1-Anschlüsse verbinden externe Schaltungen. „Build Machine" öffnet die CP1-Werkbank zum Laden einer 2048-Byte-Firmware. Die blauen Anschlüsse benötigen CP3.'
+              : 'The CP1 connector wires external circuits. "Build Machine" opens the CP1 bench to load a 2048-byte firmware image. Blue contacts require CP3.')
+              : (/^de/i.test(lang)
+                ? 'Dieser Rechner hat keine Pins — er hat einen Bus. „Build Machine" bootet ihn aus der Verdrahtung; das Programm kommt aus dem ASM-Tab.'
+                : 'This computer has no pins — it has a bus. "Build Machine" boots it from the wiring; the program comes from the ASM tab.')}</div>
           </div>
         )}
         {/* Build Machine — for retro breadboard computers */}
@@ -1887,7 +1889,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
               <div style={{marginTop: 6, fontSize: 10, fontFamily: 'monospace', lineHeight: 1.4}}>
                 {machineResult.ok ? (
                   <div style={{color: '#22c55e'}}>
-                    ✓ {t('machineBooted', lang)}
+                    ✓ {machineResult.kind === 'cp1' ? (/^de/i.test(lang) ? 'CP1-Anschlüsse bereit' : 'CP1 connector ready') : t('machineBooted', lang)}
                     {machineResult.lines && machineResult.lines.map((l, i) =>
                       <div key={i} style={{color: '#94a3b8', marginLeft: 8}}>{l}</div>
                     )}
@@ -1916,7 +1918,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
               // with zero presets on deploy (owner report, 2038790).
               const kind = (machineResult.kind === 'eater6502' || machineResult.kind === '6502') ? 'eater6502'
                 : machineResult.kind === 'z80' ? 'z80'
-                : machineResult.kind === 'i8086' ? 'i8086' : null;
+                : machineResult.kind === 'i8086' ? 'i8086'
+                : machineResult.kind === 'cp1' ? 'cp1' : null;
               // Each preset names its SLOT (machine-media routing) and its
               // boot PROFILE — the machine shape the image was built for.
               // Tali Forth is a py65mon build and MS BASIC an Eater-map/ACIA
@@ -1998,15 +2001,22 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                 }
               };
               const loadFile = async (file) => {
-                const bytes = new Uint8Array(await file.arrayBuffer());
-                const slot = kind === 'i8086' ? 'rom' : (/\.com$/i.test(file.name) ? 'com' : 'rom');
-                dispatchLoad(slot, bytes, slot === 'com' ? 'cpm' : null, file.name);
-                setLoaderNote(`${file.name} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} → bench`);
+                try {
+                  const bytes = new Uint8Array(await file.arrayBuffer());
+                  if (kind === 'cp1' && bytes.length !== 2048) {
+                    throw new Error(/^de/i.test(lang) ? 'Die CP1-Firmware muss genau 2048 Byte enthalten.' : 'CP1 firmware must contain exactly 2048 bytes.');
+                  }
+                  const slot = kind === 'i8086' || kind === 'cp1' ? 'rom' : (/\.com$/i.test(file.name) ? 'com' : 'rom');
+                  dispatchLoad(slot, bytes, slot === 'com' ? 'cpm' : null, file.name);
+                  setLoaderNote(`${file.name} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} → bench`);
+                } catch (error) {
+                  setLoaderNote(`✗ ${file.name}: ${error.message}`);
+                }
               };
               return (
                 <div style={{marginTop: 8, padding: 6, borderRadius: 4, background: '#1e293b', border: '1px solid #334155'}}>
                   <div style={{fontSize: 10, color: '#94a3b8', fontWeight: 600, marginBottom: 4}}>
-                    {t('machineLoadHeading', lang)}
+                    {kind === 'cp1' ? (/^de/i.test(lang) ? '8049-Firmware-ROM' : '8049 firmware ROM') : t('machineLoadHeading', lang)}
                   </div>
                   <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
                     {presets.map(p => (
@@ -2031,13 +2041,16 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                           whose only refusal is pic1's four-step init window. So this
                           input is where a chip refusal can be produced by a program
                           at all, and the id is what lets a gate say so. */}
-                      <input type="file" accept=".hex,.ihx,.bin,.rom,.com"
+                      <input type="file" accept={kind === 'cp1' ? '.bin,.rom' : '.hex,.ihx,.bin,.rom,.com'}
                         data-testid="bw-machine-load-file"
                         style={{display: 'none'}}
                         onChange={e => { if (e.target.files[0]) loadFile(e.target.files[0]); }} />
                     </label>
                     <div style={{fontSize: 9, color: '#64748b', marginTop: 2}}>
-                      {t('machineLoadAsmHint', lang)}
+                      {kind === 'cp1' ? (/^de/i.test(lang)
+                        ? 'Eigene 2048-Byte-Firmware laden; CP1-Programme werden im CP1-Bedienfeld eingegeben.'
+                        : 'Load your own 2048-byte firmware; enter CP1 programs in the CP1 panel.')
+                        : t('machineLoadAsmHint', lang)}
                     </div>
                     {loaderNote && (
                       <div data-loader-note style={{fontSize: 9, marginTop: 2,
@@ -2108,7 +2121,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
             board has ever defined, so the optional chain swallowed every tap,
             distance and tilt — and never reached the external (debugger)
             board either, which is the one the firmware actually polls. */}
-        <StimulusControls parts={parts} lang={lang} onSetParam={handleSetPartParam} />
+        <StimulusControls parts={parts} board={activeBoard} onControlChange={handleControlChange}
+          lang={lang} onSetParam={handleSetPartParam} />
         </div>
       </div>
       ) : (

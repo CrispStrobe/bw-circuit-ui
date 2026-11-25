@@ -15,6 +15,12 @@ const CATEGORIES = [
   {
     name: 'Boards',
     parts: [
+      { kind: 'kosmos-cp1', label: 'Kosmos CP1', params: {expansion: false, clockHz: 6000000},
+        color: '#e4a138', capability: 'Experimental 8049 firmware machine',
+        tooltip: 'CP1 system connector. Ports 1/2; CP3 enables ports 3/4/5. Supply a 2 KB firmware ROM in the debugger.' },
+      { kind: 'kosmos-cp1', label: 'Kosmos CP1 + CP3', params: {expansion: true, clockHz: 6000000},
+        color: '#e4a138', capability: 'Experimental 8049 firmware machine',
+        tooltip: 'CP1 with 256 program cells and ports 3/4/5. Supply a 2 KB firmware ROM in the debugger.' },
       { kind: 'breadboard', label: 'Breadboard', params: {}, color: '#e8e4d8',
         tooltip: 'Full-size breadboard (63 columns) - legs snap into holes, rows and rails conduct' },
       { kind: 'breadboard', label: 'Breadboard ½', params: { size: 'half' }, color: '#e8e4d8',

@@ -27,7 +27,7 @@ const pending = new Map();
 const failed = new Set();
 const listeners = new Set();
 
-const SLUG = /^[a-z0-9_]+(\.[a-z0-9_]+)?$/; // kind, or kind.variant (variantArt)
+const SLUG = /^[a-z0-9_-]+(\.[a-z0-9_-]+)?$/; // kind, or kind.variant (variantArt)
 
 /**
  * The URL of an art file (its name without `.svg`: the sidecar's kind, or a
