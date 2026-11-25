@@ -314,6 +314,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   // warningsOpen state removed — warnings now live in the toolbar chip (BoardCanvas)
   const hasMcuPins = !!(projectData?.pins?.length > 0);
   const [machineResult, setMachineResult] = useState(null); // extractMachine result
+  const machineHelp = useRef(null);
   const [loaderNote, setLoaderNote] = useState(null); // Machine Loader feedback line
 
   // Detect retro CPU on the board for the Build Machine action
@@ -1887,40 +1888,47 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
             </div>
           );
         })()}
-        {debuggerOn && hasRetroCpu && (!stc || !stc.pins || !stc.pins.length) && (
-          <div data-machine-hint style={{flex: '0 0 auto', padding: '10px 9px', borderRadius: 6,
-            background: '#eff6ff', border: '1px solid #93c5fd', color: '#1e40af',
-            fontSize: 12, lineHeight: 1.35, marginTop: 4}}>
-            <strong>{/^de/i.test(lang) ? 'Maschinen-Werkbank' : 'Machine bench'}</strong>
-            <div>{hasCp1 ? (/^de/i.test(lang)
-              ? 'Die CP1-Anschlüsse verbinden externe Schaltungen. „Build Machine" öffnet die CP1-Werkbank zum Laden einer 2048-Byte-Firmware. Die blauen Anschlüsse benötigen CP3.'
-              : 'The CP1 connector wires external circuits. "Build Machine" opens the CP1 bench to load a 2048-byte firmware image. Blue contacts require CP3.')
-              : (/^de/i.test(lang)
-                ? 'Dieser Rechner hat keine Pins — er hat einen Bus. „Build Machine" bootet ihn aus der Verdrahtung; das Programm kommt aus dem ASM-Tab.'
-                : 'This computer has no pins — it has a bus. "Build Machine" boots it from the wiring; the program comes from the ASM tab.')}</div>
-          </div>
-        )}
         {/* Build Machine — for retro breadboard computers */}
         {hasRetroCpu && (
           <section data-build-machine style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
-            <button onClick={handleBuildMachine} title={t('buildMachineTitle', lang)}
-              style={{width: '100%', minHeight: 32, padding: '5px 8px', cursor: 'pointer',
-                background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: 4,
-                color: '#93c5fd', fontFamily: 'monospace', fontSize: 11, fontWeight: 600}}>
-              🔧 {t('buildMachine', lang)}
-            </button>
+            <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
+              <button onClick={handleBuildMachine} title={t('buildMachineTitle', lang)}
+                style={{flex: 1, minWidth: 0, minHeight: 32, padding: '5px 8px', cursor: 'pointer',
+                  background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: 4,
+                  color: '#93c5fd', fontFamily: 'monospace', fontSize: 11, fontWeight: 600}}>
+                🔧 {t('buildMachine', lang)}
+              </button>
+              <button type="button" title={german ? 'Hilfe zur Maschinen-Werkbank' : 'Machine bench help'}
+                aria-label={german ? 'Hilfe zur Maschinen-Werkbank' : 'Machine bench help'}
+                aria-haspopup="dialog" onClick={() => machineHelp.current.showModal()}
+                style={{width: 26, height: 26, padding: 0, borderRadius: 5, border: '1px solid #475569',
+                  background: '#1e293b', color: '#e2e8f0', cursor: 'pointer'}}>ⓘ</button>
+            </div>
+            <dialog ref={machineHelp} data-machine-hint
+              aria-label={german ? 'Maschinen-Werkbank' : 'Machine bench'}
+              style={{maxWidth: 'min(320px, 92vw)', borderRadius: 8, padding: '10px 14px'}}>
+              <form method="dialog" style={{display: 'flex', justifyContent: 'flex-end'}}>
+                <button type="submit">{german ? 'Schließen' : 'Close'}</button>
+              </form>
+              <p>{hasCp1 ? (german
+                ? 'Die grüne Flagge startet das CP1-Programm mit dem eingebauten Monitor. Blaue Anschlüsse benötigen CP3.'
+                : 'The green flag runs the CP1 program with the built-in monitor. Blue contacts require CP3.')
+                : (german ? 'Baue die Maschine aus der Verdrahtung. Lade das Programm im ASM-Tab.'
+                  : 'Build the machine from its wiring. Load its program from the ASM tab.')}</p>
+            </dialog>
             {machineResult && (
-              <div style={{marginTop: 6, fontSize: 10, fontFamily: 'monospace', lineHeight: 1.4}}>
+              <details style={{marginTop: 4, color: '#cbd5e1', fontSize: 10, fontFamily: 'monospace', lineHeight: 1.4}}>
+                <summary style={{cursor: 'pointer'}}>{machineResult.ok
+                  ? (machineResult.kind === 'cp1' ? (german ? 'CP1 bereit' : 'CP1 ready') : t('machineBooted', lang))
+                  : t('extractFailed', lang)}</summary>
                 {machineResult.ok ? (
                   <div style={{color: '#22c55e'}}>
-                    ✓ {machineResult.kind === 'cp1' ? (/^de/i.test(lang) ? 'CP1-Anschlüsse bereit' : 'CP1 connector ready') : t('machineBooted', lang)}
                     {machineResult.lines && machineResult.lines.map((l, i) =>
                       <div key={i} style={{color: '#94a3b8', marginLeft: 8}}>{l}</div>
                     )}
                   </div>
                 ) : (
                   <div style={{color: '#f87171'}}>
-                    ✗ {t('extractFailed', lang)}
                     {machineResult.reasons.map((r, i) =>
                       <div key={i} style={{color: '#fbbf24', marginLeft: 8, marginTop: 2}}>{r}</div>
                     )}
@@ -1933,7 +1941,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                     )}
                   </div>
                 )}
-              </div>
+              </details>
             )}
             {/* Machine Loader — visible after successful Build Machine */}
             {machineResult && machineResult.ok && (() => {
@@ -2037,10 +2045,23 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                   setLoaderNote(`✗ ${file.name}: ${error.message}`);
                 }
               };
+              if (kind === 'cp1') return (
+                <details style={{marginTop: 4, color: '#cbd5e1', fontSize: 10}}>
+                  <summary style={{cursor: 'pointer'}}>{german ? 'Eigenes ROM öffnen' : 'Open custom ROM'}</summary>
+                  <input type="file" accept=".bin,.rom" data-testid="bw-machine-load-file"
+                    aria-label={german ? 'CP1-ROM importieren' : 'Import CP1 ROM'}
+                    style={{maxWidth: '100%'}} onChange={async event => {
+                      const file = event.target.files?.[0];
+                      event.target.value = '';
+                      if (file) await loadFile(file);
+                    }} />
+                  {loaderNote && <div role="status" data-loader-note>{loaderNote}</div>}
+                </details>
+              );
               return (
                 <div style={{marginTop: 8, padding: 6, borderRadius: 4, background: '#1e293b', border: '1px solid #334155'}}>
                   <div style={{fontSize: 10, color: '#94a3b8', fontWeight: 600, marginBottom: 4}}>
-                    {kind === 'cp1' ? (/^de/i.test(lang) ? '8049-Firmware-ROM' : '8049 firmware ROM') : t('machineLoadHeading', lang)}
+                    {t('machineLoadHeading', lang)}
                   </div>
                   <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
                     {presets.map(p => (
@@ -2065,16 +2086,13 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                           whose only refusal is pic1's four-step init window. So this
                           input is where a chip refusal can be produced by a program
                           at all, and the id is what lets a gate say so. */}
-                      <input type="file" accept={kind === 'cp1' ? '.bin,.rom' : '.hex,.ihx,.bin,.rom,.com'}
+                      <input type="file" accept=".hex,.ihx,.bin,.rom,.com"
                         data-testid="bw-machine-load-file"
                         style={{display: 'none'}}
                         onChange={e => { if (e.target.files[0]) loadFile(e.target.files[0]); }} />
                     </label>
                     <div style={{fontSize: 9, color: '#64748b', marginTop: 2}}>
-                      {kind === 'cp1' ? (/^de/i.test(lang)
-                        ? 'Eigene 2048-Byte-Firmware laden; CP1-Programme werden im CP1-Bedienfeld eingegeben.'
-                        : 'Load your own 2048-byte firmware; enter CP1 programs in the CP1 panel.')
-                        : t('machineLoadAsmHint', lang)}
+                      {t('machineLoadAsmHint', lang)}
                     </div>
                     {loaderNote && (
                       <div data-loader-note style={{fontSize: 9, marginTop: 2,

@@ -80,6 +80,7 @@ try {
   checks.push('Build Machine configuration handoff');
   assert.equal(await page.locator('[data-build-machine] [data-testid^="bw-machine-preset-"]').count(), 0,
     'firmware is supplied by the user');
+  await page.getByText('Open custom ROM', {exact: true}).click();
   const upload = page.getByTestId('bw-machine-load-file');
   await upload.setInputFiles({name: 'wrong-size.bin', mimeType: 'application/octet-stream', buffer: Buffer.alloc(17)});
   await page.waitForFunction(() => document.querySelector('[data-loader-note]')?.textContent.includes('exactly 2048'));
