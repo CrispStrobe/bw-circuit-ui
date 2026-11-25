@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 66 44" width="66" height="44">
+  <!-- FM IF IC: single-in-line body, four leads -->
+  <rect x="2" y="6" width="62" height="24" rx="2" fill="#2b2b2b" stroke="#111" stroke-width="0.8"/>
+  <circle cx="7" cy="11" r="1.5" fill="#555"/>
+  <text x="33" y="17" font-family="sans-serif" font-size="6" fill="#e8e8e8" text-anchor="middle">FM IF</text>
+  <text x="33" y="24" font-family="sans-serif" font-size="4" fill="#bdbdbd" text-anchor="middle">LIM / QUAD</text>
+  <!-- Leads -->
+  <line x1="8" y1="30" x2="8" y2="44" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="8" cy="44" r="2" fill="#c0c0c0"/>
+  <line x1="22" y1="30" x2="22" y2="44" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="22" cy="44" r="2" fill="#c0c0c0"/>
+  <line x1="36" y1="30" x2="36" y2="44" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="36" cy="44" r="2" fill="#c0c0c0"/>
+  <line x1="50" y1="30" x2="50" y2="44" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="50" cy="44" r="2" fill="#c0c0c0"/>
+</svg>

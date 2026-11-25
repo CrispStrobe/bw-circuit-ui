@@ -196,6 +196,20 @@ const CATEGORIES = [
         tooltip: 'Tuning diode: reverse-biased, its capacitance falls as the voltage rises — tune a circuit with a pot instead of a tuning capacitor' },
       { kind: 'npn', label: 'VHF transistor BF199', params: { part: 'BF199' }, color: '#8e44ad',
         tooltip: 'NPN transistor fast enough for VHF (about 550 MHz transition frequency) — numbers from the parts library' },
+      // A short coupling winding that slides along the rod (bw-board
+      // slideWinding): the rod's dial moves it instead of turning the rod.
+      { kind: 'ferrite_coil', label: 'Ferrite rod, sliding winding', params: { henrys: 250e-6, tap: 0.25, couplingRatio: 0.3, k: 0.98, couplingK: 0.9, q: 120, slideWinding: true, slide: 0 }, color: '#b87333',
+        tooltip: 'Ferrite rod whose small winding c1–c2 slides along it: in the middle it has the most inductance, towards the end less. Wire the two windings in series one way or the other to add or subtract them' },
+      // Double-balanced mixer with its own oscillator transistor (bw-board sa612).
+      { kind: 'sa612', label: 'Mixer IC SA612', params: {}, color: '#2c3e50',
+        tooltip: 'Double-balanced mixer — DIP-8: the outputs carry the product of the two inputs (RF on pins 1–2, the oscillator on pin 6); pins 6–7 are a transistor for its own oscillator' },
+      // The VHF receiver's IF: 10.7 MHz ceramic filter and the FM IF IC.
+      { kind: 'ceramic_filter', label: 'Ceramic filter 10.7 MHz', params: { hz: 10.7e6, bandwidthHz: 280e3, ohms: 330 }, color: '#2f6fb0',
+        tooltip: 'Ceramic IF filter: passes 10.7 MHz ± about 140 kHz and stops the rest; in, gnd, out' },
+      { kind: 'fm_if', label: 'FM IF IC (limiter + detector)', params: { quadHz: 10.7e6 }, color: '#2b2b2b',
+        tooltip: 'FM IF chip: limits the 10.7 MHz IF and turns its frequency swing into audio with a quadrature detector; its dial tunes the quadrature coil' },
+      { kind: 'dipole', label: 'Folded dipole (VHF)', params: { heightM: 0.95, ohms: 300, angleDeg: 0 }, color: '#8a6a3e',
+        tooltip: 'Half-wave folded dipole for the FM band: strongest broadside to the station, nothing end-on; its dial turns it' },
     ],
   },
   {

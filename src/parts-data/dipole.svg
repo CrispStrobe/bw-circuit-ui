@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" width="120" height="40">
+  <!-- Folded dipole on a lath, its feeder down to two leads -->
+  <rect x="2" y="12" width="116" height="3" fill="#8a6a3e"/>
+  <path d="M6 6 L114 6 Q118 6 118 9.5 Q118 13 114 13 L66 13 M54 13 L6 13 Q2 13 2 9.5 Q2 6 6 6" fill="none" stroke="#c9c9c9" stroke-width="1.6"/>
+  <line x1="54" y1="13" x2="8" y2="26" stroke="#9a9a9a" stroke-width="0.9"/>
+  <line x1="66" y1="13" x2="22" y2="26" stroke="#9a9a9a" stroke-width="0.9"/>
+  <text x="60" y="24" font-family="sans-serif" font-size="5" fill="#666" text-anchor="middle">300 Ω</text>
+  <!-- Leads -->
+  <line x1="8" y1="26" x2="8" y2="40" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="8" cy="40" r="2" fill="#c0c0c0"/>
+  <line x1="22" y1="26" x2="22" y2="40" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="22" cy="40" r="2" fill="#c0c0c0"/>
+</svg>

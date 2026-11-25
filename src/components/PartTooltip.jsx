@@ -125,6 +125,23 @@ export function PartTooltip({ part, circuit, visible, x, y, lang = 'en' }) {
         if (s && Number.isFinite(s.sparks)) lines.push(de ? `Funken: ${s.sparks}` : `Sparks: ${s.sparks}`);
         break;
       }
+      case 'sa612': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.iTail)) {
+          const f = (x, n) => (de ? x.toFixed(n).replace('.', ',') : x.toFixed(n));
+          lines.push(de ? `Strom ${f(s.iTail * 1e3, 2)} mA, Ausgänge ${f(s.iOutA * 1e3, 2)} / ${f(s.iOutB * 1e3, 2)} mA`
+            : `Tail ${f(s.iTail * 1e3, 2)} mA, outputs ${f(s.iOutA * 1e3, 2)} / ${f(s.iOutB * 1e3, 2)} mA`);
+        }
+        break;
+      }
+      case 'fm_if': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.quadHz)) {
+          const mhz = (s.quadHz / 1e6).toFixed(3);
+          lines.push(de ? `Quadraturkreis ${mhz.replace('.', ',')} MHz` : `Quadrature coil ${mhz} MHz`);
+        }
+        break;
+      }
       case 'cd4046': {
         const s = circuit.board?.getDeviceState?.(part.id);
         if (s && Number.isFinite(s.vcoHz)) {
