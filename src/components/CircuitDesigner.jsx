@@ -77,7 +77,7 @@ import { ArchitectureFace } from './ArchitectureFace.jsx';
 import { FramebufferFace } from './FramebufferFace.jsx';
 import { StimulusControls } from './StimulusControls.jsx';
 import { MicrotronicPanel } from './MicrotronicPanel.jsx';
-import { MICROTRONIC_KIND, saveMicrotronicProgram } from '../model/microtronic-controls.js';
+import { MICROTRONIC_KIND, saveMicrotronicExecutionMode, saveMicrotronicProgram } from '../model/microtronic-controls.js';
 import { microtronicDemoCircuit } from '../model/microtronic-demo.js';
 import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
@@ -1026,6 +1026,12 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     }
   }, [circuit, setPartParam, externalBoard]);
 
+  const handleMicrotronicExecutionMode = useCallback((partId, mode) => {
+    if (saveMicrotronicExecutionMode(circuit, partId, mode)) {
+      handleSetPartParam(partId, 'executionMode', mode);
+    }
+  }, [circuit, handleSetPartParam]);
+
   const handleMicrotronicRun = useCallback(() => {
     if (!externalBoard && mode !== 'simulate') {
       // The device has already accepted RUN. Reusing this board is essential:
@@ -1825,7 +1831,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
         <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 36, padding: '36px 6px 6px', boxSizing: 'border-box'}}>
         {microtronics.map(part => <MicrotronicPanel key={part.id} part={part} board={activeBoard} lang={lang}
           externalClock={!!externalBoard} onProgramChange={handleMicrotronicProgram}
-          onRunClock={handleMicrotronicRun} onOpenExample={() => handleLoad(microtronicDemoCircuit())} />)}
+          onExecutionModeChange={handleMicrotronicExecutionMode}
+          onRunClock={handleMicrotronicRun} onOpenExample={() => handleLoad(microtronicDemoCircuit(part.params?.executionMode))} />)}
         {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins).
             The FACES below gate on capability, not on pins: a machine-class
             bench (6502/Z80) has no PIN concept, yet its booted machine has

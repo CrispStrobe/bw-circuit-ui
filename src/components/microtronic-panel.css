@@ -1,10 +1,10 @@
 /* Class-token attributes keep these scoped styles literal in both CSS-module hosts and plain CSS bundlers. */
 [class~="microtronic-panel"] { flex:0 0 auto; min-width:0; width:100%; box-sizing:border-box; padding:12px; border:1px solid #a76727; border-radius:10px; background:#202735; color:#e2e8f0; font:12px/1.45 system-ui,sans-serif; }
 [class~="microtronic-panel"]:focus-visible { outline:2px solid #fb923c; outline-offset:2px; }
-[class~="microtronic-panel"] header { display:flex; align-items:start; justify-content:space-between; gap:5px; margin-bottom:10px; }
+[class~="microtronic-panel"] header { display:flex; align-items:flex-start; justify-content:space-between; gap:5px; margin-bottom:10px; }
 [class~="microtronic-panel"] header strong { display:block; font-size:11px; letter-spacing:.06em; color:#fed7aa; }
 [class~="microtronic-panel"] header small { display:block; color:#aab8ca; overflow-wrap:anywhere; }
-[class~="microtronic-model"] { max-width:77px; padding:2px 5px; border-radius:4px; background:#334155; color:#cbd5e1; font-size:9px; text-align:center; }
+[class~="microtronic-model"] { max-width:112px; padding:2px 5px; border-radius:4px; background:#334155; color:#cbd5e1; font-size:9px; text-align:center; }
 [class~="microtronic-display"] { display:block; width:100%; height:auto; max-height:80px; border-radius:5px; background:#0c1019; border:1px solid #475569; box-sizing:border-box; }
 [class~="microtronic-status"] { display:flex; align-items:center; gap:7px; padding:7px 0 5px; font:11px monospace; }
 [class~="microtronic-status"] strong { flex:1; font-size:10px; }

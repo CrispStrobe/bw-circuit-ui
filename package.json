@@ -37,7 +37,8 @@
     "verify:board-provenance": "node scripts/board-provenance.mjs",
     "verify:cp1": "node scripts/verify-cp1-static.mjs",
     "verify:cp1:browser": "node scripts/serve-and-verify.mjs scripts/verify-cp1-connector.mjs",
-    "verify:microtronic:browser": "node scripts/serve-and-verify.mjs scripts/verify-microtronic.mjs"
+    "verify:microtronic:browser": "node scripts/serve-and-verify.mjs scripts/verify-microtronic.mjs",
+    "verify:microtronic:native": "node scripts/serve-and-verify.mjs scripts/verify-microtronic-native.mjs"
   },
   "author": "CrispStrobe <cze+github@mailbox.org>",
   "license": "MIT",
@@ -53,7 +54,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.5",
-    "bw-board": "github:CrispStrobe/bw-board#5245f882709b975e0712a9517abceff6b4cd83cc",
+    "bw-board": "github:CrispStrobe/bw-board#0de1b5cbb019713ee16e62ef8a74d24230e912d3",
     "playwright": "^1.61.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

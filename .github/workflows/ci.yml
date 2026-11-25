@@ -157,6 +157,8 @@ jobs:
       # screen). Both need a real Chromium; neither can be unit-tested.
       - name: Touch and small-screen layout gates (npm run verify:touch)
         run: npm run verify:touch
+      - name: Native Microtronic circuit and persistence
+        run: npm run verify:microtronic:native
 
       - name: Sidebar activation with mouse and touch
         run: node --test --test-name-pattern="toggles the selectors panel" test/e2e.test.js
