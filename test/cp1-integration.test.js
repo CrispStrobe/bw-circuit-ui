@@ -16,6 +16,8 @@ import {Circuit} from '../src/model/circuit.js';
 import {findSnapTarget} from '../src/model/snap.js';
 import {extractMachine, machineBootDetail} from '../src/model/machine-extract.js';
 import {classifyRunPins, armBoardForRun, demoPinScriptApplies, greenFlagArmsOwnBoard} from '../src/model/simulation.js';
+import {createHitTest, footprintOf, partBounds} from '../src/interaction/hittest.js';
+import {computeFitView} from '../src/interaction/transform.js';
 
 const read = name => readFileSync(new URL(name, import.meta.url), 'utf8');
 const extractors = {extractCp1Machine};
@@ -39,6 +41,48 @@ test('the authored CP1 art and its 40 wire anchors share exact coordinates', () 
     assert.match(svg, new RegExp(`data-terminal="${escaped}"[^]*?<circle cx="${t.x}" cy="${t.y}"`));
     assert.ok(t.x >= 3 && t.x <= sidecar.w - 3 && t.y >= 3 && t.y <= sidecar.h - 3, t.name);
     assert.deepEqual(offsets[t.name], {dx: t.x - 150, dy: t.y - 200});
+  }
+});
+
+const cp1ArtCorners = (part, inset = 1) => {
+  const art = artFaceLayout(getSidecar(part.kind));
+  const radians = (part.rotation || 0) * Math.PI / 180;
+  return [art.x, art.x + art.w].flatMap(x => [art.y, art.y + art.h].map(y => {
+    const dx = x * inset * (part.flipped ? -1 : 1), dy = y * inset;
+    return {x: part.x + dx * Math.cos(radians) - dy * Math.sin(radians),
+      y: part.y + dx * Math.sin(radians) + dy * Math.cos(radians)};
+  }));
+};
+
+test('CP1 hit bounds cover its whole authored face after rotation and mirroring', () => {
+  const sidecar = getSidecar('kosmos-cp1');
+  assert.deepEqual(footprintOf(cp1Part()), {w: sidecar.w, h: sidecar.h});
+  for (const rotation of [0, 45, 90, 180, 270, 315]) for (const flipped of [false, true]) {
+    const part = {...cp1Part(), x: 850, y: 330, rotation, flipped};
+    const bounds = partBounds(part), corners = cp1ArtCorners(part);
+    for (const [field, expected] of Object.entries({
+      minX: Math.min(...corners.map(p => p.x)), maxX: Math.max(...corners.map(p => p.x)),
+      minY: Math.min(...corners.map(p => p.y)), maxY: Math.max(...corners.map(p => p.y)),
+    })) assert.ok(Math.abs(bounds[field] - expected) < 1e-9, `${rotation}/${flipped}: ${field}`);
+    const hits = createHitTest(() => [part], () => [], () => []);
+    for (const p of cp1ArtCorners(part, 0.98)) {
+      assert.equal(hits.partAt(p.x, p.y), part.id, `${rotation}/${flipped}: visible face corner remains selectable`);
+    }
+  }
+});
+
+test('Fit all parts frames the full CP1 art beside a CP5-style bench on desktop and narrow viewports', () => {
+  for (const rotation of [0, 90, 180, 270]) for (const flipped of [false, true]) {
+    const part = {...cp1Part(), x: 850, y: 330, rotation, flipped};
+    const parts = [part, {kind: 'switch', x: 110, y: 80}, {kind: 'gnd', x: 650, y: 610}];
+    for (const viewport of [{w: 918, h: 566}, {w: 354, h: 568}]) {
+      const view = computeFitView(parts.map(partBounds), viewport);
+      for (const p of cp1ArtCorners(part)) {
+        const x = (p.x - view.pan.x) * view.zoom, y = (p.y - view.pan.y) * view.zoom;
+        assert.ok(x >= 0 && x <= viewport.w && y >= 0 && y <= viewport.h,
+          `${viewport.w}px/${rotation}/${flipped}: full art corner (${x}, ${y}) is inside the viewport`);
+      }
+    }
   }
 });
 

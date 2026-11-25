@@ -30,6 +30,17 @@ and activation, and a paused CPU holds its outputs until it resumes. Local
 browser launch remains unavailable; browser qualification is recorded by the
 separate CP1 gate and is not inferred from these headless checks.
 
+Browser follow-up 2026-11-25: the connected CP5 gate exposed a clipped CP1
+connector after Fit all parts. Its art is 300 by 400 world units, but hit/fit
+bounds still used the 48 by 48 unknown-part fallback. Own only the additive
+`kosmos-cp1` footprint in `src/interaction/hittest.js`, CP1 art/bounds/rotated
+selection/fit regressions in the existing integration suite, and this note.
+Preserve other part footprints and the shared fit algorithm. The browser lane
+will require the complete rendered CP1 face inside the fitted viewport.
+Both new regressions fail against the missing footprint and pass with the
+300 by 400 entry. CP1 integration, interaction/fit, board geometry and canvas
+terminal geometry pass 40/40 with no skips; the production build passes.
+
 ## One autosave record per circuit (Lite I5) — CLAIMED 2026-11-11
 Owner: Lite browser-shard I-task lane (I5). Base: `9724589`. Claim and change in one PR.
 Scope: new `src/model/autosave-record.js`; the two `bw-circuit-autosave` writes in `CircuitDesigner.jsx` (handleLoad and the debounced autosave); new `test/one-autosave-record.test.js` and its `package.json` test listing. No other Designer behavior.
