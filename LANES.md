@@ -41,6 +41,17 @@ Microtronic/CP1 connector browser gates pass on the combined tree. The latter
 checks 320 transformed CP1 contacts, machine handoff and synthetic custom-ROM
 refusal/import; full-host bundled-monitor execution is a separate host gate.
 
+Hosted gate follow-up (run 45686653502, candidate c1ec54d): two stale test
+readers also fail on incoming master 11532a80 with its original installed
+Board ddd77e4e. The status reader included unrelated rail JSX; magnetic face
+checks assumed standalone kind conditions instead of the existing grouped
+readbacks. Tests now isolate the actual source statements with Vite's declared
+JSX parser and execute the real magnetic renderer/input callback against Board.
+All transport assertions remain. Both repaired files pass 22/22 on old and
+candidate engines; 140 adjacent checks pass, with no skips. Three isolated
+readback/callback/status-precedence mutants each fail their intended assertion.
+No runtime, engine pin, workflow or gate exclusion changed.
+
 ## Kosmos CP1 circuit and front-panel surfaces — CLAIMED, 2026-11-24
 
 Owner: Brickwright CP1 implementation lane, requested by CrispStrobe.

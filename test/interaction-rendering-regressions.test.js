@@ -2,6 +2,7 @@ import './_setup.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { parseSync } from 'vite';
 import { Circuit, resetIds } from '../src/model/circuit.js';
 import { createHitTest, partBounds } from '../src/interaction/hittest.js';
 import { runDrc } from '../src/model/drc.js';
@@ -53,14 +54,24 @@ test('invalid file loads retain starter context and circuit state', () => {
 });
 
 test('own simulation status follows actual transport state without claiming an MCU', () => {
-  const block = /  let statusText = null;([\s\S]*?)\n  return \(/.exec(designerSource);
-  assert.ok(block, 'execute the real status precedence block');
+  // The rail now has JSX helpers before the component's return. Parse the
+  // actual declaration and following if/else chain instead of swallowing
+  // those unrelated helpers into an ordinary-JavaScript Function body.
+  const parsed = parseSync('CircuitDesigner.jsx', designerSource);
+  assert.deepEqual(parsed.errors, []);
+  const statements = parsed.program.body.find(node =>
+    node.declaration?.id?.name === 'CircuitDesigner')?.declaration.body.body;
+  assert.ok(statements, 'locate the real designer function');
+  const start = statements.findIndex(node => node.declarations?.some(item => item.id.name === 'statusText'));
+  assert.ok(start >= 0, 'locate the actual status declaration');
+  assert.equal(statements[start + 1]?.type, 'IfStatement', 'execute the complete status precedence chain');
+  const block = designerSource.slice(statements[start].start, statements[start + 1].end);
   // Use named inputs so each asserted state reaches the actual expression.
   const read = overrides => {
     const state = { hasSimulation: true, externalBoard: false, halted: false,
       staleBy: 0, mode: 'simulate', simClockError: null, simStepping: false,
       simPaused: false, placingProbe: null, ...overrides };
-    return new Function(...Object.keys(state), `let statusText = null;${block[1]}\nreturn statusText;`)(...Object.values(state));
+    return new Function(...Object.keys(state), `${block}\nreturn statusText;`)(...Object.values(state));
   };
   assert.equal(read({}), 'SIMULATING — circuit');
   assert.equal(read({ simPaused: true }), 'PAUSED — circuit simulation');
