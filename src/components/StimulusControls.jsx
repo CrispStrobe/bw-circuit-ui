@@ -2,6 +2,9 @@
  * StimulusControls — UI controls for environment stimuli that the
  * fabric path (potentiometer/button) can't provide:
  *
+ * - Ordinary switches: latching contacts, using the live board control value
+ *   and the same onControlChange route as the existing interactive parts.
+ *
  * - Knock/tap: a button that briefly sets the piezo sensor's analog
  *   voltage high (simulating a physical tap). The voltage decays
  *   automatically — the button is impulse, not toggle.
@@ -29,11 +32,12 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import { t } from '../i18n/strings.js';
+import { SwitchControls } from './SwitchControls.jsx';
 
 /**
- * @param {{ parts: Array, onSetParam: (partId, key, value) => void, lang?: string }} props
+ * @param {{ parts: Array, board?: object, onControlChange?: Function, onSetParam: (partId, key, value) => void, lang?: string }} props
  */
-export function StimulusControls({ parts, onSetParam, lang = 'en' }) {
+export function StimulusControls({ parts, board, onControlChange, onSetParam, lang = 'en' }) {
   // Find sensor parts that need stimulus controls
   const piezoSensors = parts.filter(p =>
     p.kind === 'piezo' || p.kind === 'knock_sensor' || p.kind === 'force_sensor');
@@ -45,10 +49,11 @@ export function StimulusControls({ parts, onSetParam, lang = 'en' }) {
     && (p.params?.soundDb !== undefined || p.params?.listen === true || typeof p.params?.hears === 'string'));
   const thermocouples = parts.filter(p => p.kind === 'thermocouple');
   const coils = parts.filter(p => p.kind === 'air_coil');
+  const hasSwitches = parts.some(p => p.kind === 'switch');
 
   if (piezoSensors.length === 0 && ultrasonics.length === 0
     && pirs.length === 0 && sounds.length === 0 && listeners.length === 0
-    && thermocouples.length === 0 && coils.length === 0) return null;
+    && thermocouples.length === 0 && coils.length === 0 && !hasSwitches) return null;
 
   return (
     <div data-stimulus-controls style={{
@@ -57,6 +62,7 @@ export function StimulusControls({ parts, onSetParam, lang = 'en' }) {
       width: '100%', boxSizing: 'border-box',
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
+      <SwitchControls parts={parts} board={board} onControlChange={onControlChange} lang={lang} />
       {piezoSensors.map(p => (
         <KnockTap key={p.id} partId={p.id} onSetParam={onSetParam} lang={lang} />
       ))}

@@ -24,6 +24,11 @@ and focused behavioral/component tests plus registration. Read the actual board
 control on every activation; preserve all other stimulus devices, circuit time
 ownership, editable parameter defaults and existing browser gates. Coordinate
 the real click-to-firmware-to-LED browser case with the CP1 browser lane.
+The five actual React/control behavior checks and 49 scoped source regressions
+pass; the production build passes. Controls read the active board on render
+and activation, and a paused CPU holds its outputs until it resumes. Local
+browser launch remains unavailable; browser qualification is recorded by the
+separate CP1 gate and is not inferred from these headless checks.
 
 ## One autosave record per circuit (Lite I5) — CLAIMED 2026-11-11
 Owner: Lite browser-shard I-task lane (I5). Base: `9724589`. Claim and change in one PR.

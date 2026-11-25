@@ -58,3 +58,25 @@ files when upstream catalogue assets are refreshed.
 Server rendering does not test pointer interaction, browser layout, or execution
 of firmware. The browser gate and the engine's external-circuit tests cover
 those separate boundaries.
+
+## CP5-style ordinary switches
+
+The connected `cp1-cp5-binary` gallery example belongs to sb3-creator. It uses
+eight ordinary switches, explicit pull-ups, a Darlington driver and eight LED
+branches. Open **Instruments** (the **Expand instruments panel** control when
+the rail is collapsed) and use **Switches** to open or close each contact while
+the monitor firmware runs. The control reports the active board's contact
+state; **Closed** means that the component joins its two terminals. In this
+example that connection grounds the CP1 input, so closed reads zero.
+
+The controls use the existing `handleControlChange` path and remain available
+while CPU execution is paused. Changing an input does not advance the CPU or
+write an output port. The CPU must resume and read the switch before its
+firmware can change the LEDs. Runtime contact changes preserve the circuit's
+authored initial `closed` values.
+
+`node --test test/switch-controls.test.js` compiles and renders the actual React
+controls, exercises their callbacks against the real circuit/CP1 adapter, and
+checks live readback, repeated clicks before a render, numeric initial state,
+English/German labels and preservation of the other stimulus controls. This
+headless component check is separate from real browser interaction evidence.

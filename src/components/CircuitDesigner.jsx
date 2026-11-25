@@ -2121,7 +2121,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
             board has ever defined, so the optional chain swallowed every tap,
             distance and tilt — and never reached the external (debugger)
             board either, which is the one the firmware actually polls. */}
-        <StimulusControls parts={parts} lang={lang} onSetParam={handleSetPartParam} />
+        <StimulusControls parts={parts} board={activeBoard} onControlChange={handleControlChange}
+          lang={lang} onSetParam={handleSetPartParam} />
         </div>
       </div>
       ) : (
