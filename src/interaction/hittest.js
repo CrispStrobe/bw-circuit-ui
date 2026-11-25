@@ -98,6 +98,7 @@ export const FOOTPRINTS = {
   field_probe: { w: 30, h: 70 },
   // Sensing transducers: their sidecar bodies.
   ptc_sensor: { w: 44, h: 48 }, spark_gap: { w: 44, h: 48 }, bending_ruler: { w: 60, h: 52 },
+  induction_loop: { w: 56, h: 48 }, coil_pendulum: { w: 56, h: 64 },
   thermocouple: { w: 30, h: 64 }, air_coil: { w: 56, h: 48 }, electrolysis_cell: { w: 44, h: 56 },
   humidity_comb: { w: 44, h: 48 }, dual_gate_mosfet: { w: 58, h: 44 },
   // Optical links: the laser's sidecar body; a light path wears the

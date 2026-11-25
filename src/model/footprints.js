@@ -272,6 +272,10 @@ const BUILTIN_FOOTPRINTS = {
   ptc_sensor: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
   spark_gap: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 2 } } },
   bending_ruler: { refTerminal: 'vcc', leads: { vcc: { dRow: 0, dCol: 0 }, gnd: { dRow: 0, dCol: 1 }, ao: { dRow: 0, dCol: 2 } } },
+  // Magnetic field source and coil pendulum (bw-parts, 2026-11-25), held
+  // equal to their sidecars by test/magnetic-field-parts.test.js.
+  induction_loop: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
+  coil_pendulum: { refTerminal: 'a', leads: { a: { dRow: 0, dCol: 0 }, b: { dRow: 0, dCol: 3 } } },
   // Laser diode module (bw-parts optical-link parts, 2026-11-23): two leads
   // one column apart, like an LED. light_path has no leads and no footprint.
   laser_diode: { refTerminal: 'anode', leads: { anode: { dRow: 0, dCol: 0 }, cathode: { dRow: 0, dCol: 1 } } },

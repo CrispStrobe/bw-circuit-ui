@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 64" width="56" height="64">
+  <!-- Coil pendulum: a paper-clip bob on a thread, hanging beside the pole of a wound rod -->
+  <!-- Support -->
+  <rect x="4" y="2" width="30" height="3" rx="1" fill="#8b6f47"/>
+  <!-- Thread and bob (drawn at rest; the swing is device state) -->
+  <line x1="16" y1="5" x2="16" y2="30" stroke="#666" stroke-width="0.7"/>
+  <rect x="13" y="30" width="6" height="10" rx="3" fill="none" stroke="#9aa5ad" stroke-width="1.4"/>
+  <rect x="14.6" y="32" width="2.8" height="6" rx="1.4" fill="none" stroke="#9aa5ad" stroke-width="1"/>
+  <path d="M10 26 A 10 10 0 0 0 22 26" fill="none" stroke="#7fb3d5" stroke-width="0.6" stroke-dasharray="1.5 1"/>
+  <!-- Wound rod standing beside it, pole on top -->
+  <rect x="34" y="26" width="10" height="20" fill="#3c3c3c"/>
+  <g stroke="#b5651d" stroke-width="1.6">
+    <line x1="32" y1="30" x2="46" y2="30"/>
+    <line x1="32" y1="33" x2="46" y2="33"/>
+    <line x1="32" y1="36" x2="46" y2="36"/>
+    <line x1="32" y1="39" x2="46" y2="39"/>
+    <line x1="32" y1="42" x2="46" y2="42"/>
+  </g>
+  <rect x="34" y="24" width="10" height="2.5" fill="#c0392b"/>
+  <!-- Base -->
+  <rect x="2" y="46" width="52" height="4" rx="1" fill="#d9c7a3" stroke="#8b7a5a" stroke-width="0.6"/>
+  <!-- Wire ends to the leads -->
+  <path d="M33 43 C 20 47, 8 52, 7 58" fill="none" stroke="#b5651d" stroke-width="1.2"/>
+  <path d="M45 43 C 48 48, 49 52, 49 58" fill="none" stroke="#b5651d" stroke-width="1.2"/>
+  <line x1="7" y1="58" x2="7" y2="64" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="49" y1="58" x2="49" y2="64" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="7" cy="64" r="2" fill="#c0c0c0"/>
+  <circle cx="49" cy="64" r="2" fill="#c0c0c0"/>
+</svg>

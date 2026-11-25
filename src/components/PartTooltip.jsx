@@ -84,6 +84,25 @@ export function PartTooltip({ part, circuit, visible, x, y, lang = 'en' }) {
         }
         break;
       }
+      case 'induction_loop': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.distanceCm)) {
+          const f = (x, n) => (de ? x.toFixed(n).replace('.', ',') : x.toFixed(n));
+          lines.push(de ? `Abstand zur Aufnahmespule ${f(s.distanceCm, 1)} cm` : `${f(s.distanceCm, 1)} cm from the pickup coil`);
+          if (s.mutualH) lines.push(de ? `Gegeninduktivität ${f(s.mutualH * 1e6, 2)} µH` : `Mutual inductance ${f(s.mutualH * 1e6, 2)} µH`);
+        }
+        break;
+      }
+      case 'coil_pendulum': {
+        const s = circuit.board?.getDeviceState?.(part.id);
+        if (s && Number.isFinite(s.angleDeg)) {
+          const f = (x, n) => (de ? x.toFixed(n).replace('.', ',') : x.toFixed(n));
+          lines.push(de ? `Ausschlag ${f(s.amplitudeDeg, 1)}°, jetzt ${f(s.angleDeg, 1)}°` : `Swing ${f(s.amplitudeDeg, 1)}°, now ${f(s.angleDeg, 1)}°`);
+          lines.push(de ? `Eigenfrequenz ${f(s.naturalHz, 2)} Hz${s.periodSec > 0 ? `, Periode ${f(s.periodSec, 2)} s` : ''}`
+            : `Natural ${f(s.naturalHz, 2)} Hz${s.periodSec > 0 ? `, period ${f(s.periodSec, 2)} s` : ''}`);
+        }
+        break;
+      }
       case 'ptc_sensor': {
         const s = circuit.board?.getDeviceState?.(part.id);
         if (s && Number.isFinite(s.ohms)) {

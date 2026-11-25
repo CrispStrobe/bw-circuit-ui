@@ -111,6 +111,16 @@ const CATEGORIES = [
       // through it makes a pulse; metal nearby shifts its inductance.
       { kind: 'air_coil', label: 'Hand-wound coil', params: { turns: 200, radiusM: 0.015, lengthM: 0.03, wireMm: 0.25 }, color: '#b5651d',
         tooltip: 'Air coil wound from copper wire: its current makes a magnetic field (a compass on its axis turns), a magnet dropped through it induces a pulse, metal nearby changes its inductance' },
+      // A conductor carrying the circuit's audio current whose magnetic field
+      // a hand-wound pickup coil overhears (bw-board induction_loop; `pickup`
+      // names the coil, the knob is the distance).
+      { kind: 'induction_loop', label: 'Magnetic field source (loop)', params: { shape: 'loop', turns: 50, radiusM: 0.02, position: 0.5 }, color: '#b5651d',
+        tooltip: 'A loop of wire carrying an audio current: its magnetic field reaches a hand-wound pickup coil (set its pickup), falling off with distance — the knob moves it' },
+      { kind: 'induction_loop', label: 'Mains cable (two cores)', params: { shape: 'cable', spacingMm: 6, position: 0.5 }, color: '#7f8c8d',
+        tooltip: 'A two-core cable: only the current it carries makes a field, and go and return nearly cancel — a pickup coil hears it only close by and only while a load is on' },
+      // An electromagnet kicking a paper-clip pendulum (bw-board coil_pendulum).
+      { kind: 'coil_pendulum', label: 'Coil pendulum', params: { bob: 'iron', lengthM: 0.15 }, color: '#3c3c3c',
+        tooltip: 'A wound rod with a paper clip hanging beside its pole: each current pulse pulls the clip; pulses in step with its swing (about 1.3 Hz) make it swing wide' },
       // Two electrodes in air (bw-board spark_gap): breaks down at about
       // 3 kV per mm of gap, then an arc until the current dies.
       { kind: 'spark_gap', label: 'Spark gap', params: { gapMm: 1 }, color: '#9a8f74',

@@ -1,0 +1,34 @@
+{
+  "kind": "coil_pendulum",
+  "w": 56,
+  "h": 64,
+  "terminals": [
+    {
+      "name": "a",
+      "x": 7,
+      "y": 64,
+      "functions": []
+    },
+    {
+      "name": "b",
+      "x": 49,
+      "y": 64,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "_note": "Electromagnet with a pendulum: a wound rod (ohms 150, henrys 0.1, momentPerAmp 1 A m^2 per A) with a bob on a thread beside its pole (lengthM 0.15, massKg 0.0008, q 12, gapMm 10 below, offsetMm 20 aside). 2-terminal: a, b (the winding). Engine (bw-board coil_pendulum, src/magnetic-coupling.js): bob iron (a paper clip: ironCm3, chiEff; pulled by 1/2 i^2 dL/dtheta whatever the current's sign) or magnet (magnetAm2, magnetPolarity; torque i dLambda/dtheta); the swing induces back into the coil. Reports angleDeg, amplitudeDeg, periodSec, naturalHz, energyJ, amps.",
+  "footprint": {
+    "refTerminal": "a",
+    "leads": {
+      "a": {
+        "dRow": 0,
+        "dCol": 0
+      },
+      "b": {
+        "dRow": 0,
+        "dCol": 3
+      }
+    }
+  }
+}
