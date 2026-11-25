@@ -180,6 +180,12 @@ function codexPalette(dark) {
 
 // ── Component ───────────────────────────────────────────────────────
 
+// Gallery catalog paths are relative to the examples directory. Hosts may
+// also provide pre-resolved paths or externally hosted lesson notes.
+function introUrl(path) {
+  return /^(?:[a-z]+:|[/.]|examples\/)/i.test(path) ? path : `examples/${path}`;
+}
+
 /**
  * @param {{
  *   curriculum: { version: number, trails: Array },
@@ -255,13 +261,13 @@ export function CodexBrowser({ curriculum, examples, lang = 'en', onLoadExample,
       setIntroData('loading');
       const introFile = lang === 'de' && example.files.introDE ? example.files.introDE : example.files.intro;
       if (introFile) {
-        fetch(introFile)
+        fetch(introUrl(introFile))
           .then(r => r.ok ? r.text() : Promise.reject())
           .then(text => setIntroData(parseIntro(text)))
           .catch(() => {
             // Fallback to English if DE failed
             if (lang === 'de' && example.files.intro) {
-              fetch(example.files.intro)
+              fetch(introUrl(example.files.intro))
                 .then(r => r.ok ? r.text() : Promise.reject())
                 .then(text => setIntroData(parseIntro(text)))
                 .catch(() => setIntroData('none'));
