@@ -122,6 +122,11 @@ test('single-step GO executes one instruction and PC returns to the stopped exec
   state=command(circuit,part,'key','GO');
   assert.equal(state.cpu.x,0x17);
   assert.equal(state.pc,0x0204);
+  state=command(circuit,part,'key','RS');
+  assert.equal(state.singleStep,true,'reset retains the physical SST switch');
+  state=command(circuit,part,'key','GO');
+  assert.equal(state.pc,0x0202);
+  assert.equal(state.running,false);
 });
 
 test('invalid program replacement is atomic and undo restores an accepted keypad edit',()=>{

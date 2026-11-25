@@ -45,11 +45,14 @@ jobs:
       - name: Compare installed Board with exact clean source
         id: evidence
         run: node scripts/qualify-kim1-board.mjs engine-source
-      - name: KIM-1 engine and circuit integration
+      - name: KIM-1 installed engine
+        id: engine
+        working-directory: node_modules/bw-board
+        run: node --test test/kim1-*.test.mjs
+      - name: KIM-1 circuit integration
         id: unit
-        run: |
-          node --test node_modules/bw-board/test/kim1-*.test.mjs
-          npm run verify:kim1
+        if: ${{ !cancelled() && steps.evidence.outcome == 'success' }}
+        run: npm run verify:kim1
       - name: Install Chromium
         if: ${{ !cancelled() && steps.evidence.outcome == 'success' }}
         run: npx playwright install --with-deps chromium

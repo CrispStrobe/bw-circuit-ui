@@ -60,6 +60,10 @@ try {
   assert.equal(await page.evaluate(id=>window.__board.getDeviceState(id).address,firstId),0x0202);
   await panel.locator('[data-kim1-key="GO"]').click();
   assert.equal(await page.evaluate(id=>window.__board.getDeviceState(id).cpu.x,firstId),0x42);
+  await panel.locator('[data-kim1-key="RS"]').click();
+  assert.equal(await panel.locator('[data-kim1-sst]').isChecked(),true,'RS retains the physical SST position');
+  await panel.locator('[data-kim1-key="GO"]').click();
+  assert.deepEqual(await page.evaluate(id=>{const s=window.__board.getDeviceState(id);return[s.pc,s.running];},firstId),[0x0202,false]);
   await panel.locator('[data-kim1-sst]').uncheck();
   checks.push('invalid load is atomic; an imported file, SST and PC work through the visible front panel');
 
