@@ -2,7 +2,7 @@ name: KIM-1 Circuits
 
 on:
   push:
-    branches: [master, feat/kim1-circuits]
+    branches: [master, feat/kim1-circuits, feat/kim1-tape-import]
     paths:
       - '.github/workflows/kim1-circuits.yml'
       - 'src/**'
