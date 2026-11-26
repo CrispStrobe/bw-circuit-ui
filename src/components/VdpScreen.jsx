@@ -67,7 +67,7 @@ const BROWSER_TO_SCANCODE = {
 export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, sendScancodeFn, loadSnapshotFn, lang = 'en' }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
-  const lastFrameRef = useRef(-1);
+  const lastFrameRef = useRef(null);
   const rafRef = useRef(0);
   const maskRef = useRef(0);
   const heldKeysRef = useRef(new Set());
@@ -213,17 +213,20 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, sendScancodeFn, lo
       ctx.font = `${Math.round(h / 14)}px monospace`;
       ctx.textAlign = 'center';
       ctx.fillText(t('noSignal', lang).toUpperCase(), w / 2, h / 2);
-      lastFrameRef.current = -1;
+      lastFrameRef.current = null;
       rafRef.current = requestAnimationFrame(paint);
       return;
     }
 
     // Skip repaint if frame counter unchanged
-    if (v.frame === lastFrameRef.current) {
+    const mode = v.source === 'serial' ? 'serial' : 'video';
+    const key = v.frame == null ? null : `${mode}/${v.width}/${v.height}/${v.frame}`;
+    if (key !== null && key === lastFrameRef.current) {
       rafRef.current = requestAnimationFrame(paint);
       return;
     }
-    lastFrameRef.current = v.frame;
+    lastFrameRef.current = key;
+    canvas.style.imageRendering = mode === 'serial' ? 'auto' : 'pixelated';
 
     if (canvas.width !== v.width) { canvas.width = v.width; setNativeSize(s => s.w !== v.width || s.h !== v.height ? { w: v.width, h: v.height } : s); }
     if (canvas.height !== v.height) { canvas.height = v.height; setNativeSize(s => s.w !== v.width || s.h !== v.height ? { w: v.width, h: v.height } : s); }
@@ -254,7 +257,7 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, sendScancodeFn, lo
       style={{
         background: '#000', borderRadius: 4, overflow: 'hidden',
         border: dragOver ? '2px solid #f59e0b' : focused ? '2px solid #3b82f6' : '1px solid #333',
-        display: 'inline-block', position: 'relative',
+        display: 'inline-block', position: 'relative', maxWidth: '100%',
         outline: 'none', cursor: focused ? 'default' : 'pointer',
       }}
     >
@@ -264,8 +267,7 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, sendScancodeFn, lo
         height={nativeSize.h}
         style={{
           width: Math.min(nativeSize.w * 2, 640),
-          height: Math.min(nativeSize.w * 2, 640) * (nativeSize.h / nativeSize.w),
-          imageRendering: 'pixelated',
+          maxWidth: '100%', height: 'auto',
           display: 'block',
         }}
       />

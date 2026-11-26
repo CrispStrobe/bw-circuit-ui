@@ -278,8 +278,9 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
 
       <div data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column'}}>
 
-      {/* Search — prominent for large catalogues */}
-      <div style={{ position: 'relative', marginBottom: '6px', flexShrink: 0 }}>
+      <div data-example-tools style={{display: 'flex', flexWrap: 'wrap', alignItems: 'center',
+        gap: 4, marginBottom: 6, flexShrink: 0}}>
+      <div style={{position: 'relative', flex: '1 1 180px', minWidth: 0}}>
         <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
           color: palette.muted, fontSize: '13px', pointerEvents: 'none' }}>&#x1F50D;</span>
         <input
@@ -288,7 +289,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
           onChange={(e) => changeFilter(setFilter, e.target.value)}
           placeholder={ebt('Search {n} examples\u2026', lang, {n: examples.length})}
           style={{
-            width: '100%', padding: '6px 8px 6px 28px',
+            width: '100%', height: 30, padding: '4px 24px 4px 28px',
             background: palette.input, border: `1px solid ${palette.border}`,
             borderRadius: '6px', color: palette.text,
             fontFamily: 'inherit', fontSize: '13px',
@@ -303,7 +304,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       </div>
 
       <div data-example-filters style={{display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-        gap: 4, marginBottom: 6, flexShrink: 0}}>
+        gap: 4, flex: '1 1 246px', maxWidth: 360, minWidth: 0}}>
         <FilterSelect title={ebt('Category', lang)} label={ebt('Type', lang)} value={selectedCategory}
           onChange={value => changeFilter(setSelectedCategory, value)} palette={palette}
           options={categories.map(key => [key, ebt(CATEGORY_LABELS[key] || key, lang)])} />
@@ -316,6 +317,8 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         <FilterSelect title={ebt('Target', lang)} label={ebt('Chip', lang)} value={selectedTarget}
           onChange={value => changeFilter(setSelectedTarget, value)} palette={palette}
           options={targetTags.map(key => [key, targetLabel(key, lang)])} />
+      </div>
+
       </div>
 
       <div ref={scrollArea} data-example-list tabIndex={0} aria-label={ebt('Examples', lang)}

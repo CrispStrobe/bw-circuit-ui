@@ -354,7 +354,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   // Build Machine action: run the extractor, show result, boot on success.
   // Extractors come from the engine (injected via setEngine) or via the
   // onBuildMachine prop. The host wires the bw-board extractors at boot.
-  const handleBuildMachine = useCallback((scene = circuit, clearLoadedMedia = false) => {
+  const handleBuildMachine = useCallback((scene = circuit, clearLoadedMedia = false, runLoadedMedia = false) => {
     const flatCircuit = {
       parts: scene.parts.map(p => ({ id: p.id, kind: p.kind, params: p.params })),
       // flatWire is the canonical dialect reader; this used to be a
@@ -384,7 +384,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     // machine constructor reads the one its architecture has.
     if (result.ok && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bw-machine-extracted', {
-        detail: {...machineBootDetail(result), ...(clearLoadedMedia ? {clearLoadedMedia} : {})},
+        detail: {...machineBootDetail(result), ...(clearLoadedMedia ? {clearLoadedMedia} : {}),
+          ...(runLoadedMedia ? {runLoadedMedia} : {})},
       }));
     }
     return result;
@@ -1990,7 +1991,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
         {hasRetroCpu && (
           <section data-build-machine style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
-              <button onClick={() => handleBuildMachine()} title={t('buildMachineTitle', lang)}
+              <button onClick={() => handleBuildMachine(circuit, false, true)} title={t('buildMachineTitle', lang)}
                 style={{flex: 1, minWidth: 0, minHeight: 32, padding: '5px 8px', cursor: 'pointer',
                   background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: 4,
                   color: '#93c5fd', fontFamily: 'monospace', fontSize: 11, fontWeight: 600}}>
@@ -2232,24 +2233,33 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
           </section>
         )}
         {mode === 'simulate' && (
-          <section data-simulation-controls style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
-            <div style={{fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6}}>{/^de/i.test(lang) ? 'Simulationssteuerung' : 'Simulation controls'}</div>
-            <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: 5}}>
-              <button onClick={handleSimPause} disabled={!!externalBoard || !!simClockError} title={simPaused ? (/^de/i.test(lang) ? 'Simulation fortsetzen' : 'Resume simulation') : (/^de/i.test(lang) ? 'Simulation pausieren' : 'Pause simulation')}
-                style={{minHeight: 32, padding: '5px 8px', cursor: 'pointer'}}>{simPaused ? (/^de/i.test(lang) ? '▶ Fortsetzen' : '▶ Resume simulation') : (/^de/i.test(lang) ? '⏸ Pausieren' : '⏸ Pause simulation')}</button>
-              <button onClick={handleSimStep} disabled={!simPaused || simStepping || !!externalBoard || !!simClockError} title={/^de/i.test(lang) ? 'Einen 50-ms-Takt vorspulen' : 'Advance one 50 ms tick'}
-                style={{minHeight: 32, padding: '5px 8px', cursor: simPaused ? 'pointer' : 'default'}}>{/^de/i.test(lang) ? '⏭ Ein Takt' : '⏭ Step one tick'}</button>
+          <section data-simulation-controls aria-label={t('simControls', lang)}
+            style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 5,
+              borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
+            <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
+              {!externalBoard && <>
+                <button type="button" onClick={handleSimPause} disabled={!!simClockError}
+                  aria-label={simPaused ? t('resumeSim', lang) : t('pauseSim', lang)}
+                  title={simPaused ? t('resumeSim', lang) : t('pauseSim', lang)}
+                  style={{minWidth: 28, minHeight: 28}}>{simPaused ? '▶' : '⏸'}</button>
+                <button type="button" onClick={handleSimStep} disabled={!simPaused || simStepping || !!simClockError}
+                  aria-label={t('stepOneTick', lang)} title={t('stepOneTick', lang)}
+                  style={{minWidth: 28, minHeight: 28}}>⏭</button>
+                <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))}
+                  aria-label={t('simSpeed', lang)} title={t('simSpeed', lang)} style={{minHeight: 28}}>
+                  <option value={0.25}>0.25×</option><option value={1}>1×</option><option value={4}>4×</option>
+                </select>
+              </>}
+              <details style={{flex: 1, minWidth: 0}}>
+                <summary style={{cursor: 'pointer', minHeight: 28, lineHeight: '28px', fontSize: 11, color: '#334155'}}>
+                  {/^de/i.test(lang) ? 'Schaltungsanalyse' : 'Circuit analysis'}
+                </summary>
+                <OperatingPointPanel board={activeBoard} blockers={circuit.analysisBlockers} lang={lang} />
+                <SourceAnalysisPanel circuit={circuit} liveBoard={activeBoard} lang={lang} />
+              </details>
             </div>
             {simStepping && <div role="status">{t('simAdvancingTick', lang)}</div>}
             {simClockError && <div role="alert">{t('simStopped', lang)} {simClockError}</div>}
-            <OperatingPointPanel board={activeBoard} blockers={circuit.analysisBlockers} lang={lang} />
-            <SourceAnalysisPanel circuit={circuit} liveBoard={activeBoard} lang={lang} />
-            <label style={{display: 'grid', gridTemplateColumns: '1fr', gap: 3, marginTop: 7, fontSize: 11, color: '#475569'}}>
-              <span>{/^de/i.test(lang) ? 'Tempo' : 'Speed'}</span>
-              <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title={/^de/i.test(lang) ? 'Ziel-Simulationstempo; aufwendige Schaltungen können langsamer laufen' : 'Target simulation speed; complex circuits may run slower'} style={{minHeight: 30}}>
-                <option value={0.25}>0.25×</option><option value={1}>1×</option><option value={4}>4×</option>
-              </select>
-            </label>
           </section>
         )}
         <div style={{ display: 'flex', flex: '0 0 auto', gap: 4, width: 280 }}>
