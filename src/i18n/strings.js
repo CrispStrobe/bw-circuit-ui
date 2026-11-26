@@ -96,6 +96,8 @@ const STRINGS = {
   machineLoadAsmHint:  { en: '…or write ASM in the Code tab and Assemble & Run', de: '…oder ASM im Code-Tab schreiben und „Assemble & Run“ wählen' },
   machinePresetHint_forth:     { en: 'Interactive Forth (public domain) — py65mon console map, type at the ok prompt', de: 'Interaktives Forth (gemeinfrei) — py65mon-Konsolen-Map, am ok-Prompt tippen' },
   machinePresetHint_basic:     { en: 'Microsoft BASIC 1.1 (MIT reconstruction) — Eater map, ACIA serial', de: 'Microsoft BASIC 1.1 (MIT-Rekonstruktion) — Eater-Map, serielle ACIA' },
+  machinePresetHint_vdphello:  { en: 'Displays text through the TMS9918', de: 'Zeigt Text über den TMS9918 an' },
+  machinePresetHint_aurora65:  { en: 'Displays the Aurora/65 workstation on SimpleVGA', de: 'Zeigt den Aurora/65-Arbeitsplatz auf SimpleVGA an' },
   machinePresetHint_lcdhello:  { en: 'Writes HI BRICKWRIGHT to the HD44780 through the VIA — busy-window honest; turn the contrast pot', de: 'Schreibt HI BRICKWRIGHT über den VIA auf den HD44780 — mit ehrlichem Busy-Fenster; am Kontrast-Poti drehen' },
   machinePresetHint_bbcbasic:  { en: 'R.T. Russell (zlib) — CP/M .COM over the BDOS shim, type at the > prompt', de: 'R.T. Russell (zlib) — CP/M-.COM über den BDOS-Shim, am >-Prompt tippen' },
   machinePresetHint_mirror:    { en: 'Mirrors the DIP switches onto the LEDs through the 244/374 pair — flip a switch, watch the LED', de: 'Spiegelt die DIP-Schalter über das 244/374-Paar auf die LEDs — Schalter umlegen, LED beobachten' },

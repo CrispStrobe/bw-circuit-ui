@@ -120,3 +120,34 @@ describe('extractMachine', () => {
     assert.ok(!result.reasons[0].includes('no retro CPU'), 'must not blame the circuit');
   });
 });
+
+it('the four-bit LCD preset writes its message through the actual wired VIA', async () => {
+  const {Circuit} = await import('../src/model/circuit.js');
+  const {find6502LcdWiring, make6502LcdHelloRom} = await import('../src/model/m6502-lcd-preset.js');
+  const {createM6502Adapter} = await import('bw-board/m6502-adapter.js');
+  const parts = [
+    {id: 'via', kind: 'w65c22'},
+    {id: 'lcd', kind: 'hd44780'},
+    {id: 'power', kind: 'vcc'},
+    {id: 'ground', kind: 'gnd'},
+  ];
+  const wire = (from, fromTerminal, toTerminal) => ({from, fromTerminal, to: 'lcd', toTerminal});
+  const wires = [
+    ...['rs', 'rw', 'e', '', 'd4', 'd5', 'd6', 'd7'].flatMap((pin, bit) =>
+      pin ? [wire('via', 'pb' + bit, pin)] : []),
+    wire('power', 'vcc', 'vdd'),
+    wire('ground', 'gnd', 'vss'),
+    wire('ground', 'gnd', 'v0'),
+  ];
+  const chips = [{kind: 'via', name: 'via', at: 0x6000}];
+  assert.deepEqual(find6502LcdWiring(parts, wires, chips), {bits: 4, at: 0x6000});
+  assert.equal(find6502LcdWiring(parts, wires.slice(1), chips), null);
+  const circuit = Circuit.fromJSON({vcc: 5, parts, wires, holeWires: []});
+  const rom = make6502LcdHelloRom(0x6000);
+  const adapter = createM6502Adapter({rom, config: {
+    clockHz: 1_000_000, chips, regions: [{kind: 'rom', start: 0x8000, end: 0xffff}]
+  }});
+  adapter.attachBoard(circuit.board);
+  adapter.advanceNs(45_000_000);
+  assert.equal(circuit.board.getDeviceState('lcd').text[0].trim(), 'HI BRICKWRIGHT');
+});

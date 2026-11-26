@@ -64,6 +64,7 @@ import { inferCircuit } from '../model/inference.js';
 import { generatePartName, circuitToDeclarations } from '../model/declarations.js';
 import { circuitSignature } from '../model/circuit-signature.js';
 import { footprintOf } from '../interaction/hittest.js';
+import { find6502LcdWiring, make6502LcdHelloRom } from '../model/m6502-lcd-preset.js';
 import { flatWire, isLegacyFlatWire, wireEndpoint } from '../model/wire-endpoints.js';
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
@@ -111,7 +112,7 @@ function snapToGrid(v) {
  */
 const TONE_KINDS = new Set(['buzzer', 'piezo', 'speaker', 'earphone']);
 
-export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, examplesError, curriculum, onOpenExamples, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
+export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, onWiredBootReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, examplesError, curriculum, onOpenExamples, onLoadExample, onOpenMachineLibrary, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -321,6 +322,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   const hasMcuPins = !!(projectData?.pins?.length > 0);
   const [machineResult, setMachineResult] = useState(null); // extractMachine result
   const machineHelp = useRef(null);
+  const mediaRequest = useRef(0);
   const [loaderNote, setLoaderNote] = useState(null); // Machine Loader feedback line
 
   // Detect retro CPU on the board for the Build Machine action
@@ -348,14 +350,14 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   // Build Machine action: run the extractor, show result, boot on success.
   // Extractors come from the engine (injected via setEngine) or via the
   // onBuildMachine prop. The host wires the bw-board extractors at boot.
-  const handleBuildMachine = useCallback(() => {
+  const handleBuildMachine = useCallback((scene = circuit, clearLoadedMedia = false) => {
     const flatCircuit = {
-      parts: parts.map(p => ({ id: p.id, kind: p.kind, params: p.params })),
+      parts: scene.parts.map(p => ({ id: p.id, kind: p.kind, params: p.params })),
       // flatWire is the canonical dialect reader; this used to be a
       // fifth private copy of it (`w.from?.part || w.from`), which
       // handed a breadboard-hole endpoint straight through as the
       // extractor's `from` string.
-      wires: wires.map(flatWire),
+      wires: scene.wires.map(flatWire),
     };
 
     // Try extractors from the engine injection
@@ -369,6 +371,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
 
     const result = extractMachine(flatCircuit, extractors);
     setMachineResult(result);
+    mediaRequest.current += 1;
+    setLoaderNote(null);
 
     // On success, notify the host so it can boot the machine. The two
     // extractors shape their bus differently — 6502 memory-maps its
@@ -376,10 +380,11 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     // machine constructor reads the one its architecture has.
     if (result.ok && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bw-machine-extracted', {
-        detail: machineBootDetail(result),
+        detail: {...machineBootDetail(result), ...(clearLoadedMedia ? {clearLoadedMedia} : {})},
       }));
     }
-  }, [parts, wires]);
+    return result;
+  }, [circuit]);
 
   // Breadboard model (persistent across renders)
   const [bbRev, setBbRev] = useState(0);
@@ -1174,6 +1179,9 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   useEffect(() => {
     if (!circuitData || circuitData === prevCircuitDataRef.current) return;
     prevCircuitDataRef.current = circuitData;
+    mediaRequest.current += 1;
+    setMachineResult(null);
+    setLoaderNote(null);
     // The example gallery's circuit files predate the breadboard world:
     // flat wire records, abstract vcc/gnd symbols, an mcu with no pin list.
     // When such a file arrives WITH declared pins, the declarations carry
@@ -1255,7 +1263,11 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
         circuit.seatPart(unseatMcu.id, bb.id, computeLeadMap(BB_FOOTPRINTS[unseatMcu.kind], 'e1'));
       }
     } catch { /* seating failed — leave as-is */ }
-  }, [circuitData, handleLoad, projectData, circuit]);
+    if (circuitData.bootWiredExample && onWiredBootReady) {
+      const result = handleBuildMachine(circuit, true);
+      onWiredBootReady(circuitData, circuit.board, result);
+    }
+  }, [circuitData, handleLoad, projectData, circuit, handleBuildMachine, onWiredBootReady]);
 
   // ── Main-menu File/ integration ─────────────────────────────────
   // The host's menu bar dispatches 'bw-circuit-file' CustomEvents with
@@ -1944,7 +1956,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
         {hasRetroCpu && (
           <section data-build-machine style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
-              <button onClick={handleBuildMachine} title={t('buildMachineTitle', lang)}
+              <button onClick={() => handleBuildMachine()} title={t('buildMachineTitle', lang)}
                 style={{flex: 1, minWidth: 0, minHeight: 32, padding: '5px 8px', cursor: 'pointer',
                   background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: 4,
                   color: '#93c5fd', fontFamily: 'monospace', fontSize: 11, fontWeight: 600}}>
@@ -1971,7 +1983,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
             {machineResult && (
               <details style={{marginTop: 4, color: '#cbd5e1', fontSize: 10, fontFamily: 'monospace', lineHeight: 1.4}}>
                 <summary style={{cursor: 'pointer'}}>{machineResult.ok
-                  ? (machineResult.kind === 'cp1' ? (german ? 'CP1 bereit' : 'CP1 ready') : t('machineBooted', lang))
+                  ? (machineResult.kind === 'cp1' ? (german ? 'CP1 bereit' : 'CP1 ready') : (german ? 'Maschine bereit' : 'Machine ready'))
                   : t('extractFailed', lang)}</summary>
                 {machineResult.ok ? (
                   <div style={{color: '#22c55e'}}>
@@ -2009,18 +2021,26 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
               // Tali Forth is a py65mon build and MS BASIC an Eater-map/ACIA
               // build; booting either on the user's extracted bus map would
               // run silently into open bus, which is worse than saying so.
+              const standardRom = (machineResult.regions || []).some(region =>
+                region.kind === 'rom' && region.start === 0x8000 && region.end === 0xffff);
+              const lcd = kind === 'eater6502' && standardRom
+                ? find6502LcdWiring(parts, wires, machineResult.chips || []) : null;
+              const chips = machineResult.chips || [];
               const presets = kind === 'eater6502' ? [
                 { id: 'forth', label: 'Tali Forth 2', rom: 'taliforth-py65mon.bin', slot: 'rom', profile: 'py65mon',
                   hint: 'Interactive Forth (public domain) — py65mon console map, type at the ok prompt' },
                 { id: 'basic', label: 'MS BASIC (6502)', rom: 'basic.rom', slot: 'rom', profile: 'eater',
                   hint: 'Microsoft BASIC 1.1 (MIT reconstruction) — Eater map, ACIA serial' },
-                // The one-click display proof: boots on the EXTRACTED machine
-                // (no profile), so the VIA drives whatever the bench wires —
-                // the LCD on the Eater build. Without a program that writes
-                // the display, "nothing shows on the LCD" is the correct and
-                // useless truth (owner report, 2026-08-17).
-                { id: 'lcdhello', label: 'LCD Hello', rom: 'lcd-hello.bin', slot: 'rom',
-                  hint: 'Writes HI BRICKWRIGHT to the HD44780 through the VIA — busy-window honest; turn the contrast pot' },
+                ...(lcd ? [{id: 'lcdhello', label: 'LCD Hello', rom: lcd.bits === 4 ? 'lcd-hello-4bit.bin' : 'lcd-hello.bin',
+                  makeBytes: lcd.bits === 4 ? () => make6502LcdHelloRom(lcd.at) : null, slot: 'rom',
+                  hint: 'Writes HI BRICKWRIGHT to the wired HD44780'}] : []),
+                ...(standardRom && chips.some(chip => chip.kind === 'vdp' && chip.at === 0x4000)
+                  ? [{id: 'vdphello', label: 'VDP Hello', rom: 'rom.bin', path: 'examples/eater6502-vdp-hello/rom.bin',
+                    slot: 'rom', hint: 'Displays text through the TMS9918'}] : []),
+                ...(standardRom && chips.some(chip => chip.kind === 'simplevga') &&
+                  parts.some(part => part.kind === 'ssd1306') && parts.some(part => part.kind === 'ps2')
+                  ? [{id: 'aurora65', label: 'Aurora/65', rom: 'rom.bin', path: 'examples/aurora65-workstation/rom.bin',
+                    slot: 'rom', hint: 'Displays the Aurora/65 workstation on SimpleVGA'}] : []),
               ] : kind === 'z80' ? [
                 { id: 'bbcbasic', label: 'BBC BASIC', rom: 'bbcbasic.com', slot: 'com', profile: 'cpm',
                   hint: 'R.T. Russell (zlib) — CP/M .COM over the BDOS shim, type at the > prompt' },
@@ -2072,29 +2092,38 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
               };
               const hex = (n) => n === undefined ? '' : ` @ ${n.toString(16).toUpperCase()}h`;
               const loadPreset = async (p) => {
+                const request = ++mediaRequest.current;
                 try {
                   setLoaderNote(`fetching ${p.rom}…`);
-                  const url = new URL(`static/roms/${p.rom}`, document.baseURI).href;
-                  const res = await fetch(url);
-                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                  const bytes = new Uint8Array(await res.arrayBuffer());
+                  let bytes;
+                  if (p.makeBytes) {
+                    bytes = p.makeBytes();
+                  } else {
+                    const url = new URL(p.path || `static/roms/${p.rom}`, document.baseURI).href;
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    bytes = new Uint8Array(await res.arrayBuffer());
+                  }
+                  if (request !== mediaRequest.current) return;
                   dispatchLoad(p.slot, bytes, p.profile, p.rom);
-                  setLoaderNote(`${p.rom} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} → bench`);
+                  setLoaderNote(`${p.rom} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} · ${german ? "ausgewählt" : "selected"}`);
                 } catch (e) {
-                  setLoaderNote(`✗ ${p.rom}: ${e.message}`);
+                  if (request === mediaRequest.current) setLoaderNote(`✗ ${p.rom}: ${e.message}`);
                 }
               };
               const loadFile = async (file) => {
+                const request = ++mediaRequest.current;
                 try {
                   const bytes = new Uint8Array(await file.arrayBuffer());
+                  if (request !== mediaRequest.current) return;
                   if (kind === 'cp1' && bytes.length !== 2048) {
                     throw new Error(/^de/i.test(lang) ? 'Die CP1-Firmware muss genau 2048 Byte enthalten.' : 'CP1 firmware must contain exactly 2048 bytes.');
                   }
                   const slot = kind === 'i8086' || kind === 'cp1' ? 'rom' : (/\.com$/i.test(file.name) ? 'com' : 'rom');
                   dispatchLoad(slot, bytes, slot === 'com' ? 'cpm' : null, file.name);
-                  setLoaderNote(`${file.name} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} → bench`);
+                  setLoaderNote(`${file.name} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} · ${german ? "ausgewählt" : "selected"}`);
                 } catch (error) {
-                  setLoaderNote(`✗ ${file.name}: ${error.message}`);
+                  if (request === mediaRequest.current) setLoaderNote(`✗ ${file.name}: ${error.message}`);
                 }
               };
               if (kind === 'cp1') return (
@@ -2115,6 +2144,11 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                   <div style={{fontSize: 10, color: '#94a3b8', fontWeight: 600, marginBottom: 4}}>
                     {t('machineLoadHeading', lang)}
                   </div>
+                  {onOpenMachineLibrary && <button type="button" onClick={() => onOpenMachineLibrary(kind)}>
+                    {german ? 'Firmware-Bibliothek' : 'Firmware library'}
+                  </button>}
+                  <details open={kind !== 'eater6502'} style={{color: '#cbd5e1', fontSize: 11}}>
+                    <summary>{german ? 'Programme und Dateien' : 'Presets and files'}</summary>
                   <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
                     {presets.map(p => (
                       <button key={p.id} onClick={() => loadPreset(p)} title={/^de/i.test(lang) ? t(`machinePresetHint_${p.id}`, 'de') : p.hint}
@@ -2146,13 +2180,11 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                     <div style={{fontSize: 9, color: '#64748b', marginTop: 2}}>
                       {t('machineLoadAsmHint', lang)}
                     </div>
-                    {loaderNote && (
-                      <div data-loader-note style={{fontSize: 9, marginTop: 2,
-                        color: loaderNote.startsWith('✗') ? '#f87171' : '#22c55e'}}>
-                        {loaderNote}
-                      </div>
-                    )}
                   </div>
+                  </details>
+                  {loaderNote && <div role="status" data-loader-note style={{fontSize: 10, color: '#cbd5e1'}}>
+                    {loaderNote}
+                  </div>}
                 </div>
               );
             })()}
@@ -2231,3 +2263,5 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     </div>
   );
 }
+
+CircuitDesigner.supportsWiredExampleBoot = true;
