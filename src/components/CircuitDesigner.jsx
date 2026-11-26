@@ -115,7 +115,7 @@ function snapToGrid(v) {
  */
 const TONE_KINDS = new Set(['buzzer', 'piezo', 'speaker', 'earphone']);
 
-export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, kim1Instruments = true, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, onWiredBootReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, examplesError, curriculum, onOpenExamples, onLoadExample, onOpenMachineLibrary, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
+export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, kim1Instruments = true, microtronicInstruments = true, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, onWiredBootReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, examplesError, curriculum, onOpenExamples, onLoadExample, onOpenMachineLibrary, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -333,7 +333,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   const microtronics = parts.filter(p => p.kind === MICROTRONIC_KIND);
   const kim1s = parts.filter(p => p.kind === KIM1_KIND);
   const cardiacs = parts.filter(p => p.kind === CARDIAC_KIND);
-  const trainerIds = [...microtronics, ...kim1s, ...cardiacs].map(p => p.id).join('\0');
+  const trainerIds = [...(microtronicInstruments ? microtronics : []), ...kim1s, ...cardiacs].map(p => p.id).join('\0');
   useEffect(() => {
     if (trainerIds) setRightOpen(true);
   }, [trainerIds]);
@@ -1079,11 +1079,11 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
       runArmedRef.current = {board: circuit.board, armed: classifyRunPins({parts, wires})};
     }
     setMode('simulate');
-    setRightOpen(true);
+    if (microtronicInstruments || !microtronics.length) setRightOpen(true);
     simPausedRef.current = false;
     setSimPaused(false);
     if (!externalBoard) simClock.current?.wake();
-  }, [circuit, parts, wires, mode, externalBoard]);
+  }, [circuit, parts, wires, mode, externalBoard, microtronicInstruments, microtronics.length]);
 
   useEffect(() => {
     const handle = event => {
@@ -1094,6 +1094,17 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     window.addEventListener('bw-kim1-control', handle);
     return () => window.removeEventListener('bw-kim1-control', handle);
   }, [activeBoard, circuit, handleKim1Program, handleTrainerRun]);
+
+  useEffect(() => {
+    const handle = ({detail}) => {
+      if (detail?.board !== activeBoard || circuit.getPart(detail.partId)?.kind !== MICROTRONIC_KIND) return;
+      if (typeof detail.program === 'string') handleMicrotronicProgram(detail.partId, detail.program);
+      if (detail.executionMode) handleMicrotronicExecutionMode(detail.partId, detail.executionMode);
+      if (detail.run) handleTrainerRun();
+    };
+    window.addEventListener('bw-microtronic-control', handle);
+    return () => window.removeEventListener('bw-microtronic-control', handle);
+  }, [activeBoard, circuit, handleMicrotronicProgram, handleMicrotronicExecutionMode, handleTrainerRun]);
 
   const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
     loadInferred(inferredParts, inferredNets);
@@ -1889,7 +1900,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
         {kim1Instruments && kim1s.map(part => <Kim1Panel key={part.id} part={part} board={activeBoard} lang={lang}
           externalClock={!!externalBoard} onProgramChange={handleKim1Program}
           onRunClock={handleTrainerRun} onOpenExample={() => handleLoad(kim1DemoCircuit())} />)}
-        {microtronics.map(part => <MicrotronicPanel key={part.id} part={part} board={activeBoard} lang={lang}
+        {microtronicInstruments && microtronics.map(part => <MicrotronicPanel key={part.id} part={part} board={activeBoard} lang={lang}
           externalClock={!!externalBoard} onProgramChange={handleMicrotronicProgram}
           onExecutionModeChange={handleMicrotronicExecutionMode}
           onRunClock={handleTrainerRun} onOpenExample={() => handleLoad(microtronicDemoCircuit(part.params?.executionMode))} />)}
