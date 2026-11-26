@@ -10,6 +10,7 @@ import { PartThumbnail } from './PartThumbnail.jsx';
 import { paletteText, paletteUi, ledColorName } from '../i18n/palette-de.js';
 import { MICROTRONIC_EXAMPLES } from '../model/microtronic-demo.js';
 import { KIM1_EXAMPLES } from '../model/kim1-demo.js';
+import { CARDIAC_EXAMPLES } from '../model/cardiac-demo.js';
 
 const LED_COLORS = ['red', 'green', 'yellow', 'blue', 'white', 'orange'];
 
@@ -63,6 +64,10 @@ const CATEGORIES = [
       { kind: 'kosmos-cp1', label: 'Kosmos CP1 + CP3', params: {expansion: true, clockHz: 6000000},
         color: '#e4a138', capability: '8049 trainer',
         tooltip: 'CP1 with 256 program cells and ports 3/4/5. Use the built-in monitor or import a ROM in the debugger.' },
+      { kind: 'cardiac', label: 'CARDIAC + Brickwright I/O adapter',
+        params: {program: CARDIAC_EXAMPLES[0].program, instructionHz: 20}, color: '#218a88',
+        capability: 'Decimal teaching computer',
+        tooltip: '100 decimal words and ten instructions. Modern adapter samples IN into input cards and drives OUT from output 001. Opens live CARDIAC controls.' },
     ],
   },
   {

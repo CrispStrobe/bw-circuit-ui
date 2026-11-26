@@ -77,6 +77,9 @@ import { ArchitectureFace } from './ArchitectureFace.jsx';
 import { FramebufferFace } from './FramebufferFace.jsx';
 import { StimulusControls } from './StimulusControls.jsx';
 import { MicrotronicPanel } from './MicrotronicPanel.jsx';
+import { CardiacPanel } from './CardiacPanel.jsx';
+import { CARDIAC_KIND, CARDIAC_PROGRAM_EVENT, acceptedCardiacProgram, saveCardiacProgram } from '../model/cardiac-controls.js';
+import { cardiacDemoCircuit } from '../model/cardiac-demo.js';
 import { Kim1Panel } from './Kim1Panel.jsx';
 import { KIM1_KIND, saveKim1Program } from '../model/kim1-controls.js';
 import { kim1DemoCircuit } from '../model/kim1-demo.js';
@@ -327,7 +330,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   const hasCp1 = parts.some(p => p.kind === 'kosmos-cp1');
   const microtronics = parts.filter(p => p.kind === MICROTRONIC_KIND);
   const kim1s = parts.filter(p => p.kind === KIM1_KIND);
-  const trainerIds = [...microtronics, ...kim1s].map(p => p.id).join('\0');
+  const cardiacs = parts.filter(p => p.kind === CARDIAC_KIND);
+  const trainerIds = [...microtronics, ...kim1s, ...cardiacs].map(p => p.id).join('\0');
   useEffect(() => {
     if (trainerIds) setRightOpen(true);
   }, [trainerIds]);
@@ -1036,6 +1040,25 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
       if (externalBoard && externalBoard !== circuit.board) externalBoard.setPartParam?.(partId, 'program', source);
     }
   }, [circuit, setPartParam, externalBoard]);
+
+  const handleCardiacProgram = useCallback((partId, program) => {
+    if (saveCardiacProgram(circuit, partId, program)) {
+      const accepted = circuit.getPart(partId).params.program;
+      setPartParam(partId, 'program', accepted);
+      if (externalBoard && externalBoard !== circuit.board) externalBoard.setPartParam?.(partId, 'program', accepted);
+    }
+  }, [circuit, setPartParam, externalBoard]);
+
+  useEffect(() => {
+    const persistAccepted = event => {
+      const partId = event.detail?.partId;
+      if (typeof partId !== 'string') return;
+      const program = acceptedCardiacProgram(activeBoard, circuit.getPart(partId), event.detail?.program);
+      if (program) handleCardiacProgram(partId, program);
+    };
+    window.addEventListener(CARDIAC_PROGRAM_EVENT, persistAccepted);
+    return () => window.removeEventListener(CARDIAC_PROGRAM_EVENT, persistAccepted);
+  }, [activeBoard, circuit, handleCardiacProgram]);
 
   const handleTrainerRun = useCallback(() => {
     if (!externalBoard && mode !== 'simulate') {
@@ -1840,6 +1863,10 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
         {microtronics.map(part => <MicrotronicPanel key={part.id} part={part} board={activeBoard} lang={lang}
           externalClock={!!externalBoard} onProgramChange={handleMicrotronicProgram}
           onRunClock={handleTrainerRun} onOpenExample={() => handleLoad(microtronicDemoCircuit())} />)}
+        {cardiacs.map(part => <CardiacPanel key={part.id} part={part} board={activeBoard} lang={lang}
+          externalClock={!!externalBoard} onProgramChange={handleCardiacProgram}
+          onRunClock={handleTrainerRun} onControlSettling={requestControlSettling}
+          onOpenExample={() => handleLoad(cardiacDemoCircuit())} />)}
         {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins).
             The FACES below gate on capability, not on pins: a machine-class
             bench (6502/Z80) has no PIN concept, yet its booted machine has
