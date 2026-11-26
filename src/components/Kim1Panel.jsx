@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 import React, {useEffect, useRef, useState} from 'react';
 import {KIM1_KEY_ROWS, kim1Control, kim1KeyboardKey} from '../model/kim1-controls.js';
+import {exportKim1MemoryCard} from 'bw-board/kim1-expansion.js';
+import {Kim1Video} from './Kim1Video.jsx';
+import {AceKimPanel} from './AceKimPanel.jsx';
 import {KIM1_EXAMPLES} from '../model/kim1-demo.js';
 import './kim1-panel.css';
 
@@ -23,6 +26,8 @@ export function Kim1Display({value = '020000', masks}) {
   </svg>;
 }
 
+const EXPANSION_MODULES = ['kim-2', 'kim-3', 'kim-3b', 'kim-5'];
+
 const hex = (value, width = 2) => Number(value || 0).toString(16).toUpperCase().padStart(width, '0');
 
 export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock, onOpenExample, externalClock = false}) {
@@ -35,6 +40,12 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState('');
   const [ttyInput, setTtyInput] = useState('');
+  const [slots, setSlots] = useState([]);
+  const [slotKind, setSlotKind] = useState('kim-2');
+  const [slotAddress, setSlotAddress] = useState('2000');
+  const [diskKind, setDiskKind] = useState('mountSD');
+  const [drive, setDrive] = useState(0);
+  const [showExpansion, setShowExpansion] = useState(false);
   const [, redraw] = useState(0);
   const fileInput = useRef(null);
   const romInput = useRef(null);
@@ -42,7 +53,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
   useEffect(() => {
     const token = {}; identity.current = token;
     setDraft(part.params?.program || '0200: EA 4C 00 02');
-    setDirty(false); dirtyRef.current = false; setError(null); setNotice(''); setTtyInput('');
+    setDirty(false); dirtyRef.current = false; setError(null); setNotice(''); setTtyInput(''); setSlots([]);
     return () => { if (identity.current === token) identity.current = null; };
   }, [board, part]);
   useEffect(() => { if (!dirtyRef.current) setDraft(source); }, [source]);
@@ -101,10 +112,33 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
       if (token && identity.current === token) command('loadRoms', images);
     } catch (problem) { if (identity.current === token) setError(String(problem.message || problem)); }
   };
-  const saveFile = () => {
-    const url = URL.createObjectURL(new Blob([state?.programSource || source], {type:'text/plain'}));
-    const link = document.createElement('a'); link.href = url; link.download = 'kim-1-program.kim'; link.click();
+  const pickBinary = (verb, limit, convert = value => value, onSuccess) => async event => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    const token = identity.current;
+    try {
+      if (file.size > limit) throw new Error(tr('File exceeds the size limit.', 'Die Datei ist zu groß.'));
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (token && identity.current === token) {
+        const value = convert(bytes);
+        if (command(verb, value)) onSuccess?.(value);
+      }
+    } catch (problem) {
+      if (identity.current === token) setError(String(problem.message || problem));
+    }
+  };
+  const updateSlots = next => {
+    if (command('setBackplane', next.length ? next : null)) setSlots(next);
+  };
+  const download = (data, name, type = 'application/octet-stream') => {
+    const url = URL.createObjectURL(new Blob([data], {type}));
+    const link = document.createElement('a');
+    link.href = url; link.download = name; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const saveFile = () => {
+    download(state?.programSource || source, 'kim-1-program.kim', 'text/plain');
   };
   return <section className="kim1-panel" data-kim1-panel={part.id} tabIndex={0}
     aria-label={`KIM-1 ${part.declName || part.id}`} onKeyDown={event => {
@@ -172,6 +206,66 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
       <small>{tr('ROMs stay in this simulation session. Combined image order: 6530-003, 6530-002.',
         'ROMs bleiben in dieser Simulationssitzung. Reihenfolge im kombinierten Abbild: 6530-003, 6530-002.')}</small>
     </details>}
+    {state && 'backplane' in state && <details className="kim1-help" onToggle={event => setShowExpansion(event.currentTarget.open)}><summary>{tr('Expansion and storage', 'Erweiterung und Speicher')}</summary>
+      <div className="kim1-editor-actions">
+        <label><input type="checkbox" checked={!!state.expansion}
+          onChange={event => command('setExpandedRam', event.target.checked)} />{tr('Expanded RAM', 'RAM-Erweiterung')}</label>
+        <select aria-label="K-1008" value={state.k1008?.address ?? ''} onChange={event =>
+          command('setK1008', event.target.value ? Number(event.target.value) : null)}>
+          <option value="">K-1008 · {tr('Off', 'Aus')}</option>
+          {[0x2000, 0x4000, 0x6000, 0x8000, 0xa000, 0xc000, 0xe000].map(address =>
+            <option key={address} value={address}>K-1008 · {hex(address, 4)}</option>)}
+        </select>
+      </div>
+      {showExpansion && state.k1008 && <Kim1Video device={state.k1008} memoryCard={state.memoryCard} />}
+      <div className="kim1-editor-actions">
+        <select aria-label={tr('KIM-4 module', 'KIM-4-Modul')} value={slotKind} onChange={event => setSlotKind(event.target.value)}>
+          {EXPANSION_MODULES.map(kind => <option key={kind} value={kind}>{kind.toUpperCase()}</option>)}
+        </select>
+        {slotKind === 'kim-5' ? <input type="file" accept=".bin,.rom" aria-label="KIM-5 ROM"
+          onChange={pickBinary('setBackplane', 6144, image => {
+            const next = [...slots, {kind: 'kim-5', address: 0xe000, image}];
+            if (slots.length >= 6) throw new Error(tr('KIM-4 has six slots.', 'KIM-4 hat sechs Steckplätze.'));
+            return next;
+          }, setSlots)} /> : <>
+          <input aria-label={tr('Module address in hex', 'Moduladresse in Hex')} value={slotAddress} maxLength={4} size={5}
+            onChange={event => setSlotAddress(event.target.value)} />
+          <button type="button" disabled={slots.length >= 6 || !/^[0-9a-f]{4}$/i.test(slotAddress)}
+            onClick={() => updateSlots([...slots, {kind: slotKind, address: parseInt(slotAddress, 16)}])}>{tr('Add RAM', 'RAM hinzufügen')}</button>
+        </>}
+      </div>
+      <div className="kim1-editor-actions">{slots.map(({kind, address}, index) =>
+        <button type="button" key={address} title={tr('Remove module', 'Modul entfernen')}
+          onClick={() => updateSlots(slots.filter((_, i) => i !== index))}>{kind.toUpperCase()} {hex(address, 4)} ×</button>)}</div>
+      <div className="kim1-editor-actions">
+        <label>memcfg <input type="file" accept=".raw,.bin" aria-label="memcfg raw" onChange={pickBinary('setMemoryCard', 131072)} /></label>
+        {state.memoryCard && <>
+          <button type="button" onClick={() => download(exportKim1MemoryCard(state.memoryCard), 'kim1-memcfg.raw')}>{tr('Save map', 'Karte speichern')}</button>
+          <button type="button" onClick={() => command('setMemoryCard', null)}>{tr('Eject', 'Auswerfen')}</button>
+        </>}
+      </div>
+      <div className="kim1-editor-actions">
+        <select aria-label={tr('Storage interface', 'Speicheranschluss')} value={diskKind} onChange={event => setDiskKind(event.target.value)}>
+          <option value="mountSD">SD (SPI)</option><option value="mountCorshamDisk">Corsham (DSK)</option>
+          <option value="mountK1013">K-1013</option>
+        </select>
+        {diskKind === 'mountK1013' && <select aria-label={tr('K-1013 drive', 'K-1013-Laufwerk')} value={drive}
+          onChange={event => setDrive(Number(event.target.value))}>
+          {[0, 1, 2, 3].map(unit => <option key={unit} value={unit}>{String.fromCharCode(65 + unit)}</option>)}
+        </select>}
+        <input type="file" accept=".img,.bin,.dsk,.imd,.raw" aria-label={tr('Storage image', 'Speicherabbild')}
+          onChange={pickBinary(diskKind, diskKind === 'mountK1013' ? 1024 * 1024 : 128 * 1024 * 1024,
+            image => diskKind === 'mountK1013' ? {drive, image} : image)} />
+        {diskKind === 'mountK1013' && state.k1013?.chip.drives[drive]?.image && <>
+          <button type="button" onClick={() => download(state.k1013.chip.drives[drive].image, `kim1-k1013-${drive}.img`)}>{tr('Save image', 'Abbild speichern')}</button>
+          <button type="button" onClick={() => command('mountK1013', {drive, image: null})}>{tr('Eject', 'Auswerfen')}</button>
+        </>}
+        {diskKind !== 'mountK1013' && (state.sdCard || state.corshamDisk) && <>
+          <button type="button" onClick={() => download((state.sdCard || state.corshamDisk).image, state.sdCard ? 'kim1-sd.img' : 'kim1.dsk')}>{tr('Save image', 'Abbild speichern')}</button>
+          <button type="button" onClick={() => command(state.sdCard ? 'mountSD' : 'mountCorshamDisk', null)}>{tr('Eject', 'Auswerfen')}</button>
+        </>}
+      </div>
+    </details>}
     {tty && <details open className="kim1-help"><summary>TTY · 300 baud</summary>
       <pre data-kim1-tty-output aria-label={tr('TTY output', 'TTY-Ausgabe')} tabIndex={0}>{state.ttyOutput.replace(/[^\x20-\x7e\r\n\t]/g, '')}</pre>
       <form className="kim1-editor-actions" onSubmit={event => {
@@ -184,6 +278,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
         <button type="button" onClick={() => command('clearTty')}>{tr('Clear', 'Leeren')}</button>
       </form>
     </details>}
+    <AceKimPanel />
     {onOpenExample && <button type="button" className="kim1-wired-example" onClick={onOpenExample}>
       {tr('Open wired I/O example', 'Verdrahtetes E/A-Beispiel öffnen')}</button>}
     <details className="kim1-help"><summary>{tr('Keys and wiring', 'Tasten und Verdrahtung')}</summary>

@@ -44,3 +44,7 @@
   overflow: auto;
   white-space: pre-wrap;
 }
+
+.kim1-panel .ace-kim-keypad { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.kim1-panel [data-ace-kim-lcd] { background: #23381c; color: #d6f1a5; font-family: monospace; }
+.kim1-video { display: block; width: min(100%, 640px); height: auto; image-rendering: pixelated; }

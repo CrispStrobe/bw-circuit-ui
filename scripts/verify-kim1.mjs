@@ -44,6 +44,23 @@ try {
   checks.push('AD/DA writes actual DDR and port registers while preserving the saved RAM image');
 
 
+  await panel.getByText('Expansion and storage', {exact:true}).click();
+  await panel.getByRole('button', {name:'Add RAM'}).click();
+  assert.equal(await page.evaluate(id => window.__board.getDeviceState(id).backplane.type[0x2000], firstId), 1);
+  const map = Buffer.alloc(131072);
+  for (let i = 1; i < map.length; i += 2) map[i] = 1;
+  map.set([0x55, 0], 0x5000 * 2);
+  await panel.getByLabel('memcfg raw').setInputFiles({name:'example.raw', mimeType:'application/octet-stream', buffer:map});
+  await page.waitForFunction(id => window.__board.getDeviceState(id).memoryCard?.data[0x5000] === 0x55, firstId);
+  await panel.getByLabel('K-1008', {exact:true}).selectOption('16384');
+  await panel.getByRole('img', {name:'K-1008 video'}).waitFor();
+  await panel.getByLabel('Storage image').setInputFiles({
+    name:'sd.img', mimeType:'application/octet-stream', buffer:Buffer.alloc(512, 3)
+  });
+  await page.waitForFunction(id => window.__board.getDeviceState(id).sdCard?.image[0] === 3, firstId);
+  await panel.getByText('Expansion and storage', {exact:true}).click();
+  checks.push('Expansion controls mount a KIM-2 slot, a memcfg ROM byte, K-1008 video and a 512-byte SPI image');
+
   const accepted=await page.evaluate(id=>window.__circuit.getPart(id).params.program,firstId);
   await panel.getByRole('textbox',{name:'KIM-1 program',exact:true}).fill('0200: WRONG');
   await panel.locator('[data-kim1-load]').click();
