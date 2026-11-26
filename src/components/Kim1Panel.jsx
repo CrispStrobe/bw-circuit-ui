@@ -66,7 +66,13 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
   const storage = diskKind === 'mountSD' ? state?.sdCard : state?.corshamDisk;
   const brickwrightRom = state?.romSource === 'brickwright';
   const tty = !!state?.frontPanel?.tty;
-  const editDraft = value => { setDraft(value); setDirty(true); dirtyRef.current = true; setNotice(''); };
+  const editDraft = value => {
+    // React can flush the pending source-sync effect before the first state update.
+    dirtyRef.current = true;
+    setDraft(value);
+    setDirty(true);
+    setNotice('');
+  };
   const replaceDraft = value => {
     editDraft(value);
     setEditorRevision(current => current + 1);
