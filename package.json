@@ -39,6 +39,7 @@
     "verify:cp1:browser": "node scripts/serve-and-verify.mjs scripts/verify-cp1-connector.mjs",
     "verify:microtronic:browser": "node scripts/serve-and-verify.mjs scripts/verify-microtronic.mjs",
     "verify:kim1": "node scripts/generate-kim1-connector.mjs --check && node --test test/kim1-integration.test.js",
+    "verify:microtronic:native": "node scripts/serve-and-verify.mjs scripts/verify-microtronic-native.mjs",
     "verify:kim1:browser": "node scripts/serve-and-verify.mjs scripts/verify-kim1.mjs"
   },
   "author": "CrispStrobe <cze+github@mailbox.org>",
@@ -55,7 +56,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.5",
-    "bw-board": "github:CrispStrobe/bw-board#8f823cbacdf2ea9ce74818151b870892e568d0bd",
+    "bw-board": "github:CrispStrobe/bw-board#fd53a373165ba703337528e8d3f769b973a96d6c",
     "playwright": "^1.61.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

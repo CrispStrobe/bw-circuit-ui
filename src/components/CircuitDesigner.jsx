@@ -81,7 +81,7 @@ import { MicrotronicPanel } from './MicrotronicPanel.jsx';
 import { Kim1Panel } from './Kim1Panel.jsx';
 import { KIM1_KIND, saveKim1Program } from '../model/kim1-controls.js';
 import { kim1DemoCircuit } from '../model/kim1-demo.js';
-import { MICROTRONIC_KIND, saveMicrotronicProgram } from '../model/microtronic-controls.js';
+import { MICROTRONIC_KIND, saveMicrotronicExecutionMode, saveMicrotronicProgram } from '../model/microtronic-controls.js';
 import { microtronicDemoCircuit } from '../model/microtronic-demo.js';
 import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
@@ -1035,6 +1035,12 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     }
   }, [circuit, setPartParam, externalBoard]);
 
+  const handleMicrotronicExecutionMode = useCallback((partId, mode) => {
+    if (saveMicrotronicExecutionMode(circuit, partId, mode)) {
+      handleSetPartParam(partId, 'executionMode', mode);
+    }
+  }, [circuit, handleSetPartParam]);
+
   const handleKim1Program = useCallback((partId, source) => {
     if (saveKim1Program(circuit, partId, source)) {
       setPartParam(partId, 'program', source);
@@ -1851,7 +1857,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
           onRunClock={handleTrainerRun} onOpenExample={() => handleLoad(kim1DemoCircuit())} />)}
         {microtronics.map(part => <MicrotronicPanel key={part.id} part={part} board={activeBoard} lang={lang}
           externalClock={!!externalBoard} onProgramChange={handleMicrotronicProgram}
-          onRunClock={handleTrainerRun} onOpenExample={() => handleLoad(microtronicDemoCircuit())} />)}
+          onExecutionModeChange={handleMicrotronicExecutionMode}
+          onRunClock={handleTrainerRun} onOpenExample={() => handleLoad(microtronicDemoCircuit(part.params?.executionMode))} />)}
         {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins).
             The FACES below gate on capability, not on pins: a machine-class
             bench (6502/Z80) has no PIN concept, yet its booted machine has

@@ -8,10 +8,11 @@ export const MICROTRONIC_EXAMPLES = Object.freeze([
 ]);
 
 /** A complete wire-editable experiment. CLOCK reaches IN4 only through its wire. */
-export function microtronicDemoCircuit() {
+export function microtronicDemoCircuit(executionMode) {
   const terminals = ['IN1', 'IN2', 'IN3', 'IN4', 'OUT1', 'OUT2', 'OUT3', 'OUT4', 'CLOCK', '5v', 'gnd'];
   const parts = [{id: 'microtronic', kind: 'busch-microtronic', x: 410, y: 270,
-    params: {program: MICROTRONIC_EXAMPLES[1].source, instructionHz: 20}, terminals}];
+    params: {program: MICROTRONIC_EXAMPLES[1].source, instructionHz: 20,
+      ...(executionMode === 'tms1600' ? {executionMode} : {})}, terminals}];
   const wires = [];
   const wire = (from, terminal, to, target, color) => wires.push({id: `wire${wires.length + 1}`,
     from: {part: from, terminal}, to: {part: to, terminal: target}, ...(color ? {color} : {})});

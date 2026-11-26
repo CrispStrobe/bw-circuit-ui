@@ -31,17 +31,23 @@ export function microtronicControl({board, part, verb, value, onProgramChange}) 
   return state;
 }
 
-/** Persist without rebuilding the electrical network or resetting another computer. */
-export function saveMicrotronicProgram(circuit, partId, source) {
+function saveMicrotronicParam(circuit, partId, name, value) {
   const part = circuit.getPart(partId);
-  if (part?.kind !== MICROTRONIC_KIND || typeof source !== 'string') return false;
-  if (part.params?.program === source) return false;
-  // Program source comes back from a successful device command. The same-source
-  // parameter update is intentionally idempotent in the engine.
-  circuit.setPartParam(partId, 'program', source);
-  part.params = {...part.params, program: source};
+  if (part?.kind !== MICROTRONIC_KIND || part.params?.[name] === value) return false;
+  circuit.setPartParam(partId, name, value);
+  part.params = {...part.params, [name]: value};
   circuit._saveHistory();
   return true;
+}
+
+/** Persist the canonical program accepted by the device. */
+export function saveMicrotronicProgram(circuit, partId, source) {
+  return typeof source === 'string' && saveMicrotronicParam(circuit, partId, 'program', source);
+}
+
+export function saveMicrotronicExecutionMode(circuit, partId, mode) {
+  return ['documented-behavior', 'tms1600'].includes(mode) &&
+    saveMicrotronicParam(circuit, partId, 'executionMode', mode);
 }
 
 /** Keyboard shortcuts apply only inside the focused front panel, never editors. */
