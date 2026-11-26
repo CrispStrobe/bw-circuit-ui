@@ -59,6 +59,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
   useEffect(() => { if (!dirtyRef.current) setDraft(source); }, [source]);
   const state = board?.getDeviceState?.(part.id);
   const hardware = !!state?.roms;
+  const storage = diskKind === 'mountSD' ? state?.sdCard : state?.corshamDisk;
   const brickwrightRom = state?.romSource === 'brickwright';
   const tty = !!state?.frontPanel?.tty;
   const editDraft = value => { setDraft(value); setDirty(true); dirtyRef.current = true; setNotice(''); };
@@ -258,7 +259,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
           <button type="button" onClick={() => command('setMemoryCard', null)}>{tr('Eject', 'Auswerfen')}</button>
         </>}
       </div>
-      <div className="kim1-editor-actions">
+      <div className="kim1-editor-actions" data-kim1-storage>
         <select aria-label={tr('Storage interface', 'Speicheranschluss')} value={diskKind} onChange={event => setDiskKind(event.target.value)}>
           <option value="mountSD">SD (SPI)</option><option value="mountCorshamDisk">Corsham (DSK)</option>
           <option value="mountK1013">K-1013</option>
@@ -274,9 +275,9 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
           <button type="button" onClick={() => download(state.k1013.chip.drives[drive].image, `kim1-k1013-${drive}.img`)}>{tr('Save image', 'Abbild speichern')}</button>
           <button type="button" onClick={() => command('mountK1013', {drive, image: null})}>{tr('Eject', 'Auswerfen')}</button>
         </>}
-        {diskKind !== 'mountK1013' && (state.sdCard || state.corshamDisk) && <>
-          <button type="button" onClick={() => download((state.sdCard || state.corshamDisk).image, state.sdCard ? 'kim1-sd.img' : 'kim1.dsk')}>{tr('Save image', 'Abbild speichern')}</button>
-          <button type="button" onClick={() => command(state.sdCard ? 'mountSD' : 'mountCorshamDisk', null)}>{tr('Eject', 'Auswerfen')}</button>
+        {diskKind !== 'mountK1013' && storage && <>
+          <button type="button" onClick={() => download(storage.image, diskKind === 'mountSD' ? 'kim1-sd.img' : 'kim1.dsk')}>{tr('Save image', 'Abbild speichern')}</button>
+          <button type="button" onClick={() => command(diskKind, null)}>{tr('Eject', 'Auswerfen')}</button>
         </>}
       </div>
     </details>}

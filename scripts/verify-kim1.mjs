@@ -58,6 +58,22 @@ try {
     name:'sd.img', mimeType:'application/octet-stream', buffer:Buffer.alloc(512, 3)
   });
   await page.waitForFunction(id => window.__board.getDeviceState(id).sdCard?.image[0] === 3, firstId);
+  const storage=panel.locator('[data-kim1-storage]');
+  await storage.getByLabel('Storage interface').selectOption('mountCorshamDisk');
+  assert.equal(await storage.getByRole('button',{name:'Eject',exact:true}).count(),0);
+  await storage.getByLabel('Storage image').setInputFiles({
+    name:'disk.dsk', mimeType:'application/octet-stream', buffer:Buffer.alloc(512, 7)
+  });
+  await page.waitForFunction(id => window.__board.getDeviceState(id).corshamDisk?.image[0] === 7, firstId);
+  const diskDownload=page.waitForEvent('download');
+  await storage.getByRole('button',{name:'Save image',exact:true}).click();
+  assert.equal((await diskDownload).suggestedFilename(),'kim1.dsk');
+  await storage.getByLabel('Storage interface').selectOption('mountSD');
+  assert.equal(await storage.getByRole('button',{name:'Eject',exact:true}).count(),0);
+  await storage.getByLabel('Storage interface').selectOption('mountCorshamDisk');
+  await storage.getByRole('button',{name:'Eject',exact:true}).click();
+  assert.equal(await page.evaluate(id => window.__board.getDeviceState(id).corshamDisk, firstId),null);
+  checks.push('the storage selector saves and ejects only the selected interface');
   await panel.getByText('Expansion and storage', {exact:true}).click();
   checks.push('Expansion controls mount a KIM-2 slot, a memcfg ROM byte, K-1008 video and a 512-byte SPI image');
 
