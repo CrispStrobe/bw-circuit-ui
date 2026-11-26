@@ -38,6 +38,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
   const tr = (en, german) => de ? german : en;
   const source = part.params?.program || '0200: EA 4C 00 02';
   const [draft, setDraft] = useState(source);
+  const [editorRevision, setEditorRevision] = useState(0);
   const [dirty, setDirty] = useState(false);
   const dirtyRef = useRef(false);
   const [error, setError] = useState(null);
@@ -66,7 +67,16 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
   const brickwrightRom = state?.romSource === 'brickwright';
   const tty = !!state?.frontPanel?.tty;
   const editDraft = value => { setDraft(value); setDirty(true); dirtyRef.current = true; setNotice(''); };
-  const accept = next => { setDraft(next.programSource); setDirty(false); dirtyRef.current = false; };
+  const replaceDraft = value => {
+    editDraft(value);
+    setEditorRevision(current => current + 1);
+  };
+  const accept = next => {
+    if (draft !== next.programSource) setEditorRevision(current => current + 1);
+    setDraft(next.programSource);
+    setDirty(false);
+    dirtyRef.current = false;
+  };
   const control = (verb, value) => kim1Control({board, part, verb, value, onProgramChange});
   const command = (verb, value) => {
     try {
@@ -91,7 +101,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
       if (file.size > 1048576) throw new Error(tr('Program files must be 1 MB or smaller.', 'Programmdateien müssen höchstens 1 MB groß sein.'));
       const text = await file.text();
       if (!token || identity.current !== token) return;
-      editDraft(text); setError(null);
+      replaceDraft(text); setError(null);
       setNotice(tr(`${file.name} is ready to load.`, `${file.name} ist bereit zum Laden.`));
     } catch (problem) { if (identity.current === token) setError(String(problem.message || problem)); }
   };
@@ -199,14 +209,10 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
     {(error || state?.error) && <p className="kim1-error" role="alert">{error || state.error}</p>}
     {showEditor && <details open className="kim1-editor"><summary>{tr('Program', 'Programm')} {dirty && <span>· {tr('not loaded', 'nicht geladen')}</span>}</summary>
       <label>{tr('Example', 'Beispiel')}<select aria-label={tr('KIM-1 example', 'KIM-1-Beispiel')} defaultValue=""
-        onChange={event => { const example = KIM1_EXAMPLES.find(item => item.id === event.target.value); if (example) editDraft(example.source); event.target.value = ''; }}>
+        onChange={event => { const example = KIM1_EXAMPLES.find(item => item.id === event.target.value); if (example) replaceDraft(example.source); event.target.value = ''; }}>
         <option value="">{tr('Choose a program…', 'Programm wählen…')}</option>
         {KIM1_EXAMPLES.map(example => <option key={example.id} value={example.id}>{de ? example.nameDe : example.name}</option>)}
       </select></label>
-      {Editor ? <div style={{height: 'min(48vh, 460px)', minHeight: 220}} data-kim1-source-editor>
-        <React.Suspense fallback={null}><Editor value={draft} onChange={editDraft} lang="asm" isVisible /></React.Suspense>
-      </div> : <textarea aria-label={tr('KIM-1 program', 'KIM-1-Programm')} value={draft} spellCheck={false} rows={5}
-        onChange={event => editDraft(event.target.value)} />}
       <div className="kim1-editor-actions">
         <button type="button" data-kim1-load disabled={!state} onClick={() => command('loadProgram',draft)}>{tr('Load program', 'Programm laden')}</button>
         {variant === 'code' && <button type="button" data-kim1-run-source disabled={!state} onClick={() => {
@@ -217,6 +223,10 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
         <input ref={fileInput} type="file" hidden accept=".hex,.ihx,.ihex,.pap,.ptp,.txt,.kim,text/plain" onChange={loadFile}
           aria-label={tr('KIM-1 program file', 'KIM-1-Programmdatei')} />
       </div>
+      {Editor ? <div style={{height: 'min(48vh, 460px)', minHeight: 220, display: 'flex', flexDirection: 'column'}} data-kim1-source-editor>
+        <React.Suspense fallback={null}><Editor key={editorRevision} value={draft} onChange={editDraft} lang="asm" isVisible /></React.Suspense>
+      </div> : <textarea aria-label={tr('KIM-1 program', 'KIM-1-Programm')} value={draft} spellCheck={false} rows={5}
+        onChange={event => editDraft(event.target.value)} />}
       {notice && <p className="kim1-notice" role="status">{notice}</p>}
     </details>}
     {showTools && state && 'roms' in state && <details className="kim1-help"><summary>{tr('Firmware and TTY', 'Firmware und TTY')}</summary>
