@@ -59,6 +59,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
   useEffect(() => { if (!dirtyRef.current) setDraft(source); }, [source]);
   const state = board?.getDeviceState?.(part.id);
   const hardware = !!state?.roms;
+  const storage = diskKind === 'mountSD' ? state?.sdCard : state?.corshamDisk;
   const brickwrightRom = state?.romSource === 'brickwright';
   const tty = !!state?.frontPanel?.tty;
   const editDraft = value => { setDraft(value); setDirty(true); dirtyRef.current = true; setNotice(''); };
@@ -149,6 +150,20 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
     }}>
     <header><div><strong>KIM-1</strong><small>MOS 6502 · {part.declName || part.id}</small></div>
       <span className="kim1-badge">{brickwrightRom ? 'Brickwright ROM' : hardware ? tr('ROM monitor', 'ROM-Monitor') : tr('Learning monitor', 'Lernmonitor')}</span></header>
+    <div data-build-machine className="kim1-editor-actions">
+      <button type="button" data-kim1-build
+        title={hardware ? tr('Machine is ready', 'Maschine ist bereit')
+          : tr('Boot the Brickwright ROM on this circuit', 'Brickwright-ROM in dieser Schaltung starten')}
+        disabled={hardware || !state} onClick={() => command('useBrickwrightRom')}>
+        {hardware ? tr('Machine ready', 'Maschine bereit') : tr('Build Machine', 'Maschine bauen')}
+      </button>
+      {hardware && <details className="kim1-help">
+        <summary>{tr('Memory map', 'Speicherbelegung')}</summary>
+        <div>RAM $0000–$03FF, $1780–$17FF</div>
+        <div>6530 I/O $1700–$177F</div>
+        <div>ROM $1800–$1FFF</div>
+      </details>}
+    </div>
     {!state ? <p role="alert">{tr('This board has no KIM-1 engine.', 'Diese Platine hat keine KIM-1-Engine.')}</p> : <>
       <Kim1Display value={state.display} masks={hardware ? state.segments : undefined} />
       <div className="kim1-display-labels"><span>{tr('Address', 'Adresse')}</span><span>{tr('Data', 'Daten')}</span></div>
@@ -244,7 +259,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
           <button type="button" onClick={() => command('setMemoryCard', null)}>{tr('Eject', 'Auswerfen')}</button>
         </>}
       </div>
-      <div className="kim1-editor-actions">
+      <div className="kim1-editor-actions" data-kim1-storage>
         <select aria-label={tr('Storage interface', 'Speicheranschluss')} value={diskKind} onChange={event => setDiskKind(event.target.value)}>
           <option value="mountSD">SD (SPI)</option><option value="mountCorshamDisk">Corsham (DSK)</option>
           <option value="mountK1013">K-1013</option>
@@ -260,9 +275,9 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
           <button type="button" onClick={() => download(state.k1013.chip.drives[drive].image, `kim1-k1013-${drive}.img`)}>{tr('Save image', 'Abbild speichern')}</button>
           <button type="button" onClick={() => command('mountK1013', {drive, image: null})}>{tr('Eject', 'Auswerfen')}</button>
         </>}
-        {diskKind !== 'mountK1013' && (state.sdCard || state.corshamDisk) && <>
-          <button type="button" onClick={() => download((state.sdCard || state.corshamDisk).image, state.sdCard ? 'kim1-sd.img' : 'kim1.dsk')}>{tr('Save image', 'Abbild speichern')}</button>
-          <button type="button" onClick={() => command(state.sdCard ? 'mountSD' : 'mountCorshamDisk', null)}>{tr('Eject', 'Auswerfen')}</button>
+        {diskKind !== 'mountK1013' && storage && <>
+          <button type="button" onClick={() => download(storage.image, diskKind === 'mountSD' ? 'kim1-sd.img' : 'kim1.dsk')}>{tr('Save image', 'Abbild speichern')}</button>
+          <button type="button" onClick={() => command(diskKind, null)}>{tr('Eject', 'Auswerfen')}</button>
         </>}
       </div>
     </details>}

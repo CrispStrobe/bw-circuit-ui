@@ -58,6 +58,22 @@ try {
     name:'sd.img', mimeType:'application/octet-stream', buffer:Buffer.alloc(512, 3)
   });
   await page.waitForFunction(id => window.__board.getDeviceState(id).sdCard?.image[0] === 3, firstId);
+  const storage=panel.locator('[data-kim1-storage]');
+  await storage.getByLabel('Storage interface').selectOption('mountCorshamDisk');
+  assert.equal(await storage.getByRole('button',{name:'Eject',exact:true}).count(),0);
+  await storage.getByLabel('Storage image').setInputFiles({
+    name:'disk.dsk', mimeType:'application/octet-stream', buffer:Buffer.alloc(512, 7)
+  });
+  await page.waitForFunction(id => window.__board.getDeviceState(id).corshamDisk?.image[0] === 7, firstId);
+  const diskDownload=page.waitForEvent('download');
+  await storage.getByRole('button',{name:'Save image',exact:true}).click();
+  assert.equal((await diskDownload).suggestedFilename(),'kim1.dsk');
+  await storage.getByLabel('Storage interface').selectOption('mountSD');
+  assert.equal(await storage.getByRole('button',{name:'Eject',exact:true}).count(),0);
+  await storage.getByLabel('Storage interface').selectOption('mountCorshamDisk');
+  await storage.getByRole('button',{name:'Eject',exact:true}).click();
+  assert.equal(await page.evaluate(id => window.__board.getDeviceState(id).corshamDisk, firstId),null);
+  checks.push('the storage selector saves and ejects only the selected interface');
   await panel.getByText('Expansion and storage', {exact:true}).click();
   checks.push('Expansion controls mount a KIM-2 slot, a memcfg ROM byte, K-1008 video and a 512-byte SPI image');
 
@@ -199,12 +215,15 @@ try {
   await page.waitForFunction(()=>window.__board.getDeviceState('one')?.roms===null);
   checks.push('session-only ROM upload drives the real 6530 display and can return to the learning monitor');
 
-  await panel.getByRole('button',{name:'Use Brickwright ROM',exact:true}).click();
+  await panel.getByRole('button',{name:'Build Machine',exact:true}).click();
   await page.waitForFunction(()=>window.__board.getDeviceState('one')?.romSource==='brickwright');
   await page.waitForFunction(()=>document.querySelector('[data-kim1-panel="one"] [data-kim1-display]')?.getAttribute('data-kim1-display')==='000000');
+  assert.equal(await panel.getByRole('button',{name:'Machine ready',exact:true}).isDisabled(), true);
+  await panel.getByText('Memory map',{exact:true}).click();
+  await panel.getByText('ROM $1800–$1FFF',{exact:true}).waitFor();
   await panel.getByRole('button',{name:'Learning monitor',exact:true}).click();
   await page.waitForFunction(()=>window.__board.getDeviceState('one')?.roms===null);
-  checks.push('the bundled Brickwright ROM boots through the physical 6530 display');
+  checks.push('Build Machine boots the bundled Brickwright ROM through the physical 6530 display');
 
   await page.setViewportSize({width:390,height:844});
   await page.waitForFunction(()=>document.querySelector('[data-kim1-panel="one"]')?.getBoundingClientRect().width>=300);

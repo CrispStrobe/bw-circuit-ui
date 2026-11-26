@@ -29,14 +29,15 @@ test('warnings chip has a popover with findings listing', () => {
   assert.ok(popover.includes('w.explanation'), 'popover shows finding explanations');
 });
 
-test('warnings chip color: red for danger, amber for advisory', () => {
+test('warnings chip color: red for danger, amber for warnings, neutral for notes', () => {
   // The chip is inside an IIFE; search the entire warnings-chip region
   const start = canvas.indexOf('Warning chip:');
   assert.ok(start > 0, 'warning chip region found');
   const chipBlock = canvas.slice(start, start + 2000);
   assert.ok(chipBlock.includes('#dc2626'), 'red color for danger');
-  assert.ok(chipBlock.includes('#d97706'), 'amber color for advisory');
-  assert.ok(chipBlock.includes('dangerCount'), 'danger count drives color');
+  assert.ok(chipBlock.includes('#d97706'), 'amber color for warnings');
+  assert.ok(chipBlock.includes('hasWarning ?'), 'informational findings have their own tone');
+  assert.ok(chipBlock.includes('#94a3b8'), 'neutral color for notes');
 });
 
 test('bottom warning triangle removed from CircuitDesigner', () => {
