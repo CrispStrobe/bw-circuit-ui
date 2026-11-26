@@ -50,6 +50,7 @@ export const PALETTE_DE = {
 
   // Capability badges
   '8049 trainer': '8049-Lerncomputer',
+  '6502 trainer': '6502-Lerncomputer',
   'AVR simulation': 'AVR-Simulation',
   'RP2040 simulation': 'RP2040-Simulation',
   'FPGA board part (no simulation yet)': 'FPGA-Platine (noch keine Simulation)',
@@ -60,6 +61,9 @@ export const PALETTE_DE = {
   'Board wiring; display requires emulator': 'Platinenverdrahtung; Anzeige braucht den Emulator',
 
   // Part names (proper names and part numbers stay as they are)
+  'KIM-1': 'KIM-1',
+  'KIM-1 learning computer. Six-digit display, hex keypad, NMOS 6502 programs and 15 user I/O pins. Opens live KIM-1 controls.':
+    'KIM-1-Lerncomputer. Sechsstellige Anzeige, Hex-Tastatur, NMOS-6502-Programme und 15 Benutzer-E/A-Pins. Öffnet die aktiven KIM-1-Bedienelemente.',
   'Kosmos CP1': 'Kosmos CP1',
   'Busch Microtronic 2090': 'Busch Microtronic 2090',
   'Behavioral model': 'Verhaltensmodell',

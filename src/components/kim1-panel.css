@@ -1,0 +1,50 @@
+/* Literal class-token selectors also work when the host enables CSS modules. */
+[class~="kim1-panel"] { flex:0 0 auto; box-sizing:border-box; width:100%; min-width:0; padding:12px; border:1px solid #537c67; border-radius:9px; background:#203c32; color:#edf2e9; font:12px/1.45 system-ui,sans-serif; }
+[class~="kim1-panel"]:focus-visible { outline:2px solid #f8c66a; outline-offset:2px; }
+[class~="kim1-panel"] header { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:10px; }
+[class~="kim1-panel"] header strong { display:block; font-size:19px; letter-spacing:.12em; color:#fff0c5; }
+[class~="kim1-panel"] header small { display:block; font-size:10px; color:#b3cbbb; overflow-wrap:anywhere; }
+[class~="kim1-badge"] { max-width:70px; font-size:9px; padding:3px 5px; color:#d9e7de; border:1px solid #61796b; border-radius:3px; text-align:center; }
+[class~="kim1-display"] { display:block; width:100%; height:auto; border:1px solid #566159; background:#110e12; border-radius:4px; box-sizing:border-box; }
+[class~="kim1-display-labels"] { display:grid; grid-template-columns:2fr 1fr; text-align:center; font-size:9px; text-transform:uppercase; letter-spacing:.1em; color:#b3cbbb; padding-top:3px; }
+[class~="kim1-status"] { display:flex; gap:8px; padding:7px 0; font:11px monospace; }
+[class~="kim1-status"] strong { flex:1; font-size:10px; }
+[class~="kim1-panel"] button { border:1px solid #a6b2a4; border-radius:3px; background:#e9e9d9; color:#20342c; min-width:0; min-height:30px; padding:6px; font:inherit; cursor:pointer; touch-action:manipulation; }
+[class~="kim1-panel"] button:hover { background:#fff8de; border-color:#f7be67; }
+[class~="kim1-panel"] button:focus-visible, [class~="kim1-panel"] input:focus-visible, [class~="kim1-panel"] textarea:focus-visible, [class~="kim1-panel"] select:focus-visible { outline:2px solid #f9c973; outline-offset:2px; }
+[class~="kim1-panel"] button:disabled { opacity:.5; cursor:not-allowed; }
+[class~="kim1-run-keys"], [class~="kim1-keypad"] { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px; }
+[class~="kim1-run-keys"] { margin-bottom:7px; }
+[class~="kim1-run-keys"] button { background:#dd994a; border-color:#f1b266; color:#2d2118; font-weight:700; }
+[class~="kim1-run-keys"] label { display:flex; align-items:center; justify-content:center; gap:3px; font:11px monospace; cursor:pointer; }
+[class~="kim1-run-keys"] input { margin:0; accent-color:#f4b354; }
+[class~="kim1-keypad"] button { min-height:34px; padding:5px 1px; font:14px monospace; }
+[class~="kim1-keypad"] [class~="kim1-function"] { background:#d5c8a4; font-size:12px; }
+[class~="kim1-registers"] { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px; margin-top:9px; font:10px monospace; }
+[class~="kim1-registers"] b { color:#ffce83; }
+[class~="kim1-ports"] { display:flex; justify-content:space-between; gap:6px; margin-top:6px; color:#bfd0c3; font:10px monospace; }
+[class~="kim1-ports"] b { color:#ffce83; }
+[class~="kim1-panel"] details { margin-top:10px; }
+[class~="kim1-panel"] summary { color:#ffe0a2; cursor:pointer; font-weight:600; }
+[class~="kim1-panel"] summary span { color:#c6d4c9; font-size:10px; font-weight:400; }
+[class~="kim1-editor"] label { display:flex; flex-wrap:wrap; gap:4px; align-items:center; margin:8px 0 5px; }
+[class~="kim1-editor"] select { width:100%; min-width:0; box-sizing:border-box; padding:5px; background:#13271f; color:#f3f3e9; border:1px solid #819b87; border-radius:3px; font:inherit; }
+[class~="kim1-editor"] textarea { display:block; box-sizing:border-box; width:100%; min-height:100px; padding:7px; background:#13271f; color:#f3f3e9; border:1px solid #819b87; border-radius:3px; resize:vertical; font:12px/1.45 monospace; }
+[class~="kim1-editor"] small { display:block; margin:6px 0; color:#b7cbbc; font-size:10px; }
+[class~="kim1-editor-actions"] { display:flex; flex-wrap:wrap; gap:5px; }
+[class~="kim1-editor-actions"] button { flex:1; font-size:10px; padding:6px 3px; }
+[class~="kim1-wired-example"] { width:100%; margin-top:10px; font-size:11px!important; }
+[class~="kim1-error"] { padding:7px; background:#51292b; border:1px solid #ce7c72; border-radius:4px; color:#ffdbd3; overflow-wrap:anywhere; }
+[class~="kim1-notice"] { color:#cce9b9; font-size:11px; }
+[class~="kim1-help"] p { color:#d1ddd3; font-size:11px; }
+
+.kim1-panel [data-kim1-tty-output] {
+  max-height: 11rem;
+  min-height: 3rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.kim1-panel .ace-kim-keypad { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.kim1-panel [data-ace-kim-lcd] { background: #23381c; color: #d6f1a5; font-family: monospace; }
+.kim1-video { display: block; width: min(100%, 640px); height: auto; image-rendering: pixelated; }

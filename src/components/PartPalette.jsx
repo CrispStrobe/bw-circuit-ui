@@ -9,6 +9,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { PartThumbnail } from './PartThumbnail.jsx';
 import { paletteText, paletteUi, ledColorName } from '../i18n/palette-de.js';
 import { MICROTRONIC_EXAMPLES } from '../model/microtronic-demo.js';
+import { KIM1_EXAMPLES } from '../model/kim1-demo.js';
 
 const LED_COLORS = ['red', 'green', 'yellow', 'blue', 'white', 'orange'];
 
@@ -52,6 +53,9 @@ const CATEGORIES = [
       { kind: 'kosmos-cp1', label: 'Kosmos CP1', params: {expansion: false, clockHz: 6000000},
         color: '#e4a138', capability: '8049 trainer',
         tooltip: 'CP1 system connector. Ports 1/2; CP3 enables ports 3/4/5. Use the built-in monitor or import a ROM in the debugger.' },
+      { kind: 'kim-1', label: 'KIM-1', params: {program: KIM1_EXAMPLES[0].source, clockHz: 100},
+        color: '#507e61', capability: '6502 trainer',
+        tooltip: 'KIM-1 learning computer. Six-digit display, hex keypad, NMOS 6502 programs and 15 user I/O pins. Opens live KIM-1 controls.' },
       { kind: 'busch-microtronic', label: 'Busch Microtronic 2090',
         params: {program: MICROTRONIC_EXAMPLES[0].source, instructionHz: 20}, color: '#d99432',
         capability: 'Behavioral model',

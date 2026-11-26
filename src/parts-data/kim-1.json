@@ -1,0 +1,94 @@
+{
+  "kind": "kim-1",
+  "w": 300,
+  "h": 330,
+  "terminals": [
+    {
+      "name": "PA0",
+      "x": 10,
+      "y": 62
+    },
+    {
+      "name": "PA1",
+      "x": 10,
+      "y": 88
+    },
+    {
+      "name": "PA2",
+      "x": 10,
+      "y": 114
+    },
+    {
+      "name": "PA3",
+      "x": 10,
+      "y": 140
+    },
+    {
+      "name": "PA4",
+      "x": 10,
+      "y": 166
+    },
+    {
+      "name": "PA5",
+      "x": 10,
+      "y": 192
+    },
+    {
+      "name": "PA6",
+      "x": 10,
+      "y": 218
+    },
+    {
+      "name": "PA7",
+      "x": 10,
+      "y": 244
+    },
+    {
+      "name": "PB0",
+      "x": 290,
+      "y": 62
+    },
+    {
+      "name": "PB1",
+      "x": 290,
+      "y": 88
+    },
+    {
+      "name": "PB2",
+      "x": 290,
+      "y": 114
+    },
+    {
+      "name": "PB3",
+      "x": 290,
+      "y": 140
+    },
+    {
+      "name": "PB4",
+      "x": 290,
+      "y": 166
+    },
+    {
+      "name": "PB5",
+      "x": 290,
+      "y": 192
+    },
+    {
+      "name": "PB7",
+      "x": 290,
+      "y": 218
+    },
+    {
+      "name": "5v",
+      "x": 100,
+      "y": 320
+    },
+    {
+      "name": "gnd",
+      "x": 200,
+      "y": 320
+    }
+  ],
+  "footprint": null,
+  "description": "KIM-1 system connector: 15 user GPIO lines, 5 V and ground. PB6 is reserved."
+}

@@ -1,0 +1,70 @@
+name: KIM-1 Circuits
+
+on:
+  push:
+    branches: [master, feat/kim1-circuits, feat/kim1-tape-import, feat/kim1-cleanroom-ui, feat/kim-expansion-bw-circuit-ui]
+    paths:
+      - '.github/workflows/kim1-circuits.yml'
+      - 'src/**'
+      - 'scripts/*kim1*'
+      - 'scripts/board-provenance.*'
+      - 'test/kim1-integration.test.js'
+      - 'package.json'
+      - 'package-lock.json'
+
+concurrency:
+  group: kim1-circuits-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  kim1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/checkout@v4
+        with:
+          repository: CrispStrobe/bw-board
+          ref: 8f823cbacdf2ea9ce74818151b870892e568d0bd
+          path: engine-source
+          sparse-checkout: |
+            src
+      - name: Install declared packages
+        id: install
+        run: npm install --no-audit --no-fund
+      - name: Compare installed Board with exact clean source
+        id: evidence
+        run: node scripts/qualify-kim1-board.mjs engine-source
+      - name: KIM-1 installed engine
+        id: engine
+        working-directory: node_modules/bw-board
+        run: node --test test/kim1-*.test.mjs
+      - name: KIM-1 circuit integration
+        id: unit
+        if: ${{ !cancelled() && steps.evidence.outcome == 'success' }}
+        run: npm run verify:kim1
+      - name: Install Chromium
+        if: ${{ !cancelled() && steps.evidence.outcome == 'success' }}
+        run: npx playwright install --with-deps chromium
+      - name: Exercise real KIM-1 designer interactions
+        if: ${{ !cancelled() && steps.evidence.outcome == 'success' }}
+        run: npm run verify:kim1:browser
+      - name: Verify reviewed Board provenance
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run verify:board-provenance
+      - name: Retain package evidence and browser results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kim1-circuits-${{ github.sha }}
+          path: |
+            test-results/kim1-package
+            test-results/kim1-browser
+          if-no-files-found: warn
+          retention-days: 14
