@@ -4179,6 +4179,7 @@ export function BoardCanvas({
 
   // Zoom/pan state: viewBox = (panX, panY, CANVAS_W/zoom, CANVAS_H/zoom)
   const [zoom, setZoom] = useState(1);
+  const [zoomDraft, setZoomDraft] = useState(null);
   // Voltage view: ONE toggle owns the whole overlay — voltage-keyed wire
   // colors, one label pill per net (breadboard jumpers included), and the
   // legend. OFF = wires keep their author colors and the canvas stays
@@ -4713,6 +4714,18 @@ export function BoardCanvas({
     machineRef.current.cancel();
     setPanning(false); panStart.current = null; pressedButtonRef.current = null;
   }, []);
+
+  const setZoomPercent = value => {
+    if (!String(value).trim() || !Number.isFinite(Number(value))) return;
+    const previous = zoomRef.current;
+    const next = Math.max(30, Math.min(300, Number(value))) / 100;
+    const canvas = canvasContainerRef.current;
+    if (!canvas || next === previous) return;
+    const anchor = 0.5 * (1 / previous - 1 / next);
+    setPan(p => ({x: p.x + canvas.clientWidth * anchor, y: p.y + canvas.clientHeight * anchor}));
+    setZoom(next);
+  };
+  const zoomPercent = Math.round(zoom * 100);
 
   // Wheel must be a native non-passive listener: trackpad two-finger scroll
   // PANS, pinch / ctrl+wheel zooms at the cursor. The old canvas zoomed on
@@ -5375,7 +5388,30 @@ export function BoardCanvas({
             <CircuitMenuHeading>{/^de/i.test(lang) ? 'Werkbank' : 'Workbench'}</CircuitMenuHeading>
             <BenchTemperature value={benchTemperature ?? 25} onChange={onBenchTemperatureChange} lang={lang} />
           </>) : null}
-          <div data-zoom-indicator className="circuit-menu-heading">{/^de/i.test(lang) ? 'Zoom' : 'Zoom'}: {(zoom * 100).toFixed(0)}%</div>
+          <div data-zoom-indicator className="circuit-menu-heading"
+            style={{display: 'flex', alignItems: 'center', gap: 6}}>
+            <span style={{flex: 1}}>Zoom</span>
+            <button type="button" className="circuit-menu-trigger"
+              aria-label={/^de/i.test(lang) ? 'Verkleinern' : 'Zoom out'} disabled={zoomPercent <= 30}
+              onClick={() => setZoomPercent(zoomPercent - 10)}>−</button>
+            <input type="number" min="30" max="300" step="1" value={zoomDraft ?? zoomPercent}
+              aria-label={/^de/i.test(lang) ? 'Zoom in Prozent' : 'Zoom percent'} style={{width: 56}}
+              onChange={event => setZoomDraft(event.target.value)}
+              onBlur={() => { if (zoomDraft !== null) setZoomPercent(zoomDraft); setZoomDraft(null); }}
+              onKeyDown={event => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                } else if (event.key === 'Escape' && zoomDraft !== null) {
+                  event.stopPropagation();
+                  setZoomDraft(null);
+                }
+              }} />
+            <span aria-hidden="true">%</span>
+            <button type="button" className="circuit-menu-trigger"
+              aria-label={/^de/i.test(lang) ? 'Vergrößern' : 'Zoom in'} disabled={zoomPercent >= 300}
+              onClick={() => setZoomPercent(zoomPercent + 10)}>+</button>
+          </div>
         </CircuitMenuPopup>
       </div>
 
