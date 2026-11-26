@@ -2098,7 +2098,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                 }));
               };
               const hex = (n) => n === undefined ? '' : ` @ ${n.toString(16).toUpperCase()}h`;
-              const loadPreset = async (p) => {
+              const loadPreset = async (p, fromLibrary = false) => {
                 const request = ++mediaRequest.current;
                 try {
                   setLoaderNote(`fetching ${p.rom}…`);
@@ -2111,11 +2111,15 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     bytes = new Uint8Array(await res.arrayBuffer());
                   }
-                  if (request !== mediaRequest.current) return;
+                  if (request !== mediaRequest.current) {
+                    if (fromLibrary) throw new Error('Firmware selection changed.');
+                    return;
+                  }
                   dispatchLoad(p.slot, bytes, p.profile, p.rom);
                   setLoaderNote(`${p.rom} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} · ${german ? "ausgewählt" : "selected"}`);
                 } catch (e) {
                   if (request === mediaRequest.current) setLoaderNote(`✗ ${p.rom}: ${e.message}`);
+                  if (fromLibrary) throw e;
                 }
               };
               const loadFile = async (file) => {
@@ -2151,7 +2155,10 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                   <div style={{fontSize: 10, color: '#94a3b8', fontWeight: 600, marginBottom: 4}}>
                     {t('machineLoadHeading', lang)}
                   </div>
-                  {onOpenMachineLibrary && <button type="button" onClick={() => onOpenMachineLibrary(kind)}>
+                  {onOpenMachineLibrary && <button type="button" onClick={() => onOpenMachineLibrary(kind, presets.map(p => ({
+                    id: p.id, title: p.label, summary: german ? t(`machinePresetHint_${p.id}`, 'de') : p.hint,
+                    run: () => loadPreset(p, true),
+                  })))}>
                     {german ? 'Firmware-Bibliothek' : 'Firmware library'}
                   </button>}
                   <details open={kind !== 'eater6502'} style={{color: '#cbd5e1', fontSize: 11}}>
