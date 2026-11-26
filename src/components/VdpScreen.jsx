@@ -263,8 +263,6 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, sendScancodeFn, lo
     >
       <canvas
         ref={canvasRef}
-        width={nativeSize.w}
-        height={nativeSize.h}
         style={{
           width: Math.min(nativeSize.w * 2, 640),
           maxWidth: '100%', height: 'auto',
