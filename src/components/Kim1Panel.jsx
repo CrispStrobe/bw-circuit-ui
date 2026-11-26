@@ -48,6 +48,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
   useEffect(() => { if (!dirtyRef.current) setDraft(source); }, [source]);
   const state = board?.getDeviceState?.(part.id);
   const hardware = !!state?.roms;
+  const brickwrightRom = state?.romSource === 'brickwright';
   const tty = !!state?.frontPanel?.tty;
   const editDraft = value => { setDraft(value); setDirty(true); dirtyRef.current = true; setNotice(''); };
   const accept = next => { setDraft(next.programSource); setDirty(false); dirtyRef.current = false; };
@@ -62,7 +63,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
         accept(next);
         setNotice(tr(`Program loaded at ${hex(next.address,4)}.`, `Programm bei ${hex(next.address,4)} geladen.`));
       } else if (!dirtyRef.current) setDraft(next.programSource);
-      if (next.running && (starts || verb === 'loadRoms' || verb === 'setTty' || (hardware && verb === 'key'))) onRunClock?.();
+      if (next.running && (starts || verb === 'loadRoms' || verb === 'useBrickwrightRom' || verb === 'setTty' || (hardware && verb === 'key'))) onRunClock?.();
       redraw(value => value + 1);
       return next;
     } catch (problem) { setError(String(problem.message || problem)); redraw(value => value + 1); return null; }
@@ -113,7 +114,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
       if (key) { event.preventDefault(); command('key', key); }
     }}>
     <header><div><strong>KIM-1</strong><small>MOS 6502 · {part.declName || part.id}</small></div>
-      <span className="kim1-badge">{hardware ? tr('ROM monitor', 'ROM-Monitor') : tr('Learning monitor', 'Lernmonitor')}</span></header>
+      <span className="kim1-badge">{brickwrightRom ? 'Brickwright ROM' : hardware ? tr('ROM monitor', 'ROM-Monitor') : tr('Learning monitor', 'Lernmonitor')}</span></header>
     {!state ? <p role="alert">{tr('This board has no KIM-1 engine.', 'Diese Platine hat keine KIM-1-Engine.')}</p> : <>
       <Kim1Display value={state.display} masks={hardware ? state.segments : undefined} />
       <div className="kim1-display-labels"><span>{tr('Address', 'Adresse')}</span><span>{tr('Data', 'Daten')}</span></div>
@@ -157,6 +158,8 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
     </details>
     {state && 'roms' in state && <details className="kim1-help"><summary>{tr('Firmware and TTY', 'Firmware und TTY')}</summary>
       <div className="kim1-editor-actions">
+        {'romSource' in state && <button type="button" aria-pressed={brickwrightRom}
+          onClick={() => command('useBrickwrightRom')}>{tr('Use Brickwright ROM', 'Brickwright-ROM verwenden')}</button>}
         <button type="button" onClick={() => romInput.current?.click()}>{tr('Mount ROMs…', 'ROMs laden…')}</button>
         <input ref={romInput} data-kim1-rom-input type="file" multiple hidden accept=".bin,.rom,application/octet-stream"
           aria-label={tr('KIM-1 ROM images', 'KIM-1-ROM-Abbilder')} onChange={loadRoms} />
@@ -186,7 +189,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
     <details className="kim1-help"><summary>{tr('Keys and wiring', 'Tasten und Verdrahtung')}</summary>
       <p>{tr('AD selects an address; enter four hex digits. DA edits its byte; enter two digits. + advances. GO runs from the displayed address, or executes one instruction with SST enabled. ST stops; PC returns to the stopped program counter; RS resets and keeps RAM.', 'AD wählt die Adresse: vier Hex-Ziffern eingeben. DA ändert das Byte: zwei Ziffern eingeben. + geht weiter. GO startet an der angezeigten Adresse oder führt mit SST einen Befehl aus. ST hält an; PC zeigt den angehaltenen Programmzähler; RS setzt zurück und behält RAM.')}</p>
       <p>{tr('PA0–PA7, PB0–PB5 and PB7 are the 15 user I/O pins. Set data directions at $1701/$1703 and use ports $1700/$1702. A set direction bit is an output. 5v and gnd power external experiments.', 'PA0–PA7, PB0–PB5 und PB7 sind die 15 Benutzer-E/A-Pins. Datenrichtungen liegen bei $1701/$1703, Ports bei $1700/$1702. Ein gesetztes Richtungsbit bedeutet Ausgang. 5v und gnd versorgen externe Versuche.')}</p>
-      <p>{hardware ? tr('The mounted ROM runs at 1 MHz. The keypad and display connect to the emulated 6530.', 'Das geladene ROM läuft mit 1 MHz. Tastatur und Anzeige sind mit dem emulierten 6530 verbunden.') : tr(`Learning monitor at ${part.params?.clockHz ?? 1000} Hz. Mount the two 6530 ROM images for the hardware monitor and TTY.`, `Lernmonitor mit ${part.params?.clockHz ?? 1000} Hz. Beide 6530-ROMs für Hardware-Monitor und TTY laden.`)}</p>
+      <p>{hardware ? tr('The mounted ROM runs at 1 MHz. The keypad and display connect to the emulated 6530.', 'Das geladene ROM läuft mit 1 MHz. Tastatur und Anzeige sind mit dem emulierten 6530 verbunden.') : tr(`Learning monitor at ${part.params?.clockHz ?? 1000} Hz. Use Firmware and TTY to switch to the ROM monitor.`, `Lernmonitor mit ${part.params?.clockHz ?? 1000} Hz. Unter Firmware und TTY zum ROM-Monitor wechseln.`)}</p>
       <p>{externalClock ? tr('The connected host controls simulation time.', 'Der angeschlossene Host steuert die Simulationszeit.') : tr('GO starts circuit simulation. ST stops this computer; Pause in the circuit toolbar freezes the whole experiment.', 'GO startet die Schaltungssimulation. ST hält diesen Computer an; Pause in der Schaltungsleiste hält den gesamten Versuch an.')}</p>
       <p>{tr('Programs and keypad RAM edits stay with each part when you save the circuit. I/O register writes affect the current run. Build edits reset runtime registers. With this panel focused: hex keys enter digits, Enter is +, Escape is ST, Space is GO/ST.', 'Programme und RAM-Tastatureingaben werden mit dem Bauteil gespeichert. E/A-Registeränderungen betreffen den aktuellen Lauf. Änderungen im Bauen-Modus setzen Laufzeitregister zurück. Bei fokussiertem Panel: Hex-Tasten geben Ziffern ein, Eingabe ist +, Escape ist ST, Leertaste ist GO/ST.')}</p>
     </details>

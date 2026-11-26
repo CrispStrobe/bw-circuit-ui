@@ -182,6 +182,13 @@ try {
   await page.waitForFunction(()=>window.__board.getDeviceState('one')?.roms===null);
   checks.push('session-only ROM upload drives the real 6530 display and can return to the learning monitor');
 
+  await panel.getByRole('button',{name:'Use Brickwright ROM',exact:true}).click();
+  await page.waitForFunction(()=>window.__board.getDeviceState('one')?.romSource==='brickwright');
+  await page.waitForFunction(()=>document.querySelector('[data-kim1-panel="one"] [data-kim1-display]')?.getAttribute('data-kim1-display')==='000000');
+  await panel.getByRole('button',{name:'Learning monitor',exact:true}).click();
+  await page.waitForFunction(()=>window.__board.getDeviceState('one')?.roms===null);
+  checks.push('the bundled Brickwright ROM boots through the physical 6530 display');
+
   await page.setViewportSize({width:390,height:844});
   await page.waitForFunction(()=>document.querySelector('[data-kim1-panel="one"]')?.getBoundingClientRect().width>=300);
   await page.locator('[data-kim1-panel="one"]').scrollIntoViewIfNeeded();

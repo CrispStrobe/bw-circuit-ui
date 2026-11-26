@@ -2,7 +2,7 @@ name: KIM-1 Circuits
 
 on:
   push:
-    branches: [master, feat/kim1-circuits, feat/kim1-tape-import]
+    branches: [master, feat/kim1-circuits, feat/kim1-tape-import, feat/kim1-cleanroom-ui]
     paths:
       - '.github/workflows/kim1-circuits.yml'
       - 'src/**'
@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: CrispStrobe/bw-board
-          ref: 0e3231e71f5123d5f9ee294324d04d091fea716a
+          ref: 2377cbcf0ff2bcff055c364791835ef63ff0c65f
           path: engine-source
           sparse-checkout: |
             src

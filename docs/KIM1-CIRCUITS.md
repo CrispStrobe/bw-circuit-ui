@@ -70,12 +70,13 @@ digital voltage model; this is not a transistor model of the original board.
 
 ## Scope and provenance
 
-The learning monitor is selected by default. Under **Firmware and TTY**, mount
-two 1 KiB files named for 6530-003 and 6530-002 or one 2 KiB file in that order.
-The hardware monitor runs on the 1 MHz circuit clock and drives the keypad,
+The learning monitor is selected by default. Open **Firmware and TTY** and
+choose **Use Brickwright ROM** to run the bundled clean-room monitor. The same
+menu accepts two historical 1 KiB files named for 6530-003 and 6530-002 or one
+2 KiB file in that order. The ROM runs on the 1 MHz circuit clock and drives the keypad,
 six display digits and TTY via the 6530 registers. The optional TTY terminal
-runs at 300 baud. ST and SST use the original monitor’s NMI path, which requires
-the program’s `$17FA–17FB` soft vector to be set. The ROM files stay in the
+runs at 300 baud. ST and SST use the NMI path. The Brickwright ROM initializes empty soft vectors.
+With a historical ROM, set `$17FA–17FB` to the monitor’s stop entry before using ST or SST. The ROM files stay in the
 active session. The circuit saves the program image and its RAM configuration.
 
 New KIM-specific UI, controls, programs, tests and connector artwork are original
