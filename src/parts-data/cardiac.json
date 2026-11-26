@@ -1,0 +1,34 @@
+{
+  "kind": "cardiac",
+  "w": 280,
+  "h": 260,
+  "terminals": [
+    {
+      "name": "IN",
+      "x": 6,
+      "y": 142,
+      "functions": []
+    },
+    {
+      "name": "OUT",
+      "x": 274,
+      "y": 142,
+      "functions": []
+    },
+    {
+      "name": "5v",
+      "x": 98,
+      "y": 254,
+      "functions": []
+    },
+    {
+      "name": "gnd",
+      "x": 182,
+      "y": 254,
+      "functions": []
+    }
+  ],
+  "variants": null,
+  "footprint": null,
+  "_note": "Original CARDIAC plus Brickwright I/O adapter connector. The historical cardboard machine has no electrical pins. IN explicitly samples 0–5 V to a 000–999 card. OUT is 5 V only for output 001; every other output drives 0 V."
+}

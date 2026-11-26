@@ -1,3 +1,46 @@
+## CARDIAC Lab — REVIEW CANDIDATE, 2026-11-26
+
+Default-branch claim publication is pending review. Automatic approval review refused direct default-branch pushes; implementation remains isolated on the feature branch until approval.
+
+Owner: Brickwright CARDIAC implementation lane, requested by CrispStrobe.
+Isolated branch: `feat/cardiac-lab-20261126`.
+Base: `ee2b4127a88f1b308f8d749cae4d7c1db1deae9e`.
+Scope: Original CARDIAC plus Brickwright I/O adapter part, palette/terminals/geometry, active-Board controls, program persistence and machine handoff, night-light demo and focused source/browser verification.
+
+Companion package boundaries: Brickwright, bw-board, bw-circuit-ui and
+sb3-creator. Preserve all unrelated CP1, Microtronic, KIM and other work.
+One authoritative machine and simulation clock; original CARDIAC opcode order.
+Modern circuit I/O is explicitly identified as a Brickwright extension.
+Independent code, lesson text and artwork; comparison implementations are
+references, with license and semantic differences recorded. No historical
+manual assets or incompatible emulator code are imported.
+
+Qualify decimal overflow/shift/branch/input boundaries, source-to-memory
+correspondence, actual circuit I/O, execution ownership, incomplete-source
+persistence, and desktop/narrow browser operation. Upstream changes are
+qualified before exact downstream adoption; local checks are not hosted CI.
+
+Implementation candidate: original connector SVG/sidecar, English/German compact
+controls, explicit manual-card versus circuit-sample actions, decimal input and
+output trays, program persistence, host clock/save notifications, and a wired
+potentiometer/resistor/LED night-light. CARDIAC gallery entries retain their
+decimal target without an MCU bench transform. No second interpreter or clock.
+
+Local qualification: 85 focused, adjacent CP1/Microtronic/KIM, geometry, gallery
+and provenance checks pass without skips; production Vite build passes. Actual
+CircuitDesigner interactions pass on Chromium 158.0.8127.0 at desktop and 390px,
+including empty-input wait, manual cards, explicit voltage sampling, physical
+LED output, pause/step/restart, save/load, accepted host-save notifications,
+independent machines and 32 transformed terminal positions. Screenshots reviewed.
+
+The real npm-installed Board is pinned and locked to
+`0f6b38a8d6d3b15861ee7b35eda45e5db45035f2`, with runtime SHA-256
+`3b5eb5ea51549df034daf2e91ed3d96668a40c8f7d0dd9560661c348ad8ff120`.
+It matches the identified clean source runtime; it is not a development link.
+Unrelated lock records are unchanged. The new PR browser workflow checks that
+provenance before exercising the designer; hosted CI and full Brickwright
+assembly/debugger/project qualification remain separate consumer gates.
+
 ## Busch Microtronic Circuits — IMPLEMENTED candidate, 2026-11-25
 
 Owner: Brickwright Microtronic Circuits lane, requested by CrispStrobe.

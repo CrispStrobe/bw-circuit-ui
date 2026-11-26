@@ -66,6 +66,10 @@ export const PALETTE_DE = {
     'KIM-1-Lerncomputer. Sechsstellige Anzeige, Hex-Tastatur, NMOS-6502-Programme und 15 Benutzer-E/A-Pins. Öffnet die aktiven KIM-1-Bedienelemente.',
   'Kosmos CP1': 'Kosmos CP1',
   'Busch Microtronic 2090': 'Busch Microtronic 2090',
+  'CARDIAC + Brickwright I/O adapter': 'CARDIAC + Brickwright-E/A-Adapter',
+  'Decimal teaching computer': 'Dezimaler Lerncomputer',
+  '100 decimal words and ten instructions. Modern adapter samples IN into input cards and drives OUT from output 001. Opens live CARDIAC controls.':
+    '100 Dezimalwörter und zehn Befehle. Der moderne Adapter tastet IN in Eingabekarten ab und steuert OUT mit Ausgabe 001. Öffnet die aktiven CARDIAC-Bedienelemente.',
   'Behavioral model': 'Verhaltensmodell',
   '4-bit learning computer. Hex keypad, 256 program words, four inputs and outputs, 1 Hz clock. Opens live Microtronic controls.':
     '4-Bit-Lerncomputer. Hex-Tastatur, 256 Programmwörter, vier Ein- und Ausgänge, 1-Hz-Takt. Öffnet die aktiven Microtronic-Bedienelemente.',

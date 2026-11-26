@@ -1,0 +1,59 @@
+name: CARDIAC Circuits
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cardiac-circuits.yml'
+      - 'src/**'
+      - 'scripts/*cardiac*'
+      - 'scripts/board-provenance.*'
+      - 'test/cardiac-integration.test.js'
+      - 'package.json'
+      - 'package-lock.json'
+  push:
+    branches: [master, feat/cardiac-lab-20261126]
+    paths:
+      - '.github/workflows/cardiac-circuits.yml'
+      - 'src/**'
+      - 'scripts/*cardiac*'
+      - 'scripts/board-provenance.*'
+      - 'test/cardiac-integration.test.js'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+
+concurrency:
+  group: cardiac-circuits-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  cardiac:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked packages
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify reviewed installed Board provenance
+        run: npm run verify:board-provenance
+      - name: Exercise CARDIAC circuit contracts
+        run: npm run verify:cardiac
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Exercise real designer interactions
+        run: npm run verify:cardiac:browser
+      - name: Retain browser and package evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cardiac-circuits-${{ github.sha }}
+          path: test-results/cardiac-browser
+          if-no-files-found: warn
+          retention-days: 14
