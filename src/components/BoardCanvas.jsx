@@ -5341,11 +5341,36 @@ export function BoardCanvas({
             {publishedActions.filter(action => action.location === 'edit' && action.submenu === group).map(action =>
               <CircuitMenuAction key={action.name} action={action} onDone={() => setToolbarMoreOpen(false)} />)}
           </div>)}
-          {toolbarCramped && (panelNav || viewNav) ? <>
-            <CircuitMenuHeading>{/^de/i.test(lang) ? 'Bereiche' : 'Panels'}</CircuitMenuHeading>
-            {panelNav ? <div data-circuit-control-group>{panelNav}</div> : null}
-            {viewNav ? <div data-circuit-control-group>{viewNav}</div> : null}
-          </> : null}
+          {(panelNav || viewNav) && <>
+            <CircuitMenuHeading>{/^de/i.test(lang) ? 'Bereiche und Ansichten' : 'Panels and views'}</CircuitMenuHeading>
+            {React.isValidElement(panelNav) ? React.cloneElement(panelNav, {
+              menu: true, onPick: () => setToolbarMoreOpen(false),
+            }) : panelNav}
+            {React.isValidElement(viewNav) && React.Children.map(viewNav.props.children, item => (
+              <button type="button" className="circuit-menu-row" role="menuitemradio"
+                aria-checked={item.props['aria-checked']} title={item.props.title}
+                onClick={event => {item.props.onClick(event); setToolbarMoreOpen(false);}}>
+                <span aria-hidden="true" style={{width: 18, textAlign: 'center'}}>{item.props.children}</span>
+                <span className="circuit-menu-label">{item.props['aria-label']}</span>
+                {item.props['aria-checked'] && <span aria-hidden="true">✓</span>}
+              </button>
+            ))}
+          </>}
+          <CircuitMenuHeading>{/^de/i.test(lang) ? 'Modus und Strom' : 'Mode and power'}</CircuitMenuHeading>
+          {[
+            ['▦', /^de/i.test(lang) ? 'Bauen' : 'Build mode', mode === 'build', onModeChange && (() => onModeChange('build'))],
+            ['▶', /^de/i.test(lang) ? 'Simulieren' : 'Simulate', mode === 'simulate', onModeChange && (() => onModeChange('simulate'))],
+            ['⏻', /^de/i.test(lang) ? 'Strom ein' : 'Power on', powered, onPowerToggle && (() => onPowerToggle(true))],
+            ['◯', /^de/i.test(lang) ? 'Strom aus' : 'Power off', !powered, onPowerToggle && (() => onPowerToggle(false))],
+          ].map(([icon, label, selected, run]) => (
+            <button key={label} type="button" className="circuit-menu-row" role="menuitemradio"
+              aria-checked={selected} disabled={!run}
+              onClick={() => {run(); setToolbarMoreOpen(false);}}>
+              <span aria-hidden="true" style={{width: 18, textAlign: 'center'}}>{icon}</span>
+              <span className="circuit-menu-label">{label}</span>
+              {selected && <span aria-hidden="true">✓</span>}
+            </button>
+          ))}
           {typeof onBenchTemperatureChange === 'function' ? (<>
             <CircuitMenuHeading>{/^de/i.test(lang) ? 'Werkbank' : 'Workbench'}</CircuitMenuHeading>
             <BenchTemperature value={benchTemperature ?? 25} onChange={onBenchTemperatureChange} lang={lang} />
