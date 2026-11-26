@@ -115,7 +115,7 @@ function snapToGrid(v) {
  */
 const TONE_KINDS = new Set(['buzzer', 'piezo', 'speaker', 'earphone']);
 
-export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, onWiredBootReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, examplesError, curriculum, onOpenExamples, onLoadExample, onOpenMachineLibrary, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
+export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, kim1Instruments = true, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, onWiredBootReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, examplesError, curriculum, onOpenExamples, onLoadExample, onOpenMachineLibrary, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -1085,6 +1085,16 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     if (!externalBoard) simClock.current?.wake();
   }, [circuit, parts, wires, mode, externalBoard]);
 
+  useEffect(() => {
+    const handle = event => {
+      if (event.detail?.board !== activeBoard || circuit.getPart(event.detail.partId)?.kind !== 'kim-1') return;
+      if (typeof event.detail.program === 'string') handleKim1Program(event.detail.partId, event.detail.program);
+      if (event.detail.run) handleTrainerRun();
+    };
+    window.addEventListener('bw-kim1-control', handle);
+    return () => window.removeEventListener('bw-kim1-control', handle);
+  }, [activeBoard, circuit, handleKim1Program, handleTrainerRun]);
+
   const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
     loadInferred(inferredParts, inferredNets);
     circuit.analysisBlockers = [];
@@ -1876,7 +1886,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
         }}>›</button>
         <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 36, padding: '36px 6px 6px', boxSizing: 'border-box'}}>
-        {kim1s.map(part => <Kim1Panel key={part.id} part={part} board={activeBoard} lang={lang}
+        {kim1Instruments && kim1s.map(part => <Kim1Panel key={part.id} part={part} board={activeBoard} lang={lang}
           externalClock={!!externalBoard} onProgramChange={handleKim1Program}
           onRunClock={handleTrainerRun} onOpenExample={() => handleLoad(kim1DemoCircuit())} />)}
         {microtronics.map(part => <MicrotronicPanel key={part.id} part={part} board={activeBoard} lang={lang}
