@@ -149,6 +149,20 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
     }}>
     <header><div><strong>KIM-1</strong><small>MOS 6502 · {part.declName || part.id}</small></div>
       <span className="kim1-badge">{brickwrightRom ? 'Brickwright ROM' : hardware ? tr('ROM monitor', 'ROM-Monitor') : tr('Learning monitor', 'Lernmonitor')}</span></header>
+    <div data-build-machine className="kim1-editor-actions">
+      <button type="button" data-kim1-build
+        title={hardware ? tr('Machine is ready', 'Maschine ist bereit')
+          : tr('Boot the Brickwright ROM on this circuit', 'Brickwright-ROM in dieser Schaltung starten')}
+        disabled={hardware || !state} onClick={() => command('useBrickwrightRom')}>
+        {hardware ? tr('Machine ready', 'Maschine bereit') : tr('Build Machine', 'Maschine bauen')}
+      </button>
+      {hardware && <details className="kim1-help">
+        <summary>{tr('Memory map', 'Speicherbelegung')}</summary>
+        <div>RAM $0000–$03FF, $1780–$17FF</div>
+        <div>6530 I/O $1700–$177F</div>
+        <div>ROM $1800–$1FFF</div>
+      </details>}
+    </div>
     {!state ? <p role="alert">{tr('This board has no KIM-1 engine.', 'Diese Platine hat keine KIM-1-Engine.')}</p> : <>
       <Kim1Display value={state.display} masks={hardware ? state.segments : undefined} />
       <div className="kim1-display-labels"><span>{tr('Address', 'Adresse')}</span><span>{tr('Data', 'Daten')}</span></div>

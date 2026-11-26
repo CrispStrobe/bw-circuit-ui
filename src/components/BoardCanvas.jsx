@@ -5215,11 +5215,12 @@ export function BoardCanvas({
           {wiringFrom ? t('modeWiring', lang) : t('modeSelect', lang)}
         </span>
 
-        {/* Warning chip: count-badged, red for danger, amber for advisory */}
+        {/* Warning chip: tone follows the most severe finding. */}
         {drcWarnings && drcWarnings.length > 0 && (() => {
           const dangerCount = drcWarnings.filter(w => w.severity === 'danger' || w.severity === 'error').length;
-          const chipColor = dangerCount > 0 ? '#dc2626' : '#d97706';
-          const chipBg = dangerCount > 0 ? '#451a1a' : '#451f0a';
+          const hasWarning = drcWarnings.some(w => w.severity === 'warning');
+          const chipColor = dangerCount > 0 ? '#dc2626' : hasWarning ? '#d97706' : '#94a3b8';
+          const chipBg = dangerCount > 0 ? '#451a1a' : hasWarning ? '#451f0a' : '#1e293b';
           return (
             <div style={{position: 'relative', flex: '0 0 auto'}}>
               <button data-warnings-chip onClick={(event) => {
@@ -5239,7 +5240,7 @@ export function BoardCanvas({
                   border: `1px solid ${chipColor}`, borderRadius: 4, cursor: 'pointer',
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                 }}>
-                {dangerCount > 0 ? '\u26A0' : '!'}{' '}{drcWarnings.length}
+                {dangerCount > 0 ? '\u26A0' : hasWarning ? '!' : 'ⓘ'}{' '}{drcWarnings.length}
               </button>
               {warningsOpen && ReactDOM.createPortal(
                 <div data-warnings-popover style={{
