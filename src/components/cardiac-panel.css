@@ -1,0 +1,46 @@
+/* SPDX-License-Identifier: MIT — original circuit-side CARDIAC controls. */
+[class~="cardiac-panel"] { flex:0 0 auto; box-sizing:border-box; width:100%; min-width:0; padding:12px; border:1px solid #b6ad92; border-radius:10px; background:#f6f0dd; color:#173f45; font:12px/1.45 system-ui,sans-serif; }
+[class~="cardiac-panel"]:focus-visible { outline:2px solid #c26036; outline-offset:2px; }
+[class~="cardiac-panel"] header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+[class~="cardiac-panel"] header strong { display:block; font-size:22px; letter-spacing:.08em; }
+[class~="cardiac-panel"] header small { display:block; color:#536460; font-size:10px; }
+[class~="cardiac-badge"] { flex:none; padding:3px 6px; border:1px solid #b7baa4; border-radius:4px; font:9px/1.4 monospace; text-align:center; }
+[class~="cardiac-registers"] { display:grid; grid-template-columns:1fr 2fr; gap:8px; background:#173f45; color:#f6f0dd; padding:9px; border-radius:6px; }
+[class~="cardiac-registers"] div { min-width:0; }
+[class~="cardiac-registers"] span { display:block; font-size:9px; color:#c3d2c8; letter-spacing:.15em; }
+[class~="cardiac-registers"] output { display:block; font:25px/1.25 ui-monospace,monospace; }
+[class~="cardiac-status"] { margin:7px 0; min-height:18px; font-size:11px; font-weight:600; }
+[class~="cardiac-panel"] button { min-width:0; min-height:32px; padding:6px 7px; border:1px solid #9bada1; border-radius:4px; background:#fffdf2; color:#173f45; font:inherit; cursor:pointer; touch-action:manipulation; }
+[class~="cardiac-panel"] button:hover { background:#e6f0e6; border-color:#41837f; }
+[class~="cardiac-panel"] button:focus-visible, [class~="cardiac-panel"] select:focus-visible, [class~="cardiac-panel"] input:focus-visible { outline:2px solid #c26036; outline-offset:2px; }
+[class~="cardiac-panel"] button:disabled { opacity:.5; cursor:not-allowed; }
+[class~="cardiac-actions"] { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; }
+[class~="cardiac-actions"] button { font-size:11px; padding:6px 2px; }
+[class~="cardiac-actions"] [data-cardiac-action="run"] { background:#1b686a; border-color:#145356; color:#fff9e8; }
+[class~="cardiac-input"] { margin:13px 0 10px; min-width:0; padding:8px; border:1px solid #c3bea8; border-radius:5px; }
+[class~="cardiac-input"] legend { padding:0 4px; font-weight:600; }
+[class~="cardiac-panel"] label { display:block; font-size:10px; color:#4b605c; }
+[class~="cardiac-panel"] select, [class~="cardiac-panel"] input { display:block; box-sizing:border-box; width:100%; min-width:0; min-height:32px; padding:5px; margin:3px 0 7px; border:1px solid #a4b5a9; border-radius:4px; background:#fffdf5; color:#173f45; font:12px ui-monospace,monospace; }
+[class~="cardiac-input"] button { width:100%; }
+[class~="cardiac-sample"] p { margin:7px 0; font-size:10px; }
+[class~="cardiac-queue"] { display:flex; flex-wrap:wrap; gap:4px; padding-top:8px; min-height:20px; font:12px ui-monospace,monospace; }
+[class~="cardiac-queue"] span { border:1px solid #c9b993; border-radius:2px; padding:2px 4px; background:#fff9e5; }
+[class~="cardiac-queue"] small { padding-left:3px; color:#7a6d4b; font-size:8px; }
+[class~="cardiac-queue"] i { color:#758079; font:10px system-ui,sans-serif; }
+[class~="cardiac-output"] { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px; border-radius:5px; background:#e2e8d8; }
+[class~="cardiac-output"] div span { display:block; font-size:9px; }
+[class~="cardiac-output"] output { font:23px/1.3 ui-monospace,monospace; }
+[class~="cardiac-pin-state"] { font:10px ui-monospace,monospace; }
+[class~="cardiac-pin-state"] i { display:inline-block; width:7px; height:7px; margin-right:5px; border:1px solid #8a937f; border-radius:50%; background:#bdc2ad; }
+[class~="cardiac-pin-state"][data-cardiac-pin-high="true"] i { background:#eead35; border-color:#ad7320; box-shadow:0 0 5px #d89a31; }
+[class~="cardiac-panel"] details { margin-top:10px; }
+[class~="cardiac-panel"] summary { cursor:pointer; font-weight:600; }
+[class~="cardiac-output-tray"] pre { white-space:pre-wrap; overflow-wrap:anywhere; margin:6px 0; font:12px/1.6 ui-monospace,monospace; }
+[class~="cardiac-program"] label { margin-top:7px; }
+[class~="cardiac-program"] button, [class~="cardiac-open"], [class~="cardiac-example"] { width:100%; }
+[class~="cardiac-open"] { margin-top:12px; background:#173f45!important; color:#fff8df!important; border-color:#173f45!important; }
+[class~="cardiac-example"] { margin-top:8px; font-size:11px!important; }
+[class~="cardiac-host-note"] { display:block; margin-top:3px; font-size:9px; color:#677970; }
+[class~="cardiac-error"] { padding:7px; background:#fae1d7; border:1px solid #b97a64; border-radius:4px; color:#7d3021; overflow-wrap:anywhere; }
+[class~="cardiac-notice"] { margin:8px 0; color:#26695a; font-size:11px; }
+[class~="cardiac-help"] p { margin:7px 0; font-size:10px; color:#4e645d; }

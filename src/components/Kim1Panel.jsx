@@ -30,11 +30,15 @@ const EXPANSION_MODULES = ['kim-2', 'kim-3', 'kim-3b', 'kim-5'];
 
 const hex = (value, width = 2) => Number(value || 0).toString(16).toUpperCase().padStart(width, '0');
 
-export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock, onOpenExample, externalClock = false}) {
+export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock, onOpenExample, externalClock = false, variant = 'full', Editor}) {
   const de = /^de/i.test(lang);
+  const showPanel = variant === 'full' || variant === 'front';
+  const showEditor = variant === 'full' || variant === 'code';
+  const showTools = variant === 'full' || variant === 'debugger';
   const tr = (en, german) => de ? german : en;
   const source = part.params?.program || '0200: EA 4C 00 02';
   const [draft, setDraft] = useState(source);
+  const [editorRevision, setEditorRevision] = useState(0);
   const [dirty, setDirty] = useState(false);
   const dirtyRef = useRef(false);
   const [error, setError] = useState(null);
@@ -55,15 +59,30 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
     setDraft(part.params?.program || '0200: EA 4C 00 02');
     setDirty(false); dirtyRef.current = false; setError(null); setNotice(''); setTtyInput(''); setSlots([]);
     return () => { if (identity.current === token) identity.current = null; };
-  }, [board, part]);
+  }, [board, part.id]);
   useEffect(() => { if (!dirtyRef.current) setDraft(source); }, [source]);
   const state = board?.getDeviceState?.(part.id);
   const hardware = !!state?.roms;
   const storage = diskKind === 'mountSD' ? state?.sdCard : state?.corshamDisk;
   const brickwrightRom = state?.romSource === 'brickwright';
   const tty = !!state?.frontPanel?.tty;
-  const editDraft = value => { setDraft(value); setDirty(true); dirtyRef.current = true; setNotice(''); };
-  const accept = next => { setDraft(next.programSource); setDirty(false); dirtyRef.current = false; };
+  const editDraft = value => {
+    // React can flush the pending source-sync effect before the first state update.
+    dirtyRef.current = true;
+    setDraft(value);
+    setDirty(true);
+    setNotice('');
+  };
+  const replaceDraft = value => {
+    editDraft(value);
+    setEditorRevision(current => current + 1);
+  };
+  const accept = next => {
+    if (draft !== next.programSource) setEditorRevision(current => current + 1);
+    setDraft(next.programSource);
+    setDirty(false);
+    dirtyRef.current = false;
+  };
   const control = (verb, value) => kim1Control({board, part, verb, value, onProgramChange});
   const command = (verb, value) => {
     try {
@@ -88,7 +107,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
       if (file.size > 1048576) throw new Error(tr('Program files must be 1 MB or smaller.', 'Programmdateien müssen höchstens 1 MB groß sein.'));
       const text = await file.text();
       if (!token || identity.current !== token) return;
-      editDraft(text); setError(null);
+      replaceDraft(text); setError(null);
       setNotice(tr(`${file.name} is ready to load.`, `${file.name} ist bereit zum Laden.`));
     } catch (problem) { if (identity.current === token) setError(String(problem.message || problem)); }
   };
@@ -141,16 +160,16 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
   const saveFile = () => {
     download(state?.programSource || source, 'kim-1-program.kim', 'text/plain');
   };
-  return <section className="kim1-panel" data-kim1-panel={part.id} tabIndex={0}
+  return <section className={variant === 'code' ? 'kim1-code-editor' : 'kim1-panel'} data-kim1-panel={part.id} data-kim1-view={variant} tabIndex={0}
     aria-label={`KIM-1 ${part.declName || part.id}`} onKeyDown={event => {
       event.stopPropagation();
       const runningUserCode = state?.running && (!hardware || (state.pc < 0x1800 || state.pc >= 0x2000));
       const key = kim1KeyboardKey(event, runningUserCode);
       if (key) { event.preventDefault(); command('key', key); }
     }}>
-    <header><div><strong>KIM-1</strong><small>MOS 6502 · {part.declName || part.id}</small></div>
-      <span className="kim1-badge">{brickwrightRom ? 'Brickwright ROM' : hardware ? tr('ROM monitor', 'ROM-Monitor') : tr('Learning monitor', 'Lernmonitor')}</span></header>
-    <div data-build-machine className="kim1-editor-actions">
+    {showTools && <header><div><strong>KIM-1</strong><small>MOS 6502 · {part.declName || part.id}</small></div>
+      {hardware && <span className="kim1-badge">{brickwrightRom ? 'Brickwright ROM' : tr('ROM monitor', 'ROM-Monitor')}</span>}</header>}
+    {showTools && <div data-build-machine className="kim1-editor-actions">
       <button type="button" data-kim1-build
         title={hardware ? tr('Machine is ready', 'Maschine ist bereit')
           : tr('Boot the Brickwright ROM on this circuit', 'Brickwright-ROM in dieser Schaltung starten')}
@@ -163,8 +182,8 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
         <div>6530 I/O $1700–$177F</div>
         <div>ROM $1800–$1FFF</div>
       </details>}
-    </div>
-    {!state ? <p role="alert">{tr('This board has no KIM-1 engine.', 'Diese Platine hat keine KIM-1-Engine.')}</p> : <>
+    </div>}
+    {!state ? <p role="alert">{tr('This board has no KIM-1 engine.', 'Diese Platine hat keine KIM-1-Engine.')}</p> : showPanel && <>
       <Kim1Display value={state.display} masks={hardware ? state.segments : undefined} />
       <div className="kim1-display-labels"><span>{tr('Address', 'Adresse')}</span><span>{tr('Data', 'Daten')}</span></div>
       <div className="kim1-status" data-kim1-status><strong>{hardware ? tr('Hardware', 'Hardware') : state.running ? tr('Running', 'Läuft') : tr('Stopped', 'Angehalten')}</strong>
@@ -186,26 +205,37 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
       <div className="kim1-ports"><span>PA <b>{hex(state.portA)}</b></span><span>PB <b>{hex(state.portB)}</b></span>
         <span>DDR <b>{hex(state.ddrA)}/{hex(state.ddrB)}</b></span></div>
     </>}
+    {variant === 'debugger' && state && <div className="kim1-editor-actions">
+      <button type="button" onClick={() => command('key', 'GO')}>GO</button>
+      <button type="button" onClick={() => command('key', 'ST')}>ST</button>
+      <button type="button" onClick={() => command('key', 'RS')}>RS</button>
+      <strong>PC {hex(state.pc, 4)}</strong>
+      <span>A {hex(state.cpu?.a)} · X {hex(state.cpu?.x)} · Y {hex(state.cpu?.y)}</span>
+    </div>}
     {(error || state?.error) && <p className="kim1-error" role="alert">{error || state.error}</p>}
-    <details open className="kim1-editor"><summary>{tr('Program', 'Programm')} {dirty && <span>· {tr('not loaded', 'nicht geladen')}</span>}</summary>
+    {showEditor && <details open className="kim1-editor"><summary>{tr('Program', 'Programm')} {dirty && <span>· {tr('not loaded', 'nicht geladen')}</span>}</summary>
       <label>{tr('Example', 'Beispiel')}<select aria-label={tr('KIM-1 example', 'KIM-1-Beispiel')} defaultValue=""
-        onChange={event => { const example = KIM1_EXAMPLES.find(item => item.id === event.target.value); if (example) editDraft(example.source); event.target.value = ''; }}>
+        onChange={event => { const example = KIM1_EXAMPLES.find(item => item.id === event.target.value); if (example) replaceDraft(example.source); event.target.value = ''; }}>
         <option value="">{tr('Choose a program…', 'Programm wählen…')}</option>
         {KIM1_EXAMPLES.map(example => <option key={example.id} value={example.id}>{de ? example.nameDe : example.name}</option>)}
       </select></label>
-      <textarea aria-label={tr('KIM-1 program', 'KIM-1-Programm')} value={draft} spellCheck={false} rows={5}
-        onChange={event => editDraft(event.target.value)} />
-      <small>{tr('Addressed hex, Intel HEX, or KIM-1 paper tape (.pap, .ptp).', 'Adressiertes Hex, Intel HEX oder KIM-1-Lochstreifen (.pap, .ptp).')}</small>
       <div className="kim1-editor-actions">
         <button type="button" data-kim1-load disabled={!state} onClick={() => command('loadProgram',draft)}>{tr('Load program', 'Programm laden')}</button>
+        {variant === 'code' && <button type="button" data-kim1-run-source disabled={!state} onClick={() => {
+          if (command('loadProgram', draft)) command('key', 'GO');
+        }}>{tr('Load and run', 'Laden und starten')}</button>}
         <button type="button" onClick={() => fileInput.current?.click()}>{tr('Open…', 'Öffnen…')}</button>
         <button type="button" disabled={!state} onClick={saveFile}>{tr('Save', 'Speichern')}</button>
         <input ref={fileInput} type="file" hidden accept=".hex,.ihx,.ihex,.pap,.ptp,.txt,.kim,text/plain" onChange={loadFile}
           aria-label={tr('KIM-1 program file', 'KIM-1-Programmdatei')} />
       </div>
+      {Editor ? <div style={{height: 'min(48vh, 460px)', minHeight: 220, display: 'flex', flexDirection: 'column'}} data-kim1-source-editor>
+        <React.Suspense fallback={null}><Editor key={editorRevision} value={draft} onChange={editDraft} lang="asm" isVisible /></React.Suspense>
+      </div> : <textarea aria-label={tr('KIM-1 program', 'KIM-1-Programm')} value={draft} spellCheck={false} rows={5}
+        onChange={event => editDraft(event.target.value)} />}
       {notice && <p className="kim1-notice" role="status">{notice}</p>}
-    </details>
-    {state && 'roms' in state && <details className="kim1-help"><summary>{tr('Firmware and TTY', 'Firmware und TTY')}</summary>
+    </details>}
+    {showTools && state && 'roms' in state && <details className="kim1-help"><summary>{tr('Firmware and TTY', 'Firmware und TTY')}</summary>
       <div className="kim1-editor-actions">
         {'romSource' in state && <button type="button" aria-pressed={brickwrightRom}
           onClick={() => command('useBrickwrightRom')}>{tr('Use Brickwright ROM', 'Brickwright-ROM verwenden')}</button>}
@@ -213,7 +243,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
         <input ref={romInput} data-kim1-rom-input type="file" multiple hidden accept=".bin,.rom,application/octet-stream"
           aria-label={tr('KIM-1 ROM images', 'KIM-1-ROM-Abbilder')} onChange={loadRoms} />
         {hardware && <>
-          <button type="button" onClick={() => command('useTeachingMonitor')}>{tr('Learning monitor', 'Lernmonitor')}</button>
+          <button type="button" onClick={() => command('useTeachingMonitor')}>{tr('Use keypad monitor', 'Tastenmonitor verwenden')}</button>
           <label><input type="checkbox" checked={tty}
             onChange={event => command('setTty', {enabled: event.target.checked, baud: 300})} />TTY</label>
         </>}
@@ -221,7 +251,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
       <small>{tr('ROMs stay in this simulation session. Combined image order: 6530-003, 6530-002.',
         'ROMs bleiben in dieser Simulationssitzung. Reihenfolge im kombinierten Abbild: 6530-003, 6530-002.')}</small>
     </details>}
-    {state && 'backplane' in state && <details className="kim1-help" onToggle={event => setShowExpansion(event.currentTarget.open)}><summary>{tr('Expansion and storage', 'Erweiterung und Speicher')}</summary>
+    {showTools && state && 'backplane' in state && <details className="kim1-help" onToggle={event => setShowExpansion(event.currentTarget.open)}><summary>{tr('Expansion and storage', 'Erweiterung und Speicher')}</summary>
       <div className="kim1-editor-actions">
         <label><input type="checkbox" checked={!!state.expansion}
           onChange={event => command('setExpandedRam', event.target.checked)} />{tr('Expanded RAM', 'RAM-Erweiterung')}</label>
@@ -281,7 +311,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
         </>}
       </div>
     </details>}
-    {tty && <details open className="kim1-help"><summary>TTY · 300 baud</summary>
+    {showTools && tty && <details open className="kim1-help"><summary>TTY · 300 baud</summary>
       <pre data-kim1-tty-output aria-label={tr('TTY output', 'TTY-Ausgabe')} tabIndex={0}>{state.ttyOutput.replace(/[^\x20-\x7e\r\n\t]/g, '')}</pre>
       <form className="kim1-editor-actions" onSubmit={event => {
         event.preventDefault();
@@ -293,15 +323,15 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
         <button type="button" onClick={() => command('clearTty')}>{tr('Clear', 'Leeren')}</button>
       </form>
     </details>}
-    <AceKimPanel />
+    {showTools && <AceKimPanel />}
     {onOpenExample && <button type="button" className="kim1-wired-example" onClick={onOpenExample}>
       {tr('Open wired I/O example', 'Verdrahtetes E/A-Beispiel öffnen')}</button>}
-    <details className="kim1-help"><summary>{tr('Keys and wiring', 'Tasten und Verdrahtung')}</summary>
+    {showTools && <details className="kim1-help"><summary>{tr('Keys and wiring', 'Tasten und Verdrahtung')}</summary>
       <p>{tr('AD selects an address; enter four hex digits. DA edits its byte; enter two digits. + advances. GO runs from the displayed address, or executes one instruction with SST enabled. ST stops; PC returns to the stopped program counter; RS resets and keeps RAM.', 'AD wählt die Adresse: vier Hex-Ziffern eingeben. DA ändert das Byte: zwei Ziffern eingeben. + geht weiter. GO startet an der angezeigten Adresse oder führt mit SST einen Befehl aus. ST hält an; PC zeigt den angehaltenen Programmzähler; RS setzt zurück und behält RAM.')}</p>
       <p>{tr('PA0–PA7, PB0–PB5 and PB7 are the 15 user I/O pins. Set data directions at $1701/$1703 and use ports $1700/$1702. A set direction bit is an output. 5v and gnd power external experiments.', 'PA0–PA7, PB0–PB5 und PB7 sind die 15 Benutzer-E/A-Pins. Datenrichtungen liegen bei $1701/$1703, Ports bei $1700/$1702. Ein gesetztes Richtungsbit bedeutet Ausgang. 5v und gnd versorgen externe Versuche.')}</p>
       <p>{hardware ? tr('The mounted ROM runs at 1 MHz. The keypad and display connect to the emulated 6530.', 'Das geladene ROM läuft mit 1 MHz. Tastatur und Anzeige sind mit dem emulierten 6530 verbunden.') : tr(`Learning monitor at ${part.params?.clockHz ?? 1000} Hz. Use Firmware and TTY to switch to the ROM monitor.`, `Lernmonitor mit ${part.params?.clockHz ?? 1000} Hz. Unter Firmware und TTY zum ROM-Monitor wechseln.`)}</p>
       <p>{externalClock ? tr('The connected host controls simulation time.', 'Der angeschlossene Host steuert die Simulationszeit.') : tr('GO starts circuit simulation. ST stops this computer; Pause in the circuit toolbar freezes the whole experiment.', 'GO startet die Schaltungssimulation. ST hält diesen Computer an; Pause in der Schaltungsleiste hält den gesamten Versuch an.')}</p>
       <p>{tr('Programs and keypad RAM edits stay with each part when you save the circuit. I/O register writes affect the current run. Build edits reset runtime registers. With this panel focused: hex keys enter digits, Enter is +, Escape is ST, Space is GO/ST.', 'Programme und RAM-Tastatureingaben werden mit dem Bauteil gespeichert. E/A-Registeränderungen betreffen den aktuellen Lauf. Änderungen im Bauen-Modus setzen Laufzeitregister zurück. Bei fokussiertem Panel: Hex-Tasten geben Ziffern ein, Eingabe ist +, Escape ist ST, Leertaste ist GO/ST.')}</p>
-    </details>
+    </details>}
   </section>;
 }

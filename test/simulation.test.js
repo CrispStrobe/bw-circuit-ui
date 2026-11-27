@@ -282,7 +282,14 @@ describe('actual model proxy and designer clock command wiring',()=>{
     const effect=src.slice(src.indexOf('const armedByFlag = runArmedRef.current;'),src.indexOf('// Refs so pause/speed'));
     assert.ok(effect.indexOf('if (hasExternalBoard) return;')<effect.indexOf('createDesignerLiveClock({'));
     assert.match(effect,/clock\.stop\(\)/);assert.match(effect,/advanceToLive,/);
-    assert.match(src,/simStepping \|\| !!externalBoard \|\| !!simClockError/,'disable stacked or externally clocked steps');
+    // 3fb5237 ("Compact circuit controls") stopped rendering pause/step/speed
+    // at all under an external (emulator-clocked) board instead of showing
+    // them disabled, so the step button's own guard no longer names it.
+    const controls=src.slice(src.indexOf('<section data-simulation-controls'),src.indexOf('{simStepping && <div role="status">'));
+    const local=/\{!externalBoard && <>([\s\S]*?)<\/>\}/.exec(controls);
+    assert.ok(local,'local clock controls are absent while an external board drives time');
+    assert.match(local[1],/onClick=\{handleSimStep\} disabled=\{!simPaused \|\| simStepping \|\| !!simClockError\}/,'disable stacked steps');
+    assert.equal(controls.split('handleSimStep').length,2,'no second, unguarded step control');
   });
 });
 

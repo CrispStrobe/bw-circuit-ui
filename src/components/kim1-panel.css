@@ -48,3 +48,13 @@
 .kim1-panel .ace-kim-keypad { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .kim1-panel [data-ace-kim-lcd] { background: #23381c; color: #d6f1a5; font-family: monospace; }
 .kim1-video { display: block; width: min(100%, 640px); height: auto; image-rendering: pixelated; }
+
+[class~="kim1-code-editor"] [class~="kim1-editor-actions"] { margin: 4px 0 8px; }
+[class~="kim1-code-editor"] [class~="kim1-editor-actions"] button {
+  flex: 0 0 auto; border: 1px solid #9cacc0; border-radius: 5px;
+  padding: 4px 8px; font: inherit; background: #fff; color: #263849;
+}
+[class~="kim1-code-editor"] [class~="kim1-editor"] select {
+  width: auto; max-width: 100%; background: #fff; color: #263849;
+}
+[class~="kim1-code-editor"] [class~="kim1-notice"] { color: #334155; }

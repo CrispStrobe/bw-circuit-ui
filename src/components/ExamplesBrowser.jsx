@@ -8,6 +8,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import {isCardiacExample} from '../model/cardiac-controls.js';
 
 // The intro document's parser, renderer and labels now live in one place so the
 // catalogue and the top bar's (i) cannot drift apart. Extracted verbatim.
@@ -24,10 +25,11 @@ const CATEGORY_LABELS = {
   'pure-circuit': 'Pure circuits',
 };
 
-const PART_LABELS = {mcu: 'MCU', 'no-mcu': 'No MCU'};
+const PART_LABELS = {mcu: 'MCU', 'no-mcu': 'No MCU', 'decimal-computer': 'Decimal computer'};
 const TARGET_LABELS = {
   'no-mcu': 'No MCU',
   'kosmos-cp1': 'Kosmos CP1',
+  cardiac: 'CARDIAC',
   generic: 'Any MCU',
   stc12: 'STC12',
   stc89: 'STC89',
@@ -50,6 +52,7 @@ const EXAMPLE_BATCH_SIZE = 32;
 const EB_DE = {
   'Basics': 'Grundlagen', 'Analog': 'Analog', 'Digital': 'Digital', 'Motors & Actuators': 'Motoren & Aktoren',
   'Pure circuits': 'Reine Schaltungen', 'No MCU': 'Ohne MCU', 'Any MCU': 'Beliebige MCU',
+  'Decimal computer': 'Dezimalcomputer',
   'Beginner': 'Einsteiger', 'Intermediate': 'Fortgeschritten', 'Advanced': 'Experte',
   'All': 'Alle', 'Level': 'Stufe', 'Parts': 'Bauteile', 'Target': 'Zielchip', 'Examples': 'Beispiele',
   'Category': 'Kategorie', 'Type': 'Typ', 'Lvl': 'Stufe',
@@ -72,6 +75,7 @@ function ebt(text, lang, vars) {
 function examplePartTags(example) {
   const explicit = example.parts || example.partTags || example.components;
   const tags = Array.isArray(explicit) ? explicit.map(String) : [];
+  if (isCardiacExample(example)) return [...new Set(['decimal-computer', ...tags])];
   const hasMcu = example.mcu === true || example.device || example.kind === 'program' ||
     tags.some(tag => /mcu|arduino|stc|pico|rp2040|avr|micro:bit/i.test(tag));
   tags.unshift(hasMcu ? 'mcu' : 'no-mcu');
@@ -95,6 +99,7 @@ function targetKey(target) {
 }
 
 function exampleTargetTags(example) {
+  if (isCardiacExample(example)) return ['cardiac'];
   const explicit = example.targets || example.target;
   const targets = Array.isArray(explicit) ? explicit : explicit ? [explicit] : [];
   if (targets.length) return [...new Set(targets.map(targetKey))];
@@ -273,8 +278,9 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
 
       <div data-examples-selector-content style={{flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column'}}>
 
-      {/* Search — prominent for large catalogues */}
-      <div style={{ position: 'relative', marginBottom: '6px', flexShrink: 0 }}>
+      <div data-example-tools style={{display: 'flex', flexWrap: 'wrap', alignItems: 'center',
+        gap: 4, marginBottom: 6, flexShrink: 0}}>
+      <div style={{position: 'relative', flex: '1 1 180px', minWidth: 0}}>
         <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
           color: palette.muted, fontSize: '13px', pointerEvents: 'none' }}>&#x1F50D;</span>
         <input
@@ -283,7 +289,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
           onChange={(e) => changeFilter(setFilter, e.target.value)}
           placeholder={ebt('Search {n} examples\u2026', lang, {n: examples.length})}
           style={{
-            width: '100%', padding: '6px 8px 6px 28px',
+            width: '100%', height: 30, padding: '4px 24px 4px 28px',
             background: palette.input, border: `1px solid ${palette.border}`,
             borderRadius: '6px', color: palette.text,
             fontFamily: 'inherit', fontSize: '13px',
@@ -298,7 +304,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       </div>
 
       <div data-example-filters style={{display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-        gap: 4, marginBottom: 6, flexShrink: 0}}>
+        gap: 4, flex: '1 1 246px', maxWidth: 360, minWidth: 0}}>
         <FilterSelect title={ebt('Category', lang)} label={ebt('Type', lang)} value={selectedCategory}
           onChange={value => changeFilter(setSelectedCategory, value)} palette={palette}
           options={categories.map(key => [key, ebt(CATEGORY_LABELS[key] || key, lang)])} />
@@ -311,6 +317,8 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
         <FilterSelect title={ebt('Target', lang)} label={ebt('Chip', lang)} value={selectedTarget}
           onChange={value => changeFilter(setSelectedTarget, value)} palette={palette}
           options={targetTags.map(key => [key, targetLabel(key, lang)])} />
+      </div>
+
       </div>
 
       <div ref={scrollArea} data-example-list tabIndex={0} aria-label={ebt('Examples', lang)}
@@ -348,7 +356,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                 disabledReason={''}
                 onClick={() => {
                   // Open the confirm dialog with device chooser.
-                  const devices = ex.devices || [];
+                  const devices = isCardiacExample(ex) ? [] : ex.devices || [];
                   // Default device: current project chip if compatible, else
                   // saved choice (only if still in the example's device list),
                   // else the authoring chip.
@@ -357,7 +365,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
                   // device — current-chip-first loaded a generated LED bench
                   // where the retro console's matrices belonged. Plain
                   // programs keep current-chip-first.
-                  const defaultDev = ex.kind === 'full'
+                  const defaultDev = isCardiacExample(ex) ? undefined : ex.kind === 'full'
                     ? (ex.authored || devices[0] || undefined)
                     : devices.includes(currentDevice) ? currentDevice
                     : (saved && devices.includes(saved)) ? saved
@@ -377,7 +385,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
       {pendingLoad && (() => {
         const { example: pEx, device: pDev } = pendingLoad;
         const pTitle = pEx.title?.[lang] || pEx.title?.en || pEx.id;
-        const pDevices = pEx.devices || [];
+        const pDevices = isCardiacExample(pEx) ? [] : pEx.devices || [];
         const hasDevices = pDevices.length > 1;
         const handleOk = () => {
           if (onLoadExample) {
@@ -390,7 +398,7 @@ export function ExamplesBrowser({ examples, lang = 'en', onLoadExample, theme: t
             // no opts, so the host loads the curated circuit instead of a
             // generated bench (a single-entry list used to silently
             // retarget the self-test to Mega: 'Simulated ATmega, not STC').
-            const opts = d && d !== pEx.authored ? { device: d, bench: pEx.benches?.[d] } : undefined;
+            const opts = !isCardiacExample(pEx) && d && d !== pEx.authored ? { device: d, bench: pEx.benches?.[d] } : undefined;
             onLoadExample(pEx, opts);
             setLastLoaded(pEx);
             setShowInfo(false);
@@ -721,7 +729,7 @@ function ExampleCard({ example, lang, onClick, palette, disabled, disabledReason
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
             {!disabled && (
               <button type="button"
-                onClick={() => { setIntroOpen(false); onClick(pickedDevice); }}
+                onClick={() => { setIntroOpen(false); onClick(); }}
                 data-testid="bw-example-intro-open-bench"
                 style={{ padding: '8px 18px', border: 'none', borderRadius: 8,
                   background: palette.accent, color: '#fff', fontSize: 13,

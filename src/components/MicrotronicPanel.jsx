@@ -33,7 +33,9 @@ function BitLamps({name, value}) {
 }
 
 /** All state, execution and time are owned by the actual circuit Board. */
-export function MicrotronicPanel({part, board, lang = 'en', onProgramChange, onRunClock, onOpenExample, externalClock = false}) {
+export function MicrotronicPanel({part, board, lang = 'en', onProgramChange, onExecutionModeChange, onRunClock, onOpenExample, externalClock = false, variant = 'full', Editor}) {
+  const showFront = variant !== 'code';
+  const showCode = variant !== 'front';
   const de = /^de/i.test(lang);
   const tr = (en, german) => de ? german : en;
   const source = part.params?.program || 'F00';
@@ -89,17 +91,25 @@ export function MicrotronicPanel({part, board, lang = 'en', onProgramChange, onR
     } catch (e) { if (token && identity.current === token) setError(String(e.message || e)); }
   };
   const waiting = state?.waitingForKey != null;
-  return <section className="microtronic-panel" data-microtronic-panel={part.id} tabIndex={0}
+  const native = state?.model === 'tms1600';
+  return <section className={variant === 'code' ? 'microtronic-code-editor' : 'microtronic-panel'}
+    data-microtronic-panel={part.id} data-microtronic-view={variant} tabIndex={0}
     aria-label={`Busch Microtronic ${part.declName || part.id}`}
     onKeyDown={event => {
       // Keep the canvas's delete/rotate/run shortcuts out of a focused trainer.
       event.stopPropagation();
+      if (!showFront) return;
       const key = microtronicKeyboardKey(event, state?.running);
       if (key) { event.preventDefault(); command('key', key); }
     }}>
-    <header><div><strong>BUSCH MICROTRONIC</strong><small>2090 · {part.declName || part.id}</small></div>
-      <span className="microtronic-model">{tr('Behavioral model', 'Verhaltensmodell')}</span></header>
-    {!state ? <p role="alert">{tr('This board has no Microtronic engine.', 'Diese Platine hat keine Microtronic-Engine.')}</p> : <>
+    {showFront && <header><div><strong>BUSCH MICROTRONIC</strong><small>2090 · {part.declName || part.id}</small></div>
+      <select className="microtronic-model" aria-label={tr('Microtronic execution mode', 'Microtronic-Ausführungsmodus')}
+        value={native ? 'tms1600' : 'documented-behavior'} disabled={!state || !onExecutionModeChange}
+        onChange={event => onExecutionModeChange(part.id, event.target.value)}>
+        <option value="documented-behavior">{tr('Behavioral', 'Verhaltensmodell')}</option>
+        <option value="tms1600">TMS1600</option>
+      </select></header>}
+    {showFront && (!state ? <p role="alert">{tr('This board has no Microtronic engine.', 'Diese Platine hat keine Microtronic-Engine.')}</p> : <>
       <MicrotronicDisplay value={state.display} />
       <div className="microtronic-status" data-microtronic-status>
         <strong>{waiting ? tr('Waiting for key', 'Wartet auf Taste') : state.running ? tr('Running', 'Läuft') : tr('Halted', 'Angehalten')}</strong>
@@ -117,37 +127,44 @@ export function MicrotronicPanel({part, board, lang = 'en', onProgramChange, onR
         {MICROTRONIC_KEY_ROWS.flat().map(key => <button type="button" key={key} data-microtronic-key={key}
           className={key.length > 1 ? 'microtronic-function' : ''} onClick={() => command('key', key)}>{key}</button>)}
       </div>
-      <div className="microtronic-mode">{tr('Mode', 'Modus')}: {state.mode} · {part.params?.instructionHz ?? 20} {tr('instructions/s', 'Befehle/s')}</div>
-    </>}
+      <div className="microtronic-mode">{native
+        ? <span title={tr('Native ROM instruction address', 'Native ROM-Befehlsadresse')}>ROM {hex(state.nativeAddress, 3)}</span>
+        : state.mode} · {part.params?.instructionHz ?? 20} {tr('instructions/s', 'Befehle/s')}</div>
+    </>)}
     {(error || state?.error) && <p className="microtronic-error" role="alert">{error || state.error}</p>}
-    <details open className="microtronic-editor">
-      <summary>{tr('Program', 'Programm')} {dirty && <span>· {tr('not loaded', 'nicht geladen')}</span>}</summary>
+    {showCode && <div className="microtronic-editor">
       <label>{tr('Example', 'Beispiel')}<select aria-label={tr('Microtronic example', 'Microtronic-Beispiel')} defaultValue=""
         onChange={event => { const example = MICROTRONIC_EXAMPLES.find(e => e.id === event.target.value); if (example) editDraft(example.source); event.target.value = ''; }}>
         <option value="">{tr('Choose a program…', 'Programm wählen…')}</option>
         {MICROTRONIC_EXAMPLES.map(e => <option value={e.id} key={e.id}>{de ? e.nameDe : e.name}</option>)}
       </select></label>
-      <textarea aria-label={tr('Microtronic program', 'Microtronic-Programm')} value={draft}
-        onChange={event => editDraft(event.target.value)} spellCheck={false} rows={5} />
-      <small>{tr('Three hex digits per word; optional 00: address and ; comments. Load or Run applies the editor.', 'Drei Hex-Ziffern pro Befehl; optional 00: Adresse und ; Kommentare. Laden oder Start übernimmt den Editor.')}</small>
       <div className="microtronic-editor-actions">
         <button type="button" data-microtronic-load onClick={() => command('loadProgram', draft)} disabled={!state}>{tr('Load program', 'Programm laden')}</button>
+        {variant === 'code' && <button type="button" data-microtronic-run-source
+          disabled={!state} onClick={() => command('run')}>{tr('Run', 'Start')}</button>}
         <button type="button" onClick={() => fileInput.current?.click()}>{tr('Open file…', 'Datei öffnen…')}</button>
         <input ref={fileInput} type="file" accept=".mic,.txt,.hex,text/plain" hidden onChange={loadFile} aria-label={tr('Microtronic program file', 'Microtronic-Programmdatei')} />
       </div>
+      {Editor ? <React.Suspense fallback={null}>
+        <Editor value={draft} onChange={editDraft} lang="asm" isVisible />
+      </React.Suspense> : (<textarea aria-label={tr('Microtronic program', 'Microtronic-Programm')} value={draft}
+        onChange={event => editDraft(event.target.value)} spellCheck={false} rows={5} />)}
+      {dirty && <span>{tr('Not loaded', 'Nicht geladen')}</span>}
       {notice && <p className="microtronic-notice" role="status">{notice}</p>}
-    </details>
+    </div>}
     {onOpenExample && <button className="microtronic-example" type="button" onClick={onOpenExample}>{tr('Open wired I/O example', 'Verdrahtetes E/A-Beispiel öffnen')}</button>}
-    {state && <details><summary>{tr('Registers', 'Register')}</summary><div className="microtronic-registers">
+    {showFront && state && <details><summary>{tr('Registers', 'Register')}</summary><div className="microtronic-registers">
       {state.registers.map((value, i) => <span key={i}>R{hex(i)} <b>{hex(value)}</b></span>)}
     </div></details>}
-    <details className="microtronic-help"><summary>{tr('Keys, wiring and model', 'Tasten, Verdrahtung und Modell')}</summary>
+    {showFront && <details className="microtronic-help"><summary>{tr('Keys, wiring and model', 'Tasten, Verdrahtung und Modell')}</summary>
       <p>{tr('HALT → NEXT → two hex digits selects an address. Enter three instruction digits, then NEXT to store and advance. HALT → REG → a hex digit selects a working register. RESET keeps the program.', 'HALT → NEXT → zwei Hex-Ziffern wählt eine Adresse. Drei Befehlsziffern eingeben, dann mit NEXT speichern und weitergehen. HALT → REG → eine Hex-Ziffer wählt ein Arbeitsregister. RESET behält das Programm.')}</p>
       <p>{tr('IN1/OUT1 carries bit 0. The 1 Hz CLOCK is independent; connect CLOCK to IN4 for clock programs. The 5v and gnd terminals supply external experiments. The wired example has three switches and four LED outputs.', 'IN1/OUT1 trägt Bit 0. Der 1-Hz-Takt CLOCK ist unabhängig; für Uhrprogramme CLOCK mit IN4 verbinden. 5v und gnd versorgen externe Experimente. Das verdrahtete Beispiel hat drei Schalter und vier LED-Ausgänge.')}</p>
-      <p>{tr('Documented learner instructions and simplified digital I/O run on the circuit clock. Native TMS1600 firmware, display scanning, cassette storage and built-in monitor demonstrations are not emulated. PGM 3/4 sets/views the clock; PGM 5/6 fills memory. Other PGM commands report unsupported.', 'Dokumentierte Lernbefehle und vereinfachte digitale E/A laufen im Schaltungstakt. Native TMS1600-Firmware, Display-Multiplexing, Kassettenspeicher und eingebaute Monitor-Demos werden nicht emuliert. PGM 3/4 stellt/zeigt die Uhr; PGM 5/6 füllt den Speicher. Andere PGM-Befehle melden fehlende Unterstützung.')}</p>
+      <p>{native
+        ? tr('TMS1600 runs the Brickwright monitor ROM with simulated digital peripherals. Some learner instructions and monitor commands are still experimental.', 'TMS1600 führt das Brickwright-Monitor-ROM mit simulierten digitalen Peripheriegeräten aus. Einige Lernbefehle und Monitorfunktionen sind noch experimentell.')
+        : tr('The behavioral model runs the documented learner instructions. PGM 3/4 sets/views the clock and PGM 5/6 fills memory.', 'Das Verhaltensmodell führt die dokumentierten Lernbefehle aus. PGM 3/4 stellt/zeigt die Uhr, PGM 5/6 füllt den Speicher.')}</p>
       <p>{externalClock ? tr('The connected host owns simulation time.', 'Der angeschlossene Host steuert die Simulationszeit.') : tr('Run starts the shared circuit simulation. Halt stops this computer; Pause in the circuit toolbar freezes the whole experiment.', 'Start startet die gemeinsame Schaltungssimulation. Stopp hält diesen Computer an; Pause in der Schaltungsleiste hält das gesamte Experiment an.')}</p>
       <p>{tr('Circuit edits in Build rebuild the board and reset runtime registers. Loaded programs stay with each part and are saved with the circuit.', 'Schaltungsänderungen im Bauen-Modus erstellen die Platine neu und setzen Laufzeitregister zurück. Geladene Programme bleiben bei ihrem Bauteil und werden mit der Schaltung gespeichert.')}</p>
       <p>{tr('With this panel focused: hex keys enter digits, Enter is NEXT, Escape is HALT, Space toggles Run/Halt.', 'Bei fokussiertem Panel: Hex-Tasten geben Ziffern ein, Eingabe ist NEXT, Escape ist HALT, Leertaste schaltet Start/Stopp um.')}</p>
-    </details>
+    </details>}
   </section>;
 }

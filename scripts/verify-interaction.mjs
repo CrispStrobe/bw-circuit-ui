@@ -2525,6 +2525,7 @@ for (const grounded of [false, true]) {
     if (!await pmosPage.locator('[data-instruments-column]').count()) {
       await pmosPage.getByRole('button', {name: /Expand instruments panel/i}).click();
     }
+    await pmosPage.getByText('Circuit analysis', {exact: true}).click();
     await pmosPage.getByTestId('bw-operating-point-run').click();
     const result = pmosPage.getByTestId('bw-operating-point-result');
     await result.waitFor();

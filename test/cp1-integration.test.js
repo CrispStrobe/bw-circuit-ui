@@ -173,6 +173,17 @@ test('the boot boundary still carries decoded-bus fields for existing machines',
   assert.equal(machineBootDetail(null), null);
 });
 
+test('only a 6502 build can request that the host run retained firmware', () => {
+  const options = {runLoadedMedia: true};
+  assert.deepEqual(machineBootDetail({ok: true, kind: 'eater6502'}, options),
+    {kind: 'eater6502', config: {}, runLoadedMedia: true});
+  for (const kind of ['cp1', 'z80', 'i8086']) {
+    assert.deepEqual(machineBootDetail({ok: true, kind}, options), {kind, config: {}});
+  }
+  assert.deepEqual(machineBootDetail({ok: true, kind: 'cp1'}, {clearLoadedMedia: true}),
+    {kind: 'cp1', config: {}, clearLoadedMedia: true});
+});
+
 test('CP1 pins are never armed or driven by the illustrative MCU demo', () => {
   const computer = {...cp1Part(), terminals: [...CP1_TERMINALS]};
   const pins = classifyRunPins({parts: [computer], wires: []});

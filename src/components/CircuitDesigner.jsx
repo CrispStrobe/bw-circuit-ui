@@ -64,6 +64,7 @@ import { inferCircuit } from '../model/inference.js';
 import { generatePartName, circuitToDeclarations } from '../model/declarations.js';
 import { circuitSignature } from '../model/circuit-signature.js';
 import { footprintOf } from '../interaction/hittest.js';
+import { find6502LcdWiring, make6502LcdHelloRom } from '../model/m6502-lcd-preset.js';
 import { flatWire, isLegacyFlatWire, wireEndpoint } from '../model/wire-endpoints.js';
 import { updateBuzzerAudio, stopBuzzer, stopAllBuzzers } from '../audio/buzzer-audio.js';
 import { CubeScanAccumulator } from '../model/cube-scan.js';
@@ -77,10 +78,13 @@ import { ArchitectureFace } from './ArchitectureFace.jsx';
 import { FramebufferFace } from './FramebufferFace.jsx';
 import { StimulusControls } from './StimulusControls.jsx';
 import { MicrotronicPanel } from './MicrotronicPanel.jsx';
+import { CardiacPanel } from './CardiacPanel.jsx';
+import { CARDIAC_KIND, CARDIAC_PROGRAM_EVENT, acceptedCardiacProgram, saveCardiacProgram } from '../model/cardiac-controls.js';
+import { cardiacDemoCircuit } from '../model/cardiac-demo.js';
 import { Kim1Panel } from './Kim1Panel.jsx';
 import { KIM1_KIND, saveKim1Program } from '../model/kim1-controls.js';
 import { kim1DemoCircuit } from '../model/kim1-demo.js';
-import { MICROTRONIC_KIND, saveMicrotronicProgram } from '../model/microtronic-controls.js';
+import { MICROTRONIC_KIND, saveMicrotronicExecutionMode, saveMicrotronicProgram } from '../model/microtronic-controls.js';
 import { microtronicDemoCircuit } from '../model/microtronic-demo.js';
 import { getEngine } from '../engine.js';
 import { FOOTPRINTS as BB_FOOTPRINTS, computeLeadMap } from '../model/footprints.js';
@@ -111,7 +115,7 @@ function snapToGrid(v) {
  */
 const TONE_KINDS = new Set(['buzzer', 'piezo', 'speaker', 'earphone']);
 
-export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, examplesError, curriculum, onOpenExamples, onLoadExample, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
+export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32S040Input, kim1Instruments = true, microtronicInstruments = true, project, stc, board: externalBoard, debugState, debuggerOn = false, debuggerPanel = null, benchOpen = false, simulationOnly, onDeclarationChange, onCircuitEdit, onBoardReady, onCircuitReady, onWiredBootReady, circuitData, runToken, stopToken, onSimulationStart, panelNav, embedded = false, examples, examplesError, curriculum, onOpenExamples, onLoadExample, onOpenMachineLibrary, onProgramChange, lang = 'en', debugDock = 'top', onDebugDockChange, onEditorMenuActions, performanceProbe = null, benchTemperature, onBenchTemperatureChange }) {
   // Accept both `project` and `stc` props (backward compat with lite integration)
   const projectData = project || stc;
   const {
@@ -321,13 +325,15 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   const hasMcuPins = !!(projectData?.pins?.length > 0);
   const [machineResult, setMachineResult] = useState(null); // extractMachine result
   const machineHelp = useRef(null);
+  const mediaRequest = useRef(0);
   const [loaderNote, setLoaderNote] = useState(null); // Machine Loader feedback line
 
   // Detect retro CPU on the board for the Build Machine action
   const hasCp1 = parts.some(p => p.kind === 'kosmos-cp1');
   const microtronics = parts.filter(p => p.kind === MICROTRONIC_KIND);
   const kim1s = parts.filter(p => p.kind === KIM1_KIND);
-  const trainerIds = [...microtronics, ...kim1s].map(p => p.id).join('\0');
+  const cardiacs = parts.filter(p => p.kind === CARDIAC_KIND);
+  const trainerIds = [...(microtronicInstruments ? microtronics : []), ...kim1s, ...cardiacs].map(p => p.id).join('\0');
   useEffect(() => {
     if (trainerIds) setRightOpen(true);
   }, [trainerIds]);
@@ -348,14 +354,14 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   // Build Machine action: run the extractor, show result, boot on success.
   // Extractors come from the engine (injected via setEngine) or via the
   // onBuildMachine prop. The host wires the bw-board extractors at boot.
-  const handleBuildMachine = useCallback(() => {
+  const handleBuildMachine = useCallback((scene = circuit, clearLoadedMedia = false, runLoadedMedia = false) => {
     const flatCircuit = {
-      parts: parts.map(p => ({ id: p.id, kind: p.kind, params: p.params })),
+      parts: scene.parts.map(p => ({ id: p.id, kind: p.kind, params: p.params })),
       // flatWire is the canonical dialect reader; this used to be a
       // fifth private copy of it (`w.from?.part || w.from`), which
       // handed a breadboard-hole endpoint straight through as the
       // extractor's `from` string.
-      wires: wires.map(flatWire),
+      wires: scene.wires.map(flatWire),
     };
 
     // Try extractors from the engine injection
@@ -369,6 +375,8 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
 
     const result = extractMachine(flatCircuit, extractors);
     setMachineResult(result);
+    mediaRequest.current += 1;
+    setLoaderNote(null);
 
     // On success, notify the host so it can boot the machine. The two
     // extractors shape their bus differently — 6502 memory-maps its
@@ -376,10 +384,11 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     // machine constructor reads the one its architecture has.
     if (result.ok && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bw-machine-extracted', {
-        detail: machineBootDetail(result),
+        detail: machineBootDetail(result, {clearLoadedMedia, runLoadedMedia}),
       }));
     }
-  }, [parts, wires]);
+    return result;
+  }, [circuit]);
 
   // Breadboard model (persistent across renders)
   const [bbRev, setBbRev] = useState(0);
@@ -1030,12 +1039,37 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     }
   }, [circuit, setPartParam, externalBoard]);
 
+  const handleMicrotronicExecutionMode = useCallback((partId, mode) => {
+    if (saveMicrotronicExecutionMode(circuit, partId, mode)) {
+      handleSetPartParam(partId, 'executionMode', mode);
+    }
+  }, [circuit, handleSetPartParam]);
+
   const handleKim1Program = useCallback((partId, source) => {
     if (saveKim1Program(circuit, partId, source)) {
       setPartParam(partId, 'program', source);
       if (externalBoard && externalBoard !== circuit.board) externalBoard.setPartParam?.(partId, 'program', source);
     }
   }, [circuit, setPartParam, externalBoard]);
+
+  const handleCardiacProgram = useCallback((partId, program) => {
+    if (saveCardiacProgram(circuit, partId, program)) {
+      const accepted = circuit.getPart(partId).params.program;
+      setPartParam(partId, 'program', accepted);
+      if (externalBoard && externalBoard !== circuit.board) externalBoard.setPartParam?.(partId, 'program', accepted);
+    }
+  }, [circuit, setPartParam, externalBoard]);
+
+  useEffect(() => {
+    const persistAccepted = event => {
+      const partId = event.detail?.partId;
+      if (typeof partId !== 'string') return;
+      const program = acceptedCardiacProgram(activeBoard, circuit.getPart(partId), event.detail?.program);
+      if (program) handleCardiacProgram(partId, program);
+    };
+    window.addEventListener(CARDIAC_PROGRAM_EVENT, persistAccepted);
+    return () => window.removeEventListener(CARDIAC_PROGRAM_EVENT, persistAccepted);
+  }, [activeBoard, circuit, handleCardiacProgram]);
 
   const handleTrainerRun = useCallback(() => {
     if (!externalBoard && mode !== 'simulate') {
@@ -1044,11 +1078,32 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
       runArmedRef.current = {board: circuit.board, armed: classifyRunPins({parts, wires})};
     }
     setMode('simulate');
-    setRightOpen(true);
+    if (microtronicInstruments || !microtronics.length) setRightOpen(true);
     simPausedRef.current = false;
     setSimPaused(false);
     if (!externalBoard) simClock.current?.wake();
-  }, [circuit, parts, wires, mode, externalBoard]);
+  }, [circuit, parts, wires, mode, externalBoard, microtronicInstruments, microtronics.length]);
+
+  useEffect(() => {
+    const handle = event => {
+      if (event.detail?.board !== activeBoard || circuit.getPart(event.detail.partId)?.kind !== 'kim-1') return;
+      if (typeof event.detail.program === 'string') handleKim1Program(event.detail.partId, event.detail.program);
+      if (event.detail.run) handleTrainerRun();
+    };
+    window.addEventListener('bw-kim1-control', handle);
+    return () => window.removeEventListener('bw-kim1-control', handle);
+  }, [activeBoard, circuit, handleKim1Program, handleTrainerRun]);
+
+  useEffect(() => {
+    const handle = ({detail}) => {
+      if (detail?.board !== activeBoard || circuit.getPart(detail.partId)?.kind !== MICROTRONIC_KIND) return;
+      if (typeof detail.program === 'string') handleMicrotronicProgram(detail.partId, detail.program);
+      if (detail.executionMode) handleMicrotronicExecutionMode(detail.partId, detail.executionMode);
+      if (detail.run) handleTrainerRun();
+    };
+    window.addEventListener('bw-microtronic-control', handle);
+    return () => window.removeEventListener('bw-microtronic-control', handle);
+  }, [activeBoard, circuit, handleMicrotronicProgram, handleMicrotronicExecutionMode, handleTrainerRun]);
 
   const handleLoadCircuit = useCallback((inferredParts, inferredNets, ann) => {
     loadInferred(inferredParts, inferredNets);
@@ -1174,6 +1229,9 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
   useEffect(() => {
     if (!circuitData || circuitData === prevCircuitDataRef.current) return;
     prevCircuitDataRef.current = circuitData;
+    mediaRequest.current += 1;
+    setMachineResult(null);
+    setLoaderNote(null);
     // The example gallery's circuit files predate the breadboard world:
     // flat wire records, abstract vcc/gnd symbols, an mcu with no pin list.
     // When such a file arrives WITH declared pins, the declarations carry
@@ -1255,7 +1313,11 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
         circuit.seatPart(unseatMcu.id, bb.id, computeLeadMap(BB_FOOTPRINTS[unseatMcu.kind], 'e1'));
       }
     } catch { /* seating failed — leave as-is */ }
-  }, [circuitData, handleLoad, projectData, circuit]);
+    if (circuitData.bootWiredExample && onWiredBootReady) {
+      const result = handleBuildMachine(circuit, true);
+      onWiredBootReady(circuitData, circuit.board, result);
+    }
+  }, [circuitData, handleLoad, projectData, circuit, handleBuildMachine, onWiredBootReady]);
 
   // ── Main-menu File/ integration ─────────────────────────────────
   // The host's menu bar dispatches 'bw-circuit-file' CustomEvents with
@@ -1834,12 +1896,17 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
           fontSize: '16px', lineHeight: 1, width: 24, height: 24, padding: 0,
         }}>›</button>
         <div data-instruments-scroll style={{display: 'flex', flexDirection: 'column', gap: '12px', flex: '1 1 auto', minHeight: 0, height: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', paddingTop: 36, padding: '36px 6px 6px', boxSizing: 'border-box'}}>
-        {kim1s.map(part => <Kim1Panel key={part.id} part={part} board={activeBoard} lang={lang}
+        {kim1Instruments && kim1s.map(part => <Kim1Panel key={part.id} part={part} board={activeBoard} lang={lang}
           externalClock={!!externalBoard} onProgramChange={handleKim1Program}
           onRunClock={handleTrainerRun} onOpenExample={() => handleLoad(kim1DemoCircuit())} />)}
-        {microtronics.map(part => <MicrotronicPanel key={part.id} part={part} board={activeBoard} lang={lang}
+        {microtronicInstruments && microtronics.map(part => <MicrotronicPanel key={part.id} part={part} board={activeBoard} lang={lang}
           externalClock={!!externalBoard} onProgramChange={handleMicrotronicProgram}
-          onRunClock={handleTrainerRun} onOpenExample={() => handleLoad(microtronicDemoCircuit())} />)}
+          onExecutionModeChange={handleMicrotronicExecutionMode}
+          onRunClock={handleTrainerRun} onOpenExample={() => handleLoad(microtronicDemoCircuit(part.params?.executionMode))} />)}
+        {cardiacs.map(part => <CardiacPanel key={part.id} part={part} board={activeBoard} lang={lang}
+          externalClock={!!externalBoard} onProgramChange={handleCardiacProgram}
+          onRunClock={handleTrainerRun} onControlSettling={requestControlSettling}
+          onOpenExample={() => handleLoad(cardiacDemoCircuit())} />)}
         {/* Debugger surface — hidden entirely for pure circuits (no MCU/pins).
             The FACES below gate on capability, not on pins: a machine-class
             bench (6502/Z80) has no PIN concept, yet its booted machine has
@@ -1944,7 +2011,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
         {hasRetroCpu && (
           <section data-build-machine style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#0f172a', border: '1px solid #475569'}}>
             <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
-              <button onClick={handleBuildMachine} title={t('buildMachineTitle', lang)}
+              <button onClick={() => handleBuildMachine(circuit, false, true)} title={t('buildMachineTitle', lang)}
                 style={{flex: 1, minWidth: 0, minHeight: 32, padding: '5px 8px', cursor: 'pointer',
                   background: '#1e3a5f', border: '1px solid #3b82f6', borderRadius: 4,
                   color: '#93c5fd', fontFamily: 'monospace', fontSize: 11, fontWeight: 600}}>
@@ -1971,7 +2038,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
             {machineResult && (
               <details style={{marginTop: 4, color: '#cbd5e1', fontSize: 10, fontFamily: 'monospace', lineHeight: 1.4}}>
                 <summary style={{cursor: 'pointer'}}>{machineResult.ok
-                  ? (machineResult.kind === 'cp1' ? (german ? 'CP1 bereit' : 'CP1 ready') : t('machineBooted', lang))
+                  ? (machineResult.kind === 'cp1' ? (german ? 'CP1 bereit' : 'CP1 ready') : (german ? 'Maschine bereit' : 'Machine ready'))
                   : t('extractFailed', lang)}</summary>
                 {machineResult.ok ? (
                   <div style={{color: '#22c55e'}}>
@@ -2009,18 +2076,26 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
               // Tali Forth is a py65mon build and MS BASIC an Eater-map/ACIA
               // build; booting either on the user's extracted bus map would
               // run silently into open bus, which is worse than saying so.
+              const standardRom = (machineResult.regions || []).some(region =>
+                region.kind === 'rom' && region.start === 0x8000 && region.end === 0xffff);
+              const lcd = kind === 'eater6502' && standardRom
+                ? find6502LcdWiring(parts, wires, machineResult.chips || []) : null;
+              const chips = machineResult.chips || [];
               const presets = kind === 'eater6502' ? [
                 { id: 'forth', label: 'Tali Forth 2', rom: 'taliforth-py65mon.bin', slot: 'rom', profile: 'py65mon',
                   hint: 'Interactive Forth (public domain) — py65mon console map, type at the ok prompt' },
                 { id: 'basic', label: 'MS BASIC (6502)', rom: 'basic.rom', slot: 'rom', profile: 'eater',
                   hint: 'Microsoft BASIC 1.1 (MIT reconstruction) — Eater map, ACIA serial' },
-                // The one-click display proof: boots on the EXTRACTED machine
-                // (no profile), so the VIA drives whatever the bench wires —
-                // the LCD on the Eater build. Without a program that writes
-                // the display, "nothing shows on the LCD" is the correct and
-                // useless truth (owner report, 2026-08-17).
-                { id: 'lcdhello', label: 'LCD Hello', rom: 'lcd-hello.bin', slot: 'rom',
-                  hint: 'Writes HI BRICKWRIGHT to the HD44780 through the VIA — busy-window honest; turn the contrast pot' },
+                ...(lcd ? [{id: 'lcdhello', label: 'LCD Hello', rom: lcd.bits === 4 ? 'lcd-hello-4bit.bin' : 'lcd-hello.bin',
+                  makeBytes: lcd.bits === 4 ? () => make6502LcdHelloRom(lcd.at) : null, slot: 'rom',
+                  hint: 'Writes HI BRICKWRIGHT to the wired HD44780'}] : []),
+                ...(standardRom && chips.some(chip => chip.kind === 'vdp' && chip.at === 0x4000)
+                  ? [{id: 'vdphello', label: 'VDP Hello', rom: 'rom.bin', path: 'examples/eater6502-vdp-hello/rom.bin',
+                    slot: 'rom', hint: 'Displays text through the TMS9918'}] : []),
+                ...(standardRom && chips.some(chip => chip.kind === 'simplevga') &&
+                  parts.some(part => part.kind === 'ssd1306') && parts.some(part => part.kind === 'ps2')
+                  ? [{id: 'aurora65', label: 'Aurora/65', rom: 'rom.bin', path: 'examples/aurora65-workstation/rom.bin',
+                    slot: 'rom', hint: 'Displays the Aurora/65 workstation on SimpleVGA'}] : []),
               ] : kind === 'z80' ? [
                 { id: 'bbcbasic', label: 'BBC BASIC', rom: 'bbcbasic.com', slot: 'com', profile: 'cpm',
                   hint: 'R.T. Russell (zlib) — CP/M .COM over the BDOS shim, type at the > prompt' },
@@ -2071,30 +2146,43 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                 }));
               };
               const hex = (n) => n === undefined ? '' : ` @ ${n.toString(16).toUpperCase()}h`;
-              const loadPreset = async (p) => {
+              const loadPreset = async (p, fromLibrary = false) => {
+                const request = ++mediaRequest.current;
                 try {
                   setLoaderNote(`fetching ${p.rom}…`);
-                  const url = new URL(`static/roms/${p.rom}`, document.baseURI).href;
-                  const res = await fetch(url);
-                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                  const bytes = new Uint8Array(await res.arrayBuffer());
+                  let bytes;
+                  if (p.makeBytes) {
+                    bytes = p.makeBytes();
+                  } else {
+                    const url = new URL(p.path || `static/roms/${p.rom}`, document.baseURI).href;
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    bytes = new Uint8Array(await res.arrayBuffer());
+                  }
+                  if (request !== mediaRequest.current) {
+                    if (fromLibrary) throw new Error('Firmware selection changed.');
+                    return;
+                  }
                   dispatchLoad(p.slot, bytes, p.profile, p.rom);
-                  setLoaderNote(`${p.rom} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} → bench`);
+                  setLoaderNote(`${p.rom} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} · ${german ? "ausgewählt" : "selected"}`);
                 } catch (e) {
-                  setLoaderNote(`✗ ${p.rom}: ${e.message}`);
+                  if (request === mediaRequest.current) setLoaderNote(`✗ ${p.rom}: ${e.message}`);
+                  if (fromLibrary) throw e;
                 }
               };
               const loadFile = async (file) => {
+                const request = ++mediaRequest.current;
                 try {
                   const bytes = new Uint8Array(await file.arrayBuffer());
+                  if (request !== mediaRequest.current) return;
                   if (kind === 'cp1' && bytes.length !== 2048) {
                     throw new Error(/^de/i.test(lang) ? 'Die CP1-Firmware muss genau 2048 Byte enthalten.' : 'CP1 firmware must contain exactly 2048 bytes.');
                   }
                   const slot = kind === 'i8086' || kind === 'cp1' ? 'rom' : (/\.com$/i.test(file.name) ? 'com' : 'rom');
                   dispatchLoad(slot, bytes, slot === 'com' ? 'cpm' : null, file.name);
-                  setLoaderNote(`${file.name} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} → bench`);
+                  setLoaderNote(`${file.name} (${bytes.length} bytes)${hex(loadAddrFor(bytes))} · ${german ? "ausgewählt" : "selected"}`);
                 } catch (error) {
-                  setLoaderNote(`✗ ${file.name}: ${error.message}`);
+                  if (request === mediaRequest.current) setLoaderNote(`✗ ${file.name}: ${error.message}`);
                 }
               };
               if (kind === 'cp1') return (
@@ -2115,6 +2203,14 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                   <div style={{fontSize: 10, color: '#94a3b8', fontWeight: 600, marginBottom: 4}}>
                     {t('machineLoadHeading', lang)}
                   </div>
+                  {onOpenMachineLibrary && <button type="button" onClick={() => onOpenMachineLibrary(kind, presets.map(p => ({
+                    id: p.id, title: p.label, summary: german ? t(`machinePresetHint_${p.id}`, 'de') : p.hint,
+                    run: () => loadPreset(p, true),
+                  })))}>
+                    {german ? 'Firmware-Bibliothek' : 'Firmware library'}
+                  </button>}
+                  <details open={kind !== 'eater6502'} style={{color: '#cbd5e1', fontSize: 11}}>
+                    <summary>{german ? 'Programme und Dateien' : 'Presets and files'}</summary>
                   <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
                     {presets.map(p => (
                       <button key={p.id} onClick={() => loadPreset(p)} title={/^de/i.test(lang) ? t(`machinePresetHint_${p.id}`, 'de') : p.hint}
@@ -2146,37 +2242,44 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
                     <div style={{fontSize: 9, color: '#64748b', marginTop: 2}}>
                       {t('machineLoadAsmHint', lang)}
                     </div>
-                    {loaderNote && (
-                      <div data-loader-note style={{fontSize: 9, marginTop: 2,
-                        color: loaderNote.startsWith('✗') ? '#f87171' : '#22c55e'}}>
-                        {loaderNote}
-                      </div>
-                    )}
                   </div>
+                  </details>
+                  {loaderNote && <div role="status" data-loader-note style={{fontSize: 10, color: '#cbd5e1'}}>
+                    {loaderNote}
+                  </div>}
                 </div>
               );
             })()}
           </section>
         )}
         {mode === 'simulate' && (
-          <section data-simulation-controls style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 8, borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
-            <div style={{fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6}}>{/^de/i.test(lang) ? 'Simulationssteuerung' : 'Simulation controls'}</div>
-            <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: 5}}>
-              <button onClick={handleSimPause} disabled={!!externalBoard || !!simClockError} title={simPaused ? (/^de/i.test(lang) ? 'Simulation fortsetzen' : 'Resume simulation') : (/^de/i.test(lang) ? 'Simulation pausieren' : 'Pause simulation')}
-                style={{minHeight: 32, padding: '5px 8px', cursor: 'pointer'}}>{simPaused ? (/^de/i.test(lang) ? '▶ Fortsetzen' : '▶ Resume simulation') : (/^de/i.test(lang) ? '⏸ Pausieren' : '⏸ Pause simulation')}</button>
-              <button onClick={handleSimStep} disabled={!simPaused || simStepping || !!externalBoard || !!simClockError} title={/^de/i.test(lang) ? 'Einen 50-ms-Takt vorspulen' : 'Advance one 50 ms tick'}
-                style={{minHeight: 32, padding: '5px 8px', cursor: simPaused ? 'pointer' : 'default'}}>{/^de/i.test(lang) ? '⏭ Ein Takt' : '⏭ Step one tick'}</button>
+          <section data-simulation-controls aria-label={t('simControls', lang)}
+            style={{width: '100%', flex: '0 0 auto', boxSizing: 'border-box', padding: 5,
+              borderRadius: 6, background: '#f8fafc', border: '1px solid #cbd5e1'}}>
+            <div style={{display: 'flex', gap: 4, alignItems: 'center'}}>
+              {!externalBoard && <>
+                <button type="button" onClick={handleSimPause} disabled={!!simClockError}
+                  aria-label={simPaused ? t('resumeSim', lang) : t('pauseSim', lang)}
+                  title={simPaused ? t('resumeSim', lang) : t('pauseSim', lang)}
+                  style={{minWidth: 28, minHeight: 28}}>{simPaused ? '▶' : '⏸'}</button>
+                <button type="button" onClick={handleSimStep} disabled={!simPaused || simStepping || !!simClockError}
+                  aria-label={t('stepOneTick', lang)} title={t('stepOneTick', lang)}
+                  style={{minWidth: 28, minHeight: 28}}>⏭</button>
+                <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))}
+                  aria-label={t('simSpeed', lang)} title={t('simSpeed', lang)} style={{minHeight: 28}}>
+                  <option value={0.25}>0.25×</option><option value={1}>1×</option><option value={4}>4×</option>
+                </select>
+              </>}
+              <details style={{flex: 1, minWidth: 0}}>
+                <summary style={{cursor: 'pointer', minHeight: 28, lineHeight: '28px', fontSize: 11, color: '#334155'}}>
+                  {/^de/i.test(lang) ? 'Schaltungsanalyse' : 'Circuit analysis'}
+                </summary>
+                <OperatingPointPanel board={activeBoard} blockers={circuit.analysisBlockers} lang={lang} />
+                <SourceAnalysisPanel circuit={circuit} liveBoard={activeBoard} lang={lang} />
+              </details>
             </div>
             {simStepping && <div role="status">{t('simAdvancingTick', lang)}</div>}
             {simClockError && <div role="alert">{t('simStopped', lang)} {simClockError}</div>}
-            <OperatingPointPanel board={activeBoard} blockers={circuit.analysisBlockers} lang={lang} />
-            <SourceAnalysisPanel circuit={circuit} liveBoard={activeBoard} lang={lang} />
-            <label style={{display: 'grid', gridTemplateColumns: '1fr', gap: 3, marginTop: 7, fontSize: 11, color: '#475569'}}>
-              <span>{/^de/i.test(lang) ? 'Tempo' : 'Speed'}</span>
-              <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))} title={/^de/i.test(lang) ? 'Ziel-Simulationstempo; aufwendige Schaltungen können langsamer laufen' : 'Target simulation speed; complex circuits may run slower'} style={{minHeight: 30}}>
-                <option value={0.25}>0.25×</option><option value={1}>1×</option><option value={4}>4×</option>
-              </select>
-            </label>
           </section>
         )}
         <div style={{ display: 'flex', flex: '0 0 auto', gap: 4, width: 280 }}>
@@ -2231,3 +2334,5 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     </div>
   );
 }
+
+CircuitDesigner.supportsWiredExampleBoot = true;
