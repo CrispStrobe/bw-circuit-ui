@@ -31,15 +31,38 @@ if (await answers()) {
   process.exit(1);
 }
 
+// Own process group: `npx` does not always exec vite in place, and killing
+// only the npx wrapper left vite listening, so the NEXT serve-and-verify step
+// in CI met "something already serves port" (seen once verify:touch went green
+// and verify:microtronic:native ran after it). Shutdown kills the whole group.
 const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], {
-  stdio: ['ignore', 'pipe', 'pipe'],
+  stdio: ['ignore', 'pipe', 'pipe'], detached: true,
 });
 let serverLog = '';
 server.stdout.on('data', d => { serverLog += d; });
 server.stderr.on('data', d => { serverLog += d; });
 
-const shutdown = () => { try { server.kill('SIGTERM'); } catch { /* already gone */ } };
-process.on('exit', shutdown);
+const shutdown = (signal = 'SIGTERM') => {
+  try { process.kill(-server.pid, signal); } catch { /* group already gone */ }
+  try { server.kill(signal); } catch { /* already gone */ }
+};
+process.on('exit', () => shutdown('SIGKILL'));
+/** Stop the server and do not return until the port is actually free. */
+const stopServer = async () => {
+  shutdown('SIGTERM');
+  const t = Date.now();
+  while (await answers()) {
+    if (Date.now() - t > 10000) {
+      shutdown('SIGKILL');
+      if (Date.now() - t > 15000) {
+        console.error(`✖ the gate server still answers ${BASE} after shutdown`);
+        return false;
+      }
+    }
+    await new Promise(r => setTimeout(r, 200));
+  }
+  return true;
+};
 
 const t0 = Date.now();
 let up = false;
@@ -63,6 +86,6 @@ for (const gate of gates) {
   });
   if (code !== 0) { failed++; console.log(`✖ ${gate} exited ${code}`); }
 }
-shutdown();
+const stopped = await stopServer();
 console.log(`\n${gates.length} gates · ${gates.length - failed} passed · ${failed} failed`);
-process.exit(failed ? 1 : 0);
+process.exit(failed || !stopped ? 1 : 0);
