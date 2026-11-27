@@ -384,8 +384,7 @@ export function CircuitDesigner({ cpxState, onCpxInput, esp32S040PartId, onEsp32
     // machine constructor reads the one its architecture has.
     if (result.ok && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('bw-machine-extracted', {
-        detail: {...machineBootDetail(result), ...(clearLoadedMedia ? {clearLoadedMedia} : {}),
-          ...(runLoadedMedia ? {runLoadedMedia} : {})},
+        detail: machineBootDetail(result, {clearLoadedMedia, runLoadedMedia}),
       }));
     }
     return result;

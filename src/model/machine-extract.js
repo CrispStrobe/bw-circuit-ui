@@ -74,11 +74,15 @@ export function extractMachine(circuit, extractors = {}) {
 }
 
 /** Preserve a whole-system config as well as the legacy decoded-bus fields. */
-export function machineBootDetail(result) {
+export function machineBootDetail(result, {clearLoadedMedia = false, runLoadedMedia = false} = {}) {
   if (!result?.ok) return null;
   const config = {...result.config};
   for (const field of ['regions', 'chips', 'ports']) {
     if (result[field] !== undefined) config[field] = result[field];
   }
-  return {kind: result.kind, config};
+  const detail = {kind: result.kind, config};
+  if (clearLoadedMedia) detail.clearLoadedMedia = true;
+  // Brickwright resumes retained firmware after extraction on the 6502 bench.
+  if (runLoadedMedia && result.kind === 'eater6502') detail.runLoadedMedia = true;
+  return detail;
 }
