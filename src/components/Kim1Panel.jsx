@@ -30,7 +30,7 @@ const EXPANSION_MODULES = ['kim-2', 'kim-3', 'kim-3b', 'kim-5'];
 
 const hex = (value, width = 2) => Number(value || 0).toString(16).toUpperCase().padStart(width, '0');
 
-export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock, onOpenExample, externalClock = false, variant = 'full', Editor}) {
+export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock, onOpenExample, externalClock = false, variant = 'full', showAceKim = true, Editor}) {
   const de = /^de/i.test(lang);
   const showPanel = variant === 'full' || variant === 'front';
   const showEditor = variant === 'full' || variant === 'code';
@@ -323,7 +323,7 @@ export function Kim1Panel({part, board, lang = 'en', onProgramChange, onRunClock
         <button type="button" onClick={() => command('clearTty')}>{tr('Clear', 'Leeren')}</button>
       </form>
     </details>}
-    {showTools && <AceKimPanel />}
+    {showTools && showAceKim && <AceKimPanel />}
     {onOpenExample && <button type="button" className="kim1-wired-example" onClick={onOpenExample}>
       {tr('Open wired I/O example', 'Verdrahtetes E/A-Beispiel öffnen')}</button>}
     {showTools && <details className="kim1-help"><summary>{tr('Keys and wiring', 'Tasten und Verdrahtung')}</summary>
