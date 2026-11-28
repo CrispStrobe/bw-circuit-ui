@@ -24,7 +24,10 @@ const designerSource = readFileSync(new URL(
   '../src/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
 
 const circuitDataEffect = () => {
-  const effect = /const prevCircuitDataRef = useRef\(null\);[\s\S]*?useEffect\(\(\) => \{([\s\S]*?)\n  \}, \[circuitData, handleLoad, projectData, circuit\]\);/.exec(designerSource);
+  // e3d3078 ("Boot 6502 examples on the wired bench") made the effect also
+  // start a wired example's machine once the file is on the bench, so its
+  // dependency list grew handleBuildMachine and onWiredBootReady.
+  const effect = /const prevCircuitDataRef = useRef\(null\);[\s\S]*?useEffect\(\(\) => \{([\s\S]*?)\n  \}, \[circuitData, handleLoad, projectData, circuit, handleBuildMachine, onWiredBootReady\]\);/.exec(designerSource);
   assert.ok(effect, 'the circuitData load effect remains identifiable');
   return effect[1];
 };
@@ -46,6 +49,14 @@ describe('load precedence: model-level behavior', () => {
       effect.indexOf('if (!loaded) return;'));
     assert.doesNotMatch(effect, /localStorage\.setItem\('bw-circuit-file-loaded'/,
       'the prop effect must not re-arm ownership after the shared loader rejected a file or a storage write');
+  });
+
+  it('boots a wired example only after the batched load succeeded and the MCU is seated', () => {
+    const effect = circuitDataEffect();
+    const boot = effect.indexOf('if (circuitData.bootWiredExample && onWiredBootReady) {');
+    assert.ok(boot > effect.indexOf('if (!loaded) return;'), 'a rejected file never boots a machine');
+    assert.ok(boot > effect.indexOf('circuit.seatPart(unseatMcu.id'), 'the machine is built from the seated bench');
+    assert.match(effect.slice(boot), /const result = handleBuildMachine\(circuit, true\);\s*onWiredBootReady\(circuitData, circuit\.board, result\);/);
   });
 
   it('circuitData load replaces existing parts (example beats autosave)', () => {
@@ -190,14 +201,18 @@ describe('direct file load keeps authority through host declaration feedback', (
       new Function('localStorage','autosaveTimer','setTimeout','clearTimeout','parts','circuit','fileLoadedRef','autosaveRecord','fileNetsRef',autosaveBody)(
         localStorage,{current:null},fn=>{fn();return 1;},noop,circuit.parts,circuit,fileLoadedRef,autosaveRecord,fileNetsRef);
     };
-    const declarativeLoad = circuitData => {
+    const boots = [];
+    const declarativeLoad = (circuitData, { onWiredBootReady = (...a) => boots.push(['ready', ...a]) } = {}) => {
       const args = {circuitData,prevCircuitDataRef:{current:null},projectData:{pins:[]},
         circuit,handleLoad:load,isLegacyFlatWire,buildSeatedFromDeclarations,BB_FOOTPRINTS,computeLeadMap,
         setSelectedParts:noop,setSelectedWire:noop,setMode:noop,setAnnotations:noop,
+        mediaRequest:{current:0},setMachineResult:noop,setLoaderNote:noop,
+        handleBuildMachine:(scene, clear) => { boots.push(['build', scene, clear]); return 'built'; },
+        onWiredBootReady,
         ReactDOM:{unstable_batchedUpdates:fn=>fn()}};
       new Function(...Object.keys(args),circuitDataEffect())(...Object.values(args));
     };
-    return {circuit,fileLoadedRef,values,localStorage,load,data,infer,autosave,declarativeLoad};
+    return {circuit,fileLoadedRef,values,localStorage,load,data,infer,autosave,declarativeLoad,boots};
   };
 
   it('preserves the exact imported S040 owner and H1 wire when the host echoes derived declarations', () => {
@@ -334,6 +349,19 @@ describe('direct file load keeps authority through host declaration feedback', (
     next.declarativeLoad(newFile);
     assert.deepEqual(next.circuit.parts.map(part=>part.id),['new-panel']);
     assert.deepEqual(JSON.parse(first.values.get('bw-circuit-autosave')).parts.map(part=>part.id),['new-panel']);
+  });
+
+  it('hands a wired example to the host only when the declarative load succeeded', () => {
+    const f = fixture();
+    f.declarativeLoad(f.data);
+    assert.deepEqual(f.boots,[],'ordinary files never build a machine');
+    const wired = {...f.data,parts:[{...f.data.parts[0],id:'wired'}],bootWiredExample:true};
+    f.declarativeLoad(wired);
+    assert.deepEqual(f.boots,[['build',f.circuit,true],['ready',wired,f.circuit.board,'built']]);
+    f.boots.length = 0;
+    f.declarativeLoad({parts:[null],bootWiredExample:true});
+    assert.deepEqual(f.boots,[],'a rejected wired file boots nothing');
+    assert.deepEqual(f.circuit.parts.map(part=>part.id),['wired']);
   });
 
   it('preserves engine-format nets through the immediate file snapshot and later autosaves', () => {

@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: MIT
-import {flatWire} from './wire-endpoints.js';
+import {wireEndpoint} from './wire-endpoints.js';
 
 /** Match the two HD44780 connectors used by the gallery and old Eater benches. */
 export function find6502LcdWiring(parts, wires, chips) {
-  const endpoints = wires.map(flatWire);
+  // Both wire dialects (nested and legacy flat) go through the canonical
+  // reader; a hole endpoint has no part and therefore never matches a pin.
+  const endpoints = wires.map(wire => [wireEndpoint(wire, 'from'), wireEndpoint(wire, 'to')])
+    .filter(([a, b]) => a?.part && b?.part);
+  const pinIs = (end, part, terminal) => end.part === part && end.terminal.toLowerCase() === terminal;
   const lcds = parts.filter(part => part.kind === 'hd44780');
   for (const via of chips.filter(chip => chip.kind === 'via')) {
     for (const lcd of lcds) {
-      const linked = (pin, terminal) => endpoints.some(w =>
-        (w.from === via.name && w.fromTerminal?.toLowerCase() === pin &&
-          w.to === lcd.id && w.toTerminal?.toLowerCase() === terminal) ||
-        (w.to === via.name && w.toTerminal?.toLowerCase() === pin &&
-          w.from === lcd.id && w.fromTerminal?.toLowerCase() === terminal));
+      const linked = (pin, terminal) => endpoints.some(([a, b]) =>
+        (pinIs(a, via.name, pin) && pinIs(b, lcd.id, terminal)) ||
+        (pinIs(b, via.name, pin) && pinIs(a, lcd.id, terminal)));
       if (linked('pb0', 'rs') && linked('pb1', 'rw') && linked('pb2', 'e') &&
           [4, 5, 6, 7].every(bit => linked('pb'+bit, 'd'+bit))) return {bits: 4, at: via.at};
       if (via.at === 0x6000 && linked('pa5', 'rs') && linked('pa6', 'rw') && linked('pa7', 'e') &&

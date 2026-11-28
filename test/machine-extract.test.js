@@ -142,6 +142,10 @@ it('the four-bit LCD preset writes its message through the actual wired VIA', as
   const chips = [{kind: 'via', name: 'via', at: 0x6000}];
   assert.deepEqual(find6502LcdWiring(parts, wires, chips), {bits: 4, at: 0x6000});
   assert.equal(find6502LcdWiring(parts, wires.slice(1), chips), null);
+  const nested = wires.map(w => ({from: {part: w.from, terminal: w.fromTerminal}, to: {part: w.to, terminal: w.toTerminal}}));
+  assert.deepEqual(find6502LcdWiring(parts, nested, chips), {bits: 4, at: 0x6000}, 'the nested wire dialect matches too');
+  assert.equal(find6502LcdWiring(parts, [{from: {board: 'bb', hole: 'a1'}, to: {part: 'lcd', terminal: 'rs'}}, ...nested.slice(1)], chips), null,
+    'a breadboard-hole endpoint is not a VIA pin');
   const circuit = Circuit.fromJSON({vcc: 5, parts, wires, holeWires: []});
   const rom = make6502LcdHelloRom(0x6000);
   const adapter = createM6502Adapter({rom, config: {
